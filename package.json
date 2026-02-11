@@ -1,0 +1,12 @@
+{
+  "name": "battle-mage-server",
+  "version": "1.0.0",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "socket.io": "^4.0.0",
+    "dotenv": "^16.3.1",
+    "@google/generative-ai": "^0.1.3"
+  }
+}
