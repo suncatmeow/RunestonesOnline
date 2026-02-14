@@ -539,7 +539,7 @@ io.on("connection", (socket) => {
           sender: senderName, 
           text: msgText
       });
-
+      
       // 2. AI LOGIC
       const content = msgText.toLowerCase();
       const isReply = msgText.includes("[REPLY]");
@@ -613,7 +613,17 @@ io.on("connection", (socket) => {
 
               // --- SEND MESSAGE TO AI ---
               const result = await chatSessions[socket.id].sendMessage(promptWithContext);
-              
+              // [PASTE THIS BLOCK RIGHT AFTER IT]
+                if (result.response.usageMetadata) {
+                    const usage = result.response.usageMetadata;
+                    console.log(`[Main Chat] Tokens: ${usage.totalTokenCount} (In: ${usage.promptTokenCount} / Out: ${usage.candidatesTokenCount})`);
+                    
+                    // Send to client for the live cost meter
+                    io.emit('debug_stats', {
+                        tokens: usage.totalTokenCount,
+                        cost: (usage.promptTokenCount * 0.0000001) + (usage.candidatesTokenCount * 0.0000004) 
+                    });
+                }
               // --- TOOL HANDLING ---
               const call = result.response.functionCalls()?.[0];
 
@@ -735,6 +745,17 @@ io.on("connection", (socket) => {
                   };
 
                   const completion = await chatSessions[socket.id].sendMessage([toolOutput]);
+                //token tracker
+                  if (completion.response.usageMetadata) {
+                        const usage = completion.response.usageMetadata;
+                        console.log(`[Tool Follow-up] Tokens: ${usage.totalTokenCount}`);
+                        
+                        // Send to client
+                        io.emit('debug_stats', {
+                            tokens: usage.totalTokenCount,
+                            cost: (usage.promptTokenCount * 0.0000001) + (usage.candidatesTokenCount * 0.0000004)
+                        });
+                    }
                   broadcastAIResponse(completion.response.text());
 
               } else {
@@ -779,7 +800,15 @@ io.on("connection", (socket) => {
           // 4. Generate & Speak
           const result = await model.generateContent(prompt); 
           const response = result.response.text().trim();
-
+            // --- [NEW] TRACKING CODE ---
+          if (response.usageMetadata) {
+              const usage = response.usageMetadata;
+              console.log(`[Spectator] Tokens: ${usage.totalTokenCount}`);
+              io.emit('debug_stats', {
+                  tokens: usage.totalTokenCount,
+                  cost: (usage.promptTokenCount * 0.0000001) + (usage.candidatesTokenCount * 0.0000004)
+              });
+          }
           io.emit('chat_message', {
               sender: NPC_NAME,
               text: response,
@@ -1000,6 +1029,15 @@ if (Math.random() < 0.01 && !npcIsTyping) {
         setTimeout(async () => {
             try {
                 const result = await chatSessions[nearbyPlayer.id].sendMessage(proactivePrompt);
+                // --- [NEW] TRACKING CODE ---
+                if (result.response.usageMetadata) {
+                    const usage = result.response.usageMetadata;
+                    console.log(`[Proactive] Tokens: ${usage.totalTokenCount}`);
+                    io.emit('debug_stats', {
+                        tokens: usage.totalTokenCount,
+                        cost: (usage.promptTokenCount * 0.0000001) + (usage.candidatesTokenCount * 0.0000004)
+                    });
+                }
                 const response = result.response.text();
 
                 io.emit('chat_message', {
@@ -1012,7 +1050,7 @@ if (Math.random() < 0.01 && !npcIsTyping) {
         }, 1000);
     }
 }
-}, 3000);
+}, 10000);
 async function manageHistorySize(socketId) {
     if (!chatSessions[socketId]) return;
 
