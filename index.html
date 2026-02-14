@@ -25285,8 +25285,8 @@ Player[1].opponent = Player[0];
     // 5. Launch Game State
     preGame = 'explore';
     startGame = 'battle';
-    Dungeon.status = 'normal';
-    
+    Dungeon.status = 'dueling';
+    resizeCanvas()
     // Hide UI
     if (typeof btnYes !== 'undefined') btnYes.visible = false;
     if (typeof btnNo !== 'undefined') btnNo.visible = false;
@@ -40943,7 +40943,6 @@ function drawField(){
       aRune.refresh(dt);
       }
       if ((Player[0].option <= 5 && Player[1].option <= 5) || (Player[0].option > 7 && Player[1].option > 7)){
-      
       //draw padding
 	    ctx.fillStyle = "rgba(39,39,39,1)";
 	    ctx.fillRect(0,0,wX,wY);
@@ -40958,7 +40957,6 @@ function drawField(){
       cRune.refresh(dt);
       iRune.refresh(dt);
       aRune.refresh(dt);
-        
       Player[1].react(dt);
     }
     //during battle
