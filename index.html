@@ -126,6 +126,7 @@ const CORE_MEMORY_KEY = "Suncat_Core_Facts";
 const FAVOR_KEY = "Suncat_Favor_v1";
 let lastSenderName = "";
 let lastMessageTimeReceived = 0;
+let meter = 'Meter';
 // --- CHAT GLOBALS ---
 var playerSprite = 0;   // The ID of the sprite you look like
 var ps = 0;
@@ -155,22 +156,7 @@ chatInput.addEventListener('input', function(e) {
     chatDraft = chatInput.value;
 });
 
-// [PASTE THIS RIGHT BELOW IT]
-socket.on('connect', function() {
-    console.log("Connected to Server. Socket ID: " + socket.id);
 
-    // CHECK: Do we already have a name? (i.e., are we mid-game?)
-    if (typeof playerName !== 'undefined' && playerName && playerName !== "Unknown") {
-        console.log("Session Restored. Resending Identity: " + playerName);
-        
-        // Re-send the login packet immediately
-        socket.emit('join_game', { 
-            name: playerName, 
-            favor: Player[0] ? (Player[0].favor || 0) : 0, // Sync favor if possible
-            coreFacts: [] // Add any memory if you have it
-        });
-    }
-});
 // Keydown listener for Desktop "Enter" key
 window.addEventListener('keydown', function(e) {
     if (e.key === "Enter") {
@@ -1965,12 +1951,7 @@ class Explore {
     // --- LOAD INITIAL MAP (0 = Original) ---
     this.mapID = 0;
     this.loadMap(0);
-    if (typeof socket !== 'undefined') {
-        socket.emit("join_game", {
-            name: playerName,
-            aiHistory: getAiMemory()
-        });
-    }
+   
 
     
   }
@@ -2114,8 +2095,10 @@ class Explore {
             // --- A. ANNOUNCE ARRIVAL & UPLOAD BRAIN ---
             socket.emit("join_game", {
                 name: playerName,
-                aiHistory: getAiMemory() // Send the browser's stored memory
-            });
+                aiHistory: getAiMemory(), // Send the browser's stored memory
+                coreFacts: getCoreFacts(), // Sends "Long Term Memory"
+                favor: getFavor()
+              });
             // -------------------------------------------------
 
             // B. Sync Position
@@ -6685,8 +6668,10 @@ class btn{
         case 2://btnNo
               //Emperor and High Priestess No
             if (this.foe == 'emperor' || this.foe == 'high priestess'){
-              if (this.foe == 'emperor'){Dungeon.y = Dungeon.y-1;}
-              else{Dungeon.y = Dungeon.y+1;Dungeon.MainQuest = 1;}
+              if (Dungeon.currentSpeaker.socketId != 'NPC_SUNCAT'){
+                if (this.foe == 'emperor'){Dungeon.y = Dungeon.y-1;}
+                else{Dungeon.y = Dungeon.y+1;Dungeon.MainQuest = 1;}
+              }
               startGame = 'explore'
               Dungeon.dCounter = 0;
               btnYes.visible = false;
@@ -14292,15 +14277,6 @@ function handleInput(e) {
           // Check if a remote player is on the target tile
           if (Math.floor(p.x) === targetX && Math.floor(p.y) === targetY) {                       
             if (movingForward) {
-              if (p.socketId === "NPC_SUNCAT"){
-                Dungeon.currentSpeaker = p; 
-                startGame = 'dialogue';
-                Dungeon.status = 'dueling'; // Mark myself as busy
-                Dungeon.isChallenger = true; // <--- MARK AS SENDER
-                Dungeon.dCounter = 0;
-                socket.emit('suncat_spectate', `${playerName} has challenged you to a game of Stones.Do YOU have the stones to play?`); 
-                return
-              }
               if (p.status === 'dueling') {
                 console.log("Target is already in a battle.");
                 MessageBox.show(0.5, 8, 1, 9, 2, 'That player is busy fighting!', 'dialogue', 1, 0);    
@@ -14323,6 +14299,15 @@ function handleInput(e) {
                 MessageBox.show(0.5, 8, 1, 9, 2, 'Challenge sent!', 'dialogue', 1, 0);
                 // Optional: play a sound or log interaction
                 console.log("Blocked by player: " + id);
+                
+              }
+              if (p.socketId === "NPC_SUNCAT"){
+                Dungeon.currentSpeaker = p; 
+                startGame = 'dialogue';
+                Dungeon.status = 'dueling'; // Mark myself as busy
+                Dungeon.isChallenger = true; // <--- MARK AS SENDER
+                Dungeon.dCounter = 0;
+                socket.emit('suncat_spectate', `${playerName} has challenged you to a game of Stones.Do YOU have the stones to play?`); 
                 
               }
             }         
@@ -25916,7 +25901,15 @@ socket.on('remote_sfx', (data) => {
     // Optional: Log it so players know what happened
     // chatLog.push(`[SYSTEM]: You hear a strange sound nearby...`);
 });
-
+socket.on('debug_stats', (data) => {
+    
+    
+        // Rounding to 6 decimal places to show tiny fractions of a cent
+        meter = `Tokens: ${data.tokens} | Turn Cost: $${data.cost.toFixed(6)}`;
+        
+       
+    
+});
 
 //MUSIC ENGINE
 const MusicEngine = {
@@ -41026,6 +41019,9 @@ function drawField(){
         drawShape('lin',0,0,1,h,10,5,5,0,0,0,0,'red',0);
       
 	  }
+  }
+  if (debug == 4){
+    drawText(0,0,1,1,meter,'green',1)
   }
 }//END FUNCTION
 /////////////////////[END MAIN GAME LOOP]////////////////////////
