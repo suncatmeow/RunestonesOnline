@@ -14494,6 +14494,8 @@ function handleInput(e) {
           for (let i = 0;i <Oracle.deck.length - 1;i++){
             Oracle.deck[i].desc = getOracleText(Oracle.deck[i])
           }
+          //socket.emit('suncat_spectate', `Player is doing a "One Truth" tarot spread. They drew ${Oracle.deck[0].rank} of ${Oracle.deck[0].suit} . How might you interpret this for them?`);
+
         }
         //cups
     else if (pos.x >= (tL/10)*6 && pos.x <= (tL/10)*9 && 
@@ -14503,6 +14505,8 @@ function handleInput(e) {
           for (let i = 0;i <Oracle.deck.length - 1;i++){
             Oracle.deck[i].desc = getOracleText(Oracle.deck[i])
           }
+        //socket.emit('suncat_spectate', `Player is doing a "Challenge/Situation" tarot spread. They drew ${Oracle.deck[0].rank} of ${Oracle.deck[0].suit} as the situation and ${Oracle.deck[1].rank} of ${Oracle.deck[1].suit} . Interpret this for them.`);
+
         }
          //swords
     else if (pos.x >= (tL/10)*1 && pos.x <= (tL/10)*4 && 
@@ -40889,6 +40893,7 @@ function drawField(){
 
     }
     drawText(0,8.75,2,.8,"<<Back",`rgba(60,60,60,${0.6 + 0.4 * Math.sin(Date.now() / 400)})`,1,'center');
+            drawChatInterface();
 
   }
   if (startGame == 'explore'||startGame == 'dialogue'||startGame == 'tutorial'){
