@@ -207,6 +207,18 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 // --- [NEW] EXPANDED TOOLS DEFINITION ---
 const toolsDef = [{
     functionDeclarations: [
+        {
+            name: "consultGameManual",
+            description: "REQUIRED: Search the database for card stats, world lore, or battle rules. Use this whenever the user asks 'What does X do?' or 'Who is X?'.",
+            parameters: {
+                type: "object",
+                properties: {
+                    // We let the AI decide what to search for
+                    searchQuery: { type: "string", description: "The specific term to look up (e.g. 'Fool', 'Initiative', 'Goblin')." }
+                },
+                required: ["searchQuery"]
+            }
+        },
         // 1. The Gifting Tool
         {
             name: "givePlayerCard",
@@ -456,20 +468,16 @@ io.on("connection", (socket) => {
           }
           
           let systemContext = `
-            [SYSTEM DATA]
-            ${factSheet}
+    [SYSTEM DATA]
+    ${factSheet}
 
-            [CURRENT FAVOR: ${favor}/10]
-            [BATTLE_SYSTEM_RULES]
-            ${BATTLE_RULES}
-
-            [WORLD_ATLAS: MAP DATA]
-            ${WORLD_ATLAS}
-            [WORLD_LORE] 
-            ${WORLD_LORE}
-            [SOURCE_CODE_DATA: CARD_MANIFEST]
-            ${CARD_MANIFEST}
-            `;
+    [CURRENT FAVOR: ${favor}/10]
+    
+    [SYSTEM NOTE]
+    You have access to a tool called 'consultGameManual'. 
+    If you need to know about Cards, Maps, Lore, or Rules, YOU MUST USE THAT TOOL.
+    Do not hallucinate facts. Search the manual first.
+`;
 
           if (cleanHistory.length > 0) {
               console.log(`Loading ${cleanHistory.length} memories for ${name}...`);
@@ -685,7 +693,28 @@ io.on("connection", (socket) => {
                             functionResult = { result: "Teleport failed. Could not find player coordinates." };
                         }
                       }
+                      else if (call.name === "consultGameManual") {
+                            const query = call.args.searchQuery.toLowerCase();
+                            console.log(`[Suncat] Searching manual for: ${query}`);
 
+                            // 1. Combine all your text data into one "Library"
+                            // (You can move these variables to the top scope so they are accessible here)
+                            const fullLibrary = (CARD_MANIFEST + "\n" + WORLD_ATLAS + "\n" + BATTLE_RULES).split('\n');
+
+                            // 2. Simple Keyword Search
+                            // We find every line that contains the search term
+                            const matches = fullLibrary.filter(line => line.toLowerCase().includes(query));
+
+                            if (matches.length > 0) {
+                                // 3. RETURN ONLY THE HITS (Max 10 lines)
+                                // This is where you save money. You send back 100 tokens instead of 4,000.
+                                functionResult = { 
+                                    result: `[DATABASE MATCHES]:\n` + matches.slice(0, 10).join('\n') 
+                                };
+                            } else {
+                                functionResult = { result: "Search returned no results." };
+                            }
+                        }
                       // D. UNKNOWN TOOL
                       else {
                           functionResult = { result: "Error: Function does not exist." };
@@ -721,6 +750,7 @@ io.on("connection", (socket) => {
               npcIsTyping = false;
           }
       }
+      await manageHistorySize(socket.id);
   });
     // [NEW] SUNCAT SPECTATOR (Text-Based)
   socket.on("suncat_spectate", async (actionDescription) => {
@@ -983,6 +1013,37 @@ if (Math.random() < 0.01 && !npcIsTyping) {
     }
 }
 }, 3000);
+async function manageHistorySize(socketId) {
+    if (!chatSessions[socketId]) return;
+
+    try {
+        const history = await chatSessions[socketId].getHistory();
+        
+        // If history is getting huge (> 20 turns)
+        if (history.length > 20) {
+            console.log(`[Optimizing] Trimming history for ${socketId}`);
+            
+            // Keep the System/Persona instructions (usually index 0 and 1)
+            // Keep the last 10 messages
+            // Delete the "Middle" (Old chat)
+            
+            // Note: The SDK doesn't have a simple .splice() for history.
+            // The cleanest way is often to restart the chat with the shortened array.
+            const keptHistory = [
+                history[0], // Keep Persona
+                history[1], // Keep System Acknowledge
+                ...history.slice(-10) // Keep last 10 turns
+            ];
+
+            // Re-initialize the chat session with the leaner history
+            chatSessions[socketId] = model.startChat({
+                history: keptHistory
+            });
+        }
+    } catch (e) {
+        console.error("History Pruning Error:", e);
+    }
+}
 server.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });
