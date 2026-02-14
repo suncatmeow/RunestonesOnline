@@ -40943,7 +40943,7 @@ function drawField(){
       aRune.refresh(dt);
       }
       if ((Player[0].option <= 5 && Player[1].option <= 5) || (Player[0].option > 7 && Player[1].option > 7)){
-        if (!Player[0].battleOpponentId){
+      
       //draw padding
 	    ctx.fillStyle = "rgba(39,39,39,1)";
 	    ctx.fillRect(0,0,wX,wY);
@@ -40958,7 +40958,7 @@ function drawField(){
       cRune.refresh(dt);
       iRune.refresh(dt);
       aRune.refresh(dt);
-        }
+        
       Player[1].react(dt);
     }
     //during battle
