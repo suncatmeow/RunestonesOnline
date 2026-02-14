@@ -820,50 +820,6 @@ io.on("connection", (socket) => {
           console.error("Suncat Spectator Error:", error);
       }
   });
-      // [NEW] SUNCAT SPECTATOR (Text-Based)
-  socket.on("suncat_oracle", async (actionDescription) => {
-      
-      
-
-    
-
-      try {
-          // 3. Simple Prompt
-          // We just plug the client's string directly into the [ACTION] field.
-          const prompt = `
-          
-          [SCENARIO]: You are acting as an oracle.
-          [SPREAD]: "${actionDescription}"
-          [CONSTRAINT]: Do NOT use any tools. Do NOT look up the manual.
-          TASK:Provide a detailed tarot card reading based on the spread.
-          
-          `;
-
-          // 4. Generate & Speak
-          const result = await model.generateContent({
-              contents: [{ role: "user", parts: [{ text: prompt }] }],
-              toolConfig: { functionCallingConfig: { mode: "NONE" } } 
-          });
-          const response = result.response.text().trim();
-            // --- [NEW] TRACKING CODE ---
-          if (response.usageMetadata) {
-              const usage = response.usageMetadata;
-              console.log(`[Spectator] Tokens: ${usage.totalTokenCount}`);
-              io.emit('debug_stats', {
-                  tokens: usage.totalTokenCount,
-                  cost: (usage.promptTokenCount * 0.0000001) + (usage.candidatesTokenCount * 0.0000004)
-              });
-          }
-          io.emit('oracle', {
-              
-              text: response
-              
-          });
-
-      } catch (error) {
-          console.error("Suncat Oracle Error:", error);
-      }
-  });
   socket.on('playerAction_SFX', (data) => {
       if (typeof data.id !== 'number') return;
       socket.broadcast.emit('remote_sfx', {
@@ -1112,21 +1068,16 @@ async function manageHistorySize(socketId) {
             
             // Note: The SDK doesn't have a simple .splice() for history.
             // The cleanest way is often to restart the chat with the shortened array.
-            // 1. Grab the last 10 messages
-            let tail = history.slice(-10);
-
-            // 2. SAFETY CHECK: Ensure the tail starts with a USER message
-            // If the first message of the tail is from the 'model', remove it so we start with 'user'
-            if (tail.length > 0 && tail[0].role === 'model') {
-                tail.shift(); // Remove the first element
-            }
-
-            // 3. Construct the new clean history
             const keptHistory = [
-                history[0], // Keep Persona (User)
-                history[1], // Keep System Acknowledge (Model)
-                ...tail     // Keep the safe tail (User -> Model -> ...)
+                history[0], // Keep Persona
+                history[1], // Keep System Acknowledge
+                ...history.slice(-10) // Keep last 10 turns
             ];
+
+            // Re-initialize the chat session with the leaner history
+            chatSessions[socketId] = model.startChat({
+                history: keptHistory
+            });
         }
     } catch (e) {
         console.error("History Pruning Error:", e);
