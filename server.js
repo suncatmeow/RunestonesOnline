@@ -820,55 +820,48 @@ io.on("connection", (socket) => {
           console.error("Suncat Spectator Error:", error);
       }
   });
- // [NEW] SUNCAT ORACLE (Fixed: Forces Text-Only Mode)
+      // [NEW] SUNCAT SPECTATOR (Text-Based)
   socket.on("suncat_oracle", async (actionDescription) => {
-      console.log(`[Oracle] Received request for spread: ${actionDescription}`);
       
-      try {
-          // 1. Sanitize Input (Prevent crashing from huge data)
-          // If actionDescription is an object, stringify it. If it's too long, cut it.
-          let cleanSpread = (typeof actionDescription === 'object') 
-              ? JSON.stringify(actionDescription) 
-              : String(actionDescription);
-              
-          if (cleanSpread.length > 500) cleanSpread = cleanSpread.substring(0, 500) + "...";
+      
 
-          // 2. The Prompt
+    
+
+      try {
+          // 3. Simple Prompt
+          // We just plug the client's string directly into the [ACTION] field.
           const prompt = `
-          [SYSTEM]: You are acting as a Mystical Oracle.
-          [CONTEXT]: The user has drawn these cards: "${cleanSpread}".
-          [INSTRUCTION]: Provide a mysterious, detailed tarot reading interpreting these cards. 
-          [CONSTRAINT]: Do NOT use any tools. Do NOT look up the manual. Just use your creative training to interpret the vibes. Keep it under 50 words.
+          
+          [SCENARIO]: You are acting as an oracle.
+          [SPREAD]: "${actionDescription}"
+          [CONSTRAINT]: Do NOT use any tools. Do NOT look up the manual.
+          TASK:Provide a detailed tarot card reading based on the spread.
+          
           `;
 
-          // 3. Generate Content (FORCE TEXT ONLY)
-          // We pass 'toolConfig' to disable function calling for this specific turn
+          // 4. Generate & Speak
           const result = await model.generateContent({
               contents: [{ role: "user", parts: [{ text: prompt }] }],
               toolConfig: { functionCallingConfig: { mode: "NONE" } } 
           });
-
           const response = result.response.text().trim();
-
-          // 4. Send Response
-          console.log(`[Oracle] Replying: ${response.substring(0, 20)}...`);
-          
-          // Debug Stats
-          if (result.response.usageMetadata) {
-              const usage = result.response.usageMetadata;
+            // --- [NEW] TRACKING CODE ---
+          if (response.usageMetadata) {
+              const usage = response.usageMetadata;
+              console.log(`[Spectator] Tokens: ${usage.totalTokenCount}`);
               io.emit('debug_stats', {
                   tokens: usage.totalTokenCount,
                   cost: (usage.promptTokenCount * 0.0000001) + (usage.candidatesTokenCount * 0.0000004)
               });
           }
-
-          // Emit to ALL (or change to socket.emit to keep it private)
-          io.emit('oracle', { text: response });
+          io.emit('oracle', {
+              
+              text: response
+              
+          });
 
       } catch (error) {
           console.error("Suncat Oracle Error:", error);
-          // Optional: Tell the client something went wrong so they aren't stuck waiting
-          socket.emit('oracle', { text: "The mists are too thick... I cannot see. (AI Error)" });
       }
   });
   socket.on('playerAction_SFX', (data) => {
