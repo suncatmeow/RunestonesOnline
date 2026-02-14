@@ -209,16 +209,14 @@ const toolsDef = [{
     functionDeclarations: [
         {
             name: "consultGameManual",
-            description: "REQUIRED for card readings, lore, or rules. If the user mentions multiple items (e.g. 3 tarot cards), you MUST search for EACH card individually in one turn or sequentially.",
+            description: "REQUIRED: Search the database for card stats, world lore, or battle rules. Use this whenever the user asks 'What does X do?' or 'Who is X?'.",
             parameters: {
                 type: "object",
                 properties: {
-                    query: { 
-                        type: "string", 
-                        description: "A single card name or rule (e.g., 'Gnome'). For spreads, call this multiple times." 
-                    }
+                    // We let the AI decide what to search for
+                    searchQuery: { type: "string", description: "The specific term to look up (e.g. 'Fool', 'Initiative', 'Goblin')." }
                 },
-                required: ["query"]
+                required: ["searchQuery"]
             }
         },
         // 1. The Gifting Tool
@@ -287,10 +285,7 @@ const toolsDef = [{
 }];
 
 const model = genAI.getGenerativeModel({ 
-    model: "gemini-2.5-flash-lite", // Cheaper and built for this!
-    generationConfig: {
-        thinkingBudget: 1024 // Gives Suncat 1024 tokens of 'pre-thought' logic
-    },
+    model: "gemini-2.5-flash-lite",
     tools: toolsDef
 });
 
@@ -709,21 +704,25 @@ io.on("connection", (socket) => {
                         }
                       }
                       else if (call.name === "consultGameManual") {
-                            const query = call.args.query.toLowerCase().trim();
-                            // We search the Manifest, Atlas, and Lore all at once
-                            const archives = (CARD_MANIFEST + "\n" + WORLD_ATLAS + "\n" + WORLD_LORE).split("\n");
+                            const query = call.args.searchQuery.toLowerCase();
+                            console.log(`[Suncat] Searching manual for: ${query}`);
 
-                            // FUZZY SEARCH: We check if the line contains the query OR vice versa
-                            const matches = archives.filter(line => {
-                                const cleanLine = line.toLowerCase();
-                                return cleanLine.includes(query) || query.includes(cleanLine.split(':')[0].toLowerCase());
-                            });
+                            // 1. Combine all your text data into one "Library"
+                            // (You can move these variables to the top scope so they are accessible here)
+                            const fullLibrary = (CARD_MANIFEST + "\n" + WORLD_ATLAS + "\n" + BATTLE_RULES).split('\n');
+
+                            // 2. Simple Keyword Search
+                            // We find every line that contains the search term
+                            const matches = fullLibrary.filter(line => line.toLowerCase().includes(query));
 
                             if (matches.length > 0) {
-                                // Return up to 5 lines of data per search
-                                functionResult = { result: matches.slice(0, 5).join("\n") };
+                                // 3. RETURN ONLY THE HITS (Max 10 lines)
+                                // This is where you save money. You send back 100 tokens instead of 4,000.
+                                functionResult = { 
+                                    result: `[DATABASE MATCHES]:\n` + matches.slice(0, 10).join('\n') 
+                                };
                             } else {
-                                functionResult = { result: `No exact records for '${query}'. Try a simpler keyword.` };
+                                functionResult = { result: "Search returned no results." };
                             }
                         }
                       // D. UNKNOWN TOOL
@@ -1059,7 +1058,7 @@ async function manageHistorySize(socketId) {
         const history = await chatSessions[socketId].getHistory();
         
         // If history is getting huge (> 20 turns)
-        if (history.length > 20) {
+        if (history.length > 10) {
             console.log(`[Optimizing] Trimming history for ${socketId}`);
             
             // Keep the System/Persona instructions (usually index 0 and 1)
@@ -1071,7 +1070,7 @@ async function manageHistorySize(socketId) {
             const keptHistory = [
                 history[0], // Keep Persona
                 history[1], // Keep System Acknowledge
-                ...history.slice(-10) // Keep last 10 turns
+                ...history.slice(-5) // Keep last 10 turns
             ];
 
             // Re-initialize the chat session with the leaner history
