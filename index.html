@@ -115,6 +115,7 @@ let myState = 0;
 let oppState = 0;
 let spread = 0;
 //ONLINE
+
 const socket = io("https://battlemage.onrender.com"); 
 
 window.pendingChallengerDeck = [];
@@ -7478,16 +7479,7 @@ class Field{
     let oppRoll = Player[1].opponent.look[eLOOK.R];
     let shouldReroll = false;
 
-    // 1. CONTEXT CHECK
-    // Are we in a contested roll? (Initiative, Attack, Defend, Debuff)
-    // Most rolls in this game are contested.
-    // Exception: Self-Buffs (Strength Spell) or non-combat items.
-    
-    let isContested = true;
-    if (Player[1].option === 7 && Player[1].hand.length > 0 && Player[1].look[eLOOK.H] < Player[1].hand.length) {
-        // If using a card, check if it's a buff
-        if (Player[1].hand[Player[1].look[eLOOK.H]].subType === 'buff') isContested = false;
-    }
+ 
 
     // 2. DECISION LOGIC
    
@@ -7500,7 +7492,7 @@ class Field{
           }
         }
         //attack or agi
-        if (Player[1].option === 7||(Player[1].option === 6&&myRoll<(Player[1].diceType * .75))){
+        if (myRoll<(Player[1].diceType * .75)){
           if (myRoll <= oppRoll) {
             shouldReroll = true;
           }
@@ -7510,26 +7502,28 @@ class Field{
 
     // 3. EXECUTE
     // Find the Star Pendant to mark it as triggered
-    let pendantIndex = -1;
-    for (let i = 0; i < this.aMonster.length; i++) {
-        if (Player[1].aMonster[i].index == 17 && Player[1].aMonster[i].effectTriggered == 0) {
-            pendantIndex = i;
-            break;
+    
+    for (let i = 0; i < Player[1].aMonster.length; i++) {
+        if (Player[1].aMonster[i].index == 17) {
+          Player[1].aMonster[i].effectTriggered = 1;
         }
     }
 
-    if (pendantIndex !== -1) {
-        Player[1].aMonster[pendantIndex].effectTriggered = 1; // Mark used
         
         if (shouldReroll) {
             // YES: Reset timers to 0 to trigger the re-animation and re-roll
-            this.ax = 0; this.ay = 0; this.az = 0; this.at = 0;
+            Player[0].ax = 0; Player[0].ay = 0; Player[0].az = 0; Player[0].at = 0;
             Player[1].option = Player[1].preOpt; // Go back to action
+            Player[0].option = Player[0].preOpt;
+            Player[1].hasReroll = 1;
+
         } else {
             // NO: Just go back without resetting timers (keeps the current roll)
             Player[1].option = Player[1].preOpt; 
+            Player[0].option = Player[0].preOpt;
+            
         }
-    }
+    
   }
   //UI HELPERS
   setDice(type,x,y,z,r,dt){
@@ -7557,7 +7551,7 @@ class Field{
     const SPEED_Z = 3 * dt; 
     ctx.textAlign= 'left';
     let elem = 0;
-    let debug = 0;
+    let debug = 1;
     if( debug == 1){
       drawText(0,1,1,.25,'P[A]:' + Player[0].look[eLOOK.A],'white',1);//Players intended action
       drawText(0,1.25,1,.25,'P[H]:' + Player[0].look[eLOOK.H],'white',1);//Current focus in hand
@@ -7676,15 +7670,17 @@ class Field{
          if (!Player[1].battleOpponentId){
           if(this.foe == 0 && this.option == 5&&this.opponent.option == 5&&Player[0].preOpt != 6&&Player[0].preOpt != 7){
             this.option = 6;this.opponent.option = 6;
+            Player[0].preOpt = 5; Player[1].preOpt = 5;
             
           }
           else if(this.foe == 0 && this.option == 5&&this.opponent.option == 5&&Player[0].preOpt == 6){
             this.option = 6;this.opponent.option = 6;
-           
+           Player[0].preOpt = 5; Player[1].preOpt = 5;
                  
           }
           else if(this.foe == 0 && this.option == 5&&this.opponent.option == 5&& Player[0].preOpt==7){
             this.option = 7;this.opponent.option = 7;
+            Player[0].preOpt = 5; Player[1].preOpt = 5;
             if ((Player[0].at >= 31&&Player[0].at <69)){Player[0].at = 69;}
                   
           }
@@ -7861,12 +7857,14 @@ class Field{
               //FIRST
               if (Player[i].look[eLOOK.R]>Player[i].opponent.look[eLOOK.R]|| (Player[i].look[eLOOK.R] == Player[i].opponent.look[eLOOK.R] && winTie == 1)){
                 Player[i].option = 7;
+                Player[i].preOpt = 6;
                 Player[i].turnCurrent = 1;
                 Player[i].turnOrder = 1;
               }
               //SECOND
               else if (Player[i].look[eLOOK.R]<Player[i].opponent.look[eLOOK.R]){//second, player moves to opt 7 first defend   
                 Player[i].option = 7;
+                Player[i].preOpt = 6;
                 Player[i].defStat = 1; //0 str, 1 con, 2, int, 3, agi
                 Player[i].turnCurrent = 1;
                 Player[i].turnOrder = 2;
@@ -8275,10 +8273,12 @@ class Field{
                       if (defender == 0){
                         Player[0].option = 6.1;
                         Player[1].option = 6.11;
+                        Player[0].preOpt = 7; Player[1].preOpt = 7;
                       }
                       else{
                       Player[0].option = 6.1;
                       Player[1].option = 6.12;
+                      Player[0].preOpt = 7; Player[1].preOpt = 7;
                       }
                       return
                     }
@@ -8292,10 +8292,15 @@ class Field{
                       if (attacker == 0){
                         Player[0].option = 6.1;
                         Player[1].option = 6.11;
+                        Player[0].preOpt = 7;
+                        Player[1].preOpt = 7;
                       }
                       else{
                       Player[0].option = 6.1;
                       Player[1].option = 6.12;
+                      Player[0].preOpt = 7;
+                      Player[1].preOpt = 7;
+                      
                       }
                       return
                     }
@@ -8370,10 +8375,12 @@ class Field{
                       if(attacker == 0){
                         Player[0].option = 8;
                         Player[1].option = 8.1
+                        Player[0].preOpt = 7; Player[1].preOpt = 7;
                       }
                       if(attacker == 1){
                         Player[0].option = 8;
                         Player[1].option = 8.2
+                        Player[0].preOpt = 7; Player[1].preOpt = 7;
                       }
                       this.ay = 0;
                       this.az = 0;
@@ -8451,6 +8458,7 @@ class Field{
                       this.az = 0;
                       this.at = 0
                       this.rollSent = 0;
+                      Player[0].preOpt = 7; Player[1].preOpt = 7;
                       //socket.emit('suncat_spectate', `currently option 7(physical combat). Player rolled ${Player[0].look[eLOOK.R]}, opponent rolled ${Player[1].look[eLOOK.R]}.`);
 
                       //defender STAR PENDANT RESET
@@ -10282,6 +10290,7 @@ class Field{
             this.opponent.option = 0;
             this.preOpt = 9;
             this.opponent.preOpt = 9;
+            Player[0].at = 0;
           }
 
           break;
@@ -40991,7 +41000,7 @@ function drawField(){
     
     
     
-     if (cardIDO ==1&&Player[0].option == 2||Player.option == 4){
+     
       view = new Card(cardIDI, 613);
       view.place(1.9,.2,2.75);
       drawShape('arc',view.x,view.y,2.75,0,1.69,.3,0,6,0,0,0,'rgba(255,255,255,.5)',1);//left
@@ -40999,7 +41008,7 @@ function drawField(){
       drawShape('arc',view.x,view.y,2.75,2.25,1.69,.3,0,6,0,0,0,'rgba(255,255,255,.5)',1);//right
       drawShape('tri',view.x,view.y,2.75,2.15,1.45,2.15,1.9,2.5,1.69,0,0,'rgba(0,0,0,.5)',1);//right
       drawText(8.25,.2,1,1,'X','white',1.63);
-    }
+    
   
         drawChatInterface();
 
