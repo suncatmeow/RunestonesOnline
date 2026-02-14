@@ -296,10 +296,10 @@ window.addEventListener('keydown', function(e) {
                         playerSprite = 28888;
                       break;
                       case 33:
-                        playerSprite == 61391;
+                        playerSprite = 61391;
                         break
                         case 34:
-                          playerSprite == .61391;
+                          playerSprite = .61391;
                       break;
 
                   }
@@ -7655,6 +7655,7 @@ class Field{
           if (this.isCPU==1){this.flip();}
           break;
         case 5://ready
+        this.refresh();
           //Draw Graphics
           if (Player[1].isCPU == 1){} 
           else{
@@ -13756,7 +13757,9 @@ function drawChatInterface() {
         let inputY = chatY + (maxLines * rowHeight) + 0.9;
         let cursor = (Date.now() % 1000 < 500) ? "_" : " "; 
         drawText(chatX + 0.2, 9.75, chatW - 0.4, rowHeight, "> " + chatDraft + cursor, "yellow", 1, "left");
-    }
+        drawText(chatX + 0.2, -.25, chatW - 0.4, rowHeight, "> " + chatDraft + cursor, "yellow", 1, "left");
+
+      }
 
     ctx.globalAlpha = 1; // Reset opacity
 }
