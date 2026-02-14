@@ -40927,7 +40927,7 @@ function drawField(){
     }
       //Dungeon.battle(); 
       
-      if ((Player[0].option <= 5 && Player[1].option <= 5) || (Player[0].option > 7 && Player[1].option > 7)){
+      if ((Player[0].option <= 5 && Player[1].option <= 5) || (Player[0].option > 7 && Player[1].option > 7)||(Player[0].battleOpponentId &&Player[0].option == 5)){
       //draw padding
 	    ctx.fillStyle = "rgba(39,39,39,1)";
 	    ctx.fillRect(0,0,wX,wY);
@@ -40952,6 +40952,7 @@ function drawField(){
 	    //draw table
 	    ctx.fillStyle = "rgba(0,6,13,1)";
 	    ctx.fillRect(tX,tY,tL,tH);
+      
       sRune.refresh(dt);
       cRune.refresh(dt);
       iRune.refresh(dt);
