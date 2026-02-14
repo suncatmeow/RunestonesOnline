@@ -820,6 +820,47 @@ io.on("connection", (socket) => {
           console.error("Suncat Spectator Error:", error);
       }
   });
+      // [NEW] SUNCAT SPECTATOR (Text-Based)
+  socket.on("suncat_oracle", async (actionDescription) => {
+      
+      
+
+    
+
+      try {
+          // 3. Simple Prompt
+          // We just plug the client's string directly into the [ACTION] field.
+          const prompt = `
+          
+          [SCENARIO]: You are acting as an oracle.
+          [SPREAD]: "${actionDescription}"
+          
+          TASK:Provide a detailed tarot card reading based on the spread.
+          
+          `;
+
+          // 4. Generate & Speak
+          const result = await model.generateContent(prompt); 
+          const response = result.response.text().trim();
+            // --- [NEW] TRACKING CODE ---
+          if (response.usageMetadata) {
+              const usage = response.usageMetadata;
+              console.log(`[Spectator] Tokens: ${usage.totalTokenCount}`);
+              io.emit('debug_stats', {
+                  tokens: usage.totalTokenCount,
+                  cost: (usage.promptTokenCount * 0.0000001) + (usage.candidatesTokenCount * 0.0000004)
+              });
+          }
+          io.emit('oracle', {
+              
+              text: response
+              
+          });
+
+      } catch (error) {
+          console.error("Suncat Oracle Error:", error);
+      }
+  });
   socket.on('playerAction_SFX', (data) => {
       if (typeof data.id !== 'number') return;
       socket.broadcast.emit('remote_sfx', {
