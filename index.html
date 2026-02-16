@@ -8008,16 +8008,14 @@ class Field{
               //CHECK IF ATTACKER BOUND
               if (Player[attacker].hasBind > 0){
                 this.at= this.at+tick;
+                if (attacker == 1){this.flip()}
                 drawPortrait(12,9,9,.1);
                 drawPortrait(12,0,9,.1);
                 drawPortrait(12,9,5,.1);
                 drawPortrait(12,0,5,.1);
-                if(Player[attacker].isCPU == 1&&Player[attacker].foe == 1){
-                  this.flip();
-                  MessageBox.show(.5,6,1.5,2,1,Player[attacker].aMonster[0].name + ' cannot act!','jrpg',1,0)
-                  this.flip()
-                }
-                else{MessageBox.show(.5,6,1.5,2,1,Player[attacker].aMonster[0].name + ' cannot act!','jrpg',1,this.foe)}
+                MessageBox.show(.5,6,1.5,2,1,Player[attacker].aMonster[0].name + ' cannot act!','jrpg',1,0)
+                if (attacker == 1){this.flip()}
+                MessageBox.show(.5,6,1.5,2,1,Player[attacker].aMonster[0].name + ' cannot act!','jrpg',1,this.foe)
                 if (this.at>39){
                   Player[attacker].hasBind = Player[attacker].hasBind - 1;
                   if (Player[attacker].hasBind == 0) {
@@ -8040,16 +8038,14 @@ class Field{
               //CHECK IF ATTACKER INTIMIDATED
               if (Player[attacker].hasIntimidate> 0){
                 this.at= this.at+tick;
+                if (attacker == 1){this.flip()}
                 drawPortrait(58,9,9,.1);
                 drawPortrait(58,0,9,.1);
                 drawPortrait(58,9,5,.1);
                 drawPortrait(58,0,5,.1);
-                if(Player[attacker].isCPU == 1&&Player[attacker].foe == 1){
-                  this.flip();
-                  MessageBox.show(.5,6,1.5,2,1,Player[attacker].aMonster[attacker].name + ' cowers in fear!','jrpg',1,0)
-                  this.flip();
-                }
-                else{ MessageBox.show(.5,6,1.5,2,1,Player[attacker].aMonster[0].name + ' cowers in fear!','jrpg',1,this.foe)}
+                MessageBox.show(.5,6,1.5,2,1,Player[attacker].aMonster[attacker].name + ' cowers in fear!','jrpg',1,0)
+                if (attacker == 1){this.flip()}
+                MessageBox.show(.5,6,1.5,2,1,Player[attacker].aMonster[0].name + ' cowers in fear!','jrpg',1,this.foe)
                 if (this.at>69){
                   Player[attacker].hasIntimidate = Player[attacker].hasIntimidate - 1;
                   if (Player[attacker].hasIntimidate == 0) {
@@ -8518,17 +8514,17 @@ class Field{
             case 1://ITEM either to player or foe
               //Activate Bind
               if (Player[attacker].hasBind > 0){
+                if (attacker == 1){this.flip()}
                 Player[attacker].aMonster[0].place(3.88,5.5,1);
                 this.at= this.at+tick;
                 drawPortrait(12,9,9,.1);
                 drawPortrait(12,0,9,.1);
                 drawPortrait(12,9,5,.1);
                 drawPortrait(12,0,5,.1);
-                if(Player[attacker].isCPU == 1&&Player[attacker].foe == 1){
-                  this.flip();
-                  MessageBox.show(.5,6,1.5,2,1,Player[attacker].aMonster[0].name + ' cannot act!','jrpg',1,0)
-                  this.flip()
-                }else{MessageBox.show(.5,6,1.5,2,1,Player[attacker].aMonster[0].name + ' cannot act!','jrpg',1,this.foe)}
+                MessageBox.show(.5,6,1.5,2,1,Player[attacker].aMonster[0].name + ' cannot act!','jrpg',1,0)
+                if (attacker == 1){this.flip()}
+                MessageBox.show(.5,6,1.5,2,1,Player[attacker].aMonster[0].name + ' cannot act!','jrpg',1,this.foe)
+                
                 if (this.at>39){
                   Player[attacker].hasBind = Player[attacker].hasBind - 1;
                   if (Player[attacker].hasBind == 0) {
@@ -8549,17 +8545,16 @@ class Field{
               }
               //Activate Lunacy
               if (Player[attacker].hasLunacy > 0&& Player[attacker].hand[Player[attacker].look[eLOOK.H]].index != 19&&Player[attacker].hand[Player[attacker].look[eLOOK.H]].index != 20){
-                Player[attacker].aMonster[0].place(3.88,5.5,1);
                 this.at= this.at+1   
+                if (attacker == 1){this.flip()}
+                Player[attacker].aMonster[0].place(3.88,5.5,1);
                 drawPortrait(18,9,9,.1);
                 drawPortrait(18,0,9,.1);
                 drawPortrait(18,9,5,.1);
                 drawPortrait(18,0,5,.1);
-                if(Player[attacker].isCPU == 1){
-                  this.flip();
-                  MessageBox.show(.5,6,1.5,2,1,Player[attacker].aMonster[0].name + ' cannot act!','jrpg',1,0)
-                  this.flip();
-                }else{MessageBox.show(.5,6,1.5,2,1,Player[attacker].aMonster[0].name + ' cannot act!','jrpg',1,this.foe)}
+                MessageBox.show(.5,6,1.5,2,1,Player[attacker].aMonster[0].name + ' cannot act!','jrpg',1,0)
+                if (attacker == 1){this.flip()}
+                MessageBox.show(.5,6,1.5,2,1,Player[attacker].aMonster[0].name + ' cannot act!','jrpg',1,this.foe)
                 if (this.at>69){
                   Player[attacker].hasLunacy = Player[attacker].hasLunacy - 1;
                   if (Player[attacker].hasLunacy == 0) {
@@ -9630,17 +9625,16 @@ class Field{
 
               //CHECK IF ATTACKER SUFFERS FROM LUNACY
               if (Player[attacker].hasLunacy > 0&& Player[attacker].hand[Player[attacker].look[eLOOK.H]].index != 19&&Player[attacker].hand[Player[attacker].look[eLOOK.H]].index != 20){
+                if (attacker == 1){this.flip()}
                 Player[attacker].aMonster[0].place(3.88,5.5,1);
                 this.at= this.at+1   
                 drawPortrait(18,9,9,.1);
                 drawPortrait(18,0,9,.1);
                 drawPortrait(18,9,5,.1);
                 drawPortrait(18,0,5,.1);
-                if(Player[attacker].isCPU == 1){
-                  this.flip();
-                  MessageBox.show(.5,6,1.5,2,1,Player[attacker].aMonster[0].name + ' cannot act!','jrpg',1,0)
-                  this.flip();
-                }else{MessageBox.show(.5,6,1.5,2,1,Player[attacker].aMonster[0].name + ' cannot act!','jrpg',1,this.foe)}
+                MessageBox.show(.5,6,1.5,2,1,Player[attacker].aMonster[0].name + ' cannot act!','jrpg',1,0)
+                if (attacker == 1){this.flip()}
+                MessageBox.show(.5,6,1.5,2,1,Player[attacker].aMonster[0].name + ' cannot act!','jrpg',1,this.foe)
                 if (this.at>69){
                   Player[attacker].hasLunacy = Player[attacker].hasLunacy - 1;
                   if (Player[attacker].hasLunacy == 0) {
@@ -9662,17 +9656,15 @@ class Field{
               /////////
               //CHECK IF ATTACKER INTIMIDATED
               if (Player[attacker].hasIntimidate> 0){
+                if (attacker == 1){this.flip()}
                 this.at= this.at+tick;
                 drawPortrait(58,9,9,.1);
                 drawPortrait(58,0,9,.1);
                 drawPortrait(58,9,5,.1);
                 drawPortrait(58,0,5,.1);
-                if(Player[attacker].isCPU == 1&&Player[attacker].foe == 1){
-                  this.flip();
-                  MessageBox.show(.5,6,1.5,2,1,Player[attacker].aMonster[attacker].name + ' cowers in fear!','jrpg',1,0)
-                  this.flip();
-                }
-                else{ MessageBox.show(.5,6,1.5,2,1,Player[attacker].aMonster[0].name + ' cowers in fear!','jrpg',1,this.foe)}
+                MessageBox.show(.5,6,1.5,2,1,Player[attacker].aMonster[attacker].name + ' cowers in fear!','jrpg',1,0)
+                if (attacker == 1){this.flip()}
+                MessageBox.show(.5,6,1.5,2,1,Player[attacker].aMonster[0].name + ' cowers in fear!','jrpg',1,this.foe)
                 if (this.at>69){
                   Player[attacker].hasIntimidate = Player[attacker].hasIntimidate - 1;
                   if (Player[attacker].hasIntimidate == 0) {
@@ -13895,7 +13887,7 @@ function handleInput(e) {
   //END OF BATTLE SCREEN CLICKS
   if (Player[0].option ===10 ) { 
     //DUNGEON BATTLES
-    if ((preGame == 'explore' && (startGame ==4||startGame == 8))||startGame == 'battle'){
+    if ((preGame == 'explore' && startGame > 3)||startGame == 'battle'){
       //emperor battle
       if (Player[1].option === 10.1 && startGame == 8&&preGame=='explore') {  
         // Give the Crown (Index 21)
@@ -14005,7 +13997,7 @@ function handleInput(e) {
        // 1. LOOT DROP LOGIC
         if (Math.random() < 1.0) { 
            // FIX: Check both Deck AND Hand for cards
-           if (typeof Foe !== 'undefined' && (Player[1].deck.length > 0 || Player[1].hand.length > 0)) {
+           if ((Player[1].deck.length > 0 || Player[1].hand.length > 0)) {
              
              // A. Combine IDs from Deck AND Hand
              let deckIDs = Player[1].deck.map(c => c.index);
@@ -41063,7 +41055,6 @@ function drawField(){
 
 
 ////////////////////////[FUNCTION CALLS]//////////////////////////
-// Add this at the very start of cardID
 
 drawField();//starts the game loop
   /*
