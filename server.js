@@ -660,10 +660,18 @@ io.on("connection", (socket) => {
           try {
               // Initialize Chat if needed
               if (!chatSessions[socket.id]) {
-                   chatSessions[socket.id] = model.startChat({
+                  let favor = playerFavorMemory[socket.id] || 0;
+                  let facts = players[socket.id]?.coreFacts || [];
+                  let factSheet = facts.length > 0 ? "LONG-TERM MEMORY:\n" + facts.join("\n") : "";
+                  
+                  let systemContext = `[SYSTEM DATA]\n${factSheet}\n[CURRENT FAVOR: ${favor}/10]\n[SYSTEM NOTE]\nYou have access to a tool called 'consultGameManual'. If you need to know about Cards, Maps, Lore, Rules, or Yourself, YOU MUST USE THAT TOOL. Do not hallucinate facts.`;
+
+                  chatSessions[socket.id] = model.startChat({
                       history: [
                           { role: "user", parts: [{ text: NPC_PERSONA }] },
-                          { role: "model", parts: [{ text: "Understood." }] },
+                          { role: "model", parts: [{ text: "System Online." }] },
+                          { role: "user", parts: [{ text: systemContext }] },
+                          { role: "model", parts: [{ text: "Soul Sync Complete." }] }
                       ],
                   });
               }
