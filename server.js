@@ -314,6 +314,45 @@ players[SUNCAT_ID] = {
     isNPC: true     // Flag for client (optional)
 };
 const NPC_NAME = "Suncat";
+// --- GLOBAL SUNCAT CHAT HELPER ---
+const broadcastSuncatMessage = (fullResponse) => {
+    // 1. EXTRACT TAGS (Internal Server Logic)
+    const tagMatch = fullResponse.match(/\[\[(.*?)\]\]/);
+    if (tagMatch) {
+        console.log(`[SUNCAT INTERNAL]: ${tagMatch[0]}`);
+    }
+
+    // 2. CLEAN: Remove tags so players don't see them
+    const cleanResponse = fullResponse.replace(/\[\[.*?\]\]/g, "").trim();
+    
+    // 3. PREVENT BLANK MESSAGES
+    if (!cleanResponse || cleanResponse === "") return; 
+
+    // 4. CHUNK: Split long messages for the retro RPG feel
+    const MAX_LEN = 69; 
+    let words = cleanResponse.split(" ");
+    let currentLine = "";
+    let chunks = [];
+
+    words.forEach(word => {
+        if ((currentLine + word).length < MAX_LEN) {
+            currentLine += (currentLine.length > 0 ? " " : "") + word;
+        } else {
+            chunks.push(currentLine);
+            currentLine = word;
+        }
+    });
+    if (currentLine.length > 0) chunks.push(currentLine);
+
+    chunks.forEach(chunk => {
+        // Because we are in the global scope, we use the global io object
+        io.emit('chat_message', {
+            sender: NPC_NAME,
+            text: chunk,
+            color: "#00ffff"
+        });
+    });
+};
 // --- [NEW] UPDATED PERSONA WITH JUDGEMENT RULES ---
 const NPC_PERSONA = `
 [IDENTITY]
@@ -555,43 +594,7 @@ io.on("connection", (socket) => {
           
           npcIsTyping = true;
 
-          // --- HELPER: Send AI Text to Game (Handles Tags & Chunking) ---
-          const broadcastAIResponse = (fullResponse) => {
-               // 1. EXTRACT TAGS (Internal Server Logic)
-               const tagMatch = fullResponse.match(/\[\[(.*?)\]\]/);
-               if (tagMatch) {
-                   console.log(`[SUNCAT INTERNAL]: ${tagMatch[0]}`);
-                   // logic to save favor goes here if needed
-               }
-
-               // 2. CLEAN: Remove tags so players don't see them
-               const cleanResponse = fullResponse.replace(/\[\[.*?\]\]/g, "").trim();
-               if (!cleanResponse) return;
-
-               // 3. CHUNK: Split long messages for the retro RPG feel
-               const MAX_LEN = 69; 
-               let words = cleanResponse.split(" ");
-               let currentLine = "";
-               let chunks = [];
-
-               words.forEach(word => {
-                   if ((currentLine + word).length < MAX_LEN) {
-                       currentLine += (currentLine.length > 0 ? " " : "") + word;
-                   } else {
-                       chunks.push(currentLine);
-                       currentLine = word;
-                   }
-               });
-               if (currentLine.length > 0) chunks.push(currentLine);
-
-               chunks.forEach(chunk => {
-                   io.emit('chat_message', {
-                       sender: NPC_NAME,
-                       text: chunk,
-                       color: "#00ffff"
-                   });
-               });
-          };
+          
 
           try {
               // Initialize Chat if needed
@@ -766,11 +769,11 @@ io.on("connection", (socket) => {
                             cost: (usage.promptTokenCount * 0.0000001) + (usage.candidatesTokenCount * 0.0000004)
                         });
                     }
-                  broadcastAIResponse(completion.response.text());
+                  broadcastSuncatMessage(completion.response.text());
 
               } else {
                   // No tool called, just normal speech
-                  broadcastAIResponse(result.response.text());
+                  broadcastSuncatMessage(result.response.text());
               }
 
           } catch (error) {
@@ -791,9 +794,9 @@ io.on("connection", (socket) => {
       // 1. Basic Reality Check
      //if (!suncat || !sender || suncat.mapID !== sender.mapID) return;
 
-      // 2. Rate Limit (30% chance to react)
+      // 2. Rate Limit (10% chance to react)
       // This prevents him from spamming if you do a combo of 5 moves.
-      if (Math.random() > 0.30) return; 
+      if (Math.random() > 0.1) return; 
 
       try {
           // 3. Simple Prompt
@@ -802,27 +805,24 @@ io.on("connection", (socket) => {
           
           [SCENARIO]: You are watching the player ${sender.name}.
           [ACTION OBSERVED]: "${actionDescription}"
-          
+          [TASK]: Generate a witty response based off [ACTION OBSERVED]
           
           `;
 
           // 4. Generate & Speak
           const result = await model.generateContent(prompt); 
-          const response = result.response.text().trim();
+          const response = result.response.text();
             // --- [NEW] TRACKING CODE ---
-          if (response.usageMetadata) {
-              const usage = response.usageMetadata;
+          if (result.response.usageMetadata) {
+              const usage = result.response.usageMetadata;
               console.log(`[Spectator] Tokens: ${usage.totalTokenCount}`);
               io.emit('debug_stats', {
                   tokens: usage.totalTokenCount,
                   cost: (usage.promptTokenCount * 0.0000001) + (usage.candidatesTokenCount * 0.0000004)
               });
           }
-          io.emit('chat_message', {
-              sender: NPC_NAME,
-              text: response,
-              color: "#00ffff"
-          });
+          // Use the global helper!
+          broadcastSuncatMessage(response);
 
       } catch (error) {
           console.error("Suncat Spectator Error:", error);
@@ -1048,12 +1048,7 @@ if (Math.random() < 0.01 && !npcIsTyping) {
                     });
                 }
                 const response = result.response.text();
-
-                io.emit('chat_message', {
-                    sender: NPC_NAME,
-                    text: response,
-                    color: "#00ffff"
-                });
+                broadcastSuncatMessage(response);
             } catch (e) { console.error("Proactive Speech Failed", e); }
             npcIsTyping = false;
         }, 1000);
