@@ -714,34 +714,79 @@ io.on("connection", (socket) => {
                         }
                       }
                       else if (call.name === "consultGameManual") {
-                            // Extract the array of queries
-                            const queries = call.args.searchQueries || [];
-                            console.log(`[Suncat] Searching manual for:`, queries);
+                        const queries = call.args.searchQueries || [];
+                        console.log(`[Suncat] Searching manual for:`, queries);
 
-                            const fullLibrary = (CARD_MANIFEST + "\n" + WORLD_ATLAS + "\n" + BATTLE_RULES + "\n" + WORLD_LORE+ "\n" + SUNCAT_LORE).split('\n');
-                            let combinedResults = [];
+                        // 1. Build the library and remove empty lines
+                        const fullLibraryLines = (CARD_MANIFEST + "\n" + WORLD_ATLAS + "\n" + BATTLE_RULES + "\n" + WORLD_LORE + "\n" + SUNCAT_LORE)
+                            .split('\n')
+                            .filter(line => line.trim().length > 0);
 
-                            // Iterate through each query and gather matches
-                            queries.forEach(query => {
-                                const lowerQuery = query.toLowerCase();
-                                const matches = fullLibrary.filter(line => line.toLowerCase().includes(lowerQuery));
+                        let combinedResults = [];
+
+                        // 2. Common words to ignore so they don't mess up the scoring
+                        const stopWords = ["the", "and", "for", "with", "what", "does", "mean", "about", "are", "you", "is", "how", "whats", "up"];
+
+                        queries.forEach(query => {
+                            const lowerQuery = query.toLowerCase();
+                            
+                            // Break the query into meaningful keywords
+                            const searchTerms = lowerQuery
+                                .replace(/[^\w\s]/gi, '') 
+                                .split(/\s+/)
+                                .filter(w => w.length > 2 && !stopWords.includes(w));
+
+                            // 3. Score each line in the database
+                            let scoredLines = fullLibraryLines.map((line, index) => {
+                                let score = 0;
+                                let lowerLine = line.toLowerCase();
                                 
-                                if (matches.length > 0) {
-                                    // Limit to 4 lines per query to save tokens and prevent context bloat
-                                    combinedResults.push(`[${query} Matches]:\n` + matches.slice(0, 4).join('\n'));
-                                } else {
-                                    combinedResults.push(`[${query} Matches]: None found.`);
-                                }
+                                // Massive bonus for an exact phrase match
+                                if (lowerLine.includes(lowerQuery)) score += 10;
+                                
+                                // +1 point for every individual keyword found
+                                searchTerms.forEach(term => {
+                                    if (lowerLine.includes(term)) score += 1;
+                                });
+
+                                return { index, line, score };
                             });
 
-                            if (combinedResults.length > 0) {
-                                functionResult = { 
-                                    result: `[DATABASE MATCHES]:\n` + combinedResults.join('\n\n') 
-                                };
+                            // 4. Sort to find the highest scoring lines
+                            let bestMatches = scoredLines
+                                .filter(item => item.score > 0)
+                                .sort((a, b) => b.score - a.score);
+
+                            if (bestMatches.length > 0) {
+                                let contextMatches = [];
+                                
+                                // Take the top 3 best hits to save tokens while providing enough data
+                                for (let i = 0; i < Math.min(3, bestMatches.length); i++) {
+                                    let hitIndex = bestMatches[i].index;
+                                    let resultText = fullLibraryLines[hitIndex];
+                                    
+                                    // CRITICAL FIX: If the hit is a Category Header (starts with '['), 
+                                    // grab the next line too, because that's where the actual lore is!
+                                    if (resultText.trim().startsWith('[') && hitIndex + 1 < fullLibraryLines.length) {
+                                        resultText += "\n" + fullLibraryLines[hitIndex + 1];
+                                    }
+                                    contextMatches.push(resultText);
+                                }
+                                
+                                combinedResults.push(`[Matches for "${query}"]:\n` + contextMatches.join('\n...\n'));
                             } else {
-                                functionResult = { result: "Search returned no results." };
+                                combinedResults.push(`[Matches for "${query}"]: None found.`);
                             }
+                        });
+
+                        if (combinedResults.length > 0) {
+                            functionResult = { 
+                                result: `[DATABASE MATCHES]:\n` + combinedResults.join('\n\n') 
+                            };
+                        } else {
+                            functionResult = { result: "Search returned no results." };
                         }
+                    }
                       // D. UNKNOWN TOOL
                       else {
                           functionResult = { result: "Error: Function does not exist." };
