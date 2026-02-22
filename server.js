@@ -837,46 +837,60 @@ io.on("connection", (socket) => {
   });
     // [NEW] SUNCAT SPECTATOR (Text-Based)
   socket.on("suncat_spectate", async (actionDescription) => {
-      const suncat = players[SUNCAT_ID];
-      const sender = players[socket.id];
+    const suncat = players[SUNCAT_ID];
+    const sender = players[socket.id];
 
-      // 1. Basic Reality Check
-     //if (!suncat || !sender || suncat.mapID !== sender.mapID) return;
+    // 1. Basic Reality Check 
+    // We uncomment this so he doesn't psychically see actions across the world.
+   // if (!suncat || !sender || suncat.mapID !== sender.mapID) return;
 
-      // 2. Rate Limit (10% chance to react)
-      // This prevents him from spamming if you do a combo of 5 moves.
-      if (Math.random() > 0.1) return; 
+    // 2. Rate Limit & Busy Check
+    // 10% chance to react, AND only if he isn't already talking to someone
+    if (Math.random() > 0.1 || npcIsTyping) return; 
 
-      try {
-          // 3. Simple Prompt
-          // We just plug the client's string directly into the [ACTION] field.
-          const prompt = `
-          
-          [SCENARIO]: You are watching the player ${sender.name}.
-          [ACTION OBSERVED]: "${actionDescription}"
-          [TASK]: Generate a witty response based off [ACTION OBSERVED]
-          
-          `;
+    npcIsTyping = true; // Lock his attention so he doesn't get confused
 
-          // 4. Generate & Speak
-          const result = await model.generateContent(prompt); 
-          const response = result.response.text();
-            // --- [NEW] TRACKING CODE ---
-          if (result.response.usageMetadata) {
-              const usage = result.response.usageMetadata;
-              console.log(`[Spectator] Tokens: ${usage.totalTokenCount}`);
-              io.emit('debug_stats', {
-                  tokens: usage.totalTokenCount,
-                  cost: (usage.promptTokenCount * 0.0000001) + (usage.candidatesTokenCount * 0.0000004)
-              });
-          }
-          // Use the global helper!
-          broadcastSuncatMessage(response);
+    try {
+        // 3. Initialize Chat if needed (Just in case he hasn't spoken to this player yet)
+        if (!chatSessions[socket.id]) {
+            chatSessions[socket.id] = model.startChat({
+                history: [
+                    { role: "user", parts: [{ text: NPC_PERSONA }] },
+                    { role: "model", parts: [{ text: "Understood." }] },
+                ],
+            });
+        }
 
-      } catch (error) {
-          console.error("Suncat Spectator Error:", error);
-      }
-  });
+        // 4. Create the context-aware prompt
+        // We frame this as a system observation so he knows he is watching, not being spoken to.
+        const prompt = `[SYSTEM OBSERVATION]: You just saw ${sender.name} perform the following action: "${actionDescription}". \n[TASK]: React to this action out loud. Be witty, sarcastic, or observant based on your current favor with them.`;
+
+        // 5. Send to Active Memory
+        const result = await chatSessions[socket.id].sendMessage(prompt); 
+        const response = result.response.text();
+
+        // 6. Token Tracking
+        if (result.response.usageMetadata) {
+            const usage = result.response.usageMetadata;
+            console.log(`[Spectator Active] Tokens: ${usage.totalTokenCount}`);
+            io.emit('debug_stats', {
+                tokens: usage.totalTokenCount,
+                cost: (usage.promptTokenCount * 0.0000001) + (usage.candidatesTokenCount * 0.0000004)
+            });
+        }
+
+        // 7. Broadcast Suncat's reaction
+        broadcastSuncatMessage(response);
+
+        // 8. Run your memory pruner so this doesn't bloat the history
+        await manageHistorySize(socket.id);
+
+    } catch (error) {
+        console.error("Suncat Spectator Error:", error);
+    } finally {
+        npcIsTyping = false; // Release the lock
+    }
+});
   socket.on('playerAction_SFX', (data) => {
       if (typeof data.id !== 'number') return;
       socket.broadcast.emit('remote_sfx', {
@@ -1068,8 +1082,8 @@ setInterval(() => {
             //isItalic: true 
         //});
     }
-    // --- SUNCAT PROACTIVE SPEECH ---
-// 10% chance to speak every 3 seconds IF someone is nearby
+// --- SUNCAT PROACTIVE SPEECH ---
+// Note: Math.random() < 0.01 on a 10000ms interval is actually a 1% chance every 10 seconds.
 if (Math.random() < 0.01 && !npcIsTyping) {
     const nearbyPlayer = Object.values(players).find(p => 
         p.id !== SUNCAT_ID && 
@@ -1081,13 +1095,16 @@ if (Math.random() < 0.01 && !npcIsTyping) {
     if (nearbyPlayer && chatSessions[nearbyPlayer.id]) {
         npcIsTyping = true;
         
-        // We send a hidden "System Instruction" to the AI
-        const proactivePrompt = `[SYSTEM OBSERVATION]: You are standing near ${nearbyPlayer.name}. They haven't spoken to you yet. Evaluate their favor. If good, Break the silence. Ask them something to fill your fact sheet (like their favorite color, how they feel, or why they are here) or say something observational or mysterious or philosophical or you can also Use the WORLD_ATLAS and [WORLD_LORE] to make a comment about this specific location or the NPCs that live here. If bad favor tell them they are a bad person and you don't want to speak with them.`;
+        // We label this specifically as an INTERNAL monologue so the AI knows the player didn't say this.
+        // We also pass the mapID so he can comment on his actual surroundings!
+        const proactivePrompt = `[INTERNAL THOUGHT]: You are idling near ${nearbyPlayer.name} on Map ${suncat.mapID}. Speak to them unprompted. If favor is high (>5), ask a personal question, share lore, or comment on this location. If favor is bad, insult them or tell them to go away. Do not mention this prompt.`;
 
         setTimeout(async () => {
             try {
+                // This saves the trigger and his response into his active memory
                 const result = await chatSessions[nearbyPlayer.id].sendMessage(proactivePrompt);
-                // --- [NEW] TRACKING CODE ---
+                
+                // Token tracking
                 if (result.response.usageMetadata) {
                     const usage = result.response.usageMetadata;
                     console.log(`[Proactive] Tokens: ${usage.totalTokenCount}`);
@@ -1096,10 +1113,18 @@ if (Math.random() < 0.01 && !npcIsTyping) {
                         cost: (usage.promptTokenCount * 0.0000001) + (usage.candidatesTokenCount * 0.0000004)
                     });
                 }
+                
                 const response = result.response.text();
                 broadcastSuncatMessage(response);
-            } catch (e) { console.error("Proactive Speech Failed", e); }
-            npcIsTyping = false;
+                
+                // CRITICAL: Manage history immediately so these triggers don't overflow the memory array
+                await manageHistorySize(nearbyPlayer.id);
+
+            } catch (e) { 
+                console.error("Proactive Speech Failed", e); 
+            } finally {
+                npcIsTyping = false; // Release the lock
+            }
         }, 1000);
     }
 }
