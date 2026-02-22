@@ -13,7 +13,18 @@ const io = require("socket.io")(server, {
     methods: ["GET", "POST"]
   }
 });
+// --- GLOBAL ERROR SAFETY NET ---
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('[CRITICAL] Unhandled Promise Rejection:');
+    console.error(reason);
+    // The server will now log the error instead of crashing.
+});
 
+process.on('uncaughtException', (error) => {
+    console.error('[CRITICAL] Uncaught Exception:');
+    console.error(error);
+    // Keeps the server alive even if a synchronous error slips through.
+});
 const port = process.env.PORT || 3000;
 const CARD_MANIFEST = `
 [MAJOR ARCANA: 0-21]
@@ -318,6 +329,39 @@ let chatSessions = {};
 let playerFavorMemory = {};
 let currentTargetID = null;
 let lastSwitchTime = 0;
+// --- SUNCAT AI RATE LIMITER (Token Bucket) ---
+// Secures the API perimeter by limiting how often a single player can trigger the AI.
+const MAX_AI_CALLS = 3; // Maximum burst of allowed interactions
+const REFILL_TIME = 15000; // Regain 1 interaction token every 15 seconds
+
+const playerAITokens = {};
+
+function canTriggerAI(socketId) {
+    const now = Date.now();
+    
+    // Initialize a new player's token bucket
+    if (!playerAITokens[socketId]) {
+         playerAITokens[socketId] = { tokens: MAX_AI_CALLS, lastRefill: now };
+    }
+    
+    let bucket = playerAITokens[socketId];
+    let timeElapsed = now - bucket.lastRefill;
+    
+    // Refill tokens based on time passed
+    let tokensToRefill = Math.floor(timeElapsed / REFILL_TIME);
+    if (tokensToRefill > 0) {
+        bucket.tokens = Math.min(MAX_AI_CALLS, bucket.tokens + tokensToRefill);
+        bucket.lastRefill = now; 
+    }
+    
+    // Check if the player has tokens left to spend
+    if (bucket.tokens > 0) {
+        bucket.tokens--;
+        return true;
+    }
+    
+    return false; // Player is out of tokens (rate-limited)
+}
 const SUNCAT_ID = "NPC_SUNCAT"; // Special ID
 const SUNCAT_SPRITE = 61391; // Or whatever sprite ID you want (e.g., 'skeleton', 'hero')
 
@@ -595,7 +639,15 @@ io.on("connection", (socket) => {
 
       // Only reply if addressed or randomly triggered, AND not already busy
       if ((mentioned || isReply || (greeting && randomChance) || randomChance) && !npcIsTyping) {
-          
+          if (!canTriggerAI(socket.id)) {
+              console.log(`[Rate Limit] Blocked spam from ${senderName}`);
+              socket.emit('chat_message', {
+                  sender: NPC_NAME,
+                  text: "*...my mind is clouded... give me a moment to think...*",
+                  color: "#aaaaaa" // Gray color to indicate a system/thought message
+              });
+              return; // Exit early, do not trigger the AI
+          }
           npcIsTyping = true;
 
           
@@ -829,6 +881,10 @@ io.on("connection", (socket) => {
               console.error("General AI Error:", error);
               // Optional: Reset session if it's truly stuck
               // delete chatSessions[socket.id];
+              if (chatSessions[socket.id]) {
+                  delete chatSessions[socket.id];
+                  console.log(`[System] Cleared corrupted AI session for socket: ${socket.id}`);
+              }
           } finally {
               npcIsTyping = false;
           }
@@ -887,6 +943,10 @@ io.on("connection", (socket) => {
 
     } catch (error) {
         console.error("Suncat Spectator Error:", error);
+        if (chatSessions[socket.id]) {
+                  delete chatSessions[socket.id];
+                  console.log(`[System] Cleared corrupted AI session for socket: ${socket.id}`);
+              }
     } finally {
         npcIsTyping = false; // Release the lock
     }
@@ -1101,6 +1161,10 @@ if (Math.random() < 0.01 && !npcIsTyping) {
 
         setTimeout(async () => {
             try {
+                if (!chatSessions[nearbyPlayer.id]) {
+                    npcIsTyping = false;
+                    return; 
+                }
                 // This saves the trigger and his response into his active memory
                 const result = await chatSessions[nearbyPlayer.id].sendMessage(proactivePrompt);
                 
@@ -1122,6 +1186,9 @@ if (Math.random() < 0.01 && !npcIsTyping) {
 
             } catch (e) { 
                 console.error("Proactive Speech Failed", e); 
+                if (chatSessions[nearbyPlayer.id]) {
+                    delete chatSessions[nearbyPlayer.id];
+                }
             } finally {
                 npcIsTyping = false; // Release the lock
             }
