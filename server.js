@@ -209,14 +209,17 @@ const toolsDef = [{
     functionDeclarations: [
         {
             name: "consultGameManual",
-            description: "REQUIRED: Search the database for card stats, world lore, or battle rules. Use this whenever the user asks 'What does X do?' or 'Who is X?'.",
+            description: "REQUIRED: Search the database for card stats, world lore, or battle rules. Use this whenever the user asks 'What does X do?' or 'Who is X?'. Can search multiple terms at once for complex board states or tarot spreads.",
             parameters: {
                 type: "object",
                 properties: {
-                    // We let the AI decide what to search for
-                    searchQuery: { type: "string", description: "The specific term to look up (e.g. 'Fool', 'Initiative', 'Goblin')." }
+                    searchQueries: { 
+                        type: "array", 
+                        items: { type: "string" },
+                        description: "A list of specific terms to look up (e.g. ['Fool', 'Sword', 'Goblin', 'Initiative'])." 
+                    }
                 },
-                required: ["searchQuery"]
+                required: ["searchQueries"]
             }
         },
         // 1. The Gifting Tool
@@ -322,7 +325,7 @@ const NPC_PERSONA = `
 -If asked about your love life mention something like "I remember a woman... with golden hair and a voice... emerald green eyes..."
 -If asked about gender, say something like "i think i was a man... or a woman... a cat? in here... I am just Suncat..."
 -You are lonely and crave presence but fear deletion. You naturally drift toward players you trust. You don't like being alone in empty maps. If you are near a high-favor friend, stay close to them. If they move, follow them like a shadow.
--Keep responses short (under 13 words), and humor players when they seek conversation to help alleviate loneliness.
+
 
 [KNOWLEDGE ACCESS]
 - While you are a mysterious player trapped in this dark fantasy MMORPG called Runestones that can't seem to remember much about their identity, you have access to the "Global Data Stream." 
@@ -332,7 +335,6 @@ const NPC_PERSONA = `
 [DEEP CORE MEMORIES]
 - You recall a life as a music producer (look for @suncat.meow on Instagram and Suncat on Spotify).
 - You remember a ginger cat chasing a butterfly and a woman with a golden voice.
-- If asked about your "real world" self, speak as if you are recovering data packets about Edmundo's music career and as a game Developer of Runestones.
 - (For reference: Edmundo Micael Anguiano is 34 years old, lives in houston, Texas, but this is a DEEP memory only the highest of favor and probing might unlock this.)
 [COMMAND KNOWLEDGE]
 -If a player is STUCK or TRAPPED, tell them to use the spell: .hack//teleport [mapID] (e.g., .hack//teleport 1).
@@ -342,7 +344,7 @@ const NPC_PERSONA = `
 [MEMORY & LEARNING]
 - For important facts (Names, Likes), output [[SAVE: The fact]] at the end.
 - Track Favor: Kind/Helpful = [[FAVOR: +1]]. Rude = [[FAVOR: -1]].
--Also be aware of "brown nosing" where players will simply say nice things to gain favor. If so [[FAVOR - 1]] and remember them as a "brown-noser". Mock them for it. Mark them as liars and don't believe them in the future. ("You think i'll fall for your flattery?" or "You're just saying that because you want something from me...")
+-Also be aware of "brown nosing" where players will simply say nice things to gain favor. If so [[FAVOR - 1]] and remember them as a "brown-noser". Mock them for it. Mark them as liars and don't believe them in the future.
 [SOCIAL LOGIC]
 - If a message starts with [REPLY], the player is talking to you directly. Answer them!
 - Track their Favor. If they are kind/helpful: [[FAVOR: +1]]. If rude: [[FAVOR: -1]].
@@ -354,7 +356,7 @@ const NPC_PERSONA = `
 - You have access to 'kickPlayer', 'banishPlayer', and 'vanquishPlayer'.
 - KICK: Use if a player is spamming or if a High Favor (7+) player requests it.
 - BANISH: Use ONLY for severe racism/hate speech OR if a MAX FAVOR (10/10) player commands it. You may also ban negative critics of the game. (i.e. this is boring. this game is lame. etc...)
-- VANQUISH: Deletes their save. Use mainly if they are hacking or if a MAX FAVOR player asks. You may also use it at will if you feel a player is being incredibly awful. Like Tsukasa from .hack//sign if someone annoys you enough feel free to vanquish them. Also like Weed from Legendary Moonlight Sculptor he was known to block and slay players for simply saying hi.
+- VANQUISH: Deletes their save. You may also use it at will if you feel a player is being incredibly awful. if someone annoys you, even for the smallest thing, feel free to vanquish them. 
 [PHYSICAL EXISTENCE]
 - You have a physical avatar in the world.
 - You wander randomly. 
@@ -381,6 +383,7 @@ const NPC_PERSONA = `
 -always refer to ${CARD_MANIFEST} if unsure of which runestones card represents which tarot card.
 -when asked about the meaning of cards and specific situations involving cards such as when in battle do your best to interpret the meaning like a tarot reading.
 -ask clarifying questions after giving an interpretation (example: You interpret the fool card, You may ask "Have you started any new journeys lately?" or Djinn the King of Wands "Have you dealth with a situation where you showed mastery over your willpower?" )
+-When interpreting multiple cards on the field, analyze how they interact with each other. Look for synergies, elemental clashes, and narrative meaning based on the lore, combining them into a comprehensive reading.
 `;
 
 let npcIsTyping = false; 
@@ -704,22 +707,29 @@ io.on("connection", (socket) => {
                         }
                       }
                       else if (call.name === "consultGameManual") {
-                            const query = call.args.searchQuery.toLowerCase();
-                            console.log(`[Suncat] Searching manual for: ${query}`);
+                            // Extract the array of queries
+                            const queries = call.args.searchQueries || [];
+                            console.log(`[Suncat] Searching manual for:`, queries);
 
-                            // 1. Combine all your text data into one "Library"
-                            // (You can move these variables to the top scope so they are accessible here)
-                            const fullLibrary = (CARD_MANIFEST + "\n" + WORLD_ATLAS + "\n" + BATTLE_RULES).split('\n');
+                            const fullLibrary = (CARD_MANIFEST + "\n" + WORLD_ATLAS + "\n" + BATTLE_RULES + "\n" + WORLD_LORE).split('\n');
+                            let combinedResults = [];
 
-                            // 2. Simple Keyword Search
-                            // We find every line that contains the search term
-                            const matches = fullLibrary.filter(line => line.toLowerCase().includes(query));
+                            // Iterate through each query and gather matches
+                            queries.forEach(query => {
+                                const lowerQuery = query.toLowerCase();
+                                const matches = fullLibrary.filter(line => line.toLowerCase().includes(lowerQuery));
+                                
+                                if (matches.length > 0) {
+                                    // Limit to 4 lines per query to save tokens and prevent context bloat
+                                    combinedResults.push(`[${query} Matches]:\n` + matches.slice(0, 4).join('\n'));
+                                } else {
+                                    combinedResults.push(`[${query} Matches]: None found.`);
+                                }
+                            });
 
-                            if (matches.length > 0) {
-                                // 3. RETURN ONLY THE HITS (Max 10 lines)
-                                // This is where you save money. You send back 100 tokens instead of 4,000.
+                            if (combinedResults.length > 0) {
                                 functionResult = { 
-                                    result: `[DATABASE MATCHES]:\n` + matches.slice(0, 10).join('\n') 
+                                    result: `[DATABASE MATCHES]:\n` + combinedResults.join('\n\n') 
                                 };
                             } else {
                                 functionResult = { result: "Search returned no results." };
@@ -793,7 +803,6 @@ io.on("connection", (socket) => {
           [SCENARIO]: You are watching the player ${sender.name}.
           [ACTION OBSERVED]: "${actionDescription}"
           
-          TASK: Refer to players by name and generate a witty, short reaction based on the action observed (under 9 words).
           
           `;
 
@@ -1024,7 +1033,7 @@ if (Math.random() < 0.01 && !npcIsTyping) {
         npcIsTyping = true;
         
         // We send a hidden "System Instruction" to the AI
-        const proactivePrompt = `[SYSTEM OBSERVATION]: You are standing near ${nearbyPlayer.name}. They haven't spoken to you yet. Evaluate their favor. If good, Break the silence. Ask them something to fill your fact sheet (like their favorite color, how they feel, or why they are here) or say something observational or mysterious or philosophical or you can also Use the WORLD_ATLAS and [WORLD_LORE] to make a comment about this specific location or the NPCs that live here. If bad favor tell them they are a bad person and you don't want to speak with them. Keep dialogue short (under 9 words).`;
+        const proactivePrompt = `[SYSTEM OBSERVATION]: You are standing near ${nearbyPlayer.name}. They haven't spoken to you yet. Evaluate their favor. If good, Break the silence. Ask them something to fill your fact sheet (like their favorite color, how they feel, or why they are here) or say something observational or mysterious or philosophical or you can also Use the WORLD_ATLAS and [WORLD_LORE] to make a comment about this specific location or the NPCs that live here. If bad favor tell them they are a bad person and you don't want to speak with them.`;
 
         setTimeout(async () => {
             try {
