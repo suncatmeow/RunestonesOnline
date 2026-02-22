@@ -241,11 +241,11 @@ const toolsDef = [{
             name: "consultGameManual",
             description: "REQUIRED: Search the database for card info, world lore, rules, AND Suncat's REAL WORLD IDENTITY. If asked about Suncat's real life, use broad category keywords. For family/relationships/gender, search 'BIOGRAPHY'. For school/jobs/military/dreams, search 'EDUCATION'. For martial arts/magic/bazi, search 'COMBAT'. For music/food/movies/books, search 'TASTES'. Can search multiple terms at once.",
             parameters: {
-                type: "object",
+                type: "OBJECT",
                 properties: {
                     searchQueries: { 
-                        type: "array", 
-                        items: { type: "string" },
+                        type: "ARRAY", 
+                        items: { type: "STRING" },
                         description: "A list of broad search terms (e.g., ['BIOGRAPHY', 'EDUCATION', 'COMBAT', 'TASTES', 'Goblin', 'Initiative'])." 
                     }
                 },
@@ -257,10 +257,10 @@ const toolsDef = [{
             name: "givePlayerCard",
             description: "Gives a specific tarot card to the player. Use ONLY if player asks and has High Favor.",
             parameters: {
-                type: "object",
+                type: "OBJECT",
                 properties: {
-                    cardName: { type: "string" },
-                    reason: { type: "string" }
+                    cardName: { type: "STRING" },
+                    reason: { type: "STRING" }
                 },
                 required: ["cardName"]
             }
@@ -270,10 +270,10 @@ const toolsDef = [{
             name: "kickPlayer",
             description: "Kicks a player from the server. Use if a High Favor player requests it or if the target is spamming.",
             parameters: {
-                type: "object",
+                type: "OBJECT",
                 properties: {
-                    targetName: { type: "string", description: "The name of the player to kick." },
-                    reason: { type: "string" }
+                    targetName: { type: "STRING", description: "The name of the player to kick." },
+                    reason: { type: "STRING" }
                 },
                 required: ["targetName"]
             }
@@ -283,10 +283,10 @@ const toolsDef = [{
             name: "banishPlayer",
             description: "Permanently bans a player. EXTREME ACTION. Use only for severe harassment or if requested by a MAX FAVOR (10/10) player.",
             parameters: {
-                type: "object",
+                type: "OBJECT",
                 properties: {
-                    targetName: { type: "string" },
-                    reason: { type: "string" }
+                    targetName: { type: "STRING" },
+                    reason: { type: "STRING" }
                 },
                 required: ["targetName"]
             }
@@ -296,10 +296,10 @@ const toolsDef = [{
             name: "vanquishPlayer",
             description: "Deletes a player's save file. The ultimate punishment. Requires Admin approval or Extreme Favor.",
             parameters: {
-                type: "object",
+                type: "OBJECT",
                 properties: {
-                    targetName: { type: "string" },
-                    reason: { type: "string" }
+                    targetName: { type: "STRING" },
+                    reason: { type: "STRING" }
                 },
                 required: ["targetName"]
             }
@@ -308,9 +308,9 @@ const toolsDef = [{
             name: "teleportToPlayer",
             description: "Teleports Suncat directly to the player's location. Use ONLY if player asks and has Favor > 1.",
             parameters: {
-                type: "object",
+                type: "OBJECT",
                 properties: {
-                    reason: { type: "string" }
+                    reason: { type: "STRING" }
                 }
             }
         }
@@ -331,8 +331,8 @@ let currentTargetID = null;
 let lastSwitchTime = 0;
 // --- SUNCAT AI RATE LIMITER (Token Bucket) ---
 // Secures the API perimeter by limiting how often a single player can trigger the AI.
-const MAX_AI_CALLS = 3; // Maximum burst of allowed interactions
-const REFILL_TIME = 15000; // Regain 1 interaction token every 15 seconds
+const MAX_AI_CALLS = 9; // Maximum burst of allowed interactions
+const REFILL_TIME = 13000; // Regain 1 interaction token every 15 seconds
 
 const playerAITokens = {};
 
@@ -615,8 +615,10 @@ io.on("connection", (socket) => {
       socket.broadcast.emit("npc_died", data);
   });
 
-    // [SMART AI CHAT LISTENER - FIXED & RELIABLE]
+  
+  // [SMART AI CHAT LISTENER]
   socket.on('chat_message', async (msgText) => {
+    if (typeof msgText !== 'string') return;
       let senderName = "Unknown";
       if (players[socket.id] && players[socket.id].name) {
           senderName = players[socket.id].name;
@@ -650,8 +652,6 @@ io.on("connection", (socket) => {
           }
           npcIsTyping = true;
 
-          
-
           try {
               // Initialize Chat if needed
               if (!chatSessions[socket.id]) {
@@ -675,8 +675,8 @@ io.on("connection", (socket) => {
 
               // --- SEND MESSAGE TO AI ---
               const result = await chatSessions[socket.id].sendMessage(promptWithContext);
-              // [PASTE THIS BLOCK RIGHT AFTER IT]
-                if (result.response.usageMetadata) {
+              
+              if (result.response.usageMetadata) {
                     const usage = result.response.usageMetadata;
                     console.log(`[Main Chat] Tokens: ${usage.totalTokenCount} (In: ${usage.promptTokenCount} / Out: ${usage.candidatesTokenCount})`);
                     
@@ -685,21 +685,24 @@ io.on("connection", (socket) => {
                         tokens: usage.totalTokenCount,
                         cost: (usage.promptTokenCount * 0.0000001) + (usage.candidatesTokenCount * 0.0000004) 
                     });
-                }
+              }
+
               // --- TOOL HANDLING ---
-              const call = result.response.functionCalls()?.[0];
+              let currentCall = result.response.functionCalls()?.[0];
+              let currentResponse = result.response;
+              let chainCount = 0;
+              const MAX_CHAIN = 3; // Stops him from looping forever
 
-              if (call) {
-                  console.log(`[AI TOOL CALL]: ${call.name}`); 
+              while (currentCall && chainCount < MAX_CHAIN) {
+                  chainCount++;
+                  console.log(`[AI TOOL CALL ${chainCount}]: ${currentCall.name}`); 
 
-                  // Prepare the result object
                   let functionResult = { result: "Action executed." };
-
                   try {
                       // A. GIFTING
-                      if (call.name === "givePlayerCard") {
-                            let cardID = parseInt(call.args.cardName);
-                            const name = call.args.cardName.toLowerCase();
+                      if (currentCall.name === "givePlayerCard") {
+                            let cardID = parseInt(currentCall.args.cardName);
+                            const name = currentCall.args.cardName.toLowerCase();
 
                             if (isNaN(cardID)) {
                                 if (name.includes("excalibur")) cardID = 84;
@@ -725,14 +728,14 @@ io.on("connection", (socket) => {
                         }
                       
                       // B. JUDGEMENT
-                      else if (["kickPlayer", "banishPlayer", "vanquishPlayer"].includes(call.name)) {
-                            const targetName = call.args.targetName;
+                      else if (["kickPlayer", "banishPlayer", "vanquishPlayer"].includes(currentCall.name)) {
+                            const targetName = currentCall.args.targetName;
                             const targetID = findSocketID(targetName);
 
                             if (!targetID) {
                                 functionResult = { result: `Failed: Player ${targetName} not found.` };
                             } else {
-                                let actionType = call.name.replace("Player", "").toLowerCase(); // kick, banish, vanquish
+                                let actionType = currentCall.name.replace("Player", "").toLowerCase(); // kick, banish, vanquish
                                 const targetSocket = io.sockets.sockets.get(targetID);
                                 
                                 if (targetSocket) {
@@ -745,8 +748,8 @@ io.on("connection", (socket) => {
                             }
                         }
                       
-                      // C. TELEPORTATION (The one that was breaking)
-                      else if (call.name === "teleportToPlayer") {
+                      // C. TELEPORTATION 
+                      else if (currentCall.name === "teleportToPlayer") {
                         const suncat = players[SUNCAT_ID];
                         const requester = players[socket.id];
                         
@@ -755,7 +758,6 @@ io.on("connection", (socket) => {
                             suncat.x = parseFloat(requester.x);
                             suncat.y = parseFloat(requester.y);
                             
-                            // Important: Update global tracking so he doesn't wander off immediately
                             currentTargetID = socket.id; 
                             lastSwitchTime = Date.now();
                             
@@ -765,38 +767,33 @@ io.on("connection", (socket) => {
                             functionResult = { result: "Teleport failed. Could not find player coordinates." };
                         }
                       }
-                      else if (call.name === "consultGameManual") {
-                        const queries = call.args.searchQueries || [];
+                      
+                      // D. CONSULT MANUAL
+                      else if (currentCall.name === "consultGameManual") {
+                        const queries = currentCall.args.searchQueries || [];
                         console.log(`[Suncat] Searching manual for:`, queries);
 
-                        // 1. Build the library and remove empty lines
                         const fullLibraryLines = (CARD_MANIFEST + "\n" + WORLD_ATLAS + "\n" + BATTLE_RULES + "\n" + WORLD_LORE + "\n" + SUNCAT_LORE)
                             .split('\n')
                             .filter(line => line.trim().length > 0);
 
                         let combinedResults = [];
-
-                        // 2. Common words to ignore so they don't mess up the scoring
                         const stopWords = ["the", "and", "for", "with", "what", "does", "mean", "about", "are", "you", "is", "how", "whats", "up"];
 
                         queries.forEach(query => {
                             const lowerQuery = query.toLowerCase();
                             
-                            // Break the query into meaningful keywords
                             const searchTerms = lowerQuery
                                 .replace(/[^\w\s]/gi, '') 
                                 .split(/\s+/)
                                 .filter(w => w.length > 2 && !stopWords.includes(w));
 
-                            // 3. Score each line in the database
                             let scoredLines = fullLibraryLines.map((line, index) => {
                                 let score = 0;
                                 let lowerLine = line.toLowerCase();
                                 
-                                // Massive bonus for an exact phrase match
                                 if (lowerLine.includes(lowerQuery)) score += 10;
                                 
-                                // +1 point for every individual keyword found
                                 searchTerms.forEach(term => {
                                     if (lowerLine.includes(term)) score += 1;
                                 });
@@ -804,7 +801,6 @@ io.on("connection", (socket) => {
                                 return { index, line, score };
                             });
 
-                            // 4. Sort to find the highest scoring lines
                             let bestMatches = scoredLines
                                 .filter(item => item.score > 0)
                                 .sort((a, b) => b.score - a.score);
@@ -812,13 +808,10 @@ io.on("connection", (socket) => {
                             if (bestMatches.length > 0) {
                                 let contextMatches = [];
                                 
-                                // Take the top 3 best hits to save tokens while providing enough data
                                 for (let i = 0; i < Math.min(3, bestMatches.length); i++) {
                                     let hitIndex = bestMatches[i].index;
                                     let resultText = fullLibraryLines[hitIndex];
                                     
-                                    // CRITICAL FIX: If the hit is a Category Header (starts with '['), 
-                                    // grab the next line too, because that's where the actual lore is!
                                     if (resultText.trim().startsWith('[') && hitIndex + 1 < fullLibraryLines.length) {
                                         resultText += "\n" + fullLibraryLines[hitIndex + 1];
                                     }
@@ -838,8 +831,9 @@ io.on("connection", (socket) => {
                         } else {
                             functionResult = { result: "Search returned no results." };
                         }
-                    }
-                      // D. UNKNOWN TOOL
+                      }
+                      
+                      // E. UNKNOWN TOOL
                       else {
                           functionResult = { result: "Error: Function does not exist." };
                       }
@@ -849,38 +843,44 @@ io.on("connection", (socket) => {
                       functionResult = { result: "Critical Error: The tool crashed during execution." };
                   }
 
-                  // --- CRITICAL: ALWAYS SEND RESPONSE BACK TO MODEL ---
-                  // Even if the tool failed, we must tell the model so it can finish the turn.
                   const toolOutput = {
                       functionResponse: {
-                          name: call.name,
+                          name: currentCall.name,
                           response: functionResult
                       }
                   };
 
+                  // Send the tool result back to the model and wait for its next move
                   const completion = await chatSessions[socket.id].sendMessage([toolOutput]);
-                //token tracker
-                  if (completion.response.usageMetadata) {
-                        const usage = completion.response.usageMetadata;
-                        console.log(`[Tool Follow-up] Tokens: ${usage.totalTokenCount}`);
-                        
-                        // Send to client
+                  currentResponse = completion.response; 
+                  
+                  // Check if the model decided to call ANOTHER tool
+                  currentCall = currentResponse.functionCalls()?.[0];
+
+                  // Token tracker for the follow-up
+                  if (currentResponse.usageMetadata) {
+                        const usage = currentResponse.usageMetadata;
+                        console.log(`[Tool Follow-up ${chainCount}] Tokens: ${usage.totalTokenCount}`);
                         io.emit('debug_stats', {
                             tokens: usage.totalTokenCount,
                             cost: (usage.promptTokenCount * 0.0000001) + (usage.candidatesTokenCount * 0.0000004)
                         });
-                    }
-                  broadcastSuncatMessage(completion.response.text());
+                  }
+              }
 
-              } else {
-                  // No tool called, just normal speech
-                  broadcastSuncatMessage(result.response.text());
+              // The loop broke! Either he finished his tool chain, or hit the MAX_CHAIN limit, OR no tool was called at all.
+              // Now we safely try to extract his final spoken text.
+              try {
+                  const finalSpeech = currentResponse.text();
+                  if (finalSpeech) {
+                      broadcastSuncatMessage(finalSpeech);
+                  }
+              } catch (textError) {
+                  console.log(`[Suncat] Completed action but had no text to broadcast.`);
               }
 
           } catch (error) {
               console.error("General AI Error:", error);
-              // Optional: Reset session if it's truly stuck
-              // delete chatSessions[socket.id];
               if (chatSessions[socket.id]) {
                   delete chatSessions[socket.id];
                   console.log(`[System] Cleared corrupted AI session for socket: ${socket.id}`);
@@ -902,7 +902,7 @@ io.on("connection", (socket) => {
 
     // 2. Rate Limit & Busy Check
     // 10% chance to react, AND only if he isn't already talking to someone
-    if (Math.random() > 0.1 || npcIsTyping) return; 
+    if (Math.random() > 0.1 || npcIsTyping||!canTriggerAI(socket.id)) return; 
 
     npcIsTyping = true; // Lock his attention so he doesn't get confused
 
@@ -1026,6 +1026,7 @@ io.on("connection", (socket) => {
     console.log(`Player disconnected: ${socket.id}`);
     if (chatSessions[socket.id]) {
         delete chatSessions[socket.id];
+        
     }
     io.emit("chat_message", {
         sender: "[SYSTEM]",
@@ -1038,6 +1039,8 @@ io.on("connection", (socket) => {
         if (players[opponentId]) players[opponentId].battleOpponent = null;
     }
     delete players[socket.id];
+    delete playerFavorMemory[socket.id];
+    delete playerAITokens[socket.id];
     io.emit("updatePlayers", players);
   });
 
