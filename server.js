@@ -619,6 +619,11 @@ io.on("connection", (socket) => {
   // [SMART AI CHAT LISTENER]
   socket.on('chat_message', async (msgText) => {
     if (typeof msgText !== 'string') return;
+    if (msgText.length > 200) {
+        msgText = msgText.substring(0, 200) + "...";
+        // Alternatively, you could just 'return;' to drop the message entirely, 
+        // but truncating allows normal wordy players to still be heard.
+    }
       let senderName = "Unknown";
       if (players[socket.id] && players[socket.id].name) {
           senderName = players[socket.id].name;
