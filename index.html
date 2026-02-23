@@ -125,10 +125,6 @@ window.remotePlayers = {};
 const AI_MEMORY_KEY = "Suncat_Memory_v1";
 const CORE_MEMORY_KEY = "Suncat_Core_Facts";
 const FAVOR_KEY = "Suncat_Favor_v1";
-let npcHistories = {
-    "NPC_SUNCAT": [],
-    "NPC_MOONDOG": []
-};
 let lastSenderName = "";
 let lastMessageTimeReceived = 0;
 let meter = 'Meter';
@@ -436,26 +432,28 @@ window.addEventListener('keydown', function(e) {
                     // 3. Process and Send EACH chunk individually
                     chunks.forEach(chunkMsg => {
                         
-                        // --- MULTI-NPC MEMORY LOGIC START ---
+                        // --- SUNCAT MEMORY LOGIC START ---
                         if (typeof socket !== 'undefined') {
+                            let history = getAiMemory();
+                            let lastWasSuncat = (history.length > 0 && history[history.length - 1].role === 'model');
                             let finalMsg = chunkMsg;
-                            let lowerMsg = msg.toLowerCase();
-                            let targetNPCs = [];
 
-                            // Route to correct memory bank based on who is mentioned
-                            if (lowerMsg.includes("suncat")) targetNPCs.push("NPC_SUNCAT");
-                            if (lowerMsg.includes("moondog")) targetNPCs.push("NPC_MOONDOG");
+                            // Note: We check the ORIGINAL 'msg' for the keyword to ensure context isn't lost
+                            // if the word "suncat" happened to be in a previous chunk.
+                            let isTalkingToCat = msg.toLowerCase().includes("suncat");
 
-                            targetNPCs.forEach(npcId => {
-                                saveNpcInteraction(npcId, "user", chunkMsg);
-                                // If they were mentioned directly, format it so the server forces a reply
+                            if (lastWasSuncat && !isTalkingToCat) {
                                 finalMsg = "[REPLY]: " + chunkMsg; 
-                            });
+                            }
+                            
+                            if (isTalkingToCat || lastWasSuncat) {
+                                saveInteraction("user", chunkMsg);
+                            }
 
                             // 4. Send to server
                             socket.emit('chat_message', finalMsg); 
                         }
-                        // --- MULTI-NPC MEMORY LOGIC END ---
+                        // --- SUNCAT MEMORY LOGIC END ---
                     });
                 }
                 // === CLEANUP ===
@@ -2094,26 +2092,15 @@ class Explore {
         // 5. Update Server
         if (typeof socket !== 'undefined') {
             
-           // --- A. ANNOUNCE ARRIVAL & UPLOAD SEPARATED BRAINS ---
-            
-            // Load the new separated memories
-            let savedMemories = localStorage.getItem("BattleMage_NPC_Memories");
-            if (savedMemories) {
-                npcHistories = JSON.parse(savedMemories);
-            } else {
-                // Failsafe: Migrate old single-save history to Suncat if it exists
-                let oldHistory = localStorage.getItem(AI_MEMORY_KEY);
-                if (oldHistory) {
-                    try { npcHistories["NPC_SUNCAT"] = JSON.parse(oldHistory); } catch(e) {}
-                }
-            }
-
+            // --- A. ANNOUNCE ARRIVAL (The code you wanted) ---
+            // --- A. ANNOUNCE ARRIVAL & UPLOAD BRAIN ---
             socket.emit("join_game", {
                 name: playerName,
-                npcHistories: npcHistories, // Send the new separated object
-                coreFacts: typeof getCoreFacts === 'function' ? getCoreFacts() : [], 
-                favor: typeof getFavor === 'function' ? getFavor() : 0
-            });
+                aiHistory: getAiMemory(), // Send the browser's stored memory
+                coreFacts: getCoreFacts(), // Sends "Long Term Memory"
+                favor: getFavor()
+              });
+            // -------------------------------------------------
 
             // B. Sync Position
             socket.emit("move", {
@@ -25230,21 +25217,23 @@ function updateFavor(amount) {
 function getFavor() {
     return parseInt(localStorage.getItem(FAVOR_KEY) || "0");
 }
-function saveNpcInteraction(npcId, role, text) {
-    let hist = npcHistories[npcId];
-    if (!hist) return;
+function saveInteraction(role, text) {
+    // 1. Get existing memory
+    let history = JSON.parse(localStorage.getItem(AI_MEMORY_KEY) || "[]");
     
-    // API Crash Prevention: Enforce strict alternating roles (user -> model -> user)
-    if (hist.length === 0 || hist[hist.length - 1].role !== role) {
-        hist.push({ role: role, parts: [{ text: text }] });
-    } else {
-        // If the same role speaks twice in a row, combine the text instead of pushing a new turn
-        hist[hist.length - 1].parts[0].text += " | " + text;
-    }
-    
-    // Save the separated brains to localStorage
-    localStorage.setItem("BattleMage_NPC_Memories", JSON.stringify(npcHistories));
+    // 2. Add new interaction (Format specifically for Gemini API)
+    history.push({
+        role: role, // 'user' or 'model'
+        parts: [{ text: text }]
+    });
+
+    // 3. Cap the memory (last 20 turns) to save data/costs
+    if (history.length > 20) history = history.slice(history.length - 20);
+
+    // 4. Save back to storage
+    localStorage.setItem(AI_MEMORY_KEY, JSON.stringify(history));
 }
+
 function getAiMemory() {
     return JSON.parse(localStorage.getItem(AI_MEMORY_KEY) || "[]");
 }
@@ -25787,9 +25776,7 @@ socket.on('chat_message', function(data) {
     let text = data.text || data;
     
     if (sender === "Suncat") {
-        saveNpcInteraction("NPC_SUNCAT", "model", text);
-    } else if (sender === "Moondog") {
-        saveNpcInteraction("NPC_MOONDOG", "model", text);
+        saveInteraction("model", text);
     }
     // Debug
     console.log(`[CHAT] ${senderName}: ${messageText}`);
@@ -40339,8 +40326,8 @@ function drawField(){
       drawShape('rec',1.9,2.9,1,5,5,0,0,0,0,0,0,'gold',0);
     }
     //page text
-    drawText(0, .25, 10, .5, "Welcome to Runestones Online!", `rgba(${Math.floor(Math.random()*255)},${Math.floor(Math.random()*255)},${Math.floor(Math.random()*255)})`, 1,'center');
-    drawText(.5, 1, 9, 1.75, "Warning! There are many bugs! Proceed at your own risk! Feel free to reach out via Instagram DM (@suncat.meow) or email (suncat.data@gmail.com) with any questions, comments, or concerns. - Suncat", `rgba(${Math.floor(Math.random()*255)},${Math.floor(Math.random()*255)},${Math.floor(Math.random()*255)})`, 1);
+    drawText(0, .25, 10, .5, "Welcome to Runestones TCG!", `rgba(${Math.floor(Math.random()*255)},${Math.floor(Math.random()*255)},${Math.floor(Math.random()*255)})`, 1,'center');
+    drawText(.5, 1, 9, 1.75, "Feel free to reach out via Instagram DM (@suncat.meow) or email (suncat.data@gmail.com) with any questions, comments, or concerns. - Suncat", `rgba(${Math.floor(Math.random()*255)},${Math.floor(Math.random()*255)},${Math.floor(Math.random()*255)})`, 1);
     drawText(0, 8.5, 10, 0.8, "Tap to continue", `rgba(60,60,60,${0.6 + 0.4 * Math.sin(Date.now() / 400)})`, 1,'center');
   }
   else if (startGame == 1){//suncat studios 
