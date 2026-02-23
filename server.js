@@ -532,7 +532,7 @@ async function processBanterTurn(speakerName, speechText, targetNpcId, socketId)
                 const nextNpcId = (targetNpcId === "NPC_SUNCAT") ? "NPC_MOONDOG" : "NPC_SUNCAT";
                 
                 // 95% chance the loop continues infinitely. 5% chance they naturally end it.
-                if (Math.random() < 0.95) { 
+                if (Math.random() < 0.69) { 
                     processBanterTurn(targetNpc.name, replyText, nextNpcId, socketId);
                 } else {
                     broadcastNPCMessage(targetNpc.name, "*turns away* Anyway, I'm done talking about this.");
