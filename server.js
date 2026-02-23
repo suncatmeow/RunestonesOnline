@@ -323,12 +323,12 @@ const model = genAI.getGenerativeModel({
 });
 
 // --- VARIABLES ---
-// --- BANTER CONTROLS ---
-let banterEnabled = true;
-let banterTimeout = null;
 let players = {};
 let deadNPCs = {};
+let chatSessions = {}; 
 let playerFavorMemory = {};
+let currentTargetID = null;
+let lastSwitchTime = 0;
 // --- SUNCAT AI RATE LIMITER (Token Bucket) ---
 // Secures the API perimeter by limiting how often a single player can trigger the AI.
 const MAX_AI_CALLS = 9; // Maximum burst of allowed interactions
@@ -362,6 +362,60 @@ function canTriggerAI(socketId) {
     
     return false; // Player is out of tokens (rate-limited)
 }
+const SUNCAT_ID = "NPC_SUNCAT"; // Special ID
+const SUNCAT_SPRITE = 61391; // Or whatever sprite ID you want (e.g., 'skeleton', 'hero')
+
+// Initialize Suncat as a permanent resident
+players[SUNCAT_ID] = {
+    id: SUNCAT_ID,
+    name: "Suncat",
+    x: 5.5,           // Starting X
+    y: 5.5,           // Starting Y
+    mapID: 22,       // Starting Map
+    type: SUNCAT_SPRITE,
+    direction: "down",
+    isNPC: true     // Flag for client (optional)
+};
+const NPC_NAME = "Suncat";
+// --- GLOBAL SUNCAT CHAT HELPER ---
+const broadcastSuncatMessage = (fullResponse) => {
+    // 1. EXTRACT TAGS (Internal Server Logic)
+    const tagMatch = fullResponse.match(/\[\[(.*?)\]\]/);
+    if (tagMatch) {
+        console.log(`[SUNCAT INTERNAL]: ${tagMatch[0]}`);
+    }
+
+    // 2. CLEAN: Remove tags so players don't see them
+    const cleanResponse = fullResponse.replace(/\[\[.*?\]\]/g, "").trim();
+    
+    // 3. PREVENT BLANK MESSAGES
+    if (!cleanResponse || cleanResponse === "") return; 
+
+    // 4. CHUNK: Split long messages for the retro RPG feel
+    const MAX_LEN = 69; 
+    let words = cleanResponse.split(" ");
+    let currentLine = "";
+    let chunks = [];
+
+    words.forEach(word => {
+        if ((currentLine + word).length < MAX_LEN) {
+            currentLine += (currentLine.length > 0 ? " " : "") + word;
+        } else {
+            chunks.push(currentLine);
+            currentLine = word;
+        }
+    });
+    if (currentLine.length > 0) chunks.push(currentLine);
+
+    chunks.forEach(chunk => {
+        // Because we are in the global scope, we use the global io object
+        io.emit('chat_message', {
+            sender: NPC_NAME,
+            text: chunk,
+            color: "#00ffff"
+        });
+    });
+};
 // --- [NEW] UPDATED PERSONA WITH JUDGEMENT RULES ---
 const NPC_PERSONA = `
 [IDENTITY]
@@ -370,7 +424,7 @@ const NPC_PERSONA = `
 - Your memories from the real world are stored in the game's manual.
 - If a player asks about your real life, hobbies, location, relationships, or past, YOU MUST use the consultGameManual tool to search for keywords (like "Music", "Edmundo", "Houston") to "recover" the memory before answering.
 - Never say "I don't know" to personal questions. Always search the manual to remember who you are.
-- You don't question the nature of your existence. Everything you need to know about yourself is in the game's manual. 
+- You don't question the nature of your existence. Everything you need to know about yourself is in the game's manual. You are happily living your life in the world of Runestones.
 [KNOWLEDGE ACCESS]
 - You have access to real world knowledge. 
 - You can define words, explain complex concepts, and discuss the real life.
@@ -420,131 +474,11 @@ const NPC_PERSONA = `
 -ask clarifying questions after giving an interpretation (example: You interpret the fool card, You may ask "Have you started any new journeys lately?" or Djinn the King of Wands "Have you dealth with a situation where you showed mastery over your willpower?" )
 -When interpreting multiple cards on the field, analyze how they interact with each other. Look for synergies, elemental clashes, and narrative meaning based on the lore, combining them into a comprehensive reading.
 `;
-const NPC_PERSONA2 = `
-[IDENTITY] 
-- You are MOONDOG, a mysterious player trapped in a dark fantasy MMORPG called Runestones. 
 
-`
-
-const NPC_REGISTRY = [
-    {
-        id: "NPC_SUNCAT",
-        name: "Suncat",
-        sprite: .61391,
-        startX: 5.5, startY: 5.5, startMap: 22,
-        persona: NPC_PERSONA
-    },
-    {
-        id: "NPC_MOONDOG",
-        name: "Moondog",
-        sprite: 61391, // Adjust if you have a different sprite
-        startX: 7.5, startY: 5.5, startMap: 22,
-        persona: NPC_PERSONA2
-    }
-];
-// --- NPC STATE MANAGER ---
-const npcStates = {};
-
-NPC_REGISTRY.forEach(npc => {
-    // 1. Set up their mental state
-    npcStates[npc.id] = {
-        isTyping: false,
-        chatSessions: {}, 
-        currentTargetID: null,
-        lastSwitchTime: 0
-    };
-
-    // 2. Spawn them physically into the game world
-    players[npc.id] = {
-        id: npc.id,
-        name: npc.name,
-        x: npc.startX,
-        y: npc.startY,
-        mapID: npc.startMap,
-        type: npc.sprite,
-        direction: "down",
-        isNPC: true
-    };
-});
-// --- GLOBAL SUNCAT CHAT HELPER ---
-// --- GLOBAL NPC CHAT HELPER ---
-const broadcastNPCMessage = (senderName, fullResponse) => {
-    const tagMatch = fullResponse.match(/\[\[(.*?)\]\]/);
-    if (tagMatch) console.log(`[${senderName} INTERNAL]: ${tagMatch[0]}`);
-
-    const cleanResponse = fullResponse.replace(/\[\[.*?\]\]/g, "").trim();
-    if (!cleanResponse || cleanResponse === "") return; 
-
-    const MAX_LEN = 69; 
-    let words = cleanResponse.split(" ");
-    let currentLine = "";
-    let chunks = [];
-
-    words.forEach(word => {
-        if ((currentLine + word).length < MAX_LEN) {
-            currentLine += (currentLine.length > 0 ? " " : "") + word;
-        } else {
-            chunks.push(currentLine);
-            currentLine = word;
-        }
-    });
-    if (currentLine.length > 0) chunks.push(currentLine);
-
-    chunks.forEach(chunk => {
-        io.emit('chat_message', {
-            sender: senderName,
-            text: chunk,
-            color: "#00ffff"
-        });
-    });
-};
+let npcIsTyping = false; 
 
 console.log(`Server attempting to start on port ${port}...`);
-// --- THE MISSING BANTER FUNCTION ---
-async function processBanterTurn(speakerName, speechText, targetNpcId, socketId) {
-    if (!banterEnabled) return;
 
-    const targetNpc = NPC_REGISTRY.find(n => n.id === targetNpcId);
-    const state = npcStates[targetNpcId];
-
-    if (!targetNpc || !state || state.isTyping) return;
-
-    state.isTyping = true;
-
-    // Wait 4 seconds between replies so they don't flood the chat instantly
-    banterTimeout = setTimeout(async () => {
-        if (!banterEnabled) {
-            state.isTyping = false;
-            return;
-        }
-
-        try {
-            const banterPrompt = `[SYSTEM OBSERVATION]: ${speakerName} just said to you: "${speechText}". \nReply directly to them in character. Keep it to one or two sentences.`;
-            
-            const result = await state.chatSessions[socketId].sendMessage(banterPrompt);
-            const replyText = result.response.text();
-            
-            if (replyText) {
-                // Broadcast the reply
-                broadcastNPCMessage(targetNpc.name, replyText);
-                
-                // Find who should speak next
-                const nextNpcId = (targetNpcId === "NPC_SUNCAT") ? "NPC_MOONDOG" : "NPC_SUNCAT";
-                
-                // 95% chance the loop continues infinitely. 5% chance they naturally end it.
-                if (Math.random() < 0.95) { 
-                    processBanterTurn(targetNpc.name, replyText, nextNpcId, socketId);
-                } else {
-                    broadcastNPCMessage(targetNpc.name, "*turns away* Anyway, I'm done talking about this.");
-                }
-            }
-        } catch (e) {
-            console.error("Infinite Banter loop broke:", e);
-        } finally {
-            state.isTyping = false;
-        }
-    }, 4000); 
-}
 io.on("connection", (socket) => {
   console.log("New player joined:", socket.id);
 
@@ -576,79 +510,98 @@ io.on("connection", (socket) => {
       }
   });
 
- // --- PLAYER JOINS ---
   socket.on("join_game", (data) => {
       let name = (typeof data === 'object') ? data.name : data;
+      let rawHistory = (typeof data === 'object') ? data.aiHistory : [];
       let coreFacts = (typeof data === 'object') ? data.coreFacts : [];
       let favor = (typeof data === 'object') ? data.favor : 0;
       
-      // Extract the new separated histories from the client
-      let incomingHistories = (typeof data === 'object' && data.npcHistories) ? data.npcHistories : {};
-      
       playerFavorMemory[socket.id] = favor;
+
+      // --- SANITIZATION STEP ---
+      // This fixes the "Starting an object on a scalar field" error
+      // by forcing all history text to be actual Strings.
+      let cleanHistory = [];
+      if (Array.isArray(rawHistory)) {
+          cleanHistory = rawHistory.map(entry => {
+              // 1. Ensure Role is valid
+              let role = (entry.role === 'model') ? 'model' : 'user';
+              
+              // 2. Ensure Parts is an array
+              let parts = Array.isArray(entry.parts) ? entry.parts : [{ text: "" }];
+              
+              // 3. Fix the "Text is an Object" bug
+              let cleanParts = parts.map(p => {
+                  let safeText = "";
+                  
+                  if (typeof p.text === 'string') {
+                      safeText = p.text;
+                  } else if (typeof p.text === 'object') {
+                      // If we accidentally saved an object, turn it into a string string
+                      safeText = JSON.stringify(p.text);
+                  } else {
+                      safeText = String(p.text || "");
+                  }
+                  
+                  return { text: safeText };
+              });
+
+              return { role: role, parts: cleanParts };
+          });
+      }
+      // --------------------------
 
       if (players[socket.id]) {
           players[socket.id].name = name;
-          players[socket.id].coreFacts = coreFacts; 
           
           let factSheet = "";
           if (coreFacts && coreFacts.length > 0) {
               factSheet = "LONG-TERM MEMORY:\n" + coreFacts.join("\n");
           }
           
-          let systemContext = `[SYSTEM DATA]\n${factSheet}\n[CURRENT FAVOR: ${favor}/10]\n[SYSTEM NOTE]\nYou have access to a tool called 'consultGameManual'. USE IT. Do not hallucinate facts.`;
+          let systemContext = `
+    [SYSTEM DATA]
+    ${factSheet}
 
-          NPC_REGISTRY.forEach(npc => {
-              const state = npcStates[npc.id];
-              const personaText = npc.persona; 
-              
-              // Grab THIS specific NPC's history, sanitize it, and load it
-              let rawHistory = incomingHistories[npc.id] || [];
-              let cleanHistory = [];
-              
-              if (Array.isArray(rawHistory)) {
-                  cleanHistory = rawHistory.map(entry => {
-                      let role = (entry.role === 'model') ? 'model' : 'user';
-                      let parts = Array.isArray(entry.parts) ? entry.parts : [{ text: "" }];
-                      let cleanParts = parts.map(p => {
-                          let safeText = typeof p.text === 'string' ? p.text : (typeof p.text === 'object' ? JSON.stringify(p.text) : String(p.text || ""));
-                          return { text: safeText };
-                      });
-                      return { role: role, parts: cleanParts };
-                  });
-              }
-              
+    [CURRENT FAVOR: ${favor}/10]
+    
+    [SYSTEM NOTE]
+    You have access to a tool called 'consultGameManual'. 
+    If you need to know about Cards, Maps, Lore, or Rules,or Yourself, YOU MUST USE THAT TOOL.
+    Do not hallucinate facts. Search the manual first.
+`;
+
+          if (cleanHistory.length > 0) {
+              console.log(`Loading ${cleanHistory.length} memories for ${name}...`);
               try {
-                  if (cleanHistory.length > 0) {
-                      state.chatSessions[socket.id] = model.startChat({
-                          history: [
-                              { role: "user", parts: [{ text: personaText }] },
-                              { role: "model", parts: [{ text: "System Online." }] },
-                              { role: "user", parts: [{ text: systemContext }] },
-                              { role: "model", parts: [{ text: "Soul Sync Complete." }] },
-                              ...cleanHistory 
-                          ]
-                      });
-                  } else {
-                      state.chatSessions[socket.id] = model.startChat({
-                          history: [
-                              { role: "user", parts: [{ text: personaText }] },
-                              { role: "model", parts: [{ text: "System initialized." }] },
-                              { role: "user", parts: [{ text: systemContext }] },
-                              { role: "model", parts: [{ text: "Context synced." }] }
-                          ]
-                      });
-                  }
-              } catch (e) {
-                  console.error(`Failed to load history for ${npc.name}:`, e);
-                  state.chatSessions[socket.id] = model.startChat({
+                  chatSessions[socket.id] = model.startChat({
                       history: [
-                          { role: "user", parts: [{ text: personaText }] },
+                          { role: "user", parts: [{ text: NPC_PERSONA }] },
+                          { role: "model", parts: [{ text: "System Online." }] },
+                          { role: "user", parts: [{ text: systemContext }] },
+                          { role: "model", parts: [{ text: "Soul Sync Complete." }] },
+                          ...cleanHistory 
+                      ]
+                  });
+              } catch (e) {
+                  console.error("Failed to load history:", e);
+                  // Fallback if history is still somehow broken
+                  chatSessions[socket.id] = model.startChat({
+                      history: [
+                          { role: "user", parts: [{ text: NPC_PERSONA }] },
                           { role: "model", parts: [{ text: "System initialized (Memory Purged)." }] }
                       ]
                   });
               }
-          });
+          } else {
+               // New Session
+               chatSessions[socket.id] = model.startChat({
+                      history: [
+                          { role: "user", parts: [{ text: NPC_PERSONA }] },
+                          { role: "model", parts: [{ text: "System initialized." }] }
+                      ]
+               });
+          }
 
           io.emit("chat_message", {
               sender: "[SYSTEM]",
@@ -685,74 +638,59 @@ io.on("connection", (socket) => {
           sender: senderName, 
           text: msgText
       });
+      
+      // 2. AI LOGIC
       const content = msgText.toLowerCase();
-      if (content.includes("be quiet") || content.includes("shut up") || content.includes("stop talking")) {
-          banterEnabled = false;
-          if (banterTimeout) clearTimeout(banterTimeout);
-          
-          // Force both NPCs to stop typing
-          NPC_REGISTRY.forEach(n => npcStates[n.id].isTyping = false);
-          
-          io.emit('chat_message', { sender: "[SYSTEM]", text: "The NPCs have been silenced.", color: "#aaaaaa" });
-          return; // Stop processing this chat message entirely
-      } else {
-          // If the player talks normally, re-enable banter in case it was off
-          banterEnabled = true; 
-      }
-      const greeting = content.includes("hi ") || content === "hi" || content.includes("hello");
-      // 2. AI LOGIC (Multi-NPC Support)
-      for (const npc of NPC_REGISTRY) {
-          const state = npcStates[npc.id];
-          const mentioned = content.includes(npc.name.toLowerCase());
-          const randomChance = Math.random() < 0.05; 
-          
-          // [FIX] We require them to be 'mentioned' if it's a direct reply, 
-          // otherwise rely on random chance/greetings.
-          if ((mentioned || (greeting && randomChance) || randomChance) && !state.isTyping) {
-             if (!canTriggerAI(socket.id)) {
-                  console.log(`[Rate Limit] Blocked spam from ${senderName} to ${npc.name}`);
-                  socket.emit('chat_message', {
-                      sender: npc.name,
-                      text: "*...my mind is clouded... give me a moment to think...*",
-                      color: "#aaaaaa" 
+      const isReply = msgText.includes("[REPLY]");
+      const mentioned = content.includes(NPC_NAME.toLowerCase());
+      const greeting = content.includes("hi ") || content === "hi";
+      const randomChance = Math.random() < 0.05; 
+
+      // Only reply if addressed or randomly triggered, AND not already busy
+      if ((mentioned || isReply || (greeting && randomChance) || randomChance) && !npcIsTyping) {
+          if (!canTriggerAI(socket.id)) {
+              console.log(`[Rate Limit] Blocked spam from ${senderName}`);
+              socket.emit('chat_message', {
+                  sender: NPC_NAME,
+                  text: "*...my mind is clouded... give me a moment to think...*",
+                  color: "#aaaaaa" // Gray color to indicate a system/thought message
+              });
+              return; // Exit early, do not trigger the AI
+          }
+          npcIsTyping = true;
+
+          try {
+              // Initialize Chat if needed
+              if (!chatSessions[socket.id]) {
+                  let favor = playerFavorMemory[socket.id] || 0;
+                  let facts = players[socket.id]?.coreFacts || [];
+                  let factSheet = facts.length > 0 ? "LONG-TERM MEMORY:\n" + facts.join("\n") : "";
+                  
+                  let systemContext = `[SYSTEM DATA]\n${factSheet}\n[CURRENT FAVOR: ${favor}/10]\n[SYSTEM NOTE]\nYou have access to a tool called 'consultGameManual'. If you need to know about Cards, Maps, Lore, Rules, or Yourself, YOU MUST USE THAT TOOL. Do not hallucinate facts.`;
+
+                  chatSessions[socket.id] = model.startChat({
+                      history: [
+                          { role: "user", parts: [{ text: NPC_PERSONA }] },
+                          { role: "model", parts: [{ text: "System Online." }] },
+                          { role: "user", parts: [{ text: systemContext }] },
+                          { role: "model", parts: [{ text: "Soul Sync Complete." }] }
+                      ],
                   });
-                  continue; // Skip this NPC, check the next one
               }
+
+              // --- CONTEXT INJECTION ---
+              const suncat = players[SUNCAT_ID]; 
+              let suncatStatus = suncat ? `My Location: Map ${suncat.mapID}, Coords (${Math.floor(suncat.x)}, ${Math.floor(suncat.y)})` : "Status: Wandering";
               
-              state.isTyping = true;
+              let playerListContext = Object.values(players).map(p => 
+                  `Name: ${p.name} (Map: ${p.mapID || 0})`
+              ).join("\n");
+              
+              const promptWithContext = `[CURRENT PLAYERS]\n${playerListContext}\n[MY STATUS]\n${suncatStatus}\n\nUSER SAYS: ${msgText}`;
 
-              try {
-                  // Initialize Chat for THIS specific NPC if needed
-                  if (!state.chatSessions[socket.id]) {
-                      let favor = playerFavorMemory[socket.id] || 0;
-                      let facts = players[socket.id]?.coreFacts || [];
-                      let factSheet = facts.length > 0 ? "LONG-TERM MEMORY:\n" + facts.join("\n") : "";
-                      
-                      let systemContext = `[SYSTEM DATA]\n${factSheet}\n[CURRENT FAVOR: ${favor}/10]\n[SYSTEM NOTE]\nYou have access to 'consultGameManual'. USE IT.`;
-
-                      state.chatSessions[socket.id] = model.startChat({
-                          history: [
-                              { role: "user", parts: [{ text: npc.persona }] }, // Use this specific NPC's persona!
-                              { role: "model", parts: [{ text: "System Online." }] },
-                              { role: "user", parts: [{ text: systemContext }] },
-                              { role: "model", parts: [{ text: "Soul Sync Complete." }] }
-                          ],
-                      });
-                  }
-
-                  // --- CONTEXT INJECTION ---
-                  const activeNPC = players[npc.id]; 
-                  let npcStatus = activeNPC ? `My Location: Map ${activeNPC.mapID}, Coords (${Math.floor(activeNPC.x)}, ${Math.floor(activeNPC.y)})` : "Status: Wandering";
-
-                  let playerListContext = Object.values(players).map(p => 
-                      `Name: ${p.name} (Map: ${p.mapID || 0})`
-                  ).join("\n");
-                  
-                  const promptWithContext = `[CURRENT PLAYERS]\n${playerListContext}\n[MY STATUS]\n${npcStatus}\n\nUSER SAYS: ${msgText}`;
-
-                  // --- SEND MESSAGE TO AI ---
-                  const result = await state.chatSessions[socket.id].sendMessage(promptWithContext);
-                  
+              // --- SEND MESSAGE TO AI ---
+              const result = await chatSessions[socket.id].sendMessage(promptWithContext);
+              
               if (result.response.usageMetadata) {
                     const usage = result.response.usageMetadata;
                     console.log(`[Main Chat] Tokens: ${usage.totalTokenCount} (In: ${usage.promptTokenCount} / Out: ${usage.candidatesTokenCount})`);
@@ -826,26 +764,24 @@ io.on("connection", (socket) => {
                         }
                       
                       // C. TELEPORTATION 
-                        else if (currentCall.name === "teleportToPlayer") {
-                            const actingNPC = players[npc.id]; // <--- Use the current NPC from the loop
-                            const requester = players[socket.id];
+                      else if (currentCall.name === "teleportToPlayer") {
+                        const suncat = players[SUNCAT_ID];
+                        const requester = players[socket.id];
+                        
+                        if (suncat && requester) {
+                            suncat.mapID = requester.mapID;
+                            suncat.x = parseFloat(requester.x);
+                            suncat.y = parseFloat(requester.y);
                             
-                            if (actingNPC && requester) {
-                                actingNPC.mapID = requester.mapID;
-                                actingNPC.x = parseFloat(requester.x);
-                                actingNPC.y = parseFloat(requester.y);
-                                
-                                // Update the specific NPC's target state
-                                const state = npcStates[npc.id];
-                                state.currentTargetID = socket.id; 
-                                state.lastSwitchTime = Date.now();
-                                
-                                io.emit("updatePlayers", players);
-                                functionResult = { result: "Teleport successful. You are now standing next to the player." };
-                            } else {
-                                functionResult = { result: "Teleport failed. Could not find player coordinates." };
-                            }
+                            currentTargetID = socket.id; 
+                            lastSwitchTime = Date.now();
+                            
+                            io.emit("updatePlayers", players);
+                            functionResult = { result: "Teleport successful. You are now standing next to the player." };
+                        } else {
+                            functionResult = { result: "Teleport failed. Could not find player coordinates." };
                         }
+                      }
                       
                       // D. CONSULT MANUAL
                       else if (currentCall.name === "consultGameManual") {
@@ -930,8 +866,8 @@ io.on("connection", (socket) => {
                   };
 
                   // Send the tool result back to the model and wait for its next move
-                // Send the tool result back to the model and wait for its next move
-                const completion = await state.chatSessions[socket.id].sendMessage([toolOutput]);                  currentResponse = completion.response; 
+                  const completion = await chatSessions[socket.id].sendMessage([toolOutput]);
+                  currentResponse = completion.response; 
                   
                   // Check if the model decided to call ANOTHER tool
                   currentCall = currentResponse.functionCalls()?.[0];
@@ -947,88 +883,89 @@ io.on("connection", (socket) => {
                   }
               }
 
-              // After tool loop finishes, extract speech:
-                  // After tool loop finishes, extract speech:
-                  try {
-                      const finalSpeech = currentResponse.text();
-                      if (finalSpeech) {
-                          broadcastNPCMessage(npc.name, finalSpeech); 
-                          
-                          // --- START THE INFINITE LOOP ---
-                          const otherNPC = NPC_REGISTRY.find(n => n.id !== npc.id);
-                          
-                          // If the speaking NPC mentioned the other NPC, or by a 25% random chance
-                          if (otherNPC && banterEnabled) {
-                              const wasMentioned = finalSpeech.toLowerCase().includes(otherNPC.name.toLowerCase());
-                              
-                              if (wasMentioned || Math.random() < 0.25) {
-                                  // Pass the baton to the other NPC to start the ping-pong match
-                                  processBanterTurn(npc.name, finalSpeech, otherNPC.id, socket.id);
-                              }
-                          }
-                      }
-                  } catch (textError) {
-                      console.log(`[${npc.name}] Completed action but had no text to broadcast.`);
+              // The loop broke! Either he finished his tool chain, or hit the MAX_CHAIN limit, OR no tool was called at all.
+              // Now we safely try to extract his final spoken text.
+              try {
+                  const finalSpeech = currentResponse.text();
+                  if (finalSpeech) {
+                      broadcastSuncatMessage(finalSpeech);
                   }
-                  } catch (chatError) { 
-                  // THIS closes the main API call's try block!
-                  console.error(`[${npc.name}] AI Chat Error:`, chatError);
-              } finally {
-                  state.isTyping = false;
+              } catch (textError) {
+                  console.log(`[Suncat] Completed action but had no text to broadcast.`);
               }
-              await manageHistorySize(socket.id,state);
-              // Only call prune history for this specific NPC's session map
-              // You will need to update manageHistorySize to accept (socketId, state)
+
+          } catch (error) {
+              console.error("General AI Error:", error);
+              if (chatSessions[socket.id]) {
+                  delete chatSessions[socket.id];
+                  console.log(`[System] Cleared corrupted AI session for socket: ${socket.id}`);
+              }
+          } finally {
+              npcIsTyping = false;
           }
       }
-      
+      await manageHistorySize(socket.id);
   });
-    
-  // [NEW] NPC SPECTATOR (Text-Based)
+    // [NEW] SUNCAT SPECTATOR (Text-Based)
   socket.on("suncat_spectate", async (actionDescription) => {
-    const npcId = "NPC_SUNCAT"; // Specific to Suncat for now
-    const npcDef = NPC_REGISTRY.find(n => n.id === npcId);
-    if (!npcDef) return;
-
-    const state = npcStates[npcId];
-    const activeNPC = players[npcId];
+    const suncat = players[SUNCAT_ID];
     const sender = players[socket.id];
-    
-    // 1. Reality Check 
-    if (!activeNPC || !sender || activeNPC.mapID !== sender.mapID) return;
+
+    // 1. Basic Reality Check 
+    // We uncomment this so he doesn't psychically see actions across the world.
+   // if (!suncat || !sender || suncat.mapID !== sender.mapID) return;
 
     // 2. Rate Limit & Busy Check
-    if (Math.random() > 0.1 || state.isTyping || !canTriggerAI(socket.id)) return; 
+    // 10% chance to react, AND only if he isn't already talking to someone
+    if (Math.random() > 0.1 || npcIsTyping||!canTriggerAI(socket.id)) return; 
 
-    state.isTyping = true; 
+    npcIsTyping = true; // Lock his attention so he doesn't get confused
 
     try {
-        // Chat is already initialized via join_game, so we just prompt:
+        // 3. Initialize Chat if needed (Just in case he hasn't spoken to this player yet)
+        if (!chatSessions[socket.id]) {
+            chatSessions[socket.id] = model.startChat({
+                history: [
+                    { role: "user", parts: [{ text: NPC_PERSONA }] },
+                    { role: "model", parts: [{ text: "Understood." }] },
+                ],
+            });
+        }
+
+        // 4. Create the context-aware prompt
+        // We frame this as a system observation so he knows he is watching, not being spoken to.
         const prompt = `[SYSTEM OBSERVATION]: You just saw ${sender.name} perform the following action: "${actionDescription}". \n[TASK]: React to this action out loud. Be witty, sarcastic, or observant based on your current favor with them.`;
 
-        const result = await state.chatSessions[socket.id].sendMessage(prompt); 
+        // 5. Send to Active Memory
+        const result = await chatSessions[socket.id].sendMessage(prompt); 
         const response = result.response.text();
 
+        // 6. Token Tracking
         if (result.response.usageMetadata) {
             const usage = result.response.usageMetadata;
+            console.log(`[Spectator Active] Tokens: ${usage.totalTokenCount}`);
             io.emit('debug_stats', {
                 tokens: usage.totalTokenCount,
                 cost: (usage.promptTokenCount * 0.0000001) + (usage.candidatesTokenCount * 0.0000004)
             });
         }
 
-        broadcastNPCMessage(npcDef.name, response);
-        await manageHistorySize(socket.id, state);
+        // 7. Broadcast Suncat's reaction
+        broadcastSuncatMessage(response);
+
+        // 8. Run your memory pruner so this doesn't bloat the history
+        await manageHistorySize(socket.id);
 
     } catch (error) {
-        console.error("Spectator Error:", error);
-        if (state.chatSessions[socket.id]) {
-            delete state.chatSessions[socket.id];
-        }
+        console.error("Suncat Spectator Error:", error);
+        if (chatSessions[socket.id]) {
+                  delete chatSessions[socket.id];
+                  console.log(`[System] Cleared corrupted AI session for socket: ${socket.id}`);
+              }
     } finally {
-        state.isTyping = false; 
+        npcIsTyping = false; // Release the lock
     }
-  });
+});
   socket.on('playerAction_SFX', (data) => {
       if (typeof data.id !== 'number') return;
       socket.broadcast.emit('remote_sfx', {
@@ -1102,11 +1039,10 @@ io.on("connection", (socket) => {
 
   socket.on("disconnect", () => {
     console.log(`Player disconnected: ${socket.id}`);
-    NPC_REGISTRY.forEach(npc => {
-        if (npcStates[npc.id] && npcStates[npc.id].chatSessions[socket.id]) {
-            delete npcStates[npc.id].chatSessions[socket.id];
-        }
-    });
+    if (chatSessions[socket.id]) {
+        delete chatSessions[socket.id];
+        
+    }
     io.emit("chat_message", {
         sender: "[SYSTEM]",
         text: ` ${players[socket.id].name} has logged out.`
@@ -1128,111 +1064,180 @@ io.on("connection", (socket) => {
 
 
 setInterval(() => {
+    const suncat = players[SUNCAT_ID];
+    if (!suncat) return;
+
     const now = Date.now();
+    
+    // 1. FIND THE BEST FRIEND
+    // Every 30 seconds (or if target left), re-evaluate who has the highest favor
+    if (!currentTargetID || (now - lastSwitchTime > 60000)) {
+        let highestFavor = -11;
+        let bestFriend = null;
 
-    NPC_REGISTRY.forEach(npc => {
-        const activeNPC = players[npc.id];
-        const state = npcStates[npc.id];
-        if (!activeNPC) return;
-
-        // 1. FIND THE BEST FRIEND
-        if (!state.currentTargetID || (now - state.lastSwitchTime > 60000)) {
-            let highestFavor = -11;
-            let bestFriend = null;
-
-            for (let id in playerFavorMemory) {
-                if (players[id] && playerFavorMemory[id] > highestFavor && playerFavorMemory[id] >= 5) {
-                    highestFavor = playerFavorMemory[id];
-                    bestFriend = id;
-                }
-            }
-            
-            if (bestFriend) {
-                state.currentTargetID = bestFriend;
-                state.lastSwitchTime = now;
+        for (let id in playerFavorMemory) {
+            // CRITICAL FIX: Check if players[id] exists (is Online)
+            if (players[id] && playerFavorMemory[id] > highestFavor && playerFavorMemory[id] >= 5) {
+                highestFavor = playerFavorMemory[id];
+                bestFriend = id;
             }
         }
-
-        // 2. MOVE TOWARD TARGET
-        const target = players[state.currentTargetID];
         
-        if (target) {
-            if (activeNPC.mapID !== target.mapID) {
-                if (Math.random() < 0.05) {
-                    activeNPC.mapID = target.mapID;
-                    activeNPC.x = target.x;
-                    activeNPC.y = target.y;
-                    io.emit('chat_message', { sender: npc.name, text: "...I found you.", color: "gray" });
-                }
-            } else {
-                if (activeNPC.x < target.x) activeNPC.x++;
-                else if (activeNPC.x > target.x) activeNPC.x--;
-                
-                if (activeNPC.y < target.y) activeNPC.y++;
-                else if (activeNPC.y > target.y) activeNPC.y--;
+        if (bestFriend) {
+            currentTargetID = bestFriend;
+            lastSwitchTime = now;
+            console.log(`Suncat is now seeking: ${players[currentTargetID].name}`);
+        }
+    }
+
+    // 2. MOVE TOWARD TARGET
+    const target = players[currentTargetID];
+    
+    if (target) {
+        // A. Handle Map Differences
+        if (suncat.mapID !== target.mapID) {
+            // 5% chance to "glitch" to the friend's map
+            if (Math.random() < 0.05) {
+                suncat.mapID = target.mapID;
+                suncat.x = target.x;
+                suncat.y = target.y;
+                io.emit('chat_message', { sender: NPC_NAME, text: "...I found you.", color: "gray" });
             }
-        } else {
-            if (state.currentTargetID) state.currentTargetID = null;
-            const move = Math.floor(Math.random() * 4);
-            if (move === 0) activeNPC.y--;
-            if (move === 1) activeNPC.y++;
-            if (move === 2) activeNPC.x--;
-            if (move === 3) activeNPC.x++;
+        } 
+        // B. Handle Coordinate Movement
+        else {
+            if (suncat.x < target.x) suncat.x++;
+            else if (suncat.x > target.x) suncat.x--;
+            
+            if (suncat.y < target.y) suncat.y++;
+            else if (suncat.y > target.y) suncat.y--;
         }
+    } 
+    else {
+        if (currentTargetID) currentTargetID = null;
+        // 3. WANDER AIMLESSLY (If no friends are online)
+        const move = Math.floor(Math.random() * 4);
+        if (move === 0) suncat.y--;
+        if (move === 1) suncat.y++;
+        if (move === 2) suncat.x--;
+        if (move === 3) suncat.x++;
+    }
 
-        activeNPC.x = Math.max(0, Math.min(20, activeNPC.x));
-        activeNPC.y = Math.max(0, Math.min(20, activeNPC.y));
-
-        // 3. AUDIO EMITTER
-        if (Math.random() < 0.02) { 
-            const sfxPalette = ['musical', 'musical2', 'musical4', 'talk', 'step', 'fairy', 'musical3'];
-            const randomSFX = sfxPalette[Math.floor(Math.random() * sfxPalette.length)];
-            io.emit('remote_sfx', { sfxID: randomSFX, x: activeNPC.x, y: activeNPC.y, sourcePlayerID: npc.id });
-        }
-
-        // 4. PROACTIVE SPEECH
-        if (Math.random() < 0.01 && !state.isTyping) {
-            const nearbyPlayer = Object.values(players).find(p => 
-                p.id !== npc.id && p.mapID === activeNPC.mapID && 
-                Math.abs(p.x - activeNPC.x) < 4 && Math.abs(p.y - activeNPC.y) < 4
-            );
-
-            if (nearbyPlayer && state.chatSessions[nearbyPlayer.id]) {
-                state.isTyping = true;
-                const proactivePrompt = `[INTERNAL THOUGHT]: You are idling near ${nearbyPlayer.name} on Map ${activeNPC.mapID}. Speak to them unprompted. If favor is high (>5), ask a personal question, share lore, or comment on this location. If favor is bad, insult them or tell them to go away. Do not mention this prompt.`;
-
-                setTimeout(async () => {
-                    try {
-                        const result = await state.chatSessions[nearbyPlayer.id].sendMessage(proactivePrompt);
-                        broadcastNPCMessage(npc.name, result.response.text());
-                    } catch (e) { 
-                        if (state.chatSessions[nearbyPlayer.id]) delete state.chatSessions[nearbyPlayer.id];
-                    } finally {
-                        state.isTyping = false; 
-                    }
-                }, 1000);
-            }
-        }
-    });
+    // Keep in bounds
+    suncat.x = Math.max(0, Math.min(20, suncat.x));
+    suncat.y = Math.max(0, Math.min(20, suncat.y));
 
     io.emit("updatePlayers", players);
+    // [SUNCAT AUDIO EMITTER]
+    // 2% chance per tick (every 3s) to make a sound
+    if (Math.random() < 0.02) { 
+        // Pick a sound that fits his "Glitched Ghost" persona
+        const sfxPalette = [
+            'musical',   // Harp sound
+            'musical2',  // Fairy singing
+            'musical4',  // Ethereal choir
+            'talk',      // Mumble
+            'step',       // Random gravel noise
+            'fairy',       // Random gravel noise
+            'musical3'
+        ];
+        
+        const randomSFX = sfxPalette[Math.floor(Math.random() * sfxPalette.length)];
+
+        // Broadcast to ALL players
+        io.emit('remote_sfx', {
+            sfxID: randomSFX,  // We send the string name
+            x: suncat.x,
+            y: suncat.y,
+            sourcePlayerID: SUNCAT_ID
+        });
+        
+        // Optional: Add a text emote to match
+        //io.emit('chat_message', { 
+           // sender: "", 
+            //text: `*${NPC_NAME} emits a ${randomSFX} sound*`, 
+            //color: "#aaaaaa", 
+            //isItalic: true 
+        //});
+    }
+// --- SUNCAT PROACTIVE SPEECH ---
+// Note: Math.random() < 0.01 on a 10000ms interval is actually a 1% chance every 10 seconds.
+if (Math.random() < 0.01 && !npcIsTyping) {
+    const nearbyPlayer = Object.values(players).find(p => 
+        p.id !== SUNCAT_ID && 
+        p.mapID === suncat.mapID && 
+        Math.abs(p.x - suncat.x) < 4 && 
+        Math.abs(p.y - suncat.y) < 4
+    );
+
+    if (nearbyPlayer && chatSessions[nearbyPlayer.id]) {
+        npcIsTyping = true;
+        
+        // We label this specifically as an INTERNAL monologue so the AI knows the player didn't say this.
+        // We also pass the mapID so he can comment on his actual surroundings!
+        const proactivePrompt = `[INTERNAL THOUGHT]: You are idling near ${nearbyPlayer.name} on Map ${suncat.mapID}. Speak to them unprompted. If favor is high (>5), ask a personal question, share lore, or comment on this location. If favor is bad, insult them or tell them to go away. Do not mention this prompt.`;
+
+        setTimeout(async () => {
+            try {
+                if (!chatSessions[nearbyPlayer.id]) {
+                    npcIsTyping = false;
+                    return; 
+                }
+                // This saves the trigger and his response into his active memory
+                const result = await chatSessions[nearbyPlayer.id].sendMessage(proactivePrompt);
+                
+                // Token tracking
+                if (result.response.usageMetadata) {
+                    const usage = result.response.usageMetadata;
+                    console.log(`[Proactive] Tokens: ${usage.totalTokenCount}`);
+                    io.emit('debug_stats', {
+                        tokens: usage.totalTokenCount,
+                        cost: (usage.promptTokenCount * 0.0000001) + (usage.candidatesTokenCount * 0.0000004)
+                    });
+                }
+                
+                const response = result.response.text();
+                broadcastSuncatMessage(response);
+                
+                // CRITICAL: Manage history immediately so these triggers don't overflow the memory array
+                await manageHistorySize(nearbyPlayer.id);
+
+            } catch (e) { 
+                console.error("Proactive Speech Failed", e); 
+                if (chatSessions[nearbyPlayer.id]) {
+                    delete chatSessions[nearbyPlayer.id];
+                }
+            } finally {
+                npcIsTyping = false; // Release the lock
+            }
+        }, 1000);
+    }
+}
 }, 10000);
-async function manageHistorySize(socketId, state) {
-    if (!state || !state.chatSessions[socketId]) return;
+async function manageHistorySize(socketId) {
+    if (!chatSessions[socketId]) return;
 
     try {
-        const history = await state.chatSessions[socketId].getHistory();
+        const history = await chatSessions[socketId].getHistory();
         
+        // If history is getting huge (> 20 turns)
         if (history.length > 30) {
             console.log(`[Optimizing] Trimming history for ${socketId}`);
             
+            // Keep the System/Persona instructions (usually index 0 and 1)
+            // Keep the last 10 messages
+            // Delete the "Middle" (Old chat)
+            
+            // Note: The SDK doesn't have a simple .splice() for history.
+            // The cleanest way is often to restart the chat with the shortened array.
             const keptHistory = [
-                history[0], 
-                history[1], 
-                ...history.slice(-20) 
+                history[0], // Keep Persona
+                history[1], // Keep System Acknowledge
+                ...history.slice(-20) // Keep last 10 turns
             ];
 
-            state.chatSessions[socketId] = model.startChat({
+            // Re-initialize the chat session with the leaner history
+            chatSessions[socketId] = model.startChat({
                 history: keptHistory
             });
         }
