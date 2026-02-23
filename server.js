@@ -430,7 +430,7 @@ const NPC_REGISTRY = [
     {
         id: "NPC_SUNCAT",
         name: "Suncat",
-        sprite: 61391,
+        sprite: .61391,
         startX: 5.5, startY: 5.5, startMap: 22,
         persona: NPC_PERSONA
     },
@@ -700,23 +700,42 @@ io.on("connection", (socket) => {
           banterEnabled = true; 
       }
       const greeting = content.includes("hi ") || content === "hi" || content.includes("hello");
-      // 2. AI LOGIC (Multi-NPC Support)
+      // 2. AI LOGIC (Multi-NPC Support & Turn-Taking)
+      
+      const someoneMentioned = NPC_REGISTRY.some(n => content.includes(n.name.toLowerCase()));
+      const isExplicitReply = content.includes("[reply]");
+      
+      // [NEW] Check if the player is talking to the whole room
+      const addressedBoth = content.includes("guys") || content.includes("both of you") || content.includes("y'all") || content.includes("everyone");
+
+      // Prevent identical simultaneous responses for general chatter
+      let randomVolunteerId = null;
+      if (!someoneMentioned && !isExplicitReply && !addressedBoth && Math.random() < 0.30) {
+          const availableNPCs = NPC_REGISTRY.filter(n => !npcStates[n.id].isTyping);
+          if (availableNPCs.length > 0) {
+              randomVolunteerId = availableNPCs[Math.floor(Math.random() * availableNPCs.length)].id;
+          }
+      }
+
       for (const npc of NPC_REGISTRY) {
           const state = npcStates[npc.id];
-          const mentioned = content.includes(npc.name.toLowerCase());
-          const randomChance = Math.random() < 0.05; 
+          const mentionedMe = content.includes(npc.name.toLowerCase());
+          const recentlySpokeToMe = (state.currentTargetID === socket.id) && ((Date.now() - state.lastSwitchTime) < 20000);
           
-          // [FIX] We require them to be 'mentioned' if it's a direct reply, 
-          // otherwise rely on random chance/greetings.
-          if ((mentioned || (greeting && randomChance) || randomChance) && !state.isTyping) {
+          // [UPDATED] Trigger if they are explicitly mentioned, OR if the player addressed the group
+          let shouldRespond = mentionedMe || 
+                              addressedBoth ||
+                              (isExplicitReply && recentlySpokeToMe) || 
+                              (!someoneMentioned && recentlySpokeToMe && !addressedBoth) || 
+                              (npc.id === randomVolunteerId);
+
+          if (shouldRespond && !state.isTyping) {
+             state.currentTargetID = socket.id;
+             state.lastSwitchTime = Date.now();
+
              if (!canTriggerAI(socket.id)) {
-                  console.log(`[Rate Limit] Blocked spam from ${senderName} to ${npc.name}`);
-                  socket.emit('chat_message', {
-                      sender: npc.name,
-                      text: "*...my mind is clouded... give me a moment to think...*",
-                      color: "#aaaaaa" 
-                  });
-                  continue; // Skip this NPC, check the next one
+                  // ... keep your existing rate limit code here ...
+                  continue; 
               }
               
               state.isTyping = true;
@@ -740,7 +759,7 @@ io.on("connection", (socket) => {
                       });
                   }
 
-                  // --- CONTEXT INJECTION ---
+                 // --- CONTEXT INJECTION ---
                   const activeNPC = players[npc.id]; 
                   let npcStatus = activeNPC ? `My Location: Map ${activeNPC.mapID}, Coords (${Math.floor(activeNPC.x)}, ${Math.floor(activeNPC.y)})` : "Status: Wandering";
 
@@ -748,11 +767,16 @@ io.on("connection", (socket) => {
                       `Name: ${p.name} (Map: ${p.mapID || 0})`
                   ).join("\n");
                   
-                  const promptWithContext = `[CURRENT PLAYERS]\n${playerListContext}\n[MY STATUS]\n${npcStatus}\n\nUSER SAYS: ${msgText}`;
+                  // [NEW] If the player addressed everyone, force the AI to give a unique perspective
+                  let customMsgText = msgText;
+                  if (addressedBoth) {
+                      customMsgText += ` [SYSTEM NOTE: The player is addressing ALL NPCs in the room. Answer from your unique, personal perspective so you don't say the same thing as the other NPC.]`;
+                  }
+                  
+                  const promptWithContext = `[CURRENT PLAYERS]\n${playerListContext}\n[MY STATUS]\n${npcStatus}\n\nUSER SAYS: ${customMsgText}`;
 
                   // --- SEND MESSAGE TO AI ---
                   const result = await state.chatSessions[socket.id].sendMessage(promptWithContext);
-                  
               if (result.response.usageMetadata) {
                     const usage = result.response.usageMetadata;
                     console.log(`[Main Chat] Tokens: ${usage.totalTokenCount} (In: ${usage.promptTokenCount} / Out: ${usage.candidatesTokenCount})`);
