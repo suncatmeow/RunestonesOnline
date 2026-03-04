@@ -91,7 +91,7 @@ let winSpellTie = 0;
 let winTie = 0;
 let foeWinsTie = 0;
 let dragonHoard = 0;
-let songcount = 43;
+let songcount = 46;
 let grimIndex = 0;
 var preGame = 0;
 var viewingFullDeck = false;
@@ -26208,7 +26208,7 @@ const MusicEngine = {
         this.currentSong = new StormModule(this.ctx, this.masterGain);
         this.style = 'Boreal Sea';
         break;
-         case 37: case 'Otherworld':
+        case 37: case 'Otherworld':
         this.currentSong = new OtherworldModule(this.ctx, this.masterGain);
         this.style = "Otherworld";
         break;
@@ -26232,7 +26232,18 @@ const MusicEngine = {
         this.currentSong = new EmperorBattleModule(this.ctx, this.masterGain);
         this.style = "Emperor Battle";
         break;
-        
+        case 43: case 'new':
+        this.currentSong = new Battle7Module(this.ctx, this.masterGain);
+        this.style = "Battle 7";
+        break;
+        case 44: case 'new':
+        this.currentSong = new TheWorldModule(this.ctx, this.masterGain);
+        this.style = "The World";
+        break;
+        case 45: case 'new':
+        this.currentSong = new Battle8Module(this.ctx, this.masterGain);
+        this.style = "Battle 8";
+        break;
       default:
         console.error("Unknown style:", style);
         return;
@@ -38827,453 +38838,6 @@ osc.detune.value = (Math.random() * 10) - 5;
         osc.stop(t + 0.5);
     }
 }
-
-class MegaBattleModule {
-  constructor(ctx, dest) {
-    this.ctx = ctx;
-    this.dest = dest;
-    this.timer = null;
-    this.isPlaying = false;
-
-    // Mega Man X style is Fast Rock
-    this.tempo = 175; 
-    
-    this.tick = 0;
-    this.nextNoteTime = 0.0;
-    this.scheduleAheadTime = 0.1;
-    this.lookahead = 25.0;
-
-    this.baseRoot = 261.63; // Middle C
-
-    // --- 2. SEQUENCE & STRUCTURE CONTROL ---
-    this.sectionData = {
-        // The "Warning" Siren
-        INTRO:            { bars: 1, tempo: 175 }, 
-        // The Main Riff (Power Chords)
-        RIFF_A:           { bars: 2, tempo: 175 }, 
-        // The Verse (Driving Bass + Staccato Melody)
-        THEME_A:          { bars: 2, tempo: 175 }, 
-        // The Chorus (Soaring, Heroic, Sustained)
-        THEME_B:          { bars: 2, tempo: 175 }, 
-        // The Guitar Solo (Shredding)
-        SOLO:             { bars: 4, tempo: 180 }, 
-        // The Loop Reset
-        TRANSITION:       { bars: 1, tempo: 175 } 
-    };
-
-    this.sequence = [
-        'INTRO', 
-        'RIFF_A', 
-         'THEME_B',
-        'THEME_A', 
-         'THEME_B',
-        'RIFF_A', // Return to riff before solo
-        'SOLO',
-        'TRANSITION'
-    ];
-
-    // --- 3. MODULATION ENGINE ---
-    this.movements = [];
-    const semitoneRatio = 1.059463;
-    // We stick to common Rock keys (E Minor, A Minor)
-    const rockKeys = [4, 9, 2, 7]; // E, A, D, G
-    
-    for (let i = 0; i < 4; i++) {
-        this.movements.push({
-            name: `Key Variant ${i}`,
-            rootRatio: Math.pow(semitoneRatio, rockKeys[i]) 
-        });
-    }
-    this.currentMovementIndex = 0;
-
-    // --- 4. MIXER (Your "King" Module Setup) ---
-    this.master = ctx.createGain();
-    this.master.gain.value = 1;
-
-    this.reverb = ctx.createConvolver();
-    this.reverb.buffer = this.createImpulse(1.5); // Tighter reverb for speed
-    this.revGain = ctx.createGain();
-    this.revGain.gain.value = 0.25;
-
-    this.master.connect(this.dest);
-    this.master.connect(this.reverb);
-    this.reverb.connect(this.revGain);
-    this.revGain.connect(this.dest);
-  }
-
-  createImpulse(duration) {
-    const rate = this.ctx.sampleRate;
-    const len = rate * duration;
-    const buf = this.ctx.createBuffer(2, len, rate);
-    for (let i = 0; i < 2; i++) {
-      const ch = buf.getChannelData(i);
-      for (let j = 0; j < len; j++) {
-        ch[j] = (Math.random() * 2 - 1) * Math.pow(1 - j / len, 3); 
-      }
-    }
-    return buf;
-  }
-
-  start() {
-    if (this.isPlaying) return;
-    this.ctx.resume();
-    this.isPlaying = true;
-    this.nextNoteTime = this.ctx.currentTime + 0.1;
-    this.tick = 0;
-    this.scheduler();
-  }
-
-  stop() {
-    this.isPlaying = false;
-    if (this.timer) clearTimeout(this.timer);
-    this.master.gain.cancelScheduledValues(this.ctx.currentTime);
-    this.master.gain.linearRampToValueAtTime(0, this.ctx.currentTime + 0.4);
-    setTimeout(() => {
-        this.master.gain.setValueAtTime(0.5, this.ctx.currentTime);
-    }, 500);
-  }
-
-  scheduler() {
-    while (this.nextNoteTime < this.ctx.currentTime + this.scheduleAheadTime) {
-      this.scheduleNote(this.tick, this.nextNoteTime);
-      this.advanceNote();
-    }
-    if (this.isPlaying) {
-      this.timer = setTimeout(() => this.scheduler(), this.lookahead);
-    }
-  }
-
-  advanceNote() {
-    const secondsPerBeat = 60.0 / this.tempo;
-    this.nextNoteTime += 0.25 * secondsPerBeat;
-    this.tick++;
-  }
-
-  scheduleNote(tick, t) {
-    let totalSequenceBars = 0;
-    this.sequence.forEach(sec => totalSequenceBars += this.sectionData[sec].bars);
-    const totalTicks = totalSequenceBars * 16;
-
-    // Key Change on Loop
-    const currentLoopIteration = Math.floor(tick / totalTicks);
-    this.currentMovementIndex = currentLoopIteration % this.movements.length;
-
-    let loopTick = tick % totalTicks;
-    let currentTickPointer = 0;
-
-    for (let i = 0; i < this.sequence.length; i++) {
-        const sectionName = this.sequence[i];
-        const data = this.sectionData[sectionName]; 
-        
-        if (data.tempo) this.tempo = data.tempo;
-
-        const sectionLenTicks = data.bars * 16;
-
-        if (loopTick < currentTickPointer + sectionLenTicks) {
-            const localTick = loopTick - currentTickPointer;
-            const localBar = Math.floor(localTick / 16);
-            const step = localTick % 16;
-
-            if (sectionName === 'INTRO') this.playIntro(t, localBar, step);
-            else if (sectionName === 'RIFF_A') this.playRiff(t, localBar, step);
-            else if (sectionName === 'THEME_A') this.playThemeA(t, localBar, step);
-            else if (sectionName === 'THEME_B') this.playThemeB(t, localBar, step);
-            else if (sectionName === 'SOLO') this.playSolo(t, localBar, step);
-            else if (sectionName === 'TRANSITION') this.playTransition(t, localBar, step);
-            
-            break;
-        }
-        currentTickPointer += sectionLenTicks;
-    }
-  }
-
-  // --- MEGA MAN COMPOSITION LOGIC ---
-
-  playIntro(t, bar, step) {
-    // The "WARNING" Siren
-    // Alternating octaves on the beat
-    if (step % 4 === 0) {
-        this.playBrass(t, 12, 0.1); // High Alert
-        this.playStab(t, 0); // Impact
-        this.playTimpani(t, -12);
-    }
-    
-    // Snare roll build up
-    this.playSnare(t, (step % 2 === 0) ? 0.2 : 0.05);
-  }
-
-  playRiff(t, bar, step) {
-    // THE MAIN RIFF - Power Chords
-    // Rhythm: DUM DUM (pause) DUM-da-DUM
-    
-    const riff = { 0: 0, 2: 0, 6: 3, 8: 5, 10: 3, 12: 0 };
-    
-    if (riff[step] !== undefined) {
-        // Play Root + Fifth (Power Chord)
-        const root = riff[step];
-        this.playBrass(t, root, 0.15);
-        this.playBrass(t, root + 7, 0.15); // The Fifth
-        
-        // Heavy Bass double
-        this.playBass(t, root - 12, 0.2);
-    }
-    
-    // Constant Driving Hi-Hat/Snare
-    if (step % 4 === 0) this.playSnare(t, 0.1); // Kick
-    if (step % 4 === 2) this.playSnare(t, 0.3); // Snare
-  }
-
-  playThemeA(t, bar, step) {
-    // VERSE - The "Chug"
-    
-    // 1. Bass: 16th note chugging (Palm Mute style)
-    // Plays the root note constantly
-    const bassNote = (bar < 4) ? 0 : (bar < 6 ? 5 : 7); // i -> IV -> V progression
-    
-    // Skips specific beats to create groove
-    if (step !== 4 && step !== 12) {
-        this.playBass(t, bassNote - 12, 0.4);
-    }
-
-    // 2. Melody: Short, staccato, "Robotic"
-    // Pentatonic Minor: 0, 3, 5, 7, 10
-    const melody = { 0: 12, 2: 12, 6: 15, 8: 17, 10: 15, 14: 12 };
-    
-    // Variation every other bar
-    if (bar % 2 !== 0 && step === 14) melody[14] = 7; // Drop down
-
-    if (melody[step]) {
-        // High Strings acting as "Synth Lead"
-        this.playHighStrings(t, melody[step], 0.15);
-    }
-
-    // 3. Brass Hits (Counterpoint)
-    if (step === 4 || step === 12) {
-        this.playBrass(t, bassNote, 0.1);
-    }
-
-    // 4. Rock Beat
-    if (step % 4 === 0) this.playSnare(t, 0.15);
-    if (step % 4 === 2) this.playSnare(t, 0.35);
-  }
-
-  playThemeB(t, bar, step) {
-    // CHORUS - Melodic, Sustained, "Heroic"
-    
-    // Progression: VI - VII - i (The "Iron Maiden" Gallop)
-    // Bars 0-1: Ab (8), Bars 2-3: Bb (10), Bars 4-7: C (12/0)
-    let root = 0;
-    if (bar < 2) root = 8;      // VI
-    else if (bar < 4) root = 10; // VII
-    else root = 0;              // i
-
-    // Bass Gallop: da-da-DUM
-    const gallop = [1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0];
-    if (gallop[step]) {
-        this.playBass(t, root - 12, 0.4);
-    }
-
-    // Soaring Melody (Strings)
-    // Long notes
-    if (step === 0) {
-        this.playHighStrings(t, root + 12, 0.8); // Long sustain
-        this.playBrass(t, root, 0.4); // Pad underneath
-    }
-    
-    // Add a melodic fill at the end of the bar
-    if (step === 12 || step === 14) {
-        this.playHighStrings(t, root + 15, 0.2);
-    }
-
-    // Drum Fills
-    if (step % 4 === 2) this.playSnare(t, 0.3);
-  }
-
-  playSolo(t, bar, step) {
-    // THE SHRED
-    // High speed arpeggios
-    
-    // Pentatonic scale array
-    const scale = [0, 3, 5, 7, 10, 12, 15, 17, 19, 22];
-    
-    // Generate a pseudo-random run based on step and bar
-    // This creates that "Arpeggiator" feel
-    const index = (step * 3 + bar * 5) % scale.length;
-    const note = scale[index];
-
-    // High Strings shredding
-    this.playHighStrings(t, note + 12, 0.1);
-    
-    // Bass holds pedal point tension
-    if (step % 4 === 0) this.playBass(t, 0, 0.5);
-    
-    // Double time drums
-    if (step % 2 === 0) this.playSnare(t, 0.2);
-  }
-
-  playTransition(t, bar, step) {
-    // Descending Power Line
-    // Unison hits
-    if (step % 2 === 0) {
-        const note = 12 - step; // Chromatic down
-        this.playBrass(t, note, 0.1);
-        this.playBass(t, note - 12, 0.5);
-        this.playSnare(t, 0.3);
-    }
-  }
-
-  // --- INSTRUMENTS (High Fidelity from King Module) ---
-
-  getFreq(semitoneOffset, octaveOffset) {
-    const movement = this.movements[this.currentMovementIndex];
-    const currentRoot = this.baseRoot * movement.rootRatio;
-    return currentRoot * Math.pow(2, (semitoneOffset + (octaveOffset * 12)) / 12);
-  }
-
-  playBass(t, note, vol) {
-    const freq = this.getFreq(note, -2);
-    const osc = this.ctx.createOscillator();
-    const g = this.ctx.createGain();
-    
-    // Mix Square and Sawtooth for a "Synth Bass" / "Distorted Bass" tone
-    osc.type = 'sawtooth'; 
-    osc.frequency.value = freq;
-
-    g.gain.setValueAtTime(0, t);
-    g.gain.linearRampToValueAtTime(vol, t + 0.01);
-    g.gain.exponentialRampToValueAtTime(0.001, t + 0.2); // Tight decay for fast tempos
-
-    osc.connect(g);
-    g.connect(this.master);
-    osc.start(t);
-    osc.stop(t + 0.25);
-  }
-
-  playBrass(t, note, len) {
-    const freq = this.getFreq(note, -1);
-    const osc = this.ctx.createOscillator();
-    const g = this.ctx.createGain();
-    const f = this.ctx.createBiquadFilter();
-
-    osc.type = 'sawtooth';
-    osc.frequency.value = freq;
-    // Slight detune for "Synth Brass" feel
-    osc.detune.value = Math.random() * 4 - 2;
-
-    f.type = 'lowpass';
-    f.Q.value = 3; 
-    f.frequency.setValueAtTime(600, t);
-    f.frequency.linearRampToValueAtTime(2500, t + 0.05); // Sharp attack
-    f.frequency.exponentialRampToValueAtTime(800, t + len);
-
-    g.gain.setValueAtTime(0, t);
-    g.gain.linearRampToValueAtTime(0.4, t + 0.02);
-    g.gain.linearRampToValueAtTime(0.3, t + 0.1);
-    g.gain.linearRampToValueAtTime(0, t + len);
-
-    osc.connect(f);
-    f.connect(g);
-    g.connect(this.master);
-    osc.start(t);
-    osc.stop(t + len + 0.1);
-  }
-
-  playHighStrings(t, note, vol) {
-    const freq = this.getFreq(note, 0);
-    const osc = this.ctx.createOscillator();
-    const g = this.ctx.createGain();
-
-    osc.type = 'square'; // Switch to Square for a "Game Lead" sound, or Saw for Strings
-    // Let's stick to Sawtooth for that "Symphonic" feel
-    osc.type = 'sawtooth';
-    osc.frequency.value = freq;
-
-    // Vibrato (essential for the Lead Guitar feel)
-    const vib = this.ctx.createOscillator();
-    const vibG = this.ctx.createGain();
-    vib.frequency.value = 6; 
-    vibG.gain.setValueAtTime(0, t);
-    vibG.gain.linearRampToValueAtTime(10, t + 0.2); 
-    vib.connect(vibG);
-    vibG.connect(osc.frequency);
-    vib.start(t);
-
-    g.gain.setValueAtTime(0, t);
-    g.gain.linearRampToValueAtTime(vol, t + 0.02);
-    g.gain.linearRampToValueAtTime(vol * 0.5, t + 0.1); // Sustain level
-    g.gain.linearRampToValueAtTime(0, t + 0.3);
-
-    osc.connect(g);
-    g.connect(this.master);
-    osc.start(t);
-    osc.stop(t + 0.35);
-  }
-
-  playSnare(t, vol) {
-    // Synth Snare (White Noise + Filter Pop)
-    const rate = this.ctx.sampleRate;
-    const len = rate * 0.1;
-    const buf = this.ctx.createBuffer(1, len, rate);
-    const data = buf.getChannelData(0);
-    for(let i=0; i<len; i++) data[i] = (Math.random() * 2 - 1);
-
-    const src = this.ctx.createBufferSource();
-    src.buffer = buf;
-    
-    const f = this.ctx.createBiquadFilter();
-    f.type = 'bandpass';
-    f.frequency.value = 1500; // Higher pitch for "Rock" snare
-
-    const g = this.ctx.createGain();
-    g.gain.setValueAtTime(vol, t);
-    g.gain.exponentialRampToValueAtTime(0.01, t + 0.08);
-
-    src.connect(f);
-    f.connect(g);
-    g.connect(this.master);
-    src.start(t);
-  }
-
-  playTimpani(t, noteIndex) {
-    // Used for Impacts
-    const freq = this.getFreq(noteIndex, -3); 
-    const osc = this.ctx.createOscillator();
-    const g = this.ctx.createGain();
-    
-    osc.type = 'sine';
-    osc.frequency.value = freq;
-    osc.frequency.linearRampToValueAtTime(freq * 0.8, t + 0.3); // Pitch drop
-
-    g.gain.setValueAtTime(0, t);
-    g.gain.linearRampToValueAtTime(0.8, t + 0.01); 
-    g.gain.exponentialRampToValueAtTime(0.01, t + 0.5);
-
-    osc.connect(g);
-    g.connect(this.master);
-    osc.start(t);
-    osc.stop(t + 0.6);
-  }
-
-  playStab(t, note) {
-    // Orchestra Hit style
-    const freq = this.getFreq(note, 0);
-    const osc = this.ctx.createOscillator();
-    const g = this.ctx.createGain();
-    
-    osc.type = 'sawtooth';
-    osc.frequency.value = freq;
-    osc.detune.value = (Math.random() * 20) - 10; 
-
-    g.gain.setValueAtTime(0, t);
-    g.gain.linearRampToValueAtTime(0.2, t + 0.01);
-    g.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
-
-    osc.connect(g);
-    g.connect(this.master);
-    osc.start(t);
-    osc.stop(t + 0.25);
-  }
-}
 // MODULE 42: Emperor Battle (Neo-Classical Shred)
 class EmperorBattleModule {
   constructor(ctx, dest) {
@@ -40151,8 +39715,1388 @@ generateProceduralSolo(seedIndex) {
     osc.stop(t + 0.2);
   }
 }
+class Battle7Module {
+  constructor(ctx, dest) {
+    this.ctx = ctx;
+    this.dest = dest;
+    this.timer = null;
+    this.isPlaying = false;
 
+    // Mega Man X style is Fast Rock
+    this.tempo = 175; 
+    
+    this.tick = 0;
+    this.nextNoteTime = 0.0;
+    this.scheduleAheadTime = 0.1;
+    this.lookahead = 25.0;
 
+    this.baseRoot = 261.63; // Middle C
+
+    // --- 2. SEQUENCE & STRUCTURE CONTROL ---
+    this.sectionData = {
+        // The "Warning" Siren
+        INTRO:            { bars: 1, tempo: 175 }, 
+        // The Main Riff (Power Chords)
+        RIFF_A:           { bars: 2, tempo: 175 }, 
+        // The Verse (Driving Bass + Staccato Melody)
+        THEME_A:          { bars: 2, tempo: 175 }, 
+        // The Chorus (Soaring, Heroic, Sustained)
+        THEME_B:          { bars: 2, tempo: 175 }, 
+        // The Guitar Solo (Shredding)
+        SOLO:             { bars: 4, tempo: 180 }, 
+        // The Loop Reset
+        TRANSITION:       { bars: 1, tempo: 175 } 
+    };
+
+    this.sequence = [
+        'INTRO', 
+        'RIFF_A', 
+         'THEME_B',
+        'THEME_A', 
+         'THEME_B',
+        'RIFF_A', // Return to riff before solo
+        'SOLO',
+        'TRANSITION'
+    ];
+
+    // --- 3. MODULATION ENGINE ---
+    this.movements = [];
+    const semitoneRatio = 1.059463;
+    // We stick to common Rock keys (E Minor, A Minor)
+    const rockKeys = [4, 9, 2, 7]; // E, A, D, G
+    
+    for (let i = 0; i < 4; i++) {
+        this.movements.push({
+            name: `Key Variant ${i}`,
+            rootRatio: Math.pow(semitoneRatio, rockKeys[i]) 
+        });
+    }
+    this.currentMovementIndex = 0;
+
+    // --- 4. MIXER (Your "King" Module Setup) ---
+    this.master = ctx.createGain();
+    this.master.gain.value = 1;
+
+    this.reverb = ctx.createConvolver();
+    this.reverb.buffer = this.createImpulse(1.5); // Tighter reverb for speed
+    this.revGain = ctx.createGain();
+    this.revGain.gain.value = 0.25;
+
+    this.master.connect(this.dest);
+    this.master.connect(this.reverb);
+    this.reverb.connect(this.revGain);
+    this.revGain.connect(this.dest);
+  }
+
+  createImpulse(duration) {
+    const rate = this.ctx.sampleRate;
+    const len = rate * duration;
+    const buf = this.ctx.createBuffer(2, len, rate);
+    for (let i = 0; i < 2; i++) {
+      const ch = buf.getChannelData(i);
+      for (let j = 0; j < len; j++) {
+        ch[j] = (Math.random() * 2 - 1) * Math.pow(1 - j / len, 3); 
+      }
+    }
+    return buf;
+  }
+
+  start() {
+    if (this.isPlaying) return;
+    this.ctx.resume();
+    this.isPlaying = true;
+    this.nextNoteTime = this.ctx.currentTime + 0.1;
+    this.tick = 0;
+    this.scheduler();
+  }
+
+  stop() {
+    this.isPlaying = false;
+    if (this.timer) clearTimeout(this.timer);
+    this.master.gain.cancelScheduledValues(this.ctx.currentTime);
+    this.master.gain.linearRampToValueAtTime(0, this.ctx.currentTime + 0.4);
+    setTimeout(() => {
+        this.master.gain.setValueAtTime(0.5, this.ctx.currentTime);
+    }, 500);
+  }
+
+  scheduler() {
+    while (this.nextNoteTime < this.ctx.currentTime + this.scheduleAheadTime) {
+      this.scheduleNote(this.tick, this.nextNoteTime);
+      this.advanceNote();
+    }
+    if (this.isPlaying) {
+      this.timer = setTimeout(() => this.scheduler(), this.lookahead);
+    }
+  }
+
+  advanceNote() {
+    const secondsPerBeat = 60.0 / this.tempo;
+    this.nextNoteTime += 0.25 * secondsPerBeat;
+    this.tick++;
+  }
+
+  scheduleNote(tick, t) {
+    let totalSequenceBars = 0;
+    this.sequence.forEach(sec => totalSequenceBars += this.sectionData[sec].bars);
+    const totalTicks = totalSequenceBars * 16;
+
+    // Key Change on Loop
+    const currentLoopIteration = Math.floor(tick / totalTicks);
+    this.currentMovementIndex = currentLoopIteration % this.movements.length;
+
+    let loopTick = tick % totalTicks;
+    let currentTickPointer = 0;
+
+    for (let i = 0; i < this.sequence.length; i++) {
+        const sectionName = this.sequence[i];
+        const data = this.sectionData[sectionName]; 
+        
+        if (data.tempo) this.tempo = data.tempo;
+
+        const sectionLenTicks = data.bars * 16;
+
+        if (loopTick < currentTickPointer + sectionLenTicks) {
+            const localTick = loopTick - currentTickPointer;
+            const localBar = Math.floor(localTick / 16);
+            const step = localTick % 16;
+
+            if (sectionName === 'INTRO') this.playIntro(t, localBar, step);
+            else if (sectionName === 'RIFF_A') this.playRiff(t, localBar, step);
+            else if (sectionName === 'THEME_A') this.playThemeA(t, localBar, step);
+            else if (sectionName === 'THEME_B') this.playThemeB(t, localBar, step);
+            else if (sectionName === 'SOLO') this.playSolo(t, localBar, step);
+            else if (sectionName === 'TRANSITION') this.playTransition(t, localBar, step);
+            
+            break;
+        }
+        currentTickPointer += sectionLenTicks;
+    }
+  }
+
+  // --- MEGA MAN COMPOSITION LOGIC ---
+
+  playIntro(t, bar, step) {
+    // The "WARNING" Siren
+    // Alternating octaves on the beat
+    if (step % 4 === 0) {
+        this.playBrass(t, 12, 0.1); // High Alert
+        this.playStab(t, 0); // Impact
+        this.playTimpani(t, -12);
+    }
+    
+    // Snare roll build up
+    this.playSnare(t, (step % 2 === 0) ? 0.2 : 0.05);
+  }
+
+  playRiff(t, bar, step) {
+    // THE MAIN RIFF - Power Chords
+    // Rhythm: DUM DUM (pause) DUM-da-DUM
+    
+    const riff = { 0: 0, 2: 0, 6: 3, 8: 5, 10: 3, 12: 0 };
+    
+    if (riff[step] !== undefined) {
+        // Play Root + Fifth (Power Chord)
+        const root = riff[step];
+        this.playBrass(t, root, 0.15);
+        this.playBrass(t, root + 7, 0.15); // The Fifth
+        
+        // Heavy Bass double
+        this.playBass(t, root - 12, 0.2);
+    }
+    
+    // Constant Driving Hi-Hat/Snare
+    if (step % 4 === 0) this.playSnare(t, 0.1); // Kick
+    if (step % 4 === 2) this.playSnare(t, 0.3); // Snare
+  }
+
+  playThemeA(t, bar, step) {
+    // VERSE - The "Chug"
+    
+    // 1. Bass: 16th note chugging (Palm Mute style)
+    // Plays the root note constantly
+    const bassNote = (bar < 4) ? 0 : (bar < 6 ? 5 : 7); // i -> IV -> V progression
+    
+    // Skips specific beats to create groove
+    if (step !== 4 && step !== 12) {
+        this.playBass(t, bassNote - 12, 0.4);
+    }
+
+    // 2. Melody: Short, staccato, "Robotic"
+    // Pentatonic Minor: 0, 3, 5, 7, 10
+    const melody = { 0: 12, 2: 12, 6: 15, 8: 17, 10: 15, 14: 12 };
+    
+    // Variation every other bar
+    if (bar % 2 !== 0 && step === 14) melody[14] = 7; // Drop down
+
+    if (melody[step]) {
+        // High Strings acting as "Synth Lead"
+        this.playHighStrings(t, melody[step], 0.15);
+    }
+
+    // 3. Brass Hits (Counterpoint)
+    if (step === 4 || step === 12) {
+        this.playBrass(t, bassNote, 0.1);
+    }
+
+    // 4. Rock Beat
+    if (step % 4 === 0) this.playSnare(t, 0.15);
+    if (step % 4 === 2) this.playSnare(t, 0.35);
+  }
+
+  playThemeB(t, bar, step) {
+    // CHORUS - Melodic, Sustained, "Heroic"
+    
+    // Progression: VI - VII - i (The "Iron Maiden" Gallop)
+    // Bars 0-1: Ab (8), Bars 2-3: Bb (10), Bars 4-7: C (12/0)
+    let root = 0;
+    if (bar < 2) root = 8;      // VI
+    else if (bar < 4) root = 10; // VII
+    else root = 0;              // i
+
+    // Bass Gallop: da-da-DUM
+    const gallop = [1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0];
+    if (gallop[step]) {
+        this.playBass(t, root - 12, 0.4);
+    }
+
+    // Soaring Melody (Strings)
+    // Long notes
+    if (step === 0) {
+        this.playHighStrings(t, root + 12, 0.8); // Long sustain
+        this.playBrass(t, root, 0.4); // Pad underneath
+    }
+    
+    // Add a melodic fill at the end of the bar
+    if (step === 12 || step === 14) {
+        this.playHighStrings(t, root + 15, 0.2);
+    }
+
+    // Drum Fills
+    if (step % 4 === 2) this.playSnare(t, 0.3);
+  }
+
+  playSolo(t, bar, step) {
+    // THE SHRED
+    // High speed arpeggios
+    
+    // Pentatonic scale array
+    const scale = [0, 3, 5, 7, 10, 12, 15, 17, 19, 22];
+    
+    // Generate a pseudo-random run based on step and bar
+    // This creates that "Arpeggiator" feel
+    const index = (step * 3 + bar * 5) % scale.length;
+    const note = scale[index];
+
+    // High Strings shredding
+    this.playHighStrings(t, note + 12, 0.1);
+    
+    // Bass holds pedal point tension
+    if (step % 4 === 0) this.playBass(t, 0, 0.5);
+    
+    // Double time drums
+    if (step % 2 === 0) this.playSnare(t, 0.2);
+  }
+
+  playTransition(t, bar, step) {
+    // Descending Power Line
+    // Unison hits
+    if (step % 2 === 0) {
+        const note = 12 - step; // Chromatic down
+        this.playBrass(t, note, 0.1);
+        this.playBass(t, note - 12, 0.5);
+        this.playSnare(t, 0.3);
+    }
+  }
+
+  // --- INSTRUMENTS (High Fidelity from King Module) ---
+
+  getFreq(semitoneOffset, octaveOffset) {
+    const movement = this.movements[this.currentMovementIndex];
+    const currentRoot = this.baseRoot * movement.rootRatio;
+    return currentRoot * Math.pow(2, (semitoneOffset + (octaveOffset * 12)) / 12);
+  }
+
+  playBass(t, note, vol) {
+    const freq = this.getFreq(note, -2);
+    const osc = this.ctx.createOscillator();
+    const g = this.ctx.createGain();
+    
+    // Mix Square and Sawtooth for a "Synth Bass" / "Distorted Bass" tone
+    osc.type = 'sawtooth'; 
+    osc.frequency.value = freq;
+
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(vol, t + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.2); // Tight decay for fast tempos
+
+    osc.connect(g);
+    g.connect(this.master);
+    osc.start(t);
+    osc.stop(t + 0.25);
+  }
+
+  playBrass(t, note, len) {
+    const freq = this.getFreq(note, -1);
+    const osc = this.ctx.createOscillator();
+    const g = this.ctx.createGain();
+    const f = this.ctx.createBiquadFilter();
+
+    osc.type = 'sawtooth';
+    osc.frequency.value = freq;
+    // Slight detune for "Synth Brass" feel
+    osc.detune.value = Math.random() * 4 - 2;
+
+    f.type = 'lowpass';
+    f.Q.value = 3; 
+    f.frequency.setValueAtTime(600, t);
+    f.frequency.linearRampToValueAtTime(2500, t + 0.05); // Sharp attack
+    f.frequency.exponentialRampToValueAtTime(800, t + len);
+
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(0.4, t + 0.02);
+    g.gain.linearRampToValueAtTime(0.3, t + 0.1);
+    g.gain.linearRampToValueAtTime(0, t + len);
+
+    osc.connect(f);
+    f.connect(g);
+    g.connect(this.master);
+    osc.start(t);
+    osc.stop(t + len + 0.1);
+  }
+
+  playHighStrings(t, note, vol) {
+    const freq = this.getFreq(note, 0);
+    const osc = this.ctx.createOscillator();
+    const g = this.ctx.createGain();
+
+    osc.type = 'square'; // Switch to Square for a "Game Lead" sound, or Saw for Strings
+    // Let's stick to Sawtooth for that "Symphonic" feel
+    osc.type = 'sawtooth';
+    osc.frequency.value = freq;
+
+    // Vibrato (essential for the Lead Guitar feel)
+    const vib = this.ctx.createOscillator();
+    const vibG = this.ctx.createGain();
+    vib.frequency.value = 6; 
+    vibG.gain.setValueAtTime(0, t);
+    vibG.gain.linearRampToValueAtTime(10, t + 0.2); 
+    vib.connect(vibG);
+    vibG.connect(osc.frequency);
+    vib.start(t);
+
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(vol, t + 0.02);
+    g.gain.linearRampToValueAtTime(vol * 0.5, t + 0.1); // Sustain level
+    g.gain.linearRampToValueAtTime(0, t + 0.3);
+
+    osc.connect(g);
+    g.connect(this.master);
+    osc.start(t);
+    osc.stop(t + 0.35);
+  }
+
+  playSnare(t, vol) {
+    // Synth Snare (White Noise + Filter Pop)
+    const rate = this.ctx.sampleRate;
+    const len = rate * 0.1;
+    const buf = this.ctx.createBuffer(1, len, rate);
+    const data = buf.getChannelData(0);
+    for(let i=0; i<len; i++) data[i] = (Math.random() * 2 - 1);
+
+    const src = this.ctx.createBufferSource();
+    src.buffer = buf;
+    
+    const f = this.ctx.createBiquadFilter();
+    f.type = 'bandpass';
+    f.frequency.value = 1500; // Higher pitch for "Rock" snare
+
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime(vol, t);
+    g.gain.exponentialRampToValueAtTime(0.01, t + 0.08);
+
+    src.connect(f);
+    f.connect(g);
+    g.connect(this.master);
+    src.start(t);
+  }
+
+  playTimpani(t, noteIndex) {
+    // Used for Impacts
+    const freq = this.getFreq(noteIndex, -3); 
+    const osc = this.ctx.createOscillator();
+    const g = this.ctx.createGain();
+    
+    osc.type = 'sine';
+    osc.frequency.value = freq;
+    osc.frequency.linearRampToValueAtTime(freq * 0.8, t + 0.3); // Pitch drop
+
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(0.8, t + 0.01); 
+    g.gain.exponentialRampToValueAtTime(0.01, t + 0.5);
+
+    osc.connect(g);
+    g.connect(this.master);
+    osc.start(t);
+    osc.stop(t + 0.6);
+  }
+
+  playStab(t, note) {
+    // Orchestra Hit style
+    const freq = this.getFreq(note, 0);
+    const osc = this.ctx.createOscillator();
+    const g = this.ctx.createGain();
+    
+    osc.type = 'sawtooth';
+    osc.frequency.value = freq;
+    osc.detune.value = (Math.random() * 20) - 10; 
+
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(0.2, t + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
+
+    osc.connect(g);
+    g.connect(this.master);
+    osc.start(t);
+    osc.stop(t + 0.25);
+  }
+}
+class TheWorldModule {
+    constructor(ctx, masterGain) {
+        this.ctx = ctx;
+        this.masterGain = masterGain;
+        this.isPlaying = false;
+
+        // The Culmination: Shared Effects Bus
+        this.reverbBus = this.ctx.createGain();
+        this.reverbBus.gain.value = 0.4;
+        this.reverbBus.connect(this.masterGain);
+        this.setupReverb(); // Assuming createImpulse is now globally available or handled here
+
+        // Lookahead Scheduler Variables (Solves Tab-Throttling)
+        this.lookahead = 25.0; // ms
+        this.scheduleAheadTime = 0.1; // seconds
+        this.nextNoteTime = this.ctx.currentTime + 0.1;
+        this.currentStep = 0;
+        this.tempo = 110; // BPM
+        this.secondsPerBeat = 60.0 / this.tempo;
+
+        // Director State & Infinite Variety
+        this.macroState = 0; // Shifts scales and moods every 32 beats
+        this.scales = {
+            'dorian': [0, 2, 3, 5, 7, 9, 10],         // Adventure
+            'hirajoshi': [0, 2, 3, 7, 8],             // Wuxia / Eastern
+            'phrygianDom': [0, 1, 4, 5, 7, 8, 10],    // Esoteric / Occult
+            'lydian': [0, 2, 4, 6, 7, 9, 11]          // Ethereal / Astral
+        };
+        this.currentScaleName = 'dorian';
+        this.currentScale = this.scales[this.currentScaleName];
+        this.baseFreq = 146.83; // D3
+
+        // --- THE MARKOV CHAINS ---
+        this.currentDegree = 0; 
+        
+        // Pitch Transition Matrix: Probabilities of moving from Degree A to Degree B
+        // Rows: Current Scale Degree (0-6). Columns: Next Scale Degree (0-6).
+        // e.g., From Root (0), 30% chance to go to 2nd(1), 40% to 3rd(2), etc.
+        this.pitchMarkov = [
+            [0.1, 0.3, 0.4, 0.0, 0.1, 0.0, 0.1], // 0: Root
+            [0.4, 0.0, 0.3, 0.2, 0.0, 0.1, 0.0], // 1: 2nd
+            [0.2, 0.1, 0.1, 0.4, 0.2, 0.0, 0.0], // 2: 3rd
+            [0.0, 0.2, 0.2, 0.1, 0.4, 0.1, 0.0], // 3: 4th
+            [0.3, 0.0, 0.1, 0.1, 0.1, 0.3, 0.1], // 4: 5th
+            [0.0, 0.0, 0.2, 0.3, 0.2, 0.1, 0.2], // 5: 6th
+            [0.5, 0.0, 0.0, 0.1, 0.2, 0.1, 0.1]  // 6: 7th
+        ];
+
+        // Rhythm Transition Matrix: 1 = Quarter note, 0.5 = Eighth note, 2 = Half note
+        this.currentDuration = 1;
+        this.rhythmMarkov = {
+            1:   { options: [1, 0.5, 2],   probs: [0.5, 0.4, 0.1] },
+            0.5: { options: [0.5, 1],      probs: [0.7, 0.3] }, // Eighth notes like to cluster
+            2:   { options: [1, 0.5],      probs: [0.8, 0.2] }
+        };
+    }
+
+    // Standard Reverb Generation (Exponential Noise Decay)
+    setupReverb() {
+        const length = this.ctx.sampleRate * 3.0; // 3 seconds
+        const impulse = this.ctx.createBuffer(2, length, this.ctx.sampleRate);
+        for (let i = 0; i < 2; i++) {
+            const channel = impulse.getChannelData(i);
+            for (let j = 0; j < length; j++) {
+                channel[j] = (Math.random() * 2 - 1) * Math.pow(1 - j / length, 3);
+            }
+        }
+        this.convolver = this.ctx.createConvolver();
+        this.convolver.buffer = impulse;
+        this.convolver.connect(this.masterGain);
+        this.reverbBus.connect(this.convolver);
+    }
+
+    start() {
+        if (this.isPlaying) return;
+        this.isPlaying = true;
+        this.nextNoteTime = this.ctx.currentTime + 0.05;
+        this.scheduler();
+    }
+
+    stop() {
+        this.isPlaying = false;
+        if (this.timerID) clearTimeout(this.timerID);
+    }
+
+    // --- THE LOOKAHEAD SCHEDULER ---
+    scheduler() {
+        while (this.nextNoteTime < this.ctx.currentTime + this.scheduleAheadTime) {
+            this.scheduleEvents(this.currentStep, this.nextNoteTime);
+            this.advanceTime();
+        }
+        if (this.isPlaying) {
+            this.timerID = setTimeout(() => this.scheduler(), this.lookahead);
+        }
+    }
+
+    advanceTime() {
+        // Roll the Markov dice for the next note duration
+        const rhythmState = this.rhythmMarkov[this.currentDuration];
+        const r = Math.random();
+        let cumulative = 0;
+        for (let i = 0; i < rhythmState.probs.length; i++) {
+            cumulative += rhythmState.probs[i];
+            if (r <= cumulative) {
+                this.currentDuration = rhythmState.options[i];
+                break;
+            }
+        }
+
+        // Advance the clock by the chosen rhythmic duration
+        this.nextNoteTime += this.secondsPerBeat * this.currentDuration;
+        this.currentStep++;
+
+        // The Director: Shift Scales every 32 beats for infinite variety
+        if (this.currentStep % 32 === 0) {
+            this.macroState++;
+            const scaleNames = Object.keys(this.scales);
+            this.currentScaleName = scaleNames[this.macroState % scaleNames.length];
+            this.currentScale = this.scales[this.currentScaleName];
+            
+            // Randomize the base key slightly (circle of fifths motion)
+            if (this.macroState % 2 === 0) this.baseFreq *= 1.498; // Up a perfect 5th
+            if (this.baseFreq > 400) this.baseFreq /= 2; // Keep in range
+        }
+    }
+
+    // --- MARKOV MELODY GENERATOR ---
+    getNextPitchDegree() {
+        // Map the current degree to a safe index (0 to 6)
+        let safeIndex = this.currentDegree % 7; 
+        if (safeIndex < 0) safeIndex += 7;
+
+        const probs = this.pitchMarkov[safeIndex];
+        const r = Math.random();
+        let cumulative = 0;
+        
+        for (let i = 0; i < probs.length; i++) {
+            cumulative += probs[i];
+            if (r <= cumulative) {
+                this.currentDegree = i; // Move to next state
+                
+                // 15% chance to jump an octave for dramatic flair
+                if (Math.random() > 0.85) this.currentDegree += 7; 
+                // 10% chance to drop an octave
+                if (Math.random() > 0.90) this.currentDegree -= 7;
+                
+                return this.currentDegree;
+            }
+        }
+        return 0; // Fallback to root
+    }
+
+    getFrequency(degree) {
+        // Map degree to current dynamic scale
+        let octave = Math.floor(degree / this.currentScale.length);
+        let scaleIndex = degree % this.currentScale.length;
+        if (scaleIndex < 0) {
+            scaleIndex += this.currentScale.length;
+            octave -= 1;
+        }
+        const semitones = this.currentScale[scaleIndex] + (octave * 12);
+        return this.baseFreq * Math.pow(2, semitones / 12);
+    }
+
+    scheduleEvents(step, time) {
+        // 1. Generate Melody via Markov Chain
+        const degree = this.getNextPitchDegree();
+        const freq = this.getFrequency(degree);
+        
+        // Plucked String (Wuxia / Fantasy vibe)
+        this.playPluck(time, freq, this.currentDuration * this.secondsPerBeat);
+
+        // 2. Generate Ethereal FM Pad (Root note of current key)
+        if (step % 8 === 0) {
+            this.playFMPad(time, this.baseFreq * 0.5, this.secondsPerBeat * 8);
+        }
+
+        // 3. Heartbeat Bass (Grounding)
+        if (step % 4 === 0) {
+            this.playBass(time, this.baseFreq * 0.25, this.secondsPerBeat * 2);
+        }
+    }
+
+    // --- INSTRUMENTS (With GC Cleanup) ---
+
+    playPluck(time, freq, duration) {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        const filter = this.ctx.createBiquadFilter();
+
+        osc.type = 'triangle';
+        osc.frequency.value = freq;
+        
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(freq * 3, time);
+        filter.frequency.exponentialRampToValueAtTime(freq * 0.5, time + duration);
+
+        // Pluck Envelope
+        gain.gain.setValueAtTime(0, time);
+        gain.gain.linearRampToValueAtTime(0.6, time + 0.02); // Fast attack
+        gain.gain.exponentialRampToValueAtTime(0.001, time + duration); // Smooth decay (no popping)
+
+        osc.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.reverbBus);
+
+        osc.start(time);
+        osc.stop(time + duration);
+
+        // GARBAGE COLLECTION: The crucial fix
+        osc.onended = () => {
+            osc.disconnect();
+            filter.disconnect();
+            gain.disconnect();
+        };
+    }
+
+    playFMPad(time, freq, duration) {
+        const carrier = this.ctx.createOscillator();
+        const modulator = this.ctx.createOscillator();
+        const modGain = this.ctx.createGain();
+        const mainGain = this.ctx.createGain();
+
+        // FM Synthesis setup
+        carrier.type = 'sine';
+        carrier.frequency.value = freq;
+        modulator.type = 'sine';
+        modulator.frequency.value = freq * 2.01; // Slight detune for phasing
+        
+        modGain.gain.value = freq * 1.5; // Modulation Index
+        modulator.connect(modGain);
+        modGain.connect(carrier.frequency);
+
+        // Pad Envelope (Slow swell)
+        mainGain.gain.setValueAtTime(0, time);
+        mainGain.gain.linearRampToValueAtTime(0.2, time + (duration * 0.4));
+        mainGain.gain.linearRampToValueAtTime(0.001, time + duration);
+
+        carrier.connect(mainGain);
+        mainGain.connect(this.reverbBus);
+
+        modulator.start(time);
+        carrier.start(time);
+        modulator.stop(time + duration);
+        carrier.stop(time + duration);
+
+        carrier.onended = () => {
+            modulator.disconnect();
+            modGain.disconnect();
+            carrier.disconnect();
+            mainGain.disconnect();
+        };
+    }
+
+    playBass(time, freq, duration) {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        
+        osc.type = 'square';
+        osc.frequency.value = freq;
+
+        gain.gain.setValueAtTime(0, time);
+        gain.gain.linearRampToValueAtTime(0.3, time + 0.1);
+        gain.gain.exponentialRampToValueAtTime(0.001, time + duration);
+
+        // Deep lowpass filter to remove square wave harshness, keeping the sub-bass
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.value = 150;
+
+        osc.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.masterGain); // Bass bypasses reverb to avoid mud
+
+        osc.start(time);
+        osc.stop(time + duration);
+
+        osc.onended = () => {
+            osc.disconnect();
+            filter.disconnect();
+            gain.disconnect();
+        };
+    }
+}
+class Battle8Module {
+    constructor(ctx, dest) {
+        this.ctx = ctx;
+        this.dest = dest;
+        this.timer = null;
+        this.isPlaying = false;
+        
+        // 1. BATTLE PACING
+        this.tempo = 172; 
+        this.tick = 0;
+        this.nextNoteTime = 0.0;
+        this.scheduleAheadTime = 0.1;
+        this.lookahead = 25.0;
+        this.baseRoot = 146.83; // D3 (The ultimate battle anchor)
+
+        // 2. THE TAROT SEQUENCE (Part 1 + Part 2 + Part 3)
+        this.sectionData = {
+            // --- PART 1 (Untouched) ---
+            INTRO: { bars: 1, tempo: 172 },
+            VAMP: { bars: 2, tempo: 172 },
+            THEME_A: { bars: 4, tempo: 172 }, 
+            THEME_B: { bars: 4, tempo: 172 }, 
+            ARPEGGIOS: { bars: 2, tempo: 176 }, 
+            CLIMAX: { bars: 1, tempo: 176 },
+            
+            // --- PART 2 (The Escalation) ---
+            INTRO_2: { bars: 1, tempo: 176 },
+            VAMP_2: { bars: 2, tempo: 176 }, // Re-using Vamp code, but keeping section name
+            THEME_A2: { bars: 2, tempo: 178 }, 
+            THEME_B2: { bars: 2, tempo: 178 },
+            ARPEGGIOS_2: { bars: 1, tempo: 182 }, 
+            CLIMAX_2: { bars: 2, tempo: 182 }, 
+
+            // --- PART 3: THE STAR (The Melodic Lament) ---
+            // The tempo drops heavily to allow for a beautiful, sorrowful waltz/ballad feel
+            INTRO_3: { bars: 1, tempo: 120 },   // The drums vanish
+            LAMENT_A: { bars: 4, tempo: 120 },  // The Weeping Melody
+            LAMENT_B: { bars: 4, tempo: 120 },  // The Soaring Harmony
+            AWAKENING: { bars: 2, tempo: 140 }  // Building back to 172 BPM
+        };
+        
+        // The full triple-length arrangement
+        this.sequence = [
+            'INTRO', 'VAMP', 'THEME_A', 'THEME_A', 'THEME_B','ARPEGGIOS', 'CLIMAX',
+            'INTRO_2', 'VAMP', 'THEME_A',  'THEME_B', 'THEME_B2', 'ARPEGGIOS_2',
+            'LAMENT_A', 'LAMENT_B','AWAKENING', 'THEME_B2','ARPEGGIOS_2', 'THEME_A', 'THEME_A','THEME_B','ARPEGGIOS', 'CLIMAX' // PART 3 ADDED HERE
+        ];
+
+        // 3. DYNAMIC ARCANA MODULATION
+        this.movements = [
+            { name: "The Tower (Danger)", rootRatio: 1.0, scale: [0, 2, 3, 5, 7, 8, 11] }, // Harmonic Minor
+            { name: "The Chariot (Heroic)", rootRatio: 1.189, scale: [0, 2, 3, 5, 7, 9, 10] }, // Up a minor 3rd (Dorian)
+            { name: "The Magician (Tension)", rootRatio: 1.498, scale: [0, 1, 4, 5, 7, 8, 10] } // Up a 5th (Phrygian Dominant)
+        ];
+        this.currentMovementIndex = 0;
+
+        // 4. MIXER & GLUE COMPRESSION
+        this.master = ctx.createGain();
+        this.master.gain.value = 0.8;
+        
+        this.comp = ctx.createDynamicsCompressor();
+        this.comp.threshold.value = -14;
+        this.comp.ratio.value = 10;
+        this.comp.attack.value = 0.005; 
+        
+        this.reverb = ctx.createConvolver();
+        this.reverb.buffer = this.createImpulse(1.8); 
+        this.revGain = ctx.createGain();
+        this.revGain.gain.value = 0.25;
+
+        // Routing
+        this.master.connect(this.comp);
+        this.comp.connect(this.dest);
+        this.master.connect(this.reverb);
+        this.reverb.connect(this.revGain);
+        this.revGain.connect(this.dest);
+    }
+
+    createImpulse(duration) {
+        const rate = this.ctx.sampleRate;
+        const len = rate * duration;
+        const buf = this.ctx.createBuffer(2, len, rate);
+        for (let i = 0; i < 2; i++) {
+            const ch = buf.getChannelData(i);
+            for (let j = 0; j < len; j++) {
+                ch[j] = (Math.random() * 2 - 1) * Math.pow(1 - j / len, 3);
+            }
+        }
+        return buf;
+    }
+
+    start() {
+        if (this.isPlaying) return;
+        this.ctx.resume();
+        this.isPlaying = true;
+        this.nextNoteTime = this.ctx.currentTime + 0.1;
+        this.tick = 0;
+        this.scheduler();
+    }
+
+    stop() {
+        this.isPlaying = false;
+        if (this.timer) clearTimeout(this.timer);
+        this.master.gain.cancelScheduledValues(this.ctx.currentTime);
+        this.master.gain.linearRampToValueAtTime(0, this.ctx.currentTime + 0.3);
+    }
+
+    scheduler() {
+        while (this.nextNoteTime < this.ctx.currentTime + this.scheduleAheadTime) {
+            this.scheduleNote(this.tick, this.nextNoteTime);
+            this.advanceNote();
+        }
+        if (this.isPlaying) {
+            this.timer = setTimeout(() => this.scheduler(), this.lookahead);
+        }
+    }
+
+    advanceNote() {
+        const secondsPerBeat = 60.0 / this.tempo;
+        this.nextNoteTime += 0.25 * secondsPerBeat; 
+        this.tick++;
+    }
+
+    scheduleNote(tick, t) {
+        let totalSequenceBars = 0;
+        this.sequence.forEach(sec => totalSequenceBars += this.sectionData[sec].bars);
+        const totalTicks = totalSequenceBars * 16;
+
+        const currentLoopIteration = Math.floor(tick / totalTicks);
+        this.currentMovementIndex = currentLoopIteration % this.movements.length;
+
+        let loopTick = tick % totalTicks;
+        let currentTickPointer = 0;
+
+        for (let i = 0; i < this.sequence.length; i++) {
+            const sectionName = this.sequence[i];
+            const data = this.sectionData[sectionName];
+            if (data.tempo) this.tempo = data.tempo;
+            
+            const sectionLenTicks = data.bars * 16;
+            if (loopTick < currentTickPointer + sectionLenTicks) {
+                const localTick = loopTick - currentTickPointer;
+                const localBar = Math.floor(localTick / 16);
+                const step = localTick % 16;
+                
+                // ROUTING
+                if (sectionName === 'INTRO') this.playIntro(t, localBar, step);
+                else if (sectionName === 'VAMP') this.playVamp(t, localBar, step);
+                else if (sectionName === 'THEME_A') this.playThemeA(t, localBar, step);
+                else if (sectionName === 'THEME_B') this.playThemeB(t, localBar, step);
+                else if (sectionName === 'ARPEGGIOS') this.playArpeggios(t, localBar, step);
+                else if (sectionName === 'CLIMAX') this.playClimax(t, localBar, step);
+                
+                // PART 2 ROUTING
+                else if (sectionName === 'INTRO_2') this.playIntro2(t, localBar, step);
+                else if (sectionName === 'THEME_B2') this.playThemeB2(t, localBar, step);
+                else if (sectionName === 'ARPEGGIOS_2') this.playArpeggios2(t, localBar, step);
+                
+                // PART 3 ROUTING (The Melodic Twist)
+                else if (sectionName === 'INTRO_3') this.playIntro3(t, localBar, step);
+                else if (sectionName === 'LAMENT_A') this.playLamentA(t, localBar, step);
+                else if (sectionName === 'LAMENT_B') this.playLamentB(t, localBar, step);
+                else if (sectionName === 'AWAKENING') this.playAwakening(t, localBar, step);
+                break;
+            }
+            currentTickPointer += sectionLenTicks;
+        }
+    }
+
+    // ==========================================
+    // --- PART 1: THE COMPOSER (Untouched) ---
+    // ==========================================
+
+    playIntro(t, bar, step) {
+        if (step % 2 === 0) this.playTimpani(t, 0, 0.4 + (step/16)*0.6);
+        if (step % 4 === 0) this.playStab(t, step / 2);
+    }
+
+    playVamp(t, bar, step) {
+        this.playBassPattern(t, step, 0, 'gallop');
+        this.playRockBeat(t, step, false);
+        if (step === 0) this.playStab(t, 0);
+        if (step === 6) this.playStab(t, 7);
+    }
+
+    playThemeA(t, bar, step) {
+        const bassRoot = (bar === 3) ? 4 : 0; 
+        this.playBassPattern(t, step, bassRoot, 'gallop');
+        this.playRockBeat(t, step, false);
+
+        let note = null;
+        let isLong = false;
+
+        if (bar % 2 === 0) {
+            if (step === 0) { note = 7; isLong = true; } 
+            if (step === 6) note = 8;                    
+            if (step === 8) { note = 7; isLong = true; }
+            if (step === 12) note = 3;                   
+            if (step === 14) note = 4;                   
+        } else if (bar === 1) {
+            if (step === 0) { note = 5; isLong = true; }
+            if (step === 4) note = 4;
+            if (step === 8) { note = 2; isLong = true; }
+            if (step === 12) note = 0;                   
+        } else if (bar === 3) {
+            if (step === 0) { note = 11; isLong = true; } 
+            if (step === 4) note = 12;                   
+            if (step === 8) note = 14;                   
+            if (step === 12) { note = 15; isLong = true; }
+        }
+        if (note !== null) this.playBrass(t, note, isLong ? 0.4 : 0.15);
+    }
+
+    playThemeB(t, bar, step) {
+        const roots = [8, 10, 0, 0];
+        const root = roots[bar % 4];
+
+        this.playBassPattern(t, step, root, 'drive');
+        this.playRockBeat(t, step, true); 
+
+        let leadNote = null;
+        if (step === 0) {
+            if (bar === 0) leadNote = root + 7;
+            if (bar === 1) leadNote = root + 7;
+            if (bar === 2) leadNote = root + 12;
+            if (bar === 3) leadNote = root + 14;
+        } else if (step === 8 && bar === 3) {
+            leadNote = root + 15;
+        }
+
+        if (leadNote !== null) this.playLeadSynth(t, leadNote, 1.0); 
+
+        const arp = [0, 2, 4, 7];
+        this.playHighStrings(t, root + arp[step % 4], 0.12);
+    }
+
+    playArpeggios(t, bar, step) {
+        this.playBassPattern(t, step, 4, 'pedal'); 
+        this.playSnare(t, 0.1 + (step/16)*0.3); 
+
+        const run = [4, 7, 10, 13, 10, 7, 10, 13];
+        const note = run[step % 8] + (bar * 7); 
+        this.playLeadSynth(t, note, 0.1); 
+    }
+
+    playClimax(t, bar, step) {
+        this.playKick(t);
+        if (step === 4 || step === 12) this.playSnare(t, 0.4);
+        if (step % 4 === 0) this.playCrash(t);
+        
+        this.playBassPattern(t, step, 0, 'pedal');
+
+        if (step % 4 === 0) {
+            this.playBrass(t, 0, 0.5);
+            this.playBrass(t, 4, 0.5);
+            this.playBrass(t, 7, 0.5);
+        }
+
+        const run = [15, 14, 12, 10, 8, 7, 5, 4];
+        this.playLeadSynth(t, run[step % 8], 0.15);
+    }
+
+    // ==========================================
+    // --- PART 2: THE ESCALATION (Untouched) ---
+    // ==========================================
+
+    playIntro2(t, bar, step) {
+        if (step % 2 === 0) this.playSnare(t, 0.2 + (step/16)*0.5);
+        if (step === 0) this.playCrash(t);
+        
+        if (step === 0) this.playBass(t, -12, 0.8);
+        if (step === 0 || step === 8) this.playTimpani(t, 7, 0.9);
+    }
+
+    playThemeB2(t, bar, step) {
+        const roots = [5, 4, 0, 0]; 
+        const root = roots[bar % 4];
+
+        this.playBassPattern(t, step, root, 'pedal');
+        this.playRockBeat(t, step, true); 
+
+        if (step === 0) {
+            let brassNote = root + 7;
+            if (bar === 1) brassNote = root + 8;
+            if (bar === 3) brassNote = root + 12;
+            this.playBrass(t, brassNote, 2.0);
+        }
+        if (step === 8) {
+            let brassNote = root + 4;
+            if (bar === 3) brassNote = root + 15; 
+            this.playBrass(t, brassNote, 2.0);
+        }
+
+        const arp = [0, 2, 4, 7, 12, 7, 4, 2];
+        this.playLeadSynth(t, root + arp[step % 8], 0.1);
+    }
+
+    playArpeggios2(t, bar, step) {
+        this.playBassPattern(t, step, 4, 'pedal'); 
+        if (step % 4 === 0) this.playKick(t);
+        this.playSnare(t, 0.2 + (step/16)*0.4); 
+
+        const run = [15, 14, 12, 10, 8, 7, 5, 4, 12, 10, 8, 7, 5, 4, 2, 0];
+        
+        this.playHighStrings(t, run[step] + (bar % 2 === 0 ? 7 : 0), 0.1);
+        this.playLeadSynth(t, run[step] + (bar % 2 === 0 ? 0 : -7), 0.1); 
+    }
+
+    // ==========================================
+    // --- PART 3: THE LAMENT (Soft & Melodic) ---
+    // ==========================================
+
+    playIntro3(t, bar, step) {
+        // The drums drop out entirely. The tempo drops to a slow, emotional 120 BPM.
+        if (step === 0) {
+            this.playCrash(t); 
+            // A warm, sustained root chord (played softly)
+            this.playBass(t, -12, 1.0); 
+            this.playBrass(t, 0, 4.0); 
+            this.playBrass(t, 4, 4.0); 
+            this.playBrass(t, 7, 4.0); 
+        }
+    }
+
+    playLamentA(t, bar, step) {
+        // Classic Uematsu Tragic Chord Progression: VI -> iv -> V -> i
+        const chordRoots = [5, 3, 4, 0];
+        const root = chordRoots[bar % 4];
+
+        // Soft, sustained bass to anchor the emotion
+        if (step === 0) this.playBass(t, root - 12, 0.4);
+
+        // Warm, swelling "Cello" Pad using the Brass patch held very softly
+        if (step === 0) {
+            this.playBrass(t, root, 4.0);
+            this.playBrass(t, root + 2, 4.0);
+            this.playBrass(t, root + 4, 4.0);
+        }
+
+        // The "Harp" - High strings gently rolling 8th notes
+        const arpPatterns = [
+            [5, 7, 9, 12, 9, 7, 5, 7],    // VI chord
+            [3, 5, 7, 10, 7, 5, 3, 5],    // iv chord
+            [4, 6, 8, 11, 8, 6, 4, 6],   // V chord
+            [0, 2, 4, 7, 4, 2, 0, 2]     // i chord
+        ];
+        if (step % 2 === 0) {
+            this.playHighStrings(t, arpPatterns[bar % 4][step / 2], 0.08); // Very quiet pluck
+        }
+
+        // The "Violin" - A heartbreaking, slow lead melody
+        // Bar 0: A tragic sigh from the 6th to the 5th
+        if (bar === 0 && step === 0) this.playLeadSynth(t, 5 + 7, 2.0); 
+        if (bar === 0 && step === 8) this.playLeadSynth(t, 4 + 7, 2.0); 
+        // Bar 1: Sighing from the 3rd to the 2nd
+        if (bar === 1 && step === 0) this.playLeadSynth(t, 2 + 7, 2.0);
+        if (bar === 1 && step === 8) this.playLeadSynth(t, 1 + 7, 2.0);
+        // Bar 2: Reaching up for hope
+        if (bar === 2 && step === 0) this.playLeadSynth(t, 3 + 7, 2.0);
+        if (bar === 2 && step === 8) this.playLeadSynth(t, 4 + 7, 2.0);
+        // Bar 3: The leading tone resolving home
+        if (bar === 3 && step === 0) this.playLeadSynth(t, 6 + 7, 2.0);
+        if (bar === 3 && step === 8) this.playLeadSynth(t, 7 + 7, 2.0); // Resolves to octave
+    }
+
+    playLamentB(t, bar, step) {
+        const chordRoots = [5, 3, 4, 0];
+        const root = chordRoots[bar % 4];
+
+        // Introduce a very soft, distant "heartbeat" to signal the battle returning
+        if (step === 0 || step === 10) this.playKick(t);
+        if (step % 4 === 0) this.playHiHat(t);
+
+        if (step === 0) this.playBass(t, root - 12, 0.5);
+
+        // The Harp picks up speed (16th notes) swirling around the melody
+        const arpRun = [root, root + 2, root + 4, root + 7];
+        this.playHighStrings(t, arpRun[step % 4], 0.06);
+
+        // The Melody soars an octave higher for peak emotion
+        if (bar === 0 && step === 0) this.playLeadSynth(t, 5 + 14, 2.0); 
+        if (bar === 0 && step === 8) this.playLeadSynth(t, 4 + 14, 2.0); 
+        if (bar === 1 && step === 0) this.playLeadSynth(t, 2 + 14, 2.0);
+        if (bar === 1 && step === 8) this.playLeadSynth(t, 1 + 14, 2.0);
+        if (bar === 2 && step === 0) this.playLeadSynth(t, 3 + 14, 4.0); // Held long
+        if (bar === 3 && step === 0) this.playLeadSynth(t, 7 + 14, 4.0); // Soars to the high root
+    }
+
+    playAwakening(t, bar, step) {
+        // The transition back to the fight! 
+        // The tempo pushes up to 140 BPM to bridge the gap back to 172.
+        
+        // A rising snare march that gets louder and louder
+        this.playSnare(t, 0.05 + (step/16)*0.35 + (bar * 0.2)); 
+        this.playBassPattern(t, step, 4, 'pedal'); // Pedal on the Dominant V chord
+        
+        if (step % 4 === 0) this.playKick(t);
+
+        // Rising brass stabs spelling out the return of danger
+        if (step % 4 === 0) {
+            this.playBrass(t, 4 + (bar * 7), 0.5); // Climbs an octave on the second bar
+            this.playBrass(t, 6 + (bar * 7), 0.5);
+        }
+    }
+
+    // --- TRACKER LOGIC ---
+
+    playBassPattern(t, step, rootNote, style) {
+        if (style === 'gallop') {
+            const gallop = [1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1];
+            if (gallop[step]) this.playBass(t, rootNote, 0.5);
+        } else if (style === 'drive') {
+            if (step % 2 === 0) this.playBass(t, rootNote, 0.6);
+        } else if (style === 'pedal') {
+            if (step === 0 || step === 8) this.playBass(t, rootNote, 0.7);
+            if (step === 4 || step === 12) this.playBass(t, rootNote + 12, 0.4); 
+        }
+    }
+
+    playRockBeat(t, step, heavy) {
+        if (step === 0 || step === 8 || (heavy && step === 10)) this.playKick(t);
+        if (step === 4 || step === 12) this.playSnare(t, heavy ? 0.35 : 0.25);
+        if (step % 2 === 0) this.playHiHat(t);
+    }
+
+    // --- SYNTH PATCHES (Native Architecture) ---
+
+    getFreq(scaleDegree, octaveOffset) {
+        const mov = this.movements[this.currentMovementIndex];
+        const scaleMap = mov.scale;
+        const currentRoot = this.baseRoot * mov.rootRatio;
+        
+        let idx = scaleDegree;
+        let octOffset = octaveOffset;
+        const len = scaleMap.length;
+        
+        while (idx < 0) { idx += len; octOffset--; }
+        while (idx >= len) { idx -= len; octOffset++; }
+        
+        return currentRoot * Math.pow(2, (scaleMap[idx] + (octOffset * 12)) / 12);
+    }
+
+    playBass(t, note, vol) {
+        const freq = this.getFreq(note, -2);
+        const osc = this.ctx.createOscillator();
+        const g = this.ctx.createGain();
+        osc.type = 'square'; 
+        osc.frequency.value = freq;
+        g.gain.setValueAtTime(0, t);
+        g.gain.linearRampToValueAtTime(vol, t + 0.01);
+        g.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
+        osc.connect(g); g.connect(this.master);
+        osc.start(t); osc.stop(t + 0.3);
+        osc.onended = () => { osc.disconnect(); g.disconnect(); };
+    }
+
+    playBrass(t, note, durBeats) {
+        const freq = this.getFreq(note, -1);
+        const dur = durBeats * (60.0 / this.tempo);
+        const osc = this.ctx.createOscillator();
+        const g = this.ctx.createGain();
+        const f = this.ctx.createBiquadFilter();
+        
+        osc.type = 'sawtooth';
+        osc.frequency.value = freq;
+        
+        f.type = 'lowpass';
+        f.Q.value = 4;
+        f.frequency.setValueAtTime(800, t);
+        f.frequency.linearRampToValueAtTime(2500, t + 0.05); 
+        f.frequency.exponentialRampToValueAtTime(600, t + dur); 
+        
+        g.gain.setValueAtTime(0, t);
+        g.gain.linearRampToValueAtTime(0.35, t + 0.02);
+        g.gain.linearRampToValueAtTime(0.2, t + 0.1);
+        g.gain.linearRampToValueAtTime(0, t + dur);
+        
+        osc.connect(f); f.connect(g); g.connect(this.master);
+        osc.start(t); osc.stop(t + dur + 0.1);
+        osc.onended = () => { osc.disconnect(); f.disconnect(); g.disconnect(); };
+    }
+
+    playLeadSynth(t, note, durationInBeats) {
+        const freq = this.getFreq(note, 1);
+        const dur = durationInBeats * (60.0 / this.tempo);
+        const osc = this.ctx.createOscillator();
+        const g = this.ctx.createGain();
+        const f = this.ctx.createBiquadFilter();
+
+        osc.type = 'square';
+        
+        if (Math.random() > 0.5) {
+            osc.frequency.setValueAtTime(freq * 0.95, t);
+            osc.frequency.linearRampToValueAtTime(freq, t + 0.04);
+        } else {
+            osc.frequency.value = freq;
+        }
+        
+        if (dur > 0.3) {
+            const vib = this.ctx.createOscillator();
+            const vibG = this.ctx.createGain();
+            vib.frequency.value = 6; 
+            vibG.gain.setValueAtTime(0, t);
+            vibG.gain.linearRampToValueAtTime(8, t + 0.2); 
+            vib.connect(vibG); vibG.connect(osc.frequency);
+            vib.start(t); vib.stop(t + dur);
+            vib.onended = () => { vib.disconnect(); vibG.disconnect(); };
+        }
+
+        f.type = 'lowpass';
+        f.frequency.value = 4000;
+        
+        g.gain.setValueAtTime(0, t);
+        g.gain.linearRampToValueAtTime(0.25, t + 0.05);
+        g.gain.linearRampToValueAtTime(0.15, t + dur * 0.8);
+        g.gain.linearRampToValueAtTime(0, t + dur);
+
+        osc.connect(f); f.connect(g); g.connect(this.master);
+        osc.start(t); osc.stop(t + dur + 0.1);
+        osc.onended = () => { osc.disconnect(); f.disconnect(); g.disconnect(); };
+    }
+
+    playHighStrings(t, note, vol) {
+        const freq = this.getFreq(note, 1);
+        const osc = this.ctx.createOscillator();
+        const g = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.value = freq;
+        
+        g.gain.setValueAtTime(0, t);
+        g.gain.linearRampToValueAtTime(vol, t + 0.02);
+        g.gain.linearRampToValueAtTime(0, t + 0.15); 
+        
+        osc.connect(g); g.connect(this.master);
+        osc.start(t); osc.stop(t + 0.2);
+        osc.onended = () => { osc.disconnect(); g.disconnect(); };
+    }
+
+    playStab(t, note) {
+        const freq = this.getFreq(note, 0);
+        const osc = this.ctx.createOscillator();
+        const g = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.value = freq;
+        osc.detune.value = (Math.random() * 16) - 8; 
+        
+        g.gain.setValueAtTime(0, t);
+        g.gain.linearRampToValueAtTime(0.3, t + 0.01);
+        g.gain.exponentialRampToValueAtTime(0.001, t + 0.2); 
+        
+        osc.connect(g); g.connect(this.master);
+        osc.start(t); osc.stop(t + 0.25);
+        osc.onended = () => { osc.disconnect(); g.disconnect(); };
+    }
+
+    // --- DRUM MACHINE ---
+
+    playKick(t) {
+        const osc = this.ctx.createOscillator();
+        const g = this.ctx.createGain();
+        osc.frequency.setValueAtTime(150, t);
+        osc.frequency.exponentialRampToValueAtTime(0.01, t + 0.1);
+        g.gain.setValueAtTime(0.8, t);
+        g.gain.exponentialRampToValueAtTime(0.01, t + 0.1);
+        osc.connect(g); g.connect(this.master);
+        osc.start(t); osc.stop(t + 0.15);
+        osc.onended = () => { osc.disconnect(); g.disconnect(); };
+    }
+
+    playSnare(t, vol) {
+        const rate = this.ctx.sampleRate;
+        const len = rate * 0.15;
+        const buf = this.ctx.createBuffer(1, len, rate);
+        const data = buf.getChannelData(0);
+        for(let i=0; i<len; i++) data[i] = (Math.random() * 2 - 1);
+        const src = this.ctx.createBufferSource();
+        src.buffer = buf;
+        
+        const f = this.ctx.createBiquadFilter();
+        f.type = 'highpass';
+        f.frequency.value = 1200;
+        
+        const g = this.ctx.createGain();
+        g.gain.setValueAtTime(vol, t);
+        g.gain.exponentialRampToValueAtTime(0.01, t + 0.1);
+        
+        src.connect(f); f.connect(g); g.connect(this.master);
+        src.start(t);
+        src.onended = () => { src.disconnect(); f.disconnect(); g.disconnect(); };
+    }
+
+    playHiHat(t) {
+        const rate = this.ctx.sampleRate;
+        const len = rate * 0.05;
+        const buf = this.ctx.createBuffer(1, len, rate);
+        const data = buf.getChannelData(0);
+        for(let i=0; i<len; i++) data[i] = (Math.random() * 2 - 1);
+        const src = this.ctx.createBufferSource();
+        src.buffer = buf;
+        
+        const f = this.ctx.createBiquadFilter();
+        f.type = 'highpass';
+        f.frequency.value = 6000;
+        
+        const g = this.ctx.createGain();
+        g.gain.setValueAtTime(0.1, t);
+        g.gain.exponentialRampToValueAtTime(0.001, t + 0.04);
+        
+        src.connect(f); f.connect(g); g.connect(this.master);
+        src.start(t);
+        src.onended = () => { src.disconnect(); f.disconnect(); g.disconnect(); };
+    }
+
+    playTimpani(t, note, vol) {
+        const freq = this.getFreq(note, -3);
+        const osc = this.ctx.createOscillator();
+        const g = this.ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.value = freq;
+        osc.frequency.linearRampToValueAtTime(freq * 0.8, t + 0.2);
+        
+        g.gain.setValueAtTime(0, t);
+        g.gain.linearRampToValueAtTime(vol || 0.8, t + 0.01);
+        g.gain.exponentialRampToValueAtTime(0.01, t + 0.5);
+        
+        osc.connect(g); g.connect(this.master);
+        osc.start(t); osc.stop(t + 0.6);
+        osc.onended = () => { osc.disconnect(); g.disconnect(); };
+    }
+
+    playCrash(t) {
+        const rate = this.ctx.sampleRate;
+        const len = rate * 1.0;
+        const buf = this.ctx.createBuffer(1, len, rate);
+        const data = buf.getChannelData(0);
+        for(let i=0; i<len; i++) data[i] = (Math.random() * 2 - 1);
+        const src = this.ctx.createBufferSource();
+        src.buffer = buf;
+        
+        const f = this.ctx.createBiquadFilter();
+        f.type = 'highpass';
+        f.frequency.value = 4000;
+        
+        const g = this.ctx.createGain();
+        g.gain.setValueAtTime(0.3, t);
+        g.gain.exponentialRampToValueAtTime(0.01, t + 0.8);
+        
+        src.connect(f); f.connect(g); g.connect(this.master);
+        src.start(t);
+        src.onended = () => { src.disconnect(); f.disconnect(); g.disconnect(); };
+    }
+}
 class GenVoice {
     constructor(module, id) {
         this.mod = module; // Reference to main module
