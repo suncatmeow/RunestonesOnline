@@ -912,7 +912,7 @@ socket.on('suncat_compose', async (data, callback) => {
     
     try {
         const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-        const aiModel = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        const aiModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
 
         const prompt = `
         You are an elite AI Music Producer running an endless audio stream.
