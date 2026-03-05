@@ -41189,7 +41189,20 @@ class AiModule {
     async composeNext() {
         this.isFetching = true;
         
-        const currentState = `Current Tempo: ${Math.round(this.tempo)} BPM, Scale: Dorian [${this.scale.join(',')}].Consider choosing a different Tempo and also a different scale than the Last Scale used according to your current THOUGHT.`;
+        // Grab the last 16 notes from the fingers queue to show the AI how the last bar went
+        // If the queue is empty (brand new song), we just send dashes.
+        let lastFingers = "-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-";
+        if (this.fingersQueue.length >= 16) {
+            lastFingers = this.fingersQueue.slice(-16).map(n => n === null ? '-' : n).join(',');
+        }
+
+        const currentState = `
+        Current Tempo: ${Math.round(this.tempo)} BPM.
+        Current Scale Array: [${this.scale.join(',')}].
+        Last Melody (Fingers) Played: ${lastFingers}
+        
+        INSTRUCTION: Consider choosing a different Tempo or Scale according to your current THOUGHT, and ensure your new melody logically follows the 'Last Melody Played'.
+        `;
         
         socket.emit('suncat_compose', { currentState }, (aiMusicTags) => {
             if (aiMusicTags) {
