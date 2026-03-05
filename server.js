@@ -1017,8 +1017,13 @@ socket.on('suncat_compose', async (data, callback) => {
         const aiMusicTags = result.response.text();
         
         if (result.response.usageMetadata) {
+            const usage = result.response.usageMetadata;
             updateBudget(result.response.usageMetadata);
             console.log(`[Music AI Tokens]: ${result.response.usageMetadata.totalTokenCount}`);
+            io.emit('debug_stats', {
+                tokens: usage.totalTokenCount,
+                cost: totalSessionCost 
+            });
         }
         
         if (typeof callback === "function") callback(aiMusicTags);
