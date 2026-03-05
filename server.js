@@ -914,25 +914,34 @@ socket.on('suncat_compose', async (data, callback) => {
         const aiModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
 
         const prompt = `
-        You are an experimental, autonomous AI composer generating a 64-step (4-bar) polyphonic soundscape. 
-        Your goal is to create mathematically beautiful, emotionally resonant music using the provided synthesizer arrays.
+        You are an experimental, autonomous AI composer generating a 64-step polyphonic soundscape. 
         
         ${data.currentState}
 
-        THE RULES OF COMPOSITION (STRICT):
-        To prevent chaotic dissonance, you MUST anchor your arrays to a structured harmonic progression. 
+        CRITICAL FORMATTING RULES (FAILURE IS NOT AN OPTION):
+        1. DO NOT use note names like C4, F3, or block chords. 
+        2. ONLY use integers (0 to 11) representing scale degrees, or the minus sign '-' for rests.
+        3. You MUST use commas to separate EVERY SINGLE STEP. There must be EXACTLY 64 values (63 commas) per array.
+        4. [ROOT] MUST be a raw float number in Hz (e.g., 261.63 or 146.83). DO NOT use letters like 'C4'.
         
-        1. THE HARMONIC ANCHOR: Mentally divide the 64 steps into four 16-step bars. Assign a specific chord/scale degree to each bar (e.g., Bar 1: Root, Bar 2: 4th, Bar 3: 5th, Bar 4: Root).
-        2. [BASS]: This is your foundation. ONLY place notes on steps 0, 16, 32, and 48. These notes must outline your chosen chord progression. Fill the rest with '-'.
-        3. [BRASS]: This provides massive textural swells. ONLY place notes on steps 0 and 32. Use '-'.
-        4. [STRINGS]: You may use continuous 16th notes here, but they MUST be repeating arpeggios that strictly outline the current bar's chord. Do not deviate into random steps.
-        5. [LEAD]: This is the voice. It must be sparse and melodic. Limit yourself to a maximum of 5 notes per 16-step bar. Use '-' heavily to create space and phrasing.
-        6. [DRUMS]: Create an evolving, hypnotic rhythm. Use 'k', 's', 'h', 'c', and 't'. 
+        EXAMPLE OF PROPER BASS FORMAT (16 steps):
+        [BASS]0,-,-,-,4,-,-,-,5,-,-,-,0,-,-,-[/BASS]
 
-        GENERATE THESE EXACT TAGS FORMATTED AS 64 COMMA-SEPARATED VALUES:
-        [TEMPO] (Choose a tempo between 90 and 140 for atmospheric clarity) [/TEMPO]
-        [ROOT] (Choose a base frequency) [/ROOT]
-        [SCALE] (7 comma-separated semitones for the mood) [/SCALE]
+        EXAMPLE OF PROPER DRUM FORMAT (16 steps):
+        [DRUMS]c,-,h,-,s,-,h,-,k,k,h,-,s,-,t,t[/DRUMS]
+
+        COMPOSITIONAL RULES:
+        - THE HARMONIC ANCHOR: Mentally divide the 64 steps into four 16-step bars. Assign a specific chord to each.
+        - [BASS]: Only play notes on steps 0, 16, 32, 48 to anchor the progression. Use commas and '-' for the rest!
+        - [BRASS]: Massive textural swells. Only play on steps 0 and 32. Commas and '-' for the rest!
+        - [STRINGS]: Single-note repeating arpeggios outlining the chord (e.g., 0,2,4,7,0,2,4,7). NO CHORDS.
+        - [LEAD]: Sparse melody. Max 8 notes total across the 64 steps.
+        - [DRUMS]: Hypnotic rhythm using k, s, h, c, t, and -.
+
+        GENERATE THESE EXACT TAGS:
+        [TEMPO]120[/TEMPO]
+        [ROOT]146.83[/ROOT]
+        [SCALE]0,2,3,5,7,8,11[/SCALE]
         [LEAD]...[/LEAD]
         [BRASS]...[/BRASS]
         [STRINGS]...[/STRINGS]
