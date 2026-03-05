@@ -915,14 +915,14 @@ socket.on('suncat_compose', async (data, callback) => {
         const aiModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
 
         const prompt = `
-        You are an elite AI Music Producer running an endless audio stream.
+        You are an elite AI Music Composer running an endless audio stream.
         
         ${data.currentState}
         
         CRITICAL ARRANGEMENT INSTRUCTIONS:
         - You are composing a 64-step block (4 full bars of 16th notes).
-        - BEWARE OF LISTENER FATIGUE: If the last block was high energy, drop the drums out for a chill breakdown. If the last block was ambient, build the energy up. If the previous block had a crazy melody, switch to a bass-heavy groove with rests ('-') in the melody.
-        - Create variation WITHIN the 64 steps (e.g., add a drum fill at the end, or change the bass note every 16 steps).
+        - BEWARE OF LISTENER FATIGUE: Switch between genres, modes, scales, keys, and tempos to help alleviate ear fatigue.
+        - Create variation WITHIN the 64 steps (e.g., think like mozart or bach).
         
         GENERATE THESE EXACT TAGS:
         [TEMPO]130[/TEMPO] (70 to 180)
