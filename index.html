@@ -25924,7 +25924,7 @@ socket.on('debug_stats', (data) => {
     
     
         // Rounding to 6 decimal places to show tiny fractions of a cent
-        meter = `Tokens: ${data.tokens} | Turn Cost: $${data.cost.toFixed(6)}`;
+        meter = `Tokens: ${data.tokens} | Session Cost: $${data.cost.toFixed(6)}`;
         
        
     
@@ -41212,9 +41212,10 @@ class AiModule {
         });
     }
 
-    parseAiResponse(aiText) {
+   parseAiResponse(aiText) {
+        // More forgiving Regex that handles weird spacing or missing closing tags gracefully
         const getTag = (tag) => {
-            const regex = new RegExp(`\\[${tag}\\](.*?)\\[\\/${tag}\\]`, 's');
+            const regex = new RegExp(`\\[${tag}\\](.*?)(?:\\[\\/${tag}\\]|$)`, 's');
             const match = aiText.match(regex);
             return match ? match[1].trim() : null;
         };
@@ -41225,36 +41226,39 @@ class AiModule {
             console.log(`%c[Suncat's Mind] "${thought}"`, 'color: #ff9900; font-style: italic; background: #222; padding: 4px; border-radius: 4px;');
         }
 
-        // --- HEAR SUNCAT'S SONG (The UI Hook) ---
+        // --- HEAR SUNCAT'S SONG ---
         const lyrics = getTag('LYRICS');
         if (lyrics && lyrics !== '-' && lyrics !== '') {
             console.log(`%c[Suncat Sings] 🎵 "${lyrics}"`, 'color: #00e6e6; font-size: 16px; font-weight: bold;');
-            
-            // This broadcasts the lyrics to your game client/UI!
-            // You can listen for this anywhere in your frontend code with:
-            // document.addEventListener('suncat_lyrics', (e) => showOnScreen(e.detail));
             document.dispatchEvent(new CustomEvent('suncat_lyrics', { detail: lyrics }));
         }
 
         // --- GRAB NEW TEMPO & SCALE ---
         const newTempo = getTag('TEMPO');
-        if (newTempo) this.targetTempo = parseFloat(newTempo);
+        if (newTempo && !isNaN(parseFloat(newTempo))) {
+             this.targetTempo = parseFloat(newTempo);
+        }
 
         const newScale = getTag('SCALE');
-        if (newScale) this.scale = newScale.split(',').map(Number);
+        if (newScale) {
+             let parsedScale = newScale.split(',').map(Number).filter(n => !isNaN(n));
+             if (parsedScale.length > 0) this.scale = parsedScale;
+        }
 
-        // --- PARSE THE MUSIC ---
+        // --- PARSE THE MUSIC (The critical fix) ---
         const parseShortArr = (tag) => {
             const data = getTag(tag);
-            if (!data) return new Array(16).fill(null);
+            // If the AI completely forgot a tag, return an array of dashes so the song continues
+            if (!data) return new Array(16).fill(null); 
             
             let parsedArray = data.split(',').map(v => {
                 const val = v.trim();
                 if (val === '-' || val === '') return null; 
-                if (isNaN(val)) return val; 
-                return parseInt(val); 
+                let num = parseInt(val);
+                return isNaN(num) ? null : num; // Force invalid text into a rest
             });
 
+            // Force exactly 16 steps
             if (parsedArray.length > 16) parsedArray = parsedArray.slice(0, 16);
             while (parsedArray.length < 16) parsedArray.push(null);
 
@@ -41291,8 +41295,11 @@ class AiModule {
     }
 
     advanceNote() {
+        // FAILSAFE 6: If the AI hallucinated text for the tempo, reset it to 90 BPM
+        if (!isFinite(this.targetTempo) || this.targetTempo <= 0) this.targetTempo = 90;
+        if (!isFinite(this.tempo) || this.tempo <= 0) this.tempo = 90;
+
         // --- TEMPO GLIDE (Rubato) ---
-        // Smoothly drift the current tempo toward Suncat's target tempo by 0.2 BPM every 16th note
         if (this.tempo < this.targetTempo) this.tempo += 0.2;
         if (this.tempo > this.targetTempo) this.tempo -= 0.2;
         if (Math.abs(this.tempo - this.targetTempo) < 0.2) this.tempo = this.targetTempo;
@@ -41305,7 +41312,6 @@ class AiModule {
             this.composeNext();
         }
     }
-
     scheduleNote(tick, t) {
         const thumbNote = this.thumbQueue.length > 0 ? this.thumbQueue.shift() : null;
         const fingerNote = this.fingersQueue.length > 0 ? this.fingersQueue.shift() : null;
@@ -41338,25 +41344,43 @@ class AiModule {
     }
 
     getFreq(scaleDegree, octaveOffset) {
-        let d = scaleDegree;
-        let o = octaveOffset;
+        let d = parseInt(scaleDegree);
+        let o = parseInt(octaveOffset);
+        
+        // FAILSAFE 1: If the AI sent total garbage for the note, default to the root note (0)
+        if (isNaN(d)) d = 0;
+        if (isNaN(o)) o = 0;
+
         const len = this.scale.length;
+        if (len === 0) return this.rootFreq; // FAILSAFE 2: If scale is somehow empty
 
         while (d < 0) { d += len; o -= 1; }
         while (d >= len) { d -= len; o += 1; }
         
-        const semitone = this.scale[d];
+        let semitone = this.scale[d];
+        if (isNaN(semitone)) semitone = 0; // FAILSAFE 3: If the scale array got corrupted
+        
         return this.rootFreq * Math.pow(2, (semitone + (o * 12)) / 12);
     }
 
     playHarpString(t, degree, octave, duration, velocity, style = 'soft') {
+        // FAILSAFE 4: If time (t) broke, default to right now so it doesn't crash
+        if (!isFinite(t)) t = this.ctx.currentTime;
+        
         const freq = this.getFreq(degree, octave);
+        
+        // FAILSAFE 5: The Ultimate Shield. If frequency is STILL not a number, abort this note completely.
+        if (!isFinite(freq)) {
+            console.warn(`[Audio Shield] Blocked invalid frequency for note degree: ${degree}`);
+            return; 
+        }
+
         const osc = this.ctx.createOscillator();
         const g = this.ctx.createGain();
         const filter = this.ctx.createBiquadFilter();
 
         osc.type = 'triangle'; 
-        osc.frequency.setValueAtTime(freq, t);
+        osc.frequency.setValueAtTime(freq, t); // Safe now!
 
         let brightness = (octave >= 0) ? 3500 : 1500;
         let pitchSnap = 10;
@@ -41372,11 +41396,11 @@ class AiModule {
 
         filter.type = 'lowpass';
         filter.frequency.setValueAtTime(brightness, t); 
-        filter.frequency.exponentialRampToValueAtTime(brightness * 0.3, t + 0.1); 
+        filter.frequency.exponentialRampToValueAtTime(Math.max(brightness * 0.3, 1), t + 0.1); // Math.max prevents 0 which also crashes filters
         filter.frequency.exponentialRampToValueAtTime(200, t + duration);
 
         g.gain.setValueAtTime(0, t);
-        g.gain.linearRampToValueAtTime(velocity, t + 0.015); 
+        g.gain.linearRampToValueAtTime(isFinite(velocity) ? velocity : 0.5, t + 0.015); 
         g.gain.exponentialRampToValueAtTime(0.001, t + duration); 
 
         osc.connect(filter);
@@ -41386,7 +41410,7 @@ class AiModule {
         osc.start(t);
         osc.stop(t + duration + 0.1);
     }
-}
+  }
 class GenVoice {
     constructor(module, id) {
         this.mod = module; // Reference to main module
