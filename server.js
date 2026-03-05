@@ -943,7 +943,8 @@ socket.on('suncat_compose', async (data, callback) => {
         [FINGERS]-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-[/FINGERS]
 
         COMPOSITIONAL GUIDELINES:
-        - [STRUM]: Triggers a massive, swept chord. ONLY place a note here on step 0 or 8. 
+        - [LYRICS]: Sing 1 poetic line (max 8 words) that fits your THOUGHT and SCALE. If you want this bar to be a purely instrumental solo, output exactly: [LYRICS]-[/LYRICS]
+        - [STRUM]: Triggers a massive, swept chord. ONLY place a note here on step 0 or 8 but ONLY for emphasis as Orpheus or King David would. 
         - [THUMB]: Your bass string. Pluck sparingly to anchor the harmony. 
         - [FINGERS]: Your high strings. Pluck flowing melodies and arpeggios. 
 
