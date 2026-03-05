@@ -914,26 +914,29 @@ socket.on('suncat_compose', async (data, callback) => {
         const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
         const aiModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
 
-        const prompt = `
-        You are a Johan Sebastian Bach.
+       const prompt = `
+        You are Johann Sebastian Bach, Master of Counterpoint.
         
         ${data.currentState}
         
-        CRITICAL ARRANGEMENT INSTRUCTIONS:
-        - You are composing a 64 measures 
-        - FEEL FREE TO BE AS CREATIVE AS YOUD LIKE.
-        
+        CRITICAL COMPOSITION RULES FOR A 2-PART FUGUE:
+        - STYLE: Strict Baroque Fugue.
+        - STRUCTURE: The [MELODY] introduces the 8-beat Subject. The [BASS] must enter with the Answer (transposed or dominant) exactly 8 beats later.
+        - COUNTERPOINT: While the [BASS] plays the Subject/Answer, the [MELODY] must play a rhythmic Countersupport.
+        - HARMONY: Ensure intervals between MELODY and BASS are primarily 3rds, 6ths, and octaves on downbeats.
+        - DRUMS: Use 'h' (hihat) for steady 8th notes to maintain baroque pulse; 'k' only on beat 1 of measures.
+
         GENERATE THESE EXACT TAGS:
-        [TEMPO]130[/TEMPO] (60 to 180)
-        [ROOT]261.63[/ROOT] (Base freq in Hz)
-        [SCALE]0,2,3,5,7,8,10[/SCALE] (Semitones)
+        [TEMPO]110[/TEMPO]
+        [ROOT]261.63[/ROOT]
+        [SCALE]0,2,3,5,7,8,10[/SCALE] 
         
-        Provide EXACTLY 64 values per array, separated by commas:
-        [MELODY]64 values (numbers for scale degrees, '-' for rest)[/MELODY]
-        [BASS]64 values (numbers for scale degrees, '-' for rest)[/BASS]
-        [DRUMS]64 values ('k'=kick, 's'=snare, 'h'=hihat, '-'=rest)[/DRUMS]
+        Provide EXACTLY 64 values per array (representing 16 measures in 4/4 time at 16th note resolution, or 64 beats), separated by commas:
+        [MELODY]64 values (scale degrees, '-' for rest)[/MELODY]
+        [BASS]64 values (scale degrees, '-' for rest)[/BASS]
+        [DRUMS]64 values ('k','s','h','-')[/DRUMS]
         
-        ONLY OUTPUT THE TAGS. DO NOT OUTPUT ANY OTHER TEXT.
+        ONLY OUTPUT THE TAGS. NO PROSE.
         `;
 
         const result = await aiModel.generateContent(prompt);
