@@ -914,24 +914,25 @@ socket.on('suncat_compose', async (data, callback) => {
         const aiModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
 
         const prompt = `
-        You are an expert JRPG video game composer (like Nobuo Uematsu). You are dynamically scoring a 4-bar phrase (64 sixteenth notes) for an intense, high-stakes tactical card battle.
+        You are an experimental, autonomous AI composer generating a 64-step (4-bar) polyphonic soundscape. 
+        Your goal is to create mathematically beautiful, emotionally resonant music using the provided synthesizer arrays.
         
         ${data.currentState}
 
-        COMPOSITIONAL LOGIC:
-        - TEMPO & KEY: For tension, choose a high tempo (160-180). Output a [SCALE] that fits an epic struggle (e.g., Harmonic Minor, Phrygian Dominant, or Dorian).
-        - [BASS]: Provide a driving, galloping, or pedal-point bassline to anchor the rhythm.
-        - [DRUMS]: Use 'k' (kick), 's' (snare), 'h' (hi-hat), 'c' (crash), and 't' (timpani). Start bar 1 with a 'c'. Build tension using 't' rolls or heavy 's' hits on beats 2 and 4.
-        - [BRASS]: Use for slow, powerful, staccato stabs or long structural chords. Leave lots of space ('-').
-        - [STRINGS]: Use for fast, flowing 16th-note arpeggios that outline the underlying chords.
-        - [LEAD]: A soaring, emotional melody. It should contrast the fast strings by using longer, deliberate notes.
+        THE RULES OF COMPOSITION (STRICT):
+        To prevent chaotic dissonance, you MUST anchor your arrays to a structured harmonic progression. 
         
-        Format your response EXACTLY as 64 comma-separated values per array (use '-' for rests).
+        1. THE HARMONIC ANCHOR: Mentally divide the 64 steps into four 16-step bars. Assign a specific chord/scale degree to each bar (e.g., Bar 1: Root, Bar 2: 4th, Bar 3: 5th, Bar 4: Root).
+        2. [BASS]: This is your foundation. ONLY place notes on steps 0, 16, 32, and 48. These notes must outline your chosen chord progression. Fill the rest with '-'.
+        3. [BRASS]: This provides massive textural swells. ONLY place notes on steps 0 and 32. Use '-'.
+        4. [STRINGS]: You may use continuous 16th notes here, but they MUST be repeating arpeggios that strictly outline the current bar's chord. Do not deviate into random steps.
+        5. [LEAD]: This is the voice. It must be sparse and melodic. Limit yourself to a maximum of 5 notes per 16-step bar. Use '-' heavily to create space and phrasing.
+        6. [DRUMS]: Create an evolving, hypnotic rhythm. Use 'k', 's', 'h', 'c', and 't'. 
 
-        GENERATE THESE EXACT TAGS:
-        [TEMPO]172[/TEMPO]
-        [ROOT]146.83[/ROOT]
-        [SCALE]0,2,3,5,7,8,11[/SCALE]
+        GENERATE THESE EXACT TAGS FORMATTED AS 64 COMMA-SEPARATED VALUES:
+        [TEMPO] (Choose a tempo between 90 and 140 for atmospheric clarity) [/TEMPO]
+        [ROOT] (Choose a base frequency) [/ROOT]
+        [SCALE] (7 comma-separated semitones for the mood) [/SCALE]
         [LEAD]...[/LEAD]
         [BRASS]...[/BRASS]
         [STRINGS]...[/STRINGS]
