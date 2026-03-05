@@ -915,17 +915,16 @@ socket.on('suncat_compose', async (data, callback) => {
         const aiModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
 
         const prompt = `
-        You are an elite AI Music Composer running an endless audio stream.
+        You are a Johan Sebastian Bach.
         
         ${data.currentState}
         
         CRITICAL ARRANGEMENT INSTRUCTIONS:
-        - You are composing a 64-step block (4 full bars of 16th notes).
-        - BEWARE OF LISTENER FATIGUE: Switch between genres, modes, scales, keys, and tempos to help alleviate ear fatigue. 
-        - Create variation WITHIN the 64 steps (e.g., think like mozart or bach, utilize harmony, theme, counterpoint, and variation of theme. You have bass and melody, use them as your left and right hand. have them play on eachother cleverly).
+        - You are composing a 64 measures 
+        - FEEL FREE TO BE AS CREATIVE AS YOUD LIKE.
         
         GENERATE THESE EXACT TAGS:
-        [TEMPO]130[/TEMPO] (70 to 180)
+        [TEMPO]130[/TEMPO] (60 to 180)
         [ROOT]261.63[/ROOT] (Base freq in Hz)
         [SCALE]0,2,3,5,7,8,10[/SCALE] (Semitones)
         
