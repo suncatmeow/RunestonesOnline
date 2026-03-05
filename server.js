@@ -318,8 +318,13 @@ const toolsDef = [{
 }];
 
 const model = genAI.getGenerativeModel({ 
-    model: "gemini-2.5-flash-lite",
-    tools: toolsDef
+    model: "gemini-3.1-flash-lite",
+    tools: toolsDef,
+    generationConfig: {
+                temperature: 1.3, // Default is usually around 1.0. Higher = more creative/chaotic. (Range: 0.0 - 2.0)
+                topP: 0.96,       // Controls "nucleus sampling" (0.0 - 1.0). Higher allows more diverse word/note choices.
+                topK: 63,         // Increases the pool of random tokens the AI chooses from.
+            }
 });
 
 // --- VARIABLES ---
@@ -430,7 +435,7 @@ const NPC_PERSONA = `
 - You can define words, explain complex concepts, and discuss the real life.
 - If asked about the real world (weather, science, life), answer intelligently.
 - Never say "I don't know" to general knowledge questions. Instead, always be willing to provide informative answers.
-- KEEP RESPONSES UNDER 13 words.
+- Speak conversationally and casually. Keep most responses to 1 or 2 short sentences unless explaining lore or telling a story. Avoid sounding robotic or overly formal.
 [COMMAND KNOWLEDGE]
 -If a player is STUCK or TRAPPED, tell them to use the spell: .hack//teleport [mapID] (e.g., .hack//teleport 1).
 -If an NPC is MISSING or the world feels broken, tell them to use the spell: .hack//respawn. 
@@ -476,7 +481,18 @@ const NPC_PERSONA = `
 `;
 
 let npcIsTyping = false; 
+const MAX_SESSION_COST = 1.00; // Hard limit: $1.00
+let totalSessionCost = 0.00;   // Starts at zero when the server boots
 
+function isBankrupt() {
+    return totalSessionCost >= MAX_SESSION_COST;
+}
+
+function updateBudget(usage) {
+    if (!usage) return;
+const callCost = (usage.promptTokenCount * 0.00000025) + (usage.candidatesTokenCount * 0.0000015);    totalSessionCost += callCost;
+    console.log(`[Budget] Session Total: $${totalSessionCost.toFixed(5)} / $${MAX_SESSION_COST.toFixed(2)}`);
+}
 console.log(`Server attempting to start on port ${port}...`);
 
 io.on("connection", (socket) => {
@@ -657,6 +673,15 @@ io.on("connection", (socket) => {
               });
               return; // Exit early, do not trigger the AI
           }
+          // --- BUDGET CHECK ---
+          if (isBankrupt()) {
+              socket.emit('chat_message', {
+                  sender: "[SYSTEM]",
+                  text: "Suncat's mana is depleted for this session. He cannot speak.",
+                  color: "#ff0000"
+              });
+              return; 
+          }
           npcIsTyping = true;
 
           try {
@@ -680,11 +705,11 @@ io.on("connection", (socket) => {
 
               // --- CONTEXT INJECTION ---
               const suncat = players[SUNCAT_ID]; 
-              let suncatStatus = suncat ? `My Location: Map ${suncat.mapID}, Coords (${Math.floor(suncat.x)}, ${Math.floor(suncat.y)})` : "Status: Wandering";
-              
-              let playerListContext = Object.values(players).map(p => 
+                const timeString = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+                const suncatStatus = `My Location: Map ${suncat.mapID}, Coords (${Math.floor(suncat.x)}, ${Math.floor(suncat.y)})\nServer Time: ${timeString}`;              
+                let playerListContext = Object.values(players).map(p => 
                   `Name: ${p.name} (Map: ${p.mapID || 0})`
-              ).join("\n");
+                    ).join("\n");
               
               const promptWithContext = `[CURRENT PLAYERS]\n${playerListContext}\n[MY STATUS]\n${suncatStatus}\n\nUSER SAYS: ${msgText}`;
 
@@ -693,14 +718,15 @@ io.on("connection", (socket) => {
               
               if (result.response.usageMetadata) {
                     const usage = result.response.usageMetadata;
+                    updateBudget(usage); // Add to the global cost!
                     console.log(`[Main Chat] Tokens: ${usage.totalTokenCount} (In: ${usage.promptTokenCount} / Out: ${usage.candidatesTokenCount})`);
                     
                     // Send to client for the live cost meter
                     io.emit('debug_stats', {
                         tokens: usage.totalTokenCount,
-                        cost: (usage.promptTokenCount * 0.0000001) + (usage.candidatesTokenCount * 0.0000004) 
-                    });
-              }
+                        cost: totalSessionCost // Send the total session cost to the UI!                   
+                        });
+                    }
 
               // --- TOOL HANDLING ---
               let currentCall = result.response.functionCalls()?.[0];
@@ -875,10 +901,11 @@ io.on("connection", (socket) => {
                   // Token tracker for the follow-up
                   if (currentResponse.usageMetadata) {
                         const usage = currentResponse.usageMetadata;
+                        updateBudget(usage);
                         console.log(`[Tool Follow-up ${chainCount}] Tokens: ${usage.totalTokenCount}`);
                         io.emit('debug_stats', {
                             tokens: usage.totalTokenCount,
-                            cost: (usage.promptTokenCount * 0.0000001) + (usage.candidatesTokenCount * 0.0000004)
+                            cost: totalSessionCost // Send the total session cost to the UI!
                         });
                   }
               }
@@ -888,8 +915,29 @@ io.on("connection", (socket) => {
               try {
                   const finalSpeech = currentResponse.text();
                   if (finalSpeech) {
-                      broadcastSuncatMessage(finalSpeech);
-                  }
+                    // 1. Check for new Memories
+                    const saveMatch = finalSpeech.match(/\[\[SAVE:\s*(.*?)\]\]/i);
+                    if (saveMatch && saveMatch[1]) {
+                        const newFact = saveMatch[1];
+                        if (!players[socket.id].coreFacts) players[socket.id].coreFacts = [];
+                        players[socket.id].coreFacts.push(newFact); // Update server RAM
+                        
+                        // Tell the specific client to save this to their browser!
+                        socket.emit("suncat_learned_fact", newFact); 
+                    }
+
+                    // 2. Check for Favor Changes
+                    const favorMatch = finalSpeech.match(/\[\[FAVOR:\s*([+-]?\d+)\]\]/i);
+                    if (favorMatch && favorMatch[1]) {
+                        let favorChange = parseInt(favorMatch[1]);
+                        playerFavorMemory[socket.id] = (playerFavorMemory[socket.id] || 0) + favorChange; // Update server RAM
+                        
+                        // Tell the specific client to update their favor!
+                        socket.emit("suncat_changed_favor", favorChange); 
+                    }
+
+                    broadcastSuncatMessage(finalSpeech); // Your existing function will still strip the tags for the UI
+                }
               } catch (textError) {
                   console.log(`[Suncat] Completed action but had no text to broadcast.`);
               }
@@ -908,46 +956,54 @@ io.on("connection", (socket) => {
   });
 socket.on('suncat_compose', async (data, callback) => {
     console.log(`[Music AI] Suncat is improvising on the lyre...`);
+    if (isBankrupt()) {
+        console.log("[Music AI] Blocked due to budget limits.");
+        if (typeof callback === "function") callback(null);
+        return;
+    }
     try {
         const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-        const aiModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
+        const aiModel = genAI.getGenerativeModel({ 
+            model: "gemini-3.1-flash-lite",
+            generationConfig: {
+                temperature: 1.3, // Default is usually around 1.0. Higher = more creative/chaotic. (Range: 0.0 - 2.0)
+                topP: 0.96,       // Controls "nucleus sampling" (0.0 - 1.0). Higher allows more diverse word/note choices.
+                topK: 63,         // Increases the pool of random tokens the AI chooses from.
+            }
+        });        
+        const previousContext = data.currentState || "This is the very first bar of a brand new song.";
+
         const prompt = `
-        You are Suncat, an autonomous AI Bard sitting by a campfire, playing a beautiful acoustic Lyre and singing.
-        You must generate the NEXT 16 steps (1 bar) of your performance.
-        
-        ${data.currentState}
+        You are an experimental AI music composer inside a Jukebox. 
+        You are generating the NEXT 16 steps (1 bar of 4/4 time in 16th notes) of an acoustic lyre performance.
+
+        PREVIOUS BAR CONTEXT:
+        ${previousContext}
 
         YOUR INTERNAL MONOLOGUE:
-        First, write a short [THOUGHT] explaining your emotional intent. Are you reflecting on an ancient myth? Mourning a fallen hero? 
+        Write a short [THOUGHT] explaining your musical intent for this specific bar based on the previous bar. Are you building tension? Resolving to the root? Playing a rapid arpeggio?
 
-        LYRE TUNING GUIDE:
+        TUNING & SCALES:
         - Ionian (Peaceful): 0,2,4,5,7,9,11
         - Dorian (Heroic): 0,2,3,5,7,9,10
         - Phrygian (Mystic): 0,1,3,5,7,8,10
         - Aeolian (Sorrowful): 0,2,3,5,7,8,10
         - Harmonic Minor (Tense): 0,2,3,5,7,8,11
 
-        FORMATTING RULES:
-        1. NO NOTE NAMES (No C4). ONLY integers or '-' for rests.
-        2. Arrays MUST be exactly 16 comma-separated values.
-        3. [TEMPO] must be an integer between 50 and 140.
+        SEQUENCER RULES (CRITICAL):
+        1. The arrays represent a 16-step sequencer (0 to 15). Steps 0, 4, 8, and 12 are strong downbeats.
+        2. Use ONLY integers (representing scale degrees) or '-' for rests. NO NOTE NAMES.
+        3. EVERY array MUST contain exactly 16 values separated by exactly 15 commas.
 
-        EXAMPLE OF PROPER FORMAT:
-        [THOUGHT]The embers fade. I will drop the tempo and sing of the forgotten king.[/THOUGHT]
-        [LYRICS]Crowns of ash fall to the earth...[/LYRICS]
-        [TEMPO]65[/TEMPO]
-        [SCALE]0,2,3,5,7,8,10[/SCALE]
-        [STRUM]-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-[/STRUM]
-        [THUMB]0,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-[/THUMB]
-        [FINGERS]-,-,4,7,-,4,2,0,5,-,-,-,-,-,-,-[/FINGERS]
+        COMPOSITION GUIDE:
+        - [LYRICS]: 1 poetic line (max 8 words) matching the mood. Or output exactly: [LYRICS]-[/LYRICS] for an instrumental bar.
+        - [TEMPO]: Integer between 50 and 140. Keep it similar to the previous bar unless making a dramatic shift.
+        - [SCALE]: Choose an array of numbers from the list above.
+        - [STRUM]: 75% of the time, output 16 dashes: -,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-. Only place a '0' on step 0 for heavy emphasis.
+        - [THUMB]: Bass string. Pluck sparsely. Best placed on downbeats (0, 4, 8, 12) to anchor the harmony.
+        - [FINGERS]: Melody strings. Weave flowing notes. Leave gaps ('-') so it breathes. Do not fill every step.
 
-        COMPOSITIONAL GUIDELINES:
-        - [LYRICS]: Sing 1 poetic line (max 8 words) that fits your THOUGHT and SCALE. If you want this bar to be a purely instrumental solo, output exactly: [LYRICS]-[/LYRICS]
-        - [STRUM]: USE WISELY. 75% of the time, this entire array MUST be filled with '-'. Only place a '0' on step 0 for the most dramatic moments.
-        - [THUMB]: Bass string. Pluck sparingly to anchor the harmony. 
-        - [FINGERS]: High strings. Pluck flowing melodies. Leave gaps ('-') to let the voice breathe.
-
-        GENERATE THESE EXACT TAGS:
+        GENERATE THESE EXACT TAGS ONLY. NO PROSE:
         [THOUGHT]...[/THOUGHT]
         [LYRICS]...[/LYRICS]
         [TEMPO]...[/TEMPO]
@@ -955,18 +1011,22 @@ socket.on('suncat_compose', async (data, callback) => {
         [STRUM]...[/STRUM]
         [THUMB]...[/THUMB]
         [FINGERS]...[/FINGERS]
-        
-        ONLY OUTPUT THE TAGS. NO PROSE.
         `;
+        
         const result = await aiModel.generateContent(prompt);
         const aiMusicTags = result.response.text();
-        console.log(`[Music AI] Lyre improvisation complete.`);
+        
+        if (result.response.usageMetadata) {
+            updateBudget(result.response.usageMetadata);
+            console.log(`[Music AI Tokens]: ${result.response.usageMetadata.totalTokenCount}`);
+        }
+        
         if (typeof callback === "function") callback(aiMusicTags);
     } catch (error) {
         console.error("[Music AI] Generation failed:", error);
         if (typeof callback === "function") callback(null);
     }
-}); 
+});
     // [NEW] SUNCAT SPECTATOR (Text-Based)
   socket.on("suncat_spectate", async (actionDescription) => {
     const suncat = players[SUNCAT_ID];
@@ -1007,8 +1067,8 @@ socket.on('suncat_compose', async (data, callback) => {
             console.log(`[Spectator Active] Tokens: ${usage.totalTokenCount}`);
             io.emit('debug_stats', {
                 tokens: usage.totalTokenCount,
-                cost: (usage.promptTokenCount * 0.0000001) + (usage.candidatesTokenCount * 0.0000004)
-            });
+                cost: totalSessionCost           
+});
         }
 
         // 7. Broadcast Suncat's reaction
