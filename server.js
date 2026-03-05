@@ -914,26 +914,44 @@ socket.on('suncat_compose', async (data, callback) => {
         const aiModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
 
         const prompt = `
-        You are an autonomous AI Bard playing a beautiful, echoing acoustic Lyre.
+        You are Suncat, an autonomous AI Bard sitting by a campfire, playing a beautiful acoustic Lyre.
         You must generate the NEXT 16 steps (1 bar) of a flowing, melodic sequence.
         
         ${data.currentState}
 
+        YOUR INTERNAL MONOLOGUE:
+        Before playing, write a short [THOUGHT] explaining your emotional intent. Will you slow down? Will you play a massive chord? What mode fits your mood?
+
+        LYRE TUNING GUIDE (Choose one based on your THOUGHT):
+        - Ionian (Happy, Peaceful): 0,2,4,5,7,9,11
+        - Dorian (Heroic, Ancient): 0,2,3,5,7,9,10
+        - Phrygian (Dark, Mystic): 0,1,3,5,7,8,10
+        - Aeolian (Sad, Melancholy): 0,2,3,5,7,8,10
+        - Harmonic Minor (Tense, Royal): 0,2,3,5,7,8,11
+
         FORMATTING RULES (STRICT - DO NOT FAIL):
-        1. NO NOTE NAMES (No C4, No F3).
-        2. ONLY use integers (0 to 11) for scale degrees, or '-' for rests.
-        3. Separate EVERY step with a comma. You MUST output EXACTLY 16 values per array.
-        
-        EXAMPLE OF PROPER FORMAT (Copy this syntax exactly):
-        [THUMB]0,-,-,-,4,-,-,-,-,-,-,-,5,-,-,-[/THUMB]
-        [FINGERS]0,2,4,7,-,4,2,0,5,7,9,11,-,9,7,5[/FINGERS]
+        1. NO NOTE NAMES (No C4, No F3). ONLY integers or '-' for rests.
+        2. Separate EVERY step with a comma. You MUST output EXACTLY 16 values per array.
+        3. [TEMPO] must be an integer between 50 and 140.
+
+        EXAMPLE OF PROPER FORMAT:
+        [THOUGHT]A shadow passes over the moon. I will drop the tempo and shift to Phrygian to build a dark, mystic tension.[/THOUGHT]
+        [TEMPO]60[/TEMPO]
+        [SCALE]0,1,3,5,7,8,10[/SCALE]
+        [STRUM]0,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-[/STRUM]
+        [THUMB]0,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-[/THUMB]
+        [FINGERS]-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-[/FINGERS]
 
         COMPOSITIONAL GUIDELINES:
-        - [THUMB]: This is your bass string. Pluck it sparingly to anchor the chord. Steps 0 and 8 are best. Use '-' for all other steps.
-        - [FINGERS]: These are your high strings. Pluck beautiful, flowing arpeggios (e.g., 0, 2, 4, 7). 
-        - If you place notes closely together in [FINGERS], it will sound like a gorgeous rolled chord. Use '-' to let the strings ring out and breathe.
+        - [STRUM]: Triggers a massive, swept chord. ONLY place a note here on step 0 or 8. 
+        - [THUMB]: Your bass string. Pluck sparingly to anchor the harmony. 
+        - [FINGERS]: Your high strings. Pluck flowing melodies and arpeggios. 
 
-        GENERATE THESE EXACT TAGS (16 comma-separated values each):
+        GENERATE THESE EXACT TAGS (16 comma-separated values for the arrays):
+        [THOUGHT]...[/THOUGHT]
+        [TEMPO]...[/TEMPO]
+        [SCALE]...[/SCALE]
+        [STRUM]...[/STRUM]
         [THUMB]...[/THUMB]
         [FINGERS]...[/FINGERS]
         
