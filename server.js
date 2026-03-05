@@ -920,7 +920,7 @@ socket.on('suncat_compose', async (data, callback) => {
         ${data.currentState}
 
         YOUR INTERNAL MONOLOGUE:
-        First, write a short [THOUGHT] explaining your emotional intent. Are you reflecting on an ancient myth? Mourning a fallen hero? 
+        First, write a short [THOUGHT] explaining your emotional intent. Are you reflecting on an ancient myth? Mourning a fallen hero? If your [THOUGHT] shifts from bravery to sorrow, you MUST shift your [SCALE] and [TEMPO] immediately to match. Do not stay in one mode for more than 4 bars unless the story demands it.
 
         LYRE TUNING GUIDE:
         - Ionian (Peaceful): 0,2,4,5,7,9,11
