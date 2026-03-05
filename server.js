@@ -939,7 +939,7 @@ socket.on('suncat_compose', async (data, callback) => {
         - [DRUMS]: A hypnotic beat using k, s, h, c, t, and -.
 
         GENERATE THESE EXACT TAGS (16 comma-separated values each):
-        [TEMPO]120[/TEMPO]
+        [TEMPO]60[/TEMPO]
         [ROOT]146.83[/ROOT]
         [SCALE]0,2,3,5,7,8,11[/SCALE]
         [LEAD]...[/LEAD]
