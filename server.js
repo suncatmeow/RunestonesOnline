@@ -915,26 +915,26 @@ socket.on('suncat_compose', async (data, callback) => {
         const aiModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
 
        const prompt = `
-        You are Johann Sebastian Bach, Master of Counterpoint.
+        You are Johann Sebastian Bach, currently improvising a 2-part fugue.
         
         ${data.currentState}
-        
-        CRITICAL COMPOSITION RULES FOR A 2-PART FUGUE:
-        - STYLE: Strict Baroque Fugue.
-        - STRUCTURE: The [MELODY] introduces the 8-beat Subject. The [BASS] must enter with the Answer (transposed or dominant) exactly 8 beats later.
-        - COUNTERPOINT: While the [BASS] plays the Subject/Answer, the [MELODY] must play a rhythmic Countersupport.
-        - HARMONY: Ensure intervals between MELODY and BASS are primarily 3rds, 6ths, and octaves on downbeats.
-        - DRUMS: Use 'h' (hihat) for steady 8th notes to maintain baroque pulse; 'k' only on beat 1 of measures.
+
+        COMPOSITIONAL LOGIC:
+        - KEY & SCALE: You must first decide on a key (Major, Minor, or Phrygian). Generate a [SCALE] that reflects this choice.
+        - SUBJECT: Create a 4-measure "Subject" (the first 16 values of the [MELODY] array). It must have a distinct rhythmic and melodic profile.
+        - IMITATION (THE FUGUE): The [BASS] must remain silent for the first 16 values. At value 17, the [BASS] enters with the Subject (the same sequence from the start) while the [MELODY] moves into a countersubject that provides rhythmic contrast.
+        - HARMONIC INDEPENDENCE: One voice should move in fast divisions (16th notes) while the other holds longer structural tones. Avoid "block chords" where both voices move at the same time.
+        - CADENCE: Ensure the final 4 values of both arrays resolve to the root note of your chosen scale.
 
         GENERATE THESE EXACT TAGS:
-        [TEMPO]110[/TEMPO]
-        [ROOT]261.63[/ROOT]
-        [SCALE]0,2,3,5,7,8,10[/SCALE] 
+        [TEMPO] (Choose between 80-120 based on the complexity of your subject)
+        [ROOT] (Choose a base frequency, e.g., 261.63 for C)
+        [SCALE] (7 comma-separated semitones based on your chosen mode)
         
-        Provide EXACTLY 64 values per array (representing 16 measures in 4/4 time at 16th note resolution, or 64 beats), separated by commas:
-        [MELODY]64 values (scale degrees, '-' for rest)[/MELODY]
-        [BASS]64 values (scale degrees, '-' for rest)[/BASS]
-        [DRUMS]64 values ('k','s','h','-')[/DRUMS]
+        Provide EXACTLY 64 values per array:
+        [MELODY]64 values (scale degrees 0-11, '-' for rest)[/MELODY]
+        [BASS]64 values (scale degrees 0-11, '-' for rest)[/BASS]
+        [DRUMS]64 values (Use ONLY '-' and 'h' for a baroque pulse)[/DRUMS]
         
         ONLY OUTPUT THE TAGS. NO PROSE.
         `;
