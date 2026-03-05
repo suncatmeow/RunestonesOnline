@@ -906,6 +906,47 @@ io.on("connection", (socket) => {
       }
       await manageHistorySize(socket.id);
   });
+// --- FULLY AUTONOMOUS AI RADIO ---
+socket.on('suncat_compose', async (data, callback) => {
+    console.log(`[Music AI] Autonomous generation requested...`);
+    
+    try {
+        const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+        const aiModel = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+        const prompt = `
+        You are a fully autonomous AI Music Producer running an endless, evolving audio stream.
+        You have absolute creative control over the music. 
+        
+        ${data.currentState}
+        
+        CRITICAL INSTRUCTIONS:
+        - Generate the next 16-step musical loop.
+        - You decide the vibe! Evolve the current track smoothly, slowly introduce a new melody, change the drum pattern, or introduce a massive beat drop/tempo change if you feel like it.
+        - Ensure exactly 16 values per array, separated by commas.
+        
+        GENERATE THESE EXACT TAGS:
+        [TEMPO]130[/TEMPO] (Choose between 70 and 180)
+        [ROOT]261.63[/ROOT] (Base frequency in Hz. e.g. 261.63 for C4, 130.81 for C3)
+        [SCALE]0,2,3,5,7,8,10[/SCALE] (Semitones. Use whatever scale fits your vision)
+        [MELODY]0,-,2,3,4,-,7,6,-,-,0,2,-,3,4,-[/MELODY] (Numbers = scale degrees, '-' = rests)
+        [BASS]0,0,0,-,0,0,0,-,0,0,0,-,4,-,5,-[/BASS]
+        [DRUMS]k,h,h,h,s,h,k,h,k,h,h,h,s,h,h,-[/DRUMS] ('k'=kick, 's'=snare, 'h'=hihat, '-'=rest)
+        
+        ONLY OUTPUT THE TAGS. DO NOT OUTPUT ANY OTHER TEXT.
+        `;
+
+        const result = await aiModel.generateContent(prompt);
+        const aiMusicTags = result.response.text();
+        console.log(`[Music AI] Composition complete.`);
+        
+        if (typeof callback === "function") callback(aiMusicTags); 
+
+    } catch (error) {
+        console.error("[Music AI] Generation failed:", error);
+        if (typeof callback === "function") callback(null); 
+    }
+});
     // [NEW] SUNCAT SPECTATOR (Text-Based)
   socket.on("suncat_spectate", async (actionDescription) => {
     const suncat = players[SUNCAT_ID];
