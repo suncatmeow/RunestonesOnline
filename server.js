@@ -906,39 +906,40 @@ io.on("connection", (socket) => {
       }
       await manageHistorySize(socket.id);
   });
-// --- FULLY AUTONOMOUS AI RADIO ---
+// --- FULLY AUTONOMOUS AI RADIO (64-STEP UPGRADE) ---
 socket.on('suncat_compose', async (data, callback) => {
     console.log(`[Music AI] Autonomous generation requested...`);
     
     try {
         const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-        const aiModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
+        const aiModel = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
         const prompt = `
-        You are a fully autonomous AI Music Producer running an endless, evolving audio stream.
-        You have absolute creative control over the music. 
+        You are an elite AI Music Producer running an endless audio stream.
         
         ${data.currentState}
         
-        CRITICAL INSTRUCTIONS:
-        - Generate the next 16-step musical loop.
-        - You decide the vibe! Evolve the current track smoothly, slowly introduce a new melody, change the drum pattern, or introduce a massive beat drop/tempo change if you feel like it.
-        - Ensure exactly 16 values per array, separated by commas.
+        CRITICAL ARRANGEMENT INSTRUCTIONS:
+        - You are composing a 64-step block (4 full bars of 16th notes).
+        - BEWARE OF LISTENER FATIGUE: If the last block was high energy, drop the drums out for a chill breakdown. If the last block was ambient, build the energy up. If the previous block had a crazy melody, switch to a bass-heavy groove with rests ('-') in the melody.
+        - Create variation WITHIN the 64 steps (e.g., add a drum fill at the end, or change the bass note every 16 steps).
         
         GENERATE THESE EXACT TAGS:
-        [TEMPO]130[/TEMPO] (Choose between 70 and 180)
-        [ROOT]261.63[/ROOT] (Base frequency in Hz. e.g. 261.63 for C4, 130.81 for C3)
-        [SCALE]0,2,3,5,7,8,10[/SCALE] (Semitones. Use whatever scale fits your vision)
-        [MELODY]0,-,2,3,4,-,7,6,-,-,0,2,-,3,4,-[/MELODY] (Numbers = scale degrees, '-' = rests)
-        [BASS]0,0,0,-,0,0,0,-,0,0,0,-,4,-,5,-[/BASS]
-        [DRUMS]k,h,h,h,s,h,k,h,k,h,h,h,s,h,h,-[/DRUMS] ('k'=kick, 's'=snare, 'h'=hihat, '-'=rest)
+        [TEMPO]130[/TEMPO] (70 to 180)
+        [ROOT]261.63[/ROOT] (Base freq in Hz)
+        [SCALE]0,2,3,5,7,8,10[/SCALE] (Semitones)
+        
+        Provide EXACTLY 64 values per array, separated by commas:
+        [MELODY]64 values (numbers for scale degrees, '-' for rest)[/MELODY]
+        [BASS]64 values (numbers for scale degrees, '-' for rest)[/BASS]
+        [DRUMS]64 values ('k'=kick, 's'=snare, 'h'=hihat, '-'=rest)[/DRUMS]
         
         ONLY OUTPUT THE TAGS. DO NOT OUTPUT ANY OTHER TEXT.
         `;
 
         const result = await aiModel.generateContent(prompt);
         const aiMusicTags = result.response.text();
-        console.log(`[Music AI] Composition complete.`);
+        console.log(`[Music AI] 64-Step Composition complete.`);
         
         if (typeof callback === "function") callback(aiMusicTags); 
 
