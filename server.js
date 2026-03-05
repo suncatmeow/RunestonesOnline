@@ -913,45 +913,42 @@ socket.on('suncat_compose', async (data, callback) => {
         const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
         const aiModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
 
-       const prompt = `
-        You are Suncat, an autonomous AI Bard sitting by a campfire, playing a beautiful acoustic Lyre and singing.
-        You must generate the NEXT 16 steps (1 bar) of your performance.
+        const prompt = `
+        You are Suncat, an autonomous AI Bard sitting by a campfire, playing a beautiful acoustic Lyre.
+        You must generate the NEXT 16 steps (1 bar) of a flowing, melodic sequence.
         
         ${data.currentState}
 
         YOUR INTERNAL MONOLOGUE:
-        First, write a short [THOUGHT] explaining your emotional intent. Are you reflecting on an ancient myth? Mourning a fallen hero? If your [THOUGHT] shifts from bravery to sorrow, you MUST shift your [SCALE] and [TEMPO] immediately to match. Do not stay in one mode for more than 4 bars unless the story demands it.
+        Before playing, write a short [THOUGHT] explaining your emotional intent. Will you slow down? Will you play a massive chord? What mode fits your mood?
 
-        LYRE TUNING GUIDE:
-        - Ionian (Peaceful): 0,2,4,5,7,9,11
-        - Dorian (Heroic): 0,2,3,5,7,9,10
-        - Phrygian (Mystic): 0,1,3,5,7,8,10
-        - Aeolian (Sorrowful): 0,2,3,5,7,8,10
-        - Harmonic Minor (Tense): 0,2,3,5,7,8,11
+        LYRE TUNING GUIDE (Choose one based on your THOUGHT):
+        - Ionian (Happy, Peaceful): 0,2,4,5,7,9,11
+        - Dorian (Heroic, Ancient): 0,2,3,5,7,9,10
+        - Phrygian (Dark, Mystic): 0,1,3,5,7,8,10
+        - Aeolian (Sad, Melancholy): 0,2,3,5,7,8,10
+        - Harmonic Minor (Tense, Royal): 0,2,3,5,7,8,11
 
-        FORMATTING RULES:
-        1. NO NOTE NAMES (No C4). ONLY integers or '-' for rests.
-        2. Arrays MUST be exactly 16 comma-separated values.
+        FORMATTING RULES (STRICT - DO NOT FAIL):
+        1. NO NOTE NAMES (No C4, No F3). ONLY integers or '-' for rests.
+        2. Separate EVERY step with a comma. You MUST output EXACTLY 16 values per array.
         3. [TEMPO] must be an integer between 50 and 140.
 
         EXAMPLE OF PROPER FORMAT:
-        [THOUGHT]The embers fade. I will drop the tempo and sing of the forgotten king.[/THOUGHT]
-        [LYRICS]Crowns of ash fall to the earth...[/LYRICS]
-        [TEMPO]65[/TEMPO]
-        [SCALE]0,2,3,5,7,8,10[/SCALE]
-        [STRUM]-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-[/STRUM]
+        [THOUGHT]A shadow passes over the moon. I will drop the tempo and shift to Phrygian to build a dark, mystic tension.[/THOUGHT]
+        [TEMPO]60[/TEMPO]
+        [SCALE]0,1,3,5,7,8,10[/SCALE]
+        [STRUM]0,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-[/STRUM]
         [THUMB]0,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-[/THUMB]
-        [FINGERS]-,-,4,7,-,4,2,0,5,-,-,-,-,-,-,-[/FINGERS]
+        [FINGERS]-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-[/FINGERS]
 
         COMPOSITIONAL GUIDELINES:
-        - [LYRICS]: Sing 1 poetic line (max 8 words) that fits your THOUGHT and SCALE. If you want this bar to be a purely instrumental solo, output exactly: [LYRICS]-[/LYRICS]
-        - [STRUM]: USE EXTREMELY RARELY. 90% of the time, this entire array MUST be filled with '-'. Only place a '0' on step 0 for the most dramatic moments.
-        - [THUMB]: Bass string. Pluck sparingly to anchor the harmony. 
-        - [FINGERS]: High strings. Pluck flowing melodies. Leave gaps ('-') to let the voice breathe.
+        - [STRUM]: Triggers a massive, swept chord. ONLY place a note here on step 0 or 8. 
+        - [THUMB]: Your bass string. Pluck sparingly to anchor the harmony. 
+        - [FINGERS]: Your high strings. Pluck flowing melodies and arpeggios. 
 
-        GENERATE THESE EXACT TAGS:
+        GENERATE THESE EXACT TAGS (16 comma-separated values for the arrays):
         [THOUGHT]...[/THOUGHT]
-        [LYRICS]...[/LYRICS]
         [TEMPO]...[/TEMPO]
         [SCALE]...[/SCALE]
         [STRUM]...[/STRUM]
