@@ -91,7 +91,7 @@ let winSpellTie = 0;
 let winTie = 0;
 let foeWinsTie = 0;
 let dragonHoard = 0;
-let songcount = 46;
+let songcount = 47;
 let grimIndex = 0;
 var preGame = 0;
 var viewingFullDeck = false;
@@ -25295,6 +25295,18 @@ Player[1].opponent = Player[0];
     if (typeof btnYes !== 'undefined') btnYes.visible = false;
     if (typeof btnNo !== 'undefined') btnNo.visible = false;
 }
+// Listen for Suncat making a new memory
+socket.on("suncat_learned_fact", (newFact) => {
+    console.log(`[Suncat Memory] Saving to browser: ${newFact}`);
+    saveCoreFact(newFact); // Your existing function!
+});
+
+// Listen for Suncat changing his opinion of you
+socket.on("suncat_changed_favor", (favorChangeAmount) => {
+    console.log(`[Suncat Favor] Adjusted by: ${favorChangeAmount}`);
+    updateFavor(favorChangeAmount); // Your existing function!
+});
+
 // 1. UPDATE PLAYERS (Movement & Spawning)
 socket.on("updatePlayers", (serverPlayers) => {
     for (let id in serverPlayers) {
@@ -26244,7 +26256,12 @@ const MusicEngine = {
         this.currentSong = new Battle8Module(this.ctx, this.masterGain);
         this.style = "Battle 8";
         break;
-      default:
+      case 46: case 'ai':
+        this.currentSong = new AiModule(this.ctx, this.masterGain);
+        this.style = "Suncat";
+        break;
+      
+        default:
         console.error("Unknown style:", style);
         return;
     }
@@ -41097,6 +41114,266 @@ class Battle8Module {
         src.onended = () => { src.disconnect(); f.disconnect(); g.disconnect(); };
     }
 }
+// MODULE 43: Autonomous 64-Step AI Arranger Module
+
+
+class AiModule {
+    constructor(ctx, dest) {
+      
+        this.ctx = ctx;
+        this.dest = dest;
+        this.timer = null;
+        this.isPlaying = false;
+        this.isFetching = false;
+
+        // --- 1. THE LYRE TUNING ---
+        this.tempo = 90; 
+        this.targetTempo = 90; // The tempo Suncat WANTS to reach
+        this.rootFreq = 146.83; 
+        this.scale = [0, 2, 3, 5, 7, 9, 10]; 
+        
+        // --- 2. THE HANDS (FIFO Queues) ---
+        this.thumbQueue = [];   
+        this.fingersQueue = []; 
+        this.strumQueue = [];   
+
+        for(let i=0; i<32; i++) {
+            this.thumbQueue.push(i % 16 === 0 ? 0 : null); 
+            this.strumQueue.push(i === 0 ? 0 : null);
+            if (i % 2 === 0) {
+                const arp = [0, 2, 4, 7, 4, 2];
+                this.fingersQueue.push(arp[(i/2) % arp.length]);
+            } else {
+                this.fingersQueue.push(null);
+            }
+        }
+
+        // --- 3. THE ACOUSTIC SPACE ---
+        this.tick = 0;
+        this.nextNoteTime = 0.0;
+        this.scheduleAheadTime = 0.1;
+        this.lookahead = 25.0;
+
+        this.master = ctx.createGain();
+        this.master.gain.value = 0.7;
+
+        this.reverb = ctx.createConvolver();
+        this.reverb.buffer = this.createImpulse(4.0); 
+        this.revGain = ctx.createGain();
+        this.revGain.gain.value = 0.5; 
+
+        this.master.connect(this.dest);
+        this.master.connect(this.reverb);
+        this.reverb.connect(this.revGain);
+        this.revGain.connect(this.dest);
+
+        this.start();
+        if (typeof socket !== 'undefined') {
+            this.composeNext(); 
+        }
+    }
+
+    createImpulse(duration) {
+        const rate = this.ctx.sampleRate;
+        const len = rate * duration;
+        const buf = this.ctx.createBuffer(2, len, rate);
+        for (let i = 0; i < 2; i++) {
+            const ch = buf.getChannelData(i);
+            for (let j = 0; j < len; j++) {
+                ch[j] = (Math.random() * 2 - 1) * Math.pow(1 - j / len, 3);
+            }
+        }
+        return buf;
+    }
+
+    async composeNext() {
+        this.isFetching = true;
+        
+        const currentState = `Current Tempo: ${Math.round(this.tempo)} BPM, Scale: Dorian [${this.scale.join(',')}].Consider choosing a different Tempo and also a different scale than the Last Scale used according to your current THOUGHT.`;
+        
+        socket.emit('suncat_compose', { currentState }, (aiMusicTags) => {
+            if (aiMusicTags) {
+                this.parseAiResponse(aiMusicTags);
+            }
+            this.isFetching = false; 
+        });
+    }
+
+    parseAiResponse(aiText) {
+        const getTag = (tag) => {
+            const regex = new RegExp(`\\[${tag}\\](.*?)\\[\\/${tag}\\]`, 's');
+            const match = aiText.match(regex);
+            return match ? match[1].trim() : null;
+        };
+
+        // --- READ SUNCAT'S MIND ---
+        const thought = getTag('THOUGHT');
+        if (thought) {
+            console.log(`%c[Suncat's Mind] "${thought}"`, 'color: #ff9900; font-style: italic; background: #222; padding: 4px; border-radius: 4px;');
+        }
+
+        // --- HEAR SUNCAT'S SONG (The UI Hook) ---
+        const lyrics = getTag('LYRICS');
+        if (lyrics && lyrics !== '-' && lyrics !== '') {
+            console.log(`%c[Suncat Sings] 🎵 "${lyrics}"`, 'color: #00e6e6; font-size: 16px; font-weight: bold;');
+            
+            // This broadcasts the lyrics to your game client/UI!
+            // You can listen for this anywhere in your frontend code with:
+            // document.addEventListener('suncat_lyrics', (e) => showOnScreen(e.detail));
+            document.dispatchEvent(new CustomEvent('suncat_lyrics', { detail: lyrics }));
+        }
+
+        // --- GRAB NEW TEMPO & SCALE ---
+        const newTempo = getTag('TEMPO');
+        if (newTempo) this.targetTempo = parseFloat(newTempo);
+
+        const newScale = getTag('SCALE');
+        if (newScale) this.scale = newScale.split(',').map(Number);
+
+        // --- PARSE THE MUSIC ---
+        const parseShortArr = (tag) => {
+            const data = getTag(tag);
+            if (!data) return new Array(16).fill(null);
+            
+            let parsedArray = data.split(',').map(v => {
+                const val = v.trim();
+                if (val === '-' || val === '') return null; 
+                if (isNaN(val)) return val; 
+                return parseInt(val); 
+            });
+
+            if (parsedArray.length > 16) parsedArray = parsedArray.slice(0, 16);
+            while (parsedArray.length < 16) parsedArray.push(null);
+
+            return parsedArray;
+        };
+
+        this.thumbQueue.push(...parseShortArr('THUMB'));
+        this.fingersQueue.push(...parseShortArr('FINGERS'));
+        this.strumQueue.push(...parseShortArr('STRUM')); 
+    }
+    start() {
+        if (this.isPlaying) return;
+        this.ctx.resume();
+        this.isPlaying = true;
+        this.nextNoteTime = this.ctx.currentTime + 0.1;
+        this.tick = 0;
+        this.scheduler();
+    }
+
+    stop() {
+        this.isPlaying = false;
+        if (this.timer) clearTimeout(this.timer);
+        this.master.gain.setTargetAtTime(0, this.ctx.currentTime, 0.5);
+    }
+
+    scheduler() {
+        while (this.nextNoteTime < this.ctx.currentTime + this.scheduleAheadTime) {
+            this.scheduleNote(this.tick, this.nextNoteTime);
+            this.advanceNote();
+        }
+        if (this.isPlaying) {
+            this.timer = setTimeout(() => this.scheduler(), this.lookahead);
+        }
+    }
+
+    advanceNote() {
+        // --- TEMPO GLIDE (Rubato) ---
+        // Smoothly drift the current tempo toward Suncat's target tempo by 0.2 BPM every 16th note
+        if (this.tempo < this.targetTempo) this.tempo += 0.2;
+        if (this.tempo > this.targetTempo) this.tempo -= 0.2;
+        if (Math.abs(this.tempo - this.targetTempo) < 0.2) this.tempo = this.targetTempo;
+
+        const secondsPerBeat = 60.0 / this.tempo;
+        this.nextNoteTime += 0.25 * secondsPerBeat; 
+        this.tick++;
+
+        if (this.thumbQueue.length < 32 && !this.isFetching) {
+            this.composeNext();
+        }
+    }
+
+    scheduleNote(tick, t) {
+        const thumbNote = this.thumbQueue.length > 0 ? this.thumbQueue.shift() : null;
+        const fingerNote = this.fingersQueue.length > 0 ? this.fingersQueue.shift() : null;
+        const strumNote = this.strumQueue.length > 0 ? this.strumQueue.shift() : null; 
+
+        if (strumNote !== null && typeof strumNote === 'number' && !isNaN(strumNote)) {
+            this.strumChord(t, strumNote);
+        }
+
+        if (thumbNote !== null && typeof thumbNote === 'number' && !isNaN(thumbNote)) {
+            this.playHarpString(t, thumbNote, -1, 3.0, 0.6, 'soft'); 
+        }
+
+        if (fingerNote !== null && typeof fingerNote === 'number' && !isNaN(fingerNote)) {
+            const oct = (fingerNote > 7) ? 1 : 0; 
+            const swing = (Math.random() * 0.02); 
+            this.playHarpString(t + swing, fingerNote, oct, 2.5, 0.4, 'soft'); 
+        }
+    }
+
+    strumChord(t, rootDegree) {
+        const chordOffsets = [0, 2, 4, 7, 9]; 
+        let delay = 0;
+        
+        chordOffsets.forEach((interval, i) => {
+            const oct = (i < 3) ? -1 : 0; 
+            this.playHarpString(t + delay, rootDegree + interval, oct, 3.5, 0.45, 'hard');
+            delay += 0.045; 
+        });
+    }
+
+    getFreq(scaleDegree, octaveOffset) {
+        let d = scaleDegree;
+        let o = octaveOffset;
+        const len = this.scale.length;
+
+        while (d < 0) { d += len; o -= 1; }
+        while (d >= len) { d -= len; o += 1; }
+        
+        const semitone = this.scale[d];
+        return this.rootFreq * Math.pow(2, (semitone + (o * 12)) / 12);
+    }
+
+    playHarpString(t, degree, octave, duration, velocity, style = 'soft') {
+        const freq = this.getFreq(degree, octave);
+        const osc = this.ctx.createOscillator();
+        const g = this.ctx.createGain();
+        const filter = this.ctx.createBiquadFilter();
+
+        osc.type = 'triangle'; 
+        osc.frequency.setValueAtTime(freq, t);
+
+        let brightness = (octave >= 0) ? 3500 : 1500;
+        let pitchSnap = 10;
+
+        if (style === 'hard') {
+            brightness = 6000; 
+            pitchSnap = 25;    
+            velocity *= 1.3;   
+        }
+
+        osc.detune.setValueAtTime(pitchSnap, t);
+        osc.detune.linearRampToValueAtTime(0, t + 0.05);
+
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(brightness, t); 
+        filter.frequency.exponentialRampToValueAtTime(brightness * 0.3, t + 0.1); 
+        filter.frequency.exponentialRampToValueAtTime(200, t + duration);
+
+        g.gain.setValueAtTime(0, t);
+        g.gain.linearRampToValueAtTime(velocity, t + 0.015); 
+        g.gain.exponentialRampToValueAtTime(0.001, t + duration); 
+
+        osc.connect(filter);
+        filter.connect(g);
+        g.connect(this.master);
+
+        osc.start(t);
+        osc.stop(t + duration + 0.1);
+    }
+}
 class GenVoice {
     constructor(module, id) {
         this.mod = module; // Reference to main module
@@ -41245,6 +41522,19 @@ class GenVoice {
         };
     }
 }
+let currentSuncatLyric = "";
+
+// Listen for the custom event we added to the parser
+document.addEventListener('suncat_lyrics', (e) => {
+    const newLyric = e.detail;
+    
+    // If Suncat sends a dash, clear the text. Otherwise, update it!
+    if (newLyric === '-') {
+        currentSuncatLyric = "";
+    } else {
+        currentSuncatLyric = newLyric;
+    }
+});
 ////////////////////////////////
 function drawField(){
   //////////////main game timer///////
@@ -41548,13 +41838,15 @@ function drawField(){
       drawText(0, 1.75, 10, 0.5, MusicEngine.style, "rgba(100,100,100,1)", 1,'center');
       
     }
-    
+  
 
     drawText(0, .5, 10, 0.6, "Jukebox", "rgba(100,100,100,1)", 1,'center');
     drawText(0, 8.75, 2, 1, '<<Back', "rgba(100,100,100,1)", 1);
     drawPortrait(-1,1,3,.2);
     drawPortrait(-2,7,3,.2);
     MessageBox.show(4.4,3.37,1,1.25,1.25,'','jrpg_btn',1,0)
+         if (song == 46){ drawText(0, 2.25, 10, 0.6, '' + currentSuncatLyric
+, "rgba(255,100,0,1)", 1,'center');}
   }
   else if (startGame == 'options'){
     ctx.fillStyle = "rgba(0,6,13,1)";
