@@ -907,38 +907,38 @@ io.on("connection", (socket) => {
       await manageHistorySize(socket.id);
   });
 socket.on('suncat_compose', async (data, callback) => {
-    console.log(`[Music AI] Orchestral generation requested...`);
+    console.log(`[Music AI] Fetching next 16 steps of the infinite stream...`);
     
     try {
         const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
         const aiModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
 
         const prompt = `
-        You are an experimental, autonomous AI composer generating a 64-step polyphonic soundscape. 
+        You are an autonomous AI acting as a live generative music stream.
+        You must generate the NEXT 16 steps (1 bar) of the sequence. 
         
         ${data.currentState}
 
-        CRITICAL FORMATTING RULES (FAILURE IS NOT AN OPTION):
-        1. DO NOT use note names like C4, F3, or block chords. 
-        2. ONLY use integers (0 to 11) representing scale degrees, or the minus sign '-' for rests.
-        3. You MUST use commas to separate EVERY SINGLE STEP. There must be EXACTLY 64 values (63 commas) per array.
-        4. [ROOT] MUST be a raw float number in Hz (e.g., 261.63 or 146.83). DO NOT use letters like 'C4'.
+        FORMATTING RULES (STRICT - DO NOT FAIL):
+        1. NO NOTE NAMES (No C4, No F3).
+        2. NO BLOCK CHORDS.
+        3. ONLY use integers (0 to 11) for notes, or '-' for rests.
+        4. Separate EVERY step with a comma. You MUST output EXACTLY 16 values (15 commas) per array.
+        5. [ROOT] MUST be a float in Hz (e.g., 146.83). DO NOT use letters.
         
-        EXAMPLE OF PROPER BASS FORMAT (16 steps):
+        EXAMPLE OF PROPER FORMAT (Copy this syntax exactly):
         [BASS]0,-,-,-,4,-,-,-,5,-,-,-,0,-,-,-[/BASS]
+        [DRUMS]k,-,h,-,s,-,h,-,k,k,h,-,s,-,t,t[/DRUMS]
 
-        EXAMPLE OF PROPER DRUM FORMAT (16 steps):
-        [DRUMS]c,-,h,-,s,-,h,-,k,k,h,-,s,-,t,t[/DRUMS]
+        COMPOSITIONAL GUIDELINES FOR THIS 16-STEP BLOCK:
+        - Evolve the harmony. Pick a specific chord/scale degree to focus on for these 16 steps.
+        - [BASS]: Anchor the rhythm. Only place notes on steps 0 and 8. The rest are '-'.
+        - [BRASS]: Massive textural stabs. Max 1 or 2 notes for the whole block.
+        - [STRINGS]: Fast, repeating single-note arpeggios that outline your chosen chord.
+        - [LEAD]: Sparse melody. Use '-' heavily to let the track breathe. Max 4 notes.
+        - [DRUMS]: A hypnotic beat using k, s, h, c, t, and -.
 
-        COMPOSITIONAL RULES:
-        - THE HARMONIC ANCHOR: Mentally divide the 64 steps into four 16-step bars. Assign a specific chord to each.
-        - [BASS]: Only play notes on steps 0, 16, 32, 48 to anchor the progression. Use commas and '-' for the rest!
-        - [BRASS]: Massive textural swells. Only play on steps 0 and 32. Commas and '-' for the rest!
-        - [STRINGS]: Single-note repeating arpeggios outlining the chord (e.g., 0,2,4,7,0,2,4,7). NO CHORDS.
-        - [LEAD]: Sparse melody. Max 8 notes total across the 64 steps.
-        - [DRUMS]: Hypnotic rhythm using k, s, h, c, t, and -.
-
-        GENERATE THESE EXACT TAGS:
+        GENERATE THESE EXACT TAGS (16 comma-separated values each):
         [TEMPO]120[/TEMPO]
         [ROOT]146.83[/ROOT]
         [SCALE]0,2,3,5,7,8,11[/SCALE]
@@ -953,7 +953,7 @@ socket.on('suncat_compose', async (data, callback) => {
 
         const result = await aiModel.generateContent(prompt);
         const aiMusicTags = result.response.text();
-        console.log(`[Music AI] 64-Step Orchestral Composition complete.`);
+        console.log(`[Music AI] 16-Step Block Composition complete.`);
         
         if (typeof callback === "function") callback(aiMusicTags); 
 
