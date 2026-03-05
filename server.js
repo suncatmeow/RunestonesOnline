@@ -911,6 +911,8 @@ socket.on('suncat_compose', async (data, callback) => {
     console.log(`[Music AI] Autonomous generation requested...`);
     
     try {
+        const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+        const aiModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
 
         const prompt = `
         You are a fully autonomous AI Music Producer running an endless, evolving audio stream.
