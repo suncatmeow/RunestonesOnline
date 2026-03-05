@@ -907,53 +907,42 @@ io.on("connection", (socket) => {
       await manageHistorySize(socket.id);
   });
 socket.on('suncat_compose', async (data, callback) => {
-    console.log(`[Music AI] Fetching next 16 steps of the infinite stream...`);
+    console.log(`[Music AI] Suncat is improvising on the lyre...`);
     
     try {
         const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
         const aiModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
 
         const prompt = `
-        You are an autonomous AI acting as a live generative music stream.
-        You must generate the NEXT 16 steps (1 bar) of the sequence. 
+        You are an autonomous AI Bard playing a beautiful, echoing acoustic Lyre.
+        You must generate the NEXT 16 steps (1 bar) of a flowing, melodic sequence.
         
         ${data.currentState}
 
         FORMATTING RULES (STRICT - DO NOT FAIL):
         1. NO NOTE NAMES (No C4, No F3).
-        2. NO BLOCK CHORDS.
-        3. ONLY use integers (0 to 11) for notes, or '-' for rests.
-        4. Separate EVERY step with a comma. You MUST output EXACTLY 16 values (15 commas) per array.
-        5. [ROOT] MUST be a float in Hz (e.g., 146.83). DO NOT use letters.
+        2. ONLY use integers (0 to 11) for scale degrees, or '-' for rests.
+        3. Separate EVERY step with a comma. You MUST output EXACTLY 16 values per array.
         
         EXAMPLE OF PROPER FORMAT (Copy this syntax exactly):
-        [BASS]0,-,-,-,4,-,-,-,5,-,-,-,0,-,-,-[/BASS]
-        [DRUMS]k,-,h,-,s,-,h,-,k,k,h,-,s,-,t,t[/DRUMS]
+        [THUMB]0,-,-,-,4,-,-,-,-,-,-,-,5,-,-,-[/THUMB]
+        [FINGERS]0,2,4,7,-,4,2,0,5,7,9,11,-,9,7,5[/FINGERS]
 
-        COMPOSITIONAL GUIDELINES FOR THIS 16-STEP BLOCK:
-        - Evolve the harmony. Pick a specific chord/scale degree to focus on for these 16 steps.
-        - [BASS]: Anchor the rhythm. Only place notes on steps 0 and 8. The rest are '-'.
-        - [BRASS]: Massive textural stabs. Max 1 or 2 notes for the whole block.
-        - [STRINGS]: Fast, repeating single-note arpeggios that outline your chosen chord.
-        - [LEAD]: Sparse melody. Use '-' heavily to let the track breathe. Max 4 notes.
-        - [DRUMS]: A hypnotic beat using k, s, h, c, t, and -.
+        COMPOSITIONAL GUIDELINES:
+        - [THUMB]: This is your bass string. Pluck it sparingly to anchor the chord. Steps 0 and 8 are best. Use '-' for all other steps.
+        - [FINGERS]: These are your high strings. Pluck beautiful, flowing arpeggios (e.g., 0, 2, 4, 7). 
+        - If you place notes closely together in [FINGERS], it will sound like a gorgeous rolled chord. Use '-' to let the strings ring out and breathe.
 
         GENERATE THESE EXACT TAGS (16 comma-separated values each):
-        [TEMPO]60[/TEMPO]
-        [ROOT]146.83[/ROOT]
-        [SCALE]0,2,3,5,7,8,11[/SCALE]
-        [LEAD]...[/LEAD]
-        [BRASS]...[/BRASS]
-        [STRINGS]...[/STRINGS]
-        [BASS]...[/BASS]
-        [DRUMS]...[/DRUMS]
+        [THUMB]...[/THUMB]
+        [FINGERS]...[/FINGERS]
         
         ONLY OUTPUT THE TAGS. NO PROSE.
         `;
 
         const result = await aiModel.generateContent(prompt);
         const aiMusicTags = result.response.text();
-        console.log(`[Music AI] 16-Step Block Composition complete.`);
+        console.log(`[Music AI] Lyre improvisation complete.`);
         
         if (typeof callback === "function") callback(aiMusicTags); 
 
