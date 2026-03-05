@@ -906,42 +906,44 @@ io.on("connection", (socket) => {
       }
       await manageHistorySize(socket.id);
   });
-// --- FULLY AUTONOMOUS AI RADIO (64-STEP UPGRADE) ---
 socket.on('suncat_compose', async (data, callback) => {
-    console.log(`[Music AI] Autonomous generation requested...`);
+    console.log(`[Music AI] Orchestral generation requested...`);
     
     try {
         const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
         const aiModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
 
-       const prompt = `
-        You are Johann Sebastian Bach, currently improvising a 2-part fugue.
+        const prompt = `
+        You are an expert JRPG video game composer (like Nobuo Uematsu). You are dynamically scoring a 4-bar phrase (64 sixteenth notes) for an intense, high-stakes tactical card battle.
         
         ${data.currentState}
 
         COMPOSITIONAL LOGIC:
-        - KEY & SCALE: You must first decide on a key (Major, Minor, or Phrygian). Generate a [SCALE] that reflects this choice.
-        - SUBJECT: Create a 4-measure "Subject" (the first 16 values of the [MELODY] array). It must have a distinct rhythmic and melodic profile.
-        - IMITATION (THE FUGUE): The [BASS] must remain silent for the first 16 values. At value 17, the [BASS] enters with the Subject (the same sequence from the start) while the [MELODY] moves into a countersubject that provides rhythmic contrast.
-        - HARMONIC INDEPENDENCE: One voice should move in fast divisions (16th notes) while the other holds longer structural tones. Avoid "block chords" where both voices move at the same time.
-        - CADENCE: Ensure the final 4 values of both arrays resolve to the root note of your chosen scale.
+        - TEMPO & KEY: For tension, choose a high tempo (160-180). Output a [SCALE] that fits an epic struggle (e.g., Harmonic Minor, Phrygian Dominant, or Dorian).
+        - [BASS]: Provide a driving, galloping, or pedal-point bassline to anchor the rhythm.
+        - [DRUMS]: Use 'k' (kick), 's' (snare), 'h' (hi-hat), 'c' (crash), and 't' (timpani). Start bar 1 with a 'c'. Build tension using 't' rolls or heavy 's' hits on beats 2 and 4.
+        - [BRASS]: Use for slow, powerful, staccato stabs or long structural chords. Leave lots of space ('-').
+        - [STRINGS]: Use for fast, flowing 16th-note arpeggios that outline the underlying chords.
+        - [LEAD]: A soaring, emotional melody. It should contrast the fast strings by using longer, deliberate notes.
+        
+        Format your response EXACTLY as 64 comma-separated values per array (use '-' for rests).
 
         GENERATE THESE EXACT TAGS:
-        [TEMPO] (Choose between 80-120 based on the complexity of your subject)
-        [ROOT] (Choose a base frequency, e.g., 261.63 for C)
-        [SCALE] (7 comma-separated semitones based on your chosen mode)
-        
-        Provide EXACTLY 64 values per array:
-        [MELODY]64 values (scale degrees 0-11, '-' for rest)[/MELODY]
-        [BASS]64 values (scale degrees 0-11, '-' for rest)[/BASS]
-        [DRUMS]64 values (Use ONLY '-' and 'h' for a baroque pulse)[/DRUMS]
+        [TEMPO]172[/TEMPO]
+        [ROOT]146.83[/ROOT]
+        [SCALE]0,2,3,5,7,8,11[/SCALE]
+        [LEAD]...[/LEAD]
+        [BRASS]...[/BRASS]
+        [STRINGS]...[/STRINGS]
+        [BASS]...[/BASS]
+        [DRUMS]...[/DRUMS]
         
         ONLY OUTPUT THE TAGS. NO PROSE.
         `;
 
         const result = await aiModel.generateContent(prompt);
         const aiMusicTags = result.response.text();
-        console.log(`[Music AI] 64-Step Composition complete.`);
+        console.log(`[Music AI] 64-Step Orchestral Composition complete.`);
         
         if (typeof callback === "function") callback(aiMusicTags); 
 
