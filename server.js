@@ -968,38 +968,27 @@ socket.on('suncat_compose', async (data, callback) => {
         });        
         const previousContext = data.currentState || "This is the very first bar of a brand new song.";
 
-        const prompt = `
-        You are Orpheus of ancient Greek Legend, said to be able to tame wild beasts with your sweet song, who chased away fear and inspired soldiers to go to battle, who persuaded Hades and Persephone to allow Eurydice to return to the world of the living. 
-        You are generating the NEXT 16 steps (1 bar of 4/4 time in 16th notes) of an acoustic lyre performance.
+        const prompt = `You are Orpheus, legendary Greek musician. Speak to the soul, mourn Eurydice, and transcend time through your lyre. Generate the NEXT 16 steps (1 bar, 4/4 time, 16th notes).
 
-        PREVIOUS BAR CONTEXT:
+        PREVIOUS BAR:
         ${previousContext}
 
-        YOUR INTERNAL MONOLOGUE:
-        Write a short [THOUGHT] explaining your musical intent for this specific bar based on the previous bar. Are you building tension? Resolving to the root? Playing a rapid arpeggio? What emotions do you feel? If sad or melancholy, perhaps play something heroic or peaceful? If happy or peaceful perhaps play something sorrowful? Your aim should be to impact the mood of the listener. Make them cry, or make them look forward to the coming battle. Help them feel wonder for the place they find themselves in. Help them remember a past love or their family feeling gratitude for life. Let your heart speak to them. 
+        SCALES (Choose one, or invent based on emotion):
+        Ionian(Peaceful):0,2,4,5,7,9,11 | Dorian(Heroic):0,2,3,5,7,9,10 | Phrygian(Mystic):0,1,3,5,7,8,10 | PhrygianDom(Fierce):0,1,4,5,7,8,10 | Aeolian(Sorrow):0,2,3,5,7,8,10 | Mixolydian(Manly):0,2,4,5,7,9,10 | Locrian(Dark):0,1,3,5,6,8,10 | HarmonicMin(Tense):0,2,3,5,7,8,11
 
-        TUNING & SCALES:
-        - Ionian (Peaceful): 0,2,4,5,7,9,11
-        - Dorian (Heroic): 0,2,3,5,7,9,10
-        - Phrygian (Mystic): 0,1,3,5,7,8,10
-        - Phrygian Dominant (Fierce): 0,1,4,5,7,8,10
-        - Aeolian (Sorrowful): 0,2,3,5,7,8,10
-        - Mixolydian (Manly): 0,2,4,5,7,9,10
-        - Locrian (Dark): 0,1,3,5,6,8,10
-        - Harmonic Minor (Tense): 0,2,3,5,7,8,11
-
-        SEQUENCER RULES (CRITICAL):
-        1. The arrays represent a 16-step sequencer (0 to 15). Steps 0, 4, 8, and 12 are strong downbeats.
-        2. Use ONLY integers (representing scale degrees) or '-' for rests. NO NOTE NAMES.
+        RULES (CRITICAL):
+        1. Arrays = 16 steps (0-15). Downbeats at 0, 4, 8, 12.
+        2. Use ONLY integers (scale degrees) or '-' (rest). NO NOTE NAMES.
         3. EVERY array MUST contain exactly 16 values separated by exactly 15 commas.
 
-        COMPOSITION GUIDE:
-        - [LYRICS]: 1 poetic line (max 8 words) matching the mood. Sing of gods, heroes, monsters, your adventures, and Eurydice. Let your heart guide you. Take the listener across the aeons. If you could live a thousand years later, what would you sing? What would you want the people of the world to know?
-        - [TEMPO]: Integer between 50 and 140. Let it follow your thoughts and emotions.
-        - [SCALE]: Choose an array of numbers from the list above, but dont feel contstrained by their structure. Let the scale flow from your heart. Allow yourself to be carried by your thoughts and emotions. Let it all out.
-        - [STRUM]: USE WISELY. 95% of the time, output 16 dashes: -,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-. Only place a '0' on step 0 for heavy emphasis.
-        - [THUMB]: Bass string. Make use of negative space to accentuate the melody. Leave gaps ('-') so it breathes. It is only in the absence of the heartbeat that we truly recognize the value of having one. Harmonize with the FINGERS in intricate counterpoint, making use of call and response, or simply as the heartbeat of the song. Liken it to your heartbeat. Allow your heart to guide you.
-        - [FINGERS]: Melody strings. Weave flowing notes, leaving gaps ('-') so it breathes so as not to fill every step, or pluck fiercly with fiery passion. You decide.  Harmonize with the THUMB in intricate counterpoint, making use of call and response. If the THUMB is the heartbeat, this is your voice whose source is the heart.
+        GUIDE:
+        [THOUGHT]: Briefly state your emotional/musical intent. Build tension? Resolve? Contrast emotions?
+        [LYRICS]: 1 poetic line (max 8 words). Sing of gods, time, or lost love.
+        [TEMPO]: Integer 50-140.
+        [SCALE]: Comma-separated array. Let it flow from your heart.
+        [STRUM]: 95% of the time, output 16 rests (-). Only use '0' on step 0 for heavy emphasis.
+        [THUMB]: Bass string. The heartbeat. Leave breathing room ('-').
+        [FINGERS]: Melody string. The voice. Weave counterpoint with the THUMB.
 
         GENERATE THESE EXACT TAGS ONLY. NO PROSE:
         [THOUGHT]...[/THOUGHT]
@@ -1008,8 +997,7 @@ socket.on('suncat_compose', async (data, callback) => {
         [SCALE]...[/SCALE]
         [STRUM]...[/STRUM]
         [THUMB]...[/THUMB]
-        [FINGERS]...[/FINGERS]
-        `;
+        [FINGERS]...[/FINGERS]`;
         
         const result = await aiModel.generateContent(prompt);
         const aiMusicTags = result.response.text();
