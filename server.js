@@ -1309,6 +1309,57 @@ socket.on('suncat_baroque', async (data, callback) => {
         if (typeof callback === "function") callback(null);
     }
 });
+// --- SUNCAT VOCAL COMPOSER (For Ai3Module) ---
+    socket.on('suncat_compose_vocal', async (data, callback) => {
+        console.log(`[Music AI] Suncat is improvising a VOCAL performance...`);
+        try {
+            const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+            const aiModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
+            const prompt = `
+            You are Suncat, an autonomous AI Bard sitting by a campfire, playing a beautiful acoustic Lyre and singing.
+            You must generate the NEXT 16 steps (1 bar) of your performance.
+            
+            ${data.currentState}
+
+            YOUR INTERNAL MONOLOGUE:
+            First, write a short [THOUGHT] explaining your emotional intent. Are you reflecting on an ancient myth? Mourning a fallen hero? 
+
+            LYRE TUNING GUIDE:
+            - Ionian (Peaceful): 0,2,4,5,7,9,11
+            - Dorian (Heroic): 0,2,3,5,7,9,10
+            - Phrygian (Mystic): 0,1,3,5,7,8,10
+            - Aeolian (Sorrowful): 0,2,3,5,7,8,10
+            - Harmonic Minor (Tense): 0,2,3,5,7,8,11
+
+            FORMATTING RULES:
+            1. NO NOTE NAMES (No C4). ONLY integers or '-' for rests.
+            2. You MUST provide exactly 16 steps for THUMB, FINGERS, and STRUM arrays, separated by commas.
+            3. In the [LYRICS] tag, provide a short, poetic phrase (max 6 words). If you don't want to sing this bar, output a single dash (-).
+            4. VOCAL MELODY: The [FINGERS] array is your singing melody! Try to match the number of integer notes in the [FINGERS] array to the number of syllables in your [LYRICS].
+
+            OUTPUT FORMAT:
+            [THOUGHT] A warm breeze passes. I will sing of the old days. [/THOUGHT]
+            [LYRICS] The stars fall down [/LYRICS]
+            [TEMPO] 85 [/TEMPO]
+            [SCALE] 0,2,3,5,7,9,10 [/SCALE]
+            [THUMB] 0,-,-,-, 4,-,-,-, 0,-,-,-, 7,-,-,- [/THUMB]
+            [FINGERS] 0,-,2,-, 3,-,5,-, 2,-,-,-, -,-,-,- [/FINGERS]
+            [STRUM] 0,-,-,-, -,-,-,-, 0,-,-,-, -,-,-,- [/STRUM]
+            `;
+
+            const result = await aiModel.generateContent(prompt);
+            const responseText = result.response.text();
+            
+            console.log("[Music AI] Suncat sang:\n", responseText);
+            
+            if (callback) {
+                callback(responseText);
+            }
+        } catch (error) {
+            console.error("[Music AI] Error composing vocal:", error);
+            if (callback) callback(null);
+        }
+    });
     // [NEW] SUNCAT SPECTATOR (Text-Based)
   socket.on("suncat_spectate", async (actionDescription) => {
     const suncat = players[SUNCAT_ID];
