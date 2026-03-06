@@ -762,7 +762,7 @@ io.on("connection", (socket) => {
                   `Name: ${p.name} (Map: ${p.mapID || 0})`
                     ).join("\n");
               
-              const promptWithContext = `[CURRENT PLAYERS]\n${playerListContext}\n[MY STATUS]\n${suncatStatus}\n\nUSER SAYS: ${msgText}`;
+              const promptWithContext = `[CURRENT PLAYERS]\n${playerListContext}\n[MY STATUS]\n${suncatStatus}\n\n${senderName} SAYS: ${msgText}`;
 
               // --- SEND MESSAGE TO AI ---
               const result = await chatSessions[socket.id].sendMessage(promptWithContext);
