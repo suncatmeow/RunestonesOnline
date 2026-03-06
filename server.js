@@ -353,6 +353,21 @@ const toolsDef = [{
                 },
                 required: ["targetName", "mapID"]
             }
+        },
+        // 7. [NEW] The SPAWN NPC Tool
+        {
+            name: "spawnNPC",
+            description: "Spawns a monster, NPC, or object next to a specific player. Use this to punish annoying players, test them, or reward them.\n\nSPAWN ID CHEAT SHEET:\n63.1 = Dragon (Boss)\n49.1 = Kraken (Boss)\n35.1 = Djinn (Boss)\n81 = Ice Golem (Strong)\n82 = Skeleton (Weak)\n56 = Imp (Annoying)\n60.1 = Pixie (Trickster)\n\nSTATES: Use 'chasing' for aggressive monsters, 'wandering' for passive, or 'stationary'.\nCOLORS: '#ff0000' (Hostile), '#00ff00' (Friendly/Reward), '#660066' (Creepy).",
+            parameters: {
+                type: "OBJECT",
+                properties: {
+                    targetName: { type: "STRING", description: "The name of the player to spawn the entity near." },
+                    npcType: { type: "NUMBER", description: "The ID of the entity to spawn (e.g., 63.1 for a Dragon)." },
+                    state: { type: "STRING", description: "Behavior state: 'chasing', 'wandering', or 'stationary'." },
+                    color: { type: "STRING", description: "Hex color code for the entity." }
+                },
+                required: ["targetName", "npcType", "state", "color"]
+            }
         }
     ]
 }];
@@ -990,6 +1005,42 @@ io.on("connection", (socket) => {
                                   io.emit("updatePlayers", players);
                                   functionResult = { result: `Success: You warped ${targetName} to map ${targetMapID}.` };
                               }
+                          }
+                      }
+                      // G. SPAWN NPC/MONSTER
+                      else if (currentCall.name === "spawnNPC") {
+                          const targetName = currentCall.args.targetName;
+                          const npcType = currentCall.args.npcType;
+                          const state = currentCall.args.state || 'chasing';
+                          const color = currentCall.args.color || '#ff0000';
+                          
+                          const targetID = findSocketID(targetName);
+
+                          if (!targetID) {
+                              functionResult = { result: `Failed: Player ${targetName} is not online.` };
+                          } else {
+                              const targetPlayer = players[targetID];
+                              
+                              // Spawn slightly offset from the player so they don't spawn inside them
+                              const spawnX = targetPlayer.x + (Math.random() > 0.5 ? 1 : -1);
+                              const spawnY = targetPlayer.y + (Math.random() > 0.5 ? 1 : -1);
+                              
+                              // Generate a high random index to avoid overwriting map defaults (0-30)
+                              const uniqueNpcIndex = Math.floor(Math.random() * 100000) + 1000;
+
+                              // Tell ALL clients to spawn this entity so they all see it
+                              io.emit("remote_spawn_npc", {
+                                  mapID: targetPlayer.mapID,
+                                  index: uniqueNpcIndex,
+                                  x: spawnX,
+                                  y: spawnY,
+                                  type: npcType,
+                                  state: state,
+                                  color: color,
+                                  deck: [npcType] // Automatically give them their own card ID as a basic deck
+                              });
+
+                              functionResult = { result: `Success: Spawned entity ${npcType} near ${targetName}.` };
                           }
                       }
                       // E. UNKNOWN TOOL
