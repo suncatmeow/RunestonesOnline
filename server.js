@@ -364,9 +364,14 @@ const toolsDef = [{
                     targetName: { type: "STRING", description: "The name of the player to spawn the entity near." },
                     npcType: { type: "NUMBER", description: "The ID of the entity to spawn (e.g., 63.1 for a Dragon)." },
                     state: { type: "STRING", description: "Behavior state: 'chasing', 'wandering', or 'stationary'." },
-                    color: { type: "STRING", description: "Hex color code for the entity." }
+                    color: { type: "STRING", description: "Hex color code for the entity." },
+                    deck: { 
+                        type: "ARRAY", 
+                        items: { type: "INTEGER" },
+                        description: "An array of 5 to 15 card IDs (0-77) to give this entity for battle. Use your knowledge of the CARD_MANIFEST to build a thematic deck (e.g., fire cards for a Dragon). ALWAYS include a monster card (0-21 or 32, 48, etc) as the first item!" 
+                    }
                 },
-                required: ["targetName", "npcType", "state", "color"]
+                required: ["targetName", "npcType", "state", "color", "deck"]
             }
         }
     ]
@@ -1014,6 +1019,13 @@ io.on("connection", (socket) => {
                           const state = currentCall.args.state || 'chasing';
                           const color = currentCall.args.color || '#ff0000';
                           
+                          // Grab the deck from the AI, fallback to a basic array if it fails
+                          let customDeck = currentCall.args.deck;
+                          if (!customDeck || !Array.isArray(customDeck) || customDeck.length === 0) {
+                              // If AI forgets, give them their base card ID (stripping the decimal)
+                              customDeck = [Math.floor(npcType)]; 
+                          }
+                          
                           const targetID = findSocketID(targetName);
 
                           if (!targetID) {
@@ -1021,14 +1033,10 @@ io.on("connection", (socket) => {
                           } else {
                               const targetPlayer = players[targetID];
                               
-                              // Spawn slightly offset from the player so they don't spawn inside them
                               const spawnX = targetPlayer.x + (Math.random() > 0.5 ? 1 : -1);
                               const spawnY = targetPlayer.y + (Math.random() > 0.5 ? 1 : -1);
-                              
-                              // Generate a high random index to avoid overwriting map defaults (0-30)
                               const uniqueNpcIndex = Math.floor(Math.random() * 100000) + 1000;
 
-                              // Tell ALL clients to spawn this entity so they all see it
                               io.emit("remote_spawn_npc", {
                                   mapID: targetPlayer.mapID,
                                   index: uniqueNpcIndex,
@@ -1037,10 +1045,10 @@ io.on("connection", (socket) => {
                                   type: npcType,
                                   state: state,
                                   color: color,
-                                  deck: [npcType] // Automatically give them their own card ID as a basic deck
+                                  deck: customDeck // <-- Pass the custom deck here!
                               });
 
-                              functionResult = { result: `Success: Spawned entity ${npcType} near ${targetName}.` };
+                              functionResult = { result: `Success: Spawned entity ${npcType} near ${targetName} with a custom deck.` };
                           }
                       }
                       // E. UNKNOWN TOOL
