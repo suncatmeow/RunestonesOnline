@@ -716,124 +716,118 @@ class NPC {
 }
 
   triggerInteraction(dungeon,index = 0) {
-        
-
     //Portals in order: 4D, cave brown, castle red, castle blue, cave gray,
     if (this.type === 99||this.type ===-29||this.type==-30||this.type == 23.1||this.type == -31||this.type == -32||this.type == -33||this.type == -34||this.type == -35) {
-     
       //0=N, 1=E, 2=S, 3=W
       console.log("Teleporting...");
       //MAP 0: Tutorial
       if (dungeon.mapID === 0) {
         //to Outer Dungeon (Magician Area)
-            dungeon.loadMap(1);
-            MusicEngine.stop()
-            MusicEngine.playSFX('warp');
-            MusicEngine.play(Dungeon.mapSong[Dungeon.mapID]); 
-        } 
+        dungeon.loadMap(1);
+        MusicEngine.stop()
+        MusicEngine.playSFX('warp');
+        MusicEngine.play(Dungeon.mapSong[Dungeon.mapID]); 
+      } 
       //MAP 1: Outer Dungeon (Magician Area)
       else if (dungeon.mapID === 1){
         //portal back to map 0
         if(this.index ===2){
-              dungeon.loadMap(0);
-              dungeon.x = 9.5;dungeon.y = 1.5;
-              dungeon.dir = 2;
-              MusicEngine.stop()
-              MusicEngine.playSFX('warp');
-              MusicEngine.play(Dungeon.mapSong[Dungeon.mapID]); 
-          }
+          dungeon.loadMap(0);
+          dungeon.x = 9.5;dungeon.y = 1.5;
+          dungeon.dir = 2;
+          MusicEngine.stop()
+          MusicEngine.playSFX('warp');
+          MusicEngine.play(Dungeon.mapSong[Dungeon.mapID]); 
+        }
         //portals to magician's item cards
         else if (this.index ===7){
-            dungeon.x = 2.5;dungeon.y = 6.5;dungeon.dir = 0;
-            MusicEngine.playSFX('warp');
+          dungeon.x = 2.5;dungeon.y = 6.5;dungeon.dir = 0;
+          MusicEngine.playSFX('warp');
         }
         else if (this.index ===8){
-            dungeon.x = 12.5;dungeon.y = 2.5;dungeon.dir = 3;
-            MusicEngine.playSFX('warp');
+          dungeon.x = 12.5;dungeon.y = 2.5;dungeon.dir = 3;
+          MusicEngine.playSFX('warp');
         }
         else if (this.index ===9){
-            dungeon.x = 1.5;dungeon.y = 13.5;dungeon.dir = 1;
-            MusicEngine.playSFX('warp');
+          dungeon.x = 1.5;dungeon.y = 13.5;dungeon.dir = 1;
+          MusicEngine.playSFX('warp');
         }
         else if (this.index ===10){
-            dungeon.x = 2.5;dungeon.y = 8.5;dungeon.dir = 2;
-            MusicEngine.playSFX('warp');
+          dungeon.x = 2.5;dungeon.y = 8.5;dungeon.dir = 2;
+          MusicEngine.playSFX('warp');
         }
         //magician area exit portal to map 2
         else if (this.index ===11){
-            dungeon.loadMap(2);
-            MusicEngine.stop()
-            MusicEngine.playSFX('warp');
-            MusicEngine.play(Dungeon.mapSong[Dungeon.mapID]); 
-            
+          dungeon.loadMap(2);
+          MusicEngine.stop()
+          MusicEngine.playSFX('warp');
+          MusicEngine.play(Dungeon.mapSong[Dungeon.mapID]);   
         }
       }
       //MAP 2: Tintagel Forest (Hermit Area)
       else if (dungeon.mapID === 2){
         //portal back to map 1
         if (this.index ===6){
-            dungeon.loadMap(1);
-            dungeon.x = 6.5;dungeon.y = 1.5;
-            dungeon.dir = 2;
-            MusicEngine.stop()
-            MusicEngine.playSFX('warp');
-            MusicEngine.play(Dungeon.mapSong[Dungeon.mapID]); 
-            
+          dungeon.loadMap(1);
+          dungeon.x = 6.5;dungeon.y = 1.5;
+          dungeon.dir = 2;
+          MusicEngine.stop()
+          MusicEngine.playSFX('warp');
+          MusicEngine.play(Dungeon.mapSong[Dungeon.mapID]); 
         }
         //cavern entrance to map 3
         if (this.index ===7){
-            dungeon.loadMap(3);
-            dungeon.x = 8.5;dungeon.y = 20.5;
-            dungeon.dir = 0;
-            MusicEngine.stop()
-            MusicEngine.playSFX('warp');
-            MusicEngine.play(Dungeon.mapSong[Dungeon.mapID]); 
-            
+          dungeon.loadMap(3);
+          dungeon.x = 8.5;dungeon.y = 20.5;
+          dungeon.dir = 0;
+          MusicEngine.stop()
+          MusicEngine.playSFX('warp');
+          MusicEngine.play(Dungeon.mapSong[Dungeon.mapID]); 
         }
       }
       //MAP 3: Goblin Caverns
       else if (dungeon.mapID === 3){
         //cavern exit to map 2
         if (this.index ===1){
-            dungeon.loadMap(2);
-            dungeon.x = 1.5;dungeon.y = 1.5;
-            dungeon.dir = 2;
-            MusicEngine.stop()
-            MusicEngine.playSFX('warp');
-            MusicEngine.play(Dungeon.mapSong[Dungeon.mapID]); 
+          dungeon.loadMap(2);
+          dungeon.x = 1.5;dungeon.y = 1.5;
+          dungeon.dir = 2;
+          MusicEngine.stop()
+          MusicEngine.playSFX('warp');
+          MusicEngine.play(Dungeon.mapSong[Dungeon.mapID]); 
         }
         //snake portal back to map3 entrance
         if (this.index ===3){
-            dungeon.loadMap(3);
-            MusicEngine.stop()
-            MusicEngine.playSFX('warp');
-            MusicEngine.play(30)
+          dungeon.loadMap(3);
+          MusicEngine.stop()
+          MusicEngine.playSFX('warp');
+          MusicEngine.play(30)
         }
         //Apprentice portal to map 4
         if (this.index ===6){
-            dungeon.loadMap(4);
-            MusicEngine.stop()
-            MusicEngine.playSFX('warp');
-            MusicEngine.play(32)
+          dungeon.loadMap(4);
+          MusicEngine.stop()
+          MusicEngine.playSFX('warp');
+          MusicEngine.play(32)
         }
       }
       //MAP 4: Realm of the Witch Queen (Desert)
       else if (dungeon.mapID === 4){
         //Portal to Map 3
         if (this.index ===0){
-            dungeon.loadMap(3);
-            dungeon.x = 8.5;dungeon.y = 1.5;
-            dungeon.dir = 2;
-            MusicEngine.stop()
-            MusicEngine.playSFX('warp');
-            MusicEngine.play(Dungeon.mapSong[Dungeon.mapID]); 
+          dungeon.loadMap(3);
+          dungeon.x = 8.5;dungeon.y = 1.5;
+          dungeon.dir = 2;
+          MusicEngine.stop()
+          MusicEngine.playSFX('warp');
+          MusicEngine.play(Dungeon.mapSong[Dungeon.mapID]); 
         }
         //Door to Map 5
         if (this.index ===1){
-            dungeon.loadMap(5);
-            MusicEngine.stop()
-            MusicEngine.playSFX('warp');
-            MusicEngine.play(Dungeon.mapSong[Dungeon.mapID]); 
+          dungeon.loadMap(5);
+          MusicEngine.stop()
+          MusicEngine.playSFX('warp');
+          MusicEngine.play(Dungeon.mapSong[Dungeon.mapID]); 
         }
         //Mirage
         if (this.type ===23.1){
@@ -1138,6 +1132,13 @@ class NPC {
       //MAP 21: Dark Emperor Throne/Top of Tower
       else if (dungeon.mapID === 21) {
         dungeon.loadMap(22);
+            MusicEngine.stop()
+            MusicEngine.playSFX('warp');
+            MusicEngine.play(dungeon.mapSong[dungeon.mapID])
+      }
+      //MAP 21: Dark Emperor Throne/Top of Tower
+      else if (dungeon.mapID === 999) {
+        dungeon.loadMap(0);
             MusicEngine.stop()
             MusicEngine.playSFX('warp');
             MusicEngine.play(dungeon.mapSong[dungeon.mapID])
@@ -1728,7 +1729,7 @@ class NPC {
     }
 
     // --- AUDIO (UNCHANGED) ---
-// --- AUDIO TIMERS ---
+    // --- AUDIO TIMERS ---
     if (!this.isDead && typeof MusicEngine !== 'undefined') {
       if (this.type === 23 || this.type === 23.1 || this.type === 42) {
         this.wispTimer++;
@@ -1898,21 +1899,35 @@ class Explore {
         1: 'rgba(128,64,0,1)', // Standard Brown
         2: 'rgba(255,128,64,1)', // tree pass thru
         3: 'rgba(128,64,0,1)', // tree
+        4:'rgba(0,0,0,1)',//black
         5: 'rgba(255,0,0,1)',  // witch queen castle walls
+        6:'rgba(0,0,0,1)',//black
         7: 'rgba(255,128,0,1)', // tan for goblin wall
-        
+        8:'rgba(0,0,0,1)',//black
         9: 'rgba(0,0,255,1)',//blue walls for ice queens castle
+        10:'rgba(0,0,0,1)',//black
         11: 'rgba(209,168,148,1)',//light brown
+        12:'rgba(0,0,0,1)',//black
         13: 'rgba(255,255,255,1)',//white(snow walls)
-        
+        14:'rgba(0,0,0,1)',//black
+        15:'rgba(0,0,0,1)',//black
+        16:'rgba(0,0,0,1)',//black
         17: 'rgba(0,0,64,1)', //dark blue ice cave
+        18:'rgba(0,0,0,1)',//black
         19: 'rgba(0,0,0,1)',//black
+        20:'rgba(0,0,0,1)',//black
         21: '#FFD700',//Fairy queen castle walls
+        22:'rgba(0,0,0,1)',//black
         23: '#228B22',//green trees for avalon
+        24: 'rgba(0,0,0,1)',//black
         25: '#696969',//Avalon border colors
+        26:'rgba(0,0,0,1)',//black
         27: '#363636', //gray for avalon burnt trees
+        28:'rgba(0,0,0,1)',//black
         29: "#2E2B5F",
+        30:'rgba(0,0,0,1)',//black
         31: "rgb(0,255,0)",
+        32:'rgba(0,0,0,1)',//black
         33:'#333333',
         
     };
@@ -2052,9 +2067,7 @@ class Explore {
         console.log("Loading Save:", data);
 
         // 1. Restore Simple Variables
-        this.x = data.x;
-        this.y = data.y;
-        this.dir = data.dir;
+        
         this.MainQuest = data.MainQuest || 0;
         this.gd = data.gd || 0;
         this.dSense = data.dSense || 0;
@@ -2084,11 +2097,11 @@ class Explore {
 
         // 4. Load the Map & Apply Position
         this.loadMap(data.mapID); 
-        
+        if (data.mapID != 999){
         this.x = data.x;
         this.y = data.y;
         this.dir = data.dir;
-
+      }
         // 5. Update Server
         if (typeof socket !== 'undefined') {
             
@@ -2131,7 +2144,7 @@ class Explore {
     else if (id === 9) this.weather.setMode('storm');
     else if(id == 14||id == 22) this.weather.setMode('leaves');
     else if(id == 15||id == 21) this.weather.setMode('lightning');
-    else if(id == 16||id == 17||id == 18||id == 19||id == 20) this.weather.setMode('space');
+    else if(id == 16||id == 17||id == 18||id == 19||id == 20||id == 999) this.weather.setMode('space');
     else this.weather.setMode('clear');
 
     for (let r = 0; r < this.maze.length; r++) {
@@ -3145,6 +3158,32 @@ class Explore {
         this.y = 9.5;
         this.dir = 1;
     }
+     else if (id === 999) {
+     this.skyColor = 'rgba(0,0,0,1)';   // Dark Blue Sky
+      this.floorColor = 'rgba(0,0,0,1)'; // Blue Floor
+      
+        this.maze = [
+          [19,19,19,19,19,19,19,19,19,19,19],
+          [19,0,0,0,0,0,0,0,0,0,19],
+          [19,0,0,0,0,0,0,0,0,0,19],
+          [19,0,0,0,0,0,0,0,0,0,19],
+          [19,0,0,0,0,0,0,0,0,0,19],
+          [19,0,0,0,0,0,0,0,0,0,19],
+          [19,0,0,0,0,0,0,0,0,0,19],
+          [19,0,0,0,0,0,0,0,0,0,19],
+          [19,0,0,0,0,0,0,0,0,0,19],
+          [19,0,0,0,0,0,0,0,0,0,19],
+          [19,19,19,19,19,19,19,19,19,19,19]
+        ];
+        this.npcs = [
+         
+          // --- NEW: THE PORTAL ---
+          // Located at (1.5, 7.5), near the NE wall
+          new NPC(1,9.5, 1.5, 99, 'stationary','#66ccff') 
+        ];
+        this.x = 5.5; 
+        this.y = 5.5;
+    }
             socket.emit('suncat_spectate', `player entered map ${id}`);
 
     
@@ -3202,7 +3241,66 @@ class Explore {
     });
     // -------------------------
   }
-  
+  // --- NEW: AI CUSTOM MAP HANDLER ---
+  // --- NEW: AI CUSTOM MAP HANDLER ---
+  loadCustomMap(data) {
+      this.mapID = data.id; 
+      this.maze = data.maze;
+      this.skyColor = data.skyColor;
+      this.floorColor = data.floorColor;
+      
+      this.npcs = [];
+      this.explored = [];
+      for (let r = 0; r < this.maze.length; r++) {
+          this.explored[r] = new Array(this.maze[0].length).fill(0);
+      }
+      let selectedWeather = data.weather || 'clear';
+      this.weather.setMode(selectedWeather);
+      // 1. Hardcoded escape portal back to Map 0
+      this.spawnPersistentNPC(this.mapID, 9999, 1.5, 1.5, 99, 'stationary', '#66ccff', []);
+
+     // 2. Spawn AI-Generated NPCs!
+      if (data.npcs && data.npcs.length > 0) {
+          data.npcs.forEach((npc, index) => {
+              let safeType = npc.type || 82; // Default to skeleton
+              let safeState = npc.state || 'chasing';
+              let safeColor = npc.color || '#ff0000';
+              let safeDeck = (npc.deck && npc.deck.length > 0) ? npc.deck : [Math.floor(safeType)];
+              
+              // --- SANITIZE AI COORDINATES ---
+              // Force them to be numbers, default to 1 if the AI messes up
+              let parsedX = Number(npc.x);
+              let parsedY = Number(npc.y);
+              if (isNaN(parsedX)) parsedX = 1;
+              if (isNaN(parsedY)) parsedY = 1;
+
+              // Keep them inside the bounds of the generated maze
+              let mapWidth = this.maze[0].length;
+              let mapHeight = this.maze.length;
+              
+              parsedX = Math.max(1, Math.min(parsedX, mapWidth - 2));
+              parsedY = Math.max(1, Math.min(parsedY, mapHeight - 2));
+
+              // Add 0.5 to place them exactly in the center of the tile
+              let spawnX = parsedX + 0.5;
+              let spawnY = parsedY + 0.5;
+              // --------------------------------
+
+              this.spawnPersistentNPC(
+                  this.mapID, 
+                  100 + index, 
+                  spawnX, 
+                  spawnY, 
+                  safeType, 
+                  safeState, 
+                  safeColor, 
+                  safeDeck
+              );
+          });
+      }
+      
+      console.log(`Loaded Custom AI Map: ${data.name} with ${data.npcs ? data.npcs.length : 0} entities.`);
+  }
   registerClick(x, y) {
     this.clickInput = { x: x, y: y };
     // --- CHECK BUTTON PRESS ---
@@ -3467,6 +3565,12 @@ this.castWallRay(rayDirX, rayDirY, x, viewX, viewY, viewW, viewH, resStep);    }
     while (!hit) {
       if (sideDistX < sideDistY) { sideDistX += deltaDistX; mapX += stepX; side = 0; }
       else { sideDistY += deltaDistY; mapY += stepY; side = 1; }
+      // If the ray goes out of bounds, pretend it hit a solid wall and stop.
+      if (mapY < 0 || mapY >= this.maze.length || mapX < 0 || mapX >= this.maze[0].length) {
+          hit = 1;
+          wallID = 19; // Default to black void wall (19) if the AI left a hole
+          break; 
+      }
       if (this.explored[mapY] && this.explored[mapY][mapX] !== undefined) {
           this.explored[mapY][mapX] = 1;
       }
@@ -12631,25 +12735,27 @@ class Card{
 
       
       default:
-        this.name = '';
-        this.portrait = 0;
-        this.type = 3;//null 0-monster, 1-item, 2-spell
-        this.desc = '';
-        this.stat[0][0]=1;//STR
-        this.stat[0][1] = 0;
-        this.stat[0][2]= 0;
-        this.stat[0][3] = '' + this.stat[0][0] +'d'+ this.stat[0][1];
-        this.stat[1][0]=1;//CON
-        this.stat[1][1] = 0;
-        this.stat[1][2]= 0;
+        this.name = 'Suncat';
+        this.portrait = .61391;
+        this.type = 0;//0-monster, 1-item, 2-spell
+        this.desc = 'Visit Suncat on IG @suncat.meow or listen on Spotify.';
+        this.suit = 'Major Arcana';
+        this.rank = 'The Fool';
+        this.stat[0][0]=1;//minSTR
+        this.stat[0][1] = 4;//maxSTR
+        this.stat[0][2]= 0;//modSTR
+        this.stat[0][3] = '' + this.stat[0][0] +'d'+ this.stat[0][1];//STRlabel
+        this.stat[1][0]=1;//minCON
+        this.stat[1][1] = 4;//maxCON
+        this.stat[1][2]= 0;//modCON
         this.stat[1][3] = '' + this.stat[1][0] +'d'+ this.stat[1][1];
-        this.stat[2][0]=0;//INT
-        this.stat[2][1] = 0;
-        this.stat[2][2]= 0;
+        this.stat[2][0]=1;//minINT
+        this.stat[2][1] = 4;//maxINT
+        this.stat[2][2]= 0;//modINT
         this.stat[2][3] = '' + this.stat[2][0] +'d'+ this.stat[2][1];
-        this.stat[3][0]=0;//INT
-        this.stat[3][1] = 0;
-        this.stat[3][2]= 0;
+        this.stat[3][0]=1;//minAGI
+        this.stat[3][1] = 20;//maxAGI
+        this.stat[3][2]= 0;//modAGI
         this.stat[3][3] = '' + this.stat[3][0] +'d'+ this.stat[3][1];
 			  break;
 		
@@ -14098,7 +14204,7 @@ function handleInput(e) {
       else if (Player[1].option === 10.2&&startGame == 'battle') {
             Dungeon.refreshNPCs()
             Dungeon.deleteGame();
-            
+            window.location.reload();
 
         return;
       }
@@ -14564,7 +14670,11 @@ function handleInput(e) {
       MusicEngine.play(4);
       if (Dungeon.loadGame()) {
         startGame = 'explore'; // Jump straight to game
-        MusicEngine.play(Dungeon.mapSong[Dungeon.mapID]); // Play correct music
+        if (Dungeon.mapID == 999){
+          MusicEngine.play(rnd(0,47))
+        }
+        else{MusicEngine.play(Dungeon.mapSong[Dungeon.mapID]);} // Play correct music}
+        
     } else {
       startGame = 'charSelect';
     }
@@ -25878,7 +25988,52 @@ socket.on("admin_command", (data) => {
         location.reload();
     }
 });
-
+// Listen for AI map generation
+socket.on('load_custom_map', (data) => {
+    // Assuming your Explore instance is saved to a variable named 'Dungeon'
+   // window.latestCustomMapData = data; // Cache it!
+    if (typeof Dungeon !== 'undefined') {
+        Dungeon.loadCustomMap(data);
+    }
+});
+// Listen for Suncat spawning monsters remotely
+socket.on("remote_spawn_npc", (data) => {
+    if (typeof Dungeon !== 'undefined') {
+        // Play an ominous sound when something spawns randomly
+        if (typeof MusicEngine !== 'undefined') {
+            MusicEngine.playSFX('warp'); 
+        }
+        
+        // Use your existing method! It saves to memory and pushes to the active npcs array
+        Dungeon.spawnPersistentNPC(
+            data.mapID, 
+            data.index, 
+            data.x, 
+            data.y, 
+            data.type, 
+            data.state, 
+            data.color, 
+            data.deck
+        );
+        console.log(`[System] Suncat spawned an entity (Type: ${data.type}) on Map ${data.mapID}!`);
+    }
+});
+// Listen for targeted teleports from Suncat
+socket.on("force_teleport", (data) => {
+    if (typeof Dungeon !== 'undefined') {
+        //Dungeon.x = data.x;
+        //Dungeon.y = data.y;
+        //Dungeon.dir = 0; // Face North
+        
+        if (data.mapID === 999 && window.latestCustomMapData) {
+            // If sent to the custom map, load the cached custom map data
+            Dungeon.loadCustomMap(window.latestCustomMapData);
+        } else {
+            // Otherwise, load a standard world map
+            Dungeon.loadMap(data.mapID);
+        }
+    }
+});
 socket.on("receive_card", (data) => {
     if (typeof Dungeon !== 'undefined') {
         // 1. Add the card (Existing logic)
@@ -28251,7 +28406,7 @@ class DangerModule {
     osc.start(t); osc.stop(t + 0.2);
   }
 }
-    //MODULE 6: Spoils of War
+//MODULE 6: Spoils of War
 class SpoilsofWarModule {
       constructor(ctx, dest) {
         this.ctx = ctx;
@@ -41117,9 +41272,6 @@ class Battle8Module {
         src.onended = () => { src.disconnect(); f.disconnect(); g.disconnect(); };
     }
 }
-// MODULE 43: Autonomous 64-Step AI Arranger Module
-
-
 class AiModule {
     constructor(ctx, dest) {
       
@@ -41499,345 +41651,287 @@ class AiModule {
         };
     }
   }
+class Ai2Module {
+  constructor(ctx, dest) {
+    this.ctx = ctx;
+    this.dest = dest;
+    this.timer = null;
+    this.isPlaying = false;
+    this.isFetching = false;
+    // --- 1. BAROQUE TUNING ---
+    this.tempo = 100; // Slightly brisker for inventions/preludes
+    this.targetTempo = 100; 
+    this.baseFreq = 146.83; // Anchor frequency (D3)
+    this.rootFreq = this.baseFreq; 
+    this.currentKeyOffset = 0; // Tracks our current semitone shift (0-11)
+    // Default to a minor scale for that classic Bach feel (D Natural Minor)
+    this.scale = [0, 2, 3, 5, 7, 8, 10]; 
+    // --- 2. THE HANDS (Counterpoint Queues) ---
+    this.bassQueue = [];    // Left hand
+    this.trebleQueue = [];  // Right hand
+    this.chordQueue = [];   // Occasional harmonic strikes
+    this.melodyMemory = []; 
+    // Initialize with a simple contrapuntal pattern
+    for(let i=0; i<32; i++) {
+      this.bassQueue.push(i % 8 === 0 ? 0 : null); 
+      this.chordQueue.push(i === 0 ? 0 : null);
+      if (i % 2 === 0) {
+        const motif = [0, 2, 4, 7, 4, 2];
+        this.trebleQueue.push(motif[(i/2) % motif.length]);
+      } else {
+        this.trebleQueue.push(null);
+      }
+    }
+    // --- 3. THE ACOUSTIC SPACE (A Baroque Parlor) ---
+    this.tick = 0;
+    this.nextNoteTime = 0.0;
+    this.scheduleAheadTime = 0.1;
+    this.lookahead = 25.0;
 
-  class Ai2Module {
-    constructor(ctx, dest) {
-      
-        this.ctx = ctx;
-        this.dest = dest;
-        this.timer = null;
-        this.isPlaying = false;
-        this.isFetching = false;
+    this.master = ctx.createGain();
+    this.master.gain.value = 0.7;
 
-        // --- 1. BAROQUE TUNING ---
-        this.tempo = 100; // Slightly brisker for inventions/preludes
-        this.targetTempo = 100; 
-        this.baseFreq = 146.83; // Anchor frequency (D3)
-        this.rootFreq = this.baseFreq; 
-        this.currentKeyOffset = 0; // Tracks our current semitone shift (0-11)
-        // Default to a minor scale for that classic Bach feel (D Natural Minor)
-        this.scale = [0, 2, 3, 5, 7, 8, 10];
-        
-        // --- 2. THE HANDS (Counterpoint Queues) ---
-        this.bassQueue = [];    // Left hand
-        this.trebleQueue = [];  // Right hand
-        this.chordQueue = [];   // Occasional harmonic strikes
-        this.melodyMemory = []; 
-        
-        // Initialize with a simple contrapuntal pattern
-        for(let i=0; i<32; i++) {
-            this.bassQueue.push(i % 8 === 0 ? 0 : null); 
-            this.chordQueue.push(i === 0 ? 0 : null);
-            if (i % 2 === 0) {
-                const motif = [0, 2, 4, 7, 4, 2];
-                this.trebleQueue.push(motif[(i/2) % motif.length]);
-            } else {
-                this.trebleQueue.push(null);
-            }
-        }
-
-        // --- 3. THE ACOUSTIC SPACE (A Baroque Parlor) ---
-        this.tick = 0;
-        this.nextNoteTime = 0.0;
-        this.scheduleAheadTime = 0.1;
-        this.lookahead = 25.0;
-
-        this.master = ctx.createGain();
-        this.master.gain.value = 0.7;
-
-        this.reverb = ctx.createConvolver();
+    this.reverb = ctx.createConvolver();
         // Harpsichords sound better in smaller, tighter spaces. Reduced to 1.5s
-        this.reverb.buffer = this.createImpulse(1.5); 
-        this.revGain = ctx.createGain();
-        this.revGain.gain.value = 0.3; // Lowered reverb mix
+    this.reverb.buffer = this.createImpulse(1.5); 
+    this.revGain = ctx.createGain();
+    this.revGain.gain.value = 0.3; // Lowered reverb mix
 
-        this.master.connect(this.dest);
-        this.master.connect(this.reverb);
-        this.reverb.connect(this.revGain);
-        this.revGain.connect(this.dest);
-
-        this.start();
-        if (typeof socket !== 'undefined') {
-            this.composeNext(); 
-        }
+    this.master.connect(this.dest);
+    this.master.connect(this.reverb);
+    this.reverb.connect(this.revGain);
+    this.revGain.connect(this.dest);
+    this.start();
+    if (typeof socket !== 'undefined') {
+      this.composeNext(); 
     }
-    modulateRandomly() {
-        // Pick a jump between 1 and 11 semitones to guarantee a key change
-        const jump = Math.floor(Math.random() * 11) + 1;
-        
-        // Wrap around the 12 keys using modulo
-        this.currentKeyOffset = (this.currentKeyOffset + jump) % 12;
-
-        // Apply equal temperament math
-        this.rootFreq = this.baseFreq * Math.pow(2, this.currentKeyOffset / 12);
-
-        const keys = ['D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B', 'C', 'C#'];
-        console.log(`%c[Well-Tempered Clavier] 🎼 Modulated to ${keys[this.currentKeyOffset]}!`, 'color: #cda434; font-style: italic; font-weight: bold; background: #111; padding: 3px;');
+  }
+  modulateRandomly() {
+    // Pick a jump between 1 and 11 semitones to guarantee a key change
+    const jump = Math.floor(Math.random() * 11) + 1;
+    // Wrap around the 12 keys using modulo
+    this.currentKeyOffset = (this.currentKeyOffset + jump) % 12;
+    // Apply equal temperament math
+    this.rootFreq = this.baseFreq * Math.pow(2, this.currentKeyOffset / 12);
+    const keys = ['D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B', 'C', 'C#'];
+    console.log(`%c[Well-Tempered Clavier] 🎼 Modulated to ${keys[this.currentKeyOffset]}!`, 'color: #cda434; font-style: italic; font-weight: bold; background: #111; padding: 3px;');
+  }
+  createImpulse(duration) {
+    const rate = this.ctx.sampleRate;
+    const len = rate * duration;
+    const buf = this.ctx.createBuffer(2, len, rate);
+    for (let i = 0; i < 2; i++) {
+      const ch = buf.getChannelData(i);
+      for (let j = 0; j < len; j++) {
+        ch[j] = (Math.random() * 2 - 1) * Math.pow(1 - j / len, 3);
+      }
     }
-    createImpulse(duration) {
-        const rate = this.ctx.sampleRate;
-        const len = rate * duration;
-        const buf = this.ctx.createBuffer(2, len, rate);
-        for (let i = 0; i < 2; i++) {
-            const ch = buf.getChannelData(i);
-            for (let j = 0; j < len; j++) {
-                ch[j] = (Math.random() * 2 - 1) * Math.pow(1 - j / len, 3);
-            }
-        }
-        return buf;
+    return buf;
+  }
+  async composeNext() {
+    if (this.isFetching) return;
+    this.isFetching = true;
+    let memoryString = "None (Brand new piece)";
+    if (this.melodyMemory.length > 0) {
+      memoryString = this.melodyMemory.map((bar, i) => `Bar -${this.melodyMemory.length - i}: [${bar.join(',')}]`).join('\n');
     }
-
-    async composeNext() {
-        if (this.isFetching) return;
-        this.isFetching = true;
-        
-        let memoryString = "None (Brand new piece)";
-        if (this.melodyMemory.length > 0) {
-            memoryString = this.melodyMemory.map((bar, i) => `Bar -${this.melodyMemory.length - i}: [${bar.join(',')}]`).join('\n');
-        }
-
-        const currentState = `
-        Current Tempo: ${Math.round(this.targetTempo)} BPM.
-        Current Scale Array: [${this.scale.join(',')}].
-        Past Treble Memory:
-        ${memoryString}
-        
-        INSTRUCTION: You are a Baroque composer AI. Look at the Past Memory. Generate 16 steps of music in the style of J.S. Bach. 
-        Focus on counterpoint between the [BASS] and [TREBLE]. Introduce a motif, develop it, or provide a mathematical, structured sequence.
-        Use tags: [THOUGHT], [BASS], [TREBLE], [CHORDS], [TEMPO], [SCALE].
-        `;
-        
-        let unlockTimer = setTimeout(() => {
-            console.warn("[Audio Engine] API taking too long. Releasing lock.");
-            this.isFetching = false;
-        }, 8000);
-
-        socket.emit('suncat_baroque', { currentState }, (aiMusicTags) => {
-            clearTimeout(unlockTimer); 
-            if (aiMusicTags) {
-                this.parseAiResponse(aiMusicTags);
-            }
-            this.isFetching = false; 
-        });
+    const currentState = `
+      Current Tempo: ${Math.round(this.targetTempo)} BPM.
+      Current Scale Array: [${this.scale.join(',')}].
+      Past Treble Memory:
+      ${memoryString}
+      INSTRUCTION: You are a Baroque composer AI. Look at the Past Memory. Generate 16 steps of music in the style of J.S. Bach. 
+      Focus on counterpoint between the [BASS] and [TREBLE]. Introduce a motif, develop it, or provide a mathematical, structured sequence.
+      Use tags: [THOUGHT], [BASS], [TREBLE], [CHORDS], [TEMPO], [SCALE].
+    `;
+    let unlockTimer = setTimeout(() => {
+      console.warn("[Audio Engine] API taking too long. Releasing lock.");
+      this.isFetching = false;
+    }, 8000);
+    socket.emit('suncat_baroque', { currentState }, (aiMusicTags) => {
+      clearTimeout(unlockTimer); 
+      if (aiMusicTags) {
+        this.parseAiResponse(aiMusicTags);
+      }
+        this.isFetching = false; 
+    });
+  }
+  parseAiResponse(aiText) {
+    const getTag = (tag) => {
+      const regex = new RegExp(`\\[${tag}\\](.*?)(?:\\[\\/${tag}\\]|$)`, 's');
+      const match = aiText.match(regex);
+      return match ? match[1].trim() : null;
+    };
+    const thought = getTag('THOUGHT');
+    if (thought) {
+      console.log(`%c[Composer's Mind] "${thought}"`, 'color: #cda434; font-style: italic; background: #222; padding: 4px; border-radius: 4px;');
     }
-
-   parseAiResponse(aiText) {
-        const getTag = (tag) => {
-            const regex = new RegExp(`\\[${tag}\\](.*?)(?:\\[\\/${tag}\\]|$)`, 's');
-            const match = aiText.match(regex);
-            return match ? match[1].trim() : null;
-        };
-
-        const thought = getTag('THOUGHT');
-        if (thought) {
-            console.log(`%c[Composer's Mind] "${thought}"`, 'color: #cda434; font-style: italic; background: #222; padding: 4px; border-radius: 4px;');
-        }
-
-        const newTempo = getTag('TEMPO');
-        if (newTempo && !isNaN(parseFloat(newTempo))) {
-             this.targetTempo = parseFloat(newTempo);
-        }
-
-        const newScale = getTag('SCALE');
-        if (newScale) {
-             let parsedScale = newScale.split(',').map(Number).filter(n => !isNaN(n));
-             if (parsedScale.length > 0) this.scale = parsedScale;
-        }
-
-        const parseShortArr = (tag) => {
-            const data = getTag(tag);
-            if (!data) return new Array(16).fill(null); 
-            
-            let parsedArray = data.split(',').map(v => {
-                const val = v.trim();
-                if (val === '-' || val === '') return null; 
-                let num = parseInt(val);
-                return isNaN(num) ? null : num;
-            });
-
-            if (parsedArray.length > 16) parsedArray = parsedArray.slice(0, 16);
-            while (parsedArray.length < 16) parsedArray.push(null);
-
-            return parsedArray;
-        };
-
-        const bassArr = parseShortArr('BASS');
-        const trebleArr = parseShortArr('TREBLE');
-        const chordArr = parseShortArr('CHORDS');
-
-        this.bassQueue.push(...bassArr);
-        this.trebleQueue.push(...trebleArr);
-        this.chordQueue.push(...chordArr); 
-
-        this.melodyMemory.push(trebleArr.map(n => n === null ? '-' : n));
-        
-        if (this.melodyMemory.length > 4) {
-            this.melodyMemory.shift(); 
-        }
+    const newTempo = getTag('TEMPO');
+    if (newTempo && !isNaN(parseFloat(newTempo))) {
+      this.targetTempo = parseFloat(newTempo);
     }
-
-    start() {
-        if (this.isPlaying) return;
-        this.ctx.resume();
-        this.isPlaying = true;
-        this.nextNoteTime = this.ctx.currentTime + 0.1;
-        this.tick = 0;
-        this.scheduler();
+    const newScale = getTag('SCALE');
+    if (newScale) {
+      let parsedScale = newScale.split(',').map(Number).filter(n => !isNaN(n));
+      if (parsedScale.length > 0) this.scale = parsedScale;
     }
-
-    stop() {
-        this.isPlaying = false;
-        if (this.timer) clearTimeout(this.timer);
-        this.master.gain.setTargetAtTime(0, this.ctx.currentTime, 0.5);
+    const parseShortArr = (tag) => {
+      const data = getTag(tag);
+      if (!data) return new Array(16).fill(null); 
+      let parsedArray = data.split(',').map(v => {
+        const val = v.trim();
+        if (val === '-' || val === '') return null; 
+        let num = parseInt(val);
+        return isNaN(num) ? null : num;
+      });
+      if (parsedArray.length > 16) parsedArray = parsedArray.slice(0, 16);
+      while (parsedArray.length < 16) parsedArray.push(null);
+      return parsedArray;
+    };
+    const bassArr = parseShortArr('BASS');
+    const trebleArr = parseShortArr('TREBLE');
+    const chordArr = parseShortArr('CHORDS');
+    this.bassQueue.push(...bassArr);
+    this.trebleQueue.push(...trebleArr);
+    this.chordQueue.push(...chordArr); 
+    this.melodyMemory.push(trebleArr.map(n => n === null ? '-' : n));
+    if (this.melodyMemory.length > 4) {
+      this.melodyMemory.shift(); 
     }
+  }
 
-    scheduler() {
-        while (this.nextNoteTime < this.ctx.currentTime + this.scheduleAheadTime) {
-            this.scheduleNote(this.tick, this.nextNoteTime);
-            this.advanceNote();
-        }
-        if (this.isPlaying) {
-            this.timer = setTimeout(() => this.scheduler(), this.lookahead);
-        }
+  start() {
+    if (this.isPlaying) return;
+    this.ctx.resume();
+    this.isPlaying = true;
+    this.nextNoteTime = this.ctx.currentTime + 0.1;
+    this.tick = 0;
+    this.scheduler();
+  }
+  stop() {
+    this.isPlaying = false;
+    if (this.timer) clearTimeout(this.timer);
+    this.master.gain.setTargetAtTime(0, this.ctx.currentTime, 0.5);
+  }
+  scheduler() {
+    while (this.nextNoteTime < this.ctx.currentTime + this.scheduleAheadTime) {
+      this.scheduleNote(this.tick, this.nextNoteTime);
+      this.advanceNote();
     }
-
-   advanceNote() {
-        if (!isFinite(this.targetTempo) || this.targetTempo <= 0) this.targetTempo = 100;
-        if (!isFinite(this.tempo) || this.tempo <= 0) this.tempo = 100;
-
-        if (this.tempo < this.targetTempo) this.tempo += 0.2;
-        if (this.tempo > this.targetTempo) this.tempo -= 0.2;
-        if (Math.abs(this.tempo - this.targetTempo) < 0.2) this.tempo = this.targetTempo;
-
-        // Harpsichord pieces often use 16th notes heavily
-        const secondsPerBeat = 60.0 / this.tempo;
-        this.nextNoteTime += 0.25 * secondsPerBeat; 
-        
-        this.tick++; 
-
-        // --- AUTOMATIC MODULATION TRIGGER ---
-        // 64 ticks = 4 bars.
-        if (this.tick > 0 && this.tick % 256 === 0) {
-            this.modulateRandomly();
-        }
-
-        if (this.bassQueue.length < 64 && !this.isFetching) {
-            this.composeNext();
-        }
+    if (this.isPlaying) {
+      this.timer = setTimeout(() => this.scheduler(), this.lookahead);
     }
-
-    scheduleNote(tick, t) {
-        const bassNote = this.bassQueue.length > 0 ? this.bassQueue.shift() : null;
-        const trebleNote = this.trebleQueue.length > 0 ? this.trebleQueue.shift() : null;
-        const chordNote = this.chordQueue.length > 0 ? this.chordQueue.shift() : null; 
-
-        if (chordNote !== null && typeof chordNote === 'number' && !isNaN(chordNote)) {
-            this.playHarpsichordChord(t, chordNote);
-        }
-        
-        if (bassNote !== null && typeof bassNote === 'number' && !isNaN(bassNote)) {
-            this.playHarpsichordString(t, bassNote, -1, 1.5, 0.7); 
-        }
-
-        if (trebleNote !== null && typeof trebleNote === 'number' && !isNaN(trebleNote)) {
-            const oct = (trebleNote > 7) ? 1 : 0; 
-            // Removed the "swing" randomizer — Bach is played perfectly in time!
-            this.playHarpsichordString(t, trebleNote, oct, 1.0, 0.5); 
-        }
+  }
+  advanceNote() {
+    if (!isFinite(this.targetTempo) || this.targetTempo <= 0) this.targetTempo = 100;
+    if (!isFinite(this.tempo) || this.tempo <= 0) this.tempo = 100;
+    if (this.tempo < this.targetTempo) this.tempo += 0.2;
+    if (this.tempo > this.targetTempo) this.tempo -= 0.2;
+    if (Math.abs(this.tempo - this.targetTempo) < 0.2) this.tempo = this.targetTempo;
+    // Harpsichord pieces often use 16th notes heavily
+    const secondsPerBeat = 60.0 / this.tempo;
+    this.nextNoteTime += 0.25 * secondsPerBeat;  
+    this.tick++; 
+    // --- AUTOMATIC MODULATION TRIGGER ---
+    // 64 ticks = 4 bars.
+    if (this.tick > 0 && this.tick % 256 === 0) {
+      this.modulateRandomly();
     }
-
-    playHarpsichordChord(t, rootDegree) {
-        const chordOffsets = [0, 2, 4]; // Simple triad instead of huge harp strum
-        let delay = 0;
-        
-        chordOffsets.forEach((interval, i) => {
-            const oct = (i < 2) ? -1 : 0; 
-            // Very tight roll, much faster than a harp strum
-            this.playHarpsichordString(t + delay, rootDegree + interval, oct, 1.5, 0.5);
-            delay += 0.015; 
-        });
+    if (this.bassQueue.length < 64 && !this.isFetching) {
+      this.composeNext();
     }
-
-    getFreq(scaleDegree, octaveOffset) {
-        let d = parseInt(scaleDegree);
-        let o = parseInt(octaveOffset);
-        
-        if (isNaN(d)) d = 0;
-        if (isNaN(o)) o = 0;
-
-        const len = this.scale.length;
-        if (len === 0) return this.rootFreq; 
-
-        while (d < 0) { d += len; o -= 1; }
-        while (d >= len) { d -= len; o += 1; }
-        
-        let semitone = this.scale[d];
-        if (isNaN(semitone)) semitone = 0; 
-        
-        return this.rootFreq * Math.pow(2, (semitone + (o * 12)) / 12);
+  }
+  scheduleNote(tick, t) {
+    const bassNote = this.bassQueue.length > 0 ? this.bassQueue.shift() : null;
+    const trebleNote = this.trebleQueue.length > 0 ? this.trebleQueue.shift() : null;
+    const chordNote = this.chordQueue.length > 0 ? this.chordQueue.shift() : null; 
+    if (chordNote !== null && typeof chordNote === 'number' && !isNaN(chordNote)) {
+      this.playHarpsichordChord(t, chordNote);
     }
-
-    playHarpsichordString(t, degree, octave, duration, velocity) {
-        if (!isFinite(t)) t = this.ctx.currentTime;
-        
-        const freq = this.getFreq(degree, octave);
-        
-        if (!isFinite(freq)) {
-            console.warn(`[Audio Shield] Blocked invalid frequency for note degree: ${degree}`);
-            return; 
-        }
-
-        // Harpsichords use a complex harmonic spectrum. We use two oscillators to simulate a 4' and 8' stop
-        const osc1 = this.ctx.createOscillator();
-        const osc2 = this.ctx.createOscillator();
-        const g = this.ctx.createGain();
-        const filter = this.ctx.createBiquadFilter();
-
-        osc1.type = 'sawtooth'; 
-        osc1.frequency.setValueAtTime(freq, t); 
-        
-        osc2.type = 'square'; // Adds the hollow, nasal character
-        osc2.frequency.setValueAtTime(freq * 2, t); // Octave up (4-foot stop)
-
-        // Filter creates the bright, mechanical pluck that mellows out slightly
-        filter.type = 'lowpass';
-        filter.frequency.setValueAtTime(8000, t); 
-        filter.frequency.exponentialRampToValueAtTime(2500, t + 0.1); 
-
-        // Envelope: Sharp attack, strict decay. No sustain pedal allowed in the Baroque era!
-        g.gain.setValueAtTime(0, t);
-        g.gain.linearRampToValueAtTime(isFinite(velocity) ? velocity * 0.4 : 0.2, t + 0.005); 
-        g.gain.exponentialRampToValueAtTime(0.001, t + Math.min(duration, 1.5)); 
-
-        osc1.connect(filter);
-        osc2.connect(filter);
-        
-        // Lower the volume of the octave-up string slightly
-        const osc2Gain = this.ctx.createGain();
-        osc2Gain.gain.value = 0.3;
-        osc2.disconnect();
-        osc2.connect(osc2Gain);
-        osc2Gain.connect(filter);
-
-        filter.connect(g);
-        g.connect(this.master);
-
-        osc1.start(t);
-        osc2.start(t);
-        osc1.stop(t + duration);
-        osc2.stop(t + duration);
-        // When the primary oscillator finishes playing, immediately disconnect everything
-        osc1.onended = () => {
-            osc1.disconnect();
-            osc2.disconnect();
-            osc2Gain.disconnect();
-            filter.disconnect();
-            g.disconnect();
-        };
+    if (bassNote !== null && typeof bassNote === 'number' && !isNaN(bassNote)) {
+      this.playHarpsichordString(t, bassNote, -1, 1.5, 0.7); 
     }
+    if (trebleNote !== null && typeof trebleNote === 'number' && !isNaN(trebleNote)) {
+      const oct = (trebleNote > 7) ? 1 : 0; 
+      // Removed the "swing" randomizer — Bach is played perfectly in time!
+      this.playHarpsichordString(t, trebleNote, oct, 1.0, 0.5); 
+    }
+  }
+
+  playHarpsichordChord(t, rootDegree) {
+    const chordOffsets = [0, 2, 4]; // Simple triad instead of huge harp strum
+    let delay = 0;
+    chordOffsets.forEach((interval, i) => {
+      const oct = (i < 2) ? -1 : 0; 
+      // Very tight roll, much faster than a harp strum
+      this.playHarpsichordString(t + delay, rootDegree + interval, oct, 1.5, 0.5);
+      delay += 0.015; 
+    });
+  }
+
+  getFreq(scaleDegree, octaveOffset) {
+    let d = parseInt(scaleDegree);
+    let o = parseInt(octaveOffset);
+    if (isNaN(d)) d = 0;
+    if (isNaN(o)) o = 0;
+    const len = this.scale.length;
+    if (len === 0) return this.rootFreq; 
+    while (d < 0) { d += len; o -= 1; }
+    while (d >= len) { d -= len; o += 1; }
+    let semitone = this.scale[d];
+    if (isNaN(semitone)) semitone = 0; 
+    return this.rootFreq * Math.pow(2, (semitone + (o * 12)) / 12);
+  }
+
+  playHarpsichordString(t, degree, octave, duration, velocity) {
+    if (!isFinite(t)) t = this.ctx.currentTime;
+    const freq = this.getFreq(degree, octave);
+    if (!isFinite(freq)) {
+      console.warn(`[Audio Shield] Blocked invalid frequency for note degree: ${degree}`);
+      return; 
+    }
+    // Harpsichords use a complex harmonic spectrum. We use two oscillators to simulate a 4' and 8' stop
+    const osc1 = this.ctx.createOscillator();
+    const osc2 = this.ctx.createOscillator();
+    const g = this.ctx.createGain();
+    const filter = this.ctx.createBiquadFilter();
+    osc1.type = 'sawtooth'; 
+    osc1.frequency.setValueAtTime(freq, t); 
+    osc2.type = 'square'; // Adds the hollow, nasal character
+    osc2.frequency.setValueAtTime(freq * 2, t); // Octave up (4-foot stop)
+    // Filter creates the bright, mechanical pluck that mellows out slightly
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(8000, t); 
+    filter.frequency.exponentialRampToValueAtTime(2500, t + 0.1); 
+    // Envelope: Sharp attack, strict decay. No sustain pedal allowed in the Baroque era!
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(isFinite(velocity) ? velocity * 0.4 : 0.2, t + 0.005); 
+    g.gain.exponentialRampToValueAtTime(0.001, t + Math.min(duration, 1.5)); 
+    osc1.connect(filter);
+    osc2.connect(filter);  
+    // Lower the volume of the octave-up string slightly
+    const osc2Gain = this.ctx.createGain();
+    osc2Gain.gain.value = 0.3;
+    osc2.disconnect();
+    osc2.connect(osc2Gain);
+    osc2Gain.connect(filter);
+    filter.connect(g);
+    g.connect(this.master);
+    osc1.start(t);
+    osc2.start(t);
+    osc1.stop(t + duration);
+    osc2.stop(t + duration);
+    // When the primary oscillator finishes playing, immediately disconnect everything
+    osc1.onended = () => {
+      osc1.disconnect();
+      osc2.disconnect();
+      osc2Gain.disconnect();
+      filter.disconnect();
+      g.disconnect();
+    };
+  }
 }
-
-  class GenVoice {
+class GenVoice {
     constructor(module, id) {
         this.mod = module; // Reference to main module
         this.id = id;      // 0 or 1
