@@ -1339,7 +1339,7 @@ socket.on('suncat_baroque', async (data, callback) => {
             OUTPUT FORMAT:
             [THOUGHT] A warm breeze passes. I will sing of the old days. [/THOUGHT]
             [LYRICS] The stars fall down [/LYRICS]
-            [TEMPO] 85 [/TEMPO]
+            [TEMPO] 60 [/TEMPO]
             [SCALE] 0,2,3,5,7,9,10 [/SCALE]
             [THUMB] 0,-,-,-, 4,-,-,-, 0,-,-,-, 7,-,-,- [/THUMB]
             [FINGERS] 0,-,2,-, 3,-,5,-, 2,-,-,-, -,-,-,- [/FINGERS]
