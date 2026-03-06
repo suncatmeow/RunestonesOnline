@@ -996,7 +996,7 @@ socket.on('suncat_compose', async (data, callback) => {
         3. EVERY array MUST contain exactly 16 values separated by exactly 15 commas.
 
         COMPOSITION GUIDE:
-        - [LYRICS]: Exactly 16 poetic lines (max 8 words each) separated by exactly 15 commas, matching the mood. Or output exactly: [LYRICS]-[/LYRICS] for an instrumental bar.
+        - [LYRICS]: 1 poetic line (max 8 words) matching the mood. Or output exactly: [LYRICS]-[/LYRICS] for an instrumental bar.
         - [TEMPO]: Integer between 50 and 140. Keep it similar to the previous bar unless making a dramatic shift.
         - [SCALE]: Choose an array of numbers from the list above.
         - [STRUM]: 75% of the time, output 16 dashes: -,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-. Only place a '0' on step 0 for heavy emphasis.
