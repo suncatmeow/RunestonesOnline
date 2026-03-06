@@ -41129,44 +41129,42 @@ class AiModule {
         this.isPlaying = false;
         this.isFetching = false;
 
-        // --- 1. ANCIENT TUNING (Defaulting to Dorian) ---
-        this.tempo = 85; 
-        this.targetTempo = 85; 
-        this.rootFreq = 146.83; // D3 - A common root for ancient reconstructions
+        // --- 1. THE LYRE TUNING ---
+        this.tempo = 90; 
+        this.targetTempo = 90; // The tempo Suncat WANTS to reach
+        this.rootFreq = 146.83; 
         this.scale = [0, 2, 3, 5, 7, 9, 10]; 
         
         // --- 2. THE HANDS (FIFO Queues) ---
-        this.thumbQueue = [];   // The Drone
-        this.fingersQueue = []; // The Melody
-        this.strumQueue = [];   // The Punctuation
+        this.thumbQueue = [];   
+        this.fingersQueue = []; 
+        this.strumQueue = [];   
         this.melodyMemory = []; 
         this.lyricsQueue = []; 
-        
-        // Initialize with a simple monophonic poetic meter (Long-short-short)
         for(let i=0; i<32; i++) {
-            this.thumbQueue.push(i % 8 === 0 ? 0 : null); 
+            this.thumbQueue.push(i % 16 === 0 ? 0 : null); 
             this.strumQueue.push(i === 0 ? 0 : null);
-            if (i % 4 === 0 || i % 4 === 2 || i % 4 === 3) {
-                this.fingersQueue.push(0); // A repeating chanted note
+            if (i % 2 === 0) {
+                const arp = [0, 2, 4, 7, 4, 2];
+                this.fingersQueue.push(arp[(i/2) % arp.length]);
             } else {
                 this.fingersQueue.push(null);
             }
         }
 
-        // --- 3. THE ACOUSTIC SPACE (An Outdoor Amphitheater) ---
+        // --- 3. THE ACOUSTIC SPACE ---
         this.tick = 0;
         this.nextNoteTime = 0.0;
         this.scheduleAheadTime = 0.1;
         this.lookahead = 25.0;
 
         this.master = ctx.createGain();
-        this.master.gain.value = 0.8; // Slightly louder to compensate for gut strings
+        this.master.gain.value = 0.7;
 
         this.reverb = ctx.createConvolver();
-        // A 2.0s reverb mimics a stone courtyard or amphitheater better than a massive cave
-        this.reverb.buffer = this.createImpulse(2.0); 
+        this.reverb.buffer = this.createImpulse(4.0); 
         this.revGain = ctx.createGain();
-        this.revGain.gain.value = 0.4; 
+        this.revGain.gain.value = 0.5; 
 
         this.master.connect(this.dest);
         this.master.connect(this.reverb);
@@ -41193,11 +41191,13 @@ class AiModule {
     }
 
     async composeNext() {
-        if (this.isFetching) return; 
+        if (this.isFetching) return; // Double-fire protection
         this.isFetching = true;
         
+        // 1. Build Suncat's Musical Memory String
         let memoryString = "None (Brand new song)";
         if (this.melodyMemory.length > 0) {
+            // Shows Suncat the last few bars like: "Bar -2: [0,2,-,4...]"
             memoryString = this.melodyMemory.map((bar, i) => `Bar -${this.melodyMemory.length - i}: [${bar.join(',')}]`).join('\n');
         }
 
@@ -41207,17 +41207,18 @@ class AiModule {
         Past Melody Memory:
         ${memoryString}
         
-        INSTRUCTION: Look at the Past Melody Memory. Develop the theme based on Ancient Greek Ethos and monophonic poetry.
+        INSTRUCTION: Look at the Past Melody Memory. Develop the theme, repeat a motif, or introduce a B-section based on your THOUGHT.
         `;
         
+        // 2. The Failsafe Unlocker (Prevents eternal stalling if the AI hangs)
         let unlockTimer = setTimeout(() => {
             console.warn("[Audio Engine] API taking too long. Releasing lock.");
             this.isFetching = false;
         }, 8000);
 
-        // Making sure this calls the endpoint you just updated!
+        // 3. Ask the AI
         socket.emit('suncat_compose', { currentState }, (aiMusicTags) => {
-            clearTimeout(unlockTimer); 
+            clearTimeout(unlockTimer); // Server answered, clear the failsafe
             if (aiMusicTags) {
                 this.parseAiResponse(aiMusicTags);
             }
@@ -41226,21 +41227,26 @@ class AiModule {
     }
 
    parseAiResponse(aiText) {
+        // More forgiving Regex that handles weird spacing or missing closing tags gracefully
         const getTag = (tag) => {
             const regex = new RegExp(`\\[${tag}\\](.*?)(?:\\[\\/${tag}\\]|$)`, 's');
             const match = aiText.match(regex);
             return match ? match[1].trim() : null;
         };
 
+        // --- READ SUNCAT'S MIND ---
         const thought = getTag('THOUGHT');
         if (thought) {
-            console.log(`%c[Orpheus's Mind] "${thought}"`, 'color: #ff9900; font-style: italic; background: #222; padding: 4px; border-radius: 4px;');
+            console.log(`%c[Suncat's Mind] "${thought}"`, 'color: #ff9900; font-style: italic; background: #222; padding: 4px; border-radius: 4px;');
         }
 
         const lyrics = getTag('LYRICS');
+        // Push the lyric to the queue. Even if it's empty/null, we push "" 
+        // to keep it aligned with the 16-step musical bars.
         const lyricToQueue = (lyrics && lyrics !== '-' && lyrics !== '') ? lyrics : "";
         this.lyricsQueue.push(lyricToQueue);
 
+        // --- GRAB NEW TEMPO & SCALE ---
         const newTempo = getTag('TEMPO');
         if (newTempo && !isNaN(parseFloat(newTempo))) {
              this.targetTempo = parseFloat(newTempo);
@@ -41252,38 +41258,43 @@ class AiModule {
              if (parsedScale.length > 0) this.scale = parsedScale;
         }
 
+        // --- PARSE THE MUSIC (The critical fix) ---
         const parseShortArr = (tag) => {
             const data = getTag(tag);
+            // If the AI completely forgot a tag, return an array of dashes so the song continues
             if (!data) return new Array(16).fill(null); 
             
             let parsedArray = data.split(',').map(v => {
                 const val = v.trim();
                 if (val === '-' || val === '') return null; 
                 let num = parseInt(val);
-                return isNaN(num) ? null : num; 
+                return isNaN(num) ? null : num; // Force invalid text into a rest
             });
 
+            // Force exactly 16 steps
             if (parsedArray.length > 16) parsedArray = parsedArray.slice(0, 16);
             while (parsedArray.length < 16) parsedArray.push(null);
 
             return parsedArray;
         };
 
+        // 1. Capture the arrays into variables first
         const thumbArr = parseShortArr('THUMB');
         const fingersArr = parseShortArr('FINGERS');
         const strumArr = parseShortArr('STRUM');
 
+        // 2. Push them to the actual audio queues
         this.thumbQueue.push(...thumbArr);
         this.fingersQueue.push(...fingersArr);
         this.strumQueue.push(...strumArr); 
 
+        // 3. Save to Suncat's musical memory using the fingerArr variable
         this.melodyMemory.push(fingersArr.map(n => n === null ? '-' : n));
         
         if (this.melodyMemory.length > 4) {
             this.melodyMemory.shift(); 
         }
     }
-
     start() {
         if (this.isPlaying) return;
         this.ctx.resume();
@@ -41301,6 +41312,7 @@ class AiModule {
 
     scheduler() {
         while (this.nextNoteTime < this.ctx.currentTime + this.scheduleAheadTime) {
+            // We pass the tick FIRST, then advance it.
             this.scheduleNote(this.tick, this.nextNoteTime);
             this.advanceNote();
         }
@@ -41310,8 +41322,8 @@ class AiModule {
     }
 
     advanceNote() {
-        if (!isFinite(this.targetTempo) || this.targetTempo <= 0) this.targetTempo = 85;
-        if (!isFinite(this.tempo) || this.tempo <= 0) this.tempo = 85;
+        if (!isFinite(this.targetTempo) || this.targetTempo <= 0) this.targetTempo = 90;
+        if (!isFinite(this.tempo) || this.tempo <= 0) this.tempo = 90;
 
         if (this.tempo < this.targetTempo) this.tempo += 0.2;
         if (this.tempo > this.targetTempo) this.tempo -= 0.2;
@@ -41320,51 +41332,46 @@ class AiModule {
         const secondsPerBeat = 60.0 / this.tempo;
         this.nextNoteTime += 0.25 * secondsPerBeat; 
         
-        this.tick++; 
+        this.tick++; // Increment tick AFTER scheduling the note
 
         if (this.thumbQueue.length < 64 && !this.isFetching) {
             this.composeNext();
         }
     }
-
     scheduleNote(tick, t) {
         const thumbNote = this.thumbQueue.length > 0 ? this.thumbQueue.shift() : null;
         const fingerNote = this.fingersQueue.length > 0 ? this.fingersQueue.shift() : null;
         const strumNote = this.strumQueue.length > 0 ? this.strumQueue.shift() : null; 
 
         if (strumNote !== null && typeof strumNote === 'number' && !isNaN(strumNote)) {
-            this.strumKithara(t, strumNote);
+            this.strumChord(t, strumNote);
         }
         if (tick % 16 === 0 && this.lyricsQueue.length > 0) {
             const currentLyric = this.lyricsQueue.shift();
             if (currentLyric !== "") {
-                console.log(`%c[Orpheus Sings] 🎵 "${currentLyric}"`, 'color: #00e6e6; font-size: 16px; font-weight: bold;');
+                console.log(`%c[Suncat Sings] 🎵 "${currentLyric}"`, 'color: #00e6e6; font-size: 16px; font-weight: bold;');
                 document.dispatchEvent(new CustomEvent('suncat_lyrics', { detail: currentLyric }));
             }
         }
         if (thumbNote !== null && typeof thumbNote === 'number' && !isNaN(thumbNote)) {
-            // The thumb drone is usually played on a lower string
-            this.playGutString(t, thumbNote, -1, 2.0, 0.6, 'soft'); 
+            this.playHarpString(t, thumbNote, -1, 3.0, 0.6, 'soft'); 
         }
 
         if (fingerNote !== null && typeof fingerNote === 'number' && !isNaN(fingerNote)) {
             const oct = (fingerNote > 7) ? 1 : 0; 
-            // Very slight timing humanization (ancient music was rarely metronomically perfect)
-            const swing = (Math.random() * 0.015); 
-            this.playGutString(t + swing, fingerNote, oct, 1.5, 0.5, 'soft'); 
+            const swing = (Math.random() * 0.02); 
+            this.playHarpString(t + swing, fingerNote, oct, 2.5, 0.4, 'soft'); 
         }
     }
 
-    strumKithara(t, rootDegree) {
-        // Ancient strums ("Krekein") often swept across an open chord or octave
-        const chordOffsets = [0, 4, 7]; 
+    strumChord(t, rootDegree) {
+        const chordOffsets = [0, 2, 4, 7, 9]; 
         let delay = 0;
         
         chordOffsets.forEach((interval, i) => {
-            const oct = (i < 2) ? -1 : 0; 
-            // Slower rake than a harpsichord, simulating a plectrum dragging across gut
-            this.playGutString(t + delay, rootDegree + interval, oct, 2.5, 0.6, 'hard');
-            delay += 0.06; 
+            const oct = (i < 3) ? -1 : 0; 
+            this.playHarpString(t + delay, rootDegree + interval, oct, 3.5, 0.45, 'hard');
+            delay += 0.045; 
         });
     }
 
@@ -41372,87 +41379,71 @@ class AiModule {
         let d = parseInt(scaleDegree);
         let o = parseInt(octaveOffset);
         
+        // FAILSAFE 1: If the AI sent total garbage for the note, default to the root note (0)
         if (isNaN(d)) d = 0;
         if (isNaN(o)) o = 0;
 
         const len = this.scale.length;
-        if (len === 0) return this.rootFreq; 
+        if (len === 0) return this.rootFreq; // FAILSAFE 2: If scale is somehow empty
 
         while (d < 0) { d += len; o -= 1; }
         while (d >= len) { d -= len; o += 1; }
         
         let semitone = this.scale[d];
-        if (isNaN(semitone)) semitone = 0; 
+        if (isNaN(semitone)) semitone = 0; // FAILSAFE 3: If the scale array got corrupted
         
         return this.rootFreq * Math.pow(2, (semitone + (o * 12)) / 12);
     }
 
-    playGutString(t, degree, octave, duration, velocity, style = 'soft') {
+    playHarpString(t, degree, octave, duration, velocity, style = 'soft') {
+        // FAILSAFE 4: If time (t) broke, default to right now so it doesn't crash
         if (!isFinite(t)) t = this.ctx.currentTime;
         
-        let freq = this.getFreq(degree, octave);
+        const freq = this.getFreq(degree, octave);
         
-        if (!isFinite(freq)) return; 
+        // FAILSAFE 5: The Ultimate Shield. If frequency is STILL not a number, abort this note completely.
+        if (!isFinite(freq)) {
+            console.warn(`[Audio Shield] Blocked invalid frequency for note degree: ${degree}`);
+            return; 
+        }
 
-        // MICROTONAL DRIFT: Ancient gut strings weren't perfectly in tune. 
-        // We add a random detuning of up to 5 cents in either direction.
-        const drift = Math.pow(2, ((Math.random() - 0.5) * 10) / 1200);
-        freq *= drift;
-
-        const osc1 = this.ctx.createOscillator(); // Body resonance
-        const osc2 = this.ctx.createOscillator(); // Plectrum/gut scrape
+        const osc = this.ctx.createOscillator();
         const g = this.ctx.createGain();
         const filter = this.ctx.createBiquadFilter();
 
-        osc1.type = 'triangle'; 
-        osc1.frequency.setValueAtTime(freq, t); 
+        osc.type = 'triangle'; 
+        osc.frequency.setValueAtTime(freq, t); // Safe now!
 
-        osc2.type = 'sawtooth'; 
-        osc2.frequency.setValueAtTime(freq, t);
-
-        // Filter gives it the hollow, woody/shell characteristic
-        let brightness = (octave >= 0) ? 2500 : 1200;
-        let pitchSnap = 15; // The initial "twang" of tension before it settles
+        let brightness = (octave >= 0) ? 3500 : 1500;
+        let pitchSnap = 10;
 
         if (style === 'hard') {
-            brightness = 4000; 
-            pitchSnap = 30;    
-            velocity *= 1.2;   
+            brightness = 6000; 
+            pitchSnap = 25;    
+            velocity *= 1.3;   
         }
 
-        osc1.detune.setValueAtTime(pitchSnap, t);
-        osc1.detune.linearRampToValueAtTime(0, t + 0.08);
-        osc2.detune.setValueAtTime(pitchSnap, t);
-        osc2.detune.linearRampToValueAtTime(0, t + 0.08);
+        osc.detune.setValueAtTime(pitchSnap, t);
+        osc.detune.linearRampToValueAtTime(0, t + 0.05);
 
-        filter.type = 'bandpass'; // Bandpass creates a more realistic acoustic chamber sound
-        filter.Q.value = 0.8; // Wider resonance
+        filter.type = 'lowpass';
         filter.frequency.setValueAtTime(brightness, t); 
-        filter.frequency.exponentialRampToValueAtTime(Math.max(brightness * 0.4, 100), t + 0.15); 
-        
-        // Envelope: Sharp pluck, quick decay to a quiet, buzzing sustain
+        filter.frequency.exponentialRampToValueAtTime(Math.max(brightness * 0.3, 1), t + 0.1); // Math.max prevents 0 which also crashes filters
+        filter.frequency.exponentialRampToValueAtTime(200, t + duration);
+
         g.gain.setValueAtTime(0, t);
-        g.gain.linearRampToValueAtTime(isFinite(velocity) ? velocity : 0.5, t + 0.01); 
-        g.gain.exponentialRampToValueAtTime(0.05, t + 0.4); // Drops quickly compared to modern harp
+        g.gain.linearRampToValueAtTime(isFinite(velocity) ? velocity : 0.5, t + 0.015); 
         g.gain.exponentialRampToValueAtTime(0.001, t + duration); 
 
-        osc1.connect(filter);
-        
-        // Reduce the volume of the sawtooth "scrape" so it just adds texture, not overwhelming volume
-        const scrapeGain = this.ctx.createGain();
-        scrapeGain.gain.value = 0.2;
-        osc2.connect(scrapeGain);
-        scrapeGain.connect(filter);
-
+        osc.connect(filter);
         filter.connect(g);
         g.connect(this.master);
 
-        osc1.start(t);
-        osc2.start(t);
-        osc1.stop(t + duration);
-        osc2.stop(t + duration);
+        osc.start(t);
+        osc.stop(t + duration + 0.1);
     }
-}
+  }
+
   class Ai2Module {
     constructor(ctx, dest) {
       
