@@ -1334,7 +1334,7 @@ socket.on('suncat_baroque', async (data, callback) => {
             FORMATTING RULES:
             1. NO NOTE NAMES (No C4). ONLY integers or '-' for rests.
             2. You MUST provide exactly 16 steps for THUMB, FINGERS, and STRUM arrays, separated by commas.
-            3. In the [LYRICS] tag, YOU MUST WRITE LYRICS. Provide a short, poetic phrase (max 6 words). Do NOT leave it blank.
+            3. In the [LYRICS] tag, YOU MUST WRITE LYRICS. Provide a short, poetic phrase (max 3 words). Do NOT leave it blank.
             4. VOCAL MELODY: The [FINGERS] array is your singing melody! Try to match the number of integer notes in the [FINGERS] array to the number of syllables in your [LYRICS].
             OUTPUT FORMAT:
             [THOUGHT] A warm breeze passes. I will sing of the old days. [/THOUGHT]
