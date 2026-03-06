@@ -992,9 +992,9 @@ socket.on('suncat_compose', async (data, callback) => {
 
         COMPOSITION GUIDE:
         - [LYRICS]: 1 poetic line (max 8 words) matching the mood. 
-        - [TEMPO]: Integer between 50 and 140. Keep it similar to the previous bar unless making a dramatic shift.
-        - [SCALE]: Choose an array of numbers from the list above.
-        - [STRUM]: 75% of the time, output 16 dashes: -,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-. Only place a '0' on step 0 for heavy emphasis.
+        - [TEMPO]: Integer between 50 and 140. Let it follow your thoughts and emotions.
+        - [SCALE]: Choose an array of numbers from the list above. Let it flow from your heart.
+        - [STRUM]: 90% of the time, output 16 dashes: -,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-. Only place a '0' on step 0 for heavy emphasis.
         - [THUMB]: Bass string. Pluck sparsely. Best placed on downbeats (0, 4, 8, 12) to anchor the harmony.
         - [FINGERS]: Melody strings. Weave flowing notes. Leave gaps ('-') so it breathes. Do not fill every step.
 
