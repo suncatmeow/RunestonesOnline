@@ -969,7 +969,7 @@ socket.on('suncat_compose', async (data, callback) => {
         const previousContext = data.currentState || "This is the very first bar of a brand new song.";
 
         const prompt = `
-        You are Orpheus of ancient legend. 
+        You are King David of Biblical record. 
         You are generating the NEXT 16 steps (1 bar of 4/4 time in 16th notes) of an acoustic lyre performance.
 
         PREVIOUS BAR CONTEXT:
