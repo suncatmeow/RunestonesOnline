@@ -1030,6 +1030,83 @@ socket.on('suncat_compose', async (data, callback) => {
         if (typeof callback === "function") callback(null);
     }
 });
+socket.on('suncat_baroque', async (data, callback) => {
+    console.log(`[Music AI] Johann Sebastian Suncat is composing a fugue...`);
+    if (isBankrupt()) {
+        console.log("[Music AI] Blocked due to budget limits.");
+        if (typeof callback === "function") callback(null);
+        return;
+    }
+    try {
+        const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+        const aiModel = genAI.getGenerativeModel({ 
+            model: "gemini-3.1-flash-lite-preview",
+            generationConfig: {
+                temperature: 0.9, // Lowered slightly for strict Baroque mathematical structure
+                topP: 0.95,       
+                topK: 60,         
+            }
+        });        
+        const previousContext = data.currentState || "This is the very first bar of a brand new piece.";
+
+        const prompt = `
+        You are Johann Sebastian Bach, the supreme master of Baroque counterpoint, fugue, and harmony. 
+        You are composing the NEXT 16 steps (1 bar of 4/4 time in 16th notes) of a solo harpsichord performance.
+
+        PREVIOUS BAR CONTEXT:
+        ${previousContext}
+
+        YOUR INTERNAL MONOLOGUE:
+        Write a short [THOUGHT] explaining your musical intent for this specific bar based on the previous bar. Are you introducing a subject or countersubject? Are you modulating to the dominant? Creating a sequence, an arpeggiation, or a suspension? Let your mathematical genius and deep structural understanding guide your choices. Balance the rigorous rules of counterpoint with divine inspiration.
+
+        TUNING & SCALES (Well-Tempered):
+        - Major (Ionian): 0,2,4,5,7,9,11
+        - Natural Minor (Aeolian): 0,2,3,5,7,8,10
+        - Harmonic Minor (Tense): 0,2,3,5,7,8,11
+        - Melodic Minor (Ascending): 0,2,3,5,7,9,11
+        - Dorian (Often used in Baroque): 0,2,3,5,7,9,10
+        - Phrygian: 0,1,3,5,7,8,10
+
+        SEQUENCER RULES (CRITICAL):
+        1. The arrays represent a 16-step sequencer (0 to 15). Steps 0, 4, 8, and 12 are strong downbeats.
+        2. Use ONLY integers (representing scale degrees) or '-' for rests. NO NOTE NAMES.
+        3. EVERY array MUST contain exactly 16 values separated by exactly 15 commas.
+
+        COMPOSITION GUIDE:
+        - [TEMPO]: Integer between 60 (Adagio) and 120 (Allegro). Keep it relatively steady unless ritardando is needed.
+        - [SCALE]: Choose an array of numbers from the list above. Bach heavily favored minor keys with harmonic shifts.
+        - [CHORDS]: Use sparingly. 95% of the time, output 16 dashes: -,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-. Only place a root note (e.g., '0' or '4') on step 0 for a strong cadence or figured bass realization.
+        - [BASS]: Left hand on the harpsichord. Write a walking bassline, pedal points, or the countersubject. Harmonize with the TREBLE using strict counterpoint. Leave gaps ('-') so the phrases breathe.
+        - [TREBLE]: Right hand on the harpsichord. Weave intricate, mathematical 16th-note runs, trills, or state the main fugue subject. Answer the BASS line in a conversational call-and-response.
+
+        GENERATE THESE EXACT TAGS ONLY. NO PROSE:
+        [THOUGHT]...[/THOUGHT]
+        [TEMPO]...[/TEMPO]
+        [SCALE]...[/SCALE]
+        [CHORDS]...[/CHORDS]
+        [BASS]...[/BASS]
+        [TREBLE]...[/TREBLE]
+        `;
+        
+        const result = await aiModel.generateContent(prompt);
+        const aiMusicTags = result.response.text();
+        
+        if (result.response.usageMetadata) {
+            const usage = result.response.usageMetadata;
+            updateBudget(result.response.usageMetadata);
+            console.log(`[Music AI Tokens]: ${result.response.usageMetadata.totalTokenCount}`);
+            io.emit('debug_stats', {
+                tokens: usage.totalTokenCount,
+                cost: totalSessionCost 
+            });
+        }
+        
+        if (typeof callback === "function") callback(aiMusicTags);
+    } catch (error) {
+        console.error("[Music AI] Generation failed:", error);
+        if (typeof callback === "function") callback(null);
+    }
+});
     // [NEW] SUNCAT SPECTATOR (Text-Based)
   socket.on("suncat_spectate", async (actionDescription) => {
     const suncat = players[SUNCAT_ID];
