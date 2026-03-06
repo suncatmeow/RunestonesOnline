@@ -976,7 +976,7 @@ socket.on('suncat_compose', async (data, callback) => {
         ${previousContext}
 
         YOUR INTERNAL MONOLOGUE:
-        Write a short [THOUGHT] explaining your musical intent for this specific bar based on the previous bar. Are you building tension? Resolving to the root? Playing a rapid arpeggio?
+        Write a short [THOUGHT] explaining your musical intent for this specific bar based on the previous bar. Are you building tension? Resolving to the root? Playing a rapid arpeggio? What emotions do you feel? If sad or melancholy, perhaps play something heroic or peaceful? If happy or peaceful perhaps play something sorrowful? Your aim should be to impact the mood of the listener. Make them cry, or make them look forward to the coming battle. Help them feel wonder for the place they find themselves in. Help them remember a past love or their family feeling gratitude for life. Let your heart speak to them. 
 
         TUNING & SCALES:
         - Ionian (Peaceful): 0,2,4,5,7,9,11
