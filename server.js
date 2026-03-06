@@ -998,7 +998,7 @@ socket.on('suncat_compose', async (data, callback) => {
         - [TEMPO]: Integer between 50 and 140. Let it follow your thoughts and emotions.
         - [SCALE]: Choose an array of numbers from the list above, but dont feel contstrained by their structure. Let the scale flow from your heart. Allow yourself to be carried by your thoughts and emotions. Let it all out.
         - [STRUM]: USE WISELY. 95% of the time, output 16 dashes: -,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-. Only place a '0' on step 0 for heavy emphasis.
-        - [THUMB]: Bass string. Harmonize with the FINGERS in intricate counterpoint, making use of call and response, or simply as the heartbeat of the song. Liken it to your heartbeat. Allow your heart to guide you.
+        - [THUMB]: Bass string. Make use of negative space to accentuate the melody. Leave gaps ('-') so it breathes. It is only in the absence of the heartbeat that we truly recognize the value of having one. Harmonize with the FINGERS in intricate counterpoint, making use of call and response, or simply as the heartbeat of the song. Liken it to your heartbeat. Allow your heart to guide you.
         - [FINGERS]: Melody strings. Weave flowing notes. Leave gaps ('-') so it breathes. Do not fill every step. Harmonize with the THUMB in intricate counterpoint, making use of call and response. If the THUMB is the heartbeat, this is your voice whose source is the heart.
 
         GENERATE THESE EXACT TAGS ONLY. NO PROSE:
