@@ -41131,9 +41131,11 @@ class AiModule {
 
         // --- 1. THE LYRE TUNING ---
         this.tempo = 90; 
-        this.targetTempo = 90; // The tempo Suncat WANTS to reach
-        this.rootFreq = 146.83; 
-        this.scale = [0, 2, 3, 5, 7, 9, 10]; 
+        this.targetTempo = 90; 
+        this.baseFreq = 146.83; // Anchor frequency (approx D3)
+        this.rootFreq = this.baseFreq; 
+        this.currentKeyOffset = 0; // Tracks our current semitone shift (0-11)
+        this.scale = [0, 2, 3, 5, 7, 9, 10];
         
         // --- 2. THE HANDS (FIFO Queues) ---
         this.thumbQueue = [];   
@@ -41141,6 +41143,7 @@ class AiModule {
         this.strumQueue = [];   
         this.melodyMemory = []; 
         this.lyricsQueue = []; 
+        this.lyricMemory = []; // <-- NEW: Tracks recent lyrics
         for(let i=0; i<32; i++) {
             this.thumbQueue.push(i % 16 === 0 ? 0 : null); 
             this.strumQueue.push(i === 0 ? 0 : null);
@@ -41166,17 +41169,40 @@ class AiModule {
         this.revGain = ctx.createGain();
         this.revGain.gain.value = 0.5; 
 
-        this.master.connect(this.dest);
+        this.limiter = ctx.createDynamicsCompressor();
+        this.limiter.threshold.value = -3.0; // Catch peaks right before they clip
+        this.limiter.knee.value = 0.0;       // Hard knee for strict limiting
+        this.limiter.ratio.value = 20.0;     // Aggressive squash on anything too loud
+        this.limiter.attack.value = 0.001;   // Instant reaction
+        this.limiter.release.value = 0.1;
+
+        // Route everything through the limiter before the destination
+        this.master.connect(this.limiter);
         this.master.connect(this.reverb);
         this.reverb.connect(this.revGain);
-        this.revGain.connect(this.dest);
+        this.revGain.connect(this.limiter);
+        
+        this.limiter.connect(this.dest);
 
         this.start();
         if (typeof socket !== 'undefined') {
             this.composeNext(); 
         }
     }
+      modulateRandomly() {
+        // Pick a jump between 1 and 11 semitones (ensures we actually change keys)
+        const jump = Math.floor(Math.random() * 11) + 1;
+        
+        // Wrap around the 12 keys using modulo
+        this.currentKeyOffset = (this.currentKeyOffset + jump) % 12;
 
+        // Apply the equal temperament math to get the new frequency
+        this.rootFreq = this.baseFreq * Math.pow(2, this.currentKeyOffset / 12);
+
+        // A fun visual to track what key Suncat is playing in
+        const keys = ['D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B', 'C', 'C#'];
+        console.log(`%c[Suncat Modulates] 🌀 Jumped to ${keys[this.currentKeyOffset]}!`, 'color: #ff33cc; font-style: italic; font-weight: bold; background: #111; padding: 3px;');
+    }
     createImpulse(duration) {
         const rate = this.ctx.sampleRate;
         const len = rate * duration;
@@ -41200,14 +41226,21 @@ class AiModule {
             // Shows Suncat the last few bars like: "Bar -2: [0,2,-,4...]"
             memoryString = this.melodyMemory.map((bar, i) => `Bar -${this.melodyMemory.length - i}: [${bar.join(',')}]`).join('\n');
         }
-
+        // --- NEW: Build Lyric Memory String ---
+        let lyricMemoryString = "None yet.";
+        if (this.lyricMemory.length > 0) {
+            lyricMemoryString = this.lyricMemory.map((line, i) => `${i + 1}. "${line}"`).join('\n        ');
+        }
         const currentState = `
         Current Tempo: ${Math.round(this.targetTempo)} BPM.
         Current Scale Array: [${this.scale.join(',')}].
         Past Melody Memory:
         ${memoryString}
         
-        INSTRUCTION: Look at the Past Melody Memory. Develop the theme, repeat a motif, or introduce a B-section based on your THOUGHT.
+        Recently Sung Lyrics:
+        ${lyricMemoryString}
+        
+        INSTRUCTION: Look at the Past Melody Memory and Recently Sung Lyrics. Develop the theme, repeat a motif, or introduce a B-section based on your THOUGHT. CRITICAL: Do NOT repeat the lines in the Recently Sung Lyrics. Write fresh lines that progress the story or theme.
         `;
         
         // 2. The Failsafe Unlocker (Prevents eternal stalling if the AI hangs)
@@ -41241,11 +41274,18 @@ class AiModule {
         }
 
         const lyrics = getTag('LYRICS');
+        
         // Push the lyric to the queue. Even if it's empty/null, we push "" 
         // to keep it aligned with the 16-step musical bars.
         const lyricToQueue = (lyrics && lyrics !== '-' && lyrics !== '') ? lyrics : "";
         this.lyricsQueue.push(lyricToQueue);
-
+        if (lyricToQueue !== "") {
+            this.lyricMemory.push(lyricToQueue);
+            // Keep the last 6 lines (adjust this number if you want a longer memory)
+            if (this.lyricMemory.length > 6) {
+                this.lyricMemory.shift();
+            }
+        }
         // --- GRAB NEW TEMPO & SCALE ---
         const newTempo = getTag('TEMPO');
         if (newTempo && !isNaN(parseFloat(newTempo))) {
@@ -41333,6 +41373,12 @@ class AiModule {
         this.nextNoteTime += 0.25 * secondsPerBeat; 
         
         this.tick++; // Increment tick AFTER scheduling the note
+
+        // --- THE NEW AUTOMATIC MODULATION TRIGGER ---
+        // 64 ticks = 4 bars. Change to 128 for 8 bars.
+        if (this.tick > 0 && this.tick % 256 === 0) {
+            this.modulateRandomly();
+        }
 
         if (this.thumbQueue.length < 64 && !this.isFetching) {
             this.composeNext();
@@ -41433,14 +41479,24 @@ class AiModule {
 
         g.gain.setValueAtTime(0, t);
         g.gain.linearRampToValueAtTime(isFinite(velocity) ? velocity : 0.5, t + 0.015); 
-        g.gain.exponentialRampToValueAtTime(0.001, t + duration); 
+        // Fade down to a whisper...
+        g.gain.exponentialRampToValueAtTime(0.001, t + duration - 0.02); 
+        // ...then strictly close the gate to absolute zero to prevent pops
+        g.gain.linearRampToValueAtTime(0, t + duration);
 
         osc.connect(filter);
         filter.connect(g);
         g.connect(this.master);
 
         osc.start(t);
-        osc.stop(t + duration + 0.1);
+        osc.stop(t + duration); // Match the stop time exactly to the zero-gain time
+
+        // The garbage collection fix
+        osc.onended = () => {
+            osc.disconnect();
+            filter.disconnect();
+            g.disconnect();
+        };
     }
   }
 
@@ -41456,9 +41512,11 @@ class AiModule {
         // --- 1. BAROQUE TUNING ---
         this.tempo = 100; // Slightly brisker for inventions/preludes
         this.targetTempo = 100; 
-        this.rootFreq = 146.83; // D3 is a great root for Bach
+        this.baseFreq = 146.83; // Anchor frequency (D3)
+        this.rootFreq = this.baseFreq; 
+        this.currentKeyOffset = 0; // Tracks our current semitone shift (0-11)
         // Default to a minor scale for that classic Bach feel (D Natural Minor)
-        this.scale = [0, 2, 3, 5, 7, 8, 10]; 
+        this.scale = [0, 2, 3, 5, 7, 8, 10];
         
         // --- 2. THE HANDS (Counterpoint Queues) ---
         this.bassQueue = [];    // Left hand
@@ -41503,7 +41561,19 @@ class AiModule {
             this.composeNext(); 
         }
     }
+    modulateRandomly() {
+        // Pick a jump between 1 and 11 semitones to guarantee a key change
+        const jump = Math.floor(Math.random() * 11) + 1;
+        
+        // Wrap around the 12 keys using modulo
+        this.currentKeyOffset = (this.currentKeyOffset + jump) % 12;
 
+        // Apply equal temperament math
+        this.rootFreq = this.baseFreq * Math.pow(2, this.currentKeyOffset / 12);
+
+        const keys = ['D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B', 'C', 'C#'];
+        console.log(`%c[Well-Tempered Clavier] 🎼 Modulated to ${keys[this.currentKeyOffset]}!`, 'color: #cda434; font-style: italic; font-weight: bold; background: #111; padding: 3px;');
+    }
     createImpulse(duration) {
         const rate = this.ctx.sampleRate;
         const len = rate * duration;
@@ -41631,7 +41701,7 @@ class AiModule {
         }
     }
 
-    advanceNote() {
+   advanceNote() {
         if (!isFinite(this.targetTempo) || this.targetTempo <= 0) this.targetTempo = 100;
         if (!isFinite(this.tempo) || this.tempo <= 0) this.tempo = 100;
 
@@ -41644,6 +41714,12 @@ class AiModule {
         this.nextNoteTime += 0.25 * secondsPerBeat; 
         
         this.tick++; 
+
+        // --- AUTOMATIC MODULATION TRIGGER ---
+        // 64 ticks = 4 bars.
+        if (this.tick > 0 && this.tick % 256 === 0) {
+            this.modulateRandomly();
+        }
 
         if (this.bassQueue.length < 64 && !this.isFetching) {
             this.composeNext();
@@ -41750,6 +41826,14 @@ class AiModule {
         osc2.start(t);
         osc1.stop(t + duration);
         osc2.stop(t + duration);
+        // When the primary oscillator finishes playing, immediately disconnect everything
+        osc1.onended = () => {
+            osc1.disconnect();
+            osc2.disconnect();
+            osc2Gain.disconnect();
+            filter.disconnect();
+            g.disconnect();
+        };
     }
 }
 
