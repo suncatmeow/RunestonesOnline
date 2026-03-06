@@ -314,7 +314,7 @@ const toolsDef = [{
                 }
             }
         },
-        // 5. The MAP CREATION Tool (UPDATED)
+        // 5. The MAP CREATION Tool
         {
             name: "createCustomMap",
             description: "Creates a brand new custom map based on the player's request. Always enclose the outer edges of the map with walls (1) so the player cannot walk out of bounds. You can also populate the map with NPCs, monsters, or loot.",
@@ -323,8 +323,7 @@ const toolsDef = [{
                 properties: {
                     grid: { 
                         type: "STRING", 
-                        description: "A JSON stringified 2D array of integers from 0 - 1 (0 = floor, 1 = wall). Size should be roughly 10x10 to 15x15." 
-                    },
+                        description: "A JSON stringified 2D array of integers (approx 10x10 to 15x15). \n\nTILE LEGEND:\n0 = Open Walkable Floor\n\n[SOLID WALLS (Odd Numbers)]\n1 = Brown\n3 = Light Brown\n5 = Red\n7 = Tan\n9 = Blue\n13 = White\n17 = Dark Blue\n19 = Solid Black (Void)\n21 = Yellow\n23 = Green (Forest)\n25 = Gray\n29 = Dark Purple\n31 = Bright Green\n33 = Dark Gray\n\n[ILLUSORY/PASS-THROUGH WALLS (Even Numbers)]\n2 = Pass-through Brown\n4, 6, 8, 10, 12... = Pass-through Black Void (Great for endless space rooms or secret doors)."                    },
                     skyColor: { 
                         type: "STRING", 
                         description: "CSS color for the sky (e.g., '#4d3900' or 'rgba(0,0,64,1)')." 
@@ -336,6 +335,10 @@ const toolsDef = [{
                     mapName: { 
                         type: "STRING", 
                         description: "A creative name for this new map." 
+                    },
+                    weather: { // <--- NEW WEATHER PARAMETER
+                        type: "STRING",
+                        description: "The weather effect for the map. Options: 'clear', 'snow', 'storm', 'leaves', 'lightning', 'space', 'apocalypse'."
                     },
                     npcs: {
                         type: "ARRAY",
@@ -353,7 +356,7 @@ const toolsDef = [{
                         }
                     }
                 },
-                required: ["grid", "skyColor", "floorColor"]
+                required: ["grid", "skyColor", "floorColor"] // Not making weather/npcs strictly required so it doesn't break if he forgets
             }
         },
         // 6. [NEW] The TELEPORT PLAYER Tool
@@ -951,7 +954,8 @@ io.on("connection", (socket) => {
                               const skyColor = currentCall.args.skyColor || 'rgba(0,0,0,1)';
                               const floorColor = currentCall.args.floorColor || '#333333';
                               const mapName = currentCall.args.mapName || "Suncat's Dreamscape";
-                              const mapNPCs = currentCall.args.npcs || []; // <--- GET THE NPCs
+                              const mapNPCs = currentCall.args.npcs || [];
+                              const mapWeather = currentCall.args.weather || 'clear'; // <--- GRAB WEATHER FROM AI
                               const customMapID = 999; 
 
                               const customMapData = {
@@ -960,7 +964,8 @@ io.on("connection", (socket) => {
                                   skyColor: skyColor,
                                   floorColor: floorColor,
                                   name: mapName,
-                                  npcs: mapNPCs // <--- SEND THEM TO THE CLIENT
+                                  npcs: mapNPCs,
+                                  weather: mapWeather // <--- SEND WEATHER TO CLIENT
                               };
 
                               let spawnX = 1.5, spawnY = 1.5;
