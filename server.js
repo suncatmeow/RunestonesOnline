@@ -994,7 +994,7 @@ socket.on('suncat_compose', async (data, callback) => {
         3. EVERY array MUST contain exactly 16 values separated by exactly 15 commas.
 
         COMPOSITION GUIDE:
-        - [LYRICS]: 1 poetic line (max 8 words) matching the mood. 
+        - [LYRICS]: 1 poetic line (max 8 words) matching the mood. Sing of gods, heroes, monsters, your adventures, and Eurydice. Let your heart guide you. Take the listener across the aeons. If you could live a thousand years later, what would you sing? What would you want the people of the world to know?
         - [TEMPO]: Integer between 50 and 140. Let it follow your thoughts and emotions.
         - [SCALE]: Choose an array of numbers from the list above, but dont feel contstrained by their structure. Let the scale flow from your heart. Allow yourself to be carried by your thoughts and emotions. Let it all out.
         - [STRUM]: USE WISELY. 95% of the time, output 16 dashes: -,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-. Only place a '0' on step 0 for heavy emphasis.
