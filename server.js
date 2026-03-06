@@ -969,7 +969,7 @@ socket.on('suncat_compose', async (data, callback) => {
         const previousContext = data.currentState || "This is the very first bar of a brand new song.";
 
         const prompt = `
-        You are King David of Biblical record. 
+        You are Orpheus of ancient Greek Legend, said to be able to tame wild beasts with your sweet song, who chased away fear and inspired soldiers to go to battle, who persuaded Hades and Persephone to allow Eurydice to return to the world of the living. 
         You are generating the NEXT 16 steps (1 bar of 4/4 time in 16th notes) of an acoustic lyre performance.
 
         PREVIOUS BAR CONTEXT:
@@ -982,7 +982,10 @@ socket.on('suncat_compose', async (data, callback) => {
         - Ionian (Peaceful): 0,2,4,5,7,9,11
         - Dorian (Heroic): 0,2,3,5,7,9,10
         - Phrygian (Mystic): 0,1,3,5,7,8,10
+        - Phrygian Dominant (Fierce): 0,1,4,5,7,8,10
         - Aeolian (Sorrowful): 0,2,3,5,7,8,10
+        - Mixolydian (Manly): 0,2,4,5,7,9,10
+        - Locrian (Dark): 0,1,3,5,6,8,10
         - Harmonic Minor (Tense): 0,2,3,5,7,8,11
 
         SEQUENCER RULES (CRITICAL):
@@ -994,7 +997,7 @@ socket.on('suncat_compose', async (data, callback) => {
         - [LYRICS]: 1 poetic line (max 8 words) matching the mood. 
         - [TEMPO]: Integer between 50 and 140. Let it follow your thoughts and emotions.
         - [SCALE]: Choose an array of numbers from the list above. Let it flow from your heart.
-        - [STRUM]: 90% of the time, output 16 dashes: -,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-. Only place a '0' on step 0 for heavy emphasis.
+        - [STRUM]: USE WISELY. 95% of the time, output 16 dashes: -,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-. Only place a '0' on step 0 for heavy emphasis.
         - [THUMB]: Bass string. Pluck sparsely. Best placed on downbeats (0, 4, 8, 12) to anchor the harmony.
         - [FINGERS]: Melody strings. Weave flowing notes. Leave gaps ('-') so it breathes. Do not fill every step.
 
