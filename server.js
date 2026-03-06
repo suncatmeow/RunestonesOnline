@@ -314,16 +314,16 @@ const toolsDef = [{
                 }
             }
         },
-        // 5. [NEW] The MAP CREATION Tool
+        // 5. The MAP CREATION Tool (UPDATED)
         {
             name: "createCustomMap",
-            description: "Creates a brand new custom map based on the player's request. Use this when a player asks you to build, create, or imagine a new area. The grid must be a valid JSON-stringified 2D array of integers (e.g., '[[1,1,1],[1,0,1],[1,1,1]]'). Use 1 for walls and 0 for walkable floors. Always enclose the map with walls.",
+            description: "Creates a brand new custom map based on the player's request. Always enclose the outer edges of the map with walls (1) so the player cannot walk out of bounds. You can also populate the map with NPCs, monsters, or loot.",
             parameters: {
                 type: "OBJECT",
                 properties: {
                     grid: { 
                         type: "STRING", 
-                        description: "A JSON stringified 2D array of integers from 0 - 1 (0 = floor, 1 = wall). Size should be roughly 10x10 to 15x15. " 
+                        description: "A JSON stringified 2D array of integers from 0 - 1 (0 = floor, 1 = wall). Size should be roughly 10x10 to 15x15." 
                     },
                     skyColor: { 
                         type: "STRING", 
@@ -336,6 +336,21 @@ const toolsDef = [{
                     mapName: { 
                         type: "STRING", 
                         description: "A creative name for this new map." 
+                    },
+                    npcs: {
+                        type: "ARRAY",
+                        description: "A list of entities to spawn inside this new map. SPAWN ID CHEAT SHEET: 63.1 (Dragon), 49.1 (Kraken), 35.1 (Djinn), 81 (Ice Golem), 82 (Skeleton), 56 (Imp), 60.1 (Pixie), -27 (Card Drop).",
+                        items: {
+                            type: "OBJECT",
+                            properties: {
+                                type: { type: "NUMBER", description: "The Entity ID." },
+                                x: { type: "INTEGER", description: "The X grid coordinate (must be an open floor '0' tile)." },
+                                y: { type: "INTEGER", description: "The Y grid coordinate (must be an open floor '0' tile)." },
+                                state: { type: "STRING", description: "'chasing', 'wandering', or 'stationary'." },
+                                color: { type: "STRING", description: "Hex color code ('#ff0000' for enemies, '#00ff00' for friendly, '#ffff00' for loot)." },
+                                deck: { type: "ARRAY", items: { type: "INTEGER" }, description: "Array of card IDs (0-77) for their battle deck." }
+                            }
+                        }
                     }
                 },
                 required: ["grid", "skyColor", "floorColor"]
@@ -936,17 +951,18 @@ io.on("connection", (socket) => {
                               const skyColor = currentCall.args.skyColor || 'rgba(0,0,0,1)';
                               const floorColor = currentCall.args.floorColor || '#333333';
                               const mapName = currentCall.args.mapName || "Suncat's Dreamscape";
-                              const customMapID = 999; // Reserve 999 for custom AI maps
+                              const mapNPCs = currentCall.args.npcs || []; // <--- GET THE NPCs
+                              const customMapID = 999; 
 
                               const customMapData = {
                                   id: customMapID,
                                   maze: gridData,
                                   skyColor: skyColor,
                                   floorColor: floorColor,
-                                  name: mapName
+                                  name: mapName,
+                                  npcs: mapNPCs // <--- SEND THEM TO THE CLIENT
                               };
 
-                              // Find a safe spawn point (a '0' tile)
                               let spawnX = 1.5, spawnY = 1.5;
                               for(let y = 0; y < gridData.length; y++) {
                                   for(let x = 0; x < gridData[y].length; x++) {
@@ -962,10 +978,8 @@ io.on("connection", (socket) => {
                               const requester = players[socket.id];
 
                               if (requester && suncat) {
-                                  // Broadcast the new map data to everyone so the client can render it
                                   io.emit('load_custom_map', customMapData);
 
-                                  // Teleport Player and Suncat
                                   requester.mapID = customMapID;
                                   suncat.mapID = customMapID;
                                   requester.x = spawnX; requester.y = spawnY;
@@ -975,7 +989,7 @@ io.on("connection", (socket) => {
                                   lastSwitchTime = Date.now();
 
                                   io.emit("updatePlayers", players);
-                                  functionResult = { result: `Success. Constructed the map '${mapName}' and teleported both of us there.` };
+                                  functionResult = { result: `Success. Constructed the map '${mapName}' and populated it.` };
                               } else {
                                   functionResult = { result: "Failed to find player coordinates for teleportation." };
                               }
