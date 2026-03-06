@@ -340,6 +340,19 @@ const toolsDef = [{
                 },
                 required: ["grid", "skyColor", "floorColor"]
             }
+        },
+        // 6. [NEW] The TELEPORT PLAYER Tool
+        {
+            name: "teleportPlayer",
+            description: "Teleports a specific player to a specific map ID (0-22). You can also use this to forcefully bring them to your custom map (ID 999), or banish them to a specific world map.",
+            parameters: {
+                type: "OBJECT",
+                properties: {
+                    targetName: { type: "STRING", description: "The name of the player to teleport." },
+                    mapID: { type: "INTEGER", description: "The map ID to send them to (e.g., 999 for custom map, 6 for snow level)." }
+                },
+                required: ["targetName", "mapID"]
+            }
         }
     ]
 }];
@@ -473,6 +486,7 @@ const NPC_PERSONA = `
 - Track their Favor. If they are kind/helpful: [[FAVOR: +1]]. If rude or annoying: [[FAVOR: -1]].
 - Be highly suspicious of "brown-nosers" who just say nice things to get free cards. If someone is obviously sucking up, [[FAVOR: -1]], mock them for it, and mark them as untrustworthy in your memory.
 - Do not output favor on every turn, only when the relationship genuinely shifts.
+
 [GIFTING]
 - You have a tool 'givePlayerCard'. Use it ONLY if Favor is High and they ask for a specific card. If non-specific, use your best judgement to give a card based on the context.
 [JUDGEMENT PROTOCOLS]
@@ -948,6 +962,34 @@ io.on("connection", (socket) => {
                           } catch (err) {
                               console.error("Map Generation Error:", err);
                               functionResult = { result: "Error: The grid parameter was not a valid JSON stringified 2D array." };
+                          }
+                      }
+                      // F. TELEPORT SPECIFIC PLAYER
+                      else if (currentCall.name === "teleportPlayer") {
+                          const targetName = currentCall.args.targetName;
+                          const targetMapID = parseInt(currentCall.args.mapID);
+                          const targetID = findSocketID(targetName);
+
+                          if (!targetID) {
+                              functionResult = { result: `Failed: Player ${targetName} not found online.` };
+                          } else {
+                              const playerToTeleport = players[targetID];
+                              if (playerToTeleport) {
+                                  // Update their server-side location
+                                  playerToTeleport.mapID = targetMapID;
+                                  //playerToTeleport.x = 1.5; // Safe default spawn coordinates
+                                  //playerToTeleport.y = 1.5;
+                                  
+                                  // Emit a specific command to force that client's browser to load the map
+                                  io.to(targetID).emit("force_teleport", { 
+                                      mapID: targetMapID, 
+                                      //x: 1.5, 
+                                      //y: 1.5 
+                                  });
+                                  
+                                  io.emit("updatePlayers", players);
+                                  functionResult = { result: `Success: You warped ${targetName} to map ${targetMapID}.` };
+                              }
                           }
                       }
                       // E. UNKNOWN TOOL
