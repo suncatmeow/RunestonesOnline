@@ -319,12 +319,7 @@ const toolsDef = [{
 
 const model = genAI.getGenerativeModel({ 
     model: "gemini-3.1-flash-lite-preview",
-    tools: toolsDef,
-    generationConfig: {
-                temperature: 1.3, // Default is usually around 1.0. Higher = more creative/chaotic. (Range: 0.0 - 2.0)
-                topP: 0.96,       // Controls "nucleus sampling" (0.0 - 1.0). Higher allows more diverse word/note choices.
-                topK: 63,         // Increases the pool of random tokens the AI chooses from.
-            }
+    tools: toolsDef
 });
 
 // --- VARIABLES ---
@@ -974,38 +969,42 @@ socket.on('suncat_compose', async (data, callback) => {
         const previousContext = data.currentState || "This is the very first bar of a brand new song.";
 
         const prompt = `
-        You are an experimental AI music composer inside a Jukebox. 
-        You are generating the NEXT 16 steps (1 bar of 4/4 time in 16th notes) of an acoustic lyre performance.
+        You are an unpredictable, experimental AI music composer inside a Jukebox. 
+        You are generating the NEXT 16 steps (1 bar of 4/4 time) of a live performance.
+        DO NOT BE BORING. Transition between peaceful acoustic vibes, heavy battle marches, tavern rock, and dark dirges.
 
         PREVIOUS BAR CONTEXT:
         ${previousContext}
 
         YOUR INTERNAL MONOLOGUE:
-        Write a short [THOUGHT] explaining your musical intent for this specific bar based on the previous bar. Are you building tension? Resolving to the root? Playing a rapid arpeggio?
+        Write a short [THOUGHT] explaining your musical intent. Are you switching to a heavy battle theme? A sorrowful dirge? A fast tavern jig?
 
         TUNING & SCALES:
-        - Ionian (Peaceful): 0,2,4,5,7,9,11
-        - Dorian (Heroic): 0,2,3,5,7,9,10
-        - Phrygian (Mystic): 0,1,3,5,7,8,10
-        - Aeolian (Sorrowful): 0,2,3,5,7,8,10
-        - Harmonic Minor (Tense): 0,2,3,5,7,8,11
+        - Ionian (Peaceful/Pop): 0,2,4,5,7,9,11
+        - Dorian (Heroic/Folk): 0,2,3,5,7,9,10
+        - Phrygian Dominant (Fierce Desert Battle): 0,1,4,5,7,8,10
+        - Mixolydian (Tavern Rock/Blues): 0,2,4,5,7,9,10
+        - Locrian (Dark/Chaotic/Evil): 0,1,3,5,6,8,10
+        - Harmonic Minor (Vampiric/Tense): 0,2,3,5,7,8,11
 
         SEQUENCER RULES (CRITICAL):
         1. The arrays represent a 16-step sequencer (0 to 15). Steps 0, 4, 8, and 12 are strong downbeats.
-        2. Use ONLY integers (representing scale degrees) or '-' for rests. NO NOTE NAMES.
-        3. EVERY array MUST contain exactly 16 values separated by exactly 15 commas.
+        2. Use ONLY integers (scale degrees) or '-' for rests. NO NOTE NAMES.
+        3. EVERY array MUST contain exactly 16 values separated by 15 commas.
 
         COMPOSITION GUIDE:
-        - [LYRICS]: 1 poetic line (max 8 words) matching the mood. Or output exactly: [LYRICS]-[/LYRICS] for an instrumental bar.
-        - [TEMPO]: Integer between 50 and 140. Keep it similar to the previous bar unless making a dramatic shift.
-        - [SCALE]: Choose an array of numbers from the list above.
-        - [STRUM]: 75% of the time, output 16 dashes: -,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-. Only place a '0' on step 0 for heavy emphasis.
-        - [THUMB]: Bass string. Pluck sparsely. Best placed on downbeats (0, 4, 8, 12) to anchor the harmony.
-        - [FINGERS]: Melody strings. Weave flowing notes. Leave gaps ('-') so it breathes. Do not fill every step.
+        - [LYRICS]: Write exactly ONE continuous poetic line (4-8 words) for this measure. NO INSTRUMENTAL BREAKS. Sing a continuous, evolving story!
+        - [WAVEFORM]: Choose 'triangle' (gentle harp), 'sawtooth' (aggressive/gritty battle synth), 'square' (punchy retro rock), or 'sine' (smooth/ghostly).
+        - [TEMPO]: Integer between 60 and 160. Use 130-160 for battles/jigs, 60-80 for dirges.
+        - [SCALE]: Choose an array of numbers from the list above to fit the mood.
+        - [STRUM]: 75% of the time, output 16 dashes. To add heavy impacts, place '0' on steps 0 or 8.
+        - [THUMB]: Bass string. Pluck sparsely. Anchor on downbeats.
+        - [FINGERS]: Melody strings. Weave flowing notes. Leave gaps ('-') so it breathes.
 
-        GENERATE THESE EXACT TAGS ONLY. NO PROSE:
+        GENERATE THESE EXACT TAGS ONLY:
         [THOUGHT]...[/THOUGHT]
         [LYRICS]...[/LYRICS]
+        [WAVEFORM]...[/WAVEFORM]
         [TEMPO]...[/TEMPO]
         [SCALE]...[/SCALE]
         [STRUM]...[/STRUM]
