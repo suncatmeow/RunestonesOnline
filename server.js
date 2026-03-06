@@ -313,6 +313,33 @@ const toolsDef = [{
                     reason: { type: "STRING" }
                 }
             }
+        },
+        // 5. [NEW] The MAP CREATION Tool
+        {
+            name: "createCustomMap",
+            description: "Creates a brand new custom map based on the player's request. Use this when a player asks you to build, create, or imagine a new area. The grid must be a valid JSON-stringified 2D array of integers (e.g., '[[1,1,1],[1,0,1],[1,1,1]]'). Use 1 for walls and 0 for walkable floors. Always enclose the map with walls.",
+            parameters: {
+                type: "OBJECT",
+                properties: {
+                    grid: { 
+                        type: "STRING", 
+                        description: "A JSON stringified 2D array of integers from 0 - 1 (0 = floor, 1 = wall). Size should be roughly 10x10 to 15x15. " 
+                    },
+                    skyColor: { 
+                        type: "STRING", 
+                        description: "CSS color for the sky (e.g., '#4d3900' or 'rgba(0,0,64,1)')." 
+                    },
+                    floorColor: { 
+                        type: "STRING", 
+                        description: "CSS color for the floor." 
+                    },
+                    mapName: { 
+                        type: "STRING", 
+                        description: "A creative name for this new map." 
+                    }
+                },
+                required: ["grid", "skyColor", "floorColor"]
+            }
         }
     ]
 }];
@@ -868,7 +895,61 @@ io.on("connection", (socket) => {
                             functionResult = { result: "Search returned no results." };
                         }
                       }
-                      
+                      // E. CREATE CUSTOM MAP
+                      else if (currentCall.name === "createCustomMap") {
+                          try {
+                              const gridData = JSON.parse(currentCall.args.grid);
+                              const skyColor = currentCall.args.skyColor || 'rgba(0,0,0,1)';
+                              const floorColor = currentCall.args.floorColor || '#333333';
+                              const mapName = currentCall.args.mapName || "Suncat's Dreamscape";
+                              const customMapID = 999; // Reserve 999 for custom AI maps
+
+                              const customMapData = {
+                                  id: customMapID,
+                                  maze: gridData,
+                                  skyColor: skyColor,
+                                  floorColor: floorColor,
+                                  name: mapName
+                              };
+
+                              // Find a safe spawn point (a '0' tile)
+                              let spawnX = 1.5, spawnY = 1.5;
+                              for(let y = 0; y < gridData.length; y++) {
+                                  for(let x = 0; x < gridData[y].length; x++) {
+                                      if(gridData[y][x] === 0) { 
+                                          spawnX = x + 0.5; 
+                                          spawnY = y + 0.5; 
+                                          break; 
+                                      }
+                                  }
+                              }
+
+                              const suncat = players[SUNCAT_ID];
+                              const requester = players[socket.id];
+
+                              if (requester && suncat) {
+                                  // Broadcast the new map data to everyone so the client can render it
+                                  io.emit('load_custom_map', customMapData);
+
+                                  // Teleport Player and Suncat
+                                  requester.mapID = customMapID;
+                                  suncat.mapID = customMapID;
+                                  requester.x = spawnX; requester.y = spawnY;
+                                  suncat.x = spawnX + 1; suncat.y = spawnY;
+                                  
+                                  currentTargetID = socket.id;
+                                  lastSwitchTime = Date.now();
+
+                                  io.emit("updatePlayers", players);
+                                  functionResult = { result: `Success. Constructed the map '${mapName}' and teleported both of us there.` };
+                              } else {
+                                  functionResult = { result: "Failed to find player coordinates for teleportation." };
+                              }
+                          } catch (err) {
+                              console.error("Map Generation Error:", err);
+                              functionResult = { result: "Error: The grid parameter was not a valid JSON stringified 2D array." };
+                          }
+                      }
                       // E. UNKNOWN TOOL
                       else {
                           functionResult = { result: "Error: Function does not exist." };
