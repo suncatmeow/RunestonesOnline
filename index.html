@@ -41136,7 +41136,8 @@ class AiModule {
         this.thumbQueue = [];   
         this.fingersQueue = []; 
         this.strumQueue = [];   
-
+        this.melodyMemory = []; 
+        this.lyricsQueue = []; 
         for(let i=0; i<32; i++) {
             this.thumbQueue.push(i % 16 === 0 ? 0 : null); 
             this.strumQueue.push(i === 0 ? 0 : null);
@@ -41187,24 +41188,34 @@ class AiModule {
     }
 
     async composeNext() {
+        if (this.isFetching) return; // Double-fire protection
         this.isFetching = true;
         
-        // Grab the last 16 notes from the fingers queue to show the AI how the last bar went
-        // If the queue is empty (brand new song), we just send dashes.
-        let lastFingers = "-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-";
-        if (this.fingersQueue.length >= 16) {
-            lastFingers = this.fingersQueue.slice(-16).map(n => n === null ? '-' : n).join(',');
+        // 1. Build Suncat's Musical Memory String
+        let memoryString = "None (Brand new song)";
+        if (this.melodyMemory.length > 0) {
+            // Shows Suncat the last few bars like: "Bar -2: [0,2,-,4...]"
+            memoryString = this.melodyMemory.map((bar, i) => `Bar -${this.melodyMemory.length - i}: [${bar.join(',')}]`).join('\n');
         }
 
         const currentState = `
-        Current Tempo: ${Math.round(this.tempo)} BPM.
+        Current Tempo: ${Math.round(this.targetTempo)} BPM.
         Current Scale Array: [${this.scale.join(',')}].
-        Last Melody (Fingers) Played: ${lastFingers}
+        Past Melody Memory:
+        ${memoryString}
         
-        INSTRUCTION: Consider choosing a different Tempo or Scale according to your current THOUGHT, and ensure your new melody logically follows the 'Last Melody Played'.
+        INSTRUCTION: Look at the Past Melody Memory. Develop the theme, repeat a motif, or introduce a B-section based on your THOUGHT.
         `;
         
+        // 2. The Failsafe Unlocker (Prevents eternal stalling if the AI hangs)
+        let unlockTimer = setTimeout(() => {
+            console.warn("[Audio Engine] API taking too long. Releasing lock.");
+            this.isFetching = false;
+        }, 8000);
+
+        // 3. Ask the AI
         socket.emit('suncat_compose', { currentState }, (aiMusicTags) => {
+            clearTimeout(unlockTimer); // Server answered, clear the failsafe
             if (aiMusicTags) {
                 this.parseAiResponse(aiMusicTags);
             }
@@ -41226,12 +41237,11 @@ class AiModule {
             console.log(`%c[Suncat's Mind] "${thought}"`, 'color: #ff9900; font-style: italic; background: #222; padding: 4px; border-radius: 4px;');
         }
 
-        // --- HEAR SUNCAT'S SONG ---
         const lyrics = getTag('LYRICS');
-        if (lyrics && lyrics !== '-' && lyrics !== '') {
-            console.log(`%c[Suncat Sings] 🎵 "${lyrics}"`, 'color: #00e6e6; font-size: 16px; font-weight: bold;');
-            document.dispatchEvent(new CustomEvent('suncat_lyrics', { detail: lyrics }));
-        }
+        // Push the lyric to the queue. Even if it's empty/null, we push "" 
+        // to keep it aligned with the 16-step musical bars.
+        const lyricToQueue = (lyrics && lyrics !== '-' && lyrics !== '') ? lyrics : "";
+        this.lyricsQueue.push(lyricToQueue);
 
         // --- GRAB NEW TEMPO & SCALE ---
         const newTempo = getTag('TEMPO');
@@ -41265,9 +41275,22 @@ class AiModule {
             return parsedArray;
         };
 
-        this.thumbQueue.push(...parseShortArr('THUMB'));
-        this.fingersQueue.push(...parseShortArr('FINGERS'));
-        this.strumQueue.push(...parseShortArr('STRUM')); 
+        // 1. Capture the arrays into variables first
+        const thumbArr = parseShortArr('THUMB');
+        const fingersArr = parseShortArr('FINGERS');
+        const strumArr = parseShortArr('STRUM');
+
+        // 2. Push them to the actual audio queues
+        this.thumbQueue.push(...thumbArr);
+        this.fingersQueue.push(...fingersArr);
+        this.strumQueue.push(...strumArr); 
+
+        // 3. Save to Suncat's musical memory using the fingerArr variable
+        this.melodyMemory.push(fingersArr.map(n => n === null ? '-' : n));
+        
+        if (this.melodyMemory.length > 4) {
+            this.melodyMemory.shift(); 
+        }
     }
     start() {
         if (this.isPlaying) return;
@@ -41286,6 +41309,7 @@ class AiModule {
 
     scheduler() {
         while (this.nextNoteTime < this.ctx.currentTime + this.scheduleAheadTime) {
+            // We pass the tick FIRST, then advance it.
             this.scheduleNote(this.tick, this.nextNoteTime);
             this.advanceNote();
         }
@@ -41295,24 +41319,36 @@ class AiModule {
     }
 
     advanceNote() {
-        // FAILSAFE 6: If the AI hallucinated text for the tempo, reset it to 90 BPM
         if (!isFinite(this.targetTempo) || this.targetTempo <= 0) this.targetTempo = 90;
         if (!isFinite(this.tempo) || this.tempo <= 0) this.tempo = 90;
 
-        // --- TEMPO GLIDE (Rubato) ---
         if (this.tempo < this.targetTempo) this.tempo += 0.2;
         if (this.tempo > this.targetTempo) this.tempo -= 0.2;
         if (Math.abs(this.tempo - this.targetTempo) < 0.2) this.tempo = this.targetTempo;
 
         const secondsPerBeat = 60.0 / this.tempo;
         this.nextNoteTime += 0.25 * secondsPerBeat; 
-        this.tick++;
+        
+        this.tick++; // Increment tick AFTER scheduling the note
 
-        if (this.thumbQueue.length < 32 && !this.isFetching) {
+        if (this.thumbQueue.length < 64 && !this.isFetching) {
             this.composeNext();
         }
     }
     scheduleNote(tick, t) {
+        // --- 1. LYRICS (Bar Start Check) ---
+        // Ticks 0, 16, 32, 48 etc signify the start of a 16-step bar
+        if (tick % 16 === 0) {
+            if (this.lyricsQueue.length > 0) {
+                const currentLyric = this.lyricsQueue.shift();
+                if (currentLyric && currentLyric !== "") {
+                    console.log(`%c[Suncat Sings] 🎵 "${currentLyric}"`, 'color: #00e6e6; font-size: 16px; font-weight: bold;');
+                    document.dispatchEvent(new CustomEvent('suncat_lyrics', { detail: currentLyric }));
+                }
+            }
+        }
+
+        // --- 2. AUDIO QUEUES ---
         const thumbNote = this.thumbQueue.length > 0 ? this.thumbQueue.shift() : null;
         const fingerNote = this.fingersQueue.length > 0 ? this.fingersQueue.shift() : null;
         const strumNote = this.strumQueue.length > 0 ? this.strumQueue.shift() : null; 
@@ -41331,7 +41367,6 @@ class AiModule {
             this.playHarpString(t + swing, fingerNote, oct, 2.5, 0.4, 'soft'); 
         }
     }
-
     strumChord(t, rootDegree) {
         const chordOffsets = [0, 2, 4, 7, 9]; 
         let delay = 0;
