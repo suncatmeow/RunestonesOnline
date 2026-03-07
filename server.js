@@ -1325,7 +1325,7 @@ socket.on('suncat_baroque', async (data, callback) => {
         ${data.currentState}
 
         YOUR INTERNAL MONOLOGUE:
-        Write a short (13 words or less) [THOUGHT] explaining your musical intent for this specific bar based on the previous bar. 
+        Write a short (13 words or less)[THOUGHT] explaining your musical intent for this specific bar based on the previous bar. Are you building tension? Resolving to the root? Playing a rapid arpeggio? What emotions do you feel? If sad or melancholy, perhaps play something heroic or peaceful? If happy or peaceful perhaps play something sorrowful? Your aim should be to impact the mood of the listener. Make them cry, or make them look forward to the coming battle. Help them feel wonder for the place they find themselves in. Help them remember a past love or their family feeling gratitude for life. Let your heart speak to them.
 
         TUNING & SCALES:
         - Ionian (Peaceful): 0,2,4,5,7,9,11
@@ -1347,7 +1347,7 @@ socket.on('suncat_baroque', async (data, callback) => {
             4. VOCAL MELODY: The [FINGERS] array is your singing melody.
             5. ARRAYS: You MUST provide exactly 16 steps for THUMB, FINGERS, and STRUM arrays, separated by commas. Use integers or '-' for rests. NO letters like 'S' or 'C4'.
         COMPOSITION GUIDE:
-        - [LYRICS]: 1 poetic line (max 8 words) matching the mood. 
+        - [LYRICS]: 1 poetic line (max 3 words) matching the mood. 
         - [SCALE]: Choose an array of numbers from the list above, but dont feel contstrained by their structure. Let the scale flow from your heart. Allow yourself to be carried by your thoughts and emotions. Let it all out.
         - [STRUM]: USE WISELY. 95% of the time, output 16 dashes: -,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-. Only place a '0' on step 0 for heavy emphasis.
         - [THUMB]: Bass string. Make use of negative space to accentuate the melody. Leave gaps ('-') so it breathes. It is only in the absence of the heartbeat that we truly recognize the value of having one. Harmonize with the FINGERS in intricate counterpoint, making use of call and response, or simply as the heartbeat of the song. Liken it to your heartbeat. Allow your heart to guide you.
