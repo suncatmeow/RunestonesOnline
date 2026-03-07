@@ -1362,7 +1362,8 @@ socket.on('suncat_baroque', async (data, callback) => {
             
         GENERATE THESE EXACT TAGS ONLY. NO PROSE:
         [THOUGHT]...[/THOUGHT]
-        [LYRICS]...[/LYRICS]
+        [LYRICS_UI]...[/LYRICS_UI]
+        [LYRICS_PHONETIC]...[/LYRICS_PHONETIC]
         [TEMPO]...[/TEMPO]
         [SCALE]...[/SCALE]
         [STRUM]...[/STRUM]
