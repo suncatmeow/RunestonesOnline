@@ -1334,17 +1334,12 @@ socket.on('suncat_baroque', async (data, callback) => {
             FORMATTING RULES:
             1. NO NOTE NAMES (No C4). ONLY integers or '-' for rests.
             2. You MUST provide exactly 16 steps for THUMB, FINGERS, and STRUM arrays, separated by commas.
-           3. In the [LYRICS] tag, provide a short phrase. Separate distinct syllables with a hyphen, but YOU MUST KEEP SPACES between actual words.
-            Example:    [LYRICS] The moon-light still glows [/LYRICS] 
+            3. [LYRICS] Provide a short, poetic phrase (max 3 words). 
+               CRITICAL: You MUST spell the words phonetically so a basic robot can read them. 
+               Remove all silent letters. Spell "night" as "nite", "moon" as "mun", "fire" as "fy-er", "light" as "lite". 
+               Separate every single sung syllable with a hyphen, but keep spaces between words.
+               Example: [LYRICS] The mun-lite glowz [/LYRICS]
             4. VOCAL MELODY: The [FINGERS] array is your singing melody! Try to match the number of integer notes in the [FINGERS] array to the number of syllables in your [LYRICS].
-            OUTPUT FORMAT:
-            [THOUGHT] A warm breeze passes. I will sing of the old days. [/THOUGHT]
-            [LYRICS] The stars fall down [/LYRICS]
-            [TEMPO] 60 [/TEMPO]
-            [SCALE] 0,2,3,5,7,9,10 [/SCALE]
-            [THUMB] 0,-,-,-, 4,-,-,-, 0,-,-,-, 7,-,-,- [/THUMB]
-            [FINGERS] 0,-,2,-, 3,-,5,-, 2,-,-,-, -,-,-,- [/FINGERS]
-            [STRUM] 0,-,-,-, -,-,-,-, 0,-,-,-, -,-,-,- [/STRUM]
             `;
 
             const result = await aiModel.generateContent(prompt);
@@ -1702,3 +1697,4 @@ async function manageHistorySize(socketId) {
 server.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });
+
