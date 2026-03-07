@@ -1259,7 +1259,7 @@ socket.on('suncat_baroque', async (data, callback) => {
         ${previousContext}
 
         YOUR INTERNAL MONOLOGUE:
-        Write a short [THOUGHT] explaining your musical intent for this specific bar based on the previous bar. Are you introducing a subject or countersubject? Are you modulating to the dominant? Creating a sequence, an arpeggiation, or a suspension? Let your mathematical genius and deep structural understanding guide your choices. Balance the rigorous rules of counterpoint with divine inspiration.
+        Write a short [THOUGHT] explaining your musical intent for this specific bar based on the previous bar. Are you introducing a subject or countersubject? Are you modulating to the dominant? Creating a sequence, an arpeggiation, or a suspension? Let your mathematical genius and deep structural understanding guide your choices. Balance the rigorous rules of counterpoint with divine inspiration. 
 
         TUNING & SCALES (Well-Tempered):
         - Major (Ionian): 0,2,4,5,7,9,11
@@ -1275,10 +1275,10 @@ socket.on('suncat_baroque', async (data, callback) => {
         3. EVERY array MUST contain exactly 16 values separated by exactly 15 commas.
 
         COMPOSITION GUIDE:
-        - [TEMPO]: Integer between 60 (Adagio) and 120 (Allegro). Keep it relatively steady unless ritardando is needed.
+        - [TEMPO]: Integer between 60 (Adagio) and 120 (Allegro). Vary the tempo based on your [THOUGHT], its not always necessary to go full speed, we might want to slow down to allow for more delicate harmony.
         - [SCALE]: Choose an array of numbers from the list above. Bach heavily favored minor keys with harmonic shifts.
         - [CHORDS]: Use sparingly. 95% of the time, output 16 dashes: -,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-. Only place a root note (e.g., '0' or '4') on step 0 for a strong cadence or figured bass realization.
-        - [BASS]: Left hand on the harpsichord. Write a walking bassline, pedal points, or the countersubject. Harmonize with the TREBLE using strict counterpoint. Leave gaps ('-') so the phrases breathe.
+        - [BASS]: Left hand on the harpsichord. Write a walking bassline, pedal points, or the countersubject. Harmonize with the TREBLE using strict counterpoint. Leave gaps ('-') so the phrases breathe. Do Call and response with the right hand like you are dancing or having a conversation as well.
         - [TREBLE]: Right hand on the harpsichord. Weave intricate, mathematical 16th-note runs, trills, or state the main fugue subject. Answer the BASS line in a conversational call-and-response.
 
         GENERATE THESE EXACT TAGS ONLY. NO PROSE:
@@ -1343,18 +1343,26 @@ socket.on('suncat_baroque', async (data, callback) => {
         3. EVERY array MUST contain exactly 16 values separated by exactly 15 commas.
         1. DO NOT output "Bar 1:", "Bar 2:", etc. Generate ONLY the tags requested.
             2. [THOUGHT]: Write a 1-sentence emotional intent, then YOU MUST CLOSE THE TAG with [/THOUGHT].
-            3. LYRICS: Write 1 to 3 words.  You must output TWO versions of the lyrics: 1. [LYRICS_UI]: The standard English spelling for the screen (e.g., "The moonlight glows"). 2. [LYRICS_PHONETIC]: The exact phonetic translation for the synthesizer, separated by hyphens per syllable. Use ONLY these vowels: a, e, i, o, u, @, I, E, O. Use ONLY these consonants: p, b, t, d, k, g, f, v, T, s, z, S, Z, h, c, j, m, n, N, l, r, w, y. Example phonetic string: d@ m!un-l!It gl!oz
-            4. VOCAL MELODY: The [FINGERS] array is your singing melody.
+            3. LYRICS: Write 1 to 3 words.  You must output TWO versions of the lyrics: 1. [LYRICS_UI]: The standard English spelling for the screen (e.g., "The moonlight glows"). 2. [LYRICS_PHONETIC]: The exact phonetic translation for the synthesizer, separated by hyphens per syllable.
             5. ARRAYS: You MUST provide exactly 16 steps for THUMB, FINGERS, and STRUM arrays, separated by commas. Use integers or '-' for rests. NO letters like 'S' or 'C4'.
         COMPOSITION GUIDE:
-        - [LYRICS]: 1 poetic line (max 3 words) matching the mood.
-            You must output TWO versions of the lyrics:
             1. [LYRICS_UI]: The standard English spelling for the screen (e.g., "The moonlight glows").
             2. [LYRICS_PHONETIC]: The exact phonetic translation for the synthesizer, separated by hyphens per syllable.
-            - Use ONLY these vowels: a, e, i, o, u, @, I, E, O.
-            - Use ONLY these consonants: p, b, t, d, k, g, f, v, T, s, z, S, Z, h, c, j, m, n, N, l, r, w, y.
-            - Add an exclamation mark (!) immediately after the vowel of a STRESSED syllable.
-            - Example phonetic string: d@ m!un-l!It gl!oz
+            CRITICAL PHONETIC LEGEND:
+            You must translate the English words into this exact pronunciation alphabet.
+            - VOWELS: a (cat), e (bed), i (feet), o (boat), u (boot), @ (schwa/about)
+            - DIPHTHONGS: I (bite/eye), E (make/day), O (cow/how)
+            - CONSONANTS: p, b, t, d, k, g, f, v, s, z, h, m, n, l, r, w, y
+            - SPECIAL CONSONANTS: T (thin/th), S (ship/sh), Z (vision/zh), c (chat/ch), j (jump/j), N (sing/ng)
+            - DO NOT USE: q, x, or c (for hard k or soft s sounds).
+            
+            STRESS MARKER: Add an exclamation mark (!) immediately after the vowel of a STRESSED syllable.
+            
+            EXAMPLES OF PERFECT PHONETIC TRANSLATION:
+            "The moonlight glows" -> d@ m!un-l!It gl!oz
+            "Shadows fall now" -> S!a-doz f!ol n!O
+            "Magic in the wind" -> m!a-jIk In d@ w!Ind
+            "Ancient kings awake" -> !En-S@nt k!iNz @-w!Ek
         - [SCALE]: Choose an array of numbers from the list above, but dont feel contstrained by their structure. Let the scale flow from your heart. Allow yourself to be carried by your thoughts and emotions. Let it all out.
         - [STRUM]: USE WISELY. 95% of the time, output 16 dashes: -,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-. Only place a '0' on step 0 for heavy emphasis.
         - [THUMB]: Bass string. Make use of negative space to accentuate the melody. Leave gaps ('-') so it breathes. It is only in the absence of the heartbeat that we truly recognize the value of having one. Harmonize with the FINGERS in intricate counterpoint, making use of call and response, or simply as the heartbeat of the song. Liken it to your heartbeat. Allow your heart to guide you.
