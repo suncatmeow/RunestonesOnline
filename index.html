@@ -26193,23 +26193,82 @@ const MusicEngine = {
       let t = this.ctx.currentTime + 0.1; 
       text = text.toLowerCase();
 
-      // Text Normalization
-      const overrides = { "machine": "maSin", "the": "d@", "hello": "helo", "suncat": "s@nkat", "greetings": "gritinz" };
-      for (const [word, phonetic] of Object.entries(overrides)) { text = text.replace(new RegExp(`\\b${word}\\b`, 'g'), phonetic); }
-      text = text.replace(/\bi\b/g, 'I'); 
-      text = text.replace(/er\b/g, '@r'); 
-      text = text.replace(/ll/g, 'l').replace(/ss/g, 's').replace(/tt/g, 't')
-                 .replace(/sh/g, 'S').replace(/th/g, 'T').replace(/e\b/g, ''); 
+      // --- PHASE 6: THE PHONETIC LEXICON (G2P) ---
+      text = text.toLowerCase();
+      
+      // 1. The Core Dictionary
+      // Add notoriously unphonetic words here as you discover them!
+      const Lexicon = {
+    "the": "d@", "hello": "helo", "suncat": "s@nkat", "machine": "maSin",
+    "greetings": "gritinz", "you": "yu", "are": "ar", "how": "hau",
+    "what": "w@t", "is": "Iz", "this": "dIs", "a": "@", "i": "I",
+    "one": "w@n", "two": "tu", "three": "Tri", "four": "for", "five": "fIv",
+    "come": "k@m", "some": "s@m", "where": "wer", "there": "der",
+    
+    // Add 'day' using the new diphthong!
+    "day": "dE" 
+};
 
+      let phoneticText = "";
+      // Split the text into an array of words AND keep punctuation/spaces separate
+      const tokens = text.match(/\b\w+\b|[^\w\s]|\s+/g) || [];
+
+      // 2. The Translator
+      for (let token of tokens) {
+          if (Lexicon[token]) {
+              // If we know the word, use the exact phonetic spelling
+              phoneticText += Lexicon[token];
+          } else if (/[a-z]/.test(token)) {
+              // 3. The Fallback Rules (If the word isn't in the dictionary)
+              let fallback = token;
+              fallback = fallback.replace(/er\b/g, '@r');
+              fallback = fallback.replace(/ing\b/g, 'In');
+              fallback = fallback.replace(/ll/g, 'l').replace(/ss/g, 's').replace(/tt/g, 't');
+              fallback = fallback.replace(/sh/g, 'S').replace(/th/g, 'T').replace(/ch/g, 'tS');
+              fallback = fallback.replace(/ng/g, 'N'); // Catch 'ng' before 'g' gets processed alone
+              fallback = fallback.replace(/j/g, 'j');  
+              fallback = fallback.replace(/h/g, 'h');  
+              fallback = fallback.replace(/zh/g, 'Z'); // For words like "vision" (if spelled phonetically)
+
+              fallback = fallback.replace(/c(?=[eiy])/g, 's').replace(/c/g, 'k');
+              fallback = fallback.replace(/c(?=[eiy])/g, 's').replace(/c/g, 'k'); // Soft C vs Hard C
+              fallback = fallback.replace(/e\b/g, ''); // Silent E at the end of words
+              phoneticText += fallback;
+          } else {
+              // Keep spaces and punctuation exactly as they are
+              phoneticText += token;
+          }
+      }
+      
+      text = phoneticText;
+      // ------------------------------------------
+      // --- PHASE 2: DYNAMIC FORMANT BANDWIDTHS ---
       const Phonetics = {
-          'a': { type: 'vowel', f1: 730, f2: 1090, f3: 2440, voiced: true, vol: 0.9 }, 
-          'e': { type: 'vowel', f1: 530, f2: 1840, f3: 2480, voiced: true, vol: 0.8 }, 
-          'i': { type: 'vowel', f1: 270, f2: 2290, f3: 3010, voiced: true, vol: 0.7 }, 
-          'o': { type: 'vowel', f1: 570, f2: 840,  f3: 2410, voiced: true, vol: 0.9 }, 
-          'u': { type: 'vowel', f1: 300, f2: 870,  f3: 2240, voiced: true, vol: 0.7 }, 
-          '@': { type: 'vowel', f1: 640, f2: 1190, f3: 2390, voiced: true, vol: 0.8 }, 
-          'I': { type: 'diphthong', f1: 730, f2: 1090, f3: 2440, endF1: 270, endF2: 2290, endF3: 3010, voiced: true, vol: 0.9 }, 
+          'a': { type: 'vowel', f1: 730, f2: 1090, f3: 2440, q1: 5.0, q2: 3.0, q3: 1.5, voiced: true, vol: 0.9 }, 
+          'e': { type: 'vowel', f1: 530, f2: 1840, f3: 2480, q1: 6.0, q2: 4.0, q3: 1.5, voiced: true, vol: 0.8 }, 
+          'i': { type: 'vowel', f1: 270, f2: 2290, f3: 3010, q1: 4.0, q2: 4.0, q3: 2.0, voiced: true, vol: 0.7 }, 
+          'o': { type: 'vowel', f1: 570, f2: 840,  f3: 2410, q1: 5.0, q2: 3.5, q3: 1.5, voiced: true, vol: 0.9 }, 
+          'u': { type: 'vowel', f1: 300, f2: 870,  f3: 2240, q1: 4.5, q2: 3.0, q3: 1.5, voiced: true, vol: 0.7 }, 
+          '@': { type: 'vowel', f1: 640, f2: 1190, f3: 2390, q1: 5.0, q2: 3.0, q3: 1.5, voiced: true, vol: 0.8 }, 
+          'I': { type: 'diphthong', f1: 730, f2: 1090, f3: 2440, endF1: 270, endF2: 2290, endF3: 3010, q1: 5.0, q2: 3.5, q3: 1.5, voiced: true, vol: 0.9 }, 
+          // Add 'w' (similar to 'u', lips rounded)
+          'w': { type: 'liquid', f1: 300, f2: 800, f3: 2200, q1: 5.0, q2: 3.0, q3: 2.0, voiced: true, vol: 0.5 }, 
+          
+          // Add 'y' (similar to 'i', tongue high and forward)
+          'y': { type: 'liquid', f1: 300, f2: 2300, f3: 3000, q1: 5.0, q2: 3.0, q3: 2.0, voiced: true, vol: 0.5 },
 
+          // Add a new diphthong for the "ay" sound in "day" (glides from 'e' to 'i')
+          'E': { type: 'diphthong', f1: 530, f2: 1840, f3: 2480, endF1: 270, endF2: 2290, endF3: 3010, q1: 5.0, q2: 3.5, q3: 1.5, voiced: true, vol: 0.9 },
+          // The Missing Fricatives
+          'h': { type: 'fricative', freq: 1500, voiced: false }, // Broad breath, lower freq than 's'
+          'Z': { type: 'fricative', freq: 2500, voiced: true },  // Voiced 'sh' (like "measure")
+
+          // The Missing Stop/Affricate
+          'j': { type: 'stop', freq: 3000, voiced: true },       // Like "jump"
+
+          // The Missing Nasal ("ng")
+          // F2 and F3 are pinched close together for that back-of-the-throat resonance
+          'N': { type: 'vowel', f1: 300, f2: 2000, f3: 2800, q1: 6.0, q2: 2.0, q3: 1.0, voiced: true, vol: 0.3 },
           's': { type: 'fricative', freq: 6000, voiced: false }, 
           'z': { type: 'fricative', freq: 6000, voiced: true },
           'f': { type: 'fricative', freq: 4000, voiced: false },
@@ -26225,10 +26284,10 @@ const MusicEngine = {
           'p': { type: 'stop', freq: 1000, voiced: false },
           'b': { type: 'stop', freq: 1000, voiced: true },
 
-          'm': { type: 'vowel', f1: 300, f2: 1000, f3: 1500, voiced: true, vol: 0.3 }, 
-          'n': { type: 'vowel', f1: 300, f2: 1500, f3: 2000, voiced: true, vol: 0.3 }, 
-          'l': { type: 'liquid', f1: 400, f2: 1200, f3: 2400, voiced: true, vol: 0.5 }, 
-          'r': { type: 'liquid', f1: 400, f2: 1000, f3: 1400, voiced: true, vol: 0.5 }
+          'm': { type: 'vowel', f1: 300, f2: 1000, f3: 1500, q1: 6.0, q2: 2.0, q3: 1.0, voiced: true, vol: 0.3 }, 
+          'n': { type: 'vowel', f1: 300, f2: 1500, f3: 2000, q1: 6.0, q2: 2.0, q3: 1.0, voiced: true, vol: 0.3 }, 
+          'l': { type: 'liquid', f1: 400, f2: 1200, f3: 2400, q1: 5.0, q2: 3.0, q3: 2.0, voiced: true, vol: 0.5 }, 
+          'r': { type: 'liquid', f1: 400, f2: 1000, f3: 1400, q1: 5.0, q2: 3.0, q3: 2.0, voiced: true, vol: 0.5 }
       };
 
       const createNoise = (duration) => {
@@ -26257,16 +26316,42 @@ const MusicEngine = {
       const breathEnv = this.ctx.createGain(); breathEnv.gain.value = 0;
       breathNoise.connect(breathFilter); breathFilter.connect(breathEnv); 
 
-      const throat = this.ctx.createBiquadFilter(); throat.type = 'lowpass'; throat.frequency.value = 3500; 
-      const vocalEnv = this.ctx.createGain(); vocalEnv.gain.setValueAtTime(0, t); 
+      // --- PHASE 1: CASCADING GLOTTAL FILTERS ---
+      // We run the sawtooth through two steep lowpass filters to simulate the fleshy
+      // rolloff of human vocal cords (-12dB/octave) before it hits the mouth.
+      const glottalFilter1 = this.ctx.createBiquadFilter(); 
+      glottalFilter1.type = 'lowpass'; glottalFilter1.frequency.value = 800; 
+      
+      const glottalFilter2 = this.ctx.createBiquadFilter(); 
+      glottalFilter2.type = 'lowpass'; glottalFilter2.frequency.value = 1200;
+
+      const throat = this.ctx.createBiquadFilter(); 
+      throat.type = 'lowpass'; throat.frequency.value = 3500; 
+
+      // --- PHASE 4: THE NASAL CAVITY ---
+      const nasalNotch = this.ctx.createBiquadFilter();
+      nasalNotch.type = 'notch'; 
+      nasalNotch.frequency.value = 20000; // Park it out of human hearing range by default
+      nasalNotch.Q.value = 2.0; // A wide scoop
+      
+      const vocalEnv = this.ctx.createGain();
+      vocalEnv.gain.setValueAtTime(0, t);
 
       const qVal = 2.5; 
       const f1 = this.ctx.createBiquadFilter(); f1.type = 'bandpass'; f1.Q.value = qVal; 
       const f2 = this.ctx.createBiquadFilter(); f2.type = 'bandpass'; f2.Q.value = qVal; 
       const f3 = this.ctx.createBiquadFilter(); f3.type = 'bandpass'; f3.Q.value = qVal; 
 
-      vocalCords.connect(throat); breathEnv.connect(throat); 
-      throat.connect(vocalEnv);
+      // NEW ROUTING: Sawtooth -> Glottal 1 -> Glottal 2 -> Throat
+      vocalCords.connect(glottalFilter1); 
+      glottalFilter1.connect(glottalFilter2);
+      glottalFilter2.connect(throat);
+      
+      breathEnv.connect(throat); 
+      throat.connect(nasalNotch); // The sound must pass through the nose check
+      nasalNotch.connect(vocalEnv);
+      // ------------------------------------------
+
       vocalEnv.connect(f1); vocalEnv.connect(f2); vocalEnv.connect(f3);
       f1.connect(this.masterGain); f2.connect(this.masterGain); f3.connect(this.masterGain);
 
@@ -26300,10 +26385,48 @@ const MusicEngine = {
               breathEnv.gain.setTargetAtTime(breathiness, t, 0.02);
 
               if (p.type === 'vowel' || p.type === 'liquid' || p.type === 'diphthong') {
-                  f1.frequency.setTargetAtTime(p.f1 * resonance, t, 0.015);
-                  f2.frequency.setTargetAtTime(p.f2 * resonance, t, 0.015);
-                  f3.frequency.setTargetAtTime(p.f3 * resonance, t, 0.015);
+                  
+                  let glideSpeed = 0.015; // Fast default glide
 
+                  // --- PHASE 5: COARTICULATION (The Locus Theory) ---
+                  if (i > 0) {
+                      const prevChar = text[i - 1];
+                      let locusF2 = null;
+
+                      // Bilabials (Lips: p, b, m, f, v) pull F2 down
+                      if (['p', 'b', 'm', 'f', 'v'].includes(prevChar)) locusF2 = 800;
+                      // Alveolars (Tongue tip: t, d, s, z, n) pull F2 up to ~1800Hz
+                      else if (['t', 'd', 's', 'z', 'n'].includes(prevChar)) locusF2 = 1800;
+                      // Velars (Back of tongue: k, g, c) pull F2 very high
+                      else if (['k', 'g', 'c','N'].includes(prevChar)) locusF2 = 2500;
+                      
+                      if (locusF2 !== null) {
+                          // Instantly snap F2 to the consonant's physical mouth position
+                          // before the envelope opens, so the sound starts exactly there.
+                          f2.frequency.setValueAtTime(locusF2 * resonance, t - 0.001);
+                          
+                          // Slow down the transition speed so the ear can catch the "slide"
+                          glideSpeed = 0.045; 
+                      }
+                  }
+                  // --------------------------------------------------
+
+                  // Now glide to the vowel's actual target frequencies
+                  f1.frequency.setTargetAtTime(p.f1 * resonance, t, glideSpeed);
+                  f2.frequency.setTargetAtTime(p.f2 * resonance, t, glideSpeed); 
+                  f3.frequency.setTargetAtTime(p.f3 * resonance, t, glideSpeed);
+                  
+                  f1.Q.setTargetAtTime(p.q1 || 4.0, t, glideSpeed);
+                  f2.Q.setTargetAtTime(p.q2 || 3.0, t, glideSpeed);
+                  f3.Q.setTargetAtTime(p.q3 || 1.5, t, glideSpeed);
+                  // --- PHASE 4: TRIGGER ANTI-FORMANTS ---
+                  if (char === 'm' || char === 'n'|| char === 'N') {
+                      // Pull the notch down to ~1000Hz to hollow out the sound
+                      nasalNotch.frequency.setTargetAtTime(1000, t, 0.015); 
+                  } else {
+                      // Get the notch out of the way for normal vowels
+                      nasalNotch.frequency.setTargetAtTime(20000, t, 0.015); 
+                  }
                   if (p.type === 'diphthong') {
                       // Slide the diphthong over its duration
                       f1.frequency.setTargetAtTime(p.endF1 * resonance, t + (dur*0.3), 0.05);
@@ -26321,29 +26444,35 @@ const MusicEngine = {
               breathEnv.gain.setTargetAtTime(0, t, 0.01);
           }
           
-          // THE PERCUSSION TRACK (Now properly scaled by voicing)
+          // --- PHASE 3: THE PERCUSSION TRACK UPGRADE ---
           if (p.type === 'fricative' || p.type === 'stop') {
               const noise = createNoise(dur);
               const noiseFilter = this.ctx.createBiquadFilter();
-              noiseFilter.type = 'bandpass'; noiseFilter.frequency.value = p.freq; noiseFilter.Q.value = 1; 
+              
+              // NEW: Fricatives are highpass (hissing air). Stops are bandpass (clicks/pops).
+              noiseFilter.type = (p.type === 'fricative') ? 'highpass' : 'bandpass'; 
+              noiseFilter.frequency.value = p.freq; 
+              noiseFilter.Q.value = (p.type === 'fricative') ? 0.5 : 1.5; 
               
               const noiseEnv = this.ctx.createGain(); 
               noiseEnv.gain.setValueAtTime(0, t);
-
-              // Unvoiced = Loud noise. Voiced = Muffled noise so pitch cuts through.
+              
               const noiseMaxVol = p.voiced ? 0.15 : 0.6; 
 
               if (p.type === 'stop') {
-                  noiseEnv.gain.linearRampToValueAtTime(noiseMaxVol, t + 0.005); 
-                  noiseEnv.gain.exponentialRampToValueAtTime(0.01, t + dur); 
+                  // NEW: Extremely sharp attack and steep decay for plosives (the "pop" of a 'p' or 't')
+                  noiseEnv.gain.linearRampToValueAtTime(noiseMaxVol, t + 0.002); // Snap open instantly
+                  noiseEnv.gain.exponentialRampToValueAtTime(0.001, t + (dur * 0.8)); // Snap shut quickly
               } else {
-                  noiseEnv.gain.linearRampToValueAtTime(noiseMaxVol * 0.6, t + 0.01); 
-                  noiseEnv.gain.setValueAtTime(noiseMaxVol * 0.6, t + dur - 0.01);
+                  // Fricatives stay open longer and fade smoother, like a breath
+                  noiseEnv.gain.linearRampToValueAtTime(noiseMaxVol * 0.6, t + 0.02);
+                  noiseEnv.gain.setValueAtTime(noiseMaxVol * 0.6, t + dur - 0.02);
                   noiseEnv.gain.linearRampToValueAtTime(0, t + dur);
               }
 
               noise.connect(noiseFilter); noiseFilter.connect(noiseEnv); noiseEnv.connect(this.masterGain);
-              noise.start(t); noise.stop(t + dur);
+              noise.start(t);
+              noise.stop(t + dur);
           }
           t += dur; 
       }
@@ -26352,58 +26481,212 @@ const MusicEngine = {
       breathEnv.gain.setTargetAtTime(0, t, 0.02);
       vocalCords.stop(t + 0.2); jitterNoise.stop(t + 0.2); breathNoise.stop(t + 0.2);
   },
-  sing(text, notesArray = [0], rootFreq = 110, baseSpeed = 0.25, resonance = 1.0, breathiness = 0.1) {
+   sing(text,startTime, notesArray = [0], rootFreq = 110, baseSpeed = 0.25, resonance = 1.0, breathiness = 0.1) {
       if (!this.ctx) return;
       if (this.ctx.state === 'suspended') { this.ctx.resume(); }
 
-      let t = this.ctx.currentTime + 0.1; 
-      text = text.toLowerCase();
 
-      // Text Normalization
-      const overrides = { "machine": "maSin", "the": "d@", "hello": "helo", "suncat": "s@nkat", "greetings": "gritinz" };
-      for (const [word, phonetic] of Object.entries(overrides)) { text = text.replace(new RegExp(`\\b${word}\\b`, 'g'), phonetic); }
-      text = text.replace(/\bi\b/g, 'I'); text = text.replace(/er\b/g, '@r'); 
-      text = text.replace(/ll/g, 'l').replace(/ss/g, 's').replace(/tt/g, 't')
-                 .replace(/sh/g, 'S').replace(/th/g, 'T').replace(/e\b/g, ''); 
+      // 1. NORMALIZE THE INPUT FIRST (Fixes the "Ash" and "Sword" capitalization bug)
+      let t = startTime;
+      text = text.toLowerCase(); 
 
+      // --- PHASE 6: THE PhD-LEVEL PHONETIC LEXICON (G2P) ---
+      
+      // 2. The Core Dictionary (For words that break all phonetic laws)
+      const Lexicon = {
+    // Core Conversational
+    "the": "d@", "hello": "helo", "suncat": "s@nkat", "machine": "maSin",
+    "greetings": "gritinz", "you": "yu", "are": "ar", "how": "hO",
+    "what": "w@t", "is": "Iz", "this": "dIs", "a": "@", "i": "I",
+    "one": "w@n", "two": "tu", "three": "Tri", "four": "for", "five": "fIv",
+    "come": "k@m", "some": "s@m", "where": "wer", "there": "der", "day": "dE",
+    "of": "@v", "to": "tu", "too": "tu", "eye": "I", "eyes": "Iz", "now": "nO",
+
+    // Mythic & Arthurian Vocabulary
+    "arthur": "arT@r", "arthurz": "arT@rz", "merlin": "m@rlIn",
+    "taliesin": "taliEsIn", "bleise": "blEz", "dragon": "drag@n",
+    "magic": "majIk", "majik": "majIk", "excalibur": "ekskalIb@r",
+    "camelot": "kam@lot", "grail": "grEl", "sword": "sord", "shield": "SIld", 
+    "shild": "SIld", "crown": "krOn", "throne": "Tron", "lord": "lord", 
+    "lady": "lEdi", "king": "kiN", "gods": "godz", "myth": "mIT", "tale": "tEl",
+    "lore": "lor", "song": "soN", "lyre": "lI@r", "spell": "spel", "curse": "k@rs",
+
+    // The Natural World & Elements
+    "sun": "s@n", "star": "star", "starz": "starz", "starlight": "starlIt",
+    "sky": "skI", "earth": "@rT", "world": "w@rld", "wood": "wud", "wudz": "wudz",
+    "tree": "tri", "triz": "triz", "oak": "ok", "ash": "aS", "roots": "ruts",
+    "storm": "storm", "rain": "rEn", "lake": "lEk", "sea": "si", "hill": "hIl",
+    "dawn": "don", "mist": "mist", "wind": "wInd", "winds": "wIndz", // (wind-up toy pronunciation)
+    "fire": "fI@r", "flame": "flEm", "flames": "flEmz", "stone": "ston", 
+    "bone": "bon", "bonz": "bonz", "gold": "gold", "stahl": "stal",
+
+    // Heroic, Sorrowful & Emotive
+    "heart": "hart", "hart": "hart", "soul": "sol", "spirit": "spir@t",
+    "brave": "brEv", "fear": "fir", "dread": "dred", "doom": "dum", 
+    "war": "wor", "steel": "stil", "strike": "strIk", "clash": "klaS", 
+    "weep": "wIp", "tear": "tir", "tears": "tirz", "tirz": "tirz", 
+    "hope": "hop", "true": "tru", "truth": "truT", "tremble": "tremb@l",
+    "cold": "kold", "blood": "bl@d", "blud": "bl@d", 
+
+    // Actions & States
+    "breath": "breT", "soars": "sorz", "high": "hI", "hold": "hold", 
+    "paths": "paTs", "veils": "vElz", "time": "tIm", "wakes": "wEks", 
+    "wake": "wEk", "meets": "mits", "guides": "gIdz", "sleep": "slip", 
+    "warms": "wormz", "opens": "op@nz", "wide": "wId", "gather": "gad@r", 
+    "binds": "bIndz", "await": "@wEt", "align": "@lIn",
+
+    // Syllable fragments (to catch LLM hyphenation behavior)
+    "fy": "fI", "er": "@r", "nite": "nIt", "lite": "lIt", "mun": "mun", 
+    "glowz": "glOz", "ar": "ar", "thur": "T@r", "mer": "m@r", "lin": "lIn", 
+    "tal": "tal", "sin": "sIn", "ek": "ek", "skal": "skal", "ma": "ma", 
+    "jik": "jIk", "sha": "Sa", "do": "do", "b@rnz": "b@rnz", "grOnd": "grOnd",// Add these to your Actions & States or Natural World section:
+"long": "loN",
+"rises": "rIz@z",
+"stonehenges": "stonhenj@z",
+"hum": "h@m",
+};
+
+      let phoneticText = "";
+      const tokens = text.match(/\b\w+\b|[^\w\s]|\s+/g) || [];
+
+      // 3. The Expanded Intelligent Fallback Translator
+for (let token of tokens) {
+    if (Lexicon[token]) {
+        // Fast path for hardcoded exceptions (the, hello, of, sword)
+        phoneticText += Lexicon[token];
+    } else if (/[a-z]/.test(token)) {
+        let fallback = token;
+
+        // --- A. Suffixes & Endings ---
+        fallback = fallback.replace(/tion/g, 'S@n'); // action -> akS@n
+        fallback = fallback.replace(/sion/g, 'Z@n'); // vision -> viZ@n
+        fallback = fallback.replace(/ing\b/g, 'In'); // running -> r@nIn
+        fallback = fallback.replace(/ous\b/g, '@s'); // famous -> fAm@s
+        fallback = fallback.replace(/ed\b/g, 'd');   // played -> plEd
+        fallback = fallback.replace(/er\b/g, '@r');  // runner -> r@n@r
+
+        // --- B. Consonant Digraphs & Silent Letters ---
+        fallback = fallback.replace(/kn|gn/g, 'n');  // knight/gnarl -> nIt/narl
+        fallback = fallback.replace(/wr/g, 'r');     // write -> rIt
+        fallback = fallback.replace(/mb\b/g, 'm');   // bomb/comb -> bom/kom
+        fallback = fallback.replace(/ph/g, 'f');     // phone -> fon
+        fallback = fallback.replace(/sh/g, 'S');     // ash -> aS
+        fallback = fallback.replace(/ch/g, 'tS');    // chat -> tSat
+        fallback = fallback.replace(/th/g, 'T');     // thin -> TIn
+        fallback = fallback.replace(/ng/g, 'N');     // sing -> sIN
+        fallback = fallback.replace(/ck/g, 'k');     // back -> bak
+        fallback = fallback.replace(/wh/g, 'w');     // what -> w@t
+
+        // --- C. The "Magic E" Rule (Vowel-Consonant-E) ---
+        // Matches a vowel, a single consonant, and an 'e' at the end of a word.
+        fallback = fallback.replace(/a([bcdfgjklmnpqrstvwxz])e\b/g, 'E$1'); // fate -> fEt
+        fallback = fallback.replace(/i([bcdfgjklmnpqrstvwxz])e\b/g, 'I$1'); // bite -> bIt
+        fallback = fallback.replace(/o([bcdfgjklmnpqrstvwxz])e\b/g, 'o$1'); // rote -> rot
+        fallback = fallback.replace(/u([bcdfgjklmnpqrstvwxz])e\b/g, 'yu$1'); // mute -> myut
+
+        // --- D. Vowel Teams & R-Controlled Vowels ---
+        fallback = fallback.replace(/igh/g, 'I');    // light -> lIt
+        fallback = fallback.replace(/ai|ay/g, 'E');  // rain/day -> rEn/dE
+        fallback = fallback.replace(/ee|ea/g, 'i');  // see/neat -> si/nit
+        fallback = fallback.replace(/oa/g, 'o');     // boat -> bot
+        fallback = fallback.replace(/ou|ow/g, 'O');  // out/cow -> Ot/kO
+        fallback = fallback.replace(/oo/g, 'u');     // moon -> mun
+        
+        // R-controlled 
+        fallback = fallback.replace(/ar/g, 'ar');    // car -> kar
+        fallback = fallback.replace(/ir|ur/g, '@r'); // bird/burn -> b@rd/b@rn
+        fallback = fallback.replace(/or/g, 'or');    // fork -> fork
+
+        // --- E. Tricky Consonants & Final Cleanup ---
+        fallback = fallback.replace(/c(?=[eiy])/g, 's'); // Soft C: cent/city -> sent/sity
+        fallback = fallback.replace(/g(?=[eiy])/g, 'j'); // Soft G: gem/magic -> jem/majic
+        fallback = fallback.replace(/c/g, 'k');          // Hard C everywhere else
+        
+        // Compress double consonants (ll -> l, ss -> s, tt -> t)
+        fallback = fallback.replace(/([bdfgklmnprstvz])\1/g, '$1'); 
+        
+        // Nuke any remaining silent E's at the end of words that didn't fit a pattern
+        fallback = fallback.replace(/e\b/g, ''); 
+
+        phoneticText += fallback;
+    } else {
+        // Punctuation and spaces
+        phoneticText += token;
+    }
+}
+      
+      text = phoneticText;
+      // ------------------------------------------
+      // ------------------------------------------
+      // --- PHASE 2: DYNAMIC FORMANT BANDWIDTHS ---
       const Phonetics = {
-          'a': { type: 'vowel', f1: 730, f2: 1090, f3: 2440, voiced: true, vol: 0.9 }, 
-          'e': { type: 'vowel', f1: 530, f2: 1840, f3: 2480, voiced: true, vol: 0.8 }, 
-          'i': { type: 'vowel', f1: 270, f2: 2290, f3: 3010, voiced: true, vol: 0.7 }, 
-          'o': { type: 'vowel', f1: 570, f2: 840,  f3: 2410, voiced: true, vol: 0.9 }, 
-          'u': { type: 'vowel', f1: 300, f2: 870,  f3: 2240, voiced: true, vol: 0.7 }, 
-          '@': { type: 'vowel', f1: 640, f2: 1190, f3: 2390, voiced: true, vol: 0.8 }, 
-          'I': { type: 'diphthong', f1: 730, f2: 1090, f3: 2440, endF1: 270, endF2: 2290, endF3: 3010, voiced: true, vol: 0.9 }, 
-          's': { type: 'fricative', freq: 6000, voiced: false }, 'z': { type: 'fricative', freq: 6000, voiced: true },
-          'f': { type: 'fricative', freq: 4000, voiced: false }, 'v': { type: 'fricative', freq: 4000, voiced: true },
-          'S': { type: 'fricative', freq: 2500, voiced: false }, 'T': { type: 'fricative', freq: 4500, voiced: false }, 
-          't': { type: 'stop', freq: 4000, voiced: false }, 'd': { type: 'stop', freq: 4000, voiced: true },
-          'k': { type: 'stop', freq: 2500, voiced: false }, 'c': { type: 'stop', freq: 2500, voiced: false },
-          'g': { type: 'stop', freq: 2500, voiced: true }, 'p': { type: 'stop', freq: 1000, voiced: false },
-          'b': { type: 'stop', freq: 1000, voiced: true },
-          'm': { type: 'vowel', f1: 300, f2: 1000, f3: 1500, voiced: true, vol: 0.3 }, 
-          'n': { type: 'vowel', f1: 300, f2: 1500, f3: 2000, voiced: true, vol: 0.3 }, 
-          'l': { type: 'liquid', f1: 400, f2: 1200, f3: 2400, voiced: true, vol: 0.5 }, 
-          'r': { type: 'liquid', f1: 400, f2: 1000, f3: 1400, voiced: true, vol: 0.5 }
-      };
+    // VOWELS (F1 = Jaw openness, F2 = Tongue front/back, F3 = Lip rounding)
+    'a': { type: 'vowel', f1: 730, f2: 1090, f3: 2440, q1: 5.0, q2: 3.0, q3: 1.5, voiced: true, vol: 0.9 }, 
+    'e': { type: 'vowel', f1: 530, f2: 1840, f3: 2480, q1: 6.0, q2: 4.0, q3: 1.5, voiced: true, vol: 0.8 }, 
+    'i': { type: 'vowel', f1: 270, f2: 2290, f3: 3010, q1: 4.0, q2: 4.0, q3: 2.0, voiced: true, vol: 0.7 }, 
+    'o': { type: 'vowel', f1: 570, f2: 840,  f3: 2410, q1: 5.0, q2: 3.5, q3: 1.5, voiced: true, vol: 0.9 }, 
+    'u': { type: 'vowel', f1: 300, f2: 870,  f3: 2240, q1: 4.5, q2: 3.0, q3: 1.5, voiced: true, vol: 0.7 }, 
+    '@': { type: 'vowel', f1: 600, f2: 1200, f3: 2500, q1: 5.0, q2: 3.0, q3: 1.5, voiced: true, vol: 0.8 }, 
+    
+    // DIPHTHONGS (Gliding vowels)
+    'I': { type: 'diphthong', f1: 730, f2: 1090, f3: 2440, endF1: 270, endF2: 2290, endF3: 3010, q1: 5.0, q2: 3.5, q3: 1.5, voiced: true, vol: 0.9 }, 
+    'E': { type: 'diphthong', f1: 530, f2: 1840, f3: 2480, endF1: 270, endF2: 2290, endF3: 3010, q1: 5.0, q2: 3.5, q3: 1.5, voiced: true, vol: 0.9 },
+    'O': { type: 'diphthong', f1: 730, f2: 1090, f3: 2440, endF1: 300, endF2: 870,  endF3: 2240, q1: 5.0, q2: 3.5, q3: 1.5, voiced: true, vol: 0.9 },
+
+    // LIQUIDS & GLIDES
+    'w': { type: 'liquid', f1: 300, f2: 600,  f3: 2200, q1: 5.0, q2: 3.0, q3: 2.0, voiced: true, vol: 0.6 }, 
+    'y': { type: 'liquid', f1: 300, f2: 2300, f3: 3000, q1: 5.0, q2: 3.0, q3: 2.0, voiced: true, vol: 0.6 },
+    'r': { type: 'liquid', f1: 400, f2: 1200, f3: 1600, q1: 5.0, q2: 3.0, q3: 2.0, voiced: true, vol: 0.6 }, // Plunging F3
+    'l': { type: 'liquid', f1: 400, f2: 1200, f3: 2800, q1: 5.0, q2: 3.0, q3: 2.0, voiced: true, vol: 0.6 }, // High F3
+
+    // NASALS (Mouth closed, resonance through nose)
+    'm': { type: 'vowel', f1: 250, f2: 1200, f3: 2500, q1: 6.0, q2: 2.0, q3: 1.0, voiced: true, vol: 0.2 }, 
+    'n': { type: 'vowel', f1: 250, f2: 1800, f3: 2500, q1: 6.0, q2: 2.0, q3: 1.0, voiced: true, vol: 0.2 }, 
+    'N': { type: 'vowel', f1: 250, f2: 2200, f3: 2500, q1: 6.0, q2: 2.0, q3: 1.0, voiced: true, vol: 0.2 },
+
+    // FRICATIVES (Hissing air)
+    's': { type: 'fricative', freq: 7000, voiced: false }, 
+    'z': { type: 'fricative', freq: 7000, voiced: true },
+    'S': { type: 'fricative', freq: 3000, voiced: false }, // 'sh'
+    'Z': { type: 'fricative', freq: 3000, voiced: true },  // 'zh'
+    'f': { type: 'fricative', freq: 4500, voiced: false },
+    'v': { type: 'fricative', freq: 4500, voiced: true },
+    'T': { type: 'fricative', freq: 6000, voiced: false }, // 'th' (thin air)
+    'h': { type: 'fricative', freq: 2000, voiced: false }, // Deep throat breath
+
+    // STOPS & AFFRICATES (Clicks and Pops)
+    't': { type: 'stop', freq: 6000, voiced: false }, // Sharp front teeth tick
+    'd': { type: 'stop', freq: 6000, voiced: true },
+    'k': { type: 'stop', freq: 2000, voiced: false }, // Mid-throat click
+    'g': { type: 'stop', freq: 2000, voiced: true },
+    'p': { type: 'stop', freq: 800,  voiced: false }, // Low lip pop
+    'b': { type: 'stop', freq: 800,  voiced: true },
+    'c': { type: 'stop', freq: 3500, voiced: false }, // 'ch'
+    'j': { type: 'stop', freq: 3500, voiced: true }
+};
 
       const createNoise = (duration) => {
           const bufferSize = this.ctx.sampleRate * Math.max(duration, 0.1);
           const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
           const data = buffer.getChannelData(0);
           for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
-          const n = this.ctx.createBufferSource(); n.buffer = buffer; return n;
+          const noise = this.ctx.createBufferSource();
+          noise.buffer = buffer;
+          return noise;
       };
 
-      // Set initial pitch to the first note in the array
+     // 1. Calculate the starting pitch FIRST
       let noteIndex = 0;
       let currentHz = rootFreq * Math.pow(2, notesArray[0] / 12);
 
-      const vocalCords = this.ctx.createOscillator(); vocalCords.type = 'sawtooth'; vocalCords.frequency.setValueAtTime(currentHz, t); 
-      
+      // MASTER TRACK (Lungs & Throat)
+      const vocalCords = this.ctx.createOscillator();
+      vocalCords.type = 'sawtooth';
+      vocalCords.frequency.setValueAtTime(currentHz, t); // Changed 'pitch' to 'currentHz'
+
       const jitterNoise = createNoise(10); jitterNoise.loop = true;
-      const jitterFilter = this.ctx.createBiquadFilter(); jitterFilter.type = 'lowpass'; jitterFilter.frequency.value = 6; 
-      const jitterGain = this.ctx.createGain(); jitterGain.gain.value = currentHz * 0.01; // 1% vibrato
+      const jitterFilter = this.ctx.createBiquadFilter(); jitterFilter.type = 'lowpass'; jitterFilter.frequency.value = 8; 
+      const jitterGain = this.ctx.createGain(); jitterGain.gain.value = currentHz * 0.015; // Changed 'pitch' to 'currentHz'
       jitterNoise.connect(jitterFilter); jitterFilter.connect(jitterGain); jitterGain.connect(vocalCords.frequency);
       jitterNoise.start(t);
 
@@ -26412,24 +26695,73 @@ const MusicEngine = {
       const breathEnv = this.ctx.createGain(); breathEnv.gain.value = 0;
       breathNoise.connect(breathFilter); breathFilter.connect(breathEnv); 
 
-      const throat = this.ctx.createBiquadFilter(); throat.type = 'lowpass'; throat.frequency.value = 3500; 
-      const vocalEnv = this.ctx.createGain(); vocalEnv.gain.setValueAtTime(0, t); 
+      // --- PHASE 1: CASCADING GLOTTAL FILTERS ---
+      // We run the sawtooth through two steep lowpass filters to simulate the fleshy
+      // rolloff of human vocal cords (-12dB/octave) before it hits the mouth.
+      const glottalFilter1 = this.ctx.createBiquadFilter(); 
+      glottalFilter1.type = 'lowpass'; glottalFilter1.frequency.value = 800; 
+      
+      const glottalFilter2 = this.ctx.createBiquadFilter(); 
+      glottalFilter2.type = 'lowpass'; glottalFilter2.frequency.value = 1200;
+
+      const throat = this.ctx.createBiquadFilter(); 
+      throat.type = 'lowpass'; throat.frequency.value = 3500; 
+
+      // --- PHASE 4: THE NASAL CAVITY ---
+      const nasalNotch = this.ctx.createBiquadFilter();
+      nasalNotch.type = 'notch'; 
+      nasalNotch.frequency.value = 20000; 
+      nasalNotch.Q.value = 2.0; 
+      
+      const vocalEnv = this.ctx.createGain();
+      vocalEnv.gain.setValueAtTime(0, t);
 
       const qVal = 2.5; 
       const f1 = this.ctx.createBiquadFilter(); f1.type = 'bandpass'; f1.Q.value = qVal; 
       const f2 = this.ctx.createBiquadFilter(); f2.type = 'bandpass'; f2.Q.value = qVal; 
       const f3 = this.ctx.createBiquadFilter(); f3.type = 'bandpass'; f3.Q.value = qVal; 
 
-      vocalCords.connect(throat); breathEnv.connect(throat); 
-      throat.connect(vocalEnv);
+      // === NEW: FORMANT BALANCING GAINS ===
+      // Mimics the natural energy falloff of human resonance
+      const f1Gain = this.ctx.createGain(); f1Gain.gain.value = 1.0;   // 0dB (Loudest)
+      const f2Gain = this.ctx.createGain(); f2Gain.gain.value = 0.45;  // ~ -7dB
+      const f3Gain = this.ctx.createGain(); f3Gain.gain.value = 0.15;  // ~ -16dB
+
+      // === NEW: LIP RADIATION FILTER ===
+      // Simulates sound leaving the human lips (+6dB/oct highpass effect)
+      const lips = this.ctx.createBiquadFilter();
+      lips.type = 'highpass';
+      lips.frequency.value = 120; // Clears the mud
+      lips.Q.value = 0.5;
+
+      // NEW ROUTING: Sawtooth -> Glottal 1 -> Glottal 2 -> Throat
+      vocalCords.connect(glottalFilter1); 
+      glottalFilter1.connect(glottalFilter2);
+      glottalFilter2.connect(throat);
+      
+      breathEnv.connect(throat); 
+      throat.connect(nasalNotch);
+      nasalNotch.connect(vocalEnv);
+      
+      // Route through Formants -> Formant Gains -> Lips -> Master
+      vocalEnv.connect(f1); f1.connect(f1Gain); f1Gain.connect(lips);
+      vocalEnv.connect(f2); f2.connect(f2Gain); f2Gain.connect(lips);
+      vocalEnv.connect(f3); f3.connect(f3Gain); f3Gain.connect(lips);
+      
+      lips.connect(this.masterGain);
+      // ------------------------------------------
+
+
       vocalEnv.connect(f1); vocalEnv.connect(f2); vocalEnv.connect(f3);
       f1.connect(this.masterGain); f2.connect(this.masterGain); f3.connect(this.masterGain);
+// Set initial pitch to the first note in the array
 
       vocalCords.start(t); breathNoise.start(t);
-
+// SEQUENCER
       for (let i = 0; i < text.length; i++) {
           const char = text[i];
           const p = Phonetics[char];
+          const isAtWordEnd = (text[i + 1] === ' ' || text[i + 1] === undefined);
           
           if (!p) {
               if (char === ' ') {
@@ -26444,10 +26776,10 @@ const MusicEngine = {
           if (p.type === 'stop') dur = baseSpeed * 0.15; 
           else if (p.type === 'fricative') dur = baseSpeed * 0.35; 
           else if (p.type === 'liquid') dur = baseSpeed * 0.40; 
-          
+          if (isAtWordEnd && (p.type === 'vowel' || p.type === 'diphthong')) dur *= 1.4; 
+
           // === THE SINGING LOGIC ===
-          if (p.type === 'vowel' || p.type === 'diphthong') {
-              
+          if (p.type === 'vowel' || p.type === 'diphthong' || p.type === 'liquid') {
               // 1. Get the current note from the array, loop if we run out of notes
               const noteInt = notesArray[noteIndex % notesArray.length];
               
@@ -26459,20 +26791,72 @@ const MusicEngine = {
               
               // 4. Update the Jitter (Vibrato) to match the new pitch depth
               jitterGain.gain.setTargetAtTime(currentHz * 0.015, t, 0.05);
-
+              
               // 5. Advance to the next note for the next syllable
               noteIndex++;
           }
 
-          if (p.type === 'vowel' || p.type === 'diphthong' || p.type === 'liquid' || p.voiced) {
-              const targetVol = (p.type === 'stop' || p.type === 'fricative') ? 0.15 : (p.vol || 0.8);
-              vocalEnv.gain.setTargetAtTime(targetVol, t, 0.015);
-              breathEnv.gain.setTargetAtTime(breathiness, t, 0.02);
+         if (p.type === 'vowel' || p.type === 'diphthong' || p.type === 'liquid' || p.voiced) {
+              
+              // === NEW: STRICT CONSONANT MUTING ===
+              if (!p.voiced) {
+                  // If it's an unvoiced consonant (s, f, S, T, t, k, p, c), MUTE the throat instantly!
+                  vocalEnv.gain.setTargetAtTime(0, t, 0.005);
+                  breathEnv.gain.setTargetAtTime(breathiness * 2, t, 0.01); // Boost breath for hisses
+              } else {
+                  // Normal singing volume for vowels, liquids, and voiced consonants
+                  const targetVol = (p.type === 'stop' || p.type === 'fricative') ? 0.25 : (p.vol || 0.8);
+                  vocalEnv.gain.setTargetAtTime(targetVol, t, 0.015);
+                  breathEnv.gain.setTargetAtTime(breathiness, t, 0.02);
+              }
 
               if (p.type === 'vowel' || p.type === 'liquid' || p.type === 'diphthong') {
-                  f1.frequency.setTargetAtTime(p.f1 * resonance, t, 0.015);
-                  f2.frequency.setTargetAtTime(p.f2 * resonance, t, 0.015);
-                  f3.frequency.setTargetAtTime(p.f3 * resonance, t, 0.015);
+                  
+                  let glideSpeed = 0.015; // Fast default glide
+                  // ... Keep the rest of your Phase 5 Coarticulation code exactly as it is ...
+if (!p.voiced) {
+    // Mute throat, boost breath (Whisper mode)
+    vocalEnv.gain.setTargetAtTime(0, t, 0.005);
+    breathEnv.gain.setTargetAtTime(breathiness * 2, t, 0.01); 
+} else {
+    // FORCE the voice back on quickly (0.005 instead of 0.015)
+    const targetVol = (p.type === 'stop' || p.type === 'fricative') ? 0.25 : (p.vol || 0.8);
+    vocalEnv.gain.setTargetAtTime(targetVol, t, 0.005); // Snap back up to stop the whisper bug
+    breathEnv.gain.setTargetAtTime(breathiness, t, 0.02);
+}
+                  // --- PHASE 5: COARTICULATION (The Locus Theory) ---
+                  if (i > 0) {
+                      const prevChar = text[i - 1];
+                      let locusF2 = null;
+
+                      // Bilabials (Lips: p, b, m, f, v) pull F2 down
+                      if (['p', 'b', 'm', 'f', 'v'].includes(prevChar)) locusF2 = 800;
+                      // Alveolars (Tongue tip: t, d, s, z, n) pull F2 up to ~1800Hz
+                      else if (['t', 'd', 's', 'z', 'n'].includes(prevChar)) locusF2 = 1800;
+                      // Velars (Back of tongue: k, g, c, N) pull F2 very high
+                      else if (['k', 'g', 'c', 'N'].includes(prevChar)) locusF2 = 2500;
+
+                      if (locusF2 !== null) {
+                          f2.frequency.setValueAtTime(locusF2 * resonance, t - 0.001);
+                          glideSpeed = 0.045; 
+                      }
+                  }
+
+                  // Now glide to the vowel's actual target frequencies
+                  f1.frequency.setTargetAtTime(p.f1 * resonance, t, glideSpeed);
+                  f2.frequency.setTargetAtTime(p.f2 * resonance, t, glideSpeed); 
+                  f3.frequency.setTargetAtTime(p.f3 * resonance, t, glideSpeed);
+                  
+                  f1.Q.setTargetAtTime(p.q1 || 4.0, t, glideSpeed);
+                  f2.Q.setTargetAtTime(p.q2 || 3.0, t, glideSpeed);
+                  f3.Q.setTargetAtTime(p.q3 || 1.5, t, glideSpeed);
+
+                  // --- PHASE 4: TRIGGER ANTI-FORMANTS ---
+                  if (char === 'm' || char === 'n' || char === 'N') {
+                      nasalNotch.frequency.setTargetAtTime(1000, t, 0.015); 
+                  } else {
+                      nasalNotch.frequency.setTargetAtTime(20000, t, 0.015); 
+                  }
 
                   if (p.type === 'diphthong') {
                       f1.frequency.setTargetAtTime(p.endF1 * resonance, t + (dur*0.3), 0.05);
@@ -26480,34 +26864,48 @@ const MusicEngine = {
                       f3.frequency.setTargetAtTime(p.endF3 * resonance, t + (dur*0.3), 0.05);
                   }
               }
+              
+              if (p.voiced && (p.type === 'stop' || p.type === 'fricative')) {
+                  vocalCords.frequency.setValueAtTime(currentHz * 0.85, t); // Drop current singing pitch slightly for texture
+                  vocalCords.frequency.setTargetAtTime(currentHz, t, 0.02); // Snap back up
+              }
           } else {
               vocalEnv.gain.setTargetAtTime(0, t, 0.01);
               breathEnv.gain.setTargetAtTime(0, t, 0.01);
           }
           
+          // --- PHASE 3: THE PERCUSSION TRACK UPGRADE ---
           if (p.type === 'fricative' || p.type === 'stop') {
               const noise = createNoise(dur);
               const noiseFilter = this.ctx.createBiquadFilter();
-              noiseFilter.type = 'bandpass'; noiseFilter.frequency.value = p.freq; noiseFilter.Q.value = 1; 
-              const noiseEnv = this.ctx.createGain(); noiseEnv.gain.setValueAtTime(0, t);
+              
+              noiseFilter.type = (p.type === 'fricative') ? 'highpass' : 'bandpass'; 
+              noiseFilter.frequency.value = p.freq; 
+              noiseFilter.Q.value = (p.type === 'fricative') ? 0.5 : 1.5; 
+              
+              const noiseEnv = this.ctx.createGain(); 
+              noiseEnv.gain.setValueAtTime(0, t);
+              
               const noiseMaxVol = p.voiced ? 0.15 : 0.6; 
 
               if (p.type === 'stop') {
-                  noiseEnv.gain.linearRampToValueAtTime(noiseMaxVol, t + 0.005); 
-                  noiseEnv.gain.exponentialRampToValueAtTime(0.01, t + dur); 
+                  noiseEnv.gain.linearRampToValueAtTime(noiseMaxVol, t + 0.002); 
+                  noiseEnv.gain.exponentialRampToValueAtTime(0.001, t + (dur * 0.8)); 
               } else {
-                  noiseEnv.gain.linearRampToValueAtTime(noiseMaxVol * 0.6, t + 0.01); 
-                  noiseEnv.gain.setValueAtTime(noiseMaxVol * 0.6, t + dur - 0.01);
+                  noiseEnv.gain.linearRampToValueAtTime(noiseMaxVol * 0.6, t + 0.02);
+                  noiseEnv.gain.setValueAtTime(noiseMaxVol * 0.6, t + dur - 0.02);
                   noiseEnv.gain.linearRampToValueAtTime(0, t + dur);
               }
 
               noise.connect(noiseFilter); noiseFilter.connect(noiseEnv); noiseEnv.connect(this.masterGain);
-              noise.start(t); noise.stop(t + dur);
+              noise.start(t);
+              noise.stop(t + dur);
           }
           t += dur; 
       }
 
-      vocalEnv.gain.setTargetAtTime(0, t, 0.02); breathEnv.gain.setTargetAtTime(0, t, 0.02);
+      vocalEnv.gain.setTargetAtTime(0, t, 0.02); 
+      breathEnv.gain.setTargetAtTime(0, t, 0.02);
       vocalCords.stop(t + 0.2); jitterNoise.stop(t + 0.2); breathNoise.stop(t + 0.2);
   },
   createTone(t, freq, type, vol, dur, slide) {
@@ -42282,6 +42680,7 @@ class Ai3Module {
         this.strumQueue = [];   
         this.melodyMemory = []; 
         this.lyricsQueue = []; 
+        this.vocalQueue = new Array(32).fill(null);
         this.lyricMemory = []; // <-- NEW: Tracks recent lyrics
         for(let i=0; i<32; i++) {
             this.thumbQueue.push(i % 16 === 0 ? 0 : null); 
@@ -42408,16 +42807,6 @@ class Ai3Module {
         const thought = getTag('THOUGHT');
         if (thought) console.log(`%c[Suncat's Mind] "${thought}"`, 'color: #ff9900; font-style: italic; background: #222; padding: 4px; border-radius: 4px;');
 
-        const lyrics = getTag('LYRICS');
-        // Force the lyric into the queue. If the AI failed, at least push empty so the timing doesn't break.
-        const lyricToQueue = (lyrics && lyrics !== '-' && lyrics !== '') ? lyrics : "";
-        this.lyricsQueue.push(lyricToQueue);
-        
-        if (lyricToQueue !== "") {
-            this.lyricMemory.push(lyricToQueue);
-            if (this.lyricMemory.length > 6) this.lyricMemory.shift();
-        }
-
         const newTempo = getTag('TEMPO');
         if (newTempo && !isNaN(parseFloat(newTempo))) this.targetTempo = parseFloat(newTempo);
 
@@ -42427,6 +42816,7 @@ class Ai3Module {
              if (parsedScale.length > 0) this.scale = parsedScale;
         }
 
+        // 1. Define the array parser FIRST
         const parseShortArr = (tag) => {
             const data = getTag(tag);
             if (!data) return new Array(16).fill(null); 
@@ -42443,17 +42833,41 @@ class Ai3Module {
             return parsedArray;
         };
 
+        // 2. Parse the Lyre arrays
         const thumbArr = parseShortArr('THUMB');
         const fingersArr = parseShortArr('FINGERS');
         
-        // --- THE MACHINE-GUN FILTER ---
-        // We mechanically force strums to ONLY be allowed on the 1st and 9th beats (quarter notes), 
-        // turning all other AI numbers into rests (nulls) to protect your ears.
         const strumArr = parseShortArr('STRUM').map((val, index) => {
             if (val !== null && index % 8 !== 0) return null; 
             return val;
         });
 
+        // 3. NOW grab the lyrics and update memory
+        const lyrics = getTag('LYRICS');
+        const lyricToQueue = (lyrics && lyrics !== '-' && lyrics !== '') ? lyrics : "";
+        this.lyricsQueue.push(lyricToQueue);
+        
+        if (lyricToQueue !== "") {
+            this.lyricMemory.push(lyricToQueue);
+            if (this.lyricMemory.length > 6) this.lyricMemory.shift();
+        }
+
+        // 4. --- THE SYLLABLE MAPPER ---
+        // (It is safe to use fingersArr here now!)
+        let vocalArr = new Array(16).fill(null);
+        if (lyricToQueue !== "") {
+            let words = lyricToQueue.split(/[\s-]+/).filter(w => w.length > 0);
+            let wordIdx = 0;
+            for (let i = 0; i < 16; i++) {
+                if (fingersArr[i] !== null && wordIdx < words.length) {
+                    vocalArr[i] = words[wordIdx];
+                    wordIdx++;
+                }
+            }
+        }
+
+        // 5. Push everything to the live performance queues!
+        this.vocalQueue.push(...vocalArr);
         this.thumbQueue.push(...thumbArr);
         this.fingersQueue.push(...fingersArr);
         this.strumQueue.push(...strumArr); 
@@ -42520,41 +42934,40 @@ class Ai3Module {
         }
 
         // ==========================================
-        // THE VOCAL INTEGRATION
+        // THE VOCAL INTEGRATION (Upgraded Grid Sync)
         // ==========================================
+        
+        // 1. UI EVENT: Fire once per bar to display the full line
         if (tick % 16 === 0 && this.lyricsQueue.length > 0) {
             const currentLyric = this.lyricsQueue.shift();
-            
             if (currentLyric !== "") {
-                console.log(`%c[Suncat Sings] 🎵 "${currentLyric}"`, 'color: #00e6e6; font-size: 16px; font-weight: bold;');
-                document.dispatchEvent(new CustomEvent('suncat_lyrics', { detail: currentLyric }));
+                // Remove hyphens so the UI display looks clean!
+                const cleanLyric = currentLyric.replace(/-/g, '');
+                console.log(`%c[Suncat Sings] 🎵 "${cleanLyric}"`, 'color: #00e6e6; font-size: 16px; font-weight: bold;');
+                document.dispatchEvent(new CustomEvent('suncat_lyrics', { detail: cleanLyric }));
+            }
+        }
 
-                const upcomingNotes = this.fingersQueue.slice(0, 16).filter(n => n !== null);
-                
-                const vocalSemitones = upcomingNotes.map(degree => {
-                    let d = parseInt(degree);
-                    if (isNaN(d)) d = 0;
-                    let oct = 0;
-                    const len = this.scale.length;
-                    
-                    while (d < 0) { d += len; oct -= 1; }
-                    while (d >= len) { d -= len; oct += 1; }
-                    
-                    return this.scale[d] + (oct * 12);
-                });
+        // 2. AUDIO TRIGGER: Fire exactly on the beat if there is a syllable
+        const vocalSyllable = this.vocalQueue.length > 0 ? this.vocalQueue.shift() : null;
 
-                if (vocalSemitones.length === 0) vocalSemitones.push(0);
+        if (vocalSyllable) {
+            // Figure out the note the Lyre is playing right now
+            let degree = (fingerNote !== null) ? fingerNote : 0;
+            let d = parseInt(degree);
+            if (isNaN(d)) d = 0;
+            let oct = 0;
+            const len = this.scale.length;
+            while (d < 0) { d += len; oct -= 1; }
+            while (d >= len) { d -= len; oct += 1; }
+            const semitone = this.scale[d] + (oct * 12);
 
-                const secondsPerBeat = 60.0 / this.tempo;
-                const singingSpeed = secondsPerBeat * 0.4; 
+            const secondsPerBeat = 60.0 / this.tempo;
+            const singingSpeed = secondsPerBeat * 0.25; 
 
-                // --- SAFETY CHECK ---
-                if (MusicEngine && typeof MusicEngine.sing === 'function') {
-                    console.log(`%c[Audio Engine] Sending vocal frequencies to Synthesizer:`, 'color: #00ff00', vocalSemitones);
-                    MusicEngine.sing(currentLyric, vocalSemitones, this.rootFreq, singingSpeed, 1.2, 0.15);
-                } else {
-                    console.error("[Audio Engine] CRITICAL ERROR: MusicEngine.sing() is missing! Did you remember to paste the 'sing' function into MusicEngine?");
-                }
+            if (MusicEngine && typeof MusicEngine.sing === 'function') {
+                // Pass the EXACT scheduled time (t) and the single syllable!
+                MusicEngine.sing(vocalSyllable, t, [semitone], this.rootFreq, singingSpeed, 1.2, 0.15);
             }
         }
 
@@ -43131,7 +43544,7 @@ function drawField(){
     drawPortrait(-1,1,3,.2);
     drawPortrait(-2,7,3,.2);
     MessageBox.show(4.4,3.37,1,1.25,1.25,'','jrpg_btn',1,0)
-         if (song == 46){ drawText(0, 2.25, 10, 0.6, '' + currentSuncatLyric
+         if (song == 46||song == 48){ drawText(0, 2.25, 10, 0.6, '' + currentSuncatLyric
 , "rgba(255,100,0,1)", 1,'center');}
   }
   else if (startGame == 'options'){
