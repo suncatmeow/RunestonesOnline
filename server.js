@@ -1343,7 +1343,7 @@ socket.on('suncat_baroque', async (data, callback) => {
         3. EVERY array MUST contain exactly 16 values separated by exactly 15 commas.
         1. DO NOT output "Bar 1:", "Bar 2:", etc. Generate ONLY the tags requested.
             2. [THOUGHT]: Write a 1-sentence emotional intent, then YOU MUST CLOSE THE TAG with [/THOUGHT].
-            3. [LYRICS]: Write 1 to 3 words.  You must output TWO versions of the lyrics: 1. [LYRICS_UI]: The standard English spelling for the screen (e.g., "The moonlight glows"). 2. [LYRICS_PHONETIC]: The exact phonetic translation for the synthesizer, separated by hyphens per syllable. Use ONLY these vowels: a, e, i, o, u, @, I, E, O. Use ONLY these consonants: p, b, t, d, k, g, f, v, T, s, z, S, Z, h, c, j, m, n, N, l, r, w, y. Example phonetic string: d@ m!un-l!It gl!oz
+            3. LYRICS: Write 1 to 3 words.  You must output TWO versions of the lyrics: 1. [LYRICS_UI]: The standard English spelling for the screen (e.g., "The moonlight glows"). 2. [LYRICS_PHONETIC]: The exact phonetic translation for the synthesizer, separated by hyphens per syllable. Use ONLY these vowels: a, e, i, o, u, @, I, E, O. Use ONLY these consonants: p, b, t, d, k, g, f, v, T, s, z, S, Z, h, c, j, m, n, N, l, r, w, y. Example phonetic string: d@ m!un-l!It gl!oz
             4. VOCAL MELODY: The [FINGERS] array is your singing melody.
             5. ARRAYS: You MUST provide exactly 16 steps for THUMB, FINGERS, and STRUM arrays, separated by commas. Use integers or '-' for rests. NO letters like 'S' or 'C4'.
         COMPOSITION GUIDE:
