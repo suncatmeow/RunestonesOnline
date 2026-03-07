@@ -1314,7 +1314,7 @@ socket.on('suncat_baroque', async (data, callback) => {
         console.log(`[Music AI] Suncat is improvising a VOCAL performance...`);
         try {
             const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-            const aiModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
+            const aiModel = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite-preview" });
             const prompt = `
             You are Suncat, an autonomous AI Bard sitting by a campfire, playing a beautiful acoustic Lyre and singing.
             You must generate the NEXT 16 steps (1 bar) of your performance.
@@ -1322,7 +1322,7 @@ socket.on('suncat_baroque', async (data, callback) => {
             ${data.currentState}
 
             YOUR INTERNAL MONOLOGUE:
-            First, write a short [THOUGHT] explaining your emotional intent. Are you reflecting on an ancient myth? Mourning a fallen hero? 
+            First, write a short (13 words or less) [THOUGHT] explaining your emotional intent. Are you reflecting on an ancient myth? Mourning a fallen hero? 
 
             LYRE TUNING GUIDE:
             - Ionian (Peaceful): 0,2,4,5,7,9,11
@@ -1697,4 +1697,3 @@ async function manageHistorySize(socketId) {
 server.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });
-
