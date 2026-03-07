@@ -1276,7 +1276,7 @@ socket.on('suncat_baroque', async (data, callback) => {
 
         COMPOSITION GUIDE:
         - [TEMPO]: Integer between 60 (Adagio) and 120 (Allegro). Vary the tempo based on your [THOUGHT], its not always necessary to go full speed, we might want to slow down to allow for more delicate harmony.
-        - [SCALE]: Choose an array of numbers from the list above. Bach heavily favored minor keys with harmonic shifts.
+        - [SCALE]: Choose an array of numbers from the list above. create small themes and use repetition, call and response, counterpoint, pedalpoint, variation of theme according to [THOUGHT]
         - [CHORDS]: Use sparingly. 95% of the time, output 16 dashes: -,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-. Only place a root note (e.g., '0' or '4') on step 0 for a strong cadence or figured bass realization.
         - [BASS]: Left hand on the harpsichord. Write a walking bassline, pedal points, or the countersubject. Harmonize with the TREBLE using strict counterpoint. Leave gaps ('-') so the phrases breathe. Do Call and response with the right hand like you are dancing or having a conversation as well.
         - [TREBLE]: Right hand on the harpsichord. Weave intricate, mathematical 16th-note runs, trills, or state the main fugue subject. Answer the BASS line in a conversational call-and-response.
