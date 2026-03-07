@@ -26384,8 +26384,7 @@ vocalCords.setPeriodicWave(glottalWave); // <-- ADD THIS
 
           let dur = baseSpeed;
           if (p.type === 'stop') dur = baseSpeed * 0.15; 
-          else if (p.type === 'fricative') dur = baseSpeed * 0.35; 
-          else if (p.type === 'liquid') dur = baseSpeed * 0.40; 
+else if (p.type === 'fricative') dur = baseSpeed * 0.25; // Speed up the hiss!          else if (p.type === 'liquid') dur = baseSpeed * 0.40; 
           if (isAtWordEnd && (p.type === 'vowel' || p.type === 'diphthong')) dur *= 1.4; 
 
           // THE MELODY TRACK (Now using strict setTargetAtTime)
@@ -26511,39 +26510,38 @@ let phoneticText = "";
 
       // --- PHASE 6: THE PhD-LEVEL PHONETIC LEXICON (G2P) ---
       
-      // 2. The Core Dictionary (For words that break all phonetic laws)
-      const Lexicon = {
+const Lexicon = {
     // Core Conversational
     "the": "d@", "hello": "helo", "suncat": "s@nkat", "machine": "maSin",
-    "greetings": "gritinz", "you": "yu", "are": "ar", "how": "hO",
-    "what": "w@t", "is": "Iz", "this": "dIs", "a": "@", "i": "I",
+    "greetings": "grit1nz", "you": "yu", "are": "ar", "how": "hO",
+    "what": "w@t", "is": "1z", "this": "d1s", "a": "@", "i": "I",
     "one": "w@n", "two": "tu", "three": "Tri", "four": "for", "five": "fIv",
     "come": "k@m", "some": "s@m", "where": "wer", "there": "der", "day": "dE",
     "of": "@v", "to": "tu", "too": "tu", "eye": "I", "eyes": "Iz", "now": "nO",
 
     // Mythic & Arthurian Vocabulary
-    "arthur": "arT@r", "arthurz": "arT@rz", "merlin": "m@rlIn",
-    "taliesin": "taliEsIn", "bleise": "blEz", "dragon": "drag@n",
-    "magic": "majIk", "majik": "majIk", "excalibur": "ekskalIb@r",
-    "camelot": "kam@lot", "grail": "grEl", "sword": "sord", "shield": "SIld", 
-    "shild": "SIld", "crown": "krOn", "throne": "Tron", "lord": "lord", 
-    "lady": "lEdi", "king": "kiN", "gods": "godz", "myth": "mIT", "tale": "tEl",
+    "arthur": "arT@r", "arthurz": "arT@rz", "merlin": "m@rl1n",
+    "taliesin": "taliEs1n", "bleise": "blEz", "dragon": "drag@n",
+    "magic": "maj1k", "majik": "maj1k", "excalibur": "ekskal1b@r",
+    "camelot": "kam@lot", "grail": "grEl", "sword": "sord", "shield": "Sild", 
+    "shild": "Sild", "crown": "krOn", "throne": "Tron", "lord": "lord", 
+    "lady": "lEdi", "king": "k1N", "gods": "godz", "myth": "m1T", "tale": "tEl",
     "lore": "lor", "song": "soN", "lyre": "lI@r", "spell": "spel", "curse": "k@rs",
 
     // The Natural World & Elements
     "sun": "s@n", "star": "star", "starz": "starz", "starlight": "starlIt",
     "sky": "skI", "earth": "@rT", "world": "w@rld", "wood": "wud", "wudz": "wudz",
     "tree": "tri", "triz": "triz", "oak": "ok", "ash": "aS", "roots": "ruts",
-    "storm": "storm", "rain": "rEn", "lake": "lEk", "sea": "si", "hill": "hIl",
-    "dawn": "don", "mist": "mist", "wind": "wInd", "winds": "wIndz", // (wind-up toy pronunciation)
+    "storm": "storm", "rain": "rEn", "lake": "lEk", "sea": "si", "hill": "h1l",
+    "dawn": "don", "mist": "m1st", "wind": "w1nd", "winds": "w1ndz", 
     "fire": "fI@r", "flame": "flEm", "flames": "flEmz", "stone": "ston", 
     "bone": "bon", "bonz": "bonz", "gold": "gold", "stahl": "stal",
 
     // Heroic, Sorrowful & Emotive
-    "heart": "hart", "hart": "hart", "soul": "sol", "spirit": "spir@t",
+    "heart": "hart", "hart": "hart", "soul": "sol", "spirit": "sp1r@t",
     "brave": "brEv", "fear": "fir", "dread": "dred", "doom": "dum", 
     "war": "wor", "steel": "stil", "strike": "strIk", "clash": "klaS", 
-    "weep": "wIp", "tear": "tir", "tears": "tirz", "tirz": "tirz", 
+    "weep": "wip", "tear": "tir", "tears": "tirz", "tirz": "tirz", 
     "hope": "hop", "true": "tru", "truth": "truT", "tremble": "tremb@l",
     "cold": "kold", "blood": "bl@d", "blud": "bl@d", 
 
@@ -26556,30 +26554,60 @@ let phoneticText = "";
 
     // Syllable fragments (to catch LLM hyphenation behavior)
     "fy": "fI", "er": "@r", "nite": "nIt", "lite": "lIt", "mun": "mun", 
-    "glowz": "glOz", "ar": "ar", "thur": "T@r", "mer": "m@r", "lin": "lIn", 
-    "tal": "tal", "sin": "sIn", "ek": "ek", "skal": "skal", "ma": "ma", 
-    "jik": "jIk", "sha": "Sa", "do": "do", "b@rnz": "b@rnz", "grOnd": "grOnd",// Add these to your Actions & States or Natural World section:
-"long": "loN",
-"rises": "rIz@z",
-"stonehenges": "stonhenj@z",
-"hum": "h@m",
-// Additions based on Suncat's new phrases
-    "kings": "kiNz", 
+    "glowz": "glOz", "ar": "ar", "thur": "T@r", "mer": "m@r", "lin": "l1n", 
+    "tal": "tal", "sin": "s1n", "ek": "ek", "skal": "skal", "ma": "ma", 
+    "jik": "j1k", "sha": "Sa", "do": "do", "b@rnz": "b@rnz", "grOnd": "grOnd",
+    
+    // Additional States / Natural World
+    "long": "loN",
+    "rises": "rIz@z",
+    "stonehenges": "stonhenj@z",
+    "hum": "h@m",
+
+    // Additions based on Suncat's new phrases
+    "kings": "k1Nz", 
     "swords": "sordz", 
     "finds": "fIndz", 
     "realm": "relm", 
     "iron": "I@r@n", 
     "turns": "t@rnz", 
     "sails": "sElz", 
-    "remembers": "rimemb@rz",
-    "winter": "wInt@r", 
+    "remembers": "r1memb@rz",
+    "winter": "w1nt@r", 
     "claims": "klEmz", 
-    "kingdoms": "kiNd@mz",
+    "kingdoms": "k1Nd@mz",
     "awakens": "@wEk@nz", 
     "dust": "d@st", 
     "light": "lIt",
-};
+    // Add to Natural World & Elements
+    "stars": "starz",
+    "walls": "wolz",
+    "hearth": "harT",
+    "path": "paT",
+    "glows": "glOz",
+    "morning": "morn1N",
 
+    // Add to Actions & States
+    "awaken": "@wEk@n",
+    "stirs": "st@rz",
+    "guide": "gId",
+    "home": "hom",
+    "opens": "op@nz",
+    "wakes": "wEks",
+    "rise": "rIz",
+    "weave": "wiv",
+
+    // Add to Heroic, Sorrowful & Emotive
+    "new": "nyu",
+    "life": "lIf",
+    "ancient": "EnS@nt",
+    "piece": "pis",
+    "peace": "pis",
+    "bright": "brIt",
+    "golden": "gold@n",
+    "legends": "lej@ndz",
+    "fate": "fEt",
+};
       const tokens = text.match(/\b\w+\b|[^\w\s]|\s+/g) || [];
 
       // 3. The Expanded Intelligent Fallback Translator
@@ -26604,8 +26632,7 @@ for (let token of tokens) {
         fallback = fallback.replace(/mb\b/g, 'm');   // bomb/comb -> bom/kom
         fallback = fallback.replace(/ph/g, 'f');     // phone -> fon
         fallback = fallback.replace(/sh/g, 'S');     // ash -> aS
-        fallback = fallback.replace(/ch/g, 'tS');    // chat -> tSat
-        fallback = fallback.replace(/th/g, 'T');     // thin -> TIn
+        fallback = fallback.replace(/ch/g, 'c');        fallback = fallback.replace(/th/g, 'T');     // thin -> TIn
         fallback = fallback.replace(/ng/g, 'N');     // sing -> sIN
         fallback = fallback.replace(/ck/g, 'k');     // back -> bak
         fallback = fallback.replace(/wh/g, 'w');     // what -> w@t
@@ -26640,6 +26667,10 @@ for (let token of tokens) {
         
         // Nuke any remaining silent E's at the end of words that didn't fit a pattern
         fallback = fallback.replace(/e\b/g, ''); 
+        // --- NEW: THE PLURAL 'Z' FIX ---
+        // If a word ends in 's', but the letter before it is voiced (vowels, liquids, nasals, b, d, g, v)
+        // turn it into a 'z' so Suncat doesn't choke the vocal envelope!
+        fallback = fallback.replace(/([aeiou@IEOrmnlNbdgv])s\b/g, '$1z');
 
         phoneticText += fallback;
     } else {
@@ -26657,6 +26688,7 @@ for (let token of tokens) {
     'a': { type: 'vowel', f1: 730, f2: 1090, f3: 2440, q1: 5.0, q2: 3.0, q3: 1.5, voiced: true, vol: 0.9 }, 
     'e': { type: 'vowel', f1: 530, f2: 1840, f3: 2480, q1: 6.0, q2: 4.0, q3: 1.5, voiced: true, vol: 0.8 }, 
     'i': { type: 'vowel', f1: 270, f2: 2290, f3: 3010, q1: 4.0, q2: 4.0, q3: 2.0, voiced: true, vol: 0.7 }, 
+    '1': { type: 'vowel', f1: 400, f2: 2000, f3: 2550, q1: 4.0, q2: 4.0, q3: 2.0, voiced: true, vol: 0.7 },
     'o': { type: 'vowel', f1: 570, f2: 840,  f3: 2410, q1: 5.0, q2: 3.5, q3: 1.5, voiced: true, vol: 0.9 }, 
     'u': { type: 'vowel', f1: 300, f2: 870,  f3: 2240, q1: 4.5, q2: 3.0, q3: 1.5, voiced: true, vol: 0.7 }, 
     '@': { type: 'vowel', f1: 600, f2: 1200, f3: 2500, q1: 5.0, q2: 3.0, q3: 1.5, voiced: true, vol: 0.8 }, 
@@ -26823,8 +26855,7 @@ for (let token of tokens) {
 
           let dur = baseSpeed;
           if (p.type === 'stop') dur = baseSpeed * 0.15; 
-          else if (p.type === 'fricative') dur = baseSpeed * 0.35; 
-          else if (p.type === 'liquid') dur = baseSpeed * 0.40; 
+else if (p.type === 'fricative') dur = baseSpeed * 0.25; // Speed up the hiss!          else if (p.type === 'liquid') dur = baseSpeed * 0.40; 
           if (isAtWordEnd && (p.type === 'vowel' || p.type === 'diphthong')) dur *= 1.4; 
           if (isStressed) dur *= 1.3;
           // === THE SINGING LOGIC ===
@@ -26942,8 +26973,7 @@ if (!p.voiced) {
               const noiseEnv = this.ctx.createGain(); 
               noiseEnv.gain.setValueAtTime(0, t);
               
-              const noiseMaxVol = p.voiced ? 0.15 : 0.6; 
-
+const noiseMaxVol = p.voiced ? 0.15 : 0.35; // Lowered from 0.6 so consonants don't overpower vowels
               if (p.type === 'stop') {
                   noiseEnv.gain.linearRampToValueAtTime(noiseMaxVol, t + 0.002); 
                   noiseEnv.gain.exponentialRampToValueAtTime(0.001, t + (dur * 0.8)); 
