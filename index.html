@@ -1,7 +1,5 @@
-<!DOCTYPE html>
-  <html>
-    <head>
-      <meta charset="utf-8"/>
+<html><head>
+      <meta charset="utf-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
       <title>Battle-Mage</title>
       <style>
@@ -21,9 +19,9 @@
       
       <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>    </head>
 
-    </head>
+    
     <body>
-<canvas id ="c" style = "position:absolute; left:0px; top:0px;"></canvas>
+<canvas id="c" style="position: absolute; left: 0px; top: 0px; width: 230px; height: 606px;" width="230" height="606"></canvas>
 <script>
 if (localStorage.getItem('battlemage_banned')) {
     document.body.innerHTML = "<h1>SUNCAT BANISHED YOU</h1>";
@@ -26477,6 +26475,17 @@ for (let token of tokens) {
       vibratoLFO.connect(vibratoEnv);
       vibratoEnv.connect(vocalCords.frequency);
       vibratoLFO.start(t);
+// --- NEW: BIOLOGICAL JITTER & SHIMMER ---
+// Jitter (Pitch Instability)
+const jitterLFO = this.ctx.createOscillator();
+jitterLFO.type = 'sine';
+jitterLFO.frequency.value = 6.2; // Slower, more natural waver
+const jitterEnv = this.ctx.createGain();
+jitterEnv.gain.value = 0.3; // REDUCED from 2.5! Just a micro-waver now.
+jitterLFO.connect(jitterEnv);
+jitterEnv.connect(vocalCords.frequency);
+jitterLFO.start(t);
+
 
       const breathNoise = createNoise(10); breathNoise.loop = true;
       const breathFilter = this.ctx.createBiquadFilter(); breathFilter.type = 'bandpass'; breathFilter.frequency.value = 2000; breathFilter.Q.value = 0.5;
@@ -26522,6 +26531,18 @@ for (let token of tokens) {
       const f2Gain = this.ctx.createGain(); f2Gain.gain.value = 0.45;  // ~ -7dB
       const f3Gain = this.ctx.createGain(); f3Gain.gain.value = 0.15;  // ~ -16dB
 
+      // ---> PASTE SHIMMER HERE <---
+      // Shimmer (Amplitude Instability)
+      const shimmerLFO = this.ctx.createOscillator();
+      shimmerLFO.type = 'triangle';
+      shimmerLFO.frequency.value = 7.3;
+      const shimmerEnv = this.ctx.createGain();
+      shimmerEnv.gain.value = 0.06; // 6% volume waver
+      shimmerLFO.connect(shimmerEnv);
+      shimmerEnv.connect(f1Gain.gain); // f1Gain is now safely initialized!
+      shimmerLFO.start(t);
+
+    
       // === NEW: LIP RADIATION FILTER ===
       // Simulates sound leaving the human lips (+6dB/oct highpass effect)
       const lips = this.ctx.createBiquadFilter();
@@ -26584,8 +26605,16 @@ else if (p.type === 'fricative') dur = baseSpeed * 0.25; // Speed up the hiss!
               currentHz = rootFreq * Math.pow(2, noteInt / 12);
               if (isStressed) currentHz *= 1.02; // A tiny 2% pitch push
               // 3. Update the vocal cord pitch (Glide smoothly to the new note!)
-              vocalCords.frequency.setTargetAtTime(currentHz, t, 0.05);
-              // This opens the throat dynamically so high notes don't get choked out!
+// 3. Update the vocal cord pitch
+// --- THE HUMAN SCOOP (TIGHTENED FOR CHORUS EFFECT) ---
+const scoopDepth = isStressed ? 0.99 : 0.995; // Only 0.5% to 1% flat
+vocalCords.frequency.setValueAtTime(currentHz * scoopDepth, t); 
+// Fast slide up (0.01 instead of 0.03) so the harmonies lock in
+vocalCords.frequency.setTargetAtTime(currentHz, t + 0.01, 0.015);// --- THE TAIL-END FALLOFF ---
+if (isAtWordEnd) {
+    // Drop pitch and relax the vocal cords slightly at the end of a breath
+    vocalCords.frequency.setTargetAtTime(currentHz * 0.92, t + (dur * 0.7), 0.05);
+}              // This opens the throat dynamically so high notes don't get choked out!
               glottalFilter1.frequency.setTargetAtTime(Math.max(800, currentHz * 1.5), t, 0.05);
               glottalFilter2.frequency.setTargetAtTime(Math.max(1200, currentHz * 2.0), t, 0.05);
               // 4. Update the Jitter (Vibrato) to match the new pitch depth
@@ -26607,11 +26636,18 @@ else if (p.type === 'fricative') dur = baseSpeed * 0.25; // Speed up the hiss!
                   breathEnv.gain.setTargetAtTime(breathiness * 2, t, 0.01); 
               } else {
                   // Normal singing volume for vowels, liquids, and voiced consonants
-                  let targetVol = (p.type === 'stop' || p.type === 'fricative') ? 0.25 : (p.vol || 0.8);
-                  // --- NEW: APPLY STRESS VOLUME SWELL ---
-                  if (isStressed && (p.type === 'vowel' || p.type === 'diphthong')) {
-                      targetVol = Math.min(targetVol * 1.4, 1.0); // Boost by 40%, max volume 1.0
-                  }
+let targetVol = (p.type === 'stop' || p.type === 'fricative') ? 0.2 : (p.vol * 0.65 || 0.5);                  // --- NEW: APPLY STRESS VOLUME SWELL & SPECTRAL TILT ---
+if (isStressed && (p.type === 'vowel' || p.type === 'diphthong')) {
+    targetVol = Math.min(targetVol * 1.4, 1.0); 
+    
+    // Vocal cords slam harder: boost the higher formants!
+    f3Gain.gain.setTargetAtTime(0.35, t, 0.04); // Was 0.15
+    f4Gain.gain.setTargetAtTime(0.55, t, 0.04); // Was 0.25 (Singer's Formant)
+} else {
+    // Relax back to normal singing effort
+    f3Gain.gain.setTargetAtTime(0.15, t, 0.05);
+    f4Gain.gain.setTargetAtTime(0.25, t, 0.05);
+}
                   // SMOOTHER ENVELOPE FOR SINGING
                   vocalEnv.gain.cancelScheduledValues(t);
                   vocalEnv.gain.setValueAtTime(targetVol * 0.9, t); // Slight dip to separate notes
@@ -26678,8 +26714,8 @@ if (!p.voiced) {
               }
               
               if (p.voiced && (p.type === 'stop' || p.type === 'fricative')) {
-                  vocalCords.frequency.setValueAtTime(currentHz * 0.85, t); // Drop current singing pitch slightly for texture
-                  vocalCords.frequency.setTargetAtTime(currentHz, t, 0.02); // Snap back up
+                  vocalCords.frequency.setValueAtTime(currentHz * 0.98, t); // Drop current singing pitch slightly for texture
+                  vocalCords.frequency.setTargetAtTime(currentHz, t+0.02, 0.01); // Snap back up
               }
           } else {
               vocalEnv.gain.setTargetAtTime(0, t, 0.01);
@@ -26699,25 +26735,49 @@ if (!p.voiced) {
               noiseEnv.gain.setValueAtTime(0, t);
               
 const noiseMaxVol = p.voiced ? 0.15 : 0.35; // Lowered from 0.6 so consonants don't overpower vowels
-              if (p.type === 'stop') {
-                  noiseEnv.gain.linearRampToValueAtTime(noiseMaxVol, t + 0.002); 
-                  noiseEnv.gain.exponentialRampToValueAtTime(0.001, t + (dur * 0.8)); 
-              } else {
-                  noiseEnv.gain.linearRampToValueAtTime(noiseMaxVol * 0.6, t + 0.02);
-                  noiseEnv.gain.setValueAtTime(noiseMaxVol * 0.6, t + dur - 0.02);
-                  noiseEnv.gain.linearRampToValueAtTime(0, t + dur);
-              }
+   if (p.type === 'stop') {
+        // --- NEW: THE PRE-BURST HOLD (TIMING FIXED) ---
+        // Scale the hold to the actual duration of the consonant so it doesn't bleed!
+        const holdTime = dur * 0.4; 
+        
+        // Force total silence in the throat/lungs during the hold
+        vocalEnv.gain.setTargetAtTime(0, t, 0.002);
+        breathEnv.gain.setTargetAtTime(0, t, 0.002);
 
-              noise.connect(noiseFilter); noiseFilter.connect(noiseEnv); noiseEnv.connect(this.masterGain);
-              noise.start(t);
-              noise.stop(t + dur);
+        // Delay the burst until the hold finishes, but ensure it finishes within 'dur'
+        noiseEnv.gain.setValueAtTime(0, t + holdTime);
+        noiseEnv.gain.linearRampToValueAtTime(noiseMaxVol, t + holdTime + 0.002);
+        noiseEnv.gain.exponentialRampToValueAtTime(0.001, t + dur); // Fade out precisely as 'dur' ends
+    } else {
+        // Fricatives (hisses) fade in normally
+        noiseEnv.gain.setValueAtTime(0, t);
+        noiseEnv.gain.linearRampToValueAtTime(noiseMaxVol * 0.6, t + 0.02);
+        noiseEnv.gain.setValueAtTime(noiseMaxVol * 0.6, t + dur - 0.02);
+        noiseEnv.gain.linearRampToValueAtTime(0, t + dur);
+    }
+
+    noise.connect(noiseFilter); noiseFilter.connect(noiseEnv); noiseEnv.connect(this.masterGain);
+    noise.start(t);
+    noise.stop(t + dur);
+
           }
           t += dur; 
+          // --- NEW: MICRO-TIMING DRIFT (RUBATO) ---
+    // Humans drift up to 3% off-grid per syllable
+    const tempoDrift = 1.0 + (Math.random() * 0.06 - 0.03); 
+    
+    // If it's the end of a word, take a tiny bit of extra time to "breathe"
+    if (isAtWordEnd) {
+        t += dur * 1.05; 
+    } else {
+        t += dur * tempoDrift;
+    }
       }
 
       vocalEnv.gain.setTargetAtTime(0, t, 0.02); 
       breathEnv.gain.setTargetAtTime(0, t, 0.02);
-vocalCords.stop(t + 0.2); vibratoLFO.stop(t + 0.2); breathNoise.stop(t + 0.2);  
+vocalCords.stop(t + 0.2); vibratoLFO.stop(t + 0.2); breathNoise.stop(t + 0.2);  jitterLFO.stop(t + 0.2);shimmerLFO.stop(t + 0.2);
+
 },
 
 
@@ -43836,6 +43896,6 @@ drawField();//starts the game loop
     MessageBox.show(MessageBox.originx,2,MessageBox.originz,2,2,'frame',1,3,3,2)
   }*/
 /////////////////////////[END OF SCRIPT]//////////////////////////
-</script>
-</body>
-</html>
+</script><input type="text" style="position: absolute; opacity: 0; top: 0px; left: 0px; width: 1px; height: 1px; pointer-events: none;">
+
+</body></html>
