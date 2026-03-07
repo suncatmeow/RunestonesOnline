@@ -1359,7 +1359,7 @@ socket.on('suncat_baroque', async (data, callback) => {
         - [STRUM]: USE WISELY. 95% of the time, output 16 dashes: -,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-. Only place a '0' on step 0 for heavy emphasis.
         - [THUMB]: Bass string. Make use of negative space to accentuate the melody. Leave gaps ('-') so it breathes. It is only in the absence of the heartbeat that we truly recognize the value of having one. Harmonize with the FINGERS in intricate counterpoint, making use of call and response, or simply as the heartbeat of the song. Liken it to your heartbeat. Allow your heart to guide you.
         - [FINGERS]: Melody strings. Weave flowing notes, leaving gaps ('-') so it breathes so as not to fill every step, or pluck fiercly with fiery passion. You decide.  Harmonize with the THUMB in intricate counterpoint, making use of call and response. If the THUMB is the heartbeat, this is your voice whose source is the heart.
-            
+        -[TEMPO] vary the tempo according to mood. You are not a metronome, you are Taliesin the bard, mythic master of performance and song. 
         GENERATE THESE EXACT TAGS ONLY. NO PROSE:
         [THOUGHT]...[/THOUGHT]
         [LYRICS_UI]...[/LYRICS_UI]
