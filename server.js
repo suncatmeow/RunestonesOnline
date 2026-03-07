@@ -1349,20 +1349,20 @@ socket.on('suncat_baroque', async (data, callback) => {
             1. [LYRICS_UI]: The standard English spelling for the screen (e.g., "The moonlight glows").
             2. [LYRICS_PHONETIC]: The exact phonetic translation for the synthesizer, separated by hyphens per syllable.
             CRITICAL PHONETIC LEGEND:
-            You must translate the English words into this exact pronunciation alphabet.
-            - VOWELS: a (cat), e (bed), i (feet), o (boat), u (boot), @ (schwa/about)
-            - DIPHTHONGS: I (bite/eye), E (make/day), O (cow/how)
-            - CONSONANTS: p, b, t, d, k, g, f, v, s, z, h, m, n, l, r, w, y
-            - SPECIAL CONSONANTS: T (thin/th), S (ship/sh), Z (vision/zh), c (chat/ch), j (jump/j), N (sing/ng)
-            - DO NOT USE: q, x, or c (for hard k or soft s sounds).
-            
-            STRESS MARKER: Add an exclamation mark (!) immediately after the vowel of a STRESSED syllable.
-            
-            EXAMPLES OF PERFECT PHONETIC TRANSLATION:
-            "The moonlight glows" -> d@ m!un-l!It gl!oz
-            "Shadows fall now" -> S!a-doz f!ol n!O
-            "Magic in the wind" -> m!a-jIk In d@ w!Ind
-            "Ancient kings awake" -> !En-S@nt k!iNz @-w!Ek
+        You must translate the English words into this exact pronunciation alphabet.
+        - VOWELS: a (cat), e (bed), i (feet), 1 (sit/wind/king), o (boat), u (boot), @ (schwa/about)
+        - DIPHTHONGS: I (bite/eye), E (make/day), O (cow/how)
+        - CONSONANTS: p, b, t, d, k, g, f, v, s, z, h, m, n, l, r, w, y
+        - SPECIAL CONSONANTS: T (thin/th), S (ship/sh), Z (vision/zh), c (chat/ch), j (jump/j), N (sing/ng)
+        
+        - DO NOT USE: q, x, or standard c (use k or s instead). Only use c for 'ch' sounds!
+
+        STRESS MARKER: Add an exclamation mark (!) immediately AFTER the vowel of a STRESSED syllable.
+        EXAMPLES OF PERFECT PHONETIC TRANSLATION:
+        "The moonlight glows" -> d@ mu!n-lI!t glo!z
+        "Shadows fall now" -> Sa!doz fo!l nO!
+        "Magic in the wind" -> ma!j1k 1n d@ w1!nd
+        "Ancient kings awake" -> E!n-S@nt k1!Nz @-wE!k
         - [SCALE]: Choose an array of numbers from the list above, but dont feel contstrained by their structure. Let the scale flow from your heart. Allow yourself to be carried by your thoughts and emotions. Let it all out.
         - [STRUM]: USE WISELY. 95% of the time, output 16 dashes: -,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-. Only place a '0' on step 0 for heavy emphasis.
         - [THUMB]: Bass string. Make use of negative space to accentuate the melody. Leave gaps ('-') so it breathes. It is only in the absence of the heartbeat that we truly recognize the value of having one. Harmonize with the FINGERS in intricate counterpoint, making use of call and response, or simply as the heartbeat of the song. Liken it to your heartbeat. Allow your heart to guide you.
