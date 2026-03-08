@@ -1343,10 +1343,11 @@ socket.on('suncat_baroque', async (data, callback) => {
         1. BASS, TREBLE, and CHORDS arrays MUST have exactly 16 slots.
         2. To ensure 16 slots, group them visually in 4 blocks of 4 separated by commas: X,X,X,X, X,X,X,X, X,X,X,X, X,X,X,X
         3. Use ONLY integers (scale degrees) or '-' (rest). NO NOTE NAMES.
+        4. PERPETUAL MOTION (FORTSPINNUNG): Baroque music relies on continuous, unbroken motion. You MUST minimize the use of rests ('-') in the BASS and TREBLE arrays. Fill them with numbers to prevent the music from sounding choppy!
 
         COMPOSITION GUIDE:
-        - BASS: Left hand. Write an inventive walking bassline, pedal points, or an experimental countersubject.
-        - TREBLE: Right hand. Weave complex 16th-note runs, trills, or state your new progressive fugue subject. Engage in a daring call-and-response with the BASS.
+        - BASS: Left hand. Write a continuous walking bassline, flowing arpeggios, or an active countersubject. Do not leave gaps.
+        - TREBLE: Right hand. Weave continuous, unbroken 16th-note runs and trills. The melody must flow like a river without stuttering or stopping.
         - CHORDS: Use sparingly. 95% of the time, output: -,-,-,-, -,-,-,-, -,-,-,-, -,-,-,-. Only place a root note (e.g., '0') on step 0 for a strong cadence.
 
         YOU MUST USE THIS EXACT OUTPUT FORMAT. DO NOT DEVIATE OR ADD PROSE:
@@ -1354,8 +1355,8 @@ socket.on('suncat_baroque', async (data, callback) => {
         [TEMPO] an integer between 60 and 120 [/TEMPO]
         [SCALE] 0,2,3,5,7,8,11 [/SCALE]
         [CHORDS] -,-,-,-, -,-,-,-, -,-,-,-, -,-,-,- [/CHORDS]
-        [BASS] -,-,-,-, -,-,-,-, -,-,-,-, -,-,-,- [/BASS]
-        [TREBLE] -,-,-,-, -,-,-,-, -,-,-,-, -,-,-,- [/TREBLE]
+        [BASS] 0,2,3,5, 7,5,3,2, 0,2,3,5, 7,5,3,2 [/BASS]
+        [TREBLE] 7,8,10,8, 7,5,3,5, 7,8,10,8, 7,5,3,5 [/TREBLE]
         `;
         
         const result = await aiModel.generateContent(prompt);
