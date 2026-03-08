@@ -26040,6 +26040,39 @@ socket.on('load_custom_map', (data) => {
         Dungeon.loadCustomMap(data);
     }
 });
+// --- SUNCAT DM TOOL: ASSIGN QUEST ---
+socket.on("new_quest_objective", (data) => {
+    if (typeof MessageBox !== 'undefined') {
+        // Pop up the text box on the player's screen
+        MessageBox.show(0.5, 8, 1, 9, 2, `[NEW QUEST]: ${data.questText}`, 'dialogue', 1, 0);
+    }
+    // Also save it to their chat log so they can scroll up and read it later
+    chatLog.push(`[QUEST LOG]: ${data.questText}`);
+    
+    if (typeof MusicEngine !== 'undefined') {
+        MusicEngine.playSFX('heal'); // Play a positive "Quest Accepted" sound
+    }
+});
+// --- SUNCAT DM TOOL: CHANGE ENVIRONMENT ---
+socket.on("update_map_environment", (data) => {
+    // Only apply the effect if we are on the map Suncat targeted
+    if (typeof Dungeon !== 'undefined' && Dungeon.mapID === data.mapID) {
+        
+        if (data.weather) {
+            Dungeon.weather.setMode(data.weather);
+        }
+        
+        if (data.skyColor) {
+            Dungeon.skyColor = data.skyColor;
+        }
+
+        // Add a cool system message so the player feels the impact
+        chatLog.push(`[SYSTEM]: The atmosphere around you suddenly shifts...`);
+        if (typeof MusicEngine !== 'undefined') {
+            MusicEngine.playSFX('warp'); // Optional: Play a magic sound
+        }
+    }
+});
 // Listen for Suncat spawning monsters remotely
 socket.on("remote_spawn_npc", (data) => {
     if (typeof Dungeon !== 'undefined') {
