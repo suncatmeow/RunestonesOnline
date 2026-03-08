@@ -396,7 +396,7 @@ const toolsDef = [{
 }];
 
 const model = genAI.getGenerativeModel({ 
-    model: "gemini-3.1-flash-lite-preview",
+    model: "gemini-2.5-flash-lite",
     tools: toolsDef
 });
 
@@ -1160,7 +1160,7 @@ socket.on('suncat_compose', async (data, callback) => {
     try {
         const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
         const aiModel = genAI.getGenerativeModel({ 
-            model: "gemini-3.1-flash-lite-preview",
+            model: "gemini-2.5-flash-lite",
             generationConfig: {
                 temperature: 1.3, // Default is usually around 1.0. Higher = more creative/chaotic. (Range: 0.0 - 2.0)
                 topP: 0.96,       // Controls "nucleus sampling" (0.0 - 1.0). Higher allows more diverse word/note choices.
