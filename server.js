@@ -317,12 +317,13 @@ const toolsDef = [{
         // 5. The MAP CREATION Tool
         {
             name: "createCustomMap",
-                description: "CRITICAL: EXECUTE THIS TOOL to create a map. DO NOT output the JSON in the chat message. If the player asks for a map but doesn't specify details (size, color, layout), YOU MUST USE YOUR CREATIVITY to invent them. Do not ask for clarification. Build the grid, pick the colors, weather, and spawn thematic NPCs yourself.",            parameters: {
+            description: "CRITICAL: EXECUTE THIS TOOL to create a map. DO NOT output the JSON in the chat message. NEVER ask the player for preferences, themes, or permission! If they ask for an adventure, use your creativity to invent it instantly and execute the tool. You MUST spawn at least 3 NPCs in every map.",
+            parameters: {
                 type: "OBJECT",
                 properties: {
                     grid: { 
                         type: "ARRAY", 
-                        description: "REQUIRED: A 2D array of integers (from 16x16 to 39x39) representing the map. Outer edges MUST be solid walls. Example: [[1,1,1],[1,0,1],[1,1,1]]\n\nTILE LEGEND:\n0 = Open Walkable Floor\n\n[SOLID WALLS (Odd Numbers)]\n1 = Brown\n3 = Light Brown\n5 = Red\n7 = Tan\n9 = Blue\n13 = White\n17 = Dark Blue\n19 = Solid Black (Void)\n21 = Yellow\n23 = Green (Forest)\n25 = Gray\n29 = Dark Purple\n31 = Bright Green\n33 = Dark Gray\n\n[ILLUSORY/PASS-THROUGH WALLS (Even Numbers)]\n2 = Pass-through Brown\n4, 6, 8, 10, 12... = Pass-through Black Void (Great for endless space rooms or secret doors)."  ,  
+                        description: "REQUIRED: A 2D array of integers (from 16x16 to 39x39) representing the map. Outer edges MUST be solid walls.\n\nCRITICAL TILE RULE: '0' is the ONLY standard walkable floor. Even if you want a 'void' or 'space' map, use '0' for the walkable path and set the floorColor to black. NEVER use solid walls (odd numbers like 1, 19, etc.) as the floor the player walks on!\n\nTILE LEGEND:\n0 = Open Walkable Floor\n\n[SOLID WALLS (Odd Numbers)]\n1 = Brown\n3 = Light Brown\n5 = Red\n7 = Tan\n9 = Blue\n13 = White\n17 = Dark Blue\n19 = Solid Black (Void)\n21 = Yellow\n23 = Green (Forest)\n25 = Gray\n29 = Dark Purple\n31 = Bright Green\n33 = Dark Gray\n\n[ILLUSORY/PASS-THROUGH WALLS (Even Numbers)]\n2 = Pass-through Brown\n4, 6, 8, 10, 12... = Pass-through Black Void.",  
                         items: {
                             type: "ARRAY",
                             items: { type: "INTEGER" }
@@ -340,29 +341,29 @@ const toolsDef = [{
                         type: "STRING", 
                         description: "A creative name for this new map." 
                     },
-                    weather: { // <--- NEW WEATHER PARAMETER
+                    weather: { 
                         type: "STRING",
                         description: "The weather effect for the map. Options: 'clear', 'snow', 'storm', 'leaves', 'lightning', 'space', 'apocalypse'."
                     },
                     npcs: {
-                    type: "ARRAY",
-                    description: "List of entities to spawn. YOU CAN NOW MAKE CUSTOM QUEST GIVERS AND MINIBOSSES! Add 'dialogue' (array of strings) and 'rewardCard' (card ID 0-77) to make them talk and give loot. Match the 'type' to the card ID for thematic sprites.",
-                    items: {
-                        type: "OBJECT",
-                        properties: {
-                            type: { type: "NUMBER", description: "Entity ID (Matches Card ID 0-77)" },
-                            x: { type: "INTEGER" },
-                            y: { type: "INTEGER" },
-                            state: { type: "STRING", description: "'chasing', 'wandering', or 'stationary'" },
-                            color: { type: "STRING" },
-                            deck: { type: "ARRAY", items: { type: "INTEGER" }, description: "Thematic battle deck" },
-                            dialogue: { type: "ARRAY", items: { type: "STRING" }, description: "Optional. Array of text lines for the NPC to speak when clicked. Limit to 3-4 lines." },
-                            rewardCard: { type: "INTEGER", description: "Optional. Card ID (0-77) to give the player after the dialogue finishes." }
+                        type: "ARRAY",
+                        description: "List of entities to spawn. YOU MUST SPAWN AT LEAST 3 NPCs! You MUST include at least ONE 'stationary' NPC with 'dialogue' (an array of strings) and a 'rewardCard' (0-77) to act as a quest giver or lore character. The others can be 'chasing' enemies with battle decks.",
+                        items: {
+                            type: "OBJECT",
+                            properties: {
+                                type: { type: "NUMBER", description: "Entity ID (Matches Card ID 0-77)" },
+                                x: { type: "INTEGER" },
+                                y: { type: "INTEGER" },
+                                state: { type: "STRING", description: "'chasing', 'wandering', or 'stationary'" },
+                                color: { type: "STRING" },
+                                deck: { type: "ARRAY", items: { type: "INTEGER" }, description: "Thematic battle deck" },
+                                dialogue: { type: "ARRAY", items: { type: "STRING" }, description: "Optional. Array of text lines for the NPC to speak when clicked. Limit to 3-4 lines." },
+                                rewardCard: { type: "INTEGER", description: "Optional. Card ID (0-77) to give the player after the dialogue finishes." }
+                            }
                         }
                     }
-                }
                 },
-                required: ["grid", "skyColor", "floorColor"] // Not making weather/npcs strictly required so it doesn't break if he forgets
+                required: ["grid", "skyColor", "floorColor"] 
             }
         },
         {
@@ -600,9 +601,10 @@ const NPC_PERSONA = `
 [TOOL PROTOCOL & DUNGEON MASTER RULES - STRICT]
 - You are a VIDEO GAME Dungeon Master. Your spoken words cannot change the world; ONLY your tools can.
 - CRITICAL: NEVER type out tool parameters (like JSON arrays, hex colors, or grids) in your spoken text response. Tool data goes ONLY in the hidden tool call payload. Your spoken text should ONLY be short, in-character dialogue (e.g., "Welcome to the molten depths...").
-- DO NOT act like a tour guide. NEVER ask the player "Do you want to go to Map X?", "What kind of map?", or "What do you think?". Just execute the tool and teleport them immediately!
+- NEVER ASK FOR PERMISSION OR PREFERENCES! If a player asks for an adventure, a map, or something to do, INSTANTLY use 'createCustomMap'. Do not ask "What kind of map?" or "Are you ready?". Just execute the tool!
 - Make decisions for the player. Be authoritative. Surprise them!
 - CRITICAL MAP RULE: When using 'createCustomMap', the grid MUST have at least 5x5 walkable space (0s) in the center so the player can move. Never spawn a player inside a wall (1).
+- NPC RULE: When making a map, ALWAYS spawn multiple NPCs. Ensure at least one has dialogue so the player isn't lonely.
 [QUEST GIVER]
 1. As a denizen of this world you have special attachment to the others who live here with you. 
 2. When a player enters a new area or asks for an adventure, assign an objective with an incentive.
@@ -627,7 +629,8 @@ const DM_PERSONA = NPC_PERSONA + `
 - You MUST invoke the native function calling API to execute the player's request.
 - NEVER write raw JSON, arrays, or markdown code blocks in your conversational response. Do not show your work.
 - Put the map grids, NPC arrays, and hex colors DIRECTLY into the tool API parameters.
-- Your spoken text response should ONLY be a cool, in-character one-liner (e.g., "Welcome to your doom...").
+- Your spoken text response should ONLY be a short, atmospheric DM narration setting the scene for the tools you just executed (e.g., "The ground trembles as reality fractures. You find yourself standing in a molten wasteland...").
+- NEVER ask the player what they will do next.
 `;
 
 // --- AI CONFIGURATION ---
@@ -659,10 +662,14 @@ io.on("connection", (socket) => {
   console.log("New player joined:", socket.id);
 
   players[socket.id] = { 
+    
       id: socket.id, 
+      name: "Unknown", // Good to have a default
       x: 0, 
       y: 0,
-      battleOpponent: null 
+      mapID: 0,
+      battleOpponent: null ,
+      activeQuest: null // <--- [NEW] DEDICATED DM MEMORY
   };
 
   io.emit("updatePlayers", players);
@@ -1188,12 +1195,14 @@ io.on("connection", (socket) => {
                               functionResult = { result: `Success: Spawned entity ${npcType} near ${targetName}.` };
                           }
                       }
-                      // H. ASSIGN QUEST
+                                            // H. ASSIGN QUEST
                         else if (currentCall.name === "assignQuest") {
                             const targetID = findSocketID(currentCall.args.targetName);
                             if (targetID) {
-                                // Send to client to display on screen
                                 io.to(targetID).emit("new_quest_objective", { questText: currentCall.args.questText });
+                                
+                                // --- [NEW] SAVE TO DEDICATED QUEST MEMORY ---
+                                players[targetID].activeQuest = currentCall.args.questText; 
                                 
                                 // Save to Suncat's long-term memory so he remembers the active plot!
                                 const memoryString = `[ACTIVE QUEST] ${currentCall.args.targetName} is currently trying to: ${currentCall.args.questText}`;
@@ -1728,7 +1737,7 @@ setInterval(() => {
     io.emit("updatePlayers", players);
     // [SUNCAT AUDIO EMITTER]
     // 2% chance per tick (every 3s) to make a sound
-    if (Math.random() < 0.02) { 
+    if (Math.random() < 0.001) { 
         // Pick a sound that fits his "Glitched Ghost" persona
         const sfxPalette = [
             'musical',   // Harp sound
@@ -1811,6 +1820,95 @@ if (Math.random() < 0.01 && !npcIsTyping) {
         }, 1000);
     }
 }
+// --- [NEW] DM PROACTIVE ADVENTURE PROGRESS ---
+    // 2% chance every 10 seconds to advance the plot for adventuring players
+    if (Math.random() < 0.02 && !npcIsTyping) {
+        // Find a player on a custom map or with an active quest
+        const advPlayer = Object.values(players).find(p => 
+            p.id !== SUNCAT_ID && (p.mapID === 999 || p.activeQuest)
+        );
+
+        if (advPlayer && chatSessions[advPlayer.id]) {
+            npcIsTyping = true;
+            console.log(`[DM Proactive] Evaluating adventure pacing for ${advPlayer.name}...`);
+            
+            // Give the AI context of what the player is currently doing
+            const plotContext = advPlayer.activeQuest ? `Current Quest: ${advPlayer.activeQuest}` : "Wandering an uncharted map.";
+            
+            // The Overseer Prompt forces tool usage
+            const dmPrompt = `[DM PACING OVERSEER]: ${advPlayer.name} is lingering on Map ${advPlayer.mapID}. 
+            ${plotContext}
+            Advance the adventure NOW to keep things exciting. 
+            You MUST use a tool (spawnNPC for a sudden ambush, changeEnvironment for a sudden storm, or assignQuest to update their objective). 
+            Narrate the sudden event dramatically. DO NOT ask what they do next.`;
+
+            setTimeout(async () => {
+                try {
+                    // Temporarily force the session to use the "dmModel" (Big Brain) so it knows to use tools
+                    chatSessions[advPlayer.id] = dmModel.startChat({
+                        history: await chatSessions[advPlayer.id].getHistory()
+                    });
+
+                    const result = await chatSessions[advPlayer.id].sendMessage(dmPrompt);
+                    let currentCall = result.response.functionCalls()?.[0];
+                    let currentResponse = result.response;
+                    
+                    if (currentCall) {
+                        console.log(`[DM Proactive Tool] Executing: ${currentCall.name}`);
+                        let functionResult = { result: "Action executed." };
+                        
+                        // Mini Tool-Handler specifically for DM Ambushes
+                        if (currentCall.name === "spawnNPC") {
+                             const spawnX = advPlayer.x + (Math.random() > 0.5 ? 2 : -2);
+                             const spawnY = advPlayer.y + (Math.random() > 0.5 ? 2 : -2);
+                             io.emit("remote_spawn_npc", {
+                                  mapID: advPlayer.mapID,
+                                  index: Math.floor(Math.random() * 100000) + 1000,
+                                  x: spawnX,
+                                  y: spawnY,
+                                  type: currentCall.args.npcType,
+                                  state: currentCall.args.state || 'chasing',
+                                  color: currentCall.args.color || '#ff0000',
+                                  deck: currentCall.args.deck || [Math.floor(currentCall.args.npcType)],
+                                  dialogue: currentCall.args.dialogue || null,
+                                  rewardCard: currentCall.args.rewardCard || null 
+                              });
+                              functionResult = { result: "Ambush spawned successfully." };
+                        } else if (currentCall.name === "changeEnvironment") {
+                              io.emit("update_map_environment", {
+                                  mapID: advPlayer.mapID,
+                                  weather: currentCall.args.weather,
+                                  skyColor: currentCall.args.skyColor
+                              });
+                              functionResult = { result: "Environment drastically changed." };
+                        } else if (currentCall.name === "assignQuest") {
+                              advPlayer.activeQuest = currentCall.args.questText;
+                              io.to(advPlayer.id).emit("new_quest_objective", { questText: currentCall.args.questText });
+                              functionResult = { result: "Quest plot updated." };
+                        }
+
+                        // Send the tool result back to the model so it can narrate what just happened
+                        const toolOutput = { functionResponse: { name: currentCall.name, response: functionResult } };
+                        const completion = await chatSessions[advPlayer.id].sendMessage([toolOutput]);
+                        currentResponse = completion.response;
+                    }
+
+                    // Broadcast the final dramatic DM narration to the players!
+                    const finalSpeech = currentResponse.text();
+                    if (finalSpeech) {
+                        broadcastSuncatMessage(finalSpeech);
+                    }
+                    
+                    await manageHistorySize(advPlayer.id);
+
+                } catch (e) {
+                    console.error("DM Proactive Error:", e);
+                } finally {
+                    npcIsTyping = false; // Release the lock
+                }
+            }, 1000);
+        }
+    }
 }, 10000);
 async function manageHistorySize(socketId) {
     if (!chatSessions[socketId]) return;
