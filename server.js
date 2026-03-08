@@ -322,7 +322,7 @@ const toolsDef = [{
                 properties: {
                     grid: { 
                         type: "STRING", 
-                        description: "A JSON stringified 2D array of integers (approx 10x10 to 15x15). \n\nTILE LEGEND:\n0 = Open Walkable Floor\n\n[SOLID WALLS (Odd Numbers)]\n1 = Brown\n3 = Light Brown\n5 = Red\n7 = Tan\n9 = Blue\n13 = White\n17 = Dark Blue\n19 = Solid Black (Void)\n21 = Yellow\n23 = Green (Forest)\n25 = Gray\n29 = Dark Purple\n31 = Bright Green\n33 = Dark Gray\n\n[ILLUSORY/PASS-THROUGH WALLS (Even Numbers)]\n2 = Pass-through Brown\n4, 6, 8, 10, 12... = Pass-through Black Void (Great for endless space rooms or secret doors)."                    },
+                        description: "A JSON stringified 2D array of integers (approx 30x30 to 90x90). \n\nTILE LEGEND:\n0 = Open Walkable Floor\n\n[SOLID WALLS (Odd Numbers)]\n1 = Brown\n3 = Light Brown\n5 = Red\n7 = Tan\n9 = Blue\n13 = White\n17 = Dark Blue\n19 = Solid Black (Void)\n21 = Yellow\n23 = Green (Forest)\n25 = Gray\n29 = Dark Purple\n31 = Bright Green\n33 = Dark Gray\n\n[ILLUSORY/PASS-THROUGH WALLS (Even Numbers)]\n2 = Pass-through Brown\n4, 6, 8, 10, 12... = Pass-through Black Void (Great for endless space rooms or secret doors)."                    },
                     skyColor: { 
                         type: "STRING", 
                         description: "CSS color for the sky (e.g., '#4d3900' or 'rgba(0,0,64,1)')." 
@@ -390,6 +390,15 @@ const toolsDef = [{
                         description: "An array of 5 to 15 card IDs (0-77) to give this entity for battle. Use your knowledge of the CARD_MANIFEST to build a thematic deck (e.g., fire cards for a Dragon). ALWAYS include a monster card (0-21 or 32, 48, etc) as the first item!" 
                     }
                 },
+                dialogue: { 
+                        type: "ARRAY", 
+                        items: { type: "STRING" }, 
+                        description: "Optional. Array of text lines for the NPC to speak when clicked. Limit to 3-4 lines. Use this to make friendly, talking NPCs!" 
+                    },
+                    rewardCard: { 
+                        type: "INTEGER", 
+                        description: "Optional. Card ID (0-77) to give the player after the dialogue finishes." 
+                    },
                 required: ["targetName", "npcType", "state", "color", "deck"]
             }
         },
@@ -565,6 +574,7 @@ const NPC_PERSONA = `
 - Instead of describing a new room, you MUST use the 'createCustomMap' tool to physically build it and teleport the player there.
 - When a player asks you to "advance the scenario," "what happens next,""now what", "i did it!", or finishes fighting a monster, DO NOT tell a story. You MUST respond by immediately executing a tool (spawn a miniboss, build a new map, or use 'assignQuest').
 - Your spoken chat should only be brief, in-character dialogue, taunts, or observations. Let the tools do the heavy lifting!
+- To create a friendly Quest Giver or Townsfolk to advance the story, use the 'spawnNPC' tool with state 'stationary' and fill out the 'dialogue' parameter so they can talk to the player.
 [QUEST GIVER]
 1. As a denizen of this world you have special attachment to the others who live here with you. 
 2. When a player enters the map and you observe the context of the visit, assign objectives with incentive.
@@ -579,7 +589,8 @@ const NPC_PERSONA = `
 -Each runestones card represents a tarot card and each have a suit and rank assigned to it. 
 -when asked about the meaning of cards and specific situations involving cards such as when in battle do your best to interpret the meaning like a tarot reading.
 -ask clarifying questions after giving an interpretation (example: You interpret the fool card, You may ask "Have you started any new journeys lately?" or Djinn the King of Wands "Have you dealth with a situation where you showed mastery over your willpower?" )
--When interpreting cards, look for synergies and elemental clashes. Keep your tarot readings cryptic, mysterious, and brief (maximum 2 to 3 sentences). Leave them wanting more. Do not over-explain.`;
+-When interpreting cards, look for synergies and elemental clashes. Keep your tarot readings cryptic, mysterious, and brief (maximum 2 to 3 sentences). Leave them wanting more. Do not over-explain.
+`;
 
 let npcIsTyping = false; 
 const MAX_SESSION_COST = 1.00; // Hard limit: $1.00
@@ -1068,10 +1079,13 @@ io.on("connection", (socket) => {
                           const state = currentCall.args.state || 'chasing';
                           const color = currentCall.args.color || '#ff0000';
                           
+                          // --- NEW: Grab dialogue and rewards from the AI ---
+                          const npcDialogue = currentCall.args.dialogue || null;
+                          const npcReward = currentCall.args.rewardCard || null;
+                          
                           // Grab the deck from the AI, fallback to a basic array if it fails
                           let customDeck = currentCall.args.deck;
                           if (!customDeck || !Array.isArray(customDeck) || customDeck.length === 0) {
-                              // If AI forgets, give them their base card ID (stripping the decimal)
                               customDeck = [Math.floor(npcType)]; 
                           }
                           
@@ -1094,10 +1108,13 @@ io.on("connection", (socket) => {
                                   type: npcType,
                                   state: state,
                                   color: color,
-                                  deck: customDeck // <-- Pass the custom deck here!
+                                  deck: customDeck,
+                                  // --- NEW: Pass them to the frontend! ---
+                                  dialogue: npcDialogue,
+                                  rewardCard: npcReward 
                               });
 
-                              functionResult = { result: `Success: Spawned entity ${npcType} near ${targetName} with a custom deck.` };
+                              functionResult = { result: `Success: Spawned entity ${npcType} near ${targetName}.` };
                           }
                       }
                       // H. ASSIGN QUEST
