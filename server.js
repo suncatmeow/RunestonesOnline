@@ -1343,7 +1343,7 @@ socket.on('suncat_baroque', async (data, callback) => {
         3. EVERY array MUST contain exactly 16 values separated by exactly 15 commas.
         1. DO NOT output "Bar 1:", "Bar 2:", etc. Generate ONLY the tags requested.
             2. [THOUGHT]: Write a short (13 words or less)[THOUGHT] explaining your musical intent then YOU MUST CLOSE THE TAG with [/THOUGHT].
-            3. LYRICS: Write 1 to 3 words max.  You must output TWO versions of the lyrics: 1. [LYRICS_UI]: The standard English spelling for the screen (e.g., "The moonlight glows"). 2. [LYRICS_PHONETIC]: The exact phonetic translation for the synthesizer, separated by hyphens per syllable.You must translate the English words into this exact pronunciation alphabet.
+            3. LYRICS: Write 1 to 3 words MAX.  You must output TWO versions of the lyrics: 1. [LYRICS_UI]: The standard English spelling for the screen (e.g., "The moon glows"). 2. [LYRICS_PHONETIC]: The exact phonetic translation for the synthesizer, separated by hyphens per syllable.You must translate the English words into this exact pronunciation alphabet.
         - VOWELS: a (cat), e (bed), i (feet), 1 (sit/wind/king), o (boat), u (boot), @ (schwa/about)
         - DIPHTHONGS: I (bite/eye), E (make/day), O (cow/how)
         - CONSONANTS: p, b, t, d, k, g, f, v, s, z, h, m, n, l, r, w, y
@@ -1365,7 +1365,7 @@ socket.on('suncat_baroque', async (data, callback) => {
         EXAMPLES OF PERFECT PHONETIC TRANSLATION:
         "The moonlight glows" -> d@ mu!n-lI!t glo!z
         "Shadows fall now" -> Sa!doz fo!l nO!
-        "Magic in the wind" -> ma!j1k 1n d@ w1!nd
+        "Magic in wind" -> ma!j1k 1n w1!nd
         "Ancient kings awake" -> E!n-S@nt k1!Nz @-wE!k
         
         - [SCALE]: Choose an array of numbers from the list above, but dont feel contstrained by their structure. Let the scale flow from your heart. Allow yourself to be carried by your thoughts and emotions. Let it all out.
