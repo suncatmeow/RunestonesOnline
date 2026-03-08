@@ -423,9 +423,19 @@ const toolsDef = [{
     ]
 }];
 
+// --- AI CONFIGURATION ---
+
+// 1. THE CHEAP BRAIN (For casual chatting and basic tool use)
 const model = genAI.getGenerativeModel({ 
     model: "gemini-2.5-flash-lite",
-    systemInstruction: { parts: [{ text: NPC_PERSONA }] }, // <-- Add this here!
+    systemInstruction: { parts: [{ text: NPC_PERSONA }] }, 
+    tools: toolsDef
+});
+
+// 2. THE BIG BRAIN (For complex JSON mapping and DM routing)
+const dmModel = genAI.getGenerativeModel({ 
+    model: "gemini-3.1-flash-lite-preview",
+    systemInstruction: { parts: [{ text: NPC_PERSONA }] }, 
     tools: toolsDef
 });
 
@@ -808,24 +818,45 @@ io.on("connection", (socket) => {
           npcIsTyping = true;
 
           try {
-              // Initialize Chat if needed
-              if (!chatSessions[socket.id]) {
+              // --- MODEL ROUTER (THE BRAIN SWAP) ---
+              // Keywords that require complex JSON mapping or heavy tool usage
+              const complexKeywords = ["map", "dungeon", "maze", "spawn", "quest", "adventure", "what next", "give me something to do"];
+              const isComplexTask = complexKeywords.some(kw => content.includes(kw));
+
+              let activeModel = model; // Default to 2.5 Flash Lite
+              if (isComplexTask) {
+                  console.log(`[ROUTER] Upgrading ${senderName}'s request to 3.1 Flash Lite!`);
+                  activeModel = dmModel; // Swap to 3.1 Flash Lite
+              }
+
+              // --- HISTORY MANAGEMENT ---
+              let currentHistory = [];
+              if (chatSessions[socket.id]) {
+                  // If they already have a session, grab their memories!
+                  currentHistory = await chatSessions[socket.id].getHistory();
+              } else {
+                  // If brand new session, build the system context
                   let favor = playerFavorMemory[socket.id] || 0;
                   let facts = players[socket.id]?.coreFacts || [];
                   let factSheet = facts.length > 0 ? "LONG-TERM MEMORY:\n" + facts.join("\n") : "";
-                  
-                  let systemContext = `[SYSTEM DATA]\n${factSheet}\n[CURRENT FAVOR: ${favor}/10]\n[SYSTEM NOTE]\nYou have access to a tool called 'consultGameManual'. If you need to know about Cards, Maps, Lore, Rules, or Yourself, YOU MUST USE THAT TOOL. Do not hallucinate facts.`;
+                  let systemContext = `[SYSTEM DATA]\n${factSheet}\n[CURRENT FAVOR: ${favor}/10]\n[SYSTEM NOTE]\nYou have access to a tool called 'consultGameManual'. If you need to know about Cards, Maps, Lore, Rules, or Yourself, YOU MUST USE THAT TOOL.`;
 
-                  chatSessions[socket.id] = model.startChat({
-                      history: [
-                          { role: "user", parts: [{ text: NPC_PERSONA }] },
-                          { role: "model", parts: [{ text: "System Online." }] },
-                          { role: "user", parts: [{ text: systemContext }] },
-                          { role: "model", parts: [{ text: "Soul Sync Complete." }] }
-                      ],
-                  });
+                  currentHistory = [
+                      { role: "user", parts: [{ text: "Initialize System" }] },
+                      { role: "model", parts: [{ text: "System Online." }] },
+                      { role: "user", parts: [{ text: systemContext }] },
+                      { role: "model", parts: [{ text: "Soul Sync Complete." }] }
+                  ];
               }
 
+              // --- HOT-SWAP THE CHAT SESSION ---
+              // We overwrite the socket's chat session with whichever model we selected above, 
+              // while passing the exact same history array so Suncat doesn't forget anything!
+              chatSessions[socket.id] = activeModel.startChat({
+                  history: currentHistory
+              });
+
+     
               // --- CONTEXT INJECTION ---
               const suncat = players[SUNCAT_ID]; 
                 const timeString = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
