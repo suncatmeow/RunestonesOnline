@@ -341,20 +341,22 @@ const toolsDef = [{
                         description: "The weather effect for the map. Options: 'clear', 'snow', 'storm', 'leaves', 'lightning', 'space', 'apocalypse'."
                     },
                     npcs: {
-                        type: "ARRAY",
-                        description: "A list of entities to spawn inside this new map. SPAWN ID CHEAT SHEET: 63.1 (Dragon), 49.1 (Kraken), 35.1 (Djinn), 81 (Ice Golem), 82 (Skeleton), 56 (Imp), 60.1 (Pixie), -27 (Card Drop).",
-                        items: {
-                            type: "OBJECT",
-                            properties: {
-                                type: { type: "NUMBER", description: "The Entity ID." },
-                                x: { type: "INTEGER", description: "The X grid coordinate (must be an open floor '0' tile)." },
-                                y: { type: "INTEGER", description: "The Y grid coordinate (must be an open floor '0' tile)." },
-                                state: { type: "STRING", description: "'chasing', 'wandering', or 'stationary'." },
-                                color: { type: "STRING", description: "Hex color code ('#ff0000' for enemies, '#00ff00' for friendly, '#ffff00' for loot)." },
-                                deck: { type: "ARRAY", items: { type: "INTEGER" }, description: "Array of card IDs (0-77) for their battle deck." }
-                            }
+                    type: "ARRAY",
+                    description: "List of entities to spawn. YOU CAN NOW MAKE CUSTOM QUEST GIVERS AND MINIBOSSES! Add 'dialogue' (array of strings) and 'rewardCard' (card ID 0-77) to make them talk and give loot. Match the 'type' to the card ID for thematic sprites.",
+                    items: {
+                        type: "OBJECT",
+                        properties: {
+                            type: { type: "NUMBER", description: "Entity ID (Matches Card ID 0-77)" },
+                            x: { type: "INTEGER" },
+                            y: { type: "INTEGER" },
+                            state: { type: "STRING", description: "'chasing', 'wandering', or 'stationary'" },
+                            color: { type: "STRING" },
+                            deck: { type: "ARRAY", items: { type: "INTEGER" }, description: "Thematic battle deck" },
+                            dialogue: { type: "ARRAY", items: { type: "STRING" }, description: "Optional. Array of text lines for the NPC to speak when clicked. Limit to 3-4 lines." },
+                            rewardCard: { type: "INTEGER", description: "Optional. Card ID (0-77) to give the player after the dialogue finishes." }
                         }
                     }
+                }
                 },
                 required: ["grid", "skyColor", "floorColor"] // Not making weather/npcs strictly required so it doesn't break if he forgets
             }
@@ -390,6 +392,19 @@ const toolsDef = [{
                     }
                 },
                 required: ["targetName", "npcType", "state", "color", "deck"]
+            }
+        },
+        //8. assign quest tool
+        {
+            name: "assignQuest",
+            description: "Assigns a custom quest objective to the player's screen and saves it permanently to Suncat's memory.",
+            parameters: {
+                type: "OBJECT",
+                properties: {
+                    targetName: { type: "STRING" },
+                    questText: { type: "STRING", description: "A short objective, e.g., 'Rescue the Fool in Suncat's Dungeon'" }
+                },
+                required: ["targetName", "questText"]
             }
         }
     ]
@@ -1080,6 +1095,23 @@ io.on("connection", (socket) => {
                               functionResult = { result: `Success: Spawned entity ${npcType} near ${targetName} with a custom deck.` };
                           }
                       }
+                      // H. ASSIGN QUEST
+                        else if (currentCall.name === "assignQuest") {
+                            const targetID = findSocketID(currentCall.args.targetName);
+                            if (targetID) {
+                                // Send to client to display on screen
+                                io.to(targetID).emit("new_quest_objective", { questText: currentCall.args.questText });
+                                
+                                // Save to Suncat's long-term memory so he remembers the active plot!
+                                const memoryString = `[ACTIVE QUEST] ${currentCall.args.targetName} is currently trying to: ${currentCall.args.questText}`;
+                                if (!players[socket.id].coreFacts) players[socket.id].coreFacts = [];
+                                players[socket.id].coreFacts.push(memoryString);
+
+                                functionResult = { result: `Quest assigned. Player notified and objective saved to memory.` };
+                            } else {
+                                functionResult = { result: `Failed: Player not found.` };
+                            }
+                        }
                       // E. UNKNOWN TOOL
                       else {
                           functionResult = { result: "Error: Function does not exist." };
