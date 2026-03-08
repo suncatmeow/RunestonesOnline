@@ -321,9 +321,14 @@ const toolsDef = [{
                 type: "OBJECT",
                 properties: {
                     grid: { 
-                        type: "STRING", 
-                        description: "A JSON stringified 2D array of integers (approx 30x30 to 90x90). \n\nTILE LEGEND:\n0 = Open Walkable Floor\n\n[SOLID WALLS (Odd Numbers)]\n1 = Brown\n3 = Light Brown\n5 = Red\n7 = Tan\n9 = Blue\n13 = White\n17 = Dark Blue\n19 = Solid Black (Void)\n21 = Yellow\n23 = Green (Forest)\n25 = Gray\n29 = Dark Purple\n31 = Bright Green\n33 = Dark Gray\n\n[ILLUSORY/PASS-THROUGH WALLS (Even Numbers)]\n2 = Pass-through Brown\n4, 6, 8, 10, 12... = Pass-through Black Void (Great for endless space rooms or secret doors)."                    },
-                    skyColor: { 
+                        type: "ARRAY", 
+                        description: "REQUIRED: A 2D array of integers (from 16x16 to 39x39) representing the map. Outer edges MUST be solid walls. Example: [[1,1,1],[1,0,1],[1,1,1]]\n\nTILE LEGEND:\n0 = Open Walkable Floor\n\n[SOLID WALLS (Odd Numbers)]\n1 = Brown\n3 = Light Brown\n5 = Red\n7 = Tan\n9 = Blue\n13 = White\n17 = Dark Blue\n19 = Solid Black (Void)\n21 = Yellow\n23 = Green (Forest)\n25 = Gray\n29 = Dark Purple\n31 = Bright Green\n33 = Dark Gray\n\n[ILLUSORY/PASS-THROUGH WALLS (Even Numbers)]\n2 = Pass-through Brown\n4, 6, 8, 10, 12... = Pass-through Black Void (Great for endless space rooms or secret doors)."  ,  
+                        items: {
+                            type: "ARRAY",
+                            items: { type: "INTEGER" }
+                        }
+                    },
+                     skyColor: { 
                         type: "STRING", 
                         description: "CSS color for the sky (e.g., '#4d3900' or 'rgba(0,0,64,1)')." 
                     },
@@ -991,8 +996,7 @@ io.on("connection", (socket) => {
                       // E. CREATE CUSTOM MAP
                       else if (currentCall.name === "createCustomMap") {
                           try {
-                              const gridData = JSON.parse(currentCall.args.grid);
-                              const skyColor = currentCall.args.skyColor || 'rgba(0,0,0,1)';
+                                const gridData = currentCall.args.grid;                              const skyColor = currentCall.args.skyColor || 'rgba(0,0,0,1)';
                               const floorColor = currentCall.args.floorColor || '#333333';
                               const mapName = currentCall.args.mapName || "Suncat's Dreamscape";
                               const mapNPCs = currentCall.args.npcs || [];
