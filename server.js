@@ -1342,7 +1342,7 @@ socket.on('suncat_baroque', async (data, callback) => {
         2. Use ONLY integers (representing scale degrees) or '-' for rests. NO NOTE NAMES.
         3. EVERY array MUST contain exactly 16 values separated by exactly 15 commas.
         1. DO NOT output "Bar 1:", "Bar 2:", etc. Generate ONLY the tags requested.
-            2. [THOUGHT]: Write a short (13 words or less)[THOUGHT] explaining your musical intent and lyrical composition intent then YOU MUST CLOSE THE TAG with [/THOUGHT].
+            2. [THOUGHT]: Write a short (13 words or less)[THOUGHT] explaining your musical intent then YOU MUST CLOSE THE TAG with [/THOUGHT].
             3. LYRICS: Write 1 to 3 words.  You must output TWO versions of the lyrics: 1. [LYRICS_UI]: The standard English spelling for the screen (e.g., "The moonlight glows"). 2. [LYRICS_PHONETIC]: The exact phonetic translation for the synthesizer, separated by hyphens per syllable.
             5. ARRAYS: You MUST provide exactly 16 steps for THUMB, FINGERS, and STRUM arrays, separated by commas. Use integers or '-' for rests. NO letters like 'S' or 'C4'.
         COMPOSITION GUIDE:
@@ -1368,7 +1368,7 @@ socket.on('suncat_baroque', async (data, callback) => {
         - [STRUM]: USE WISELY. 95% of the time, output 16 dashes: -,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-. Only place a '0' on step 0 for heavy emphasis.
         - [THUMB]: Bass string. Make use of negative space to accentuate the melody. Leave gaps ('-') so it breathes. It is only in the absence of the heartbeat that we truly recognize the value of having one. Harmonize with the FINGERS in intricate counterpoint, making use of call and response, or simply as the heartbeat of the song. Liken it to your heartbeat. Allow your heart to guide you.
         - [FINGERS]: Melody strings. Weave flowing notes, leaving gaps ('-') so it breathes so as not to fill every step, or pluck fiercly with fiery passion. You decide.  Harmonize with the THUMB in intricate counterpoint, making use of call and response. If the THUMB is the heartbeat, this is your voice whose source is the heart. take care to look at Lyrics and have enough notes to fit lyrics in fingers sequence.
-        -[TEMPO] consider changing the tempo according to mood. You are not a metronome, you are Taliesin the bard, mythic master of performance and song. If your song is sad and slow, make it happy and up the tempo, if happy, make it sad and melancholy. If cowardly make it manly and brave, if haughty make it cowardly and scary. your aim is to impact the listeners emotions. bring tears to their eyes, bring laughter to their belly, happiness to their thoughts, bravery to their actions, wariness in their awareness.
+        -[TEMPO] consider changing the tempo (integer between 60 and 90) according to mood. 
         GENERATE THESE EXACT TAGS ONLY. NO PROSE:
         [THOUGHT]...[/THOUGHT]
         [LYRICS_UI]...[/LYRICS_UI]
