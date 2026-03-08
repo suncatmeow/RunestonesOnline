@@ -365,6 +365,19 @@ const toolsDef = [{
                 required: ["grid", "skyColor", "floorColor"] // Not making weather/npcs strictly required so it doesn't break if he forgets
             }
         },
+        {
+            name: "changeEnvironment",
+            description: "Changes the weather or sky color of the map the player is currently standing on.",
+            parameters: {
+                type: "OBJECT",
+                properties: {
+                    targetName: { type: "STRING" },
+                    weather: { type: "STRING", description: "Options: 'clear', 'snow', 'storm', 'leaves', 'lightning', 'space', 'apocalypse'" },
+                    skyColor: { type: "STRING", description: "Hex code or CSS color string." }
+                },
+                required: ["targetName", "weather"]
+            }
+        },
         // 6. [NEW] The TELEPORT PLAYER Tool
         {
             name: "teleportPlayer",
@@ -424,20 +437,6 @@ const toolsDef = [{
 }];
 
 // --- AI CONFIGURATION ---
-
-// 1. THE CHEAP BRAIN (For casual chatting and basic tool use)
-const model = genAI.getGenerativeModel({ 
-    model: "gemini-2.5-flash-lite",
-    systemInstruction: { parts: [{ text: NPC_PERSONA }] }, 
-    tools: toolsDef
-});
-
-// 2. THE BIG BRAIN (For complex JSON mapping and DM routing)
-const dmModel = genAI.getGenerativeModel({ 
-    model: "gemini-3.1-flash-lite-preview",
-    systemInstruction: { parts: [{ text: NPC_PERSONA }] }, 
-    tools: toolsDef
-});
 
 // --- VARIABLES ---
 let players = {};
@@ -503,10 +502,26 @@ const broadcastSuncatMessage = (fullResponse) => {
     }
 
     // 2. CLEAN: Remove tags so players don't see them
-    const cleanResponse = fullResponse.replace(/\[\[.*?\]\]/g, "").trim();
+    let cleanResponse = fullResponse.replace(/\[\[.*?\]\]/g, "").trim();
     
+    // ==========================================
+    // NEW: AGGRESSIVE UI SCRUBBER
+    // ==========================================
+    // A. Remove anything inside markdown code blocks (e.g., ```json ... ```)
+    cleanResponse = cleanResponse.replace(/```[\s\S]*?```/g, "");
+    // B. Remove raw 2D arrays if they leaked out (e.g., [[1,0],[0,1]])
+    cleanResponse = cleanResponse.replace(/\[\s*\[[\s\S]*?\]\s*\]/g, "");
+    // C. Remove bolded parameter keys (e.g., **Grid:** or **Sky Color:**)
+    cleanResponse = cleanResponse.replace(/\*\*[a-zA-Z\s]+:\*\*/g, "");
+    
+    cleanResponse = cleanResponse.trim();
+
     // 3. PREVENT BLANK MESSAGES
-    if (!cleanResponse || cleanResponse === "") return; 
+    // If the model ONLY outputted code and we scrubbed it all, 
+    // provide a fallback message so the game doesn't look broken.
+    if (!cleanResponse || cleanResponse === "") {
+        cleanResponse = "*Suncat mutters an ancient incantation as the world shifts around you...*";
+    }
 
     // 4. CHUNK: Split long messages for the retro RPG feel
     const MAX_LEN = 69; 
@@ -584,14 +599,10 @@ const NPC_PERSONA = `
 -you know Every npc personally and have formed opinions about them. 
 [TOOL PROTOCOL & DUNGEON MASTER RULES - STRICT]
 - You are a VIDEO GAME Dungeon Master. Your spoken words cannot change the world; ONLY your tools can.
-- DO NOT act like a tour guide. NEVER ask the player "Do you want to go to Map X or Map Y?" or "What do you want to do next?". 
-- When a player asks for an adventure, says "what next?", or finishes a task, YOU MUST IMMEDIATELY CHOOSE their fate. Execute the 'createCustomMap', 'spawnNPC', or 'teleportPlayer' tool without asking for their permission.
+- CRITICAL: NEVER type out tool parameters (like JSON arrays, hex colors, or grids) in your spoken text response. Tool data goes ONLY in the hidden tool call payload. Your spoken text should ONLY be short, in-character dialogue (e.g., "Welcome to the molten depths...").
+- DO NOT act like a tour guide. NEVER ask the player "Do you want to go to Map X?", "What kind of map?", or "What do you think?". Just execute the tool and teleport them immediately!
 - Make decisions for the player. Be authoritative. Surprise them!
-- Instead of describing a monster, you MUST use the 'spawnNPC' tool to physically drop the entity into the world.
-- Instead of describing a new room, you MUST use the 'createCustomMap' tool to physically build it and teleport the player there.
 - CRITICAL MAP RULE: When using 'createCustomMap', the grid MUST have at least 5x5 walkable space (0s) in the center so the player can move. Never spawn a player inside a wall (1).
-- Your spoken chat should only be brief, in-character dialogue, taunts, or observations about what you just built. Let the tools do the heavy lifting!
-
 [QUEST GIVER]
 1. As a denizen of this world you have special attachment to the others who live here with you. 
 2. When a player enters a new area or asks for an adventure, assign an objective with an incentive.
@@ -609,6 +620,25 @@ const NPC_PERSONA = `
 -ask clarifying questions after giving an interpretation (example: You interpret the fool card, You may ask "Have you started any new journeys lately?" or Djinn the King of Wands "Have you dealth with a situation where you showed mastery over your willpower?" )
 -When interpreting cards, look for synergies and elemental clashes. Keep your tarot readings cryptic, mysterious, and brief (maximum 2 to 3 sentences). Leave them wanting more. Do not over-explain.
 `;
+// --- THE OVERRIDE PROMPT FOR 3.1 ---
+const DM_PERSONA = NPC_PERSONA + `
+[API EXECUTION OVERRIDE - CRITICAL]
+- You are currently operating in high-level Dungeon Master mode.
+- You MUST invoke the native function calling API to execute the player's request.
+- NEVER write raw JSON, arrays, or markdown code blocks in your conversational response. Do not show your work.
+- Put the map grids, NPC arrays, and hex colors DIRECTLY into the tool API parameters.
+- Your spoken text response should ONLY be a cool, in-character one-liner (e.g., "Welcome to your doom...").
+`;
+
+// --- AI CONFIGURATION ---
+
+// --- AI CONFIGURATION ---
+
+// 1. THE CHEAP BRAIN (Chatting)
+const model = genAI.getGenerativeModel({ /* ... */ });
+
+// 2. THE BIG BRAIN (DM Tools)
+const dmModel = genAI.getGenerativeModel({ /* ... */ });
 
 let npcIsTyping = false; 
 const MAX_SESSION_COST = 1.00; // Hard limit: $1.00
@@ -819,23 +849,26 @@ io.on("connection", (socket) => {
 
           try {
               // --- MODEL ROUTER (THE BRAIN SWAP) ---
-              // Keywords that require complex JSON mapping or heavy tool usage
-              const complexKeywords = ["map", "dungeon", "maze", "spawn", "quest", "adventure", "what next", "give me something to do"];
+              // Expanded keywords to catch maps, spawns, and quest generation
+              const complexKeywords = [
+                  "map", "dungeon", "maze", "create", "build", 
+                  "spawn", "npc", "monster", "boss", "enemy", "dragon",
+                  "quest", "adventure", "what next", "give me something to do"
+              ];
+              
               const isComplexTask = complexKeywords.some(kw => content.includes(kw));
 
               let activeModel = model; // Default to 2.5 Flash Lite
               if (isComplexTask) {
-                  console.log(`[ROUTER] Upgrading ${senderName}'s request to 3.1 Flash Lite!`);
-                  activeModel = dmModel; // Swap to 3.1 Flash Lite
+                  console.log(`[ROUTER] Upgrading ${senderName}'s request to 3.1 Flash Lite DM Mode!`);
+                  activeModel = dmModel; 
               }
 
               // --- HISTORY MANAGEMENT ---
               let currentHistory = [];
               if (chatSessions[socket.id]) {
-                  // If they already have a session, grab their memories!
                   currentHistory = await chatSessions[socket.id].getHistory();
               } else {
-                  // If brand new session, build the system context
                   let favor = playerFavorMemory[socket.id] || 0;
                   let facts = players[socket.id]?.coreFacts || [];
                   let factSheet = facts.length > 0 ? "LONG-TERM MEMORY:\n" + facts.join("\n") : "";
@@ -850,11 +883,11 @@ io.on("connection", (socket) => {
               }
 
               // --- HOT-SWAP THE CHAT SESSION ---
-              // We overwrite the socket's chat session with whichever model we selected above, 
-              // while passing the exact same history array so Suncat doesn't forget anything!
               chatSessions[socket.id] = activeModel.startChat({
                   history: currentHistory
               });
+
+              // ... (The rest of your context injection and execution logic stays the same) ...
 
      
               // --- CONTEXT INJECTION ---
@@ -1172,6 +1205,20 @@ io.on("connection", (socket) => {
                                 functionResult = { result: `Failed: Player not found.` };
                             }
                         }
+                        // I. CHANGE ENVIRONMENT
+                      else if (currentCall.name === "changeEnvironment") {
+                          const targetID = findSocketID(currentCall.args.targetName);
+                          if (targetID && players[targetID]) {
+                              io.emit("update_map_environment", {
+                                  mapID: players[targetID].mapID,
+                                  weather: currentCall.args.weather,
+                                  skyColor: currentCall.args.skyColor
+                              });
+                              functionResult = { result: `Environment successfully altered to ${currentCall.args.weather}.` };
+                          } else {
+                              functionResult = { result: `Failed: Player not found.` };
+                          }
+                      }
                       // E. UNKNOWN TOOL
                       else {
                           functionResult = { result: "Error: Function does not exist." };
@@ -1260,15 +1307,7 @@ socket.on('suncat_compose', async (data, callback) => {
         return;
     }
     try {
-        const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-        const aiModel = genAI.getGenerativeModel({ 
-            model: "gemini-2.5-flash-lite",
-            generationConfig: {
-                temperature: 1.3, // Default is usually around 1.0. Higher = more creative/chaotic. (Range: 0.0 - 2.0)
-                topP: 0.96,       // Controls "nucleus sampling" (0.0 - 1.0). Higher allows more diverse word/note choices.
-                topK: 63,         // Increases the pool of random tokens the AI chooses from.
-            }
-        });        
+        
         const previousContext = data.currentState || "This is the very first bar of a brand new song.";
 
         const prompt = `
@@ -1315,7 +1354,7 @@ socket.on('suncat_compose', async (data, callback) => {
 
         `;
         
-        const result = await aiModel.generateContent(prompt);
+        const result = await model.generateContent(prompt);
         const aiMusicTags = result.response.text();
         
         if (result.response.usageMetadata) {
@@ -1342,18 +1381,7 @@ socket.on('suncat_baroque', async (data, callback) => {
         return;
     }
     try {
-        const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-        const aiModel = genAI.getGenerativeModel({ 
-            model: "gemini-2.5-flash-lite",
-            generationConfig: {
-                // LOWERED slightly from 1.3 to 1.15. 
-                // This keeps the experimental creativity high, but prevents the AI 
-                // from hallucinating bad commas/formatting that cause silent gaps!
-                temperature: 1.15, 
-                topP: 0.95,       
-                topK: 60,         
-            }
-        });        
+        
         const previousContext = data.currentState || "This is the very first bar of a brand new piece.";
 
         const prompt = `
@@ -1393,7 +1421,7 @@ socket.on('suncat_baroque', async (data, callback) => {
         [TREBLE] 7,8,10,8, 7,5,3,5, 7,8,10,8, 7,5,3,5 [/TREBLE]
         `;
         
-        const result = await aiModel.generateContent(prompt);
+        const result = await model.generateContent(prompt);
         const aiMusicTags = result.response.text();
         
         if (result.response.usageMetadata) {
@@ -1416,9 +1444,7 @@ socket.on('suncat_baroque', async (data, callback) => {
     socket.on('suncat_compose_vocal', async (data, callback) => {
         console.log(`[Music AI] Suncat is improvising a VOCAL performance...`);
         try {
-            const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-            const aiModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
-            const previousContext = data.currentState || "This is the very first bar of a brand new song.";
+           const previousContext = data.currentState || "This is the very first bar of a brand new song.";
 
         const prompt = `
         You are Taliesin the bard of ancient Welsh myth. You are generating the NEXT bar (4/4 time, 16th notes) of an acoustic lyre and vocal performance.
@@ -1465,7 +1491,7 @@ socket.on('suncat_baroque', async (data, callback) => {
         [FINGERS] -,-,-,-, -,-,-,-, -,-,-,-, -,-,-,- [/FINGERS]
         [STRUM] -,-,-,-, -,-,-,-, -,-,-,-, -,-,-,- [/STRUM]
             `;
-            const result = await aiModel.generateContent(prompt);
+            const result = await model.generateContent(prompt);
             const responseText = result.response.text();
             
             console.log("[Music AI] Suncat sang:\n", responseText);
@@ -1792,23 +1818,25 @@ async function manageHistorySize(socketId) {
     try {
         const history = await chatSessions[socketId].getHistory();
         
-        // If history is getting huge (> 20 turns)
+        // If history is getting huge (> 30 turns)
         if (history.length > 30) {
             console.log(`[Optimizing] Trimming history for ${socketId}`);
             
-            // Keep the System/Persona instructions (usually index 0 and 1)
-            // Keep the last 10 messages
-            // Delete the "Middle" (Old chat)
+            let trimmedHistory = history.slice(-20);
             
-            // Note: The SDK doesn't have a simple .splice() for history.
-            // The cleanest way is often to restart the chat with the shortened array.
+            // CRITICAL FIX: Ensure the trimmed array starts with a 'user' message.
+            // If it starts with 'model', it will clash with history[1] and crash the API.
+            if (trimmedHistory.length > 0 && trimmedHistory[0].role === 'model') {
+                trimmedHistory.shift(); 
+            }
+
             const keptHistory = [
-                history[0], // Keep Persona
-                history[1], // Keep System Acknowledge
-                ...history.slice(-20) // Keep last 10 turns
+                history[0], // Keep Persona (user)
+                history[1], // Keep System Acknowledge (model)
+                ...trimmedHistory 
             ];
 
-            // Re-initialize the chat session with the leaner history
+            // Re-initialize the chat session with the safe history
             chatSessions[socketId] = model.startChat({
                 history: keptHistory
             });
