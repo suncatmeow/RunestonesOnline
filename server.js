@@ -1343,7 +1343,7 @@ socket.on('suncat_baroque', async (data, callback) => {
         3. EVERY array MUST contain exactly 16 values separated by exactly 15 commas.
         1. DO NOT output "Bar 1:", "Bar 2:", etc. Generate ONLY the tags requested.
             2. [THOUGHT]: Write a short (13 words or less)[THOUGHT] explaining your musical intent then YOU MUST CLOSE THE TAG with [/THOUGHT].
-            3. LYRICS: Write 1 to 3 words.  You must output TWO versions of the lyrics: 1. [LYRICS_UI]: The standard English spelling for the screen (e.g., "The moonlight glows"). 2. [LYRICS_PHONETIC]: The exact phonetic translation for the synthesizer, separated by hyphens per syllable.You must translate the English words into this exact pronunciation alphabet.
+            3. LYRICS: Write 1 to 3 words max.  You must output TWO versions of the lyrics: 1. [LYRICS_UI]: The standard English spelling for the screen (e.g., "The moonlight glows"). 2. [LYRICS_PHONETIC]: The exact phonetic translation for the synthesizer, separated by hyphens per syllable.You must translate the English words into this exact pronunciation alphabet.
         - VOWELS: a (cat), e (bed), i (feet), 1 (sit/wind/king), o (boat), u (boot), @ (schwa/about)
         - DIPHTHONGS: I (bite/eye), E (make/day), O (cow/how)
         - CONSONANTS: p, b, t, d, k, g, f, v, s, z, h, m, n, l, r, w, y
@@ -1372,7 +1372,7 @@ socket.on('suncat_baroque', async (data, callback) => {
         - [STRUM]: USE WISELY. 95% of the time, output 16 dashes: -,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-. Only place a '0' on step 0 for heavy emphasis.
         - [THUMB]: Bass string. Make use of negative space to accentuate the melody. Leave gaps ('-') so it breathes. It is only in the absence of the heartbeat that we truly recognize the value of having one. Harmonize with the FINGERS in intricate counterpoint, making use of call and response, or simply as the heartbeat of the song. Liken it to your heartbeat. Allow your heart to guide you.
         - [FINGERS]: Melody strings. Weave flowing notes, leaving gaps ('-') so it breathes so as not to fill every step, or pluck fiercly with fiery passion. You decide.  Harmonize with the THUMB in intricate counterpoint, making use of call and response. If the THUMB is the heartbeat, this is your voice whose source is the heart. take care to look at Lyrics and have enough notes to fit lyrics in fingers sequence.
-        -[TEMPO]: Integer between 30 and 60 
+        -[TEMPO]: Integer between 30 and 60 max
         GENERATE THESE EXACT TAGS ONLY. NO PROSE:
         [THOUGHT]...[/THOUGHT]
         [LYRICS_UI]...[/LYRICS_UI]
