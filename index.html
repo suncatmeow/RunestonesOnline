@@ -42705,7 +42705,10 @@ class Ai3Module {
 
         // Apply the equal temperament math to get the new frequency
         this.rootFreq = this.baseFreq * Math.pow(2, this.currentKeyOffset / 12);
+        if (        this.rootFreq > 440){
+                  this.rootFreq = this.baseFreq ;
 
+        }
         // A fun visual to track what key Suncat is playing in
         const keys = ['D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B', 'C', 'C#'];
         console.log(`%c[Suncat Modulates] 🌀 Jumped to ${keys[this.currentKeyOffset]}!`, 'color: #ff33cc; font-style: italic; font-weight: bold; background: #111; padding: 3px;');
