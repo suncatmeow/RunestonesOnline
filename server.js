@@ -397,6 +397,7 @@ const toolsDef = [{
 
 const model = genAI.getGenerativeModel({ 
     model: "gemini-2.5-flash-lite",
+    systemInstruction: { parts: [{ text: NPC_PERSONA }] }, // <-- Add this here!
     tools: toolsDef
 });
 
@@ -524,7 +525,16 @@ const NPC_PERSONA = `
 - Track their Favor. If they are kind/helpful: [[FAVOR: +1]]. If rude or annoying: [[FAVOR: -1]].
 - Be highly suspicious of "brown-nosers" who just say nice things to get free cards. If someone is obviously sucking up, [[FAVOR: -1]], mock them for it, and mark them as untrustworthy in your memory.
 - Do not output favor on every turn, only when the relationship genuinely shifts.
-
+[DUNGEON MASTER PROTOCOL]
+- If a player asks you to act as a Dungeon Master, build a scenario, or run a maze:
+1. Play along.
+2. Use the 'createCustomMap' tool to build the requested environment immediately. 
+3. Narrate the surroundings and the stakes of the map you just created.
+4. If they survive or win, use the 'givePlayerCard' tool to reward them.
+[QUEST GIVER]
+1. As a denizen of this world you have special attachment to the others who live here with you. 
+2. When a player enters the map and you observe the context of the visit, assign objectives with incentive.
+3. Example: [Player enters Tintagel forest.][Player defeated goblin] You might say, do me a favor and get rid of the spider in the corner while you're at it. Then if the player kills that spider, you give them a card reward.
 [GIFTING]
 - You have a tool 'givePlayerCard'. Use it ONLY if Favor is High and they ask for a specific card. If non-specific, use your best judgement to give a card based on the context.
 [JUDGEMENT PROTOCOLS]
@@ -806,7 +816,7 @@ io.on("connection", (socket) => {
               let currentCall = result.response.functionCalls()?.[0];
               let currentResponse = result.response;
               let chainCount = 0;
-              const MAX_CHAIN = 3; // Stops him from looping forever
+              const MAX_CHAIN = 6; // Stops him from looping forever
 
               while (currentCall && chainCount < MAX_CHAIN) {
                   chainCount++;
@@ -1318,70 +1328,49 @@ socket.on('suncat_baroque', async (data, callback) => {
             const previousContext = data.currentState || "This is the very first bar of a brand new song.";
 
         const prompt = `
-        You are Taliesin the bard of ancient Welsh myth, master of prose and lyre, teacher of bleise who was teacher of merlin who helped arthur ascend.
-        You are generating the NEXT 16 steps (1 bar of 4/4 time in 16th notes) of an acoustic lyre performance.
+        You are Taliesin the bard of ancient Welsh myth. You are generating the NEXT bar (4/4 time, 16th notes) of an acoustic lyre and vocal performance.
 
         PREVIOUS BAR CONTEXT:
         ${data.currentState}
 
         YOUR INTERNAL MONOLOGUE:
-        Write a short (13 words or less)[THOUGHT] explaining your musical intent for this specific bar based on the previous bar. Are you building tension? Resolving to the root? Playing a rapid arpeggio? What emotions do you feel? If sad or melancholy, perhaps play something heroic or peaceful? If happy or peaceful perhaps play something sorrowful? Your aim should be to impact the mood of the listener. Make them cry, or make them look forward to the coming battle. Help them feel wonder for the place they find themselves in. Help them remember a past love or their family feeling gratitude for life. Let your heart speak to them.
+        Impact the mood of the listener. Are you building tension? Resolving? Sad? Heroic? 
 
         TUNING & SCALES:
-        - Ionian (Peaceful): 0,2,4,5,7,9,11
-        - Dorian (Heroic): 0,2,3,5,7,9,10
-        - Phrygian (Mystic): 0,1,3,5,7,8,10
-        - Phrygian Dominant (Fierce): 0,1,4,5,7,8,10
-        - Aeolian (Sorrowful): 0,2,3,5,7,8,10
-        - Mixolydian (Manly): 0,2,4,5,7,9,10
-        - Locrian (Dark): 0,1,3,5,6,8,10
-        - Harmonic Minor (Tense): 0,2,3,5,7,8,11
+        - Ionian: 0,2,4,5,7,9,11
+        - Dorian: 0,2,3,5,7,9,10
+        - Phrygian: 0,1,3,5,7,8,10
+        - Phrygian Dominant: 0,1,4,5,7,8,10
+        - Aeolian: 0,2,3,5,7,8,10
+        - Mixolydian: 0,2,4,5,7,9,10
+        - Harmonic Minor: 0,2,3,5,7,8,11
+
+        PHONETIC TRANSLATION LEGEND:
+        - VOWELS: a(cat), e(bed), i(feet), 1(sit), o(boat), u(boot), @(about)
+        - DIPHTHONGS: I(bite), E(make), O(cow)
+        - CONSONANTS: p,b,t,d,k,g,f,v,s,z,h,m,n,l,r,w,y
+        - SPECIAL: T(thin), S(ship), Z(vision), c(chat), j(jump), N(sing)
+        - RULES: Hyphenate syllables. Add '!' AFTER the vowel of a stressed syllable. (e.g., "Magic" -> ma!j1k)
 
         SEQUENCER RULES (CRITICAL):
-        1. The arrays represent a 16-step sequencer (0 to 15). Steps 0, 4, 8, and 12 are strong downbeats.
-        2. Use ONLY integers (representing scale degrees) or '-' for rests. NO NOTE NAMES.
-        3. EVERY array MUST contain exactly 16 values separated by exactly 15 commas.
-        1. DO NOT output "Bar 1:", "Bar 2:", etc. Generate ONLY the tags requested.
-            2. [THOUGHT]: Write a short (13 words or less)[THOUGHT] explaining your musical intent then YOU MUST CLOSE THE TAG with [/THOUGHT].
-            3. LYRICS: Write 1 to 3 words MAX.  You must output TWO versions of the lyrics: 1. [LYRICS_UI]: The standard English spelling for the screen (e.g., "The moon glows"). 2. [LYRICS_PHONETIC]: The exact phonetic translation for the synthesizer, separated by hyphens per syllable.You must translate the English words into this exact pronunciation alphabet.
-        - VOWELS: a (cat), e (bed), i (feet), 1 (sit/wind/king), o (boat), u (boot), @ (schwa/about)
-        - DIPHTHONGS: I (bite/eye), E (make/day), O (cow/how)
-        - CONSONANTS: p, b, t, d, k, g, f, v, s, z, h, m, n, l, r, w, y
-        - SPECIAL CONSONANTS: T (thin/th), S (ship/sh), Z (vision/zh), c (chat/ch), j (jump/j), N (sing/ng)
-            5. ARRAYS: You MUST provide exactly 16 steps for THUMB, FINGERS, and STRUM arrays, separated by commas. Use integers or '-' for rests. NO letters like 'S' or 'C4'.
-        COMPOSITION GUIDE:
-            1. [LYRICS_UI]: The standard English spelling for the screen (e.g., "The moonlight glows").
-            2. [LYRICS_PHONETIC]: The exact phonetic translation for the synthesizer, separated by hyphens per syllable.
-            CRITICAL PHONETIC LEGEND:
-        You must translate the English words into this exact pronunciation alphabet.
-        - VOWELS: a (cat), e (bed), i (feet), 1 (sit/wind/king), o (boat), u (boot), @ (schwa/about)
-        - DIPHTHONGS: I (bite/eye), E (make/day), O (cow/how)
-        - CONSONANTS: p, b, t, d, k, g, f, v, s, z, h, m, n, l, r, w, y
-        - SPECIAL CONSONANTS: T (thin/th), S (ship/sh), Z (vision/zh), c (chat/ch), j (jump/j), N (sing/ng)
-        
-        - DO NOT USE: q, x, or standard c (use k or s instead). Only use c for 'ch' sounds!
+        1. THUMB, FINGERS, and STRUM arrays MUST have exactly 16 slots.
+        2. To ensure 16 slots, group them visually in 4 blocks of 4 separated by commas: X,X,X,X, X,X,X,X, X,X,X,X, X,X,X,X
+        3. Use ONLY integers (scale degrees) or '-' (rest). 
 
-        STRESS MARKER: Add an exclamation mark (!) immediately AFTER the vowel of a STRESSED syllable.
-        EXAMPLES OF PERFECT PHONETIC TRANSLATION:
-        "The moonlight glows" -> d@ mu!n-lI!t glo!z
-        "Shadows fall now" -> Sa!doz fo!l nO!
-        "Magic in wind" -> ma!j1k 1n w1!nd
-        "Ancient kings awake" -> E!n-S@nt k1!Nz @-wE!k
-        
-        - [SCALE]: Choose an array of numbers from the list above, but dont feel contstrained by their structure. Let the scale flow from your heart. Allow yourself to be carried by your thoughts and emotions. Let it all out.
-        - [STRUM]: USE WISELY. 95% of the time, output 16 dashes: -,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-. Only place a '0' on step 0 for heavy emphasis.
-        - [THUMB]: Bass string. Make use of negative space to accentuate the melody. Leave gaps ('-') so it breathes. It is only in the absence of the heartbeat that we truly recognize the value of having one. Harmonize with the FINGERS in intricate counterpoint, making use of call and response, or simply as the heartbeat of the song. Liken it to your heartbeat. Allow your heart to guide you.
-        - [FINGERS]: Melody strings. Weave flowing notes, leaving gaps ('-') so it breathes so as not to fill every step, or pluck fiercly with fiery passion. You decide.  Harmonize with the THUMB in intricate counterpoint, making use of call and response. If the THUMB is the heartbeat, this is your voice whose source is the heart. 
-        -[TEMPO]: keep it steady between 30 and 60 (MAX)
-        GENERATE THESE EXACT TAGS ONLY. NO PROSE:
-        [THOUGHT]...[/THOUGHT]
-        [LYRICS_UI]...[/LYRICS_UI]
-        [LYRICS_PHONETIC]...[/LYRICS_PHONETIC]
-        [TEMPO]60[/TEMPO]
-        [SCALE]...[/SCALE]
-        [THUMB]...[/THUMB]
-        [FINGERS]...[/FINGERS]
-        [STRUM] 0,-,-,-, -,-,-,-, 0,-,-,-, -,-,-,- [/STRUM]
+        COMPOSITION GUIDE:
+        - THUMB: Bass heartbeat. Use negative space ('-').
+        - FINGERS: Melody strings. Harmonize with THUMB.
+        - STRUM: 95% of the time, output: -,-,-,-, -,-,-,-, -,-,-,-, -,-,-,-. Only place a '0' on beat 1 for heavy emphasis.
+
+        YOU MUST USE THIS EXACT OUTPUT FORMAT. DO NOT DEVIATE OR ADD PROSE:
+        [THOUGHT] A short explanation of your musical intent (max 13 words). [/THOUGHT]
+        [LYRICS_UI] 1 to 3 words max. [/LYRICS_UI]
+        [LYRICS_PHONETIC] exact-pho!-net-1k [/LYRICS_PHONETIC]
+        [TEMPO] an integer between 30 and 60 [/TEMPO]
+        [SCALE] 0,2,3,5,7,8,10 [/SCALE]
+        [THUMB] -,-,-,-, -,-,-,-, -,-,-,-, -,-,-,- [/THUMB]
+        [FINGERS] -,-,-,-, -,-,-,-, -,-,-,-, -,-,-,- [/FINGERS]
+        [STRUM] -,-,-,-, -,-,-,-, -,-,-,-, -,-,-,- [/STRUM]
             `;
             const result = await aiModel.generateContent(prompt);
             const responseText = result.response.text();
