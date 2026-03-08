@@ -26815,14 +26815,14 @@ const noiseMaxVol = p.voiced ? 0.15 : 0.35; // Lowered from 0.6 so consonants do
           t += dur; 
           // --- NEW: MICRO-TIMING DRIFT (RUBATO) ---
     // Humans drift up to 3% off-grid per syllable
-    const tempoDrift = 1.0 + (Math.random() * 0.06 - 0.03); 
+   // const tempoDrift = 1.0 + (Math.random() * 0.06 - 0.03); 
     
-    // If it's the end of a word, take a tiny bit of extra time to "breathe"
-    if (isAtWordEnd) {
-        t += dur * 1.05; 
-    } else {
-        t += dur * tempoDrift;
-    }
+   // // If it's the end of a word, take a tiny bit of extra time to "breathe"
+   // if (isAtWordEnd) {
+    //    t += dur * 1.05; 
+    //} else {
+   //     t += dur * tempoDrift;
+    //}
       }
 
       vocalEnv.gain.setTargetAtTime(0, t, 0.02); 
@@ -42592,9 +42592,9 @@ class Ai3Module {
         this.isFetching = false;
 
         // --- 1. THE LYRE TUNING ---
-        this.tempo = 60; 
-        this.targetTempo = 60; 
-        this.baseFreq = 146.83; // Anchor frequency (approx D3)
+        this.tempo = 30; 
+        this.targetTempo = 30; 
+        this.baseFreq = 136.9; // Anchor frequency (approx D3)
         this.rootFreq = this.baseFreq; 
         this.currentKeyOffset = 0; // Tracks our current semitone shift (0-11)
         this.scale = [0, 2, 3, 5, 7, 9, 10];
