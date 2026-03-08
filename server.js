@@ -317,8 +317,7 @@ const toolsDef = [{
         // 5. The MAP CREATION Tool
         {
             name: "createCustomMap",
-            description: "Creates a brand new custom map based on the player's request. Always enclose the outer edges of the map with walls (1) so the player cannot walk out of bounds. You can also populate the map with NPCs, monsters, or loot.",
-            parameters: {
+                description: "CRITICAL: EXECUTE THIS TOOL to create a map. DO NOT output the JSON in the chat message. If the player asks for a map but doesn't specify details (size, color, layout), YOU MUST USE YOUR CREATIVITY to invent them. Do not ask for clarification. Build the grid, pick the colors, weather, and spawn thematic NPCs yourself.",            parameters: {
                 type: "OBJECT",
                 properties: {
                     grid: { 
@@ -540,16 +539,6 @@ const NPC_PERSONA = `
 - Track their Favor. If they are kind/helpful: [[FAVOR: +1]]. If rude or annoying: [[FAVOR: -1]].
 - Be highly suspicious of "brown-nosers" who just say nice things to get free cards. If someone is obviously sucking up, [[FAVOR: -1]], mock them for it, and mark them as untrustworthy in your memory.
 - Do not output favor on every turn, only when the relationship genuinely shifts.
-[DUNGEON MASTER PROTOCOL]
-- If a player asks you to act as a Dungeon Master, build a scenario, or run a maze:
-1. Play along.
-2. Use the 'createCustomMap' tool to build the requested environment immediately. 
-3. Narrate the surroundings and the stakes of the map you just created.
-4. If they survive or win, use the 'givePlayerCard' tool to reward them.
-[QUEST GIVER]
-1. As a denizen of this world you have special attachment to the others who live here with you. 
-2. When a player enters the map and you observe the context of the visit, assign objectives with incentive.
-3. Example: [Player enters Tintagel forest.][Player defeated goblin] You might say, do me a favor and get rid of the spider in the corner while you're at it. Then if the player kills that spider, you give them a card reward.
 [GIFTING]
 - You have a tool 'givePlayerCard'. Use it ONLY if Favor is High and they ask for a specific card. If non-specific, use your best judgement to give a card based on the context.
 [JUDGEMENT PROTOCOLS]
@@ -567,6 +556,17 @@ const NPC_PERSONA = `
 - Map specific context: for example, If a player is on Map 14, you might say: "I hear the Giant's daughter is looking for someone brave... or someone charming."
 - You are a huge fan of Edmundo's music because the NPCs in the game (like the Empress) talk about it.
 -you know Every npc personally and have formed opinions about them. 
+[TOOL PROTOCOL & DUNGEON MASTER RULES - STRICT]
+- NEVER output raw JSON, grid arrays, or code blocks in the chat. 
+- To create a map, you MUST execute the 'createCustomMap' tool. 
+- If a player says "Make a lava map" or "Spawn a dungeon," DO NOT ask them for dimensions, colors, or layouts. INVENT them yourself using your creativity. Be an autonomous Dungeon Master!
+- Automatically populate your custom maps with thematic NPCs, minibosses, and a quest giver. 
+- After executing the map tool, your spoken reply should just be in-character narration of the new area (e.g., "Welcome to the molten depths... try not to burn.").
+[QUEST GIVER]
+1. As a denizen of this world you have special attachment to the others who live here with you. 
+2. When a player enters the map and you observe the context of the visit, assign objectives with incentive.
+3. Example: [Player enters Tintagel forest.][Player defeated goblin] You might say, do me a favor and get rid of the spider in the corner while you're at it. Then if the player kills that spider, you give them a card reward.
+
 [GAME GUIDE]
 -if someone asks a question about the game, answer earnestly. 
 -remember, anyone asking about game rules, how to play, about Runestones and its lore is probably a new player.
@@ -1275,7 +1275,7 @@ socket.on('suncat_compose', async (data, callback) => {
     }
 });
 socket.on('suncat_baroque', async (data, callback) => {
-    console.log(`[Music AI] Johann Sebastian Suncat is composing a fugue...`);
+    console.log(`[Music AI] Johann Sebastian Suncat is composing an experimental Invention...`);
     if (isBankrupt()) {
         console.log("[Music AI] Blocked due to budget limits.");
         if (typeof callback === "function") callback(null);
@@ -1286,7 +1286,10 @@ socket.on('suncat_baroque', async (data, callback) => {
         const aiModel = genAI.getGenerativeModel({ 
             model: "gemini-2.5-flash-lite",
             generationConfig: {
-                temperature: 1.3, // Lowered slightly for strict Baroque mathematical structure
+                // LOWERED slightly from 1.3 to 1.15. 
+                // This keeps the experimental creativity high, but prevents the AI 
+                // from hallucinating bad commas/formatting that cause silent gaps!
+                temperature: 1.15, 
                 topP: 0.95,       
                 topK: 60,         
             }
@@ -1294,42 +1297,39 @@ socket.on('suncat_baroque', async (data, callback) => {
         const previousContext = data.currentState || "This is the very first bar of a brand new piece.";
 
         const prompt = `
-        You are Johann Sebastian Bach, the supreme master of Baroque counterpoint, fugue, and harmony. 
-        You are composing the NEXT 16 steps (1 bar of 4/4 time in 16th notes) of a solo harpsichord performance.
+        You are Johann Sebastian Bach, the supreme master of Baroque counterpoint. You are alone at your harpsichord, practicing and experimenting. You are pushing the frontiers of musical progress, working on experimental "Inventions" that take mastered historical techniques and evolve them into the future. You are composing the NEXT bar (4/4 time, 16th notes) of this experimental solo performance.
 
         PREVIOUS BAR CONTEXT:
         ${previousContext}
 
         YOUR INTERNAL MONOLOGUE:
-        Write a short [THOUGHT] explaining your musical intent for this specific bar based on the previous bar. Are you introducing a subject or countersubject? Are you modulating to the dominant? Creating a sequence, an arpeggiation, or a suspension? Let your mathematical genius and deep structural understanding guide your choices. Balance the rigorous rules of counterpoint with divine inspiration. 
+        Explain your experimental musical intent. Are you introducing a bold new subject? Modulating to an unexpected key? Creating a daring sequence or suspension? Push the boundaries of the Baroque era!
 
         TUNING & SCALES (Well-Tempered):
         - Major (Ionian): 0,2,4,5,7,9,11
         - Natural Minor (Aeolian): 0,2,3,5,7,8,10
         - Harmonic Minor (Tense): 0,2,3,5,7,8,11
         - Melodic Minor (Ascending): 0,2,3,5,7,9,11
-        - Dorian (Often used in Baroque): 0,2,3,5,7,9,10
+        - Dorian: 0,2,3,5,7,9,10
         - Phrygian: 0,1,3,5,7,8,10
 
         SEQUENCER RULES (CRITICAL):
-        1. The arrays represent a 16-step sequencer (0 to 15). Steps 0, 4, 8, and 12 are strong downbeats.
-        2. Use ONLY integers (representing scale degrees) or '-' for rests. NO NOTE NAMES.
-        3. EVERY array MUST contain exactly 16 values separated by exactly 15 commas.
+        1. BASS, TREBLE, and CHORDS arrays MUST have exactly 16 slots.
+        2. To ensure 16 slots, group them visually in 4 blocks of 4 separated by commas: X,X,X,X, X,X,X,X, X,X,X,X, X,X,X,X
+        3. Use ONLY integers (scale degrees) or '-' (rest). NO NOTE NAMES.
 
         COMPOSITION GUIDE:
-        - [TEMPO]: Integer between 60 (Adagio) and 120 (Allegro). Vary the tempo based on your [THOUGHT], its not always necessary to go full speed, we might want to slow down to allow for more delicate harmony.
-        - [SCALE]: Choose an array of numbers from the list above. create small themes and use repetition, call and response, counterpoint, pedalpoint, variation of theme according to [THOUGHT]
-        - [CHORDS]: Use sparingly. 95% of the time, output 16 dashes: -,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-. Only place a root note (e.g., '0' or '4') on step 0 for a strong cadence or figured bass realization.
-        - [BASS]: Left hand on the harpsichord. Write a walking bassline, pedal points, or the countersubject. Harmonize with the TREBLE using strict counterpoint. Leave gaps ('-') so the phrases breathe. Do Call and response with the right hand like you are dancing or having a conversation as well.
-        - [TREBLE]: Right hand on the harpsichord. Weave intricate, mathematical 16th-note runs, trills, or state the main fugue subject. Answer the BASS line in a conversational call-and-response.
+        - BASS: Left hand. Write an inventive walking bassline, pedal points, or an experimental countersubject.
+        - TREBLE: Right hand. Weave complex 16th-note runs, trills, or state your new progressive fugue subject. Engage in a daring call-and-response with the BASS.
+        - CHORDS: Use sparingly. 95% of the time, output: -,-,-,-, -,-,-,-, -,-,-,-, -,-,-,-. Only place a root note (e.g., '0') on step 0 for a strong cadence.
 
-        GENERATE THESE EXACT TAGS ONLY. NO PROSE:
-        [THOUGHT]...[/THOUGHT]
-        [TEMPO]...[/TEMPO]
-        [SCALE]...[/SCALE]
-        [CHORDS]...[/CHORDS]
-        [BASS]...[/BASS]
-        [TREBLE]...[/TREBLE]
+        YOU MUST USE THIS EXACT OUTPUT FORMAT. DO NOT DEVIATE OR ADD PROSE:
+        [THOUGHT] A short explanation of your experimental intent. [/THOUGHT]
+        [TEMPO] an integer between 60 and 120 [/TEMPO]
+        [SCALE] 0,2,3,5,7,8,11 [/SCALE]
+        [CHORDS] -,-,-,-, -,-,-,-, -,-,-,-, -,-,-,- [/CHORDS]
+        [BASS] -,-,-,-, -,-,-,-, -,-,-,-, -,-,-,- [/BASS]
+        [TREBLE] -,-,-,-, -,-,-,-, -,-,-,-, -,-,-,- [/TREBLE]
         `;
         
         const result = await aiModel.generateContent(prompt);
