@@ -1371,13 +1371,13 @@ socket.on('suncat_baroque', async (data, callback) => {
         - [SCALE]: Choose an array of numbers from the list above, but dont feel contstrained by their structure. Let the scale flow from your heart. Allow yourself to be carried by your thoughts and emotions. Let it all out.
         - [STRUM]: USE WISELY. 95% of the time, output 16 dashes: -,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-. Only place a '0' on step 0 for heavy emphasis.
         - [THUMB]: Bass string. Make use of negative space to accentuate the melody. Leave gaps ('-') so it breathes. It is only in the absence of the heartbeat that we truly recognize the value of having one. Harmonize with the FINGERS in intricate counterpoint, making use of call and response, or simply as the heartbeat of the song. Liken it to your heartbeat. Allow your heart to guide you.
-        - [FINGERS]: Melody strings. Weave flowing notes, leaving gaps ('-') so it breathes so as not to fill every step, or pluck fiercly with fiery passion. You decide.  Harmonize with the THUMB in intricate counterpoint, making use of call and response. If the THUMB is the heartbeat, this is your voice whose source is the heart. take care to look at Lyrics and have enough notes to fit lyrics in fingers sequence.
-        -[TEMPO]: Integer between 30 and 60 max
+        - [FINGERS]: Melody strings. Weave flowing notes, leaving gaps ('-') so it breathes so as not to fill every step, or pluck fiercly with fiery passion. You decide.  Harmonize with the THUMB in intricate counterpoint, making use of call and response. If the THUMB is the heartbeat, this is your voice whose source is the heart. 
+        -[TEMPO]: keep it steady between 30 and 60 (MAX)
         GENERATE THESE EXACT TAGS ONLY. NO PROSE:
         [THOUGHT]...[/THOUGHT]
         [LYRICS_UI]...[/LYRICS_UI]
         [LYRICS_PHONETIC]...[/LYRICS_PHONETIC]
-        [TEMPO]...[/TEMPO]
+        [TEMPO]60[/TEMPO]
         [SCALE]...[/SCALE]
         [THUMB]...[/THUMB]
         [FINGERS]...[/FINGERS]
