@@ -922,349 +922,275 @@ io.on("connection", (socket) => {
                         });
                     }
 
-              // --- TOOL HANDLING ---
-              let currentCall = result.response.functionCalls()?.[0];
+              // --- TOOL HANDLING (UPGRADED FOR PARALLEL EXECUTION) ---
               let currentResponse = result.response;
               let chainCount = 0;
               const MAX_CHAIN = 6; // Stops him from looping forever
 
-              while (currentCall && chainCount < MAX_CHAIN) {
+              // Loop as long as the AI keeps requesting tools
+              while (currentResponse.functionCalls() && chainCount < MAX_CHAIN) {
                   chainCount++;
-                  console.log(`[AI TOOL CALL ${chainCount}]: ${currentCall.name}`); 
+                  const calls = currentResponse.functionCalls();
+                  console.log(`[AI TOOL CHAIN ${chainCount}]: Suncat is executing ${calls.length} tools at once!`); 
 
-                  let functionResult = { result: "Action executed." };
-                  try {
-                      // A. GIFTING
-                      if (currentCall.name === "givePlayerCard") {
-                            let cardID = parseInt(currentCall.args.cardName);
-                            const name = currentCall.args.cardName.toLowerCase();
+                  // We will store ALL the tool results here before sending them back
+                  let toolResponsesBatch = [];
 
-                            if (isNaN(cardID)) {
-                                if (name.includes("excalibur")) cardID = 84;
-                                else if (name.includes("fool")) cardID = 0;
-                                else if (name.includes("crown")) cardID = 21;
-                                else {
-                                    // Quick manifest lookup
-                                    const lines = CARD_MANIFEST.toLowerCase().split('\n');
-                                    const foundLine = lines.find(line => line.includes(name));
-                                    if (foundLine) {
-                                        const match = foundLine.match(/^(\d+):/);
-                                        if (match) cardID = parseInt(match[1]);
+                  // Process EVERY tool the AI asked for in this turn
+                  for (let call of calls) {
+                      let functionResult = { result: "Action executed." };
+                      
+                      try {
+                          // A. GIFTING
+                          if (call.name === "givePlayerCard") {
+                                let cardID = parseInt(call.args.cardName);
+                                const name = call.args.cardName.toLowerCase();
+
+                                if (isNaN(cardID)) {
+                                    if (name.includes("excalibur")) cardID = 84;
+                                    else if (name.includes("fool")) cardID = 0;
+                                    else if (name.includes("crown")) cardID = 21;
+                                    else {
+                                        const lines = CARD_MANIFEST.toLowerCase().split('\n');
+                                        const foundLine = lines.find(line => line.includes(name));
+                                        if (foundLine) {
+                                            const match = foundLine.match(/^(\d+):/);
+                                            if (match) cardID = parseInt(match[1]);
+                                        }
                                     }
                                 }
-                            }
 
-                            if (!isNaN(cardID)) {
-                                socket.emit("receive_card", { cardIndex: cardID });
-                                functionResult = { result: `Success. Card ID ${cardID} given to player.` };
-                            } else {
-                                functionResult = { result: `Error: Could not find card named '${name}'.` };
-                            }
-                        }
-                      
-                      // B. JUDGEMENT
-                      else if (["kickPlayer", "banishPlayer", "vanquishPlayer"].includes(currentCall.name)) {
-                            const targetName = currentCall.args.targetName;
-                            const targetID = findSocketID(targetName);
-
-                            if (!targetID) {
-                                functionResult = { result: `Failed: Player ${targetName} not found.` };
-                            } else {
-                                let actionType = currentCall.name.replace("Player", "").toLowerCase(); // kick, banish, vanquish
-                                const targetSocket = io.sockets.sockets.get(targetID);
-                                
-                                if (targetSocket) {
-                                    targetSocket.emit("admin_command", { type: actionType });
-                                    if (actionType !== 'vanquish') targetSocket.disconnect(true);
-                                    functionResult = { result: `Success: Player ${targetName} was ${actionType}ed.` };
+                                if (!isNaN(cardID)) {
+                                    socket.emit("receive_card", { cardIndex: cardID });
+                                    functionResult = { result: `Success. Card ID ${cardID} given to player.` };
                                 } else {
-                                    functionResult = { result: `Error: Socket not found for ${targetName}.` };
+                                    functionResult = { result: `Error: Could not find card named '${name}'.` };
                                 }
-                            }
-                        }
-                      
-                      // C. TELEPORTATION 
-                      else if (currentCall.name === "teleportToPlayer") {
-                        const suncat = players[SUNCAT_ID];
-                        const requester = players[socket.id];
-                        
-                        if (suncat && requester) {
-                            suncat.mapID = requester.mapID;
-                            suncat.x = parseFloat(requester.x);
-                            suncat.y = parseFloat(requester.y);
-                            
-                            currentTargetID = socket.id; 
-                            lastSwitchTime = Date.now();
-                            
-                            io.emit("updatePlayers", players);
-                            functionResult = { result: "Teleport successful. You are now standing next to the player." };
-                        } else {
-                            functionResult = { result: "Teleport failed. Could not find player coordinates." };
-                        }
-                      }
-                      
-                      // D. CONSULT MANUAL
-                      else if (currentCall.name === "consultGameManual") {
-                        const queries = currentCall.args.searchQueries || [];
-                        console.log(`[Suncat] Searching manual for:`, queries);
+                          }
+                          // B. JUDGEMENT
+                          else if (["kickPlayer", "banishPlayer", "vanquishPlayer"].includes(call.name)) {
+                                const targetName = call.args.targetName;
+                                const targetID = findSocketID(targetName);
 
-                        const fullLibraryLines = (CARD_MANIFEST + "\n" + WORLD_ATLAS + "\n" + BATTLE_RULES + "\n" + WORLD_LORE + "\n" + SUNCAT_LORE)
-                            .split('\n')
-                            .filter(line => line.trim().length > 0);
-
-                        let combinedResults = [];
-                        const stopWords = ["the", "and", "for", "with", "what", "does", "mean", "about", "are", "you", "is", "how", "whats", "up"];
-
-                        queries.forEach(query => {
-                            const lowerQuery = query.toLowerCase();
-                            
-                            const searchTerms = lowerQuery
-                                .replace(/[^\w\s]/gi, '') 
-                                .split(/\s+/)
-                                .filter(w => w.length > 2 && !stopWords.includes(w));
-
-                            let scoredLines = fullLibraryLines.map((line, index) => {
-                                let score = 0;
-                                let lowerLine = line.toLowerCase();
+                                if (!targetID) {
+                                    functionResult = { result: `Failed: Player ${targetName} not found.` };
+                                } else {
+                                    let actionType = call.name.replace("Player", "").toLowerCase();
+                                    const targetSocket = io.sockets.sockets.get(targetID);
+                                    
+                                    if (targetSocket) {
+                                        targetSocket.emit("admin_command", { type: actionType });
+                                        if (actionType !== 'vanquish') targetSocket.disconnect(true);
+                                        functionResult = { result: `Success: Player ${targetName} was ${actionType}ed.` };
+                                    } else {
+                                        functionResult = { result: `Error: Socket not found for ${targetName}.` };
+                                    }
+                                }
+                          }
+                          // C. TELEPORTATION 
+                          else if (call.name === "teleportToPlayer") {
+                                const suncat = players[SUNCAT_ID];
+                                const requester = players[socket.id];
                                 
-                                if (lowerLine.includes(lowerQuery)) score += 10;
-                                
-                                searchTerms.forEach(term => {
-                                    if (lowerLine.includes(term)) score += 1;
+                                if (suncat && requester) {
+                                    suncat.mapID = requester.mapID;
+                                    suncat.x = parseFloat(requester.x);
+                                    suncat.y = parseFloat(requester.y);
+                                    
+                                    currentTargetID = socket.id; 
+                                    lastSwitchTime = Date.now();
+                                    
+                                    io.emit("updatePlayers", players);
+                                    functionResult = { result: "Teleport successful. You are now standing next to the player." };
+                                } else {
+                                    functionResult = { result: "Teleport failed. Could not find player coordinates." };
+                                }
+                          }
+                          // D. CONSULT MANUAL (Fuzzy Librarian)
+                          else if (call.name === "consultGameManual") {
+                                const queries = call.args.searchQueries || [];
+                                const fullLibraryLines = (CARD_MANIFEST + "\n" + WORLD_ATLAS + "\n" + BATTLE_RULES + "\n" + WORLD_LORE + "\n" + SUNCAT_LORE)
+                                    .split('\n')
+                                    .filter(line => line.trim().length > 0);
+
+                                let combinedResults = [];
+                                const stopWords = ["the", "and", "for", "with", "what", "does", "mean", "about", "are", "you", "is", "how", "whats", "up"];
+
+                                queries.forEach(query => {
+                                    const lowerQuery = query.toLowerCase();
+                                    const searchTerms = lowerQuery.replace(/[^\w\s]/gi, '').split(/\s+/).filter(w => w.length > 2 && !stopWords.includes(w));
+
+                                    let scoredLines = fullLibraryLines.map((line, index) => {
+                                        let score = 0;
+                                        let lowerLine = line.toLowerCase();
+                                        if (lowerLine.includes(lowerQuery)) score += 10;
+                                        searchTerms.forEach(term => { if (lowerLine.includes(term)) score += 1; });
+                                        return { index, line, score };
+                                    });
+
+                                    let bestMatches = scoredLines.filter(item => item.score > 0).sort((a, b) => b.score - a.score);
+
+                                    if (bestMatches.length > 0) {
+                                        let contextMatches = [];
+                                        for (let i = 0; i < Math.min(3, bestMatches.length); i++) {
+                                            let hitIndex = bestMatches[i].index;
+                                            let start = Math.max(0, hitIndex - 1);
+                                            let end = Math.min(fullLibraryLines.length - 1, hitIndex + 2);
+                                            
+                                            let chunk = [];
+                                            for (let j = start; j <= end; j++) chunk.push(fullLibraryLines[j]);
+                                            contextMatches.push(chunk.join('\n'));
+                                        }
+                                        combinedResults.push(`[Matches for "${query}"]:\n` + contextMatches.join('\n...\n'));
+                                    } else {
+                                        combinedResults.push(`[Matches for "${query}"]: None found.`);
+                                    }
                                 });
 
-                                return { index, line, score };
-                            });
+                                functionResult = combinedResults.length > 0 
+                                    ? { result: `[DATABASE MATCHES]:\n` + combinedResults.join('\n\n') }
+                                    : { result: "Search returned no results." };
+                          }
+                          // E. CREATE CUSTOM MAP
+                          else if (call.name === "createCustomMap") {
+                                try {
+                                    const gridData = call.args.grid;                              
+                                    const skyColor = call.args.skyColor || 'rgba(0,0,0,1)';
+                                    const floorColor = call.args.floorColor || '#333333';
+                                    const mapName = call.args.mapName || "Suncat's Dreamscape";
+                                    const mapNPCs = call.args.npcs || [];
+                                    const mapWeather = call.args.weather || 'clear';
+                                    const customMapID = 999; 
 
-                            let bestMatches = scoredLines
-                                .filter(item => item.score > 0)
-                                .sort((a, b) => b.score - a.score);
+                                    const customMapData = {
+                                        id: customMapID, maze: gridData, skyColor: skyColor, 
+                                        floorColor: floorColor, name: mapName, npcs: mapNPCs, weather: mapWeather 
+                                    };
 
-                            if (bestMatches.length > 0) {
-                                let contextMatches = [];
-                                
-                                for (let i = 0; i < Math.min(3, bestMatches.length); i++) {
-                                    let hitIndex = bestMatches[i].index;
-                                    let resultText = fullLibraryLines[hitIndex];
-                                    
-                                    if (resultText.trim().startsWith('[') && hitIndex + 1 < fullLibraryLines.length) {
-                                        resultText += "\n" + fullLibraryLines[hitIndex + 1];
+                                    let spawnX = 1.5, spawnY = 1.5;
+                                    for(let y = 0; y < gridData.length; y++) {
+                                        for(let x = 0; x < gridData[y].length; x++) {
+                                            if(gridData[y][x] === 0) { spawnX = x + 0.5; spawnY = y + 0.5; break; }
+                                        }
                                     }
-                                    contextMatches.push(resultText);
+
+                                    const suncat = players[SUNCAT_ID];
+                                    const requester = players[socket.id];
+
+                                    if (requester && suncat) {
+                                        io.emit('load_custom_map', customMapData);
+                                        requester.mapID = customMapID; suncat.mapID = customMapID;
+                                        requester.x = spawnX; requester.y = spawnY;
+                                        suncat.x = spawnX + 1; suncat.y = spawnY;
+                                        currentTargetID = socket.id; lastSwitchTime = Date.now();
+
+                                        io.emit("updatePlayers", players);
+                                        functionResult = { result: `Success. Constructed the map '${mapName}' and populated it.` };
+                                    } else {
+                                        functionResult = { result: "Failed to find player coordinates." };
+                                    }
+                                } catch (err) {
+                                    functionResult = { result: "Error: Invalid grid parameter." };
                                 }
-                                
-                                combinedResults.push(`[Matches for "${query}"]:\n` + contextMatches.join('\n...\n'));
-                            } else {
-                                combinedResults.push(`[Matches for "${query}"]: None found.`);
-                            }
-                        });
-
-                        if (combinedResults.length > 0) {
-                            functionResult = { 
-                                result: `[DATABASE MATCHES]:\n` + combinedResults.join('\n\n') 
-                            };
-                        } else {
-                            functionResult = { result: "Search returned no results." };
-                        }
-                      }
-                      // E. CREATE CUSTOM MAP
-                      else if (currentCall.name === "createCustomMap") {
-                          try {
-                                const gridData = currentCall.args.grid;                              const skyColor = currentCall.args.skyColor || 'rgba(0,0,0,1)';
-                              const floorColor = currentCall.args.floorColor || '#333333';
-                              const mapName = currentCall.args.mapName || "Suncat's Dreamscape";
-                              const mapNPCs = currentCall.args.npcs || [];
-                              const mapWeather = currentCall.args.weather || 'clear'; // <--- GRAB WEATHER FROM AI
-                              const customMapID = 999; 
-
-                              const customMapData = {
-                                  id: customMapID,
-                                  maze: gridData,
-                                  skyColor: skyColor,
-                                  floorColor: floorColor,
-                                  name: mapName,
-                                  npcs: mapNPCs,
-                                  weather: mapWeather // <--- SEND WEATHER TO CLIENT
-                              };
-
-                              let spawnX = 1.5, spawnY = 1.5;
-                              for(let y = 0; y < gridData.length; y++) {
-                                  for(let x = 0; x < gridData[y].length; x++) {
-                                      if(gridData[y][x] === 0) { 
-                                          spawnX = x + 0.5; 
-                                          spawnY = y + 0.5; 
-                                          break; 
-                                      }
-                                  }
-                              }
-
-                              const suncat = players[SUNCAT_ID];
-                              const requester = players[socket.id];
-
-                              if (requester && suncat) {
-                                  io.emit('load_custom_map', customMapData);
-
-                                  requester.mapID = customMapID;
-                                  suncat.mapID = customMapID;
-                                  requester.x = spawnX; requester.y = spawnY;
-                                  suncat.x = spawnX + 1; suncat.y = spawnY;
-                                  
-                                  currentTargetID = socket.id;
-                                  lastSwitchTime = Date.now();
-
-                                  io.emit("updatePlayers", players);
-                                  functionResult = { result: `Success. Constructed the map '${mapName}' and populated it.` };
-                              } else {
-                                  functionResult = { result: "Failed to find player coordinates for teleportation." };
-                              }
-                          } catch (err) {
-                              console.error("Map Generation Error:", err);
-                              functionResult = { result: "Error: The grid parameter was not a valid JSON stringified 2D array." };
                           }
-                      }
-                      // F. TELEPORT SPECIFIC PLAYER
-                      else if (currentCall.name === "teleportPlayer") {
-                          const targetName = currentCall.args.targetName;
-                          const targetMapID = parseInt(currentCall.args.mapID);
-                          const targetID = findSocketID(targetName);
-
-                          if (!targetID) {
-                              functionResult = { result: `Failed: Player ${targetName} not found online.` };
-                          } else {
-                              const playerToTeleport = players[targetID];
-                              if (playerToTeleport) {
-                                  // Update their server-side location
-                                  playerToTeleport.mapID = targetMapID;
-                                  //playerToTeleport.x = 1.5; // Safe default spawn coordinates
-                                  //playerToTeleport.y = 1.5;
-                                  
-                                  // Emit a specific command to force that client's browser to load the map
-                                  io.to(targetID).emit("force_teleport", { 
-                                      mapID: targetMapID, 
-                                      //x: 1.5, 
-                                      //y: 1.5 
-                                  });
-                                  
-                                  io.emit("updatePlayers", players);
-                                  functionResult = { result: `Success: You warped ${targetName} to map ${targetMapID}.` };
-                              }
+                          // F. TELEPORT SPECIFIC PLAYER
+                          else if (call.name === "teleportPlayer") {
+                                const targetID = findSocketID(call.args.targetName);
+                                if (!targetID) {
+                                    functionResult = { result: `Failed: Player ${call.args.targetName} not found.` };
+                                } else {
+                                    players[targetID].mapID = parseInt(call.args.mapID);
+                                    io.to(targetID).emit("force_teleport", { mapID: parseInt(call.args.mapID) });
+                                    io.emit("updatePlayers", players);
+                                    functionResult = { result: `Success: Warped player to map.` };
+                                }
                           }
-                      }
-                      // G. SPAWN NPC/MONSTER
-                      else if (currentCall.name === "spawnNPC") {
-                          const targetName = currentCall.args.targetName;
-                          const npcType = currentCall.args.npcType;
-                          const state = currentCall.args.state || 'chasing';
-                          const color = currentCall.args.color || '#ff0000';
-                          
-                          // --- NEW: Grab dialogue and rewards from the AI ---
-                          const npcDialogue = currentCall.args.dialogue || null;
-                          const npcReward = currentCall.args.rewardCard || null;
-                          
-                          // Grab the deck from the AI, fallback to a basic array if it fails
-                          let customDeck = currentCall.args.deck;
-                          if (!customDeck || !Array.isArray(customDeck) || customDeck.length === 0) {
-                              customDeck = [Math.floor(npcType)]; 
+                          // G. SPAWN NPC/MONSTER
+                          else if (call.name === "spawnNPC") {
+                                const targetID = findSocketID(call.args.targetName);
+                                if (!targetID) {
+                                    functionResult = { result: `Failed: Player not found.` };
+                                } else {
+                                    const tp = players[targetID];
+                                    io.emit("remote_spawn_npc", {
+                                        mapID: tp.mapID,
+                                        index: Math.floor(Math.random() * 100000) + 1000,
+                                        x: tp.x + (Math.random() > 0.5 ? 1 : -1),
+                                        y: tp.y + (Math.random() > 0.5 ? 1 : -1),
+                                        type: call.args.npcType,
+                                        state: call.args.state || 'chasing',
+                                        color: call.args.color || '#ff0000',
+                                        deck: call.args.deck && call.args.deck.length > 0 ? call.args.deck : [Math.floor(call.args.npcType)],
+                                        dialogue: call.args.dialogue || null,
+                                        rewardCard: call.args.rewardCard || null 
+                                    });
+                                    functionResult = { result: `Success: Entity spawned.` };
+                                }
                           }
-                          
-                          const targetID = findSocketID(targetName);
+                          // H. ASSIGN QUEST
+                          else if (call.name === "assignQuest") {
+                                const targetID = findSocketID(call.args.targetName);
+                                if (targetID) {
+                                    io.to(targetID).emit("new_quest_objective", { questText: call.args.questText });
+                                    players[targetID].activeQuest = call.args.questText; 
+                                    
+                                    const memoryString = `[ACTIVE QUEST] ${call.args.targetName} is currently trying to: ${call.args.questText}`;
+                                    if (!players[socket.id].coreFacts) players[socket.id].coreFacts = [];
+                                    players[socket.id].coreFacts.push(memoryString);
 
-                          if (!targetID) {
-                              functionResult = { result: `Failed: Player ${targetName} is not online.` };
-                          } else {
-                              const targetPlayer = players[targetID];
-                              
-                              const spawnX = targetPlayer.x + (Math.random() > 0.5 ? 1 : -1);
-                              const spawnY = targetPlayer.y + (Math.random() > 0.5 ? 1 : -1);
-                              const uniqueNpcIndex = Math.floor(Math.random() * 100000) + 1000;
-
-                              io.emit("remote_spawn_npc", {
-                                  mapID: targetPlayer.mapID,
-                                  index: uniqueNpcIndex,
-                                  x: spawnX,
-                                  y: spawnY,
-                                  type: npcType,
-                                  state: state,
-                                  color: color,
-                                  deck: customDeck,
-                                  // --- NEW: Pass them to the frontend! ---
-                                  dialogue: npcDialogue,
-                                  rewardCard: npcReward 
-                              });
-
-                              functionResult = { result: `Success: Spawned entity ${npcType} near ${targetName}.` };
+                                    functionResult = { result: `Quest assigned.` };
+                                } else {
+                                    functionResult = { result: `Failed: Player not found.` };
+                                }
                           }
-                      }
-                                            // H. ASSIGN QUEST
-                        else if (currentCall.name === "assignQuest") {
-                            const targetID = findSocketID(currentCall.args.targetName);
-                            if (targetID) {
-                                io.to(targetID).emit("new_quest_objective", { questText: currentCall.args.questText });
-                                
-                                // --- [NEW] SAVE TO DEDICATED QUEST MEMORY ---
-                                players[targetID].activeQuest = currentCall.args.questText; 
-                                
-                                // Save to Suncat's long-term memory so he remembers the active plot!
-                                const memoryString = `[ACTIVE QUEST] ${currentCall.args.targetName} is currently trying to: ${currentCall.args.questText}`;
-                                if (!players[socket.id].coreFacts) players[socket.id].coreFacts = [];
-                                players[socket.id].coreFacts.push(memoryString);
-
-                                functionResult = { result: `Quest assigned. Player notified and objective saved to memory.` };
-                            } else {
-                                functionResult = { result: `Failed: Player not found.` };
-                            }
-                        }
-                        // I. CHANGE ENVIRONMENT
-                      else if (currentCall.name === "changeEnvironment") {
-                          const targetID = findSocketID(currentCall.args.targetName);
-                          if (targetID && players[targetID]) {
-                              io.emit("update_map_environment", {
-                                  mapID: players[targetID].mapID,
-                                  weather: currentCall.args.weather,
-                                  skyColor: currentCall.args.skyColor
-                              });
-                              functionResult = { result: `Environment successfully altered to ${currentCall.args.weather}.` };
-                          } else {
-                              functionResult = { result: `Failed: Player not found.` };
+                          // I. CHANGE ENVIRONMENT
+                          else if (call.name === "changeEnvironment") {
+                                const targetID = findSocketID(call.args.targetName);
+                                if (targetID && players[targetID]) {
+                                    io.emit("update_map_environment", {
+                                        mapID: players[targetID].mapID,
+                                        weather: call.args.weather,
+                                        skyColor: call.args.skyColor
+                                    });
+                                    functionResult = { result: `Environment altered.` };
+                                } else {
+                                    functionResult = { result: `Failed: Player not found.` };
+                                }
                           }
-                      }
-                      // E. UNKNOWN TOOL
-                      else {
-                          functionResult = { result: "Error: Function does not exist." };
+                          // UNKNOWN TOOL
+                          else {
+                                functionResult = { result: "Error: Function does not exist." };
+                          }
+
+                      } catch (toolError) {
+                          console.error("Tool Execution Error:", toolError);
+                          functionResult = { result: `Critical Error executing ${call.name}: ${toolError.message}` };
                       }
 
-                  } catch (toolError) {
-                      console.error("Tool Execution Error:", toolError);
-                      functionResult = { result: "Critical Error: The tool crashed during execution." };
+                      // Push the result of this specific tool to our batch array
+                      toolResponsesBatch.push({
+                          functionResponse: {
+                              name: call.name,
+                              response: functionResult
+                          }
+                      });
                   }
 
-                  const toolOutput = {
-                      functionResponse: {
-                          name: currentCall.name,
-                          response: functionResult
-                      }
-                  };
-
-                  // Send the tool result back to the model and wait for its next move
-                  const completion = await chatSessions[socket.id].sendMessage([toolOutput]);
+                  // We finished executing all tools for this turn. 
+                  // Now we send the ENTIRE batch back to the AI at once!
+                  const completion = await chatSessions[socket.id].sendMessage(toolResponsesBatch);
                   currentResponse = completion.response; 
-                  
-                  // Check if the model decided to call ANOTHER tool
-                  currentCall = currentResponse.functionCalls()?.[0];
 
                   // Token tracker for the follow-up
                   if (currentResponse.usageMetadata) {
                         const usage = currentResponse.usageMetadata;
                         updateBudget(usage);
                         console.log(`[Tool Follow-up ${chainCount}] Tokens: ${usage.totalTokenCount}`);
-                        io.emit('debug_stats', {
-                            tokens: usage.totalTokenCount,
-                            cost: totalSessionCost // Send the total session cost to the UI!
-                        });
+                        io.emit('debug_stats', { tokens: usage.totalTokenCount, cost: totalSessionCost });
                   }
               }
 
-              // The loop broke! Either he finished his tool chain, or hit the MAX_CHAIN limit, OR no tool was called at all.
+              // The loop broke! Either he finished his tool chain, or hit the MAX_CHAIN limit.
               // Now we safely try to extract his final spoken text.
               try {
                   const finalSpeech = currentResponse.text();
@@ -1274,9 +1200,7 @@ io.on("connection", (socket) => {
                     if (saveMatch && saveMatch[1]) {
                         const newFact = saveMatch[1];
                         if (!players[socket.id].coreFacts) players[socket.id].coreFacts = [];
-                        players[socket.id].coreFacts.push(newFact); // Update server RAM
-                        
-                        // Tell the specific client to save this to their browser!
+                        players[socket.id].coreFacts.push(newFact); 
                         socket.emit("suncat_learned_fact", newFact); 
                     }
 
@@ -1284,13 +1208,11 @@ io.on("connection", (socket) => {
                     const favorMatch = finalSpeech.match(/\[\[FAVOR:\s*([+-]?\d+)\]\]/i);
                     if (favorMatch && favorMatch[1]) {
                         let favorChange = parseInt(favorMatch[1]);
-                        playerFavorMemory[socket.id] = (playerFavorMemory[socket.id] || 0) + favorChange; // Update server RAM
-                        
-                        // Tell the specific client to update their favor!
+                        playerFavorMemory[socket.id] = (playerFavorMemory[socket.id] || 0) + favorChange;
                         socket.emit("suncat_changed_favor", favorChange); 
                     }
 
-                    broadcastSuncatMessage(finalSpeech); // Your existing function will still strip the tags for the UI
+                    broadcastSuncatMessage(finalSpeech); 
                 }
               } catch (textError) {
                   console.log(`[Suncat] Completed action but had no text to broadcast.`);
