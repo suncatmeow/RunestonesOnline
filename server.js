@@ -1242,9 +1242,9 @@ socket.on('suncat_baroque', async (data, callback) => {
     try {
         const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
         const aiModel = genAI.getGenerativeModel({ 
-            model: "gemini-3.1-flash-lite-preview",
+            model: "gemini-2.5-flash-lite",
             generationConfig: {
-                temperature: 0.9, // Lowered slightly for strict Baroque mathematical structure
+                temperature: 1.3, // Lowered slightly for strict Baroque mathematical structure
                 topP: 0.95,       
                 topK: 60,         
             }
@@ -1314,7 +1314,7 @@ socket.on('suncat_baroque', async (data, callback) => {
         console.log(`[Music AI] Suncat is improvising a VOCAL performance...`);
         try {
             const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-            const aiModel = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite-preview" });
+            const aiModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
             const previousContext = data.currentState || "This is the very first bar of a brand new song.";
 
         const prompt = `
