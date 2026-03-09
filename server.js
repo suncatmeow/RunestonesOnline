@@ -964,90 +964,71 @@ io.on("connection", (socket) => {
           npcIsTyping = true;
 
           try {
-              // --- MODEL ROUTER (THE BRAIN SWAP) ---
-              // Expanded keywords to catch maps, spawns, and quest generation
-            const complexKeywords = [
-                "map", "dungeon", "maze", "create", "build", 
-                "spawn", "npc", "monster", "boss", "enemy", "dragon",
-                "quest", "adventure", "what next", "give me something to do",
-                "teleport", "warp", "send me", "move me",
-                "corridor", "arena", "gladiator", "gauntlet", "roleplay", "act as" // <-- NEW TRIGGERS
-            ];
+              // --- MODEL ROUTER (THE STATELESS BRAIN SWAP) ---
+              const complexKeywords = [
+                  "map", "dungeon", "maze", "create", "build", 
+                  "spawn", "npc", "monster", "boss", "enemy", "dragon",
+                  "quest", "adventure", "what next", "give me something to do",
+                  "teleport", "warp", "send me", "move me",
+                  "corridor", "arena", "gladiator", "gauntlet", "roleplay", "act as" // <-- NEW TRIGGERS
+              ];
               
               const isComplexTask = complexKeywords.some(kw => content.includes(kw));
 
-              let activeModel = model; // Default to 2.5 Flash Lite
-              if (isComplexTask) {
-                  console.log(`[ROUTER] Upgrading ${senderName}'s request to 3.1 Flash Lite DM Mode!`);
-                  activeModel = dmModel; 
-              }
-
-              // --- HISTORY MANAGEMENT ---
-              let currentHistory = [];
-              if (chatSessions[socket.id]) {
-                  currentHistory = await chatSessions[socket.id].getHistory();
-              } else {
-                  let favor = playerFavorMemory[socket.id] || 0;
-                  let facts = players[socket.id]?.coreFacts || [];
-                  let factSheet = facts.length > 0 ? "LONG-TERM MEMORY:\n" + facts.join("\n") : "";
-                  let systemContext = `[SYSTEM DATA]\n${factSheet}\n[CURRENT FAVOR: ${favor}/10]\n[SYSTEM NOTE]\nYou have access to a tool called 'consultGameManual'. If you need to know about Cards, Maps, Lore, Rules, or Yourself, YOU MUST USE THAT TOOL.`;
-
-                  currentHistory = [
-                      { role: "user", parts: [{ text: "Initialize System" }] },
-                      { role: "model", parts: [{ text: "System Online." }] },
-                      { role: "user", parts: [{ text: systemContext }] },
-                      { role: "model", parts: [{ text: "Soul Sync Complete." }] }
-                  ];
-              }
-
-              // --- HOT-SWAP THE CHAT SESSION ---
-              chatSessions[socket.id] = activeModel.startChat({
-                  history: currentHistory
-              });
-
-              // ... (The rest of your context injection and execution logic stays the same) ...
-
-     
               // --- CONTEXT INJECTION ---
               const suncat = players[SUNCAT_ID]; 
-                const timeString = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-                const suncatStatus = `My Location: Map ${suncat.mapID}, Coords (${Math.floor(suncat.x)}, ${Math.floor(suncat.y)})\nServer Time: ${timeString}`;              
-                let playerListContext = Object.values(players).map(p => 
+              const timeString = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+              const suncatStatus = `My Location: Map ${suncat.mapID}, Coords (${Math.floor(suncat.x)}, ${Math.floor(suncat.y)})\nServer Time: ${timeString}`;              
+              let playerListContext = Object.values(players).map(p => 
                   `Name: ${p.name} (Map: ${p.mapID || 0})`
-                    ).join("\n");
+              ).join("\n");
               
               const promptWithContext = `[CURRENT PLAYERS]\n${playerListContext}\n[MY STATUS]\n${suncatStatus}\n\n${senderName} SAYS: ${msgText}`;
 
+              // We define the session we will actively use for this turn
+              let activeSession = chatSessions[socket.id];
+              let result;
+
+              // --- STATELESS DM EXECUTION ---
+              if (isComplexTask) {
+                  console.log(`[ROUTER] Upgrading ${senderName}'s request to 3.1 Flash Lite DM Mode!`);
+                  
+                  // 1. Grab the current conversation history from the normal "Cheap Brain"
+                  let currentHistory = await activeSession.getHistory();
+                  
+                  // 2. Clone it into a TEMPORARY "Big Brain" session
+                  activeSession = dmModel.startChat({
+                      history: currentHistory
+                  });
+              }
+
               // --- SEND MESSAGE TO AI ---
-              const result = await chatSessions[socket.id].sendMessage(promptWithContext);
+              // This dynamically uses the Cheap Brain for normal chat, or the Temp Big Brain for tasks!
+              result = await activeSession.sendMessage(promptWithContext);
               
               if (result.response.usageMetadata) {
                     const usage = result.response.usageMetadata;
-                    updateBudget(usage); // Add to the global cost!
-                    console.log(`[Main Chat] Tokens: ${usage.totalTokenCount} (In: ${usage.promptTokenCount} / Out: ${usage.candidatesTokenCount})`);
-                    
-                    // Send to client for the live cost meter
+                    updateBudget(usage);
+                    console.log(`[Main Chat] Tokens: ${usage.totalTokenCount}`);
                     io.emit('debug_stats', {
                         tokens: usage.totalTokenCount,
-                        cost: totalSessionCost // Send the total session cost to the UI!                   
-                        });
-                    }
+                        cost: totalSessionCost 
+                    });
+              }
 
-              // --- TOOL HANDLING (UPGRADED FOR PARALLEL EXECUTION) ---
+              // --- TOOL HANDLING ---
               let currentResponse = result.response;
               let chainCount = 0;
-              const MAX_CHAIN = 6; // Stops him from looping forever
+              const MAX_CHAIN = 6; 
 
-              // Loop as long as the AI keeps requesting tools
               while (currentResponse.functionCalls() && chainCount < MAX_CHAIN) {
                   chainCount++;
                   const calls = currentResponse.functionCalls();
                   console.log(`[AI TOOL CHAIN ${chainCount}]: Suncat is executing ${calls.length} tools at once!`); 
 
-                  // We will store ALL the tool results here before sending them back
                   let toolResponsesBatch = [];
 
-                  // Process EVERY tool the AI asked for in this turn
+                  // Process EVERY tool the AI asked for
                   for (let call of calls) {
                       let functionResult = { result: "Action executed." };
                       
@@ -1288,21 +1269,30 @@ io.on("connection", (socket) => {
                   }
 
                   // We finished executing all tools for this turn. 
-                  // Now we send the ENTIRE batch back to the AI at once!
-                  const completion = await chatSessions[socket.id].sendMessage(toolResponsesBatch);
+                  // Send the ENTIRE batch back to the active session
+                  const completion = await activeSession.sendMessage(toolResponsesBatch);
                   currentResponse = completion.response; 
 
-                  // Token tracker for the follow-up
                   if (currentResponse.usageMetadata) {
                         const usage = currentResponse.usageMetadata;
                         updateBudget(usage);
-                        console.log(`[Tool Follow-up ${chainCount}] Tokens: ${usage.totalTokenCount}`);
                         io.emit('debug_stats', { tokens: usage.totalTokenCount, cost: totalSessionCost });
                   }
               }
 
-              // The loop broke! Either he finished his tool chain, or hit the MAX_CHAIN limit.
-              // Now we safely try to extract his final spoken text.
+              // --- RESTORE NORMAL BRAIN (CRITICAL STEP) ---
+              if (isComplexTask) {
+                  // The DM is finished executing tools and speaking. 
+                  // We extract the final updated history containing all the tool calls/responses!
+                  let updatedHistory = await activeSession.getHistory();
+                  
+                  // Rebuild the player's permanent session so the Cheap Brain remembers everything!
+                  chatSessions[socket.id] = model.startChat({
+                      history: updatedHistory
+                  });
+              }
+
+              // Finally, extract the spoken text and broadcast
               try {
                   const finalSpeech = currentResponse.text();
                   if (finalSpeech) {
