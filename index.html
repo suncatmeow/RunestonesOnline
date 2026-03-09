@@ -691,6 +691,10 @@ class NPC {
 
 
   checkCollision(maze, x, y) {
+    if (isNaN(x) || isNaN(y)) {
+        console.error("Collision check received NaN coordinates", {x, y});
+        return true; // Treat as collision to stop movement
+    }
     const points = [
         {x: x + this.radius, y: y}, 
         {x: x - this.radius, y: y}, 
@@ -42140,8 +42144,8 @@ class TaliesinModule {
         this.isFetching = false;
 
         // --- 1. THE LYRE TUNING ---
-        this.tempo = 30; 
-        this.targetTempo = 30; 
+        this.tempo = 60; 
+        this.targetTempo = 60; 
         this.baseFreq = 136.9; // Anchor frequency (approx D3)
         this.rootFreq = this.baseFreq; 
         this.currentKeyOffset = 0; // Tracks our current semitone shift (0-11)
@@ -43021,7 +43025,7 @@ function drawField(){
     
   }else{
       drawText(0, 2.8, 10, 0.6, song + ' / ' + (songcount-1), "rgba(100,100,100,1)", 1,'center')
-        if (song == 47){ MusicEngine.style= currentSuncatLyric
+        if (song == 46){ MusicEngine.style= currentSuncatLyric
           drawText(0, 1.75, 10, 0.5, MusicEngine.style, "rgba(255,100,0,1)", 1,'center');
         }
         else{
