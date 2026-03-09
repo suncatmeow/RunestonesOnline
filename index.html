@@ -26993,11 +26993,11 @@ jitterLFO.start(t);
     const tempoDrift = 1.0 + (Math.random() * 0.05 - 0.02); 
     
    // // If it's the end of a word, take a tiny bit of extra time to "breathe"
-//    if (isAtWordEnd) {
+   // if (isAtWordEnd) {
    //     t += dur * tempoDrift; 
-//   } else {
- //      t += dur * tempoDrift;
-  //  }
+   //} else {
+     //  t += dur * tempoDrift;
+   // }
       }
 vocalEnv.gain.setTargetAtTime(0, t, 0.02); 
         breathEnv.gain.setTargetAtTime(0, t, 0.02);
@@ -42097,7 +42097,7 @@ class TaliesinModule {
         this.timer = null;
         this.isPlaying = false;
         this.isFetching = false;
-
+        this.lastMelodyDegree = 0; // Remembers the pitch for vocals
         // --- 1. THE LYRE TUNING ---
         this.tempo = 90; 
         this.targetTempo = 90; 
@@ -42293,19 +42293,37 @@ class TaliesinModule {
             if (this.lyricMemory.length > 6) this.lyricMemory.shift();
         }
 
-        // 4. --- THE SYLLABLE MAPPER ---
-        // (It is safe to use fingersArr here now!)
+        // 4. --- THE SYLLABLE MAPPER (Anti-Drop Upgrade) ---
         let vocalArr = new Array(16).fill(null);
         
         if (phoneticString !== "") {
-            // Split the PHONETIC string by spaces and hyphens to get individual syllables
             let words = phoneticString.split(/[\s-]+/).filter(w => w.length > 0);
             let wordIdx = 0;
             
+            // Pass 1: Lock words strictly to the Lyre melody notes
             for (let i = 0; i < 16; i++) {
                 if (fingersArr[i] !== null && wordIdx < words.length) {
                     vocalArr[i] = words[wordIdx];
                     wordIdx++;
+                }
+            }
+            
+            // Pass 2: The Syllable Squeeze!
+            // If the AI wrote more words than notes, weave the leftovers into the gaps.
+            if (wordIdx < words.length) {
+                // Try to place them on eighth-notes (even ticks) first for better rhythm
+                for (let i = 0; i < 16 && wordIdx < words.length; i++) {
+                    if (vocalArr[i] === null && i % 2 === 0) {
+                        vocalArr[i] = words[wordIdx];
+                        wordIdx++;
+                    }
+                }
+                // Pass 3: If STILL not enough room, cram them into the remaining 16th-note gaps
+                for (let i = 0; i < 16 && wordIdx < words.length; i++) {
+                    if (vocalArr[i] === null) {
+                        vocalArr[i] = words[wordIdx];
+                        wordIdx++;
+                    }
                 }
             }
         }
@@ -42375,34 +42393,40 @@ class TaliesinModule {
         const thumbNote = this.thumbQueue.length > 0 ? this.thumbQueue.shift() : null;
         const fingerNote = this.fingersQueue.length > 0 ? this.fingersQueue.shift() : null;
         const strumNote = this.strumQueue.length > 0 ? this.strumQueue.shift() : null; 
+        const vocalSyllable = this.vocalQueue.length > 0 ? this.vocalQueue.shift() : null;
 
+        // 1. PLAY THE LYRE MELODY FIRST (And save the pitch!)
+        if (fingerNote !== null && typeof fingerNote === 'number' && !isNaN(fingerNote)) {
+            this.lastMelodyDegree = fingerNote; // Suncat listens to this note
+            const oct = (fingerNote > 7) ? 1 : 0; 
+            const swing = (Math.random() * 0.02); 
+            this.playHarpString(t + swing, fingerNote, oct, 2.5, 0.4, 'soft'); 
+        }
+
+        // 2. PLAY ACCOMPANIMENT
         if (strumNote !== null && typeof strumNote === 'number' && !isNaN(strumNote)) {
             this.strumChord(t, strumNote);
         }
+        if (thumbNote !== null && typeof thumbNote === 'number' && !isNaN(thumbNote)) {
+            this.playHarpString(t, thumbNote, -1, 3.0, 0.6, 'soft'); 
+        }
 
-        // ==========================================
-        // THE VOCAL INTEGRATION (Upgraded Grid Sync)
-        // ==========================================
-        
-        // 1. UI EVENT: Fire once per bar to display the full line
+        // 3. UI EVENT: Display the lyrics
         if (tick % 16 === 0 && this.lyricsQueue.length > 0) {
             const currentLyric = this.lyricsQueue.shift();
             if (currentLyric !== "") {
-                // Remove hyphens so the UI display looks clean!
                 const cleanLyric = currentLyric.replace(/-/g, '');
                 console.log(`%c[Suncat Sings] 🎵 "${cleanLyric}"`, 'color: #00e6e6; font-size: 16px; font-weight: bold;');
                 document.dispatchEvent(new CustomEvent('suncat_lyrics', { detail: cleanLyric }));
             }
         }
 
-        // 2. AUDIO TRIGGER: Fire exactly on the beat if there is a syllable
-        const vocalSyllable = this.vocalQueue.length > 0 ? this.vocalQueue.shift() : null;
-
+        // 4. AUDIO TRIGGER: Sing the Syllable!
         if (vocalSyllable) {
-            // Figure out the note the Lyre is playing right now
-            let degree = (fingerNote !== null) ? fingerNote : 0;
-            let d = parseInt(degree);
+            // Use the LAST known melody note so she stays in key between plucks
+            let d = parseInt(this.lastMelodyDegree);
             if (isNaN(d)) d = 0;
+            
             let oct = 0;
             const len = this.scale.length;
             while (d < 0) { d += len; oct -= 1; }
@@ -42410,10 +42434,9 @@ class TaliesinModule {
             const semitone = this.scale[d] + (oct * 12);
 
             const secondsPerBeat = 60.0 / this.tempo;
-            const tickDuration = secondsPerBeat * 0.25; // Length of a single tick (16th note)
+            const tickDuration = secondsPerBeat * 0.25; 
 
-            // --- NEW: THE LOOKAHEAD CALCULATOR ---
-            // Scan the upcoming queue to find how many ticks until the NEXT syllable
+            // Calculate exactly how long to hold the note
             let ticksUntilNext = 1;
             for (let i = 0; i < this.vocalQueue.length; i++) {
                 if (this.vocalQueue[i] !== null) {
@@ -42421,30 +42444,19 @@ class TaliesinModule {
                     break;
                 }
             }
-            // If the queue is empty, default to holding the final note for a half-note (8 ticks)
+            
+            // If there is no next syllable, default to 1 beat (4 ticks) instead of 8 to prevent endless holding
             if (ticksUntilNext === 1 && this.vocalQueue[0] === null) {
-                ticksUntilNext = 8; 
+                ticksUntilNext = 4; 
             }
 
-            // Calculate the exact target time. Cap it at 1 measure so Suncat doesn't hold forever!
-            const maxHoldTime = secondsPerBeat * 4; 
+            // Cap the maximum hold time at 1.5 beats (dotted quarter note) so she naturally "breathes"
+            const maxHoldTime = secondsPerBeat * 1.5; 
             const targetDuration = Math.min(ticksUntilNext * tickDuration, maxHoldTime);
 
             if (MusicEngine && typeof MusicEngine.sing === 'function') {
-                // Pass the exact targetDuration instead of a static singingSpeed
                 MusicEngine.sing(vocalSyllable, t, [semitone], this.rootFreq, targetDuration, 1.2, 0.15);
             }
-        }
-
-        // Play the Lyre
-        if (thumbNote !== null && typeof thumbNote === 'number' && !isNaN(thumbNote)) {
-            this.playHarpString(t, thumbNote, -1, 3.0, 0.6, 'soft'); 
-        }
-
-        if (fingerNote !== null && typeof fingerNote === 'number' && !isNaN(fingerNote)) {
-            const oct = (fingerNote > 7) ? 1 : 0; 
-            const swing = (Math.random() * 0.02); 
-            this.playHarpString(t + swing, fingerNote, oct, 2.5, 0.4, 'soft'); 
         }
     }
     strumChord(t, rootDegree) {
