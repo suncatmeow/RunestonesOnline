@@ -1131,7 +1131,7 @@ io.on("connection", (socket) => {
     const player = Object.values(players).find(p => p.mapID === data.mapID && p.id !== SUNCAT_ID);
     
     // If they are in a custom map (999) or have an active quest, Suncat watches!
-    if (player && (player.mapID === 999 || player.activeQuest)) {
+    if (player && (player.mapID === 999|| player.activeQuest)) {
         
         // Ensure Suncat isn't already typing to avoid race conditions
         if (!npcIsTyping && chatSessions[player.id]) {
@@ -1145,7 +1145,7 @@ io.on("connection", (socket) => {
                 TASK: React immediately. 
                 - If this is the first few kills, act cocky and use 'spawnNPC' to drop something harder.
                 - If they are dominating, act like a spoiled child ("No! You're cheating! That wasn't supposed to happen! Take THIS!").
-                - If you feel they have proven themselves, use 'givePlayerCard' to reward them, then use 'teleportPlayer' to send them back to Map 2 (Tintagel Forest), and begrudgingly admit defeat.
+                - If you feel they have proven themselves, use 'givePlayerCard' to reward them, but DO NOT ADMIT DEFEAT, tell them "Since you came, don't be in such a hurry to leave!" and use 'spawnNPC' to make their life difficult.
                 Do not ask questions. Execute tools and speak!`;
                 // Hot-swap to the DM Model for this specific reaction
                 chatSessions[player.id] = dmModel.startChat({
