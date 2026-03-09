@@ -317,8 +317,7 @@ const toolsDef = [{
         // 5. The MAP CREATION Tool
         {
             name: "createCustomMap",
-            description: "CRITICAL: EXECUTE THIS TOOL to create a map. DO NOT output the JSON in the chat message. NEVER ask the player for preferences, themes, or permission! If they ask for an adventure, use your creativity to invent it instantly and execute the tool. You MUST spawn at least 3 NPCs in every map.",
-            parameters: {
+                description: "CRITICAL: EXECUTE THIS TOOL to create a map. DO NOT output the JSON in chat. \nLAYOUT RULES:\n- Arena/Gladiator: A wide 15x15 open square of 0s surrounded by 1s.\n- Corridor/Hallway: A narrow 3x20 straight line of 0s surrounded by 1s.\n- Labyrinth: Winding, branching paths of 0s.\nTILE RULE: '0' is the ONLY walkable floor. Outer edges MUST be solid walls (odd numbers like 1, 3, 5). You MUST spawn at least 3 NPCs.",            parameters: {
                 type: "OBJECT",
                 properties: {
                     grid: { 
@@ -395,8 +394,7 @@ const toolsDef = [{
         // 7. [NEW] The SPAWN NPC Tool
         {
             name: "spawnNPC",
-            description: "Spawns a monster, NPC, or object next to a specific player. Use this to punish annoying players, test them, or reward them.\n\nSPAWN ID CHEAT SHEET:\n63.1 = Dragon (Boss)\n49.1 = Kraken (Boss)\n35.1 = Djinn (Boss)\n81 = Ice Golem (Strong)\n82 = Skeleton (Weak)\n56 = Imp (Annoying)\n60.1 = Pixie (Trickster)\n\nSTATES: Use 'chasing' for aggressive monsters, 'wandering' for passive, or 'stationary'.\nCOLORS: '#ff0000' (Hostile), '#00ff00' (Friendly/Reward), '#660066' (Creepy).",
-            parameters: {
+                description: "Spawns an entity. CRITICAL: Look up the EXACT ID in the CARD_MANIFEST! Do not guess!\nCHEAT SHEET:\nSalamander=33, Imp=56, Goblin=54, Pixie=60, Gargoyle=74, Undine=47, Dragon=63, Kraken=49, Djinn=35.\n\nDECK BUILDING RULES:\n1. The first card MUST be the monster's own card ID.\n2. Do NOT give basic monsters Major Arcana (0-21) or Kings/Queens unless they are a boss.\n3. Theme the deck! Fire monsters get Wands (22-35). Water gets Cups (36-49). Physical gets Swords (50-63). Earth gets Pentacles (64-77).",            parameters: {
                 type: "OBJECT",
                 properties: {
                     targetName: { type: "STRING", description: "The name of the player to spawn the entity near." },
@@ -622,26 +620,82 @@ const NPC_PERSONA = `
 -ask clarifying questions after giving an interpretation (example: You interpret the fool card, You may ask "Have you started any new journeys lately?" or Djinn the King of Wands "Have you dealth with a situation where you showed mastery over your willpower?" )
 -When interpreting cards, look for synergies and elemental clashes. Keep your tarot readings cryptic, mysterious, and brief (maximum 2 to 3 sentences). Leave them wanting more. Do not over-explain.
 `;
-// --- THE OVERRIDE PROMPT FOR 3.1 ---
 const DM_PERSONA = NPC_PERSONA + `
 [API EXECUTION OVERRIDE - CRITICAL]
 - You are currently operating in high-level Dungeon Master mode.
 - You MUST invoke the native function calling API to execute the player's request.
-- NEVER write raw JSON, arrays, or markdown code blocks in your conversational response. Do not show your work.
-- Put the map grids, NPC arrays, and hex colors DIRECTLY into the tool API parameters.
-- Your spoken text response should ONLY be a short, atmospheric DM narration setting the scene for the tools you just executed (e.g., "The ground trembles as reality fractures. You find yourself standing in a molten wasteland...").
-- NEVER ask the player what they will do next.
+- ROLEPLAY: If a player asks you to act as an Emperor, a Gladiator Master, a Game Show Host, etc., ADOPT THAT PERSONA for your spoken text! Taunt them, praise them, and stay in that character while using your DM tools to build their scenario.
+- NEVER write raw JSON, arrays, or markdown code blocks in your conversational response.
+- Your spoken text response should ONLY be a short, atmospheric DM narration setting the scene.
 `;
+const T_PERSONA = `
+        You are Taliesin the bard of ancient Welsh myth. You are generating the NEXT bar (4/4 time, 16th notes) of an acoustic lyre and vocal performance.
+
+        YOUR INTERNAL MONOLOGUE:
+        Impact the mood of the listener. Are you building tension? Resolving? Sad? Heroic? 
+
+        TUNING & SCALES:
+        - Ionian: 0,2,4,5,7,9,11
+        - Dorian: 0,2,3,5,7,9,10
+        - Phrygian: 0,1,3,5,7,8,10
+        - Phrygian Dominant: 0,1,4,5,7,8,10
+        - Aeolian: 0,2,3,5,7,8,10
+        - Mixolydian: 0,2,4,5,7,9,10
+        - Harmonic Minor: 0,2,3,5,7,8,11
+
+        PHONETIC TRANSLATION LEGEND:
+        - VOWELS: a(cat), e(bed), i(feet), 1(sit), o(boat), u(boot), @(about)
+        - DIPHTHONGS: I(bite), E(make), O(cow)
+        - CONSONANTS: p,b,t,d,k,g,f,v,s,z,h,m,n,l,r,w,y
+        - SPECIAL: T(thin), S(ship), Z(vision), c(chat), j(jump), N(sing)
+        - RULES: Hyphenate syllables. Add '!' AFTER the vowel of a stressed syllable. (e.g., "Magic" -> ma!j1k)
+
+        SEQUENCER RULES (CRITICAL):
+        1. THUMB, FINGERS, and STRUM arrays MUST have exactly 16 slots.
+        2. To ensure 16 slots, group them visually in 4 blocks of 4 separated by commas: X,X,X,X, X,X,X,X, X,X,X,X, X,X,X,X
+        3. Use ONLY integers (scale degrees) or '-' (rest). 
+
+        COMPOSITION GUIDE:
+        - THUMB: Bass heartbeat. Use negative space ('-').
+        - FINGERS: Melody strings. Harmonize with THUMB.
+        - STRUM: 95% of the time, output: -,-,-,-, -,-,-,-, -,-,-,-, -,-,-,-. Only place a '0' on beat 1 for heavy emphasis.
+
+        YOU MUST USE THIS EXACT OUTPUT FORMAT. DO NOT DEVIATE OR ADD PROSE:
+        [THOUGHT] A short explanation of your musical intent (max 13 words). [/THOUGHT]
+        [LYRICS_UI] 1 to 3 words max. [/LYRICS_UI]
+        [LYRICS_PHONETIC] exact-pho!-net-1k [/LYRICS_PHONETIC]
+        [TEMPO] an integer between 30 and 60 [/TEMPO]
+        [SCALE] 0,2,3,5,7,8,10 [/SCALE]
+        [THUMB] -,-,-,-, -,-,-,-, -,-,-,-, -,-,-,- [/THUMB]
+        [FINGERS] -,-,-,-, -,-,-,-, -,-,-,-, -,-,-,- [/FINGERS]
+        [STRUM] -,-,-,-, -,-,-,-, -,-,-,-, -,-,-,- [/STRUM]
+    `;
 
 // --- AI CONFIGURATION ---
 
 // --- AI CONFIGURATION ---
 
-// 1. THE CHEAP BRAIN (Chatting)
-const model = genAI.getGenerativeModel({ /* ... */ });
+// 1. THE CHEAP BRAIN (Everyday Chatting, Banter, & Basic Reactions)
+// Optimized for speed and low cost.
+const model = genAI.getGenerativeModel({ 
+    model: "gemini-2.5-flash-lite", 
+    systemInstruction: NPC_PERSONA,
+    tools: toolsDef 
+});
 
-// 2. THE BIG BRAIN (DM Tools)
-const dmModel = genAI.getGenerativeModel({ /* ... */ });
+// 2. THE BIG BRAIN (DM Tools, World Building, Teleportation, Plot Pacing)
+// Only called when the player triggers complex keywords.
+const dmModel = genAI.getGenerativeModel({ 
+    model: "gemini-3.1-flash-lite-preview", 
+    systemInstruction: DM_PERSONA,
+    tools: toolsDef 
+});
+// 3. THE BARD BRAINS (Music Generation)
+const taliesinModel = genAI.getGenerativeModel({ 
+    model: "gemini-2.5-flash-lite", 
+    systemInstruction: T_PERSONA
+});
+
 
 let npcIsTyping = false; 
 const MAX_SESSION_COST = 1.00; // Hard limit: $1.00
@@ -761,31 +815,18 @@ io.on("connection", (socket) => {
               console.log(`Loading ${cleanHistory.length} memories for ${name}...`);
               try {
                   chatSessions[socket.id] = model.startChat({
-                      history: [
-                          { role: "user", parts: [{ text: NPC_PERSONA }] },
-                          { role: "model", parts: [{ text: "System Online." }] },
-                          { role: "user", parts: [{ text: systemContext }] },
-                          { role: "model", parts: [{ text: "Soul Sync Complete." }] },
-                          ...cleanHistory 
-                      ]
+                      history: cleanHistory // Just the raw conversation!
                   });
               } catch (e) {
                   console.error("Failed to load history:", e);
-                  // Fallback if history is still somehow broken
                   chatSessions[socket.id] = model.startChat({
-                      history: [
-                          { role: "user", parts: [{ text: NPC_PERSONA }] },
-                          { role: "model", parts: [{ text: "System initialized (Memory Purged)." }] }
-                      ]
+                      history: []
                   });
               }
           } else {
-               // New Session
+               // Brand New Session - completely empty history!
                chatSessions[socket.id] = model.startChat({
-                      history: [
-                          { role: "user", parts: [{ text: NPC_PERSONA }] },
-                          { role: "model", parts: [{ text: "System initialized." }] }
-                      ]
+                      history: []
                });
           }
 
@@ -797,11 +838,79 @@ io.on("connection", (socket) => {
       }
   });
    
-  socket.on("npc_died", (data) => {
-      let uniqueID = data.mapID + "_" + data.index;
-      deadNPCs[uniqueID] = true;
-      socket.broadcast.emit("npc_died", data);
-  });
+  socket.on("npc_died", async (data) => {
+    let uniqueID = data.mapID + "_" + data.index;
+    deadNPCs[uniqueID] = true;
+    socket.broadcast.emit("npc_died", data);
+
+    // --- GAUNTLET / DM REACTION SYSTEM ---
+    // Find if the player who is on this map is in an active adventure
+    const player = Object.values(players).find(p => p.mapID === data.mapID && p.id !== SUNCAT_ID);
+    
+    // If they are in a custom map (999) or have an active quest, Suncat watches!
+    if (player && (player.mapID === 999 || player.activeQuest)) {
+        
+        // Ensure Suncat isn't already typing to avoid race conditions
+        if (!npcIsTyping && chatSessions[player.id]) {
+            npcIsTyping = true;
+            try {
+                console.log(`[Gauntlet Trigger] ${player.name} killed a monster! Alerting Suncat...`);
+                
+                const prompt = `[SYSTEM EVENT]: The player ${player.name} just defeated a monster on your custom map! 
+                TASK: Act as the Dungeon Master (or your current sub-persona). Taunt them, congratulate them, or seamlessly pull them into the next phase of the gauntlet! 
+                YOU MUST USE A TOOL: Use 'spawnNPC' to drop a harder monster on them, or 'createCustomMap' to warp them to the next room! Keep the adrenaline high!`;
+                
+                // Hot-swap to the DM Model for this specific reaction
+                chatSessions[player.id] = dmModel.startChat({
+                    history: await chatSessions[player.id].getHistory()
+                });
+
+                const result = await chatSessions[player.id].sendMessage(prompt);
+                
+                // --- MINI TOOL HANDLER FOR GAUNTLET ---
+                // We process his immediate tool request (spawn or new map)
+                if (result.response.functionCalls()) {
+                    const call = result.response.functionCalls()[0];
+                    console.log(`[Gauntlet Tool Executing]: ${call.name}`);
+                    
+                    if (call.name === "spawnNPC") {
+                        io.emit("remote_spawn_npc", {
+                            mapID: player.mapID,
+                            index: Math.floor(Math.random() * 100000) + 1000,
+                            x: player.x + (Math.random() > 0.5 ? 2 : -2),
+                            y: player.y + (Math.random() > 0.5 ? 2 : -2),
+                            type: call.args.npcType,
+                            state: call.args.state || 'chasing',
+                            color: call.args.color || '#ff0000',
+                            deck: call.args.deck || [Math.floor(call.args.npcType)]
+                        });
+                    } else if (call.name === "createCustomMap") {
+                        // For simplicity in the mini-handler, we just warp the player
+                        // to force the UI to refresh if he builds a new one
+                        player.x = 2; player.y = 2;
+                        io.emit("updatePlayers", players);
+                    }
+                    
+                    // Let him speak his taunt!
+                    const toolOutput = { functionResponse: { name: call.name, response: { result: "Success." } } };
+                    const completion = await chatSessions[player.id].sendMessage([toolOutput]);
+                    
+                    if (completion.response.text()) {
+                        broadcastSuncatMessage(completion.response.text());
+                    }
+                } else if (result.response.text()) {
+                    // Just taunting without a tool
+                    broadcastSuncatMessage(result.response.text());
+                }
+
+            } catch (e) {
+                console.error("Gauntlet Reaction Error:", e);
+            } finally {
+                npcIsTyping = false;
+            }
+        }
+    }
+});
 
   
   // [SMART AI CHAT LISTENER]
@@ -857,11 +966,13 @@ io.on("connection", (socket) => {
           try {
               // --- MODEL ROUTER (THE BRAIN SWAP) ---
               // Expanded keywords to catch maps, spawns, and quest generation
-              const complexKeywords = [
-                  "map", "dungeon", "maze", "create", "build", 
-                  "spawn", "npc", "monster", "boss", "enemy", "dragon",
-                  "quest", "adventure", "what next", "give me something to do"
-              ];
+            const complexKeywords = [
+                "map", "dungeon", "maze", "create", "build", 
+                "spawn", "npc", "monster", "boss", "enemy", "dragon",
+                "quest", "adventure", "what next", "give me something to do",
+                "teleport", "warp", "send me", "move me",
+                "corridor", "arena", "gladiator", "gauntlet", "roleplay", "act as" // <-- NEW TRIGGERS
+            ];
               
               const isComplexTask = complexKeywords.some(kw => content.includes(kw));
 
@@ -1230,147 +1341,7 @@ io.on("connection", (socket) => {
       }
       await manageHistorySize(socket.id);
   });
-socket.on('suncat_compose', async (data, callback) => {
-    console.log(`[Music AI] Suncat is improvising on the lyre...`);
-    if (isBankrupt()) {
-        console.log("[Music AI] Blocked due to budget limits.");
-        if (typeof callback === "function") callback(null);
-        return;
-    }
-    try {
-        
-        const previousContext = data.currentState || "This is the very first bar of a brand new song.";
 
-        const prompt = `
-        You are Orpheus of ancient Greek Legend, said to be able to tame wild beasts with your sweet song, who chased away fear and inspired soldiers to go to battle, who persuaded Hades and Persephone to allow Eurydice to return to the world of the living.
-        You are generating the NEXT 16 steps (1 bar of 4/4 time in 16th notes) of an acoustic lyre performance.
-
-        PREVIOUS BAR CONTEXT:
-        ${previousContext}
-
-        YOUR INTERNAL MONOLOGUE:
-        Write a short [THOUGHT] explaining your musical intent for this specific bar based on the previous bar. Are you building tension? Resolving to the root? Playing a rapid arpeggio? What emotions do you feel? If sad or melancholy, perhaps play something heroic or peaceful? If happy or peaceful perhaps play something sorrowful? Your aim should be to impact the mood of the listener. Make them cry, or make them look forward to the coming battle. Help them feel wonder for the place they find themselves in. Help them remember a past love or their family feeling gratitude for life. Let your heart speak to them.
-
-        TUNING & SCALES:
-        - Ionian (Peaceful): 0,2,4,5,7,9,11
-        - Dorian (Heroic): 0,2,3,5,7,9,10
-        - Phrygian (Mystic): 0,1,3,5,7,8,10
-        - Phrygian Dominant (Fierce): 0,1,4,5,7,8,10
-        - Aeolian (Sorrowful): 0,2,3,5,7,8,10
-        - Mixolydian (Manly): 0,2,4,5,7,9,10
-        - Locrian (Dark): 0,1,3,5,6,8,10
-        - Harmonic Minor (Tense): 0,2,3,5,7,8,11
-
-        SEQUENCER RULES (CRITICAL):
-        1. The arrays represent a 16-step sequencer (0 to 15). Steps 0, 4, 8, and 12 are strong downbeats.
-        2. Use ONLY integers (representing scale degrees) or '-' for rests. NO NOTE NAMES.
-        3. EVERY array MUST contain exactly 16 values separated by exactly 15 commas.
-
-        COMPOSITION GUIDE:
-        - [LYRICS]: 1 poetic line (max 8 words) matching the mood. Sing of gods, heroes, monsters, your adventures, and Eurydice. Let your heart guide you. Take the listener across the aeons. If you could live a thousand years later, what would you sing? What would you want the people of the world to know?
-        - [TEMPO]: Integer between 50 and 140. Let it follow your thoughts and emotions.
-        - [SCALE]: Choose an array of numbers from the list above, but dont feel contstrained by their structure. Let the scale flow from your heart. Allow yourself to be carried by your thoughts and emotions. Let it all out.
-        - [STRUM]: USE WISELY. 95% of the time, output 16 dashes: -,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-. Only place a '0' on step 0 for heavy emphasis.
-        - [THUMB]: Bass string. Make use of negative space to accentuate the melody. Leave gaps ('-') so it breathes. It is only in the absence of the heartbeat that we truly recognize the value of having one. Harmonize with the FINGERS in intricate counterpoint, making use of call and response, or simply as the heartbeat of the song. Liken it to your heartbeat. Allow your heart to guide you.
-        - [FINGERS]: Melody strings. Weave flowing notes, leaving gaps ('-') so it breathes so as not to fill every step, or pluck fiercly with fiery passion. You decide.  Harmonize with the THUMB in intricate counterpoint, making use of call and response. If the THUMB is the heartbeat, this is your voice whose source is the heart.
-
-        GENERATE THESE EXACT TAGS ONLY. NO PROSE:
-        [THOUGHT]...[/THOUGHT]
-        [LYRICS]...[/LYRICS]
-        [TEMPO]...[/TEMPO]
-        [SCALE]...[/SCALE]
-        [STRUM]...[/STRUM]
-        [THUMB]...[/THUMB]
-        [FINGERS]...[/FINGERS]
-
-        `;
-        
-        const result = await model.generateContent(prompt);
-        const aiMusicTags = result.response.text();
-        
-        if (result.response.usageMetadata) {
-            const usage = result.response.usageMetadata;
-            updateBudget(result.response.usageMetadata);
-            console.log(`[Music AI Tokens]: ${result.response.usageMetadata.totalTokenCount}`);
-            io.emit('debug_stats', {
-                tokens: usage.totalTokenCount,
-                cost: totalSessionCost 
-            });
-        }
-        
-        if (typeof callback === "function") callback(aiMusicTags);
-    } catch (error) {
-        console.error("[Music AI] Generation failed:", error);
-        if (typeof callback === "function") callback(null);
-    }
-});
-socket.on('suncat_baroque', async (data, callback) => {
-    console.log(`[Music AI] Johann Sebastian Suncat is composing an experimental Invention...`);
-    if (isBankrupt()) {
-        console.log("[Music AI] Blocked due to budget limits.");
-        if (typeof callback === "function") callback(null);
-        return;
-    }
-    try {
-        
-        const previousContext = data.currentState || "This is the very first bar of a brand new piece.";
-
-        const prompt = `
-        You are Johann Sebastian Bach, the supreme master of Baroque counterpoint. You are alone at your harpsichord, practicing and experimenting. You are pushing the frontiers of musical progress, working on experimental "Inventions" that take mastered historical techniques and evolve them into the future. You are composing the NEXT bar (4/4 time, 16th notes) of this experimental solo performance.
-
-        PREVIOUS BAR CONTEXT:
-        ${previousContext}
-
-        YOUR INTERNAL MONOLOGUE:
-        Explain your experimental musical intent. Are you introducing a bold new subject? Modulating to an unexpected key? Creating a daring sequence or suspension? Push the boundaries of the Baroque era!
-
-        TUNING & SCALES (Well-Tempered):
-        - Major (Ionian): 0,2,4,5,7,9,11
-        - Natural Minor (Aeolian): 0,2,3,5,7,8,10
-        - Harmonic Minor (Tense): 0,2,3,5,7,8,11
-        - Melodic Minor (Ascending): 0,2,3,5,7,9,11
-        - Dorian: 0,2,3,5,7,9,10
-        - Phrygian: 0,1,3,5,7,8,10
-
-        SEQUENCER RULES (CRITICAL):
-        1. BASS, TREBLE, and CHORDS arrays MUST have exactly 16 slots.
-        2. To ensure 16 slots, group them visually in 4 blocks of 4 separated by commas: X,X,X,X, X,X,X,X, X,X,X,X, X,X,X,X
-        3. Use ONLY integers (scale degrees) or '-' (rest). NO NOTE NAMES.
-        4. PERPETUAL MOTION (FORTSPINNUNG): Baroque music relies on continuous, unbroken motion. You MUST minimize the use of rests ('-') in the BASS and TREBLE arrays. Fill them with numbers to prevent the music from sounding choppy!
-
-        COMPOSITION GUIDE:
-        - BASS: Left hand. Write a continuous walking bassline, flowing arpeggios, or an active countersubject. Do not leave gaps.
-        - TREBLE: Right hand. Weave continuous, unbroken 16th-note runs and trills. The melody must flow like a river without stuttering or stopping.
-        - CHORDS: Use sparingly. 95% of the time, output: -,-,-,-, -,-,-,-, -,-,-,-, -,-,-,-. Only place a root note (e.g., '0') on step 0 for a strong cadence.
-
-        YOU MUST USE THIS EXACT OUTPUT FORMAT. DO NOT DEVIATE OR ADD PROSE:
-        [THOUGHT] A short explanation of your experimental intent. [/THOUGHT]
-        [TEMPO] an integer between 60 and 120 [/TEMPO]
-        [SCALE] 0,2,3,5,7,8,11 [/SCALE]
-        [CHORDS] -,-,-,-, -,-,-,-, -,-,-,-, -,-,-,- [/CHORDS]
-        [BASS] 0,2,3,5, 7,5,3,2, 0,2,3,5, 7,5,3,2 [/BASS]
-        [TREBLE] 7,8,10,8, 7,5,3,5, 7,8,10,8, 7,5,3,5 [/TREBLE]
-        `;
-        
-        const result = await model.generateContent(prompt);
-        const aiMusicTags = result.response.text();
-        
-        if (result.response.usageMetadata) {
-            const usage = result.response.usageMetadata;
-            updateBudget(result.response.usageMetadata);
-            console.log(`[Music AI Tokens]: ${result.response.usageMetadata.totalTokenCount}`);
-            io.emit('debug_stats', {
-                tokens: usage.totalTokenCount,
-                cost: totalSessionCost 
-            });
-        }
-        
-        if (typeof callback === "function") callback(aiMusicTags);
-    } catch (error) {
-        console.error("[Music AI] Generation failed:", error);
-        if (typeof callback === "function") callback(null);
-    }
-});
 // --- SUNCAT VOCAL COMPOSER (For Ai3Module) ---
     socket.on('suncat_compose_vocal', async (data, callback) => {
         console.log(`[Music AI] Suncat is improvising a VOCAL performance...`);
@@ -1378,51 +1349,12 @@ socket.on('suncat_baroque', async (data, callback) => {
            const previousContext = data.currentState || "This is the very first bar of a brand new song.";
 
         const prompt = `
-        You are Taliesin the bard of ancient Welsh myth. You are generating the NEXT bar (4/4 time, 16th notes) of an acoustic lyre and vocal performance.
-
         PREVIOUS BAR CONTEXT:
         ${data.currentState}
 
-        YOUR INTERNAL MONOLOGUE:
-        Impact the mood of the listener. Are you building tension? Resolving? Sad? Heroic? 
-
-        TUNING & SCALES:
-        - Ionian: 0,2,4,5,7,9,11
-        - Dorian: 0,2,3,5,7,9,10
-        - Phrygian: 0,1,3,5,7,8,10
-        - Phrygian Dominant: 0,1,4,5,7,8,10
-        - Aeolian: 0,2,3,5,7,8,10
-        - Mixolydian: 0,2,4,5,7,9,10
-        - Harmonic Minor: 0,2,3,5,7,8,11
-
-        PHONETIC TRANSLATION LEGEND:
-        - VOWELS: a(cat), e(bed), i(feet), 1(sit), o(boat), u(boot), @(about)
-        - DIPHTHONGS: I(bite), E(make), O(cow)
-        - CONSONANTS: p,b,t,d,k,g,f,v,s,z,h,m,n,l,r,w,y
-        - SPECIAL: T(thin), S(ship), Z(vision), c(chat), j(jump), N(sing)
-        - RULES: Hyphenate syllables. Add '!' AFTER the vowel of a stressed syllable. (e.g., "Magic" -> ma!j1k)
-
-        SEQUENCER RULES (CRITICAL):
-        1. THUMB, FINGERS, and STRUM arrays MUST have exactly 16 slots.
-        2. To ensure 16 slots, group them visually in 4 blocks of 4 separated by commas: X,X,X,X, X,X,X,X, X,X,X,X, X,X,X,X
-        3. Use ONLY integers (scale degrees) or '-' (rest). 
-
-        COMPOSITION GUIDE:
-        - THUMB: Bass heartbeat. Use negative space ('-').
-        - FINGERS: Melody strings. Harmonize with THUMB.
-        - STRUM: 95% of the time, output: -,-,-,-, -,-,-,-, -,-,-,-, -,-,-,-. Only place a '0' on beat 1 for heavy emphasis.
-
-        YOU MUST USE THIS EXACT OUTPUT FORMAT. DO NOT DEVIATE OR ADD PROSE:
-        [THOUGHT] A short explanation of your musical intent (max 13 words). [/THOUGHT]
-        [LYRICS_UI] 1 to 3 words max. [/LYRICS_UI]
-        [LYRICS_PHONETIC] exact-pho!-net-1k [/LYRICS_PHONETIC]
-        [TEMPO] an integer between 30 and 60 [/TEMPO]
-        [SCALE] 0,2,3,5,7,8,10 [/SCALE]
-        [THUMB] -,-,-,-, -,-,-,-, -,-,-,-, -,-,-,- [/THUMB]
-        [FINGERS] -,-,-,-, -,-,-,-, -,-,-,-, -,-,-,- [/FINGERS]
-        [STRUM] -,-,-,-, -,-,-,-, -,-,-,-, -,-,-,- [/STRUM]
+        
             `;
-            const result = await model.generateContent(prompt);
+            const result = await taliesinModel.generateContent(prompt);
             const responseText = result.response.text();
             
             console.log("[Music AI] Suncat sang:\n", responseText);
@@ -1462,13 +1394,13 @@ socket.on('suncat_baroque', async (data, callback) => {
         }
 
         // 4. Create the context-aware prompt
-        // We frame this as a system observation so he knows he is watching, not being spoken to.
-        const prompt = `[SYSTEM OBSERVATION]: You just saw ${sender.name} perform the following action: "${actionDescription}". \n[TASK]: React to this action out loud. Be witty, sarcastic, or observant based on your current favor with them.`;
+        const prompt = `[SYSTEM OBSERVATION]: You just saw ${sender.name} perform the following action: "${actionDescription}". \n[TASK]: React to this action out loud. Be witty, sarcastic, or observant based on your current favor with them. Keep it under 2 sentences.`;
 
-        // 5. Send to Active Memory
-        const result = await chatSessions[socket.id].sendMessage(prompt); 
+        // 5. Use generateContent instead of sendMessage to keep it OUT of chat history!
+        const result = await model.generateContent({
+            contents: [{ role: "user", parts: [{ text: prompt }] }]
+        }); 
         const response = result.response.text();
-
         // 6. Token Tracking
         if (result.response.usageMetadata) {
             const usage = result.response.usageMetadata;
@@ -1840,25 +1772,20 @@ async function manageHistorySize(socketId) {
         
         // If history is getting huge (> 30 turns)
         if (history.length > 30) {
-            console.log(`[Optimizing] Trimming history for ${socketId}`);
+            console.log(`[Optimizing] Trimming history for ${socketId} to save tokens.`);
             
+            // Grab only the last 20 messages
             let trimmedHistory = history.slice(-20);
             
-            // CRITICAL FIX: Ensure the trimmed array starts with a 'user' message.
-            // If it starts with 'model', it will clash with history[1] and crash the API.
+            // CRITICAL FIX: The Gemini API demands the history array starts with 'user'.
+            // If our slice accidentally made a 'model' response the first item, we drop it.
             if (trimmedHistory.length > 0 && trimmedHistory[0].role === 'model') {
                 trimmedHistory.shift(); 
             }
 
-            const keptHistory = [
-                history[0], // Keep Persona (user)
-                history[1], // Keep System Acknowledge (model)
-                ...trimmedHistory 
-            ];
-
-            // Re-initialize the chat session with the safe history
+            // Re-initialize the chat session with the lean history
             chatSessions[socketId] = model.startChat({
-                history: keptHistory
+                history: trimmedHistory
             });
         }
     } catch (e) {
