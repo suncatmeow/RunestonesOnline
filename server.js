@@ -670,9 +670,9 @@ const T_PERSONA = `
 
         YOU MUST USE THIS EXACT OUTPUT FORMAT. DO NOT DEVIATE OR ADD PROSE:
         [THOUGHT] A short explanation of your musical intent (max 13 words). [/THOUGHT]
-        [LYRICS_UI] 1 to 3 words max. [/LYRICS_UI]
+        [LYRICS_UI] 1 to 3 words MAX. [/LYRICS_UI]
         [LYRICS_PHONETIC] exact-pho!-net-1k [/LYRICS_PHONETIC]
-        [TEMPO] an integer between 30 and 60 [/TEMPO]
+        [TEMPO] an integer between 60 and 90 [/TEMPO]
         [SCALE] 0,2,3,5,7,8,10 [/SCALE]
         [THUMB] -,-,-,-, -,-,-,-, -,-,-,-, -,-,-,- [/THUMB]
         [FINGERS] -,-,-,-, -,-,-,-, -,-,-,-, -,-,-,- [/FINGERS]
