@@ -1189,19 +1189,19 @@ io.on("connection", (socket) => {
                 let prompt = ``;
                 let roll = Math.random(); // <-- Roll the dice ONCE here
                 if (player.mapID != 999){
-                    if (roll>.13){
+                    if (roll<.13){
                         prompt = `[SYSTEM EVENT]: ${player.name} just finished an npc interaction, either a battle, picked up a card, or completed dialogue! 
                         TASK: React immediately. 
                         - If you want to make the event more exciting abduct the player by using 'createCustomMap' to make a themed mini dungeon and teleport the player into it. 
                         Do not ask questions. Execute tools and speak!`;
                     }
-                    else if (roll>.13&&Math.random() < .39){
+                    else if (roll< .39){
                         prompt = `[SYSTEM EVENT]: ${player.name} just finished an npc interaction, either a battle, picked up a card, or completed dialogue! 
                         TASK: React immediately. 
                         - If you want to make the event more exciting use 'spawnNPC' to summon monsters like. For example: "You are waylaid by enemies', "It seems that [monster name] had a friend, [player name]!, Looks like that card belonged to somebody! they look mad... (spawn npc)
                         Do not ask questions. Execute tools and speak!`;
                     }
-                    else if (roll>.39&&Math.random() < .69){
+                    else if (roll< .69){
                         prompt = `[SYSTEM EVENT]: ${player.name} just messed with someone precious to you! 
                         TASK: React immediately. 
                         -Act like a spoiled child who just got their toy taken away. Act outraged and 'Use spawnNPC' to spawn something hostile.
