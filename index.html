@@ -26438,306 +26438,159 @@ let phoneticText = "";
       // --- PHASE 6: THE PhD-LEVEL PHONETIC LEXICON (G2P) ---
       
 const Lexicon = {
-    // Core Conversational
-    "the": "d@", "hello": "helo", "suncat": "s@nkat", "machine": "maSin",
-    "greetings": "grit1Nz", "you": "yu", "are": "ar", "how": "hO",
+    // 1. Core Sight Words (Defy normal rules)
+    "the": "d@", "hello": "helo", "you": "yu", "are": "ar", "how": "hO",
     "what": "w@t", "is": "1z", "this": "d1s", "a": "@", "i": "I",
-    "one": "w@n", "two": "tu", "three": "Tri", "four": "for", "five": "fIv",
-    "come": "k@m", "some": "s@m", "where": "wer", "there": "der", "day": "dE",
-    "of": "@v", "to": "tu", "too": "tu", "eye": "I", "eyes": "Iz", "now": "nO",
+    "one": "w@n", "two": "tu", "four": "for", "come": "k@m", "some": "s@m", 
+    "where": "wer", "there": "der", "of": "@v", "to": "tu", "too": "tu", 
+    "eye": "I", "eyes": "Iz",
 
-    // Mythic & Arthurian Vocabulary
-    "arthur": "arT@r", "arthurz": "arT@rz", "merlin": "m@rl1n",
-    "taliesin": "taliEs1n", "bleise": "blEz", "dragon": "drag@n",
-    "magic": "maj1k", "majik": "maj1k", "excalibur": "ekskal1b@r",
-    "camelot": "kam@lot", "grail": "grEl", "sword": "sord", "shield": "Sild", 
-    "shild": "Sild", "crown": "krOn", "crownz": "krOnz","throne": "Tron", "lord": "lord", 
-    "lady": "lEdi", "king": "k1N", "gods": "godz", "myth": "m1T", "tale": "tEl",
-    "lore": "lor", "song": "soN", "lyre": "lI@r", "spell": "spel", "curse": "k@rs",
+    // 2. Lore & Names (Proper Nouns)
+    "arthur": "arT@r", "merlin": "m@rl1n", "taliesin": "taliEs1n", 
+    "bleise": "blEz", "excalibur": "ekskal1b@r", "camelot": "kam@lot", 
+    "suncat": "s@nkat",
 
-    // The Natural World & Elements
-    "sun": "s@n", "star": "star", "starz": "starz", "starlight": "starlIt",
-    "sky": "skI", "earth": "@rT", "world": "w@rld", "wood": "wud", "wudz": "wudz",
-    "tree": "tri", "trees": "triz","triz": "triz", "oak": "ok", "ash": "aS", "roots": "ruts",
-    "storm": "storm", "rain": "rEn", "lake": "lEk", "sea": "si", "hill": "h1l",
-    "dawn": "don", "dawns": "donz","mist": "m1st", "wind": "w1nd", "winds": "w1ndz", 
-    "fire": "fIEr", "flame": "flEm", "flames": "flEmz", "stone": "ston", "stones": "stonz",
-    "bone": "bon", "bonz": "bonz", "gold": "gold", "stahl": "stal",
-
-    // Heroic, Sorrowful & Emotive
-    "heart": "hart", "hart": "hart", "soul": "sol", "spirit": "sp1r1t",
-    "brave": "brEv", "fear": "fir", "dread": "dred", "doom": "dum", 
-    "war": "wor", "steel": "stil", "strike": "strIk", "clash": "klaS", 
-    "weep": "wip", "tear": "tir", "tears": "tirz", "tirz": "tirz", 
-    "hope": "hop", "true": "tru", "truth": "truT", "tremble": "tremb@l",
-    "cold": "kold", "blood": "bl@d", "blud": "bl@d", 
-
-    // Actions & States
-    "breath": "breT", "soars": "sorz", "high": "hI", "hold": "hold", 
-    "paths": "paTs", "veils": "vElz", "time": "tIm",  
-    "wake": "wEk", "meets": "mits", "guides": "gIdz", "sleep": "slip", 
-    "warms": "wormz", "opens": "op@nz", "wide": "wId", "gather": "gad@r", 
-    "binds": "bIndz", "await": "@wEit", "align": "@lIn",
-
-    // Syllable fragments (to catch LLM hyphenation behavior)
-    "fy": "fI", "er": "@r", "nite": "nIt", "lite": "lIt", "mun": "mun", 
-    "glowz": "glOz", "ar": "ar", "thur": "T@r", "mer": "m@r", "lin": "l1n", 
-    "tal": "tal", "sin": "s1n", "ek": "ek", "skal": "skal", "ma": "ma", 
-    "jik": "j1k", "sha": "Sa", "do": "do", "b@rnz": "b@rnz", "grOnd": "grOnd",
+    // 3. High-Fantasy Irregulars (Words the regex will misread)
+    "sword": "sord",      // Regex would read "s-w-or-d"
+    "magic": "maj1k",     // Needs the strict '1' sound
+    "blood": "bl@d",      // Regex would read "bl-u-d"
+    "heart": "hart",      // Regex would read "h-i-rt" (ea -> i)
+    "earth": "@rT",       // Regex would read "i-rT"
+    "iron": "I@r@n",      // Tricky vowel spacing
+    "realm": "re@lm",     // Split vowel sound
+    "ancient": "EnS@nt",  // Weird 'ci' pronunciation
+    "danger": "dEnj@r",   // Regex would make the 'a' short
+    "glory": "glori",     // Y ending
+    "lady": "lEdi",       // Y ending
+    "sky": "skI",         // Y ending
     
-    // Additional States / Natural World
-    "long": "loN",
-    "rises": "rIz@z",
-    "rise": "rIz",
-    "stonehenges": "stonhenj@z",
-    "hum": "h@m",
-
-    // Additions based on Suncat's new phrases
-    "kings": "kiNz", 
-    "swords": "sordz", 
-    "finds": "fIndz", 
-    "find": "fInd", 
-    "realm": "re@lm", 
-    "iron": "I@r@n", 
-    "turns": "t@rnz", 
-    "turn": "t@rn", 
-    "sails": "sElz", 
-    "remembers": "rimemb@rz",
-    "ember": "emb@r",
-    "embers": "emb@rz",
-    "winter": "w1nt@r", 
-    "claims": "klEmz", 
-    "kingdoms": "k1Nd@mz",
-    "kingdom": "k1Nd@m",
-    "awakens": "@wEk@nz", 
-    "dust": "d@st", 
-    "light": "lIt",
-    // Add to Natural World & Elements
-    "stars": "starz",
-    "walls": "wolz",
-    "hearth": "harT",
-    "path": "paT",
-    "glows": "glOz",
-    "morning": "morn1N",
-
-    // Add to Actions & States
-    "awaken": "@wEk@n",
-    "stirs": "st1rz",
-    "guide": "gId",
-    "home": "hom",
-    "opens": "op@nz",
-    "opens": "op@n",
-    "wakes": "wEks",
-    "rise": "rIz",
-    "weave": "wiv",
-    "deep": "dip",
-    "breathes": "briTz",
-    "returns": "rit@rnz",
-    "cycle": "sIk@l",
-    "eternal": "it@rn@l",
-    "silver": "s1lv@r",
-    "begins": "big1nz",
-    // Add to Heroic, Sorrowful & Emotive
-    "new": "nyu",
-    "life": "lIf",
-    "ancient": "EnS@nt",
-    "piece": "pis",
-    "peace": "pis",
-    "bright": "brIt",
-    "golden": "gold@n",
-    "legends": "lej@ndz",
-    "fate": "fEt",
-    // Missing words for Suncat's target phrases
-    "fast": "fast",
-    "lead": "lid",
-    "leads": "lidz",
-    "rest": "rest",
-    "rests": "restz",
-    "hearts": "hartz",
-    "us": "@s",
-    "all": "ol",
-    "rooted": "rut1d",
-    "in": "1n",
-    "dreams": "drimz",
-    "dream": "drim",
-    "find": "fInd",
-    "wings": "w1Nz",
-    "takes": "tEks",
-    "take": "tEk",
-    "flight": "flIt",
-    "flights": "flItz",
-    "fires": "fI@rz",
-    "burn": "b@rn",
-    "burns": "b@rnz",
-    "burn": "b@rniN",
-    "ancestors": "ansest@rz",
-    "ancestor": "ansest@r",
-    "watch": "w@c",
-    "breaks": "brEks",
-    "break": "brEk",
-    "forth": "forT",
-    "remain": "rimEn",
-    "remains": "rimEnz",
-    "reflect": "r1flekt",
-    "reflects": "r1flektz",
-    "makes": "mEks",
-    "make": "mEk",
-    // Weather, Movement, and Atmosphere
-    "clouds": "klOdz",
-    "ice": "Is",
-    "forward": "forw@rd",
-    "soft": "soft",
-    "sighs": "sIz",
-    "sigh": "sI",
-    "frozen": "froz@n",
-    // The Natural World & Elements
-    "night": "nIt",
-    "moon": "mun",
-    "shadow": "Sado",
-    "shadows": "Sadoz",
-    "skies": "skIz",
-    "sky": "skI",
-    "birds": "b@rdz",
-
-    // Actions & States
-    "appears": "@pirz",
-    "fades": "fEdz",
-    "fade": "fEd",
-    "rings": "riNz",
-    "stand": "stand",
-    "descends": "disendz",
-    "climbs": "klImz",
-    "creep": "krip",
-    "ascends": "@sendz",
-    "brightens": "brIt@nz",
-    "comes": "k@mz",
-    "grows": "grOz",
-    "departs": "departz",
-    "shines": "SInz",
-    "sing": "siN",
-    "unfold": "@nfold",
-    "falls": "folz",
-    "lifts": "l1ftz",
-    "arises": "@rIz@z",
-    "sinks": "s1Nks",
-    "ends": "endz",
-
-    // Heroic, Sorrowful & Emotive
-    "glory": "glori",
-    "joyful": "joif@l",
-    "danger": "dEnj@r",
-    "battle": "bat@l",
-    "strength": "streNT",
-    "victory": "vikt@ri",
-    "dark": "dark",
-    "dies": "dIz",
-    "calls": "kolz",
-    "well": "wel",
-    "softly": "softli",
-    "gleam": "glim",
-    "calm": "kam",
+    // 4. LLM Hyphenation Fragments (Keep these)
+    "fy": "fI", "er": "@r", "nite": "nIt", "lite": "lIt", "mun": "mun", 
+    "ar": "ar", "thur": "T@r", "mer": "m@r", "lin": "l1n", 
+    "tal": "tal", "sin": "s1n", "ek": "ek", "skal": "skal", "ma": "ma", 
+    "jik": "j1k", "sha": "Sa"
 };
       const tokens = text.match(/\b\w+\b|[^\w\s]|\s+/g) || [];
 
-      // 3. The Expanded Intelligent Fallback Translator
-for (let token of tokens) {
-    if (Lexicon[token]) {
-        // Fast path for hardcoded exceptions (the, hello, of, sword)
-        phoneticText += Lexicon[token];
-    } else if (/[a-z]/.test(token)) {
-        let fallback = token;
+    // 3. The Expanded Intelligent Fallback Translator
+        for (let token of tokens) {
+            if (Lexicon[token]) {
+                phoneticText += Lexicon[token];
+            } else if (/[a-z]/.test(token)) {
+                let fallback = token;
 
-        // --- A. Suffixes & Endings ---
-        fallback = fallback.replace(/tion/g, 'S@n'); // action -> akS@n
-        fallback = fallback.replace(/sion/g, 'Z@n'); // vision -> viZ@n
-        fallback = fallback.replace(/ing\b/g, 'iN'); // running -> r@niN (Long EE sound)        fallback = fallback.replace(/ous\b/g, '@s'); // famous -> fAm@s
-        fallback = fallback.replace(/ed\b/g, 'd');   // played -> plEd
-        fallback = fallback.replace(/er\b/g, '@r');  // runner -> r@n@r
+                // --- NEW: PRE-CALCULATE SYLLABLES FOR THE 'Y' RULE ---
+                // Count all vowels in the original token (including 'y')
+                const vowelCount = (token.match(/[aeiouy]/g) || []).length;
 
-        // --- B. Consonant Digraphs & Silent Letters ---
-        fallback = fallback.replace(/kn|gn/g, 'n');  // knight/gnarl -> nIt/narl
-        fallback = fallback.replace(/wr/g, 'r');     // write -> rIt
-        fallback = fallback.replace(/mb\b/g, 'm');   // bomb/comb -> bom/kom
-        fallback = fallback.replace(/ph/g, 'f');     // phone -> fon
-        fallback = fallback.replace(/c(?=[eiy])/g, 's'); // Soft C: cent/city -> sent/sity
-        fallback = fallback.replace(/ch/g, 'c');         // 'ch' becomes 'c' (the Phonetic symbol for CH)
-        fallback = fallback.replace(/c/g, 'k');
-        
-        fallback = fallback.replace(/sh/g, 'S');     // ash -> aS
-        fallback = fallback.replace(/th/g, 'T');     // thin -> TIn
-        fallback = fallback.replace(/ng/g, 'N');     // sing -> sIN
-        fallback = fallback.replace(/ck/g, 'k');     // back -> bak
-        fallback = fallback.replace(/wh/g, 'w');     // what -> w@t
+                // --- A. Suffixes & Endings ---
+                fallback = fallback.replace(/tion/g, 'S@n'); 
+                fallback = fallback.replace(/sion/g, 'Z@n'); 
+                fallback = fallback.replace(/ing\b/g, 'iN'); 
+                fallback = fallback.replace(/ous\b/g, '@s'); 
+                fallback = fallback.replace(/ed\b/g, 'd');  
+                fallback = fallback.replace(/er\b/g, '@r');  
 
-        // Matches a vowel, a single consonant, and an 'e' at the end of a word.
-        // --- C. The "Magic E" Rule (Vowel-Consonant-E or V-C-Es) ---
-        fallback = fallback.replace(/a([bcdfgjklmnpqrstvwxz])e(s?)\b/g, 'E$1$2'); 
-        fallback = fallback.replace(/i([bcdfgjklmnpqrstvwxz])e(s?)\b/g, 'I$1$2'); 
-        fallback = fallback.replace(/o([bcdfgjklmnpqrstvwxz])e(s?)\b/g, 'o$1$2'); 
-        fallback = fallback.replace(/u([bcdfgjklmnpqrstvwxz])e(s?)\b/g, 'yu$1$2');
-        // --- D. Vowel Teams & R-Controlled Vowels ---
-        fallback = fallback.replace(/igh/g, 'I');    // light -> lIt
-        fallback = fallback.replace(/ai|ay/g, 'E');  // rain/day -> rEn/dE
-        fallback = fallback.replace(/ee|ea/g, 'i');  // see/neat -> si/nit
-        fallback = fallback.replace(/oa/g, 'o');     // boat -> bot
-        fallback = fallback.replace(/ou|ow/g, 'O');  // out/cow -> Ot/kO
-        fallback = fallback.replace(/oo/g, 'u');     // moon -> mun
-        
-        // R-controlled 
-        fallback = fallback.replace(/ar/g, 'ar');    // car -> kar
-        fallback = fallback.replace(/ir|ur/g, '@r'); // bird/burn -> b@rd/b@rn
-        fallback = fallback.replace(/or/g, 'or');    // fork -> fork
+                // --- B. Consonant Digraphs & Silent Letters ---
+                fallback = fallback.replace(/kn|gn/g, 'n');  
+                fallback = fallback.replace(/ought|aught/g, 'ot'); // thought/caught -> Tot/kot
+                fallback = fallback.replace(/wr/g, 'r');     
+                fallback = fallback.replace(/mb\b/g, 'm');   
+                fallback = fallback.replace(/ph/g, 'f');     
+                fallback = fallback.replace(/c(?=[eiy])/g, 's'); 
+                fallback = fallback.replace(/ch/g, 'c');         
+                fallback = fallback.replace(/c/g, 'k');
+                fallback = fallback.replace(/sh/g, 'S'); 
+                fallback = fallback.replace(/th(?=e\b|ey\b|is\b|at\b|er\b|em\b|en\b|ose\b)/g, 'D'); // Catches the, they, this, that, there, them, then, those    
+                fallback = fallback.replace(/th/g, 'T');     
+                fallback = fallback.replace(/ng/g, 'N');     
+                fallback = fallback.replace(/ck/g, 'k');     
+                fallback = fallback.replace(/wh/g, 'w');     
 
-        // --- E. Tricky Consonants & Final Cleanup ---
-        fallback = fallback.replace(/g(?=[eiy])/g, 'j'); // Soft G: gem/magic -> jem/majic
-                  // Hard C everywhere else
-        
-        // Compress double consonants (ll -> l, ss -> s, tt -> t)
-        fallback = fallback.replace(/([bdfgklmnprstvz])\1/g, '$1'); 
-        
-        // Nuke any remaining silent E's at the end of words that didn't fit a pattern
-        fallback = fallback.replace(/e\b/g, ''); 
-        // --- NEW: THE PLURAL 'Z' FIX ---
-        // If a word ends in 's', but the letter before it is voiced (vowels, liquids, nasals, b, d, g, v)
-        // turn it into a 'z' so Suncat doesn't choke the vocal envelope!
-        fallback = fallback.replace(/([aeiou@IEOrmnlNbdgv])s\b/g, '$1z');
-        fallback = fallback.replace(/'s\b/g, 'z');
-        phoneticText += fallback;
-    } else {
-        // Punctuation and spaces
-        phoneticText += token;
-    }
-}
-}    
+                // --- C. The "Wild Old" Exceptions ---
+                fallback = fallback.replace(/ind(s?)\b/g, 'Ind$1'); // find -> fInd
+                fallback = fallback.replace(/ild(s?)\b/g, 'Ild$1'); // child -> cIld
+                fallback = fallback.replace(/old(s?)\b/g, 'old$1'); // gold -> gold
+                fallback = fallback.replace(/alk\b/g, 'ok');        // walk -> wok
+                fallback = fallback.replace(/all(s?)\b/g, 'ol$1');  // wall -> wol
+                fallback = fallback.replace(/aw/g, 'o');            // dawn -> don
+
+                // --- D. The "Magic E" Rule ---
+                fallback = fallback.replace(/a([bcdfgjklmnpqrstvwxz])e(s?)\b/g, 'E$1$2'); 
+                fallback = fallback.replace(/i([bcdfgjklmnpqrstvwxz])e(s?)\b/g, 'I$1$2'); 
+                fallback = fallback.replace(/o([bcdfgjklmnpqrstvwxz])e(s?)\b/g, 'o$1$2'); 
+                fallback = fallback.replace(/u([bcdfgjklmnpqrstvwxz])e(s?)\b/g, 'yu$1$2');
+
+                // --- E. Vowel Teams & R-Controlled ---
+                fallback = fallback.replace(/igh/g, 'I');    
+                fallback = fallback.replace(/ai|ay/g, 'E');  
+                fallback = fallback.replace(/ee|ea/g, 'i');  
+                fallback = fallback.replace(/oi|oy/g, 'OI'); // voice/joy -> vOIs/jOI
+                fallback = fallback.replace(/ew/g, 'yu');    // new/flew -> nyu/flyu
+                fallback = fallback.replace(/au/g, 'o');     // fault -> folt (pairs with your 'aw' rule)
+                fallback = fallback.replace(/oa/g, 'o');     
+                fallback = fallback.replace(/ou|ow/g, 'O');  
+                fallback = fallback.replace(/oo/g, 'u');     
+                fallback = fallback.replace(/ar/g, 'ar');    
+                fallback = fallback.replace(/ir|ur/g, '@r'); 
+                fallback = fallback.replace(/or/g, 'or');    
+
+                // --- F. THE DYNAMIC "Y" SOLVER ---
+                // We run this AFTER vowel teams (like 'ay' or 'ey') have been converted
+                // so we don't accidentally ruin words like "day" or "they".
+                if (vowelCount > 1) {
+                    fallback = fallback.replace(/y\b/g, 'i'); // Multi-syllable: glory -> glori
+                } else {
+                    fallback = fallback.replace(/y\b/g, 'I'); // Single-syllable: sky -> skI
+                }
+                // Catch any remaining internal 'y' (e.g., "myth", "crypt")
+                fallback = fallback.replace(/y/g, '1'); 
+
+                // --- G. Tricky Consonants & Final Cleanup ---
+                fallback = fallback.replace(/g(?=[eiy])/g, 'j'); 
+                fallback = fallback.replace(/([bdfgklmnprstvz])\1/g, '$1'); 
+                fallback = fallback.replace(/le\b/g, '@l');  // battle -> bat@l
+                fallback = fallback.replace(/e\b/g, ''); 
+                
+                // --- H. The Plural 'Z' Fix (Runs last!) ---
+                fallback = fallback.replace(/([aeiou@IEOrmnlNbdgv])s\b/g, '$1z');
+                fallback = fallback.replace(/'s\b/g, 'z');
+                
+                phoneticText += fallback;
+            } else {
+                phoneticText += token;
+            }
+        }
+      }
       text = phoneticText;
       // ------------------------------------------
       // ------------------------------------------
       // --- PHASE 2: DYNAMIC FORMANT BANDWIDTHS ---
       const Phonetics = {
-    // VOWELS (F1 = Jaw openness, F2 = Tongue front/back, F3 = Lip rounding)
-    'a': { type: 'vowel', f1: 730, f2: 1090, f3: 2440, q1: 5.0, q2: 3.0, q3: 1.5, voiced: true, vol: 0.9 }, 
-    'e': { type: 'vowel', f1: 530, f2: 1840, f3: 2480, q1: 6.0, q2: 4.0, q3: 1.5, voiced: true, vol: 0.8 }, 
-    'i': { type: 'vowel', f1: 270, f2: 2290, f3: 3010, q1: 4.0, q2: 4.0, q3: 2.0, voiced: true, vol: 0.7 }, 
-    '1': { type: 'vowel', f1: 400, f2: 2000, f3: 2550, q1: 4.0, q2: 4.0, q3: 2.0, voiced: true, vol: 0.7 },
-    'o': { type: 'vowel', f1: 570, f2: 840,  f3: 2410, q1: 5.0, q2: 3.5, q3: 1.5, voiced: true, vol: 0.9 }, 
-    'u': { type: 'vowel', f1: 300, f2: 870,  f3: 2240, q1: 4.5, q2: 3.0, q3: 1.5, voiced: true, vol: 0.7 }, 
-    '@': { type: 'vowel', f1: 600, f2: 1200, f3: 2500, q1: 5.0, q2: 3.0, q3: 1.5, voiced: true, vol: 0.8 }, 
+    // VOWELS (Optimized for a sweeter, clearer singing voice)
+    'a': { type: 'vowel', f1: 800, f2: 1200, f3: 2600, q1: 4.5, q2: 3.5, q3: 2.0, voiced: true, vol: 0.95 }, // Brighter 'ah'
+    'e': { type: 'vowel', f1: 530, f2: 1840, f3: 2550, q1: 5.0, q2: 4.0, q3: 2.0, voiced: true, vol: 0.85 }, 
+    'i': { type: 'vowel', f1: 270, f2: 2290, f3: 3010, q1: 4.0, q2: 4.0, q3: 2.5, voiced: true, vol: 0.75 }, 
+    '1': { type: 'vowel', f1: 400, f2: 1950, f3: 2600, q1: 4.0, q2: 4.0, q3: 2.0, voiced: true, vol: 0.75 }, // 'ih' (myth, bit)
+    'o': { type: 'vowel', f1: 570, f2: 840,  f3: 2410, q1: 5.0, q2: 3.5, q3: 1.5, voiced: true, vol: 0.90 }, 
+    'u': { type: 'vowel', f1: 300, f2: 870,  f3: 2240, q1: 4.5, q2: 3.0, q3: 1.5, voiced: true, vol: 0.75 }, 
+    '@': { type: 'vowel', f1: 600, f2: 1200, f3: 2500, q1: 4.5, q2: 3.0, q3: 1.5, voiced: true, vol: 0.85 }, // 'uh' (schwa)
     
     // DIPHTHONGS (Gliding vowels)
-    'I': { type: 'diphthong', f1: 730, f2: 1090, f3: 2440, endF1: 270, endF2: 2290, endF3: 3010, q1: 5.0, q2: 3.5, q3: 1.5, voiced: true, vol: 0.9 }, 
-    'E': { type: 'diphthong', f1: 530, f2: 1840, f3: 2480, endF1: 270, endF2: 2290, endF3: 3010, q1: 5.0, q2: 3.5, q3: 1.5, voiced: true, vol: 0.9 },
-    'O': { type: 'diphthong', f1: 730, f2: 1090, f3: 2440, endF1: 300, endF2: 870,  endF3: 2240, q1: 5.0, q2: 3.5, q3: 1.5, voiced: true, vol: 0.9 },
-
+    'I': { type: 'diphthong', f1: 800, f2: 1200, f3: 2600, endF1: 270, endF2: 2290, endF3: 3010, q1: 4.5, q2: 3.5, q3: 2.0, voiced: true, vol: 0.95 }, 
+    'E': { type: 'diphthong', f1: 530, f2: 1840, f3: 2550, endF1: 270, endF2: 2290, endF3: 3010, q1: 5.0, q2: 4.0, q3: 2.0, voiced: true, vol: 0.85 },
+    'O': { type: 'diphthong', f1: 800, f2: 1200, f3: 2600, endF1: 300, endF2: 870,  endF3: 2240, q1: 4.5, q2: 3.5, q3: 2.0, voiced: true, vol: 0.95 },
+    'OI': { type: 'diphthong', f1: 570, f2: 840, f3: 2410, endF1: 270, endF2: 2290, endF3: 3010, q1: 5.0, q2: 3.5, q3: 2.0, voiced: true, vol: 0.90 },
     // LIQUIDS & GLIDES
-    'w': { type: 'liquid', f1: 300, f2: 600,  f3: 2200, q1: 5.0, q2: 3.0, q3: 2.0, voiced: true, vol: 0.6 }, 
-    'y': { type: 'liquid', f1: 300, f2: 2300, f3: 3000, q1: 5.0, q2: 3.0, q3: 2.0, voiced: true, vol: 0.6 },
-    'r': { type: 'liquid', f1: 400, f2: 1200, f3: 1600, q1: 5.0, q2: 3.0, q3: 2.0, voiced: true, vol: 0.6 }, // Plunging F3
-    'l': { type: 'liquid', f1: 400, f2: 1200, f3: 2800, q1: 5.0, q2: 3.0, q3: 2.0, voiced: true, vol: 0.6 }, // High F3
+    'w': { type: 'liquid', f1: 300, f2: 600,  f3: 2200, q1: 5.0, q2: 3.0, q3: 2.0, voiced: true, vol: 0.65 }, 
+    'y': { type: 'liquid', f1: 300, f2: 2300, f3: 3000, q1: 5.0, q2: 3.0, q3: 2.0, voiced: true, vol: 0.65 },
+    'r': { type: 'liquid', f1: 400, f2: 1200, f3: 1600, q1: 5.0, q2: 3.0, q3: 2.0, voiced: true, vol: 0.65 }, // The signature plunging F3
+    'l': { type: 'liquid', f1: 400, f2: 1200, f3: 2800, q1: 5.0, q2: 3.0, q3: 2.0, voiced: true, vol: 0.65 },
 
-    // NASALS (Mouth closed, resonance through nose)
-    'm': { type: 'vowel', f1: 250, f2: 1200, f3: 2500, q1: 6.0, q2: 2.0, q3: 1.0, voiced: true, vol: 0.5 }, 
-    'n': { type: 'vowel', f1: 250, f2: 1800, f3: 2500, q1: 6.0, q2: 2.0, q3: 1.0, voiced: true, vol: 0.5 }, 
-    'N': { type: 'vowel', f1: 250, f2: 2200, f3: 2500, q1: 6.0, q2: 2.0, q3: 1.0, voiced: true, vol: 0.5 },
+    // NASALS (Sharper Q values to mimic closed-mouth resonance)
+    'm': { type: 'vowel', f1: 250, f2: 1100, f3: 2200, q1: 8.0, q2: 6.0, q3: 4.0, voiced: true, vol: 0.5 }, 
+    'n': { type: 'vowel', f1: 250, f2: 1700, f3: 2200, q1: 8.0, q2: 6.0, q3: 4.0, voiced: true, vol: 0.5 }, 
+    'N': { type: 'vowel', f1: 250, f2: 2200, f3: 2200, q1: 8.0, q2: 6.0, q3: 4.0, voiced: true, vol: 0.5 }, // 'ng'
 
     // FRICATIVES (Hissing air)
     's': { type: 'fricative', freq: 7000, voiced: false }, 
@@ -26746,15 +26599,16 @@ for (let token of tokens) {
     'Z': { type: 'fricative', freq: 3000, voiced: true },  // 'zh'
     'f': { type: 'fricative', freq: 4500, voiced: false },
     'v': { type: 'fricative', freq: 4500, voiced: true },
-    'T': { type: 'fricative', freq: 6000, voiced: false }, // 'th' (thin air)
-    'h': { type: 'fricative', freq: 2000, voiced: false }, // Deep throat breath
+    'T': { type: 'fricative', freq: 6000, voiced: false }, // 'th' (unvoiced, like "thin")
+    'D': { type: 'fricative', freq: 6000, voiced: true },  // NEW: 'th' (voiced, like "the", "there")
+    'h': { type: 'fricative', freq: 2000, voiced: false }, 
 
     // STOPS & AFFRICATES (Clicks and Pops)
-    't': { type: 'stop', freq: 6000, voiced: false }, // Sharp front teeth tick
+    't': { type: 'stop', freq: 6000, voiced: false }, 
     'd': { type: 'stop', freq: 6000, voiced: true },
-    'k': { type: 'stop', freq: 2000, voiced: false }, // Mid-throat click
+    'k': { type: 'stop', freq: 2000, voiced: false }, 
     'g': { type: 'stop', freq: 2000, voiced: true },
-    'p': { type: 'stop', freq: 800,  voiced: false }, // Low lip pop
+    'p': { type: 'stop', freq: 800,  voiced: false }, 
     'b': { type: 'stop', freq: 800,  voiced: true },
     'c': { type: 'stop', freq: 3500, voiced: false }, // 'ch'
     'j': { type: 'stop', freq: 3500, voiced: true }
@@ -27027,20 +26881,21 @@ jitterLFO.start(t);
                         breathEnv.gain.setTargetAtTime(breathiness, t, 0.02);
                     }
                   // --- PHASE 5: COARTICULATION (The Locus Theory) ---
+                  // --- PHASE 5: COARTICULATION (The Locus Theory) ---
+                  
                   if (i > 0) {
-                      const prevChar = phonemeData[i-1];
+                      const prevChar = phonemeData ? phonemeData[i - 1].char : text[i - 1]; // Ensure we check the right array
                       let locusF2 = null;
 
-                      // Bilabials (Lips: p, b, m, f, v) pull F2 down
                       if (['p', 'b', 'm', 'f', 'v'].includes(prevChar)) locusF2 = 800;
-                      // Alveolars (Tongue tip: t, d, s, z, n) pull F2 up to ~1800Hz
-                      else if (['t', 'd', 's', 'z', 'n'].includes(prevChar)) locusF2 = 1800;
-                      // Velars (Back of tongue: k, g, c, N) pull F2 very high
+                      else if (['t', 'd', 's', 'z', 'n', 'T', 'D'].includes(prevChar)) locusF2 = 1800;
                       else if (['k', 'g', 'c', 'N'].includes(prevChar)) locusF2 = 2500;
 
                       if (locusF2 !== null) {
                           f2.frequency.setValueAtTime(locusF2 * resonance, t - 0.001);
-                          glideSpeed = 0.045; 
+                          // THE FIX: Make this snap incredibly fast! (0.005 instead of 0.045)
+                          // This simulates the jaw instantly dropping open after a consonant.
+                          glideSpeed = 0.005; 
                       }
                   }
 
@@ -27076,54 +26931,71 @@ jitterLFO.start(t);
                 vocalEnv.gain.setTargetAtTime(0, t, 0.01);
                 breathEnv.gain.setTargetAtTime(0, t, 0.01);
             }
-          // --- PHASE 3: THE PERCUSSION TRACK UPGRADE ---
+         // --- PHASE 3: THE PERCUSSION TRACK UPGRADE (Wet Consonants) ---
           if (p.type === 'fricative' || p.type === 'stop') {
               const noise = createNoise(dur);
               const noiseFilter = this.ctx.createBiquadFilter();
               
-              noiseFilter.type = (p.type === 'fricative') ? 'highpass' : 'bandpass'; 
+              // 't', 'd', 's', 'z' are formed by the teeth. They need a highpass filter to 
+              // sound like sharp, piercing hisses/clicks, not hollow pops.
+              if (char === 't' || char === 'd' || char === 's' || char === 'z' || char === 'T' || char === 'D') {
+                  noiseFilter.type = 'highpass';
+              } else {
+                  noiseFilter.type = 'bandpass';
+              }
+              
               noiseFilter.frequency.value = p.freq; 
               noiseFilter.Q.value = (p.type === 'fricative') ? 0.5 : 1.5; 
               
               const noiseEnv = this.ctx.createGain(); 
               noiseEnv.gain.setValueAtTime(0, t);
               
-const noiseMaxVol = p.voiced ? 0.15 : 0.35; // Lowered from 0.6 so consonants don't overpower vowels
-   if (p.type === 'stop') {
-        // --- NEW: THE PRE-BURST HOLD (TIMING FIXED) ---
-        // Scale the hold to the actual duration of the consonant so it doesn't bleed!
-        const holdTime = dur * 0.4; 
-        
-        // Force total silence in the throat/lungs during the hold
-        vocalEnv.gain.setTargetAtTime(0, t, 0.002);
-        breathEnv.gain.setTargetAtTime(0, t, 0.002);
+              // Unvoiced consonants need to be louder to cut through the mix
+              const noiseMaxVol = p.voiced ? 0.15 : 0.45; 
 
-        // Delay the burst until the hold finishes, but ensure it finishes within 'dur'
-        noiseEnv.gain.setValueAtTime(0, t + holdTime);
-        noiseEnv.gain.linearRampToValueAtTime(noiseMaxVol, t + holdTime + 0.002);
-        noiseEnv.gain.exponentialRampToValueAtTime(0.001, t + dur); // Fade out precisely as 'dur' ends
-    } else {
-        // Fricatives (hisses) fade in normally
-        noiseEnv.gain.setValueAtTime(0, t);
-        noiseEnv.gain.linearRampToValueAtTime(noiseMaxVol * 0.6, t + 0.02);
-        noiseEnv.gain.setValueAtTime(noiseMaxVol * 0.6, t + dur - 0.02);
-        noiseEnv.gain.linearRampToValueAtTime(0, t + dur);
-    }
+              if (p.type === 'stop') {
+                  // 1. THE OCCLUSION: Complete silence in the throat and lungs as pressure builds
+                  const holdTime = dur * 0.4; 
+                  vocalEnv.gain.setTargetAtTime(0, t, 0.002);
+                  breathEnv.gain.setTargetAtTime(0, t, 0.002);
 
-    noise.connect(noiseFilter); noiseFilter.connect(noiseEnv); noiseEnv.connect(this.masterGain);
-    noise.start(t);
-    noise.stop(t + dur);
+                  // 2. THE TRANSIENT: A microscopic, sharp 5-millisecond snap!
+                  noiseEnv.gain.setValueAtTime(0, t + holdTime);
+                  noiseEnv.gain.linearRampToValueAtTime(noiseMaxVol, t + holdTime + 0.005); 
+                  noiseEnv.gain.exponentialRampToValueAtTime(0.001, t + holdTime + 0.02); // Instant decay
 
+                  // 3. THE ASPIRATION (Voice Onset Time): 
+                  // If it's a P, T, or K, release a heavy puff of air AFTER the click
+                  if (!p.voiced) {
+                      breathEnv.gain.setValueAtTime(0, t + holdTime + 0.02);
+                      breathEnv.gain.linearRampToValueAtTime(breathiness * 4, t + holdTime + 0.03);
+                      breathEnv.gain.exponentialRampToValueAtTime(breathiness, t + dur);
+                      
+                      // CRITICAL: Delay the vocal cords turning on so they don't drown out the click!
+                      vocalEnv.gain.setValueAtTime(0, t + holdTime);
+                      vocalEnv.gain.setTargetAtTime(0, t + holdTime + 0.04, 0.01); 
+                  }
+              } else {
+                  // Fricatives (S, F, Sh) fade in and out normally
+                  noiseEnv.gain.setValueAtTime(0, t);
+                  noiseEnv.gain.linearRampToValueAtTime(noiseMaxVol * 0.8, t + 0.015);
+                  noiseEnv.gain.setValueAtTime(noiseMaxVol * 0.8, t + dur - 0.015);
+                  noiseEnv.gain.linearRampToValueAtTime(0, t + dur);
+              }
+
+              noise.connect(noiseFilter); noiseFilter.connect(noiseEnv); noiseEnv.connect(this.masterGain);
+              noise.start(t);
+              noise.stop(t + dur);
           }
           t += dur; 
           // --- NEW: MICRO-TIMING DRIFT (RUBATO) ---
     // Humans drift up to 3% off-grid per syllable
-    const tempoDrift = 1.0 + (Math.random() * 0.06 - 0.03); 
+    const tempoDrift = 1.0 + (Math.random() * 0.05 - 0.02); 
     
    // // If it's the end of a word, take a tiny bit of extra time to "breathe"
     if (isAtWordEnd) {
-        t += dur * 1.05; 
-    } else {
+        t += dur * tempoDrift; 
+   } else {
        t += dur * tempoDrift;
     }
       }
@@ -42227,8 +42099,8 @@ class TaliesinModule {
         this.isFetching = false;
 
         // --- 1. THE LYRE TUNING ---
-        this.tempo = 60; 
-        this.targetTempo = 60; 
+        this.tempo = 90; 
+        this.targetTempo = 90; 
         this.baseFreq = 136.9; // Anchor frequency (approx D3)
         this.rootFreq = this.baseFreq; 
         this.currentKeyOffset = 0; // Tracks our current semitone shift (0-11)
@@ -42296,7 +42168,7 @@ class TaliesinModule {
 
         // Apply the equal temperament math to get the new frequency
         this.rootFreq = this.baseFreq * Math.pow(2, this.currentKeyOffset / 12);
-        if (        this.rootFreq > 440){
+        if (        this.rootFreq > 316.091){
                   this.rootFreq = this.baseFreq ;
 
         }
