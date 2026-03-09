@@ -26518,7 +26518,7 @@ const Lexicon = {
     "wakes": "wEks",
     "rise": "rIz",
     "weave": "wiv",
-"deep": "dip",
+    "deep": "dip",
     "breathes": "briTz",
     "returns": "rit@rnz",
     "cycle": "sIk@l",
@@ -26578,6 +26578,52 @@ const Lexicon = {
     "sighs": "sIz",
     "sigh": "sI",
     "frozen": "froz@n",
+    // The Natural World & Elements
+    "night": "nIt",
+    "moon": "mun",
+    "shadow": "Sado",
+    "shadows": "Sadoz",
+    "skies": "skIz",
+    "sky": "skI",
+    "birds": "b@rdz",
+
+    // Actions & States
+    "appears": "@pirz",
+    "fades": "fEdz",
+    "fade": "fEd",
+    "rings": "riNz",
+    "stand": "stand",
+    "descends": "disendz",
+    "climbs": "klImz",
+    "creep": "krip",
+    "ascends": "@sendz",
+    "brightens": "brIt@nz",
+    "comes": "k@mz",
+    "grows": "grOz",
+    "departs": "departz",
+    "shines": "SInz",
+    "sing": "siN",
+    "unfold": "@nfold",
+    "falls": "folz",
+    "lifts": "l1ftz",
+    "arises": "@rIz@z",
+    "sinks": "s1Nks",
+    "ends": "endz",
+
+    // Heroic, Sorrowful & Emotive
+    "glory": "glori",
+    "joyful": "joif@l",
+    "danger": "dEnj@r",
+    "battle": "bat@l",
+    "strength": "streNT",
+    "victory": "vikt@ri",
+    "dark": "dark",
+    "dies": "dIz",
+    "calls": "kolz",
+    "well": "wel",
+    "softly": "softli",
+    "gleam": "glim",
+    "calm": "kam",
 };
       const tokens = text.match(/\b\w+\b|[^\w\s]|\s+/g) || [];
 
@@ -26643,7 +26689,7 @@ for (let token of tokens) {
         // If a word ends in 's', but the letter before it is voiced (vowels, liquids, nasals, b, d, g, v)
         // turn it into a 'z' so Suncat doesn't choke the vocal envelope!
         fallback = fallback.replace(/([aeiou@IEOrmnlNbdgv])s\b/g, '$1z');
-
+        fallback = fallback.replace(/'s\b/g, 'z');
         phoneticText += fallback;
     } else {
         // Punctuation and spaces
