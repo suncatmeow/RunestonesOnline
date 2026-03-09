@@ -3376,7 +3376,14 @@ class Explore {
               );
           });
       }
-      
+      // FIX: Target the newly created NPC (assuming it gets pushed to the end of the array)
+        let newlySpawnedNPC = Dungeon.npcs[Dungeon.npcs.length - 1];
+        
+        // FIX: Map the server's "data.dialogue" to the client's "customDialogue"
+        newlySpawnedNPC.customDialogue = data.dialogue;
+        
+        // FIX: Pass the reward card so the player actually gets it!
+        newlySpawnedNPC.rewardCard = data.rewardCard;
       console.log(`Loaded Custom AI Map: ${data.name} with ${data.npcs ? data.npcs.length : 0} entities.`);
   }
   registerClick(x, y) {
@@ -26232,8 +26239,14 @@ socket.on("remote_spawn_npc", (data) => {
             data.color, 
             data.deck
         );
-        Dungeon.npcs[data.index].customDialogue = data.customDialogue;
-        console.log(`[System] Suncat spawned an entity (Type: ${data.type}) on Map ${data.mapID}!`);
+// FIX: Target the newly created NPC (assuming it gets pushed to the end of the array)
+        let newlySpawnedNPC = Dungeon.npcs[Dungeon.npcs.length - 1];
+        
+        // FIX: Map the server's "data.dialogue" to the client's "customDialogue"
+        newlySpawnedNPC.customDialogue = data.dialogue;
+        
+        // FIX: Pass the reward card so the player actually gets it!
+        newlySpawnedNPC.rewardCard = data.rewardCard;        console.log(`[System] Suncat spawned an entity (Type: ${data.type}) on Map ${data.mapID}!`);
     }
 });
 // Listen for targeted teleports from Suncat
