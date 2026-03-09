@@ -26993,11 +26993,11 @@ jitterLFO.start(t);
     const tempoDrift = 1.0 + (Math.random() * 0.05 - 0.02); 
     
    // // If it's the end of a word, take a tiny bit of extra time to "breathe"
-    if (isAtWordEnd) {
-        t += dur * tempoDrift; 
-   } else {
-       t += dur * tempoDrift;
-    }
+//    if (isAtWordEnd) {
+   //     t += dur * tempoDrift; 
+//   } else {
+ //      t += dur * tempoDrift;
+  //  }
       }
 vocalEnv.gain.setTargetAtTime(0, t, 0.02); 
         breathEnv.gain.setTargetAtTime(0, t, 0.02);
