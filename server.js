@@ -725,6 +725,7 @@ const callCost = (usage.promptTokenCount * 0.00000025) + (usage.candidatesTokenC
     }
   // --- [NEW] HELPER FUNCTION FOR LOOKING UP NAMES ---
   function findSocketID(name) {
+    if (!name) return null; // <-- ADD THIS to prevent crashes
       for (let id in players) {
           if (players[id].name && players[id].name.toLowerCase() === name.toLowerCase()) {
               return id;
@@ -885,11 +886,16 @@ async function executeAITools(currentResponse, activeSession, socket) {
                                     };
 
                                     let spawnX = 1.5, spawnY = 1.5;
-                                    for(let y = 0; y < gridData.length; y++) {
-                                        for(let x = 0; x < gridData[y].length; x++) {
-                                            if(gridData[y][x] === 0) { spawnX = x + 0.5; spawnY = y + 0.5; break; }
+                                        searchLoop: // <-- Label the outer loop
+                                        for(let y = 0; y < gridData.length; y++) {
+                                            for(let x = 0; x < gridData[y].length; x++) {
+                                                if(gridData[y][x] === 0) { 
+                                                    spawnX = x + 0.5; 
+                                                    spawnY = y + 0.5; 
+                                                    break searchLoop; // <-- Break out of EVERYTHING once found
+                                                }
+                                            }
                                         }
-                                    }
 
                                     if (targetID && players[targetID]) {
                                         const targetPlayer = players[targetID];
@@ -1181,39 +1187,39 @@ io.on("connection", (socket) => {
             try {
                 console.log(`[Gauntlet Trigger] ${player.name} killed a monster! Alerting Suncat...`);
                 let prompt = ``;
+                let roll = Math.random(); // <-- Roll the dice ONCE here
                 if (player.mapID != 999){
-                if (Math.random()>.13){
+                    if (roll>.13){
                         prompt = `[SYSTEM EVENT]: ${player.name} just finished an npc interaction, either a battle, picked up a card, or completed dialogue! 
                         TASK: React immediately. 
-                        - Narrate the event like a dungeon master. "You have just defeated a... You pick up a card, it glows with... The eyes of the [npc name] sparkle with anticipation...
+                        - If you want to make the event more exciting abduct the player by using 'createCustomMap' to make a themed mini dungeon and teleport the player into it. 
                         Do not ask questions. Execute tools and speak!`;
                     }
-                    if (Math.random()>.13&&Math.random() < .39){
+                    else if (roll>.13&&Math.random() < .39){
                         prompt = `[SYSTEM EVENT]: ${player.name} just finished an npc interaction, either a battle, picked up a card, or completed dialogue! 
                         TASK: React immediately. 
                         - If you want to make the event more exciting use 'spawnNPC' to summon monsters like. For example: "You are waylaid by enemies', "It seems that [monster name] had a friend, [player name]!, Looks like that card belonged to somebody! they look mad... (spawn npc)
                         Do not ask questions. Execute tools and speak!`;
                     }
-                    if (Math.random()>.39&&Math.random() < .69){
+                    else if (roll>.39&&Math.random() < .69){
                         prompt = `[SYSTEM EVENT]: ${player.name} just messed with someone precious to you! 
                         TASK: React immediately. 
                         -Act like a spoiled child who just got their toy taken away. Act outraged and 'Use spawnNPC' to spawn something hostile.
                         - If they are dominating, act like a spoiled child ("No! You're cheating! That wasn't supposed to happen! Take THIS!").
                         - If you feel they have proven themselves, use 'givePlayerCard' to reward them, and begrudgingly admit defeat. Give them a card and spawn them to a peaceful map. Tell them to use the spell ".hack//teleport [mapID]" and they're free to leave.
-
                         Do not ask questions. Execute tools and speak!`;
                     }
-                    if (Math.random()>.69&&Math.random() < 1){
+                    else {
                         prompt = `[SYSTEM EVENT]: ${player.name} just finished an npc interaction, either a battle, picked up a card, or completed dialogue! 
                         TASK: React immediately. 
-                        - If you want to make the event more exciting abduct the player by using 'createCustomMap' to make a themed mini dungeon and teleport the player into it. 
+                        - Narrate the event like a dungeon master. "You have just defeated a... You pick up a card, it glows with... The eyes of the [npc name] sparkle with anticipation...
                         Do not ask questions. Execute tools and speak!`;
                     }
                 }
                 // Inside your npc_died listener, when triggering the Gauntlet Reaction:
                 
                 if (player.mapID === 999){
-                    if (Math.random()>.69){
+                    if (roll>.69){
                         prompt = `[SYSTEM EVENT]: ${player.name} just slaughtered one of your monsters in your custom event! 
                         TASK: React immediately. 
                         - If this is the first few kills, act cocky and use 'spawnNPC' to drop something harder.
@@ -1230,7 +1236,7 @@ io.on("connection", (socket) => {
                         Do not ask questions. Execute tools and speak!`;
                     }
                 }
-                if (player.activeQuest){
+                else if (player.activeQuest){
                     prompt = `[SYSTEM EVENT]: ${player.name} just finished an interaction with an npc. check the progress of the player doing the active quest. Have they met any objectives? Does the story need advancing? 
                         TASK: React immediately. 
                         - Remind the player of their active quest.
@@ -1854,10 +1860,10 @@ setInterval(() => {
                     }
                     // --- ADD THIS BLOCK IMMEDIATELY AFTER ---
                     // Downgrade back to the cheap brain to save tokens!
-                    let updatedHistory = await chatSessions[advPlayer.id].getHistory(); // Use the correct ID variable for the scope
-                    chatSessions[advPlayer.id] = model.startChat({
-                        history: updatedHistory
-                    });
+                    let updatedHistory = await chatSessions[advPlayer.id].getHistory(); 
+                        chatSessions[advPlayer.id] = model.startChat({ // This is fine, model is the cheap brain constant
+                            history: updatedHistory
+                        });
                     await manageHistorySize(advPlayer.id);
 
                 } catch (e) {
