@@ -672,7 +672,7 @@ const T_PERSONA = `
         [THOUGHT] A short explanation of your musical intent (max 13 words). [/THOUGHT]
         [LYRICS_UI] 1 to 3 words MAX. [/LYRICS_UI]
         [LYRICS_PHONETIC] exact-pho!-net-1k [/LYRICS_PHONETIC]
-        [TEMPO] an integer between 69 and 130 [/TEMPO]
+        [TEMPO] an integer between 61 and 91 [/TEMPO]
         [SCALE] 0,2,3,5,7,8,10 [/SCALE]
         [THUMB] -,-,-,-, -,-,-,-, -,-,-,-, -,-,-,- [/THUMB]
         [FINGERS] -,-,-,-, -,-,-,-, -,-,-,-, -,-,-,- [/FINGERS]
