@@ -26789,11 +26789,18 @@ jitterLFO.start(t);
                 baseDur = 0.12; // Hiss gets exactly 120ms
                 fixedConsonantTime += baseDur;
             } else {
-                isStretchable = true;
-                baseDur = 1.0; // Base weight for vowels
-                if (p.type === 'liquid') baseDur = 0.6; // Liquids are slightly shorter
-                if (isAtWordEnd) baseDur *= 1.4; // Emphasize final vowels
+               isStretchable = true;
+                baseDur = 1.0; 
+                
+                // 1. MICRO-TIMING DRIFT (Rubato)
+                // Randomize the weight by +/- 8% so syllables naturally push and pull
+                const tempoDrift = 1.0 + (Math.random() * 0.16 - 0.08); 
+                baseDur *= tempoDrift;
+                
+                if (p.type === 'liquid') baseDur *= 0.6; 
+                if (isAtWordEnd) baseDur *= 1.4; // Elongate the final syllable
                 if (isStressed) baseDur *= 1.3;
+                
                 stretchWeightTotal += baseDur;
             }
 
@@ -26832,10 +26839,14 @@ jitterLFO.start(t);
                 vocalCords.frequency.setValueAtTime(currentHz * scoopDepth, t); 
                 vocalCords.frequency.setTargetAtTime(currentHz, t + 0.01, 0.015);
 
-                // The Tail-end Falloff
+                // The Tail-end Falloff & The Breath
                 if (isAtWordEnd) {
+                    // Pitch drops naturally as lungs empty
                     vocalCords.frequency.setTargetAtTime(currentHz * 0.92, t + (dur * 0.7), 0.05);
-                }              
+                    
+                    // THE ACOUSTIC BREATH: Fade the voice to zero before the grid time actually ends!
+                    vocalEnv.gain.setTargetAtTime(0, t + (dur * 0.85), 0.02);
+                } 
                 
                 glottalFilter1.frequency.setTargetAtTime(Math.max(800, currentHz * 1.5), t, 0.05);
                 glottalFilter2.frequency.setTargetAtTime(Math.max(1200, currentHz * 2.0), t, 0.05);
@@ -26990,14 +27001,14 @@ jitterLFO.start(t);
           t += dur; 
           // --- NEW: MICRO-TIMING DRIFT (RUBATO) ---
     // Humans drift up to 3% off-grid per syllable
-    const tempoDrift = 1.0 + (Math.random() * 0.05 - 0.02); 
+    const tempoDrift = 1.0 + (Math.random() * 0.06 - 0.03); 
     
    // // If it's the end of a word, take a tiny bit of extra time to "breathe"
-   // if (isAtWordEnd) {
-   //     t += dur * tempoDrift; 
-   //} else {
-     //  t += dur * tempoDrift;
-   // }
+    if (isAtWordEnd) {
+       t += dur * tempoDrift; 
+   } else {
+      t += dur * tempoDrift;
+   }
       }
 vocalEnv.gain.setTargetAtTime(0, t, 0.02); 
         breathEnv.gain.setTargetAtTime(0, t, 0.02);
