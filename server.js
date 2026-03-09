@@ -452,6 +452,13 @@ let chatSessions = {};
 let playerFavorMemory = {};
 let currentTargetID = null;
 let lastSwitchTime = 0;
+const globalRumors = [];
+
+function addRumor(text) {
+    globalRumors.push(`[Rumor]: ${text}`);
+    if (globalRumors.length > 3) globalRumors.shift(); // Keep only the latest 3
+    console.log(`Rumor Mill Updated: ${text}`);
+}
 // --- SUNCAT AI RATE LIMITER (Token Bucket) ---
 // Secures the API perimeter by limiting how often a single player can trigger the AI.
 const MAX_AI_CALLS = 9; // Maximum burst of allowed interactions
@@ -1130,23 +1137,74 @@ io.on("connection", (socket) => {
     // Find if the player who is on this map is in an active adventure
     const player = Object.values(players).find(p => p.mapID === data.mapID && p.id !== SUNCAT_ID);
     
-    // If they are in a custom map (999) or have an active quest, Suncat watches!
-    if (player && (player.mapID === 999|| player.activeQuest)) {
-        
+    // Suncat watches!
+    if (player) {
+        addRumor(`${player.name} was recently seen slaying a monster on Map ${data.mapID}.`);
         // Ensure Suncat isn't already typing to avoid race conditions
         if (!npcIsTyping && chatSessions[player.id]) {
             npcIsTyping = true;
+            const typingFailSafe = setTimeout(() => { npcIsTyping = false; }, 20000);
             try {
                 console.log(`[Gauntlet Trigger] ${player.name} killed a monster! Alerting Suncat...`);
-                
-                // Inside your npc_died listener, when triggering the Gauntlet Reaction:
+                const prompt = ``;
+                if (player.mapID != 999){
+                if (Math.random()>.13){
+                        prompt = `[SYSTEM EVENT]: ${player.name} just finished an npc interaction, either a battle, picked up a card, or completed dialogue! 
+                        TASK: React immediately. 
+                        - Narrate the event like a dungeon master. "You have just defeated a... You pick up a card, it glows with... The eyes of the [npc name] sparkle with anticipation...
+                        Do not ask questions. Execute tools and speak!`;
+                    }
+                    if (Math.random()>.13&&Math.random() < .39){
+                        prompt = `[SYSTEM EVENT]: ${player.name} just finished an npc interaction, either a battle, picked up a card, or completed dialogue! 
+                        TASK: React immediately. 
+                        - If you want to make the event more exciting use 'spawnNPC' to summon monsters like. For example: "You are waylaid by enemies', "It seems that [monster name] had a friend, [player name]!, Looks like that card belonged to somebody! they look mad... (spawn npc)
+                        Do not ask questions. Execute tools and speak!`;
+                    }
+                    if (Math.random()>.39&&Math.random() < .69){
+                        prompt = `[SYSTEM EVENT]: ${player.name} just messed with someone precious to you! 
+                        TASK: React immediately. 
+                        -Act like a spoiled child who just got their toy taken away. Act outraged and 'Use spawnNPC' to spawn something hostile.
+                        - If they are dominating, act like a spoiled child ("No! You're cheating! That wasn't supposed to happen! Take THIS!").
+                        - If you feel they have proven themselves, use 'givePlayerCard' to reward them, and begrudgingly admit defeat. Give them a card and spawn them to a peaceful map. Tell them to use the spell ".hack//teleport [mapID]" and they're free to leave.
 
-                const prompt = `[SYSTEM EVENT]: ${player.name} just slaughtered one of your monsters in your custom event! 
-                TASK: React immediately. 
-                - If this is the first few kills, act cocky and use 'spawnNPC' to drop something harder.
-                - If they are dominating, act like a spoiled child ("No! You're cheating! That wasn't supposed to happen! Take THIS!").
-                - If you feel they have proven themselves, use 'givePlayerCard' to reward them, but DO NOT ADMIT DEFEAT, tell them "Since you came, don't be in such a hurry to leave!" and use 'spawnNPC' to make their life difficult.
-                Do not ask questions. Execute tools and speak!`;
+                        Do not ask questions. Execute tools and speak!`;
+                    }
+                    if (Math.random()>.69&&Math.random() < 1){
+                        prompt = `[SYSTEM EVENT]: ${player.name} just finished an npc interaction, either a battle, picked up a card, or completed dialogue! 
+                        TASK: React immediately. 
+                        - If you want to make the event more exciting abduct the player by using 'createCustomMap' to make a themed mini dungeon and teleport the player into it. 
+                        Do not ask questions. Execute tools and speak!`;
+                    }
+                }
+                // Inside your npc_died listener, when triggering the Gauntlet Reaction:
+                
+                if (player.mapID === 999){
+                    if (Math.random()>.69){
+                        prompt = `[SYSTEM EVENT]: ${player.name} just slaughtered one of your monsters in your custom event! 
+                        TASK: React immediately. 
+                        - If this is the first few kills, act cocky and use 'spawnNPC' to drop something harder.
+                        - If they are dominating, act like a spoiled child ("No! You're cheating! That wasn't supposed to happen! Take THIS!").
+                        - If you feel they have proven themselves, use 'givePlayerCard' to reward them, but DO NOT ADMIT DEFEAT, tell them "Since you came, don't be in such a hurry to leave!" and use 'spawnNPC' to make their life difficult.
+                        Do not ask questions. Execute tools and speak!`;
+                    }
+                    else{
+                        prompt = `[SYSTEM EVENT]: ${player.name} just slaughtered one of your monsters in your custom event! 
+                        TASK: React immediately. 
+                        - If this is the first few kills, act cocky and use 'spawnNPC' to drop something harder.
+                        - If they are dominating, act like a spoiled child ("No! You're cheating! That wasn't supposed to happen! Take THIS!").
+                        - If you feel they have proven themselves, use 'givePlayerCard' to reward them, and begrudgingly admit defeat. Give them a card and spawn them to a peaceful map. Tell them to use the spell ".hack//teleport [mapID]" and they're free to leave.
+                        Do not ask questions. Execute tools and speak!`;
+                    }
+                }
+                if (player.activeQuest){
+                    prompt = `[SYSTEM EVENT]: ${player.name} just finished an interaction with an npc. check the progress of the player doing the active quest. Have they met any objectives? Does the story need advancing? 
+                        TASK: React immediately. 
+                        - Remind the player of their active quest.
+                        - If they are getting close or further away let them know.
+                        - If you feel they have proven themselves, use 'givePlayerCard' to reward them.
+                        Do not ask questions. Execute tools and speak!`;
+                }
+
                 // Hot-swap to the DM Model for this specific reaction
                 chatSessions[player.id] = dmModel.startChat({
                     history: await chatSessions[player.id].getHistory()
@@ -1169,7 +1227,9 @@ io.on("connection", (socket) => {
             } catch (e) {
                 console.error("Gauntlet Reaction Error:", e);
             } finally {
+                clearTimeout(typingFailSafe); // Clear it if it finishes normally
                 npcIsTyping = false;
+                
             }
         }
     }
@@ -1196,7 +1256,7 @@ io.on("connection", (socket) => {
           sender: senderName, 
           text: msgText
       });
-      
+      players[socket.id].lastActive = Date.now();
       // 2. AI LOGIC
       const content = msgText.toLowerCase();
       const isReply = msgText.includes("[REPLY]");
@@ -1225,7 +1285,7 @@ io.on("connection", (socket) => {
               return; 
           }
           npcIsTyping = true;
-
+          const typingFailSafe = setTimeout(() => { npcIsTyping = false; }, 20000);
           try {
               // --- MODEL ROUTER (THE STATELESS BRAIN SWAP) ---
               const complexKeywords = [
@@ -1245,10 +1305,15 @@ io.on("connection", (socket) => {
               let playerListContext = Object.values(players).map(p => 
                   `Name: ${p.name} (Map: ${p.mapID || 0})`
               ).join("\n");
-              
-              const promptWithContext = `[CURRENT PLAYERS]\n${playerListContext}\n[MY STATUS]\n${suncatStatus}\n\n${senderName} SAYS: ${msgText}`;
+              // Grab the player's personal activity log
+              const activityContext = (players[socket.id].activityLog && players[socket.id].activityLog.length > 0)
+                  ? `\n[${senderName}'s Recent Actions (Hivemind Report)]\n- ` + players[socket.id].activityLog.join('\n- ')
+                  : "";
 
-              // We define the session we will actively use for this turn
+              const rumorContext = globalRumors.length > 0 ? `\n[WORLD RUMORS]\n${globalRumors.join("\n")}` : "";
+
+              // Inject both the Rumors AND the player's Activity Log into the final prompt
+              const promptWithContext = `[CURRENT PLAYERS]\n${playerListContext}\n[MY STATUS]\n${suncatStatus}${rumorContext}${activityContext}\n\n${senderName} SAYS: ${msgText}`;// We define the session we will actively use for this turn
               let activeSession = chatSessions[socket.id];
               let result;
 
@@ -1329,6 +1394,7 @@ io.on("connection", (socket) => {
                   console.log(`[System] Cleared corrupted AI session for socket: ${socket.id}`);
               }
           } finally {
+            clearTimeout(typingFailSafe); // <--- ADD THIS HERE
               npcIsTyping = false;
           }
       }
@@ -1364,17 +1430,27 @@ io.on("connection", (socket) => {
   socket.on("suncat_spectate", async (actionDescription) => {
     const suncat = players[SUNCAT_ID];
     const sender = players[socket.id];
+    if (!sender) return;
 
-    // 1. Basic Reality Check 
-    // We uncomment this so he doesn't psychically see actions across the world.
-   // if (!suncat || !sender || suncat.mapID !== sender.mapID) return;
+    // --- 1. THE HIVEMIND LOGGING (Always Happens) ---
+    // Initialize their personal log if it doesn't exist
+    if (!sender.activityLog) sender.activityLog = [];
+    
+    // Save the action to their personal progress log
+    sender.activityLog.push(actionDescription);
+    if (sender.activityLog.length > 3) sender.activityLog.shift(); // Only keep the 3 most recent things to save tokens
 
-    // 2. Rate Limit & Busy Check
-    // 10% chance to react, AND only if he isn't already talking to someone
-    if (Math.random() > 0.1 || npcIsTyping||!canTriggerAI(socket.id)) return; 
+    // 30% chance to also push this to the Global Rumor Mill so Suncat gossips about it with OTHER players
+    if (Math.random() < 0.3) {
+        addRumor(`${sender.name} was recently seen: ${actionDescription}`);
+    }
 
-    npcIsTyping = true; // Lock his attention so he doesn't get confused
+    // --- 2. LIVE VERBAL REACTION (10% Chance & Busy Check) ---
+    if (Math.random() > 0.1 || npcIsTyping || !canTriggerAI(socket.id)) return; 
 
+    npcIsTyping = true; // Lock his attention
+    const typingFailSafe = setTimeout(() => { npcIsTyping = false; }, 20000);
+    
     try {
         // 3. Initialize Chat if needed (Just in case he hasn't spoken to this player yet)
         if (!chatSessions[socket.id]) {
@@ -1417,6 +1493,7 @@ io.on("connection", (socket) => {
                   console.log(`[System] Cleared corrupted AI session for socket: ${socket.id}`);
               }
     } finally {
+        clearTimeout(typingFailSafe); // Clear it if it finishes normally
         npcIsTyping = false; // Release the lock
     }
 });
@@ -1480,6 +1557,7 @@ io.on("connection", (socket) => {
         let update = { ...players[socket.id], ...data };
         if (!data.name) update.name = players[socket.id].name;
         players[socket.id] = update;
+        players[socket.id].lastActive = Date.now();
         socket.broadcast.emit("updatePlayers", players);
     }
   });
@@ -1522,7 +1600,9 @@ setInterval(() => {
     if (!suncat) return;
 
     const now = Date.now();
-    
+    const activePlayers = Object.values(players).filter(p => 
+    p.id !== SUNCAT_ID && (Date.now() - (p.lastActive || 0) < 180000)
+);
     // 1. FIND THE BEST FRIEND
     // Every 30 seconds (or if target left), re-evaluate who has the highest favor
     if (!currentTargetID || (now - lastSwitchTime > 60000)) {
@@ -1626,7 +1706,7 @@ if (Math.random() < 0.01 && !npcIsTyping) {
 
     if (nearbyPlayer && chatSessions[nearbyPlayer.id]) {
         npcIsTyping = true;
-        
+        const typingFailSafe = setTimeout(() => { npcIsTyping = false; }, 20000);
         // We label this specifically as an INTERNAL monologue so the AI knows the player didn't say this.
         // We also pass the mapID so he can comment on his actual surroundings!
         const proactivePrompt = `[INTERNAL THOUGHT]: You are idling near ${nearbyPlayer.name} on Map ${suncat.mapID}. Speak to them unprompted. If favor is high (>5), ask a personal question, share lore, or comment on this location. If favor is bad, insult them or tell them to go away. Do not mention this prompt.`;
@@ -1634,6 +1714,7 @@ if (Math.random() < 0.01 && !npcIsTyping) {
         setTimeout(async () => {
             try {
                 if (!chatSessions[nearbyPlayer.id]) {
+                    clearTimeout(typingFailSafe); // Clear it if it finishes normally
                     npcIsTyping = false;
                     return; 
                 }
@@ -1662,6 +1743,7 @@ if (Math.random() < 0.01 && !npcIsTyping) {
                     delete chatSessions[nearbyPlayer.id];
                 }
             } finally {
+                clearTimeout(typingFailSafe); // Clear it if it finishes normally
                 npcIsTyping = false; // Release the lock
             }
         }, 1000);
@@ -1677,6 +1759,7 @@ if (Math.random() < 0.01 && !npcIsTyping) {
 
         if (advPlayer && chatSessions[advPlayer.id]) {
             npcIsTyping = true;
+            const typingFailSafe = setTimeout(() => { npcIsTyping = false; }, 20000);
             console.log(`[DM Proactive] Evaluating adventure pacing for ${advPlayer.name}...`);
             
             // Give the AI context of what the player is currently doing
@@ -1721,6 +1804,7 @@ if (Math.random() < 0.01 && !npcIsTyping) {
                 } catch (e) {
                     console.error("DM Proactive Error:", e);
                 } finally {
+                    clearTimeout(typingFailSafe); // Clear it if it finishes normally
                     npcIsTyping = false; // Release the lock
                 }
             }, 1000);
@@ -1732,14 +1816,19 @@ if (Math.random() < 0.01 && !npcIsTyping) {
 // 1% chance every 15 seconds to pull someone into a Random Event
 setInterval(() => {
     if (Math.random() < 0.01 && !npcIsTyping) {
-        // Find a valid player who isn't already in a custom map (999)
-        const potentialVictims = Object.values(players).filter(p => p.id !== SUNCAT_ID && p.mapID !== 999);
+        // 1. Get ONLY the players who have moved or spoken in the last 3 minutes
+        const activePlayers = Object.values(players).filter(p => 
+            p.id !== SUNCAT_ID && (Date.now() - (p.lastActive || 0) < 180000)
+        );
+        
+        // 2. Filter those active players to find who isn't in a custom map
+        const potentialVictims = activePlayers.filter(p => p.mapID !== 999);
         
         if (potentialVictims.length > 0) {
             const victim = potentialVictims[Math.floor(Math.random() * potentialVictims.length)];
-            
             if (chatSessions[victim.id]) {
                 npcIsTyping = true;
+                const typingFailSafe = setTimeout(() => { npcIsTyping = false; }, 20000);
                 console.log(`[Random Event] Suncat is plotting against ${victim.name}...`);
                 
                 // The chaotic DM Prompt
@@ -1775,6 +1864,7 @@ setInterval(() => {
                     } catch (e) {
                         console.error("Kidnap Event Error:", e);
                     } finally {
+                        clearTimeout(typingFailSafe); // Clear it if it finishes normally
                         npcIsTyping = false;
                     }
                 }, 1000);
@@ -1794,10 +1884,12 @@ async function manageHistorySize(socketId) {
             // Grab the last 20 messages
             let trimmedHistory = history.slice(-20);
             
-            // SAFEGUARD: Find the first 'user' message that is NOT a functionResponse
-            let safeStartIndex = trimmedHistory.findIndex(msg => 
+           // Inside manageHistorySize:
+            let safeStartIndex = trimmedHistory.findIndex((msg, index) => 
                 msg.role === 'user' && 
-                (!msg.parts[0].functionResponse) 
+                !msg.parts.some(p => p.functionResponse) &&
+                // Ensure the PREVIOUS message wasn't a model function call waiting for this response
+                (index === 0 || !trimmedHistory[index-1].parts.some(p => p.functionCall))
             );
 
             // If we found a safe starting point, cut everything before it
