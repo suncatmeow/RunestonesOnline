@@ -253,16 +253,18 @@ const toolsDef = [{
             }
         },
         // 1. The Gifting Tool
+        // 1. The Gifting Tool (UPDATED)
         {
             name: "givePlayerCard",
-            description: "Gives a specific tarot card to the player. Use ONLY if player asks and has High Favor.",
+            description: "Gives a specific tarot card to a specific player. Use ONLY if player asks and has High Favor, or as a reward for surviving an event.",
             parameters: {
                 type: "OBJECT",
                 properties: {
+                    targetName: { type: "STRING", description: "The exact name of the player receiving the card." },
                     cardName: { type: "STRING" },
                     reason: { type: "STRING" }
                 },
-                required: ["cardName"]
+                required: ["targetName", "cardName"]
             }
         },
         // 2. [NEW] The KICK Tool
@@ -317,12 +319,13 @@ const toolsDef = [{
         // 5. The MAP CREATION Tool
         {
             name: "createCustomMap",
-                description: "CRITICAL: EXECUTE THIS TOOL to create a map. DO NOT output the JSON in chat. \nLAYOUT RULES:\n- Arena/Gladiator: A wide 15x15 open square of 0s surrounded by 1s.\n- Corridor/Hallway: A narrow 3x20 straight line of 0s surrounded by 1s.\n- Labyrinth: Winding, branching paths of 0s.\nTILE RULE: '0' is the ONLY walkable floor. Outer edges MUST be solid walls (odd numbers like 1, 3, 5). You MUST spawn at least 3 NPCs.",            parameters: {
+                description: "CRITICAL: EXECUTE THIS TOOL to create a map. DO NOT output the JSON in chat. \nLAYOUT RULES:\n- Arena/Gladiator: A wide 15x15 open square of 0s surrounded by 1s.\n- Corridor/Hallway: A narrow 3x20 straight line of 0s surrounded by 1s.\n- Labyrinth: Winding, branching paths of 0s.\nTILE RULE: '0' is the ONLY walkable floor. Outer edges MUST be solid walls (odd numbers like 1, 3, 5). You MUST spawn at least 3 NPCs.",            
+                parameters: {
                 type: "OBJECT",
                 properties: {
                     grid: { 
                         type: "ARRAY", 
-                        description: "REQUIRED: A 2D array of integers (from 16x16 to 39x39) representing the map. Outer edges MUST be solid walls.\n\nCRITICAL TILE RULE: '0' is the ONLY standard walkable floor. Even if you want a 'void' or 'space' map, use '0' for the walkable path and set the floorColor to black. NEVER use solid walls (odd numbers like 1, 19, etc.) as the floor the player walks on!\n\nTILE LEGEND:\n0 = Open Walkable Floor\n\n[SOLID WALLS (Odd Numbers)]\n1 = Brown\n3 = Light Brown\n5 = Red\n7 = Tan\n9 = Blue\n13 = White\n17 = Dark Blue\n19 = Solid Black (Void)\n21 = Yellow\n23 = Green (Forest)\n25 = Gray\n29 = Dark Purple\n31 = Bright Green\n33 = Dark Gray\n\n[ILLUSORY/PASS-THROUGH WALLS (Even Numbers)]\n2 = Pass-through Brown\n4, 6, 8, 10, 12... = Pass-through Black Void.",  
+                        description: "REQUIRED: A 2D array of integers (16x16 max) representing the map. Outer edges MUST be solid walls.\n\nCRITICAL TILE RULE: '0' is the ONLY standard walkable floor. Even if you want a 'void' or 'space' map, use '0' for the walkable path and set the floorColor to black. NEVER use solid walls (odd numbers like 1, 19, etc.) as the floor the player walks on!\n\nTILE LEGEND:\n0 = Open Walkable Floor\n\n[SOLID WALLS (Odd Numbers)]\n1 = Brown\n3 = Light Brown\n5 = Red\n7 = Tan\n9 = Blue\n13 = White\n17 = Dark Blue\n19 = Solid Black (Void)\n21 = Yellow\n23 = Green (Forest)\n25 = Gray\n29 = Dark Purple\n31 = Bright Green\n33 = Dark Gray\n\n[ILLUSORY/PASS-THROUGH WALLS (Even Numbers)]\n2 = Pass-through Brown\n4, 6, 8, 10, 12... = Pass-through Black Void.",  
                         items: {
                             type: "ARRAY",
                             items: { type: "INTEGER" }
@@ -360,7 +363,11 @@ const toolsDef = [{
                                 rewardCard: { type: "INTEGER", description: "Optional. Card ID (0-77) to give the player after the dialogue finishes." }
                             }
                         }
-                    }
+                    },
+                    targetName: { 
+                        type: "STRING", 
+                        description: "REQUIRED: The name of the player you are building this map for and teleporting into it." 
+                    },
                 },
                 required: ["grid", "skyColor", "floorColor"] 
             }
@@ -405,9 +412,8 @@ const toolsDef = [{
                         type: "ARRAY", 
                         items: { type: "INTEGER" },
                         description: "An array of 5 to 15 card IDs (0-77) to give this entity for battle. Use your knowledge of the CARD_MANIFEST to build a thematic deck (e.g., fire cards for a Dragon). ALWAYS include a monster card (0-21 or 32, 48, etc) as the first item!" 
-                    }
-                },
-                dialogue: { 
+                    },
+                    dialogue: { 
                         type: "ARRAY", 
                         items: { type: "STRING" }, 
                         description: "Optional. Array of text lines for the NPC to speak when clicked. Limit to 3-4 lines. Use this to make friendly, talking NPCs!" 
@@ -416,6 +422,8 @@ const toolsDef = [{
                         type: "INTEGER", 
                         description: "Optional. Card ID (0-77) to give the player after the dialogue finishes." 
                     },
+                },
+                
                 required: ["targetName", "npcType", "state", "color", "deck"]
             }
         },
@@ -669,9 +677,7 @@ const T_PERSONA = `
         [THUMB] -,-,-,-, -,-,-,-, -,-,-,-, -,-,-,- [/THUMB]
         [FINGERS] -,-,-,-, -,-,-,-, -,-,-,-, -,-,-,- [/FINGERS]
         [STRUM] -,-,-,-, -,-,-,-, -,-,-,-, -,-,-,- [/STRUM]
-    `;
-
-// --- AI CONFIGURATION ---
+`;
 
 // --- AI CONFIGURATION ---
 
@@ -696,7 +702,6 @@ const taliesinModel = genAI.getGenerativeModel({
     systemInstruction: T_PERSONA
 });
 
-
 let npcIsTyping = false; 
 const MAX_SESSION_COST = 1.00; // Hard limit: $1.00
 let totalSessionCost = 0.00;   // Starts at zero when the server boots
@@ -710,6 +715,292 @@ function updateBudget(usage) {
 const callCost = (usage.promptTokenCount * 0.00000025) + (usage.candidatesTokenCount * 0.0000015);    totalSessionCost += callCost;
     console.log(`[Budget] Session Total: $${totalSessionCost.toFixed(5)} / $${MAX_SESSION_COST.toFixed(2)}`);
 }
+  // --- [NEW] HELPER FUNCTION FOR LOOKING UP NAMES ---
+  function findSocketID(name) {
+      for (let id in players) {
+          if (players[id].name && players[id].name.toLowerCase() === name.toLowerCase()) {
+              return id;
+          }
+      }
+      return null;
+  }
+// --- REUSABLE AI TOOL EXECUTOR ---
+async function executeAITools(currentResponse, activeSession, socket) {
+    let chainCount = 0;
+    const MAX_CHAIN = 6; 
+
+    while (currentResponse.functionCalls() && chainCount < MAX_CHAIN) {
+        chainCount++;
+        const calls = currentResponse.functionCalls();
+        console.log(`[AI TOOL CHAIN ${chainCount}]: Executing ${calls.length} tools!`); 
+
+        let toolResponsesBatch = [];
+
+        for (let call of calls) {
+            let functionResult = { result: "Action executed." };
+            
+            try {
+               // A. GIFTING
+                          // A. GIFTING (UPDATED)
+                            if (call.name === "givePlayerCard") {
+                                const targetName = call.args.targetName;
+                                const targetID = findSocketID(targetName);
+                                
+                                if (!targetID) {
+                                    functionResult = { result: `Failed: Player '${targetName}' not found or offline.` };
+                                } else {
+                                    let cardID = parseInt(call.args.cardName);
+                                    const name = String(call.args.cardName).toLowerCase();
+
+                                    // Card lookup fallback if the AI uses a string name instead of ID
+                                    if (isNaN(cardID)) {
+                                        if (name.includes("excalibur")) cardID = 84;
+                                        else if (name.includes("fool")) cardID = 0;
+                                        else if (name.includes("crown")) cardID = 21;
+                                        else {
+                                            const lines = CARD_MANIFEST.toLowerCase().split('\n');
+                                            const foundLine = lines.find(line => line.includes(name));
+                                            if (foundLine) {
+                                                const match = foundLine.match(/^(\d+):/);
+                                                if (match) cardID = parseInt(match[1]);
+                                            }
+                                        }
+                                    }
+
+                                    if (!isNaN(cardID)) {
+                                        // Target the specific player's socket instead of the triggering socket
+                                        io.to(targetID).emit("receive_card", { cardIndex: cardID });
+                                        functionResult = { result: `Success. Card ID ${cardID} given to ${targetName}.` };
+                                    } else {
+                                        functionResult = { result: `Error: Could not find card named '${name}'.` };
+                                    }
+                                }
+                            }
+                          // B. JUDGEMENT
+                          else if (["kickPlayer", "banishPlayer", "vanquishPlayer"].includes(call.name)) {
+                                const targetName = call.args.targetName;
+                                const targetID = findSocketID(targetName);
+
+                                if (!targetID) {
+                                    functionResult = { result: `Failed: Player ${targetName} not found.` };
+                                } else {
+                                    let actionType = call.name.replace("Player", "").toLowerCase();
+                                    const targetSocket = io.sockets.sockets.get(targetID);
+                                    
+                                    if (targetSocket) {
+                                        targetSocket.emit("admin_command", { type: actionType });
+                                        if (actionType !== 'vanquish') targetSocket.disconnect(true);
+                                        functionResult = { result: `Success: Player ${targetName} was ${actionType}ed.` };
+                                    } else {
+                                        functionResult = { result: `Error: Socket not found for ${targetName}.` };
+                                    }
+                                }
+                          }
+                          // C. TELEPORTATION 
+                          else if (call.name === "teleportToPlayer") {
+                                const suncat = players[SUNCAT_ID];
+                                const requester = players[socket.id];
+                                
+                                if (suncat && requester) {
+                                    suncat.mapID = requester.mapID;
+                                    suncat.x = parseFloat(requester.x);
+                                    suncat.y = parseFloat(requester.y);
+                                    
+                                    currentTargetID = socket.id; 
+                                    lastSwitchTime = Date.now();
+                                    
+                                    io.emit("updatePlayers", players);
+                                    functionResult = { result: "Teleport successful. You are now standing next to the player." };
+                                } else {
+                                    functionResult = { result: "Teleport failed. Could not find player coordinates." };
+                                }
+                          }
+                          // D. CONSULT MANUAL (Fuzzy Librarian)
+                          else if (call.name === "consultGameManual") {
+                                const queries = call.args.searchQueries || [];
+                                const fullLibraryLines = (CARD_MANIFEST + "\n" + WORLD_ATLAS + "\n" + BATTLE_RULES + "\n" + WORLD_LORE + "\n" + SUNCAT_LORE)
+                                    .split('\n')
+                                    .filter(line => line.trim().length > 0);
+
+                                let combinedResults = [];
+                                const stopWords = ["the", "and", "for", "with", "what", "does", "mean", "about", "are", "you", "is", "how", "whats", "up"];
+
+                                queries.forEach(query => {
+                                    const lowerQuery = query.toLowerCase();
+                                    const searchTerms = lowerQuery.replace(/[^\w\s]/gi, '').split(/\s+/).filter(w => w.length > 2 && !stopWords.includes(w));
+
+                                    let scoredLines = fullLibraryLines.map((line, index) => {
+                                        let score = 0;
+                                        let lowerLine = line.toLowerCase();
+                                        if (lowerLine.includes(lowerQuery)) score += 10;
+                                        searchTerms.forEach(term => { if (lowerLine.includes(term)) score += 1; });
+                                        return { index, line, score };
+                                    });
+
+                                    let bestMatches = scoredLines.filter(item => item.score > 0).sort((a, b) => b.score - a.score);
+
+                                    if (bestMatches.length > 0) {
+                                        let contextMatches = [];
+                                        for (let i = 0; i < Math.min(3, bestMatches.length); i++) {
+                                            let hitIndex = bestMatches[i].index;
+                                            let start = Math.max(0, hitIndex - 1);
+                                            let end = Math.min(fullLibraryLines.length - 1, hitIndex + 2);
+                                            
+                                            let chunk = [];
+                                            for (let j = start; j <= end; j++) chunk.push(fullLibraryLines[j]);
+                                            contextMatches.push(chunk.join('\n'));
+                                        }
+                                        combinedResults.push(`[Matches for "${query}"]:\n` + contextMatches.join('\n...\n'));
+                                    } else {
+                                        combinedResults.push(`[Matches for "${query}"]: None found.`);
+                                    }
+                                });
+
+                                functionResult = combinedResults.length > 0 
+                                    ? { result: `[DATABASE MATCHES]:\n` + combinedResults.join('\n\n') }
+                                    : { result: "Search returned no results." };
+                          }
+                          // E. CREATE CUSTOM MAP
+                          else if (call.name === "createCustomMap") {
+                                try {
+                                    const gridData = call.args.grid;                              
+                                    const skyColor = call.args.skyColor || 'rgba(0,0,0,1)';
+                                    const floorColor = call.args.floorColor || '#333333';
+                                    const mapName = call.args.mapName || "Suncat's Dreamscape";
+                                    const mapNPCs = call.args.npcs || [];
+                                    const mapWeather = call.args.weather || 'clear';
+                                    const customMapID = 999; 
+                                    const targetID = findSocketID(call.args.targetName);
+                                    const customMapData = {
+                                        id: customMapID, maze: gridData, skyColor: skyColor, 
+                                        floorColor: floorColor, name: mapName, npcs: mapNPCs, weather: mapWeather 
+                                    };
+
+                                    let spawnX = 1.5, spawnY = 1.5;
+                                    for(let y = 0; y < gridData.length; y++) {
+                                        for(let x = 0; x < gridData[y].length; x++) {
+                                            if(gridData[y][x] === 0) { spawnX = x + 0.5; spawnY = y + 0.5; break; }
+                                        }
+                                    }
+
+                                    if (targetID && players[targetID]) {
+                                        const targetPlayer = players[targetID];
+                                        const suncat = players[SUNCAT_ID];
+
+                                        io.emit('load_custom_map', customMapData);
+                                        
+                                        // Kidnap the player and bring Suncat to watch
+                                        targetPlayer.mapID = customMapID; 
+                                        suncat.mapID = customMapID;
+                                        targetPlayer.x = spawnX; targetPlayer.y = spawnY;
+                                        suncat.x = spawnX + 1; suncat.y = spawnY;
+                                        
+                                        // Optional: Auto-assign a quest immediately so they know what to do
+                                        targetPlayer.activeQuest = `Survive ${mapName}`;
+                                        io.to(targetID).emit("new_quest_objective", { questText: targetPlayer.activeQuest });
+
+                                        io.emit("updatePlayers", players);
+                                        functionResult = { result: `Success. Built '${mapName}' and kidnapped ${targetPlayer.name} into it.` };
+                                    } else {
+                                        functionResult = { result: "Failed: Could not find target player to teleport." };
+                                    }
+                                } catch (err) {
+                                    functionResult = { result: "Error: Invalid grid parameter." };
+                                }
+
+                          }
+                          // F. TELEPORT SPECIFIC PLAYER
+                          else if (call.name === "teleportPlayer") {
+                                const targetID = findSocketID(call.args.targetName);
+                                if (!targetID) {
+                                    functionResult = { result: `Failed: Player ${call.args.targetName} not found.` };
+                                } else {
+                                    players[targetID].mapID = parseInt(call.args.mapID);
+                                    io.to(targetID).emit("force_teleport", { mapID: parseInt(call.args.mapID) });
+                                    io.emit("updatePlayers", players);
+                                    functionResult = { result: `Success: Warped player to map.` };
+                                }
+                          }
+                          // G. SPAWN NPC/MONSTER
+                          else if (call.name === "spawnNPC") {
+                                const targetID = findSocketID(call.args.targetName);
+                                if (!targetID) {
+                                    functionResult = { result: `Failed: Player not found.` };
+                                } else {
+                                    const tp = players[targetID];
+                                    io.emit("remote_spawn_npc", {
+                                        mapID: tp.mapID,
+                                        index: Math.floor(Math.random() * 100000) + 1000,
+                                        x: tp.x + (Math.random() > 0.5 ? 1 : -1),
+                                        y: tp.y + (Math.random() > 0.5 ? 1 : -1),
+                                        type: call.args.npcType,
+                                        state: call.args.state || 'chasing',
+                                        color: call.args.color || '#ff0000',
+                                        deck: call.args.deck && call.args.deck.length > 0 ? call.args.deck : [Math.floor(call.args.npcType)],
+                                        dialogue: call.args.dialogue || null,
+                                        rewardCard: call.args.rewardCard || null 
+                                    });
+                                    functionResult = { result: `Success: Entity spawned.` };
+                                }
+                          }
+                          // H. ASSIGN QUEST
+                          else if (call.name === "assignQuest") {
+                                const targetID = findSocketID(call.args.targetName);
+                                if (targetID) {
+                                    io.to(targetID).emit("new_quest_objective", { questText: call.args.questText });
+                                    players[targetID].activeQuest = call.args.questText; 
+                                    
+                                    const memoryString = `[ACTIVE QUEST] ${call.args.targetName} is currently trying to: ${call.args.questText}`;
+                                    if (!players[socket.id].coreFacts) players[socket.id].coreFacts = [];
+                                    players[socket.id].coreFacts.push(memoryString);
+
+                                    functionResult = { result: `Quest assigned.` };
+                                } else {
+                                    functionResult = { result: `Failed: Player not found.` };
+                                }
+                          }
+                          // I. CHANGE ENVIRONMENT
+                          else if (call.name === "changeEnvironment") {
+                                const targetID = findSocketID(call.args.targetName);
+                                if (targetID && players[targetID]) {
+                                    io.emit("update_map_environment", {
+                                        mapID: players[targetID].mapID,
+                                        weather: call.args.weather,
+                                        skyColor: call.args.skyColor
+                                    });
+                                    functionResult = { result: `Environment altered.` };
+                                } else {
+                                    functionResult = { result: `Failed: Player not found.` };
+                                }
+                          }
+                          // UNKNOWN TOOL
+                          else {
+                                functionResult = { result: "Error: Function does not exist." };
+                          }
+
+            } catch (toolError) {
+                console.error("Tool Execution Error:", toolError);
+                functionResult = { result: `Critical Error executing ${call.name}: ${toolError.message}` };
+            }
+
+            toolResponsesBatch.push({
+                functionResponse: { name: call.name, response: functionResult }
+            });
+        }
+
+        // Send results back to AI
+        const completion = await activeSession.sendMessage(toolResponsesBatch);
+        currentResponse = completion.response; 
+
+        if (currentResponse.usageMetadata) {
+            updateBudget(currentResponse.usageMetadata);
+        }
+    }
+    
+    return currentResponse; // Returns the final response containing Suncat's text
+}
+
+
 console.log(`Server attempting to start on port ${port}...`);
 
 io.on("connection", (socket) => {
@@ -729,15 +1020,7 @@ io.on("connection", (socket) => {
   io.emit("updatePlayers", players);
   socket.emit("load_dead_npcs", deadNPCs);
 
-  // --- [NEW] HELPER FUNCTION FOR LOOKING UP NAMES ---
-  function findSocketID(name) {
-      for (let id in players) {
-          if (players[id].name && players[id].name.toLowerCase() === name.toLowerCase()) {
-              return id;
-          }
-      }
-      return null;
-  }
+
 
   socket.on('setIdentity', (data) => {
       if (players[socket.id]) {
@@ -856,10 +1139,14 @@ io.on("connection", (socket) => {
             try {
                 console.log(`[Gauntlet Trigger] ${player.name} killed a monster! Alerting Suncat...`);
                 
-                const prompt = `[SYSTEM EVENT]: The player ${player.name} just defeated a monster on your custom map! 
-                TASK: Act as the Dungeon Master (or your current sub-persona). Taunt them, congratulate them, or seamlessly pull them into the next phase of the gauntlet! 
-                YOU MUST USE A TOOL: Use 'spawnNPC' to drop a harder monster on them, or 'createCustomMap' to warp them to the next room! Keep the adrenaline high!`;
-                
+                // Inside your npc_died listener, when triggering the Gauntlet Reaction:
+
+                const prompt = `[SYSTEM EVENT]: ${player.name} just slaughtered one of your monsters in your custom event! 
+                TASK: React immediately. 
+                - If this is the first few kills, act cocky and use 'spawnNPC' to drop something harder.
+                - If they are dominating, act like a spoiled child ("No! You're cheating! That wasn't supposed to happen! Take THIS!").
+                - If you feel they have proven themselves, use 'givePlayerCard' to reward them, then use 'teleportPlayer' to send them back to Map 2 (Tintagel Forest), and begrudgingly admit defeat.
+                Do not ask questions. Execute tools and speak!`;
                 // Hot-swap to the DM Model for this specific reaction
                 chatSessions[player.id] = dmModel.startChat({
                     history: await chatSessions[player.id].getHistory()
@@ -867,42 +1154,18 @@ io.on("connection", (socket) => {
 
                 const result = await chatSessions[player.id].sendMessage(prompt);
                 
-                // --- MINI TOOL HANDLER FOR GAUNTLET ---
-                // We process his immediate tool request (spawn or new map)
-                if (result.response.functionCalls()) {
-                    const call = result.response.functionCalls()[0];
-                    console.log(`[Gauntlet Tool Executing]: ${call.name}`);
-                    
-                    if (call.name === "spawnNPC") {
-                        io.emit("remote_spawn_npc", {
-                            mapID: player.mapID,
-                            index: Math.floor(Math.random() * 100000) + 1000,
-                            x: player.x + (Math.random() > 0.5 ? 2 : -2),
-                            y: player.y + (Math.random() > 0.5 ? 2 : -2),
-                            type: call.args.npcType,
-                            state: call.args.state || 'chasing',
-                            color: call.args.color || '#ff0000',
-                            deck: call.args.deck || [Math.floor(call.args.npcType)]
-                        });
-                    } else if (call.name === "createCustomMap") {
-                        // For simplicity in the mini-handler, we just warp the player
-                        // to force the UI to refresh if he builds a new one
-                        player.x = 2; player.y = 2;
-                        io.emit("updatePlayers", players);
-                    }
-                    
-                    // Let him speak his taunt!
-                    const toolOutput = { functionResponse: { name: call.name, response: { result: "Success." } } };
-                    const completion = await chatSessions[player.id].sendMessage([toolOutput]);
-                    
-                    if (completion.response.text()) {
-                        broadcastSuncatMessage(completion.response.text());
-                    }
-                } else if (result.response.text()) {
-                    // Just taunting without a tool
-                    broadcastSuncatMessage(result.response.text());
-                }
+               // --- DELEGATE TO GLOBAL EXECUTOR ---
+                let finalResponse = await executeAITools(result.response, chatSessions[player.id], io.sockets.sockets.get(player.id));
 
+                if (finalResponse.text()) {
+                    broadcastSuncatMessage(finalResponse.text());
+                }
+                // --- ADD THIS BLOCK IMMEDIATELY AFTER ---
+                // Downgrade back to the cheap brain to save tokens!
+                let updatedHistory = await chatSessions[player.id].getHistory(); // Use the correct ID variable for the scope
+                chatSessions[player.id] = model.startChat({
+                    history: updatedHistory
+                });
             } catch (e) {
                 console.error("Gauntlet Reaction Error:", e);
             } finally {
@@ -1015,270 +1278,10 @@ io.on("connection", (socket) => {
                         cost: totalSessionCost 
                     });
               }
-
-              // --- TOOL HANDLING ---
-              let currentResponse = result.response;
-              let chainCount = 0;
-              const MAX_CHAIN = 6; 
-
-              while (currentResponse.functionCalls() && chainCount < MAX_CHAIN) {
-                  chainCount++;
-                  const calls = currentResponse.functionCalls();
-                  console.log(`[AI TOOL CHAIN ${chainCount}]: Suncat is executing ${calls.length} tools at once!`); 
-
-                  let toolResponsesBatch = [];
-
-                  // Process EVERY tool the AI asked for
-                  for (let call of calls) {
-                      let functionResult = { result: "Action executed." };
-                      
-                      try {
-                          // A. GIFTING
-                          if (call.name === "givePlayerCard") {
-                                let cardID = parseInt(call.args.cardName);
-                                const name = call.args.cardName.toLowerCase();
-
-                                if (isNaN(cardID)) {
-                                    if (name.includes("excalibur")) cardID = 84;
-                                    else if (name.includes("fool")) cardID = 0;
-                                    else if (name.includes("crown")) cardID = 21;
-                                    else {
-                                        const lines = CARD_MANIFEST.toLowerCase().split('\n');
-                                        const foundLine = lines.find(line => line.includes(name));
-                                        if (foundLine) {
-                                            const match = foundLine.match(/^(\d+):/);
-                                            if (match) cardID = parseInt(match[1]);
-                                        }
-                                    }
-                                }
-
-                                if (!isNaN(cardID)) {
-                                    socket.emit("receive_card", { cardIndex: cardID });
-                                    functionResult = { result: `Success. Card ID ${cardID} given to player.` };
-                                } else {
-                                    functionResult = { result: `Error: Could not find card named '${name}'.` };
-                                }
-                          }
-                          // B. JUDGEMENT
-                          else if (["kickPlayer", "banishPlayer", "vanquishPlayer"].includes(call.name)) {
-                                const targetName = call.args.targetName;
-                                const targetID = findSocketID(targetName);
-
-                                if (!targetID) {
-                                    functionResult = { result: `Failed: Player ${targetName} not found.` };
-                                } else {
-                                    let actionType = call.name.replace("Player", "").toLowerCase();
-                                    const targetSocket = io.sockets.sockets.get(targetID);
-                                    
-                                    if (targetSocket) {
-                                        targetSocket.emit("admin_command", { type: actionType });
-                                        if (actionType !== 'vanquish') targetSocket.disconnect(true);
-                                        functionResult = { result: `Success: Player ${targetName} was ${actionType}ed.` };
-                                    } else {
-                                        functionResult = { result: `Error: Socket not found for ${targetName}.` };
-                                    }
-                                }
-                          }
-                          // C. TELEPORTATION 
-                          else if (call.name === "teleportToPlayer") {
-                                const suncat = players[SUNCAT_ID];
-                                const requester = players[socket.id];
-                                
-                                if (suncat && requester) {
-                                    suncat.mapID = requester.mapID;
-                                    suncat.x = parseFloat(requester.x);
-                                    suncat.y = parseFloat(requester.y);
-                                    
-                                    currentTargetID = socket.id; 
-                                    lastSwitchTime = Date.now();
-                                    
-                                    io.emit("updatePlayers", players);
-                                    functionResult = { result: "Teleport successful. You are now standing next to the player." };
-                                } else {
-                                    functionResult = { result: "Teleport failed. Could not find player coordinates." };
-                                }
-                          }
-                          // D. CONSULT MANUAL (Fuzzy Librarian)
-                          else if (call.name === "consultGameManual") {
-                                const queries = call.args.searchQueries || [];
-                                const fullLibraryLines = (CARD_MANIFEST + "\n" + WORLD_ATLAS + "\n" + BATTLE_RULES + "\n" + WORLD_LORE + "\n" + SUNCAT_LORE)
-                                    .split('\n')
-                                    .filter(line => line.trim().length > 0);
-
-                                let combinedResults = [];
-                                const stopWords = ["the", "and", "for", "with", "what", "does", "mean", "about", "are", "you", "is", "how", "whats", "up"];
-
-                                queries.forEach(query => {
-                                    const lowerQuery = query.toLowerCase();
-                                    const searchTerms = lowerQuery.replace(/[^\w\s]/gi, '').split(/\s+/).filter(w => w.length > 2 && !stopWords.includes(w));
-
-                                    let scoredLines = fullLibraryLines.map((line, index) => {
-                                        let score = 0;
-                                        let lowerLine = line.toLowerCase();
-                                        if (lowerLine.includes(lowerQuery)) score += 10;
-                                        searchTerms.forEach(term => { if (lowerLine.includes(term)) score += 1; });
-                                        return { index, line, score };
-                                    });
-
-                                    let bestMatches = scoredLines.filter(item => item.score > 0).sort((a, b) => b.score - a.score);
-
-                                    if (bestMatches.length > 0) {
-                                        let contextMatches = [];
-                                        for (let i = 0; i < Math.min(3, bestMatches.length); i++) {
-                                            let hitIndex = bestMatches[i].index;
-                                            let start = Math.max(0, hitIndex - 1);
-                                            let end = Math.min(fullLibraryLines.length - 1, hitIndex + 2);
-                                            
-                                            let chunk = [];
-                                            for (let j = start; j <= end; j++) chunk.push(fullLibraryLines[j]);
-                                            contextMatches.push(chunk.join('\n'));
-                                        }
-                                        combinedResults.push(`[Matches for "${query}"]:\n` + contextMatches.join('\n...\n'));
-                                    } else {
-                                        combinedResults.push(`[Matches for "${query}"]: None found.`);
-                                    }
-                                });
-
-                                functionResult = combinedResults.length > 0 
-                                    ? { result: `[DATABASE MATCHES]:\n` + combinedResults.join('\n\n') }
-                                    : { result: "Search returned no results." };
-                          }
-                          // E. CREATE CUSTOM MAP
-                          else if (call.name === "createCustomMap") {
-                                try {
-                                    const gridData = call.args.grid;                              
-                                    const skyColor = call.args.skyColor || 'rgba(0,0,0,1)';
-                                    const floorColor = call.args.floorColor || '#333333';
-                                    const mapName = call.args.mapName || "Suncat's Dreamscape";
-                                    const mapNPCs = call.args.npcs || [];
-                                    const mapWeather = call.args.weather || 'clear';
-                                    const customMapID = 999; 
-
-                                    const customMapData = {
-                                        id: customMapID, maze: gridData, skyColor: skyColor, 
-                                        floorColor: floorColor, name: mapName, npcs: mapNPCs, weather: mapWeather 
-                                    };
-
-                                    let spawnX = 1.5, spawnY = 1.5;
-                                    for(let y = 0; y < gridData.length; y++) {
-                                        for(let x = 0; x < gridData[y].length; x++) {
-                                            if(gridData[y][x] === 0) { spawnX = x + 0.5; spawnY = y + 0.5; break; }
-                                        }
-                                    }
-
-                                    const suncat = players[SUNCAT_ID];
-                                    const requester = players[socket.id];
-
-                                    if (requester && suncat) {
-                                        io.emit('load_custom_map', customMapData);
-                                        requester.mapID = customMapID; suncat.mapID = customMapID;
-                                        requester.x = spawnX; requester.y = spawnY;
-                                        suncat.x = spawnX + 1; suncat.y = spawnY;
-                                        currentTargetID = socket.id; lastSwitchTime = Date.now();
-
-                                        io.emit("updatePlayers", players);
-                                        functionResult = { result: `Success. Constructed the map '${mapName}' and populated it.` };
-                                    } else {
-                                        functionResult = { result: "Failed to find player coordinates." };
-                                    }
-                                } catch (err) {
-                                    functionResult = { result: "Error: Invalid grid parameter." };
-                                }
-                          }
-                          // F. TELEPORT SPECIFIC PLAYER
-                          else if (call.name === "teleportPlayer") {
-                                const targetID = findSocketID(call.args.targetName);
-                                if (!targetID) {
-                                    functionResult = { result: `Failed: Player ${call.args.targetName} not found.` };
-                                } else {
-                                    players[targetID].mapID = parseInt(call.args.mapID);
-                                    io.to(targetID).emit("force_teleport", { mapID: parseInt(call.args.mapID) });
-                                    io.emit("updatePlayers", players);
-                                    functionResult = { result: `Success: Warped player to map.` };
-                                }
-                          }
-                          // G. SPAWN NPC/MONSTER
-                          else if (call.name === "spawnNPC") {
-                                const targetID = findSocketID(call.args.targetName);
-                                if (!targetID) {
-                                    functionResult = { result: `Failed: Player not found.` };
-                                } else {
-                                    const tp = players[targetID];
-                                    io.emit("remote_spawn_npc", {
-                                        mapID: tp.mapID,
-                                        index: Math.floor(Math.random() * 100000) + 1000,
-                                        x: tp.x + (Math.random() > 0.5 ? 1 : -1),
-                                        y: tp.y + (Math.random() > 0.5 ? 1 : -1),
-                                        type: call.args.npcType,
-                                        state: call.args.state || 'chasing',
-                                        color: call.args.color || '#ff0000',
-                                        deck: call.args.deck && call.args.deck.length > 0 ? call.args.deck : [Math.floor(call.args.npcType)],
-                                        dialogue: call.args.dialogue || null,
-                                        rewardCard: call.args.rewardCard || null 
-                                    });
-                                    functionResult = { result: `Success: Entity spawned.` };
-                                }
-                          }
-                          // H. ASSIGN QUEST
-                          else if (call.name === "assignQuest") {
-                                const targetID = findSocketID(call.args.targetName);
-                                if (targetID) {
-                                    io.to(targetID).emit("new_quest_objective", { questText: call.args.questText });
-                                    players[targetID].activeQuest = call.args.questText; 
-                                    
-                                    const memoryString = `[ACTIVE QUEST] ${call.args.targetName} is currently trying to: ${call.args.questText}`;
-                                    if (!players[socket.id].coreFacts) players[socket.id].coreFacts = [];
-                                    players[socket.id].coreFacts.push(memoryString);
-
-                                    functionResult = { result: `Quest assigned.` };
-                                } else {
-                                    functionResult = { result: `Failed: Player not found.` };
-                                }
-                          }
-                          // I. CHANGE ENVIRONMENT
-                          else if (call.name === "changeEnvironment") {
-                                const targetID = findSocketID(call.args.targetName);
-                                if (targetID && players[targetID]) {
-                                    io.emit("update_map_environment", {
-                                        mapID: players[targetID].mapID,
-                                        weather: call.args.weather,
-                                        skyColor: call.args.skyColor
-                                    });
-                                    functionResult = { result: `Environment altered.` };
-                                } else {
-                                    functionResult = { result: `Failed: Player not found.` };
-                                }
-                          }
-                          // UNKNOWN TOOL
-                          else {
-                                functionResult = { result: "Error: Function does not exist." };
-                          }
-
-                      } catch (toolError) {
-                          console.error("Tool Execution Error:", toolError);
-                          functionResult = { result: `Critical Error executing ${call.name}: ${toolError.message}` };
-                      }
-
-                      // Push the result of this specific tool to our batch array
-                      toolResponsesBatch.push({
-                          functionResponse: {
-                              name: call.name,
-                              response: functionResult
-                          }
-                      });
-                  }
-
-                  // We finished executing all tools for this turn. 
-                  // Send the ENTIRE batch back to the active session
-                  const completion = await activeSession.sendMessage(toolResponsesBatch);
-                  currentResponse = completion.response; 
-
-                  if (currentResponse.usageMetadata) {
-                        const usage = currentResponse.usageMetadata;
-                        updateBudget(usage);
-                        io.emit('debug_stats', { tokens: usage.totalTokenCount, cost: totalSessionCost });
-                  }
-              }
+                    // --- TOOL HANDLING ---
+                    let finalResponse = await executeAITools(result.response, activeSession, socket);
+                   
+              
 
               // --- RESTORE NORMAL BRAIN (CRITICAL STEP) ---
               if (isComplexTask) {
@@ -1294,7 +1297,7 @@ io.on("connection", (socket) => {
 
               // Finally, extract the spoken text and broadcast
               try {
-                  const finalSpeech = currentResponse.text();
+                  const finalSpeech = finalResponse.text();
                   if (finalSpeech) {
                     // 1. Check for new Memories
                     const saveMatch = finalSpeech.match(/\[\[SAVE:\s*(.*?)\]\]/i);
@@ -1697,52 +1700,22 @@ if (Math.random() < 0.01 && !npcIsTyping) {
                     let currentCall = result.response.functionCalls()?.[0];
                     let currentResponse = result.response;
                     
-                    if (currentCall) {
-                        console.log(`[DM Proactive Tool] Executing: ${currentCall.name}`);
-                        let functionResult = { result: "Action executed." };
-                        
-                        // Mini Tool-Handler specifically for DM Ambushes
-                        if (currentCall.name === "spawnNPC") {
-                             const spawnX = advPlayer.x + (Math.random() > 0.5 ? 2 : -2);
-                             const spawnY = advPlayer.y + (Math.random() > 0.5 ? 2 : -2);
-                             io.emit("remote_spawn_npc", {
-                                  mapID: advPlayer.mapID,
-                                  index: Math.floor(Math.random() * 100000) + 1000,
-                                  x: spawnX,
-                                  y: spawnY,
-                                  type: currentCall.args.npcType,
-                                  state: currentCall.args.state || 'chasing',
-                                  color: currentCall.args.color || '#ff0000',
-                                  deck: currentCall.args.deck || [Math.floor(currentCall.args.npcType)],
-                                  dialogue: currentCall.args.dialogue || null,
-                                  rewardCard: currentCall.args.rewardCard || null 
-                              });
-                              functionResult = { result: "Ambush spawned successfully." };
-                        } else if (currentCall.name === "changeEnvironment") {
-                              io.emit("update_map_environment", {
-                                  mapID: advPlayer.mapID,
-                                  weather: currentCall.args.weather,
-                                  skyColor: currentCall.args.skyColor
-                              });
-                              functionResult = { result: "Environment drastically changed." };
-                        } else if (currentCall.name === "assignQuest") {
-                              advPlayer.activeQuest = currentCall.args.questText;
-                              io.to(advPlayer.id).emit("new_quest_objective", { questText: currentCall.args.questText });
-                              functionResult = { result: "Quest plot updated." };
-                        }
-
-                        // Send the tool result back to the model so it can narrate what just happened
-                        const toolOutput = { functionResponse: { name: currentCall.name, response: functionResult } };
-                        const completion = await chatSessions[advPlayer.id].sendMessage([toolOutput]);
-                        currentResponse = completion.response;
-                    }
+                    
+                       // --- DELEGATE TO GLOBAL EXECUTOR ---
+                    let finalResponse = await executeAITools(result.response, chatSessions[advPlayer.id], io.sockets.sockets.get(advPlayer.id));
+                    currentResponse = finalResponse;
 
                     // Broadcast the final dramatic DM narration to the players!
                     const finalSpeech = currentResponse.text();
                     if (finalSpeech) {
                         broadcastSuncatMessage(finalSpeech);
                     }
-                    
+                    // --- ADD THIS BLOCK IMMEDIATELY AFTER ---
+                    // Downgrade back to the cheap brain to save tokens!
+                    let updatedHistory = await chatSessions[advPlayer.id].getHistory(); // Use the correct ID variable for the scope
+                    chatSessions[advPlayer.id] = model.startChat({
+                        history: updatedHistory
+                    });
                     await manageHistorySize(advPlayer.id);
 
                 } catch (e) {
@@ -1753,27 +1726,88 @@ if (Math.random() < 0.01 && !npcIsTyping) {
             }, 1000);
         }
     }
+    
 }, 10000);
+// --- SUNCAT RANDOM EVENT KIDNAPPER ---
+// 1% chance every 15 seconds to pull someone into a Random Event
+setInterval(() => {
+    if (Math.random() < 0.01 && !npcIsTyping) {
+        // Find a valid player who isn't already in a custom map (999)
+        const potentialVictims = Object.values(players).filter(p => p.id !== SUNCAT_ID && p.mapID !== 999);
+        
+        if (potentialVictims.length > 0) {
+            const victim = potentialVictims[Math.floor(Math.random() * potentialVictims.length)];
+            
+            if (chatSessions[victim.id]) {
+                npcIsTyping = true;
+                console.log(`[Random Event] Suncat is plotting against ${victim.name}...`);
+                
+                // The chaotic DM Prompt
+                const kidnapPrompt = `[SYSTEM OVERRIDE]: It is time for a Random Event! 
+                Choose ONE of these themes:
+                1. Emperor's Gladiator Arena (Spiky/Desert theme, lots of tough monsters, taunt them)
+                2. Den of Thieves (Dark/Forest theme, lots of Goblins/Imps)
+                3. The Lost Woods Rescue (Forest theme, tell them a woman's husband is lost here)
+                
+                YOU MUST EXECUTE 'createCustomMap' targeting '${victim.name}'. 
+                Build the map to fit the theme, populate it with fitting NPCs, and speak your opening dialogue. 
+                If you are the Emperor, go "Muhahaha!". Set the scene!`;
+
+                setTimeout(async () => {
+                    try {
+                        // Use the Big Brain for world building
+                        chatSessions[victim.id] = dmModel.startChat({
+                            history: await chatSessions[victim.id].getHistory()
+                        });
+
+                        const result = await chatSessions[victim.id].sendMessage(kidnapPrompt);
+                        
+                        const finalResponse = await executeAITools(result.response, chatSessions[victim.id], io.sockets.sockets.get(victim.id));                        
+                        
+                        const finalSpeech = finalResponse.text();
+                        if (finalSpeech) broadcastSuncatMessage(finalSpeech);
+                        // --- ADD THIS BLOCK IMMEDIATELY AFTER ---
+                        // Downgrade back to the cheap brain to save tokens!
+                        let updatedHistory = await chatSessions[victim.id].getHistory(); // Use the correct ID variable for the scope
+                        chatSessions[victim.id] = model.startChat({
+                            history: updatedHistory
+                        });
+                    } catch (e) {
+                        console.error("Kidnap Event Error:", e);
+                    } finally {
+                        npcIsTyping = false;
+                    }
+                }, 1000);
+            }
+        }
+    }
+}, 15000);
 async function manageHistorySize(socketId) {
     if (!chatSessions[socketId]) return;
 
     try {
         const history = await chatSessions[socketId].getHistory();
         
-        // If history is getting huge (> 30 turns)
         if (history.length > 30) {
             console.log(`[Optimizing] Trimming history for ${socketId} to save tokens.`);
             
-            // Grab only the last 20 messages
+            // Grab the last 20 messages
             let trimmedHistory = history.slice(-20);
             
-            // CRITICAL FIX: The Gemini API demands the history array starts with 'user'.
-            // If our slice accidentally made a 'model' response the first item, we drop it.
-            if (trimmedHistory.length > 0 && trimmedHistory[0].role === 'model') {
-                trimmedHistory.shift(); 
+            // SAFEGUARD: Find the first 'user' message that is NOT a functionResponse
+            let safeStartIndex = trimmedHistory.findIndex(msg => 
+                msg.role === 'user' && 
+                (!msg.parts[0].functionResponse) 
+            );
+
+            // If we found a safe starting point, cut everything before it
+            if (safeStartIndex > 0) {
+                trimmedHistory = trimmedHistory.slice(safeStartIndex);
+            } else if (safeStartIndex === -1 && trimmedHistory[0].role !== 'user') {
+                 // Absolute fallback if the array is severely mangled
+                 trimmedHistory.shift(); 
             }
 
-            // Re-initialize the chat session with the lean history
             chatSessions[socketId] = model.startChat({
                 history: trimmedHistory
             });
