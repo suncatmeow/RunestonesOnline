@@ -26418,8 +26418,7 @@ const MusicEngine = {
       }
   },
   
-   sing(text,startTime, notesArray = [0], rootFreq = 110, baseSpeed = 0.25, resonance = 1.0, breathiness = 0.1) {
-      if (!this.ctx) return;
+sing(text, startTime, notesArray = [0], rootFreq = 110, targetDuration = 0.25, resonance = 1.0, breathiness = 0.1) {      if (!this.ctx) return;
       if (this.ctx.state === 'suspended') { this.ctx.resume(); }
 
 
@@ -26902,105 +26901,134 @@ jitterLFO.start(t);
 
       vocalCords.start(t); breathNoise.start(t);
 // SEQUENCER
-      for (let i = 0; i < text.length; i++) {
-        if (text[i] === '!') continue; // NEW: Skip the marker itself if we land on it
-          const char = text[i];
-          const p = Phonetics[char];
-          const isStressed = (text[i + 1] === '!'); // Check if the next character is our new stress marker          
-          const isAtWordEnd = (text[i + 1] === ' ' || text[i + 1] === undefined || (text[i + 1] === '!' && (text[i + 2] === ' ' || text[i + 2] === undefined))); 
-             
-          if (!p) {
-              if (char === ' ') {
-                  vocalEnv.gain.setTargetAtTime(0, t, 0.02); 
-                  breathEnv.gain.setTargetAtTime(0, t, 0.02);
-                  t += baseSpeed * 0.5; // Shorter pauses for singing
-              }
-              continue;
-          }
+     // --- NEW: THE DYNAMIC TIME STRETCHER (PRE-CALCULATION) ---
+        // Separate fixed-time consonants from stretchable vowels
+        let fixedConsonantTime = 0;
+        let stretchWeightTotal = 0;
+        let phonemeData = [];
 
-          let dur = baseSpeed;
-          if (p.type === 'stop') dur = baseSpeed * 0.15; 
-else if (p.type === 'fricative') dur = baseSpeed * 0.25; // Speed up the hiss!         
- else if (p.type === 'liquid') dur = baseSpeed * 0.40; 
-          if (isAtWordEnd && (p.type === 'vowel' || p.type === 'diphthong')) dur *= 1.4; 
-          if (isStressed) dur *= 1.3;
-          // === THE SINGING LOGIC ===
-          if (p.type === 'vowel' || p.type === 'diphthong' || p.type === 'liquid') {
-              // 1. Get the current note from the array, loop if we run out of notes
-              const noteInt = notesArray[noteIndex % notesArray.length];
-              
-              // 2. Convert Scale Degree to Hz
-              currentHz = rootFreq * Math.pow(2, noteInt / 12);
-              if (isStressed) currentHz *= 1.02; // A tiny 2% pitch push
-              // 3. Update the vocal cord pitch (Glide smoothly to the new note!)
-// 3. Update the vocal cord pitch
-// --- THE HUMAN SCOOP (TIGHTENED FOR CHORUS EFFECT) ---
-const scoopDepth = isStressed ? 0.99 : 0.995; // Only 0.5% to 1% flat
-vocalCords.frequency.setValueAtTime(currentHz * scoopDepth, t); 
-// Fast slide up (0.01 instead of 0.03) so the harmonies lock in
-vocalCords.frequency.setTargetAtTime(currentHz, t + 0.01, 0.015);// --- THE TAIL-END FALLOFF ---
-if (isAtWordEnd) {
-    // Drop pitch and relax the vocal cords slightly at the end of a breath
-    vocalCords.frequency.setTargetAtTime(currentHz * 0.92, t + (dur * 0.7), 0.05);
-}              // This opens the throat dynamically so high notes don't get choked out!
-              glottalFilter1.frequency.setTargetAtTime(Math.max(800, currentHz * 1.5), t, 0.05);
-              glottalFilter2.frequency.setTargetAtTime(Math.max(1200, currentHz * 2.0), t, 0.05);
-              // 4. Update the Jitter (Vibrato) to match the new pitch depth
-              // 4. Update the Vibrato (Delay, then fade in)
-              vibratoEnv.gain.cancelScheduledValues(t);
-              vibratoEnv.gain.setValueAtTime(0, t);
-              vibratoEnv.gain.setTargetAtTime(currentHz * 0.015, t + 0.15, 0.2);
-              // 5. Advance to the next note for the next syllable
-              noteIndex++;
-          }
+        for (let i = 0; i < text.length; i++) {
+            if (text[i] === '!') {
+                phonemeData.push({ type: 'marker' });
+                continue;
+            }
 
-         if (p.type === 'vowel' || p.type === 'diphthong' || p.type === 'liquid' || p.voiced) {
-              
-              // === NEW: STRICT CONSONANT MUTING ===
-              // === NEW: STRICT CONSONANT MUTING ===
-              if (!p.voiced) {
-                  // Soften this from 0.005 to 0.015 so consonant clusters don't clip
-                  vocalEnv.gain.setTargetAtTime(0, t, 0.015); 
-                  breathEnv.gain.setTargetAtTime(breathiness * 2, t, 0.01); 
-              } else {
-                  // Normal singing volume for vowels, liquids, and voiced consonants
-let targetVol = (p.type === 'stop' || p.type === 'fricative') ? 0.2 : (p.vol * 0.65 || 0.5);                  // --- NEW: APPLY STRESS VOLUME SWELL & SPECTRAL TILT ---
-if (isStressed && (p.type === 'vowel' || p.type === 'diphthong')) {
-    targetVol = Math.min(targetVol * 1.4, 1.0); 
-    
-    // Vocal cords slam harder: boost the higher formants!
-    f3Gain.gain.setTargetAtTime(0.35, t, 0.04); // Was 0.15
-    f4Gain.gain.setTargetAtTime(0.55, t, 0.04); // Was 0.25 (Singer's Formant)
-} else {
-    // Relax back to normal singing effort
-    f3Gain.gain.setTargetAtTime(0.15, t, 0.05);
-    f4Gain.gain.setTargetAtTime(0.25, t, 0.05);
-}
-                  // SMOOTHER ENVELOPE FOR SINGING
-                  vocalEnv.gain.cancelScheduledValues(t);
-                  vocalEnv.gain.setValueAtTime(targetVol * 0.9, t); // Slight dip to separate notes
-                  vocalEnv.gain.linearRampToValueAtTime(targetVol, t + 0.05); // Diaphragm swell
-                  
-                  breathEnv.gain.setTargetAtTime(breathiness, t, 0.02);
-              }
+            const char = text[i];
+            const p = Phonetics[char];
 
-              if (p.type === 'vowel' || p.type === 'liquid' || p.type === 'diphthong') {
-                  
-                  let glideSpeed = 0.015; // Fast default glide
-                  // ... Keep the rest of your Phase 5 Coarticulation code exactly as it is ...
-if (!p.voiced) {
-    // Mute throat, boost breath (Whisper mode)
-    vocalEnv.gain.setTargetAtTime(0, t, 0.005);
-    breathEnv.gain.setTargetAtTime(breathiness * 2, t, 0.01); 
-} else {
-    // FORCE the voice back on quickly (0.005 instead of 0.015)
-    let targetVol = (p.type === 'stop' || p.type === 'fricative') ? 0.25 : (p.vol || 0.8);
-    vocalEnv.gain.setTargetAtTime(targetVol, t, 0.005); // Snap back up to stop the whisper bug
-    breathEnv.gain.setTargetAtTime(breathiness, t, 0.02);
-}
+            if (!p) {
+                if (char === ' ') fixedConsonantTime += 0.05;
+                phonemeData.push({ type: 'space' });
+                continue;
+            }
+
+            const isStressed = (text[i + 1] === '!');
+            const isAtWordEnd = (text[i + 1] === ' ' || text[i + 1] === undefined || (text[i + 1] === '!' && (text[i + 2] === ' ' || text[i + 2] === undefined)));
+
+            let baseDur = 0;
+            let isStretchable = false;
+
+            if (p.type === 'stop') {
+                baseDur = 0.08; // Pop/Click gets exactly 80ms
+                fixedConsonantTime += baseDur;
+            } else if (p.type === 'fricative') {
+                baseDur = 0.12; // Hiss gets exactly 120ms
+                fixedConsonantTime += baseDur;
+            } else {
+                isStretchable = true;
+                baseDur = 1.0; // Base weight for vowels
+                if (p.type === 'liquid') baseDur = 0.6; // Liquids are slightly shorter
+                if (isAtWordEnd) baseDur *= 1.4; // Emphasize final vowels
+                if (isStressed) baseDur *= 1.3;
+                stretchWeightTotal += baseDur;
+            }
+
+            phonemeData.push({ p, isStretchable, baseDur, char, isStressed, isAtWordEnd });
+        }
+
+        // Calculate time exclusively available for vowels to sing the melody
+        // Math.max ensures vowels get at least *some* time if targetDuration is tiny
+        const timeForVowels = Math.max(0.15 * Math.max(1, stretchWeightTotal), targetDuration - fixedConsonantTime);
+
+        // --- NEW: SEQUENCER LOOP ---
+        for (let i = 0; i < phonemeData.length; i++) {
+            const pData = phonemeData[i];
+
+            if (pData.type === 'marker') continue;
+            if (pData.type === 'space') {
+                vocalEnv.gain.setTargetAtTime(0, t, 0.02);
+                breathEnv.gain.setTargetAtTime(0, t, 0.02);
+                t += 0.05;
+                continue;
+            }
+
+            const { p, isStretchable, baseDur, char, isStressed, isAtWordEnd } = pData;
+
+            // 🌟 THE MAGIC FORMULA: Only vowels stretch. Consonants stay crisp.
+            let dur = isStretchable ? (baseDur / stretchWeightTotal) * timeForVowels : baseDur;
+
+            // === THE SINGING LOGIC ===
+            if (p.type === 'vowel' || p.type === 'diphthong' || p.type === 'liquid') {
+                const noteInt = notesArray[noteIndex % notesArray.length];
+                currentHz = rootFreq * Math.pow(2, noteInt / 12);
+                if (isStressed) currentHz *= 1.02; 
+
+                // The Human Scoop
+                const scoopDepth = isStressed ? 0.99 : 0.995; 
+                vocalCords.frequency.setValueAtTime(currentHz * scoopDepth, t); 
+                vocalCords.frequency.setTargetAtTime(currentHz, t + 0.01, 0.015);
+
+                // The Tail-end Falloff
+                if (isAtWordEnd) {
+                    vocalCords.frequency.setTargetAtTime(currentHz * 0.92, t + (dur * 0.7), 0.05);
+                }              
+                
+                glottalFilter1.frequency.setTargetAtTime(Math.max(800, currentHz * 1.5), t, 0.05);
+                glottalFilter2.frequency.setTargetAtTime(Math.max(1200, currentHz * 2.0), t, 0.05);
+                
+                vibratoEnv.gain.cancelScheduledValues(t);
+                vibratoEnv.gain.setValueAtTime(0, t);
+                vibratoEnv.gain.setTargetAtTime(currentHz * 0.015, t + 0.15, 0.2);
+                
+                noteIndex++;
+            }
+
+            if (p.type === 'vowel' || p.type === 'diphthong' || p.type === 'liquid' || p.voiced) {
+                if (!p.voiced) {
+                    vocalEnv.gain.setTargetAtTime(0, t, 0.015); 
+                    breathEnv.gain.setTargetAtTime(breathiness * 2, t, 0.01); 
+                } else {
+                    let targetVol = (p.type === 'stop' || p.type === 'fricative') ? 0.2 : (p.vol * 0.65 || 0.5);                  
+                    
+                    if (isStressed && (p.type === 'vowel' || p.type === 'diphthong')) {
+                        targetVol = Math.min(targetVol * 1.4, 1.0); 
+                        f3Gain.gain.setTargetAtTime(0.35, t, 0.04); 
+                        f4Gain.gain.setTargetAtTime(0.55, t, 0.04); 
+                    } else {
+                        f3Gain.gain.setTargetAtTime(0.15, t, 0.05);
+                        f4Gain.gain.setTargetAtTime(0.25, t, 0.05);
+                    }
+                    
+                    vocalEnv.gain.cancelScheduledValues(t);
+                    vocalEnv.gain.setValueAtTime(targetVol * 0.9, t); 
+                    vocalEnv.gain.linearRampToValueAtTime(targetVol, t + 0.05); 
+                    breathEnv.gain.setTargetAtTime(breathiness, t, 0.02);
+                }
+
+                if (p.type === 'vowel' || p.type === 'liquid' || p.type === 'diphthong') {
+                    let glideSpeed = 0.015; 
+
+                    if (!p.voiced) {
+                        vocalEnv.gain.setTargetAtTime(0, t, 0.005);
+                        breathEnv.gain.setTargetAtTime(breathiness * 2, t, 0.01); 
+                    } else {
+                        let vol = (p.type === 'stop' || p.type === 'fricative') ? 0.25 : (p.vol || 0.8);
+                        vocalEnv.gain.setTargetAtTime(vol, t, 0.005); 
+                        breathEnv.gain.setTargetAtTime(breathiness, t, 0.02);
+                    }
                   // --- PHASE 5: COARTICULATION (The Locus Theory) ---
                   if (i > 0) {
-                      const prevChar = text[i - 1];
+                      const prevChar = phonemeData[i-1];
                       let locusF2 = null;
 
                       // Bilabials (Lips: p, b, m, f, v) pull F2 down
@@ -27019,37 +27047,35 @@ if (!p.voiced) {
                   // Now glide to the vowel's actual target frequencies
 // Now glide to the vowel's actual target frequencies, with High-Note Tuning!
                   const tunedF1 = Math.max(p.f1 * resonance, currentHz * 1.1);
-                  f1.frequency.setTargetAtTime(tunedF1, t, glideSpeed);                  f2.frequency.setTargetAtTime(p.f2 * resonance, t, glideSpeed); 
-                  f3.frequency.setTargetAtTime(p.f3 * resonance, t, glideSpeed);
-                  
-                  f1.Q.setTargetAtTime(p.q1 || 4.0, t, glideSpeed);
-                  f2.Q.setTargetAtTime(p.q2 || 3.0, t, glideSpeed);
-                  f3.Q.setTargetAtTime(p.q3 || 1.5, t, glideSpeed);
+                    f1.frequency.setTargetAtTime(tunedF1, t, glideSpeed);                  
+                    f2.frequency.setTargetAtTime(p.f2 * resonance, t, glideSpeed); 
+                    f3.frequency.setTargetAtTime(p.f3 * resonance, t, glideSpeed);
+                    
+                    f1.Q.setTargetAtTime(p.q1 || 4.0, t, glideSpeed);
+                    f2.Q.setTargetAtTime(p.q2 || 3.0, t, glideSpeed);
+                    f3.Q.setTargetAtTime(p.q3 || 1.5, t, glideSpeed);
 
-                  // --- PHASE 4: TRIGGER ANTI-FORMANTS ---
-                  if (char === 'm' || char === 'n' || char === 'N') {
-                      nasalNotch.frequency.setTargetAtTime(1000, t, 0.015); 
-                  } else {
-                      // Park it dynamically so the console stays quiet
-                      nasalNotch.frequency.setTargetAtTime(maxFreq, t, 0.015); 
-                  }
+                    if (char === 'm' || char === 'n' || char === 'N') {
+                        nasalNotch.frequency.setTargetAtTime(1000, t, 0.015); 
+                    } else {
+                        nasalNotch.frequency.setTargetAtTime(maxFreq, t, 0.015); 
+                    }
 
-                  if (p.type === 'diphthong') {
-                      f1.frequency.setTargetAtTime(p.endF1 * resonance, t + (dur*0.3), 0.05);
-                      f2.frequency.setTargetAtTime(p.endF2 * resonance, t + (dur*0.3), 0.05);
-                      f3.frequency.setTargetAtTime(p.endF3 * resonance, t + (dur*0.3), 0.05);
-                  }
-              }
-              
-              if (p.voiced && (p.type === 'stop' || p.type === 'fricative')) {
-                  vocalCords.frequency.setValueAtTime(currentHz * 0.98, t); // Drop current singing pitch slightly for texture
-                  vocalCords.frequency.setTargetAtTime(currentHz, t+0.02, 0.01); // Snap back up
-              }
-          } else {
-              vocalEnv.gain.setTargetAtTime(0, t, 0.01);
-              breathEnv.gain.setTargetAtTime(0, t, 0.01);
-          }
-          
+                    if (p.type === 'diphthong') {
+                        f1.frequency.setTargetAtTime(p.endF1 * resonance, t + (dur*0.3), 0.05);
+                        f2.frequency.setTargetAtTime(p.endF2 * resonance, t + (dur*0.3), 0.05);
+                        f3.frequency.setTargetAtTime(p.endF3 * resonance, t + (dur*0.3), 0.05);
+                    }
+                }
+                
+                if (p.voiced && (p.type === 'stop' || p.type === 'fricative')) {
+                    vocalCords.frequency.setValueAtTime(currentHz * 0.98, t); 
+                    vocalCords.frequency.setTargetAtTime(currentHz, t+0.02, 0.01); 
+                }
+            } else {
+                vocalEnv.gain.setTargetAtTime(0, t, 0.01);
+                breathEnv.gain.setTargetAtTime(0, t, 0.01);
+            }
           // --- PHASE 3: THE PERCUSSION TRACK UPGRADE ---
           if (p.type === 'fricative' || p.type === 'stop') {
               const noise = createNoise(dur);
@@ -27092,20 +27118,18 @@ const noiseMaxVol = p.voiced ? 0.15 : 0.35; // Lowered from 0.6 so consonants do
           t += dur; 
           // --- NEW: MICRO-TIMING DRIFT (RUBATO) ---
     // Humans drift up to 3% off-grid per syllable
-   // const tempoDrift = 1.0 + (Math.random() * 0.06 - 0.03); 
+    const tempoDrift = 1.0 + (Math.random() * 0.06 - 0.03); 
     
    // // If it's the end of a word, take a tiny bit of extra time to "breathe"
-   // if (isAtWordEnd) {
-    //    t += dur * 1.05; 
-    //} else {
-   //     t += dur * tempoDrift;
-    //}
+    if (isAtWordEnd) {
+        t += dur * 1.05; 
+    } else {
+       t += dur * tempoDrift;
+    }
       }
-
-      vocalEnv.gain.setTargetAtTime(0, t, 0.02); 
-      breathEnv.gain.setTargetAtTime(0, t, 0.02);
-vocalCords.stop(t + 0.2); vibratoLFO.stop(t + 0.2); breathNoise.stop(t + 0.2);  jitterLFO.stop(t + 0.2);shimmerLFO.stop(t + 0.2);
-
+vocalEnv.gain.setTargetAtTime(0, t, 0.02); 
+        breathEnv.gain.setTargetAtTime(0, t, 0.02);
+        vocalCords.stop(t + 0.2); vibratoLFO.stop(t + 0.2); breathNoise.stop(t + 0.2); jitterLFO.stop(t + 0.2); shimmerLFO.stop(t + 0.2);
 },
 
 
@@ -42514,11 +42538,29 @@ class TaliesinModule {
             const semitone = this.scale[d] + (oct * 12);
 
             const secondsPerBeat = 60.0 / this.tempo;
-            const singingSpeed = secondsPerBeat * 0.25; 
+            const tickDuration = secondsPerBeat * 0.25; // Length of a single tick (16th note)
+
+            // --- NEW: THE LOOKAHEAD CALCULATOR ---
+            // Scan the upcoming queue to find how many ticks until the NEXT syllable
+            let ticksUntilNext = 1;
+            for (let i = 0; i < this.vocalQueue.length; i++) {
+                if (this.vocalQueue[i] !== null) {
+                    ticksUntilNext = i + 1;
+                    break;
+                }
+            }
+            // If the queue is empty, default to holding the final note for a half-note (8 ticks)
+            if (ticksUntilNext === 1 && this.vocalQueue[0] === null) {
+                ticksUntilNext = 8; 
+            }
+
+            // Calculate the exact target time. Cap it at 1 measure so Suncat doesn't hold forever!
+            const maxHoldTime = secondsPerBeat * 4; 
+            const targetDuration = Math.min(ticksUntilNext * tickDuration, maxHoldTime);
 
             if (MusicEngine && typeof MusicEngine.sing === 'function') {
-                // Pass the EXACT scheduled time (t) and the single syllable!
-                MusicEngine.sing(vocalSyllable, t, [semitone], this.rootFreq, singingSpeed, 1.2, 0.15);
+                // Pass the exact targetDuration instead of a static singingSpeed
+                MusicEngine.sing(vocalSyllable, t, [semitone], this.rootFreq, targetDuration, 1.2, 0.15);
             }
         }
 
