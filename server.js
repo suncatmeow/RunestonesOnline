@@ -501,7 +501,7 @@ let players = {};
     }
     // --- SUNCAT AI RATE LIMITER (Token Bucket) ---
     // Secures the API perimeter by limiting how often a single player can trigger the AI.
-    const MAX_AI_CALLS = 9; // Maximum burst of allowed interactions
+    const MAX_AI_CALLS = 30; // Maximum burst of allowed interactions
     const REFILL_TIME = 13000; // Regain 1 interaction token every 15 seconds
 
     const playerAITokens = {};
@@ -1337,11 +1337,11 @@ async function processSuncatThought(socketId, triggerType, data) {
         if (triggerType === 'chat') {
             io.emit('chat_message', { sender: NPC_NAME, text: "*...my mind is clouded... give me a moment to think...*", color: "#aaaaaa" });
         }
-        return; 
+        //return; 
     }
     if (isBankrupt()) {
         io.emit('chat_message', { sender: "[SYSTEM]", text: "Suncat's mana is depleted.", color: "#ff0000" });
-        return; 
+        //return; 
     }
     
     // Prevent overlapping thoughts
