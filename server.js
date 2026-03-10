@@ -1421,27 +1421,37 @@ async function processSuncatThought(socketId, triggerType, data) {
                 - Use 'spawnNPC', 'changeEnvironment', or 'createCustomMap' to advance the main lore.
                 - If they completed their quest objective, use 'assignQuest' with the text "COMPLETE", and use 'givePlayerCard' to reward them.
                 - Speak purely as an omniscient 3rd-person narrator.`;
+                "CRITICAL: If the player has finished their current task, you MUST use 'assignQuest' with 'COMPLETE' to clear their screen."
             } 
             // B. Direct Chat
+            // Inside processSuncatThought, find the chat block:
             else if (triggerType === 'chat') {
-                useBigBrain = false; 
+                // LAW: If the player asks for a map or adventure, UPGRADE to Big Brain immediately!
+                const complexKeywords = ["map", "adventure", "teleport", "create", "spawn", "boss"];
+                useBigBrain = complexKeywords.some(kw => data.text.toLowerCase().includes(kw));
+
                 prompt = `${suncatStatus}${favorContext}${factsContext}${storyContext}
-                [SYSTEM EVENT]: ${player.name} speaks to you: "${data.text}"
-                TASK: You are Suncat. Reply naturally in character.`;
+                [SYSTEM EVENT]: ${player.name} says: "${data.text}"
+                TASK: Reply in character. If they asked for an adventure, USE YOUR TOOLS to physically build it.`;
             }
+            // C. Passive Observation (Pickup / Kill / Spectate)
+            // Inside the 'else' (Rest Mode) block of processSuncatThought:
             // C. Passive Observation (Pickup / Kill / Spectate)
             else {
                 useBigBrain = false;
-                let recentNarratives = player.dmNarrativeLog ? `\n[RECENT NARRATIONS TO AVOID]:\n- ` + player.dmNarrativeLog.join('\n- ') : "";
+                // We keep recent narratives to avoid repeating "The goblin falls"
+                let recentNarratives = player.dmNarrativeLog ? `\n[RECENT]: ` + player.dmNarrativeLog.join(' | ') : "";
                 
-                let taskInstruction = `Provide a short, immersive narration (1-2 sentences) of this event.`;
-                if (data.isPickup) taskInstruction = `Give a cryptic tarot interpretation of this card tying it to their journey. Ask a rhetorical question.`;
-                if (data.isDialogue) taskInstruction = `Provide a short, immersive narration wrapping up this conversation. Focus on the parting atmosphere.`;
+                // CRITICAL: We tell the AI exactly what happened in 3 words
+                let eventSummary = isPickup ? `Picked up ${data.entityName}` : (data.isDialogue ? `Finished talking to ${data.entityName}` : `Slayed ${data.entityName}`);
 
-                prompt = `[ENVIRONMENT]: ${playerMapLore}\n[ENTITY LORE]: ${data.lore || "None"}${storyContext}${recentNarratives}
-                [SYSTEM EVENT]: ${player.name} triggered: ${data.action}
-                TASK: You are in REST MODE. ${taskInstruction}
-                - DO NOT use tools. Speak purely as an omniscient 3rd-person narrator.`;
+                prompt = `[MAP]: ${playerMapLore} | [ACT]: ${eventSummary} | [LORE]: ${data.lore || "None"}
+                ${recentNarratives}
+                TASK: Narrate this action in exactly ONE sentence (max 15 words). 
+                - Be blunt, visceral, and atmospheric. 
+                - Use the name "${data.entityName}" immediately. 
+                - DO NOT use "I", "my", or flowery introductions. 
+                - Example: "${data.entityName} dissolves into the damp soil of ${playerMapLore}."`;
             }
         }
 
@@ -1652,7 +1662,7 @@ socket.on("npc_died", async (data) => {
         player.dmStress = Math.min(100, (player.dmStress || 0) + 25);
     }
 
-    processSuncatThought(socket.id, 'event', {
+    processSuncatThought(player.id, 'event', {
         action: `Interacted with ${entityName}`,
         lore: getCardLore(baseID),
         isPickup: isPickup,
@@ -2093,77 +2103,18 @@ async function manageHistorySize(socketId) {
 
     try {
         let history = await chatSessions[socketId].getHistory();
-        
-        // Thresholds: Only summarize if we hit 30 messages. 
-        // We will keep the 10 most recent messages exactly as they are.
-        const MAX_HISTORY_LENGTH = 30;
-        const MESSAGES_TO_KEEP = 10;
+        const MAX_HISTORY_LENGTH = 20;
 
-        if (history.length <= MAX_HISTORY_LENGTH) {
-            return; // History is still small, do nothing.
+        if (history.length > MAX_HISTORY_LENGTH) {
+            // Because processCognitiveLoad handles our memory now, we don't need to summarize this!
+            // We just brutally chop the oldest messages off to save raw input tokens.
+            chatSessions[socketId] = model.startChat({
+                history: history.slice(-10) 
+            });
+            console.log(`[Memory] Pruned raw chat history for ${players[socketId]?.name}.`);
         }
-
-        console.log(`[Memory] History for ${socketId} reached ${history.length}. Initiating summarization...`);
-
-        const KEEP_COUNT = 4; // Keep exactly 4 messages (2 back-and-forths) for flow
-        const splitIndex = history.length - KEEP_COUNT; 
-
-        const oldHistory = history.slice(0, splitIndex); // Summarize everything older than the last 4
-        let recentHistory = history.slice(splitIndex); // Keep the last 4 intact
-
-        // 2. Format the old history into a readable script for the AI
-        let transcriptToSummarize = oldHistory.map(msg => {
-            let role = msg.role === 'model' ? 'Suncat' : 'Player';
-            // Safely extract text, ignoring the massive JSON tool payloads
-            let text = msg.parts.map(p => p.text || "").join(" ").trim();
-            return text ? `${role}: ${text}` : "";
-        }).filter(line => line !== "").join("\n");
-
-        // 3. Prompt the Cheap Brain to summarize
-        const summaryPrompt = `Summarize the following interaction between a player and Suncat in a dark fantasy MMORPG. Focus strictly on key lore revealed, important player actions, and the current emotional tone between them. Keep it under 3 sentences.
-        
-        CRITICAL RULE: Output pure narrative text ONLY. Do NOT output any brackets [ ], system tags, or technical jargon.
-
-        [TRANSCRIPT]
-        ${transcriptToSummarize}`;
-        // Make a stateless generation call (does not affect the active chat session)
-        const summaryResult = await model.generateContent(summaryPrompt);
-        const summaryText = summaryResult.response.text();
-            // INSTEAD OF KEEPING IT IN HISTORY, PUSH TO FACTS:
-        
-        console.log(`[Memory] Compressed 20 messages into: "${summaryText}"`);
-        
-        // Track the cost of the summarization itself
-        if (summaryResult.response.usageMetadata) {
-            updateBudget(summaryResult.response.usageMetadata);
-        }
-
-        // 4. Build the new, compressed history array
-        let compressedHistory = [
-            { 
-                role: "user", 
-                parts: [{ text: `[SYSTEM MEMORY INJECTION: Summary of earlier events]\n${summaryText}` }] 
-            },
-            { 
-                role: "model", 
-                parts: [{ text: "[SYSTEM ACKNOWLEDGED] I remember this context." }] 
-            },
-            ...recentHistory // Append the exact recent messages so the immediate conversation flows naturally
-        ];
-
-        // 5. Overwrite the player's active session with the compressed history
-        chatSessions[socketId] = model.startChat({
-            history: compressedHistory
-        });
-
     } catch (error) {
-        console.error("[Memory] Summarization failed:", error);
-        
-        // Fallback: If the API fails, just do a brute-force chop so the server doesn't crash or bloat
-        let history = await chatSessions[socketId].getHistory();
-        chatSessions[socketId] = model.startChat({
-            history: history.slice(-15) 
-        });
+        console.error("[Memory] History prune failed:", error);
     }
 }
 
@@ -2184,7 +2135,8 @@ setInterval(async () => {
             } catch (error) {
                 console.error(`[Hibernation] AI compression failed for ${player.name}.`, error);
             }
-
+            player.sessionCost = 0.00; // Suncat rested, so his budget resets!
+            player.dmStress = 0;
             const nameKey = player.name.toLowerCase();
             suncatPersistentMemory[nameKey] = {
                 favor: playerFavorMemory[socketId] || 0,
