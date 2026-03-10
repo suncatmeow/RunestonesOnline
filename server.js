@@ -455,6 +455,32 @@ const toolsDef = [{
                 },
                 required: ["targetName", "questText"]
             }
+        },
+        // 9. The Custom Card Forge
+        {
+            name: "createCustomCard",
+            description: "Forges a unique custom card. CRITICAL: For the game engine to understand Spells and Items, you MUST pick an existing 'cloneIndex' to copy its mechanical effects. You will give it a totally new name and lore, but it will function like the cloned card.",
+            parameters: {
+                type: "OBJECT",
+                properties: {
+                    targetName: { type: "STRING" },
+                    name: { type: "STRING", description: "A cool name for the card." },
+                    cloneIndex: { type: "INTEGER", description: "REQUIRED: Choose an existing Card ID (0-86) from the manifest that has the mechanics you want. E.g., for a Fire spell, clone 26. For a heal, clone 25." },
+                    desc: { type: "STRING", description: "What the card does. Write it to match the mechanics of the cloneIndex." },
+                    portrait: { type: "NUMBER", description: "Choose a Card ID (0-86) to steal its artwork." },
+                    suit: { type: "STRING" },
+                    rank: { type: "STRING" },
+                    strMax: { type: "INTEGER", description: "For Monsters/Equips: Max STR dice." },
+                    conMax: { type: "INTEGER" },
+                    intMax: { type: "INTEGER" },
+                    agiMax: { type: "INTEGER" },
+                    modSTR: { type: "INTEGER", description: "For Equips: Flat STR bonus (+X)." },
+                    modCON: { type: "INTEGER" },
+                    modINT: { type: "INTEGER" },
+                    modAGI: { type: "INTEGER" }
+                },
+                required: ["targetName", "name", "cloneIndex", "desc", "portrait"]
+            }
         }
     ]
     }];
@@ -1090,6 +1116,29 @@ async function executeAITools(currentResponse, activeSession, socket) {
                                     functionResult = { result: `Failed: Player not found.` };
                                 }
                           }
+                          else if (call.name === "createCustomCard") {
+                            const targetID = findSocketID(call.args.targetName);
+                            
+                            if (targetID) {
+                                const formattedCardData = {
+                                    name: call.args.name,
+                                    cloneIndex: call.args.cloneIndex, // <--- Passes the mechanical ID!
+                                    portrait: call.args.portrait,
+                                    desc: call.args.desc,
+                                    suit: call.args.suit || 'Unique',
+                                    rank: call.args.rank || 'Legendary',
+                                    stats: [
+                                        { max: call.args.strMax || 0, mod: call.args.modSTR || 0 },
+                                        { max: call.args.conMax || 0, mod: call.args.modCON || 0 },
+                                        { max: call.args.intMax || 0, mod: call.args.modINT || 0 },
+                                        { max: call.args.agiMax || 0, mod: call.args.modAGI || 0 } 
+                                    ]
+                                };
+
+                                io.to(targetID).emit("receive_custom_card", formattedCardData);
+                                functionResult = { result: `Successfully forged ${call.args.name}.` };
+                            }
+                        }
                           // UNKNOWN TOOL
                           else {
                                 functionResult = { result: "Error: Function does not exist." };
@@ -1301,23 +1350,27 @@ io.on("connection", (socket) => {
                 console.log(`[Gauntlet Trigger] ${player.name} killed a monster! Alerting Suncat...`);
                 let prompt = ``;
                 let roll = Math.random(); // <-- Roll the dice ONCE here
+                
                 /// --- NEW: EXACT ENTITY IDENTIFICATION ---
                 const baseID = Math.floor(parseFloat(data.type));
                 const entityName = getCardName(baseID);
                 const monsterLore = getCardLore(baseID);
-                
-                // Check if it's an inanimate object
-                const isItem = monsterLore.includes("(Equip)") || monsterLore.includes("(Spell)") || monsterLore.includes("(Use)");
-                
+                let isPickup = false;
+                // Check if the reason was our special intercept string!
+                if (data.reason && data.reason.startsWith('pickup_')) {
+                    // Extract the number after "pickup_" (e.g., "pickup_64" -> 64)
+                    baseID = parseInt(data.reason.split('_')[1]);
+                    isPickup = true;
+                }
+                // Check if it's an inanimate object                
                 const envLore = getMapLore(player.mapID);
                 const questStatus = player.activeQuest ? `Active Quest: ${player.activeQuest}` : "Wandering freely.";
                 const dmContext = `[ENVIRONMENT]: ${envLore}\n[INTERACTED ENTITY]: ${entityName}\n[ENTITY LORE]: ${monsterLore}\n[PLAYER STATE]: ${questStatus}\n`;
 
                 console.log(`[Gauntlet Trigger] ${player.name} interacted with ${entityName}!`);
 
-                // --- NEW: SPLIT LOGIC BASED ON ENTITY TYPE ---
-                if (isItem) {
-                    // It's an item! Suncat shouldn't mourn it.
+                if (isPickup) {
+                    // It's a picked-up item!
                     prompt = `${dmContext}[SYSTEM EVENT]: ${player.name} just picked up the item/card '${entityName}' in [ENVIRONMENT]! 
                     TASK: React to them looting this. You can warn them about its power, mock their greed, or use 'spawnNPC' to drop an ambush on them for stealing it!
                     Do not ask questions. Execute tools and speak!`;
@@ -1866,42 +1919,42 @@ setInterval(() => {
 
     // 2. MOVE TOWARD TARGET
     const target = players[currentTargetID];
-    
-    if (target) {
-        // A. Handle Map Differences
-        if (suncat.mapID !== target.mapID) {
-            // 5% chance to "glitch" to the friend's map
-            if (Math.random() < 0.05) {
-                suncat.mapID = target.mapID;
-                suncat.x = target.x;
-                suncat.y = target.y;
-                io.emit('chat_message', { sender: NPC_NAME, text: "...I found you.", color: "gray" });
+        
+        if (target) {
+            // A. Handle Map Differences
+            if (suncat.mapID !== target.mapID) {
+                // 5% chance to "glitch" to the friend's map
+                if (Math.random() < 0.05) {
+                    suncat.mapID = target.mapID;
+                    suncat.x = target.x;
+                    suncat.y = target.y;
+                    io.emit('chat_message', { sender: NPC_NAME, text: "...I found you.", color: "gray" });
+                }
+            } 
+            // B. Handle Coordinate Movement
+            else {
+                if (suncat.x < target.x) suncat.x++;
+                else if (suncat.x > target.x) suncat.x--;
+                
+                if (suncat.y < target.y) suncat.y++;
+                else if (suncat.y > target.y) suncat.y--;
             }
         } 
-        // B. Handle Coordinate Movement
         else {
-            if (suncat.x < target.x) suncat.x++;
-            else if (suncat.x > target.x) suncat.x--;
-            
-            if (suncat.y < target.y) suncat.y++;
-            else if (suncat.y > target.y) suncat.y--;
+            if (currentTargetID) currentTargetID = null;
+            // 3. WANDER AIMLESSLY (If no friends are online)
+            const move = Math.floor(Math.random() * 4);
+            if (move === 0) suncat.y--;
+            if (move === 1) suncat.y++;
+            if (move === 2) suncat.x--;
+            if (move === 3) suncat.x++;
         }
-    } 
-    else {
-        if (currentTargetID) currentTargetID = null;
-        // 3. WANDER AIMLESSLY (If no friends are online)
-        const move = Math.floor(Math.random() * 4);
-        if (move === 0) suncat.y--;
-        if (move === 1) suncat.y++;
-        if (move === 2) suncat.x--;
-        if (move === 3) suncat.x++;
-    }
 
-    // Keep in bounds
-    suncat.x = Math.max(0, Math.min(20, suncat.x));
-    suncat.y = Math.max(0, Math.min(20, suncat.y));
+        // Keep in bounds
+        suncat.x = Math.max(0, Math.min(20, suncat.x));
+        suncat.y = Math.max(0, Math.min(20, suncat.y));
 
-    io.emit("updatePlayers", players);
+        io.emit("updatePlayers", players);
     // [SUNCAT AUDIO EMITTER]
     // 2% chance per tick (every 3s) to make a sound
     if (Math.random() < 0.001) { 
