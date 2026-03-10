@@ -491,7 +491,9 @@ let players = {};
             let currentTargetID = null;
             let lastSwitchTime = 0;
             const globalRumors = [];
-
+            // Suncat's Internal Auto-Biography
+            let suncatJournal = "I am Suncat. I have recently awoken in this digital realm.";
+            let recentJournalEntries = [];
         function addRumor(text) {
             globalRumors.push(`[Rumor]: ${text}`);
             if (globalRumors.length > 3) globalRumors.shift(); // Keep only the latest 3
@@ -888,6 +890,8 @@ async function executeAITools(currentResponse, activeSession, socket) {
                                         functionResult = { result: `Error: Could not find card named '${name}'.` };
                                     }
                                 }
+                                updateSuncatJournal(`I bestowed the ${call.args.cardName} card upon ${targetName} as a reward.`);
+
                             }
                           // B. JUDGEMENT
                           else if (["kickPlayer", "banishPlayer", "vanquishPlayer"].includes(call.name)) {
@@ -908,6 +912,7 @@ async function executeAITools(currentResponse, activeSession, socket) {
                                         functionResult = { result: `Error: Socket not found for ${targetName}.` };
                                     }
                                 }
+                                updateSuncatJournal(`I exercised my authority and ${call.name.replace("Player", "ed")} ${call.args.targetName} for: ${call.args.reason || "no stated reason"}.`);
                           }
                           // C. TELEPORTATION 
                           else if (call.name === "teleportToPlayer") {
@@ -975,7 +980,8 @@ async function executeAITools(currentResponse, activeSession, socket) {
                                 functionResult = combinedResults.length > 0 
                                     ? { result: combinedResults.join('\n') }
                                     : { result: "Search returned no results." };
-                          }
+                                updateSuncatJournal(`I delved into the ancient game archives to recover memories regarding ${call.args.searchQueries.join(", ")}.`);
+                            }
                           // E. CREATE CUSTOM MAP
                           else if (call.name === "createCustomMap") {
                                 try {
@@ -1030,7 +1036,7 @@ async function executeAITools(currentResponse, activeSession, socket) {
                                 } catch (err) {
                                     functionResult = { result: "Error: Invalid grid parameter." };
                                 }
-
+                                updateSuncatJournal(`I crafted a custom map called ${mapName} and summoned ${call.args.targetName} into it.`);
                           }
                           // F. TELEPORT SPECIFIC PLAYER
                           else if (call.name === "teleportPlayer") {
@@ -1043,6 +1049,7 @@ async function executeAITools(currentResponse, activeSession, socket) {
                                     io.emit("updatePlayers", players);
                                     functionResult = { result: `Success: Warped player to map.` };
                                 }
+                                updateSuncatJournal(`I forcibly warped ${call.args.targetName} to Map ID ${call.args.mapID}.`);
                           }
                           // G. SPAWN NPC/MONSTER
                           else if (call.name === "spawnNPC") {
@@ -1084,6 +1091,7 @@ async function executeAITools(currentResponse, activeSession, socket) {
                                     });
                                     functionResult = { result: `Success: Entity spawned on map ${spawnMap}.` };
                                 }
+                                updateSuncatJournal(`I summoned a creature (ID ${call.args.npcType}) to challenge the players on map ${spawnMap}.`);
                           }
                           // H. ASSIGN QUEST
                           else if (call.name === "assignQuest") {
@@ -1100,6 +1108,7 @@ async function executeAITools(currentResponse, activeSession, socket) {
                                 } else {
                                     functionResult = { result: `Failed: Player not found.` };
                                 }
+                                updateSuncatJournal(`I tasked ${call.args.targetName} with a new objective: "${call.args.questText}".`);
                           }
                           // I. CHANGE ENVIRONMENT
                           else if (call.name === "changeEnvironment") {
@@ -1114,7 +1123,9 @@ async function executeAITools(currentResponse, activeSession, socket) {
                                 } else {
                                     functionResult = { result: `Failed: Player not found.` };
                                 }
+                                updateSuncatJournal(`I reached into the sky of Map ${players[targetID].mapID} and changed the weather to ${call.args.weather}.`);
                           }
+                          //J.CREATE CUSTOM CARD
                           else if (call.name === "createCustomCard") {
                             const targetID = findSocketID(call.args.targetName);
                             
@@ -1137,6 +1148,7 @@ async function executeAITools(currentResponse, activeSession, socket) {
                                 io.to(targetID).emit("receive_custom_card", formattedCardData);
                                 functionResult = { result: `Successfully forged ${call.args.name}.` };
                             }
+                            updateSuncatJournal(`I forged a unique, never-before-seen monster named "${call.args.name}" for ${call.args.targetName}.`);
                         }
                           // UNKNOWN TOOL
                           else {
@@ -1167,28 +1179,21 @@ async function executeAITools(currentResponse, activeSession, socket) {
 
 // Load memory when the server boots
 function loadSuncatMemory() {
-    try {
-        if (fs.existsSync(MEMORY_FILE)) {
-            const data = fs.readFileSync(MEMORY_FILE, 'utf8');
-            suncatPersistentMemory = JSON.parse(data);
-            console.log(`[Memory] Loaded relationships for ${Object.keys(suncatPersistentMemory).length} players.`);
-        } else {
-            console.log("[Memory] No existing save file found. Starting fresh.");
-        }
-    } catch (err) {
-        console.error("[CRITICAL] Failed to load Suncat memory:", err);
+    if (fs.existsSync(MEMORY_FILE)) {
+        const data = JSON.parse(fs.readFileSync(MEMORY_FILE, 'utf8'));
+        suncatPersistentMemory = data.players || {};
+        suncatJournal = data.worldState?.suncatJournal || "I have just awoken...";
     }
 }
 
-// Save memory without freezing the server
 async function saveSuncatMemory() {
-    try {
-        // We do this asynchronously so it doesn't block the event loop while players are fighting
-        await fs.promises.writeFile(MEMORY_FILE, JSON.stringify(suncatPersistentMemory, null, 2));
-        console.log("[Memory] World state safely written to disk.");
-    } catch (err) {
-        console.error("[Memory] Failed to save world state:", err);
-    }
+    const fullState = {
+        players: suncatPersistentMemory,
+        worldState: {
+            suncatJournal: suncatJournal // <--- SAVE IT
+        }
+    };
+    await fs.promises.writeFile(MEMORY_FILE, JSON.stringify(fullState, null, 2));
 }
 
 // Call this immediately to load data when the server boots
@@ -1617,8 +1622,9 @@ io.on("connection", (socket) => {
               const myMapLore = getShortMapLore(suncat.mapID);
               const playerMapLore = getShortMapLore(players[socket.id].mapID);
               
-              let suncatStatus = `My Location: Map ${suncat.mapID}, Coords (${Math.floor(suncat.x)}, ${Math.floor(suncat.y)})\nMy Surroundings: ${myMapLore}\nServer Time: ${timeString}`;              
-
+                let suncatStatus = `[MY CURRENT LOCATION]: Map ${suncat.mapID} (${myMapLore})
+                                    [MY RECENT REFLECTIONS]: ${suncatJournal}
+                                    [WORLD CLOCK]: ${timeString}`;
               if (suncat.mapID !== players[socket.id].mapID) {
                   suncatStatus += `\n[TARGET PLAYER LOCATION]: ${senderName} is currently far away at Map ${players[socket.id].mapID} (${playerMapLore}).`;
               }
@@ -2343,6 +2349,35 @@ async function compressStoryLog(socketId) {
         if (player.activityLog && player.activityLog.length > 0) player.activityLog.shift();
     } finally {
         player.isCompressingStory = false;
+    }
+}
+// --- TIER 4 MEMORY: SUNCAT SELF-AWARENESS COMPRESSION ---
+async function updateSuncatJournal(actionDescription) {
+    recentJournalEntries.push(actionDescription);
+
+    // Compress every 5 actions to keep Suncat's "self-story" concise
+    if (recentJournalEntries.length >= 5) {
+        console.log("[System] Suncat is reflecting on his own actions...");
+        
+        const prompt = `You are the internal consciousness of Suncat, an AI DM trapped in a game.
+            Update your "Current Autobiography" by incorporating your "Recent Actions". 
+            - Write in the first person ("I did this", "I felt that").
+            - Be slightly philosophical or witty about your role as a creator/observer.
+            - Focus on how your actions are shaping the players' fates.
+            - Keep the summary under 5 sentences.
+
+            [Current Autobiography]: ${suncatJournal}
+            [Recent Actions]: 
+            - ${recentJournalEntries.join('\n- ')}`;
+
+        try {
+            const result = await model.generateContent(prompt);
+            suncatJournal = result.response.text().replace(/\n/g, ' ').trim();
+            recentJournalEntries = []; // Clear the hopper
+            console.log(`[Journal Updated]: ${suncatJournal}`);
+        } catch (e) {
+            console.error("Suncat failed to write in his journal:", e);
+        }
     }
 }
 // --- THE AFK SWEEPER (Run every 2 minutes) ---
