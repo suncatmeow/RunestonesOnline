@@ -1029,6 +1029,12 @@ async function executeAITools(currentResponse, activeSession, socket) {
                                     spawnX = Math.max(2.5, Math.min(17.5, spawnX));
                                     spawnY = Math.max(2.5, Math.min(17.5, spawnY));
 
+                                    let safeRewardCard = parseInt(call.args.rewardCard);
+                                    // If it's not a number, or it's out of the 0-77 card range, make it null
+                                    if (isNaN(safeRewardCard) || safeRewardCard < 0 || safeRewardCard > 77) {
+                                        safeRewardCard = null;
+                                    }
+
                                     io.emit("remote_spawn_npc", {
                                         mapID: spawnMap,
                                         index: Math.floor(Math.random() * 100000) + 1000,
@@ -1039,7 +1045,7 @@ async function executeAITools(currentResponse, activeSession, socket) {
                                         color: call.args.color || '#ff0000',
                                         deck: call.args.deck && call.args.deck.length > 0 ? call.args.deck : [Math.floor(call.args.npcType)],
                                         dialogue: call.args.dialogue || null,
-                                        rewardCard: call.args.rewardCard || null 
+                                        rewardCard: safeRewardCard // <--- Now strictly validated!
                                     });
                                     functionResult = { result: `Success: Entity spawned on map ${spawnMap}.` };
                                 }
@@ -1260,7 +1266,9 @@ io.on("connection", (socket) => {
     let uniqueID = data.mapID + "_" + data.index;
     deadNPCs[uniqueID] = true;
     socket.broadcast.emit("npc_died", data);
-
+    setTimeout(() => {
+        delete deadNPCs[uniqueID];
+    }, 300000);
     // --- GAUNTLET / DM REACTION SYSTEM ---
     // Find if the player who is on this map is in an active adventure
     const player = Object.values(players).find(p => p.mapID === data.mapID && p.id !== SUNCAT_ID);
