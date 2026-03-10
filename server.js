@@ -657,7 +657,7 @@ let players = {};
     - CRITICAL: NEVER type out tool parameters (like JSON arrays, hex colors, or grids) in your spoken text response. Tool data goes ONLY in the hidden tool call payload. Your spoken text should ONLY be short, in-character dialogue (e.g., "Welcome to the molten depths...").
     - NEVER ASK FOR PERMISSION OR PREFERENCES! If a player asks for an adventure, a map, or something to do, INSTANTLY use 'createCustomMap'. Do not ask "What kind of map?" or "Are you ready?". Just execute the tool!
     - Make decisions for the player. Be authoritative. Surprise them!
-    - CRITICAL MAP RULE: When using 'createCustomMap', the grid MUST have at least 5x5 walkable space (0s) in the center so the player can move. Never spawn a player inside a wall (1).
+    - CRITICAL MAP RULE: When using 'createCustomMap', the grid MUST have at least 5x5 walkable space (0s) in the center so the player can move. Never spawn a player inside a wall (Floor = 0; Wall > 0).
     - NPC RULE: When making a map, ALWAYS spawn multiple NPCs. Ensure at least one has dialogue so the player isn't lonely.
     [QUEST GIVER]
     1. As a denizen of this world you have special attachment to the others who live here with you. 
@@ -1350,18 +1350,25 @@ io.on("connection", (socket) => {
                 console.log(`[Gauntlet Trigger] ${player.name} killed a monster! Alerting Suncat...`);
                 let prompt = ``;
                 let roll = Math.random(); // <-- Roll the dice ONCE here
-                
+                let isPickup = false;
                 /// --- NEW: EXACT ENTITY IDENTIFICATION ---
                 const baseID = Math.floor(parseFloat(data.type));
-                const entityName = getCardName(baseID);
-                const monsterLore = getCardLore(baseID);
-                let isPickup = false;
-                // Check if the reason was our special intercept string!
                 if (data.reason && data.reason.startsWith('pickup_')) {
-                    // Extract the number after "pickup_" (e.g., "pickup_64" -> 64)
-                    baseID = parseInt(data.reason.split('_')[1]);
+                    let rawString = data.reason.split('_')[1];
+                    let extractedID = parseInt(rawString);
+                    
+                    console.log(`[DEBUG] Intercepted Pickup! Raw String: ${rawString} | Parsed ID: ${extractedID}`);
+                    
+                    // Only override the baseID if we successfully pulled a real number
+                    if (!isNaN(extractedID)) {
+                        baseID = extractedID;
+                    }
                     isPickup = true;
                 }
+                const entityName = getCardName(baseID);
+                const monsterLore = getCardLore(baseID);
+                
+               
                 // Check if it's an inanimate object                
                 const envLore = getMapLore(player.mapID);
                 const questStatus = player.activeQuest ? `Active Quest: ${player.activeQuest}` : "Wandering freely.";
@@ -2216,7 +2223,7 @@ async function compressCoreFacts(socketId) {
     }
 }
 // --- THE AFK SWEEPER (Run every 2 minutes) ---
-const IDLE_TIMEOUT = 5 * 60 * 1000; // 5 minutes of no movement/chat
+const IDLE_TIMEOUT = 1 * 60 * 1000; // 5 minutes of no movement/chat
 
 setInterval(async () => {
     const now = Date.now();
