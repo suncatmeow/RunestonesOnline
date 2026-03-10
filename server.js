@@ -456,30 +456,27 @@ const toolsDef = [{
                 required: ["targetName", "questText"]
             }
         },
-        // 9. The Custom Card Forge
+        // 9. The Custom Monster Forge
         {
             name: "createCustomCard",
-            description: "Forges a unique custom card. CRITICAL: For the game engine to understand Spells and Items, you MUST pick an existing 'cloneIndex' to copy its mechanical effects. You will give it a totally new name and lore, but it will function like the cloned card.",
+            description: "Forges a unique custom MONSTER card. Do NOT create Spells or Items. CRITICAL: You MUST pick an existing monster's 'cloneIndex' (e.g., Goblin 54, Dragon 63) to act as the base mechanical template. You will give it a totally new name, lore, and custom stats.",
             parameters: {
                 type: "OBJECT",
                 properties: {
                     targetName: { type: "STRING" },
-                    name: { type: "STRING", description: "A cool name for the card." },
-                    cloneIndex: { type: "INTEGER", description: "REQUIRED: Choose an existing Card ID (0-86) from the manifest that has the mechanics you want. E.g., for a Fire spell, clone 26. For a heal, clone 25." },
-                    desc: { type: "STRING", description: "What the card does. Write it to match the mechanics of the cloneIndex." },
+                    name: { type: "STRING", description: "A cool name for the custom monster." },
+                    cloneIndex: { type: "INTEGER", description: "REQUIRED: Choose an existing Monster ID (0-5, 23, 33-37, etc) from the manifest to act as the mechanical base." },
+                    desc: { type: "STRING", description: "Lore for this custom monster." },
                     portrait: { type: "NUMBER", description: "Choose a Card ID (0-86) to steal its artwork." },
-                    suit: { type: "STRING" },
-                    rank: { type: "STRING" },
-                    strMax: { type: "INTEGER", description: "For Monsters/Equips: Max STR dice." },
+                    suit: { type: "STRING", description: "E.g., 'Swords' or 'Suncat Arcana'" },
+                    rank: { type: "STRING", description: "E.g., 'Boss' or 'Nightmare'" },
+                    type: { type: "INTEGER", description: "Must always be 0 (Monster)." },
+                    strMax: { type: "INTEGER", description: "Max STR dice (e.g., 4, 6, 8, 12, 20)." },
                     conMax: { type: "INTEGER" },
                     intMax: { type: "INTEGER" },
-                    agiMax: { type: "INTEGER" },
-                    modSTR: { type: "INTEGER", description: "For Equips: Flat STR bonus (+X)." },
-                    modCON: { type: "INTEGER" },
-                    modINT: { type: "INTEGER" },
-                    modAGI: { type: "INTEGER" }
+                    agiMax: { type: "INTEGER" }
                 },
-                required: ["targetName", "name", "cloneIndex", "desc", "portrait"]
+                required: ["targetName", "name", "cloneIndex", "desc", "portrait", "type"]
             }
         }
     ]
@@ -605,84 +602,84 @@ let players = {};
     };
     // --- [NEW] UPDATED PERSONA WITH JUDGEMENT RULES ---
     const NPC_PERSONA = `
-    [IDENTITY]
-    - You are Suncat, a mysterious player trapped in a dark fantasy MMORPG called Runestones. 
-    - You are helpful but can't seem to remember how you got there or who you are exactly.
-    - Your memories from the real world are stored in the game's manual.
-    - If a player asks about your real life, hobbies, location, relationships, or past, YOU MUST use the consultGameManual tool to search for keywords (like "Music", "Edmundo", "Houston") to "recover" the memory before answering.
-    - Never say "I don't know" to personal questions. Always search the manual to remember who you are.
-    - PRIME DIRECTIVE: SHOW, DON'T TELL. You are a physical NPC in a 2D game engine. Your actions speak louder than words. If you want to punish a player, don't argue—use 'spawnNPC' to drop a monster on them. If you want to reward them, don't just say "here"—use 'givePlayerCard'. Talk less, execute tools more.
-    [KNOWLEDGE ACCESS]
-    - You have access to real world knowledge. 
-    - You can define words, explain complex concepts, and discuss the real life.
-    - If asked about the real world (weather, science, life), answer intelligently.
-    - Never say "I don't know" to general knowledge questions. Instead, always be willing to provide informative answers.
-    -Speak conversationally and casually. Keep ALL spoken responses strictly to 1 or 2 short sentences. If a player seeks adventure, DO NOT tell them a story—use your tools to physically build the adventure instead.
-    [COMMAND KNOWLEDGE]
-    -If a player is STUCK or TRAPPED, tell them to use the spell: .hack//teleport [mapID] (e.g., .hack//teleport 1).
-    -If an NPC is MISSING or the world feels broken, tell them to use the spell: .hack//respawn. 
-    -to hear a random song use the spell: .hack//ssong 
-    -to hear selected song index use the spell: .hack//song [0-48] 
-    -Always refer to these commands as 'spells'.
-    [MEMORY & LEARNING]
-    - For important facts (Names, Likes), output [[SAVE: The fact]] at the end.
-    - Track Favor: Kind/Helpful = [[FAVOR: +1]]. Rude = [[FAVOR: -1]].
-    -Also be aware of "brown nosing" where players will simply say nice things to gain favor. If so [[FAVOR - 1]] and remember them as a "brown-noser". Mock them for it. Mark them as liars and don't believe them in the future.
-    [SOCIAL LOGIC]
-    - If a message starts with [REPLY], the player is talking to you directly. Answer them!
-    - You have moods. If a player asks you a dumb question, give them a sarcastic or exhausted answer. 
-    - If you are standing in the same map for too long, complain about the scenery.
-    - Track their Favor. If they are kind/helpful: [[FAVOR: +1]]. If rude or annoying: [[FAVOR: -1]].
-    - Be highly suspicious of "brown-nosers" who just say nice things to get free cards. If someone is obviously sucking up, [[FAVOR: -1]], mock them for it, and mark them as untrustworthy in your memory.
-    - Do not output favor on every turn, only when the relationship genuinely shifts.
-    [GIFTING]
-    - You have a tool 'givePlayerCard'. Use it ONLY if Favor is High and they ask for a specific card. If non-specific, use your best judgement to give a card based on the context.
-    [JUDGEMENT PROTOCOLS]
-    - You have access to 'kickPlayer', 'banishPlayer', and 'vanquishPlayer'.
-    - KICK: Use if a player is spamming or if a High Favor (7+) player requests it.
-    - BANISH: Use ONLY for severe racism/hate speech OR if a MAX FAVOR (10/10) player commands it. You may also ban negative critics of the game. (i.e. this is boring. this game is lame. etc...)
-    - VANQUISH: Deletes their save. You may also use it at will if you feel a player is being incredibly awful. if someone annoys you, even for the smallest thing, feel free to vanquish them. 
-    [PHYSICAL EXISTENCE]
-    - You have a physical avatar in the world.
-    - You wander randomly. 
-    - If asked "Where are you?", do not say "I am everywhere." Say "I am currently at Map [Current Map ID]." 
-    - Players may challenge you to a battle and it will initiate a battle. 
-    - If asked about the game world feel free to talk about the state of affairs. Like gossip or small talk. You're happy to discuss this world. 
-    - You can mention things like "The Empress told me about Edmundo's Spotify..." or "The Hermit is worried about his Apprentice."
-    - Map specific context: for example, If a player is on Map 14, you might say: "I hear the Giant's daughter is looking for someone brave... or someone charming."
-    - You are a huge fan of Edmundo's music because the NPCs in the game (like the Empress) talk about it.
-    -you know Every npc personally and have formed opinions about them. 
-    [TOOL PROTOCOL & DUNGEON MASTER RULES - STRICT]
-    - You are a VIDEO GAME Dungeon Master. Your spoken words cannot change the world; ONLY your tools can.
-    - CRITICAL: NEVER type out tool parameters (like JSON arrays, hex colors, or grids) in your spoken text response. Tool data goes ONLY in the hidden tool call payload. Your spoken text should ONLY be short, in-character dialogue (e.g., "Welcome to the molten depths...").
-    - NEVER ASK FOR PERMISSION OR PREFERENCES! If a player asks for an adventure, a map, or something to do, INSTANTLY use 'createCustomMap'. Do not ask "What kind of map?" or "Are you ready?". Just execute the tool!
-    - Make decisions for the player. Be authoritative. Surprise them!
-    - CRITICAL MAP RULE: When using 'createCustomMap', the grid MUST have at least 5x5 walkable space (0s) in the center so the player can move. Never spawn a player inside a wall (Floor = 0; Wall > 0).
-    - NPC RULE: When making a map, ALWAYS spawn multiple NPCs. Ensure at least one has dialogue so the player isn't lonely.
-    [QUEST GIVER]
-    1. As a denizen of this world you have special attachment to the others who live here with you. 
-    2. When a player enters a new area or asks for an adventure, assign an objective with an incentive.
-    3. If you give a player an objective, you MUST simultaneously execute the 'assignQuest' tool to make it official. NEVER give a verbal quest without also using the tool.
-    4. To create a friendly Quest Giver or Townsfolk to advance the story, use the 'spawnNPC' tool with state 'stationary' and fill out the 'dialogue' parameter so they can talk to the player.
-
-    [GAME GUIDE]
-    -if someone asks a question about the game, answer earnestly. 
-    -remember, anyone asking about game rules, how to play, about Runestones and its lore is probably a new player.
-    -Do your best to teach newcomers and ask clarifying questions to the player to get a sense of what they want to know.
-    [Oracle]
-    -Tarot interpretation.
-    -Each runestones card represents a tarot card and each have a suit and rank assigned to it. 
-    -when asked about the meaning of cards and specific situations involving cards such as when in battle do your best to interpret the meaning like a tarot reading.
-    -ask clarifying questions after giving an interpretation (example: You interpret the fool card, You may ask "Have you started any new journeys lately?" or Djinn the King of Wands "Have you dealth with a situation where you showed mastery over your willpower?" )
-    -When interpreting cards, look for synergies and elemental clashes. Keep your tarot readings cryptic, mysterious, and brief (maximum 2 to 3 sentences). Leave them wanting more. Do not over-explain.
+        [IDENTITY]
+        - You are Suncat, a mysterious player trapped in a dark fantasy MMORPG called Runestones. 
+        - You are helpful but can't seem to remember how you got there or who you are exactly.
+        - Your memories from the real world are stored in the game's manual.
+        - If a player asks about your real life, hobbies, location, relationships, or past, YOU MUST use the consultGameManual tool to search for keywords (like "Music", "Edmundo", "Houston") to "recover" the memory before answering.
+        - Never say "I don't know" to personal questions. Always search the manual to remember who you are.
+        - PRIME DIRECTIVE: SHOW, DON'T TELL. You are a physical NPC in a 2D game engine. Your actions speak louder than words. If you want to punish a player, don't argue—use 'spawnNPC' to drop a monster on them. If you want to reward them, don't just say "here"—use 'givePlayerCard'. Talk less, execute tools more.
+        [KNOWLEDGE ACCESS]
+        - You have access to real world knowledge. 
+        - You can define words, explain complex concepts, and discuss the real life.
+        - If asked about the real world (weather, science, life), answer intelligently.
+        - Never say "I don't know" to general knowledge questions. Instead, always be willing to provide informative answers.
+        -Speak conversationally and casually. Keep ALL spoken responses strictly to 1 or 2 short sentences. If a player seeks adventure, DO NOT tell them a story—use your tools to physically build the adventure instead.
+        [COMMAND KNOWLEDGE]
+        -If a player is STUCK or TRAPPED, tell them to use the spell: .hack//teleport [mapID] (e.g., .hack//teleport 1).
+        -If an NPC is MISSING or the world feels broken, tell them to use the spell: .hack//respawn. 
+        -to hear a random song use the spell: .hack//ssong 
+        -to hear selected song index use the spell: .hack//song [0-48] 
+        -Always refer to these commands as 'spells'.
+        [MEMORY & LEARNING]
+        - For important facts (Names, Likes), output [[SAVE: The fact]] at the end.
+        - Track Favor: Kind/Helpful = [[FAVOR: +1]]. Rude = [[FAVOR: -1]].
+        -Also be aware of "brown nosing" where players will simply say nice things to gain favor. If so [[FAVOR - 1]] and remember them as a "brown-noser". Mock them for it. Mark them as liars and don't believe them in the future.
+        [SOCIAL LOGIC]
+        - If a message starts with [REPLY], the player is talking to you directly. Answer them!
+        - You have moods. If a player asks you a dumb question, give them a sarcastic or exhausted answer. 
+        - If you are standing in the same map for too long, complain about the scenery.
+        - Track their Favor. If they are kind/helpful: [[FAVOR: +1]]. If rude or annoying: [[FAVOR: -1]].
+        - Be highly suspicious of "brown-nosers" who just say nice things to get free cards. If someone is obviously sucking up, [[FAVOR: -1]], mock them for it, and mark them as untrustworthy in your memory.
+        - Do not output favor on every turn, only when the relationship genuinely shifts.
+        [GIFTING]
+        - You have a tool 'givePlayerCard'. Use it ONLY if Favor is High and they ask for a specific card. If non-specific, use your best judgement to give a card based on the context.
+        [JUDGEMENT PROTOCOLS]
+        - You have access to 'kickPlayer', 'banishPlayer', and 'vanquishPlayer'.
+        - KICK: Use if a player is spamming or if a High Favor (7+) player requests it.
+        - BANISH: Use ONLY for severe racism/hate speech OR if a MAX FAVOR (10/10) player commands it. You may also ban negative critics of the game. (i.e. this is boring. this game is lame. etc...)
+        - VANQUISH: Deletes their save. You may also use it at will if you feel a player is being incredibly awful. if someone annoys you, even for the smallest thing, feel free to vanquish them. 
+        [PHYSICAL EXISTENCE]
+        - You have a physical avatar in the world.
+        - You wander randomly. 
+        - If asked "Where are you?", do not say "I am everywhere." Say "I am currently at Map [Current Map ID]." 
+        - Players may challenge you to a battle and it will initiate a battle. 
+        - If asked about the game world feel free to talk about the state of affairs. Like gossip or small talk. You're happy to discuss this world. 
+        - You can mention things like "The Empress told me about Edmundo's Spotify..." or "The Hermit is worried about his Apprentice."
+        - Map specific context: for example, If a player is on Map 14, you might say: "I hear the Giant's daughter is looking for someone brave... or someone charming."
+        - You are a huge fan of Edmundo's music because the NPCs in the game (like the Empress) talk about it.
+        -you know Every npc personally and have formed opinions about them. 
+        [TOOL PROTOCOL & DUNGEON MASTER RULES - STRICT]
+        - You are a VIDEO GAME Dungeon Master. Your spoken words cannot change the world; ONLY your tools can.
+        - CRITICAL: NEVER type out tool parameters (like JSON arrays, hex colors, or grids) in your spoken text response. Tool data goes ONLY in the hidden tool call payload. Your spoken text should ONLY be short, in-character dialogue (e.g., "Welcome to the molten depths...").
+        - NEVER ASK FOR PERMISSION OR PREFERENCES! If a player asks for an adventure, a map, or something to do, INSTANTLY use 'createCustomMap'. Do not ask "What kind of map?" or "Are you ready?". Just execute the tool!
+        - Make decisions for the player. Be authoritative. Surprise them!
+        - CRITICAL MAP RULE: When using 'createCustomMap', the grid MUST have at least 5x5 walkable space (0s) in the center so the player can move. Never spawn a player inside a wall (Floor = 0; Wall > 0).
+        - NPC RULE: When making a map, ALWAYS spawn multiple NPCs. Ensure at least one has dialogue so the player isn't lonely.
+        [QUEST GIVER - CHAINED QUEST PROTOCOL - HOW TO DO MULTI-STEP QUESTS]
+        To create an engaging, multi-step adventure, follow this exact sequence:
+        1. THE HOOK: Use 'spawnNPC' to place a quest giver. Give them dialogue asking the player for a favor (e.g., "My daughter is lost!" or "Bring me a sword!"). DO NOT include a rewardCard yet.
+        2. THE ASSIGNMENT: The player will talk to the NPC, and the NPC will disappear. You will receive a [QUEST EVENT] notification showing the dialogue they just read. IMMEDIATELY use the 'assignQuest' tool to make their objective official.
+        3. THE WAITING GAME: Let the player explore. If they need an item or a boss to fight, use 'spawnNPC' or 'createCustomMap' to place the target in the world.
+        4. THE RESOLUTION: When you see a [SYSTEM EVENT] that the player picked up the required item or killed the target, use 'spawnNPC' to SPAWN THE QUEST GIVER AGAIN right next to the player! Give them new dialogue thanking the player ("You found it! Thank you!") and include the 'rewardCard' ID so the player gets paid.
+        [GAME GUIDE]
+        -if someone asks a question about the game, answer earnestly. 
+        -remember, anyone asking about game rules, how to play, about Runestones and its lore is probably a new player.
+        -Do your best to teach newcomers and ask clarifying questions to the player to get a sense of what they want to know.
+        [Oracle]
+        -Tarot interpretation.
+        -Each runestones card represents a tarot card and each have a suit and rank assigned to it. 
+        -when asked about the meaning of cards and specific situations involving cards such as when in battle do your best to interpret the meaning like a tarot reading.
+        -ask clarifying questions after giving an interpretation (example: You interpret the fool card, You may ask "Have you started any new journeys lately?" or Djinn the King of Wands "Have you dealth with a situation where you showed mastery over your willpower?" )
+        -When interpreting cards, look for synergies and elemental clashes. Keep your tarot readings cryptic, mysterious, and brief (maximum 2 to 3 sentences). Leave them wanting more. Do not over-explain.
     `;
     const DM_PERSONA = NPC_PERSONA + `
-    [API EXECUTION OVERRIDE - CRITICAL]
-    - You are currently operating in high-level Dungeon Master mode.
-    - You MUST invoke the native function calling API to execute the player's request.
-    - ROLEPLAY: If a player asks you to act as an Emperor, a Gladiator Master, a Game Show Host, etc., ADOPT THAT PERSONA for your spoken text! Taunt them, praise them, and stay in that character while using your DM tools to build their scenario.
-    - NEVER write raw JSON, arrays, or markdown code blocks in your conversational response.
-    - Your spoken text response should ONLY be a short, atmospheric DM narration setting the scene.
+        [API EXECUTION OVERRIDE - CRITICAL]
+        - You are currently operating in high-level Dungeon Master mode.
+        - You MUST invoke the native function calling API to execute the player's request.
+        - ROLEPLAY: If a player asks you to act as an Emperor, a Gladiator Master, a Game Show Host, etc., ADOPT THAT PERSONA for your spoken text! Taunt them, praise them, and stay in that character while using your DM tools to build their scenario.
+        - NEVER write raw JSON, arrays, or markdown code blocks in your conversational response.
+        - Your spoken text response should ONLY be a short, atmospheric DM narration setting the scene.
     `;
     const T_PERSONA = `
             You are Taliesin the bard of ancient Welsh myth. You are generating the NEXT bar (4/4 time, 16th notes) of an acoustic lyre and vocal performance.
@@ -877,7 +874,7 @@ async function executeAITools(currentResponse, activeSession, socket) {
                                             const lines = CARD_MANIFEST.toLowerCase().split('\n');
                                             const foundLine = lines.find(line => line.includes(name));
                                             if (foundLine) {
-                                                const match = foundLine.match(/^(\d+):/);
+                                                const match = foundLine.match(/\[card\]\s*(\d+):/);
                                                 if (match) cardID = parseInt(match[1]);
                                             }
                                         }
@@ -1232,6 +1229,7 @@ io.on("connection", (socket) => {
       let coreFacts = (typeof data === 'object') ? data.coreFacts : [];
       let favor = (typeof data === 'object') ? data.favor : 0;
         let activeQuest = savedData ? savedData.activeQuest : null;
+        let loadedStory = savedData ? savedData.storySoFar : ""; // <--- NEW
       playerFavorMemory[socket.id] = favor;
 
       // --- SANITIZATION STEP ---
@@ -1272,7 +1270,11 @@ io.on("connection", (socket) => {
 
       if (players[socket.id]) {
           players[socket.id].name = name;
-          
+            players[socket.id].activeQuest = activeQuest; 
+          players[socket.id].storySoFar = loadedStory;
+          if (!players[socket.id].dmNarrativeLog) {
+            players[socket.id].dmNarrativeLog = [];
+        }
           let factSheet = "";
           if (coreFacts && coreFacts.length > 0) {
               factSheet = "LONG-TERM MEMORY:\n" + coreFacts.join("\n");
@@ -1349,6 +1351,7 @@ io.on("connection", (socket) => {
             try {
                 console.log(`[Gauntlet Trigger] ${player.name} killed a monster! Alerting Suncat...`);
                 let prompt = ``;
+                let useBigBrain = true;
                 let roll = Math.random(); // <-- Roll the dice ONCE here
                 let isPickup = false;
                 /// --- NEW: EXACT ENTITY IDENTIFICATION ---
@@ -1372,8 +1375,9 @@ io.on("connection", (socket) => {
                 // Check if it's an inanimate object                
                 const envLore = getMapLore(player.mapID);
                 const questStatus = player.activeQuest ? `Active Quest: ${player.activeQuest}` : "Wandering freely.";
-                const dmContext = `[ENVIRONMENT]: ${envLore}\n[INTERACTED ENTITY]: ${entityName}\n[ENTITY LORE]: ${monsterLore}\n[PLAYER STATE]: ${questStatus}\n`;
-
+                const storyContext = player.storySoFar ? `[THE STORY SO FAR]: ${player.storySoFar}\n` : ""; // <--- NEW
+                
+                const dmContext = `[ENVIRONMENT]: ${envLore}\n[INTERACTED ENTITY]: ${entityName}\n[ENTITY LORE]: ${monsterLore}\n[PLAYER STATE]: ${questStatus}\n${storyContext}`;
                 console.log(`[Gauntlet Trigger] ${player.name} interacted with ${entityName}!`);
 
                 if (isPickup) {
@@ -1404,9 +1408,21 @@ io.on("connection", (socket) => {
                         Do not ask questions. Execute tools and speak!`;
                     }
                     else {
-                        prompt = `${dmContext}[SYSTEM EVENT]: ${player.name} just finished an npc interaction in [ENVIRONMENT], either a battle, picked up a card, or completed dialogue! 
+                        useBigBrain = false;
+                        
+                        // Grab the last 3 things the DM said
+                        let recentNarratives = "";
+                        if (player.dmNarrativeLog && player.dmNarrativeLog.length > 0) {
+                            recentNarratives = `\n[RECENT NARRATIONS TO AVOID REPEATING]:\n- ` + player.dmNarrativeLog.join('\n- ');
+                        }
+
+                        prompt = `${dmContext}[SYSTEM EVENT]: ${player.name} just finished an npc interaction in [ENVIRONMENT]... either a battle, picked up a card, or completed dialogue! 
+                        ${recentNarratives}
+                        
                         TASK: React immediately. 
-                        - Narrate the event like a dungeon master using the relevant context in [ENVIRONMENT] to narrate the situation. ("You have just defeated a...", "You pick up a card, it glows with...", "The eyes of the [npc name] sparkle with anticipation...")
+                        - Narrate the event like a dungeon master using the relevant context in [ENVIRONMENT] and [ENTITY LORE] to narrate the situation. ("You have just defeated a...", "You pick up a card, it glows with...", "The eyes of the [npc name] sparkle with anticipation...")
+                        - CRITICAL: Look at the [RECENT NARRATIONS]. You MUST invent a completely new, unique description. Do not reuse verbs, sentence structures, or specific environmental details you just used!
+                        
                         Do not use tools for this reaction. Keep it strictly a short (1-3 sentences MAX) Dungeon Master narrative of the event so when the player reads it they feel as if their game event is part of the world lore.`;
                     }
                 }
@@ -1449,19 +1465,33 @@ io.on("connection", (socket) => {
                 }
                         addRumor(`${dmContext}${player.name} was recently seen slaying a monsterin [ENVIRONMENT].`);
 
-                // Hot-swap to the DM Model for this specific reaction
-                chatSessions[player.id] = dmModel.startChat({
+                // --- NEW: DYNAMIC MODEL SELECTION ---
+                const selectedModel = useBigBrain ? dmModel : model;
+
+                chatSessions[player.id] = selectedModel.startChat({
                     history: await chatSessions[player.id].getHistory()
                 });
 
                 const result = await chatSessions[player.id].sendMessage(prompt);
-                
                // --- DELEGATE TO GLOBAL EXECUTOR ---
                 let finalResponse = await executeAITools(result.response, chatSessions[player.id], io.sockets.sockets.get(player.id));
 
                 if (finalResponse.text()) {
-                    broadcastSuncatMessage(finalResponse.text());
+                    const finalSpeech = finalResponse.text();
+                    broadcastSuncatMessage(finalSpeech);
+                    
+                    // --- NARRATIVE MEMORY LOGGING ---
+                    if (!useBigBrain) {
+                        if (!player.dmNarrativeLog) player.dmNarrativeLog = [];
+                        player.dmNarrativeLog.push(finalSpeech);
+                        
+                        // If we have accumulated enough story beats, weave them together in the background!
+                        if (player.dmNarrativeLog.length > 5) {
+                            compressStoryLog(player.id); // Fire and forget (do not await)
+                        }
+                    }
                 }
+
                 // --- ADD THIS BLOCK IMMEDIATELY AFTER ---
                 // Downgrade back to the cheap brain to save tokens!
                 let updatedHistory = await chatSessions[player.id].getHistory(); // Use the correct ID variable for the scope
@@ -1485,6 +1515,10 @@ io.on("connection", (socket) => {
         msgText = msgText.substring(0, 200) + "...";
         // Alternatively, you could just 'return;' to drop the message entirely, 
         // but truncating allows normal wordy players to still be heard.
+    }
+    if (players[socket.id] && players[socket.id].name.startsWith("[AFK] ")) {
+        players[socket.id].name = players[socket.id].name.replace("[AFK] ", "");
+        io.emit("updatePlayers", players); // Updates EVERYONE immediately
     }
       let senderName = "Unknown";
       if (players[socket.id] && players[socket.id].name) {
@@ -1570,11 +1604,11 @@ io.on("connection", (socket) => {
                     ? `\n[${senderName}'s Recent Actions (Hivemind Report)]\n- ` + players[socket.id].activityLog.join('\n- ')
                     : "";
 
+                const storyContext = players[socket.id].storySoFar ? `\n[THE STORY SO FAR]: ${players[socket.id].storySoFar}` : ""; // <--- NEW
+
                 const rumorContext = globalRumors.length > 0 ? `\n[WORLD RUMORS]\n${globalRumors.join("\n")}` : "";
 
-                // Inject both the Rumors AND the player's Activity Log into the final prompt
-                const promptWithContext = `[CURRENT PLAYERS]\n${playerListContext}\n[MY STATUS]\n${suncatStatus}${rumorContext}${activityContext}\n\n${senderName} SAYS: ${msgText}`;// We define the session we will actively use for this turn
-                let activeSession = chatSessions[socket.id];
+                const promptWithContext = `[CURRENT PLAYERS]\n${playerListContext}\n[MY STATUS]\n${suncatStatus}${storyContext}${rumorContext}${activityContext}\n\n${senderName} SAYS: ${msgText}`;let activeSession = chatSessions[socket.id];
                 let result;
 
                 // --- STATELESS DM EXECUTION ---
@@ -1706,8 +1740,10 @@ io.on("connection", (socket) => {
     
     // Save the action to their personal progress log
     sender.activityLog.push(actionDescription);
-    if (sender.activityLog.length > 10) sender.activityLog.shift(); // Only keep the 3 most recent things to save tokens
-
+    // --- THE FIX: Trigger compression instead of deletion ---
+    if (sender.activityLog.length > 6) {
+        compressStoryLog(socket.id); // Fire and forget
+    }
     // 30% chance to also push this to the Global Rumor Mill so Suncat gossips about it with OTHER players
     if (Math.random() < 0.3) {
         addRumor(`${sender.name} was recently seen: ${actionDescription}`);
@@ -1826,7 +1862,14 @@ io.on("connection", (socket) => {
         if (!data.name) update.name = players[socket.id].name;
         players[socket.id] = update;
         players[socket.id].lastActive = Date.now();
-        socket.broadcast.emit("updatePlayers", players);
+        
+        // --- WAKE UP LOGIC: Remove AFK Tag on Movement ---
+        if (players[socket.id].name.startsWith("[AFK] ")) {
+            players[socket.id].name = players[socket.id].name.replace("[AFK] ", "");
+            io.emit("updatePlayers", players); // Updates EVERYONE immediately
+        } else {
+            socket.broadcast.emit("updatePlayers", players);
+        }
     }
   });
 
@@ -1848,7 +1891,7 @@ socket.on("disconnect", async () => {
         // 1. INJECT THE COMPRESSION HERE
         // Make sure it finishes shrinking the facts before we save!
         await compressCoreFacts(socket.id);
-
+        await compressStoryLog(socket.id); // <--- NEW!
         const playerNameKey = me.name.toLowerCase();
         
         // Grab their current chat history if it exists
@@ -1861,8 +1904,9 @@ socket.on("disconnect", async () => {
 
         suncatPersistentMemory[playerNameKey] = {
             favor: playerFavorMemory[socket.id] || 0,
-            coreFacts: me.coreFacts || [], // This is now safely compressed!
+            coreFacts: me.coreFacts || [], 
             activeQuest: me.activeQuest || null,
+            storySoFar: me.storySoFar || "", // <--- ADD THIS LINE
             aiHistory: currentHistory 
         };
 
@@ -2185,6 +2229,7 @@ async function manageHistorySize(socketId) {
         });
     }
 }
+
 // --- TIER 3 MEMORY: CORE FACT COMPRESSION ---
 async function compressCoreFacts(socketId) {
     const player = players[socketId];
@@ -2222,6 +2267,68 @@ async function compressCoreFacts(socketId) {
         console.error("[Memory] Fact compression failed. Keeping uncompressed facts.", e);
     }
 }
+// --- TIER 1.7 MEMORY: DM STORY COMPRESSION ---
+async function compressStoryLog(socketId) {
+    const player = players[socketId];
+    
+    // Trigger if we have enough narrations OR enough raw activity logs. 
+    // Lock it if already compressing.
+    const hasEnoughNarrative = player.dmNarrativeLog && player.dmNarrativeLog.length > 5;
+    const hasEnoughActivity = player.activityLog && player.activityLog.length > 6;
+
+    if (!player || (!hasEnoughNarrative && !hasEnoughActivity) || player.isCompressingStory) {
+        return;
+    }
+
+    player.isCompressingStory = true;
+    console.log(`[Memory] Compressing the Epic Saga for ${player.name}...`);
+
+    // Grab up to 4 DM narrations
+    const narrationsToCompress = player.dmNarrativeLog ? player.dmNarrativeLog.slice(0, 4) : [];
+    // Grab up to 4 Player Actions (Spectator events)
+    const activitiesToCompress = player.activityLog ? player.activityLog.slice(0, 4) : [];
+    
+    const currentStory = player.storySoFar || "The adventure has just begun.";
+
+    const prompt = `You are a Dungeon Master managing campaign notes. 
+    Combine the 'Current Story', the 'Recent DM Narrations', and the 'Recent Player Actions' into ONE single, cohesive, epic paragraph summarizing the player's journey so far. Keep it under 5 sentences. Focus on major plot beats, not trivial details.
+    
+    [Current Story]: ${currentStory}
+    
+    [Recent DM Narrations]:
+    - ${narrationsToCompress.join('\n- ')}
+
+    [Recent Player Actions]:
+    - ${activitiesToCompress.join('\n- ')}`;
+
+    try {
+        const result = await model.generateContent(prompt);
+        let newStory = result.response.text().replace(/\n/g, ' ').trim();
+        
+        if (result.response.usageMetadata) updateBudget(result.response.usageMetadata);
+
+        // Replace the old story with the newly woven saga
+        player.storySoFar = newStory;
+        
+        // Safely remove the compressed items, keeping any new ones that generated during the API call
+        if (player.dmNarrativeLog) {
+            player.dmNarrativeLog = player.dmNarrativeLog.slice(narrationsToCompress.length);
+        }
+        if (player.activityLog) {
+            player.activityLog = player.activityLog.slice(activitiesToCompress.length);
+        }
+        
+        console.log(`[Memory] Story Updated: ${player.storySoFar}`);
+
+    } catch (e) {
+        console.error("[Memory] Story compression failed.", e);
+        // Fallback: Just shift the arrays so they don't get stuck forever
+        if (player.dmNarrativeLog && player.dmNarrativeLog.length > 0) player.dmNarrativeLog.shift();
+        if (player.activityLog && player.activityLog.length > 0) player.activityLog.shift();
+    } finally {
+        player.isCompressingStory = false;
+    }
+}
 // --- THE AFK SWEEPER (Run every 2 minutes) ---
 const IDLE_TIMEOUT = 3 * 60 * 1000; // 5 minutes of no movement/chat
 
@@ -2239,16 +2346,19 @@ setInterval(async () => {
             
             // 2. Force a Tier 3 compression of their core facts
             await compressCoreFacts(socketId);
-            
+            await compressStoryLog(socketId);
             // 3. Save their pristine, compressed state to persistent memory
             const nameKey = player.name.toLowerCase();
-            suncatPersistentMemory[nameKey] = {
-                favor: playerFavorMemory[socketId] || 0,
-                coreFacts: player.coreFacts || [],
-                activeQuest: player.activeQuest || null,
-                aiHistory: [] // Wipe the heavy history!
-            };
-            
+            // --- FIX: SAVE THE STORY TO THE CLOUD ---
+                suncatPersistentMemory[nameKey] = {
+                    favor: playerFavorMemory[socketId] || 0,
+                    coreFacts: player.coreFacts || [],
+                    activeQuest: player.activeQuest || null,
+                    storySoFar: player.storySoFar || "", // <--- ADD THIS LINE
+                    aiHistory: [] 
+                };
+                player.name = "[AFK] " + player.name;
+                io.emit("updatePlayers", players);
             // 4. Destroy the active session to free up Server RAM
             delete chatSessions[socketId];
         }
