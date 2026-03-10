@@ -1327,9 +1327,7 @@ io.on("connection", (socket) => {
     
     // Suncat watches!
     if (player) {
-        // --- NEW: THE PACIFIST FILTER ---
-        // If this NPC was killed by dialogue (joining the party, giving a quest, etc.),
-        
+       
         const now = Date.now();
         if (player.lastKillReaction && (now - player.lastKillReaction < 5000)) {
             return; // DM is still processing a recent kill, ignore this one
