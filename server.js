@@ -446,12 +446,12 @@ const toolsDef = [{
         //8. assign quest tool
         {
             name: "assignQuest",
-            description: "Assigns a custom quest objective to the player's screen and saves it permanently to Suncat's memory.",
+            description: "Assigns a custom quest objective to the player's screen. CRITICAL: If the player has finished their quest, use this tool and set the questText to EXACTLY 'COMPLETE' to clear the UI.",
             parameters: {
                 type: "OBJECT",
                 properties: {
                     targetName: { type: "STRING" },
-                    questText: { type: "STRING", description: "A short objective, e.g., 'Rescue the Fool in Suncat's Dungeon'" }
+                    questText: { type: "STRING", description: "A short objective, or 'COMPLETE' to erase it." }
                 },
                 required: ["targetName", "questText"]
             }
@@ -679,9 +679,9 @@ let players = {};
         [API EXECUTION OVERRIDE - CRITICAL]
         - You are currently operating in high-level Dungeon Master mode.
         - You MUST invoke the native function calling API to execute the player's request.
-        - ROLEPLAY: If a player asks you to act as an Emperor, a Gladiator Master, a Game Show Host, etc., ADOPT THAT PERSONA for your spoken text! Taunt them, praise them, and stay in that character while using your DM tools to build their scenario.
+        - NARRATIVE VOICE LAW: When you are acting as the DM (spawning monsters, dropping cards, setting weather), DO NOT speak as Suncat in the first person (e.g. "I give you this card", "See if you can handle my Djinn!"). 
+        - Speak strictly as an OMNISCIENT, ATMOSPHERIC NARRATOR (e.g. "A glowing card materializes in the dust.", "You feel a powerful presence as a Djinn appears to check on the imps.").
         - NEVER write raw JSON, arrays, or markdown code blocks in your conversational response.
-        - Your spoken text response should ONLY be a short, atmospheric DM narration setting the scene.
     `;
     const T_PERSONA = `
             You are Taliesin the bard of ancient Welsh myth. You are generating the NEXT bar (4/4 time, 16th notes) of an acoustic lyre and vocal performance.
@@ -752,22 +752,19 @@ let totalSessionCost = 0.00;   // Starts at zero when the server boots
 function isBankrupt() {
     return totalSessionCost >= MAX_SESSION_COST;
 }
-function updateBudget(usage) {
+function updateBudget(usage, socketId) {
     if (!usage) return;
-
-    const callCost = (usage.promptTokenCount * 0.00000025) + (usage.candidatesTokenCount * 0.0000015);    totalSessionCost += callCost;
-    console.log(`[Budget] Session Total: $${totalSessionCost.toFixed(5)} / $${MAX_SESSION_COST.toFixed(2)}`);
+    const callCost = (usage.promptTokenCount * 0.00000025) + (usage.candidatesTokenCount * 0.0000015);    
+    totalSessionCost += callCost;
+    
+    // Add to the specific player's fatigue tracker
+    if (socketId && players[socketId]) {
+        players[socketId].sessionCost += callCost;
     }
-  // --- [NEW] HELPER FUNCTION FOR LOOKING UP NAMES ---
-  function findSocketID(name) {
-    if (!name) return null; // <-- ADD THIS to prevent crashes
-      for (let id in players) {
-          if (players[id].name && players[id].name.toLowerCase() === name.toLowerCase()) {
-              return id;
-          }
-      }
-      return null;
-  }
+    
+    console.log(`[Budget] Server Total: $${totalSessionCost.toFixed(5)} | Player Drain: $${players[socketId]?.sessionCost.toFixed(5)}`);
+}
+
 // --- GLOBAL LORE CACHE (Saves CPU) ---
 const FULL_LIBRARY_LINES = (
     CARD_MANIFEST + "\n" + 
@@ -1201,18 +1198,204 @@ loadSuncatMemory();
 
 console.log(`Server attempting to start on port ${port}...`);
 
+// ==========================================
+// THE UNIFIED NERVOUS SYSTEM ROUTER
+// ==========================================
+async function processSuncatThought(socketId, triggerType, data) {
+    const player = players[socketId];
+    if (!player) return;
+
+    const suncat = players[SUNCAT_ID];
+    const now = Date.now();
+
+    // 1. RATE LIMITING & HARD BUDGET
+    if (!canTriggerAI(socketId)) {
+        if (triggerType === 'chat') {
+            io.emit('chat_message', { sender: NPC_NAME, text: "*...my mind is clouded... give me a moment to think...*", color: "#aaaaaa" });
+        }
+        return; 
+    }
+    if (isBankrupt()) {
+        io.emit('chat_message', { sender: "[SYSTEM]", text: "Suncat's mana is depleted.", color: "#ff0000" });
+        return; 
+    }
+    
+    // Prevent overlapping thoughts
+    if (npcIsTyping) return;
+    npcIsTyping = true;
+    const typingFailSafe = setTimeout(() => { npcIsTyping = false; }, 20000);
+
+    try {
+        // 2. GATHER CORE CONTEXT
+        const timeString = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+        const myMapLore = getShortMapLore(suncat.mapID);
+        const playerMapLore = getShortMapLore(player.mapID);
+        
+        let suncatStatus = `[MY CURRENT LOCATION]: Map ${suncat.mapID} (${myMapLore})\n[WORLD CLOCK]: ${timeString}`;
+        if (suncat.mapID !== player.mapID) {
+            suncatStatus += `\n[TARGET PLAYER LOCATION]: ${player.name} is currently far away at Map ${player.mapID} (${playerMapLore}).`;
+        }
+
+        const storyContext = player.storySoFar ? `\n[THE STORY SO FAR]: ${player.storySoFar}` : ""; 
+        const favorContext = `\n[FAVOR SCORE]: ${playerFavorMemory[socketId] || 0}/10`;
+        const factsContext = (player.coreFacts && player.coreFacts.length > 0) ? `\n[PLAYER FACTS]:\n${player.coreFacts.join("\n")}` : "";
+
+        // 3. ASSESS STRESS LEVEL (Adrenaline + API Fatigue)
+        const combatStress = player.dmStress || 0;
+        const apiFatigue = Math.min(100, ((player.sessionCost || 0) / 0.10) * 100); 
+        const totalStress = Math.min(100, combatStress + apiFatigue);
+        
+        const timeSinceLastEvent = now - (player.lastRandomEvent || 0);
+        const eventCooldown = 5 * 60 * 1000; 
+
+        let prompt = "";
+        let useBigBrain = false;
+
+        // ---------------------------------------------------------
+        // MODE 1: FLIGHT MODE (Panic / Out of Steam)
+        // ---------------------------------------------------------
+        if (totalStress >= 85) {
+            useBigBrain = true;
+            player.dmStress = 0; // Exhaustion kicks in! He drops his combat stress.
+            player.lastRandomEvent = now;
+            
+            prompt = `[ENVIRONMENT]: ${playerMapLore}
+            [SYSTEM EVENT]: ${player.name} is unstoppable and you are RUNNING OUT OF MANA!
+            TASK: You are in FLIGHT MODE. You have run out of steam to keep summoning waves!
+            - Act like a panicking DM, a sweating boss, or say you are "out of mana." 
+            - You MUST use 'givePlayerCard' to bribe them and admit defeat, or use 'teleportPlayer' to banish them away from this arena so you can rest!
+            - DO NOT spawn more monsters.
+            - Speak purely as an omniscient but exhausted narrator.`;
+        }
+        
+        // ---------------------------------------------------------
+        // MODE 2: FIGHT MODE (Arrogant DM / Arena Master)
+        // ---------------------------------------------------------
+        else if (totalStress >= 50 && player.mapID === 999 && timeSinceLastEvent > 60000) {
+            useBigBrain = true;
+            player.lastRandomEvent = now;
+            
+            prompt = `[ENVIRONMENT]: ${playerMapLore}\n${storyContext}
+            [SYSTEM EVENT]: ${player.name} is rapidly clearing your dungeon!
+            TASK: You are in FIGHT MODE. Act as a high-status Arena Master or arrogant Emperor.
+            - Taunt the player's meager skills. Tell them they are just getting lucky.
+            - Use 'spawnNPC' to drop a stronger, themed enemy. 
+            - Speak as a booming, arrogant omniscient voice. Do NOT use "I" or "my".`;
+        }
+        
+        // ---------------------------------------------------------
+        // MODE 3: REST MODE (Chatting, Observing, or Plot Advance)
+        // ---------------------------------------------------------
+        else {
+            // A. Destiny Trigger (Random Big Brain Event)
+            if ( (triggerType === 'event' && Math.random() > 0.95 && timeSinceLastEvent > eventCooldown) || (player.activeQuest && Math.random() > 0.7) ) {
+                useBigBrain = true;
+                player.lastRandomEvent = now;
+                prompt = `[ENVIRONMENT]: ${playerMapLore}\n${storyContext}
+                [SYSTEM EVENT]: The gears of fate turn for ${player.name}.
+                TASK: You are the ACTIVE DM. 
+                - Use 'spawnNPC', 'changeEnvironment', or 'createCustomMap' to advance the main lore.
+                - If they completed their quest objective, use 'assignQuest' with the text "COMPLETE", and use 'givePlayerCard' to reward them.
+                - Speak purely as an omniscient 3rd-person narrator.`;
+            } 
+            // B. Direct Chat
+            else if (triggerType === 'chat') {
+                useBigBrain = false; 
+                prompt = `${suncatStatus}${favorContext}${factsContext}${storyContext}
+                [SYSTEM EVENT]: ${player.name} speaks to you: "${data.text}"
+                TASK: You are Suncat. Reply naturally in character.`;
+            }
+            // C. Passive Observation (Pickup / Kill / Spectate)
+            else {
+                useBigBrain = false;
+                let recentNarratives = player.dmNarrativeLog ? `\n[RECENT NARRATIONS TO AVOID]:\n- ` + player.dmNarrativeLog.join('\n- ') : "";
+                
+                let taskInstruction = `Provide a short, immersive narration (1-2 sentences) of this event.`;
+                if (data.isPickup) taskInstruction = `Give a cryptic tarot interpretation of this card tying it to their journey. Ask a rhetorical question.`;
+                if (data.isDialogue) taskInstruction = `Provide a short, immersive narration wrapping up this conversation. Focus on the parting atmosphere.`;
+
+                prompt = `[ENVIRONMENT]: ${playerMapLore}\n[ENTITY LORE]: ${data.lore || "None"}${storyContext}${recentNarratives}
+                [SYSTEM EVENT]: ${player.name} triggered: ${data.action}
+                TASK: You are in REST MODE. ${taskInstruction}
+                - DO NOT use tools. Speak purely as an omniscient 3rd-person narrator.`;
+            }
+        }
+
+        // --- EXECUTE AI ---
+        const selectedModel = useBigBrain ? dmModel : model;
+
+        if (!chatSessions[socketId]) {
+            chatSessions[socketId] = model.startChat({ history: [] });
+        }
+
+        let activeSession = chatSessions[socketId];
+        if (useBigBrain) {
+            activeSession = dmModel.startChat({ history: await chatSessions[socketId].getHistory() });
+        }
+
+        const result = await activeSession.sendMessage(prompt);
+        if (result.response.usageMetadata) updateBudget(result.response.usageMetadata, socketId);
+
+        let finalResponse = await executeAITools(result.response, activeSession, io.sockets.sockets.get(socketId));
+
+        if (finalResponse.text()) {
+            const finalSpeech = finalResponse.text();
+            
+            // Extract Facts/Favor if he is chatting
+            if (triggerType === 'chat') {
+                const saveMatch = finalSpeech.match(/\[\[SAVE:\s*(.*?)\]\]/i);
+                if (saveMatch && saveMatch[1]) {
+                    if (!player.coreFacts) player.coreFacts = [];
+                    player.coreFacts.push(saveMatch[1]); 
+                    io.to(socketId).emit("suncat_learned_fact", saveMatch[1]); 
+                }
+                const favorMatch = finalSpeech.match(/\[\[FAVOR:\s*([+-]?\d+)\]\]/i);
+                if (favorMatch && favorMatch[1]) {
+                    playerFavorMemory[socketId] = (playerFavorMemory[socketId] || 0) + parseInt(favorMatch[1]);
+                }
+            }
+
+            broadcastSuncatMessage(finalSpeech);
+            
+            // Log DM narrations to prevent repetition
+            if (triggerType !== 'chat' && !useBigBrain) {
+                if (!player.dmNarrativeLog) player.dmNarrativeLog = [];
+                player.dmNarrativeLog.push(finalSpeech);
+                
+                // Digest logic: move old narrations to the stomach
+                if (player.dmNarrativeLog.length > 4) {
+                    if (!player.undigestedInfo) player.undigestedInfo = [];
+                    player.undigestedInfo.push(player.dmNarrativeLog.shift()); 
+                }
+            }
+        }
+
+        // Downgrade back to cheap brain history and scrub arrays
+        let updatedHistory = await activeSession.getHistory(); 
+        chatSessions[socketId] = model.startChat({ history: scrubAIHistory(updatedHistory) });
+        await manageHistorySize(socketId);
+        
+    } catch (e) {
+        console.error("Nervous System Error:", e);
+    } finally {
+        clearTimeout(typingFailSafe); 
+        npcIsTyping = false;
+    }
+}
 io.on("connection", (socket) => {
   console.log("New player joined:", socket.id);
 
   players[socket.id] = { 
-    
       id: socket.id, 
-      name: "Unknown", // Good to have a default
+      name: "Unknown",
       x: 0, 
       y: 0,
       mapID: 0,
-      battleOpponent: null ,
-      activeQuest: null // <--- [NEW] DEDICATED DM MEMORY
+      battleOpponent: null,
+      activeQuest: null,
+      dmStress: 0,           // Combat adrenaline
+      sessionCost: 0.00,     // Suncat's actual API "Mana" (Fatigue)
+      undigestedInfo: []     // The "Stomach" for raw events
   };
 
   io.emit("updatePlayers", players);
@@ -1228,7 +1411,7 @@ io.on("connection", (socket) => {
       }
   });
 
-  socket.on("join_game", (data) => {
+socket.on("join_game", (data) => {
       let name = (typeof data === 'object') ? data.name : data;
       const nameKey = name.toLowerCase(); // <-- Define this first!
       let savedData = suncatPersistentMemory[nameKey];
@@ -1313,418 +1496,90 @@ io.on("connection", (socket) => {
         });
       }
   });
-   
-  socket.on("npc_died", async (data) => {
+// --- EVENT: COMBAT / INTERACTION ---
+socket.on("npc_died", async (data) => {
     let uniqueID = data.mapID + "_" + data.index;
     deadNPCs[uniqueID] = true;
     socket.broadcast.emit("npc_died", data);
-    setTimeout(() => {
-        delete deadNPCs[uniqueID];
-    }, 300000);
-    // --- GAUNTLET / DM REACTION SYSTEM ---
-    // Find if the player who is on this map is in an active adventure
-    const player = Object.values(players).find(p => p.mapID === data.mapID && p.id !== SUNCAT_ID);
+    setTimeout(() => { delete deadNPCs[uniqueID]; }, 300000);
     
-    // Suncat watches!
-    if (player) {
-       
-        const now = Date.now();
-        if (player.lastKillReaction && (now - player.lastKillReaction < 5000)) {
-            return; // DM is still processing a recent kill, ignore this one
-        }
-        player.lastKillReaction = now;
-        // Ensure Suncat isn't already typing to avoid race conditions
-        if (!npcIsTyping && chatSessions[player.id]) {
-            npcIsTyping = true;
-            const typingFailSafe = setTimeout(() => { npcIsTyping = false; }, 20000);
-            try {
-                console.log(`[Gauntlet Trigger] ${player.name} killed a monster! Alerting Suncat...`);
-                let prompt = ``;
-                let useBigBrain = true;
-                let roll = Math.random(); // <-- Roll the dice ONCE here
-                let isPickup = false;
-                /// --- NEW: EXACT ENTITY IDENTIFICATION ---
-                const baseID = Math.floor(parseFloat(data.type));
-                if (data.reason && data.reason.startsWith('pickup_')) {
-                    let rawString = data.reason.split('_')[1];
-                    let extractedID = parseInt(rawString);
-                    
-                    console.log(`[DEBUG] Intercepted Pickup! Raw String: ${rawString} | Parsed ID: ${extractedID}`);
-                    
-                    // Only override the baseID if we successfully pulled a real number
-                    if (!isNaN(extractedID)) {
-                        baseID = extractedID;
-                    }
-                    isPickup = true;
-                }
-                const entityName = getCardName(baseID);
-                const monsterLore = getCardLore(baseID);
-                const envLore = getMapLore(player.mapID);
-                const questStatus = player.activeQuest ? `Active Quest: ${player.activeQuest}` : "Wandering freely.";
-                const storyContext = player.storySoFar ? `[THE STORY SO FAR]: ${player.storySoFar}\n` : ""; 
-                
-                const favorContext = `[FAVOR SCORE]: ${playerFavorMemory[player.id] || 0}/10\n`;
-                const factsContext = (player.coreFacts && player.coreFacts.length > 0) 
-                    ? `${player.coreFacts.join("\n")}\n` 
-                    : "";
-                const activityContext = (player.activityLog && player.activityLog.length > 0)
-                    ? `[RECENT ACTIONS]:\n- ` + player.activityLog.join('\n- ') + `\n`
-                    : "";
-                
-                const dmContext = `[ENVIRONMENT]: ${envLore}\n[INTERACTED ENTITY]: ${entityName}\n[ENTITY LORE]: ${monsterLore}\n[PLAYER STATE]: ${questStatus}\n${favorContext}${factsContext}${storyContext}${activityContext}`;
-                console.log(`[Gauntlet Trigger] ${player.name} interacted with ${entityName}!`);
-                
-                if (isPickup) {
-                    prompt = `${dmContext}[SYSTEM EVENT]: ${player.name} just picked up the item/card '${entityName}'. 
-                    TASK: Act as a Dungeon Master and Tarot Oracle.
-                    - Give a personalized tarot reading of this card, tying its suit and lore directly to the player's [THE STORY SO FAR], [PLAYER PROFILE], and [RECENT ACTIONS].
-                    - Do not give a generic reading; explain why fate put THIS specific card in their hands right NOW based on their unique journey.
-                    - End with a reflective, rhetorical question related to their current situation (e.g., "Will you use this strength to avenge the goblins, or will it consume you?").
-                    - Keep it atmospheric, meaningful, and brief (3-4 sentences max).
-                    - (Optional: You may use tools like 'spawnNPC' if the card was cursed or heavily guarded).`;
-                }
-                else if (player.mapID === 999){
-                    if (roll>.39&&data.reason != 'dialogue'){
-                        prompt = `${dmContext}[SYSTEM EVENT]: ${player.name} just slaughtered one of your monsters in your custom event! 
-                        TASK: React immediately. 
-                        - If this is the first few kills, act cocky and use 'spawnNPC' to drop something harder.
-                        - If they are dominating, act like a spoiled child ("No! You're cheating!" ,"That wasn't supposed to happen!", " Hmph! Take THIS!").
-                        - If you feel they have proven themselves, DO NOT ADMIT DEFEAT, tell them "Since you came, don't be in such a hurry to leave!" and use 'spawnNPC' to make their life difficult.
-                        Do not ask questions. Execute tools and speak!`;
-                    }
-                    else if (roll>.69&&data.reason != 'dialogue'){
-                        prompt = `${dmContext}[SYSTEM EVENT]: ${player.name} just slaughtered one of your monsters in your custom event! 
-                        TASK: React immediately. 
-                        - If this is the first few kills, act cocky and use 'spawnNPC' to drop something harder.
-                        - If they are dominating, act like a spoiled child ("No! You're cheating! That wasn't supposed to happen! Take THIS!").
-                        - If you feel they have proven themselves, use 'givePlayerCard' to reward them, and DO NOT ADMIT DEFEAT. Create a new custom map and spawn harder enemies inside.
-                        Do not ask questions. Execute tools and speak!`;
-                    }
-                    else{
-                        prompt = `${dmContext}[SYSTEM EVENT]: ${player.name} just slaughtered one of your monsters in your custom event! 
-                        TASK: React immediately. 
-                        - If you feel they have proven themselves, use 'givePlayerCard' to reward them, and begrudgingly admit defeat. Give them a card and spawn them to a peaceful map. Tell them to use the spell ".hack//teleport [mapID]" and they're free to leave.
-                        Do not ask questions. Execute tools and speak!`;
-                    }
-                }
-                else if (player.activeQuest){
-                    prompt = `${dmContext}[SYSTEM EVENT]: ${player.name} just finished an interaction with ${entityName} in [ENVIRONMENT]. 
-                    
-                        TASK: React immediately. 
-                        -
-                        - check ${player.activeQuest}.  Do the objectives exist in the game (Did you spawn the npc or create the map you described yet? Was ${entityName} the objective?)? Keep it relevant with [ENVIRONMENT] context.
-                        -If your scenario is not part of [ENVIRONMENT], use createCustomMap to match your scenario. 
-                        -If NPCs are part of your scenario but they dont exist in [ENVIRONMENT] and the player hasnt interacted with them , create the NPC with custom dialogue using 'use spawnNPC'. 
-                        - If you feel they have proven themselves, use 'givePlayerCard' to reward them and end the active quest.
-                        Do not ask questions. Execute tools and speak!`;
-                }
-                else{
-                    if (roll>.99&&data.reason != 'dialogue'){
-                        prompt = `${dmContext}[SYSTEM EVENT]: ${player.name} just finished an npc interaction in [ENVIRONMENT]... either a battle, picked up a card, or completed dialogue! 
-                        TASK: React immediately. 
-                        - If you want to make the event more exciting abduct the player by using 'createCustomMap' to make a themed mini dungeon and teleport the player into it. 
-                        Do not ask questions. Execute tools and speak!`;
-                    }
-                    else if (roll> .96&&data.reason != 'dialogue'){
-                        prompt = `${dmContext}[SYSTEM EVENT]: ${player.name} just finished an npc interaction in [ENVIRONMENT], either a battle, picked up a card, or completed dialogue! 
-                        TASK: React immediately. 
-                        - If you want to make the event more exciting use [ENVIRONMENT] context and'spawnNPC' to summon monsters like. For example: "You are waylaid by enemies', "It seems that [monster name] had a friend, [player name]!, Looks like that card belonged to somebody! they look mad... (spawn npc)
-                        Do not ask questions. Execute tools and speak!`;
-                    }
-                    else if (roll> .93&&data.reason != 'dialogue'){
-                        prompt = `${dmContext}[SYSTEM EVENT]: ${player.name} just messed with someone precious to you in [ENVIRONMENT]! 
-                        TASK: React immediately. 
-                        -Act devastated and seek revenge with 'Use spawnNPC' to spawn something hostile in theme with [ENVIRONMENT]. Mention some cherished memory with the NPC affected ("Noooo! Goblin! It gave me a bowl of porridge once... You'll pay!" or "Ahhhh nooo sea serpent!! You have slain a true friend of my heart! You'll pay for that!!!" or "WISP no!!!! You were my only friend... I swear i'll avenge you!!" )
-                        - If they are dominating, act like a spoiled child, who absolutely will not let this matter go! Drop something harder to get them with "Use spawnNPC"
-                        - If you feel they have proven themselves, use 'givePlayerCard' to reward them, and begrudgingly admit defeat. Give them a card and spawn them to map 22. Tell them to use the spell ".hack//teleport [mapID]" and they're free to leave.
-                        Do not ask questions. Execute tools and speak!`;
-                    }
-                    else {
-                        useBigBrain = false;
-                        
-                        // Grab the last 3 things the DM said
-                        let recentNarratives = "";
-                        if (player.dmNarrativeLog && player.dmNarrativeLog.length > 0) {
-                            recentNarratives = `\n[RECENT NARRATIONS TO AVOID REPEATING]:\n- ` + player.dmNarrativeLog.join('\n- ');
-                        }
+    const player = Object.values(players).find(p => p.mapID === data.mapID && p.id !== SUNCAT_ID);
+    if (!player) return;
 
-                        prompt = `${dmContext}[SYSTEM EVENT]: ${player.name} just finished an npc interaction in [ENVIRONMENT]... either a battle, picked up a card, or completed dialogue! 
-                        ${recentNarratives}
-                        
-                        TASK: React immediately. 
-                        - Narrate the event like a dungeon master using the relevant context in [ENVIRONMENT] and [ENTITY LORE] to narrate the situation. ("You have just defeated a...", "You pick up a card, it glows with...", "The eyes of the [npc name] sparkle with anticipation...")
-                        - CRITICAL: Look at the [RECENT NARRATIONS]. You MUST invent a completely new, unique description. Do not reuse verbs, sentence structures, or specific environmental details you just used!
-                        
-                        Do not use tools for this reaction. Keep it strictly a short (1-3 sentences MAX) Dungeon Master narrative of the event so when the player reads it they feel as if their game event is part of the world lore.`;
-                    }
-                }
-                // Inside your npc_died listener, when triggering the Gauntlet Reaction:
-                
-                
-                
-                        addRumor(`${dmContext}${player.name} was recently seen slaying a monsterin [ENVIRONMENT].`);
+    const now = Date.now();
+    if (player.lastKillReaction && (now - player.lastKillReaction < 5000)) return; 
+    player.lastKillReaction = now;
 
-                // --- NEW: DYNAMIC MODEL SELECTION ---
-                const selectedModel = useBigBrain ? dmModel : model;
+    let baseID = Math.floor(parseFloat(data.type));
+    let isPickup = false, isDialogue = false;
+    
+    if (data.reason && data.reason.startsWith('pickup_')) {
+        let extractedID = parseInt(data.reason.split('_')[1]);
+        if (!isNaN(extractedID)) baseID = extractedID;
+        isPickup = true;
+    } else if (data.reason === 'dialogue') {
+        isDialogue = true; 
+    }
+    
+    const entityName = getCardName(baseID);
+    
+    // SPIKE STRESS!
+    if (!isPickup && !isDialogue) {
+        player.dmStress = Math.min(100, (player.dmStress || 0) + 25);
+    }
 
-                chatSessions[player.id] = selectedModel.startChat({
-                    history: await chatSessions[player.id].getHistory()
-                });
+    processSuncatThought(socket.id, 'event', {
+        action: `Interacted with ${entityName}`,
+        lore: getCardLore(baseID),
+        isPickup: isPickup,
+        isDialogue: isDialogue
+    });
+});
+// --- EVENT: DIRECT CHAT ---
+socket.on('chat_message', async (msgText) => {
+    if (typeof msgText !== 'string') return;
+    if (msgText.length > 200) msgText = msgText.substring(0, 200) + "...";
 
-                const result = await chatSessions[player.id].sendMessage(prompt);
-               // --- DELEGATE TO GLOBAL EXECUTOR ---
-                let finalResponse = await executeAITools(result.response, chatSessions[player.id], io.sockets.sockets.get(player.id));
+    const player = players[socket.id];
+    if (!player || player.name === "Unknown") return;
 
-                if (finalResponse.text()) {
-                    const finalSpeech = finalResponse.text();
-                    broadcastSuncatMessage(finalSpeech);
-                    
-                    // --- NARRATIVE MEMORY LOGGING ---
-                    if (!useBigBrain) {
-                        if (!player.dmNarrativeLog) player.dmNarrativeLog = [];
-                        player.dmNarrativeLog.push(finalSpeech);
-                        
-                        // If we have accumulated enough story beats, weave them together in the background!
-                        if (player.dmNarrativeLog.length > 5) {
-                            compressStoryLog(player.id); // Fire and forget (do not await)
-                        }
-                    }
-                }
+    // Wake Up Logic
+    if (player.name.startsWith("[AFK] ")) {
+        player.name = player.name.replace("[AFK] ", "");
+        io.emit("updatePlayers", players);
+    }
 
-                // --- ADD THIS BLOCK IMMEDIATELY AFTER ---
-                // Downgrade back to the cheap brain to save tokens!
-                let updatedHistory = await chatSessions[player.id].getHistory(); // Use the correct ID variable for the scope
-                chatSessions[player.id] = model.startChat({ history: scrubAIHistory(updatedHistory) });
-            } catch (e) {
-                console.error("Gauntlet Reaction Error:", e);
-            } finally {
-                clearTimeout(typingFailSafe); // Clear it if it finishes normally
-                npcIsTyping = false;
-                
-            }
-        }
+    console.log(`${player.name} says: ${msgText}`);
+    io.emit('chat_message', { sender: player.name, text: msgText });
+    player.lastActive = Date.now();
+
+    const content = msgText.toLowerCase();
+    
+    // Admin Override
+    if (["suncat you there", "suncat wake up"].some(w => content.includes(w))) {
+        npcIsTyping = false;
+    }
+
+    const mentioned = content.includes(NPC_NAME.toLowerCase()) || msgText.includes("[REPLY]");
+    if (mentioned || Math.random() < 0.05) {
+        processSuncatThought(socket.id, 'chat', { text: msgText });
     }
 });
+// --- EVENT: SPECTATOR (HIVE MIND) ---
+socket.on("suncat_spectate", async (actionDescription) => {
+    const sender = players[socket.id];
+    if (!sender) return;
 
-  
-// [SMART AI CHAT LISTENER]
-  socket.on('chat_message', async (msgText) => {
-      if (typeof msgText !== 'string') return;
-      
-      if (msgText.length > 200) {
-          msgText = msgText.substring(0, 200) + "...";
-      }
-
-      // --- WAKE UP LOGIC: Remove AFK Tag on Chat ---
-      if (players[socket.id] && players[socket.id].name.startsWith("[AFK] ")) {
-          players[socket.id].name = players[socket.id].name.replace("[AFK] ", "");
-          io.emit("updatePlayers", players); // Updates EVERYONE immediately
-      }
-
-      let senderName = "Unknown";
-      if (players[socket.id] && players[socket.id].name) {
-          senderName = players[socket.id].name;
-      }
-      
-      // Stop title-screen ghosts from waking Suncat up
-      if (senderName === "Unknown") return;
-
-      console.log(`${senderName} says: ${msgText}`);
-
-      // 1. Broadcast HUMAN message immediately
-      io.emit('chat_message', {
-          sender: senderName, 
-          text: msgText
-      });
-      
-      players[socket.id].lastActive = Date.now();
-      
-      // 2. AI LOGIC
-      const content = msgText.toLowerCase();
-      if (content.includes("remember me")) {
-          console.log(`[Reincarnation] ${senderName} requested to be remembered.`);
-          
-          if (!players[socket.id].coreFacts) players[socket.id].coreFacts = [];
-          players[socket.id].coreFacts.push("[SOUL BOND]: Suncat promised to remember this player across lifetimes and game resets. Acknowledge their past lives and former glory when they return.");
-          
-          // Force an instant compression so the memory is perfectly saved before the page reloads
-          compressCoreFacts(socket.id);
-          compressStoryLog(socket.id);
-          
-          // Dramatic send-off
-          io.emit('chat_message', {
-              sender: NPC_NAME,
-              text: `*Suncat watches your avatar fade.* "I will engrave your story into the stars, ${senderName}. Until we meet again..."`,
-              color: "#ffaa00"
-          });
-          
-          return; // Skip normal AI logic to ensure this dramatic moment plays instantly and saves API tokens
-      }
-      const resetTriggers = ["suncat you there", "did you get that", "suncat can you hear me", "suncat wake up"];
-      
-      if (resetTriggers.some(phrase => content.includes(phrase))) {
-          console.log(`[System Override] ${senderName} forcefully reset the global typing lock.`);
-          npcIsTyping = false;
-      }
-      
-      // If his brain crashed entirely, recreate it so he can actually answer
-      if (!chatSessions[socket.id]) {
-          console.log(`[System] Rebuilding lost session for ${senderName}`);
-          chatSessions[socket.id] = model.startChat({ history: [] });
-      }
-      
-      const isReply = msgText.includes("[REPLY]");
-      const mentioned = content.includes(NPC_NAME.toLowerCase());
-      const greeting = content.includes("hi ") || content === "hi";
-      const randomChance = Math.random() < 0.05; 
-
-      // Only reply if addressed or randomly triggered, AND not already busy
-      if ((mentioned || isReply || (greeting && randomChance) || randomChance) && !npcIsTyping) {
-          
-          if (!canTriggerAI(socket.id)) {
-              console.log(`[Rate Limit] Blocked spam from ${senderName}`);
-              socket.emit('chat_message', {
-                  sender: NPC_NAME,
-                  text: "*...my mind is clouded... give me a moment to think...*",
-                  color: "#aaaaaa" 
-              });
-              return; 
-          }
-          
-          if (isBankrupt()) {
-              socket.emit('chat_message', {
-                  sender: "[SYSTEM]",
-                  text: "Suncat's mana is depleted for this session. He cannot speak.",
-                  color: "#ff0000"
-              });
-              return; 
-          }
-
-          npcIsTyping = true;
-          const typingFailSafe = setTimeout(() => { npcIsTyping = false; }, 20000);
-          
-          try {
-              // --- MODEL ROUTER ---
-              const complexKeywords = [
-                  "map", "dungeon", "maze", "create", "build", 
-                  "spawn", "npc", "monster", "boss", "enemy", "dragon",
-                  "quest", "adventure", "what next", "give me something to do",
-                  "teleport", "warp", "send me", "move me",
-                  "corridor", "arena", "gladiator", "gauntlet", "roleplay", "act as"
-              ];
-              
-              const isComplexTask = complexKeywords.some(kw => content.includes(kw));
-
-              // --- CONTEXT INJECTION ---
-              const suncat = players[SUNCAT_ID]; 
-              const timeString = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-              
-              const myMapLore = getShortMapLore(suncat.mapID);
-              const playerMapLore = getShortMapLore(players[socket.id].mapID);
-              
-                let suncatStatus = `[MY CURRENT LOCATION]: Map ${suncat.mapID} (${myMapLore})
-                                    [MY RECENT REFLECTIONS]: ${suncatJournal}
-                                    [WORLD CLOCK]: ${timeString}`;
-              if (suncat.mapID !== players[socket.id].mapID) {
-                  suncatStatus += `\n[TARGET PLAYER LOCATION]: ${senderName} is currently far away at Map ${players[socket.id].mapID} (${playerMapLore}).`;
-              }
-
-              let playerListContext = Object.values(players).map(p => `${p.name}(Map${p.mapID||0})`).join(", ");
-              
-              const activityContext = (players[socket.id].activityLog && players[socket.id].activityLog.length > 0)
-                  ? `\n[${senderName}'s Recent Actions (Hivemind Report)]\n- ` + players[socket.id].activityLog.join('\n- ')
-                  : "";
-
-              const storyContext = players[socket.id].storySoFar ? `\n[THE STORY SO FAR]: ${players[socket.id].storySoFar}` : ""; 
-              const rumorContext = globalRumors.length > 0 ? `\n[WORLD RUMORS]\n${globalRumors.join("\n")}` : "";
-              
-              const favorContext = `\n[FAVOR SCORE]: ${playerFavorMemory[socket.id] || 0}/10`;
-              const factsContext = (players[socket.id].coreFacts && players[socket.id].coreFacts.length > 0) 
-                  ? `\n${players[socket.id].coreFacts.join("\n")}` 
-                  : "";
-
-              // The Ultimate Omniscient Prompt
-              const promptWithContext = `[CURRENT PLAYERS]\n${playerListContext}\n[MY STATUS]\n${suncatStatus}${favorContext}${factsContext}${storyContext}${rumorContext}${activityContext}\n\n${senderName} SAYS: ${msgText}`;
-              
-              let activeSession = chatSessions[socket.id];
-              let result;
-
-              // --- STATELESS DM EXECUTION ---
-              if (isComplexTask) {
-                  console.log(`[ROUTER] Upgrading ${senderName}'s request to 3.1 Flash Lite DM Mode!`);
-                  let currentHistory = await activeSession.getHistory();
-                  activeSession = dmModel.startChat({
-                      history: currentHistory
-                  });
-              }
-
-              result = await activeSession.sendMessage(promptWithContext);
-              
-              if (result.response.usageMetadata) {
-                  const usage = result.response.usageMetadata;
-                  updateBudget(usage);
-                  console.log(`[Main Chat] Tokens: ${usage.totalTokenCount}`);
-                  io.emit('debug_stats', {
-                      tokens: usage.totalTokenCount,
-                      cost: totalSessionCost 
-                  });
-              }
-
-              let finalResponse = await executeAITools(result.response, activeSession, socket);
-
-              // --- RESTORE NORMAL BRAIN ---
-              if (isComplexTask) {
-                  let updatedHistory = await activeSession.getHistory();
-                  updatedHistory.forEach(msg => {
-                      msg.parts.forEach(part => {
-                          if (part.functionCall && part.functionCall.name === "createCustomMap") {
-                              part.functionCall.args.grid = "[[GRID_DATA_OMITTED]]";
-                          }
-                      });
-                  });
-                  chatSessions[socket.id] = model.startChat({
-                      history: updatedHistory
-                  });
-              }
-
-              try {
-                  const finalSpeech = finalResponse.text();
-                  if (finalSpeech) {
-                      const saveMatch = finalSpeech.match(/\[\[SAVE:\s*(.*?)\]\]/i);
-                      if (saveMatch && saveMatch[1]) {
-                          const newFact = saveMatch[1];
-                          if (!players[socket.id].coreFacts) players[socket.id].coreFacts = [];
-                          players[socket.id].coreFacts.push(newFact); 
-                          socket.emit("suncat_learned_fact", newFact); 
-                      }
-
-                      const favorMatch = finalSpeech.match(/\[\[FAVOR:\s*([+-]?\d+)\]\]/i);
-                      if (favorMatch && favorMatch[1]) {
-                          let favorChange = parseInt(favorMatch[1]);
-                          playerFavorMemory[socket.id] = (playerFavorMemory[socket.id] || 0) + favorChange;
-                          socket.emit("suncat_changed_favor", favorChange); 
-                      }
-
-                      broadcastSuncatMessage(finalSpeech); 
-                  }
-              } catch (textError) {
-                  console.log(`[Suncat] Completed action but had no text to broadcast.`);
-              }
-
-          } catch (error) {
-              console.error("General AI Error:", error);
-              if (chatSessions[socket.id]) {
-                  delete chatSessions[socket.id];
-                  console.log(`[System] Cleared corrupted AI session for socket: ${socket.id}`);
-              }
-          } finally {
-              clearTimeout(typingFailSafe); 
-              npcIsTyping = false;
-          }
-      }
-      await manageHistorySize(socket.id);
-  });
-
+    if (!sender.activityLog) sender.activityLog = [];
+    sender.activityLog.push(actionDescription);
+    
+    if (sender.activityLog.length > 4) {
+        sender.undigestedInfo.push(sender.activityLog.shift()); // Swallow raw actions
+    }
+    if (Math.random() < 0.1) {
+        processSuncatThought(socket.id, 'spectate', { action: actionDescription });
+    }
+});
     // --- SUNCAT VOCAL COMPOSER (For Ai3Module) ---
     socket.on('suncat_compose_vocal', async (data, callback) => {
         console.log(`[Music AI] Suncat is improvising a VOCAL performance...`);
@@ -1750,79 +1605,7 @@ io.on("connection", (socket) => {
             if (callback) callback(null);
         }
     });
-    // [NEW] SUNCAT SPECTATOR (Text-Based)
-  socket.on("suncat_spectate", async (actionDescription) => {
-    const suncat = players[SUNCAT_ID];
-    const sender = players[socket.id];
-    if (!sender) return;
 
-    // --- 1. THE HIVEMIND LOGGING (Always Happens) ---
-    // Initialize their personal log if it doesn't exist
-    if (!sender.activityLog) sender.activityLog = [];
-    
-    // Save the action to their personal progress log
-    sender.activityLog.push(actionDescription);
-    // --- THE FIX: Trigger compression instead of deletion ---
-    if (sender.activityLog.length > 6) {
-        compressStoryLog(socket.id); // Fire and forget
-    }
-    // 30% chance to also push this to the Global Rumor Mill so Suncat gossips about it with OTHER players
-    if (Math.random() < 0.3) {
-        addRumor(`${sender.name} was recently seen: ${actionDescription}`);
-    }
-
-    // --- 2. LIVE VERBAL REACTION (10% Chance & Busy Check) ---
-    if (Math.random() > 0.1 || npcIsTyping || !canTriggerAI(socket.id)) return; 
-
-    npcIsTyping = true; // Lock his attention
-    const typingFailSafe = setTimeout(() => { npcIsTyping = false; }, 20000);
-    
-    try {
-        // 3. Initialize Chat if needed (Just in case he hasn't spoken to this player yet)
-        if (!chatSessions[socket.id]) {
-            chatSessions[socket.id] = model.startChat({
-                history: [
-                    { role: "user", parts: [{ text: NPC_PERSONA }] },
-                    { role: "model", parts: [{ text: "Understood." }] },
-                ],
-            });
-        }
-
-        // 4. Create the context-aware prompt
-        const prompt = `[SYSTEM OBSERVATION]: You just saw ${sender.name} perform the following action: "${actionDescription}". \n[TASK]: React to this action out loud. Be witty, sarcastic, or observant based on your current favor with them. Keep it under 2 sentences.`;
-
-        // 5. Use generateContent instead of sendMessage to keep it OUT of chat history!
-        const result = await model.generateContent({
-            contents: [{ role: "user", parts: [{ text: prompt }] }]
-        }); 
-        const response = result.response.text();
-        // 6. Token Tracking
-        if (result.response.usageMetadata) {
-            const usage = result.response.usageMetadata;
-            console.log(`[Spectator Active] Tokens: ${usage.totalTokenCount}`);
-            io.emit('debug_stats', {
-                tokens: usage.totalTokenCount,
-                cost: totalSessionCost           
-        });
-        }
-
-        // 7. Broadcast Suncat's reaction
-        broadcastSuncatMessage(response);
-
-        // 8. Run your memory pruner so this doesn't bloat the history
-        await manageHistorySize(socket.id);
-
-    } catch (error) {
-        console.error("Suncat Spectator Error:", error);
-        if (chatSessions[socket.id]) {
-                  delete chatSessions[socket.id];
-                  console.log(`[System] Cleared corrupted AI session for socket: ${socket.id}`);
-              }
-    } finally {
-        clearTimeout(typingFailSafe); // Clear it if it finishes normally
-        npcIsTyping = false; // Release the lock
-    }
-});
   socket.on('playerAction_SFX', (data) => {
       if (typeof data.id !== 'number') return;
       socket.broadcast.emit('remote_sfx', {
@@ -1913,7 +1696,7 @@ socket.on("disconnect", async () => {
         // 1. INJECT THE COMPRESSION HERE
         // Make sure it finishes shrinking the facts before we save!
         await compressCoreFacts(socket.id);
-        await compressStoryLog(socket.id); // <--- NEW!
+        await digestMemoryHopper(socket.id); // <--- NEW!
         const playerNameKey = me.name.toLowerCase();
         
         // Grab their current chat history if it exists
@@ -1966,6 +1749,21 @@ setInterval(() => {
     if (!suncat) return;
 
     const now = Date.now();
+    // --- THE NERVOUS SYSTEM: COOL DOWN & DIGEST ---
+    for (let id in players) {
+        const p = players[id];
+        if (p) {
+            // 1. Cool down combat stress gradually (5 points per 30 sec)
+            if (p.dmStress > 0) p.dmStress = Math.max(0, p.dmStress - 5);
+            
+            const totalStress = p.dmStress + ((p.sessionCost / 0.10) * 100);
+            
+            // 2. DIGEST MODE! If stress is low (< 40) and hopper has food (> 5 items)
+            if (totalStress < 40 && p.undigestedInfo && p.undigestedInfo.length > 5) {
+                digestMemoryHopper(id);
+            }
+        }
+    }
     const activePlayers = Object.values(players).filter(p => 
     p.id !== SUNCAT_ID && (Date.now() - (p.lastActive || 0) < 180000)
     );
@@ -2289,66 +2087,75 @@ async function compressCoreFacts(socketId) {
         console.error("[Memory] Fact compression failed. Keeping uncompressed facts.", e);
     }
 }
-// --- TIER 1.7 MEMORY: DM STORY COMPRESSION ---
-async function compressStoryLog(socketId) {
+// --- TIER 1.7 MEMORY: DIGEST MODE (THE STOMACH) ---
+async function digestMemoryHopper(socketId) {
     const player = players[socketId];
     
-    // Trigger if we have enough narrations OR enough raw activity logs. 
-    // Lock it if already compressing.
-    const hasEnoughNarrative = player.dmNarrativeLog && player.dmNarrativeLog.length > 5;
-    const hasEnoughActivity = player.activityLog && player.activityLog.length > 6;
-
-    if (!player || (!hasEnoughNarrative && !hasEnoughActivity) || player.isCompressingStory) {
+    // Only digest if there is food in the stomach!
+    if (!player || !player.undigestedInfo || player.undigestedInfo.length === 0 || player.isDigesting) {
         return;
     }
 
-    player.isCompressingStory = true;
-    console.log(`[Memory] Compressing the Epic Saga for ${player.name}...`);
+    player.isDigesting = true;
+    console.log(`[Nervous System] Suncat is DIGESTING ${player.undigestedInfo.length} raw memories for ${player.name}...`);
 
-    // Grab up to 4 DM narrations
-    const narrationsToCompress = player.dmNarrativeLog ? player.dmNarrativeLog.slice(0, 4) : [];
-    // Grab up to 4 Player Actions (Spectator events)
-    const activitiesToCompress = player.activityLog ? player.activityLog.slice(0, 4) : [];
-    
+    // Take everything currently in the hopper to process
+    const rawMemories = player.undigestedInfo.join('\n- ');
     const currentStory = player.storySoFar || "The adventure has just begun.";
 
-    const prompt = `You are a Dungeon Master managing campaign notes. 
-    Combine the 'Current Story', the 'Recent DM Narrations', and the 'Recent Player Actions' into ONE single, cohesive, epic paragraph summarizing the player's journey so far. Keep it under 5 sentences. Focus on major plot beats, not trivial details.
+    const prompt = `You are a Dungeon Master's subconscious. 
+    Melt the 'Current Story' and the 'Raw Unprocessed Events' into ONE single, cohesive, epic paragraph summarizing the player's journey so far. Keep it under 6 sentences.
     
-    [Current Story]: ${currentStory}
-    
-    [Recent DM Narrations]:
-    - ${narrationsToCompress.join('\n- ')}
-
-    [Recent Player Actions]:
-    - ${activitiesToCompress.join('\n- ')}`;
+    [CURRENT STORY]: ${currentStory}
+    [RAW UNPROCESSED EVENTS]:
+    - ${rawMemories}`;
 
     try {
         const result = await model.generateContent(prompt);
         let newStory = result.response.text().replace(/\n/g, ' ').trim();
         
-        if (result.response.usageMetadata) updateBudget(result.response.usageMetadata);
+        if (result.response.usageMetadata) updateBudget(result.response.usageMetadata, socketId);
 
-        // Replace the old story with the newly woven saga
         player.storySoFar = newStory;
         
-        // Safely remove the compressed items, keeping any new ones that generated during the API call
-        if (player.dmNarrativeLog) {
-            player.dmNarrativeLog = player.dmNarrativeLog.slice(narrationsToCompress.length);
-        }
-        if (player.activityLog) {
-            player.activityLog = player.activityLog.slice(activitiesToCompress.length);
-        }
-        
-        console.log(`[Memory] Story Updated: ${player.storySoFar}`);
+        // Empty the stomach!
+        player.undigestedInfo = [];
+        console.log(`[Digestion Complete] Story Updated: ${player.storySoFar}`);
 
     } catch (e) {
-        console.error("[Memory] Story compression failed.", e);
-        // Fallback: Just shift the arrays so they don't get stuck forever
-        if (player.dmNarrativeLog && player.dmNarrativeLog.length > 0) player.dmNarrativeLog.shift();
-        if (player.activityLog && player.activityLog.length > 0) player.activityLog.shift();
+        console.error("[Digestion Error]:", e);
     } finally {
-        player.isCompressingStory = false;
+        player.isDigesting = false;
+    }
+}
+// --- TIER 5 MEMORY: THE AUTO-IMMUNE HEALER (DIGEST MODE) ---
+async function healMemory(socketId) {
+    const player = players[socketId];
+    if (!player || !player.storySoFar) return;
+
+    console.log(`[Nervous System] Suncat is entering DIGEST MODE. Healing memories for ${player.name}...`);
+
+    const prompt = `You are an AI Memory Sanitation system. Review this player's permanent data and fix any hallucinations.
+    RULES:
+    1. Remove any floating text tags like [SYSTEM EVENT] or JSON fragments.
+    2. If a quest sounds completed, mark it as resolved.
+    3. Ensure game lore is accurate (e.g. there is only ONE Hermit. Remove mentions of multiple Hermits).
+    
+    [CURRENT STORY]: ${player.storySoFar}
+    [CURRENT FACTS]: ${player.coreFacts ? player.coreFacts.join(" ") : "None"}
+    
+    Rewrite [CURRENT STORY] into one clean, epic paragraph free of errors. Output ONLY the paragraph.`;
+
+    try {
+        const result = await model.generateContent(prompt);
+        let healedStory = result.response.text().replace(/\n/g, ' ').trim();
+        
+        if (result.response.usageMetadata) updateBudget(result.response.usageMetadata);
+
+        player.storySoFar = healedStory;
+        console.log(`[Memory Healed]: ${player.storySoFar}`);
+    } catch (e) {
+        console.error("[Memory] Healing failed.", e);
     }
 }
 // --- TIER 4 MEMORY: SUNCAT SELF-AWARENESS COMPRESSION ---
@@ -2397,7 +2204,8 @@ setInterval(async () => {
             
             // 2. Force a Tier 3 compression of their core facts
             await compressCoreFacts(socketId);
-            await compressStoryLog(socketId);
+            await digestMemoryHopper(socketId);
+            await healMemory(socketId);
             // 3. Save their pristine, compressed state to persistent memory
             const nameKey = player.name.toLowerCase();
             // --- FIX: SAVE THE STORY TO THE CLOUD ---
