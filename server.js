@@ -1356,23 +1356,29 @@ io.on("connection", (socket) => {
                 }
                 const entityName = getCardName(baseID);
                 const monsterLore = getCardLore(baseID);
-                
-               
                 const envLore = getMapLore(player.mapID);
                 const questStatus = player.activeQuest ? `Active Quest: ${player.activeQuest}` : "Wandering freely.";
                 const storyContext = player.storySoFar ? `[THE STORY SO FAR]: ${player.storySoFar}\n` : ""; 
+                
                 const favorContext = `[FAVOR SCORE]: ${playerFavorMemory[player.id] || 0}/10\n`;
                 const factsContext = (player.coreFacts && player.coreFacts.length > 0) 
                     ? `${player.coreFacts.join("\n")}\n` 
                     : "";
+                const activityContext = (player.activityLog && player.activityLog.length > 0)
+                    ? `[RECENT ACTIONS]:\n- ` + player.activityLog.join('\n- ') + `\n`
+                    : "";
                 
-                const dmContext = `[ENVIRONMENT]: ${envLore}\n[INTERACTED ENTITY]: ${entityName}\n[ENTITY LORE]: ${monsterLore}\n[PLAYER STATE]: ${questStatus}\n${favorContext}${factsContext}${storyContext}`;
+                const dmContext = `[ENVIRONMENT]: ${envLore}\n[INTERACTED ENTITY]: ${entityName}\n[ENTITY LORE]: ${monsterLore}\n[PLAYER STATE]: ${questStatus}\n${favorContext}${factsContext}${storyContext}${activityContext}`;
                 console.log(`[Gauntlet Trigger] ${player.name} interacted with ${entityName}!`);
+                
                 if (isPickup) {
-                    // It's a picked-up item!
-                    prompt = `${dmContext}[SYSTEM EVENT]: ${player.name} just picked up the item/card '${entityName}' in [ENVIRONMENT]! 
-                    TASK: React to them looting this. You can warn them about its power, mock their greed, or use 'spawnNPC' to drop an ambush on them for stealing it!
-                    Do not ask questions. Execute tools and speak!`;
+                    prompt = `${dmContext}[SYSTEM EVENT]: ${player.name} just picked up the item/card '${entityName}'. 
+                    TASK: Act as a Dungeon Master and Tarot Oracle.
+                    - Give a personalized tarot reading of this card, tying its suit and lore directly to the player's [THE STORY SO FAR], [PLAYER PROFILE], and [RECENT ACTIONS].
+                    - Do not give a generic reading; explain why fate put THIS specific card in their hands right NOW based on their unique journey.
+                    - End with a reflective, rhetorical question related to their current situation (e.g., "Will you use this strength to avenge the goblins, or will it consume you?").
+                    - Keep it atmospheric, meaningful, and brief (3-4 sentences max).
+                    - (Optional: You may use tools like 'spawnNPC' if the card was cursed or heavily guarded).`;
                 }
                 else if (player.mapID != 999){
                     if (roll>.99&&data.reason != 'dialogue'){
