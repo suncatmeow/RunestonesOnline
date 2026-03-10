@@ -2025,10 +2025,11 @@ async function manageHistorySize(socketId) {
 
         console.log(`[Memory] History for ${socketId} reached ${history.length}. Initiating summarization...`);
 
-        // 1. Split the history
-        const splitIndex = history.length - MESSAGES_TO_KEEP;
-        const oldHistory = history.slice(0, splitIndex);
-        let recentHistory = history.slice(splitIndex);
+        const KEEP_COUNT = 4; // Keep exactly 4 messages (2 back-and-forths) for flow
+        const splitIndex = history.length - KEEP_COUNT; 
+
+        const oldHistory = history.slice(0, splitIndex); // Summarize everything older than the last 4
+        let recentHistory = history.slice(splitIndex); // Keep the last 4 intact
 
         // 2. Format the old history into a readable script for the AI
         let transcriptToSummarize = oldHistory.map(msg => {
@@ -2050,7 +2051,6 @@ async function manageHistorySize(socketId) {
 
         // Keep only the last 4 messages (2 exchanges) for immediate conversational flow. 
         // This drastically cuts your input tokens per turn.
-        recentHistory = history.slice(-4); 
 
         chatSessions[socketId] = model.startChat({
             history: recentHistory
