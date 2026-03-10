@@ -371,7 +371,7 @@ const toolsDef = [{
                                 state: { type: "STRING", description: "'chasing', 'wandering', or 'stationary'" },
                                 color: { type: "STRING" },
                                 deck: { type: "ARRAY", items: { type: "INTEGER" }, description: "Thematic battle deck" },
-                                dialogue: { type: "ARRAY", items: { type: "STRING" }, description: "Optional. Array of text lines for the NPC to speak when clicked. Limit to 3-4 lines." },
+                                dialogue: { type: "ARRAY", items: { type: "STRING" }, description: "CRITICAL: If the state is 'stationary', you MUST provide an array of text lines for them to speak! Do not leave this blank for friendly NPCs." },
                                 rewardCard: { type: "INTEGER", description: "Optional. Card ID (0-77) to give the player after the dialogue finishes." }
                             }
                         }
@@ -419,7 +419,7 @@ const toolsDef = [{
                 type: "OBJECT",
                 properties: {
                     targetName: { type: "STRING", description: "The name of the player to spawn the entity for." },
-                    npcType: { type: "NUMBER", description: "The ID of the entity to spawn (0-77)." },
+                    npcType: { type: "NUMBER", description: "The ID of the entity to spawn (e.g., 63.1 for a Dragon)." },
                     mapID: { type: "INTEGER", description: "Optional. The Map ID (0-22) to spawn the entity on. If omitted, spawns on the player's current map." },
                     x: { type: "NUMBER", description: "Optional. X coordinate (2 to 18). Default is near player." },
                     y: { type: "NUMBER", description: "Optional. Y coordinate (2 to 18). Default is near player." },
@@ -433,7 +433,7 @@ const toolsDef = [{
                     dialogue: { 
                         type: "ARRAY", 
                         items: { type: "STRING" }, 
-                        description: "Optional. Array of text lines for the NPC to speak. Limit to 3-4 lines." 
+                        description: "CRITICAL: If the state is 'stationary', you MUST provide an array of text lines for them to speak! Do not leave this blank for friendly NPCs." 
                     },
                     rewardCard: { 
                         type: "INTEGER", 
@@ -779,7 +779,17 @@ CARD_MANIFEST.split('\n').forEach(line => {
     if (match) cardLoreCache[parseInt(match[1])] = line.trim();
 });
 function getCardLore(entityID) {
-    return cardLoreCache[entityID] || "An unknown card...";
+    if (entityID === undefined || entityID === null) return "An unknown entity";
+    // This turns 47.1 into 47, matching the dictionary perfectly!
+    const baseID = Math.floor(parseFloat(entityID));
+    return cardLoreCache[baseID] || "An unknown entity...";
+}
+
+function getCardName(entityID) {
+    const lore = getCardLore(entityID);
+    // Extracts just the name part from the string (e.g., "Undine (Monster Knight)")
+    const match = lore.match(/:\s*(.*?)\s*-/);
+    return match ? match[1].trim() : "Unknown Entity";
 }
 function scrubAIHistory(history) {
     history.forEach(msg => {
@@ -1275,6 +1285,9 @@ io.on("connection", (socket) => {
     
     // Suncat watches!
     if (player) {
+        // --- NEW: THE PACIFIST FILTER ---
+        // If this NPC was killed by dialogue (joining the party, giving a quest, etc.),
+        
         const now = Date.now();
         if (player.lastKillReaction && (now - player.lastKillReaction < 5000)) {
             return; // DM is still processing a recent kill, ignore this one
@@ -1288,25 +1301,41 @@ io.on("connection", (socket) => {
                 console.log(`[Gauntlet Trigger] ${player.name} killed a monster! Alerting Suncat...`);
                 let prompt = ``;
                 let roll = Math.random(); // <-- Roll the dice ONCE here
-                // Grab the environmental context so the DM's narration is visually accurate!
+                /// --- NEW: EXACT ENTITY IDENTIFICATION ---
+                const baseID = Math.floor(parseFloat(data.type));
+                const entityName = getCardName(baseID);
+                const monsterLore = getCardLore(baseID);
+                
+                // Check if it's an inanimate object
+                const isItem = monsterLore.includes("(Equip)") || monsterLore.includes("(Spell)") || monsterLore.includes("(Use)");
+                
                 const envLore = getMapLore(player.mapID);
                 const questStatus = player.activeQuest ? `Active Quest: ${player.activeQuest}` : "Wandering freely.";
-                const monsterLore = getCardLore(data.type);
-                const dmContext = `[ENVIRONMENT]: ${envLore}\n[SLAIN MONSTER DATA]: ${monsterLore}\n[PLAYER STATE]: ${questStatus}\n`;
-                if (player.mapID != 999){
-                    if (roll<.13){
+                const dmContext = `[ENVIRONMENT]: ${envLore}\n[INTERACTED ENTITY]: ${entityName}\n[ENTITY LORE]: ${monsterLore}\n[PLAYER STATE]: ${questStatus}\n`;
+
+                console.log(`[Gauntlet Trigger] ${player.name} interacted with ${entityName}!`);
+
+                // --- NEW: SPLIT LOGIC BASED ON ENTITY TYPE ---
+                if (isItem) {
+                    // It's an item! Suncat shouldn't mourn it.
+                    prompt = `${dmContext}[SYSTEM EVENT]: ${player.name} just picked up the item/card '${entityName}' in [ENVIRONMENT]! 
+                    TASK: React to them looting this. You can warn them about its power, mock their greed, or use 'spawnNPC' to drop an ambush on them for stealing it!
+                    Do not ask questions. Execute tools and speak!`;
+                }
+                else if (player.mapID != 999){
+                    if (roll>.99&&data.reason != 'dialogue'){
                         prompt = `${dmContext}[SYSTEM EVENT]: ${player.name} just finished an npc interaction in [ENVIRONMENT]... either a battle, picked up a card, or completed dialogue! 
                         TASK: React immediately. 
                         - If you want to make the event more exciting abduct the player by using 'createCustomMap' to make a themed mini dungeon and teleport the player into it. 
                         Do not ask questions. Execute tools and speak!`;
                     }
-                    else if (roll< .39){
+                    else if (roll> .96&&data.reason != 'dialogue'){
                         prompt = `${dmContext}[SYSTEM EVENT]: ${player.name} just finished an npc interaction in [ENVIRONMENT], either a battle, picked up a card, or completed dialogue! 
                         TASK: React immediately. 
                         - If you want to make the event more exciting use [ENVIRONMENT] context and'spawnNPC' to summon monsters like. For example: "You are waylaid by enemies', "It seems that [monster name] had a friend, [player name]!, Looks like that card belonged to somebody! they look mad... (spawn npc)
                         Do not ask questions. Execute tools and speak!`;
                     }
-                    else if (roll< .69){
+                    else if (roll> .93&&data.reason != 'dialogue'){
                         prompt = `${dmContext}[SYSTEM EVENT]: ${player.name} just messed with someone precious to you in [ENVIRONMENT]! 
                         TASK: React immediately. 
                         -Act devastated and seek revenge with 'Use spawnNPC' to spawn something hostile in theme with [ENVIRONMENT]. Mention some cherished memory with the NPC affected ("Noooo! Goblin! It gave me a bowl of porridge once... You'll pay!" or "Ahhhh nooo sea serpent!! You have slain a true friend of my heart! You'll pay for that!!!" or "WISP no!!!! You were my only friend... I swear i'll avenge you!!" )
@@ -1318,13 +1347,13 @@ io.on("connection", (socket) => {
                         prompt = `${dmContext}[SYSTEM EVENT]: ${player.name} just finished an npc interaction in [ENVIRONMENT], either a battle, picked up a card, or completed dialogue! 
                         TASK: React immediately. 
                         - Narrate the event like a dungeon master using the relevant context in [ENVIRONMENT] to narrate the situation. ("You have just defeated a...", "You pick up a card, it glows with...", "The eyes of the [npc name] sparkle with anticipation...")
-                        Do not use tools for this reaction. Keep it strictly a Dungeon Master narrative of the event so when the player reads it they feel as if their game event is part of the world lore`;
+                        Do not use tools for this reaction. Keep it strictly a Dungeon Master narrative of the event so when the player reads it they feel as if their game event is part of the world lore.`;
                     }
                 }
                 // Inside your npc_died listener, when triggering the Gauntlet Reaction:
                 
-                if (player.mapID === 999){
-                    if (roll<.39){
+                else if (player.mapID === 999){
+                    if (roll>.39&&data.reason != 'dialogue'){
                         prompt = `${dmContext}[SYSTEM EVENT]: ${player.name} just slaughtered one of your monsters in your custom event! 
                         TASK: React immediately. 
                         - If this is the first few kills, act cocky and use 'spawnNPC' to drop something harder.
@@ -1332,7 +1361,7 @@ io.on("connection", (socket) => {
                         - If you feel they have proven themselves, DO NOT ADMIT DEFEAT, tell them "Since you came, don't be in such a hurry to leave!" and use 'spawnNPC' to make their life difficult.
                         Do not ask questions. Execute tools and speak!`;
                     }
-                    else if (roll>.69){
+                    else if (roll>.69&&data.reason != 'dialogue'){
                         prompt = `${dmContext}[SYSTEM EVENT]: ${player.name} just slaughtered one of your monsters in your custom event! 
                         TASK: React immediately. 
                         - If this is the first few kills, act cocky and use 'spawnNPC' to drop something harder.
@@ -1348,11 +1377,11 @@ io.on("connection", (socket) => {
                     }
                 }
                 else if (player.activeQuest){
-                    prompt = `${dmContext}[SYSTEM EVENT]: ${player.name} just finished an interaction with an npc in [ENVIRONMENT]. 
+                    prompt = `${dmContext}[SYSTEM EVENT]: ${player.name} just finished an interaction with ${entityName} in [ENVIRONMENT]. 
                     
                         TASK: React immediately. 
-                        - check ${player.activeQuest}. Has the player met any objectives? Do the objectives exist in the game (Did you spawn the npc or create the map you described yet?)? 
-                        -Keep it relevant with [ENVIRONMENT] context.
+                        -
+                        - check ${player.activeQuest}.  Do the objectives exist in the game (Did you spawn the npc or create the map you described yet? Was ${entityName} the objective?)? Keep it relevant with [ENVIRONMENT] context.
                         -If your scenario is not part of [ENVIRONMENT], use createCustomMap to match your scenario. 
                         -If NPCs are part of your scenario but they dont exist in [ENVIRONMENT] and the player hasnt interacted with them , create the NPC with custom dialogue using 'use spawnNPC'. 
                         - If you feel they have proven themselves, use 'givePlayerCard' to reward them and end the active quest.
@@ -2060,9 +2089,7 @@ async function manageHistorySize(socketId) {
         // Keep only the last 4 messages (2 exchanges) for immediate conversational flow. 
         // This drastically cuts your input tokens per turn.
 
-        chatSessions[socketId] = model.startChat({
-            history: recentHistory
-        });
+        
         console.log(`[Memory] Compressed 20 messages into: "${summaryText}"`);
         
         // Track the cost of the summarization itself
