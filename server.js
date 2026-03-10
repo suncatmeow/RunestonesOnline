@@ -1407,7 +1407,7 @@ io.on("connection", (socket) => {
                         prompt = `${dmContext}[SYSTEM EVENT]: ${player.name} just finished an npc interaction in [ENVIRONMENT], either a battle, picked up a card, or completed dialogue! 
                         TASK: React immediately. 
                         - Narrate the event like a dungeon master using the relevant context in [ENVIRONMENT] to narrate the situation. ("You have just defeated a...", "You pick up a card, it glows with...", "The eyes of the [npc name] sparkle with anticipation...")
-                        Do not use tools for this reaction. Keep it strictly a Dungeon Master narrative of the event so when the player reads it they feel as if their game event is part of the world lore.`;
+                        Do not use tools for this reaction. Keep it strictly a short (1-3 sentences MAX) Dungeon Master narrative of the event so when the player reads it they feel as if their game event is part of the world lore.`;
                     }
                 }
                 // Inside your npc_died listener, when triggering the Gauntlet Reaction:
