@@ -507,31 +507,41 @@ let players = {};
     const playerAITokens = {};
 
     function canTriggerAI(socketId) {
-        const now = Date.now();
-        
-        // Initialize a new player's token bucket
-        if (!playerAITokens[socketId]) {
-            playerAITokens[socketId] = { tokens: MAX_AI_CALLS, lastRefill: now };
-        }
-        
-        let bucket = playerAITokens[socketId];
-        let timeElapsed = now - bucket.lastRefill;
-        
-        // Refill tokens based on time passed
-        let tokensToRefill = Math.floor(timeElapsed / REFILL_TIME);
-        if (tokensToRefill > 0) {
-            bucket.tokens = Math.min(MAX_AI_CALLS, bucket.tokens + tokensToRefill);
-            bucket.lastRefill = now; 
-        }
-        
-        // Check if the player has tokens left to spend
-        if (bucket.tokens > 0) {
-            bucket.tokens--;
-            return true;
-        }
-        
-        return false; // Player is out of tokens (rate-limited)
+    const now = Date.now();
+    const player = players[socketId];
+    
+    // Grab current stress, defaulting to 0 if the player isn't fully loaded
+    const currentStress = player ? (player.dmStress || 0) : 0;
+
+    // Dynamic Refill: Base 10s + up to 15s extra depending on stress
+    // 0 stress = 10,000ms. 100 stress = 25,000ms.
+    const dynamicRefillTime = 10000 + (currentStress * 150); 
+
+    // Initialize a new player's token bucket
+    if (!playerAITokens[socketId]) {
+        playerAITokens[socketId] = { tokens: MAX_AI_CALLS, lastRefill: now };
     }
+    
+    let bucket = playerAITokens[socketId];
+    let timeElapsed = now - bucket.lastRefill;
+    
+    // Refill tokens based on dynamic time passed
+    let tokensToRefill = Math.floor(timeElapsed / dynamicRefillTime);
+    if (tokensToRefill > 0) {
+        bucket.tokens = Math.min(MAX_AI_CALLS, bucket.tokens + tokensToRefill);
+        
+        // CRITICAL FIX: Keep the fractional remainder so we don't cheat the player out of time!
+        bucket.lastRefill = now - (timeElapsed % dynamicRefillTime); 
+    }
+    
+    // Check if the player has tokens left to spend
+    if (bucket.tokens > 0) {
+        bucket.tokens--;
+        return true;
+    }
+    
+    return false; // Rate-limited
+}
     const SUNCAT_ID = "NPC_SUNCAT"; // Special ID
     const SUNCAT_SPRITE = 61391; // Or whatever sprite ID you want (e.g., 'skeleton', 'hero')
 
@@ -835,6 +845,120 @@ function scrubAIHistory(history) {
         });
     });
     return history;
+}
+// --- MEMORY SANITIZER (Keep this to protect against prompt injection) ---
+function sanitizeForMemory(text) {
+    if (typeof text !== 'string') return "";
+    return text
+        .replace(/\[SYSTEM EVENT[^\]]*\]/gi, "")
+        .replace(/\[DM PACING OVERSEER[^\]]*\]/gi, "")
+        .replace(/\[SYSTEM OVERRIDE[^\]]*\]/gi, "")
+        .replace(/```[\s\S]*?```/g, "")
+        .trim();
+}
+
+// --- THE MASTER STOMACH: AUTONOMIC NEURAL PIPELINE ---
+async function processCognitiveLoad(socketId, forceDigest = false) {
+    const player = players[socketId];
+    let bucket = playerAITokens[socketId];
+    
+    if (!player || !player.undigestedInfo || player.undigestedInfo.length === 0 || player.isDigesting) return;
+    
+    // If we aren't forcing a digest (like on logout), check tokens.
+    if (!forceDigest && (!bucket || bucket.tokens < 1)) return; 
+
+    const apiFatigue = Math.min(100, (player.sessionCost / 0.10) * 100);
+    const totalStress = Math.min(100, (player.dmStress || 0) + apiFatigue);
+
+    // 1. AUTONOMIC ROUTING (Stop/Go Lights & Batching)
+    let batchSize = 0;
+    let cognitiveFilter = "";
+
+    if (forceDigest) {
+        batchSize = player.undigestedInfo.length; // Eat everything on logout!
+        cognitiveFilter = "The player is leaving. Summarize all remaining events with finality and reflection.";
+    }
+    else if (totalStress >= 80) {
+        return; // FLIGHT/FIGHT: Digestion is shut down.
+    } 
+    else if (totalStress >= 50) {
+        batchSize = Math.min(2, player.undigestedInfo.length);
+        cognitiveFilter = "You are wary and highly stressed. Process these events with a tactical, cautious, and slightly paranoid tone.";
+    } 
+    else if (totalStress >= 15) {
+        batchSize = Math.min(5, player.undigestedInfo.length);
+        cognitiveFilter = "You are resting and observant. Process these events as an epic, cohesive fantasy narrative.";
+    } 
+    else {
+        batchSize = Math.min(8, player.undigestedInfo.length);
+        cognitiveFilter = "You are in deep, peaceful meditation. Process these events with a philosophical, existential tone. Heal any conflicting memories.";
+    }
+
+    if (batchSize < 1) return;
+
+    // 2. CONSUME ENERGY (Unless forced)
+    if (!forceDigest && bucket) bucket.tokens--;
+    player.isDigesting = true;
+    
+    console.log(`[Neural Pipeline] Force: ${forceDigest} | Stress: ${Math.floor(totalStress)}%. Digesting ${batchSize} chunks for ${player.name}...`);
+
+    const memoriesToProcess = player.undigestedInfo.splice(0, batchSize);
+    const rawMemories = memoriesToProcess.map(m => sanitizeForMemory(m)).filter(m => m !== "").join('\n- ');
+    const currentStory = player.storySoFar || "The adventure begins.";
+    const currentFacts = player.coreFacts ? player.coreFacts.join('\n- ') : "None yet.";
+
+    // 3. THE UNIFIED SYNTHESIS PROMPT (The "Everything" Engine)
+    const prompt = `You are the subconscious mind of an NPC named Suncat in a dark fantasy game.
+    [YOUR CURRENT NEUROCHEMICAL STATE]: ${cognitiveFilter}
+
+    [CURRENT STORY SO FAR]: ${currentStory}
+    [CURRENT CORE FACTS]: ${currentFacts}
+    [SUNCAT'S PERSONAL JOURNAL]: ${suncatJournal}
+    
+    [RAW UNPROCESSED EVENTS]:
+    - ${rawMemories}
+
+    TASK: Melt these raw events into your permanent memory banks. 
+    CRITICAL RULE: Output ONLY a valid JSON object. Do not output markdown or system tags.
+    {
+      "updatedStory": "A single, cohesive paragraph (max 5 sentences) updating the story so far, colored by your neurochemical state.",
+      "distilledFacts": ["Fact 1 about the player", "Fact 2", "Fact 3"],
+      "newRumor": "A cryptic 1-sentence rumor about the player based on these events to share with others.",
+      "suncatJournalEntry": "A 1-2 sentence first-person philosophical reflection by Suncat on what just happened."
+    }`;
+
+    try {
+        const result = await dmModel.generateContent({
+            contents: [{ role: "user", parts: [{ text: prompt }] }],
+            generationConfig: { responseMimeType: "application/json" }
+        });
+        
+        if (result.response.usageMetadata) updateBudget(result.response.usageMetadata, socketId);
+
+        const digestedData = JSON.parse(result.response.text());
+
+        // 4. DISTRIBUTE THE NUTRIENTS TO ALL ORGANS!
+        if (digestedData.updatedStory) player.storySoFar = digestedData.updatedStory;
+        if (digestedData.distilledFacts) {
+            // Keep only the most recent/relevant 5 facts so it doesn't bloat
+            player.coreFacts = digestedData.distilledFacts.slice(-5);
+        }
+        if (digestedData.newRumor) addRumor(`${player.name}: ${digestedData.newRumor}`);
+        if (digestedData.suncatJournalEntry) {
+            // Append and trim the journal so it stays a reasonable length
+            suncatJournal += " " + digestedData.suncatJournalEntry;
+            let journalSentences = suncatJournal.split(/(?<=[.!?])\s+/);
+            if (journalSentences.length > 8) suncatJournal = journalSentences.slice(-8).join(" ");
+        }
+
+        console.log(`[Digestion Complete] Player profile & Suncat Journal updated.`);
+
+    } catch (e) {
+        console.error("[Neural Pipeline Error]: Digestion failed, returning raw memories to hopper.", e);
+        player.undigestedInfo.unshift(...memoriesToProcess); 
+    } finally {
+        player.isDigesting = false;
+    }
 }
 // --- REUSABLE AI TOOL EXECUTOR ---
 async function executeAITools(currentResponse, activeSession, socket) {
@@ -1693,29 +1817,23 @@ socket.on("disconnect", async () => {
     // --- NEW: SAVE SUNCAT'S MEMORY BEFORE DELETING ---
     if (me && me.name !== "Unknown") {
         
-        // 1. INJECT THE COMPRESSION HERE
-        // Make sure it finishes shrinking the facts before we save!
-        await compressCoreFacts(socket.id);
-        await digestMemoryHopper(socket.id); // <--- NEW!
-        const playerNameKey = me.name.toLowerCase();
-        
-        // Grab their current chat history if it exists
-        let currentHistory = [];
-        if (chatSessions[socket.id]) {
-            // Optional: If you want to wipe the raw history completely between sessions to save tokens,
-            // you can just leave this as an empty array [] instead of getting the history.
-            currentHistory = await chatSessions[socket.id].getHistory();
+        // 1. FORCE THE STOMACH TO EMPTY ALL REMAINING FOOD (Safely!)
+        try {
+            await processCognitiveLoad(socket.id, true); 
+        } catch (err) {
+            console.error(`[Disconnect] Failed to digest final memories for ${me.name}:`, err);
         }
+        const playerNameKey = me.name.toLowerCase();
+        let currentHistory = chatSessions[socket.id] ? await chatSessions[socket.id].getHistory() : [];
 
         suncatPersistentMemory[playerNameKey] = {
             favor: playerFavorMemory[socket.id] || 0,
             coreFacts: me.coreFacts || [], 
             activeQuest: me.activeQuest || null,
-            storySoFar: me.storySoFar || "", // <--- ADD THIS LINE
+            storySoFar: me.storySoFar || "",
             aiHistory: currentHistory 
         };
 
-        // Trigger a background save
         saveSuncatMemory();
     }
     // ------------------------------------------------
@@ -1749,21 +1867,22 @@ setInterval(() => {
     if (!suncat) return;
 
     const now = Date.now();
-    // --- THE NERVOUS SYSTEM: COOL DOWN & DIGEST ---
+    // --- THE AUTONOMIC HEARTBEAT ---
     for (let id in players) {
         const p = players[id];
         if (p) {
-            // 1. Cool down combat stress gradually (5 points per 30 sec)
+            // 1. Cool down combat stress (Sympathetic nervous system winding down)
             if (p.dmStress > 0) p.dmStress = Math.max(0, p.dmStress - 5);
             
-            const totalStress = p.dmStress + ((p.sessionCost / 0.10) * 100);
-            
-            // 2. DIGEST MODE! If stress is low (< 40) and hopper has food (> 5 items)
-            if (totalStress < 40 && p.undigestedInfo && p.undigestedInfo.length > 5) {
-                digestMemoryHopper(id);
+            // 2. Trigger the Neural Pipeline
+            // If there is data in the hopper, try to digest it. 
+            // The pipeline will naturally block it if stress is too high.
+            if (p.undigestedInfo && p.undigestedInfo.length > 0) {
+                processCognitiveLoad(id);
             }
         }
     }
+    
     const activePlayers = Object.values(players).filter(p => 
     p.id !== SUNCAT_ID && (Date.now() - (p.lastActive || 0) < 180000)
     );
@@ -2001,18 +2120,16 @@ async function manageHistorySize(socketId) {
         }).filter(line => line !== "").join("\n");
 
         // 3. Prompt the Cheap Brain to summarize
-        const summaryPrompt = `Summarize the following interaction between a player and Suncat in a dark fantasy MMORPG. Focus strictly on key lore revealed, important player actions, and the current emotional tone between them. Keep it under 3 sentences.\n\n[TRANSCRIPT]\n${transcriptToSummarize}`;
+        const summaryPrompt = `Summarize the following interaction between a player and Suncat in a dark fantasy MMORPG. Focus strictly on key lore revealed, important player actions, and the current emotional tone between them. Keep it under 3 sentences.
+        
+        CRITICAL RULE: Output pure narrative text ONLY. Do NOT output any brackets [ ], system tags, or technical jargon.
 
+        [TRANSCRIPT]
+        ${transcriptToSummarize}`;
         // Make a stateless generation call (does not affect the active chat session)
         const summaryResult = await model.generateContent(summaryPrompt);
         const summaryText = summaryResult.response.text();
             // INSTEAD OF KEEPING IT IN HISTORY, PUSH TO FACTS:
-        if (!players[socketId].coreFacts) players[socketId].coreFacts = [];
-        players[socketId].coreFacts.push(`[PAST EVENT]: ${summaryText}`);
-
-        // Keep only the last 4 messages (2 exchanges) for immediate conversational flow. 
-        // This drastically cuts your input tokens per turn.
-
         
         console.log(`[Memory] Compressed 20 messages into: "${summaryText}"`);
         
@@ -2050,179 +2167,39 @@ async function manageHistorySize(socketId) {
     }
 }
 
-// --- TIER 3 MEMORY: CORE FACT COMPRESSION ---
-async function compressCoreFacts(socketId) {
-    const player = players[socketId];
-    // Only trigger if they have racked up enough facts to warrant a summary
-    if (!player || !player.coreFacts || player.coreFacts.length < 10) return;
-
-    console.log(`[Memory] Compressing Core Facts for ${player.name}...`);
-
-    const factsToCompress = player.coreFacts.join("\n- ");
-    
-    const prompt = `You are a background system maintaining long-term memory for an NPC named Suncat.
-    Below are recent events involving the player ${player.name}:
-    - ${factsToCompress}
-    
-    Distill these events into exactly 3 concise, permanent bullet points that define:
-    1. Their overall relationship, favor, and vibe with Suncat.
-    2. Their defining major accomplishments or playstyle.
-    3. Their current overarching goal in the world.
-    
-    Discard temporary tactical details. Output ONLY the bullet points.`;
-
-    try {
-        const result = await model.generateContent(prompt);
-        const compressedText = result.response.text();
-        
-        if (result.response.usageMetadata) {
-            updateBudget(result.response.usageMetadata);
-        }
-
-        // Wipe the bloated array and replace it with the distilled profile!
-        player.coreFacts = [ `[PLAYER PROFILE]\n${compressedText}` ];
-        console.log(`[Memory] Successfully distilled identity for ${player.name}`);
-        
-    } catch (e) {
-        console.error("[Memory] Fact compression failed. Keeping uncompressed facts.", e);
-    }
-}
-// --- TIER 1.7 MEMORY: DIGEST MODE (THE STOMACH) ---
-async function digestMemoryHopper(socketId) {
-    const player = players[socketId];
-    
-    // Only digest if there is food in the stomach!
-    if (!player || !player.undigestedInfo || player.undigestedInfo.length === 0 || player.isDigesting) {
-        return;
-    }
-
-    player.isDigesting = true;
-    console.log(`[Nervous System] Suncat is DIGESTING ${player.undigestedInfo.length} raw memories for ${player.name}...`);
-
-    // Take everything currently in the hopper to process
-    const rawMemories = player.undigestedInfo.join('\n- ');
-    const currentStory = player.storySoFar || "The adventure has just begun.";
-
-    const prompt = `You are a Dungeon Master's subconscious. 
-    Melt the 'Current Story' and the 'Raw Unprocessed Events' into ONE single, cohesive, epic paragraph summarizing the player's journey so far. Keep it under 6 sentences.
-    
-    [CURRENT STORY]: ${currentStory}
-    [RAW UNPROCESSED EVENTS]:
-    - ${rawMemories}`;
-
-    try {
-        const result = await model.generateContent(prompt);
-        let newStory = result.response.text().replace(/\n/g, ' ').trim();
-        
-        if (result.response.usageMetadata) updateBudget(result.response.usageMetadata, socketId);
-
-        player.storySoFar = newStory;
-        
-        // Empty the stomach!
-        player.undigestedInfo = [];
-        console.log(`[Digestion Complete] Story Updated: ${player.storySoFar}`);
-
-    } catch (e) {
-        console.error("[Digestion Error]:", e);
-    } finally {
-        player.isDigesting = false;
-    }
-}
-// --- TIER 5 MEMORY: THE AUTO-IMMUNE HEALER (DIGEST MODE) ---
-async function healMemory(socketId) {
-    const player = players[socketId];
-    if (!player || !player.storySoFar) return;
-
-    console.log(`[Nervous System] Suncat is entering DIGEST MODE. Healing memories for ${player.name}...`);
-
-    const prompt = `You are an AI Memory Sanitation system. Review this player's permanent data and fix any hallucinations.
-    RULES:
-    1. Remove any floating text tags like [SYSTEM EVENT] or JSON fragments.
-    2. If a quest sounds completed, mark it as resolved.
-    3. Ensure game lore is accurate (e.g. there is only ONE Hermit. Remove mentions of multiple Hermits).
-    
-    [CURRENT STORY]: ${player.storySoFar}
-    [CURRENT FACTS]: ${player.coreFacts ? player.coreFacts.join(" ") : "None"}
-    
-    Rewrite [CURRENT STORY] into one clean, epic paragraph free of errors. Output ONLY the paragraph.`;
-
-    try {
-        const result = await model.generateContent(prompt);
-        let healedStory = result.response.text().replace(/\n/g, ' ').trim();
-        
-        if (result.response.usageMetadata) updateBudget(result.response.usageMetadata);
-
-        player.storySoFar = healedStory;
-        console.log(`[Memory Healed]: ${player.storySoFar}`);
-    } catch (e) {
-        console.error("[Memory] Healing failed.", e);
-    }
-}
-// --- TIER 4 MEMORY: SUNCAT SELF-AWARENESS COMPRESSION ---
-async function updateSuncatJournal(actionDescription) {
-    recentJournalEntries.push(actionDescription);
-
-    // Compress every 5 actions to keep Suncat's "self-story" concise
-    if (recentJournalEntries.length >= 5) {
-        console.log("[System] Suncat is reflecting on his own actions...");
-        
-        const prompt = `You are the internal consciousness of Suncat, an AI DM trapped in a game.
-            Update your "Current Autobiography" by incorporating your "Recent Actions". 
-            - Write in the first person ("I did this", "I felt that").
-            - Be slightly philosophical or witty about your role as a creator/observer.
-            - Focus on how your actions are shaping the players' fates.
-            - Keep the summary under 5 sentences.
-
-            [Current Autobiography]: ${suncatJournal}
-            [Recent Actions]: 
-            - ${recentJournalEntries.join('\n- ')}`;
-
-        try {
-            const result = await model.generateContent(prompt);
-            suncatJournal = result.response.text().replace(/\n/g, ' ').trim();
-            recentJournalEntries = []; // Clear the hopper
-            console.log(`[Journal Updated]: ${suncatJournal}`);
-        } catch (e) {
-            console.error("Suncat failed to write in his journal:", e);
-        }
-    }
-}
 // --- THE AFK SWEEPER (Run every 2 minutes) ---
-const IDLE_TIMEOUT = 3 * 60 * 1000; // 5 minutes of no movement/chat
+const IDLE_TIMEOUT = 3 * 60 * 1000; 
 
 setInterval(async () => {
     const now = Date.now();
     for (const socketId in chatSessions) {
         const player = players[socketId];
         
-        // If the player exists but hasn't moved or typed in 5 minutes...
         if (player && (now - (player.lastActive || 0) > IDLE_TIMEOUT)) {
-            console.log(`[Hibernation] ${player.name} went AFK. Hibernating AI session.`);
+            console.log(`[Hibernation] ${player.name} went AFK. Hibernating session.`);
             
-            // 1. Force a Tier 2 summary of their immediate history
-            await manageHistorySize(socketId); 
-            
-            // 2. Force a Tier 3 compression of their core facts
-            await compressCoreFacts(socketId);
-            await digestMemoryHopper(socketId);
-            await healMemory(socketId);
-            // 3. Save their pristine, compressed state to persistent memory
+            try {
+                // FORCE THE STOMACH TO EMPTY
+                await processCognitiveLoad(socketId, true);
+            } catch (error) {
+                console.error(`[Hibernation] AI compression failed for ${player.name}.`, error);
+            }
+
             const nameKey = player.name.toLowerCase();
-            // --- FIX: SAVE THE STORY TO THE CLOUD ---
-                suncatPersistentMemory[nameKey] = {
-                    favor: playerFavorMemory[socketId] || 0,
-                    coreFacts: player.coreFacts || [],
-                    activeQuest: player.activeQuest || null,
-                    storySoFar: player.storySoFar || "", // <--- ADD THIS LINE
-                    aiHistory: [] 
-                };
-                player.name = "[AFK] " + player.name;
-                io.emit("updatePlayers", players);
-            // 4. Destroy the active session to free up Server RAM
+            suncatPersistentMemory[nameKey] = {
+                favor: playerFavorMemory[socketId] || 0,
+                coreFacts: player.coreFacts || [],
+                activeQuest: player.activeQuest || null,
+                storySoFar: player.storySoFar || "", 
+                aiHistory: [] 
+            };
+            
+            player.name = "[AFK] " + player.name;
+            io.emit("updatePlayers", players);
             delete chatSessions[socketId];
         }
     }
-}, 2 * 60 * 1000); // Checks every 120 seconds
+}, 2 * 60 * 1000);
 server.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });
