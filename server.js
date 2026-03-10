@@ -1536,6 +1536,25 @@ io.on("connection", (socket) => {
       
       // 2. AI LOGIC
       const content = msgText.toLowerCase();
+      if (content.includes("remember me")) {
+          console.log(`[Reincarnation] ${senderName} requested to be remembered.`);
+          
+          if (!players[socket.id].coreFacts) players[socket.id].coreFacts = [];
+          players[socket.id].coreFacts.push("[SOUL BOND]: Suncat promised to remember this player across lifetimes and game resets. Acknowledge their past lives and former glory when they return.");
+          
+          // Force an instant compression so the memory is perfectly saved before the page reloads
+          compressCoreFacts(socket.id);
+          compressStoryLog(socket.id);
+          
+          // Dramatic send-off
+          io.emit('chat_message', {
+              sender: NPC_NAME,
+              text: `*Suncat watches your avatar fade.* "I will engrave your story into the stars, ${senderName}. Until we meet again..."`,
+              color: "#ffaa00"
+          });
+          
+          return; // Skip normal AI logic to ensure this dramatic moment plays instantly and saves API tokens
+      }
       const resetTriggers = ["suncat you there", "did you get that", "suncat can you hear me", "suncat wake up"];
       
       if (resetTriggers.some(phrase => content.includes(phrase))) {
