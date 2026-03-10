@@ -1385,7 +1385,42 @@ io.on("connection", (socket) => {
                     - Keep it atmospheric, meaningful, and brief (3-4 sentences max).
                     - (Optional: You may use tools like 'spawnNPC' if the card was cursed or heavily guarded).`;
                 }
-                else if (player.mapID != 999){
+                else if (player.mapID === 999){
+                    if (roll>.39&&data.reason != 'dialogue'){
+                        prompt = `${dmContext}[SYSTEM EVENT]: ${player.name} just slaughtered one of your monsters in your custom event! 
+                        TASK: React immediately. 
+                        - If this is the first few kills, act cocky and use 'spawnNPC' to drop something harder.
+                        - If they are dominating, act like a spoiled child ("No! You're cheating!" ,"That wasn't supposed to happen!", " Hmph! Take THIS!").
+                        - If you feel they have proven themselves, DO NOT ADMIT DEFEAT, tell them "Since you came, don't be in such a hurry to leave!" and use 'spawnNPC' to make their life difficult.
+                        Do not ask questions. Execute tools and speak!`;
+                    }
+                    else if (roll>.69&&data.reason != 'dialogue'){
+                        prompt = `${dmContext}[SYSTEM EVENT]: ${player.name} just slaughtered one of your monsters in your custom event! 
+                        TASK: React immediately. 
+                        - If this is the first few kills, act cocky and use 'spawnNPC' to drop something harder.
+                        - If they are dominating, act like a spoiled child ("No! You're cheating! That wasn't supposed to happen! Take THIS!").
+                        - If you feel they have proven themselves, use 'givePlayerCard' to reward them, and DO NOT ADMIT DEFEAT. Create a new custom map and spawn harder enemies inside.
+                        Do not ask questions. Execute tools and speak!`;
+                    }
+                    else{
+                        prompt = `${dmContext}[SYSTEM EVENT]: ${player.name} just slaughtered one of your monsters in your custom event! 
+                        TASK: React immediately. 
+                        - If you feel they have proven themselves, use 'givePlayerCard' to reward them, and begrudgingly admit defeat. Give them a card and spawn them to a peaceful map. Tell them to use the spell ".hack//teleport [mapID]" and they're free to leave.
+                        Do not ask questions. Execute tools and speak!`;
+                    }
+                }
+                else if (player.activeQuest){
+                    prompt = `${dmContext}[SYSTEM EVENT]: ${player.name} just finished an interaction with ${entityName} in [ENVIRONMENT]. 
+                    
+                        TASK: React immediately. 
+                        -
+                        - check ${player.activeQuest}.  Do the objectives exist in the game (Did you spawn the npc or create the map you described yet? Was ${entityName} the objective?)? Keep it relevant with [ENVIRONMENT] context.
+                        -If your scenario is not part of [ENVIRONMENT], use createCustomMap to match your scenario. 
+                        -If NPCs are part of your scenario but they dont exist in [ENVIRONMENT] and the player hasnt interacted with them , create the NPC with custom dialogue using 'use spawnNPC'. 
+                        - If you feel they have proven themselves, use 'givePlayerCard' to reward them and end the active quest.
+                        Do not ask questions. Execute tools and speak!`;
+                }
+                else{
                     if (roll>.99&&data.reason != 'dialogue'){
                         prompt = `${dmContext}[SYSTEM EVENT]: ${player.name} just finished an npc interaction in [ENVIRONMENT]... either a battle, picked up a card, or completed dialogue! 
                         TASK: React immediately. 
@@ -1427,41 +1462,8 @@ io.on("connection", (socket) => {
                 }
                 // Inside your npc_died listener, when triggering the Gauntlet Reaction:
                 
-                else if (player.mapID === 999){
-                    if (roll>.39&&data.reason != 'dialogue'){
-                        prompt = `${dmContext}[SYSTEM EVENT]: ${player.name} just slaughtered one of your monsters in your custom event! 
-                        TASK: React immediately. 
-                        - If this is the first few kills, act cocky and use 'spawnNPC' to drop something harder.
-                        - If they are dominating, act like a spoiled child ("No! You're cheating!" ,"That wasn't supposed to happen!", " Hmph! Take THIS!").
-                        - If you feel they have proven themselves, DO NOT ADMIT DEFEAT, tell them "Since you came, don't be in such a hurry to leave!" and use 'spawnNPC' to make their life difficult.
-                        Do not ask questions. Execute tools and speak!`;
-                    }
-                    else if (roll>.69&&data.reason != 'dialogue'){
-                        prompt = `${dmContext}[SYSTEM EVENT]: ${player.name} just slaughtered one of your monsters in your custom event! 
-                        TASK: React immediately. 
-                        - If this is the first few kills, act cocky and use 'spawnNPC' to drop something harder.
-                        - If they are dominating, act like a spoiled child ("No! You're cheating! That wasn't supposed to happen! Take THIS!").
-                        - If you feel they have proven themselves, use 'givePlayerCard' to reward them, and DO NOT ADMIT DEFEAT. Create a new custom map and spawn harder enemies inside.
-                        Do not ask questions. Execute tools and speak!`;
-                    }
-                    else{
-                        prompt = `${dmContext}[SYSTEM EVENT]: ${player.name} just slaughtered one of your monsters in your custom event! 
-                        TASK: React immediately. 
-                        - If you feel they have proven themselves, use 'givePlayerCard' to reward them, and begrudgingly admit defeat. Give them a card and spawn them to a peaceful map. Tell them to use the spell ".hack//teleport [mapID]" and they're free to leave.
-                        Do not ask questions. Execute tools and speak!`;
-                    }
-                }
-                else if (player.activeQuest){
-                    prompt = `${dmContext}[SYSTEM EVENT]: ${player.name} just finished an interaction with ${entityName} in [ENVIRONMENT]. 
-                    
-                        TASK: React immediately. 
-                        -
-                        - check ${player.activeQuest}.  Do the objectives exist in the game (Did you spawn the npc or create the map you described yet? Was ${entityName} the objective?)? Keep it relevant with [ENVIRONMENT] context.
-                        -If your scenario is not part of [ENVIRONMENT], use createCustomMap to match your scenario. 
-                        -If NPCs are part of your scenario but they dont exist in [ENVIRONMENT] and the player hasnt interacted with them , create the NPC with custom dialogue using 'use spawnNPC'. 
-                        - If you feel they have proven themselves, use 'givePlayerCard' to reward them and end the active quest.
-                        Do not ask questions. Execute tools and speak!`;
-                }
+                
+                
                         addRumor(`${dmContext}${player.name} was recently seen slaying a monsterin [ENVIRONMENT].`);
 
                 // --- NEW: DYNAMIC MODEL SELECTION ---
