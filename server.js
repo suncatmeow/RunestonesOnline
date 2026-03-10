@@ -722,7 +722,7 @@ const taliesinModel = genAI.getGenerativeModel({
     systemInstruction: T_PERSONA
 });
 let npcIsTyping = false; 
-const MAX_SESSION_COST = 1.00; // Hard limit: $1.00
+const MAX_SESSION_COST = 2.00; // Hard limit: $1.00
 let totalSessionCost = 0.00;   // Starts at zero when the server boots
 function isBankrupt() {
     return totalSessionCost >= MAX_SESSION_COST;
@@ -1404,6 +1404,15 @@ io.on("connection", (socket) => {
         players[socket.id].lastActive = Date.now();
         // 2. AI LOGIC
         const content = msgText.toLowerCase();
+        const resetTriggers = ["suncat you there", "did you get that", "suncat can you hear me", "suncat wake up"];
+        if (resetTriggers.some(phrase => content.includes(phrase))) {
+            console.log(`[System Override] ${senderName} forcefully reset the global typing lock.`);
+            npcIsTyping = false;}
+            // If his brain crashed entirely, recreate it so he can actually answer
+        if (!chatSessions[socket.id]) {
+            console.log(`[System] Rebuilding lost session for ${senderName}`);
+            chatSessions[socket.id] = model.startChat({ history: [] });
+        }
         const isReply = msgText.includes("[REPLY]");
         const mentioned = content.includes(NPC_NAME.toLowerCase());
         const greeting = content.includes("hi ") || content === "hi";
