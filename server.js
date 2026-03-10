@@ -419,7 +419,7 @@ const toolsDef = [{
                 type: "OBJECT",
                 properties: {
                     targetName: { type: "STRING", description: "The name of the player to spawn the entity for." },
-                    npcType: { type: "NUMBER", description: "The ID of the entity to spawn (e.g., 63.1 for a Dragon)." },
+                    npcType: { type: "NUMBER", description: "The ID of the entity to spawn (0-77)." },
                     mapID: { type: "INTEGER", description: "Optional. The Map ID (0-22) to spawn the entity on. If omitted, spawns on the player's current map." },
                     x: { type: "NUMBER", description: "Optional. X coordinate (2 to 18). Default is near player." },
                     y: { type: "NUMBER", description: "Optional. Y coordinate (2 to 18). Default is near player." },
