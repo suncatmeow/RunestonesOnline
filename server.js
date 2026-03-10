@@ -1251,7 +1251,7 @@ io.on("connection", (socket) => {
 
         io.emit("chat_message", {
             sender: "[SYSTEM]",
-            text: welcomeMsg
+            text:`${name} has entered the pocket plane.`
         });
       }
   });
@@ -1747,19 +1747,26 @@ socket.on("disconnect", async () => {
     
     // --- NEW: SAVE SUNCAT'S MEMORY BEFORE DELETING ---
     if (me && me.name !== "Unknown") {
+        
+        // 1. INJECT THE COMPRESSION HERE
+        // Make sure it finishes shrinking the facts before we save!
+        await compressCoreFacts(socket.id);
+
         const playerNameKey = me.name.toLowerCase();
         
         // Grab their current chat history if it exists
         let currentHistory = [];
         if (chatSessions[socket.id]) {
+            // Optional: If you want to wipe the raw history completely between sessions to save tokens,
+            // you can just leave this as an empty array [] instead of getting the history.
             currentHistory = await chatSessions[socket.id].getHistory();
         }
 
         suncatPersistentMemory[playerNameKey] = {
             favor: playerFavorMemory[socket.id] || 0,
-            coreFacts: me.coreFacts || [],
+            coreFacts: me.coreFacts || [], // This is now safely compressed!
             activeQuest: me.activeQuest || null,
-            aiHistory: currentHistory // Save the actual conversation!
+            aiHistory: currentHistory 
         };
 
         // Trigger a background save
@@ -2021,7 +2028,7 @@ async function manageHistorySize(socketId) {
         // 1. Split the history
         const splitIndex = history.length - MESSAGES_TO_KEEP;
         const oldHistory = history.slice(0, splitIndex);
-        const recentHistory = history.slice(splitIndex);
+        let recentHistory = history.slice(splitIndex);
 
         // 2. Format the old history into a readable script for the AI
         let transcriptToSummarize = oldHistory.map(msg => {
@@ -2037,9 +2044,19 @@ async function manageHistorySize(socketId) {
         // Make a stateless generation call (does not affect the active chat session)
         const summaryResult = await model.generateContent(summaryPrompt);
         const summaryText = summaryResult.response.text();
+            // INSTEAD OF KEEPING IT IN HISTORY, PUSH TO FACTS:
+        if (!players[socketId].coreFacts) players[socketId].coreFacts = [];
+        players[socketId].coreFacts.push(`[PAST EVENT]: ${summaryText}`);
 
+        // Keep only the last 4 messages (2 exchanges) for immediate conversational flow. 
+        // This drastically cuts your input tokens per turn.
+        recentHistory = history.slice(-4); 
+
+        chatSessions[socketId] = model.startChat({
+            history: recentHistory
+        });
         console.log(`[Memory] Compressed 20 messages into: "${summaryText}"`);
-
+        
         // Track the cost of the summarization itself
         if (summaryResult.response.usageMetadata) {
             updateBudget(summaryResult.response.usageMetadata);
@@ -2073,6 +2090,75 @@ async function manageHistorySize(socketId) {
         });
     }
 }
+// --- TIER 3 MEMORY: CORE FACT COMPRESSION ---
+async function compressCoreFacts(socketId) {
+    const player = players[socketId];
+    // Only trigger if they have racked up enough facts to warrant a summary
+    if (!player || !player.coreFacts || player.coreFacts.length < 10) return;
+
+    console.log(`[Memory] Compressing Core Facts for ${player.name}...`);
+
+    const factsToCompress = player.coreFacts.join("\n- ");
+    
+    const prompt = `You are a background system maintaining long-term memory for an NPC named Suncat.
+    Below are recent events involving the player ${player.name}:
+    - ${factsToCompress}
+    
+    Distill these events into exactly 3 concise, permanent bullet points that define:
+    1. Their overall relationship, favor, and vibe with Suncat.
+    2. Their defining major accomplishments or playstyle.
+    3. Their current overarching goal in the world.
+    
+    Discard temporary tactical details. Output ONLY the bullet points.`;
+
+    try {
+        const result = await model.generateContent(prompt);
+        const compressedText = result.response.text();
+        
+        if (result.response.usageMetadata) {
+            updateBudget(result.response.usageMetadata);
+        }
+
+        // Wipe the bloated array and replace it with the distilled profile!
+        player.coreFacts = [ `[PLAYER PROFILE]\n${compressedText}` ];
+        console.log(`[Memory] Successfully distilled identity for ${player.name}`);
+        
+    } catch (e) {
+        console.error("[Memory] Fact compression failed. Keeping uncompressed facts.", e);
+    }
+}
+// --- THE AFK SWEEPER (Run every 2 minutes) ---
+const IDLE_TIMEOUT = 5 * 60 * 1000; // 5 minutes of no movement/chat
+
+setInterval(async () => {
+    const now = Date.now();
+    for (const socketId in chatSessions) {
+        const player = players[socketId];
+        
+        // If the player exists but hasn't moved or typed in 5 minutes...
+        if (player && (now - (player.lastActive || 0) > IDLE_TIMEOUT)) {
+            console.log(`[Hibernation] ${player.name} went AFK. Hibernating AI session.`);
+            
+            // 1. Force a Tier 2 summary of their immediate history
+            await manageHistorySize(socketId); 
+            
+            // 2. Force a Tier 3 compression of their core facts
+            await compressCoreFacts(socketId);
+            
+            // 3. Save their pristine, compressed state to persistent memory
+            const nameKey = player.name.toLowerCase();
+            suncatPersistentMemory[nameKey] = {
+                favor: playerFavorMemory[socketId] || 0,
+                coreFacts: player.coreFacts || [],
+                activeQuest: player.activeQuest || null,
+                aiHistory: [] // Wipe the heavy history!
+            };
+            
+            // 4. Destroy the active session to free up Server RAM
+            delete chatSessions[socketId];
+        }
+    }
+}, 2 * 60 * 1000); // Checks every 120 seconds
 server.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });
