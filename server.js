@@ -1706,7 +1706,7 @@ io.on("connection", (socket) => {
     
     // Save the action to their personal progress log
     sender.activityLog.push(actionDescription);
-    if (sender.activityLog.length > 3) sender.activityLog.shift(); // Only keep the 3 most recent things to save tokens
+    if (sender.activityLog.length > 10) sender.activityLog.shift(); // Only keep the 3 most recent things to save tokens
 
     // 30% chance to also push this to the Global Rumor Mill so Suncat gossips about it with OTHER players
     if (Math.random() < 0.3) {
