@@ -987,10 +987,7 @@ async function executeAITools(currentResponse, activeSession, socket) {
                                     const mapWeather = call.args.weather || 'clear';
                                     const customMapID = 999; 
                                     const targetID = findSocketID(call.args.targetName);
-                                    const customMapData = {
-                                        id: customMapID, maze: gridData, skyColor: skyColor, 
-                                        floorColor: floorColor, name: mapName, npcs: mapNPCs, weather: mapWeather 
-                                    };
+                                    
 
                                     let spawnX = 1.5, spawnY = 1.5;
                                         searchLoop: // <-- Label the outer loop
@@ -1003,7 +1000,12 @@ async function executeAITools(currentResponse, activeSession, socket) {
                                                 }
                                             }
                                         }
-
+                                        const customMapData = {
+                                        id: customMapID, maze: gridData, skyColor: skyColor, 
+                                        floorColor: floorColor, name: mapName, npcs: mapNPCs, weather: mapWeather,
+                                        spawnX: spawnX, // <--- NEW: Send the safe spawn to the client!
+                                        spawnY: spawnY  // <--- NEW: Send the safe spawn to the client!
+                                    };
                                     if (targetID && players[targetID]) {
                                         const targetPlayer = players[targetID];
                                         const suncat = players[SUNCAT_ID];
@@ -1494,22 +1496,27 @@ io.on("connection", (socket) => {
 });
 
   
-  // [SMART AI CHAT LISTENER]
+// [SMART AI CHAT LISTENER]
   socket.on('chat_message', async (msgText) => {
-    if (typeof msgText !== 'string') return;
-    if (msgText.length > 200) {
-        msgText = msgText.substring(0, 200) + "...";
-        // Alternatively, you could just 'return;' to drop the message entirely, 
-        // but truncating allows normal wordy players to still be heard.
-    }
-    if (players[socket.id] && players[socket.id].name.startsWith("[AFK] ")) {
-        players[socket.id].name = players[socket.id].name.replace("[AFK] ", "");
-        io.emit("updatePlayers", players); // Updates EVERYONE immediately
-    }
+      if (typeof msgText !== 'string') return;
+      
+      if (msgText.length > 200) {
+          msgText = msgText.substring(0, 200) + "...";
+      }
+
+      // --- WAKE UP LOGIC: Remove AFK Tag on Chat ---
+      if (players[socket.id] && players[socket.id].name.startsWith("[AFK] ")) {
+          players[socket.id].name = players[socket.id].name.replace("[AFK] ", "");
+          io.emit("updatePlayers", players); // Updates EVERYONE immediately
+      }
+
       let senderName = "Unknown";
       if (players[socket.id] && players[socket.id].name) {
           senderName = players[socket.id].name;
       }
+      
+      // Stop title-screen ghosts from waking Suncat up
+      if (senderName === "Unknown") return;
 
       console.log(`${senderName} says: ${msgText}`);
 
@@ -1517,184 +1524,174 @@ io.on("connection", (socket) => {
       io.emit('chat_message', {
           sender: senderName, 
           text: msgText
-        });
-        players[socket.id].lastActive = Date.now();
-        // 2. AI LOGIC
-        const content = msgText.toLowerCase();
-        const resetTriggers = ["suncat you there", "did you get that", "suncat can you hear me", "suncat wake up"];
-        if (resetTriggers.some(phrase => content.includes(phrase))) {
-            console.log(`[System Override] ${senderName} forcefully reset the global typing lock.`);
-            npcIsTyping = false;}
-            // If his brain crashed entirely, recreate it so he can actually answer
-        if (!chatSessions[socket.id]) {
-            console.log(`[System] Rebuilding lost session for ${senderName}`);
-            chatSessions[socket.id] = model.startChat({ history: [] });
-        }
-        const isReply = msgText.includes("[REPLY]");
-        const mentioned = content.includes(NPC_NAME.toLowerCase());
-        const greeting = content.includes("hi ") || content === "hi";
-        const randomChance = Math.random() < 0.05; 
+      });
+      
+      players[socket.id].lastActive = Date.now();
+      
+      // 2. AI LOGIC
+      const content = msgText.toLowerCase();
+      const resetTriggers = ["suncat you there", "did you get that", "suncat can you hear me", "suncat wake up"];
+      
+      if (resetTriggers.some(phrase => content.includes(phrase))) {
+          console.log(`[System Override] ${senderName} forcefully reset the global typing lock.`);
+          npcIsTyping = false;
+      }
+      
+      // If his brain crashed entirely, recreate it so he can actually answer
+      if (!chatSessions[socket.id]) {
+          console.log(`[System] Rebuilding lost session for ${senderName}`);
+          chatSessions[socket.id] = model.startChat({ history: [] });
+      }
+      
+      const isReply = msgText.includes("[REPLY]");
+      const mentioned = content.includes(NPC_NAME.toLowerCase());
+      const greeting = content.includes("hi ") || content === "hi";
+      const randomChance = Math.random() < 0.05; 
 
-        // Only reply if addressed or randomly triggered, AND not already busy
-        if ((mentioned || isReply || (greeting && randomChance) || randomChance) && !npcIsTyping) {
-            if (!canTriggerAI(socket.id)) {
-                console.log(`[Rate Limit] Blocked spam from ${senderName}`);
-                socket.emit('chat_message', {
-                    sender: NPC_NAME,
-                    text: "*...my mind is clouded... give me a moment to think...*",
-                    color: "#aaaaaa" // Gray color to indicate a system/thought message
-                });
-                return; // Exit early, do not trigger the AI
-            }
-            // --- BUDGET CHECK ---
-            if (isBankrupt()) {
-                socket.emit('chat_message', {
-                    sender: "[SYSTEM]",
-                    text: "Suncat's mana is depleted for this session. He cannot speak.",
-                    color: "#ff0000"
-                });
-                return; 
-            }
-            npcIsTyping = true;
-            const typingFailSafe = setTimeout(() => { npcIsTyping = false; }, 20000);
-            try {
-                // --- MODEL ROUTER (THE STATELESS BRAIN SWAP) ---
-                const complexKeywords = [
-                    "map", "dungeon", "maze", "create", "build", 
-                    "spawn", "npc", "monster", "boss", "enemy", "dragon",
-                    "quest", "adventure", "what next", "give me something to do",
-                    "teleport", "warp", "send me", "move me",
-                    "corridor", "arena", "gladiator", "gauntlet", "roleplay", "act as" // <-- NEW TRIGGERS
-                ];
-                
-                const isComplexTask = complexKeywords.some(kw => content.includes(kw));
+      // Only reply if addressed or randomly triggered, AND not already busy
+      if ((mentioned || isReply || (greeting && randomChance) || randomChance) && !npcIsTyping) {
+          
+          if (!canTriggerAI(socket.id)) {
+              console.log(`[Rate Limit] Blocked spam from ${senderName}`);
+              socket.emit('chat_message', {
+                  sender: NPC_NAME,
+                  text: "*...my mind is clouded... give me a moment to think...*",
+                  color: "#aaaaaa" 
+              });
+              return; 
+          }
+          
+          if (isBankrupt()) {
+              socket.emit('chat_message', {
+                  sender: "[SYSTEM]",
+                  text: "Suncat's mana is depleted for this session. He cannot speak.",
+                  color: "#ff0000"
+              });
+              return; 
+          }
 
-                // --- CONTEXT INJECTION ---
-                const suncat = players[SUNCAT_ID]; 
-                const timeString = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-                // 1. Grab dynamic map lore
-                const myMapLore = getShortMapLore(suncat.mapID);
-                const playerMapLore = getShortMapLore(players[socket.id].mapID);
-                
-                // 2. Build Suncat's local awareness
-                let suncatStatus = `My Location: Map ${suncat.mapID}, Coords (${Math.floor(suncat.x)}, ${Math.floor(suncat.y)})\nMy Surroundings: ${myMapLore}\nServer Time: ${timeString}`;              
+          npcIsTyping = true;
+          const typingFailSafe = setTimeout(() => { npcIsTyping = false; }, 20000);
+          
+          try {
+              // --- MODEL ROUTER ---
+              const complexKeywords = [
+                  "map", "dungeon", "maze", "create", "build", 
+                  "spawn", "npc", "monster", "boss", "enemy", "dragon",
+                  "quest", "adventure", "what next", "give me something to do",
+                  "teleport", "warp", "send me", "move me",
+                  "corridor", "arena", "gladiator", "gauntlet", "roleplay", "act as"
+              ];
+              
+              const isComplexTask = complexKeywords.some(kw => content.includes(kw));
 
-                // 3. If the player is far away, tell Suncat where they are!
-                if (suncat.mapID !== players[socket.id].mapID) {
-                    suncatStatus += `\n[TARGET PLAYER LOCATION]: ${senderName} is currently far away at Map ${players[socket.id].mapID} (${playerMapLore}).`;
-                }
+              // --- CONTEXT INJECTION ---
+              const suncat = players[SUNCAT_ID]; 
+              const timeString = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+              
+              const myMapLore = getShortMapLore(suncat.mapID);
+              const playerMapLore = getShortMapLore(players[socket.id].mapID);
+              
+              let suncatStatus = `My Location: Map ${suncat.mapID}, Coords (${Math.floor(suncat.x)}, ${Math.floor(suncat.y)})\nMy Surroundings: ${myMapLore}\nServer Time: ${timeString}`;              
 
-                // ... (your existing map lore and suncat status) ...
+              if (suncat.mapID !== players[socket.id].mapID) {
+                  suncatStatus += `\n[TARGET PLAYER LOCATION]: ${senderName} is currently far away at Map ${players[socket.id].mapID} (${playerMapLore}).`;
+              }
 
-                let playerListContext = Object.values(players).map(p => `${p.name}(Map${p.mapID||0})`).join(", ");
-                
-                const activityContext = (players[socket.id].activityLog && players[socket.id].activityLog.length > 0)
-                    ? `\n[${senderName}'s Recent Actions (Hivemind Report)]\n- ` + players[socket.id].activityLog.join('\n- ')
-                    : "";
+              let playerListContext = Object.values(players).map(p => `${p.name}(Map${p.mapID||0})`).join(", ");
+              
+              const activityContext = (players[socket.id].activityLog && players[socket.id].activityLog.length > 0)
+                  ? `\n[${senderName}'s Recent Actions (Hivemind Report)]\n- ` + players[socket.id].activityLog.join('\n- ')
+                  : "";
 
-                const storyContext = players[socket.id].storySoFar ? `\n[THE STORY SO FAR]: ${players[socket.id].storySoFar}` : ""; 
-                const rumorContext = globalRumors.length > 0 ? `\n[WORLD RUMORS]\n${globalRumors.join("\n")}` : "";
+              const storyContext = players[socket.id].storySoFar ? `\n[THE STORY SO FAR]: ${players[socket.id].storySoFar}` : ""; 
+              const rumorContext = globalRumors.length > 0 ? `\n[WORLD RUMORS]\n${globalRumors.join("\n")}` : "";
+              
+              const favorContext = `\n[FAVOR SCORE]: ${playerFavorMemory[socket.id] || 0}/10`;
+              const factsContext = (players[socket.id].coreFacts && players[socket.id].coreFacts.length > 0) 
+                  ? `\n${players[socket.id].coreFacts.join("\n")}` 
+                  : "";
 
-                // --- NEW: INJECT FAVOR AND CORE FACTS DIRECTLY ---
-                const favorContext = `\n[FAVOR SCORE]: ${playerFavorMemory[socket.id] || 0}/10`;
-                const factsContext = (players[socket.id].coreFacts && players[socket.id].coreFacts.length > 0) 
-                    ? `\n${players[socket.id].coreFacts.join("\n")}` 
-                    : "";
+              // The Ultimate Omniscient Prompt
+              const promptWithContext = `[CURRENT PLAYERS]\n${playerListContext}\n[MY STATUS]\n${suncatStatus}${favorContext}${factsContext}${storyContext}${rumorContext}${activityContext}\n\n${senderName} SAYS: ${msgText}`;
+              
+              let activeSession = chatSessions[socket.id];
+              let result;
 
-                // Combine them all!
-                const promptWithContext = `[CURRENT PLAYERS]\n${playerListContext}\n[MY STATUS]\n${suncatStatus}${favorContext}${factsContext}${storyContext}${rumorContext}${activityContext}\n\n${senderName} SAYS: ${msgText}`;
-                let result;
+              // --- STATELESS DM EXECUTION ---
+              if (isComplexTask) {
+                  console.log(`[ROUTER] Upgrading ${senderName}'s request to 3.1 Flash Lite DM Mode!`);
+                  let currentHistory = await activeSession.getHistory();
+                  activeSession = dmModel.startChat({
+                      history: currentHistory
+                  });
+              }
 
-                // --- STATELESS DM EXECUTION ---
-                if (isComplexTask) {
-                    console.log(`[ROUTER] Upgrading ${senderName}'s request to 3.1 Flash Lite DM Mode!`);
-                    
-                    // 1. Grab the current conversation history from the normal "Cheap Brain"
-                    let currentHistory = await activeSession.getHistory();
-                    
-                    // 2. Clone it into a TEMPORARY "Big Brain" session
-                    activeSession = dmModel.startChat({
-                        history: currentHistory
-                    });
-                }
+              result = await activeSession.sendMessage(promptWithContext);
+              
+              if (result.response.usageMetadata) {
+                  const usage = result.response.usageMetadata;
+                  updateBudget(usage);
+                  console.log(`[Main Chat] Tokens: ${usage.totalTokenCount}`);
+                  io.emit('debug_stats', {
+                      tokens: usage.totalTokenCount,
+                      cost: totalSessionCost 
+                  });
+              }
 
-                // --- SEND MESSAGE TO AI ---
-                // This dynamically uses the Cheap Brain for normal chat, or the Temp Big Brain for tasks!
-                result = await activeSession.sendMessage(promptWithContext);
-                
-                if (result.response.usageMetadata) {
-                        const usage = result.response.usageMetadata;
-                        updateBudget(usage);
-                        console.log(`[Main Chat] Tokens: ${usage.totalTokenCount}`);
-                        io.emit('debug_stats', {
-                            tokens: usage.totalTokenCount,
-                            cost: totalSessionCost 
-                        });
-                }
-                        // --- TOOL HANDLING ---
-                        let finalResponse = await executeAITools(result.response, activeSession, socket);
-                    
-                
+              let finalResponse = await executeAITools(result.response, activeSession, socket);
 
-                // --- RESTORE NORMAL BRAIN (CRITICAL STEP) ---
-                if (isComplexTask) {
-                    // The DM is finished executing tools and speaking. 
-                    // We extract the final updated history containing all the tool calls/responses!
-                    let updatedHistory = await activeSession.getHistory();
-                    // Scrub the grid payload to save tokens
-                    updatedHistory.forEach(msg => {
-                        msg.parts.forEach(part => {
-                            if (part.functionCall && part.functionCall.name === "createCustomMap") {
-                                // Replace the massive grid array with a tiny string
-                                part.functionCall.args.grid = "[[GRID_DATA_OMITTED]]";
-                            }
-                        });
-                    });
-                    // Rebuild the player's permanent session so the Cheap Brain remembers everything!
-                    chatSessions[socket.id] = model.startChat({
-                        history: updatedHistory
-                    });
-                }
+              // --- RESTORE NORMAL BRAIN ---
+              if (isComplexTask) {
+                  let updatedHistory = await activeSession.getHistory();
+                  updatedHistory.forEach(msg => {
+                      msg.parts.forEach(part => {
+                          if (part.functionCall && part.functionCall.name === "createCustomMap") {
+                              part.functionCall.args.grid = "[[GRID_DATA_OMITTED]]";
+                          }
+                      });
+                  });
+                  chatSessions[socket.id] = model.startChat({
+                      history: updatedHistory
+                  });
+              }
 
-                // Finally, extract the spoken text and broadcast
-                try {
-                    const finalSpeech = finalResponse.text();
-                    if (finalSpeech) {
-                        // 1. Check for new Memories
-                        const saveMatch = finalSpeech.match(/\[\[SAVE:\s*(.*?)\]\]/i);
-                        if (saveMatch && saveMatch[1]) {
-                            const newFact = saveMatch[1];
-                            if (!players[socket.id].coreFacts) players[socket.id].coreFacts = [];
-                            players[socket.id].coreFacts.push(newFact); 
-                            socket.emit("suncat_learned_fact", newFact); 
-                        }
+              try {
+                  const finalSpeech = finalResponse.text();
+                  if (finalSpeech) {
+                      const saveMatch = finalSpeech.match(/\[\[SAVE:\s*(.*?)\]\]/i);
+                      if (saveMatch && saveMatch[1]) {
+                          const newFact = saveMatch[1];
+                          if (!players[socket.id].coreFacts) players[socket.id].coreFacts = [];
+                          players[socket.id].coreFacts.push(newFact); 
+                          socket.emit("suncat_learned_fact", newFact); 
+                      }
 
-                        // 2. Check for Favor Changes
-                        const favorMatch = finalSpeech.match(/\[\[FAVOR:\s*([+-]?\d+)\]\]/i);
-                        if (favorMatch && favorMatch[1]) {
-                            let favorChange = parseInt(favorMatch[1]);
-                            playerFavorMemory[socket.id] = (playerFavorMemory[socket.id] || 0) + favorChange;
-                            socket.emit("suncat_changed_favor", favorChange); 
-                        }
+                      const favorMatch = finalSpeech.match(/\[\[FAVOR:\s*([+-]?\d+)\]\]/i);
+                      if (favorMatch && favorMatch[1]) {
+                          let favorChange = parseInt(favorMatch[1]);
+                          playerFavorMemory[socket.id] = (playerFavorMemory[socket.id] || 0) + favorChange;
+                          socket.emit("suncat_changed_favor", favorChange); 
+                      }
 
-                        broadcastSuncatMessage(finalSpeech); 
-                    }
-                } catch (textError) {
-                    console.log(`[Suncat] Completed action but had no text to broadcast.`);
-                }
+                      broadcastSuncatMessage(finalSpeech); 
+                  }
+              } catch (textError) {
+                  console.log(`[Suncat] Completed action but had no text to broadcast.`);
+              }
 
-            } catch (error) {
-                console.error("General AI Error:", error);
-                if (chatSessions[socket.id]) {
-                    delete chatSessions[socket.id];
-                    console.log(`[System] Cleared corrupted AI session for socket: ${socket.id}`);
-                }
-            } finally {
-                clearTimeout(typingFailSafe); // <--- ADD THIS HERE
-                npcIsTyping = false;
-            }
-        }
-        await manageHistorySize(socket.id);
+          } catch (error) {
+              console.error("General AI Error:", error);
+              if (chatSessions[socket.id]) {
+                  delete chatSessions[socket.id];
+                  console.log(`[System] Cleared corrupted AI session for socket: ${socket.id}`);
+              }
+          } finally {
+              clearTimeout(typingFailSafe); 
+              npcIsTyping = false;
+          }
+      }
+      await manageHistorySize(socket.id);
   });
 
     // --- SUNCAT VOCAL COMPOSER (For Ai3Module) ---
