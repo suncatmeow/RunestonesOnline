@@ -2031,7 +2031,7 @@ setInterval(() => {
             }
         }
         // EVENT B: DM Pacing / Plot Advance (Next 2% chance)
-        else if (directorRoll >= 0.01 && directorRoll < 0.03) {
+        else if (directorRoll >= 0.01 && directorRoll < 0.02) {
             const advPlayer = Object.values(players).find(p => 
                 p.id !== SUNCAT_ID && (p.mapID === 999 || p.activeQuest)
             );
@@ -2067,7 +2067,7 @@ setInterval(() => {
             }
         }
         // EVENT C: Random Event Kidnapper (Next 1% chance)
-        else if (directorRoll >= 0.03 && directorRoll < 0.04) {
+        else if (directorRoll >= 0.02 && directorRoll < 0.03) {
             const activePlayers = Object.values(players).filter(p => p.id !== SUNCAT_ID && (Date.now() - (p.lastActive || 0) < 180000));
             const potentialVictims = activePlayers.filter(p => p.mapID !== 999);
             
@@ -2104,7 +2104,7 @@ setInterval(() => {
             }
         }
     }
-}, 10000); // END OF THE 10 SECOND INTERVAL
+}, 30000); // END OF THE 10 SECOND INTERVAL
 async function manageHistorySize(socketId) {
     if (!chatSessions[socketId]) return;
 
@@ -2223,7 +2223,7 @@ async function compressCoreFacts(socketId) {
     }
 }
 // --- THE AFK SWEEPER (Run every 2 minutes) ---
-const IDLE_TIMEOUT = 1 * 60 * 1000; // 5 minutes of no movement/chat
+const IDLE_TIMEOUT = 3 * 60 * 1000; // 5 minutes of no movement/chat
 
 setInterval(async () => {
     const now = Date.now();
