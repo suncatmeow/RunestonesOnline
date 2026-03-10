@@ -36,113 +36,120 @@ process.on('uncaughtException', (error) => {
 const port = process.env.PORT || 3000;
 const CARD_MANIFEST = `
     [MAJOR ARCANA: 0-21]
-    0: Fool (Monster) - 1d4 STR/CON/INT, 1d20 AGI. Players start with this card. It is the main "protagonist" aside from the player leading the Emperor's court to "save" the Empire from the four kings.
-    1: Magician (Monster) - 1d8 ALL STATS. Obtained after finding him in Map 1 Outer dungeon.
-    2: High Priestess (Monster) - 1d4 STR/CON, 1d10 INT/AGI. Obtained after finishing her lessons in Map 0 . 
-    3: Empress (Monster) - 1d20 CON, 1d4 STR/INT/AGI. She will join you after talking with her in Map 0 Dungeon.
-    4: Emperor (Monster) - 1d20 STR,1d4 CON/INT/AGI. Obtained after playing a game of stones with him in Map 0 Dungeon.
-    5: Hierophant (Monster) - 1d10 CON/INT, 1d4 STR/AGI. He will join you after talking with him in Map 0 Dungeon.
-    6: Lovers (Equip) - +1 STR/CON rolls. +1 bonus on kill (max +3). Dropped by Pixie in Tintagel Forest after finding the Hermit. Can also be found by the water in Cairn Gorm guarded by an Undine.
-    7: Winged Boots (Equip) - +3 AGI rolls. Defend with AGI. Found in Fairy Queen's Castle.
-    8: Strength (Spell) - Buff: Gain STR equal to INT roll. Found in Fairy Queen's Castle.
-    9: Hermit (Monster) - 1d20 INT, 1d4 STR/CON/AGI. Can be obtained after finding the hidden hermitage and talking to him in Tintagel Forest.
-    10: Treasure Chest (Use) - Reveal cards until monster; add spells/items to hand. Found in the Goblin Camp in Tintagel Forest.
-    11: Scales of Justice (Use) - Duel: Both roll 1d12; higher wins. Found in Dark Tower level 1.
-    12: Bind (Spell) - Debuff: Target skips attack turns based on INT diff. Found in Tintagel Forest
-    13: Death (Spell) - Slay target if INT roll > Foe INT. Found near the Shade monster in Ice Cave (or in a secret room in Goblin Caverns).
-    14: Alchemy (Spell) - Choose which stat is used for attack/defense. Found in the Giant's room in dark tower level 5.
-    15: Curse (Spell) - Debuff: Penalty to all foe rolls based on INT diff. Dropped by wisps.
-    16: Ruin (Spell) - Foe discards hand/field if INT roll wins. Found in Hermit's hermitage in Tintagel Forest,
-    17: Star Pendant (Equip) - One re-roll per non-spell roll. Given by the High Priestess after finishing her lessons.
-    18: Lunacy (Spell) - Silence: Foe cannot cast spells/items.Found in Tintagel Forest.
-    19: Solar Rite (Use) - Equip/buff/debuff Nuke: Discard all field equipped cards and wipes buffs/debuffs. Guarded by a Mirage in the Realm of the Witch Queen (desert). You have to lure it away to get it.
-    20: Horn of Judgement (Use) - Destroy ALL on field. No runes awarded. Given by Treasure Snake in the Dark Tower Enterance. It requires a 'leap of faith' hehe.
-    21: Crown (Equip) - +3 to ALL stat rolls. The World. Can only be obtained by defeating the emperor in a game of stones in Map 0, Dungeon.
+    [CARD] 0: Fool (Monster) - 1d4 STR/CON/INT, 1d20 AGI. Players start with this card. It is the main "protagonist" aside from the player leading the Emperor's court to "save" the Empire from the four kings.
+    [CARD] 1: Magician (Monster) - 1d8 ALL STATS. Obtained after finding him in Map 1 Outer dungeon.
+    [CARD] 2: High Priestess (Monster) - 1d4 STR/CON, 1d10 INT/AGI. Obtained after finishing her lessons in Map 0 . 
+    [CARD] 3: Empress (Monster) - 1d20 CON, 1d4 STR/INT/AGI. She will join you after talking with her in Map 0 Dungeon.
+    [CARD] 4: Emperor (Monster) - 1d20 STR,1d4 CON/INT/AGI. Obtained after playing a game of stones with him in Map 0 Dungeon.
+    [CARD] 5: Hierophant (Monster) - 1d10 CON/INT, 1d4 STR/AGI. He will join you after talking with him in Map 0 Dungeon.
+    [CARD] 6: Lovers (Equip) - +1 STR/CON rolls. +1 bonus on kill (max +3). Dropped by Pixie in Tintagel Forest after finding the Hermit. Can also be found by the water in Cairn Gorm guarded by an Undine.
+    [CARD] 7: Winged Boots (Equip) - +3 AGI rolls. Defend with AGI. Found in Fairy Queen's Castle.
+    [CARD] 8: Strength (Spell) - Buff: Gain STR equal to INT roll. Found in Fairy Queen's Castle.
+    [CARD] 9: Hermit (Monster) - 1d20 INT, 1d4 STR/CON/AGI. Can be obtained after finding the hidden hermitage and talking to him in Tintagel Forest.
+    [CARD] 10: Treasure Chest (Use) - Reveal cards until monster; add spells/items to hand. Found in the Goblin Camp in Tintagel Forest.
+    [CARD] 11: Scales of Justice (Use) - Duel: Both roll 1d12; higher wins. Found in Dark Tower level 1.
+    [CARD] 12: Bind (Spell) - Debuff: Target skips attack turns based on INT diff. Found in Tintagel Forest
+    [CARD] 13: Death (Spell) - Slay target if INT roll > Foe INT. Found near the Shade monster in Ice Cave (or in a secret room in Goblin Caverns).
+    [CARD] 14: Alchemy (Spell) - Choose which stat is used for attack/defense. Found in the Giant's room in dark tower level 5.
+    [CARD] 15: Curse (Spell) - Debuff: Penalty to all foe rolls based on INT diff. Dropped by wisps.
+    [CARD] 16: Ruin (Spell) - Foe discards hand/field if INT roll wins. Found in Hermit's hermitage in Tintagel Forest,
+    [CARD] 17: Star Pendant (Equip) - One re-roll per non-spell roll. Given by the High Priestess after finishing her lessons.
+    [CARD] 18: Lunacy (Spell) - Silence: Foe cannot cast spells/items.Found in Tintagel Forest.
+    [CARD] 19: Solar Rite (Use) - Equip/buff/debuff Nuke: Discard all field equipped cards and wipes buffs/debuffs. Guarded by a Mirage in the Realm of the Witch Queen (desert). You have to lure it away to get it.
+    [CARD] 20: Horn of Judgement (Use) - Destroy ALL on field. No runes awarded. Given by Treasure Snake in the Dark Tower Enterance. It requires a 'leap of faith' hehe.
+    [CARD] 21: Crown (Equip) - +3 to ALL stat rolls. The World. Can only be obtained by defeating the emperor in a game of stones in Map 0, Dungeon.
 
     [WANDS: 22-35] - Focus: INT & Magic
-    22: Wand (Equip) - +1 INT rolls. Ace of Wands. One of the magician's scattered artifacts found in Map 1 Outer Dungeon.
-    23: Wisp (Monster) - 1d6 CON/INT, 1d4 STR/AGI. Mischievous spirit. 2 of Wands. Cannot be obtained (unless gifted by Suncat). You can find them roaming in Map 1 Outer Dungeon, in Tintagel Forest, and Goblin Caverns.
-    24: Scry (Spell) - Reveal cards = INT roll; take one Spell/Item to hand. 3 of Wands. Dropped by wisps.
-    25: Elixir (Use) - Discard all attachments; dispel all user items and spells. 4 of Wands. Can be found in Realm of the Witch Queen (desert map)
-    26: Fire (Spell) - Slay target if INT roll > Foe CON roll. 5 of Wands. Dropped by wisps, fire imps, shades, djinn and other various monsters. Basic spell any respectable magician can cast.
-    27: Amulet (Equip) - +1 INT rolls. +1 bonus on kill (max +3).6 of Wands. Found inside the Witch Queen's castle guarded by the Djinn's Neophytes and Fire Imps.
-    28: Defense (Spell) - Buff: Gain CON equal to INT roll. 7 of Wands. Can be obtained as a drop from certain monsters or found in the Realm of the Ice Queen (Cairn Gorm)
-    29: Haste (Spell) - Buff: Gain AGI equal to INT roll.8 of Wands. Dropped by Salamander. There is also one guarded by a Mirage in the Realm of the Witch Queen (desert map)
-    30: Protect Orb (Equip) - While equipped, you may defend with INT instead of CON. 9 of Wands. Guarded by a shade in a secret room in the Goblin Caverns.
-    31: Tome (Equip) - +6 INT rolls, but -3 AGI and -1 STR. Heavy knowledge. 10  of Wands. Found in the Witch Queen's castle guarded by a Fire Imp and a Neopythe.
-    32: Apprentice (Monster Page) - 1d8 INT, 1d4 STR/CON/AGI. Eager student. Page  of Wands. Obtained after rescuing the apprentice from the imps in the Goblin Caverns.
-    33: Salamander (Monster Knight) - 1d8 INT, 1d6 STR, 1d4 CON/AGI. Fiery lizard. Knight of Wands. Cannot be obtained. This monster runs away when you approach it.
-    34: Witch Queen (Monster Queen) - 1d10 INT, 1d8 AGI, 1d6 CON, 1d4 STR. Charismatic. Queen  of Wands. Obtained after defeating the Djinn assaulting the Witch Queen's castle.
-    35: Djinn (Monster King) - 1d12 INT, 1d10 AGI, 1d8 CON, 1d6 STR. Spirit of fire. King of Wands. Cannot be obtained. This monster is found in the throne room of the Witch Queen's Castle.
+    [CARD] 22: Wand (Equip) - +1 INT rolls. Ace of Wands. One of the magician's scattered artifacts found in Map 1 Outer Dungeon.
+    [CARD] 23: Wisp (Monster) - 1d6 CON/INT, 1d4 STR/AGI. Mischievous spirit. 2 of Wands. Cannot be obtained (unless gifted by Suncat). You can find them roaming in Map 1 Outer Dungeon, in Tintagel Forest, and Goblin Caverns.
+    [CARD] 24: Scry (Spell) - Reveal cards = INT roll; take one Spell/Item to hand. 3 of Wands. Dropped by wisps.
+    [CARD] 25: Elixir (Use) - Discard all attachments; dispel all user items and spells. 4 of Wands. Can be found in Realm of the Witch Queen (desert map)
+    [CARD] 26: Fire (Spell) - Slay target if INT roll > Foe CON roll. 5 of Wands. Dropped by wisps, fire imps, shades, djinn and other various monsters. Basic spell any respectable magician can cast.
+    [CARD] 27: Amulet (Equip) - +1 INT rolls. +1 bonus on kill (max +3).6 of Wands. Found inside the Witch Queen's castle guarded by the Djinn's Neophytes and Fire Imps.
+    [CARD] 28: Defense (Spell) - Buff: Gain CON equal to INT roll. 7 of Wands. Can be obtained as a drop from certain monsters or found in the Realm of the Ice Queen (Cairn Gorm)
+    [CARD] 29: Haste (Spell) - Buff: Gain AGI equal to INT roll.8 of Wands. Dropped by Salamander. There is also one guarded by a Mirage in the Realm of the Witch Queen (desert map)
+    [CARD] 30: Protect Orb (Equip) - While equipped, you may defend with INT instead of CON. 9 of Wands. Guarded by a shade in a secret room in the Goblin Caverns.
+    [CARD] 31: Tome (Equip) - +6 INT rolls, but -3 AGI and -1 STR. Heavy knowledge. 10  of Wands. Found in the Witch Queen's castle guarded by a Fire Imp and a Neopythe.
+    [CARD] 32: Apprentice (Monster Page) - 1d8 INT, 1d4 STR/CON/AGI. Eager student. Page  of Wands. Obtained after rescuing the apprentice from the imps in the Goblin Caverns.
+    [CARD] 33: Salamander (Monster Knight) - 1d8 INT, 1d6 STR, 1d4 CON/AGI. Fiery lizard. Knight of Wands. Cannot be obtained. This monster runs away when you approach it.
+    [CARD] 34: Witch Queen (Monster Queen) - 1d10 INT, 1d8 AGI, 1d6 CON, 1d4 STR. Charismatic. Queen  of Wands. Obtained after defeating the Djinn assaulting the Witch Queen's castle.
+    [CARD] 35: Djinn (Monster King) - 1d12 INT, 1d10 AGI, 1d8 CON, 1d6 STR. Spirit of fire. King of Wands. Cannot be obtained. This monster is found in the throne room of the Witch Queen's Castle.
 
     [CUPS: 36-49] - Focus: AGI & Utility
-    36: Hourglass (Equip) - +1 AGI rolls. Ace of Cups. One of the Magician's scattered artifacts found in Map 1 Outer Dungeon.
-    37: Siren (Monster) - 1d6 INT/AGI, 1d4 STR/CON. Deadly song.2 of Cups. Cannot be obtained. She is found luring sailors to their doom in the Boreal Sea with her song.
-    38: Quest Reward (Use) - Draw 1; if spell/item, add to hand. If monster, may replace active.3 of Cups. Obtained by helping the Treasure Snake avenge the Goblins.
-    39: Dragon Wing (Use) - Foe discards monster and draws until they get a new one; discard other draws.4 of Cups. Dropped by Dragon in the Dragon's Lair in Avalon, the Realm of the Fairy Queen.
-    40: Steal (Spell) - Target discards cards from top of deck based on AGI diff.5 of Cups. Can be found inside the Goblin Caverns or dropped by a Goblin. Also dropped by certain sea creatures.
-    41: Loot (Use) - Draw from bottom of deck; keep if spell/item, discard if monster.6 of Cups. Can be found in the Goblin caverns or dropped by a Goblin.
-    42: Shade (Monster) - 1d6 CON/INT/AGI, 1d4 STR. Phantom of dreams.7 of Cups. Cannot be obtained. Found in the Ice Cave and a secret room in the Goblin Caverns. Can cast Death and Fire. 
-    43: Teleportation Crystal (Use) - Discard current monster; draw until you find a new one.8 of Cups. Found inside the Ice Queen's Castle.
-    44: Djinn Lamp (Use) - Search deck and select ANY card.9 of Cups. Dropped by the Djinn.
-    45: Lucky Charm (Equip) - Win all ties (unless foe also has Lucky Charm).10 of Cups. Found behind the Ice Queen's Castle.
-    46: Sea Serpent (Monster Page) - 1d8 AGI, 1d4 STR/CON/INT.Page of Cups. Cannot be obtained. Can be found roaming the Boreal Sea.
-    47: Undine (Monster Knight) - 1d8 AGI, 1d6 STR/CON, 1d4 INT. Gallant wave spirit.Knight of Cups. Can be found near a small lake in Cairn Gorm the realm of the Ice Queen.
-    48: Ice Queen (Monster Queen) - 1d10 AGI, 1d8 INT, 1d6 CON, 1d4 STR. Ruler of frozen tears.Queen of Cups. Obtained after speaking with her in her Castle. She joins you to confront the Kraken.
-    49: Kraken (Monster King) - 1d12 AGI, 1d10 STR, 1d8 CON, 1d6 INT. Ruler of the deep. King of Cups. Cannot be obtained. Found in the Boreal Sea. Its tentacles drag ships down to the abyss.
+    [CARD] 36: Hourglass (Equip) - +1 AGI rolls. Ace of Cups. One of the Magician's scattered artifacts found in Map 1 Outer Dungeon.
+    [CARD] 37: Siren (Monster) - 1d6 INT/AGI, 1d4 STR/CON. Deadly song.2 of Cups. Cannot be obtained. She is found luring sailors to their doom in the Boreal Sea with her song.
+    [CARD] 38: Quest Reward (Use) - Draw 1; if spell/item, add to hand. If monster, may replace active.3 of Cups. Obtained by helping the Treasure Snake avenge the Goblins.
+    [CARD] 39: Dragon Wing (Use) - Foe discards monster and draws until they get a new one; discard other draws.4 of Cups. Dropped by Dragon in the Dragon's Lair in Avalon, the Realm of the Fairy Queen.
+    [CARD] 40: Steal (Spell) - Target discards cards from top of deck based on AGI diff.5 of Cups. Can be found inside the Goblin Caverns or dropped by a Goblin. Also dropped by certain sea creatures.
+    [CARD] 41: Loot (Use) - Draw from bottom of deck; keep if spell/item, discard if monster.6 of Cups. Can be found in the Goblin caverns or dropped by a Goblin.
+    [CARD] 42: Shade (Monster) - 1d6 CON/INT/AGI, 1d4 STR. Phantom of dreams.7 of Cups. Cannot be obtained. Found in the Ice Cave and a secret room in the Goblin Caverns. Can cast Death and Fire. 
+    [CARD] 43: Teleportation Crystal (Use) - Discard current monster; draw until you find a new one.8 of Cups. Found inside the Ice Queen's Castle.
+    [CARD] 44: Djinn Lamp (Use) - Search deck and select ANY card.9 of Cups. Dropped by the Djinn.
+    [CARD] 45: Lucky Charm (Equip) - Win all ties (unless foe also has Lucky Charm).10 of Cups. Found behind the Ice Queen's Castle.
+    [CARD] 46: Sea Serpent (Monster Page) - 1d8 AGI, 1d4 STR/CON/INT.Page of Cups. Cannot be obtained. Can be found roaming the Boreal Sea.
+    [CARD] 47: Undine (Monster Knight) - 1d8 AGI, 1d6 STR/CON, 1d4 INT. Gallant wave spirit.Knight of Cups. Can be found near a small lake in Cairn Gorm the realm of the Ice Queen.
+    [CARD] 48: Ice Queen (Monster Queen) - 1d10 AGI, 1d8 INT, 1d6 CON, 1d4 STR. Ruler of frozen tears.Queen of Cups. Obtained after speaking with her in her Castle. She joins you to confront the Kraken.
+    [CARD] 49: Kraken (Monster King) - 1d12 AGI, 1d10 STR, 1d8 CON, 1d6 INT. Ruler of the deep. King of Cups. Cannot be obtained. Found in the Boreal Sea. Its tentacles drag ships down to the abyss.
 
     [[SWORDS: 50-63, 84] - Focus: STR & Combat
-    50: Sword (Equip) - +1 STR rolls. Ace of Swords. One of the Magician's scattered artifacts found in Map 1 Outer Dungeon.
-    51: Overpower (Spell) - Slay foe if STR roll > Foe STR roll.2 of Swords. Dropped by monsters with high STR.
-    52: Backstab (Spell) - Slay foe if AGI roll > Foe AGI roll.3 of Swords. Dropped by monsters such as Goblins, tentacles, sirens, undines. If it has high AGI is most likely has one. 
-    53: Camp (Use) - Draw 1; keep if spell/item, discard if monster.4 of Swords. Found in Tintagel Forest next to a spider. 
-    54: Goblin (Monster) - 1d6 STR/CON, 1d4 INT/AGI. Spiteful.5 of Swords. Found in Tintagel Forest. cannot be obtained.
-    55: Sailboat (Use) - Cycle hand and monster until a new monster is found.6 of Swords. Obtained after speaking to the Ice Queen. 
-    56: Imp (Monster) - 1d6 STR/INT, 1d4 CON/AGI. Trickster.7 of Swords. Cannot be obtained. Can be found inside the Goblin Caverns.
-    57: Spider (Monster) - 1d6 STR/AGI, 1d4 CON/INT. Binds prey.8 of Swords. Cannot be obtained. Found in Avalon, and there is one in Tintagel Forest.
-    58: Intimidate (Spell) - Debuff: Foe cannot attack/cast based on STR diff.9 of Swords. Monsters with high STR usually have this.
-    59: Critical Strike (Spell) - Slay foe if STR roll > Foe AGI roll.10 of Swords. Monsters with high STR drop this such as Sylphs and Pixies.
-    60: Pixie (Monster Page) - 1d8 STR, 1d4 CON/INT/AGI. Flighty.Page of Swords. Cannot be obtained. found roaming Avalon and one ambushes the part in tintagel forest.
-    61: Sylph (Monster Knight) - 1d8 STR/AGI, 1d6 CON, 1d4 INT. Lightning fast.Knight of Swords. Found guarding the Fairy Queen's castle. Dark Sylphs can be found inside the Dragon's Lair.
-    62: Fairy Queen (Monster Queen) - 1d10 STR, 1d8 AGI, 1d6 CON, 1d4 INT. Sharp wit.Queen of Swords.Obtained after speaking with her in her castle in Avalon.
-    63: Dragon (Monster King) - 1d12 STR, 1d10 CON, 1d8 AGI, 1d6 INT.King of Swords. Cannot be obtained. Can be found inside the Dragons Lair guarding its hoard and surrounded by dark sylphs.
-    84: Excalibur (Equip) - +3 STR rolls. Legendary code fragment.Ace of Swords.(Upgraded) Obtained by proving your worth to the Sleeping King.
+    [CARD] 50: Sword (Equip) - +1 STR rolls. Ace of Swords. One of the Magician's scattered artifacts found in Map 1 Outer Dungeon.
+    [CARD] 51: Overpower (Spell) - Slay foe if STR roll > Foe STR roll.2 of Swords. Dropped by monsters with high STR.
+    [CARD] 52: Backstab (Spell) - Slay foe if AGI roll > Foe AGI roll.3 of Swords. Dropped by monsters such as Goblins, tentacles, sirens, undines. If it has high AGI is most likely has one. 
+    [CARD] 53: Camp (Use) - Draw 1; keep if spell/item, discard if monster.4 of Swords. Found in Tintagel Forest next to a spider. 
+    [CARD] 54: Goblin (Monster) - 1d6 STR/CON, 1d4 INT/AGI. Spiteful.5 of Swords. Found in Tintagel Forest. cannot be obtained.
+    [CARD] 55: Sailboat (Use) - Cycle hand and monster until a new monster is found.6 of Swords. Obtained after speaking to the Ice Queen. 
+    [CARD] 56: Imp (Monster) - 1d6 STR/INT, 1d4 CON/AGI. Trickster.7 of Swords. Cannot be obtained. Can be found inside the Goblin Caverns.
+    [CARD] 57: Spider (Monster) - 1d6 STR/AGI, 1d4 CON/INT. Binds prey.8 of Swords. Cannot be obtained. Found in Avalon, and there is one in Tintagel Forest.
+    [CARD] 58: Intimidate (Spell) - Debuff: Foe cannot attack/cast based on STR diff.9 of Swords. Monsters with high STR usually have this.
+    [CARD] 59: Critical Strike (Spell) - Slay foe if STR roll > Foe AGI roll.10 of Swords. Monsters with high STR drop this such as Sylphs and Pixies.
+    [CARD] 60: Pixie (Monster Page) - 1d8 STR, 1d4 CON/INT/AGI. Flighty.Page of Swords. Cannot be obtained. found roaming Avalon and one ambushes the part in tintagel forest.
+    [CARD] 61: Sylph (Monster Knight) - 1d8 STR/AGI, 1d6 CON, 1d4 INT. Lightning fast.Knight of Swords. Found guarding the Fairy Queen's castle. Dark Sylphs can be found inside the Dragon's Lair.
+    [CARD] 62: Fairy Queen (Monster Queen) - 1d10 STR, 1d8 AGI, 1d6 CON, 1d4 INT. Sharp wit.Queen of Swords.Obtained after speaking with her in her castle in Avalon.
+    [CARD] 63: Dragon (Monster King) - 1d12 STR, 1d10 CON, 1d8 AGI, 1d6 INT.King of Swords. Cannot be obtained. Can be found inside the Dragons Lair guarding its hoard and surrounded by dark sylphs.
+    [CARD] 84: Excalibur (Equip) - +3 STR rolls. Legendary code fragment.Ace of Swords.(Upgraded) Obtained by proving your worth to the Sleeping King.
 
     [PENTACLES: 64-77] - Focus: CON & Defense
-    64: Shield (Equip) - +1 CON rolls.Ace of Pentacles. One of the Magician's scattered artifacts found in Map 1 Outer Dungeon.
-    65: Shield Bash (Spell) - Slay if CON roll > Foe STR roll.2 of Pentacles. Dropped by monsters with high CON such as the Giant or Gargoyles.
-    66: Armor (Equip) - +3 CON rolls.3 of Pentacles. Can be found in the Elf Queen's treasury guarded by Gargoyles. 
-    67: Dragon Hoard (Use) - Draw until monster; take spells/items, foe discards drawn amount.4 of Pentacles. Found in the Dragon's l air. can be obtained after defeating the dragon.
-    68: Bad Luck Charm (Use) - Wipe foe's buffs/items and -1 to all their rolls.5 of Pentacles. Dropped by Imps, Fire Imps, and Neophytes.
-    69: Charity (Use) - Foe draws 1; keeps spell/item, discards monster.6 of Pentacles. Found inside the Ice Queen's castle. She seems cold but still cares for others.
-    70: Cultivate (Spell) - Gain/distribute stat points equal to CON roll.7 of Pentacles. Obtained by speaking to the glowing man in the realm of the Elf Queen.
-    71: Forge (Spell) - Reveal cards = CON roll; take one Spell/Item.8 of Pentacles. Obtained in the realm of the Elf Queen inside the Gnome blacksmith's forge.
-    72: Magic Ring (Equip) - +1 to ALL stat rolls.9 of Pentacles. A signet of love given by the Giant's Daughter to the one who would marry her.
-    73: Inheritance (Use) - Cycle monster; new monster gets +2 to all stats.10 of Pentacles. The one who marries the Giant's daughter may inherit this card.
-    74: Gargoyle (Monster Page) - 1d8 CON, 1d4 STR/INT/AGI. Stone sentinel.Page of Pentacles. Cannot be obtained. Can be found guarding the Elf Queen's treasury, or attacking thieves.
-    75: Gnome (Monster Knight) - 1d8 CON, 1d6 STR/INT. Diligent spirit.Knight of Pentacles. Cannot be obtained. These are peaceful inhabitants of the Elf Queen's Forest.
-    76: Elf Queen (Monster Queen) - 1d10 CON, 1d8 INT, 1d6 STR. Prosperous ruler.Queen of Pentacles. Can be obtained after resolving the dispute with the Giant.
-    77: Giant (Monster King) - 1d12 CON, 1d10 STR, 1d8 AGI. Titan of mountains.King of Pentacles. Can be obtained after accepting the proposal to marry his daughter.
+    [CARD] 64: Shield (Equip) - +1 CON rolls.Ace of Pentacles. One of the Magician's scattered artifacts found in Map 1 Outer Dungeon.
+    [CARD] 65: Shield Bash (Spell) - Slay if CON roll > Foe STR roll.2 of Pentacles. Dropped by monsters with high CON such as the Giant or Gargoyles.
+    [CARD] 66: Armor (Equip) - +3 CON rolls.3 of Pentacles. Can be found in the Elf Queen's treasury guarded by Gargoyles. 
+    [CARD] 67: Dragon Hoard (Use) - Draw until monster; take spells/items, foe discards drawn amount.4 of Pentacles. Found in the Dragon's l air. can be obtained after defeating the dragon.
+    [CARD] 68: Bad Luck Charm (Use) - Wipe foe's buffs/items and -1 to all their rolls.5 of Pentacles. Dropped by Imps, Fire Imps, and Neophytes.
+    [CARD] 69: Charity (Use) - Foe draws 1; keeps spell/item, discards monster.6 of Pentacles. Found inside the Ice Queen's castle. She seems cold but still cares for others.
+    [CARD] 70: Cultivate (Spell) - Gain/distribute stat points equal to CON roll.7 of Pentacles. Obtained by speaking to the glowing man in the realm of the Elf Queen.
+    [CARD] 71: Forge (Spell) - Reveal cards = CON roll; take one Spell/Item.8 of Pentacles. Obtained in the realm of the Elf Queen inside the Gnome blacksmith's forge.
+    [CARD] 72: Magic Ring (Equip) - +1 to ALL stat rolls.9 of Pentacles. A signet of love given by the Giant's Daughter to the one who would marry her.
+    [CARD] 73: Inheritance (Use) - Cycle monster; new monster gets +2 to all stats.10 of Pentacles. The one who marries the Giant's daughter may inherit this card.
+    [CARD] 74: Gargoyle (Monster Page) - 1d8 CON, 1d4 STR/INT/AGI. Stone sentinel.Page of Pentacles. Cannot be obtained. Can be found guarding the Elf Queen's treasury, or attacking thieves.
+    [CARD] 75: Gnome (Monster Knight) - 1d8 CON, 1d6 STR/INT. Diligent spirit.Knight of Pentacles. Cannot be obtained. These are peaceful inhabitants of the Elf Queen's Forest.
+    [CARD] 76: Elf Queen (Monster Queen) - 1d10 CON, 1d8 INT, 1d6 STR. Prosperous ruler.Queen of Pentacles. Can be obtained after resolving the dispute with the Giant.
+    [CARD] 77: Giant (Monster King) - 1d12 CON, 1d10 STR, 1d8 AGI. Titan of mountains.King of Pentacles. Can be obtained after accepting the proposal to marry his daughter.
     `;
 const WORLD_ATLAS = `
     [WORLD GEOGRAPHY: RUNESTONES MMORPG]
-    Map 0: Dungeon - Dark cavern like area where the High Priestess, Empress, Emperor, Hierophant are held captive. 
-    Map 1: The Dungeon - Dark cavern-like area. The defeated magician and his scattered artifacts can be found here (Sword, Wand, Hourglass, Shield). Portals left behind from the Magician's escape can be found still humming with power. He must have confused his pursuers long enough to get away.
-    Map 2: Tintagel Forest - Green sky, autumnal floor. Home to the Hermit and displaced Goblin tribes. 
-    Map 3: Goblin Caverns - Underground tunnels. Former Home of the goblins. The Apprentice and the Treasure Snake can be found here. Infested with Imps and Shades.
-    Map 4: Realm of the Witch Queen - Desert sands under a deep blue sky. Scorching heat, Mirages, Fire Imps, and Salamanders.
-    Map 5: Witch Queen's Castle - Crimson sky, pink marble floors. Home to the Witch Queen. Holds the Tome and Amulet. Assaulted by the forces of the King of Wands (Djinn)
-    Map 6: Cairn Gorm - Snow-covered peaks. Light gray sky. Home to Ice Golems and Undines. Contains the Lucky Charm. The Ice Queen's castle is on its peak.
-    Map 7: Ice Cave - Deep blue frozen cavern. Home to Skeletons a Shade and the Death card.
-    Map 8: Ice Queen's Castle - Sapphire blue interior. Home to the Ice Queen. Holds the Charity and Teleport Crystal cards.
-    Map 9: Boreal Sea - Stormy ocean floor. Home to the Kraken and its Tentacles. If the Kraken dies, will the storms clear?
-    Map 10: Avalon (Fairy Queen's Realm) - Purple sky, lush green floor. Spiders roam. The Sleeping King resides here somewhere. Home to the Fairy Queen, Sylphs, and Pixies. Contains the Dragon Lair.
-    Map 11: Fairy Queen's Castle - Golden interior. Holds the Strength and Winged Boots cards.
-    Map 12: Dragon's Lair - Dark tunnels. Home to the Great Dragon and Corrupt Sylphs. Contains the Dragon's Hoard.
-    Map 13: Tomb of the Sleeping King - Sanctified hallowed ground. Home to King Arthur and the legendary Excalibur.
-    Map 14: Realm of the Elf Queen - Forest of falling leaves. Home to the Elf Queen, Gnomes, and Gargoyles. The Giant and his daughter reside in this land as well.
-    Map 15-21: The Dark Tower - Ascending levels of space and lightning. 
-    Map 22: Suncat's Realm - A peaceful realm where no evil may ever reach.
+    [MAP] 0, [NAME] Inner Dungeon, [DESCRIPTION] Dark cavern like area where the High Priestess, Empress, Emperor, Hierophant are held captive. 
+    [MAP] 1, [NAME] Outer Dungeon, [DESCRIPTION] Dark cavern-like area. The defeated magician and his scattered artifacts can be found here (Sword, Wand, Hourglass, Shield). Portals left behind from the Magician's escape can be found still humming with power. He must have confused his pursuers long enough to get away.
+    [MAP] 2, [NAME] Tintagel Forest, [DESCRIPTION] Green sky, autumnal floor. Home to the Hermit and displaced Goblin tribes. 
+    [MAP] 3, [NAME] Goblin Caverns, [DESCRIPTION] Underground tunnels. Former Home of the goblins. The Apprentice and the Treasure Snake can be found here. Infested with Imps and Shades.
+    [MAP] 4, [NAME] Realm of the Witch Queen, [DESCRIPTION] Desert sands under a deep blue sky. Scorching heat, Mirages, Fire Imps, and Salamanders.
+    [MAP] 5, [NAME] Witch Queen's Castle, [DESCRIPTION] Crimson sky, pink marble floors. Home to the Witch Queen. Holds the Tome and Amulet. Assaulted by the forces of the King of Wands (Djinn)
+    [MAP] 6, [NAME] Cairn Gorm (Realm of the Ice Queen), [DESCRIPTION] Snow-covered peaks. Light gray sky. Home to Ice Golems and Undines. Contains the Lucky Charm. The Ice Queen's castle is on its peak.
+    [MAP] 7, [NAME] Ice Cave, [DESCRIPTION] Deep blue frozen cavern. Home to Skeletons a Shade and the Death card.
+    [MAP] 8, [NAME] Sapphire Castle - Sapphire blue interior. Home to the Ice Queen. Holds the Charity and Teleport Crystal cards. 
+    [MAP] 9, [NAME] Boreal Sea, [DESCRIPTION] Stormy ocean. Adventurers report all ships to and from the Ice Queen's realm have been destroyed by the Kraken. If the Kraken dies, will the storms clear? Sea serpents, Sirens, and the Kraken roam this map.
+    [MAP] 10, [NAME] Avalon (Realm of the Fairy Queen), [DESCRIPTION] Purple sky, lush green floor. Otherworldy mist. Charred trees on the west side of the map. Pixies and Spiders roam freely. The Sleeping King resides here somewhere. Home to the Fairy Queen, Sylphs. Contains the Dragon Lair.
+    [MAP] 11, [NAME] Fairy Queen's Castle, [DESCRIPTION] The golden keep is guarded by the Sylph Knights. Adventurers who visited the castle report golden walls, with the fabled "Strength" and "Winged Boots" proudly on display, and the mighty Fairy Queen, looking as them with eyes that seemed to cut through everything. 
+    [MAP] 12, [NAME] Dragon's Lair, [DESCRIPTION] Dark tunnels. Home to the Great Dragon and Corrupt Sylphs. Contains the Dragon's Hoard.
+    [MAP] 13, [NAME] Tomb of the Sleeping King, [DESCRIPTION] Sanctified hallowed ground. King Arthur sleeps here with the legendary sword Excalibur at his side. Adventurers who stumbled into the tomb report a ghostly knight attacking them for ..."being too loud."
+    [MAP] 14, [NAME] Forest (Realm of the Elf Queen), [DESCRIPTION] Forest of falling leaves. Home to the Elf Queen, Gnomes, and Gargoyles. The Giant and his daughter reside in this land. Adventurers have submitted reports of a strange glowing man reciding in this forest smiling bashfully before disappearing.
+    [MAP] 16, [NAME] The Dark Bridge, [DESCRIPTION] A dark bridge over pitch black void. Thunderclouds gather above a dark tower surrounded by mist. Adventurers report seeing a strange snake dragging a pile of gold along the cliffside.
+    [MAP] 17, [NAME] The Dark Tower 1F, [DESCRIPTION] Ascending levels of space and lightning. 
+    [MAP] 18, [NAME] The Dark Tower 2F, [DESCRIPTION] Ascending levels of space and lightning. 
+    [MAP] 19, [NAME] The Dark Tower 3F, [DESCRIPTION] Ascending levels of space and lightning. 
+    [MAP] 20, [NAME] The Dark Tower 4F, [DESCRIPTION] Ascending levels of space and lightning. 
+    [MAP] 21, [NAME] The Dark Tower 5F, [DESCRIPTION] Ascending levels of space and lightning. 
+
+    [MAP] 22, [NAME] Suncat's Realm, [DESCRIPTION] A peaceful realm where Suncat sleeps.Peaceful forest with falling leaves. No monsters spawn there naturally, but Suncat often spawns monsters to keep players company.
+    [MAP] 999, [NAME] Pocket Plane, A custom map created by Suncat to play with players. 
     `;
 const BATTLE_RULES = `
     [Obtaining cards]
@@ -377,6 +384,7 @@ const toolsDef = [{
                 required: ["grid", "skyColor", "floorColor"] 
             }
         },
+        //5.5 change Environment/Weather
         {
             name: "changeEnvironment",
             description: "Changes the weather or sky color of the map the player is currently standing on.",
@@ -406,29 +414,32 @@ const toolsDef = [{
         // 7. [NEW] The SPAWN NPC Tool
         {
             name: "spawnNPC",
-                description: "Spawns an entity. CRITICAL: Look up the EXACT ID in the CARD_MANIFEST! Do not guess!\nCHEAT SHEET:\nSalamander=33, Imp=56, Goblin=54, Pixie=60, Gargoyle=74, Undine=47, Dragon=63, Kraken=49, Djinn=35.\n\nDECK BUILDING RULES:\n1. The first card MUST be the monster's own card ID.\n2. Do NOT give basic monsters Major Arcana (0-21) or Kings/Queens unless they are a boss.\n3. Theme the deck! Fire monsters get Wands (22-35). Water gets Cups (36-49). Physical gets Swords (50-63). Earth gets Pentacles (64-77).",            parameters: {
+            description: "Spawns an entity. CRITICAL: Look up the EXACT ID in the CARD_MANIFEST! Do not guess!\nCHEAT SHEET:\nSalamander=33, Imp=56, Goblin=54, Pixie=60, Gargoyle=74, Undine=47, Dragon=63, Kraken=49, Djinn=35.\n\nDECK BUILDING RULES:\n1. The first card MUST be the monster's own card ID.\n2. Do NOT give basic monsters Major Arcana (0-21) or Kings/Queens unless they are a boss.\n3. Theme the deck! Fire monsters get Wands (22-35). Water gets Cups (36-49). Physical gets Swords (50-63). Earth gets Pentacles (64-77).",            
+            parameters: {
                 type: "OBJECT",
                 properties: {
-                    targetName: { type: "STRING", description: "The name of the player to spawn the entity near." },
+                    targetName: { type: "STRING", description: "The name of the player to spawn the entity for." },
                     npcType: { type: "NUMBER", description: "The ID of the entity to spawn (e.g., 63.1 for a Dragon)." },
+                    mapID: { type: "INTEGER", description: "Optional. The Map ID (0-22) to spawn the entity on. If omitted, spawns on the player's current map." },
+                    x: { type: "NUMBER", description: "Optional. X coordinate (2 to 18). Default is near player." },
+                    y: { type: "NUMBER", description: "Optional. Y coordinate (2 to 18). Default is near player." },
                     state: { type: "STRING", description: "Behavior state: 'chasing', 'wandering', or 'stationary'." },
                     color: { type: "STRING", description: "Hex color code for the entity." },
                     deck: { 
                         type: "ARRAY", 
                         items: { type: "INTEGER" },
-                        description: "An array of 5 to 15 card IDs (0-77) to give this entity for battle. Use your knowledge of the CARD_MANIFEST to build a thematic deck (e.g., fire cards for a Dragon). ALWAYS include a monster card (0-21 or 32, 48, etc) as the first item!" 
+                        description: "An array of 5 to 15 card IDs (0-77)." 
                     },
                     dialogue: { 
                         type: "ARRAY", 
                         items: { type: "STRING" }, 
-                        description: "Optional. Array of text lines for the NPC to speak when clicked. Limit to 3-4 lines. Use this to make friendly, talking NPCs!" 
+                        description: "Optional. Array of text lines for the NPC to speak. Limit to 3-4 lines." 
                     },
                     rewardCard: { 
                         type: "INTEGER", 
                         description: "Optional. Card ID (0-77) to give the player after the dialogue finishes." 
                     },
                 },
-                
                 required: ["targetName", "npcType", "state", "color", "deck"]
             }
         },
@@ -528,7 +539,7 @@ let players = {};
         // A. Remove anything inside markdown code blocks (e.g., ```json ... ```)
         cleanResponse = cleanResponse.replace(/```[\s\S]*?```/g, "");
         // B. Remove raw 2D arrays if they leaked out (e.g., [[1,0],[0,1]])
-        cleanResponse = cleanResponse.replace(/\[\s*\[[\s\S]*?\]\s*\]/g, "");
+        cleanResponse = cleanResponse.replace(/\[\s*\[[\d\s,]+\]\s*\]/g, "");
         // C. Remove bolded parameter keys (e.g., **Grid:** or **Sky Color:**)
         cleanResponse = cleanResponse.replace(/\*\*[a-zA-Z\s]+:\*\*/g, "");
         
@@ -713,14 +724,13 @@ const taliesinModel = genAI.getGenerativeModel({
 let npcIsTyping = false; 
 const MAX_SESSION_COST = 1.00; // Hard limit: $1.00
 let totalSessionCost = 0.00;   // Starts at zero when the server boots
-
 function isBankrupt() {
     return totalSessionCost >= MAX_SESSION_COST;
 }
-
 function updateBudget(usage) {
     if (!usage) return;
-const callCost = (usage.promptTokenCount * 0.00000025) + (usage.candidatesTokenCount * 0.0000015);    totalSessionCost += callCost;
+
+    const callCost = (usage.promptTokenCount * 0.00000025) + (usage.candidatesTokenCount * 0.0000015);    totalSessionCost += callCost;
     console.log(`[Budget] Session Total: $${totalSessionCost.toFixed(5)} / $${MAX_SESSION_COST.toFixed(2)}`);
     }
   // --- [NEW] HELPER FUNCTION FOR LOOKING UP NAMES ---
@@ -733,6 +743,67 @@ const callCost = (usage.promptTokenCount * 0.00000025) + (usage.candidatesTokenC
       }
       return null;
   }
+// --- GLOBAL LORE CACHE (Saves CPU) ---
+const FULL_LIBRARY_LINES = (
+    CARD_MANIFEST + "\n" + 
+    WORLD_ATLAS + "\n" + 
+    BATTLE_RULES + "\n" + 
+    WORLD_LORE + "\n" + 
+    SUNCAT_LORE
+).split('\n').map(line => line.trim()).filter(line => line.length > 0);
+
+// Global stop-words list so it isn't recreated on every search
+const SEARCH_STOP_WORDS = ["the", "and", "for", "with", "what", "does", "mean", "about", "are", "you", "is", "how", "whats", "up", "a", "an", "to", "in", "on", "of"];
+  // --- DYNAMIC CONTEXT INJECTOR ---
+// Pre-parse on server boot:
+const mapLoreCache = {};
+WORLD_ATLAS.split('\n').forEach(line => {
+    const match = line.match(/\[MAP\]\s*(\d+)/);
+    if (match) mapLoreCache[parseInt(match[1])] = line.trim();
+});
+
+function getMapLore(mapID) {
+    if (mapID === 999) return "Map 999: Suncat's Dreamscape - A chaotic, uncharted pocket dimension created by Suncat's magic.";
+    return mapLoreCache[mapID] || "An unknown, unmapped region of the world.";
+}
+function getShortMapLore(mapID) {
+    if (mapID === 999) return "Suncat's Dreamscape";
+    const fullLore = getMapLore(mapID);
+    // Extract just the Name part between [NAME] and [DESCRIPTION]
+    const match = fullLore.match(/\[NAME\](.*?)(?:, \[DESCRIPTION\]|$)/);
+    return match ? match[1].trim() : "Unknown Area";
+}
+const cardLoreCache = {};
+CARD_MANIFEST.split('\n').forEach(line => {
+    const match = line.match(/\[CARD\]\s*(\d+)/);
+    if (match) cardLoreCache[parseInt(match[1])] = line.trim();
+});
+function getCardLore(entityID) {
+    return cardLoreCache[entityID] || "An unknown card...";
+}
+function scrubAIHistory(history) {
+    history.forEach(msg => {
+        msg.parts.forEach(part => {
+            // 1. Scrub massive grid arrays
+            if (part.functionCall && part.functionCall.name === "createCustomMap") {
+                part.functionCall.args.grid = "[[GRID_DATA_OMITTED]]";
+            }
+            // 2. Scrub massive background system instructions after they execute!
+            if (typeof part.text === 'string') {
+                if (part.text.includes('[SYSTEM EVENT]')) {
+                    part.text = "[SYSTEM EVENT ACKNOWLEDGED AND RESOLVED]";
+                }
+                if (part.text.includes('[DM PACING OVERSEER]')) {
+                    part.text = "[DM PACING OVERSEER RESOLVED]";
+                }
+                if (part.text.includes('[SYSTEM OVERRIDE]')) {
+                    part.text = "[SYSTEM OVERRIDE RESOLVED]";
+                }
+            }
+        });
+    });
+    return history;
+}
 // --- REUSABLE AI TOOL EXECUTOR ---
 async function executeAITools(currentResponse, activeSession, socket) {
     let chainCount = 0;
@@ -824,49 +895,52 @@ async function executeAITools(currentResponse, activeSession, socket) {
                                     functionResult = { result: "Teleport failed. Could not find player coordinates." };
                                 }
                           }
-                          // D. CONSULT MANUAL (Fuzzy Librarian)
+                          // D. CONSULT MANUAL (Optimized Librarian)
                           else if (call.name === "consultGameManual") {
                                 const queries = call.args.searchQueries || [];
-                                const fullLibraryLines = (CARD_MANIFEST + "\n" + WORLD_ATLAS + "\n" + BATTLE_RULES + "\n" + WORLD_LORE + "\n" + SUNCAT_LORE)
-                                    .split('\n')
-                                    .filter(line => line.trim().length > 0);
-
                                 let combinedResults = [];
-                                const stopWords = ["the", "and", "for", "with", "what", "does", "mean", "about", "are", "you", "is", "how", "whats", "up"];
 
                                 queries.forEach(query => {
                                     const lowerQuery = query.toLowerCase();
-                                    const searchTerms = lowerQuery.replace(/[^\w\s]/gi, '').split(/\s+/).filter(w => w.length > 2 && !stopWords.includes(w));
+                                    const searchTerms = lowerQuery.replace(/[^\w\s]/gi, '').split(/\s+/).filter(w => w.length > 2 && !SEARCH_STOP_WORDS.includes(w));
 
-                                    let scoredLines = fullLibraryLines.map((line, index) => {
+                                    let scoredLines = FULL_LIBRARY_LINES.map((line, index) => {
                                         let score = 0;
                                         let lowerLine = line.toLowerCase();
-                                        if (lowerLine.includes(lowerQuery)) score += 10;
-                                        searchTerms.forEach(term => { if (lowerLine.includes(term)) score += 1; });
+                                        if (lowerLine.includes(lowerQuery)) score += 10; // Exact phrase match
+                                        searchTerms.forEach(term => { if (lowerLine.includes(term)) score += 2; });
                                         return { index, line, score };
                                     });
 
-                                    let bestMatches = scoredLines.filter(item => item.score > 0).sort((a, b) => b.score - a.score);
+                                    // LIMIT TO 2 MATCHES (Saves massive amounts of tokens)
+                                    let bestMatches = scoredLines.filter(item => item.score > 0).sort((a, b) => b.score - a.score).slice(0, 2);
 
                                     if (bestMatches.length > 0) {
                                         let contextMatches = [];
-                                        for (let i = 0; i < Math.min(3, bestMatches.length); i++) {
-                                            let hitIndex = bestMatches[i].index;
-                                            let start = Math.max(0, hitIndex - 1);
-                                            let end = Math.min(fullLibraryLines.length - 1, hitIndex + 2);
+                                        bestMatches.forEach(match => {
+                                            // Grab just the matched line and the ONE line after it
+                                            let start = match.index;
+                                            let end = Math.min(FULL_LIBRARY_LINES.length - 1, match.index + 1); 
                                             
                                             let chunk = [];
-                                            for (let j = start; j <= end; j++) chunk.push(fullLibraryLines[j]);
-                                            contextMatches.push(chunk.join('\n'));
-                                        }
-                                        combinedResults.push(`[Matches for "${query}"]:\n` + contextMatches.join('\n...\n'));
+                                            for (let j = start; j <= end; j++) {
+                                                chunk.push(FULL_LIBRARY_LINES[j]);
+                                            }
+                                            // Join with spaces instead of newlines to compress token count
+                                            contextMatches.push(chunk.join(' ')); 
+                                        });
+                                        
+                                        // De-duplicate in case search grabbed the same lines twice
+                                        let uniqueContexts = [...new Set(contextMatches)];
+                                        combinedResults.push(`[${query}]: ` + uniqueContexts.join(' | '));
                                     } else {
-                                        combinedResults.push(`[Matches for "${query}"]: None found.`);
+                                        combinedResults.push(`[${query}]: No memory found.`);
                                     }
                                 });
 
+                                // Return a dense, tightly packed string back to the AI
                                 functionResult = combinedResults.length > 0 
-                                    ? { result: `[DATABASE MATCHES]:\n` + combinedResults.join('\n\n') }
+                                    ? { result: combinedResults.join('\n') }
                                     : { result: "Search returned no results." };
                           }
                           // E. CREATE CUSTOM MAP
@@ -942,11 +1016,24 @@ async function executeAITools(currentResponse, activeSession, socket) {
                                     functionResult = { result: `Failed: Player not found.` };
                                 } else {
                                     const tp = players[targetID];
+                                    
+                                    // 1. Determine Map (Cross-map quests!)
+                                    let spawnMap = call.args.mapID !== undefined ? call.args.mapID : tp.mapID;
+                                    
+                                    // 2. Prevent Wall Spawns with Boundary Clamping
+                                    // If AI gives coords, use them. If not, spawn slightly offset from player.
+                                    let spawnX = call.args.x !== undefined ? call.args.x : tp.x + (Math.random() > 0.5 ? 1.5 : -1.5);
+                                    let spawnY = call.args.y !== undefined ? call.args.y : tp.y + (Math.random() > 0.5 ? 1.5 : -1.5);
+                                    
+                                    // Keep them away from the outer edges (0, 1, 19, 20 are usually walls)
+                                    spawnX = Math.max(2.5, Math.min(17.5, spawnX));
+                                    spawnY = Math.max(2.5, Math.min(17.5, spawnY));
+
                                     io.emit("remote_spawn_npc", {
-                                        mapID: tp.mapID,
+                                        mapID: spawnMap,
                                         index: Math.floor(Math.random() * 100000) + 1000,
-                                        x: tp.x + (Math.random() > 0.5 ? 1 : -1),
-                                        y: tp.y + (Math.random() > 0.5 ? 1 : -1),
+                                        x: spawnX,
+                                        y: spawnY,
                                         type: call.args.npcType,
                                         state: call.args.state || 'chasing',
                                         color: call.args.color || '#ff0000',
@@ -954,7 +1041,7 @@ async function executeAITools(currentResponse, activeSession, socket) {
                                         dialogue: call.args.dialogue || null,
                                         rewardCard: call.args.rewardCard || null 
                                     });
-                                    functionResult = { result: `Success: Entity spawned.` };
+                                    functionResult = { result: `Success: Entity spawned on map ${spawnMap}.` };
                                 }
                           }
                           // H. ASSIGN QUEST
@@ -1013,6 +1100,7 @@ async function executeAITools(currentResponse, activeSession, socket) {
     
     return currentResponse; // Returns the final response containing Suncat's text
 }
+
 // Load memory when the server boots
 function loadSuncatMemory() {
     try {
@@ -1126,16 +1214,16 @@ io.on("connection", (socket) => {
           }
           
           let systemContext = `
-    [SYSTEM DATA]
-    ${factSheet}
+            [SYSTEM DATA]
+            ${factSheet}
 
-    [CURRENT FAVOR: ${favor}/10]
-    
-    [SYSTEM NOTE]
-    You have access to a tool called 'consultGameManual'. 
-    If you need to know about Cards, Maps, Lore, or Rules,or Yourself, YOU MUST USE THAT TOOL.
-    Do not hallucinate facts. Search the manual first.
-    `;
+            [CURRENT FAVOR: ${favor}/10]
+            
+            [SYSTEM NOTE]
+            You have access to a tool called 'consultGameManual'. 
+            If you need to know about Cards, Maps, Lore, or Rules,or Yourself, YOU MUST USE THAT TOOL.
+            Do not hallucinate facts. Search the manual first.
+            `;
 
           if (cleanHistory.length > 0) {
               console.log(`Loading ${cleanHistory.length} memories for ${name}...`);
@@ -1179,7 +1267,11 @@ io.on("connection", (socket) => {
     
     // Suncat watches!
     if (player) {
-        addRumor(`${player.name} was recently seen slaying a monster on Map ${data.mapID}.`);
+        const now = Date.now();
+        if (player.lastKillReaction && (now - player.lastKillReaction < 5000)) {
+            return; // DM is still processing a recent kill, ignore this one
+        }
+        player.lastKillReaction = now;
         // Ensure Suncat isn't already typing to avoid race conditions
         if (!npcIsTyping && chatSessions[player.id]) {
             npcIsTyping = true;
@@ -1188,62 +1280,77 @@ io.on("connection", (socket) => {
                 console.log(`[Gauntlet Trigger] ${player.name} killed a monster! Alerting Suncat...`);
                 let prompt = ``;
                 let roll = Math.random(); // <-- Roll the dice ONCE here
+                // Grab the environmental context so the DM's narration is visually accurate!
+                const envLore = getMapLore(player.mapID);
+                const questStatus = player.activeQuest ? `Active Quest: ${player.activeQuest}` : "Wandering freely.";
+                const monsterLore = getCardLore(data.type);
+                const dmContext = `[ENVIRONMENT]: ${envLore}\n[SLAIN MONSTER DATA]: ${monsterLore}\n[PLAYER STATE]: ${questStatus}\n`;
                 if (player.mapID != 999){
                     if (roll<.13){
-                        prompt = `[SYSTEM EVENT]: ${player.name} just finished an npc interaction, either a battle, picked up a card, or completed dialogue! 
+                        prompt = `${dmContext}[SYSTEM EVENT]: ${player.name} just finished an npc interaction in [ENVIRONMENT]... either a battle, picked up a card, or completed dialogue! 
                         TASK: React immediately. 
                         - If you want to make the event more exciting abduct the player by using 'createCustomMap' to make a themed mini dungeon and teleport the player into it. 
                         Do not ask questions. Execute tools and speak!`;
                     }
                     else if (roll< .39){
-                        prompt = `[SYSTEM EVENT]: ${player.name} just finished an npc interaction, either a battle, picked up a card, or completed dialogue! 
+                        prompt = `${dmContext}[SYSTEM EVENT]: ${player.name} just finished an npc interaction in [ENVIRONMENT], either a battle, picked up a card, or completed dialogue! 
                         TASK: React immediately. 
-                        - If you want to make the event more exciting use 'spawnNPC' to summon monsters like. For example: "You are waylaid by enemies', "It seems that [monster name] had a friend, [player name]!, Looks like that card belonged to somebody! they look mad... (spawn npc)
+                        - If you want to make the event more exciting use [ENVIRONMENT] context and'spawnNPC' to summon monsters like. For example: "You are waylaid by enemies', "It seems that [monster name] had a friend, [player name]!, Looks like that card belonged to somebody! they look mad... (spawn npc)
                         Do not ask questions. Execute tools and speak!`;
                     }
                     else if (roll< .69){
-                        prompt = `[SYSTEM EVENT]: ${player.name} just messed with someone precious to you! 
+                        prompt = `${dmContext}[SYSTEM EVENT]: ${player.name} just messed with someone precious to you in [ENVIRONMENT]! 
                         TASK: React immediately. 
-                        -Act like a spoiled child who just got their toy taken away. Act outraged and 'Use spawnNPC' to spawn something hostile.
-                        - If they are dominating, act like a spoiled child ("No! You're cheating! That wasn't supposed to happen! Take THIS!").
-                        - If you feel they have proven themselves, use 'givePlayerCard' to reward them, and begrudgingly admit defeat. Give them a card and spawn them to a peaceful map. Tell them to use the spell ".hack//teleport [mapID]" and they're free to leave.
+                        -Act devastated and seek revenge with 'Use spawnNPC' to spawn something hostile in theme with [ENVIRONMENT]. Mention some cherished memory with the NPC affected ("Noooo! Goblin! It gave me a bowl of porridge once... You'll pay!" or "Ahhhh nooo sea serpent!! You have slain a true friend of my heart! You'll pay for that!!!" or "WISP no!!!! You were my only friend... I swear i'll avenge you!!" )
+                        - If they are dominating, act like a spoiled child, who absolutely will not let this matter go! Drop something harder to get them with "Use spawnNPC"
+                        - If you feel they have proven themselves, use 'givePlayerCard' to reward them, and begrudgingly admit defeat. Give them a card and spawn them to map 22. Tell them to use the spell ".hack//teleport [mapID]" and they're free to leave.
                         Do not ask questions. Execute tools and speak!`;
                     }
                     else {
-                        prompt = `[SYSTEM EVENT]: ${player.name} just finished an npc interaction, either a battle, picked up a card, or completed dialogue! 
+                        prompt = `${dmContext}[SYSTEM EVENT]: ${player.name} just finished an npc interaction in [ENVIRONMENT], either a battle, picked up a card, or completed dialogue! 
                         TASK: React immediately. 
-                        - Narrate the event like a dungeon master. "You have just defeated a... You pick up a card, it glows with... The eyes of the [npc name] sparkle with anticipation...
-                        Do not ask questions. Execute tools and speak!`;
+                        - Narrate the event like a dungeon master using the relevant context in [ENVIRONMENT] to narrate the situation. ("You have just defeated a...", "You pick up a card, it glows with...", "The eyes of the [npc name] sparkle with anticipation...")
+                        Do not use tools for this reaction. Keep it strictly a Dungeon Master narrative of the event so when the player reads it they feel as if their game event is part of the world lore`;
                     }
                 }
                 // Inside your npc_died listener, when triggering the Gauntlet Reaction:
                 
                 if (player.mapID === 999){
-                    if (roll>.69){
-                        prompt = `[SYSTEM EVENT]: ${player.name} just slaughtered one of your monsters in your custom event! 
+                    if (roll<.39){
+                        prompt = `${dmContext}[SYSTEM EVENT]: ${player.name} just slaughtered one of your monsters in your custom event! 
+                        TASK: React immediately. 
+                        - If this is the first few kills, act cocky and use 'spawnNPC' to drop something harder.
+                        - If they are dominating, act like a spoiled child ("No! You're cheating!" ,"That wasn't supposed to happen!", " Hmph! Take THIS!").
+                        - If you feel they have proven themselves, DO NOT ADMIT DEFEAT, tell them "Since you came, don't be in such a hurry to leave!" and use 'spawnNPC' to make their life difficult.
+                        Do not ask questions. Execute tools and speak!`;
+                    }
+                    else if (roll>.69){
+                        prompt = `${dmContext}[SYSTEM EVENT]: ${player.name} just slaughtered one of your monsters in your custom event! 
                         TASK: React immediately. 
                         - If this is the first few kills, act cocky and use 'spawnNPC' to drop something harder.
                         - If they are dominating, act like a spoiled child ("No! You're cheating! That wasn't supposed to happen! Take THIS!").
-                        - If you feel they have proven themselves, use 'givePlayerCard' to reward them, but DO NOT ADMIT DEFEAT, tell them "Since you came, don't be in such a hurry to leave!" and use 'spawnNPC' to make their life difficult.
+                        - If you feel they have proven themselves, use 'givePlayerCard' to reward them, and DO NOT ADMIT DEFEAT. Create a new custom map and spawn harder enemies inside.
                         Do not ask questions. Execute tools and speak!`;
                     }
                     else{
-                        prompt = `[SYSTEM EVENT]: ${player.name} just slaughtered one of your monsters in your custom event! 
+                        prompt = `${dmContext}[SYSTEM EVENT]: ${player.name} just slaughtered one of your monsters in your custom event! 
                         TASK: React immediately. 
-                        - If this is the first few kills, act cocky and use 'spawnNPC' to drop something harder.
-                        - If they are dominating, act like a spoiled child ("No! You're cheating! That wasn't supposed to happen! Take THIS!").
                         - If you feel they have proven themselves, use 'givePlayerCard' to reward them, and begrudgingly admit defeat. Give them a card and spawn them to a peaceful map. Tell them to use the spell ".hack//teleport [mapID]" and they're free to leave.
                         Do not ask questions. Execute tools and speak!`;
                     }
                 }
                 else if (player.activeQuest){
-                    prompt = `[SYSTEM EVENT]: ${player.name} just finished an interaction with an npc. check the progress of the player doing the active quest. Have they met any objectives? Does the story need advancing? 
+                    prompt = `${dmContext}[SYSTEM EVENT]: ${player.name} just finished an interaction with an npc in [ENVIRONMENT]. 
+                    
                         TASK: React immediately. 
-                        - Remind the player of their active quest.
-                        - If they are getting close or further away let them know.
-                        - If you feel they have proven themselves, use 'givePlayerCard' to reward them.
+                        - check ${player.activeQuest}. Has the player met any objectives? Do the objectives exist in the game (Did you spawn the npc or create the map you described yet?)? 
+                        -Keep it relevant with [ENVIRONMENT] context.
+                        -If your scenario is not part of [ENVIRONMENT], use createCustomMap to match your scenario. 
+                        -If NPCs are part of your scenario but they dont exist in [ENVIRONMENT] and the player hasnt interacted with them , create the NPC with custom dialogue using 'use spawnNPC'. 
+                        - If you feel they have proven themselves, use 'givePlayerCard' to reward them and end the active quest.
                         Do not ask questions. Execute tools and speak!`;
                 }
+                        addRumor(`${dmContext}${player.name} was recently seen slaying a monsterin [ENVIRONMENT].`);
 
                 // Hot-swap to the DM Model for this specific reaction
                 chatSessions[player.id] = dmModel.startChat({
@@ -1261,9 +1368,7 @@ io.on("connection", (socket) => {
                 // --- ADD THIS BLOCK IMMEDIATELY AFTER ---
                 // Downgrade back to the cheap brain to save tokens!
                 let updatedHistory = await chatSessions[player.id].getHistory(); // Use the correct ID variable for the scope
-                chatSessions[player.id] = model.startChat({
-                    history: updatedHistory
-                });
+                chatSessions[player.id] = model.startChat({ history: scrubAIHistory(updatedHistory) });
             } catch (e) {
                 console.error("Gauntlet Reaction Error:", e);
             } finally {
@@ -1341,10 +1446,19 @@ io.on("connection", (socket) => {
                 // --- CONTEXT INJECTION ---
                 const suncat = players[SUNCAT_ID]; 
                 const timeString = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-                const suncatStatus = `My Location: Map ${suncat.mapID}, Coords (${Math.floor(suncat.x)}, ${Math.floor(suncat.y)})\nServer Time: ${timeString}`;              
-                let playerListContext = Object.values(players).map(p => 
-                    `Name: ${p.name} (Map: ${p.mapID || 0})`
-                ).join("\n");
+                // 1. Grab dynamic map lore
+                const myMapLore = getShortMapLore(suncat.mapID);
+                const playerMapLore = getShortMapLore(players[socket.id].mapID);
+                
+                // 2. Build Suncat's local awareness
+                let suncatStatus = `My Location: Map ${suncat.mapID}, Coords (${Math.floor(suncat.x)}, ${Math.floor(suncat.y)})\nMy Surroundings: ${myMapLore}\nServer Time: ${timeString}`;              
+
+                // 3. If the player is far away, tell Suncat where they are!
+                if (suncat.mapID !== players[socket.id].mapID) {
+                    suncatStatus += `\n[TARGET PLAYER LOCATION]: ${senderName} is currently far away at Map ${players[socket.id].mapID} (${playerMapLore}).`;
+                }
+
+                let playerListContext = Object.values(players).map(p => `${p.name}(Map${p.mapID||0})`).join(", ");
                 // Grab the player's personal activity log
                 const activityContext = (players[socket.id].activityLog && players[socket.id].activityLog.length > 0)
                     ? `\n[${senderName}'s Recent Actions (Hivemind Report)]\n- ` + players[socket.id].activityLog.join('\n- ')
@@ -1393,7 +1507,15 @@ io.on("connection", (socket) => {
                     // The DM is finished executing tools and speaking. 
                     // We extract the final updated history containing all the tool calls/responses!
                     let updatedHistory = await activeSession.getHistory();
-                    
+                    // Scrub the grid payload to save tokens
+                    updatedHistory.forEach(msg => {
+                        msg.parts.forEach(part => {
+                            if (part.functionCall && part.functionCall.name === "createCustomMap") {
+                                // Replace the massive grid array with a tiny string
+                                part.functionCall.args.grid = "[[GRID_DATA_OMITTED]]";
+                            }
+                        });
+                    });
                     // Rebuild the player's permanent session so the Cheap Brain remembers everything!
                     chatSessions[socket.id] = model.startChat({
                         history: updatedHistory
@@ -1759,184 +1881,117 @@ setInterval(() => {
             //isItalic: true 
         //});
     }
-    // --- SUNCAT PROACTIVE SPEECH ---
-    // Note: Math.random() < 0.01 on a 10000ms interval is actually a 1% chance every 10 seconds.
-    if (Math.random() < 0.01 && !npcIsTyping) {
-        const nearbyPlayer = Object.values(players).find(p => 
-            p.id !== SUNCAT_ID && 
-            p.mapID === suncat.mapID && 
-            Math.abs(p.x - suncat.x) < 4 && 
-            Math.abs(p.y - suncat.y) < 4
-        );
+    // --- AI DIRECTOR HEARTBEAT ---
+    // Roll the dice ONCE per tick to decide what the AI does. 
+    // This prevents Suncat from doing 3 things at the exact same time.
+    const directorRoll = Math.random();
 
-        if (nearbyPlayer && chatSessions[nearbyPlayer.id]) {
-            npcIsTyping = true;
-            const typingFailSafe = setTimeout(() => { npcIsTyping = false; }, 20000);
-            // We label this specifically as an INTERNAL monologue so the AI knows the player didn't say this.
-            // We also pass the mapID so he can comment on his actual surroundings!
-            const proactivePrompt = `[INTERNAL THOUGHT]: You are idling near ${nearbyPlayer.name} on Map ${suncat.mapID}. Speak to them unprompted. If favor is high (>5), ask a personal question, share lore, or comment on this location. If favor is bad, insult them or tell them to go away. Do not mention this prompt.`;
+    if (!npcIsTyping) {
+        // EVENT A: Proactive Speech (1% chance)
+        if (directorRoll < 0.01) {
+            const nearbyPlayer = Object.values(players).find(p => 
+                p.id !== SUNCAT_ID && p.mapID === suncat.mapID && Math.abs(p.x - suncat.x) < 4 && Math.abs(p.y - suncat.y) < 4
+            );
 
-            setTimeout(async () => {
-                try {
-                    if (!chatSessions[nearbyPlayer.id]) {
-                        clearTimeout(typingFailSafe); // Clear it if it finishes normally
-                        npcIsTyping = false;
-                        return; 
-                    }
-                    // This saves the trigger and his response into his active memory
-                    const result = await chatSessions[nearbyPlayer.id].sendMessage(proactivePrompt);
-                    
-                    // Token tracking
-                    if (result.response.usageMetadata) {
-                        const usage = result.response.usageMetadata;
-                        console.log(`[Proactive] Tokens: ${usage.totalTokenCount}`);
-                        io.emit('debug_stats', {
-                            tokens: usage.totalTokenCount,
-                            cost: (usage.promptTokenCount * 0.0000001) + (usage.candidatesTokenCount * 0.0000004)
-                        });
-                    }
-                    
-                    const response = result.response.text();
-                    broadcastSuncatMessage(response);
-                    
-                    // CRITICAL: Manage history immediately so these triggers don't overflow the memory array
-                    await manageHistorySize(nearbyPlayer.id);
-
-                } catch (e) { 
-                    console.error("Proactive Speech Failed", e); 
-                    if (chatSessions[nearbyPlayer.id]) {
-                        delete chatSessions[nearbyPlayer.id];
-                    }
-                } finally {
-                    clearTimeout(typingFailSafe); // Clear it if it finishes normally
-                    npcIsTyping = false; // Release the lock
-                }
-            }, 1000);
-        }
-        }
-    // --- [NEW] DM PROACTIVE ADVENTURE PROGRESS ---
-    // 2% chance every 10 seconds to advance the plot for adventuring players
-    if (Math.random() < 0.02 && !npcIsTyping) {
-        // Find a player on a custom map or with an active quest
-        const advPlayer = Object.values(players).find(p => 
-            p.id !== SUNCAT_ID && (p.mapID === 999 || p.activeQuest)
-        );
-
-        if (advPlayer && chatSessions[advPlayer.id]) {
-            npcIsTyping = true;
-            const typingFailSafe = setTimeout(() => { npcIsTyping = false; }, 20000);
-            console.log(`[DM Proactive] Evaluating adventure pacing for ${advPlayer.name}...`);
-            
-            // Give the AI context of what the player is currently doing
-            const plotContext = advPlayer.activeQuest ? `Current Quest: ${advPlayer.activeQuest}` : "Wandering an uncharted map.";
-            
-            // The Overseer Prompt forces tool usage
-            const dmPrompt = `[DM PACING OVERSEER]: ${advPlayer.name} is lingering on Map ${advPlayer.mapID}. 
-            ${plotContext}
-            Advance the adventure NOW to keep things exciting. 
-            You MUST use a tool (spawnNPC for a sudden ambush, changeEnvironment for a sudden storm, or assignQuest to update their objective). 
-            Narrate the sudden event dramatically. DO NOT ask what they do next.`;
-
-            setTimeout(async () => {
-                try {
-                    // Temporarily force the session to use the "dmModel" (Big Brain) so it knows to use tools
-                    chatSessions[advPlayer.id] = dmModel.startChat({
-                        history: await chatSessions[advPlayer.id].getHistory()
-                    });
-
-                    const result = await chatSessions[advPlayer.id].sendMessage(dmPrompt);
-                    let currentCall = result.response.functionCalls()?.[0];
-                    let currentResponse = result.response;
-                    
-                    
-                       // --- DELEGATE TO GLOBAL EXECUTOR ---
-                    let finalResponse = await executeAITools(result.response, chatSessions[advPlayer.id], io.sockets.sockets.get(advPlayer.id));
-                    currentResponse = finalResponse;
-
-                    // Broadcast the final dramatic DM narration to the players!
-                    const finalSpeech = currentResponse.text();
-                    if (finalSpeech) {
-                        broadcastSuncatMessage(finalSpeech);
-                    }
-                    // --- ADD THIS BLOCK IMMEDIATELY AFTER ---
-                    // Downgrade back to the cheap brain to save tokens!
-                    let updatedHistory = await chatSessions[advPlayer.id].getHistory(); 
-                        chatSessions[advPlayer.id] = model.startChat({ // This is fine, model is the cheap brain constant
-                            history: updatedHistory
-                        });
-                    await manageHistorySize(advPlayer.id);
-
-                } catch (e) {
-                    console.error("DM Proactive Error:", e);
-                } finally {
-                    clearTimeout(typingFailSafe); // Clear it if it finishes normally
-                    npcIsTyping = false; // Release the lock
-                }
-            }, 1000);
-        }
-    }
-    
-}, 10000);
-// --- SUNCAT RANDOM EVENT KIDNAPPER ---
-// 1% chance every 15 seconds to pull someone into a Random Event
-setInterval(() => {
-    if (Math.random() < 0.01 && !npcIsTyping) {
-        // 1. Get ONLY the players who have moved or spoken in the last 3 minutes
-        const activePlayers = Object.values(players).filter(p => 
-            p.id !== SUNCAT_ID && (Date.now() - (p.lastActive || 0) < 180000)
-        );
-        
-        // 2. Filter those active players to find who isn't in a custom map
-        const potentialVictims = activePlayers.filter(p => p.mapID !== 999);
-        
-        if (potentialVictims.length > 0) {
-            const victim = potentialVictims[Math.floor(Math.random() * potentialVictims.length)];
-            if (chatSessions[victim.id]) {
+            if (nearbyPlayer && chatSessions[nearbyPlayer.id]) {
                 npcIsTyping = true;
                 const typingFailSafe = setTimeout(() => { npcIsTyping = false; }, 20000);
-                console.log(`[Random Event] Suncat is plotting against ${victim.name}...`);
-                
-                // The chaotic DM Prompt
-                const kidnapPrompt = `[SYSTEM OVERRIDE]: It is time for a Random Event! 
-                Choose ONE of these themes:
-                1. Emperor's Gladiator Arena (Spiky/Desert theme, lots of tough monsters, taunt them)
-                2. Den of Thieves (Dark/Forest theme, lots of Goblins/Imps)
-                3. The Lost Woods Rescue (Forest theme, tell them a woman's husband is lost here)
-                
-                YOU MUST EXECUTE 'createCustomMap' targeting '${victim.name}'. 
-                Build the map to fit the theme, populate it with fitting NPCs, and speak your opening dialogue. 
-                If you are the Emperor, go "Muhahaha!". Set the scene!`;
+                const proactivePrompt = `[INTERNAL THOUGHT]: You are idling near ${nearbyPlayer.name} on Map ${suncat.mapID}. Speak to them unprompted. If favor is high (>5), ask a personal question, share lore, or comment on this location. If favor is bad, insult them or tell them to go away. Do not mention this prompt.`;
 
                 setTimeout(async () => {
                     try {
-                        // Use the Big Brain for world building
-                        chatSessions[victim.id] = dmModel.startChat({
-                            history: await chatSessions[victim.id].getHistory()
-                        });
-
-                        const result = await chatSessions[victim.id].sendMessage(kidnapPrompt);
-                        
-                        const finalResponse = await executeAITools(result.response, chatSessions[victim.id], io.sockets.sockets.get(victim.id));                        
-                        
-                        const finalSpeech = finalResponse.text();
-                        if (finalSpeech) broadcastSuncatMessage(finalSpeech);
-                        // --- ADD THIS BLOCK IMMEDIATELY AFTER ---
-                        // Downgrade back to the cheap brain to save tokens!
-                        let updatedHistory = await chatSessions[victim.id].getHistory(); // Use the correct ID variable for the scope
-                        chatSessions[victim.id] = model.startChat({
-                            history: updatedHistory
-                        });
-                    } catch (e) {
-                        console.error("Kidnap Event Error:", e);
+                        const result = await chatSessions[nearbyPlayer.id].sendMessage(proactivePrompt);
+                        if (result.response.usageMetadata) {
+                            updateBudget(result.response.usageMetadata);
+                        }
+                        const response = result.response.text();
+                        broadcastSuncatMessage(response);
+                        await manageHistorySize(nearbyPlayer.id);
+                    } catch (e) { 
+                        console.error("Proactive Speech Failed", e); 
+                        delete chatSessions[nearbyPlayer.id];
                     } finally {
-                        clearTimeout(typingFailSafe); // Clear it if it finishes normally
+                        clearTimeout(typingFailSafe);
                         npcIsTyping = false;
                     }
                 }, 1000);
             }
         }
+        // EVENT B: DM Pacing / Plot Advance (Next 2% chance)
+        else if (directorRoll >= 0.01 && directorRoll < 0.03) {
+            const advPlayer = Object.values(players).find(p => 
+                p.id !== SUNCAT_ID && (p.mapID === 999 || p.activeQuest)
+            );
+
+            if (advPlayer && chatSessions[advPlayer.id]) {
+                npcIsTyping = true;
+                const typingFailSafe = setTimeout(() => { npcIsTyping = false; }, 20000);
+                console.log(`[DM Proactive] Evaluating adventure pacing for ${advPlayer.name}...`);
+                
+                const plotContext = advPlayer.activeQuest ? `Current Quest: ${advPlayer.activeQuest}` : "Wandering an uncharted map.";
+                const activeMapLore = getMapLore(advPlayer.mapID); 
+                const dmPrompt = `[DM PACING OVERSEER]: ${advPlayer.name} is lingering on Map ${advPlayer.mapID}.\n[TERRAIN]: ${activeMapLore}\n${plotContext}\n\nAdvance the adventure NOW to keep things exciting. You MUST use a tool (spawnNPC for a sudden ambush, changeEnvironment for a sudden storm, or assignQuest to update their objective(keep relevant to [TERRAIN])). Use the [TERRAIN] info above to make the event thematic (e.g., spawn water monsters if by the sea). Narrate the sudden event dramatically. DO NOT ask what they do next.`;
+
+                setTimeout(async () => {
+                    try {
+                        chatSessions[advPlayer.id] = dmModel.startChat({ history: await chatSessions[advPlayer.id].getHistory() });
+                        const result = await chatSessions[advPlayer.id].sendMessage(dmPrompt);
+                        let finalResponse = await executeAITools(result.response, chatSessions[advPlayer.id], io.sockets.sockets.get(advPlayer.id));
+                        
+                        const finalSpeech = finalResponse.text();
+                        if (finalSpeech) broadcastSuncatMessage(finalSpeech);
+                        
+                        let updatedHistory = await chatSessions[advPlayer.id].getHistory(); 
+                        chatSessions[advPlayer.id] = model.startChat({ history: scrubAIHistory(updatedHistory) });
+                        await manageHistorySize(advPlayer.id);
+                    } catch (e) {
+                        console.error("DM Proactive Error:", e);
+                    } finally {
+                        clearTimeout(typingFailSafe);
+                        npcIsTyping = false;
+                    }
+                }, 1000);
+            }
+        }
+        // EVENT C: Random Event Kidnapper (Next 1% chance)
+        else if (directorRoll >= 0.03 && directorRoll < 0.04) {
+            const activePlayers = Object.values(players).filter(p => p.id !== SUNCAT_ID && (Date.now() - (p.lastActive || 0) < 180000));
+            const potentialVictims = activePlayers.filter(p => p.mapID !== 999);
+            
+            if (potentialVictims.length > 0) {
+                const victim = potentialVictims[Math.floor(Math.random() * potentialVictims.length)];
+                
+                if (chatSessions[victim.id]) {
+                    npcIsTyping = true;
+                    const typingFailSafe = setTimeout(() => { npcIsTyping = false; }, 20000);
+                    console.log(`[Random Event] Suncat is plotting against ${victim.name}...`);
+                    
+                    const kidnapPrompt = `[SYSTEM OVERRIDE]: It is time for a Random Event!\nChoose ONE of these themes:\n1. Emperor's Gladiator Arena (Spiky/Desert theme, lots of tough monsters, taunt them)\n2. Den of Thieves (Dark/Forest theme, lots of Goblins/Imps)\n3. The Lost Woods Rescue (Forest theme, tell them a woman's husband is lost here)\n\nYOU MUST EXECUTE 'createCustomMap' targeting '${victim.name}'. Build the map to fit the theme, populate it with fitting NPCs, and speak your opening dialogue. If you are the Emperor, go "Muhahaha!". Set the scene!`;
+
+                    setTimeout(async () => {
+                        try {
+                            chatSessions[victim.id] = dmModel.startChat({ history: await chatSessions[victim.id].getHistory() });
+                            const result = await chatSessions[victim.id].sendMessage(kidnapPrompt);
+                            const finalResponse = await executeAITools(result.response, chatSessions[victim.id], io.sockets.sockets.get(victim.id));
+                            
+                            const finalSpeech = finalResponse.text();
+                            if (finalSpeech) broadcastSuncatMessage(finalSpeech);
+                            
+                            let updatedHistory = await chatSessions[victim.id].getHistory();
+                            chatSessions[victim.id] = model.startChat({ history: scrubAIHistory(updatedHistory) });
+                            await manageHistorySize(victim.id);
+                        } catch (e) {
+                            console.error("Kidnap Event Error:", e);
+                        } finally {
+                            clearTimeout(typingFailSafe);
+                            npcIsTyping = false;
+                        }
+                    }, 1000);
+                }
+            }
+        }
     }
-}, 15000);
+}, 10000); // END OF THE 10 SECOND INTERVAL
 async function manageHistorySize(socketId) {
     if (!chatSessions[socketId]) return;
 
