@@ -1275,23 +1275,7 @@ io.on("connection", (socket) => {
           if (!players[socket.id].dmNarrativeLog) {
             players[socket.id].dmNarrativeLog = [];
         }
-          let factSheet = "";
-          if (coreFacts && coreFacts.length > 0) {
-              factSheet = "LONG-TERM MEMORY:\n" + coreFacts.join("\n");
-          }
-          
-          let systemContext = `
-            [SYSTEM DATA]
-            ${factSheet}
-
-            [CURRENT FAVOR: ${favor}/10]
-            
-            [SYSTEM NOTE]
-            You have access to a tool called 'consultGameManual'. 
-            If you need to know about Cards, Maps, Lore, or Rules,or Yourself, YOU MUST USE THAT TOOL.
-            Do not hallucinate facts. Search the manual first.
-            `;
-
+        
           if (cleanHistory.length > 0) {
               console.log(`Loading ${cleanHistory.length} memories for ${name}...`);
               try {
@@ -1372,14 +1356,16 @@ io.on("connection", (socket) => {
                 const monsterLore = getCardLore(baseID);
                 
                
-                // Check if it's an inanimate object                
                 const envLore = getMapLore(player.mapID);
                 const questStatus = player.activeQuest ? `Active Quest: ${player.activeQuest}` : "Wandering freely.";
-                const storyContext = player.storySoFar ? `[THE STORY SO FAR]: ${player.storySoFar}\n` : ""; // <--- NEW
+                const storyContext = player.storySoFar ? `[THE STORY SO FAR]: ${player.storySoFar}\n` : ""; 
+                const favorContext = `[FAVOR SCORE]: ${playerFavorMemory[player.id] || 0}/10\n`;
+                const factsContext = (player.coreFacts && player.coreFacts.length > 0) 
+                    ? `${player.coreFacts.join("\n")}\n` 
+                    : "";
                 
-                const dmContext = `[ENVIRONMENT]: ${envLore}\n[INTERACTED ENTITY]: ${entityName}\n[ENTITY LORE]: ${monsterLore}\n[PLAYER STATE]: ${questStatus}\n${storyContext}`;
+                const dmContext = `[ENVIRONMENT]: ${envLore}\n[INTERACTED ENTITY]: ${entityName}\n[ENTITY LORE]: ${monsterLore}\n[PLAYER STATE]: ${questStatus}\n${favorContext}${factsContext}${storyContext}`;
                 console.log(`[Gauntlet Trigger] ${player.name} interacted with ${entityName}!`);
-
                 if (isPickup) {
                     // It's a picked-up item!
                     prompt = `${dmContext}[SYSTEM EVENT]: ${player.name} just picked up the item/card '${entityName}' in [ENVIRONMENT]! 
@@ -1598,17 +1584,25 @@ io.on("connection", (socket) => {
                     suncatStatus += `\n[TARGET PLAYER LOCATION]: ${senderName} is currently far away at Map ${players[socket.id].mapID} (${playerMapLore}).`;
                 }
 
+                // ... (your existing map lore and suncat status) ...
+
                 let playerListContext = Object.values(players).map(p => `${p.name}(Map${p.mapID||0})`).join(", ");
-                // Grab the player's personal activity log
+                
                 const activityContext = (players[socket.id].activityLog && players[socket.id].activityLog.length > 0)
                     ? `\n[${senderName}'s Recent Actions (Hivemind Report)]\n- ` + players[socket.id].activityLog.join('\n- ')
                     : "";
 
-                const storyContext = players[socket.id].storySoFar ? `\n[THE STORY SO FAR]: ${players[socket.id].storySoFar}` : ""; // <--- NEW
-
+                const storyContext = players[socket.id].storySoFar ? `\n[THE STORY SO FAR]: ${players[socket.id].storySoFar}` : ""; 
                 const rumorContext = globalRumors.length > 0 ? `\n[WORLD RUMORS]\n${globalRumors.join("\n")}` : "";
 
-                const promptWithContext = `[CURRENT PLAYERS]\n${playerListContext}\n[MY STATUS]\n${suncatStatus}${storyContext}${rumorContext}${activityContext}\n\n${senderName} SAYS: ${msgText}`;let activeSession = chatSessions[socket.id];
+                // --- NEW: INJECT FAVOR AND CORE FACTS DIRECTLY ---
+                const favorContext = `\n[FAVOR SCORE]: ${playerFavorMemory[socket.id] || 0}/10`;
+                const factsContext = (players[socket.id].coreFacts && players[socket.id].coreFacts.length > 0) 
+                    ? `\n${players[socket.id].coreFacts.join("\n")}` 
+                    : "";
+
+                // Combine them all!
+                const promptWithContext = `[CURRENT PLAYERS]\n${playerListContext}\n[MY STATUS]\n${suncatStatus}${favorContext}${factsContext}${storyContext}${rumorContext}${activityContext}\n\n${senderName} SAYS: ${msgText}`;
                 let result;
 
                 // --- STATELESS DM EXECUTION ---
