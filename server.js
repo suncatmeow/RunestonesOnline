@@ -324,8 +324,10 @@ const toolsDef = [{
             parameters: {
                 type: "OBJECT",
                 properties: {
+                    targetName: { type: "STRING", description: "The name of the player to teleport to." },
                     reason: { type: "STRING" }
-                }
+                },
+                required: ["targetName"] // Force the AI to provide this!
             }
         },
         // 5. The MAP CREATION Tool
@@ -1236,22 +1238,24 @@ async function executeAITools(currentResponse, activeSession, socket) {
                                 updateSuncatJournal(`I summoned a creature (ID ${call.args.npcType}) to challenge the players on map ${spawnMap}.`);
                           }
                           // H. ASSIGN QUEST
-                          else if (call.name === "assignQuest") {
+                            else if (call.name === "assignQuest") {
                                 const targetID = findSocketID(call.args.targetName);
                                 if (targetID) {
                                     io.to(targetID).emit("new_quest_objective", { questText: call.args.questText });
                                     players[targetID].activeQuest = call.args.questText; 
                                     
                                     const memoryString = `[ACTIVE QUEST] ${call.args.targetName} is currently trying to: ${call.args.questText}`;
-                                    if (!players[socket.id].coreFacts) players[socket.id].coreFacts = [];
-                                    players[socket.id].coreFacts.push(memoryString);
+                                    
+                                    // --- FIXED LINES: Use targetID instead of socket.id ---
+                                    if (!players[targetID].coreFacts) players[targetID].coreFacts = [];
+                                    players[targetID].coreFacts.push(memoryString);
 
                                     functionResult = { result: `Quest assigned.` };
                                 } else {
                                     functionResult = { result: `Failed: Player not found.` };
                                 }
                                 updateSuncatJournal(`I tasked ${call.args.targetName} with a new objective: "${call.args.questText}".`);
-                          }
+                            }
                           // I. CHANGE ENVIRONMENT
                           else if (call.name === "changeEnvironment") {
                                 const targetID = findSocketID(call.args.targetName);
@@ -2073,8 +2077,7 @@ setInterval(() => {
                         try {
                             chatSessions[victim.id] = dmModel.startChat({ history: await chatSessions[victim.id].getHistory() });
                             const result = await chatSessions[victim.id].sendMessage(kidnapPrompt);
-                            const finalResponse = await executeAITools(result.response, chatSessions[victim.id], io.sockets.sockets.get(victim.id));
-                            
+                            const finalResponse = await executeAITools(result.response, chatSessions[victim.id], null);                            
                             const finalSpeech = finalResponse.text();
                             if (finalSpeech) broadcastSuncatMessage(finalSpeech);
                             
