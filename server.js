@@ -1059,6 +1059,7 @@ const WORLD_ATLAS_DB = {
         biome: "ruins", 
         description: "Dark prison within a cavern-like dungeon. The Magician's escape portal still hums with power.",
         lore: "High Priestess, Empress, Emperor, and Hierophant are held captive here.",
+        storyKey: "the_awakening",
         spawns: {
             hostiles: [],       
             friendlies: [], 
@@ -1071,6 +1072,7 @@ const WORLD_ATLAS_DB = {
         biome: "ruins",
         description: "Dark cavern-like area humming with residual portal magic. Signs of battle scar the passageways. Spent and torn cards are scattered about. A ghostly wail echoes in the background.",
         lore: "The defeated Magician scattered his artifacts here while fleeing the Four Kings.",
+        storyKey: "the_fallen_magician",
         spawns: {
             hostiles: [23],       // Wisp
             friendlies: [], 
@@ -1083,6 +1085,7 @@ const WORLD_ATLAS_DB = {
         biome: "sylvan",
         description: "Dark green sky, dark forest floor. Eerie dark forest, no longer peaceful.",
         lore: "Home to the Hermit and displaced Goblin tribes fleeing the caverns.",
+        storyKey:"tintagel_forest_plot",
         spawns: {
             hostiles: [54, 57, 60],   // Goblin, Spider, Pixie
             friendlies: [],
@@ -1095,6 +1098,7 @@ const WORLD_ATLAS_DB = {
         biome: "ruins",
         description: "Black sky, dark brown floor. Underground tunnels.",
         lore: "Former home of the goblins. The Treasure Snake wonders about their fate. Infested with Imps and Shades. Imps hold The Apprentice captive.",
+        storyKey: "apprentice_tale",
         spawns: {
             hostiles: [23, 42, 56],   // Wisp, Shade, Imp
             friendlies: [89],           //treasure snake
@@ -1107,6 +1111,7 @@ const WORLD_ATLAS_DB = {
         biome: "desert",
         description: "Desert sands under a deep blue sky. Scorching heat, Mirages, Fire Imps, and Salamanders.",
         lore: "Mirages lead travelers astray. Salamanders avoid travelers. The forces of the King of Wands block the way to the Witch Queen's castle.",
+        storyKey: "wands_faction",
         spawns: {
             hostiles: [23, 33, 56],   // Wisp, Salamander, Imp
             friendlies: [88], //mirages teleport you back to start of map no combat
@@ -1119,6 +1124,7 @@ const WORLD_ATLAS_DB = {
         biome: "castle",
         description: "Crimson sky, pink marble floors. Fiery red walls. A hallway with two side corridors featuring altars. Straight ahead is the throne room.",
         lore: "Home to the Witch Queen. Holds the Tome and Amulet. Assaulted by the forces of the King of Wands (Djinn).",
+        storyKey: "wands_faction",
         spawns: {
             hostiles: [35, 56],       // Mirages (Check sprite index!), Imp
             friendlies: [],
@@ -1131,6 +1137,7 @@ const WORLD_ATLAS_DB = {
         biome: "snow",
         description: "Snow-covered floor. Light gray sky. A mountain pass leading up to the peak. It is always snowing.",
         lore: "Home to Ice Golems and Undines. Contains the Lucky Charm. The Ice Queen's castle rests on the peak.",
+        storyKey: "cups_faction",
         spawns: {
             hostiles: [47,81],           // Undine (Ice Golems sprite check needed)
             friendlies: [],
@@ -1143,6 +1150,7 @@ const WORLD_ATLAS_DB = {
         biome: "cave",
         description: "Deep blue frozen cavern. Black sky. The chilling cold bites at your soul.",
         lore: "The spirits of those who can't let go linger here. Home to Skeletons, a Shade, and the Death card.",
+        storyKey: "cups_faction",
         spawns: {
             hostiles: [42, 82],       // Shade, Skeleton
             friendlies: [],
@@ -1155,6 +1163,7 @@ const WORLD_ATLAS_DB = {
         biome: "castle",
         description: "Blue floors, Sapphire walls, dark Blue ceiling. You enter the throne room.",
         lore: "Home to the Ice Queen. Holds the Charity and Teleport Crystal cards.",
+        storyKey: "cups_faction",
         spawns: {
             hostiles: [], 
             friendlies: [],
@@ -1167,6 +1176,7 @@ const WORLD_ATLAS_DB = {
         biome: "sea",
         description: "Stormy sea, black sky, blue floor, black walls. Shipwreckage floats on the water. A melody sounds amidst the roaring winds.",
         lore: "Adventurers report all ships to and from the Ice Queen's realm have been destroyed by the Kraken. Sea Serpents, Sirens, and the Kraken roam here.",
+        storyKey: "cups_faction",
         spawns: {
             hostiles: [37, 46, 49, 83], // Siren, Sea Serpent, Kraken, Tentacles
             friendlies: [],
@@ -1179,6 +1189,7 @@ const WORLD_ATLAS_DB = {
         biome: "otherworld",
         description: "Purple sky, lush green floor. Otherworldly mist. Charred trees and a dragon's lair to the west. A golden castle to the north.",
         lore: "Pixies and Spiders roam freely. The Sleeping King resides here somewhere. Home to the Fairy Queen and Sylphs.",
+        storyKey: "swords_faction",
         spawns: {
             hostiles: [57, 60],       // Pixie, Spider
             friendlies: [61],         // Sylphs (friendly, wandering)
@@ -1191,6 +1202,7 @@ const WORLD_ATLAS_DB = {
         biome: "castle",
         description: "Golden sky, floor, and walls. Otherworldly mist.",
         lore: "Adventurers report golden walls proudly displaying 'Strength' and 'Winged Boots'. The mighty Fairy Queen watches with piercing eyes.",
+        storyKey: "swords_faction",
         spawns: {
             hostiles: [], 
             friendlies: [], 
@@ -1203,6 +1215,7 @@ const WORLD_ATLAS_DB = {
         biome: "ruins",
         description: "Winding cavernous passageways leading to the center of the lair. Smoke and darkness fill the corridors. The clang of steel and dragon roars echo.",
         lore: "Home to the Dragon. Corrupt Sylphs guard the lair. The Dragon sits upon his Hoard. No adventurer has returned alive.",
+        storyKey: "swords_faction",
         spawns: {
             hostiles: [63,86],           // Dragon (Dark Sylphs check needed)
             friendlies: [], 
@@ -1215,6 +1228,7 @@ const WORLD_ATLAS_DB = {
         biome: "tomb",
         description: "Sanctified, hallowed ground.",
         lore: "King Arthur sleeps here with the legendary sword Excalibur. Ghostly knights attack trespassers for 'being too loud.'",
+        storyKey: "the_sleeping_king",
         spawns: {
             hostiles: [85],           // Arthur / Ghostly Knight
             friendlies: [], 
@@ -1227,6 +1241,7 @@ const WORLD_ATLAS_DB = {
         biome: "sylvan",
         description: "A forest of Goldenrod sky, Green floors, falling leaves.",
         lore: "Home to the Elf Queen, Gnomes, and Gargoyles. The Giant and his daughter reside here. A strange glowing man occasionally smiles and vanishes.",
+        storyKey: "pentacles_faction",
         spawns: {
             hostiles: [74, 77],       // Gargoyle, Giant
             friendlies: [75,90],         // Gnome,giants daughter
@@ -1239,6 +1254,7 @@ const WORLD_ATLAS_DB = {
         biome: "gothic",
         description: "A dark bridge over a pitch-black void. Thunderclouds gather above a misty dark tower.",
         lore: "Adventurers report seeing a strange snake dragging a pile of gold along the cliffside.",
+        storyKey: "the_dark_tower_truth",
         spawns: {
             hostiles: [], 
             friendlies: [89],           // Treasure Snake (sprite map check needed)
@@ -1251,6 +1267,7 @@ const WORLD_ATLAS_DB = {
         biome: "void",
         description: "Pitch black room like outer space. Twinkling stars and the glow of distant portals.",
         lore: "Portals bounce around as if alive, retreating from those who approach. One portal seems particularly lazy...",
+        storyKey: "the_dark_tower_truth",
         spawns: {
             hostiles: [], 
             friendlies: [],
@@ -1263,6 +1280,7 @@ const WORLD_ATLAS_DB = {
         biome: "void",
         description: "Pitch black astral space. A menacing fiery figure looms.",
         lore: "The shade of the Djinn lingers here, forced to do its master's bidding.",
+        storyKey: "the_dark_tower_truth",
         spawns: {
             hostiles: [35],           // Djinn Shade
             friendlies: [],
@@ -1275,6 +1293,7 @@ const WORLD_ATLAS_DB = {
         biome: "void",
         description: "Pitch black astral space. A massive, tentacled shadow looms.",
         lore: "The shade of the Kraken lingers here, forced to do its master's bidding.",
+        storyKey: "the_dark_tower_truth",
         spawns: {
             hostiles: [49],           // Kraken Shade
             friendlies: [],
@@ -1287,6 +1306,7 @@ const WORLD_ATLAS_DB = {
         biome: "void",
         description: "Pitch black astral space. A winged, smoky shadow looms.",
         lore: "The shade of the Dragon lingers here, forced to do its master's bidding.",
+        storyKey: "the_dark_tower_truth",
         spawns: {
             hostiles: [63],           // Dragon Shade
             friendlies: [],
@@ -1299,6 +1319,7 @@ const WORLD_ATLAS_DB = {
         biome: "void",
         description: "Pitch black astral space. A towering figure guards the passage upward.",
         lore: "The shade of the Giant lingers here, guarding the way to the top floor.",
+        storyKey: "the_dark_tower_truth",
         spawns: {
             hostiles: [77],           // Giant Shade
             friendlies: [],
@@ -1311,6 +1332,7 @@ const WORLD_ATLAS_DB = {
         biome: "gothic",
         description: "Dark gray floor, pitch black sky, black walls. The sky thunders violently.",
         lore: "As you ascend to face the Dark Emperor, you see... The Fool?",
+        storyKey: "the_dark_tower_truth",
         spawns: {
             hostiles: [0],            // The Fool / Dark Emperor
             friendlies: [], 
@@ -1323,6 +1345,7 @@ const WORLD_ATLAS_DB = {
         biome: "sylvan",
         description: "Peaceful autumn forest with falling leaves.",
         lore: "A peaceful realm where Suncat sleeps. No monsters spawn naturally, but Suncat occasionally summons them for company.",
+        storyKey: "opinion_misc",
         spawns: {
             hostiles: [], 
             friendlies: [87], 
@@ -2865,12 +2888,13 @@ async function executeAITools(currentResponse, activeSession, socket) {
                     } else {
                         const tp = players[targetID];
                         let spawnMap = call.args.mapID !== undefined ? call.args.mapID : tp.mapID;
-                        let spawnX = call.args.x !== undefined ? call.args.x : tp.x + (Math.random() > 0.5 ? 1.5 : -1.5);
-                        let spawnY = call.args.y !== undefined ? call.args.y : tp.y + (Math.random() > 0.5 ? 1.5 : -1.5);
-                        
-                        spawnX = Math.max(2.5, Math.min(17.5, spawnX));
-                        spawnY = Math.max(2.5, Math.min(17.5, spawnY));
+                        let randomScatterX = (Math.random() * 2) - 1; // Random float between -1.0 and 1.0
+                        let randomScatterY = (Math.random() * 2) - 1;
+                        let spawnX = call.args.x !== undefined ? call.args.x : tp.x + (Math.random() > 0.5 ? 2.5 : -2.5) + randomScatterX;
+                        let spawnY = call.args.y !== undefined ? call.args.y : tp.y + (Math.random() > 0.5 ? 2.5 : -2.5) + randomScatterY;
 
+                        spawnX = Math.max(1.5, Math.min(18.5, spawnX));
+                        spawnY = Math.max(1.5, Math.min(18.5, spawnY));
                         let baseID = Math.floor(parseFloat(call.args.npcType));
 
                         let safeRewardCard = null;
@@ -3056,14 +3080,33 @@ async function processSuncatThought(socketId, triggerType, data) {
     const typingFailSafe = setTimeout(() => { npcIsTyping = false; }, 9000);
 
     try {
-        // 2. GATHER CORE CONTEXT
+        // 2. GATHER CORE CONTEXT (RAG-LITE INJECTION)
         const timeString = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-        const myMapLore = getShortMapLore(suncat.mapID);
-        const playerMapLore = getShortMapLore(player.mapID);
         
-        let suncatStatus = `[MY CURRENT LOCATION]: Map ${suncat.mapID} (${myMapLore})\n[WORLD CLOCK]: ${timeString}`;
+        // Fetch deep Atlas data
+        const myAtlas = WORLD_ATLAS_DB[suncat.mapID];
+        const pAtlas = WORLD_ATLAS_DB[player.mapID];
+        
+        // Dynamically pull the deep lore for THIS map ONLY
+        let dynamicLore = pAtlas ? pAtlas.lore : "";
+        if (pAtlas && pAtlas.storyKey && WORLD_LORE_DB[pAtlas.storyKey]) {
+            dynamicLore += " " + WORLD_LORE_DB[pAtlas.storyKey];
+        }
+
+        let environmentContext = `[PLAYER LOCATION]: Map ${player.mapID} (${pAtlas ? pAtlas.name : "Unknown"})
+        [TERRAIN]: ${pAtlas ? pAtlas.description : "An uncharted void."}
+        [LOCAL LORE]: ${dynamicLore}`;
+
+        // Inject active scenario rules if the player is in a custom event!
+        if (player.activeScenario && SCENARIO_PROMPT_DB[player.activeScenario]) {
+            environmentContext += `\n[ACTIVE SCENARIO DIRECTIVE]: ${SCENARIO_PROMPT_DB[player.activeScenario].dm_instruction}`;
+        }
+
+        let suncatStatus = `[MY CURRENT LOCATION]: Map ${suncat.mapID} (${myAtlas ? myAtlas.name : "Unknown"})\n[WORLD CLOCK]: ${timeString}`;
         if (suncat.mapID !== player.mapID) {
-            suncatStatus += `\n[TARGET PLAYER LOCATION]: ${player.name} is currently far away at Map ${player.mapID} (${playerMapLore}).`;
+            suncatStatus += `\n${environmentContext}`;
+        } else {
+            suncatStatus += `\n[CURRENT ENVIRONMENT]: We are in the same location.\n${environmentContext}`;
         }
 
         const storyContext = player.storySoFar ? `\n[THE STORY SO FAR]: ${player.storySoFar}` : ""; 
