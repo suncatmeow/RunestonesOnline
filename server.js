@@ -75,6 +75,7 @@ const CARD_MANIFEST_DB = {
             type: "monster", 
             suit: "Major Arcana",
             rank: "0",
+            tribe: "human",
             rarity:"unique",
             classes: ["rogue"], 
             lore: "An impulsive wanderer with raw potential. Players start with this card. It is the main 'protagonist' aside from the player leading the Emperor's court to 'save' the Empire from the four kings.",
@@ -85,6 +86,7 @@ const CARD_MANIFEST_DB = {
             type: "monster", 
             suit: "Major Arcana",
             rank: "I",
+            tribe: "human",
             rarity:"unique",
             classes: ["mage"], 
             lore: "A master of the elements",
@@ -95,6 +97,7 @@ const CARD_MANIFEST_DB = {
             type: "monster",
             suit: "Major Arcana",
             rank: "II",
+            tribe: "human",
             rarity:"unique",
             classes: ["mage", "rogue"],
             lore: "A silent oracle shrouded in mystery.",
@@ -105,6 +108,7 @@ const CARD_MANIFEST_DB = {
             type: "monster",
             suit: "Major Arcana",
             rank: "III",
+            tribe: "human",
             rarity:"unique",
             classes: ["guardian"],
             lore: "The mother of life nurturing growth.",
@@ -115,6 +119,7 @@ const CARD_MANIFEST_DB = {
             type: "monster",
             suit: "Major Arcana",
             rank: "IV",
+            tribe: "human",
             rarity:"unique",
             classes: ["warrior"],
             lore: "A ruler dominating with unyielding strength.",
@@ -125,6 +130,7 @@ const CARD_MANIFEST_DB = {
             type: "monster",
             suit: "Major Arcana",
             rank: "V",
+            tribe: "human",
             rarity:"unique",
             classes: ["mage","guardian"],
             lore: "A keeper of ancient rites and tradition.",
@@ -165,6 +171,7 @@ const CARD_MANIFEST_DB = {
             type: "monster",
             suit: "Major Arcana",
             rank: "IX",
+            tribe: "human",
             rarity:"unique",
             classes: ["mage","guardian"],
             lore: "A solitary sage finding power in silence.",
@@ -307,6 +314,7 @@ const CARD_MANIFEST_DB = {
             type: "monster",
             suit: "Wands",
             rank: "2",
+            tribe: "undead",
             rarity:"rare",
             classes: ["mage","guardian"],
             lore: "A mischievous spirit that sometimes guides traveleres.",
@@ -397,6 +405,7 @@ const CARD_MANIFEST_DB = {
             type: "monster",
             suit: "Wands",
             rank: "Page",
+            tribe: "human",
             rarity:"unique",
             classes: ["mage"],
             lore: "A curious and eager student of magic.",
@@ -407,6 +416,7 @@ const CARD_MANIFEST_DB = {
             type: "monster",
             suit: "Wands",
             rank: "Knight",
+            tribe: "beast",
             rarity:"rare",
             classes: ["mage","rogue","warrior"],
             lore: "A fiery lizard that charges into battle.",
@@ -417,6 +427,7 @@ const CARD_MANIFEST_DB = {
             type: "monster",
             suit: "Wands",
             rank: "Queen",
+            tribe: "human",
             rarity:"unique",
             classes: ["mage","rogue","guardian"],
             lore: "A charismatic sovereign of flame and shadow.",
@@ -426,7 +437,8 @@ const CARD_MANIFEST_DB = {
             name: "Djinn",
             type: "monster",
             suit: "Wands",
-            rank: "King",
+            rank: "cryptid",
+            tribe: "myth",
             rarity:"rare",
             classes: ["mage","rogue","guardian","warrior"],
             lore: "A charismatic sovereign of flame and shadow.",
@@ -450,6 +462,7 @@ const CARD_MANIFEST_DB = {
             type: "monster",
             suit: "Cups",
             rank: "2",
+            tribe: "cryptid",
             rarity:"rare",
             classes: ["mage","rogue"],
             lore: "Her song draws victims to their doom.",
@@ -500,6 +513,7 @@ const CARD_MANIFEST_DB = {
             type: "monster",
             suit: "Cups",
             rank: "7",
+            tribe: "undead",
             rarity:"rare",
             classes: ["mage","rogue","guardian"],
             lore: "A phantom lost in the fog of dreams.",
@@ -540,6 +554,7 @@ const CARD_MANIFEST_DB = {
             type: "monster",
             suit: "Cups",
             rank: "Page",
+            tribe: "beast",
             rarity:"unique",
             classes: ["rogue"],
             lore: "A curious beast rising from the depths.",
@@ -550,6 +565,7 @@ const CARD_MANIFEST_DB = {
             type: "monster",
             suit: "Cups",
             rank: "Knight",
+            tribe: "undead",
             rarity:"rare",
             classes: ["rogue","warrior","guardian"],
             lore: "A fiery lizard that charges into battle.",
@@ -560,6 +576,7 @@ const CARD_MANIFEST_DB = {
             type: "monster",
             suit: "Cups",
             rank: "Queen",
+            tribe: "human",
             rarity:"unique",
             classes: ["mage","rogue","guardian"],
             lore: "She rules a kingdom of frozen tears.",
@@ -570,6 +587,7 @@ const CARD_MANIFEST_DB = {
             type: "monster",
             suit: "Cups",
             rank: "King",
+            tribe: "beast",
             rarity:"rare",
             classes: ["rogue","guardian","warrior"],
             lore: "The ancient ruler of the deep.",
@@ -622,6 +640,7 @@ const CARD_MANIFEST_DB = {
             name: "Goblin",
             type: "monster",
             suit: "Swords",
+            tribe: "cryptid",
             rank: "5",
             rarity:"rare",
             classes: ["warrior","guardian"],
@@ -642,6 +661,7 @@ const CARD_MANIFEST_DB = {
             name: "Imp",
             type: "monster",
             suit: "Swords",
+            tribe: "cryptid",
             rank: "7",
             rarity:"uncommon",
             classes: ["mage","warrior"],
@@ -652,6 +672,7 @@ const CARD_MANIFEST_DB = {
             name: "Spider",
             type: "monster",
             suit: "Swords",
+            tribe: "beast",
             rank: "8",
             rarity:"rare",
             classes: ["rogue","warrior"],
@@ -682,6 +703,7 @@ const CARD_MANIFEST_DB = {
             name: "Pixie",
             type: "monster",
             suit: "Swords",
+            tribe: "cryptid",
             rank: "Page",
             rarity:"rare",
             classes: ["warrior"],
@@ -693,6 +715,7 @@ const CARD_MANIFEST_DB = {
             type: "monster",
             suit: "Swords",
             rank: "Knight",
+            tribe: "cryptid",
             rarity:"rare",
             classes: ["warrior","guardian","rogue"],
             lore: "A wind spirit that strikes like lightning.",
@@ -703,6 +726,7 @@ const CARD_MANIFEST_DB = {
             type: "monster",
             suit: "Swords",
             rank: "Queen",
+            tribe: "human",
             rarity:"unique",
             classes: ["warrior","rogue","guardian"],
             lore: "A regal fey with a sharp mind.",
@@ -713,6 +737,7 @@ const CARD_MANIFEST_DB = {
             type: "monster",
             suit: "Swords",
             rank: "King",
+            tribe: "beast",
             rarity:"rare",
             classes: ["mage","rogue","guardian","warrior"],
             lore: "Claw, fang and fire guards its treasure.",
@@ -825,6 +850,7 @@ const CARD_MANIFEST_DB = {
             type: "monster",
             suit: "Pentacles",
             rank: "Page",
+            tribe: "cryptid",
             rarity:"rare",
             classes: ["guardian"],
             lore: "A stone sentinel guarding treasure.",
@@ -835,6 +861,7 @@ const CARD_MANIFEST_DB = {
             type: "monster",
             suit: "Pentacles",
             rank: "Knight",
+            tribe: "human",
             rarity:"rare",
             classes: ["guardian","mage","warrior"],
             lore: "A diligent spirit of the soil.",
@@ -845,6 +872,7 @@ const CARD_MANIFEST_DB = {
             type: "monster",
             suit: "Pentacles",
             rank: "Queen",
+            tribe: "human",
             rarity:"unique",
             classes: ["guardian","mage","rogue"],
             lore: "The matron of the woods ensuring prosperity.",
@@ -855,6 +883,7 @@ const CARD_MANIFEST_DB = {
             type: "monster",
             suit: "Pentacles",
             rank: "King",
+            tribe: "human",
             rarity:"unique",
             classes: ["guardian","warrior","rogue","mage"],
             lore: "A titan that towers over mountains.",
@@ -1824,8 +1853,8 @@ const toolsDef = [{
                     role: { type: "STRING", description: "'battle' (fights), 'dialogue' (talks/vanishes), 'quest_giver' (gives quest), 'reward' (gives card)." },
                     color: { type: "STRING" },
                     dialogue: { type: "ARRAY", items: { type: "STRING" } },
-                    rewardCard: { type: "INTEGER", description: "CRITICAL: Omit completely if no reward." }
-                    // Notice: 'deck' is completely gone!
+                    rewardCard: { type: "INTEGER", description: "CRITICAL: Omit completely if no reward." },
+                    options: { type: "ARRAY", items: { type: "STRING" }, description: "OPTIONAL: Give the player up to 2 choices (e.g. ['Accept Quest', 'Decline']). This will spawn buttons on their screen." }
                 },
                 required: ["targetName", "npcType", "state"]
             }
@@ -2061,6 +2090,7 @@ function updateSuncatJournal(newEntry) {
     console.log(`[Suncat Journal Updated]: ${newEntry}`);
 }
 // --- Model setup ---
+const defaultModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
 const taliesinModel = genAI.getGenerativeModel({ 
     model: "gemini-2.5-flash-lite", 
     systemInstruction: T_PERSONA
@@ -2092,11 +2122,7 @@ const FULL_LIBRARY_LINES = [
 // Global stop-words list so it isn't recreated on every search
 const SEARCH_STOP_WORDS = ["the", "and", "for", "with", "what", "does", "mean", "about", "are", "you", "is", "how", "whats", "up", "a", "an", "to", "in", "on", "of"];  // --- DYNAMIC CONTEXT INJECTOR ---
 // Pre-parse on server boot:
-const mapLoreCache = {};
-WORLD_ATLAS.split('\n').forEach(line => {
-    const match = line.match(/\[MAP\]\s*(\d+)/);
-    if (match) mapLoreCache[parseInt(match[1])] = line.trim();
-});
+
 
 function getMapLore(mapID) {
     if (mapID === 999) return "Map 999: Suncat's Dreamscape - A chaotic, uncharted pocket dimension.";
@@ -2291,65 +2317,97 @@ async function processCognitiveLoad(socketId, forceDigest = false) {
         player.isDigesting = false;
     }
 }
-// --- PROCEDURAL MAP GENERATOR ---
+// --- PROCEDURAL MAP GENERATOR (Wider Paths for Giant Monsters) ---
 function generateProceduralGrid(layout, wallType) {
-    let maxR = 21, maxC = 21; // Default large map
+    let maxR = 21, maxC = 21; 
     
-    if (layout === 'corridor') { maxR = 21; maxC = 5; }
-    if (layout === 'bridge') { maxR = 5; maxC = 21; }
+    // Made Corridors and Bridges wider!
+    if (layout === 'corridor') { maxR = 21; maxC = 7; } 
+    if (layout === 'bridge') { maxR = 7; maxC = 21; }
 
-    // Fill entirely with walls first
     let grid = Array(maxR).fill().map(() => Array(maxC).fill(wallType));
 
     if (layout === 'labyrinth' || layout === 'maze') {
-        // Dig out floor
         for(let r=1; r<maxR-1; r++) for(let c=1; c<maxC-1; c++) grid[r][c] = 0;
-        // Add random scatter walls
-        for(let i=0; i< (maxR*maxC)/4; i++) {
-            let pr = Math.floor(Math.random()*(maxR-2))+1;
-            let pc = Math.floor(Math.random()*(maxC-2))+1;
+        
+        // Divided by 8 instead of 4 (Less dense walls)
+        for(let i=0; i< (maxR*maxC)/8; i++) { 
+            let pr = Math.floor(Math.random()*(maxR-3))+1;
+            let pc = Math.floor(Math.random()*(maxC-3))+1;
             grid[pr][pc] = wallType;
+            // 50% chance to make the wall 2 tiles thick so we don't get tiny 1-block zig-zags
+            if(Math.random() > 0.5) grid[pr+1][pc] = wallType; 
         }
     } 
     else if (layout === 'grid') {
-        // Multi-room dungeon
         for(let r=1; r<maxR-1; r++) {
             for(let c=1; c<maxC-1; c++) {
-                if (r % 5 !== 0 && c % 5 !== 0) grid[r][c] = 0; // Rooms
-                else if (Math.random() > 0.7) grid[r][c] = 0;   // Doors
+                // Mod 6 creates larger 5x5 rooms
+                if (r % 6 !== 0 && c % 6 !== 0) grid[r][c] = 0; 
+                // > 0.4 creates much wider doors/holes in the walls
+                else if (Math.random() > 0.4) grid[r][c] = 0;   
             }
         }
     } 
     else {
-        // Default: Arena/Open/Corridor (Just hollow out the middle)
+        // Arena / Open
         for(let r=1; r<maxR-1; r++) for(let c=1; c<maxC-1; c++) grid[r][c] = 0;
     }
     
     return grid;
 }
-// --- AUTO-SYNERGY DECK BUILDER ---
+// --- ADVANCED THEMATIC DECK BUILDER (Suit + Class + Tribe) ---
 function buildSynergisticDeck(monsterID) {
-    let deck = [monsterID];
-    const monsterData = CARD_MANIFEST_DB[monsterID];
+    let baseID = Math.floor(parseFloat(monsterID));
+    let deck = [baseID]; // Base monster is ALWAYS index 0.
     
-    // Fallback if the monster doesn't exist or has no classes
-    if (!monsterData || !monsterData.classes) return deck;
+    const baseCard = CARD_MANIFEST_DB[baseID];
+    if (!baseCard) return deck; // Failsafe
 
-    // Dig through the DB to find spells/items that share a class with this monster
-    const matchingCards = Object.entries(CARD_MANIFEST_DB)
-        .filter(([id, card]) => 
-            (card.type === "spell" || card.type === "item") && 
-            card.classes.some(cls => monsterData.classes.includes(cls))
-        )
-        .map(([id]) => parseInt(id));
+    // 1. Gather Thematic Equipment (Matches Suit OR Class OR Tribe)
+    const validEquips = Object.entries(CARD_MANIFEST_DB).filter(([id, card]) => {
+        if (card.type !== "spell" && card.type !== "item") return false;
+        
+        // Match Suit
+        if (card.suit === baseCard.suit) return true;
+        // Match Class
+        if (card.classes && baseCard.classes && card.classes.some(cls => baseCard.classes.includes(cls))) return true;
+        // Match Tribe (If you ever add a 'Bone Sword' item with tribe: 'undead')
+        if (card.tribe && baseCard.tribe && card.tribe === baseCard.tribe) return true;
+        
+        return false;
+    }).map(([id]) => parseInt(id));
 
-    // Randomly equip the monster with 2 synergistic cards
-    for(let i = 0; i < 2; i++) {
-        if(matchingCards.length > 0) {
-            let randomMatch = matchingCards[Math.floor(Math.random() * matchingCards.length)];
-            deck.push(randomMatch);
+    // 2. Gather Cannon Fodder Allies (Matches Suit OR Tribe)
+    const validAllies = Object.entries(CARD_MANIFEST_DB).filter(([id, card]) => {
+        let numId = parseInt(id);
+        if (card.type !== "monster" || numId === baseID) return false;
+        
+        // NEVER pull Kings, Queens, or Major Arcana as random backup mobs!
+        if (card.suit === "Major Arcana" || card.rank === "King" || card.rank === "Queen") return false;
+        
+        // Synergy Match: Same Suit
+        if (card.suit === baseCard.suit) return true;
+        
+        // Synergy Match: Same Tribe! (An Undead from Swords will help an Undead from Cups)
+        if (card.tribe && baseCard.tribe && card.tribe === baseCard.tribe) return true;
+
+        return false;
+    }).map(([id]) => parseInt(id));
+
+    // 3. Assemble the Deck! 
+    // Add 2 valid equips.
+    for(let i=0; i<2; i++) {
+        if(validEquips.length > 0) {
+            deck.push(validEquips[Math.floor(Math.random() * validEquips.length)]);
         }
     }
+    
+    // 4. 50% chance to bring a Thematic Ally into battle!
+    if (validAllies.length > 0 && Math.random() > 0.5) {
+        deck.push(validAllies[Math.floor(Math.random() * validAllies.length)]);
+    }
+
     return deck;
 }
 // --- AI TOOL EXECUTOR ---
@@ -2679,15 +2737,12 @@ async function executeAITools(currentResponse, activeSession, socket) {
                     updateSuncatJournal(`I forcibly warped ${call.args.targetName} to Map ID ${call.args.mapID}.`);
                 }
                 
+              
                 // G. SPAWN NPC/MONSTER
                 else if (call.name === "spawnNPC") {
                     const targetID = findSocketID(call.args.targetName);
-                    let baseID = Math.floor(parseFloat(call.args.npcType));
-
                     if (!targetID) {
                         functionResult = { result: `Failed: Player not found.` };
-                    } else if (!CARD_MANIFEST_DB[baseID]) {
-                        functionResult = { result: `Failed: Entity ID ${baseID} does not exist in the Card Manifest.` };
                     } else {
                         const tp = players[targetID];
                         let spawnMap = call.args.mapID !== undefined ? call.args.mapID : tp.mapID;
@@ -2697,15 +2752,16 @@ async function executeAITools(currentResponse, activeSession, socket) {
                         spawnX = Math.max(2.5, Math.min(17.5, spawnX));
                         spawnY = Math.max(2.5, Math.min(17.5, spawnY));
 
-                        // Validating rewardCard dynamically
+                        let baseID = Math.floor(parseFloat(call.args.npcType));
+
                         let safeRewardCard = null;
                         if (call.args.rewardCard !== undefined && call.args.rewardCard !== null) {
                             let parsed = parseInt(call.args.rewardCard);
-                            if (!isNaN(parsed) && CARD_MANIFEST_DB[parsed]) safeRewardCard = parsed;
+                            if (!isNaN(parsed) && parsed >= 0 && parsed <= 77) safeRewardCard = parsed;
                         }
 
-                        // --- THE AUTO-SYNERGY INJECTION ---
-                        let generatedDeck = buildSynergisticDeck(baseID);
+                        // --- SERVER BUILDS THE THEMATIC DECK ---
+                        let finalDeck = buildSynergisticDeck(baseID);
 
                         io.emit("remote_spawn_npc", {
                             mapID: spawnMap,
@@ -2714,15 +2770,16 @@ async function executeAITools(currentResponse, activeSession, socket) {
                             y: spawnY,
                             type: call.args.npcType,
                             state: call.args.state || 'chasing',
-                            role: call.args.role || 'battle', 
+                            role: call.args.role || 'battle',
                             color: call.args.color || '#ff0000',
-                            deck: generatedDeck, // <-- The server handles this entirely now
+                            deck: finalDeck, // <-- Safely applied! No more missing monsters!
                             dialogue: call.args.dialogue || null,
-                            rewardCard: safeRewardCard 
+                            rewardCard: safeRewardCard,
+                            options: call.args.options || null // <--- ADD THIS LINE!
                         });
                         functionResult = { result: `Success: Entity spawned on map ${spawnMap}.` };
                     }
-                    updateSuncatJournal(`I summoned a creature (ID ${call.args.npcType}) on map ${call.args.mapID || "the player's location"}.`);
+                    updateSuncatJournal(`I summoned a creature (ID ${call.args.npcType}) on map ${spawnMap}.`);
                 }
                 
                 // H. ASSIGN QUEST
@@ -3143,18 +3200,18 @@ socket.on("join_game", (data) => {
           if (cleanHistory.length > 0) {
               console.log(`Loading ${cleanHistory.length} memories for ${name}...`);
               try {
-                  chatSessions[socket.id] = model.startChat({
+                  chatSessions[socket.id] = defaultModel.startChat({
                       history: cleanHistory // Just the raw conversation!
                   });
               } catch (e) {
                   console.error("Failed to load history:", e);
-                  chatSessions[socket.id] = model.startChat({
+                  chatSessions[socket.id] = defaultModel.startChat({
                       history: []
                   });
               }
           } else {
                // Brand New Session - completely empty history!
-               chatSessions[socket.id] = model.startChat({
+               chatSessions[socket.id] = defaultModel.startChat({
                       history: []
                });
           }
@@ -3420,7 +3477,19 @@ socket.on("disconnect", async () => {
     delete playerAITokens[socket.id];
     io.emit("updatePlayers", players);
 });
-
+// --- SECRET AI TRIGGER ---
+  socket.on("force_ai_action", async (instruction) => {
+      const player = players[socket.id];
+      if (!player) return;
+      
+      console.log(`[Force AI Action] Triggered by client for ${player.name}: ${instruction}`);
+      
+      // We pass it to Suncat's brain disguised as a chat message, 
+      // but wrapped in a System Directive so he knows to obey it immediately.
+      processSuncatThought(socket.id, 'chat', { 
+          text: `[SYSTEM DIRECTIVE]: ${instruction}. EXECUTE IMMEDIATELY.` 
+      });
+  });
 });
 // --- SUNCAT'S SOCIAL BRAIN ---
 
@@ -3659,7 +3728,7 @@ async function manageHistorySize(socketId) {
         if (history.length > MAX_HISTORY_LENGTH) {
             // Because processCognitiveLoad handles our memory now, we don't need to summarize this!
             // We just brutally chop the oldest messages off to save raw input tokens.
-            chatSessions[socketId] = model.startChat({
+            chatSessions[socketId] = defaultModel.startChat({
                 history: history.slice(-10) 
             });
             console.log(`[Memory] Pruned raw chat history for ${players[socketId]?.name}.`);
