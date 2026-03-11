@@ -2194,7 +2194,7 @@ const taliesinModel = genAI.getGenerativeModel({
     model: "gemini-2.5-flash-lite", 
     systemInstruction: T_PERSONA
 });
-let npcIsTyping = false; 
+
 const MAX_SESSION_COST = 2.00; // Hard limit: $1.00
 let totalSessionCost = 0.00;   // Starts at zero when the server boots
 function isBankrupt() {
@@ -3042,10 +3042,9 @@ async function processSuncatThought(socketId, triggerType, data) {
     }
     
     // Prevent overlapping thoughts
-    if (npcIsTyping) return;
-    npcIsTyping = true;
-    const typingFailSafe = setTimeout(() => { npcIsTyping = false; }, 9000);
-
+   if (player.npcIsTyping) return;
+    player.npcIsTyping = true;
+    const typingFailSafe = setTimeout(() => { player.npcIsTyping = false; }, 9000);
     try {
         // 2. GATHER CORE CONTEXT (RAG-LITE INJECTION)
         const timeString = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
@@ -3925,7 +3924,8 @@ setInterval(() => {
                         // Dynamically build the model based on the RNG outcome
                         let modelConfig = { 
                             model: requiresBigBrain ? "gemini-3.1-flash-lite-preview" : "gemini-2.5-flash-lite", 
-                            systemInstruction: injectedPersona
+                            systemInstruction: injectedPersona,
+                            tools: toolsDef
                         };
                         // Only attach tools if we rolled the gameplay spice branch!
                         if (requiresBigBrain) modelConfig.tools = toolsDef; 
@@ -3939,7 +3939,8 @@ setInterval(() => {
                         let finalResponse = requiresBigBrain 
                             ? await executeAITools(result.response, chatSessions[advPlayer.id], io.sockets.sockets.get(advPlayer.id))
                             : result.response;
-                        
+                        let finalSpeech = "";
+                        try { finalSpeech = finalResponse.text(); } catch(e) {}
                         if (finalResponse.text()) broadcastSuncatMessage(finalResponse.text());
                         
                         let updatedHistory = await chatSessions[advPlayer.id].getHistory(); 
@@ -3949,7 +3950,7 @@ setInterval(() => {
                         console.error("DM Proactive Error:", e);
                     } finally {
                         clearTimeout(typingFailSafe);
-                        npcIsTyping = false;
+                        player.npcIsTyping = false; // Release the personal lock!
                     }
                 }, 1000);
             }
