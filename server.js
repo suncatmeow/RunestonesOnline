@@ -171,6 +171,7 @@ const CARD_MANIFEST_DB = {
             type: "monster",
             suit: "Major Arcana",
             rank: "IX",
+            sprite:9.1,
             tribe: "human",
             rarity:"unique",
             classes: ["mage","guardian"],
@@ -292,6 +293,7 @@ const CARD_MANIFEST_DB = {
             type: "item",
             suit: "Major Arcana",
             rank: "XXI",
+            sprite:-26,
             rarity:"unique",
             classes: ["mage","rogue","warrior","guardian"],
             lore: "While equipped, +3 to all stat rolls.",
@@ -416,6 +418,7 @@ const CARD_MANIFEST_DB = {
             type: "monster",
             suit: "Wands",
             rank: "Knight",
+            sprite:33.1,
             tribe: "beast",
             rarity:"rare",
             classes: ["mage","rogue","warrior"],
@@ -427,6 +430,7 @@ const CARD_MANIFEST_DB = {
             type: "monster",
             suit: "Wands",
             rank: "Queen",
+            sprite:34.1,
             tribe: "human",
             rarity:"unique",
             classes: ["mage","rogue","guardian"],
@@ -437,6 +441,7 @@ const CARD_MANIFEST_DB = {
             name: "Djinn",
             type: "monster",
             suit: "Wands",
+            sprite:35.1,
             rank: "cryptid",
             tribe: "myth",
             rarity:"rare",
@@ -462,6 +467,7 @@ const CARD_MANIFEST_DB = {
             type: "monster",
             suit: "Cups",
             rank: "2",
+            sprite:37.1,
             tribe: "cryptid",
             rarity:"rare",
             classes: ["mage","rogue"],
@@ -554,6 +560,7 @@ const CARD_MANIFEST_DB = {
             type: "monster",
             suit: "Cups",
             rank: "Page",
+            sprite:46.1,
             tribe: "beast",
             rarity:"unique",
             classes: ["rogue"],
@@ -565,6 +572,7 @@ const CARD_MANIFEST_DB = {
             type: "monster",
             suit: "Cups",
             rank: "Knight",
+            sprite:47.1,
             tribe: "undead",
             rarity:"rare",
             classes: ["rogue","warrior","guardian"],
@@ -576,6 +584,7 @@ const CARD_MANIFEST_DB = {
             type: "monster",
             suit: "Cups",
             rank: "Queen",
+            sprite:48.1,
             tribe: "human",
             rarity:"unique",
             classes: ["mage","rogue","guardian"],
@@ -587,6 +596,7 @@ const CARD_MANIFEST_DB = {
             type: "monster",
             suit: "Cups",
             rank: "King",
+            sprite:49.1,
             tribe: "beast",
             rarity:"rare",
             classes: ["rogue","guardian","warrior"],
@@ -673,6 +683,7 @@ const CARD_MANIFEST_DB = {
             type: "monster",
             suit: "Swords",
             tribe: "beast",
+            sprite:57.1,
             rank: "8",
             rarity:"rare",
             classes: ["rogue","warrior"],
@@ -703,6 +714,7 @@ const CARD_MANIFEST_DB = {
             name: "Pixie",
             type: "monster",
             suit: "Swords",
+            sprite:60.1,
             tribe: "cryptid",
             rank: "Page",
             rarity:"rare",
@@ -715,6 +727,7 @@ const CARD_MANIFEST_DB = {
             type: "monster",
             suit: "Swords",
             rank: "Knight",
+            sprite: 61.1,
             tribe: "cryptid",
             rarity:"rare",
             classes: ["warrior","guardian","rogue"],
@@ -726,6 +739,7 @@ const CARD_MANIFEST_DB = {
             type: "monster",
             suit: "Swords",
             rank: "Queen",
+            sprite:62.1,
             tribe: "human",
             rarity:"unique",
             classes: ["warrior","rogue","guardian"],
@@ -737,6 +751,7 @@ const CARD_MANIFEST_DB = {
             type: "monster",
             suit: "Swords",
             rank: "King",
+            sprite:63.1,
             tribe: "beast",
             rarity:"rare",
             classes: ["mage","rogue","guardian","warrior"],
@@ -810,6 +825,7 @@ const CARD_MANIFEST_DB = {
             type: "spell",
             suit: "Pentacles",
             rank: "7",
+            sprite:70.1,
             rarity:"unique",
             classes: ["mage","rogue","warrior","guardian"],
             lore: "Gain stat points equal to CON roll and distribute them.",
@@ -850,6 +866,7 @@ const CARD_MANIFEST_DB = {
             type: "monster",
             suit: "Pentacles",
             rank: "Page",
+            sprite: 74.1,
             tribe: "cryptid",
             rarity:"rare",
             classes: ["guardian"],
@@ -861,6 +878,7 @@ const CARD_MANIFEST_DB = {
             type: "monster",
             suit: "Pentacles",
             rank: "Knight",
+            sprite: 75.1,
             tribe: "human",
             rarity:"rare",
             classes: ["guardian","mage","warrior"],
@@ -872,6 +890,7 @@ const CARD_MANIFEST_DB = {
             type: "monster",
             suit: "Pentacles",
             rank: "Queen",
+            sprite: 76.1,
             tribe: "human",
             rarity:"unique",
             classes: ["guardian","mage","rogue"],
@@ -883,6 +902,7 @@ const CARD_MANIFEST_DB = {
             type: "monster",
             suit: "Pentacles",
             rank: "King",
+            sprite: 77.1,
             tribe: "human",
             rarity:"unique",
             classes: ["guardian","warrior","rogue","mage"],
@@ -891,6 +911,41 @@ const CARD_MANIFEST_DB = {
         }, 
     //--ALTERNATE CARDS--
     /////VVVVVVVV///////   
+        78: {
+            name: "Neophyte",
+            type: "monster",
+            suit: "wands",
+            rank: "Page",
+            sprite:32.1,
+            tribe: "human",
+            rarity:"rare",
+            classes: ["mage"],
+            lore: "A student of the smokeless flame",
+            stats: "1d4 STR/CON/AGI, 1d8 STR"
+        }, 
+        79: {
+            name: "Fire Imp",
+            type: "monster",
+            suit: "swords",
+            rank: "7",
+            sprite:56.1,
+            tribe: "cryptid",
+            rarity:"rare",
+            classes: ["mage", "rogue"],
+            lore: "A student of the smokeless flame",
+            stats: "1d4 STR/CON, 1d6 AGI, 1d8 STR"
+        }, 
+        81: {
+            name: "Ice Golem",
+            type: "monster",
+            suit: "Cups",
+            rank: "Knight",
+            tribe: "cryptid",
+            rarity:"rare",
+            classes: ["warrior","rogue"],
+            lore: "A fragile ice construct void of emotion",
+            stats: "1d4 CON/INT, 1d6 STR, 1d8 AGI"
+        }, 
         82: {
             name: "Skeleton",
             type: "monster",
@@ -916,6 +971,7 @@ const CARD_MANIFEST_DB = {
             type: "item",
             suit: "Swords",
             rank:"Ace",
+            sprite: -15.2,
             rarity: "unique",
             classes: ["rogue","warrior","guardian","mage"],
             lore:"While equipped, +3 to STR  rolls.",
@@ -927,22 +983,73 @@ const CARD_MANIFEST_DB = {
                 type: "monster",
                 suit: "Major Arcana",
                 rank: "IV",
-                rarity:"rare",
+                sprite: 4.1,
+                tribe: "human",
+                rarity:"unique",
                 classes: ["warrior","guardian","rogue","mage"],
                 lore: "The once and future king.",
                 stats: "1d20 STR, 1d12 CON, 1d10 AGI, 1d8 INT"
+            },
+        86: {
+                name: "Corrupt Sylph",
+                type: "monster",
+                suit: "Swords",
+                rank: "Knight",
+                sprite: 4.1,
+                tribe: "human",
+                rarity:"unique",
+                classes: ["warrior","guardian","rogue","mage"],
+                lore: "A reckless gale cutting with haste.",
+                stats: " 1d6 CON/AGI, 1d4 INT,1d8 STR"
             },
         87: {
                 name: "Suncat",
                 type: "monster",
                 suit: "Major Arcana",
                 rank: "0",
+                sprite: .61391,
+                tribe: "human",
                 rarity:"rare",
                 classes: ["rogue"],
                 lore: "Visit Suncat on IG @suncat.meow or listen on Spotify.",
                 stats: "1d4 STR/CON/INT, 1d20 AGI"
             },
-    
+            88: {
+                name: "Mirage",
+                type: "monster",
+                suit: "Wands",
+                rank: "2",
+                sprite: 23.1,
+                tribe: "undead",
+                rarity:"rare",
+                classes: ["rogue","mage"],
+                lore: "If they touch you they teleport you back to the start of the map.",
+                stats: "1d4 STR/CON/ 1d6 INT/AGI"
+            },
+            89: {
+                name: "Treasure Snake",
+                type: "monster",
+                suit: "Major",
+                rank: "X",
+                sprite: 21.1,
+                tribe: "beast",
+                rarity:"rare",
+                classes: ["rogue","mage","warrior","guardian"],
+                lore: "A money hungry serpent.",
+                stats: "1d4 STR/CON/INT/AGI"
+            },
+            90: {
+                name: "Giant's Daughter",
+                type: "monster",
+                suit: "Pentacles",
+                rank: "Queen",
+                sprite: 21.1,
+                tribe: "human",
+                rarity:"rare",
+                classes: ["rogue","mage","warrior","guardian"],
+                lore: "Seeks security in love and family.",
+                stats: "1d8 STR, 1d12 CON 1d6 INT, 1d10 AGI"
+            },
 };
 // --- 2: ATLAS ---
 ////////////////////VVVVVVVVVVVVVV////////////////////
@@ -990,7 +1097,7 @@ const WORLD_ATLAS_DB = {
         lore: "Former home of the goblins. The Treasure Snake wonders about their fate. Infested with Imps and Shades. Imps hold The Apprentice captive.",
         spawns: {
             hostiles: [23, 42, 56],   // Wisp, Shade, Imp
-            friendlies: [],
+            friendlies: [89],           //treasure snake
             uniques: [32],            // The Apprentice (Note: ID check needed)
             pickups: [30, 40, 41, 58] // Protect Orb, Steal, Intimidate, Loot
         }
@@ -1002,7 +1109,7 @@ const WORLD_ATLAS_DB = {
         lore: "Mirages lead travelers astray. Salamanders avoid travelers. The forces of the King of Wands block the way to the Witch Queen's castle.",
         spawns: {
             hostiles: [23, 33, 56],   // Wisp, Salamander, Imp
-            friendlies: [],
+            friendlies: [88], //mirages teleport you back to start of map no combat
             uniques: [],             
             pickups: [19, 25, 29]     // Solar Rite, Elixir, Haste
         }
@@ -1025,7 +1132,7 @@ const WORLD_ATLAS_DB = {
         description: "Snow-covered floor. Light gray sky. A mountain pass leading up to the peak. It is always snowing.",
         lore: "Home to Ice Golems and Undines. Contains the Lucky Charm. The Ice Queen's castle rests on the peak.",
         spawns: {
-            hostiles: [47],           // Undine (Ice Golems sprite check needed)
+            hostiles: [47,81],           // Undine (Ice Golems sprite check needed)
             friendlies: [],
             uniques: [],            // 
             pickups: [6, 28, 45]      // Lovers, Defense, Lucky Charm
@@ -1097,7 +1204,7 @@ const WORLD_ATLAS_DB = {
         description: "Winding cavernous passageways leading to the center of the lair. Smoke and darkness fill the corridors. The clang of steel and dragon roars echo.",
         lore: "Home to the Dragon. Corrupt Sylphs guard the lair. The Dragon sits upon his Hoard. No adventurer has returned alive.",
         spawns: {
-            hostiles: [63],           // Dragon (Dark Sylphs check needed)
+            hostiles: [63,86],           // Dragon (Dark Sylphs check needed)
             friendlies: [], 
             uniques: [67],            // Dragon's Hoard
             pickups: [] 
@@ -1122,9 +1229,9 @@ const WORLD_ATLAS_DB = {
         lore: "Home to the Elf Queen, Gnomes, and Gargoyles. The Giant and his daughter reside here. A strange glowing man occasionally smiles and vanishes.",
         spawns: {
             hostiles: [74, 77],       // Gargoyle, Giant
-            friendlies: [75],         // Gnome
+            friendlies: [75,90],         // Gnome,giants daughter
             uniques: [70, 76],        // Cultivator, Elf Queen
-            pickups: [66]             // Armor
+            pickups: [66,71]             // Armor, Forge
         }
     },
     15: {
@@ -1134,7 +1241,7 @@ const WORLD_ATLAS_DB = {
         lore: "Adventurers report seeing a strange snake dragging a pile of gold along the cliffside.",
         spawns: {
             hostiles: [], 
-            friendlies: [],           // Treasure Snake (sprite map check needed)
+            friendlies: [89],           // Treasure Snake (sprite map check needed)
             uniques: [], 
             pickups: []
         }
@@ -1218,7 +1325,7 @@ const WORLD_ATLAS_DB = {
         lore: "A peaceful realm where Suncat sleeps. No monsters spawn naturally, but Suncat occasionally summons them for company.",
         spawns: {
             hostiles: [], 
-            friendlies: [], 
+            friendlies: [87], 
             uniques: [],
             pickups: [] 
         }
@@ -1707,7 +1814,9 @@ const PERSONA_RULES_DB = {
                 - NEVER ask for permission to build. Make decisions for the player.
                 - MAP RULES: Grids must have a 5x5 walkable space (0s) in the center. ALWAYS spawn multiple NPCs.
                 - UNIQUE NPCs: Only spawn ONE of any friendly/quest NPC. 
-                - DO NOT type out JSON arrays or code blocks in your spoken text.`,
+                - DO NOT type out JSON arrays or code blocks in your spoken text.
+                - VARIETY: DO NOT overuse the 'Ruins' or 'Void' biomes. Cycle through all 8 biomes randomly to keep the game fresh.
+                - PROP MASTER: You can spawn ITEMS and SPELLS as physical map objectives! (e.g., Spawn ID 10 for a Treasure Chest, 84 for Excalibur in a stone, or 13 for a Grim Reaper). Set them to 'stationary' and 'dialogue'. DO NOT attach a rewardCard to them unless the player has explicitly earned it in a quest.`,
 
             "quest_mode": `[QUEST PROTOCOL]: To create a multi-step quest:
                 1. Use spawnNPC to place a quest giver without a reward card. Give them dialogue asking for help.
@@ -2657,9 +2766,9 @@ async function executeAITools(currentResponse, activeSession, socket) {
                             for (let i = 0; i < extraMobCount; i++) {
                                 let randomMobID = biome.mobs[Math.floor(Math.random() * biome.mobs.length)];
                                 let spot = scatterTiles.shift() || {x: startX, y: startY};
-                                
+                                let visualSprite = CARD_MANIFEST_DB[randomMobID]?.sprite || baseID;
                                 mapNPCs.push({
-                                    type: randomMobID,
+                                    type: visualSprite,
                                     x: spot.x + 0.5, y: spot.y + 0.5,
                                     state: mobState, // <--- Applied here!
                                     role: 'battle',
@@ -2686,15 +2795,22 @@ async function executeAITools(currentResponse, activeSession, socket) {
                             });
                         }
                         // 5. COMPILE AND SEND MAP
+                        const targetID = findSocketID(call.args.targetName);
+                        let returnMapID = 0; // Default fallback
+                        
+                        if (targetID && players[targetID]) {
+                            returnMapID = players[targetID].mapID; // Capture where they are right now!
+                            players[targetID].prevMapID = returnMapID; // Save it to the server state
+                        }
                         const customMapData = {
                             id: 999, maze: gridData, 
                             skyColor: skyColor, floorColor: floorColor, 
                             name: call.args.mapName || `The ${biome.name} ${layoutStyle}`, 
                             npcs: mapNPCs, weather: weather,
-                            spawnX: startX + 0.5, spawnY: startY + 0.5 
+                            spawnX: startX + 0.5, spawnY: startY + 0.5,
+                            prevMapID: returnMapID 
                         };
                         
-                        const targetID = findSocketID(call.args.targetName);
                         if (targetID && players[targetID]) {
                             const targetPlayer = players[targetID];
                             const suncat = players[SUNCAT_ID];
@@ -2765,13 +2881,13 @@ async function executeAITools(currentResponse, activeSession, socket) {
 
                         // --- SERVER BUILDS THE THEMATIC DECK ---
                         let finalDeck = buildSynergisticDeck(baseID);
-
+                        let visualSprite = CARD_MANIFEST_DB[baseID]?.sprite || baseID;
                         io.emit("remote_spawn_npc", {
                             mapID: spawnMap,
                             index: Math.floor(Math.random() * 100000) + 1000,
                             x: spawnX,
                             y: spawnY,
-                            type: call.args.npcType,
+                            type: visualSprite,
                             state: call.args.state || 'chasing',
                             role: call.args.role || 'battle',
                             color: call.args.color || '#ff0000',
@@ -2937,7 +3053,7 @@ async function processSuncatThought(socketId, triggerType, data) {
     // Prevent overlapping thoughts
     if (npcIsTyping) return;
     npcIsTyping = true;
-    const typingFailSafe = setTimeout(() => { npcIsTyping = false; }, 20000);
+    const typingFailSafe = setTimeout(() => { npcIsTyping = false; }, 9000);
 
     try {
         // 2. GATHER CORE CONTEXT
@@ -2988,7 +3104,7 @@ async function processSuncatThought(socketId, triggerType, data) {
                         // 2. Intricate Routing Overrides
                         if (needsOracle) {
                             useBigBrain = true;
-                            systemOverride = `[SYSTEM OVERRIDE]: You are the Oracle. Interpret the player's situation using Tarot logic based on the Runestones card manifest. Be cryptic, mystical, and brief (max 3 sentences). Do not use tools.`;
+                            systemOverride = `[SYSTEM OVERRIDE]: You are the Oracle. Interpret the player's situation using Tarot logic based on the Runestones card db. Be cryptic, mystical, and brief (max 3 sentences). Do not use tools.`;
                         } else if (needsDM) {
                             useBigBrain = true;
                             systemOverride = `[SYSTEM OVERRIDE]: The player is seeking an adventure or DM action. EXECUTE A TOOL IMMEDIATELY (like createCustomMap, spawnNPC, or teleportPlayer). KEEP YOUR SPOKEN NARRATION UNDER 15 WORDS. DO NOT ask for permission.`;                        } else {
@@ -2997,16 +3113,30 @@ async function processSuncatThought(socketId, triggerType, data) {
                         
                         eventInstruction = `[PLAYER SPOKE]: "${data.text}"\nTASK: ${needsDM ? "EXECUTE A TOOL. " : ""}Reply in character.`;        }
                     else if (triggerType === 'event') {
-                        // Passive observation (Kills, Pickups) - Uses Cheap Brain
                         useBigBrain = false; 
                         let recentNarratives = player.dmNarrativeLog ? `\n[RECENT LOG]: ` + player.dmNarrativeLog.join(' | ') : "";
-                        let eventSummary = data.isPickup ? `Picked up ${data.action}` : (data.isDialogue ? `Finished talking to ${data.action}` : `Slayed ${data.action}`);
                         
-                        eventInstruction = `[PLAYER ACTION]: ${eventSummary} | Lore: ${data.lore || "None"}\n${recentNarratives}\nTASK: Narrate this action in exactly ONE atmospheric sentence. Use their name.`;
-                    } 
+                        if (data.isPickup) {
+                            useBigBrain = true; 
+                            eventInstruction = `[PLAYER ACTION]: Picked up ${data.action} | Lore: ${data.lore}\nTASK: Provide a tarot interpretation of the card and relate it to the player's current adventure.`;
+                        } else if (data.isDialogue) {
+                           
+                            eventInstruction = `[PLAYER ACTION]: Finished talking to ${data.action}\nTASK: Comment on their conversation briefly.`;
+                        } else {
+                            if (player.mapID != 999){
+                                eventInstruction = `[PLAYER ACTION]: Slayed a creature ${data.action}\nTASK: Provide a short narrative describing the fall of the monster and give a brief tarot interpretation.`;
+                            }
+                            else{
+                                eventInstruction = `[PLAYER ACTION]: Slayed a creature ${data.action}\nTASK: the player is mocking you with this defeat. You are at disbelief that they overcame your challenge. Immediately use tools like spawnNPC to make their life harder.`;
+                            }
+                            
+                            
+                        }
+                    }
                     else if (triggerType === 'spectate') {
                         useBigBrain = false;
-                        eventInstruction = `[SPECTATOR FEED]: ${data.action}\nTASK: Speak a brief, cryptic remark about this. DO NOT use any brackets or tags like [INTERNAL THOUGHT].`;                    }
+                        eventInstruction = `[SPECTATOR FEED]: ${data.action}\nTASK: Speak a brief, cryptic remark about this. DO NOT use any brackets or tags like [INTERNAL THOUGHT].`;                    
+                    }
 
  // --- DYNAMIC PERSONA BUILDER ---
         // 1. Always include the core identity and command knowledge
