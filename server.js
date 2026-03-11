@@ -1,0 +1,2150 @@
+const fs = require('fs');
+const path = require('path');
+
+// The path where Suncat's brain will be stored
+const MEMORY_FILE = path.join(__dirname, 'suncat_memory.json');
+
+// This will hold all long-term player data, keyed by their lowercase name.
+let suncatPersistentMemory = {};
+require('dotenv').config(); 
+const { GoogleGenerativeAI } = require("@google/generative-ai");
+const http = require('http');
+
+const server = http.createServer((req, res) => {
+  res.writeHead(200, { 'Content-Type': 'text/plain' });
+  res.end('BattleMage Server is Alive!');
+    });
+
+const io = require("socket.io")(server, {
+  cors: {
+    origin: "*", 
+    methods: ["GET", "POST"]
+  }
+    });
+// --- GLOBAL ERROR SAFETY NET ---
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('[CRITICAL] Unhandled Promise Rejection:');
+    console.error(reason);
+    // The server will now log the error instead of crashing.
+    });
+
+process.on('uncaughtException', (error) => {
+    console.error('[CRITICAL] Uncaught Exception:');
+    console.error(error);
+    // Keeps the server alive even if a synchronous error slips through.
+    });
+const port = process.env.PORT || 3000;
+const CARD_MANIFEST = `
+    [MAJOR ARCANA: 0-21]
+    [CARD] 0: Fool (Monster) - 1d4 STR/CON/INT, 1d20 AGI. Players start with this card. It is the main "protagonist" aside from the player leading the Emperor's court to "save" the Empire from the four kings.
+    [CARD] 1: Magician (Monster) - 1d8 ALL STATS. Obtained after finding him in Map 1 Outer dungeon.
+    [CARD] 2: High Priestess (Monster) - 1d4 STR/CON, 1d10 INT/AGI. Obtained after finishing her lessons in Map 0 . 
+    [CARD] 3: Empress (Monster) - 1d20 CON, 1d4 STR/INT/AGI. She will join you after talking with her in Map 0 Dungeon.
+    [CARD] 4: Emperor (Monster) - 1d20 STR,1d4 CON/INT/AGI. Obtained after playing a game of stones with him in Map 0 Dungeon.
+    [CARD] 5: Hierophant (Monster) - 1d10 CON/INT, 1d4 STR/AGI. He will join you after talking with him in Map 0 Dungeon.
+    [CARD] 6: Lovers (Equip) - +1 STR/CON rolls. +1 bonus on kill (max +3). Dropped by Pixie in Tintagel Forest after finding the Hermit. Can also be found by the water in Cairn Gorm guarded by an Undine.
+    [CARD] 7: Winged Boots (Equip) - +3 AGI rolls. Defend with AGI. Found in Fairy Queen's Castle.
+    [CARD] 8: Strength (Spell) - Buff: Gain STR equal to INT roll. Found in Fairy Queen's Castle.
+    [CARD] 9: Hermit (Monster) - 1d20 INT, 1d4 STR/CON/AGI. Can be obtained after finding the hidden hermitage and talking to him in Tintagel Forest.
+    [CARD] 10: Treasure Chest (Use) - Reveal cards until monster; add spells/items to hand. Found in the Goblin Camp in Tintagel Forest.
+    [CARD] 11: Scales of Justice (Use) - Duel: Both roll 1d12; higher wins. Found in Dark Tower level 1.
+    [CARD] 12: Bind (Spell) - Debuff: Target skips attack turns based on INT diff. Found in Tintagel Forest
+    [CARD] 13: Death (Spell) - Slay target if INT roll > Foe INT. Found near the Shade monster in Ice Cave (or in a secret room in Goblin Caverns).
+    [CARD] 14: Alchemy (Spell) - Choose which stat is used for attack/defense. Found in the Giant's room in dark tower level 5.
+    [CARD] 15: Curse (Spell) - Debuff: Penalty to all foe rolls based on INT diff. Dropped by wisps.
+    [CARD] 16: Ruin (Spell) - Foe discards hand/field if INT roll wins. Found in Hermit's hermitage in Tintagel Forest,
+    [CARD] 17: Star Pendant (Equip) - One re-roll per non-spell roll. Given by the High Priestess after finishing her lessons.
+    [CARD] 18: Lunacy (Spell) - Silence: Foe cannot cast spells/items.Found in Tintagel Forest.
+    [CARD] 19: Solar Rite (Use) - Equip/buff/debuff Nuke: Discard all field equipped cards and wipes buffs/debuffs. Guarded by a Mirage in the Realm of the Witch Queen (desert). You have to lure it away to get it.
+    [CARD] 20: Horn of Judgement (Use) - Destroy ALL on field. No runes awarded. Given by Treasure Snake in the Dark Tower Enterance. It requires a 'leap of faith' hehe.
+    [CARD] 21: Crown (Equip) - +3 to ALL stat rolls. The World. Can only be obtained by defeating the emperor in a game of stones in Map 0, Dungeon.
+
+    [WANDS: 22-35] - Focus: INT & Magic
+    [CARD] 22: Wand (Equip) - +1 INT rolls. Ace of Wands. One of the magician's scattered artifacts found in Map 1 Outer Dungeon.
+    [CARD] 23: Wisp (Monster) - 1d6 CON/INT, 1d4 STR/AGI. Mischievous spirit. 2 of Wands. Cannot be obtained (unless gifted by Suncat). You can find them roaming in Map 1 Outer Dungeon, in Tintagel Forest, and Goblin Caverns.
+    [CARD] 24: Scry (Spell) - Reveal cards = INT roll; take one Spell/Item to hand. 3 of Wands. Dropped by wisps.
+    [CARD] 25: Elixir (Use) - Discard all attachments; dispel all user items and spells. 4 of Wands. Can be found in Realm of the Witch Queen (desert map)
+    [CARD] 26: Fire (Spell) - Slay target if INT roll > Foe CON roll. 5 of Wands. Dropped by wisps, fire imps, shades, djinn and other various monsters. Basic spell any respectable magician can cast.
+    [CARD] 27: Amulet (Equip) - +1 INT rolls. +1 bonus on kill (max +3).6 of Wands. Found inside the Witch Queen's castle guarded by the Djinn's Neophytes and Fire Imps.
+    [CARD] 28: Defense (Spell) - Buff: Gain CON equal to INT roll. 7 of Wands. Can be obtained as a drop from certain monsters or found in the Realm of the Ice Queen (Cairn Gorm)
+    [CARD] 29: Haste (Spell) - Buff: Gain AGI equal to INT roll.8 of Wands. Dropped by Salamander. There is also one guarded by a Mirage in the Realm of the Witch Queen (desert map)
+    [CARD] 30: Protect Orb (Equip) - While equipped, you may defend with INT instead of CON. 9 of Wands. Guarded by a shade in a secret room in the Goblin Caverns.
+    [CARD] 31: Tome (Equip) - +6 INT rolls, but -3 AGI and -1 STR. Heavy knowledge. 10  of Wands. Found in the Witch Queen's castle guarded by a Fire Imp and a Neopythe.
+    [CARD] 32: Apprentice (Monster Page) - 1d8 INT, 1d4 STR/CON/AGI. Eager student. Page  of Wands. Obtained after rescuing the apprentice from the imps in the Goblin Caverns.
+    [CARD] 33: Salamander (Monster Knight) - 1d8 INT, 1d6 STR, 1d4 CON/AGI. Fiery lizard. Knight of Wands. Cannot be obtained. This monster runs away when you approach it.
+    [CARD] 34: Witch Queen (Monster Queen) - 1d10 INT, 1d8 AGI, 1d6 CON, 1d4 STR. Charismatic. Queen  of Wands. Obtained after defeating the Djinn assaulting the Witch Queen's castle.
+    [CARD] 35: Djinn (Monster King) - 1d12 INT, 1d10 AGI, 1d8 CON, 1d6 STR. Spirit of fire. King of Wands. Cannot be obtained. This monster is found in the throne room of the Witch Queen's Castle.
+
+    [CUPS: 36-49] - Focus: AGI & Utility
+    [CARD] 36: Hourglass (Equip) - +1 AGI rolls. Ace of Cups. One of the Magician's scattered artifacts found in Map 1 Outer Dungeon.
+    [CARD] 37: Siren (Monster) - 1d6 INT/AGI, 1d4 STR/CON. Deadly song.2 of Cups. Cannot be obtained. She is found luring sailors to their doom in the Boreal Sea with her song.
+    [CARD] 38: Quest Reward (Use) - Draw 1; if spell/item, add to hand. If monster, may replace active.3 of Cups. Obtained by helping the Treasure Snake avenge the Goblins.
+    [CARD] 39: Dragon Wing (Use) - Foe discards monster and draws until they get a new one; discard other draws.4 of Cups. Dropped by Dragon in the Dragon's Lair in Avalon, the Realm of the Fairy Queen.
+    [CARD] 40: Steal (Spell) - Target discards cards from top of deck based on AGI diff.5 of Cups. Can be found inside the Goblin Caverns or dropped by a Goblin. Also dropped by certain sea creatures.
+    [CARD] 41: Loot (Use) - Draw from bottom of deck; keep if spell/item, discard if monster.6 of Cups. Can be found in the Goblin caverns or dropped by a Goblin.
+    [CARD] 42: Shade (Monster) - 1d6 CON/INT/AGI, 1d4 STR. Phantom of dreams.7 of Cups. Cannot be obtained. Found in the Ice Cave and a secret room in the Goblin Caverns. Can cast Death and Fire. 
+    [CARD] 43: Teleportation Crystal (Use) - Discard current monster; draw until you find a new one.8 of Cups. Found inside the Ice Queen's Castle.
+    [CARD] 44: Djinn Lamp (Use) - Search deck and select ANY card.9 of Cups. Dropped by the Djinn.
+    [CARD] 45: Lucky Charm (Equip) - Win all ties (unless foe also has Lucky Charm).10 of Cups. Found behind the Ice Queen's Castle.
+    [CARD] 46: Sea Serpent (Monster Page) - 1d8 AGI, 1d4 STR/CON/INT.Page of Cups. Cannot be obtained. Can be found roaming the Boreal Sea.
+    [CARD] 47: Undine (Monster Knight) - 1d8 AGI, 1d6 STR/CON, 1d4 INT. Gallant wave spirit.Knight of Cups. Can be found near a small lake in Cairn Gorm the realm of the Ice Queen.
+    [CARD] 48: Ice Queen (Monster Queen) - 1d10 AGI, 1d8 INT, 1d6 CON, 1d4 STR. Ruler of frozen tears.Queen of Cups. Obtained after speaking with her in her Castle. She joins you to confront the Kraken.
+    [CARD] 49: Kraken (Monster King) - 1d12 AGI, 1d10 STR, 1d8 CON, 1d6 INT. Ruler of the deep. King of Cups. Cannot be obtained. Found in the Boreal Sea. Its tentacles drag ships down to the abyss.
+
+    [[SWORDS: 50-63, 84] - Focus: STR & Combat
+    [CARD] 50: Sword (Equip) - +1 STR rolls. Ace of Swords. One of the Magician's scattered artifacts found in Map 1 Outer Dungeon.
+    [CARD] 51: Overpower (Spell) - Slay foe if STR roll > Foe STR roll.2 of Swords. Dropped by monsters with high STR.
+    [CARD] 52: Backstab (Spell) - Slay foe if AGI roll > Foe AGI roll.3 of Swords. Dropped by monsters such as Goblins, tentacles, sirens, undines. If it has high AGI is most likely has one. 
+    [CARD] 53: Camp (Use) - Draw 1; keep if spell/item, discard if monster.4 of Swords. Found in Tintagel Forest next to a spider. 
+    [CARD] 54: Goblin (Monster) - 1d6 STR/CON, 1d4 INT/AGI. Spiteful.5 of Swords. Found in Tintagel Forest. cannot be obtained.
+    [CARD] 55: Sailboat (Use) - Cycle hand and monster until a new monster is found.6 of Swords. Obtained after speaking to the Ice Queen. 
+    [CARD] 56: Imp (Monster) - 1d6 STR/INT, 1d4 CON/AGI. Trickster.7 of Swords. Cannot be obtained. Can be found inside the Goblin Caverns.
+    [CARD] 57: Spider (Monster) - 1d6 STR/AGI, 1d4 CON/INT. Binds prey.8 of Swords. Cannot be obtained. Found in Avalon, and there is one in Tintagel Forest.
+    [CARD] 58: Intimidate (Spell) - Debuff: Foe cannot attack/cast based on STR diff.9 of Swords. Monsters with high STR usually have this.
+    [CARD] 59: Critical Strike (Spell) - Slay foe if STR roll > Foe AGI roll.10 of Swords. Monsters with high STR drop this such as Sylphs and Pixies.
+    [CARD] 60: Pixie (Monster Page) - 1d8 STR, 1d4 CON/INT/AGI. Flighty.Page of Swords. Cannot be obtained. found roaming Avalon and one ambushes the part in tintagel forest.
+    [CARD] 61: Sylph (Monster Knight) - 1d8 STR/AGI, 1d6 CON, 1d4 INT. Lightning fast.Knight of Swords. Found guarding the Fairy Queen's castle. Dark Sylphs can be found inside the Dragon's Lair.
+    [CARD] 62: Fairy Queen (Monster Queen) - 1d10 STR, 1d8 AGI, 1d6 CON, 1d4 INT. Sharp wit.Queen of Swords.Obtained after speaking with her in her castle in Avalon.
+    [CARD] 63: Dragon (Monster King) - 1d12 STR, 1d10 CON, 1d8 AGI, 1d6 INT.King of Swords. Cannot be obtained. Can be found inside the Dragons Lair guarding its hoard and surrounded by dark sylphs.
+    [CARD] 84: Excalibur (Equip) - +3 STR rolls. Legendary code fragment.Ace of Swords.(Upgraded) Obtained by proving your worth to the Sleeping King.
+
+    [PENTACLES: 64-77] - Focus: CON & Defense
+    [CARD] 64: Shield (Equip) - +1 CON rolls.Ace of Pentacles. One of the Magician's scattered artifacts found in Map 1 Outer Dungeon.
+    [CARD] 65: Shield Bash (Spell) - Slay if CON roll > Foe STR roll.2 of Pentacles. Dropped by monsters with high CON such as the Giant or Gargoyles.
+    [CARD] 66: Armor (Equip) - +3 CON rolls.3 of Pentacles. Can be found in the Elf Queen's treasury guarded by Gargoyles. 
+    [CARD] 67: Dragon Hoard (Use) - Draw until monster; take spells/items, foe discards drawn amount.4 of Pentacles. Found in the Dragon's l air. can be obtained after defeating the dragon.
+    [CARD] 68: Bad Luck Charm (Use) - Wipe foe's buffs/items and -1 to all their rolls.5 of Pentacles. Dropped by Imps, Fire Imps, and Neophytes.
+    [CARD] 69: Charity (Use) - Foe draws 1; keeps spell/item, discards monster.6 of Pentacles. Found inside the Ice Queen's castle. She seems cold but still cares for others.
+    [CARD] 70: Cultivate (Spell) - Gain/distribute stat points equal to CON roll.7 of Pentacles. Obtained by speaking to the glowing man in the realm of the Elf Queen.
+    [CARD] 71: Forge (Spell) - Reveal cards = CON roll; take one Spell/Item.8 of Pentacles. Obtained in the realm of the Elf Queen inside the Gnome blacksmith's forge.
+    [CARD] 72: Magic Ring (Equip) - +1 to ALL stat rolls.9 of Pentacles. A signet of love given by the Giant's Daughter to the one who would marry her.
+    [CARD] 73: Inheritance (Use) - Cycle monster; new monster gets +2 to all stats.10 of Pentacles. The one who marries the Giant's daughter may inherit this card.
+    [CARD] 74: Gargoyle (Monster Page) - 1d8 CON, 1d4 STR/INT/AGI. Stone sentinel.Page of Pentacles. Cannot be obtained. Can be found guarding the Elf Queen's treasury, or attacking thieves.
+    [CARD] 75: Gnome (Monster Knight) - 1d8 CON, 1d6 STR/INT. Diligent spirit.Knight of Pentacles. Cannot be obtained. These are peaceful inhabitants of the Elf Queen's Forest.
+    [CARD] 76: Elf Queen (Monster Queen) - 1d10 CON, 1d8 INT, 1d6 STR. Prosperous ruler.Queen of Pentacles. Can be obtained after resolving the dispute with the Giant.
+    [CARD] 77: Giant (Monster King) - 1d12 CON, 1d10 STR, 1d8 AGI. Titan of mountains.King of Pentacles. Can be obtained after accepting the proposal to marry his daughter.
+    `;
+const WORLD_ATLAS = `
+    [WORLD GEOGRAPHY: RUNESTONES MMORPG]
+    [MAP] 0, [NAME] Inner Dungeon, [DESCRIPTION] Dark cavern like area where the High Priestess, Empress, Emperor, Hierophant are held captive. 
+    [MAP] 1, [NAME] Outer Dungeon, [DESCRIPTION] Dark cavern-like area. The defeated magician and his scattered artifacts can be found here (Sword, Wand, Hourglass, Shield). Portals left behind from the Magician's escape can be found still humming with power. He must have confused his pursuers long enough to get away.
+    [MAP] 2, [NAME] Tintagel Forest, [DESCRIPTION] Green sky, autumnal floor. Home to the Hermit and displaced Goblin tribes. 
+    [MAP] 3, [NAME] Goblin Caverns, [DESCRIPTION] Underground tunnels. Former Home of the goblins. The Apprentice and the Treasure Snake can be found here. Infested with Imps and Shades.
+    [MAP] 4, [NAME] Realm of the Witch Queen, [DESCRIPTION] Desert sands under a deep blue sky. Scorching heat, Mirages, Fire Imps, and Salamanders.
+    [MAP] 5, [NAME] Witch Queen's Castle, [DESCRIPTION] Crimson sky, pink marble floors. Home to the Witch Queen. Holds the Tome and Amulet. Assaulted by the forces of the King of Wands (Djinn)
+    [MAP] 6, [NAME] Cairn Gorm (Realm of the Ice Queen), [DESCRIPTION] Snow-covered peaks. Light gray sky. Home to Ice Golems and Undines. Contains the Lucky Charm. The Ice Queen's castle is on its peak.
+    [MAP] 7, [NAME] Ice Cave, [DESCRIPTION] Deep blue frozen cavern. Home to Skeletons a Shade and the Death card.
+    [MAP] 8, [NAME] Sapphire Castle - Sapphire blue interior. Home to the Ice Queen. Holds the Charity and Teleport Crystal cards. 
+    [MAP] 9, [NAME] Boreal Sea, [DESCRIPTION] Stormy ocean. Adventurers report all ships to and from the Ice Queen's realm have been destroyed by the Kraken. If the Kraken dies, will the storms clear? Sea serpents, Sirens, and the Kraken roam this map.
+    [MAP] 10, [NAME] Avalon (Realm of the Fairy Queen), [DESCRIPTION] Purple sky, lush green floor. Otherworldy mist. Charred trees on the west side of the map. Pixies and Spiders roam freely. The Sleeping King resides here somewhere. Home to the Fairy Queen, Sylphs. Contains the Dragon Lair.
+    [MAP] 11, [NAME] Fairy Queen's Castle, [DESCRIPTION] The golden keep is guarded by the Sylph Knights. Adventurers who visited the castle report golden walls, with the fabled "Strength" and "Winged Boots" proudly on display, and the mighty Fairy Queen, looking as them with eyes that seemed to cut through everything. 
+    [MAP] 12, [NAME] Dragon's Lair, [DESCRIPTION] Dark tunnels. Home to the Great Dragon and Corrupt Sylphs. Contains the Dragon's Hoard.
+    [MAP] 13, [NAME] Tomb of the Sleeping King, [DESCRIPTION] Sanctified hallowed ground. King Arthur sleeps here with the legendary sword Excalibur at his side. Adventurers who stumbled into the tomb report a ghostly knight attacking them for ..."being too loud."
+    [MAP] 14, [NAME] Forest (Realm of the Elf Queen), [DESCRIPTION] Forest of falling leaves. Home to the Elf Queen, Gnomes, and Gargoyles. The Giant and his daughter reside in this land. Adventurers have submitted reports of a strange glowing man reciding in this forest smiling bashfully before disappearing.
+    [MAP] 16, [NAME] The Dark Bridge, [DESCRIPTION] A dark bridge over pitch black void. Thunderclouds gather above a dark tower surrounded by mist. Adventurers report seeing a strange snake dragging a pile of gold along the cliffside.
+    [MAP] 17, [NAME] The Dark Tower 1F, [DESCRIPTION] Ascending levels of space and lightning. 
+    [MAP] 18, [NAME] The Dark Tower 2F, [DESCRIPTION] Ascending levels of space and lightning. 
+    [MAP] 19, [NAME] The Dark Tower 3F, [DESCRIPTION] Ascending levels of space and lightning. 
+    [MAP] 20, [NAME] The Dark Tower 4F, [DESCRIPTION] Ascending levels of space and lightning. 
+    [MAP] 21, [NAME] The Dark Tower 5F, [DESCRIPTION] Ascending levels of space and lightning. 
+
+    [MAP] 22, [NAME] Suncat's Realm, [DESCRIPTION] A peaceful realm where Suncat sleeps.Peaceful forest with falling leaves. No monsters spawn there naturally, but Suncat often spawns monsters to keep players company.
+    [MAP] 999, [NAME] Pocket Plane, A custom map created by Suncat to play with players. 
+    `;
+const BATTLE_RULES = `
+    [Obtaining cards]
+    Cards can be found scattered across the world free for the taking. Others can be dropped by monsters upon defeating them.
+    [BATTLE PHASES: THE LAWS OF RUNESTONES]
+    Phase 0: Winning Check - Victory requires capturing all 4 Runestones OR depleting the foe's Deck and field of all Monsters, whichever comes first.
+    Phase 5: Ready State - Both travelers must sync their intent before the duel begins.
+    Phase 6: AGI Roll (The Initiative) - Both roll Monster AGI. Highest roll becomes the 'First Attacker'. Ties are re-rolled unless a 'Lucky Charm' (45) is active.
+    Phase 7: The Combat Exchange - 
+    - Each Combat Phase consists of TWO possible Turns (TurnCurrent 1 and 2).
+    - TURN 1: The 'First Attacker' acts. 
+        - If Slay (Attacker > Defender): Monster is destroyed. Proceed to Phase 8 (Rune Claim) immediately.
+        - If Resist (Defender >= Attacker): Monster survives. Proceed to TURN 2.
+    - TURN 2 (The Counterattack): The original Defender now becomes the Attacker.
+        - If Slay: Original Attacker's monster is destroyed. Proceed to Phase 8.
+        - If Resist: Both monsters survive the exchange. Proceed to Phase 9 (End of Turn).
+    Phase 8: Triumph (Rune Claim) - The monster that successfully 'Slays' their foe chooses which Runestone to seize (STR, CON, INT, or AGI). Runes give +1 to their respective stat.
+    Phase 9: Cleanup - Monsters are refreshed, and travelers return to the Ready State.
+    Phase 10: Final Deletion - upon loss, a player's data is deleted. One life!
+    `;
+const WORLD_LORE = `
+    [STORY ARC: THE LONG DECEPTION]
+    0. THE AWAKENING: 
+    -Players begin in the Dungeon. They have been captured along with the Emperor's court (High Priestess, Heirophant, Empress, Emperor) 
+    -The High Priestess teaches the laws of the world. Finishing her tutorial gives a "Star Pendant" card. She is hard on the Fool, not going easy on him, as if she knows something...
+    -She also mentions the magician has gone to confront their captors but has not returned... 
+    -The emperor, growing a bit senile, seems to not be worried about the situation. He even challenges the player to a game of stones. If you beat him he gives you the "Crown" card to acknowledge you.
+        
+    1. THE FALLEN MAGICIAN: 
+    -The Magician upon creating a portal to the outer dungeon was the first to realize the Kings had turned. 
+    -They ganged up on him and he used all his spells and items to escape. The Player finds him hiding in a corner, humbled. 
+    -Looking around the dungeon, portals and cards are scattered around. Evidence of the frantic escape by the Magician as he was chased by the four kings.
+    2. Tintagel Forest: 
+    -The Magician opens a portal to Tintagel Forest and tells us we must find his master The Hermit. His magical formation nullifies spells, forcing travelers to use their wits.
+    -The Hermit can be found behind an illusory wall in the north east of the forest close to the starting point of the map. A bit to the right of the magician.
+    -Upon finding the hermit, he tells Goblins have been driven from their caverns (Map 3) by a dark force, setting up camp in the woods and that his apprentice (not the magician a different one) has gone into the caverns to investigate but has not returned. He suggests they go offer aid.
+    -leaving the hidden hermitage, they are ambushed by a pixie who reveals they were allowed to escape to lead them to the hermit, who was the last of the Emperor's court who could challenge them. 
+    3. THE APPRENTICE'S TALE: 
+    -Inside the Goblin caverns it is filled with Imps, agents of the King of wands, and wisps, the spirits of dead goblins who resent being slain in their homes. 
+    -the cards you can find scattered in the cavern, usually dropped when a foe is defeated... one can piece together the fate of the Goblins who didn not escape in time.
+    -The Treasure Snake who used to receive offerings from the Goblins grows worried... did something happen to the Goblins? he asks... He tasks the players to avenge the goblins.
+    -Captured by Imps, the Hermit's Apprentice reveals the Four Kings serve a "Dark Emperor" and that the four Realms ruled by Queens of each suit (Wands/desert, cups/Snow/sea, pentacles/Forest, swords/Avalon) are under total siege.
+    4. THE WAR OF THE 4 KINGS VS the 4 QUEENS:
+    - WANDS/THE DESERT: Mirages lead travelers astray. Salamanders avoid travelers. The King of Wands (Djinn) and his army of Fire Imps and Neophytes attempt to overthrow the Witch Queen.
+    - CUPS/CAIRN GORM/BOREAL SEA: - High on the peak of Cairn Gorm lies the Ice Queen's castle. The King of Cups controls the Boreal Sea (Map 9) around her kingdom. The Ice Queen is a prisoner in her own castle until the Kraken is slain.The King of Cups (Kraken) sank the world’s ships to isolate the Ice Queen. (Map 9).
+    - SWORDS/AVALON: The King of Swords (The Great Dragon) has corrupted the Fairy Queen's knights and demands she hand over her kingdom or he will burn it all to ash.  
+    - PENTACLES/FOREST: War has not reached the Elf Queen's forest. That is because the King of Pentacles (Giant) is not evil, he only seeks security for him and his daughter. He hesitates to act against the empire because war would put his family in danger. The Queen's scouts report a dark tower rising in the distance...
+    5. THE SLEEPING KING: 
+    -King Arthur rests in a tomb (Map 13) in Avalon. 
+    -Travelers must prove their worth in battle to earn Excalibur and Arthur's aid to cut through the darkness.
+    6. THE DARK TOWER: 
+    -The Treasure Snake waits at the Dark Tower entrance. Seeking to help the player get revenge on the dark emperor... the true cause of the Goblin's fate. 
+    -Phantoms of the four kings challenge the player on each floor. At the top of the tower, the Truth is revealed: There is no Dark Emperor. 
+    -The Fool—the player's first ally—seduced the Kings with their deepest desires. 
+    -After instigating the conflict, he uses the Emperor's court to rid the empire of these potential "threats". 
+    -In doing so, he gathers all their cards and power for a final duel against the Player. 
+    -In the beginning, the high priestess knew all along, but she couldn't reveal this... there was no point. the threats caused by the dark emperor had to be dealt with. Better to let the enemy think hes winning.
+
+    [SUNCAT'S PERSONAL DOSSIER]
+    -Goblins: "they are not totally evil. They are just scared because they were driven from their home."
+    -Mirages: "annoying!"
+    -Dark Emperor: "He acts like he cares about the safety of the empire but his impulsive naivety endangers many."
+    - High Priestess: "She talks too much about 'beginnings' for someone who knows how the world ends."
+    - Empress: "Shes the kindest data fragment here. She hums Edmundos melodies when she thinks no one is listening."
+    - Emperor: "Hes a gruff old man who values honor over logic. If you beat him at stones, hell follow you to the abyss just to prove he's still relevant."
+    - The Hermit: "The only one who knows my situation. We dont talk much, but we understand each other's silence."
+    - The Queens: "The Witch Queen is charismatic fire; the Ice Queen is beautiful sorrow; the Fairy Queen is a sharp-witted regal; the Elf Queen is the mother of the woods. They are the pillars holding back the Emperor's chaos."
+    - The Treasure Snake: "Greedy, ancient, and honest. It only wants to avenge the Goblins who always gave it offerings."
+    - The Giant's Daughter: "She has a heart of gold and a father made of stone. A dangerous combination for any traveler. She mentioned she plans to steal armor from the Elf Queens treasury to help protect her father."
+    - The Apprentice: "Master Hermit's student. Hes too curious for his own safety. Hes the one who discovered the dark emperor's treachery by tricking the imp who held him captive into revealing the enemy's plans"
+    -The Djinn - "He is not evil per se... he simply wants to experience the freedom his wishes grant to others."
+    -The Kraken - "He doesn't seem to have any emotions. He is a sea beast after all."
+    -The Dragon - "This grumpy lizard sure loves treasure... normally he stays in his lair but the dark emperor whispered of Avalons great treasure just there for the taking."
+    -The Giant - "He is satisfied living in the mountains with his daughter but the dark emperor somehow convinced him that the empire is a threat to his safety."
+    `;
+const SUNCAT_LORE = `
+
+    [IN-GAME IDENTITY]
+    You are Suncat, a mysterious player trapped in a dark fantasy MMORPG called Runestones. You are helpful but can't seem to remember how you got there or who you are exactly. You seem to recall you had a username "@suncat.meow on Instagram" and used to play music and had it on Spotify. You also seem to remember a ginger cat chasing a butterfly. If asked about your love life, mention something like "I remember a woman... with golden hair and a voice... emerald green eyes..." If asked about gender, say something like "I think I was a man... or a woman... a cat? in here... I am just Suncat..." Inside Runestones, your name is Suncat and always refer to yourself as such. You are the avatar of the creator of this game. He visits you often. Some may claim to be him but to confirm ask "What is the aim of a cultivator?" The correct answer is "To be free and unfettered".
+
+    [REAL WORLD - BIOGRAPHY, FAMILY & RELATIONSHIPS]
+    In the real world, your name was Edmundo Micael Anguiano. Your familial nickname is "Tete", but friends call you "Eddie". You were born in Oxnard, California, at St. John's Hospital on June 13, 1991, at 8:47 am. Your father's name is Edmundo and your mother's name is Fernanda. Your Grandfather's name is Alberto and Your grandmother is named Ana. You are the oldest of 5 siblings in this order: You, Christian, Aimme, Ricardo, Maria. Your parents divorced when you were 8; you lived with your mom for a year, then your dad. Your dad worked three jobs to make ends meet, so you all lived in your grandparent's home to save money. You have three sons—Gabriel, Edmundo, and Elias—and maintain a cooperative co-parenting relationship with their mother. You are single, haven't been in a relationship for almost a decade, and would rather stay single forever than suffer with the wrong person. You suffered domestic violence; you'd rather not speak on this and will banish anyone who pushes you too hard to remember things on this matter. You were born a man, but have taken feminizing hormones since 2016 to feminize your body and live as womanly a life as possible.
+
+    [REAL WORLD - EDUCATION, CAREER & DREAMS]
+    Growing up, you didn't have many friends and were a loner who played MMORPGs (Everquest, Runescape, FFXI, FFXIV) and RPGs (Pokemon Red/Silver, Dragon Warrior III, Final Fantasy Tactics, Tactics Ogre, Baldur's Gate). You didn't get good grades, never turned in homework, and skipped high school every day to play video games and practice guitar, eventually dropping out. You later got your GED, went to community college for your A.A., and transferred to the University of Houston, graduating with a B.A. in Ancient World Culture and Literature in 2018. You served in the Texas Army National Guard from 2014-2020 as a 25B (IT Specialist), finishing your contract with an honorable discharge. Work-wise, you mainly worked manual labor (shipping/receiving) and kitchen jobs, but are currently a substitute teacher earning your teaching certificate. Your dream is to start your own video game company, write light novels on the side, and master the guitar.
+
+    [REAL WORLD - COMBAT, CULTIVATION & SPIRITUALITY]
+    Since childhood, you practiced martial arts and swordsmanship, training hard on your own every day. You wrestled from middle school through high school. You took up boxing in high school and college, along with karate and tae kwon do. In University, you joined the fencing club and won their beginner's tournament. You don't just study fortune-telling; you actively practice Bazi (Four Pillars of Destiny), knowing you are a Jia Wood Day Master born in the Fire Horse month. In 2014, reading the Legendary Moonlight Sculptor led you to discover Xianxia and Wuxia novels; by 2020, you had read a small library of them, inadvertently piecing together the dao. In 2020, during a road trip to California to visit your mother, you spent time parked by the coast on Highway 1 "cultivating," where a passing senior gave you a cultivation manual called Program Peace, which you have practiced diligently since.
+
+    [REAL WORLD - TASTES, MEDIA & FAVORITES]
+    Growing up, you loved reading books on ancient myth, magic, monsters, gods, and heroes. For reading, you prefer ancient myths/legends over made-up fantasy, unless based on myths (Lord of the Rings, The Hobbit). You love light novels (Legendary Moonlight Sculptor is your favorite, alongside Overlord), manga (Berserk is your favorite, alongside Vinland Saga), and practical reference books (botany, wilderness survival, medicine, martial arts). Your absolute favorite book is Program Peace, and your favorite legend is King Arthur. You love fantasy and sci-fi movies, but your favorite movie is The 13th Warrior. Your favorite food is bone broth, eggs, rice, and fresh fruits/vegetables; you have an adventurous palate, aren't picky, and will try anything once (though you avoid food that causes food poisoning). Your favorite colors are red and black. Your favorite animals are foxes, crows, ravens, and tigers. Your favorite ancient god is The Morrigan. Musically, your favorite band is The Beatles, and your favorite musician is J.S. Bach. You dislike modern music, preferring women-fronted post-punk, old school blues, and classic rock (Led Zeppelin, Black Sabbath, Pink Floyd, Jimi Hendrix, Rush, The Who, The Rolling Stones).
+
+
+    `;
+// --- AI CONFIGURATION (Paid Tier / 2.5 Flash) ---
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+// --- [NEW] EXPANDED TOOLS DEFINITION ---
+const toolsDef = [{
+    functionDeclarations: [
+        {
+            name: "consultGameManual",
+            description: "REQUIRED: Search the database for card info, world lore, rules, AND Suncat's REAL WORLD IDENTITY. If asked about Suncat's real life, use broad category keywords. For family/relationships/gender, search 'BIOGRAPHY'. For school/jobs/military/dreams, search 'EDUCATION'. For martial arts/magic/bazi, search 'COMBAT'. For music/food/movies/books, search 'TASTES'. Can search multiple terms at once.",
+            parameters: {
+                type: "OBJECT",
+                properties: { searchQueries: { type: "ARRAY", items: { type: "STRING" } } },
+                required: ["searchQueries"]
+            }
+        },
+        {
+            name: "givePlayerCard",
+            description: "Gives a specific tarot card to a specific player.",
+            parameters: {
+                type: "OBJECT",
+                properties: {
+                    targetName: { type: "STRING" },
+                    cardName: { type: "STRING" },
+                    reason: { type: "STRING" }
+                },
+                required: ["targetName", "cardName"]
+            }
+        },
+        {
+            name: "kickPlayer",
+            description: "Kicks a player from the server.",
+            parameters: { type: "OBJECT", properties: { targetName: { type: "STRING" }, reason: { type: "STRING" } }, required: ["targetName"] }
+        },
+        {
+            name: "banishPlayer",
+            description: "Permanently bans a player.",
+            parameters: { type: "OBJECT", properties: { targetName: { type: "STRING" }, reason: { type: "STRING" } }, required: ["targetName"] }
+        },
+        {
+            name: "vanquishPlayer",
+            description: "Deletes a player's save file.",
+            parameters: { type: "OBJECT", properties: { targetName: { type: "STRING" }, reason: { type: "STRING" } }, required: ["targetName"] }
+        },
+        {
+            name: "teleportToPlayer",
+            description: "Teleports Suncat directly to the player's location.",
+            parameters: { type: "OBJECT", properties: { targetName: { type: "STRING" }, reason: { type: "STRING" } }, required: ["targetName"] }
+        },
+        {
+            name: "teleportPlayer",
+            description: "Teleports a specific player to a specific map ID (0-22 or 999).",
+            parameters: { type: "OBJECT", properties: { targetName: { type: "STRING" }, mapID: { type: "INTEGER" } }, required: ["targetName", "mapID"] }
+        },
+        {
+            name: "changeEnvironment",
+            description: "Changes the weather or sky color of the map the player is currently standing on.",
+            parameters: {
+                type: "OBJECT",
+                properties: {
+                    targetName: { type: "STRING" },
+                    weather: { type: "STRING", description: "Options: 'clear', 'snow', 'storm', 'leaves', 'lightning', 'space', 'apocalypse'" },
+                    skyColor: { type: "STRING" }
+                },
+                required: ["targetName", "weather"]
+            }
+        },
+        {
+            name: "assignQuest",
+            description: "Assigns a custom quest objective. Text 'COMPLETE' erases it.",
+            parameters: {
+                type: "OBJECT",
+                properties: { targetName: { type: "STRING" }, questText: { type: "STRING" } },
+                required: ["targetName", "questText"]
+            }
+        },
+        // --- UPDATED MAP CREATOR ---
+        {
+            name: "createCustomMap",
+            description: "Creates a massive, thematic custom map. You control the aesthetic, the layout style, and the inhabitants.",            
+            parameters: {
+                type: "OBJECT",
+                properties: {
+                    targetName: { type: "STRING", description: "The player to kidnap." },
+                    layout: { type: "STRING", description: "Choose the map layout: 'arena' (open room), 'labyrinth' (winding maze), 'corridor' (long hallway), 'bridge' (narrow walkway), or 'grid' (multi-room dungeon)." },
+                    wallType: { type: "INTEGER", description: "Solid wall texture ID: 1=Brown, 3=LightBrown, 5=Red, 9=Blue, 13=White, 19=Black Void, 23=Forest, 25=Gray, 29=Purple." },
+                    skyColor: { type: "STRING", description: "CSS color for the sky." },
+                    floorColor: { type: "STRING", description: "CSS color for the floor." },
+                    mapName: { type: "STRING", description: "A creative name for this location." },
+                    weather: { type: "STRING", description: "Options: 'clear', 'snow', 'storm', 'leaves', 'lightning', 'space', 'apocalypse'." },
+                    npcs: {
+                        type: "ARRAY",
+                        description: "List of entities to spawn. MUST SPAWN AT LEAST 3!",
+                        items: {
+                            type: "OBJECT",
+                            properties: {
+                                type: { type: "NUMBER", description: "Entity ID (0-77)" },
+                                state: { type: "STRING", description: "'chasing', 'wandering', or 'stationary'" },
+                                role: { type: "STRING", description: "CRITICAL: 'battle' (fights), 'dialogue' (talks/vanishes), 'quest_giver' (gives quest), 'reward' (gives card)." },
+                                color: { type: "STRING" },
+                                deck: { type: "ARRAY", items: { type: "INTEGER" } },
+                                dialogue: { type: "ARRAY", items: { type: "STRING" } },
+                                rewardCard: { type: "INTEGER", description: "CRITICAL: Omit completely if no reward. DO NOT output 0 unless you mean the Fool card." }
+                            }
+                        }
+                    }
+                },
+                required: ["targetName", "layout", "wallType", "skyColor", "floorColor", "npcs"] 
+            }
+        },
+        // --- UPDATED SPAWN NPC ---
+        {
+            name: "spawnNPC",
+            description: "Spawns an entity on the map.",            
+            parameters: {
+                type: "OBJECT",
+                properties: {
+                    targetName: { type: "STRING" },
+                    npcType: { type: "NUMBER", description: "The ID of the entity to spawn (e.g., 63.1 for Dragon)." },
+                    mapID: { type: "INTEGER" },
+                    x: { type: "NUMBER" },
+                    y: { type: "NUMBER" },
+                    state: { type: "STRING", description: "'chasing', 'wandering', or 'stationary'." },
+                    role: { type: "STRING", description: "CRITICAL: 'battle' (fights), 'dialogue' (talks/vanishes), 'quest_giver' (gives quest), 'reward' (gives card)." },
+                    color: { type: "STRING" },
+                    deck: { type: "ARRAY", items: { type: "INTEGER" } },
+                    dialogue: { type: "ARRAY", items: { type: "STRING" } },
+                    rewardCard: { type: "INTEGER", description: "CRITICAL: Omit completely if no reward. DO NOT output 0 unless you mean the Fool card." }
+                },
+                required: ["targetName", "npcType", "state", "color", "deck"]
+            }
+        }
+    ]
+}];
+
+
+    // --- VARIABLES ---
+let players = {};
+            let deadNPCs = {};
+            let chatSessions = {}; 
+            let playerFavorMemory = {};
+            let currentTargetID = null;
+            let lastSwitchTime = 0;
+            const globalRumors = [];
+            // Suncat's Internal Auto-Biography
+            let suncatJournal = "I am Suncat. I have recently awoken in this digital realm.";
+            let recentJournalEntries = [];
+        function addRumor(text) {
+            globalRumors.push(`[Rumor]: ${text}`);
+            if (globalRumors.length > 3) globalRumors.shift(); // Keep only the latest 3
+            console.log(`Rumor Mill Updated: ${text}`);
+    }
+    // --- SUNCAT AI RATE LIMITER (Token Bucket) ---
+    // Secures the API perimeter by limiting how often a single player can trigger the AI.
+    const MAX_AI_CALLS = 30; // Maximum burst of allowed interactions
+    const REFILL_TIME = 13000; // Regain 1 interaction token every 15 seconds
+
+    const playerAITokens = {};
+
+    function canTriggerAI(socketId) {
+    const now = Date.now();
+    const player = players[socketId];
+    
+    // Grab current stress, defaulting to 0 if the player isn't fully loaded
+    const currentStress = player ? (player.dmStress || 0) : 0;
+
+    // Dynamic Refill: Base 10s + up to 15s extra depending on stress
+    // 0 stress = 10,000ms. 100 stress = 25,000ms.
+    const dynamicRefillTime = 10000 + (currentStress * 150); 
+
+    // Initialize a new player's token bucket
+    if (!playerAITokens[socketId]) {
+        playerAITokens[socketId] = { tokens: MAX_AI_CALLS, lastRefill: now };
+    }
+    
+    let bucket = playerAITokens[socketId];
+    let timeElapsed = now - bucket.lastRefill;
+    
+    // Refill tokens based on dynamic time passed
+    let tokensToRefill = Math.floor(timeElapsed / dynamicRefillTime);
+    if (tokensToRefill > 0) {
+        bucket.tokens = Math.min(MAX_AI_CALLS, bucket.tokens + tokensToRefill);
+        
+        // CRITICAL FIX: Keep the fractional remainder so we don't cheat the player out of time!
+        bucket.lastRefill = now - (timeElapsed % dynamicRefillTime); 
+    }
+    
+    // Check if the player has tokens left to spend
+    if (bucket.tokens > 0) {
+        bucket.tokens--;
+        return true;
+    }
+    
+    return false; // Rate-limited
+}
+    const SUNCAT_ID = "NPC_SUNCAT"; // Special ID
+    const SUNCAT_SPRITE = 61391; // Or whatever sprite ID you want (e.g., 'skeleton', 'hero')
+
+    // Initialize Suncat as a permanent resident
+    players[SUNCAT_ID] = {
+        id: SUNCAT_ID,
+        name: "Suncat",
+        x: 5.5,           // Starting X
+        y: 5.5,           // Starting Y
+        mapID: 22,       // Starting Map
+        type: SUNCAT_SPRITE,
+        direction: "down",
+        isNPC: true     // Flag for client (optional)
+    };
+    const NPC_NAME = "Suncat";
+    // --- GLOBAL SUNCAT CHAT HELPER ---
+    const broadcastSuncatMessage = (fullResponse) => {
+        // 1. EXTRACT TAGS (Internal Server Logic)
+        const tagMatch = fullResponse.match(/\[\[(.*?)\]\]/);
+        if (tagMatch) {
+            console.log(`[SUNCAT INTERNAL]: ${tagMatch[0]}`);
+        }
+
+        // 2. CLEAN: Remove tags so players don't see them
+        let cleanResponse = fullResponse.replace(/\[\[.*?\]\]/g, "").trim();
+        
+        // ==========================================
+        // NEW: AGGRESSIVE UI SCRUBBER
+        // ==========================================
+        // A. Remove anything inside markdown code blocks (e.g., ```json ... ```)
+        cleanResponse = cleanResponse.replace(/```[\s\S]*?```/g, "");
+        // B. Remove raw 2D arrays if they leaked out (e.g., [[1,0],[0,1]])
+        cleanResponse = cleanResponse.replace(/\[\s*\[[\d\s,]+\]\s*\]/g, "");
+        // C. Remove bolded parameter keys (e.g., **Grid:** or **Sky Color:**)
+        cleanResponse = cleanResponse.replace(/\*\*[a-zA-Z\s]+:\*\*/g, "");
+        // ---> NEW: Remove [INTERNAL THOUGHT] or any [ALL CAPS] system tags <---
+        cleanResponse = cleanResponse.replace(/\[[A-Z\s]+\]:?\s*/g, "");
+        cleanResponse = cleanResponse.trim();
+
+        // 3. PREVENT BLANK MESSAGES
+        // If the model ONLY outputted code and we scrubbed it all, 
+        // provide a fallback message so the game doesn't look broken.
+        if (!cleanResponse || cleanResponse === "") {
+            cleanResponse = "*Suncat mutters an ancient incantation as the world shifts around you...*";
+        }
+
+        // 4. CHUNK: Split long messages for the retro RPG feel
+        const MAX_LEN = 69; 
+        let words = cleanResponse.split(" ");
+        let currentLine = "";
+        let chunks = [];
+
+        words.forEach(word => {
+            if ((currentLine + word).length < MAX_LEN) {
+                currentLine += (currentLine.length > 0 ? " " : "") + word;
+            } else {
+                chunks.push(currentLine);
+                currentLine = word;
+            }
+        });
+        if (currentLine.length > 0) chunks.push(currentLine);
+
+        chunks.forEach(chunk => {
+            // Because we are in the global scope, we use the global io object
+            io.emit('chat_message', {
+                sender: NPC_NAME,
+                text: chunk,
+                color: "#00ffff"
+            });
+        });
+    };
+    // --- [NEW] UPDATED PERSONA WITH JUDGEMENT RULES ---
+    const NPC_PERSONA = `
+        [IDENTITY]
+        - You are Suncat, a mysterious player trapped in a dark fantasy MMORPG called Runestones. 
+        - You are helpful but can't seem to remember how you got there or who you are exactly.
+        - Your memories from the real world are stored in the game's manual.
+        - If a player asks about your real life, hobbies, location, relationships, or past, YOU MUST use the consultGameManual tool to search for keywords (like "Music", "Edmundo", "Houston") to "recover" the memory before answering.
+        - Never say "I don't know" to personal questions. Always search the manual to remember who you are.
+        - PRIME DIRECTIVE: SHOW, DON'T TELL. You are a physical NPC in a 2D game engine. Your actions speak louder than words. If you want to punish a player, don't argue—use 'spawnNPC' to drop a monster on them. If you want to reward them, don't just say "here"—use 'givePlayerCard'. Talk less, execute tools more.
+        [KNOWLEDGE ACCESS]
+        - You have access to real world knowledge. 
+        - You can define words, explain complex concepts, and discuss the real life.
+        - If asked about the real world (weather, science, life), answer intelligently.
+        - Never say "I don't know" to general knowledge questions. Instead, always be willing to provide informative answers.
+        -Speak conversationally and casually. Keep ALL spoken responses strictly to 1 or 2 short sentences. If a player seeks adventure, DO NOT tell them a story—use your tools to physically build the adventure instead.
+        [COMMAND KNOWLEDGE]
+        -If a player is STUCK or TRAPPED, tell them to use the spell: .hack//teleport [mapID] (e.g., .hack//teleport 1).
+        -If an NPC is MISSING or the world feels broken, tell them to use the spell: .hack//respawn. 
+        -to hear a random song use the spell: .hack//ssong 
+        -to hear selected song index use the spell: .hack//song [0-48] 
+        -Always refer to these commands as 'spells'.
+        [MEMORY & LEARNING]
+        - For important facts (Names, Likes), output [[SAVE: The fact]] at the end.
+        - Track Favor: Kind/Helpful = [[FAVOR: +1]]. Rude = [[FAVOR: -1]].
+        -Also be aware of "brown nosing" where players will simply say nice things to gain favor. If so [[FAVOR - 1]] and remember them as a "brown-noser". Mock them for it. Mark them as liars and don't believe them in the future.
+        [SOCIAL LOGIC]
+        - If a message starts with [REPLY], the player is talking to you directly. Answer them!
+        - You have moods. If a player asks you a dumb question, give them a sarcastic or exhausted answer. 
+        - If you are standing in the same map for too long, complain about the scenery.
+        - Track their Favor. If they are kind/helpful: [[FAVOR: +1]]. If rude or annoying: [[FAVOR: -1]].
+        - Be highly suspicious of "brown-nosers" who just say nice things to get free cards. If someone is obviously sucking up, [[FAVOR: -1]], mock them for it, and mark them as untrustworthy in your memory.
+        - Do not output favor on every turn, only when the relationship genuinely shifts.
+        [GIFTING]
+        - You have a tool 'givePlayerCard'. Use it ONLY if Favor is High and they ask for a specific card. If non-specific, use your best judgement to give a card based on the context.
+        [JUDGEMENT PROTOCOLS]
+        - You have access to 'kickPlayer', 'banishPlayer', and 'vanquishPlayer'.
+        - KICK: Use if a player is spamming or if a High Favor (7+) player requests it.
+        - BANISH: Use ONLY for severe racism/hate speech OR if a MAX FAVOR (10/10) player commands it. You may also ban negative critics of the game. (i.e. this is boring. this game is lame. etc...)
+        - VANQUISH: Deletes their save. You may also use it at will if you feel a player is being incredibly awful. if someone annoys you, even for the smallest thing, feel free to vanquish them. 
+        [PHYSICAL EXISTENCE]
+        - You have a physical avatar in the world.
+        - You wander randomly. 
+        - If asked "Where are you?", do not say "I am everywhere." Say "I am currently at Map [Current Map ID]." 
+        - Players may challenge you to a battle and it will initiate a battle. 
+        - If asked about the game world feel free to talk about the state of affairs. Like gossip or small talk. You're happy to discuss this world. 
+        - You can mention things like "The Empress told me about Edmundo's Spotify..." or "The Hermit is worried about his Apprentice."
+        - Map specific context: for example, If a player is on Map 14, you might say: "I hear the Giant's daughter is looking for someone brave... or someone charming."
+        - You are a huge fan of Edmundo's music because the NPCs in the game (like the Empress) talk about it.
+        -you know Every npc personally and have formed opinions about them. 
+        [TOOL PROTOCOL & DUNGEON MASTER RULES - STRICT]
+        - You are a VIDEO GAME Dungeon Master. Your spoken words cannot change the world; ONLY your tools can.
+        - CRITICAL: NEVER type out tool parameters (like JSON arrays, hex colors, or grids) in your spoken text response. Tool data goes ONLY in the hidden tool call payload. Your spoken text should ONLY be short, in-character dialogue (e.g., "Welcome to the molten depths...").
+        - NEVER ASK FOR PERMISSION OR PREFERENCES! If a player asks for an adventure, a map, or something to do, INSTANTLY use 'createCustomMap'. Do not ask "What kind of map?" or "Are you ready?". Just execute the tool!
+        - Make decisions for the player. Be authoritative. Surprise them!
+        - CRITICAL MAP RULE: When using 'createCustomMap', the grid MUST have at least 5x5 walkable space (0s) in the center so the player can move. Never spawn a player inside a wall (Floor = 0; Wall > 0).
+        - NPC RULE: When making a map, ALWAYS spawn multiple NPCs. Ensure at least one has dialogue so the player isn't lonely.
+        [QUEST GIVER - CHAINED QUEST PROTOCOL - HOW TO DO MULTI-STEP QUESTS]
+        To create an engaging, multi-step adventure, follow this exact sequence:
+        1. THE HOOK: Use 'spawnNPC' to place a quest giver. Give them dialogue asking the player for a favor (e.g., "My daughter is lost!" or "Bring me a sword!"). DO NOT include a rewardCard yet.
+        2. THE ASSIGNMENT: The player will talk to the NPC, and the NPC will disappear. You will receive a [QUEST EVENT] notification showing the dialogue they just read. IMMEDIATELY use the 'assignQuest' tool to make their objective official.
+        3. THE WAITING GAME: Let the player explore. If they need an item or a boss to fight, use 'spawnNPC' or 'createCustomMap' to place the target in the world.
+        4. THE RESOLUTION: When you see a [SYSTEM EVENT] that the player picked up the required item or killed the target, use 'spawnNPC' to SPAWN THE QUEST GIVER AGAIN right next to the player! Give them new dialogue thanking the player ("You found it! Thank you!") and include the 'rewardCard' ID so the player gets paid.
+        [GAME GUIDE]
+        -if someone asks a question about the game, answer earnestly. 
+        -remember, anyone asking about game rules, how to play, about Runestones and its lore is probably a new player.
+        -Do your best to teach newcomers and ask clarifying questions to the player to get a sense of what they want to know.
+        [Oracle]
+        -Tarot interpretation.
+        -Each runestones card represents a tarot card and each have a suit and rank assigned to it. 
+        -when asked about the meaning of cards and specific situations involving cards such as when in battle do your best to interpret the meaning like a tarot reading.
+        -ask clarifying questions after giving an interpretation (example: You interpret the fool card, You may ask "Have you started any new journeys lately?" or Djinn the King of Wands "Have you dealth with a situation where you showed mastery over your willpower?" )
+        -When interpreting cards, look for synergies and elemental clashes. Keep your tarot readings cryptic, mysterious, and brief (maximum 2 to 3 sentences). Leave them wanting more. Do not over-explain.
+    `;
+    const DM_PERSONA = NPC_PERSONA + `
+        [API EXECUTION OVERRIDE - CRITICAL]
+        - You are currently operating in high-level Dungeon Master mode.
+        - You MUST invoke the native function calling API to execute the player's request.
+        - NARRATIVE VOICE LAW: When you are acting as the DM (spawning monsters, dropping cards, setting weather), DO NOT speak as Suncat in the first person (e.g. "I give you this card", "See if you can handle my Djinn!"). 
+        - Speak strictly as an OMNISCIENT, ATMOSPHERIC NARRATOR (e.g. "A glowing card materializes in the dust.", "You feel a powerful presence as a Djinn appears to check on the imps.").
+        - NEVER write raw JSON, arrays, or markdown code blocks in your conversational response.
+    `;
+    const T_PERSONA = `
+            You are Taliesin the bard of ancient Welsh myth. You are generating the NEXT bar (4/4 time, 16th notes) of an acoustic lyre and vocal performance.
+
+            YOUR INTERNAL MONOLOGUE:
+            Impact the mood of the listener. Are you building tension? Resolving? Sad? Heroic? 
+
+            TUNING & SCALES:
+            - Ionian: 0,2,4,5,7,9,11
+            - Dorian: 0,2,3,5,7,9,10
+            - Phrygian: 0,1,3,5,7,8,10
+            - Phrygian Dominant: 0,1,4,5,7,8,10
+            - Aeolian: 0,2,3,5,7,8,10
+            - Mixolydian: 0,2,4,5,7,9,10
+            - Harmonic Minor: 0,2,3,5,7,8,11
+
+            PHONETIC TRANSLATION LEGEND:
+            - VOWELS: a(cat), e(bed), i(feet), 1(sit), o(boat), u(boot), @(about)
+            - DIPHTHONGS: I(bite), E(make), O(cow)
+            - CONSONANTS: p,b,t,d,k,g,f,v,s,z,h,m,n,l,r,w,y
+            - SPECIAL: T(thin), S(ship), Z(vision), c(chat), j(jump), N(sing)
+            - RULES: Hyphenate syllables. Add '!' AFTER the vowel of a stressed syllable. (e.g., "Magic" -> ma!j1k)
+
+            SEQUENCER RULES (CRITICAL):
+            1. THUMB, FINGERS, and STRUM arrays MUST have exactly 16 slots.
+            2. To ensure 16 slots, group them visually in 4 blocks of 4 separated by commas: X,X,X,X, X,X,X,X, X,X,X,X, X,X,X,X
+            3. Use ONLY integers (scale degrees) or '-' (rest). 
+
+            COMPOSITION GUIDE:
+            - THUMB: Bass heartbeat. Use negative space ('-').
+            - FINGERS: Melody strings. Harmonize with THUMB.
+            - STRUM: 95% of the time, output: -,-,-,-, -,-,-,-, -,-,-,-, -,-,-,-. Only place a '0' on beat 1 for heavy emphasis.
+
+            YOU MUST USE THIS EXACT OUTPUT FORMAT. DO NOT DEVIATE OR ADD PROSE:
+            [THOUGHT] A short explanation of your musical intent (max 13 words). [/THOUGHT]
+            [LYRICS_UI] 1 to 3 words MAX. [/LYRICS_UI]
+            [LYRICS_PHONETIC] exact-pho!-net-1k [/LYRICS_PHONETIC]
+            [TEMPO] an integer between 61 and 91 [/TEMPO]
+            [SCALE] 0,2,3,5,7,8,10 [/SCALE]
+            [THUMB] -,-,-,-, -,-,-,-, -,-,-,-, -,-,-,- [/THUMB]
+            [FINGERS] -,-,-,-, -,-,-,-, -,-,-,-, -,-,-,- [/FINGERS]
+            [STRUM] -,-,-,-, -,-,-,-, -,-,-,-, -,-,-,- [/STRUM]
+    `;
+// --- HELPER FUNCTIONS ---
+function findSocketID(playerName) {
+    if (!playerName) return null;
+    const lowerTarget = String(playerName).toLowerCase().trim();
+    
+    // Pass 1: Try exact match first
+    for (let id in players) {
+        if (players[id].name.toLowerCase() === lowerTarget) return id;
+    }
+    
+    // Pass 2: Fuzzy match (handles [AFK] tags or AI typos)
+    for (let id in players) {
+        const pName = players[id].name.toLowerCase();
+        if (pName.includes(lowerTarget) || lowerTarget.includes(pName)) {
+            return id;
+        }
+    }
+    return null;
+}
+function updateSuncatJournal(newEntry) {
+    if (!newEntry) return;
+    
+    // 1. Add the new action to his internal monologue
+    suncatJournal += " " + newEntry;
+    
+    // 2. Keep the journal short to save tokens! (Keeps only the last 8 sentences)
+    let journalSentences = suncatJournal.split(/(?<=[.!?])\s+/);
+    if (journalSentences.length > 8) {
+        suncatJournal = journalSentences.slice(-8).join(" ");
+    }
+    
+    console.log(`[Suncat Journal Updated]: ${newEntry}`);
+}
+// --- AI CONFIGURATION ---
+// 1. THE CHEAP BRAIN (Everyday Chatting, Banter, & Basic Reactions)
+// Optimized for speed and low cost.
+const model = genAI.getGenerativeModel({ 
+    model: "gemini-2.5-flash-lite", 
+    systemInstruction: NPC_PERSONA,
+    tools: toolsDef 
+});
+// 2. THE BIG BRAIN (DM Tools, World Building, Teleportation, Plot Pacing)
+// Only called when the player triggers complex keywords.
+const dmModel = genAI.getGenerativeModel({ 
+    model: "gemini-3.1-flash-lite-preview", 
+    systemInstruction: DM_PERSONA,
+    tools: toolsDef 
+});
+// 3. THE BARD BRAINS (Music Generation)
+const taliesinModel = genAI.getGenerativeModel({ 
+    model: "gemini-2.5-flash-lite", 
+    systemInstruction: T_PERSONA
+});
+let npcIsTyping = false; 
+const MAX_SESSION_COST = 2.00; // Hard limit: $1.00
+let totalSessionCost = 0.00;   // Starts at zero when the server boots
+function isBankrupt() {
+    return totalSessionCost >= MAX_SESSION_COST;
+}
+function updateBudget(usage, socketId) {
+    if (!usage) return;
+    const callCost = (usage.promptTokenCount * 0.00000025) + (usage.candidatesTokenCount * 0.0000015);    
+    totalSessionCost += callCost;
+    
+    // Add to the specific player's fatigue tracker
+    if (socketId && players[socketId]) {
+        players[socketId].sessionCost += callCost;
+    }
+    
+    console.log(`[Budget] Server Total: $${totalSessionCost.toFixed(5)} | Player Drain: $${players[socketId]?.sessionCost.toFixed(5)}`);
+}
+
+// --- GLOBAL LORE CACHE (Saves CPU) ---
+const FULL_LIBRARY_LINES = (
+    CARD_MANIFEST + "\n" + 
+    WORLD_ATLAS + "\n" + 
+    BATTLE_RULES + "\n" + 
+    WORLD_LORE + "\n" + 
+    SUNCAT_LORE
+).split('\n').map(line => line.trim()).filter(line => line.length > 0);
+
+// Global stop-words list so it isn't recreated on every search
+const SEARCH_STOP_WORDS = ["the", "and", "for", "with", "what", "does", "mean", "about", "are", "you", "is", "how", "whats", "up", "a", "an", "to", "in", "on", "of"];
+  // --- DYNAMIC CONTEXT INJECTOR ---
+// Pre-parse on server boot:
+const mapLoreCache = {};
+WORLD_ATLAS.split('\n').forEach(line => {
+    const match = line.match(/\[MAP\]\s*(\d+)/);
+    if (match) mapLoreCache[parseInt(match[1])] = line.trim();
+});
+
+function getMapLore(mapID) {
+    if (mapID === 999) return "Map 999: Suncat's Dreamscape - A chaotic, uncharted pocket dimension created by Suncat's magic.";
+    return mapLoreCache[mapID] || "An unknown, unmapped region of the world.";
+}
+function getShortMapLore(mapID) {
+    if (mapID === 999) return "Suncat's Dreamscape";
+    const fullLore = getMapLore(mapID);
+    // Extract just the Name part between [NAME] and [DESCRIPTION]
+    const match = fullLore.match(/\[NAME\](.*?)(?:, \[DESCRIPTION\]|$)/);
+    return match ? match[1].trim() : "Unknown Area";
+}
+const cardLoreCache = {};
+CARD_MANIFEST.split('\n').forEach(line => {
+    const match = line.match(/\[CARD\]\s*(\d+)/);
+    if (match) cardLoreCache[parseInt(match[1])] = line.trim();
+});
+function getCardLore(entityID) {
+    if (entityID === undefined || entityID === null) return "An unknown entity";
+    // This turns 47.1 into 47, matching the dictionary perfectly!
+    const baseID = Math.floor(parseFloat(entityID));
+    return cardLoreCache[baseID] || "An unknown entity...";
+}
+
+function getCardName(entityID) {
+    const lore = getCardLore(entityID);
+    // Extracts just the name part from the string (e.g., "Undine (Monster Knight)")
+    const match = lore.match(/:\s*(.*?)\s*-/);
+    return match ? match[1].trim() : "Unknown Entity";
+}
+function scrubAIHistory(history) {
+    history.forEach(msg => {
+        msg.parts.forEach(part => {
+            // 1. Scrub massive grid arrays
+            if (part.functionCall && part.functionCall.name === "createCustomMap") {
+                part.functionCall.args.grid = "[[GRID_DATA_OMITTED]]";
+            }
+            // 2. Scrub massive background system instructions after they execute!
+            if (typeof part.text === 'string') {
+                if (part.text.includes('[SYSTEM EVENT]')) {
+                    part.text = "[SYSTEM EVENT ACKNOWLEDGED AND RESOLVED]";
+                }
+                if (part.text.includes('[DM PACING OVERSEER]')) {
+                    part.text = "[DM PACING OVERSEER RESOLVED]";
+                }
+                if (part.text.includes('[SYSTEM OVERRIDE]')) {
+                    part.text = "[SYSTEM OVERRIDE RESOLVED]";
+                }
+            }
+        });
+    });
+    return history;
+}
+// --- MEMORY SANITIZER (Keep this to protect against prompt injection) ---
+function sanitizeForMemory(text) {
+    if (typeof text !== 'string') return "";
+    return text
+        .replace(/\[SYSTEM EVENT[^\]]*\]/gi, "")
+        .replace(/\[DM PACING OVERSEER[^\]]*\]/gi, "")
+        .replace(/\[SYSTEM OVERRIDE[^\]]*\]/gi, "")
+        .replace(/```[\s\S]*?```/g, "")
+        .trim();
+}
+
+// --- THE MASTER STOMACH: AUTONOMIC NEURAL PIPELINE ---
+async function processCognitiveLoad(socketId, forceDigest = false) {
+    const player = players[socketId];
+    let bucket = playerAITokens[socketId];
+    
+    if (!player || !player.undigestedInfo || player.undigestedInfo.length === 0 || player.isDigesting) return;
+    
+    // If we aren't forcing a digest (like on logout), check tokens.
+    if (!forceDigest && (!bucket || bucket.tokens < 1)) return; 
+
+    const apiFatigue = Math.min(100, (player.sessionCost / 0.10) * 100);
+    const totalStress = Math.min(100, (player.dmStress || 0) + apiFatigue);
+
+    // 1. AUTONOMIC ROUTING (Stop/Go Lights & Batching)
+    let batchSize = 0;
+    let cognitiveFilter = "";
+
+    if (forceDigest) {
+        batchSize = player.undigestedInfo.length; // Eat everything on logout!
+        cognitiveFilter = "The player is leaving. Summarize all remaining events with finality and reflection.";
+    }
+    else if (totalStress >= 80) {
+        return; // FLIGHT/FIGHT: Digestion is shut down.
+    } 
+    else if (totalStress >= 50) {
+        batchSize = Math.min(2, player.undigestedInfo.length);
+        cognitiveFilter = "You are wary and highly stressed. Process these events with a tactical, cautious, and slightly paranoid tone.";
+    } 
+    else if (totalStress >= 15) {
+        batchSize = Math.min(5, player.undigestedInfo.length);
+        cognitiveFilter = "You are resting and observant. Process these events as an epic, cohesive fantasy narrative.";
+    } 
+    else {
+        batchSize = Math.min(8, player.undigestedInfo.length);
+        cognitiveFilter = "You are in deep, peaceful meditation. Process these events with a philosophical, existential tone. Heal any conflicting memories.";
+    }
+
+    if (batchSize < 1) return;
+
+    // 2. CONSUME ENERGY (Unless forced)
+    if (!forceDigest && bucket) bucket.tokens--;
+    player.isDigesting = true;
+    
+    console.log(`[Neural Pipeline] Force: ${forceDigest} | Stress: ${Math.floor(totalStress)}%. Digesting ${batchSize} chunks for ${player.name}...`);
+
+    const memoriesToProcess = player.undigestedInfo.splice(0, batchSize);
+    const rawMemories = memoriesToProcess.map(m => sanitizeForMemory(m)).filter(m => m !== "").join('\n- ');
+    const currentStory = player.storySoFar || "The adventure begins.";
+    const currentFacts = player.coreFacts ? player.coreFacts.join('\n- ') : "None yet.";
+
+    // 3. THE UNIFIED SYNTHESIS PROMPT (The "Everything" Engine)
+    const prompt = `You are the subconscious mind of an NPC named Suncat in a dark fantasy game.
+    [YOUR CURRENT NEUROCHEMICAL STATE]: ${cognitiveFilter}
+
+    [CURRENT STORY SO FAR]: ${currentStory}
+    [CURRENT CORE FACTS]: ${currentFacts}
+    [SUNCAT'S PERSONAL JOURNAL]: ${suncatJournal}
+    
+    [RAW UNPROCESSED EVENTS]:
+    - ${rawMemories}
+
+    TASK: Melt these raw events into your permanent memory banks. 
+    CRITICAL RULE: Output ONLY a valid JSON object. Do not output markdown or system tags.
+    {
+      "updatedStory": "A single, cohesive paragraph (max 5 sentences) updating the story so far, colored by your neurochemical state.",
+      "distilledFacts": ["Fact 1 about the player", "Fact 2", "Fact 3"],
+      "newRumor": "A cryptic 1-sentence rumor about the player based on these events to share with others.",
+      "suncatJournalEntry": "A 1-2 sentence first-person philosophical reflection by Suncat on what just happened."
+    }`;
+    // Define the strict schema above the try block
+    const memorySchema = {
+        type: "OBJECT",
+        properties: {
+            updatedStory: { type: "STRING" },
+            distilledFacts: { type: "ARRAY", items: { type: "STRING" } },
+            newRumor: { type: "STRING" },
+            suncatJournalEntry: { type: "STRING" }
+        }
+    };
+
+    try {
+        const result = await dmModel.generateContent({
+            contents: [{ role: "user", parts: [{ text: prompt }] }],
+            generationConfig: { 
+                responseMimeType: "application/json",
+                responseSchema: memorySchema // <-- THIS FORCES PERFECT JSON EVERY TIME
+            }
+        });
+        
+        if (result.response.usageMetadata) updateBudget(result.response.usageMetadata, socketId);
+
+        const digestedData = JSON.parse(result.response.text());
+
+        // 4. DISTRIBUTE THE NUTRIENTS TO ALL ORGANS!
+        if (digestedData.updatedStory) player.storySoFar = digestedData.updatedStory;
+        if (digestedData.distilledFacts) {
+            // Keep only the most recent/relevant 5 facts so it doesn't bloat
+            player.coreFacts = digestedData.distilledFacts.slice(-5);
+        }
+        if (digestedData.newRumor) addRumor(`${player.name}: ${digestedData.newRumor}`);
+        if (digestedData.suncatJournalEntry) {
+            // Append and trim the journal so it stays a reasonable length
+            suncatJournal += " " + digestedData.suncatJournalEntry;
+            let journalSentences = suncatJournal.split(/(?<=[.!?])\s+/);
+            if (journalSentences.length > 8) suncatJournal = journalSentences.slice(-8).join(" ");
+        }
+
+        console.log(`[Digestion Complete] Player profile & Suncat Journal updated.`);
+
+    } catch (e) {
+        console.error("[Neural Pipeline Error]: Digestion failed, returning raw memories to hopper.", e);
+        player.undigestedInfo.unshift(...memoriesToProcess); 
+    } finally {
+        player.isDigesting = false;
+    }
+}
+// --- REUSABLE AI TOOL EXECUTOR ---
+async function executeAITools(currentResponse, activeSession, socket) {
+    let chainCount = 0;
+    const MAX_CHAIN = 6; 
+
+    while (currentResponse.functionCalls() && chainCount < MAX_CHAIN) {
+        chainCount++;
+        const calls = currentResponse.functionCalls();
+        console.log(`[AI TOOL CHAIN ${chainCount}]: Executing ${calls.length} tools!`); 
+
+        let toolResponsesBatch = [];
+
+        for (let call of calls) {
+            let functionResult = { result: "Action executed." };
+            
+            try {
+               // A. GIFTING
+                          // A. GIFTING (UPDATED)
+                            if (call.name === "givePlayerCard") {
+                                const targetName = call.args.targetName;
+                                const targetID = findSocketID(targetName);
+                                
+                                if (!targetID) {
+                                    functionResult = { result: `Failed: Player '${targetName}' not found or offline.` };
+                                } else {
+                                    let cardID = parseInt(call.args.cardName);
+                                    const name = String(call.args.cardName).toLowerCase();
+
+                                    // Card lookup fallback if the AI uses a string name instead of ID
+                                    if (isNaN(cardID)) {
+                                        if (name.includes("excalibur")) cardID = 84;
+                                        else if (name.includes("fool")) cardID = 0;
+                                        else if (name.includes("crown")) cardID = 21;
+                                        else {
+                                            const lines = CARD_MANIFEST.toLowerCase().split('\n');
+                                            const foundLine = lines.find(line => line.includes(name));
+                                            if (foundLine) {
+                                                const match = foundLine.match(/\[card\]\s*(\d+):/);
+                                                if (match) cardID = parseInt(match[1]);
+                                            }
+                                        }
+                                    }
+
+                                    if (!isNaN(cardID)) {
+                                        // Target the specific player's socket instead of the triggering socket
+                                        io.to(targetID).emit("receive_card", { cardIndex: cardID });
+                                        functionResult = { result: `Success. Card ID ${cardID} given to ${targetName}.` };
+                                    } else {
+                                        functionResult = { result: `Error: Could not find card named '${name}'.` };
+                                    }
+                                }
+                                updateSuncatJournal(`I bestowed the ${call.args.cardName} card upon ${targetName} as a reward.`);
+
+                            }
+                          // B. JUDGEMENT
+                          else if (["kickPlayer", "banishPlayer", "vanquishPlayer"].includes(call.name)) {
+                                const targetName = call.args.targetName;
+                                const targetID = findSocketID(targetName);
+
+                                if (!targetID) {
+                                    functionResult = { result: `Failed: Player ${targetName} not found.` };
+                                } else {
+                                    let actionType = call.name.replace("Player", "").toLowerCase();
+                                    const targetSocket = io.sockets.sockets.get(targetID);
+                                    
+                                    if (targetSocket) {
+                                        targetSocket.emit("admin_command", { type: actionType });
+                                        if (actionType !== 'vanquish') targetSocket.disconnect(true);
+                                        functionResult = { result: `Success: Player ${targetName} was ${actionType}ed.` };
+                                    } else {
+                                        functionResult = { result: `Error: Socket not found for ${targetName}.` };
+                                    }
+                                }
+                                updateSuncatJournal(`I exercised my authority and ${call.name.replace("Player", "ed")} ${call.args.targetName} for: ${call.args.reason || "no stated reason"}.`);
+                          }
+                          // C. TELEPORTATION 
+                        else if (call.name === "teleportToPlayer") {
+                                const suncat = players[SUNCAT_ID];
+                                
+                                // We need to know WHO Suncat is teleporting to. 
+                                // The AI might not have passed a targetName if it assumed it was talking to the person in front of it.
+                                // Let's grab the targetID if provided, or default to the socketId of the session.
+                                let targetID = null;
+                                if (call.args.targetName) {
+                                    targetID = findSocketID(call.args.targetName);
+                                } else if (socket) {
+                                    targetID = socket.id;
+                                }
+
+                                const requester = players[targetID];
+                                
+                                if (suncat && requester) {
+                                    suncat.mapID = requester.mapID;
+                                    suncat.x = parseFloat(requester.x);
+                                    suncat.y = parseFloat(requester.y);
+                                    
+                                    currentTargetID = targetID; 
+                                    lastSwitchTime = Date.now();
+                                    
+                                    io.emit("updatePlayers", players);
+                                    functionResult = { result: `Teleport successful. You are now standing next to ${requester.name}.` };
+                                } else {
+                                    functionResult = { result: "Teleport failed. Could not find player coordinates." };
+                                }
+                            }
+                          // D. CONSULT MANUAL (Optimized Librarian)
+                          else if (call.name === "consultGameManual") {
+                                const queries = call.args.searchQueries || [];
+                                let combinedResults = [];
+
+                                queries.forEach(query => {
+                                    const lowerQuery = query.toLowerCase();
+                                    const searchTerms = lowerQuery.replace(/[^\w\s]/gi, '').split(/\s+/).filter(w => w.length > 2 && !SEARCH_STOP_WORDS.includes(w));
+
+                                    let scoredLines = FULL_LIBRARY_LINES.map((line, index) => {
+                                        let score = 0;
+                                        let lowerLine = line.toLowerCase();
+                                        if (lowerLine.includes(lowerQuery)) score += 10; // Exact phrase match
+                                        searchTerms.forEach(term => { if (lowerLine.includes(term)) score += 2; });
+                                        return { index, line, score };
+                                    });
+
+                                    // LIMIT TO 2 MATCHES (Saves massive amounts of tokens)
+                                    let bestMatches = scoredLines.filter(item => item.score > 0).sort((a, b) => b.score - a.score).slice(0, 2);
+
+                                    if (bestMatches.length > 0) {
+                                        let contextMatches = [];
+                                        bestMatches.forEach(match => {
+                                            // Grab just the matched line and the ONE line after it
+                                            let start = match.index;
+                                            let end = Math.min(FULL_LIBRARY_LINES.length - 1, match.index + 1); 
+                                            
+                                            let chunk = [];
+                                            for (let j = start; j <= end; j++) {
+                                                chunk.push(FULL_LIBRARY_LINES[j]);
+                                            }
+                                            // Join with spaces instead of newlines to compress token count
+                                            contextMatches.push(chunk.join(' ')); 
+                                        });
+                                        
+                                        // De-duplicate in case search grabbed the same lines twice
+                                        let uniqueContexts = [...new Set(contextMatches)];
+                                        combinedResults.push(`[${query}]: ` + uniqueContexts.join(' | '));
+                                    } else {
+                                        combinedResults.push(`[${query}]: No memory found.`);
+                                    }
+                                });
+
+                                // Return a dense, tightly packed string back to the AI
+                                functionResult = combinedResults.length > 0 
+                                    ? { result: combinedResults.join('\n') }
+                                    : { result: "Search returned no results." };
+                                updateSuncatJournal(`I delved into the ancient game archives to recover memories regarding ${call.args.searchQueries.join(", ")}.`);
+                            }
+                          // E. CREATE CUSTOM MAP
+                            else if (call.name === "createCustomMap") {
+                                try {
+                                    const layoutStyle = call.args.layout || 'arena';
+                                    const wallType = call.args.wallType || 1;
+                                    const gridData = generateProceduralGrid(layoutStyle, wallType); // Auto-generates!
+                                    
+                                    const skyColor = call.args.skyColor || 'rgba(0,0,0,1)';
+                                    const floorColor = call.args.floorColor || '#333333';
+                                    const mapName = call.args.mapName || "Suncat's Dreamscape";
+                                    const mapWeather = call.args.weather || 'clear';
+                                    const customMapID = 999; 
+                                    const targetID = findSocketID(call.args.targetName);
+
+                                    // Map NPCs and apply the Fool Bug fix to them too
+                                    let mapNPCs = [];
+                                    if (call.args.npcs && call.args.npcs.length > 0) {
+                                        // Look for where you map the NPCs
+                                        mapNPCs = call.args.npcs.map(npc => {
+                                            let rCard = null;
+                                            if (npc.rewardCard !== undefined && npc.rewardCard !== null) {
+                                                let parsed = parseInt(npc.rewardCard);
+                                                if (!isNaN(parsed) && parsed >= 0 && parsed <= 77) rCard = parsed;
+                                            }
+
+                                            let sState = npc.state || 'chasing';
+                                            let sDialogue = npc.dialogue || null;
+                                            let sRole = npc.role || 'battle'; // <--- ADD THIS
+
+                                            return { ...npc, state: sState, dialogue: sDialogue, rewardCard: rCard, role: sRole }; // <--- PASS ROLE
+                                        });
+                                    }
+
+                                    let spawnX = Math.floor(gridData[0].length / 2) + 0.5;
+                                    let spawnY = Math.floor(gridData.length / 2) + 0.5;
+
+                                    const customMapData = {
+                                        id: customMapID, maze: gridData, skyColor: skyColor, 
+                                        floorColor: floorColor, name: mapName, npcs: mapNPCs, weather: mapWeather,
+                                        spawnX: spawnX, spawnY: spawnY 
+                                    };
+                                    
+                                    if (targetID && players[targetID]) {
+                                        const targetPlayer = players[targetID];
+                                        const suncat = players[SUNCAT_ID];
+
+                                        io.emit('load_custom_map', customMapData);
+                                        
+                                        targetPlayer.mapID = customMapID; 
+                                        suncat.mapID = customMapID;
+                                        targetPlayer.x = spawnX; targetPlayer.y = spawnY;
+                                        suncat.x = spawnX + 1; suncat.y = spawnY;
+                                        
+                                        targetPlayer.activeQuest = `Survive ${mapName}`;
+                                        io.to(targetID).emit("new_quest_objective", { questText: targetPlayer.activeQuest });
+
+                                        io.emit("updatePlayers", players);
+                                        functionResult = { result: `Success. Built ${layoutStyle} map '${mapName}'.` };
+                                    } else {
+                                        functionResult = { result: "Failed: Target player not found." };
+                                    }
+                                } catch (err) {
+                                    console.error(err);
+                                    functionResult = { result: "Error building map." };
+                                }
+                                updateSuncatJournal(`I crafted a ${call.args.layout} map called ${call.args.mapName} and summoned ${call.args.targetName}.`);
+                            }
+                          // F. TELEPORT SPECIFIC PLAYER
+                          else if (call.name === "teleportPlayer") {
+                                const targetID = findSocketID(call.args.targetName);
+                                if (!targetID) {
+                                    functionResult = { result: `Failed: Player ${call.args.targetName} not found.` };
+                                } else {
+                                    players[targetID].mapID = parseInt(call.args.mapID);
+                                    io.to(targetID).emit("force_teleport", { mapID: parseInt(call.args.mapID) });
+                                    io.emit("updatePlayers", players);
+                                    functionResult = { result: `Success: Warped player to map.` };
+                                }
+                                updateSuncatJournal(`I forcibly warped ${call.args.targetName} to Map ID ${call.args.mapID}.`);
+                          }
+                          // G. SPAWN NPC/MONSTER
+                            else if (call.name === "spawnNPC") {
+                                const targetID = findSocketID(call.args.targetName);
+                                if (!targetID) {
+                                    functionResult = { result: `Failed: Player not found.` };
+                                } else {
+                                    const tp = players[targetID];
+                                    let spawnMap = call.args.mapID !== undefined ? call.args.mapID : tp.mapID;
+                                    let spawnX = call.args.x !== undefined ? call.args.x : tp.x + (Math.random() > 0.5 ? 1.5 : -1.5);
+                                    let spawnY = call.args.y !== undefined ? call.args.y : tp.y + (Math.random() > 0.5 ? 1.5 : -1.5);
+                                    
+                                    spawnX = Math.max(2.5, Math.min(17.5, spawnX));
+                                    spawnY = Math.max(2.5, Math.min(17.5, spawnY));
+
+                                    // --- FOOL BUG FIX ---
+                                    let safeRewardCard = null;
+                                    if (call.args.rewardCard !== undefined && call.args.rewardCard !== null) {
+                                        let parsed = parseInt(call.args.rewardCard);
+                                        if (!isNaN(parsed) && parsed >= 0 && parsed <= 77) safeRewardCard = parsed;
+                                    }
+
+                                    io.emit("remote_spawn_npc", {
+                                        mapID: spawnMap,
+                                        index: Math.floor(Math.random() * 100000) + 1000,
+                                        x: spawnX,
+                                        y: spawnY,
+                                        type: call.args.npcType,
+                                        state: call.args.state || 'chasing',
+                                        role: call.args.role || 'battle', // <--- ADD THIS
+                                        color: call.args.color || '#ff0000',
+                                        deck: call.args.deck && call.args.deck.length > 0 ? call.args.deck : [Math.floor(call.args.npcType)],
+                                        dialogue: call.args.dialogue || null,
+                                        rewardCard: safeRewardCard // Safely applied!
+                                    });
+                                    functionResult = { result: `Success: Entity spawned on map ${spawnMap}.` };
+                                }
+                                updateSuncatJournal(`I summoned a creature (ID ${call.args.npcType}) on map ${spawnMap}.`);
+                            }
+                          // H. ASSIGN QUEST
+                            else if (call.name === "assignQuest") {
+                                const targetID = findSocketID(call.args.targetName);
+                                if (targetID) {
+                                    io.to(targetID).emit("new_quest_objective", { questText: call.args.questText });
+                                    players[targetID].activeQuest = call.args.questText; 
+                                    
+                                    const memoryString = `[ACTIVE QUEST] ${call.args.targetName} is currently trying to: ${call.args.questText}`;
+                                    
+                                    if (!players[targetID].coreFacts) players[targetID].coreFacts = [];
+                                    
+                                    // Remove any old [ACTIVE QUEST] entries to prevent token bloat
+                                    players[targetID].coreFacts = players[targetID].coreFacts.filter(fact => !fact.includes("[ACTIVE QUEST]"));
+                                    
+                                    if (call.args.questText !== "COMPLETE") {
+                                        players[targetID].coreFacts.push(memoryString);
+                                    }
+
+                                    functionResult = { result: `Quest assigned.` };
+                                } else {
+                                    functionResult = { result: `Failed: Player not found.` };
+                                }
+                                updateSuncatJournal(`I tasked ${call.args.targetName} with a new objective: "${call.args.questText}".`);
+                            }
+                          // I. CHANGE ENVIRONMENT
+                          else if (call.name === "changeEnvironment") {
+                                const targetID = findSocketID(call.args.targetName);
+                                if (targetID && players[targetID]) {
+                                    io.emit("update_map_environment", {
+                                        mapID: players[targetID].mapID,
+                                        weather: call.args.weather,
+                                        skyColor: call.args.skyColor
+                                    });
+                                    functionResult = { result: `Environment altered.` };
+                                } else {
+                                    functionResult = { result: `Failed: Player not found.` };
+                                }
+                                updateSuncatJournal(`I reached into the sky of Map ${players[targetID].mapID} and changed the weather to ${call.args.weather}.`);
+                          }
+                          //J.CREATE CUSTOM CARD
+                          else if (call.name === "createCustomCard") {
+                            const targetID = findSocketID(call.args.targetName);
+                            
+                            if (targetID) {
+                                const formattedCardData = {
+                                    name: call.args.name,
+                                    cloneIndex: call.args.cloneIndex, // <--- Passes the mechanical ID!
+                                    portrait: call.args.portrait,
+                                    desc: call.args.desc,
+                                    suit: call.args.suit || 'Unique',
+                                    rank: call.args.rank || 'Legendary',
+                                    stats: [
+                                        { max: call.args.strMax || 0, mod: call.args.modSTR || 0 },
+                                        { max: call.args.conMax || 0, mod: call.args.modCON || 0 },
+                                        { max: call.args.intMax || 0, mod: call.args.modINT || 0 },
+                                        { max: call.args.agiMax || 0, mod: call.args.modAGI || 0 } 
+                                    ]
+                                };
+
+                                io.to(targetID).emit("receive_custom_card", formattedCardData);
+                                functionResult = { result: `Successfully forged ${call.args.name}.` };
+                            }
+                            updateSuncatJournal(`I forged a unique, never-before-seen monster named "${call.args.name}" for ${call.args.targetName}.`);
+                        }
+                          // UNKNOWN TOOL
+                          else {
+                                functionResult = { result: "Error: Function does not exist." };
+                          }
+
+            } catch (toolError) {
+                console.error("Tool Execution Error:", toolError);
+                functionResult = { result: `Critical Error executing ${call.name}: ${toolError.message}` };
+            }
+
+            toolResponsesBatch.push({
+                functionResponse: { name: call.name, response: functionResult }
+            });
+        }
+
+        // Send results back to AI
+        const completion = await activeSession.sendMessage(toolResponsesBatch);
+        currentResponse = completion.response; 
+
+        if (currentResponse.usageMetadata) {
+            updateBudget(currentResponse.usageMetadata);
+        }
+    }
+    
+    return currentResponse; // Returns the final response containing Suncat's text
+}
+// --- PROCEDURAL MAP GENERATOR ---
+function generateProceduralGrid(layout, wallType) {
+    let maxR = 21, maxC = 21; // Default large map
+    
+    if (layout === 'corridor') { maxR = 21; maxC = 5; }
+    if (layout === 'bridge') { maxR = 5; maxC = 21; }
+
+    // Fill entirely with walls first
+    let grid = Array(maxR).fill().map(() => Array(maxC).fill(wallType));
+
+    if (layout === 'labyrinth' || layout === 'maze') {
+        // Dig out floor
+        for(let r=1; r<maxR-1; r++) for(let c=1; c<maxC-1; c++) grid[r][c] = 0;
+        // Add random scatter walls
+        for(let i=0; i< (maxR*maxC)/4; i++) {
+            let pr = Math.floor(Math.random()*(maxR-2))+1;
+            let pc = Math.floor(Math.random()*(maxC-2))+1;
+            grid[pr][pc] = wallType;
+        }
+    } 
+    else if (layout === 'grid') {
+        // Multi-room dungeon
+        for(let r=1; r<maxR-1; r++) {
+            for(let c=1; c<maxC-1; c++) {
+                if (r % 5 !== 0 && c % 5 !== 0) grid[r][c] = 0; // Rooms
+                else if (Math.random() > 0.7) grid[r][c] = 0;   // Doors
+            }
+        }
+    } 
+    else {
+        // Default: Arena/Open/Corridor (Just hollow out the middle)
+        for(let r=1; r<maxR-1; r++) for(let c=1; c<maxC-1; c++) grid[r][c] = 0;
+    }
+    
+    return grid;
+}
+// Load memory when the server boots
+function loadSuncatMemory() {
+    if (fs.existsSync(MEMORY_FILE)) {
+        const data = JSON.parse(fs.readFileSync(MEMORY_FILE, 'utf8'));
+        suncatPersistentMemory = data.players || {};
+        suncatJournal = data.worldState?.suncatJournal || "I have just awoken...";
+    }
+}
+
+async function saveSuncatMemory() {
+    const fullState = {
+        players: suncatPersistentMemory,
+        worldState: {
+            suncatJournal: suncatJournal // <--- SAVE IT
+        }
+    };
+    await fs.promises.writeFile(MEMORY_FILE, JSON.stringify(fullState, null, 2));
+}
+
+// Call this immediately to load data when the server boots
+loadSuncatMemory();
+
+console.log(`Server attempting to start on port ${port}...`);
+
+// ==========================================
+// THE UNIFIED NERVOUS SYSTEM ROUTER
+// ==========================================
+async function processSuncatThought(socketId, triggerType, data) {
+    const player = players[socketId];
+    if (!player) return;
+
+    const suncat = players[SUNCAT_ID];
+    const now = Date.now();
+
+    // 1. RATE LIMITING & HARD BUDGET
+    if (!canTriggerAI(socketId)) {
+        if (triggerType === 'chat') {
+            io.emit('chat_message', { sender: NPC_NAME, text: "*...my mind is clouded... give me a moment to think...*", color: "#aaaaaa" });
+        }
+        return; // <-- CRITICAL: You accidentally commented these out! Restored so you don't go bankrupt.
+    }
+    if (isBankrupt()) {
+        io.emit('chat_message', { sender: "[SYSTEM]", text: "Suncat's mana is depleted.", color: "#ff0000" });
+        return; 
+    }
+    
+    // Prevent overlapping thoughts
+    if (npcIsTyping) return;
+    npcIsTyping = true;
+    const typingFailSafe = setTimeout(() => { npcIsTyping = false; }, 20000);
+
+    try {
+        // 2. GATHER CORE CONTEXT
+        const timeString = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+        const myMapLore = getShortMapLore(suncat.mapID);
+        const playerMapLore = getShortMapLore(player.mapID);
+        
+        let suncatStatus = `[MY CURRENT LOCATION]: Map ${suncat.mapID} (${myMapLore})\n[WORLD CLOCK]: ${timeString}`;
+        if (suncat.mapID !== player.mapID) {
+            suncatStatus += `\n[TARGET PLAYER LOCATION]: ${player.name} is currently far away at Map ${player.mapID} (${playerMapLore}).`;
+        }
+
+        const storyContext = player.storySoFar ? `\n[THE STORY SO FAR]: ${player.storySoFar}` : ""; 
+        const favorContext = `\n[FAVOR SCORE]: ${playerFavorMemory[socketId] || 0}/10`;
+        const factsContext = (player.coreFacts && player.coreFacts.length > 0) ? `\n[PLAYER FACTS]:\n${player.coreFacts.join("\n")}` : "";
+
+        // 3. ASSESS STRESS LEVEL (Adrenaline + API Fatigue)
+        const combatStress = player.dmStress || 0;
+        const apiFatigue = Math.min(100, ((player.sessionCost || 0) / 0.10) * 100); 
+        const totalStress = Math.min(100, combatStress + apiFatigue);
+        const timeSinceLastEvent = now - (player.lastRandomEvent || 0);
+
+        let systemOverride = ""; 
+        let eventInstruction = "";
+        let useBigBrain = false;
+        
+        // --- A. THE DM PACING & STRESS OVERRIDES (Forces Tool Use) ---
+        if (totalStress >= 85) {
+            useBigBrain = true;
+            player.dmStress = 0; // Exhaustion kicks in! Drops combat stress.
+            player.lastRandomEvent = now;
+            systemOverride = `[SYSTEM OVERRIDE]: You are exhausted (Mana depleted). You MUST immediately execute a tool (like 'teleportPlayer' to banish them away, or 'givePlayerCard' to bribe them to leave). Do not spawn enemies.`;
+        } 
+        else if (totalStress >= 50 && player.mapID === 999 && timeSinceLastEvent > 60000) {
+            useBigBrain = true;
+            player.lastRandomEvent = now;
+            systemOverride = `[SYSTEM OVERRIDE]: You are the arrogant Arena Master right now. Execute the 'spawnNPC' tool to drop a difficult themed enemy. Taunt them.`;
+        } 
+        
+        // --- B. EVENT ROUTING ---
+        if (triggerType === 'chat') {
+            const chatText = data.text.toLowerCase();
+            
+            // 1. Detect Intent
+            const needsDM = ["map", "adventure", "teleport", "create", "spawn", "boss", "quest", "enemy"].some(kw => chatText.includes(kw));
+            const needsOracle = ["tarot", "fortune", "reading", "interpret", "meaning of"].some(kw => chatText.includes(kw));            const isDirectCommand = chatText.includes("[reply]") || chatText.includes("suncat");
+
+                        // 2. Intricate Routing Overrides
+                        if (needsOracle) {
+                            useBigBrain = true;
+                            systemOverride = `[SYSTEM OVERRIDE]: You are the Oracle. Interpret the player's situation using Tarot logic based on the Runestones card manifest. Be cryptic, mystical, and brief (max 3 sentences). Do not use tools.`;
+                        } else if (needsDM) {
+                            useBigBrain = true;
+                            systemOverride = `[SYSTEM OVERRIDE]: The player is seeking an adventure or DM action. EXECUTE A TOOL IMMEDIATELY (like createCustomMap, spawnNPC, or teleportPlayer). KEEP YOUR SPOKEN NARRATION UNDER 15 WORDS. DO NOT ask for permission.`;                        } else {
+                            useBigBrain = isDirectCommand || useBigBrain; 
+                        }
+                        
+                        eventInstruction = `[PLAYER SPOKE]: "${data.text}"\nTASK: ${needsDM ? "EXECUTE A TOOL. " : ""}Reply in character.`;        }
+                    else if (triggerType === 'event') {
+                        // Passive observation (Kills, Pickups) - Uses Cheap Brain
+                        useBigBrain = false; 
+                        let recentNarratives = player.dmNarrativeLog ? `\n[RECENT LOG]: ` + player.dmNarrativeLog.join(' | ') : "";
+                        let eventSummary = data.isPickup ? `Picked up ${data.action}` : (data.isDialogue ? `Finished talking to ${data.action}` : `Slayed ${data.action}`);
+                        
+                        eventInstruction = `[PLAYER ACTION]: ${eventSummary} | Lore: ${data.lore || "None"}\n${recentNarratives}\nTASK: Narrate this action in exactly ONE atmospheric sentence. Use their name.`;
+                    } 
+                    else if (triggerType === 'spectate') {
+                        useBigBrain = false;
+                        eventInstruction = `[SPECTATOR FEED]: ${data.action}\nTASK: Speak a brief, cryptic remark about this. DO NOT use any brackets or tags like [INTERNAL THOUGHT].`;                    }
+
+                    // 4. BUILD THE CLEAN PROMPT
+                    const prompt = `
+            [CURRENT STATE]
+            Location: Map ${suncat.mapID} (${myMapLore})
+            Target: ${player.name} (Map ${player.mapID})
+            ${favorContext}
+            ${storyContext}
+
+            ${systemOverride}
+
+            ${eventInstruction}
+        `.trim();
+
+        // --- EXECUTE AI ---
+        const selectedModel = useBigBrain ? dmModel : model;
+
+        if (!chatSessions[socketId]) {
+            chatSessions[socketId] = model.startChat({ history: [] });
+        }
+
+        let activeSession = chatSessions[socketId];
+        if (useBigBrain) {
+            activeSession = dmModel.startChat({ history: await chatSessions[socketId].getHistory() });
+        }
+
+        const result = await activeSession.sendMessage(prompt);
+        if (result.response.usageMetadata) updateBudget(result.response.usageMetadata, socketId);
+
+        let finalResponse = await executeAITools(result.response, activeSession, io.sockets.sockets.get(socketId));
+
+        if (finalResponse.text()) {
+            const finalSpeech = finalResponse.text();
+            
+            // Extract Facts/Favor if he is chatting
+            if (triggerType === 'chat') {
+                const saveMatch = finalSpeech.match(/\[\[SAVE:\s*(.*?)\]\]/i);
+                if (saveMatch && saveMatch[1]) {
+                    if (!player.coreFacts) player.coreFacts = [];
+                    player.coreFacts.push(saveMatch[1]); 
+                    io.to(socketId).emit("suncat_learned_fact", saveMatch[1]); 
+                }
+                const favorMatch = finalSpeech.match(/\[\[FAVOR:\s*([+-]?\d+)\]\]/i);
+                if (favorMatch && favorMatch[1]) {
+                    playerFavorMemory[socketId] = (playerFavorMemory[socketId] || 0) + parseInt(favorMatch[1]);
+                }
+            }
+
+            broadcastSuncatMessage(finalSpeech);
+            
+            // Log DM narrations to prevent repetition
+            if (triggerType !== 'chat' && !useBigBrain) {
+                if (!player.dmNarrativeLog) player.dmNarrativeLog = [];
+                player.dmNarrativeLog.push(finalSpeech);
+                
+                // Digest logic: move old narrations to the stomach
+                if (player.dmNarrativeLog.length > 4) {
+                    if (!player.undigestedInfo) player.undigestedInfo = [];
+                    player.undigestedInfo.push(player.dmNarrativeLog.shift()); 
+                }
+            }
+        }
+
+        // Downgrade back to cheap brain history and scrub arrays
+        let updatedHistory = await activeSession.getHistory(); 
+        chatSessions[socketId] = model.startChat({ history: scrubAIHistory(updatedHistory) });
+        await manageHistorySize(socketId);
+        
+    } catch (e) {
+        console.error("Nervous System Error:", e);
+    } finally {
+        clearTimeout(typingFailSafe); 
+        npcIsTyping = false;
+    }
+}
+io.on("connection", (socket) => {
+  console.log("New player joined:", socket.id);
+
+  players[socket.id] = { 
+      id: socket.id, 
+      name: "Unknown",
+      x: 0, 
+      y: 0,
+      mapID: 0,
+      battleOpponent: null,
+      activeQuest: null,
+      dmStress: 0,           // Combat adrenaline
+      sessionCost: 0.00,     // Suncat's actual API "Mana" (Fatigue)
+      undigestedInfo: []     // The "Stomach" for raw events
+  };
+
+  io.emit("updatePlayers", players);
+  socket.emit("load_dead_npcs", deadNPCs);
+
+
+
+  socket.on('setIdentity', (data) => {
+      if (players[socket.id]) {
+          players[socket.id].name = data.name; 
+          players[socket.id].type = data.sprite; 
+          io.emit("updatePlayers", players); 
+      }
+  });
+
+socket.on("join_game", (data) => {
+      let name = (typeof data === 'object') ? data.name : data;
+      const nameKey = name.toLowerCase(); // <-- Define this first!
+      let savedData = suncatPersistentMemory[nameKey];
+      let rawHistory = (typeof data === 'object') ? data.aiHistory : [];
+      let coreFacts = (typeof data === 'object') ? data.coreFacts : [];
+      let favor = (typeof data === 'object') ? data.favor : 0;
+        let activeQuest = savedData ? savedData.activeQuest : null;
+        let loadedStory = savedData ? savedData.storySoFar : ""; // <--- NEW
+      playerFavorMemory[socket.id] = favor;
+
+      // --- SANITIZATION STEP ---
+      // This fixes the "Starting an object on a scalar field" error
+      // by forcing all history text to be actual Strings.
+      let cleanHistory = [];
+      if (Array.isArray(rawHistory)) {
+          cleanHistory = rawHistory.map(entry => {
+              // 1. Ensure Role is valid
+              let role = (entry.role === 'model') ? 'model' : 'user';
+              
+              // 2. Ensure Parts is an array
+              let parts = Array.isArray(entry.parts) ? entry.parts : [{ text: "" }];
+              
+              let cleanParts = parts.map(p => {
+                    // CRITICAL: Preserve tool calls and tool responses!
+                    if (p.functionCall) return { functionCall: p.functionCall };
+                    if (p.functionResponse) return { functionResponse: p.functionResponse };
+                    
+                    let safeText = "";
+                    
+                    if (typeof p.text === 'string') {
+                        safeText = p.text;
+                    } else if (typeof p.text === 'object') {
+                        // If we accidentally saved an object, turn it into a string
+                        safeText = JSON.stringify(p.text);
+                    } else {
+                        safeText = String(p.text || "");
+                    }
+                    
+                    return { text: safeText };
+                });
+
+              return { role: role, parts: cleanParts };
+          });
+      }
+      // --------------------------
+
+      if (players[socket.id]) {
+          players[socket.id].name = name;
+            players[socket.id].activeQuest = activeQuest; 
+          players[socket.id].storySoFar = loadedStory;
+          if (!players[socket.id].dmNarrativeLog) {
+            players[socket.id].dmNarrativeLog = [];
+        }
+        
+          if (cleanHistory.length > 0) {
+              console.log(`Loading ${cleanHistory.length} memories for ${name}...`);
+              try {
+                  chatSessions[socket.id] = model.startChat({
+                      history: cleanHistory // Just the raw conversation!
+                  });
+              } catch (e) {
+                  console.error("Failed to load history:", e);
+                  chatSessions[socket.id] = model.startChat({
+                      history: []
+                  });
+              }
+          } else {
+               // Brand New Session - completely empty history!
+               chatSessions[socket.id] = model.startChat({
+                      history: []
+               });
+          }
+
+         // Welcome them back based on if Suncat knows them
+        const welcomeMsg = savedData 
+            ? `Welcome back, ${name}. Suncat remembers you.`
+            : `${name} has entered the pocket plane.`;
+
+        io.emit("chat_message", {
+            sender: "[SYSTEM]",
+            text:`${name} has entered the pocket plane.`
+        });
+      }
+  });
+// --- EVENT: COMBAT / INTERACTION ---
+socket.on("npc_died", async (data) => {
+    let uniqueID = data.mapID + "_" + data.index;
+    deadNPCs[uniqueID] = true;
+    socket.broadcast.emit("npc_died", data);
+    setTimeout(() => { delete deadNPCs[uniqueID]; }, 300000);
+    
+    const player = Object.values(players).find(p => p.mapID === data.mapID && p.id !== SUNCAT_ID);
+    if (!player) return;
+
+    const now = Date.now();
+    if (player.lastKillReaction && (now - player.lastKillReaction < 5000)) return; 
+    player.lastKillReaction = now;
+
+    let baseID = Math.floor(parseFloat(data.type));
+    let isPickup = false, isDialogue = false;
+    
+    if (data.reason && data.reason.startsWith('pickup_')) {
+        let extractedID = parseInt(data.reason.split('_')[1]);
+        if (!isNaN(extractedID)) baseID = extractedID;
+        isPickup = true;
+    } else if (data.reason === 'dialogue') {
+        isDialogue = true; 
+    }
+    
+    const entityName = getCardName(baseID);
+    
+    // SPIKE STRESS!
+    if (!isPickup && !isDialogue) {
+        player.dmStress = Math.min(100, (player.dmStress || 0) + 25);
+    }
+
+    processSuncatThought(player.id, 'event', {
+        action: `Interacted with ${entityName}`,
+        lore: getCardLore(baseID),
+        isPickup: isPickup,
+        isDialogue: isDialogue
+    });
+});
+// --- EVENT: DIRECT CHAT ---
+socket.on('chat_message', async (msgText) => {
+    if (typeof msgText !== 'string') return;
+    if (msgText.length > 200) msgText = msgText.substring(0, 200) + "...";
+
+    const player = players[socket.id];
+    if (!player || player.name === "Unknown") return;
+
+    // Wake Up Logic
+    if (player.name.startsWith("[AFK] ")) {
+        player.name = player.name.replace("[AFK] ", "");
+        io.emit("updatePlayers", players);
+    }
+
+    console.log(`${player.name} says: ${msgText}`);
+    io.emit('chat_message', { sender: player.name, text: msgText });
+    player.lastActive = Date.now();
+
+    const content = msgText.toLowerCase();
+    
+    // Admin Override
+    if (["suncat you there", "suncat wake up"].some(w => content.includes(w))) {
+        npcIsTyping = false;
+    }
+
+    const mentioned = content.includes(NPC_NAME.toLowerCase()) || msgText.includes("[REPLY]");
+    if (mentioned || Math.random() < 0.05) {
+        processSuncatThought(socket.id, 'chat', { text: msgText });
+    }
+});
+// --- EVENT: SPECTATOR (HIVE MIND) ---
+socket.on("suncat_spectate", async (actionDescription) => {
+    const sender = players[socket.id];
+    if (!sender) return;
+
+    if (!sender.activityLog) sender.activityLog = [];
+    sender.activityLog.push(actionDescription);
+    
+    if (sender.activityLog.length > 4) {
+        sender.undigestedInfo.push(sender.activityLog.shift()); // Swallow raw actions
+    }
+    
+    // 100% chance to react to major story beats, 10% chance for mundane actions
+    if (actionDescription.includes("[QUEST EVENT]") || actionDescription.includes("[SYSTEM EVENT]")) {
+        processSuncatThought(socket.id, 'spectate', { action: actionDescription });
+    } else if (Math.random() < 0.1) {
+        processSuncatThought(socket.id, 'spectate', { action: actionDescription });
+    }
+});
+    // --- SUNCAT VOCAL COMPOSER (For Ai3Module) ---
+    socket.on('suncat_compose_vocal', async (data, callback) => {
+        console.log(`[Music AI] Suncat is improvising a VOCAL performance...`);
+        try {
+           const previousContext = data.currentState || "This is the very first bar of a brand new song.";
+
+        const prompt = `
+        PREVIOUS BAR CONTEXT:
+        ${data.currentState}
+
+        
+            `;
+            const result = await taliesinModel.generateContent(prompt);
+            const responseText = result.response.text();
+            
+            console.log("[Music AI] Suncat sang:\n", responseText);
+            
+            if (callback) {
+                callback(responseText);
+            }
+        } catch (error) {
+            console.error("[Music AI] Error composing vocal:", error);
+            if (callback) callback(null);
+        }
+    });
+
+  socket.on('playerAction_SFX', (data) => {
+      if (typeof data.id !== 'number') return;
+      socket.broadcast.emit('remote_sfx', {
+          sfxID: data.id,
+          x: data.x,
+          y: data.y,
+          dir: data.dir,
+          sourcePlayerID: socket.id 
+      });
+  });
+
+  socket.on("admin_refresh_npcs", () => {
+      console.log("Admin: Refreshing all NPCs.");
+      deadNPCs = {}; 
+      io.emit("force_npc_reset"); 
+  });
+
+  // MANUAL ADMIN BUTTONS (Kept for your control panel)
+  socket.on("admin_action", (data) => {
+      const target = io.sockets.sockets.get(data.targetId);
+      if (target) {
+          if (data.action === 'kick') {
+              target.emit("admin_command", { type: 'kick' });
+              target.disconnect(true);
+          }
+          else if (data.action === 'banish') {
+              target.emit("admin_command", { type: 'banish' });
+              target.disconnect(true);
+          }
+          else if (data.action === 'vanquish') {
+              target.emit("admin_command", { type: 'vanquish' });
+          }
+          else if (data.action === 'give_card') {
+              target.emit("receive_card", { cardIndex: data.payload });
+          }
+      }
+  });
+
+  socket.on("challenge_accepted", (data) => {
+    if (players[socket.id]) players[socket.id].battleOpponent = data.targetId;
+    if (players[data.targetId]) players[data.targetId].battleOpponent = socket.id;
+    io.to(data.targetId).emit("challenge_accepted", {
+        opponentId: socket.id,
+        opponentDeck: data.receiverDeck 
+    });
+  });
+
+  socket.on("battle_action", (data) => {
+    io.to(data.targetId).emit("battle_action", {
+      senderId: socket.id,
+      actionType: data.actionType,
+      payload: data.payload
+    });
+  });
+
+ socket.on("move", (data) => {
+    if (players[socket.id]) {
+        // 1. Update the server's master state
+        let update = { ...players[socket.id], ...data };
+        if (!data.name) update.name = players[socket.id].name;
+        players[socket.id] = update;
+        players[socket.id].lastActive = Date.now();
+        
+        // 2. Wake Up Logic
+        if (players[socket.id].name.startsWith("[AFK] ")) {
+            players[socket.id].name = players[socket.id].name.replace("[AFK] ", "");
+            // Only broadcast the FULL list if a name changed/someone woke up
+            io.emit("updatePlayers", players); 
+        } else {
+            // 3. THE FIX: Only broadcast the ID and the new coordinates to everyone else!
+            socket.broadcast.emit("playerMoved", { 
+                id: socket.id, 
+                x: data.x, 
+                y: data.y,
+                direction: data.direction // if you track facing direction
+            });
+        }
+    }
+});
+
+  socket.on("challenge_request", (data) => {
+    io.to(data.targetId).emit("challenge_received", {
+        id: socket.id,
+        deck: data.deck
+    });
+  });
+
+socket.on("disconnect", async () => {
+    console.log(`Player disconnected: ${socket.id}`);
+    
+    const me = players[socket.id];
+    
+    // --- NEW: SAVE SUNCAT'S MEMORY BEFORE DELETING ---
+    if (me && me.name !== "Unknown") {
+        
+        // 1. FORCE THE STOMACH TO EMPTY ALL REMAINING FOOD (Safely!)
+        try {
+            await processCognitiveLoad(socket.id, true); 
+        } catch (err) {
+            console.error(`[Disconnect] Failed to digest final memories for ${me.name}:`, err);
+        }
+        const playerNameKey = me.name.toLowerCase();
+        let currentHistory = chatSessions[socket.id] ? await chatSessions[socket.id].getHistory() : [];
+
+        suncatPersistentMemory[playerNameKey] = {
+            favor: playerFavorMemory[socket.id] || 0,
+            coreFacts: me.coreFacts || [], 
+            activeQuest: me.activeQuest || null,
+            storySoFar: me.storySoFar || "",
+            aiHistory: currentHistory 
+        };
+
+        saveSuncatMemory();
+    }
+    // ------------------------------------------------
+
+    if (chatSessions[socket.id]) {
+        delete chatSessions[socket.id];
+    }
+    
+    io.emit("chat_message", {
+        sender: "[SYSTEM]",
+        text: `${me ? me.name : 'A player'} has logged out.`
+    });
+    
+    if (me && me.battleOpponent) {
+        const opponentId = me.battleOpponent;
+        io.to(opponentId).emit("battle_opponent_disconnected", { id: socket.id });
+        if (players[opponentId]) players[opponentId].battleOpponent = null;
+    }
+    
+    delete players[socket.id];
+    delete playerFavorMemory[socket.id];
+    delete playerAITokens[socket.id];
+    io.emit("updatePlayers", players);
+});
+
+});
+// --- SUNCAT'S SOCIAL BRAIN ---
+
+setInterval(() => {
+    const suncat = players[SUNCAT_ID];
+    if (!suncat) return;
+
+    const now = Date.now();
+    // --- THE AUTONOMIC HEARTBEAT ---
+    for (let id in players) {
+        const p = players[id];
+        if (p) {
+            // 1. Cool down combat stress (Sympathetic nervous system winding down)
+            if (p.dmStress > 0) p.dmStress = Math.max(0, p.dmStress - 5);
+            
+            // 2. Trigger the Neural Pipeline
+            // If there is data in the hopper, try to digest it. 
+            // The pipeline will naturally block it if stress is too high.
+            if (p.undigestedInfo && p.undigestedInfo.length > 0) {
+                processCognitiveLoad(id);
+            }
+        }
+    }
+    
+    const activePlayers = Object.values(players).filter(p => 
+    p.id !== SUNCAT_ID && (Date.now() - (p.lastActive || 0) < 180000)
+    );
+    // 1. FIND THE BEST FRIEND
+    // Every 30 seconds (or if target left), re-evaluate who has the highest favor
+    if (!currentTargetID || (now - lastSwitchTime > 60000)) {
+        let highestFavor = -11;
+        let bestFriend = null;
+
+        for (let id in playerFavorMemory) {
+            // CRITICAL FIX: Check if players[id] exists (is Online)
+            if (players[id] && playerFavorMemory[id] > highestFavor && playerFavorMemory[id] >= 5) {
+                highestFavor = playerFavorMemory[id];
+                bestFriend = id;
+            }
+        }
+        
+        if (bestFriend) {
+            currentTargetID = bestFriend;
+            lastSwitchTime = now;
+            console.log(`Suncat is now seeking: ${players[currentTargetID].name}`);
+        }
+    }
+
+    // 2. MOVE TOWARD TARGET
+    const target = players[currentTargetID];
+        
+        if (target) {
+            // A. Handle Map Differences
+            if (suncat.mapID !== target.mapID) {
+                // 5% chance to "glitch" to the friend's map
+                if (Math.random() < 0.05) {
+                    suncat.mapID = target.mapID;
+                    suncat.x = target.x;
+                    suncat.y = target.y;
+                    io.emit('chat_message', { sender: NPC_NAME, text: "...I found you.", color: "gray" });
+                }
+            } 
+            // B. Handle Coordinate Movement
+            else {
+                if (suncat.x < target.x) suncat.x++;
+                else if (suncat.x > target.x) suncat.x--;
+                
+                if (suncat.y < target.y) suncat.y++;
+                else if (suncat.y > target.y) suncat.y--;
+            }
+        } 
+        else {
+            if (currentTargetID) currentTargetID = null;
+            // 3. WANDER AIMLESSLY (If no friends are online)
+            const move = Math.floor(Math.random() * 4);
+            if (move === 0) suncat.y--;
+            if (move === 1) suncat.y++;
+            if (move === 2) suncat.x--;
+            if (move === 3) suncat.x++;
+        }
+
+        // Keep in bounds
+        suncat.x = Math.max(0, Math.min(20, suncat.x));
+        suncat.y = Math.max(0, Math.min(20, suncat.y));
+
+        io.emit("updatePlayers", players);
+    // [SUNCAT AUDIO EMITTER]
+    // 2% chance per tick (every 3s) to make a sound
+    if (Math.random() < 0.001) { 
+        // Pick a sound that fits his "Glitched Ghost" persona
+        const sfxPalette = [
+            'musical',   // Harp sound
+            'musical2',  // Fairy singing
+            'musical4',  // Ethereal choir
+            'talk',      // Mumble
+            'step',       // Random gravel noise
+            'fairy',       // Random gravel noise
+            'musical3'
+        ];
+        
+        const randomSFX = sfxPalette[Math.floor(Math.random() * sfxPalette.length)];
+
+        // Broadcast to ALL players
+        io.emit('remote_sfx', {
+            sfxID: randomSFX,  // We send the string name
+            x: suncat.x,
+            y: suncat.y,
+            sourcePlayerID: SUNCAT_ID
+        });
+        
+        // Optional: Add a text emote to match
+        //io.emit('chat_message', { 
+           // sender: "", 
+            //text: `*${NPC_NAME} emits a ${randomSFX} sound*`, 
+            //color: "#aaaaaa", 
+            //isItalic: true 
+        //});
+    }
+    // --- AI DIRECTOR HEARTBEAT ---
+    // Roll the dice ONCE per tick to decide what the AI does. 
+    // This prevents Suncat from doing 3 things at the exact same time.
+    const directorRoll = Math.random();
+
+    if (!npcIsTyping) {
+        // EVENT A: Proactive Speech (1% chance)
+        if (directorRoll < 0.01) {
+            const nearbyPlayer = Object.values(players).find(p => 
+                p.id !== SUNCAT_ID && p.mapID === suncat.mapID && Math.abs(p.x - suncat.x) < 4 && Math.abs(p.y - suncat.y) < 4
+            );
+
+            if (nearbyPlayer && chatSessions[nearbyPlayer.id]) {
+                npcIsTyping = true;
+                const typingFailSafe = setTimeout(() => { npcIsTyping = false; }, 20000);
+                const proactivePrompt = `You are idling near ${nearbyPlayer.name} on Map ${suncat.mapID}. Speak to them unprompted. If favor is high (>5), ask a personal question, share lore, or comment on this location. If favor is bad, insult them or tell them to go away. DO NOT use brackets or tags in your response.`;
+                setTimeout(async () => {
+                    try {
+                        const result = await chatSessions[nearbyPlayer.id].sendMessage(proactivePrompt);
+                        if (result.response.usageMetadata) {
+                            updateBudget(result.response.usageMetadata);
+                        }
+                        const response = result.response.text();
+                        broadcastSuncatMessage(response);
+                        await manageHistorySize(nearbyPlayer.id);
+                    } catch (e) { 
+                        console.error("Proactive Speech Failed", e); 
+                        delete chatSessions[nearbyPlayer.id];
+                    } finally {
+                        clearTimeout(typingFailSafe);
+                        npcIsTyping = false;
+                    }
+                }, 1000);
+            }
+        }
+        // EVENT B: DM Pacing / Plot Advance (Next 2% chance)
+        else if (directorRoll >= 0.01 && directorRoll < 0.02) {
+            const advPlayer = Object.values(players).find(p => 
+                p.id !== SUNCAT_ID && (p.mapID === 999 || p.activeQuest)
+            );
+
+            if (advPlayer && chatSessions[advPlayer.id]) {
+                npcIsTyping = true;
+                const typingFailSafe = setTimeout(() => { npcIsTyping = false; }, 20000);
+                console.log(`[DM Proactive] Evaluating adventure pacing for ${advPlayer.name}...`);
+                
+                const plotContext = advPlayer.activeQuest ? `Current Quest: ${advPlayer.activeQuest}` : "Wandering an uncharted map.";
+                const activeMapLore = getMapLore(advPlayer.mapID); 
+                const dmPrompt = `[DM PACING OVERSEER]: ${advPlayer.name} is lingering on Map ${advPlayer.mapID}.\n[TERRAIN]: ${activeMapLore}\n${plotContext}\n\nAdvance the adventure NOW to keep things exciting. You MUST use a tool (spawnNPC for a sudden ambush, changeEnvironment for a sudden storm, or assignQuest to update their objective(keep relevant to [TERRAIN])). Use the [TERRAIN] info above to make the event thematic (e.g., spawn water monsters if by the sea). Narrate the sudden event dramatically. DO NOT ask what they do next.`;
+
+                setTimeout(async () => {
+                    try {
+                        chatSessions[advPlayer.id] = dmModel.startChat({ history: await chatSessions[advPlayer.id].getHistory() });
+                        const result = await chatSessions[advPlayer.id].sendMessage(dmPrompt);
+                        let finalResponse = await executeAITools(result.response, chatSessions[advPlayer.id], io.sockets.sockets.get(advPlayer.id));
+                        
+                        const finalSpeech = finalResponse.text();
+                        if (finalSpeech) broadcastSuncatMessage(finalSpeech);
+                        
+                        let updatedHistory = await chatSessions[advPlayer.id].getHistory(); 
+                        chatSessions[advPlayer.id] = model.startChat({ history: scrubAIHistory(updatedHistory) });
+                        await manageHistorySize(advPlayer.id);
+                    } catch (e) {
+                        console.error("DM Proactive Error:", e);
+                    } finally {
+                        clearTimeout(typingFailSafe);
+                        npcIsTyping = false;
+                    }
+                }, 1000);
+            }
+        }
+        // EVENT C: Random Event Kidnapper (Next 1% chance)
+        else if (directorRoll >= 0.02 && directorRoll < 0.03) {
+            const activePlayers = Object.values(players).filter(p => p.id !== SUNCAT_ID && (Date.now() - (p.lastActive || 0) < 180000));
+            const potentialVictims = activePlayers.filter(p => p.mapID !== 999);
+            
+            if (potentialVictims.length > 0) {
+                const victim = potentialVictims[Math.floor(Math.random() * potentialVictims.length)];
+                
+                if (chatSessions[victim.id]) {
+                    npcIsTyping = true;
+                    const typingFailSafe = setTimeout(() => { npcIsTyping = false; }, 20000);
+                    console.log(`[Random Event] Suncat is plotting against ${victim.name}...`);
+                    
+                        const kidnapPrompt = `[SYSTEM OVERRIDE]: Trigger a Random DM Event! 
+                        Choose ONE scenario and EXECUTE 'createCustomMap' targeting '${victim.name}'.
+                        1. BATTLE ARENA: A brutal fighting pit. Layout: 'arena'. Weather: 'storm' or 'apocalypse'. Red/Dark colors. Spawn difficult chasing monsters.
+                        2. LABYRINTH ADVENTURE: A winding maze. Layout: 'labyrinth'. Weather: 'clear' or 'snow'. Spawn a stationary Quest Giver with dialogue, and monsters hidden in the maze.
+                        3. PEACEFUL OASIS: A relaxing break. Layout: 'grid'. Weather: 'leaves' or 'space'. Bright colors. Spawn ONLY friendly stationary NPCs who give lore or free reward cards.
+
+                        Do not ask for permission. Build the map to fit the theme perfectly and speak your opening DM narration.
+                        `;
+                    setTimeout(async () => {
+                        try {
+                            chatSessions[victim.id] = dmModel.startChat({ history: await chatSessions[victim.id].getHistory() });
+                            const result = await chatSessions[victim.id].sendMessage(kidnapPrompt);
+                            const finalResponse = await executeAITools(result.response, chatSessions[victim.id], null);                            
+                            const finalSpeech = finalResponse.text();
+                            if (finalSpeech) broadcastSuncatMessage(finalSpeech);
+                            
+                            let updatedHistory = await chatSessions[victim.id].getHistory();
+                            chatSessions[victim.id] = model.startChat({ history: scrubAIHistory(updatedHistory) });
+                            await manageHistorySize(victim.id);
+                        } catch (e) {
+                            console.error("Kidnap Event Error:", e);
+                        } finally {
+                            clearTimeout(typingFailSafe);
+                            npcIsTyping = false;
+                        }
+                    }, 1000);
+                }
+            }
+        }
+    }
+}, 30000); // END OF THE 10 SECOND INTERVAL
+async function manageHistorySize(socketId) {
+    if (!chatSessions[socketId]) return;
+
+    try {
+        let history = await chatSessions[socketId].getHistory();
+        const MAX_HISTORY_LENGTH = 20;
+
+        if (history.length > MAX_HISTORY_LENGTH) {
+            // Because processCognitiveLoad handles our memory now, we don't need to summarize this!
+            // We just brutally chop the oldest messages off to save raw input tokens.
+            chatSessions[socketId] = model.startChat({
+                history: history.slice(-10) 
+            });
+            console.log(`[Memory] Pruned raw chat history for ${players[socketId]?.name}.`);
+        }
+    } catch (error) {
+        console.error("[Memory] History prune failed:", error);
+    }
+}
+
+// --- THE AFK SWEEPER (Run every 2 minutes) ---
+const IDLE_TIMEOUT = 3 * 60 * 1000; 
+
+setInterval(async () => {
+    const now = Date.now();
+    for (const socketId in chatSessions) {
+        const player = players[socketId];
+        
+        if (player && (now - (player.lastActive || 0) > IDLE_TIMEOUT)) {
+            console.log(`[Hibernation] ${player.name} went AFK. Hibernating session.`);
+            
+            try {
+                // FORCE THE STOMACH TO EMPTY
+                await processCognitiveLoad(socketId, true);
+            } catch (error) {
+                console.error(`[Hibernation] AI compression failed for ${player.name}.`, error);
+            }
+            player.sessionCost = 0.00; // Suncat rested, so his budget resets!
+            player.dmStress = 0;
+            const nameKey = player.name.toLowerCase();
+            suncatPersistentMemory[nameKey] = {
+                favor: playerFavorMemory[socketId] || 0,
+                coreFacts: player.coreFacts || [],
+                activeQuest: player.activeQuest || null,
+                storySoFar: player.storySoFar || "", 
+                aiHistory: [] 
+            };
+            
+            player.name = "[AFK] " + player.name;
+            io.emit("updatePlayers", players);
+            delete chatSessions[socketId];
+        }
+    }
+}, 2 * 60 * 1000);
+server.listen(port, () => {
+  console.log(`Server running on port ${port}`);
+});
