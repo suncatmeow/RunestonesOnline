@@ -1753,9 +1753,9 @@ socket.on("suncat_spectate", async (actionDescription) => {
     if (sender.activityLog.length > 4) {
         sender.undigestedInfo.push(sender.activityLog.shift()); // Swallow raw actions
     }
-    if (Math.random() < 0.1) {
-        processSuncatThought(socket.id, 'spectate', { action: actionDescription });
-    }
+    
+    // REMOVED the 10% chance. Suncat will now ALWAYS process your story prompts!
+    processSuncatThought(socket.id, 'spectate', { action: actionDescription });
 });
     // --- SUNCAT VOCAL COMPOSER (For Ai3Module) ---
     socket.on('suncat_compose_vocal', async (data, callback) => {
