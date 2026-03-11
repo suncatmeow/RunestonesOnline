@@ -3235,7 +3235,8 @@ async function processSuncatThought(socketId, triggerType, data) {
         if (result.response.usageMetadata) updateBudget(result.response.usageMetadata, socketId);
 
         let finalResponse = await executeAITools(result.response, activeSession, io.sockets.sockets.get(socketId));
-
+        let finalSpeech = "";
+        try { finalSpeech = finalResponse.text(); } catch(e) {}
         if (finalResponse.text()) {
             const finalSpeech = finalResponse.text();
             
@@ -3277,7 +3278,7 @@ async function processSuncatThought(socketId, triggerType, data) {
         console.error("Nervous System Error:", e);
     } finally {
         clearTimeout(typingFailSafe); 
-        npcIsTyping = false;
+        player.npcIsTyping = false;
     }
 }
 io.on("connection", (socket) => {
