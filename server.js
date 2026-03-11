@@ -383,7 +383,7 @@ const toolsDef = [{
                         description: "REQUIRED: The name of the player you are building this map for and teleporting into it." 
                     },
                 },
-                required: ["targetName","grid", "skyColor", "floorColor"] 
+                required: ["targetName","grid", "skyColor", "floorColor","npcs"] 
             }
         },
         //5.5 change Environment/Weather
@@ -755,6 +755,20 @@ function findSocketID(playerName) {
         }
     }
     return null;
+}
+function updateSuncatJournal(newEntry) {
+    if (!newEntry) return;
+    
+    // 1. Add the new action to his internal monologue
+    suncatJournal += " " + newEntry;
+    
+    // 2. Keep the journal short to save tokens! (Keeps only the last 8 sentences)
+    let journalSentences = suncatJournal.split(/(?<=[.!?])\s+/);
+    if (journalSentences.length > 8) {
+        suncatJournal = journalSentences.slice(-8).join(" ");
+    }
+    
+    console.log(`[Suncat Journal Updated]: ${newEntry}`);
 }
 // --- AI CONFIGURATION ---
 // 1. THE CHEAP BRAIN (Everyday Chatting, Banter, & Basic Reactions)
@@ -1267,9 +1281,14 @@ async function executeAITools(currentResponse, activeSession, socket) {
                                     
                                     const memoryString = `[ACTIVE QUEST] ${call.args.targetName} is currently trying to: ${call.args.questText}`;
                                     
-                                    // --- FIXED LINES: Use targetID instead of socket.id ---
                                     if (!players[targetID].coreFacts) players[targetID].coreFacts = [];
-                                    players[targetID].coreFacts.push(memoryString);
+                                    
+                                    // Remove any old [ACTIVE QUEST] entries to prevent token bloat
+                                    players[targetID].coreFacts = players[targetID].coreFacts.filter(fact => !fact.includes("[ACTIVE QUEST]"));
+                                    
+                                    if (call.args.questText !== "COMPLETE") {
+                                        players[targetID].coreFacts.push(memoryString);
+                                    }
 
                                     functionResult = { result: `Quest assigned.` };
                                 } else {
@@ -1439,46 +1458,44 @@ async function processSuncatThought(socketId, triggerType, data) {
             
             // 1. Detect Intent
             const needsDM = ["map", "adventure", "teleport", "create", "spawn", "boss", "quest", "enemy"].some(kw => chatText.includes(kw));
-            const needsOracle = ["tarot", "reading", "draw", "interpret", "meaning", "fortune"].some(kw => chatText.includes(kw));
-            const isDirectCommand = chatText.includes("[reply]") || chatText.includes("suncat");
+            const needsOracle = ["tarot", "fortune", "reading", "interpret", "meaning of"].some(kw => chatText.includes(kw));            const isDirectCommand = chatText.includes("[reply]") || chatText.includes("suncat");
 
-            // 2. Intricate Routing Overrides
-            if (needsOracle) {
-                useBigBrain = true;
-                systemOverride = `[SYSTEM OVERRIDE]: You are the Oracle. Interpret the player's situation using Tarot logic based on the Runestones card manifest. Be cryptic, mystical, and brief (max 3 sentences). Do not use tools.`;
-            } else if (needsDM) {
-                useBigBrain = true;
-                systemOverride = `[SYSTEM OVERRIDE]: The player is seeking an adventure or DM action. EXECUTE A TOOL IMMEDIATELY (like createCustomMap, spawnNPC, or teleportPlayer). DO NOT ask for permission or explain what you are doing.`;
-            } else {
-                useBigBrain = isDirectCommand || useBigBrain; 
-            }
-            
-            eventInstruction = `[PLAYER SPOKE]: "${data.text}"\nTASK: Reply in character.`;
-        }
-        else if (triggerType === 'event') {
-            // Passive observation (Kills, Pickups) - Uses Cheap Brain
-            useBigBrain = false; 
-            let recentNarratives = player.dmNarrativeLog ? `\n[RECENT LOG]: ` + player.dmNarrativeLog.join(' | ') : "";
-            let eventSummary = data.isPickup ? `Picked up ${data.action}` : (data.isDialogue ? `Finished talking to ${data.action}` : `Slayed ${data.action}`);
-            
-            eventInstruction = `[PLAYER ACTION]: ${eventSummary} | Lore: ${data.lore || "None"}\n${recentNarratives}\nTASK: Narrate this action in exactly ONE atmospheric sentence. Use their name.`;
-        } 
-        else if (triggerType === 'spectate') {
-            useBigBrain = false;
-            eventInstruction = `[SPECTATOR FEED]: ${data.action}\nTASK: Acknowledge this with a brief, cryptic internal thought.`;
-        }
+                        // 2. Intricate Routing Overrides
+                        if (needsOracle) {
+                            useBigBrain = true;
+                            systemOverride = `[SYSTEM OVERRIDE]: You are the Oracle. Interpret the player's situation using Tarot logic based on the Runestones card manifest. Be cryptic, mystical, and brief (max 3 sentences). Do not use tools.`;
+                        } else if (needsDM) {
+                            useBigBrain = true;
+                            systemOverride = `[SYSTEM OVERRIDE]: The player is seeking an adventure or DM action. EXECUTE A TOOL IMMEDIATELY (like createCustomMap, spawnNPC, or teleportPlayer). DO NOT ask for permission or explain what you are doing.`;
+                        } else {
+                            useBigBrain = isDirectCommand || useBigBrain; 
+                        }
+                        
+            eventInstruction = `[PLAYER SPOKE]: "${data.text}"\nTASK: ${needsDM ? "EXECUTE A TOOL. " : ""}Reply in character.`;        }
+                    else if (triggerType === 'event') {
+                        // Passive observation (Kills, Pickups) - Uses Cheap Brain
+                        useBigBrain = false; 
+                        let recentNarratives = player.dmNarrativeLog ? `\n[RECENT LOG]: ` + player.dmNarrativeLog.join(' | ') : "";
+                        let eventSummary = data.isPickup ? `Picked up ${data.action}` : (data.isDialogue ? `Finished talking to ${data.action}` : `Slayed ${data.action}`);
+                        
+                        eventInstruction = `[PLAYER ACTION]: ${eventSummary} | Lore: ${data.lore || "None"}\n${recentNarratives}\nTASK: Narrate this action in exactly ONE atmospheric sentence. Use their name.`;
+                    } 
+                    else if (triggerType === 'spectate') {
+                        useBigBrain = false;
+                        eventInstruction = `[SPECTATOR FEED]: ${data.action}\nTASK: Acknowledge this with a brief, cryptic internal thought.`;
+                    }
 
-        // 4. BUILD THE CLEAN PROMPT
-        const prompt = `
-[CURRENT STATE]
-Location: Map ${suncat.mapID} (${myMapLore})
-Target: ${player.name} (Map ${player.mapID})
-${favorContext}
-${storyContext}
+                    // 4. BUILD THE CLEAN PROMPT
+                    const prompt = `
+            [CURRENT STATE]
+            Location: Map ${suncat.mapID} (${myMapLore})
+            Target: ${player.name} (Map ${player.mapID})
+            ${favorContext}
+            ${storyContext}
 
-${systemOverride}
+            ${systemOverride}
 
-${eventInstruction}
+            ${eventInstruction}
         `.trim();
 
         // --- EXECUTE AI ---
