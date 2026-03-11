@@ -3565,17 +3565,19 @@ TASK: Compose the next 4 consecutive bars. Ensure the melody builds naturally ac
             }
             // Format them back into the string structure your client expects, and push to buffer
             generatedBars.forEach(bar => {
-                const formatted = `[THOUGHT] ${bar.THOUGHT} [/THOUGHT]
-[LYRICS_UI] ${bar.LYRICS.replace(/-/g, '')} [/LYRICS_UI]
-[LYRICS_PHONETIC] ${bar.LYRICS} [/LYRICS_PHONETIC]
+                // SAFE CAST: If the AI returns undefined for lyrics, default to a dash
+                const safeLyrics = bar.LYRICS ? String(bar.LYRICS) : "-";
+                
+                const formatted = `[THOUGHT] ${bar.THOUGHT || "..."} [/THOUGHT]
+[LYRICS_UI] ${safeLyrics.replace(/-/g, '')} [/LYRICS_UI]
+[LYRICS_PHONETIC] ${safeLyrics} [/LYRICS_PHONETIC]
 [TEMPO] ${songState.currentTempo} [/TEMPO]
 [SCALE] ${MUSIC_SCALES[songState.currentScale]} [/SCALE]
-[THUMB] ${bar.THUMB} [/THUMB]
-[FINGERS] ${bar.FINGERS} [/FINGERS]
-[STRUM] ${bar.STRUM} [/STRUM]`;
+[THUMB] ${bar.THUMB || "-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-"} [/THUMB]
+[FINGERS] ${bar.FINGERS || "-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-"} [/FINGERS]
+[STRUM] ${bar.STRUM || "-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-"} [/STRUM]`;
                 songState.buffer.push(formatted);
             });
-
             // Send the first generated bar to the client immediately
             if (callback && songState.buffer.length > 0) {
                 callback(songState.buffer.shift());
