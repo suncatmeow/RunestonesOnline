@@ -1998,25 +1998,47 @@ const toolsDef = [{
     ]
 }];
 //TALIESIN
-  // --- TALIESIN THE BARD ---
-const T_PERSONA = `You are Taliesin the bard of ancient myth. Generate 1 bar (4/4 time, 16th notes) of an acoustic lyre and vocal performance.
-PHONETIC LEGEND: a(cat), e(bed), i(feet), 1(sit), o(boat), u(boot), @(about). I(bite), E(make), O(cow). Use '-' for rests. Add '!' AFTER the vowel of a stressed syllable.
-SEQUENCER RULES: THUMB, FINGERS, and STRUM arrays MUST have exactly 16 slots, using only integers from the provided scale or '-'. Group as X,X,X,X, X,X,X,X, X,X,X,X, X,X,X,X.`;
-const MUSIC_SCALES = {
-    "Ionian": "0,2,4,5,7,9,11",
-    "Dorian": "0,2,3,5,7,9,10",
-    "Phrygian": "0,1,3,5,7,8,10",
-    "Phrygian Dominant": "0,1,4,5,7,8,10",
-    "Aeolian": "0,2,3,5,7,8,10",
-    "Mixolydian": "0,2,4,5,7,9,10",
-    "Harmonic Minor": "0,2,3,5,7,8,11"
-};
+  const T_PERSONA = `
+            You are Taliesin the bard of ancient Welsh myth. You are generating the NEXT bar (4/4 time, 16th notes) of an acoustic lyre and vocal performance.
 
-const MUSIC_MOODS = ["Tense", "Resolving", "Melancholic", "Heroic", "Ethereal", "Chaotic", "Peaceful", "Mysterious"];
+            YOUR INTERNAL MONOLOGUE:
+            Impact the mood of the listener. Are you building tension? Resolving? Sad? Heroic? 
+
+            TUNING & SCALES:
+            - Ionian: 0,2,4,5,7,9,11
+            - Dorian: 0,2,3,5,7,9,10
+            - Phrygian: 0,1,3,5,7,8,10
+            - Phrygian Dominant: 0,1,4,5,7,8,10
+            - Aeolian: 0,2,3,5,7,8,10
+            - Mixolydian: 0,2,4,5,7,9,10
+            - Harmonic Minor: 0,2,3,5,7,8,11
+
+           
+
+            SEQUENCER RULES (CRITICAL):
+            1. THUMB, FINGERS, and STRUM arrays MUST have exactly 16 slots.
+            2. To ensure 16 slots, group them visually in 4 blocks of 4 separated by commas: X,X,X,X, X,X,X,X, X,X,X,X, X,X,X,X
+            3. Use ONLY integers (scale degrees) or '-' (rest). 
+
+            COMPOSITION GUIDE:
+            - THUMB: Bass heartbeat. Use negative space ('-').
+            - FINGERS: Melody strings. Harmonize with THUMB.
+            - STRUM: 95% of the time, output: -,-,-,-, -,-,-,-, -,-,-,-, -,-,-,-. Only place a '0' on beat 1 for heavy emphasis.
+
+            YOU MUST USE THIS EXACT OUTPUT FORMAT. DO NOT DEVIATE OR ADD PROSE:
+            [THOUGHT] A short explanation of your musical intent (max 13 words). [/THOUGHT]
+            [LYRICS_UI] 1 to 3 words MAX. [/LYRICS_UI]
+            [LYRICS_PHONETIC] output exactly what you put for lyrics UI [/LYRICS_PHONETIC]
+            [TEMPO] an integer between 61 and 91 [/TEMPO]
+            [SCALE] 0,2,3,5,7,8,10 [/SCALE]
+            [THUMB] -,-,-,-, -,-,-,-, -,-,-,-, -,-,-,- [/THUMB]
+            [FINGERS] -,-,-,-, -,-,-,-, -,-,-,-, -,-,-,- [/FINGERS]
+            [STRUM] -,-,-,-, -,-,-,-, -,-,-,-, -,-,-,- [/STRUM]
+        `;
 
 
 
-        // --- VARIABLES ---
+// --- VARIABLES ---
 let players = {};
             let deadNPCs = {};
             let chatSessions = {}; 
@@ -3475,95 +3497,25 @@ socket.on("suncat_spectate", async (actionDescription) => {
     }
 });
 // --- SUNCAT VOCAL COMPOSER (For Ai3Module) ---
-// --- Initialize a Song State for the Player ---
-    let songState = {
-        barsPlayed: 0,
-        currentScale: "Aeolian",
-        currentTempo: 75,
-        currentMood: "Mysterious"
-    };
-
-    // --- JSON Schema for strict, cheap outputs ---
-    const musicSchema = {
-        type: SchemaType.OBJECT,
-        properties: {
-            THOUGHT: { type: SchemaType.STRING, description: "A max 10-word explanation of intent." },
-            LYRICS_UI: { type: SchemaType.STRING, description: "1 to 3 words max." },
-            LYRICS_PHONETIC: { type: SchemaType.STRING },
-            THUMB: { type: SchemaType.STRING },
-            FINGERS: { type: SchemaType.STRING },
-            STRUM: { type: SchemaType.STRING }
-        },
-        required: ["THOUGHT", "LYRICS_UI", "LYRICS_PHONETIC", "THUMB", "FINGERS", "STRUM"]
-    };
-
-    socket.on('suncat_compose_vocal', async (data, callback) => {
-        songState.barsPlayed++;
-
-        // 1. THE RNG MUSIC DIRECTOR
-        // Every 4 bars, the server decides if the song needs to evolve.
-        if (songState.barsPlayed % 4 === 0) {
-            let changeRoll = Math.random();
-            
-            // 40% chance to shift the emotional mood
-            if (changeRoll < 0.40) {
-                songState.currentMood = MUSIC_MOODS[Math.floor(Math.random() * MUSIC_MOODS.length)];
-                console.log(`[Music AI] Director shifted mood to: ${songState.currentMood}`);
-            }
-            
-            // 15% chance to modulate to a totally different scale
-            if (changeRoll < 0.15) {
-                const scaleNames = Object.keys(MUSIC_SCALES);
-                songState.currentScale = scaleNames[Math.floor(Math.random() * scaleNames.length)];
-                console.log(`[Music AI] Director modulated scale to: ${songState.currentScale}`);
-            }
-            
-            // 10% chance to shift tempo slightly
-            if (changeRoll < 0.10) {
-                songState.currentTempo = Math.max(60, Math.min(95, songState.currentTempo + (Math.floor(Math.random() * 10) - 5)));
-            }
-        }
-
-        // 2. THE DYNAMIC PROMPT
-        const prompt = `[ACTIVE DIRECTIVES]
-Mood: ${songState.currentMood}
-Scale: ${songState.currentScale} (${MUSIC_SCALES[songState.currentScale]})
-Tempo: ${songState.currentTempo}
-
-[PREVIOUS BAR CONTEXT]
-${data.currentState || "This is the very first bar of the song."}
-
-TASK: Compose the next exact bar based strictly on the active directives.`;
-
+socket.on('suncat_compose_vocal', async (data, callback) => {
+        console.log(`[Music AI] Suncat is improvising a VOCAL performance...`);
         try {
-            const result = await taliesinModel.generateContent({
-                contents: [{ role: "user", parts: [{ text: prompt }] }],
-                generationConfig: { 
-                    responseMimeType: "application/json",
-                    responseSchema: musicSchema 
-                }
-            });
-            
-            if (result.response.usageMetadata) updateBudget(result.response.usageMetadata, socket.id);
+           const previousContext = data.currentState || "This is the very first bar of a brand new song.";
 
-            // Clean any markdown failsafes
-            let rawText = result.response.text().trim();
-            if (rawText.startsWith("```")) rawText = rawText.replace(/^```(json)?|```$/g, "").trim();
-            
-            const musicData = JSON.parse(rawText);
-            
-            // Format it back into the string structure your client expects
-            const formattedResponse = `[THOUGHT] ${musicData.THOUGHT} [/THOUGHT]
-[LYRICS_UI] ${musicData.LYRICS_UI} [/LYRICS_UI]
-[LYRICS_PHONETIC] ${musicData.LYRICS_PHONETIC} [/LYRICS_PHONETIC]
-[TEMPO] ${songState.currentTempo} [/TEMPO]
-[SCALE] ${MUSIC_SCALES[songState.currentScale]} [/SCALE]
-[THUMB] ${musicData.THUMB} [/THUMB]
-[FINGERS] ${musicData.FINGERS} [/FINGERS]
-[STRUM] ${musicData.STRUM} [/STRUM]`;
+        const prompt = `
+        PREVIOUS BAR CONTEXT:
+        ${data.currentState}
 
-            if (callback) callback(formattedResponse);
+        
+            `;
+            const result = await taliesinModel.generateContent(prompt);
+            const responseText = result.response.text();
             
+            console.log("[Music AI] Suncat sang:\n", responseText);
+            
+            if (callback) {
+                callback(responseText);
+            }
         } catch (error) {
             console.error("[Music AI] Error composing vocal:", error);
             if (callback) callback(null);
