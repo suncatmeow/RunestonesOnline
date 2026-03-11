@@ -2013,7 +2013,12 @@ const toolsDef = [{
             - Mixolydian: 0,2,4,5,7,9,10
             - Harmonic Minor: 0,2,3,5,7,8,11
 
-           
+            PHONETIC TRANSLATION LEGEND:
+            - VOWELS: a(cat), e(bed), i(feet), 1(sit), o(boat), u(boot), @(about)
+            - DIPHTHONGS: I(bite), E(make), O(cow)
+            - CONSONANTS: p,b,t,d,k,g,f,v,s,z,h,m,n,l,r,w,y
+            - SPECIAL: T(thin), S(ship), Z(vision), c(chat), j(jump), N(sing)
+            - RULES: Hyphenate syllables. Add '!' AFTER the vowel of a stressed syllable. (e.g., "Magic" -> ma!j1k)
 
             SEQUENCER RULES (CRITICAL):
             1. THUMB, FINGERS, and STRUM arrays MUST have exactly 16 slots.
@@ -2028,7 +2033,7 @@ const toolsDef = [{
             YOU MUST USE THIS EXACT OUTPUT FORMAT. DO NOT DEVIATE OR ADD PROSE:
             [THOUGHT] A short explanation of your musical intent (max 13 words). [/THOUGHT]
             [LYRICS_UI] 1 to 3 words MAX. [/LYRICS_UI]
-            [LYRICS_PHONETIC] output exactly what you put for lyrics UI [/LYRICS_PHONETIC]
+            [LYRICS_PHONETIC] exact-pho!-net-1k [/LYRICS_PHONETIC]
             [TEMPO] an integer between 61 and 91 [/TEMPO]
             [SCALE] 0,2,3,5,7,8,10 [/SCALE]
             [THUMB] -,-,-,-, -,-,-,-, -,-,-,-, -,-,-,- [/THUMB]
