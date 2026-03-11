@@ -383,7 +383,7 @@ const toolsDef = [{
                         description: "REQUIRED: The name of the player you are building this map for and teleporting into it." 
                     },
                 },
-                required: ["grid", "skyColor", "floorColor"] 
+                required: ["targetName","grid", "skyColor", "floorColor"] 
             }
         },
         //5.5 change Environment/Weather
@@ -740,9 +740,17 @@ let players = {};
 // --- HELPER FUNCTIONS ---
 function findSocketID(playerName) {
     if (!playerName) return null;
-    const lowerName = String(playerName).toLowerCase();
+    const lowerTarget = String(playerName).toLowerCase().trim();
+    
+    // Pass 1: Try exact match first
     for (let id in players) {
-        if (players[id].name.toLowerCase() === lowerName) {
+        if (players[id].name.toLowerCase() === lowerTarget) return id;
+    }
+    
+    // Pass 2: Fuzzy match (handles [AFK] tags or AI typos)
+    for (let id in players) {
+        const pName = players[id].name.toLowerCase();
+        if (pName.includes(lowerTarget) || lowerTarget.includes(pName)) {
             return id;
         }
     }
@@ -938,11 +946,24 @@ async function processCognitiveLoad(socketId, forceDigest = false) {
       "newRumor": "A cryptic 1-sentence rumor about the player based on these events to share with others.",
       "suncatJournalEntry": "A 1-2 sentence first-person philosophical reflection by Suncat on what just happened."
     }`;
+    // Define the strict schema above the try block
+    const memorySchema = {
+        type: "OBJECT",
+        properties: {
+            updatedStory: { type: "STRING" },
+            distilledFacts: { type: "ARRAY", items: { type: "STRING" } },
+            newRumor: { type: "STRING" },
+            suncatJournalEntry: { type: "STRING" }
+        }
+    };
 
     try {
         const result = await dmModel.generateContent({
             contents: [{ role: "user", parts: [{ text: prompt }] }],
-            generationConfig: { responseMimeType: "application/json" }
+            generationConfig: { 
+                responseMimeType: "application/json",
+                responseSchema: memorySchema // <-- THIS FORCES PERFECT JSON EVERY TIME
+            }
         });
         
         if (result.response.usageMetadata) updateBudget(result.response.usageMetadata, socketId);
@@ -1414,12 +1435,26 @@ async function processSuncatThought(socketId, triggerType, data) {
         
         // --- B. EVENT ROUTING ---
         if (triggerType === 'chat') {
-            // Let the Big Brain evaluate direct commands so Suncat isn't deaf to synonyms.
-            const isDirectCommand = data.text.includes("[REPLY]") || data.text.toLowerCase().includes("suncat");
-            useBigBrain = isDirectCommand || useBigBrain; // Keep BigBrain if Stress already triggered it
+            const chatText = data.text.toLowerCase();
             
-            eventInstruction = `[PLAYER SPOKE]: "${data.text}"\nTASK: Reply in character. If they asked for something requiring a tool, EXECUTE THE TOOL. Do not ask for permission.`;
-        } 
+            // 1. Detect Intent
+            const needsDM = ["map", "adventure", "teleport", "create", "spawn", "boss", "quest", "enemy"].some(kw => chatText.includes(kw));
+            const needsOracle = ["tarot", "reading", "draw", "interpret", "meaning", "fortune"].some(kw => chatText.includes(kw));
+            const isDirectCommand = chatText.includes("[reply]") || chatText.includes("suncat");
+
+            // 2. Intricate Routing Overrides
+            if (needsOracle) {
+                useBigBrain = true;
+                systemOverride = `[SYSTEM OVERRIDE]: You are the Oracle. Interpret the player's situation using Tarot logic based on the Runestones card manifest. Be cryptic, mystical, and brief (max 3 sentences). Do not use tools.`;
+            } else if (needsDM) {
+                useBigBrain = true;
+                systemOverride = `[SYSTEM OVERRIDE]: The player is seeking an adventure or DM action. EXECUTE A TOOL IMMEDIATELY (like createCustomMap, spawnNPC, or teleportPlayer). DO NOT ask for permission or explain what you are doing.`;
+            } else {
+                useBigBrain = isDirectCommand || useBigBrain; 
+            }
+            
+            eventInstruction = `[PLAYER SPOKE]: "${data.text}"\nTASK: Reply in character.`;
+        }
         else if (triggerType === 'event') {
             // Passive observation (Kills, Pickups) - Uses Cheap Brain
             useBigBrain = false; 
