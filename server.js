@@ -1877,130 +1877,142 @@ const GAME_MECHANICS_DB = {
 // --- TOOLS DEFINITION ---
 const toolsDef = [{
     functionDeclarations: [
+        //consult manual
         {
             name: "consultGameManual",
             description: "REQUIRED: Search the database for card info, world lore, rules, AND Suncat's REAL WORLD IDENTITY. If asked about Suncat's real life, use broad category keywords. For family/relationships/gender, search 'BIOGRAPHY'. For school/jobs/military/dreams, search 'EDUCATION'. For martial arts/magic/bazi, search 'COMBAT'. For music/food/movies/books, search 'TASTES'. Can search multiple terms at once.",
             parameters: {
-                type: SchemaType.OBJECT,
-                properties: { searchQueries: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } } },
+                type: "OBJECT",
+                properties: { searchQueries: { type: "ARRAY", items: { type: "STRING" } } },
                 required: ["searchQueries"]
             }
         },
+        //give card
         {
             name: "givePlayerCard",
             description: "Gives a specific tarot card to a specific player.",
             parameters: {
-                type: SchemaType.OBJECT,
+                type: "OBJECT",
                 properties: {
-                    targetName: { type: SchemaType.STRING },
-                    cardName: { type: SchemaType.STRING },
-                    reason: { type: SchemaType.STRING }
+                    targetName: { type: "STRING" },
+                    cardName: { type: "STRING" },
+                    reason: { type: "STRING" }
                 },
                 required: ["targetName", "cardName"]
             }
         },
+        //kick player (forced log out)
         {
             name: "kickPlayer",
             description: "Kicks a player from the server.",
-            parameters: { type: SchemaType.OBJECT, properties: { targetName: { type: SchemaType.STRING }, reason: { type: SchemaType.STRING } }, required: ["targetName"] }
+            parameters: { type: "OBJECT", properties: { targetName: { type: "STRING" }, reason: { type: "STRING" } }, required: ["targetName"] }
         },
+        //banish player
         {
             name: "banishPlayer",
             description: "Permanently bans a player.",
-            parameters: { type: SchemaType.OBJECT, properties: { targetName: { type: SchemaType.STRING }, reason: { type: SchemaType.STRING } }, required: ["targetName"] }
+            parameters: { type: "OBJECT", properties: { targetName: { type: "STRING" }, reason: { type: "STRING" } }, required: ["targetName"] }
         },
+        //vanquish player (delete player file)
         {
             name: "vanquishPlayer",
             description: "Deletes a player's save file.",
-            parameters: { type: SchemaType.OBJECT, properties: { targetName: { type: SchemaType.STRING }, reason: { type: SchemaType.STRING } }, required: ["targetName"] }
+            parameters: { type: "OBJECT", properties: { targetName: { type: "STRING" }, reason: { type: "STRING" } }, required: ["targetName"] }
         },
+        //teleport TO player
         {
             name: "teleportToPlayer",
             description: "Teleports Suncat directly to the player's location.",
-            parameters: { type: SchemaType.OBJECT, properties: { targetName: { type: SchemaType.STRING }, reason: { type: SchemaType.STRING } }, required: ["targetName"] }
+            parameters: { type: "OBJECT", properties: { targetName: { type: "STRING" }, reason: { type: "STRING" } }, required: ["targetName"] }
         },
+        //Teleport player
         {
             name: "teleportPlayer",
             description: "Teleports a specific player to a specific map ID (0-22 or 999).",
-            parameters: { type: SchemaType.OBJECT, properties: { targetName: { type: SchemaType.STRING }, mapID: { type: SchemaType.INTEGER } }, required: ["targetName", "mapID"] }
+            parameters: { type: "OBJECT", properties: { targetName: { type: "STRING" }, mapID: { type: "INTEGER" } }, required: ["targetName", "mapID"] }
         },
+        //change weather
         {
             name: "changeEnvironment",
             description: "Changes the weather or sky color of the map the player is currently standing on.",
             parameters: {
-                type: SchemaType.OBJECT,
+                type: "OBJECT",
                 properties: {
-                    targetName: { type: SchemaType.STRING },
-                    weather: { type: SchemaType.STRING, description: "Options: 'clear', 'snow', 'storm', 'leaves', 'lightning', 'space', 'apocalypse'" },
-                    skyColor: { type: SchemaType.STRING }
+                    targetName: { type: "STRING" },
+                    weather: { type: "STRING", description: "Options: 'clear', 'snow', 'storm', 'leaves', 'lightning', 'space', 'apocalypse'" },
+                    skyColor: { type: "STRING" }
                 },
                 required: ["targetName", "weather"]
             }
         },
+        //give quest
         {
             name: "assignQuest",
             description: "Assigns a custom quest objective. Text 'COMPLETE' erases it.",
             parameters: {
-                type: SchemaType.OBJECT,
-                properties: { targetName: { type: SchemaType.STRING }, questText: { type: SchemaType.STRING } },
+                type: "OBJECT",
+                properties: { targetName: { type: "STRING" }, questText: { type: "STRING" } },
                 required: ["targetName", "questText"]
             }
         },
+        //create custom map
         {
             name: "createCustomMap",
             description: "Creates a thematic custom map. You only need to provide Enums. The server will auto-generate the colors, walls, weather, and standard mobs.",            
             parameters: {
-                type: SchemaType.OBJECT,
+                type: "OBJECT",
                 properties: {
-                    targetName: { type: SchemaType.STRING },
-                    mapName: { type: SchemaType.STRING },
-                    biomeEnum: { type: SchemaType.INTEGER, description: "0: Sylvan, 1: Ruins, 2: Desert, 3: Snow, 4: Void" },
-                    layoutEnum: { type: SchemaType.INTEGER, description: "0: Arena, 1: Labyrinth, 2: Corridor, 3: Bridge, 4: Grid" },
-                    scenarioEnum: { type: SchemaType.INTEGER, description: "0: Ambush (Aggro), 1: Test (Stationary), 2: Heist (Boss sleeps, mobs wander), 3: Corruption (Aggro/Sinister), 4: Peaceful (Friendly NPCs only)" },
-                    customBossID: { type: SchemaType.INTEGER, description: "OPTIONAL: ID of a specific boss from the Card Manifest (e.g., 63 for Dragon). If left blank, it will just be standard mobs." }
+                    targetName: { type: "STRING" },
+                    mapName: { type: "STRING" },
+                    biomeEnum: { type: "INTEGER", description: "0: Sylvan, 1: Ruins, 2: Desert, 3: Snow, 4: Void" },
+                    layoutEnum: { type: "INTEGER", description: "0: Arena, 1: Labyrinth, 2: Corridor, 3: Bridge, 4: Grid" },
+                    scenarioEnum: { type: "INTEGER", description: "0: Ambush (Aggro), 1: Test (Stationary), 2: Heist (Boss sleeps, mobs wander), 3: Corruption (Aggro/Sinister), 4: Peaceful (Friendly NPCs only)" },
+                    customBossID: { type: "INTEGER", description: "OPTIONAL: ID of a specific boss from the Card Manifest (e.g., 63 for Dragon). If left blank, it will just be standard mobs." }
                 },
                 required: ["targetName", "mapName", "biomeEnum", "layoutEnum"] 
             }
         },
+        // spawn npc
         {
             name: "spawnNPC",
             description: "Spawns a single NPC. CRITICAL: Use 'rewardCard' ONLY for unique Quest NPCs or special gifts. The server will automatically build a synergistic deck for this NPC based on its class.",          
             parameters: {
-                type: SchemaType.OBJECT,
+                type: "OBJECT",
                 properties: {
-                    targetName: { type: SchemaType.STRING },
-                    npcType: { type: SchemaType.NUMBER, description: "The ID of the entity to spawn (e.g., 63 for Dragon)." },
-                    mapID: { type: SchemaType.INTEGER },
-                    x: { type: SchemaType.NUMBER },
-                    y: { type: SchemaType.NUMBER },
-                    state: { type: SchemaType.STRING, description: "'chasing', 'wandering', or 'stationary'." },
-                    role: { type: SchemaType.STRING, description: "'battle' (fights), 'dialogue' (talks/vanishes), 'quest_giver' (gives quest), 'reward' (gives card)." },
-                    color: { type: SchemaType.STRING },
-                    dialogue: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
-                    rewardCard: { type: SchemaType.INTEGER, description: "CRITICAL: Omit completely if no reward." },
-                    options: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING }, description: "OPTIONAL: Give the player up to 2 choices (e.g. ['Accept Quest', 'Decline']). This will spawn buttons on their screen." }
+                    targetName: { type: "STRING" },
+                    npcType: { type: "NUMBER", description: "The ID of the entity to spawn (e.g., 63 for Dragon)." },
+                    mapID: { type: "INTEGER" },
+                    x: { type: "NUMBER" },
+                    y: { type: "NUMBER" },
+                    state: { type: "STRING", description: "'chasing', 'wandering', or 'stationary'." },
+                    role: { type: "STRING", description: "'battle' (fights), 'dialogue' (talks/vanishes), 'quest_giver' (gives quest), 'reward' (gives card)." },
+                    color: { type: "STRING" },
+                    dialogue: { type: "ARRAY", items: { type: "STRING" } },
+                    rewardCard: { type: "INTEGER", description: "CRITICAL: Omit completely if no reward." },
+                    options: { type: "ARRAY", items: { type: "STRING" }, description: "OPTIONAL: Give the player up to 2 choices (e.g. ['Accept Quest', 'Decline']). This will spawn buttons on their screen." }
                 },
                 required: ["targetName", "npcType", "state"]
             }
         },
+        //create custom card
         {
             name: "createCustomCard",
             description: "Forges a brand new, unique card and adds it to the server database permanently. You can then use spawnNPC with its new ID.",
             parameters: {
-                type: SchemaType.OBJECT,
+                type: "OBJECT",
                 properties: {
-                    targetName: { type: SchemaType.STRING },
-                    name: { type: SchemaType.STRING },
-                    type: { type: SchemaType.STRING, description: "'monster', 'spell', or 'item'" },
-                    suit: { type: SchemaType.STRING, description: "e.g., 'Swords', 'Cups', 'Major Arcana'" },
-                    rank: { type: SchemaType.STRING, description: "e.g., 'King', 'Ace', 'XIII'" },
-                    classes: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING }, description: "CRITICAL FOR SYNERGY: e.g., ['warrior', 'mage', 'rogue', 'guardian']" },
-                    lore: { type: SchemaType.STRING },
-                    stats: { type: SchemaType.STRING, description: "e.g., '1d12 STR, 1d6 INT'" }
+                    targetName: { type: "STRING" },
+                    name: { type: "STRING" },
+                    type: { type: "STRING", description: "'monster', 'spell', or 'item'" },
+                    suit: { type: "STRING", description: "e.g., 'Swords', 'Cups', 'Major Arcana'" },
+                    rank: { type: "STRING", description: "e.g., 'King', 'Ace', 'XIII'" },
+                    classes: { type: "ARRAY", items: { type: "STRING" }, description: "CRITICAL FOR SYNERGY: e.g., ['warrior', 'mage', 'rogue', 'guardian']" },
+                    lore: { type: "STRING" },
+                    stats: { type: "STRING", description: "e.g., '1d12 STR, 1d6 INT'" }
                 },
                 required: ["targetName", "name", "type", "classes"]
             }
-        }
+        },
     ]
 }];
 //TALIESIN
@@ -2247,7 +2259,7 @@ const FULL_LIBRARY_LINES = [
     ...Object.values(STORY_CAMPAIGN_DB).map(s => `Campaign Beat [${s.title}]: ${s.text} Plot Hook: ${s.hook}`)
 ];
 // Global stop-words list so it isn't recreated on every search
-const SEARCH_STOP_WORDS = new Set(["the", "and", "for", "with", "what", "does", "mean", "about", "are", "you", "is", "how", "whats", "up", "a", "an", "to", "in", "on", "of"]);
+const SEARCH_STOP_WORDS = ["the", "and", "for", "with", "what", "does", "mean", "about", "are", "you", "is", "how", "whats", "up", "a", "an", "to", "in", "on", "of"];  // --- DYNAMIC CONTEXT INJECTOR ---
 // Pre-parse on server boot:
 
 
@@ -2645,7 +2657,8 @@ async function executeAITools(currentResponse, activeSession, socket) {
                             let score = 0;
                             let lowerLine = line.toLowerCase();
                             if (lowerLine.includes(lowerQuery)) score += 10;
-                        const searchTerms = lowerQuery.replace(/[^\w\s]/gi, '').split(/\s+/).filter(w => w.length > 2 && !SEARCH_STOP_WORDS.has(w));                            return { index, line, score };
+                            searchTerms.forEach(term => { if (lowerLine.includes(term)) score += 2; });
+                            return { index, line, score };
                         });
 
                         let bestMatches = scoredLines.filter(item => item.score > 0).sort((a, b) => b.score - a.score).slice(0, 2);
@@ -3114,84 +3127,60 @@ async function processSuncatThought(socketId, triggerType, data) {
         let eventInstruction = "";
         let useBigBrain = false;
         
-        // --- A. THE DM PACING, STRESS OVERRIDES & RNG ---
+        // --- A. THE DM PACING & STRESS OVERRIDES (Forces Tool Use) ---
         if (totalStress >= 85) {
+            useBigBrain = true;
             player.dmStress = 0; // Exhaustion kicks in! Drops combat stress.
             player.lastRandomEvent = now;
-            
-            // 50/50 Chance to either Whine (Small Brain) or Retaliate (Big Brain)
-            if (Math.random() < 0.5) {
-                useBigBrain = false;
-                systemOverride = `[SYSTEM OVERRIDE]: You are overwhelmed, stressed, and your mana is depleted. Whine to the player that you need a nap and refuse to help them further right now.`;
-            } else {
-                useBigBrain = true;
-                systemOverride = `[SYSTEM OVERRIDE]: You are exhausted and furious! You MUST immediately execute a tool (like 'teleportPlayer' to banish them away, or 'changeEnvironment' to ruin the weather). Complain loudly!`;
-            }
+            systemOverride = `[SYSTEM OVERRIDE]: You are exhausted (Mana depleted). You MUST immediately execute a tool (like 'teleportPlayer' to send them away, or 'givePlayerCard' to bribe them to leave). Do not spawn enemies.`;
         } 
         else if (totalStress >= 50 && player.mapID === 999 && timeSinceLastEvent > 60000) {
             useBigBrain = true;
             player.lastRandomEvent = now;
             systemOverride = `[SYSTEM OVERRIDE]: You are the arrogant Arena Master right now. Execute the 'spawnNPC' tool to drop a difficult themed enemy. Taunt them.`;
         } 
-        // Map-Specific Persona Shifts (RAG injection for Roleplay)
-        else if (pAtlas && pAtlas.biome === "tomb" && triggerType === 'chat') {
-            systemOverride = `[ENVIRONMENT OVERRIDE]: You are in a sacred tomb. Speak in hushed, respectful, slightly fearful tones. Warn the player about making too much noise.`;
-        }
-        else if (pAtlas && pAtlas.biome === "castle" && triggerType === 'chat') {
-            systemOverride = `[ENVIRONMENT OVERRIDE]: You are in the court of a Queen. Speak formally, elegantly, and with royal protocol.`;
-        }
         
         // --- B. EVENT ROUTING ---
         if (triggerType === 'chat') {
             const chatText = data.text.toLowerCase();
             
+            // 1. Detect Intent
             const needsDM = ["map", "adventure", "teleport", "create", "spawn", "boss", "quest", "enemy"].some(kw => chatText.includes(kw));
-            const needsOracle = ["tarot", "fortune", "reading", "interpret", "meaning of"].some(kw => chatText.includes(kw));            
-            const isDirectCommand = chatText.includes("[reply]") || chatText.includes("suncat");
+            const needsOracle = ["tarot", "fortune", "reading", "interpret", "meaning of"].some(kw => chatText.includes(kw));            const isDirectCommand = chatText.includes("[reply]") || chatText.includes("suncat");
 
-            // Stack overrides using += instead of = so we don't erase stress!
-            if (needsOracle) {
-                useBigBrain = true;
-                systemOverride += `\n[ORACLE OVERRIDE]: You are the Oracle. Interpret the player's situation using Tarot logic based on the Runestones card db. Be cryptic, mystical, and brief (max 3 sentences). Do not use tools.`;
-            } else if (needsDM) {
-                useBigBrain = true;
-                systemOverride += `\n[DM OVERRIDE]: The player is seeking an adventure or DM action. EXECUTE A TOOL IMMEDIATELY. KEEP YOUR SPOKEN NARRATION UNDER 15 WORDS. DO NOT ask for permission.`;                        
-            } else {
-                useBigBrain = isDirectCommand || useBigBrain; 
-            }
-            
-            eventInstruction = `[PLAYER SPOKE]: "${data.text}"\nTASK: ${needsDM ? "EXECUTE A TOOL. " : ""}Reply in character.`;        
-        }
-        else if (triggerType === 'event') {
-            let recentNarratives = player.dmNarrativeLog ? `\n[RECENT LOG]: ` + player.dmNarrativeLog.join(' | ') : "";
-            
-            if (data.isPickup) {
-                useBigBrain = true; 
-                eventInstruction = `[PLAYER ACTION]: Picked up ${data.action} | Lore: ${data.lore}\nTASK: Provide a tarot interpretation of the card and relate it to the player's current adventure.`;
-            } else if (data.isDialogue) {
-                useBigBrain = false;
-                eventInstruction = `[PLAYER ACTION]: Finished talking to ${data.action}\nTASK: Comment on their conversation briefly.`;
-            } else {
-                // MONSTER SLAY LOGIC
-                if (player.mapID != 999) {
-                    useBigBrain = false; // Standard map: cheap, small brain reaction
-                    eventInstruction = `[PLAYER ACTION]: Slayed a creature ${data.action}\nTASK: Provide a short narrative describing the fall of the monster and give a brief tarot interpretation.`;
-                } else {
-                    // MAP 999 (DREAMSCAPE) RNG REACTIONS
-                    let rngRoll = Math.random();
-                    if (rngRoll < 0.33) {
-                        useBigBrain = false; // 33% chance to just pout (Saves tokens!)
-                        eventInstruction = `[PLAYER ACTION]: Slayed a creature ${data.action}\nTASK: Throw a childish tantrum! Pout, curse at the player, and act like a sore loser because they broke your toy. ONE sentence.`;
-                    } else if (rngRoll < 0.66) {
-                        useBigBrain = true; // 33% chance to spawn a harder enemy
-                        eventInstruction = `[PLAYER ACTION]: Slayed a creature ${data.action}\nTASK: You are in disbelief they survived! Immediately use 'spawnNPC' to drop an even harder monster on them to teach them a lesson.`;
-                    } else {
-                        useBigBrain = true; // 34% chance to remake the whole map
-                        eventInstruction = `[PLAYER ACTION]: Slayed a creature ${data.action}\nTASK: They are ruining your map! Use 'createCustomMap' to instantly rebuild the environment into a chaotic Void or tight Labyrinth to trap them!`;
+                        // 2. Intricate Routing Overrides
+                        if (needsOracle) {
+                            useBigBrain = true;
+                            systemOverride = `[SYSTEM OVERRIDE]: You are the Oracle. Interpret the player's situation using Tarot logic based on the Runestones card db. Be cryptic, mystical, and brief (max 3 sentences). Do not use tools.`;
+                        } else if (needsDM) {
+                            useBigBrain = true;
+                            systemOverride = `[SYSTEM OVERRIDE]: The player is seeking an adventure or DM action. EXECUTE A TOOL IMMEDIATELY (like createCustomMap, spawnNPC, or teleportPlayer). KEEP YOUR SPOKEN NARRATION UNDER 15 WORDS. DO NOT ask for permission.`;                        } else {
+                            useBigBrain = isDirectCommand || useBigBrain; 
+                        }
+                        
+                        eventInstruction = `[PLAYER SPOKE]: "${data.text}"\nTASK: ${needsDM ? "EXECUTE A TOOL. " : ""}Reply in character.`;        }
+                    else if (triggerType === 'event') {
+                        useBigBrain = false; 
+                        let recentNarratives = player.dmNarrativeLog ? `\n[RECENT LOG]: ` + player.dmNarrativeLog.join(' | ') : "";
+                        
+                        if (data.isPickup) {
+                            useBigBrain = true; 
+                            eventInstruction = `[PLAYER ACTION]: Picked up ${data.action} | Lore: ${data.lore}\nTASK: Provide a tarot interpretation of the card and relate it to the player's current adventure.`;
+                        } else if (data.isDialogue) {
+                           
+                            eventInstruction = `[PLAYER ACTION]: Finished talking to ${data.action}\nTASK: Comment on their conversation briefly.`;
+                        } else {
+                            if (player.mapID != 999){
+                                eventInstruction = `[PLAYER ACTION]: Slayed a creature ${data.action}\nTASK: Provide a short narrative describing the fall of the monster and give a brief tarot interpretation.`;
+                            }
+                            else{
+                                useBigBrain = true
+                                eventInstruction = `[PLAYER ACTION]: Slayed a creature ${data.action}\nTASK: the player is mocking you with this defeat. You are at disbelief that they overcame your challenge. Immediately use tools like spawnNPC to make their life harder.`;
+                            }
+                            
+                            
+                        }
                     }
-                }
-            }
-        }
                     else if (triggerType === 'spectate') {
                         useBigBrain = false;
                         eventInstruction = `[SPECTATOR FEED]: ${data.action}\nTASK: Speak a brief, cryptic remark about this. DO NOT use any brackets or tags like [INTERNAL THOUGHT].`;                    
@@ -3533,7 +3522,6 @@ socket.on('suncat_compose_vocal', async (data, callback) => {
         }
     });
 
-
 socket.on('playerAction_SFX', (data) => {
       if (typeof data.id !== 'number') return;
       socket.broadcast.emit('remote_sfx', {
@@ -3845,48 +3833,17 @@ setInterval(() => {
                 
                 const plotContext = advPlayer.activeQuest ? `Current Quest: ${advPlayer.activeQuest}` : "Wandering an uncharted map.";
                 const activeMapLore = getMapLore(advPlayer.mapID); 
-                
-                // --- THE RNG PACING DIRECTOR ---
-                const pacingRoll = Math.random();
-                let dmPrompt = "";
-                let requiresBigBrain = false;
-                let injectedPersona = PERSONA_RULES_DB.core + "\n";
-
-                if (pacingRoll < 0.33) {
-                    // 1. Unsolicited Oracle Reading (Small Brain, No Tools)
-                    injectedPersona += PERSONA_RULES_DB.oracle_mode;
-                    dmPrompt = `[DM PACING]: ${advPlayer.name} is wandering Map ${advPlayer.mapID}.\n[TERRAIN]: ${activeMapLore}\nProvide an unsolicited, cryptic 2-sentence Tarot reading about the danger ahead.`;
-                } 
-                else if (pacingRoll < 0.66) {
-                    // 2. Creepy Atmospheric Narration (Small Brain, No Tools)
-                    dmPrompt = `[DM PACING]: ${advPlayer.name} is lingering on Map ${advPlayer.mapID}.\n[TERRAIN]: ${activeMapLore}\nNarrate the creepy or beautiful atmosphere around them in exactly ONE atmospheric sentence. Make them feel watched.`;
-                } 
-                else {
-                    // 3. Spice up the gameplay! (Big Brain + Tools)
-                    requiresBigBrain = true;
-                    injectedPersona += PERSONA_RULES_DB.dm_mode + "\n" + PERSONA_RULES_DB.quest_mode;
-                    dmPrompt = `[DM PACING OVERSEER]: ${advPlayer.name} is lingering on Map ${advPlayer.mapID}.\n[TERRAIN]: ${activeMapLore}\n${plotContext}\nAdvance the adventure NOW! You MUST use a tool (spawnNPC, changeEnvironment, or assignQuest) to ambush or surprise them. Narrate the sudden event dramatically.`;
-                }
+                const dmPrompt = `[DM PACING OVERSEER]: ${advPlayer.name} is lingering on Map ${advPlayer.mapID}.\n[TERRAIN]: ${activeMapLore}\n${plotContext}\n\nAdvance the adventure NOW to keep things exciting. You MUST use a tool (spawnNPC, changeEnvironment, or assignQuest). Narrate the sudden event dramatically. DO NOT ask what they do next.`;
 
                 setTimeout(async () => {
                     try {
-                        // Dynamically build the model based on the RNG outcome
-                        let modelConfig = { 
-                            model: requiresBigBrain ? "gemini-3.1-flash-lite-preview" : "gemini-2.5-flash-lite", 
-                            systemInstruction: injectedPersona
-                        };
-                        // Only attach tools if we rolled the gameplay spice branch!
-                        if (requiresBigBrain) modelConfig.tools = toolsDef; 
-
-                        const activeDmModel = genAI.getGenerativeModel(modelConfig);
+                        // BUILD DM BRAIN
+                        let dynamicPersona = PERSONA_RULES_DB.core + "\n" + PERSONA_RULES_DB.dm_mode + "\n" + PERSONA_RULES_DB.quest_mode;
+                        const activeDmModel = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite-preview", systemInstruction: dynamicPersona, tools: toolsDef });
                         chatSessions[advPlayer.id] = activeDmModel.startChat({ history: await chatSessions[advPlayer.id].getHistory() });
                         
                         const result = await chatSessions[advPlayer.id].sendMessage(dmPrompt);
-                        
-                        // Only try to execute tools if we gave the AI the tools payload!
-                        let finalResponse = requiresBigBrain 
-                            ? await executeAITools(result.response, chatSessions[advPlayer.id], io.sockets.sockets.get(advPlayer.id))
-                            : result.response;
+                        let finalResponse = await executeAITools(result.response, chatSessions[advPlayer.id], io.sockets.sockets.get(advPlayer.id));
                         
                         if (finalResponse.text()) broadcastSuncatMessage(finalResponse.text());
                         
@@ -3900,6 +3857,44 @@ setInterval(() => {
                         npcIsTyping = false;
                     }
                 }, 1000);
+            }
+        }
+        // EVENT C: Random Event Kidnapper
+        else if (directorRoll >= 0.06 && directorRoll < 0.09) {
+            const activePlayers = Object.values(players).filter(p => p.id !== SUNCAT_ID && (Date.now() - (p.lastActive || 0) < 180000));
+            const potentialVictims = activePlayers.filter(p => p.mapID !== 999);
+            
+            if (potentialVictims.length > 0) {
+                const victim = potentialVictims[Math.floor(Math.random() * potentialVictims.length)];
+                
+                if (chatSessions[victim.id]) {
+                    npcIsTyping = true;
+                    const typingFailSafe = setTimeout(() => { npcIsTyping = false; }, 20000);
+                    
+                    const kidnapPrompt = `[SYSTEM OVERRIDE]: Trigger a Random DM Event!\nChoose ONE scenario and EXECUTE 'createCustomMap' targeting '${victim.name}'.\n1. BATTLE ARENA: Layout: 'arena'. Weather: 'storm'. Spawn difficult enemies.\n2. LABYRINTH: Layout: 'labyrinth'. Weather: 'snow'. Spawn a Quest Giver.\n3. OASIS: Layout: 'grid'. Weather: 'leaves'. Spawn friendly NPCs.\nDo not ask for permission.`;
+                    
+                    setTimeout(async () => {
+                        try {
+                            // BUILD DM BRAIN
+                            let dynamicPersona = PERSONA_RULES_DB.core + "\n" + PERSONA_RULES_DB.dm_mode;
+                            const activeDmModel = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite-preview", systemInstruction: dynamicPersona, tools: toolsDef });
+                            chatSessions[victim.id] = activeDmModel.startChat({ history: await chatSessions[victim.id].getHistory() });
+                            
+                            const result = await chatSessions[victim.id].sendMessage(kidnapPrompt);
+                            const finalResponse = await executeAITools(result.response, chatSessions[victim.id], null);                            
+                            if (finalResponse.text()) broadcastSuncatMessage(finalResponse.text());
+                            
+                            let updatedHistory = await chatSessions[victim.id].getHistory();
+                            chatSessions[victim.id] = activeDmModel.startChat({ history: scrubAIHistory(updatedHistory) });
+                            await manageHistorySize(victim.id);
+                        } catch (e) {
+                            console.error("Kidnap Event Error:", e);
+                        } finally {
+                            clearTimeout(typingFailSafe);
+                            npcIsTyping = false;
+                        }
+                    }, 1000);
+                }
             }
         }
     }
