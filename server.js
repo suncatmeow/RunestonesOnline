@@ -1372,89 +1372,35 @@ async function processSuncatThought(socketId, triggerType, data) {
         const timeSinceLastEvent = now - (player.lastRandomEvent || 0);
         const eventCooldown = .25 * 60 * 1000; 
 
-        let prompt = "";
-        let useBigBrain = false;
+        // Inside processSuncatThought...
 
-        // ---------------------------------------------------------
-        // MODE 1: FLIGHT MODE (Panic / Out of Steam)
-        // ---------------------------------------------------------
+        let systemOverride = ""; // Used to temporarily hijack Suncat's mood
+
         if (totalStress >= 85) {
             useBigBrain = true;
-            player.dmStress = 0; // Exhaustion kicks in! He drops his combat stress.
-            player.lastRandomEvent = now;
-            
-            prompt = `[ENVIRONMENT]: ${playerMapLore}
-            [SYSTEM EVENT]: ${player.name} is unstoppable and you are RUNNING OUT OF MANA!
-            TASK: You are in FLIGHT MODE. You have run out of steam to keep summoning waves!
-            - Act like a panicking DM, a sweating boss, or say you are "out of mana." 
-            - You MUST use 'givePlayerCard' to bribe them and admit defeat, or use 'teleportPlayer' to banish them away from this arena so you can rest!
-            - DO NOT spawn more monsters.
-            - Speak purely as an omniscient but exhausted narrator.`;
-        }
-        
-        // ---------------------------------------------------------
-        // MODE 2: FIGHT MODE (Arrogant DM / Arena Master)
-        // ---------------------------------------------------------
-        else if (totalStress >= 50 && player.mapID === 999 && timeSinceLastEvent > 60000) {
+            systemOverride = `[SYSTEM OVERRIDE]: You are exhausted (Mana depleted). You MUST immediately use a tool (like teleportPlayer to banish them, or givePlayerCard to bribe them). Do not fight.`;
+        } else if (totalStress >= 50 && player.mapID === 999 && timeSinceLastEvent > 60000) {
             useBigBrain = true;
-            player.lastRandomEvent = now;
-            
-            prompt = `[ENVIRONMENT]: ${playerMapLore}\n${storyContext}
-            [SYSTEM EVENT]: ${player.name} is rapidly clearing your dungeon!
-            TASK: You are in FIGHT MODE. Act as a high-status Arena Master or arrogant Emperor.
-            - Taunt the player's meager skills. Tell them they are just getting lucky.
-            - Use 'spawnNPC' to drop a stronger, themed enemy. 
-            - Speak as a booming, arrogant omniscient voice. Do NOT use "I" or "my".`;
+            systemOverride = `[SYSTEM OVERRIDE]: You are the arrogant Arena Master right now. Spawn a difficult themed enemy using spawnNPC.`;
+        } else if (triggerType === 'chat') {
+            // Let the Big Brain evaluate ALL direct player commands so Suncat isn't deaf to synonyms.
+            // If the chat is just a casual passing remark, it can still use the cheap brain.
+            const isDirectCommand = msgText.includes("[REPLY]") || msgText.toLowerCase().includes("suncat");
+            useBigBrain = isDirectCommand; 
         }
-        
-        // ---------------------------------------------------------
-        // MODE 3: REST MODE (Chatting, Observing, or Plot Advance)
-        // ---------------------------------------------------------
-        else {
-            // A. Destiny Trigger (Random Big Brain Event)
-            if ( (triggerType === 'event' && Math.random() > 0.95 && timeSinceLastEvent > eventCooldown) || (player.activeQuest && Math.random() > 0.7) ) {
-                useBigBrain = true;
-                player.lastRandomEvent = now;
-                prompt = `[ENVIRONMENT]: ${playerMapLore}\n${storyContext}
-                [SYSTEM EVENT]: The gears of fate turn for ${player.name}.
-                TASK: You are the ACTIVE DM. 
-                - Use 'spawnNPC', 'changeEnvironment', or 'createCustomMap' to advance the main lore.
-                - If they completed their quest objective, use 'assignQuest' with the text "COMPLETE", and use 'givePlayerCard' to reward them.
-                - Speak purely as an omniscient 3rd-person narrator.`;
-                "CRITICAL: If the player has finished their current task, you MUST use 'assignQuest' with 'COMPLETE' to clear their screen."
-            } 
-            // B. Direct Chat
-            // Inside processSuncatThought, find the chat block:
-            else if (triggerType === 'chat') {
-                useBigBrain = true;
-                // LAW: If the player asks for a map or adventure, UPGRADE to Big Brain immediately!
-                const complexKeywords = ["map", "adventure", "teleport", "create", "spawn", "boss"];
-                useBigBrain = complexKeywords.some(kw => data.text.toLowerCase().includes(kw));
 
-                prompt = `${suncatStatus}${favorContext}${factsContext}${storyContext}
-                [SYSTEM EVENT]: ${player.name} says: "${data.text}"
-                TASK: Reply in character. If they asked for an adventure, USE YOUR TOOLS to physically build it.`;
-            }
-            // C. Passive Observation (Pickup / Kill / Spectate)
-            // Inside the 'else' (Rest Mode) block of processSuncatThought:
-            // C. Passive Observation (Pickup / Kill / Spectate)
-            else {
-                useBigBrain = false;
-                // We keep recent narratives to avoid repeating "The goblin falls"
-                let recentNarratives = player.dmNarrativeLog ? `\n[RECENT]: ` + player.dmNarrativeLog.join(' | ') : "";
-                
-                // CRITICAL: We tell the AI exactly what happened in 3 words
-                let eventSummary = isPickup ? `Picked up ${data.entityName}` : (data.isDialogue ? `Finished talking to ${data.entityName}` : `Slayed ${data.entityName}`);
+        // Build a clean, structured prompt:
+        prompt = `
+        [CURRENT STATE]
+        Location: Map ${suncat.mapID} (${myMapLore})
+        Target: ${player.name} (Map ${player.mapID})
+        ${favorContext}
+        ${storyContext}
 
-                prompt = `[MAP]: ${playerMapLore} | [ACT]: ${eventSummary} | [LORE]: ${data.lore || "None"}
-                ${recentNarratives}
-                TASK: Narrate this action in exactly ONE sentence (max 15 words). 
-                - Be blunt, visceral, and atmospheric. 
-                - Use the name "${data.entityName}" immediately. 
-                - DO NOT use "I", "my", or flowery introductions. 
-                - Example: "${data.entityName} dissolves into the damp soil of ${playerMapLore}."`;
-            }
-        }
+        ${systemOverride}
+
+        [NEW EVENT]: ${data.text || data.action}
+        `;
 
         // --- EXECUTE AI ---
         const selectedModel = useBigBrain ? dmModel : model;
@@ -1663,12 +1609,166 @@ socket.on("npc_died", async (data) => {
         player.dmStress = Math.min(100, (player.dmStress || 0) + 25);
     }
 
-    processSuncatThought(player.id, 'event', {
-        action: `Interacted with ${entityName}`,
-        lore: getCardLore(baseID),
-        isPickup: isPickup,
-        isDialogue: isDialogue
-    });
+    // ==========================================
+// THE UNIFIED NERVOUS SYSTEM ROUTER
+// ==========================================
+async function processSuncatThought(socketId, triggerType, data) {
+    const player = players[socketId];
+    if (!player) return;
+
+    const suncat = players[SUNCAT_ID];
+    const now = Date.now();
+
+    // 1. RATE LIMITING & HARD BUDGET
+    if (!canTriggerAI(socketId)) {
+        if (triggerType === 'chat') {
+            io.emit('chat_message', { sender: NPC_NAME, text: "*...my mind is clouded... give me a moment to think...*", color: "#aaaaaa" });
+        }
+        return; // <-- CRITICAL: You accidentally commented these out! Restored so you don't go bankrupt.
+    }
+    if (isBankrupt()) {
+        io.emit('chat_message', { sender: "[SYSTEM]", text: "Suncat's mana is depleted.", color: "#ff0000" });
+        return; 
+    }
+    
+    // Prevent overlapping thoughts
+    if (npcIsTyping) return;
+    npcIsTyping = true;
+    const typingFailSafe = setTimeout(() => { npcIsTyping = false; }, 20000);
+
+    try {
+        // 2. GATHER CORE CONTEXT
+        const timeString = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+        const myMapLore = getShortMapLore(suncat.mapID);
+        const playerMapLore = getShortMapLore(player.mapID);
+        
+        let suncatStatus = `[MY CURRENT LOCATION]: Map ${suncat.mapID} (${myMapLore})\n[WORLD CLOCK]: ${timeString}`;
+        if (suncat.mapID !== player.mapID) {
+            suncatStatus += `\n[TARGET PLAYER LOCATION]: ${player.name} is currently far away at Map ${player.mapID} (${playerMapLore}).`;
+        }
+
+        const storyContext = player.storySoFar ? `\n[THE STORY SO FAR]: ${player.storySoFar}` : ""; 
+        const favorContext = `\n[FAVOR SCORE]: ${playerFavorMemory[socketId] || 0}/10`;
+        const factsContext = (player.coreFacts && player.coreFacts.length > 0) ? `\n[PLAYER FACTS]:\n${player.coreFacts.join("\n")}` : "";
+
+        // 3. ASSESS STRESS LEVEL (Adrenaline + API Fatigue)
+        const combatStress = player.dmStress || 0;
+        const apiFatigue = Math.min(100, ((player.sessionCost || 0) / 0.10) * 100); 
+        const totalStress = Math.min(100, combatStress + apiFatigue);
+        const timeSinceLastEvent = now - (player.lastRandomEvent || 0);
+
+        let systemOverride = ""; 
+        let eventInstruction = "";
+        let useBigBrain = false;
+        
+        // --- A. THE DM PACING & STRESS OVERRIDES (Forces Tool Use) ---
+        if (totalStress >= 85) {
+            useBigBrain = true;
+            player.dmStress = 0; // Exhaustion kicks in! Drops combat stress.
+            player.lastRandomEvent = now;
+            systemOverride = `[SYSTEM OVERRIDE]: You are exhausted (Mana depleted). You MUST immediately execute a tool (like 'teleportPlayer' to banish them away, or 'givePlayerCard' to bribe them to leave). Do not spawn enemies.`;
+        } 
+        else if (totalStress >= 50 && player.mapID === 999 && timeSinceLastEvent > 60000) {
+            useBigBrain = true;
+            player.lastRandomEvent = now;
+            systemOverride = `[SYSTEM OVERRIDE]: You are the arrogant Arena Master right now. Execute the 'spawnNPC' tool to drop a difficult themed enemy. Taunt them.`;
+        } 
+        
+        // --- B. EVENT ROUTING ---
+        if (triggerType === 'chat') {
+            // Let the Big Brain evaluate direct commands so Suncat isn't deaf to synonyms.
+            const isDirectCommand = data.text.includes("[REPLY]") || data.text.toLowerCase().includes("suncat");
+            useBigBrain = isDirectCommand || useBigBrain; // Keep BigBrain if Stress already triggered it
+            
+            eventInstruction = `[PLAYER SPOKE]: "${data.text}"\nTASK: Reply in character. If they asked for something requiring a tool, EXECUTE THE TOOL. Do not ask for permission.`;
+        } 
+        else if (triggerType === 'event') {
+            // Passive observation (Kills, Pickups) - Uses Cheap Brain
+            useBigBrain = false; 
+            let recentNarratives = player.dmNarrativeLog ? `\n[RECENT LOG]: ` + player.dmNarrativeLog.join(' | ') : "";
+            let eventSummary = data.isPickup ? `Picked up ${data.action}` : (data.isDialogue ? `Finished talking to ${data.action}` : `Slayed ${data.action}`);
+            
+            eventInstruction = `[PLAYER ACTION]: ${eventSummary} | Lore: ${data.lore || "None"}\n${recentNarratives}\nTASK: Narrate this action in exactly ONE atmospheric sentence. Use their name.`;
+        } 
+        else if (triggerType === 'spectate') {
+            useBigBrain = false;
+            eventInstruction = `[SPECTATOR FEED]: ${data.action}\nTASK: Acknowledge this with a brief, cryptic internal thought.`;
+        }
+
+        // 4. BUILD THE CLEAN PROMPT
+        const prompt = `
+[CURRENT STATE]
+Location: Map ${suncat.mapID} (${myMapLore})
+Target: ${player.name} (Map ${player.mapID})
+${favorContext}
+${storyContext}
+
+${systemOverride}
+
+${eventInstruction}
+        `.trim();
+
+        // --- EXECUTE AI ---
+        const selectedModel = useBigBrain ? dmModel : model;
+
+        if (!chatSessions[socketId]) {
+            chatSessions[socketId] = model.startChat({ history: [] });
+        }
+
+        let activeSession = chatSessions[socketId];
+        if (useBigBrain) {
+            activeSession = dmModel.startChat({ history: await chatSessions[socketId].getHistory() });
+        }
+
+        const result = await activeSession.sendMessage(prompt);
+        if (result.response.usageMetadata) updateBudget(result.response.usageMetadata, socketId);
+
+        let finalResponse = await executeAITools(result.response, activeSession, io.sockets.sockets.get(socketId));
+
+        if (finalResponse.text()) {
+            const finalSpeech = finalResponse.text();
+            
+            // Extract Facts/Favor if he is chatting
+            if (triggerType === 'chat') {
+                const saveMatch = finalSpeech.match(/\[\[SAVE:\s*(.*?)\]\]/i);
+                if (saveMatch && saveMatch[1]) {
+                    if (!player.coreFacts) player.coreFacts = [];
+                    player.coreFacts.push(saveMatch[1]); 
+                    io.to(socketId).emit("suncat_learned_fact", saveMatch[1]); 
+                }
+                const favorMatch = finalSpeech.match(/\[\[FAVOR:\s*([+-]?\d+)\]\]/i);
+                if (favorMatch && favorMatch[1]) {
+                    playerFavorMemory[socketId] = (playerFavorMemory[socketId] || 0) + parseInt(favorMatch[1]);
+                }
+            }
+
+            broadcastSuncatMessage(finalSpeech);
+            
+            // Log DM narrations to prevent repetition
+            if (triggerType !== 'chat' && !useBigBrain) {
+                if (!player.dmNarrativeLog) player.dmNarrativeLog = [];
+                player.dmNarrativeLog.push(finalSpeech);
+                
+                // Digest logic: move old narrations to the stomach
+                if (player.dmNarrativeLog.length > 4) {
+                    if (!player.undigestedInfo) player.undigestedInfo = [];
+                    player.undigestedInfo.push(player.dmNarrativeLog.shift()); 
+                }
+            }
+        }
+
+        // Downgrade back to cheap brain history and scrub arrays
+        let updatedHistory = await activeSession.getHistory(); 
+        chatSessions[socketId] = model.startChat({ history: scrubAIHistory(updatedHistory) });
+        await manageHistorySize(socketId);
+        
+    } catch (e) {
+        console.error("Nervous System Error:", e);
+    } finally {
+        clearTimeout(typingFailSafe); 
+        npcIsTyping = false;
+    }
+    }
 });
 // --- EVENT: DIRECT CHAT ---
 socket.on('chat_message', async (msgText) => {
@@ -1796,22 +1896,30 @@ socket.on("suncat_spectate", async (actionDescription) => {
     });
   });
 
-  socket.on("move", (data) => {
+ socket.on("move", (data) => {
     if (players[socket.id]) {
+        // 1. Update the server's master state
         let update = { ...players[socket.id], ...data };
         if (!data.name) update.name = players[socket.id].name;
         players[socket.id] = update;
         players[socket.id].lastActive = Date.now();
         
-        // --- WAKE UP LOGIC: Remove AFK Tag on Movement ---
+        // 2. Wake Up Logic
         if (players[socket.id].name.startsWith("[AFK] ")) {
             players[socket.id].name = players[socket.id].name.replace("[AFK] ", "");
-            io.emit("updatePlayers", players); // Updates EVERYONE immediately
+            // Only broadcast the FULL list if a name changed/someone woke up
+            io.emit("updatePlayers", players); 
         } else {
-            socket.broadcast.emit("updatePlayers", players);
+            // 3. THE FIX: Only broadcast the ID and the new coordinates to everyone else!
+            socket.broadcast.emit("playerMoved", { 
+                id: socket.id, 
+                x: data.x, 
+                y: data.y,
+                direction: data.direction // if you track facing direction
+            });
         }
     }
-  });
+});
 
   socket.on("challenge_request", (data) => {
     io.to(data.targetId).emit("challenge_received", {
