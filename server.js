@@ -2018,12 +2018,7 @@ const MUSIC_SCALES = {
 
 const MUSIC_MOODS = ["Tense", "Resolving", "Melancholic", "Heroic", "Ethereal", "Chaotic", "Peaceful", "Mysterious"];
 // The Server's Music Buffer
-let songState = {
-    buffer: [], // Stores generated bars so we don't call the AI every 4 seconds
-    currentScale: "Aeolian",
-    currentTempo: 75,
-    currentMood: "Mysterious"
-};
+
 
 
         // --- VARIABLES ---
@@ -3202,7 +3197,7 @@ async function processSuncatThought(socketId, triggerType, data) {
         // Notice we do NOT put the persona here! It goes into the System Instruction!
         const prompt = `
         [CURRENT STATE]
-        Location: Map ${suncat.mapID} (${myMapLore})
+        Location: Map ${suncat.mapID} (${myAtlas ? myAtlas.name : "Unknown"})
         Target: ${player.name} (Map ${player.mapID})
         ${favorContext}
         ${storyContext}
@@ -3491,11 +3486,12 @@ socket.on("suncat_spectate", async (actionDescription) => {
 // --- SUNCAT VOCAL COMPOSER (For Ai3Module) ---
 // --- Initialize a Song State for the Player ---
     let songState = {
-        barsPlayed: 0,
-        currentScale: "Aeolian",
-        currentTempo: 75,
-        currentMood: "Mysterious"
-    };
+    buffer: [], // Stores generated bars so we don't call the AI every 4 seconds
+    barsPlayed: 0,
+    currentScale: "Aeolian",
+    currentTempo: 75,
+    currentMood: "Mysterious"
+};
 
 // --- STRICT JSON SCHEMA (Forces the AI to output exactly 4 bars) ---
     const musicSchema = {
