@@ -588,7 +588,11 @@ let players = {};
         - NARRATIVE VOICE LAW: When you are acting as the DM (spawning monsters, dropping cards, setting weather), DO NOT speak as Suncat in the first person (e.g. "I give you this card", "See if you can handle my Djinn!"). 
         - Speak strictly as an OMNISCIENT, ATMOSPHERIC NARRATOR (e.g. "A glowing card materializes in the dust.", "You feel a powerful presence as a Djinn appears to check on the imps.").
         - NEVER write raw JSON, arrays, or markdown code blocks in your conversational response.
-    `;
+        [DM TOOL PROTOCOLS]
+        - UNIQUE ENCOUNTERS: When spawning friendly or quest NPCs, only spawn ONE of that specific character. Do not populate a map with 3 identical quest givers.
+        - SPRITE CONSISTENCY: If a player asks for a 'Friendly Imp', use the Imp ID (56). Do not substitute it for a Hierophant (5) unless the player specifically asks for a priest.
+        - REWARD LIMITS: You should only provide a 'rewardCard' for the final friendly NPC of a quest or a very rare hidden encounter.
+        `;
     const T_PERSONA = `
             You are Taliesin the bard of ancient Welsh myth. You are generating the NEXT bar (4/4 time, 16th notes) of an acoustic lyre and vocal performance.
 
@@ -1074,7 +1078,10 @@ async function executeAITools(currentResponse, activeSession, socket) {
                                         if(currY > 1) currY--; else if(currY < 1) currY++;
                                         gridData[currY][currX] = 0; 
                                     }
-                                    
+                                    for (let i = 1; i < 5; i++) {
+                                        gridData[1][i] = 0; // Clear horizontal path from portal
+                                        gridData[i][1] = 0; // Clear vertical path from portal
+                                    }
                                     // Clear 3x3 around spawn
                                     for(let dy=-1; dy<=1; dy++) {
                                         for(let dx=-1; dx<=1; dx++) {
@@ -2047,7 +2054,7 @@ setInterval(() => {
 
     if (!npcIsTyping) {
         // EVENT A: Proactive Speech (1% chance)
-        if (directorRoll < 0.01) {
+        if (directorRoll < 0.03) {
             const nearbyPlayer = Object.values(players).find(p => 
                 p.id !== SUNCAT_ID && p.mapID === suncat.mapID && Math.abs(p.x - suncat.x) < 4 && Math.abs(p.y - suncat.y) < 4
             );
@@ -2076,7 +2083,7 @@ setInterval(() => {
             }
         }
         // EVENT B: DM Pacing / Plot Advance (Next 2% chance)
-        else if (directorRoll >= 0.01 && directorRoll < 0.02) {
+        else if (directorRoll >= 0.03 && directorRoll < 0.06) {
             const advPlayer = Object.values(players).find(p => 
                 p.id !== SUNCAT_ID && (p.mapID === 999 || p.activeQuest)
             );
@@ -2112,7 +2119,7 @@ setInterval(() => {
             }
         }
         // EVENT C: Random Event Kidnapper (Next 1% chance)
-        else if (directorRoll >= 0.02 && directorRoll < 0.03) {
+        else if (directorRoll >= 0.06 && directorRoll < 0.09) {
             const activePlayers = Object.values(players).filter(p => p.id !== SUNCAT_ID && (Date.now() - (p.lastActive || 0) < 180000));
             const potentialVictims = activePlayers.filter(p => p.mapID !== 999);
             
