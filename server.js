@@ -2651,12 +2651,12 @@ async function executeAITools(currentResponse, activeSession, socket) {
 
                     queries.forEach(query => {
                         const lowerQuery = query.toLowerCase();
+                        const searchTerms = lowerQuery.replace(/[^\w\s]/gi, '').split(/\s+/).filter(w => w.length > 2 && !SEARCH_STOP_WORDS.includes(w));
 
                         let scoredLines = FULL_LIBRARY_LINES.map((line, index) => {
                             let score = 0;
                             let lowerLine = line.toLowerCase();
                             if (lowerLine.includes(lowerQuery)) score += 10;
-                            const searchTerms = lowerQuery.replace(/[^\w\s]/gi, '').split(/\s+/).filter(w => w.length > 2 && !SEARCH_STOP_WORDS.has(w));                            return { index, line, score };
                         });
 
                         let bestMatches = scoredLines.filter(item => item.score > 0).sort((a, b) => b.score - a.score).slice(0, 2);
