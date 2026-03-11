@@ -3554,8 +3554,15 @@ TASK: Compose the next 4 consecutive bars. Ensure the melody builds naturally ac
             let rawText = result.response.text().trim();
             if (rawText.startsWith("```")) rawText = rawText.replace(/^```(json)?|```$/g, "").trim();
             
-            const generatedBars = JSON.parse(rawText);
-            
+            // Replace your JSON.parse line with this safe version:
+            let generatedBars = [];
+            try {
+                generatedBars = JSON.parse(rawText);
+            } catch(e) {
+                console.error("[Music AI] JSON parsing failed. Sending fallback.");
+                if (callback) callback(null);
+                return;
+            }
             // Format them back into the string structure your client expects, and push to buffer
             generatedBars.forEach(bar => {
                 const formatted = `[THOUGHT] ${bar.THOUGHT} [/THOUGHT]
