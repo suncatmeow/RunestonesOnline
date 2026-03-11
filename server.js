@@ -2252,11 +2252,7 @@ function updateBudget(usage, socketId) {
 const FULL_LIBRARY_LINES = [
     ...Object.values(WORLD_LORE_DB),
     ...Object.values(SUNCAT_LORE_DB),
-    ...Object.values(GAME_MECHANICS_DB),
-    // Dynamically convert cards into readable text for the search function!
-    ...Object.values(CARD_MANIFEST_DB).map(c => `Card Manifest - Name: ${c.name}, Suit: ${c.suit}, Type: ${c.type}, Classes: ${c.classes ? c.classes.join(', ') : 'none'}, Lore: ${c.lore}, Stats: ${c.stats}`),
-    // Add the campaign story beats!
-    ...Object.values(STORY_CAMPAIGN_DB).map(s => `Campaign Beat [${s.title}]: ${s.text} Plot Hook: ${s.hook}`)
+    ...Object.values(GAME_MECHANICS_DB)
 ];
 // Global stop-words list so it isn't recreated on every search
 const SEARCH_STOP_WORDS = ["the", "and", "for", "with", "what", "does", "mean", "about", "are", "you", "is", "how", "whats", "up", "a", "an", "to", "in", "on", "of"];  // --- DYNAMIC CONTEXT INJECTOR ---
@@ -2892,13 +2888,12 @@ async function executeAITools(currentResponse, activeSession, socket) {
                     } else {
                         const tp = players[targetID];
                         let spawnMap = call.args.mapID !== undefined ? call.args.mapID : tp.mapID;
-                        let randomScatterX = (Math.random() * 2) - 1; // Random float between -1.0 and 1.0
-                        let randomScatterY = (Math.random() * 2) - 1;
-                        let spawnX = call.args.x !== undefined ? call.args.x : tp.x + (Math.random() > 0.5 ? 2.5 : -2.5) + randomScatterX;
-                        let spawnY = call.args.y !== undefined ? call.args.y : tp.y + (Math.random() > 0.5 ? 2.5 : -2.5) + randomScatterY;
+                        let spawnX = call.args.x !== undefined ? call.args.x : tp.x + (Math.random() > 0.5 ? 1.5 : -1.5);
+                        let spawnY = call.args.y !== undefined ? call.args.y : tp.y + (Math.random() > 0.5 ? 1.5 : -1.5);
+                        
+                        spawnX = Math.max(2.5, Math.min(17.5, spawnX));
+                        spawnY = Math.max(2.5, Math.min(17.5, spawnY));
 
-                        spawnX = Math.max(1.5, Math.min(18.5, spawnX));
-                        spawnY = Math.max(1.5, Math.min(18.5, spawnY));
                         let baseID = Math.floor(parseFloat(call.args.npcType));
 
                         let safeRewardCard = null;
@@ -3084,33 +3079,14 @@ async function processSuncatThought(socketId, triggerType, data) {
     const typingFailSafe = setTimeout(() => { npcIsTyping = false; }, 9000);
 
     try {
-        // 2. GATHER CORE CONTEXT (RAG-LITE INJECTION)
+        // 2. GATHER CORE CONTEXT
         const timeString = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+        const myMapLore = getShortMapLore(suncat.mapID);
+        const playerMapLore = getShortMapLore(player.mapID);
         
-        // Fetch deep Atlas data
-        const myAtlas = WORLD_ATLAS_DB[suncat.mapID];
-        const pAtlas = WORLD_ATLAS_DB[player.mapID];
-        
-        // Dynamically pull the deep lore for THIS map ONLY
-        let dynamicLore = pAtlas ? pAtlas.lore : "";
-        if (pAtlas && pAtlas.storyKey && WORLD_LORE_DB[pAtlas.storyKey]) {
-            dynamicLore += " " + WORLD_LORE_DB[pAtlas.storyKey];
-        }
-
-        let environmentContext = `[PLAYER LOCATION]: Map ${player.mapID} (${pAtlas ? pAtlas.name : "Unknown"})
-        [TERRAIN]: ${pAtlas ? pAtlas.description : "An uncharted void."}
-        [LOCAL LORE]: ${dynamicLore}`;
-
-        // Inject active scenario rules if the player is in a custom event!
-        if (player.activeScenario && SCENARIO_PROMPT_DB[player.activeScenario]) {
-            environmentContext += `\n[ACTIVE SCENARIO DIRECTIVE]: ${SCENARIO_PROMPT_DB[player.activeScenario].dm_instruction}`;
-        }
-
-        let suncatStatus = `[MY CURRENT LOCATION]: Map ${suncat.mapID} (${myAtlas ? myAtlas.name : "Unknown"})\n[WORLD CLOCK]: ${timeString}`;
+        let suncatStatus = `[MY CURRENT LOCATION]: Map ${suncat.mapID} (${myMapLore})\n[WORLD CLOCK]: ${timeString}`;
         if (suncat.mapID !== player.mapID) {
-            suncatStatus += `\n${environmentContext}`;
-        } else {
-            suncatStatus += `\n[CURRENT ENVIRONMENT]: We are in the same location.\n${environmentContext}`;
+            suncatStatus += `\n[TARGET PLAYER LOCATION]: ${player.name} is currently far away at Map ${player.mapID} (${playerMapLore}).`;
         }
 
         const storyContext = player.storySoFar ? `\n[THE STORY SO FAR]: ${player.storySoFar}` : ""; 
@@ -3132,7 +3108,7 @@ async function processSuncatThought(socketId, triggerType, data) {
             useBigBrain = true;
             player.dmStress = 0; // Exhaustion kicks in! Drops combat stress.
             player.lastRandomEvent = now;
-            systemOverride = `[SYSTEM OVERRIDE]: You are exhausted (Mana depleted). You MUST immediately execute a tool (like 'teleportPlayer' to send them away, or 'givePlayerCard' to bribe them to leave). Do not spawn enemies.`;
+            systemOverride = `[SYSTEM OVERRIDE]: You are exhausted (Mana depleted). You MUST immediately execute a tool (like 'teleportPlayer' to banish them away, or 'givePlayerCard' to bribe them to leave). Do not spawn enemies.`;
         } 
         else if (totalStress >= 50 && player.mapID === 999 && timeSinceLastEvent > 60000) {
             useBigBrain = true;
@@ -3174,7 +3150,6 @@ async function processSuncatThought(socketId, triggerType, data) {
                                 eventInstruction = `[PLAYER ACTION]: Slayed a creature ${data.action}\nTASK: Provide a short narrative describing the fall of the monster and give a brief tarot interpretation.`;
                             }
                             else{
-                                useBigBrain = true
                                 eventInstruction = `[PLAYER ACTION]: Slayed a creature ${data.action}\nTASK: the player is mocking you with this defeat. You are at disbelief that they overcame your challenge. Immediately use tools like spawnNPC to make their life harder.`;
                             }
                             
