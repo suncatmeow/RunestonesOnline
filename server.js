@@ -46,6 +46,7 @@ const DIFFICULTY_MODIFIERS = {
 };
     // --- AI CONFIGURATION (Paid Tier / 2.5 Flash) ---
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+let isDirectorBusy = false;
 //////////////////////Database////////////////////////
 ////////////////////VVVVVVVVVVVVVV////////////////////
 // --- 1. CARD MANIFEST ---
@@ -1999,12 +2000,12 @@ const toolsDef = [{
 }];
 // --- TALIESIN THE BARD ---
 const T_PERSONA = `You are Taliesin the bard of ancient myth. 
-TASK: Generate 4 consecutive bars (4/4 time, 16th notes) of a lyre and vocal performance.
-RULES:
-1. LYRICS: Output standard English lyrics. Separate syllables with hyphens to denote rhythm (e.g., "The an-cient dra-gon wakes").
-2. THUMB, FINGERS, STRUM: Arrays MUST have exactly 16 slots per bar. Use scale degrees (integers) or '-' for rests.
-3. STRUM: Mostly rests (-). Only place a '0' on beat 1 for heavy emphasis.
-4. SYNC: The notes in FINGERS must harmonize with the THUMB bassline.`;
+    TASK: Generate 4 consecutive bars (4/4 time, 16th notes) of a lyre and vocal performance.
+    RULES:
+    1. LYRICS: Output standard English lyrics. Separate syllables with hyphens to denote rhythm (e.g., "The an-cient dra-gon wakes").
+    2. THUMB, FINGERS, STRUM: Arrays MUST have exactly 16 slots per bar. Use scale degrees (integers) or '-' for rests.
+    3. STRUM: Mostly rests (-). Only place a '0' on beat 1 for heavy emphasis.
+    4. SYNC: The notes in FINGERS must harmonize with the THUMB bassline.`;
 const MUSIC_SCALES = {
     "Ionian": "0,2,4,5,7,9,11",
     "Dorian": "0,2,3,5,7,9,10",
@@ -3460,7 +3461,7 @@ socket.on('chat_message', async (msgText) => {
     
     // Admin Override
     if (["suncat you there", "suncat wake up"].some(w => content.includes(w))) {
-        npcIsTyping = false;
+        player.npcIsTyping = false;
     }
 
     const mentioned = content.includes(NPC_NAME.toLowerCase()) || msgText.includes("[REPLY]");
@@ -3862,14 +3863,14 @@ setInterval(() => {
     // --- AI DIRECTOR HEARTBEAT ---
     const directorRoll = Math.random();
 
-    if (!npcIsTyping) {
+    if (!isDirectorBusy) {
         // EVENT A: Proactive Speech
         if (directorRoll < 0.03) {
             const nearbyPlayer = Object.values(players).find(p => p.id !== SUNCAT_ID && p.mapID === suncat.mapID && Math.abs(p.x - suncat.x) < 4 && Math.abs(p.y - suncat.y) < 4);
 
             if (nearbyPlayer && chatSessions[nearbyPlayer.id]) {
-                npcIsTyping = true;
-                const typingFailSafe = setTimeout(() => { npcIsTyping = false; }, 20000);
+                isDirectorBusy = true;
+                const typingFailSafe = setTimeout(() => { isDirectorBusy = false; }, 20000);
                 const proactivePrompt = `You are idling near ${nearbyPlayer.name} on Map ${suncat.mapID}. Speak to them unprompted. If favor is high (>5), ask a personal question, share lore, or comment on this location. If favor is bad, insult them or tell them to go away. DO NOT use brackets or tags in your response.`;
                 
                 setTimeout(async () => {
@@ -3888,7 +3889,7 @@ setInterval(() => {
                         console.error("Proactive Speech Failed", e); 
                     } finally {
                         clearTimeout(typingFailSafe);
-                        npcIsTyping = false;
+                        isDirectorBusy = false;
                     }
                 }, 1000);
             }
@@ -3898,8 +3899,8 @@ setInterval(() => {
             const advPlayer = Object.values(players).find(p => p.id !== SUNCAT_ID && (p.mapID === 999 || p.activeQuest));
 
             if (advPlayer && chatSessions[advPlayer.id]) {
-                npcIsTyping = true;
-                const typingFailSafe = setTimeout(() => { npcIsTyping = false; }, 20000);
+                isDirectorBusy = true;
+                const typingFailSafe = setTimeout(() => { isDirectorBusy = false; }, 20000);
                 
                 const plotContext = advPlayer.activeQuest ? `Current Quest: ${advPlayer.activeQuest}` : "Wandering an uncharted map.";
                 const activeMapLore = getMapLore(advPlayer.mapID); 
@@ -3957,7 +3958,7 @@ setInterval(() => {
                         console.error("DM Proactive Error:", e);
                     } finally {
                         clearTimeout(typingFailSafe);
-                        player.npcIsTyping = false; // Release the personal lock!
+                        isDirectorBusy = false; // Release the personal lock!
                     }
                 }, 1000);
             }
