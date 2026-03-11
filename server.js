@@ -2252,10 +2252,14 @@ function updateBudget(usage, socketId) {
 const FULL_LIBRARY_LINES = [
     ...Object.values(WORLD_LORE_DB),
     ...Object.values(SUNCAT_LORE_DB),
-    ...Object.values(GAME_MECHANICS_DB)
+    ...Object.values(GAME_MECHANICS_DB),
+    // Dynamically convert cards into readable text for the search function!
+    ...Object.values(CARD_MANIFEST_DB).map(c => `Card Manifest - Name: ${c.name}, Suit: ${c.suit}, Type: ${c.type}, Classes: ${c.classes ? c.classes.join(', ') : 'none'}, Lore: ${c.lore}, Stats: ${c.stats}`),
+    // Add the campaign story beats!
+    ...Object.values(STORY_CAMPAIGN_DB).map(s => `Campaign Beat [${s.title}]: ${s.text} Plot Hook: ${s.hook}`)
 ];
 // Global stop-words list so it isn't recreated on every search
-const SEARCH_STOP_WORDS = ["the", "and", "for", "with", "what", "does", "mean", "about", "are", "you", "is", "how", "whats", "up", "a", "an", "to", "in", "on", "of"];  // --- DYNAMIC CONTEXT INJECTOR ---
+const SEARCH_STOP_WORDS = new Set(["the", "and", "for", "with", "what", "does", "mean", "about", "are", "you", "is", "how", "whats", "up", "a", "an", "to", "in", "on", "of"]);
 // Pre-parse on server boot:
 
 
@@ -2653,8 +2657,7 @@ async function executeAITools(currentResponse, activeSession, socket) {
                             let score = 0;
                             let lowerLine = line.toLowerCase();
                             if (lowerLine.includes(lowerQuery)) score += 10;
-                            searchTerms.forEach(term => { if (lowerLine.includes(term)) score += 2; });
-                            return { index, line, score };
+const searchTerms = lowerQuery.replace(/[^\w\s]/gi, '').split(/\s+/).filter(w => w.length > 2 && !SEARCH_STOP_WORDS.has(w));                            return { index, line, score };
                         });
 
                         let bestMatches = scoredLines.filter(item => item.score > 0).sort((a, b) => b.score - a.score).slice(0, 2);
@@ -3128,7 +3131,7 @@ async function processSuncatThought(socketId, triggerType, data) {
             useBigBrain = true;
             player.dmStress = 0; // Exhaustion kicks in! Drops combat stress.
             player.lastRandomEvent = now;
-            systemOverride = `[SYSTEM OVERRIDE]: You are exhausted (Mana depleted). You MUST immediately execute a tool (like 'teleportPlayer' to banish them away, or 'givePlayerCard' to bribe them to leave). Do not spawn enemies.`;
+            systemOverride = `[SYSTEM OVERRIDE]: You are exhausted (Mana depleted). You MUST immediately execute a tool (like 'teleportPlayer' to send them away, or 'givePlayerCard' to bribe them to leave). Do not spawn enemies.`;
         } 
         else if (totalStress >= 50 && player.mapID === 999 && timeSinceLastEvent > 60000) {
             useBigBrain = true;
@@ -3170,6 +3173,7 @@ async function processSuncatThought(socketId, triggerType, data) {
                                 eventInstruction = `[PLAYER ACTION]: Slayed a creature ${data.action}\nTASK: Provide a short narrative describing the fall of the monster and give a brief tarot interpretation.`;
                             }
                             else{
+                                useBigBrain = true
                                 eventInstruction = `[PLAYER ACTION]: Slayed a creature ${data.action}\nTASK: the player is mocking you with this defeat. You are at disbelief that they overcame your challenge. Immediately use tools like spawnNPC to make their life harder.`;
                             }
                             
