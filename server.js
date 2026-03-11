@@ -470,7 +470,8 @@ let players = {};
         cleanResponse = cleanResponse.replace(/\[\s*\[[\d\s,]+\]\s*\]/g, "");
         // C. Remove bolded parameter keys (e.g., **Grid:** or **Sky Color:**)
         cleanResponse = cleanResponse.replace(/\*\*[a-zA-Z\s]+:\*\*/g, "");
-        
+        // ---> NEW: Remove [INTERNAL THOUGHT] or any [ALL CAPS] system tags <---
+        cleanResponse = cleanResponse.replace(/\[[A-Z\s]+\]:?\s*/g, "");
         cleanResponse = cleanResponse.trim();
 
         // 3. PREVENT BLANK MESSAGES
@@ -1392,12 +1393,11 @@ async function processSuncatThought(socketId, triggerType, data) {
                             systemOverride = `[SYSTEM OVERRIDE]: You are the Oracle. Interpret the player's situation using Tarot logic based on the Runestones card manifest. Be cryptic, mystical, and brief (max 3 sentences). Do not use tools.`;
                         } else if (needsDM) {
                             useBigBrain = true;
-                            systemOverride = `[SYSTEM OVERRIDE]: The player is seeking an adventure or DM action. EXECUTE A TOOL IMMEDIATELY (like createCustomMap, spawnNPC, or teleportPlayer). DO NOT ask for permission or explain what you are doing.`;
-                        } else {
+                            systemOverride = `[SYSTEM OVERRIDE]: The player is seeking an adventure or DM action. EXECUTE A TOOL IMMEDIATELY (like createCustomMap, spawnNPC, or teleportPlayer). KEEP YOUR SPOKEN NARRATION UNDER 15 WORDS. DO NOT ask for permission.`;                        } else {
                             useBigBrain = isDirectCommand || useBigBrain; 
                         }
                         
-            eventInstruction = `[PLAYER SPOKE]: "${data.text}"\nTASK: ${needsDM ? "EXECUTE A TOOL. " : ""}Reply in character.`;        }
+                        eventInstruction = `[PLAYER SPOKE]: "${data.text}"\nTASK: ${needsDM ? "EXECUTE A TOOL. " : ""}Reply in character.`;        }
                     else if (triggerType === 'event') {
                         // Passive observation (Kills, Pickups) - Uses Cheap Brain
                         useBigBrain = false; 
@@ -1408,8 +1408,7 @@ async function processSuncatThought(socketId, triggerType, data) {
                     } 
                     else if (triggerType === 'spectate') {
                         useBigBrain = false;
-                        eventInstruction = `[SPECTATOR FEED]: ${data.action}\nTASK: Acknowledge this with a brief, cryptic internal thought.`;
-                    }
+                        eventInstruction = `[SPECTATOR FEED]: ${data.action}\nTASK: Speak a brief, cryptic remark about this. DO NOT use any brackets or tags like [INTERNAL THOUGHT].`;                    }
 
                     // 4. BUILD THE CLEAN PROMPT
                     const prompt = `
@@ -1680,8 +1679,12 @@ socket.on("suncat_spectate", async (actionDescription) => {
         sender.undigestedInfo.push(sender.activityLog.shift()); // Swallow raw actions
     }
     
-    // REMOVED the 10% chance. Suncat will now ALWAYS process your story prompts!
-    processSuncatThought(socket.id, 'spectate', { action: actionDescription });
+    // 100% chance to react to major story beats, 10% chance for mundane actions
+    if (actionDescription.includes("[QUEST EVENT]") || actionDescription.includes("[SYSTEM EVENT]")) {
+        processSuncatThought(socket.id, 'spectate', { action: actionDescription });
+    } else if (Math.random() < 0.1) {
+        processSuncatThought(socket.id, 'spectate', { action: actionDescription });
+    }
 });
     // --- SUNCAT VOCAL COMPOSER (For Ai3Module) ---
     socket.on('suncat_compose_vocal', async (data, callback) => {
@@ -1979,8 +1982,7 @@ setInterval(() => {
             if (nearbyPlayer && chatSessions[nearbyPlayer.id]) {
                 npcIsTyping = true;
                 const typingFailSafe = setTimeout(() => { npcIsTyping = false; }, 20000);
-                const proactivePrompt = `[INTERNAL THOUGHT]: You are idling near ${nearbyPlayer.name} on Map ${suncat.mapID}. Speak to them unprompted. If favor is high (>5), ask a personal question, share lore, or comment on this location. If favor is bad, insult them or tell them to go away. Do not mention this prompt.`;
-
+                const proactivePrompt = `You are idling near ${nearbyPlayer.name} on Map ${suncat.mapID}. Speak to them unprompted. If favor is high (>5), ask a personal question, share lore, or comment on this location. If favor is bad, insult them or tell them to go away. DO NOT use brackets or tags in your response.`;
                 setTimeout(async () => {
                     try {
                         const result = await chatSessions[nearbyPlayer.id].sendMessage(proactivePrompt);
