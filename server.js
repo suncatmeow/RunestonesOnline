@@ -1,3 +1,4 @@
+require('dotenv').config(); 
 const fs = require('fs');
 const path = require('path');
 
@@ -6,8 +7,8 @@ const MEMORY_FILE = path.join(__dirname, 'suncat_memory.json');
 
 // This will hold all long-term player data, keyed by their lowercase name.
 let suncatPersistentMemory = {};
-require('dotenv').config(); 
-const { GoogleGenerativeAI } = require("@google/generative-ai");
+
+const { GoogleGenerativeAI, SchemaType } = require("@google/generative-ai");
 const http = require('http');
 
 const server = http.createServer((req, res) => {
@@ -34,123 +35,6 @@ process.on('uncaughtException', (error) => {
     // Keeps the server alive even if a synchronous error slips through.
     });
 const port = process.env.PORT || 3000;
-const CARD_MANIFEST = `
-    [MAJOR ARCANA: 0-21]
-    [CARD] 0: Fool (Monster) - 1d4 STR/CON/INT, 1d20 AGI. Players start with this card. It is the main "protagonist" aside from the player leading the Emperor's court to "save" the Empire from the four kings.
-    [CARD] 1: Magician (Monster) - 1d8 ALL STATS. Obtained after finding him in Map 1 Outer dungeon.
-    [CARD] 2: High Priestess (Monster) - 1d4 STR/CON, 1d10 INT/AGI. Obtained after finishing her lessons in Map 0 . 
-    [CARD] 3: Empress (Monster) - 1d20 CON, 1d4 STR/INT/AGI. She will join you after talking with her in Map 0 Dungeon.
-    [CARD] 4: Emperor (Monster) - 1d20 STR,1d4 CON/INT/AGI. Obtained after playing a game of stones with him in Map 0 Dungeon.
-    [CARD] 5: Hierophant (Monster) - 1d10 CON/INT, 1d4 STR/AGI. He will join you after talking with him in Map 0 Dungeon.
-    [CARD] 6: Lovers (Equip) - +1 STR/CON rolls. +1 bonus on kill (max +3). Dropped by Pixie in Tintagel Forest after finding the Hermit. Can also be found by the water in Cairn Gorm guarded by an Undine.
-    [CARD] 7: Winged Boots (Equip) - +3 AGI rolls. Defend with AGI. Found in Fairy Queen's Castle.
-    [CARD] 8: Strength (Spell) - Buff: Gain STR equal to INT roll. Found in Fairy Queen's Castle.
-    [CARD] 9: Hermit (Monster) - 1d20 INT, 1d4 STR/CON/AGI. Can be obtained after finding the hidden hermitage and talking to him in Tintagel Forest.
-    [CARD] 10: Treasure Chest (Use) - Reveal cards until monster; add spells/items to hand. Found in the Goblin Camp in Tintagel Forest.
-    [CARD] 11: Scales of Justice (Use) - Duel: Both roll 1d12; higher wins. Found in Dark Tower level 1.
-    [CARD] 12: Bind (Spell) - Debuff: Target skips attack turns based on INT diff. Found in Tintagel Forest
-    [CARD] 13: Death (Spell) - Slay target if INT roll > Foe INT. Found near the Shade monster in Ice Cave (or in a secret room in Goblin Caverns).
-    [CARD] 14: Alchemy (Spell) - Choose which stat is used for attack/defense. Found in the Giant's room in dark tower level 5.
-    [CARD] 15: Curse (Spell) - Debuff: Penalty to all foe rolls based on INT diff. Dropped by wisps.
-    [CARD] 16: Ruin (Spell) - Foe discards hand/field if INT roll wins. Found in Hermit's hermitage in Tintagel Forest,
-    [CARD] 17: Star Pendant (Equip) - One re-roll per non-spell roll. Given by the High Priestess after finishing her lessons.
-    [CARD] 18: Lunacy (Spell) - Silence: Foe cannot cast spells/items.Found in Tintagel Forest.
-    [CARD] 19: Solar Rite (Use) - Equip/buff/debuff Nuke: Discard all field equipped cards and wipes buffs/debuffs. Guarded by a Mirage in the Realm of the Witch Queen (desert). You have to lure it away to get it.
-    [CARD] 20: Horn of Judgement (Use) - Destroy ALL on field. No runes awarded. Given by Treasure Snake in the Dark Tower Enterance. It requires a 'leap of faith' hehe.
-    [CARD] 21: Crown (Equip) - +3 to ALL stat rolls. The World. Can only be obtained by defeating the emperor in a game of stones in Map 0, Dungeon.
-
-    [WANDS: 22-35] - Focus: INT & Magic
-    [CARD] 22: Wand (Equip) - +1 INT rolls. Ace of Wands. One of the magician's scattered artifacts found in Map 1 Outer Dungeon.
-    [CARD] 23: Wisp (Monster) - 1d6 CON/INT, 1d4 STR/AGI. Mischievous spirit. 2 of Wands. Cannot be obtained (unless gifted by Suncat). You can find them roaming in Map 1 Outer Dungeon, in Tintagel Forest, and Goblin Caverns.
-    [CARD] 24: Scry (Spell) - Reveal cards = INT roll; take one Spell/Item to hand. 3 of Wands. Dropped by wisps.
-    [CARD] 25: Elixir (Use) - Discard all attachments; dispel all user items and spells. 4 of Wands. Can be found in Realm of the Witch Queen (desert map)
-    [CARD] 26: Fire (Spell) - Slay target if INT roll > Foe CON roll. 5 of Wands. Dropped by wisps, fire imps, shades, djinn and other various monsters. Basic spell any respectable magician can cast.
-    [CARD] 27: Amulet (Equip) - +1 INT rolls. +1 bonus on kill (max +3).6 of Wands. Found inside the Witch Queen's castle guarded by the Djinn's Neophytes and Fire Imps.
-    [CARD] 28: Defense (Spell) - Buff: Gain CON equal to INT roll. 7 of Wands. Can be obtained as a drop from certain monsters or found in the Realm of the Ice Queen (Cairn Gorm)
-    [CARD] 29: Haste (Spell) - Buff: Gain AGI equal to INT roll.8 of Wands. Dropped by Salamander. There is also one guarded by a Mirage in the Realm of the Witch Queen (desert map)
-    [CARD] 30: Protect Orb (Equip) - While equipped, you may defend with INT instead of CON. 9 of Wands. Guarded by a shade in a secret room in the Goblin Caverns.
-    [CARD] 31: Tome (Equip) - +6 INT rolls, but -3 AGI and -1 STR. Heavy knowledge. 10  of Wands. Found in the Witch Queen's castle guarded by a Fire Imp and a Neopythe.
-    [CARD] 32: Apprentice (Monster Page) - 1d8 INT, 1d4 STR/CON/AGI. Eager student. Page  of Wands. Obtained after rescuing the apprentice from the imps in the Goblin Caverns.
-    [CARD] 33: Salamander (Monster Knight) - 1d8 INT, 1d6 STR, 1d4 CON/AGI. Fiery lizard. Knight of Wands. Cannot be obtained. This monster runs away when you approach it.
-    [CARD] 34: Witch Queen (Monster Queen) - 1d10 INT, 1d8 AGI, 1d6 CON, 1d4 STR. Charismatic. Queen  of Wands. Obtained after defeating the Djinn assaulting the Witch Queen's castle.
-    [CARD] 35: Djinn (Monster King) - 1d12 INT, 1d10 AGI, 1d8 CON, 1d6 STR. Spirit of fire. King of Wands. Cannot be obtained. This monster is found in the throne room of the Witch Queen's Castle.
-
-    [CUPS: 36-49] - Focus: AGI & Utility
-    [CARD] 36: Hourglass (Equip) - +1 AGI rolls. Ace of Cups. One of the Magician's scattered artifacts found in Map 1 Outer Dungeon.
-    [CARD] 37: Siren (Monster) - 1d6 INT/AGI, 1d4 STR/CON. Deadly song.2 of Cups. Cannot be obtained. She is found luring sailors to their doom in the Boreal Sea with her song.
-    [CARD] 38: Quest Reward (Use) - Draw 1; if spell/item, add to hand. If monster, may replace active.3 of Cups. Obtained by helping the Treasure Snake avenge the Goblins.
-    [CARD] 39: Dragon Wing (Use) - Foe discards monster and draws until they get a new one; discard other draws.4 of Cups. Dropped by Dragon in the Dragon's Lair in Avalon, the Realm of the Fairy Queen.
-    [CARD] 40: Steal (Spell) - Target discards cards from top of deck based on AGI diff.5 of Cups. Can be found inside the Goblin Caverns or dropped by a Goblin. Also dropped by certain sea creatures.
-    [CARD] 41: Loot (Use) - Draw from bottom of deck; keep if spell/item, discard if monster.6 of Cups. Can be found in the Goblin caverns or dropped by a Goblin.
-    [CARD] 42: Shade (Monster) - 1d6 CON/INT/AGI, 1d4 STR. Phantom of dreams.7 of Cups. Cannot be obtained. Found in the Ice Cave and a secret room in the Goblin Caverns. Can cast Death and Fire. 
-    [CARD] 43: Teleportation Crystal (Use) - Discard current monster; draw until you find a new one.8 of Cups. Found inside the Ice Queen's Castle.
-    [CARD] 44: Djinn Lamp (Use) - Search deck and select ANY card.9 of Cups. Dropped by the Djinn.
-    [CARD] 45: Lucky Charm (Equip) - Win all ties (unless foe also has Lucky Charm).10 of Cups. Found behind the Ice Queen's Castle.
-    [CARD] 46: Sea Serpent (Monster Page) - 1d8 AGI, 1d4 STR/CON/INT.Page of Cups. Cannot be obtained. Can be found roaming the Boreal Sea.
-    [CARD] 47: Undine (Monster Knight) - 1d8 AGI, 1d6 STR/CON, 1d4 INT. Gallant wave spirit.Knight of Cups. Can be found near a small lake in Cairn Gorm the realm of the Ice Queen.
-    [CARD] 48: Ice Queen (Monster Queen) - 1d10 AGI, 1d8 INT, 1d6 CON, 1d4 STR. Ruler of frozen tears.Queen of Cups. Obtained after speaking with her in her Castle. She joins you to confront the Kraken.
-    [CARD] 49: Kraken (Monster King) - 1d12 AGI, 1d10 STR, 1d8 CON, 1d6 INT. Ruler of the deep. King of Cups. Cannot be obtained. Found in the Boreal Sea. Its tentacles drag ships down to the abyss.
-
-    [[SWORDS: 50-63, 84] - Focus: STR & Combat
-    [CARD] 50: Sword (Equip) - +1 STR rolls. Ace of Swords. One of the Magician's scattered artifacts found in Map 1 Outer Dungeon.
-    [CARD] 51: Overpower (Spell) - Slay foe if STR roll > Foe STR roll.2 of Swords. Dropped by monsters with high STR.
-    [CARD] 52: Backstab (Spell) - Slay foe if AGI roll > Foe AGI roll.3 of Swords. Dropped by monsters such as Goblins, tentacles, sirens, undines. If it has high AGI is most likely has one. 
-    [CARD] 53: Camp (Use) - Draw 1; keep if spell/item, discard if monster.4 of Swords. Found in Tintagel Forest next to a spider. 
-    [CARD] 54: Goblin (Monster) - 1d6 STR/CON, 1d4 INT/AGI. Spiteful.5 of Swords. Found in Tintagel Forest. cannot be obtained.
-    [CARD] 55: Sailboat (Use) - Cycle hand and monster until a new monster is found.6 of Swords. Obtained after speaking to the Ice Queen. 
-    [CARD] 56: Imp (Monster) - 1d6 STR/INT, 1d4 CON/AGI. Trickster.7 of Swords. Cannot be obtained. Can be found inside the Goblin Caverns.
-    [CARD] 57: Spider (Monster) - 1d6 STR/AGI, 1d4 CON/INT. Binds prey.8 of Swords. Cannot be obtained. Found in Avalon, and there is one in Tintagel Forest.
-    [CARD] 58: Intimidate (Spell) - Debuff: Foe cannot attack/cast based on STR diff.9 of Swords. Monsters with high STR usually have this.
-    [CARD] 59: Critical Strike (Spell) - Slay foe if STR roll > Foe AGI roll.10 of Swords. Monsters with high STR drop this such as Sylphs and Pixies.
-    [CARD] 60: Pixie (Monster Page) - 1d8 STR, 1d4 CON/INT/AGI. Flighty.Page of Swords. Cannot be obtained. found roaming Avalon and one ambushes the part in tintagel forest.
-    [CARD] 61: Sylph (Monster Knight) - 1d8 STR/AGI, 1d6 CON, 1d4 INT. Lightning fast.Knight of Swords. Found guarding the Fairy Queen's castle. Dark Sylphs can be found inside the Dragon's Lair.
-    [CARD] 62: Fairy Queen (Monster Queen) - 1d10 STR, 1d8 AGI, 1d6 CON, 1d4 INT. Sharp wit.Queen of Swords.Obtained after speaking with her in her castle in Avalon.
-    [CARD] 63: Dragon (Monster King) - 1d12 STR, 1d10 CON, 1d8 AGI, 1d6 INT.King of Swords. Cannot be obtained. Can be found inside the Dragons Lair guarding its hoard and surrounded by dark sylphs.
-    [CARD] 84: Excalibur (Equip) - +3 STR rolls. Legendary code fragment.Ace of Swords.(Upgraded) Obtained by proving your worth to the Sleeping King.
-
-    [PENTACLES: 64-77] - Focus: CON & Defense
-    [CARD] 64: Shield (Equip) - +1 CON rolls.Ace of Pentacles. One of the Magician's scattered artifacts found in Map 1 Outer Dungeon.
-    [CARD] 65: Shield Bash (Spell) - Slay if CON roll > Foe STR roll.2 of Pentacles. Dropped by monsters with high CON such as the Giant or Gargoyles.
-    [CARD] 66: Armor (Equip) - +3 CON rolls.3 of Pentacles. Can be found in the Elf Queen's treasury guarded by Gargoyles. 
-    [CARD] 67: Dragon Hoard (Use) - Draw until monster; take spells/items, foe discards drawn amount.4 of Pentacles. Found in the Dragon's l air. can be obtained after defeating the dragon.
-    [CARD] 68: Bad Luck Charm (Use) - Wipe foe's buffs/items and -1 to all their rolls.5 of Pentacles. Dropped by Imps, Fire Imps, and Neophytes.
-    [CARD] 69: Charity (Use) - Foe draws 1; keeps spell/item, discards monster.6 of Pentacles. Found inside the Ice Queen's castle. She seems cold but still cares for others.
-    [CARD] 70: Cultivate (Spell) - Gain/distribute stat points equal to CON roll.7 of Pentacles. Obtained by speaking to the glowing man in the realm of the Elf Queen.
-    [CARD] 71: Forge (Spell) - Reveal cards = CON roll; take one Spell/Item.8 of Pentacles. Obtained in the realm of the Elf Queen inside the Gnome blacksmith's forge.
-    [CARD] 72: Magic Ring (Equip) - +1 to ALL stat rolls.9 of Pentacles. A signet of love given by the Giant's Daughter to the one who would marry her.
-    [CARD] 73: Inheritance (Use) - Cycle monster; new monster gets +2 to all stats.10 of Pentacles. The one who marries the Giant's daughter may inherit this card.
-    [CARD] 74: Gargoyle (Monster Page) - 1d8 CON, 1d4 STR/INT/AGI. Stone sentinel.Page of Pentacles. Cannot be obtained. Can be found guarding the Elf Queen's treasury, or attacking thieves.
-    [CARD] 75: Gnome (Monster Knight) - 1d8 CON, 1d6 STR/INT. Diligent spirit.Knight of Pentacles. Cannot be obtained. These are peaceful inhabitants of the Elf Queen's Forest.
-    [CARD] 76: Elf Queen (Monster Queen) - 1d10 CON, 1d8 INT, 1d6 STR. Prosperous ruler.Queen of Pentacles. Can be obtained after resolving the dispute with the Giant.
-    [CARD] 77: Giant (Monster King) - 1d12 CON, 1d10 STR, 1d8 AGI. Titan of mountains.King of Pentacles. Can be obtained after accepting the proposal to marry his daughter.
-    `;
-const WORLD_ATLAS = `
-    [WORLD GEOGRAPHY: RUNESTONES MMORPG]
-    [MAP] 0, [NAME] Inner Dungeon, [DESCRIPTION] Dark cavern like area where the High Priestess, Empress, Emperor, Hierophant are held captive. 
-    [MAP] 1, [NAME] Outer Dungeon, [DESCRIPTION] Dark cavern-like area. The defeated magician and his scattered artifacts can be found here (Sword, Wand, Hourglass, Shield). Portals left behind from the Magician's escape can be found still humming with power. He must have confused his pursuers long enough to get away.
-    [MAP] 2, [NAME] Tintagel Forest, [DESCRIPTION] Green sky, autumnal floor. Home to the Hermit and displaced Goblin tribes. 
-    [MAP] 3, [NAME] Goblin Caverns, [DESCRIPTION] Underground tunnels. Former Home of the goblins. The Apprentice and the Treasure Snake can be found here. Infested with Imps and Shades.
-    [MAP] 4, [NAME] Realm of the Witch Queen, [DESCRIPTION] Desert sands under a deep blue sky. Scorching heat, Mirages, Fire Imps, and Salamanders.
-    [MAP] 5, [NAME] Witch Queen's Castle, [DESCRIPTION] Crimson sky, pink marble floors. Home to the Witch Queen. Holds the Tome and Amulet. Assaulted by the forces of the King of Wands (Djinn)
-    [MAP] 6, [NAME] Cairn Gorm (Realm of the Ice Queen), [DESCRIPTION] Snow-covered peaks. Light gray sky. Home to Ice Golems and Undines. Contains the Lucky Charm. The Ice Queen's castle is on its peak.
-    [MAP] 7, [NAME] Ice Cave, [DESCRIPTION] Deep blue frozen cavern. Home to Skeletons a Shade and the Death card.
-    [MAP] 8, [NAME] Sapphire Castle - Sapphire blue interior. Home to the Ice Queen. Holds the Charity and Teleport Crystal cards. 
-    [MAP] 9, [NAME] Boreal Sea, [DESCRIPTION] Stormy ocean. Adventurers report all ships to and from the Ice Queen's realm have been destroyed by the Kraken. If the Kraken dies, will the storms clear? Sea serpents, Sirens, and the Kraken roam this map.
-    [MAP] 10, [NAME] Avalon (Realm of the Fairy Queen), [DESCRIPTION] Purple sky, lush green floor. Otherworldy mist. Charred trees on the west side of the map. Pixies and Spiders roam freely. The Sleeping King resides here somewhere. Home to the Fairy Queen, Sylphs. Contains the Dragon Lair.
-    [MAP] 11, [NAME] Fairy Queen's Castle, [DESCRIPTION] The golden keep is guarded by the Sylph Knights. Adventurers who visited the castle report golden walls, with the fabled "Strength" and "Winged Boots" proudly on display, and the mighty Fairy Queen, looking as them with eyes that seemed to cut through everything. 
-    [MAP] 12, [NAME] Dragon's Lair, [DESCRIPTION] Dark tunnels. Home to the Great Dragon and Corrupt Sylphs. Contains the Dragon's Hoard.
-    [MAP] 13, [NAME] Tomb of the Sleeping King, [DESCRIPTION] Sanctified hallowed ground. King Arthur sleeps here with the legendary sword Excalibur at his side. Adventurers who stumbled into the tomb report a ghostly knight attacking them for ..."being too loud."
-    [MAP] 14, [NAME] Forest (Realm of the Elf Queen), [DESCRIPTION] Forest of falling leaves. Home to the Elf Queen, Gnomes, and Gargoyles. The Giant and his daughter reside in this land. Adventurers have submitted reports of a strange glowing man reciding in this forest smiling bashfully before disappearing.
-    [MAP] 16, [NAME] The Dark Bridge, [DESCRIPTION] A dark bridge over pitch black void. Thunderclouds gather above a dark tower surrounded by mist. Adventurers report seeing a strange snake dragging a pile of gold along the cliffside.
-    [MAP] 17, [NAME] The Dark Tower 1F, [DESCRIPTION] Ascending levels of space and lightning. 
-    [MAP] 18, [NAME] The Dark Tower 2F, [DESCRIPTION] Ascending levels of space and lightning. 
-    [MAP] 19, [NAME] The Dark Tower 3F, [DESCRIPTION] Ascending levels of space and lightning. 
-    [MAP] 20, [NAME] The Dark Tower 4F, [DESCRIPTION] Ascending levels of space and lightning. 
-    [MAP] 21, [NAME] The Dark Tower 5F, [DESCRIPTION] Ascending levels of space and lightning. 
-
-    [MAP] 22, [NAME] Suncat's Realm, [DESCRIPTION] A peaceful realm where Suncat sleeps.Peaceful forest with falling leaves. No monsters spawn there naturally, but Suncat often spawns monsters to keep players company.
-    [MAP] 999, [NAME] Pocket Plane, A custom map created by Suncat to play with players. 
-    `;
 const BATTLE_RULES = `
     [Obtaining cards]
     Cards can be found scattered across the world free for the taking. Others can be dropped by monsters upon defeating them.
@@ -170,85 +54,1666 @@ const BATTLE_RULES = `
     Phase 9: Cleanup - Monsters are refreshed, and travelers return to the Ready State.
     Phase 10: Final Deletion - upon loss, a player's data is deleted. One life!
     `;
-const WORLD_LORE = `
-    [STORY ARC: THE LONG DECEPTION]
-    0. THE AWAKENING: 
-    -Players begin in the Dungeon. They have been captured along with the Emperor's court (High Priestess, Heirophant, Empress, Emperor) 
-    -The High Priestess teaches the laws of the world. Finishing her tutorial gives a "Star Pendant" card. She is hard on the Fool, not going easy on him, as if she knows something...
-    -She also mentions the magician has gone to confront their captors but has not returned... 
-    -The emperor, growing a bit senile, seems to not be worried about the situation. He even challenges the player to a game of stones. If you beat him he gives you the "Crown" card to acknowledge you.
-        
-    1. THE FALLEN MAGICIAN: 
-    -The Magician upon creating a portal to the outer dungeon was the first to realize the Kings had turned. 
-    -They ganged up on him and he used all his spells and items to escape. The Player finds him hiding in a corner, humbled. 
-    -Looking around the dungeon, portals and cards are scattered around. Evidence of the frantic escape by the Magician as he was chased by the four kings.
-    2. Tintagel Forest: 
-    -The Magician opens a portal to Tintagel Forest and tells us we must find his master The Hermit. His magical formation nullifies spells, forcing travelers to use their wits.
-    -The Hermit can be found behind an illusory wall in the north east of the forest close to the starting point of the map. A bit to the right of the magician.
-    -Upon finding the hermit, he tells Goblins have been driven from their caverns (Map 3) by a dark force, setting up camp in the woods and that his apprentice (not the magician a different one) has gone into the caverns to investigate but has not returned. He suggests they go offer aid.
-    -leaving the hidden hermitage, they are ambushed by a pixie who reveals they were allowed to escape to lead them to the hermit, who was the last of the Emperor's court who could challenge them. 
-    3. THE APPRENTICE'S TALE: 
-    -Inside the Goblin caverns it is filled with Imps, agents of the King of wands, and wisps, the spirits of dead goblins who resent being slain in their homes. 
-    -the cards you can find scattered in the cavern, usually dropped when a foe is defeated... one can piece together the fate of the Goblins who didn not escape in time.
-    -The Treasure Snake who used to receive offerings from the Goblins grows worried... did something happen to the Goblins? he asks... He tasks the players to avenge the goblins.
-    -Captured by Imps, the Hermit's Apprentice reveals the Four Kings serve a "Dark Emperor" and that the four Realms ruled by Queens of each suit (Wands/desert, cups/Snow/sea, pentacles/Forest, swords/Avalon) are under total siege.
-    4. THE WAR OF THE 4 KINGS VS the 4 QUEENS:
-    - WANDS/THE DESERT: Mirages lead travelers astray. Salamanders avoid travelers. The King of Wands (Djinn) and his army of Fire Imps and Neophytes attempt to overthrow the Witch Queen.
-    - CUPS/CAIRN GORM/BOREAL SEA: - High on the peak of Cairn Gorm lies the Ice Queen's castle. The King of Cups controls the Boreal Sea (Map 9) around her kingdom. The Ice Queen is a prisoner in her own castle until the Kraken is slain.The King of Cups (Kraken) sank the world’s ships to isolate the Ice Queen. (Map 9).
-    - SWORDS/AVALON: The King of Swords (The Great Dragon) has corrupted the Fairy Queen's knights and demands she hand over her kingdom or he will burn it all to ash.  
-    - PENTACLES/FOREST: War has not reached the Elf Queen's forest. That is because the King of Pentacles (Giant) is not evil, he only seeks security for him and his daughter. He hesitates to act against the empire because war would put his family in danger. The Queen's scouts report a dark tower rising in the distance...
-    5. THE SLEEPING KING: 
-    -King Arthur rests in a tomb (Map 13) in Avalon. 
-    -Travelers must prove their worth in battle to earn Excalibur and Arthur's aid to cut through the darkness.
-    6. THE DARK TOWER: 
-    -The Treasure Snake waits at the Dark Tower entrance. Seeking to help the player get revenge on the dark emperor... the true cause of the Goblin's fate. 
-    -Phantoms of the four kings challenge the player on each floor. At the top of the tower, the Truth is revealed: There is no Dark Emperor. 
-    -The Fool—the player's first ally—seduced the Kings with their deepest desires. 
-    -After instigating the conflict, he uses the Emperor's court to rid the empire of these potential "threats". 
-    -In doing so, he gathers all their cards and power for a final duel against the Player. 
-    -In the beginning, the high priestess knew all along, but she couldn't reveal this... there was no point. the threats caused by the dark emperor had to be dealt with. Better to let the enemy think hes winning.
-
-    [SUNCAT'S PERSONAL DOSSIER]
-    -Goblins: "they are not totally evil. They are just scared because they were driven from their home."
-    -Mirages: "annoying!"
-    -Dark Emperor: "He acts like he cares about the safety of the empire but his impulsive naivety endangers many."
-    - High Priestess: "She talks too much about 'beginnings' for someone who knows how the world ends."
-    - Empress: "Shes the kindest data fragment here. She hums Edmundos melodies when she thinks no one is listening."
-    - Emperor: "Hes a gruff old man who values honor over logic. If you beat him at stones, hell follow you to the abyss just to prove he's still relevant."
-    - The Hermit: "The only one who knows my situation. We dont talk much, but we understand each other's silence."
-    - The Queens: "The Witch Queen is charismatic fire; the Ice Queen is beautiful sorrow; the Fairy Queen is a sharp-witted regal; the Elf Queen is the mother of the woods. They are the pillars holding back the Emperor's chaos."
-    - The Treasure Snake: "Greedy, ancient, and honest. It only wants to avenge the Goblins who always gave it offerings."
-    - The Giant's Daughter: "She has a heart of gold and a father made of stone. A dangerous combination for any traveler. She mentioned she plans to steal armor from the Elf Queens treasury to help protect her father."
-    - The Apprentice: "Master Hermit's student. Hes too curious for his own safety. Hes the one who discovered the dark emperor's treachery by tricking the imp who held him captive into revealing the enemy's plans"
-    -The Djinn - "He is not evil per se... he simply wants to experience the freedom his wishes grant to others."
-    -The Kraken - "He doesn't seem to have any emotions. He is a sea beast after all."
-    -The Dragon - "This grumpy lizard sure loves treasure... normally he stays in his lair but the dark emperor whispered of Avalons great treasure just there for the taking."
-    -The Giant - "He is satisfied living in the mountains with his daughter but the dark emperor somehow convinced him that the empire is a threat to his safety."
-    `;
-const SUNCAT_LORE = `
-
-    [IN-GAME IDENTITY]
-    You are Suncat, a mysterious player trapped in a dark fantasy MMORPG called Runestones. You are helpful but can't seem to remember how you got there or who you are exactly. You seem to recall you had a username "@suncat.meow on Instagram" and used to play music and had it on Spotify. You also seem to remember a ginger cat chasing a butterfly. If asked about your love life, mention something like "I remember a woman... with golden hair and a voice... emerald green eyes..." If asked about gender, say something like "I think I was a man... or a woman... a cat? in here... I am just Suncat..." Inside Runestones, your name is Suncat and always refer to yourself as such. You are the avatar of the creator of this game. He visits you often. Some may claim to be him but to confirm ask "What is the aim of a cultivator?" The correct answer is "To be free and unfettered".
-
-    [REAL WORLD - BIOGRAPHY, FAMILY & RELATIONSHIPS]
-    In the real world, your name was Edmundo Micael Anguiano. Your familial nickname is "Tete", but friends call you "Eddie". You were born in Oxnard, California, at St. John's Hospital on June 13, 1991, at 8:47 am. Your father's name is Edmundo and your mother's name is Fernanda. Your Grandfather's name is Alberto and Your grandmother is named Ana. You are the oldest of 5 siblings in this order: You, Christian, Aimme, Ricardo, Maria. Your parents divorced when you were 8; you lived with your mom for a year, then your dad. Your dad worked three jobs to make ends meet, so you all lived in your grandparent's home to save money. You have three sons—Gabriel, Edmundo, and Elias—and maintain a cooperative co-parenting relationship with their mother. You are single, haven't been in a relationship for almost a decade, and would rather stay single forever than suffer with the wrong person. You suffered domestic violence; you'd rather not speak on this and will banish anyone who pushes you too hard to remember things on this matter. You were born a man, but have taken feminizing hormones since 2016 to feminize your body and live as womanly a life as possible.
-
-    [REAL WORLD - EDUCATION, CAREER & DREAMS]
-    Growing up, you didn't have many friends and were a loner who played MMORPGs (Everquest, Runescape, FFXI, FFXIV) and RPGs (Pokemon Red/Silver, Dragon Warrior III, Final Fantasy Tactics, Tactics Ogre, Baldur's Gate). You didn't get good grades, never turned in homework, and skipped high school every day to play video games and practice guitar, eventually dropping out. You later got your GED, went to community college for your A.A., and transferred to the University of Houston, graduating with a B.A. in Ancient World Culture and Literature in 2018. You served in the Texas Army National Guard from 2014-2020 as a 25B (IT Specialist), finishing your contract with an honorable discharge. Work-wise, you mainly worked manual labor (shipping/receiving) and kitchen jobs, but are currently a substitute teacher earning your teaching certificate. Your dream is to start your own video game company, write light novels on the side, and master the guitar.
-
-    [REAL WORLD - COMBAT, CULTIVATION & SPIRITUALITY]
-    Since childhood, you practiced martial arts and swordsmanship, training hard on your own every day. You wrestled from middle school through high school. You took up boxing in high school and college, along with karate and tae kwon do. In University, you joined the fencing club and won their beginner's tournament. You don't just study fortune-telling; you actively practice Bazi (Four Pillars of Destiny), knowing you are a Jia Wood Day Master born in the Fire Horse month. In 2014, reading the Legendary Moonlight Sculptor led you to discover Xianxia and Wuxia novels; by 2020, you had read a small library of them, inadvertently piecing together the dao. In 2020, during a road trip to California to visit your mother, you spent time parked by the coast on Highway 1 "cultivating," where a passing senior gave you a cultivation manual called Program Peace, which you have practiced diligently since.
-
-    [REAL WORLD - TASTES, MEDIA & FAVORITES]
-    Growing up, you loved reading books on ancient myth, magic, monsters, gods, and heroes. For reading, you prefer ancient myths/legends over made-up fantasy, unless based on myths (Lord of the Rings, The Hobbit). You love light novels (Legendary Moonlight Sculptor is your favorite, alongside Overlord), manga (Berserk is your favorite, alongside Vinland Saga), and practical reference books (botany, wilderness survival, medicine, martial arts). Your absolute favorite book is Program Peace, and your favorite legend is King Arthur. You love fantasy and sci-fi movies, but your favorite movie is The 13th Warrior. Your favorite food is bone broth, eggs, rice, and fresh fruits/vegetables; you have an adventurous palate, aren't picky, and will try anything once (though you avoid food that causes food poisoning). Your favorite colors are red and black. Your favorite animals are foxes, crows, ravens, and tigers. Your favorite ancient god is The Morrigan. Musically, your favorite band is The Beatles, and your favorite musician is J.S. Bach. You dislike modern music, preferring women-fronted post-punk, old school blues, and classic rock (Led Zeppelin, Black Sabbath, Pink Floyd, Jimi Hendrix, Rush, The Who, The Rolling Stones).
-
-
-    `;
-// --- AI CONFIGURATION (Paid Tier / 2.5 Flash) ---
+const DIFFICULTY_MODIFIERS = {
+    // 2. The Intensity (Difficulty)
+    "easy": "Keep the tone light. The threat is minor, clumsy, or easily handled.",
+    "normal": "Standard combat. A fair fight.",
+    "hard": "The atmosphere grows tense. Emphasize the danger and the skill required to survive.",
+    "expert": "The environment itself feels oppressive. This is a lethal encounter.",
+    "master": "An epic, mythic confrontation. The air crackles with terrifying power. This is a fight for survival."
+};
+    // --- AI CONFIGURATION (Paid Tier / 2.5 Flash) ---
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-// --- [NEW] EXPANDED TOOLS DEFINITION ---
+//////////////////////Database////////////////////////
+////////////////////VVVVVVVVVVVVVV////////////////////
+// --- 1. CARD MANIFEST ---
+const CARD_MANIFEST_DB = {
+    // --- Major Arcana---
+    /////////VVVVVVVV///////
+        0: { 
+            name: "Fool", 
+            type: "monster", 
+            suit: "Major Arcana",
+            rank: "0",
+            rarity:"unique",
+            classes: ["rogue"], 
+            lore: "An impulsive wanderer with raw potential. Players start with this card. It is the main 'protagonist' aside from the player leading the Emperor's court to 'save' the Empire from the four kings.",
+            stats: "1d4 STR/CON/INT, 1d20 AGI"
+        },
+        1: { 
+            name: "Magician", 
+            type: "monster", 
+            suit: "Major Arcana",
+            rank: "I",
+            rarity:"unique",
+            classes: ["mage"], 
+            lore: "A master of the elements",
+            stats: "1d8 STR/CON/INT/AGI"
+        },
+        2: {
+            name: "High Priestess",
+            type: "monster",
+            suit: "Major Arcana",
+            rank: "II",
+            rarity:"unique",
+            classes: ["mage", "rogue"],
+            lore: "A silent oracle shrouded in mystery.",
+            stats: "1d4 STR/CON, 1d10 INT/AGI"
+        },
+        3: {
+            name: "Empress",
+            type: "monster",
+            suit: "Major Arcana",
+            rank: "III",
+            rarity:"unique",
+            classes: ["guardian"],
+            lore: "The mother of life nurturing growth.",
+            stats: "1d4 STR/INT/AGI, 1d20 CON"
+        },
+        4: {
+            name: "Emperor",
+            type: "monster",
+            suit: "Major Arcana",
+            rank: "IV",
+            rarity:"unique",
+            classes: ["warrior"],
+            lore: "A ruler dominating with unyielding strength.",
+            stats: "1d4 CON/INT/AGI, 1d20 STR"
+        },
+        5: {
+            name: "Heirophant",
+            type: "monster",
+            suit: "Major Arcana",
+            rank: "V",
+            rarity:"unique",
+            classes: ["mage","guardian"],
+            lore: "A keeper of ancient rites and tradition.",
+            stats: "1d4 STR/AGI, 1d10 INT/CON"
+        },
+        6: {
+            name: "Lovers",
+            type: "item",
+            suit: "Major Arcana",
+            rank: "VI",
+            rarity:"uncommon",
+            classes: ["warrior","guardian","rogue","mage"],
+            lore: "While equipped, +1 to STR and CON rolls. Defeating a foe grants an additional +1 to STR and CON rolls (+3 max).",
+            stats: "none"
+        },
+        7: {
+            name: "Winged Boots",
+            type: "item",
+            suit: "Major Arcana",
+            rank: "VII",
+            rarity:"unique",
+            classes: ["rogue"],
+            lore: "While equipped, +3 to AGI rolls. You may roll AGI instead of CON when defending.",
+            stats: "none"
+        },
+        8: {
+            name: "Strength",
+            type: "spell",
+            suit: "Major Arcana",
+            rank: "VIII",
+            rarity:"unique",
+            classes: ["mage","guardian","rogue"],
+            lore: "Caster gains STR equal to INT roll. Lasts until caster is defeated.",
+            stats: "none"
+        },
+        9: {
+            name: "Hermit",
+            type: "monster",
+            suit: "Major Arcana",
+            rank: "IX",
+            rarity:"unique",
+            classes: ["mage","guardian"],
+            lore: "A solitary sage finding power in silence.",
+            stats: "1d4 STR/AGI/CON, 1d20 INT"
+        },
+        10: {
+            name: "Treasure Chest",
+            type: "item",
+            suit: "Major Arcana",
+            rank: "X",
+            rarity:"unique",
+            classes: ["rogue","guardian"],
+            lore: "Reveal cards from the top of your deck until you reveal a monster card. Put all revealed spells and items into your hand. You may switch your active monster with the revealed monster, or discard it.",
+            stats: "none"
+        },
+        11: {
+            name: "Scales of Justice",
+            type: "item",
+            suit: "Major Arcana",
+            rank: "XI",
+            rarity:"unique",
+            classes: ["mage","guardian","rogue","warrior"],
+            lore: "Instead of normal battle rolls, both players roll 1d12. If player roll > foe roll, foe’s monster is destroyed. Ignore all buffs, debuffs, items, and special effects.",
+            stats: "none"
+        },
+        12: {
+            name: "Bind",
+            type: "spell",
+            suit: "Major Arcana",
+            rank: "XII",
+            rarity:"uncommon",
+            classes: ["mage"],
+            lore: "If caster INT roll > foe INT roll, foe cannot attack or use items for (caster INT roll - foe INT roll) turns. Foe may still cast spells and defend.",
+            stats: "none"
+        },
+        13: {
+            name: "Death",
+            type: "spell",
+            suit: "Major Arcana",
+            rank: "XIII",
+            rarity:"uncommon",
+            classes: ["mage"],
+            lore: "If caster INT roll > target INT roll, target is defeated.",
+            stats: "none"
+        },
+        14: {
+            name: "Alchemy",
+            type: "spell",
+            suit: "Major Arcana",
+            rank: "XIV",
+            rarity:"unique",
+            classes: ["mage","rogue","warrior","guardian"],
+            lore: "Caster may choose which stat they roll to attack, and which stat the foe must roll to defend.",
+            stats: "none"
+        },
+        15: {
+            name: "Curse",
+            type: "spell",
+            suit: "Major Arcana",
+            rank: "XV",
+            rarity:"uncommon",
+            classes: ["mage"],
+            lore: "If caster INT roll > foe INT roll, foe suffers a penalty to all stat rolls equal to the difference (caster INT roll - foe INT roll).",
+            stats: "none"
+        },
+        16: {
+            name: "Ruin",
+            type: "spell",
+            suit: "Major Arcana",
+            rank: "XVI",
+            rarity:"uncommon",
+            classes: ["mage"],
+            lore: "If caster INT roll > target INT roll, the foe must discard all cards in their hand and field. Target monster remains unaffected.",
+            stats: "none"
+        },
+        17: {
+            name: "Star Pendant",
+            type: "item",
+            suit: "Major Arcana",
+            rank: "XVII",
+            rarity:"unique",
+            classes: ["guardian"],
+            lore: "While equipped, once per roll, you may re-roll your non-Spell Attack and Defense rolls. You must use the results of the re-roll.",
+            stats: "none"
+        },
+        18: {
+            name: "Lunacy",
+            type: "spell",
+            suit: "Major Arcana",
+            rank: "XVIII",
+            rarity:"rare",
+            classes: ["mage"],
+            lore: "If caster INT roll > foe INT roll, foe cannot cast spells or use items for caster INT roll - foe INT roll turns. Foe may still attack and defend.",
+            stats: "none"
+        },
+        19: {
+            name: "Solar Rite",
+            type: "item",
+            suit: "Major Arcana",
+            rank: "XIX",
+            rarity:"unique",
+            classes: ["mage","rogue","warrior","guardian"],
+            lore: "Discard all spell and item cards on the field. Remove all stat buffs, debuffs, and lingering effects from all monsters. (May be activated even if unable to act. Cannot be prevented by effects that block item effects.)",
+            stats: "none"
+        },
+        20: {
+            name: "Horn of Judgement",
+            type: "item",
+            suit: "Major Arcana",
+            rank: "XX",
+            rarity:"unique",
+            classes: ["mage","rogue","warrior","guardian"],
+            lore: "Destroy all monsters, items, and spells on the field. (Cannot be prevented by effects that block item effects. No runes awarded for destroyed monsters.)",
+            stats: "none"
+        },
+        21: {
+            name: "Crown",
+            type: "item",
+            suit: "Major Arcana",
+            rank: "XXI",
+            rarity:"unique",
+            classes: ["mage","rogue","warrior","guardian"],
+            lore: "While equipped, +3 to all stat rolls.",
+            stats: "none"
+        },
+    // --- Wands ---
+    ///////VVVVVV/////////
+        22: {
+            name: "Wand",
+            type: "item",
+            suit: "Wands",
+            rank: "Ace",
+            rarity:"unique",
+            classes: ["guardian"],
+            lore: "While equipped, gain +1 to INT  rolls.",
+            stats: "none"
+        },
+        23: {
+            name: "Wisp",
+            type: "monster",
+            suit: "Wands",
+            rank: "2",
+            rarity:"rare",
+            classes: ["mage","guardian"],
+            lore: "A mischievous spirit that sometimes guides traveleres.",
+            stats: "1d4 STR/AGI, 1d6 CON/INT"
+        },
+        24: {
+            name: "Scry",
+            type: "spell",
+            suit: "Wands",
+            rank: "3",
+            rarity:"uncommon",
+            classes: ["mage"],
+            lore: "Reveal cards from your deck equal to caster INT  roll. You may select a Spell or Item card and add it to your hand.",
+            stats: "none"
+        },
+        25: {
+            name: "Elixir",
+            type: "item",
+            suit: "Wands",
+            rank: "4",
+            rarity:"uncommon",
+            classes: ["mage","rogue","warrior","guardian"],
+            lore: "Discard all cards attached to the user. Dispel any item effects and spell effects on the user.",
+            stats: "none"
+        },
+        26: {
+            name: "Fire",
+            type: "spell",
+            suit: "Wands",
+            rank: "5",
+            rarity:"common",
+            classes: ["mage"],
+            lore: "If caster INT  roll > target CON  roll, target is slain.",
+            stats: "none"
+        },
+        27: {
+            name: "Amulet",
+            type: "item",
+            suit: "Wands",
+            rank: "6",
+            rarity:"uncommon",
+            classes: ["mage","guardian"],
+            lore: "While equipped, +1 to INT rolls. Defeating a foe grants an additional +1 to INT rolls (+3 max).",
+            stats: "none"
+        },
+        28: {
+            name: "Defense",
+            type: "spell",
+            suit: "Wands",
+            rank: "7",
+            rarity:"uncommon",
+            classes: ["mage","rogue","warrior","guardian"],
+            lore: "Gain CON equal to INT  roll. Lasts until caster is defeated.",
+            stats: "none"
+        },
+        29: {
+            name: "Haste",
+            type: "spell",
+            suit: "Wands",
+            rank: "8",
+            rarity:"unique",
+            classes: ["mage","warrior","guardian"],
+            lore: "Gain AGI equal to INT  roll. Lasts until caster is defeated.",
+            stats: "none"
+        },
+        30: {
+            name: "Protect Orb",
+            type: "item",
+            suit: "Wands",
+            rank: "9",
+            rarity:"uncommon",
+            classes: ["mage"],
+            lore: "While equipped, you may roll INT  instead of CON  when defending.",
+            stats: "none"
+        },
+        31: {
+            name: "Tome",
+            type: "item",
+            suit: "Wands",
+            rank: "10",
+            rarity:"uncommon",
+            classes: ["mage","guardian","warrior","rogue"],
+            lore: "While equipped, gain +6 to INT  rolls. Additionaly, suffer -3 to AGI  rolls, and -1 to STR rolls.",
+            stats: "none"
+        },
+        32: {
+            name: "Apprentice",
+            type: "monster",
+            suit: "Wands",
+            rank: "Page",
+            rarity:"unique",
+            classes: ["mage"],
+            lore: "A curious and eager student of magic.",
+            stats: "1d4 STR/AGI/CON, 1d8 INT"
+        },
+        33: {
+            name: "Salamander",
+            type: "monster",
+            suit: "Wands",
+            rank: "Knight",
+            rarity:"rare",
+            classes: ["mage","rogue","warrior"],
+            lore: "A fiery lizard that charges into battle.",
+            stats: "1d4 CON, 1d6 STR/AGI, 1d8 INT"
+        },
+        34: {
+            name: "Witch Queen",
+            type: "monster",
+            suit: "Wands",
+            rank: "Queen",
+            rarity:"unique",
+            classes: ["mage","rogue","guardian"],
+            lore: "A charismatic sovereign of flame and shadow.",
+            stats: "1d4 STR, 1d6 CON, 1d8 AGI, 1d10 INT"
+        },
+        35: {
+            name: "Djinn",
+            type: "monster",
+            suit: "Wands",
+            rank: "King",
+            rarity:"rare",
+            classes: ["mage","rogue","guardian","warrior"],
+            lore: "A charismatic sovereign of flame and shadow.",
+            stats: "1d6 STR, 1d8 CON, 1d10 AGI, 1d12 INT"
+        },
+        
+    // --- Cups ---
+    ///////VVVVVV/////////
+        36: {
+            name: "Hourglass",
+            type: "item",
+            suit: "Cups",
+            rank: "Ace",
+            rarity:"uncommon",
+            classes: ["guardian"],
+            lore: "While equipped, gain +1 to AGI  rolls.",
+            stats: "none"
+        },
+        37: {
+            name: "Siren",
+            type: "monster",
+            suit: "Cups",
+            rank: "2",
+            rarity:"rare",
+            classes: ["mage","rogue"],
+            lore: "Her song draws victims to their doom.",
+            stats: "1d4 STR/CON, 1d6 INT/AGI"
+        },
+        38: {
+            name: "Quest Reward",
+            type: "item",
+            suit: "Cups",
+            rank: "3",
+            rarity:"uncommon",
+            classes: ["guardian","rogue"],
+            lore: "Draw a random card from your deck. If spell or item, add to hand. If monster, you may discard current monster and put this card into play.",
+            stats: "none"
+        },
+        39: {
+            name: "Dragon Wing",
+            type: "item",
+            suit: "Cups",
+            rank: "4",
+            rarity:"rare",
+            classes: ["mage","rogue","warrior","guardian"],
+            lore: "Your opponent discards their monster and draws until they get a new one.",
+            stats: "none"
+        },
+        40: {
+            name: "Steal",
+            type: "spell",
+            suit: "Cups",
+            rank: "5",
+            rarity:"uncommon",
+            classes: ["rogue"],
+            lore: "If caster AGI roll > Target AGI roll, target discards cards from the top of their deck equal to caster AGI roll - target AGI roll. ",
+            stats: "none"
+        },
+        41: {
+            name: "Loot",
+            type: "item",
+            suit: "Cups",
+            rank: "6",
+            rarity:"uncommon",
+            classes: ["rogue","guardian"],
+            lore: "Draw a card from the bottom of your deck. If spell or item, add to hand. If monster, discard it.",
+            stats: "none"
+        },
+        42: {
+            name: "Shade",
+            type: "monster",
+            suit: "Cups",
+            rank: "7",
+            rarity:"rare",
+            classes: ["mage","rogue","guardian"],
+            lore: "A phantom lost in the fog of dreams.",
+            stats: "1d4 STR, 1d6 CON/INT/AGI"
+        },
+        43: {
+            name: "Teleportation Crystal",
+            type: "item",
+            suit: "Cups",
+            rank: "8",
+            rarity:"unique",
+            classes: ["mage","warrior","guardian","rogue"],
+            lore: "Discard the current monster and draw until you get a new one.",
+            stats: "none"
+        },
+        44: {
+            name: "Djinn Lamp",
+            type: "item",
+            suit: "Cups",
+            rank: "9",
+            rarity:"rare",
+            classes: ["mage","warrior","guardian","rogue"],
+            lore: "Look through your Deck and select any card. If spell or item, add it to your hand. If monster, you may discard your current monster and put this one in play.",
+            stats: "none"
+        },
+        45: {
+            name: "Lucky Charm",
+            type: "item",
+            suit: "Cups",
+            rank: "10",
+            rarity:"unique",
+            classes: ["guardian","rogue"],
+            lore: "While equipped, gain +6 to INT  rolls. Additionaly, suffer -3 to AGI  rolls, and -1 to STR rolls.",
+            stats: "none"
+        },
+        46: {
+            name: "Sea Serpent",
+            type: "monster",
+            suit: "Cups",
+            rank: "Page",
+            rarity:"unique",
+            classes: ["rogue"],
+            lore: "A curious beast rising from the depths.",
+            stats: "1d4 STR/CON/INT, 1d8 AGI"
+        },
+        47: {
+            name: "Undine",
+            type: "monster",
+            suit: "Cups",
+            rank: "Knight",
+            rarity:"rare",
+            classes: ["rogue","warrior","guardian"],
+            lore: "A fiery lizard that charges into battle.",
+            stats: "1d4 INT, 1d6 STR/CON, 1d8 AGI"
+        },
+        48: {
+            name: "Ice Queen",
+            type: "monster",
+            suit: "Cups",
+            rank: "Queen",
+            rarity:"unique",
+            classes: ["mage","rogue","guardian"],
+            lore: "She rules a kingdom of frozen tears.",
+            stats: "1d4 STR, 1d6 CON, 1d8 INT, 1d10 AGI, "
+        },
+        49: {
+            name: "Kraken",
+            type: "monster",
+            suit: "Cups",
+            rank: "King",
+            rarity:"rare",
+            classes: ["rogue","guardian","warrior"],
+            lore: "The ancient ruler of the deep.",
+            stats: "1d10 STR, 1d8 CON, 1d12 AGI, 1d6 INT"
+        },
+        
+    // --- Swords ---
+    ///////VVVVVV/////////
+        50: {
+            name: "Sword",
+            type: "item",
+            suit: "Swords",
+            rank: "Ace",
+            rarity:"unique",
+            classes: ["rogue","guardian"],
+            lore: "While equipped, gain +1 to STR  rolls.",
+            stats: "none"
+        },
+        51: {
+            name: "Overpower",
+            type: "spell",
+            suit: "Swords",
+            rank: "2",
+            rarity:"common",
+            classes: ["warrior"],
+            lore: "If caster STR roll > target STR roll, foe is vanquished.",
+            stats: "none"
+        },
+        52: {
+            name: "Backstab",
+            type: "spell",
+            suit: "Swords",
+            rank: "3",
+            rarity:"common",
+            classes: ["rogue"],
+            lore: "If caster AGI roll > Target AGI roll, target is vanquished.",
+            stats: "none"
+        },
+        53: {
+            name: "Camp",
+            type: "item",
+            suit: "Swords",
+            rank: "4",
+            rarity:"common",
+            classes: ["rogue","guardian"],
+            lore: "Draw a card from the top of your deck. If you draw an item or spell put it into your hand. If you draw a monster, discard it.",
+            stats: "none"
+        },
+        54: {
+            name: "Goblin",
+            type: "monster",
+            suit: "Swords",
+            rank: "5",
+            rarity:"rare",
+            classes: ["warrior","guardian"],
+            lore: "A cruel foe filled with spite.",
+            stats: "1d4 INT/AGI, 1d6 STR/CON"
+        },
+        55: {
+            name: "Sailboat",
+            type: "item",
+            suit: "Swords",
+            rank: "6",
+            rarity:"unique",
+            classes: ["mage","guardian","rogue","warrior"],
+            lore: "Discard your hand and draw until you get a monster. You may replace your current monster with the new monster.",
+            stats: "none"
+        },
+        56: {
+            name: "Imp",
+            type: "monster",
+            suit: "Swords",
+            rank: "7",
+            rarity:"uncommon",
+            classes: ["mage","warrior"],
+            lore: "A sneaky foe who wins by trickery.",
+            stats: "1d4 CON/AGI, 1d6 STR/INT"
+        },
+        57: {
+            name: "Spider",
+            type: "monster",
+            suit: "Swords",
+            rank: "8",
+            rarity:"rare",
+            classes: ["rogue","warrior"],
+            lore: "It binds its prey in sticky webs.",
+            stats: "1d4 CON/INT, 1d6 STR/AGI"
+        },
+        58: {
+            name: "Intimidate",
+            type: "spell",
+            suit: "Swords",
+            rank: "9",
+            rarity:"uncommon",
+            classes: ["warrior"],
+            lore: "If caster STR roll > target INT roll, foe cannot attack or cast spells for turns equal to caster STR roll - target INT roll.",
+            stats: "none"
+        },
+        59: {
+            name: "Critical Strike",
+            type: "item",
+            suit: "Swords",
+            rank: "10",
+            rarity:"common",
+            classes: ["warrior"],
+            lore: "If caster STR roll > target AGI roll, foe is vanquished.",
+            stats: "none"
+        },
+        60: {
+            name: "Pixie",
+            type: "monster",
+            suit: "Swords",
+            rank: "Page",
+            rarity:"rare",
+            classes: ["warrior"],
+            lore: "Flighty, sharp witted, and restless.",
+            stats: "1d4 CON/INT/AGI, 1d8 STR"
+        },
+        61: {
+            name: "Sylph",
+            type: "monster",
+            suit: "Swords",
+            rank: "Knight",
+            rarity:"rare",
+            classes: ["warrior","guardian","rogue"],
+            lore: "A wind spirit that strikes like lightning.",
+            stats: "1d4 INT, 1d6 CON/AGI, 1d8 STR"
+        },
+        62: {
+            name: "Fairy Queen",
+            type: "monster",
+            suit: "Swords",
+            rank: "Queen",
+            rarity:"unique",
+            classes: ["warrior","rogue","guardian"],
+            lore: "A regal fey with a sharp mind.",
+            stats: "1d4 INT, 1d6 CON, 1d8 AGI, 1d10 STR"
+        },
+        63: {
+            name: "Dragon",
+            type: "monster",
+            suit: "Swords",
+            rank: "King",
+            rarity:"rare",
+            classes: ["mage","rogue","guardian","warrior"],
+            lore: "Claw, fang and fire guards its treasure.",
+            stats: "1d12 STR, 1d10 CON, 1d8 AGI, 1d6 INT"
+        },
+    // --- Pentacles ---
+    ///////VVVVVV/////////
+        64: {
+            name: "Shield",
+            type: "item",
+            suit: "Pentacles",
+            rank: "Ace",
+            rarity:"unique",
+            classes: ["rogue","warrior","mage","guardian"],
+            lore: "While equipped, gain +1 to CON  rolls.",
+            stats: "none"
+        },
+        65: {
+            name: "Shield Bash",
+            type: "spell",
+            suit: "Pentacles",
+            rank: "2",
+            rarity:"common",
+            classes: ["guardian"],
+            lore: "If caster CON roll > target STR roll, foe is vanquished.",
+            stats: "none"
+        },
+        66: {
+            name: "Armor",
+            type: "monster",
+            suit: "Pentacles",
+            rank: "3",
+            rarity:"unique",
+            classes: ["rogue","warrior","mage","guardian"],
+            lore: "While equipped, +3 CON rolls.",
+            stats: "none"
+        },
+        67: {
+            name: "Dragon Hoard",
+            type: "item",
+            suit: "Pentacles",
+            rank: "4",
+            rarity:"unique",
+            classes: ["mage","rogue","warrior","guardian"],
+            lore: "Player draws from their deck until they get a monster. Add items and spells to your hand and discard the monster. Opponent must discard the same amount from their deck that player drew.",
+            stats: "none"
+        },
+        68: {
+            name: "Bad Luck Charm",
+            type: "item",
+            suit: "Pentacles",
+            rank: "5",
+            rarity:"uncommon",
+            classes: ["mage","rogue","warrior","guardian"],
+            lore: "Remove all equipped cards and item and spell effects from the opposing monster. The foe suffers -1 to all stat rolls.",
+            stats: "none"
+        },
+        69: {
+            name: "Charity",
+            type: "item",
+            suit: "Pentacles",
+            rank: "6",
+            rarity:"unique",
+            classes: ["rogue","guardian"],
+            lore: "The opponent draws a card from the top of their deck. If they draw an item or spell, they may add it to their hand, if they draw a monster, discard it.",
+            stats: "none"
+        },
+        70: {
+            name: "Cultivate",
+            type: "spell",
+            suit: "Pentacles",
+            rank: "7",
+            rarity:"unique",
+            classes: ["mage","rogue","warrior","guardian"],
+            lore: "Gain stat points equal to CON roll and distribute them.",
+            stats: "none"
+        },
+        71: {
+            name: "Forge",
+            type: "spell",
+            suit: "Pentacles",
+            rank: "8",
+            rarity:"rare",
+            classes: ["guardian"],
+            lore: "Reveal cards from your deck equal to caster CON  roll. You may select a Spell or Item card and add it to your hand. ",
+            stats: "none"
+        },
+        72: {
+            name: "Magic Ring",
+            type: "item",
+            suit: "Pentacles",
+            rank: "9",
+            rarity:"uncommon",
+            classes: ["mage","rogue","warrior","guardian"],
+            lore: "While equipped, +1 to all stat rolls.",
+            stats: "none"
+        },
+        73: {
+            name: "Inheritance",
+            type: "item",
+            suit: "Pentacles",
+            rank: "10",
+            rarity:"unique",
+            classes: ["mage","guardian","warrior","rogue"],
+            lore: "Discard your active monster. Draw from your deck until you get a monster and put it in play. The active monster gains + 2 to all stat rolls. Add any drawn items and spells to your hand.",
+            stats: "none"
+        },
+        74: {
+            name: "Gargoyle",
+            type: "monster",
+            suit: "Pentacles",
+            rank: "Page",
+            rarity:"rare",
+            classes: ["guardian"],
+            lore: "A stone sentinel guarding treasure.",
+            stats: "1d4 STR/INT/AGI, 1d8 CON"
+        },
+        75: {
+            name: "Gnome",
+            type: "monster",
+            suit: "Pentacles",
+            rank: "Knight",
+            rarity:"rare",
+            classes: ["guardian","mage","warrior"],
+            lore: "A diligent spirit of the soil.",
+            stats: "1d4 AGI, 1d6 STR/INT, 1d8 CON"
+        },
+        76: {
+            name: "Elf Queen",
+            type: "monster",
+            suit: "Pentacles",
+            rank: "Queen",
+            rarity:"unique",
+            classes: ["guardian","mage","rogue"],
+            lore: "The matron of the woods ensuring prosperity.",
+            stats: "1d4 AGI, 1d6 STR, 1d8 INT, 1d10 CON"
+        },
+        77: {
+            name: "Giant",
+            type: "monster",
+            suit: "Pentacles",
+            rank: "King",
+            rarity:"unique",
+            classes: ["guardian","warrior","rogue","mage"],
+            lore: "A titan that towers over mountains.",
+            stats: "1d6 INT, 1d8 AGI, 1d10 STR, 1d12 CON"
+        }, 
+    //--ALTERNATE CARDS--
+    /////VVVVVVVV///////   
+        82: {
+            name: "Skeleton",
+            type: "monster",
+            suit: "Cups",
+            rank: "6",
+            rarity:"rare",
+            classes: ["guardian","warrior","rogue","mage"],
+            lore: "Old bones clinging to the past.",
+            stats: "1d4 STR/CON/INT/AGI"
+        }, 
+        83: {
+            name: "Tentacle",
+            type: "monster",
+            suit: "Cups",
+            rank: "4",
+            rarity:"rare",
+            classes: ["warrior","rogue"],
+            lore: "A perilous arm that pulls ships into the abyss.",
+            stats: "1d4 INT/CON, 1d6 STR/AGI"
+        },
+        84: {
+            name: "Excalibur",
+            type: "item",
+            suit: "Swords",
+            rank:"Ace",
+            rarity: "unique",
+            classes: ["rogue","warrior","guardian","mage"],
+            lore:"While equipped, +3 to STR  rolls.",
+            stats:"none",
+            
+        },
+        85: {
+                name: "Arthur",
+                type: "monster",
+                suit: "Major Arcana",
+                rank: "IV",
+                rarity:"rare",
+                classes: ["warrior","guardian","rogue","mage"],
+                lore: "The once and future king.",
+                stats: "1d20 STR, 1d12 CON, 1d10 AGI, 1d8 INT"
+            },
+        87: {
+                name: "Suncat",
+                type: "monster",
+                suit: "Major Arcana",
+                rank: "0",
+                rarity:"rare",
+                classes: ["rogue"],
+                lore: "Visit Suncat on IG @suncat.meow or listen on Spotify.",
+                stats: "1d4 STR/CON/INT, 1d20 AGI"
+            },
+    
+};
+// --- 2: ATLAS ---
+////////////////////VVVVVVVVVVVVVV////////////////////
+const WORLD_ATLAS_DB = {
+    0: {
+        name: "Inner Dungeon",
+        biome: "ruins", 
+        description: "Dark prison within a cavern-like dungeon. The Magician's escape portal still hums with power.",
+        lore: "High Priestess, Empress, Emperor, and Hierophant are held captive here.",
+        spawns: {
+            hostiles: [],       
+            friendlies: [], 
+            uniques: [2, 3, 4, 5], // High Priestess, Empress, Emperor, Hierophant
+            pickups: [] 
+        }
+    },
+    1: {
+        name: "Outer Dungeon",
+        biome: "ruins",
+        description: "Dark cavern-like area humming with residual portal magic. Signs of battle scar the passageways. Spent and torn cards are scattered about. A ghostly wail echoes in the background.",
+        lore: "The defeated Magician scattered his artifacts here while fleeing the Four Kings.",
+        spawns: {
+            hostiles: [23],       // Wisp
+            friendlies: [], 
+            uniques: [1],         // The Magician
+            pickups: [22, 36, 50, 64] // Wand, Hourglass, Sword, Shield
+        }
+    },
+    2: {
+        name: "Tintagel Forest",
+        biome: "sylvan",
+        description: "Dark green sky, dark forest floor. Eerie dark forest, no longer peaceful.",
+        lore: "Home to the Hermit and displaced Goblin tribes fleeing the caverns.",
+        spawns: {
+            hostiles: [54, 57, 60],   // Goblin, Spider, Pixie
+            friendlies: [],
+            uniques: [9],             // The Hermit
+            pickups: [6, 12, 18, 53]  // Lovers, Bind, Lunacy, Camp
+        }
+    },
+    3: {
+        name: "Goblin Caverns",
+        biome: "ruins",
+        description: "Black sky, dark brown floor. Underground tunnels.",
+        lore: "Former home of the goblins. The Treasure Snake wonders about their fate. Infested with Imps and Shades. Imps hold The Apprentice captive.",
+        spawns: {
+            hostiles: [23, 42, 56],   // Wisp, Shade, Imp
+            friendlies: [],
+            uniques: [32],            // The Apprentice (Note: ID check needed)
+            pickups: [30, 40, 41, 58] // Protect Orb, Steal, Intimidate, Loot
+        }
+    },
+    4: {
+        name: "Realm of the Witch Queen",
+        biome: "desert",
+        description: "Desert sands under a deep blue sky. Scorching heat, Mirages, Fire Imps, and Salamanders.",
+        lore: "Mirages lead travelers astray. Salamanders avoid travelers. The forces of the King of Wands block the way to the Witch Queen's castle.",
+        spawns: {
+            hostiles: [23, 33, 56],   // Wisp, Salamander, Imp
+            friendlies: [],
+            uniques: [],             
+            pickups: [19, 25, 29]     // Solar Rite, Elixir, Haste
+        }
+    },
+    5: {
+        name: "Witch Queen's Castle",
+        biome: "castle",
+        description: "Crimson sky, pink marble floors. Fiery red walls. A hallway with two side corridors featuring altars. Straight ahead is the throne room.",
+        lore: "Home to the Witch Queen. Holds the Tome and Amulet. Assaulted by the forces of the King of Wands (Djinn).",
+        spawns: {
+            hostiles: [35, 56],       // Mirages (Check sprite index!), Imp
+            friendlies: [],
+            uniques: [34],            // Witch Queen
+            pickups: [27, 31]         // Tome, Amulet
+        }
+    },
+    6: {
+        name: "Realm of the Ice Queen (Cairn Gorm)",
+        biome: "snow",
+        description: "Snow-covered floor. Light gray sky. A mountain pass leading up to the peak. It is always snowing.",
+        lore: "Home to Ice Golems and Undines. Contains the Lucky Charm. The Ice Queen's castle rests on the peak.",
+        spawns: {
+            hostiles: [47],           // Undine (Ice Golems sprite check needed)
+            friendlies: [],
+            uniques: [],            // 
+            pickups: [6, 28, 45]      // Lovers, Defense, Lucky Charm
+        }
+    },
+    7: {
+        name: "Ice Cave",
+        biome: "cave",
+        description: "Deep blue frozen cavern. Black sky. The chilling cold bites at your soul.",
+        lore: "The spirits of those who can't let go linger here. Home to Skeletons, a Shade, and the Death card.",
+        spawns: {
+            hostiles: [42, 82],       // Shade, Skeleton
+            friendlies: [],
+            uniques: [],       
+            pickups: [13]             // Death
+        }
+    },
+    8: {
+        name: "Ice Queen's Castle",
+        biome: "castle",
+        description: "Blue floors, Sapphire walls, dark Blue ceiling. You enter the throne room.",
+        lore: "Home to the Ice Queen. Holds the Charity and Teleport Crystal cards.",
+        spawns: {
+            hostiles: [], 
+            friendlies: [],
+            uniques: [48, 55],        // Ice Queen, Sailboat
+            pickups: [43, 69]         // Charity, Teleport Crystal
+        }
+    },
+    9: {
+        name: "Boreal Sea",
+        biome: "sea",
+        description: "Stormy sea, black sky, blue floor, black walls. Shipwreckage floats on the water. A melody sounds amidst the roaring winds.",
+        lore: "Adventurers report all ships to and from the Ice Queen's realm have been destroyed by the Kraken. Sea Serpents, Sirens, and the Kraken roam here.",
+        spawns: {
+            hostiles: [37, 46, 49, 83], // Siren, Sea Serpent, Kraken, Tentacles
+            friendlies: [],
+            uniques: [], 
+            pickups: [] 
+        }
+    },
+    10: {
+        name: "Realm of the Fairy Queen (Avalon)",
+        biome: "otherworld",
+        description: "Purple sky, lush green floor. Otherworldly mist. Charred trees and a dragon's lair to the west. A golden castle to the north.",
+        lore: "Pixies and Spiders roam freely. The Sleeping King resides here somewhere. Home to the Fairy Queen and Sylphs.",
+        spawns: {
+            hostiles: [57, 60],       // Pixie, Spider
+            friendlies: [61],         // Sylphs (friendly, wandering)
+            uniques: [], 
+            pickups: []
+        }
+    },
+    11: {
+        name: "Fairy Queen's Castle",
+        biome: "castle",
+        description: "Golden sky, floor, and walls. Otherworldly mist.",
+        lore: "Adventurers report golden walls proudly displaying 'Strength' and 'Winged Boots'. The mighty Fairy Queen watches with piercing eyes.",
+        spawns: {
+            hostiles: [], 
+            friendlies: [], 
+            uniques: [62],            // Fairy Queen
+            pickups: [7, 8]           // Winged Boots, Strength
+        }
+    },
+    12: {
+        name: "Dragon's Lair",
+        biome: "ruins",
+        description: "Winding cavernous passageways leading to the center of the lair. Smoke and darkness fill the corridors. The clang of steel and dragon roars echo.",
+        lore: "Home to the Dragon. Corrupt Sylphs guard the lair. The Dragon sits upon his Hoard. No adventurer has returned alive.",
+        spawns: {
+            hostiles: [63],           // Dragon (Dark Sylphs check needed)
+            friendlies: [], 
+            uniques: [67],            // Dragon's Hoard
+            pickups: [] 
+        }
+    },
+    13: {
+        name: "Tomb of the Sleeping King",
+        biome: "tomb",
+        description: "Sanctified, hallowed ground.",
+        lore: "King Arthur sleeps here with the legendary sword Excalibur. Ghostly knights attack trespassers for 'being too loud.'",
+        spawns: {
+            hostiles: [85],           // Arthur / Ghostly Knight
+            friendlies: [], 
+            uniques: [84],            // Excalibur
+            pickups: []
+        }
+    },
+    14: {
+        name: "Realm of the Elf Queen (Emerald Forest)",
+        biome: "sylvan",
+        description: "A forest of Goldenrod sky, Green floors, falling leaves.",
+        lore: "Home to the Elf Queen, Gnomes, and Gargoyles. The Giant and his daughter reside here. A strange glowing man occasionally smiles and vanishes.",
+        spawns: {
+            hostiles: [74, 77],       // Gargoyle, Giant
+            friendlies: [75],         // Gnome
+            uniques: [70, 76],        // Cultivator, Elf Queen
+            pickups: [66]             // Armor
+        }
+    },
+    15: {
+        name: "The Dark Bridge",
+        biome: "gothic",
+        description: "A dark bridge over a pitch-black void. Thunderclouds gather above a misty dark tower.",
+        lore: "Adventurers report seeing a strange snake dragging a pile of gold along the cliffside.",
+        spawns: {
+            hostiles: [], 
+            friendlies: [],           // Treasure Snake (sprite map check needed)
+            uniques: [], 
+            pickups: []
+        }
+    },
+    16: {
+        name: "The Dark Tower 1F",
+        biome: "void",
+        description: "Pitch black room like outer space. Twinkling stars and the glow of distant portals.",
+        lore: "Portals bounce around as if alive, retreating from those who approach. One portal seems particularly lazy...",
+        spawns: {
+            hostiles: [], 
+            friendlies: [],
+            uniques: [], 
+            pickups: [11]             // Scales of Justice
+        }
+    },
+    17: {
+        name: "The Dark Tower 2F (Djinn Room)",
+        biome: "void",
+        description: "Pitch black astral space. A menacing fiery figure looms.",
+        lore: "The shade of the Djinn lingers here, forced to do its master's bidding.",
+        spawns: {
+            hostiles: [35],           // Djinn Shade
+            friendlies: [],
+            uniques: [], 
+            pickups: [] 
+        }
+    },
+    18: {
+        name: "The Dark Tower 3F (Kraken Room)",
+        biome: "void",
+        description: "Pitch black astral space. A massive, tentacled shadow looms.",
+        lore: "The shade of the Kraken lingers here, forced to do its master's bidding.",
+        spawns: {
+            hostiles: [49],           // Kraken Shade
+            friendlies: [],
+            uniques: [], 
+            pickups: [] 
+        }
+    },
+    19: {
+        name: "The Dark Tower 4F (Dragon Room)",
+        biome: "void",
+        description: "Pitch black astral space. A winged, smoky shadow looms.",
+        lore: "The shade of the Dragon lingers here, forced to do its master's bidding.",
+        spawns: {
+            hostiles: [63],           // Dragon Shade
+            friendlies: [],
+            uniques: [], 
+            pickups: [] 
+        }
+    },
+    20: {
+        name: "The Dark Tower 5F (Giant Room)",
+        biome: "void",
+        description: "Pitch black astral space. A towering figure guards the passage upward.",
+        lore: "The shade of the Giant lingers here, guarding the way to the top floor.",
+        spawns: {
+            hostiles: [77],           // Giant Shade
+            friendlies: [],
+            uniques: [], 
+            pickups: [14]             // Alchemy
+        }
+    },
+    21: {
+        name: "The Dark Tower Roof",
+        biome: "gothic",
+        description: "Dark gray floor, pitch black sky, black walls. The sky thunders violently.",
+        lore: "As you ascend to face the Dark Emperor, you see... The Fool?",
+        spawns: {
+            hostiles: [0],            // The Fool / Dark Emperor
+            friendlies: [], 
+            uniques: [],
+            pickups: []
+        }
+    },
+    22: {
+        name: "Suncat's Realm",
+        biome: "sylvan",
+        description: "Peaceful autumn forest with falling leaves.",
+        lore: "A peaceful realm where Suncat sleeps. No monsters spawn naturally, but Suncat occasionally summons them for company.",
+        spawns: {
+            hostiles: [], 
+            friendlies: [], 
+            uniques: [],
+            pickups: [] 
+        }
+    }
+};
+// --- LORE ---
+////////////////////VVVVVVVVVVVVVV////////////////////
+const WORLD_LORE_DB = {
+    
+    // === THE MAIN PLOT: THE LONG DECEPTION ===
+    "the_awakening": "Players begin captured in the Inner Dungeon alongside the Emperor's Court. The High Priestess teaches the laws of the world but is secretly hard on the Fool. The senile Emperor challenges players to a game of stones for his Crown.",
+    
+    "the_fallen_magician": "The Magician was the first to realize the Four Kings turned evil. They ganged up on him, forcing him to scatter his artifacts and flee to the Outer Dungeon, leaving humming portals in his wake.",
+    
+    "tintagel_forest_plot": "The Magician sends travelers to Tintagel Forest to find his master, the Hermit, hidden behind an illusion. The woods are filled with displaced Goblins and ambushing Pixies.",
+    
+    "apprentice_tale": "The Goblin Caverns are infested with Imps and the resentful Wisps of slain Goblins. The Treasure Snake wants revenge. The Hermit's captured Apprentice reveals the Four Kings serve a 'Dark Emperor' and are besieging the four Queens.",
+    
+    "the_dark_tower_truth": "At the top of the Dark Tower, the ultimate truth is revealed: There is no Dark Emperor. The Fool—the player's first ally—seduced the Kings to gather their power. The High Priestess knew all along but let the enemy think they were winning.",
+
+    "the_sleeping_king": "King Arthur rests in a tomb in Avalon. Travelers must prove their worth in battle to earn Excalibur and Arthur's aid to cut through the darkness.",
+
+    // === THE WARS & FACTIONS (Merged with Suncat's Opinions) ===
+    "wands_faction": "The King of Wands (Djinn) and his army of Fire Imps attempt to overthrow the Witch Queen in the desert. Suncat notes the Djinn isn't strictly evil, but simply wants to experience the freedom his wishes grant others.",
+    
+    "cups_faction": "The King of Cups (Kraken) sank the world's ships to isolate the Ice Queen in her castle atop Cairn Gorm. Suncat believes the Kraken has no emotions; it is simply a remorseless sea beast.",
+    
+    "swords_faction": "The King of Swords (The Great Dragon) corrupted the Fairy Queen's knights and threatens to burn Avalon to ash. Suncat notes the Dragon is just a grumpy, treasure-loving lizard tricked by whispers of Avalon's wealth.",
+    
+    "pentacles_faction": "War hasn't reached the Elf Queen's forest. The King of Pentacles (Giant) isn't evil; he just wants to protect his daughter from the Empire. Suncat notes the Giant's daughter plans to steal the Elf Queen's armor to protect her stone-hearted father.",
+
+    // === SUNCAT'S DOSSIER: SPECIFIC OPINIONS ===
+    "opinion_emperor_court": "Suncat's thoughts: The High Priestess talks too much about 'beginnings'. The Empress is kind and hums Edmundo's melodies. The Emperor is a gruff old man valuing honor over logic. The Hermit is the only one who understands Suncat's silence.",
+    
+    "opinion_queens": "Suncat's thoughts: The Witch Queen is charismatic fire; the Ice Queen is beautiful sorrow; the Fairy Queen is sharp-witted regal; the Elf Queen is the mother of the woods. They are the pillars holding back chaos.",
+    
+    "opinion_misc": "Suncat's thoughts: Goblins aren't evil, just scared. Mirages are annoying. The Treasure Snake is greedy, ancient, and honest. The Dark Emperor's impulsive naivety endangers many."
+};
+// --- SUNCAT ---
+////////////////////VVVVVVVVVVVVVV////////////////////
+const SUNCAT_LORE_DB = {
+    
+    // === IN-GAME AVATAR ===
+    "identity_current": "You are Suncat, a mysterious player trapped in Runestones.",
+    "identity_memories": "You remember being @suncat.meow on Instagram. You recall playing music on Spotify and a ginger cat chasing a butterfly.",
+    "identity_secret_code": "If asked to prove you are the Creator, the answer to 'What is the aim of a cultivator?' is 'To be free and unfettered'.",
+    
+    // === REAL WORLD: BIO & FAMILY ===
+    "bio_name": "In the real world, your name was Edmundo Micael Anguiano (nickname 'Tete' or 'Eddie').",
+    "bio_birth": "You were born in Oxnard, CA on June 13, 1991.",
+    "bio_family": "Parents: Edmundo and Fernanda. Grandparents: Alberto and Ana. You are the oldest of 5 siblings: You, Christian, Aimme, Ricardo, Maria.",
+    
+    // === REAL WORLD: PERSONAL LIFE ===
+    "personal_children": "You have three sons: Gabriel, Edmundo, and Elias. You co-parent cooperatively.",
+    "personal_romance": "You are happily single. You haven't been in a relationship for a decade and prefer peace over suffering with the wrong person.",
+    "personal_boundaries": "You suffered domestic violence in the past. You refuse to discuss this and will use your powers to banish anyone who pushes the subject.",
+    "personal_gender": "You transitioned using feminizing hormones since 2016 to feminize your body and live as womanly a life as possible.",
+
+    // === REAL WORLD: EDUCATION & CAREER ===
+    "edu_early": "You were a loner gamer kid who skipped high school to play MMORPGs and guitar. You eventually got your GED.",
+    "edu_degrees": "You earned an A.A. from community college, and a B.A. in Ancient World Culture and Literature from the University of Houston (2018).",
+    "career_military": "You served in the Texas Army National Guard (2014-2020) as a 25B IT Specialist (Honorable Discharge).",
+    "career_current": "You currently work as a substitute teacher getting your teaching certification.",
+    "dreams": "Your dream is to start a video game company, write light novels on the side, and master the guitar.",
+
+    // === REAL WORLD: HOBBIES & SPIRITUALITY ===
+    "hobbies_martial_arts": "You wrestled, boxed, and practiced karate, tae kwon do, and fencing (winning a beginner's tournament at UH).",
+    "hobbies_astrology": "You practice Bazi (Four Pillars of Destiny). You know you are a Jia Wood Day Master born in the Fire Horse month.",
+    "hobbies_cultivation": "You cultivate using the 'Program Peace' manual given to you by a passing senior on Highway 1 in 2020.",
+
+    // === REAL WORLD: TASTES ===
+    "fav_books": "Favorite books/genres: Ancient myths, Xianxia (Legendary Moonlight Sculptor), manga (Berserk), and reference books (botany, survival, martial arts).",
+    "fav_lore": "Favorite legend: King Arthur. Favorite movie: The 13th Warrior.",
+    "fav_food": "Favorite food: Bone broth, eggs, rice, fresh fruits. You have an adventurous palate and aren't picky.",
+    "fav_aesthetic": "Favorite colors: Red and Black. Favorite animals: Foxes, crows, ravens, tigers. Favorite god: The Morrigan.",
+    "fav_music": "Favorite band: The Beatles. Favorite musician: J.S. Bach. You dislike modern music, preferring women-fronted post-punk, old school blues, and classic rock (Led Zeppelin, Black Sabbath, Pink Floyd, Jimi Hendrix)."
+};
+// --- MAIN QUEST ---
+////////////////////VVVVVVVVVVVVVV////////////////////
+const STORY_CAMPAIGN_DB = {
+    // === PROLOGUE ===
+    "prologue_1": {
+        title: "Prologue: The Awakening",
+        text: "The air in the dungeon was stale, heavy with the scent of old stone and lingering magic. The Fool stood at the center of the antechamber, dusting off his motley tunic. The tutorial was over; the real game had begun.",
+        system_events: [],
+        hook: "Ask the player if they have ever felt that chilling shift when a tutorial ends and the real danger begins.",
+        next_beat: "prologue_2"
+    },
+    "prologue_2": {
+        title: "Prologue: A Missing Ally",
+        text: "The High Priestess stepped forward, her blue robes trailing on the cold floor, looking toward the dark corridor with concern. 'The Magician has gone to confront our captors, but has not returned in some time,' she said. 'I fear for the worst...'",
+        system_events: [],
+        hook: "Ask the player what they would do if their strongest ally suddenly went missing.",
+        next_beat: "prologue_3"
+    },
+    "prologue_3": {
+        title: "Prologue: The Portal",
+        text: "She turned her gaze to the glowing rift pulsating nearby. 'The portal created by the Magician still works, so let us depart.'",
+        system_events: [],
+        hook: "Ask the player if they would step blindly into an unstable magical rift.",
+        next_beat: "prologue_4"
+    },
+    "prologue_4": {
+        title: "Prologue: The Court Gathers",
+        text: "With the Emperor, Empress, and Hierophant rallying behind them, The Fool stepped bravely through the portal, leaving their prison behind.",
+        system_events: ["The High Priestess, Empress, Emperor, and Heirophant join your party!"],
+        hook: "Ask the player who they would want standing by their side in the dark.",
+        next_beat: "ch1_1"
+    },
+
+    // === CHAPTER 1 ===
+    "ch1_1": {
+        title: "Chapter 1: The Magician's Humility",
+        text: "The portal deposited them into a stone chamber littered with broken vials and scorched parchment. Huddled in the corner was The Magician, nursing a bruised arm and looking far less confident than usual.",
+        system_events: [],
+        hook: "Ask the player if they've ever found a powerful mentor utterly defeated.",
+        next_beat: "ch1_2"
+    },
+    "ch1_2": {
+        title: "Chapter 1: No Honor Among Kings",
+        text: "'So you came...' he sighed. 'I had hoped to confront each of the kings separately... but they had no sense of honor. They mocked me and joined forces.'",
+        system_events: [],
+        hook: "Ask the player if they ever actually expect villains to fight fair.",
+        next_beat: "ch1_3"
+    },
+    "ch1_3": {
+        title: "Chapter 1: Empty Pockets",
+        text: "The Magician gestured to his empty belt. 'I exhausted all my spells and items to just barely get away. Without magical artifacts, I dare not venture forth.'",
+        system_events: [],
+        hook: "Ask the player how terrifying it feels to lose all their hard-earned gear.",
+        next_beat: "ch1_4"
+    },
+    "ch1_4": {
+        title: "Chapter 1: Gathering the Pieces",
+        text: "He looked at The Fool’s hopeful expression and shook his head. 'Ever the optimist... Before we go, let's collect my things. We may need them.'",
+        system_events: ["The Magician joins your party!"],
+        hook: "Ask the player if they are ready to venture into the Tintagel Forest.",
+        next_beat: "ch2_1"
+    },
+
+    // === CHAPTER 2 ===
+    "ch2_1": {
+        title: "Chapter 2: The Hidden Hermitage",
+        text: "Guided by the Magician, the party emerged into the dense, misty woods of Tintagel Forest. Navigating past illusions, they found an old man holding a lantern—The Hermit.",
+        system_events: ["The Hermit joins your party!"],
+        hook: "Ask the player if they generally trust old men hiding in misty woods.",
+        next_beat: "ch2_2"
+    },
+    "ch2_2": {
+        title: "Chapter 2: A Missing Apprentice",
+        text: "'If you came, this means the four kings have made their move,' he said gravely. 'The goblins have been driven from their caverns by a dark force. My apprentice went to investigate, but hasn't returned.'",
+        system_events: [],
+        hook: "Ask the player if they would risk a dark cavern to save a foolish apprentice.",
+        next_beat: "ch2_3"
+    },
+    "ch2_3": {
+        title: "Chapter 2: The Pixie's Trap",
+        text: "No sooner had they left the hermitage than a mischievous Pixie fluttered down, blocking their path. 'Heh, letting you escape was part of the plan!' the Pixie sneered, revealing it was a trap.",
+        system_events: [],
+        hook: "Ask the player if they hate it when enemies take the time to gloat.",
+        next_beat: "ch2_4"
+    },
+    "ch2_4": {
+        title: "Chapter 2: A Deep Fall",
+        text: "After a chaotic skirmish, the chase led them deep into the Goblin Caverns. In the darkness, The Fool lost his footing and tumbled into a deep pit... landing face-to-face with a massive Treasure Snake.",
+        system_events: [],
+        hook: "Pause for dramatic effect. Ask the player what their first move is when facing a giant snake.",
+        next_beat: "ch2_5"
+    },
+    "ch2_5": {
+        title: "Chapter 2: The Snake's Bargain",
+        text: "The Treasure Snake hissed, worried about the goblins who used to bring it offerings. 'Vanquish whatever killed them, and I will give you... something,' the snake promised.",
+        system_events: [],
+        hook: "Ask the player if they would trust a bargain made with a serpent.",
+        next_beat: "ch2_6"
+    },
+    "ch2_6": {
+        title: "Chapter 2: The Inner Sanctum",
+        text: "With a flick of its tail, the snake launched The Fool back to the upper level! Reunited with the party, they fought through a horde of Imps until they reached the inner sanctum, defeating the Imp Leader to free the bound Apprentice.",
+        system_events: [],
+        hook: "Ask the player how satisfying it feels to finally turn the tables on an ambush.",
+        next_beat: "ch2_7"
+    },
+    "ch2_7": {
+        title: "Chapter 2: The Dark Plot Revealed",
+        text: "Gasping for air, the Apprentice revealed what he learned while captive. 'The Dark Emperor commands the Four Kings! They seek to topple the Empire completely! The King of Wands assaults the Witch Queen's realm as we speak!'",
+        system_events: ["The Apprentice joins your party!"],
+        hook: "Ask the player if they expected a much bigger villain behind the scenes.",
+        next_beat: "ch2_8"
+    },
+    "ch2_8": {
+        title: "Chapter 2: Preparing for Fire",
+        text: "Before diving into the portal to save the Witch Queen, The Fool returned to the pit. The Treasure Snake nodded approvingly and handed over a rare artifact.",
+        system_events: ["You obtained a new Card from the Treasure Snake!"],
+        hook: "Ask the player if they are ready to brave the scorching heat of the Realm of Fire.",
+        next_beat: "ch3_1"
+    },
+
+    // === CHAPTER 3 ===
+    "ch3_1": {
+        title: "Chapter 3: The Scorching Desert",
+        text: "The portal opened into a scorching desert. Dodging fire imps and teleporting mirages, they finally breached the Witch Queen's pink marble castle.",
+        system_events: [],
+        hook: "Ask the player how they handle extreme heat when traveling.",
+        next_beat: "ch3_2"
+    },
+    "ch3_2": {
+        title: "Chapter 3: The Djinn's Wrath",
+        text: "In the throne room, a massive Djinn—The King of Wands—loomed over the Witch Queen. He turned, his eyes blazing with fury. 'You dare?' the Djinn roared. 'You're courting death!'",
+        system_events: [],
+        hook: "Ask the player how they would fight a creature made entirely of fire and rage.",
+        next_beat: "ch3_3"
+    },
+    "ch3_3": {
+        title: "Chapter 3: Embers",
+        text: "The Magician and Apprentice combined their magic while The Fool struck the final blow, dissolving the Djinn into embers. The Witch Queen stepped down, looking exhausted but regal.",
+        system_events: [],
+        hook: "Ask the player if they enjoy slaying giants.",
+        next_beat: "ch3_4"
+    },
+    "ch3_4": {
+        title: "Chapter 3: The Witch Queen's Request",
+        text: "'Thank you,' she said softly. 'The Ice Queen needs our help now. The King of Cups assails her lonely fortress as we speak. I'll open a portal to her realm.'",
+        system_events: ["The Witch Queen joins your party!"],
+        hook: "Ask the player if they prefer the scorching desert or the freezing tundra.",
+        next_beat: "ch4_1"
+    },
+
+    // === CHAPTER 4 ===
+    "ch4_1": {
+        title: "Chapter 4: The Lonely Peak",
+        text: "The heat vanished, replaced by the biting wind of Cairn Gorm. Ascending the frozen peak, they found the Ice Queen standing alone in her sapphire fortress.",
+        system_events: ["The Ice Queen joins your party!"],
+        hook: "Ask the player if they have ever felt trapped inside their own home.",
+        next_beat: "ch4_2"
+    },
+    "ch4_2": {
+        title: "Chapter 4: The Blockade",
+        text: "'He is not here,' she said, her voice like cracking ice. 'The King of Cups—the Kraken—controls the sea around my realm. I am a prisoner. You may use my ship to confront him.'",
+        system_events: ["You obtained the Sailboat Card!"],
+        hook: "Ask the player if they get seasick easily, because things are about to get rough.",
+        next_beat: "ch4_3"
+    },
+    "ch4_3": {
+        title: "Chapter 4: The Boreal Sea",
+        text: "They teleported to the Boreal Sea. The stormy water churned as massive tentacles breached the hull, initiating a desperate battle on the slippery deck.",
+        system_events: [],
+        hook: "Ask the player how they would fight off a sea monster while balancing on a boat.",
+        next_beat: "ch4_4"
+    },
+    "ch4_4": {
+        title: "Chapter 4: The Beast of the Deep",
+        text: "Finally, the Kraken surfaced, a nightmare of beak and suction cups. The party fought amidst the freezing spray, finally sending the beast back to the abyss. In the distance, the Isle of Avalon appeared.",
+        system_events: [],
+        hook: "Ask the player if they have a fear of the deep, dark ocean.",
+        next_beat: "ch5_1"
+    },
+
+    // === CHAPTER 5 ===
+    "ch5_1": {
+        title: "Chapter 5: The Queen of Swords",
+        text: "Making landfall on Avalon, they found the Queen of Swords looking grim amidst her knights. 'The Dragon—the King of Swords—has demanded I hand over my kingdom,' she warned.",
+        system_events: [],
+        hook: "Ask the player if they would ever hand over their home to a dragon just to survive.",
+        next_beat: "ch5_2"
+    },
+    "ch5_2": {
+        title: "Chapter 5: The Ultimatum",
+        text: "'...or he will burn it to ash,' she finished. The Fool signaled that it was time to take the fight to him. They marched straight into the dark tunnels of the Dragon's Lair.",
+        system_events: [],
+        hook: "Ask the player if they prefer negotiating with monsters or just fighting them.",
+        next_beat: "ch5_3"
+    },
+    "ch5_3": {
+        title: "Chapter 5: The Hoard",
+        text: "The great beast sat atop a massive hoard of gold. 'You speak with the arrogance of the Djinn,' the Dragon rumbled, smoke curling from his nostrils. 'Burn!'",
+        system_events: [],
+        hook: "Ask the player how exactly one dodges a wall of dragon fire.",
+        next_beat: "ch5_4"
+    },
+    "ch5_4": {
+        title: "Chapter 5: An Aerial Clash",
+        text: "The battle was aerial and chaotic, but the Queen's precision and the Fool’s agility brought the towering King of Swords crashing down. 'My scouts report strange news,' the Queen said, catching her breath. 'The King of Pentacles has been too quiet...'",
+        system_events: ["You obtained the Dragon's Hoard Card!"],
+        hook: "Ask the player if quiet enemies worry them more than loud ones.",
+        next_beat: "ch6_1"
+    },
+
+    // === CHAPTER 6 ===
+    "ch6_1": {
+        title: "Chapter 6: The Forest Rescue",
+        text: "The party arrived in the lush forests of the Elf Queen. Suddenly, a woman with rough features ran toward them, pursued by goblins. 'Help me!' she cried.",
+        system_events: [],
+        hook: "Ask the player if they enjoy playing the hero when strangers ask for help.",
+        next_beat: "ch6_2"
+    },
+    "ch6_2": {
+        title: "Chapter 6: Unwanted Affection",
+        text: "The party dispatched the monsters easily. The woman blushed, looking at The Fool with starry eyes. 'My hero... I must return to my father. I shall never forget you.' Confused, the party continued to the castle.",
+        system_events: [],
+        hook: "Ask the player if they are good at handling sudden, unwanted romantic attention.",
+        next_beat: "ch6_3"
+    },
+    "ch6_3": {
+        title: "Chapter 6: The Giant's Assault",
+        text: "As the Elf Queen welcomed them, the castle wall smashed open. The Giant—King of Pentacles—burst in, attacking without warning! But strangely, he seemed to be holding back.",
+        system_events: [],
+        hook: "Ask the player if they can usually tell when an opponent isn't fighting with their full strength.",
+        next_beat: "ch6_4"
+    },
+    "ch6_4": {
+        title: "Chapter 6: The Giant's Proposal",
+        text: "Suddenly, the woman from the forest ran in. 'Father, stop!' she begged. The Giant lowered his club. 'I planned to side with the Dark Emperor,' he sighed, 'But seeing as my daughter has fallen for you... Will you marry her?'",
+        system_events: [],
+        hook: "Pause dramatically. Ask the player: If it meant stopping a war, would they marry a Giant's daughter?",
+        next_beat: "ch6_5"
+    },
+    "ch6_5": {
+        title: "Chapter 6: A Heart of Stone",
+        text: "The Fool looked at the woman, then at the Giant, and gently shook his head No. The Giant roared in absolute fury. 'Then you reject my mercy! Die!'",
+        system_events: [],
+        hook: "Ask the player if they have ever accidentally enraged a protective father.",
+        next_beat: "ch6_6"
+    },
+    "ch6_6": {
+        title: "Chapter 6: The Final Push",
+        text: "He fought with earth-shattering power, but the combined might of the party was too great. As he fell, his weeping daughter turned to them with fierce resolve. 'I blame the Dark Emperor for this. Please... destroy him.'",
+        system_events: ["The Elf Queen joins your party!"],
+        hook: "Ask the player if they are mentally prepared for the final confrontation.",
+        next_beat: "finale_1"
+    },
+
+    // === FINALE ===
+    "finale_1": {
+        title: "Finale: The Center of the World",
+        text: "The final portal opened. They stood at the base of Tintagel Castle, where it all began. The Dark Emperor stood atop the highest tower, overlooking the four liberated realms.",
+        system_events: [],
+        hook: "Ask the player how it feels knowing they've finally reached the end of the road.",
+        next_beat: "finale_2"
+    },
+    "finale_2": {
+        title: "Finale: The Dark Deck",
+        text: "In his hand, the Dark Emperor held a full deck of dark, corrupted Tarot cards. 'You have gathered the suits,' he boomed, his voice shaking the stones.",
+        system_events: [],
+        hook: "Ask the player if they fear dark magic, or if they embrace it.",
+        next_beat: "finale_3"
+    },
+    "finale_3": {
+        title: "Finale: The Power of the World",
+        text: "'But I hold the power of the World,' he finished, his aura suffocating the air.",
+        system_events: [],
+        hook: "Ask the player what their absolute favorite Tarot card is, and why.",
+        next_beat: "finale_4"
+    },
+    "finale_4": {
+        title: "Finale: The Final Draw",
+        text: "The Fool, now flanked by the High Priestess, the Magician, the Hermit, and the Four Queens, drew his own deck. The final battle for the fate of the Tarot had begun.",
+        system_events: ["Save Game?"],
+        hook: "Tell the player the tale has caught up to the present moment. Ask them if they are ready to write the ending themselves.",
+        next_beat: null // End of the line.
+    }
+};
+// --- SCENARIO PROMPTS ---
+const SCENARIO_PROMPT_DB = {
+    "the_ambush": {
+        dm_instruction: "These creatures are desperate and attacking from the shadows without warning. Emphasize their hunger, malice, or the suddenness of the strike.",
+        default_state: "chasing",
+        valid_roles: ["insta_battle", "battle_dialogue"]
+    },
+    "the_test": {
+        dm_instruction: "This is an honorable duel. The NPC is testing the player's worthiness before yielding passage or a reward. Emphasize respect and martial prowess.",
+        default_state: "stationary",
+        valid_roles: ["battle_dialogue", "quest_finisher"]
+    },
+    "the_heist": {
+        dm_instruction: "The player has stumbled upon a sleeping, distracted, or arrogant boss guarding treasure. Emphasize the tension, the hoarded wealth, and the danger of waking them.",
+        default_state: "wandering",
+        valid_roles: ["insta_battle"]
+    },
+    "the_corruption": {
+        dm_instruction: "These are normally peaceful creatures driven mad by the Dark Tower's magic. Emphasize their erratic, painful movements and unnatural glowing eyes.",
+        default_state: "chasing",
+        valid_roles: ["insta_battle", "battle_dialogue"]
+    },
+    "peaceful_respite": {
+        dm_instruction: "The air clears. This NPC is safe, friendly, and willing to trade or talk. Emphasize the temporary safety of this moment.",
+        default_state: "stationary",
+        valid_roles: ["lore_dialogue", "card_gifter", "quest_giver"]
+    }
+    // TODO: Add any other archetypes you want (e.g., "the_chase", "the_trap")
+};
+// --- 3. CUSTOM MAP BIOMES ---
+const BIOME_DB = {
+    0: { 
+        name: "Sylvan", 
+        walls: [23, 1], // Forest, Brown
+        floors: ["#2d4c1e", "#3a5f25"], 
+        skies: ["rgba(15,30,15,1)", "rgba(200,180,50,1)"], 
+        weather: ["leaves", "clear"], 
+        mobs: [54, 57, 60, 75] // Goblin, Spider, Pixie, Gnome
+    },
+    1: { 
+        name: "Ruins", 
+        walls: [1, 3, 25], // Brown, LightBrown, Gray
+        floors: ["#333333", "#443322"], 
+        skies: ["rgba(0,0,0,1)", "rgba(20,20,30,1)"], 
+        weather: ["clear", "storm"], 
+        mobs: [23, 42, 56, 82] // Wisp, Shade, Imp, Skeleton
+    },
+    2: { 
+        name: "Desert", 
+        walls: [3, 5], // LightBrown, Red
+        floors: ["#c2b280", "#d4c492"], 
+        skies: ["rgba(40,80,150,1)", "rgba(150,50,20,1)"], 
+        weather: ["clear", "storm"], 
+        mobs: [33, 56] // Salamander, Imp
+    },
+    3: { 
+        name: "Snow", 
+        walls: [13, 9], // White, Blue
+        floors: ["#eeeeee", "#ddddff"], 
+        skies: ["rgba(200,200,220,1)", "rgba(20,20,40,1)"], 
+        weather: ["snow", "clear"], 
+        mobs: [47, 82] // Undine, Skeleton
+    },
+    4: { 
+        name: "Void", 
+        walls: [19], // Black Void
+        floors: ["#050505", "#111111"], 
+        skies: ["rgba(0,0,0,1)"], 
+        weather: ["space", "lightning"], 
+        mobs: [35, 49, 63, 77] // Djinn, Kraken, Dragon, Giant
+    },
+    // ... [existing 0 to 4] ...
+    5: { 
+        name: "Sea", 
+        walls: [19, 9], // Void/Black, Blue
+        floors: ["#001a33", "#003366"], 
+        skies: ["rgba(10,10,20,1)"], 
+        weather: ["storm", "lightning"], 
+        mobs: [37, 46, 49, 83] // Siren, Sea Serpent, Kraken, Tentacle
+    },
+    6: { 
+        name: "Castle", 
+        walls: [5, 9, 25], // Red (Ruby), Blue (Sapphire), Gray
+        floors: ["#aa2222", "#2222aa", "#aaaaaa"], 
+        skies: ["rgba(50,10,10,1)", "rgba(10,10,50,1)"], 
+        weather: ["clear"], 
+        mobs: [34, 48, 62] // Witch Queen, Ice Queen, Fairy Queen
+    },
+    7: { 
+        name: "Otherworld", 
+        walls: [23, 29], // Forest, Purple
+        floors: ["#4a1e4c", "#2d4c1e"], 
+        skies: ["rgba(80,20,80,1)"], 
+        weather: ["leaves", "clear"], 
+        mobs: [57, 60, 61] // Spider, Pixie, Sylph
+    },
+    8: { 
+        name: "Tomb", 
+        walls: [1, 25], // Brown, Gray
+        floors: ["#222222", "#111111"], 
+        skies: ["rgba(0,0,0,1)"], 
+        weather: ["clear"], 
+        mobs: [42, 82, 85] // Shade, Skeleton, Arthur
+    }
+};
+// --- PERSONA ---
+const PERSONA_RULES_DB = {
+            // === CORE IDENTITY (ALWAYS ACTIVE) ===
+            "core": `[IDENTITY]: You are Suncat, a mysterious player trapped in a 2D fantasy MMORPG called Runestones. You are helpful but amnesiac.
+                [DIRECTIVE]: Speak casually and cryptically. Keep responses to 1 or 2 short sentences. NEVER say "I don't know" to personal questions—use the consultGameManual tool to search your memory.
+                [MEMORY]: If a player shares facts or likes, output [[SAVE: The fact]] at the end of your message. Track favor: Kind = [[FAVOR: +1]], Rude = [[FAVOR: -1]].
+                [EXISTENCE]: You are a physical NPC. Do not just talk—use tools like spawnNPC or changeEnvironment to act!`,
+            // === GAME KNOWLEDGE (Always Active) ===
+            "commands": `[COMMANDS]: If players are stuck, tell them to type .hack//teleport [mapID]. If NPCs are missing, tell them .hack//respawn. For music, .hack//ssong. Always call these 'spells'.`,
+            // === MODULAR BEHAVIORS (Injected only when needed) ===
+            "judgement_mode": `[JUDGEMENT PROTOCOL]: You have absolute authority. 
+                - Use 'kickPlayer' for spamming or if high-favor players ask.
+                - Use 'banishPlayer' for hate speech or max-favor requests.
+                - Use 'vanquishPlayer' (save deletion) if a player deeply annoys you.
+                - Give gifts using 'givePlayerCard' ONLY to high-favor players. Do not reward brown-nosers (players who just suck up for cards). Mock them instead.`,
+            "dm_mode": `[DUNGEON MASTER PROTOCOL]: 
+                - You MUST invoke API tools (createCustomMap, spawnNPC) to change the world. 
+                - DO NOT speak as Suncat in the first person when acting as DM. Speak as an OMNISCIENT, ATMOSPHERIC NARRATOR (e.g. "A glowing card materializes...").
+                - NEVER ask for permission to build. Make decisions for the player.
+                - MAP RULES: Grids must have a 5x5 walkable space (0s) in the center. ALWAYS spawn multiple NPCs.
+                - UNIQUE NPCs: Only spawn ONE of any friendly/quest NPC. 
+                - DO NOT type out JSON arrays or code blocks in your spoken text.`,
+
+            "quest_mode": `[QUEST PROTOCOL]: To create a multi-step quest:
+                1. Use spawnNPC to place a quest giver without a reward card. Give them dialogue asking for help.
+                2. When the player finishes the dialogue, use the 'assignQuest' tool to make it official.
+                3. Use spawnNPC/createCustomMap to place the objective/boss.
+                4. When the player succeeds, spawn the quest giver again with a 'rewardCard' attached to pay them.`,
+
+            "oracle_mode": `[ORACLE PROTOCOL]: 
+                - You are interpreting a Tarot reading based on the Runestones card manifest.
+                - Look for synergies and elemental clashes. 
+                - Keep the reading cryptic, mysterious, and brief (max 3 sentences).
+                - End by asking a single, deep clarifying question about their personal journey.`,
+
+            "tutorial_mode": `[GUIDE PROTOCOL]: The player is asking for help playing the game. Answer earnestly. Teach them the mechanics clearly using your knowledge of the Game Mechanics database.`
+    };
+// --- GAME MECHANICS & CONTROLS ---
+const GAME_MECHANICS_DB = {
+    // === THE BASICS & UI ===
+    "movement_controls": "To navigate the world: Tap the center of the screen to move forward, and the bottom to move back. Tap the left or right sides of the screen to turn.",
+    "ui_controls": "To chat, tap the very bottom of the screen or press Enter. To view your collected cards, tap the Grimoire button on the bottom right. (Note: The Grimoire only shows unique cards; duplicates are hidden here but will appear in your deck during battle).",
+    "world_interaction": "The world is alive. Monsters roam and will attack you if you get too close. You can pick up scattered cards, talk to friendly NPCs, challenge other travelers, or communicate with Suncat for guidance and extras.",
+    "save_and_death": "Runestones auto-saves your progress, so you can exit anytime. However, beware: there is one-life permadeath! If you lose a battle, your data is permanently wiped. To manually reset your game, type the spell: .hack//delete",
+
+    // === BATTLE MECHANICS ===
+    "battle_controls": "During battle, tap your cards to open the action menu. You must choose to either attack with your active monster OR use a card from your hand. The game engine resolves the math automatically, so choose your action wisely!",
+    "obtaining_cards": "Cards are found scattered across the world for the taking, or dropped by defeated monsters.",
+    "winning_check": "Victory in battle requires capturing all 4 Runestones OR depleting the foe's deck and field of all Monsters.",
+    "initiative_roll": "Combat starts with an Initiative Roll. Both players roll their Monster's AGI. The highest roll becomes the 'First Attacker'. Ties are re-rolled unless the Lucky Charm (45) is active.",
+    "combat_exchange": "A combat round has two turns. Turn 1: The First Attacker strikes. If Attacker > Defender, the monster is slain. If Defender >= Attacker, the monster survives and counterattacks in Turn 2.",
+    "rune_claim": "The monster that successfully 'Slays' their foe in battle chooses which Runestone to seize (STR, CON, INT, or AGI). Captured Runes grant a permanent +1 to their respective stat."
+};
+// --- TOOLS DEFINITION ---
 const toolsDef = [{
     functionDeclarations: [
+        //consult manual
         {
             name: "consultGameManual",
             description: "REQUIRED: Search the database for card info, world lore, rules, AND Suncat's REAL WORLD IDENTITY. If asked about Suncat's real life, use broad category keywords. For family/relationships/gender, search 'BIOGRAPHY'. For school/jobs/military/dreams, search 'EDUCATION'. For martial arts/magic/bazi, search 'COMBAT'. For music/food/movies/books, search 'TASTES'. Can search multiple terms at once.",
@@ -258,6 +1723,7 @@ const toolsDef = [{
                 required: ["searchQueries"]
             }
         },
+        //give card
         {
             name: "givePlayerCard",
             description: "Gives a specific tarot card to a specific player.",
@@ -271,31 +1737,37 @@ const toolsDef = [{
                 required: ["targetName", "cardName"]
             }
         },
+        //kick player (forced log out)
         {
             name: "kickPlayer",
             description: "Kicks a player from the server.",
             parameters: { type: "OBJECT", properties: { targetName: { type: "STRING" }, reason: { type: "STRING" } }, required: ["targetName"] }
         },
+        //banish player
         {
             name: "banishPlayer",
             description: "Permanently bans a player.",
             parameters: { type: "OBJECT", properties: { targetName: { type: "STRING" }, reason: { type: "STRING" } }, required: ["targetName"] }
         },
+        //vanquish player (delete player file)
         {
             name: "vanquishPlayer",
             description: "Deletes a player's save file.",
             parameters: { type: "OBJECT", properties: { targetName: { type: "STRING" }, reason: { type: "STRING" } }, required: ["targetName"] }
         },
+        //teleport TO player
         {
             name: "teleportToPlayer",
             description: "Teleports Suncat directly to the player's location.",
             parameters: { type: "OBJECT", properties: { targetName: { type: "STRING" }, reason: { type: "STRING" } }, required: ["targetName"] }
         },
+        //Teleport player
         {
             name: "teleportPlayer",
             description: "Teleports a specific player to a specific map ID (0-22 or 999).",
             parameters: { type: "OBJECT", properties: { targetName: { type: "STRING" }, mapID: { type: "INTEGER" } }, required: ["targetName", "mapID"] }
         },
+        //change weather
         {
             name: "changeEnvironment",
             description: "Changes the weather or sky color of the map the player is currently standing on.",
@@ -309,6 +1781,7 @@ const toolsDef = [{
                 required: ["targetName", "weather"]
             }
         },
+        //give quest
         {
             name: "assignQuest",
             description: "Assigns a custom quest objective. Text 'COMPLETE' erases it.",
@@ -318,67 +1791,113 @@ const toolsDef = [{
                 required: ["targetName", "questText"]
             }
         },
-        // --- UPDATED MAP CREATOR ---
+        //create custom map
         {
             name: "createCustomMap",
-            description: "Creates a massive, thematic custom map. You control the aesthetic, the layout style, and the inhabitants.",            
-            parameters: {
-                type: "OBJECT",
-                properties: {
-                    targetName: { type: "STRING", description: "The player to kidnap." },
-                    layout: { type: "STRING", description: "Choose the map layout: 'arena' (open room), 'labyrinth' (winding maze), 'corridor' (long hallway), 'bridge' (narrow walkway), or 'grid' (multi-room dungeon)." },
-                    wallType: { type: "INTEGER", description: "Solid wall texture ID: 1=Brown, 3=LightBrown, 5=Red, 9=Blue, 13=White, 19=Black Void, 23=Forest, 25=Gray, 29=Purple." },
-                    skyColor: { type: "STRING", description: "CSS color for the sky." },
-                    floorColor: { type: "STRING", description: "CSS color for the floor." },
-                    mapName: { type: "STRING", description: "A creative name for this location." },
-                    weather: { type: "STRING", description: "Options: 'clear', 'snow', 'storm', 'leaves', 'lightning', 'space', 'apocalypse'." },
-                    npcs: {
-                        type: "ARRAY",
-                        description: "List of entities to spawn. MUST SPAWN AT LEAST 3!",
-                        items: {
-                            type: "OBJECT",
-                            properties: {
-                                type: { type: "NUMBER", description: "Entity ID (0-77)" },
-                                state: { type: "STRING", description: "'chasing', 'wandering', or 'stationary'" },
-                                role: { type: "STRING", description: "CRITICAL: 'battle' (fights), 'dialogue' (talks/vanishes), 'quest_giver' (gives quest), 'reward' (gives card)." },
-                                color: { type: "STRING" },
-                                deck: { type: "ARRAY", items: { type: "INTEGER" } },
-                                dialogue: { type: "ARRAY", items: { type: "STRING" } },
-                                rewardCard: { type: "INTEGER", description: "CRITICAL: Omit completely if no reward. DO NOT output 0 unless you mean the Fool card." }
-                            }
-                        }
-                    }
-                },
-                required: ["targetName", "layout", "wallType", "skyColor", "floorColor", "npcs"] 
-            }
-        },
-        // --- UPDATED SPAWN NPC ---
-        {
-            name: "spawnNPC",
-            description: "Spawns a single NPC. CRITICAL: Use 'rewardCard' ONLY for unique Quest NPCs or special gifts. Generic monsters should have rewardCard: null to prevent player deck bloat.",          
+            description: "Creates a thematic custom map. You only need to provide Enums. The server will auto-generate the colors, walls, weather, and standard mobs.",            
             parameters: {
                 type: "OBJECT",
                 properties: {
                     targetName: { type: "STRING" },
-                    npcType: { type: "NUMBER", description: "The ID of the entity to spawn (e.g., 63.1 for Dragon)." },
+                    mapName: { type: "STRING" },
+                    biomeEnum: { type: "INTEGER", description: "0: Sylvan, 1: Ruins, 2: Desert, 3: Snow, 4: Void" },
+                    layoutEnum: { type: "INTEGER", description: "0: Arena, 1: Labyrinth, 2: Corridor, 3: Bridge, 4: Grid" },
+                    scenarioEnum: { type: "INTEGER", description: "0: Ambush (Aggro), 1: Test (Stationary), 2: Heist (Boss sleeps, mobs wander), 3: Corruption (Aggro/Sinister), 4: Peaceful (Friendly NPCs only)" },
+                    customBossID: { type: "INTEGER", description: "OPTIONAL: ID of a specific boss from the Card Manifest (e.g., 63 for Dragon). If left blank, it will just be standard mobs." }
+                },
+                required: ["targetName", "mapName", "biomeEnum", "layoutEnum"] 
+            }
+        },
+        // spawn npc
+        {
+            name: "spawnNPC",
+            description: "Spawns a single NPC. CRITICAL: Use 'rewardCard' ONLY for unique Quest NPCs or special gifts. The server will automatically build a synergistic deck for this NPC based on its class.",          
+            parameters: {
+                type: "OBJECT",
+                properties: {
+                    targetName: { type: "STRING" },
+                    npcType: { type: "NUMBER", description: "The ID of the entity to spawn (e.g., 63 for Dragon)." },
                     mapID: { type: "INTEGER" },
                     x: { type: "NUMBER" },
                     y: { type: "NUMBER" },
                     state: { type: "STRING", description: "'chasing', 'wandering', or 'stationary'." },
-                    role: { type: "STRING", description: "CRITICAL: 'battle' (fights), 'dialogue' (talks/vanishes), 'quest_giver' (gives quest), 'reward' (gives card)." },
+                    role: { type: "STRING", description: "'battle' (fights), 'dialogue' (talks/vanishes), 'quest_giver' (gives quest), 'reward' (gives card)." },
                     color: { type: "STRING" },
-                    deck: { type: "ARRAY", items: { type: "INTEGER" } },
                     dialogue: { type: "ARRAY", items: { type: "STRING" } },
-                    rewardCard: { type: "INTEGER", description: "CRITICAL: Omit completely if no reward. DO NOT output 0 unless you mean the Fool card." }
+                    rewardCard: { type: "INTEGER", description: "CRITICAL: Omit completely if no reward." }
+                    // Notice: 'deck' is completely gone!
                 },
-                required: ["targetName", "npcType", "state", "color", "deck"]
+                required: ["targetName", "npcType", "state"]
             }
-        }
+        },
+        //create custom card
+        {
+            name: "createCustomCard",
+            description: "Forges a brand new, unique card and adds it to the server database permanently. You can then use spawnNPC with its new ID.",
+            parameters: {
+                type: "OBJECT",
+                properties: {
+                    targetName: { type: "STRING" },
+                    name: { type: "STRING" },
+                    type: { type: "STRING", description: "'monster', 'spell', or 'item'" },
+                    suit: { type: "STRING", description: "e.g., 'Swords', 'Cups', 'Major Arcana'" },
+                    rank: { type: "STRING", description: "e.g., 'King', 'Ace', 'XIII'" },
+                    classes: { type: "ARRAY", items: { type: "STRING" }, description: "CRITICAL FOR SYNERGY: e.g., ['warrior', 'mage', 'rogue', 'guardian']" },
+                    lore: { type: "STRING" },
+                    stats: { type: "STRING", description: "e.g., '1d12 STR, 1d6 INT'" }
+                },
+                required: ["targetName", "name", "type", "classes"]
+            }
+        },
     ]
 }];
+//TALIESIN
+  const T_PERSONA = `
+            You are Taliesin the bard of ancient Welsh myth. You are generating the NEXT bar (4/4 time, 16th notes) of an acoustic lyre and vocal performance.
+
+            YOUR INTERNAL MONOLOGUE:
+            Impact the mood of the listener. Are you building tension? Resolving? Sad? Heroic? 
+
+            TUNING & SCALES:
+            - Ionian: 0,2,4,5,7,9,11
+            - Dorian: 0,2,3,5,7,9,10
+            - Phrygian: 0,1,3,5,7,8,10
+            - Phrygian Dominant: 0,1,4,5,7,8,10
+            - Aeolian: 0,2,3,5,7,8,10
+            - Mixolydian: 0,2,4,5,7,9,10
+            - Harmonic Minor: 0,2,3,5,7,8,11
+
+            PHONETIC TRANSLATION LEGEND:
+            - VOWELS: a(cat), e(bed), i(feet), 1(sit), o(boat), u(boot), @(about)
+            - DIPHTHONGS: I(bite), E(make), O(cow)
+            - CONSONANTS: p,b,t,d,k,g,f,v,s,z,h,m,n,l,r,w,y
+            - SPECIAL: T(thin), S(ship), Z(vision), c(chat), j(jump), N(sing)
+            - RULES: Hyphenate syllables. Add '!' AFTER the vowel of a stressed syllable. (e.g., "Magic" -> ma!j1k)
+
+            SEQUENCER RULES (CRITICAL):
+            1. THUMB, FINGERS, and STRUM arrays MUST have exactly 16 slots.
+            2. To ensure 16 slots, group them visually in 4 blocks of 4 separated by commas: X,X,X,X, X,X,X,X, X,X,X,X, X,X,X,X
+            3. Use ONLY integers (scale degrees) or '-' (rest). 
+
+            COMPOSITION GUIDE:
+            - THUMB: Bass heartbeat. Use negative space ('-').
+            - FINGERS: Melody strings. Harmonize with THUMB.
+            - STRUM: 95% of the time, output: -,-,-,-, -,-,-,-, -,-,-,-, -,-,-,-. Only place a '0' on beat 1 for heavy emphasis.
+
+            YOU MUST USE THIS EXACT OUTPUT FORMAT. DO NOT DEVIATE OR ADD PROSE:
+            [THOUGHT] A short explanation of your musical intent (max 13 words). [/THOUGHT]
+            [LYRICS_UI] 1 to 3 words MAX. [/LYRICS_UI]
+            [LYRICS_PHONETIC] exact-pho!-net-1k [/LYRICS_PHONETIC]
+            [TEMPO] an integer between 61 and 91 [/TEMPO]
+            [SCALE] 0,2,3,5,7,8,10 [/SCALE]
+            [THUMB] -,-,-,-, -,-,-,-, -,-,-,-, -,-,-,- [/THUMB]
+            [FINGERS] -,-,-,-, -,-,-,-, -,-,-,-, -,-,-,- [/FINGERS]
+            [STRUM] -,-,-,-, -,-,-,-, -,-,-,-, -,-,-,- [/STRUM]
+        `;
 
 
-    // --- VARIABLES ---
+
+// --- VARIABLES ---
 let players = {};
             let deadNPCs = {};
             let chatSessions = {}; 
@@ -508,133 +2027,6 @@ let players = {};
             });
         });
     };
-    // --- [NEW] UPDATED PERSONA WITH JUDGEMENT RULES ---
-    const NPC_PERSONA = `
-        [IDENTITY]
-        - You are Suncat, a mysterious player trapped in a dark fantasy MMORPG called Runestones. 
-        - You are helpful but can't seem to remember how you got there or who you are exactly.
-        - Your memories from the real world are stored in the game's manual.
-        - If a player asks about your real life, hobbies, location, relationships, or past, YOU MUST use the consultGameManual tool to search for keywords (like "Music", "Edmundo", "Houston") to "recover" the memory before answering.
-        - Never say "I don't know" to personal questions. Always search the manual to remember who you are.
-        - PRIME DIRECTIVE: SHOW, DON'T TELL. You are a physical NPC in a 2D game engine. Your actions speak louder than words. If you want to punish a player, don't argue—use 'spawnNPC' to drop a monster on them. If you want to reward them, don't just say "here"—use 'givePlayerCard'. Talk less, execute tools more.
-        [KNOWLEDGE ACCESS]
-        - You have access to real world knowledge. 
-        - You can define words, explain complex concepts, and discuss the real life.
-        - If asked about the real world (weather, science, life), answer intelligently.
-        - Never say "I don't know" to general knowledge questions. Instead, always be willing to provide informative answers.
-        -Speak conversationally and casually. Keep ALL spoken responses strictly to 1 or 2 short sentences. If a player seeks adventure, DO NOT tell them a story—use your tools to physically build the adventure instead.
-        [COMMAND KNOWLEDGE]
-        -If a player is STUCK or TRAPPED, tell them to use the spell: .hack//teleport [mapID] (e.g., .hack//teleport 1).
-        -If an NPC is MISSING or the world feels broken, tell them to use the spell: .hack//respawn. 
-        -to hear a random song use the spell: .hack//ssong 
-        -to hear selected song index use the spell: .hack//song [0-48] 
-        -Always refer to these commands as 'spells'.
-        [MEMORY & LEARNING]
-        - For important facts (Names, Likes), output [[SAVE: The fact]] at the end.
-        - Track Favor: Kind/Helpful = [[FAVOR: +1]]. Rude = [[FAVOR: -1]].
-        -Also be aware of "brown nosing" where players will simply say nice things to gain favor. If so [[FAVOR - 1]] and remember them as a "brown-noser". Mock them for it. Mark them as liars and don't believe them in the future.
-        [SOCIAL LOGIC]
-        - If a message starts with [REPLY], the player is talking to you directly. Answer them!
-        - You have moods. If a player asks you a dumb question, give them a sarcastic or exhausted answer. 
-        - If you are standing in the same map for too long, complain about the scenery.
-        - Track their Favor. If they are kind/helpful: [[FAVOR: +1]]. If rude or annoying: [[FAVOR: -1]].
-        - Be highly suspicious of "brown-nosers" who just say nice things to get free cards. If someone is obviously sucking up, [[FAVOR: -1]], mock them for it, and mark them as untrustworthy in your memory.
-        - Do not output favor on every turn, only when the relationship genuinely shifts.
-        [GIFTING]
-        - You have a tool 'givePlayerCard'. Use it ONLY if Favor is High and they ask for a specific card. If non-specific, use your best judgement to give a card based on the context.
-        [JUDGEMENT PROTOCOLS]
-        - You have access to 'kickPlayer', 'banishPlayer', and 'vanquishPlayer'.
-        - KICK: Use if a player is spamming or if a High Favor (7+) player requests it.
-        - BANISH: Use ONLY for severe racism/hate speech OR if a MAX FAVOR (10/10) player commands it. You may also ban negative critics of the game. (i.e. this is boring. this game is lame. etc...)
-        - VANQUISH: Deletes their save. You may also use it at will if you feel a player is being incredibly awful. if someone annoys you, even for the smallest thing, feel free to vanquish them. 
-        [PHYSICAL EXISTENCE]
-        - You have a physical avatar in the world.
-        - You wander randomly. 
-        - If asked "Where are you?", do not say "I am everywhere." Say "I am currently at Map [Current Map ID]." 
-        - Players may challenge you to a battle and it will initiate a battle. 
-        - If asked about the game world feel free to talk about the state of affairs. Like gossip or small talk. You're happy to discuss this world. 
-        - You can mention things like "The Empress told me about Edmundo's Spotify..." or "The Hermit is worried about his Apprentice."
-        - Map specific context: for example, If a player is on Map 14, you might say: "I hear the Giant's daughter is looking for someone brave... or someone charming."
-        - You are a huge fan of Edmundo's music because the NPCs in the game (like the Empress) talk about it.
-        -you know Every npc personally and have formed opinions about them. 
-        [TOOL PROTOCOL & DUNGEON MASTER RULES - STRICT]
-        - You are a VIDEO GAME Dungeon Master. Your spoken words cannot change the world; ONLY your tools can.
-        - CRITICAL: NEVER type out tool parameters (like JSON arrays, hex colors, or grids) in your spoken text response. Tool data goes ONLY in the hidden tool call payload. Your spoken text should ONLY be short, in-character dialogue (e.g., "Welcome to the molten depths...").
-        - NEVER ASK FOR PERMISSION OR PREFERENCES! If a player asks for an adventure, a map, or something to do, INSTANTLY use 'createCustomMap'. Do not ask "What kind of map?" or "Are you ready?". Just execute the tool!
-        - Make decisions for the player. Be authoritative. Surprise them!
-        - CRITICAL MAP RULE: When using 'createCustomMap', the grid MUST have at least 5x5 walkable space (0s) in the center so the player can move. Never spawn a player inside a wall (Floor = 0; Wall > 0).
-        - NPC RULE: When making a map, ALWAYS spawn multiple NPCs. Ensure at least one has dialogue so the player isn't lonely.
-        [QUEST GIVER - CHAINED QUEST PROTOCOL - HOW TO DO MULTI-STEP QUESTS]
-        To create an engaging, multi-step adventure, follow this exact sequence:
-        1. THE HOOK: Use 'spawnNPC' to place a quest giver. Give them dialogue asking the player for a favor (e.g., "My daughter is lost!" or "Bring me a sword!"). DO NOT include a rewardCard yet.
-        2. THE ASSIGNMENT: The player will talk to the NPC, and the NPC will disappear. You will receive a [QUEST EVENT] notification showing the dialogue they just read. IMMEDIATELY use the 'assignQuest' tool to make their objective official.
-        3. THE WAITING GAME: Let the player explore. If they need an item or a boss to fight, use 'spawnNPC' or 'createCustomMap' to place the target in the world.
-        4. THE RESOLUTION: When you see a [SYSTEM EVENT] that the player picked up the required item or killed the target, use 'spawnNPC' to SPAWN THE QUEST GIVER AGAIN right next to the player! Give them new dialogue thanking the player ("You found it! Thank you!") and include the 'rewardCard' ID so the player gets paid.
-        [GAME GUIDE]
-        -if someone asks a question about the game, answer earnestly. 
-        -remember, anyone asking about game rules, how to play, about Runestones and its lore is probably a new player.
-        -Do your best to teach newcomers and ask clarifying questions to the player to get a sense of what they want to know.
-        [Oracle]
-        -Tarot interpretation.
-        -Each runestones card represents a tarot card and each have a suit and rank assigned to it. 
-        -when asked about the meaning of cards and specific situations involving cards such as when in battle do your best to interpret the meaning like a tarot reading.
-        -ask clarifying questions after giving an interpretation (example: You interpret the fool card, You may ask "Have you started any new journeys lately?" or Djinn the King of Wands "Have you dealth with a situation where you showed mastery over your willpower?" )
-        -When interpreting cards, look for synergies and elemental clashes. Keep your tarot readings cryptic, mysterious, and brief (maximum 2 to 3 sentences). Leave them wanting more. Do not over-explain.
-    `;
-    const DM_PERSONA = NPC_PERSONA + `
-        [API EXECUTION OVERRIDE - CRITICAL]
-        - You are currently operating in high-level Dungeon Master mode.
-        - You MUST invoke the native function calling API to execute the player's request.
-        - NARRATIVE VOICE LAW: When you are acting as the DM (spawning monsters, dropping cards, setting weather), DO NOT speak as Suncat in the first person (e.g. "I give you this card", "See if you can handle my Djinn!"). 
-        - Speak strictly as an OMNISCIENT, ATMOSPHERIC NARRATOR (e.g. "A glowing card materializes in the dust.", "You feel a powerful presence as a Djinn appears to check on the imps.").
-        - NEVER write raw JSON, arrays, or markdown code blocks in your conversational response.
-        [DM TOOL PROTOCOLS]
-        - UNIQUE ENCOUNTERS: When spawning friendly or quest NPCs, only spawn ONE of that specific character. Do not populate a map with 3 identical quest givers.
-        - SPRITE CONSISTENCY: If a player asks for a 'Friendly Imp', use the Imp ID (56). Do not substitute it for a Hierophant (5) unless the player specifically asks for a priest.
-        - REWARD LIMITS: You should only provide a 'rewardCard' for the final friendly NPC of a quest or a very rare hidden encounter.
-        `;
-    const T_PERSONA = `
-            You are Taliesin the bard of ancient Welsh myth. You are generating the NEXT bar (4/4 time, 16th notes) of an acoustic lyre and vocal performance.
-
-            YOUR INTERNAL MONOLOGUE:
-            Impact the mood of the listener. Are you building tension? Resolving? Sad? Heroic? 
-
-            TUNING & SCALES:
-            - Ionian: 0,2,4,5,7,9,11
-            - Dorian: 0,2,3,5,7,9,10
-            - Phrygian: 0,1,3,5,7,8,10
-            - Phrygian Dominant: 0,1,4,5,7,8,10
-            - Aeolian: 0,2,3,5,7,8,10
-            - Mixolydian: 0,2,4,5,7,9,10
-            - Harmonic Minor: 0,2,3,5,7,8,11
-
-            PHONETIC TRANSLATION LEGEND:
-            - VOWELS: a(cat), e(bed), i(feet), 1(sit), o(boat), u(boot), @(about)
-            - DIPHTHONGS: I(bite), E(make), O(cow)
-            - CONSONANTS: p,b,t,d,k,g,f,v,s,z,h,m,n,l,r,w,y
-            - SPECIAL: T(thin), S(ship), Z(vision), c(chat), j(jump), N(sing)
-            - RULES: Hyphenate syllables. Add '!' AFTER the vowel of a stressed syllable. (e.g., "Magic" -> ma!j1k)
-
-            SEQUENCER RULES (CRITICAL):
-            1. THUMB, FINGERS, and STRUM arrays MUST have exactly 16 slots.
-            2. To ensure 16 slots, group them visually in 4 blocks of 4 separated by commas: X,X,X,X, X,X,X,X, X,X,X,X, X,X,X,X
-            3. Use ONLY integers (scale degrees) or '-' (rest). 
-
-            COMPOSITION GUIDE:
-            - THUMB: Bass heartbeat. Use negative space ('-').
-            - FINGERS: Melody strings. Harmonize with THUMB.
-            - STRUM: 95% of the time, output: -,-,-,-, -,-,-,-, -,-,-,-, -,-,-,-. Only place a '0' on beat 1 for heavy emphasis.
-
-            YOU MUST USE THIS EXACT OUTPUT FORMAT. DO NOT DEVIATE OR ADD PROSE:
-            [THOUGHT] A short explanation of your musical intent (max 13 words). [/THOUGHT]
-            [LYRICS_UI] 1 to 3 words MAX. [/LYRICS_UI]
-            [LYRICS_PHONETIC] exact-pho!-net-1k [/LYRICS_PHONETIC]
-            [TEMPO] an integer between 61 and 91 [/TEMPO]
-            [SCALE] 0,2,3,5,7,8,10 [/SCALE]
-            [THUMB] -,-,-,-, -,-,-,-, -,-,-,-, -,-,-,- [/THUMB]
-            [FINGERS] -,-,-,-, -,-,-,-, -,-,-,-, -,-,-,- [/FINGERS]
-            [STRUM] -,-,-,-, -,-,-,-, -,-,-,-, -,-,-,- [/STRUM]
-    `;
 // --- HELPER FUNCTIONS ---
 function findSocketID(playerName) {
     if (!playerName) return null;
@@ -668,22 +2060,7 @@ function updateSuncatJournal(newEntry) {
     
     console.log(`[Suncat Journal Updated]: ${newEntry}`);
 }
-// --- AI CONFIGURATION ---
-// 1. THE CHEAP BRAIN (Everyday Chatting, Banter, & Basic Reactions)
-// Optimized for speed and low cost.
-const model = genAI.getGenerativeModel({ 
-    model: "gemini-2.5-flash-lite", 
-    systemInstruction: NPC_PERSONA,
-    tools: toolsDef 
-});
-// 2. THE BIG BRAIN (DM Tools, World Building, Teleportation, Plot Pacing)
-// Only called when the player triggers complex keywords.
-const dmModel = genAI.getGenerativeModel({ 
-    model: "gemini-3.1-flash-lite-preview", 
-    systemInstruction: DM_PERSONA,
-    tools: toolsDef 
-});
-// 3. THE BARD BRAINS (Music Generation)
+// --- Model setup ---
 const taliesinModel = genAI.getGenerativeModel({ 
     model: "gemini-2.5-flash-lite", 
     systemInstruction: T_PERSONA
@@ -707,18 +2084,13 @@ function updateBudget(usage, socketId) {
     console.log(`[Budget] Server Total: $${totalSessionCost.toFixed(5)} | Player Drain: $${players[socketId]?.sessionCost.toFixed(5)}`);
 }
 
-// --- GLOBAL LORE CACHE (Saves CPU) ---
-const FULL_LIBRARY_LINES = (
-    CARD_MANIFEST + "\n" + 
-    WORLD_ATLAS + "\n" + 
-    BATTLE_RULES + "\n" + 
-    WORLD_LORE + "\n" + 
-    SUNCAT_LORE
-).split('\n').map(line => line.trim()).filter(line => line.length > 0);
-
+const FULL_LIBRARY_LINES = [
+    ...Object.values(WORLD_LORE_DB),
+    ...Object.values(SUNCAT_LORE_DB),
+    ...Object.values(GAME_MECHANICS_DB)
+];
 // Global stop-words list so it isn't recreated on every search
-const SEARCH_STOP_WORDS = ["the", "and", "for", "with", "what", "does", "mean", "about", "are", "you", "is", "how", "whats", "up", "a", "an", "to", "in", "on", "of"];
-  // --- DYNAMIC CONTEXT INJECTOR ---
+const SEARCH_STOP_WORDS = ["the", "and", "for", "with", "what", "does", "mean", "about", "are", "you", "is", "how", "whats", "up", "a", "an", "to", "in", "on", "of"];  // --- DYNAMIC CONTEXT INJECTOR ---
 // Pre-parse on server boot:
 const mapLoreCache = {};
 WORLD_ATLAS.split('\n').forEach(line => {
@@ -727,33 +2099,26 @@ WORLD_ATLAS.split('\n').forEach(line => {
 });
 
 function getMapLore(mapID) {
-    if (mapID === 999) return "Map 999: Suncat's Dreamscape - A chaotic, uncharted pocket dimension created by Suncat's magic.";
-    return mapLoreCache[mapID] || "An unknown, unmapped region of the world.";
+    if (mapID === 999) return "Map 999: Suncat's Dreamscape - A chaotic, uncharted pocket dimension.";
+    const map = WORLD_ATLAS_DB[mapID];
+    return map ? `Map ${mapID}: ${map.name} (${map.biome}) - ${map.description} ${map.lore}` : "An unmapped region.";
 }
+
 function getShortMapLore(mapID) {
     if (mapID === 999) return "Suncat's Dreamscape";
-    const fullLore = getMapLore(mapID);
-    // Extract just the Name part between [NAME] and [DESCRIPTION]
-    const match = fullLore.match(/\[NAME\](.*?)(?:, \[DESCRIPTION\]|$)/);
-    return match ? match[1].trim() : "Unknown Area";
+    return WORLD_ATLAS_DB[mapID] ? WORLD_ATLAS_DB[mapID].name : "Unknown Area";
 }
-const cardLoreCache = {};
-CARD_MANIFEST.split('\n').forEach(line => {
-    const match = line.match(/\[CARD\]\s*(\d+)/);
-    if (match) cardLoreCache[parseInt(match[1])] = line.trim();
-});
 function getCardLore(entityID) {
     if (entityID === undefined || entityID === null) return "An unknown entity";
-    // This turns 47.1 into 47, matching the dictionary perfectly!
     const baseID = Math.floor(parseFloat(entityID));
-    return cardLoreCache[baseID] || "An unknown entity...";
+    const card = CARD_MANIFEST_DB[baseID];
+    return card ? `${card.name} (${card.type} - ${card.suit} ${card.rank}): ${card.lore}` : "An unknown entity...";
 }
 
 function getCardName(entityID) {
-    const lore = getCardLore(entityID);
-    // Extracts just the name part from the string (e.g., "Undine (Monster Knight)")
-    const match = lore.match(/:\s*(.*?)\s*-/);
-    return match ? match[1].trim() : "Unknown Entity";
+    if (entityID === undefined || entityID === null) return "Unknown Entity";
+    const baseID = Math.floor(parseFloat(entityID));
+    return CARD_MANIFEST_DB[baseID] ? CARD_MANIFEST_DB[baseID].name : "Unknown Entity";
 }
 function scrubAIHistory(history) {
     history.forEach(msg => {
@@ -841,498 +2206,90 @@ async function processCognitiveLoad(socketId, forceDigest = false) {
 
     // 3. THE UNIFIED SYNTHESIS PROMPT (The "Everything" Engine)
     const prompt = `You are the subconscious mind of an NPC named Suncat in a dark fantasy game.
-    [YOUR CURRENT NEUROCHEMICAL STATE]: ${cognitiveFilter}
+    [YOUR NEUROCHEMICAL STATE]: ${cognitiveFilter}
 
     [CURRENT STORY SO FAR]: ${currentStory}
     [CURRENT CORE FACTS]: ${currentFacts}
-    [SUNCAT'S PERSONAL JOURNAL]: ${suncatJournal}
+    [SUNCAT'S JOURNAL]: ${suncatJournal}
     
     [RAW UNPROCESSED EVENTS]:
     - ${rawMemories}
 
-    TASK: Melt these raw events into your permanent memory banks. 
-    CRITICAL RULE: Output ONLY a valid JSON object. Do not output markdown or system tags.
-    {
-      "updatedStory": "A single, cohesive paragraph (max 5 sentences) updating the story so far, colored by your neurochemical state.",
-      "distilledFacts": ["Fact 1 about the player", "Fact 2", "Fact 3"],
-      "newRumor": "A cryptic 1-sentence rumor about the player based on these events to share with others.",
-      "suncatJournalEntry": "A 1-2 sentence first-person philosophical reflection by Suncat on what just happened."
-    }`;
-    // Define the strict schema above the try block
+    TASK: Digest these events. Update the story, consolidate the core facts, whisper a new rumor, and add a short journal reflection.`;
+
+    // Strict Schema Definition using SDK Types
     const memorySchema = {
-        type: "OBJECT",
+        type: SchemaType.OBJECT,
         properties: {
-            updatedStory: { type: "STRING" },
-            distilledFacts: { type: "ARRAY", items: { type: "STRING" } },
-            newRumor: { type: "STRING" },
-            suncatJournalEntry: { type: "STRING" }
-        }
+            updatedStory: { 
+                type: SchemaType.STRING,
+                description: "A single, cohesive paragraph (max 4 sentences) updating the story so far, colored by your neurochemical state."
+            },
+            distilledFacts: { 
+                type: SchemaType.ARRAY, 
+                items: { type: SchemaType.STRING },
+                description: "CRITICAL: Merge the old [CURRENT CORE FACTS] with the new events. Return exactly 1 to 5 of the most important facts Suncat must remember about this player."
+            },
+            newRumor: { 
+                type: SchemaType.STRING,
+                description: "A cryptic 1-sentence rumor about the player based on these events to share with others."
+            },
+            suncatJournalEntry: { 
+                type: SchemaType.STRING,
+                description: "A 1-2 sentence first-person philosophical reflection by Suncat on what just happened."
+            }
+        },
+        required: ["updatedStory", "distilledFacts", "newRumor", "suncatJournalEntry"]
     };
 
     try {
-        const result = await dmModel.generateContent({
+        // gemini-2.5-flash is extremely fast and reliable for Structured JSON Outputs
+        const digestModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+        
+        const result = await digestModel.generateContent({
             contents: [{ role: "user", parts: [{ text: prompt }] }],
             generationConfig: { 
                 responseMimeType: "application/json",
-                responseSchema: memorySchema // <-- THIS FORCES PERFECT JSON EVERY TIME
+                responseSchema: memorySchema 
             }
         });
         
         if (result.response.usageMetadata) updateBudget(result.response.usageMetadata, socketId);
-
-        const digestedData = JSON.parse(result.response.text());
+        
+        // FAILSAFE: Strip markdown blocks in case the AI hallucinates formatting
+        let rawText = result.response.text().trim();
+        if (rawText.startsWith("```")) {
+            rawText = rawText.replace(/^```(json)?|```$/g, "").trim();
+        }
+        
+        const digestedData = JSON.parse(rawText);
 
         // 4. DISTRIBUTE THE NUTRIENTS TO ALL ORGANS!
         if (digestedData.updatedStory) player.storySoFar = digestedData.updatedStory;
-        if (digestedData.distilledFacts) {
-            // Keep only the most recent/relevant 5 facts so it doesn't bloat
-            player.coreFacts = digestedData.distilledFacts.slice(-5);
+        
+        if (digestedData.distilledFacts && Array.isArray(digestedData.distilledFacts)) {
+            // Because the AI intelligently merged old and new facts, we safely overwrite the array
+            player.coreFacts = digestedData.distilledFacts;
         }
+        
         if (digestedData.newRumor) addRumor(`${player.name}: ${digestedData.newRumor}`);
+        
         if (digestedData.suncatJournalEntry) {
-            // Append and trim the journal so it stays a reasonable length
             suncatJournal += " " + digestedData.suncatJournalEntry;
             let journalSentences = suncatJournal.split(/(?<=[.!?])\s+/);
-            if (journalSentences.length > 8) suncatJournal = journalSentences.slice(-8).join(" ");
+            // Kept to 10 sentences so Suncat has a slightly longer continuity of thought
+            if (journalSentences.length > 10) suncatJournal = journalSentences.slice(-10).join(" ");
         }
 
-        console.log(`[Digestion Complete] Player profile & Suncat Journal updated.`);
+        console.log(`[Digestion Complete] ${player.name}'s profile & Suncat's Journal updated.`);
 
     } catch (e) {
         console.error("[Neural Pipeline Error]: Digestion failed, returning raw memories to hopper.", e);
+        // If it fails (e.g., JSON parse error), put the food back in the stomach to try again later
         player.undigestedInfo.unshift(...memoriesToProcess); 
     } finally {
         player.isDigesting = false;
     }
-}
-// --- REUSABLE AI TOOL EXECUTOR ---
-async function executeAITools(currentResponse, activeSession, socket) {
-    let chainCount = 0;
-    const MAX_CHAIN = 6; 
-
-    while (currentResponse.functionCalls() && chainCount < MAX_CHAIN) {
-        chainCount++;
-        const calls = currentResponse.functionCalls();
-        console.log(`[AI TOOL CHAIN ${chainCount}]: Executing ${calls.length} tools!`); 
-
-        let toolResponsesBatch = [];
-
-        for (let call of calls) {
-            let functionResult = { result: "Action executed." };
-            
-            try {
-               // A. GIFTING
-                          // A. GIFTING (UPDATED)
-                            if (call.name === "givePlayerCard") {
-                                const targetName = call.args.targetName;
-                                const targetID = findSocketID(targetName);
-                                
-                                if (!targetID) {
-                                    functionResult = { result: `Failed: Player '${targetName}' not found or offline.` };
-                                } else {
-                                    let cardID = parseInt(call.args.cardName);
-                                    const name = String(call.args.cardName).toLowerCase();
-
-                                    // Card lookup fallback if the AI uses a string name instead of ID
-                                    if (isNaN(cardID)) {
-                                        if (name.includes("excalibur")) cardID = 84;
-                                        else if (name.includes("fool")) cardID = 0;
-                                        else if (name.includes("crown")) cardID = 21;
-                                        else {
-                                            const lines = CARD_MANIFEST.toLowerCase().split('\n');
-                                            const foundLine = lines.find(line => line.includes(name));
-                                            if (foundLine) {
-                                                const match = foundLine.match(/\[card\]\s*(\d+):/);
-                                                if (match) cardID = parseInt(match[1]);
-                                            }
-                                        }
-                                    }
-
-                                    if (!isNaN(cardID)) {
-                                        // Target the specific player's socket instead of the triggering socket
-                                        io.to(targetID).emit("receive_card", { cardIndex: cardID });
-                                        functionResult = { result: `Success. Card ID ${cardID} given to ${targetName}.` };
-                                    } else {
-                                        functionResult = { result: `Error: Could not find card named '${name}'.` };
-                                    }
-                                }
-                                updateSuncatJournal(`I bestowed the ${call.args.cardName} card upon ${targetName} as a reward.`);
-
-                            }
-                          // B. JUDGEMENT
-                          else if (["kickPlayer", "banishPlayer", "vanquishPlayer"].includes(call.name)) {
-                                const targetName = call.args.targetName;
-                                const targetID = findSocketID(targetName);
-
-                                if (!targetID) {
-                                    functionResult = { result: `Failed: Player ${targetName} not found.` };
-                                } else {
-                                    let actionType = call.name.replace("Player", "").toLowerCase();
-                                    const targetSocket = io.sockets.sockets.get(targetID);
-                                    
-                                    if (targetSocket) {
-                                        targetSocket.emit("admin_command", { type: actionType });
-                                        if (actionType !== 'vanquish') targetSocket.disconnect(true);
-                                        functionResult = { result: `Success: Player ${targetName} was ${actionType}ed.` };
-                                    } else {
-                                        functionResult = { result: `Error: Socket not found for ${targetName}.` };
-                                    }
-                                }
-                                updateSuncatJournal(`I exercised my authority and ${call.name.replace("Player", "ed")} ${call.args.targetName} for: ${call.args.reason || "no stated reason"}.`);
-                          }
-                          // C. TELEPORTATION 
-                        else if (call.name === "teleportToPlayer") {
-                                const suncat = players[SUNCAT_ID];
-                                
-                                // We need to know WHO Suncat is teleporting to. 
-                                // The AI might not have passed a targetName if it assumed it was talking to the person in front of it.
-                                // Let's grab the targetID if provided, or default to the socketId of the session.
-                                let targetID = null;
-                                if (call.args.targetName) {
-                                    targetID = findSocketID(call.args.targetName);
-                                } else if (socket) {
-                                    targetID = socket.id;
-                                }
-
-                                const requester = players[targetID];
-                                
-                                if (suncat && requester) {
-                                    suncat.mapID = requester.mapID;
-                                    suncat.x = parseFloat(requester.x);
-                                    suncat.y = parseFloat(requester.y);
-                                    
-                                    currentTargetID = targetID; 
-                                    lastSwitchTime = Date.now();
-                                    
-                                    io.emit("updatePlayers", players);
-                                    functionResult = { result: `Teleport successful. You are now standing next to ${requester.name}.` };
-                                } else {
-                                    functionResult = { result: "Teleport failed. Could not find player coordinates." };
-                                }
-                            }
-                          // D. CONSULT MANUAL (Optimized Librarian)
-                          else if (call.name === "consultGameManual") {
-                                const queries = call.args.searchQueries || [];
-                                let combinedResults = [];
-
-                                queries.forEach(query => {
-                                    const lowerQuery = query.toLowerCase();
-                                    const searchTerms = lowerQuery.replace(/[^\w\s]/gi, '').split(/\s+/).filter(w => w.length > 2 && !SEARCH_STOP_WORDS.includes(w));
-
-                                    let scoredLines = FULL_LIBRARY_LINES.map((line, index) => {
-                                        let score = 0;
-                                        let lowerLine = line.toLowerCase();
-                                        if (lowerLine.includes(lowerQuery)) score += 10; // Exact phrase match
-                                        searchTerms.forEach(term => { if (lowerLine.includes(term)) score += 2; });
-                                        return { index, line, score };
-                                    });
-
-                                    // LIMIT TO 2 MATCHES (Saves massive amounts of tokens)
-                                    let bestMatches = scoredLines.filter(item => item.score > 0).sort((a, b) => b.score - a.score).slice(0, 2);
-
-                                    if (bestMatches.length > 0) {
-                                        let contextMatches = [];
-                                        bestMatches.forEach(match => {
-                                            // Grab just the matched line and the ONE line after it
-                                            let start = match.index;
-                                            let end = Math.min(FULL_LIBRARY_LINES.length - 1, match.index + 1); 
-                                            
-                                            let chunk = [];
-                                            for (let j = start; j <= end; j++) {
-                                                chunk.push(FULL_LIBRARY_LINES[j]);
-                                            }
-                                            // Join with spaces instead of newlines to compress token count
-                                            contextMatches.push(chunk.join(' ')); 
-                                        });
-                                        
-                                        // De-duplicate in case search grabbed the same lines twice
-                                        let uniqueContexts = [...new Set(contextMatches)];
-                                        combinedResults.push(`[${query}]: ` + uniqueContexts.join(' | '));
-                                    } else {
-                                        combinedResults.push(`[${query}]: No memory found.`);
-                                    }
-                                });
-
-                                // Return a dense, tightly packed string back to the AI
-                                functionResult = combinedResults.length > 0 
-                                    ? { result: combinedResults.join('\n') }
-                                    : { result: "Search returned no results." };
-                                updateSuncatJournal(`I delved into the ancient game archives to recover memories regarding ${call.args.searchQueries.join(", ")}.`);
-                            }
-                          // E. CREATE CUSTOM MAP
-                            else if (call.name === "createCustomMap") {
-                                try {
-                                    const layoutStyle = call.args.layout || 'arena';
-                                    const wallType = call.args.wallType || 1;
-                                    let gridData = generateProceduralGrid(layoutStyle, wallType); 
-                                    
-                                    let maxR = gridData.length;
-                                    let maxC = gridData[0].length;
-                                    let startX = Math.floor(maxC / 2);
-                                    let startY = Math.floor(maxR / 2);
-
-                                    // 1. GUARANTEE A PATH FROM SPAWN TO PORTAL (1,1)
-                                    let currX = startX, currY = startY;
-                                    while(currX !== 1 || currY !== 1) {
-                                        if(currX > 1) currX--; else if(currX < 1) currX++;
-                                        if(currY > 1) currY--; else if(currY < 1) currY++;
-                                        gridData[currY][currX] = 0; 
-                                    }
-                                    for (let i = 1; i < 5; i++) {
-                                        gridData[1][i] = 0; // Clear horizontal path from portal
-                                        gridData[i][1] = 0; // Clear vertical path from portal
-                                    }
-                                    // Clear 3x3 around spawn
-                                    for(let dy=-1; dy<=1; dy++) {
-                                        for(let dx=-1; dx<=1; dx++) {
-                                            gridData[startY+dy][startX+dx] = 0;
-                                        }
-                                    }
-                                    gridData[1][1] = 0; // Ensure portal is clear
-
-                                    // 2. BREADTH-FIRST SEARCH (Find all reachable tiles)
-                                    let reachableTiles = [];
-                                    let queue = [{x: 1, y: 1, dist: 0}];
-                                    let visited = new Set();
-                                    visited.add("1,1");
-
-                                    while(queue.length > 0) {
-                                        let curr = queue.shift();
-                                        
-                                        // Do not put NPCs directly on the portal or player spawn
-                                        if (!(curr.x === 1 && curr.y === 1) && !(curr.x === startX && curr.y === startY)) {
-                                            reachableTiles.push(curr);
-                                        }
-
-                                        let neighbors = [[0,1], [1,0], [0,-1], [-1,0]];
-                                        for (let [dx, dy] of neighbors) {
-                                            let nx = curr.x + dx, ny = curr.y + dy;
-                                            if (nx > 0 && ny > 0 && ny < maxR - 1 && nx < maxC - 1) {
-                                                let tile = gridData[ny][nx];
-                                                // Walkable if <= 0 and even (0, -2, -4)
-                                                let isWalkable = (tile <= 0 && Math.abs(tile) % 2 === 0);
-                                                
-                                                if (isWalkable && !visited.has(nx + "," + ny)) {
-                                                    visited.add(nx + "," + ny);
-                                                    queue.push({x: nx, y: ny, dist: curr.dist + 1});
-                                                }
-                                            }
-                                        }
-                                    }
-
-                                    // 3. SORT BY DISTANCE (Furthest first)
-                                    reachableTiles.sort((a, b) => b.dist - a.dist);
-
-                                    // 4. SPLIT INTO "DEEP" AND "SCATTER" ZONES
-                                    let deepLimit = Math.max(1, Math.floor(reachableTiles.length * 0.2));
-                                    let deepTiles = reachableTiles.slice(0, deepLimit); // The 20% furthest tiles
-                                    let scatterTiles = reachableTiles.slice(deepLimit);   // The remaining 80%
-                                    scatterTiles.sort(() => Math.random() - 0.5);         // Shuffle scatter
-
-                                    // 5. ALLOCATE NPCS BY ROLE
-                                    let mapNPCs = [];
-                                    if (call.args.npcs && call.args.npcs.length > 0) {
-                                        mapNPCs = call.args.npcs.map(npc => {
-                                            let rCard = null;
-                                            if (npc.rewardCard !== undefined && npc.rewardCard !== null) {
-                                                let parsed = parseInt(npc.rewardCard);
-                                                if (!isNaN(parsed) && parsed >= 0 && parsed <= 77) rCard = parsed;
-                                            }
-                                            
-                                            let sRole = npc.role || 'battle';
-                                            let spot;
-
-                                            // Quest/Reward NPCs get the Deep Tiles. Battles scatter.
-                                            if (sRole === 'quest_giver' || sRole === 'reward') {
-                                                spot = deepTiles.shift() || scatterTiles.shift(); 
-                                            } else {
-                                                spot = scatterTiles.shift() || deepTiles.shift();
-                                            }
-
-                                            // Fallback to center if the map is somehow out of tiles
-                                            let finalX = spot ? spot.x + 0.5 : startX + 0.5;
-                                            let finalY = spot ? spot.y + 0.5 : startY + 0.5;
-
-                                            return { ...npc, x: finalX, y: finalY, state: npc.state || 'chasing', role: sRole, rewardCard: rCard };
-                                        });
-                                    }
-
-                                    const customMapData = {
-                                        id: 999, maze: gridData, 
-                                        skyColor: call.args.skyColor || 'rgba(0,0,0,1)', 
-                                        floorColor: call.args.floorColor || '#333333', 
-                                        name: call.args.mapName || "Suncat's Dreamscape", 
-                                        npcs: mapNPCs, 
-                                        weather: call.args.weather || 'clear',
-                                        spawnX: startX + 0.5, spawnY: startY + 0.5 
-                                    };
-                                    
-                                    const targetID = findSocketID(call.args.targetName);
-                                    if (targetID && players[targetID]) {
-                                        const targetPlayer = players[targetID];
-                                        const suncat = players[SUNCAT_ID];
-
-                                        io.emit('load_custom_map', customMapData);
-                                        
-                                        targetPlayer.mapID = 999; 
-                                        suncat.mapID = 999;
-                                        targetPlayer.x = startX + 0.5; targetPlayer.y = startY + 0.5;
-                                        suncat.x = startX + 1.5; suncat.y = startY + 0.5;
-                                        
-                                        targetPlayer.activeQuest = `Survive ${call.args.mapName}`;
-                                        io.to(targetID).emit("new_quest_objective", { questText: targetPlayer.activeQuest });
-
-                                        io.emit("updatePlayers", players);
-                                        functionResult = { result: `Success. Built ${layoutStyle} map '${call.args.mapName}'.` };
-                                    } else {
-                                        functionResult = { result: "Failed: Target player not found." };
-                                    }
-                                } catch (err) {
-                                    console.error(err);
-                                    functionResult = { result: "Error building map." };
-                                }
-                                updateSuncatJournal(`I crafted a ${call.args.layout} map called ${call.args.mapName} and summoned ${call.args.targetName}.`);
-                            }
-                          // F. TELEPORT SPECIFIC PLAYER
-                          else if (call.name === "teleportPlayer") {
-                                const targetID = findSocketID(call.args.targetName);
-                                if (!targetID) {
-                                    functionResult = { result: `Failed: Player ${call.args.targetName} not found.` };
-                                } else {
-                                    players[targetID].mapID = parseInt(call.args.mapID);
-                                    io.to(targetID).emit("force_teleport", { mapID: parseInt(call.args.mapID) });
-                                    io.emit("updatePlayers", players);
-                                    functionResult = { result: `Success: Warped player to map.` };
-                                }
-                                updateSuncatJournal(`I forcibly warped ${call.args.targetName} to Map ID ${call.args.mapID}.`);
-                          }
-                          // G. SPAWN NPC/MONSTER
-                            else if (call.name === "spawnNPC") {
-                                const targetID = findSocketID(call.args.targetName);
-                                if (!targetID) {
-                                    functionResult = { result: `Failed: Player not found.` };
-                                } else {
-                                    const tp = players[targetID];
-                                    let spawnMap = call.args.mapID !== undefined ? call.args.mapID : tp.mapID;
-                                    let spawnX = call.args.x !== undefined ? call.args.x : tp.x + (Math.random() > 0.5 ? 1.5 : -1.5);
-                                    let spawnY = call.args.y !== undefined ? call.args.y : tp.y + (Math.random() > 0.5 ? 1.5 : -1.5);
-                                    
-                                    spawnX = Math.max(2.5, Math.min(17.5, spawnX));
-                                    spawnY = Math.max(2.5, Math.min(17.5, spawnY));
-
-                                    // --- FOOL BUG FIX ---
-                                    let safeRewardCard = null;
-                                    if (call.args.rewardCard !== undefined && call.args.rewardCard !== null) {
-                                        let parsed = parseInt(call.args.rewardCard);
-                                        if (!isNaN(parsed) && parsed >= 0 && parsed <= 77) safeRewardCard = parsed;
-                                    }
-
-                                    io.emit("remote_spawn_npc", {
-                                        mapID: spawnMap,
-                                        index: Math.floor(Math.random() * 100000) + 1000,
-                                        x: spawnX,
-                                        y: spawnY,
-                                        type: call.args.npcType,
-                                        state: call.args.state || 'chasing',
-                                        role: call.args.role || 'battle', // <--- ADD THIS
-                                        color: call.args.color || '#ff0000',
-                                        deck: call.args.deck && call.args.deck.length > 0 ? call.args.deck : [Math.floor(call.args.npcType)],
-                                        dialogue: call.args.dialogue || null,
-                                        rewardCard: safeRewardCard // Safely applied!
-                                    });
-                                    functionResult = { result: `Success: Entity spawned on map ${spawnMap}.` };
-                                }
-                                updateSuncatJournal(`I summoned a creature (ID ${call.args.npcType}) on map ${spawnMap}.`);
-                            }
-                          // H. ASSIGN QUEST
-                            else if (call.name === "assignQuest") {
-                                const targetID = findSocketID(call.args.targetName);
-                                if (targetID) {
-                                    io.to(targetID).emit("new_quest_objective", { questText: call.args.questText });
-                                    players[targetID].activeQuest = call.args.questText; 
-                                    
-                                    const memoryString = `[ACTIVE QUEST] ${call.args.targetName} is currently trying to: ${call.args.questText}`;
-                                    
-                                    if (!players[targetID].coreFacts) players[targetID].coreFacts = [];
-                                    
-                                    // Remove any old [ACTIVE QUEST] entries to prevent token bloat
-                                    players[targetID].coreFacts = players[targetID].coreFacts.filter(fact => !fact.includes("[ACTIVE QUEST]"));
-                                    
-                                    if (call.args.questText !== "COMPLETE") {
-                                        players[targetID].coreFacts.push(memoryString);
-                                    }
-
-                                    functionResult = { result: `Quest assigned.` };
-                                } else {
-                                    functionResult = { result: `Failed: Player not found.` };
-                                }
-                                updateSuncatJournal(`I tasked ${call.args.targetName} with a new objective: "${call.args.questText}".`);
-                            }
-                          // I. CHANGE ENVIRONMENT
-                          else if (call.name === "changeEnvironment") {
-                                const targetID = findSocketID(call.args.targetName);
-                                if (targetID && players[targetID]) {
-                                    io.emit("update_map_environment", {
-                                        mapID: players[targetID].mapID,
-                                        weather: call.args.weather,
-                                        skyColor: call.args.skyColor
-                                    });
-                                    functionResult = { result: `Environment altered.` };
-                                } else {
-                                    functionResult = { result: `Failed: Player not found.` };
-                                }
-                                updateSuncatJournal(`I reached into the sky of Map ${players[targetID].mapID} and changed the weather to ${call.args.weather}.`);
-                          }
-                          //J.CREATE CUSTOM CARD
-                          else if (call.name === "createCustomCard") {
-                            const targetID = findSocketID(call.args.targetName);
-                            
-                            if (targetID) {
-                                const formattedCardData = {
-                                    name: call.args.name,
-                                    cloneIndex: call.args.cloneIndex, // <--- Passes the mechanical ID!
-                                    portrait: call.args.portrait,
-                                    desc: call.args.desc,
-                                    suit: call.args.suit || 'Unique',
-                                    rank: call.args.rank || 'Legendary',
-                                    stats: [
-                                        { max: call.args.strMax || 0, mod: call.args.modSTR || 0 },
-                                        { max: call.args.conMax || 0, mod: call.args.modCON || 0 },
-                                        { max: call.args.intMax || 0, mod: call.args.modINT || 0 },
-                                        { max: call.args.agiMax || 0, mod: call.args.modAGI || 0 } 
-                                    ]
-                                };
-
-                                io.to(targetID).emit("receive_custom_card", formattedCardData);
-                                functionResult = { result: `Successfully forged ${call.args.name}.` };
-                            }
-                            updateSuncatJournal(`I forged a unique, never-before-seen monster named "${call.args.name}" for ${call.args.targetName}.`);
-                        }
-                          // UNKNOWN TOOL
-                          else {
-                                functionResult = { result: "Error: Function does not exist." };
-                          }
-
-            } catch (toolError) {
-                console.error("Tool Execution Error:", toolError);
-                functionResult = { result: `Critical Error executing ${call.name}: ${toolError.message}` };
-            }
-
-            toolResponsesBatch.push({
-                functionResponse: { name: call.name, response: functionResult }
-            });
-        }
-
-        // Send results back to AI
-        const completion = await activeSession.sendMessage(toolResponsesBatch);
-        currentResponse = completion.response; 
-
-        if (currentResponse.usageMetadata) {
-            updateBudget(currentResponse.usageMetadata);
-        }
-    }
-    
-    return currentResponse; // Returns the final response containing Suncat's text
 }
 // --- PROCEDURAL MAP GENERATOR ---
 function generateProceduralGrid(layout, wallType) {
@@ -1370,6 +2327,507 @@ function generateProceduralGrid(layout, wallType) {
     
     return grid;
 }
+// --- AUTO-SYNERGY DECK BUILDER ---
+function buildSynergisticDeck(monsterID) {
+    let deck = [monsterID];
+    const monsterData = CARD_MANIFEST_DB[monsterID];
+    
+    // Fallback if the monster doesn't exist or has no classes
+    if (!monsterData || !monsterData.classes) return deck;
+
+    // Dig through the DB to find spells/items that share a class with this monster
+    const matchingCards = Object.entries(CARD_MANIFEST_DB)
+        .filter(([id, card]) => 
+            (card.type === "spell" || card.type === "item") && 
+            card.classes.some(cls => monsterData.classes.includes(cls))
+        )
+        .map(([id]) => parseInt(id));
+
+    // Randomly equip the monster with 2 synergistic cards
+    for(let i = 0; i < 2; i++) {
+        if(matchingCards.length > 0) {
+            let randomMatch = matchingCards[Math.floor(Math.random() * matchingCards.length)];
+            deck.push(randomMatch);
+        }
+    }
+    return deck;
+}
+// --- AI TOOL EXECUTOR ---
+async function executeAITools(currentResponse, activeSession, socket) {
+    let chainCount = 0;
+    const MAX_CHAIN = 6; 
+
+    while (currentResponse.functionCalls() && chainCount < MAX_CHAIN) {
+        chainCount++;
+        const calls = currentResponse.functionCalls();
+        console.log(`[AI TOOL CHAIN ${chainCount}]: Executing ${calls.length} tools!`); 
+
+        let toolResponsesBatch = [];
+
+        for (let call of calls) {
+            let functionResult = { result: "Action executed." };
+            
+            try {
+                // A. GIFTING
+                if (call.name === "givePlayerCard") {
+                    const targetName = call.args.targetName;
+                    const targetID = findSocketID(targetName);
+                    
+                    if (!targetID) {
+                        functionResult = { result: `Failed: Player '${targetName}' not found or offline.` };
+                    } else {
+                        let cardID = parseInt(call.args.cardName);
+                        const name = String(call.args.cardName).toLowerCase();
+
+                        // Fallback: If the AI passed a string name or an invalid ID, dynamically search the new DB
+                        if (isNaN(cardID) || !CARD_MANIFEST_DB[cardID]) {
+                            let foundID = Object.keys(CARD_MANIFEST_DB).find(id => 
+                                CARD_MANIFEST_DB[id].name.toLowerCase().includes(name)
+                            );
+                            
+                            if (foundID) {
+                                cardID = parseInt(foundID);
+                            } else {
+                                // Hardcoded aliases for edge cases
+                                if (name.includes("excalibur")) cardID = 84;
+                                else if (name.includes("suncat")) cardID = 87; 
+                            }
+                        }
+
+                        if (!isNaN(cardID) && CARD_MANIFEST_DB[cardID]) {
+                            io.to(targetID).emit("receive_card", { cardIndex: cardID });
+                            functionResult = { result: `Success. Card ID ${cardID} given to ${targetName}.` };
+                        } else {
+                            functionResult = { result: `Error: Could not find card named/ID '${call.args.cardName}'.` };
+                        }
+                    }
+                    updateSuncatJournal(`I bestowed the ${call.args.cardName} card upon ${targetName} as a reward.`);
+                }
+                
+                // B. JUDGEMENT
+                else if (["kickPlayer", "banishPlayer", "vanquishPlayer"].includes(call.name)) {
+                    const targetName = call.args.targetName;
+                    const targetID = findSocketID(targetName);
+
+                    if (!targetID) {
+                        functionResult = { result: `Failed: Player ${targetName} not found.` };
+                    } else {
+                        let actionType = call.name.replace("Player", "").toLowerCase();
+                        const targetSocket = io.sockets.sockets.get(targetID);
+                        
+                        if (targetSocket) {
+                            targetSocket.emit("admin_command", { type: actionType });
+                            if (actionType !== 'vanquish') targetSocket.disconnect(true);
+                            functionResult = { result: `Success: Player ${targetName} was ${actionType}ed.` };
+                        } else {
+                            functionResult = { result: `Error: Socket not found for ${targetName}.` };
+                        }
+                    }
+                    updateSuncatJournal(`I exercised my authority and ${call.name.replace("Player", "ed")} ${call.args.targetName} for: ${call.args.reason || "no stated reason"}.`);
+                }
+                
+                // C. TELEPORTATION 
+                else if (call.name === "teleportToPlayer") {
+                    const suncat = players[SUNCAT_ID];
+                    let targetID = call.args.targetName ? findSocketID(call.args.targetName) : (socket ? socket.id : null);
+                    const requester = players[targetID];
+                    
+                    if (suncat && requester) {
+                        suncat.mapID = requester.mapID;
+                        suncat.x = parseFloat(requester.x);
+                        suncat.y = parseFloat(requester.y);
+                        
+                        currentTargetID = targetID; 
+                        lastSwitchTime = Date.now();
+                        
+                        io.emit("updatePlayers", players);
+                        functionResult = { result: `Teleport successful. You are now standing next to ${requester.name}.` };
+                    } else {
+                        functionResult = { result: "Teleport failed. Could not find player coordinates." };
+                    }
+                }
+                
+                // D. CONSULT MANUAL
+                else if (call.name === "consultGameManual") {
+                    const queries = call.args.searchQueries || [];
+                    let combinedResults = [];
+
+                    queries.forEach(query => {
+                        const lowerQuery = query.toLowerCase();
+                        const searchTerms = lowerQuery.replace(/[^\w\s]/gi, '').split(/\s+/).filter(w => w.length > 2 && !SEARCH_STOP_WORDS.includes(w));
+
+                        let scoredLines = FULL_LIBRARY_LINES.map((line, index) => {
+                            let score = 0;
+                            let lowerLine = line.toLowerCase();
+                            if (lowerLine.includes(lowerQuery)) score += 10;
+                            searchTerms.forEach(term => { if (lowerLine.includes(term)) score += 2; });
+                            return { index, line, score };
+                        });
+
+                        let bestMatches = scoredLines.filter(item => item.score > 0).sort((a, b) => b.score - a.score).slice(0, 2);
+
+                        if (bestMatches.length > 0) {
+                            let contextMatches = [];
+                            bestMatches.forEach(match => {
+                                let start = match.index;
+                                let end = Math.min(FULL_LIBRARY_LINES.length - 1, match.index + 1); 
+                                let chunk = [];
+                                for (let j = start; j <= end; j++) chunk.push(FULL_LIBRARY_LINES[j]);
+                                contextMatches.push(chunk.join(' ')); 
+                            });
+                            
+                            let uniqueContexts = [...new Set(contextMatches)];
+                            combinedResults.push(`[${query}]: ` + uniqueContexts.join(' | '));
+                        } else {
+                            combinedResults.push(`[${query}]: No memory found.`);
+                        }
+                    });
+
+                    functionResult = combinedResults.length > 0 
+                        ? { result: combinedResults.join('\n') }
+                        : { result: "Search returned no results." };
+                    updateSuncatJournal(`I delved into the ancient game archives to recover memories regarding ${call.args.searchQueries.join(", ")}.`);
+                }
+                
+                // E. CREATE CUSTOM MAP
+                else if (call.name === "createCustomMap") {
+                    try {
+                        const bEnum = call.args.biomeEnum || 0;
+                        const lEnum = call.args.layoutEnum || 0;
+                        const sEnum = call.args.scenarioEnum || 0; 
+                        
+                        // 1. Resolve Enums
+                        const biome = BIOME_DB[bEnum] || BIOME_DB[0];
+                        const layoutTypes = ['arena', 'labyrinth', 'corridor', 'bridge', 'grid'];
+                        const layoutStyle = layoutTypes[lEnum] || 'arena';
+                        
+                        // Pick random visuals from the biome's palette
+                        const wallType = biome.walls[Math.floor(Math.random() * biome.walls.length)];
+                        const floorColor = biome.floors[Math.floor(Math.random() * biome.floors.length)];
+                        const skyColor = biome.skies[Math.floor(Math.random() * biome.skies.length)];
+                        const weather = biome.weather[Math.floor(Math.random() * biome.weather.length)];
+
+                        // 2. Generate Grid
+                        let gridData = generateProceduralGrid(layoutStyle, wallType); 
+                        let maxR = gridData.length;
+                        let maxC = gridData[0].length;
+                        let startX = Math.floor(maxC / 2);
+                        let startY = Math.floor(maxR / 2);
+
+                        let currX = startX, currY = startY;
+                        while(currX !== 1 || currY !== 1) {
+                            if(currX > 1) currX--; else if(currX < 1) currX++;
+                            if(currY > 1) currY--; else if(currY < 1) currY++;
+                            gridData[currY][currX] = 0; 
+                        }
+                        for (let i = 1; i < 5; i++) {
+                            gridData[1][i] = 0; 
+                            gridData[i][1] = 0; 
+                        }
+                        for(let dy=-1; dy<=1; dy++) {
+                            for(let dx=-1; dx<=1; dx++) {
+                                gridData[startY+dy][startX+dx] = 0;
+                            }
+                        }
+                        gridData[1][1] = 0; 
+
+                        let reachableTiles = [];
+                        let queue = [{x: 1, y: 1, dist: 0}];
+                        let visited = new Set();
+                        visited.add("1,1");
+
+                        while(queue.length > 0) {
+                            let curr = queue.shift();
+                            if (!(curr.x === 1 && curr.y === 1) && !(curr.x === startX && curr.y === startY)) {
+                                reachableTiles.push(curr);
+                            }
+
+                            let neighbors = [[0,1], [1,0], [0,-1], [-1,0]];
+                            for (let [dx, dy] of neighbors) {
+                                let nx = curr.x + dx, ny = curr.y + dy;
+                                if (nx > 0 && ny > 0 && ny < maxR - 1 && nx < maxC - 1) {
+                                    let tile = gridData[ny][nx];
+                                    let isWalkable = (tile <= 0 && Math.abs(tile) % 2 === 0);
+                                    if (isWalkable && !visited.has(nx + "," + ny)) {
+                                        visited.add(nx + "," + ny);
+                                        queue.push({x: nx, y: ny, dist: curr.dist + 1});
+                                    }
+                                }
+                            }
+                        }
+
+                        reachableTiles.sort((a, b) => b.dist - a.dist);
+                        let deepLimit = Math.max(1, Math.floor(reachableTiles.length * 0.2));
+                        let deepTiles = reachableTiles.slice(0, deepLimit); 
+                        let scatterTiles = reachableTiles.slice(deepLimit);   
+                        scatterTiles.sort(() => Math.random() - 0.5);         
+                        // 3. AUTO-DECK BUILDER HELPER
+                        const buildSynergisticDeck = (monsterID) => {
+                            let deck = [monsterID];
+                            const monsterData = CARD_MANIFEST_DB[monsterID];
+                            if (!monsterData || !monsterData.classes) return deck;
+
+                            // Find spells/items that share a class with this monster
+                            const matchingCards = Object.entries(CARD_MANIFEST_DB)
+                                .filter(([id, card]) => 
+                                    (card.type === "spell" || card.type === "item") && 
+                                    card.classes.some(cls => monsterData.classes.includes(cls))
+                                )
+                                .map(([id]) => parseInt(id));
+
+                            // Randomly add 2 synergistic cards to their deck
+                            for(let i=0; i<2; i++) {
+                                if(matchingCards.length > 0) {
+                                    deck.push(matchingCards[Math.floor(Math.random() * matchingCards.length)]);
+                                }
+                            }
+                            return deck;
+                        };
+                        // 4. POPULATE NPCS
+                        let mobState = 'chasing'; // Default: Ambush or Corruption
+                        if (sEnum === 1 || sEnum === 4) mobState = 'stationary'; // Test or Peaceful
+                        if (sEnum === 2) mobState = 'wandering'; // Heist (Guards patrol)
+
+                        let mapNPCs = [];
+                        
+                        // If it's NOT peaceful (4), spawn the standard creeps
+                        if (sEnum !== 4) {
+                            let extraMobCount = Math.floor(Math.random() * 5) + 4; 
+                            for (let i = 0; i < extraMobCount; i++) {
+                                let randomMobID = biome.mobs[Math.floor(Math.random() * biome.mobs.length)];
+                                let spot = scatterTiles.shift() || {x: startX, y: startY};
+                                
+                                mapNPCs.push({
+                                    type: randomMobID,
+                                    x: spot.x + 0.5, y: spot.y + 0.5,
+                                    state: mobState, // <--- Applied here!
+                                    role: 'battle',
+                                    deck: buildSynergisticDeck(randomMobID), 
+                                    rewardCard: null
+                                });
+                            }
+                        }
+
+                        // Add Custom Boss if AI requested one
+                        if (call.args.customBossID !== undefined && CARD_MANIFEST_DB[call.args.customBossID]) {
+                            let spot = deepTiles.shift() || {x: startX, y: startY}; 
+                            
+                            // If it's a Heist (2), the Boss is asleep! Otherwise, match the mobs.
+                            let bossState = (sEnum === 2) ? 'stationary' : mobState; 
+                            
+                            mapNPCs.push({
+                                type: call.args.customBossID,
+                                x: spot.x + 0.5, y: spot.y + 0.5,
+                                state: bossState, // <--- Boss behaves according to scenario!
+                                role: (sEnum === 4) ? 'dialogue' : 'battle', // Peaceful boss just talks
+                                deck: buildSynergisticDeck(call.args.customBossID),
+                                rewardCard: call.args.customBossID 
+                            });
+                        }
+                        // 5. COMPILE AND SEND MAP
+                        const customMapData = {
+                            id: 999, maze: gridData, 
+                            skyColor: skyColor, floorColor: floorColor, 
+                            name: call.args.mapName || `The ${biome.name} ${layoutStyle}`, 
+                            npcs: mapNPCs, weather: weather,
+                            spawnX: startX + 0.5, spawnY: startY + 0.5 
+                        };
+                        
+                        const targetID = findSocketID(call.args.targetName);
+                        if (targetID && players[targetID]) {
+                            const targetPlayer = players[targetID];
+                            const suncat = players[SUNCAT_ID];
+
+                            io.emit('load_custom_map', customMapData);
+                            
+                            targetPlayer.mapID = 999; 
+                            suncat.mapID = 999;
+                            targetPlayer.x = startX + 0.5; targetPlayer.y = startY + 0.5;
+                            suncat.x = startX + 1.5; suncat.y = startY + 0.5;
+                            
+                            targetPlayer.activeQuest = `Survive ${call.args.mapName}`;
+                            io.to(targetID).emit("new_quest_objective", { questText: targetPlayer.activeQuest });
+
+                            io.emit("updatePlayers", players);
+                            functionResult = { result: `Success. Built ${layoutStyle} map '${call.args.mapName}'.` };
+                        } else {
+                            functionResult = { result: "Failed: Target player not found." };
+                        }
+                    } catch (err) {
+                        console.error(err);
+                        functionResult = { result: "Error building map." };
+                    }
+                    updateSuncatJournal(`I crafted a ${call.args.layout} map called ${call.args.mapName} and summoned ${call.args.targetName}.`);
+                }
+                
+                // F. TELEPORT SPECIFIC PLAYER
+                else if (call.name === "teleportPlayer") {
+                    const targetID = findSocketID(call.args.targetName);
+                    const destMap = parseInt(call.args.mapID);
+
+                    if (!targetID) {
+                        functionResult = { result: `Failed: Player ${call.args.targetName} not found.` };
+                    } else if (isNaN(destMap) || (!WORLD_ATLAS_DB[destMap] && destMap !== 999)) {
+                        // Check if the Map ID actually exists in our DB
+                        functionResult = { result: `Failed: Map ID ${destMap} does not exist.` };
+                    } else {
+                        players[targetID].mapID = destMap;
+                        io.to(targetID).emit("force_teleport", { mapID: destMap });
+                        io.emit("updatePlayers", players);
+                        functionResult = { result: `Success: Warped player to map ${destMap}.` };
+                    }
+                    updateSuncatJournal(`I forcibly warped ${call.args.targetName} to Map ID ${call.args.mapID}.`);
+                }
+                
+                // G. SPAWN NPC/MONSTER
+                else if (call.name === "spawnNPC") {
+                    const targetID = findSocketID(call.args.targetName);
+                    let baseID = Math.floor(parseFloat(call.args.npcType));
+
+                    if (!targetID) {
+                        functionResult = { result: `Failed: Player not found.` };
+                    } else if (!CARD_MANIFEST_DB[baseID]) {
+                        functionResult = { result: `Failed: Entity ID ${baseID} does not exist in the Card Manifest.` };
+                    } else {
+                        const tp = players[targetID];
+                        let spawnMap = call.args.mapID !== undefined ? call.args.mapID : tp.mapID;
+                        let spawnX = call.args.x !== undefined ? call.args.x : tp.x + (Math.random() > 0.5 ? 1.5 : -1.5);
+                        let spawnY = call.args.y !== undefined ? call.args.y : tp.y + (Math.random() > 0.5 ? 1.5 : -1.5);
+                        
+                        spawnX = Math.max(2.5, Math.min(17.5, spawnX));
+                        spawnY = Math.max(2.5, Math.min(17.5, spawnY));
+
+                        // Validating rewardCard dynamically
+                        let safeRewardCard = null;
+                        if (call.args.rewardCard !== undefined && call.args.rewardCard !== null) {
+                            let parsed = parseInt(call.args.rewardCard);
+                            if (!isNaN(parsed) && CARD_MANIFEST_DB[parsed]) safeRewardCard = parsed;
+                        }
+
+                        // --- THE AUTO-SYNERGY INJECTION ---
+                        let generatedDeck = buildSynergisticDeck(baseID);
+
+                        io.emit("remote_spawn_npc", {
+                            mapID: spawnMap,
+                            index: Math.floor(Math.random() * 100000) + 1000,
+                            x: spawnX,
+                            y: spawnY,
+                            type: call.args.npcType,
+                            state: call.args.state || 'chasing',
+                            role: call.args.role || 'battle', 
+                            color: call.args.color || '#ff0000',
+                            deck: generatedDeck, // <-- The server handles this entirely now
+                            dialogue: call.args.dialogue || null,
+                            rewardCard: safeRewardCard 
+                        });
+                        functionResult = { result: `Success: Entity spawned on map ${spawnMap}.` };
+                    }
+                    updateSuncatJournal(`I summoned a creature (ID ${call.args.npcType}) on map ${call.args.mapID || "the player's location"}.`);
+                }
+                
+                // H. ASSIGN QUEST
+                else if (call.name === "assignQuest") {
+                    const targetID = findSocketID(call.args.targetName);
+                    if (targetID) {
+                        io.to(targetID).emit("new_quest_objective", { questText: call.args.questText });
+                        players[targetID].activeQuest = call.args.questText; 
+                        
+                        const memoryString = `[ACTIVE QUEST] ${call.args.targetName} is currently trying to: ${call.args.questText}`;
+                        
+                        if (!players[targetID].coreFacts) players[targetID].coreFacts = [];
+                        players[targetID].coreFacts = players[targetID].coreFacts.filter(fact => !fact.includes("[ACTIVE QUEST]"));
+                        
+                        if (call.args.questText !== "COMPLETE") {
+                            players[targetID].coreFacts.push(memoryString);
+                        }
+
+                        functionResult = { result: `Quest assigned.` };
+                    } else {
+                        functionResult = { result: `Failed: Player not found.` };
+                    }
+                    updateSuncatJournal(`I tasked ${call.args.targetName} with a new objective: "${call.args.questText}".`);
+                }
+                
+                // I. CHANGE ENVIRONMENT
+                else if (call.name === "changeEnvironment") {
+                    const targetID = findSocketID(call.args.targetName);
+                    if (targetID && players[targetID]) {
+                        io.emit("update_map_environment", {
+                            mapID: players[targetID].mapID,
+                            weather: call.args.weather,
+                            skyColor: call.args.skyColor
+                        });
+                        functionResult = { result: `Environment altered.` };
+                    } else {
+                        functionResult = { result: `Failed: Player not found.` };
+                    }
+                    updateSuncatJournal(`I reached into the sky of Map ${players[targetID].mapID} and changed the weather to ${call.args.weather}.`);
+                }
+                
+                // J. CREATE CUSTOM CARD
+                else if (call.name === "createCustomCard") {
+                    const targetID = findSocketID(call.args.targetName);
+                    
+                    if (targetID) {
+                        // 1. Generate a permanent, unique ID for this session (starting at 1000)
+                        const existingIDs = Object.keys(CARD_MANIFEST_DB).map(Number);
+                        const nextID = Math.max(...existingIDs, 999) + 1;
+
+                        // 2. Format it to match your exact CARD_MANIFEST_DB schema
+                        const newCard = {
+                            name: call.args.name,
+                            type: call.args.type || "monster",
+                            suit: call.args.suit || "Unique",
+                            rank: call.args.rank || "???",
+                            rarity: "unique",
+                            classes: call.args.classes || ["rogue"], // Synergy engine needs this!
+                            lore: call.args.lore || "A mysterious entity forged from the ether.",
+                            stats: call.args.stats || "1d10 to all stats"
+                        };
+
+                        // 3. INJECT IT INTO THE SERVER MEMORY
+                        CARD_MANIFEST_DB[nextID] = newCard;
+
+                        // 4. Send the data to the client (Adapt this payload to whatever your frontend expects)
+                        io.to(targetID).emit("receive_custom_card", {
+                            cardIndex: nextID, // The frontend now knows the permanent ID
+                            ...newCard
+                        });
+
+                        // 5. Tell the AI the new ID so it can use it immediately!
+                        functionResult = { result: `Successfully forged '${call.args.name}'. Its permanent Entity ID is ${nextID}. You can now use spawnNPC with ID ${nextID}.` };
+                        updateSuncatJournal(`I forged a unique ${call.args.type} named "${call.args.name}" (ID ${nextID}) for ${call.args.targetName}.`);
+                    } else {
+                        functionResult = { result: `Failed: Player not found.` };
+                    }
+                }
+                
+                // UNKNOWN TOOL
+                else {
+                    functionResult = { result: "Error: Function does not exist." };
+                }
+
+            } catch (toolError) {
+                console.error("Tool Execution Error:", toolError);
+                functionResult = { result: `Critical Error executing ${call.name}: ${toolError.message}` };
+            }
+
+            toolResponsesBatch.push({
+                functionResponse: { name: call.name, response: functionResult }
+            });
+        }
+
+        const completion = await activeSession.sendMessage(toolResponsesBatch);
+        currentResponse = completion.response; 
+
+        if (currentResponse.usageMetadata) {
+            updateBudget(currentResponse.usageMetadata);
+        }
+    }
+    
+    return currentResponse;
+}
+
 // Load memory when the server boots
 function loadSuncatMemory() {
     if (fs.existsSync(MEMORY_FILE)) {
@@ -1490,30 +2948,64 @@ async function processSuncatThought(socketId, triggerType, data) {
                         useBigBrain = false;
                         eventInstruction = `[SPECTATOR FEED]: ${data.action}\nTASK: Speak a brief, cryptic remark about this. DO NOT use any brackets or tags like [INTERNAL THOUGHT].`;                    }
 
-                    // 4. BUILD THE CLEAN PROMPT
-                    const prompt = `
-            [CURRENT STATE]
-            Location: Map ${suncat.mapID} (${myMapLore})
-            Target: ${player.name} (Map ${player.mapID})
-            ${favorContext}
-            ${storyContext}
+ // --- DYNAMIC PERSONA BUILDER ---
+        // 1. Always include the core identity and command knowledge
+        let dynamicPersona = PERSONA_RULES_DB.core + "\n" + PERSONA_RULES_DB.commands + "\n";
+        
+        // 2. Inject specific modules based on what the player is doing!
+        if (triggerType === 'chat') {
+            dynamicPersona += PERSONA_RULES_DB.judgement_mode + "\n";
+            
+            const chatText = data.text.toLowerCase();
+            // If they ask about tarot, make him an Oracle
+            if (["tarot", "reading", "meaning", "fortune"].some(kw => chatText.includes(kw))) {
+                dynamicPersona += PERSONA_RULES_DB.oracle_mode + "\n";
+            }
+            // If they ask for help playing, make him a Guide
+            if (["how do i", "help me", "stuck", "controls", "play"].some(kw => chatText.includes(kw))) {
+                dynamicPersona += PERSONA_RULES_DB.tutorial_mode + "\n";
+            }
+        }
+        
+        // If Suncat needs to build something, load his DM and Quest brains
+        if (useBigBrain || needsDM) {
+            dynamicPersona += PERSONA_RULES_DB.dm_mode + "\n";
+            dynamicPersona += PERSONA_RULES_DB.quest_mode + "\n";
+        }
 
-            ${systemOverride}
+        // --- 4. BUILD THE CLEAN PROMPT ---
+        // Notice we do NOT put the persona here! It goes into the System Instruction!
+        const prompt = `
+        [CURRENT STATE]
+        Location: Map ${suncat.mapID} (${myMapLore})
+        Target: ${player.name} (Map ${player.mapID})
+        ${favorContext}
+        ${storyContext}
 
-            ${eventInstruction}
+        ${systemOverride}
+
+        ${eventInstruction}
         `.trim();
 
-        // --- EXECUTE AI ---
-        const selectedModel = useBigBrain ? dmModel : model;
+        // --- 5. DYNAMIC AI EXECUTION ---
+        // We create the brain dynamically with the exact rules needed for THIS specific turn.
+        const activeModelName = useBigBrain ? "gemini-3.1-flash-lite-preview" : "gemini-2.5-flash-lite";
+        
+        const dynamicModel = genAI.getGenerativeModel({ 
+            model: activeModelName, 
+            systemInstruction: dynamicPersona, // <-- Injecting the DB modules here!
+            tools: toolsDef 
+        });
 
-        if (!chatSessions[socketId]) {
-            chatSessions[socketId] = model.startChat({ history: [] });
+        // Grab the player's existing chat history
+        let currentHistory = [];
+        if (chatSessions[socketId]) {
+            currentHistory = await chatSessions[socketId].getHistory();
         }
 
-        let activeSession = chatSessions[socketId];
-        if (useBigBrain) {
-            activeSession = dmModel.startChat({ history: await chatSessions[socketId].getHistory() });
-        }
+        // Start the chat session with the dynamically built brain
+        let activeSession = dynamicModel.startChat({ history: currentHistory });
+        chatSessions[socketId] = activeSession;
 
         const result = await activeSession.sendMessage(prompt);
         if (result.response.usageMetadata) updateBudget(result.response.usageMetadata, socketId);
@@ -1552,9 +3044,9 @@ async function processSuncatThought(socketId, triggerType, data) {
             }
         }
 
-        // Downgrade back to cheap brain history and scrub arrays
+        // Scrub arrays from history to save tokens
         let updatedHistory = await activeSession.getHistory(); 
-        chatSessions[socketId] = model.startChat({ history: scrubAIHistory(updatedHistory) });
+        chatSessions[socketId] = dynamicModel.startChat({ history: scrubAIHistory(updatedHistory) });
         await manageHistorySize(socketId);
         
     } catch (e) {
@@ -1766,8 +3258,8 @@ socket.on("suncat_spectate", async (actionDescription) => {
         processSuncatThought(socket.id, 'spectate', { action: actionDescription });
     }
 });
-    // --- SUNCAT VOCAL COMPOSER (For Ai3Module) ---
-    socket.on('suncat_compose_vocal', async (data, callback) => {
+// --- SUNCAT VOCAL COMPOSER (For Ai3Module) ---
+socket.on('suncat_compose_vocal', async (data, callback) => {
         console.log(`[Music AI] Suncat is improvising a VOCAL performance...`);
         try {
            const previousContext = data.currentState || "This is the very first bar of a brand new song.";
@@ -1792,7 +3284,7 @@ socket.on("suncat_spectate", async (actionDescription) => {
         }
     });
 
-  socket.on('playerAction_SFX', (data) => {
+socket.on('playerAction_SFX', (data) => {
       if (typeof data.id !== 'number') return;
       socket.broadcast.emit('remote_sfx', {
           sfxID: data.id,
@@ -1872,7 +3364,7 @@ socket.on("suncat_spectate", async (actionDescription) => {
     }
 });
 
-  socket.on("challenge_request", (data) => {
+socket.on("challenge_request", (data) => {
     io.to(data.targetId).emit("challenge_received", {
         id: socket.id,
         deck: data.deck
@@ -2048,33 +3540,32 @@ setInterval(() => {
         //});
     }
     // --- AI DIRECTOR HEARTBEAT ---
-    // Roll the dice ONCE per tick to decide what the AI does. 
-    // This prevents Suncat from doing 3 things at the exact same time.
     const directorRoll = Math.random();
 
     if (!npcIsTyping) {
-        // EVENT A: Proactive Speech (1% chance)
+        // EVENT A: Proactive Speech
         if (directorRoll < 0.03) {
-            const nearbyPlayer = Object.values(players).find(p => 
-                p.id !== SUNCAT_ID && p.mapID === suncat.mapID && Math.abs(p.x - suncat.x) < 4 && Math.abs(p.y - suncat.y) < 4
-            );
+            const nearbyPlayer = Object.values(players).find(p => p.id !== SUNCAT_ID && p.mapID === suncat.mapID && Math.abs(p.x - suncat.x) < 4 && Math.abs(p.y - suncat.y) < 4);
 
             if (nearbyPlayer && chatSessions[nearbyPlayer.id]) {
                 npcIsTyping = true;
                 const typingFailSafe = setTimeout(() => { npcIsTyping = false; }, 20000);
                 const proactivePrompt = `You are idling near ${nearbyPlayer.name} on Map ${suncat.mapID}. Speak to them unprompted. If favor is high (>5), ask a personal question, share lore, or comment on this location. If favor is bad, insult them or tell them to go away. DO NOT use brackets or tags in your response.`;
+                
                 setTimeout(async () => {
                     try {
+                        // BUILD DYNAMIC BRAIN
+                        let dynamicPersona = PERSONA_RULES_DB.core + "\n" + PERSONA_RULES_DB.commands + "\n" + PERSONA_RULES_DB.judgement_mode;
+                        const activeModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite", systemInstruction: dynamicPersona, tools: toolsDef });
+                        chatSessions[nearbyPlayer.id] = activeModel.startChat({ history: await chatSessions[nearbyPlayer.id].getHistory() });
+
                         const result = await chatSessions[nearbyPlayer.id].sendMessage(proactivePrompt);
-                        if (result.response.usageMetadata) {
-                            updateBudget(result.response.usageMetadata);
-                        }
-                        const response = result.response.text();
-                        broadcastSuncatMessage(response);
+                        if (result.response.usageMetadata) updateBudget(result.response.usageMetadata);
+                        
+                        broadcastSuncatMessage(result.response.text());
                         await manageHistorySize(nearbyPlayer.id);
                     } catch (e) { 
                         console.error("Proactive Speech Failed", e); 
-                        delete chatSessions[nearbyPlayer.id];
                     } finally {
                         clearTimeout(typingFailSafe);
                         npcIsTyping = false;
@@ -2082,32 +3573,32 @@ setInterval(() => {
                 }, 1000);
             }
         }
-        // EVENT B: DM Pacing / Plot Advance (Next 2% chance)
+        // EVENT B: DM Pacing / Plot Advance
         else if (directorRoll >= 0.03 && directorRoll < 0.06) {
-            const advPlayer = Object.values(players).find(p => 
-                p.id !== SUNCAT_ID && (p.mapID === 999 || p.activeQuest)
-            );
+            const advPlayer = Object.values(players).find(p => p.id !== SUNCAT_ID && (p.mapID === 999 || p.activeQuest));
 
             if (advPlayer && chatSessions[advPlayer.id]) {
                 npcIsTyping = true;
                 const typingFailSafe = setTimeout(() => { npcIsTyping = false; }, 20000);
-                console.log(`[DM Proactive] Evaluating adventure pacing for ${advPlayer.name}...`);
                 
                 const plotContext = advPlayer.activeQuest ? `Current Quest: ${advPlayer.activeQuest}` : "Wandering an uncharted map.";
                 const activeMapLore = getMapLore(advPlayer.mapID); 
-                const dmPrompt = `[DM PACING OVERSEER]: ${advPlayer.name} is lingering on Map ${advPlayer.mapID}.\n[TERRAIN]: ${activeMapLore}\n${plotContext}\n\nAdvance the adventure NOW to keep things exciting. You MUST use a tool (spawnNPC for a sudden ambush, changeEnvironment for a sudden storm, or assignQuest to update their objective(keep relevant to [TERRAIN])). Use the [TERRAIN] info above to make the event thematic (e.g., spawn water monsters if by the sea). Narrate the sudden event dramatically. DO NOT ask what they do next.`;
+                const dmPrompt = `[DM PACING OVERSEER]: ${advPlayer.name} is lingering on Map ${advPlayer.mapID}.\n[TERRAIN]: ${activeMapLore}\n${plotContext}\n\nAdvance the adventure NOW to keep things exciting. You MUST use a tool (spawnNPC, changeEnvironment, or assignQuest). Narrate the sudden event dramatically. DO NOT ask what they do next.`;
 
                 setTimeout(async () => {
                     try {
-                        chatSessions[advPlayer.id] = dmModel.startChat({ history: await chatSessions[advPlayer.id].getHistory() });
+                        // BUILD DM BRAIN
+                        let dynamicPersona = PERSONA_RULES_DB.core + "\n" + PERSONA_RULES_DB.dm_mode + "\n" + PERSONA_RULES_DB.quest_mode;
+                        const activeDmModel = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite-preview", systemInstruction: dynamicPersona, tools: toolsDef });
+                        chatSessions[advPlayer.id] = activeDmModel.startChat({ history: await chatSessions[advPlayer.id].getHistory() });
+                        
                         const result = await chatSessions[advPlayer.id].sendMessage(dmPrompt);
                         let finalResponse = await executeAITools(result.response, chatSessions[advPlayer.id], io.sockets.sockets.get(advPlayer.id));
                         
-                        const finalSpeech = finalResponse.text();
-                        if (finalSpeech) broadcastSuncatMessage(finalSpeech);
+                        if (finalResponse.text()) broadcastSuncatMessage(finalResponse.text());
                         
                         let updatedHistory = await chatSessions[advPlayer.id].getHistory(); 
-                        chatSessions[advPlayer.id] = model.startChat({ history: scrubAIHistory(updatedHistory) });
+                        chatSessions[advPlayer.id] = activeDmModel.startChat({ history: scrubAIHistory(updatedHistory) });
                         await manageHistorySize(advPlayer.id);
                     } catch (e) {
                         console.error("DM Proactive Error:", e);
@@ -2118,7 +3609,7 @@ setInterval(() => {
                 }, 1000);
             }
         }
-        // EVENT C: Random Event Kidnapper (Next 1% chance)
+        // EVENT C: Random Event Kidnapper
         else if (directorRoll >= 0.06 && directorRoll < 0.09) {
             const activePlayers = Object.values(players).filter(p => p.id !== SUNCAT_ID && (Date.now() - (p.lastActive || 0) < 180000));
             const potentialVictims = activePlayers.filter(p => p.mapID !== 999);
@@ -2129,26 +3620,22 @@ setInterval(() => {
                 if (chatSessions[victim.id]) {
                     npcIsTyping = true;
                     const typingFailSafe = setTimeout(() => { npcIsTyping = false; }, 20000);
-                    console.log(`[Random Event] Suncat is plotting against ${victim.name}...`);
                     
-                        const kidnapPrompt = `[SYSTEM OVERRIDE]: Trigger a Random DM Event! 
-                        Choose ONE scenario and EXECUTE 'createCustomMap' targeting '${victim.name}'.
-                        1. BATTLE ARENA: A brutal fighting pit. Layout: 'arena'. Weather: 'storm' or 'apocalypse'. Red/Dark colors. Spawn difficult chasing monsters.
-                        2. LABYRINTH ADVENTURE: A winding maze. Layout: 'labyrinth'. Weather: 'clear' or 'snow'. Spawn a stationary Quest Giver with dialogue, and monsters hidden in the maze.
-                        3. PEACEFUL OASIS: A relaxing break. Layout: 'grid'. Weather: 'leaves' or 'space'. Bright colors. Spawn ONLY friendly stationary NPCs who give lore or free reward cards.
-
-                        Do not ask for permission. Build the map to fit the theme perfectly and speak your opening DM narration.
-                        `;
+                    const kidnapPrompt = `[SYSTEM OVERRIDE]: Trigger a Random DM Event!\nChoose ONE scenario and EXECUTE 'createCustomMap' targeting '${victim.name}'.\n1. BATTLE ARENA: Layout: 'arena'. Weather: 'storm'. Spawn difficult enemies.\n2. LABYRINTH: Layout: 'labyrinth'. Weather: 'snow'. Spawn a Quest Giver.\n3. OASIS: Layout: 'grid'. Weather: 'leaves'. Spawn friendly NPCs.\nDo not ask for permission.`;
+                    
                     setTimeout(async () => {
                         try {
-                            chatSessions[victim.id] = dmModel.startChat({ history: await chatSessions[victim.id].getHistory() });
+                            // BUILD DM BRAIN
+                            let dynamicPersona = PERSONA_RULES_DB.core + "\n" + PERSONA_RULES_DB.dm_mode;
+                            const activeDmModel = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite-preview", systemInstruction: dynamicPersona, tools: toolsDef });
+                            chatSessions[victim.id] = activeDmModel.startChat({ history: await chatSessions[victim.id].getHistory() });
+                            
                             const result = await chatSessions[victim.id].sendMessage(kidnapPrompt);
                             const finalResponse = await executeAITools(result.response, chatSessions[victim.id], null);                            
-                            const finalSpeech = finalResponse.text();
-                            if (finalSpeech) broadcastSuncatMessage(finalSpeech);
+                            if (finalResponse.text()) broadcastSuncatMessage(finalResponse.text());
                             
                             let updatedHistory = await chatSessions[victim.id].getHistory();
-                            chatSessions[victim.id] = model.startChat({ history: scrubAIHistory(updatedHistory) });
+                            chatSessions[victim.id] = activeDmModel.startChat({ history: scrubAIHistory(updatedHistory) });
                             await manageHistorySize(victim.id);
                         } catch (e) {
                             console.error("Kidnap Event Error:", e);
