@@ -1370,7 +1370,7 @@ async function processSuncatThought(socketId, triggerType, data) {
         const totalStress = Math.min(100, combatStress + apiFatigue);
         
         const timeSinceLastEvent = now - (player.lastRandomEvent || 0);
-        const eventCooldown = 5 * 60 * 1000; 
+        const eventCooldown = .25 * 60 * 1000; 
 
         let prompt = "";
         let useBigBrain = false;
@@ -1426,6 +1426,7 @@ async function processSuncatThought(socketId, triggerType, data) {
             // B. Direct Chat
             // Inside processSuncatThought, find the chat block:
             else if (triggerType === 'chat') {
+                useBigBrain = true;
                 // LAW: If the player asks for a map or adventure, UPGRADE to Big Brain immediately!
                 const complexKeywords = ["map", "adventure", "teleport", "create", "spawn", "boss"];
                 useBigBrain = complexKeywords.some(kw => data.text.toLowerCase().includes(kw));
