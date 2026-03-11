@@ -35,7 +35,25 @@ process.on('uncaughtException', (error) => {
     // Keeps the server alive even if a synchronous error slips through.
     });
 const port = process.env.PORT || 3000;
-
+const BATTLE_RULES = `
+    [Obtaining cards]
+    Cards can be found scattered across the world free for the taking. Others can be dropped by monsters upon defeating them.
+    [BATTLE PHASES: THE LAWS OF RUNESTONES]
+    Phase 0: Winning Check - Victory requires capturing all 4 Runestones OR depleting the foe's Deck and field of all Monsters, whichever comes first.
+    Phase 5: Ready State - Both travelers must sync their intent before the duel begins.
+    Phase 6: AGI Roll (The Initiative) - Both roll Monster AGI. Highest roll becomes the 'First Attacker'. Ties are re-rolled unless a 'Lucky Charm' (45) is active.
+    Phase 7: The Combat Exchange - 
+    - Each Combat Phase consists of TWO possible Turns (TurnCurrent 1 and 2).
+    - TURN 1: The 'First Attacker' acts. 
+        - If Slay (Attacker > Defender): Monster is destroyed. Proceed to Phase 8 (Rune Claim) immediately.
+        - If Resist (Defender >= Attacker): Monster survives. Proceed to TURN 2.
+    - TURN 2 (The Counterattack): The original Defender now becomes the Attacker.
+        - If Slay: Original Attacker's monster is destroyed. Proceed to Phase 8.
+        - If Resist: Both monsters survive the exchange. Proceed to Phase 9 (End of Turn).
+    Phase 8: Triumph (Rune Claim) - The monster that successfully 'Slays' their foe chooses which Runestone to seize (STR, CON, INT, or AGI). Runes give +1 to their respective stat.
+    Phase 9: Cleanup - Monsters are refreshed, and travelers return to the Ready State.
+    Phase 10: Final Deletion - upon loss, a player's data is deleted. One life!
+    `;
 const DIFFICULTY_MODIFIERS = {
     // 2. The Intensity (Difficulty)
     "easy": "Keep the tone light. The threat is minor, clumsy, or easily handled.",
@@ -2633,7 +2651,6 @@ async function executeAITools(currentResponse, activeSession, socket) {
 
                     queries.forEach(query => {
                         const lowerQuery = query.toLowerCase();
-                        const searchTerms = lowerQuery.replace(/[^\w\s]/gi, '').split(/\s+/).filter(w => w.length > 2 && !SEARCH_STOP_WORDS.includes(w));
 
                         let scoredLines = FULL_LIBRARY_LINES.map((line, index) => {
                             let score = 0;
