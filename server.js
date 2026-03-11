@@ -340,6 +340,7 @@ const toolsDef = [{
                             properties: {
                                 type: { type: "NUMBER", description: "Entity ID (0-77)" },
                                 state: { type: "STRING", description: "'chasing', 'wandering', or 'stationary'" },
+                                role: { type: "STRING", description: "CRITICAL: 'battle' (fights), 'dialogue' (talks/vanishes), 'quest_giver' (gives quest), 'reward' (gives card)." },
                                 color: { type: "STRING" },
                                 deck: { type: "ARRAY", items: { type: "INTEGER" } },
                                 dialogue: { type: "ARRAY", items: { type: "STRING" } },
@@ -364,6 +365,7 @@ const toolsDef = [{
                     x: { type: "NUMBER" },
                     y: { type: "NUMBER" },
                     state: { type: "STRING", description: "'chasing', 'wandering', or 'stationary'." },
+                    role: { type: "STRING", description: "CRITICAL: 'battle' (fights), 'dialogue' (talks/vanishes), 'quest_giver' (gives quest), 'reward' (gives card)." },
                     color: { type: "STRING" },
                     deck: { type: "ARRAY", items: { type: "INTEGER" } },
                     dialogue: { type: "ARRAY", items: { type: "STRING" } },
@@ -1070,13 +1072,19 @@ async function executeAITools(currentResponse, activeSession, socket) {
                                     // Map NPCs and apply the Fool Bug fix to them too
                                     let mapNPCs = [];
                                     if (call.args.npcs && call.args.npcs.length > 0) {
+                                        // Look for where you map the NPCs
                                         mapNPCs = call.args.npcs.map(npc => {
                                             let rCard = null;
                                             if (npc.rewardCard !== undefined && npc.rewardCard !== null) {
                                                 let parsed = parseInt(npc.rewardCard);
                                                 if (!isNaN(parsed) && parsed >= 0 && parsed <= 77) rCard = parsed;
                                             }
-                                            return { ...npc, rewardCard: rCard };
+
+                                            let sState = npc.state || 'chasing';
+                                            let sDialogue = npc.dialogue || null;
+                                            let sRole = npc.role || 'battle'; // <--- ADD THIS
+
+                                            return { ...npc, state: sState, dialogue: sDialogue, rewardCard: rCard, role: sRole }; // <--- PASS ROLE
                                         });
                                     }
 
@@ -1155,6 +1163,7 @@ async function executeAITools(currentResponse, activeSession, socket) {
                                         y: spawnY,
                                         type: call.args.npcType,
                                         state: call.args.state || 'chasing',
+                                        role: call.args.role || 'battle', // <--- ADD THIS
                                         color: call.args.color || '#ff0000',
                                         deck: call.args.deck && call.args.deck.length > 0 ? call.args.deck : [Math.floor(call.args.npcType)],
                                         dialogue: call.args.dialogue || null,
