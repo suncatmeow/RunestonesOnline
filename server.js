@@ -355,7 +355,7 @@ const toolsDef = [{
         // --- UPDATED SPAWN NPC ---
         {
             name: "spawnNPC",
-            description: "Spawns an entity on the map.",            
+            description: "Spawns a single NPC. CRITICAL: Use 'rewardCard' ONLY for unique Quest NPCs or special gifts. Generic monsters should have rewardCard: null to prevent player deck bloat.",          
             parameters: {
                 type: "OBJECT",
                 properties: {
