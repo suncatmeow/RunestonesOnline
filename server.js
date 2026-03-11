@@ -1337,11 +1337,11 @@ async function processSuncatThought(socketId, triggerType, data) {
         if (triggerType === 'chat') {
             io.emit('chat_message', { sender: NPC_NAME, text: "*...my mind is clouded... give me a moment to think...*", color: "#aaaaaa" });
         }
-        //return; 
+        return; // <-- CRITICAL: You accidentally commented these out! Restored so you don't go bankrupt.
     }
     if (isBankrupt()) {
         io.emit('chat_message', { sender: "[SYSTEM]", text: "Suncat's mana is depleted.", color: "#ff0000" });
-        //return; 
+        return; 
     }
     
     // Prevent overlapping thoughts
@@ -1368,39 +1368,58 @@ async function processSuncatThought(socketId, triggerType, data) {
         const combatStress = player.dmStress || 0;
         const apiFatigue = Math.min(100, ((player.sessionCost || 0) / 0.10) * 100); 
         const totalStress = Math.min(100, combatStress + apiFatigue);
-        
         const timeSinceLastEvent = now - (player.lastRandomEvent || 0);
-        const eventCooldown = .25 * 60 * 1000; 
 
-        // Inside processSuncatThought...
-
-        let systemOverride = ""; // Used to temporarily hijack Suncat's mood
-
+        let systemOverride = ""; 
+        let eventInstruction = "";
+        let useBigBrain = false;
+        
+        // --- A. THE DM PACING & STRESS OVERRIDES (Forces Tool Use) ---
         if (totalStress >= 85) {
             useBigBrain = true;
-            systemOverride = `[SYSTEM OVERRIDE]: You are exhausted (Mana depleted). You MUST immediately use a tool (like teleportPlayer to banish them, or givePlayerCard to bribe them). Do not fight.`;
-        } else if (totalStress >= 50 && player.mapID === 999 && timeSinceLastEvent > 60000) {
+            player.dmStress = 0; // Exhaustion kicks in! Drops combat stress.
+            player.lastRandomEvent = now;
+            systemOverride = `[SYSTEM OVERRIDE]: You are exhausted (Mana depleted). You MUST immediately execute a tool (like 'teleportPlayer' to banish them away, or 'givePlayerCard' to bribe them to leave). Do not spawn enemies.`;
+        } 
+        else if (totalStress >= 50 && player.mapID === 999 && timeSinceLastEvent > 60000) {
             useBigBrain = true;
-            systemOverride = `[SYSTEM OVERRIDE]: You are the arrogant Arena Master right now. Spawn a difficult themed enemy using spawnNPC.`;
-        } else if (triggerType === 'chat') {
-            // Let the Big Brain evaluate ALL direct player commands so Suncat isn't deaf to synonyms.
-            // If the chat is just a casual passing remark, it can still use the cheap brain.
-            const isDirectCommand = msgText.includes("[REPLY]") || msgText.toLowerCase().includes("suncat");
-            useBigBrain = isDirectCommand; 
+            player.lastRandomEvent = now;
+            systemOverride = `[SYSTEM OVERRIDE]: You are the arrogant Arena Master right now. Execute the 'spawnNPC' tool to drop a difficult themed enemy. Taunt them.`;
+        } 
+        
+        // --- B. EVENT ROUTING ---
+        if (triggerType === 'chat') {
+            // Let the Big Brain evaluate direct commands so Suncat isn't deaf to synonyms.
+            const isDirectCommand = data.text.includes("[REPLY]") || data.text.toLowerCase().includes("suncat");
+            useBigBrain = isDirectCommand || useBigBrain; // Keep BigBrain if Stress already triggered it
+            
+            eventInstruction = `[PLAYER SPOKE]: "${data.text}"\nTASK: Reply in character. If they asked for something requiring a tool, EXECUTE THE TOOL. Do not ask for permission.`;
+        } 
+        else if (triggerType === 'event') {
+            // Passive observation (Kills, Pickups) - Uses Cheap Brain
+            useBigBrain = false; 
+            let recentNarratives = player.dmNarrativeLog ? `\n[RECENT LOG]: ` + player.dmNarrativeLog.join(' | ') : "";
+            let eventSummary = data.isPickup ? `Picked up ${data.action}` : (data.isDialogue ? `Finished talking to ${data.action}` : `Slayed ${data.action}`);
+            
+            eventInstruction = `[PLAYER ACTION]: ${eventSummary} | Lore: ${data.lore || "None"}\n${recentNarratives}\nTASK: Narrate this action in exactly ONE atmospheric sentence. Use their name.`;
+        } 
+        else if (triggerType === 'spectate') {
+            useBigBrain = false;
+            eventInstruction = `[SPECTATOR FEED]: ${data.action}\nTASK: Acknowledge this with a brief, cryptic internal thought.`;
         }
 
-        // Build a clean, structured prompt:
-        prompt = `
-        [CURRENT STATE]
-        Location: Map ${suncat.mapID} (${myMapLore})
-        Target: ${player.name} (Map ${player.mapID})
-        ${favorContext}
-        ${storyContext}
+        // 4. BUILD THE CLEAN PROMPT
+        const prompt = `
+[CURRENT STATE]
+Location: Map ${suncat.mapID} (${myMapLore})
+Target: ${player.name} (Map ${player.mapID})
+${favorContext}
+${storyContext}
 
-        ${systemOverride}
+${systemOverride}
 
-        [NEW EVENT]: ${data.text || data.action}
-        `;
+${eventInstruction}
+        `.trim();
 
         // --- EXECUTE AI ---
         const selectedModel = useBigBrain ? dmModel : model;
@@ -1609,166 +1628,12 @@ socket.on("npc_died", async (data) => {
         player.dmStress = Math.min(100, (player.dmStress || 0) + 25);
     }
 
-    // ==========================================
-// THE UNIFIED NERVOUS SYSTEM ROUTER
-// ==========================================
-async function processSuncatThought(socketId, triggerType, data) {
-    const player = players[socketId];
-    if (!player) return;
-
-    const suncat = players[SUNCAT_ID];
-    const now = Date.now();
-
-    // 1. RATE LIMITING & HARD BUDGET
-    if (!canTriggerAI(socketId)) {
-        if (triggerType === 'chat') {
-            io.emit('chat_message', { sender: NPC_NAME, text: "*...my mind is clouded... give me a moment to think...*", color: "#aaaaaa" });
-        }
-        return; // <-- CRITICAL: You accidentally commented these out! Restored so you don't go bankrupt.
-    }
-    if (isBankrupt()) {
-        io.emit('chat_message', { sender: "[SYSTEM]", text: "Suncat's mana is depleted.", color: "#ff0000" });
-        return; 
-    }
-    
-    // Prevent overlapping thoughts
-    if (npcIsTyping) return;
-    npcIsTyping = true;
-    const typingFailSafe = setTimeout(() => { npcIsTyping = false; }, 20000);
-
-    try {
-        // 2. GATHER CORE CONTEXT
-        const timeString = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-        const myMapLore = getShortMapLore(suncat.mapID);
-        const playerMapLore = getShortMapLore(player.mapID);
-        
-        let suncatStatus = `[MY CURRENT LOCATION]: Map ${suncat.mapID} (${myMapLore})\n[WORLD CLOCK]: ${timeString}`;
-        if (suncat.mapID !== player.mapID) {
-            suncatStatus += `\n[TARGET PLAYER LOCATION]: ${player.name} is currently far away at Map ${player.mapID} (${playerMapLore}).`;
-        }
-
-        const storyContext = player.storySoFar ? `\n[THE STORY SO FAR]: ${player.storySoFar}` : ""; 
-        const favorContext = `\n[FAVOR SCORE]: ${playerFavorMemory[socketId] || 0}/10`;
-        const factsContext = (player.coreFacts && player.coreFacts.length > 0) ? `\n[PLAYER FACTS]:\n${player.coreFacts.join("\n")}` : "";
-
-        // 3. ASSESS STRESS LEVEL (Adrenaline + API Fatigue)
-        const combatStress = player.dmStress || 0;
-        const apiFatigue = Math.min(100, ((player.sessionCost || 0) / 0.10) * 100); 
-        const totalStress = Math.min(100, combatStress + apiFatigue);
-        const timeSinceLastEvent = now - (player.lastRandomEvent || 0);
-
-        let systemOverride = ""; 
-        let eventInstruction = "";
-        let useBigBrain = false;
-        
-        // --- A. THE DM PACING & STRESS OVERRIDES (Forces Tool Use) ---
-        if (totalStress >= 85) {
-            useBigBrain = true;
-            player.dmStress = 0; // Exhaustion kicks in! Drops combat stress.
-            player.lastRandomEvent = now;
-            systemOverride = `[SYSTEM OVERRIDE]: You are exhausted (Mana depleted). You MUST immediately execute a tool (like 'teleportPlayer' to banish them away, or 'givePlayerCard' to bribe them to leave). Do not spawn enemies.`;
-        } 
-        else if (totalStress >= 50 && player.mapID === 999 && timeSinceLastEvent > 60000) {
-            useBigBrain = true;
-            player.lastRandomEvent = now;
-            systemOverride = `[SYSTEM OVERRIDE]: You are the arrogant Arena Master right now. Execute the 'spawnNPC' tool to drop a difficult themed enemy. Taunt them.`;
-        } 
-        
-        // --- B. EVENT ROUTING ---
-        if (triggerType === 'chat') {
-            // Let the Big Brain evaluate direct commands so Suncat isn't deaf to synonyms.
-            const isDirectCommand = data.text.includes("[REPLY]") || data.text.toLowerCase().includes("suncat");
-            useBigBrain = isDirectCommand || useBigBrain; // Keep BigBrain if Stress already triggered it
-            
-            eventInstruction = `[PLAYER SPOKE]: "${data.text}"\nTASK: Reply in character. If they asked for something requiring a tool, EXECUTE THE TOOL. Do not ask for permission.`;
-        } 
-        else if (triggerType === 'event') {
-            // Passive observation (Kills, Pickups) - Uses Cheap Brain
-            useBigBrain = false; 
-            let recentNarratives = player.dmNarrativeLog ? `\n[RECENT LOG]: ` + player.dmNarrativeLog.join(' | ') : "";
-            let eventSummary = data.isPickup ? `Picked up ${data.action}` : (data.isDialogue ? `Finished talking to ${data.action}` : `Slayed ${data.action}`);
-            
-            eventInstruction = `[PLAYER ACTION]: ${eventSummary} | Lore: ${data.lore || "None"}\n${recentNarratives}\nTASK: Narrate this action in exactly ONE atmospheric sentence. Use their name.`;
-        } 
-        else if (triggerType === 'spectate') {
-            useBigBrain = false;
-            eventInstruction = `[SPECTATOR FEED]: ${data.action}\nTASK: Acknowledge this with a brief, cryptic internal thought.`;
-        }
-
-        // 4. BUILD THE CLEAN PROMPT
-        const prompt = `
-[CURRENT STATE]
-Location: Map ${suncat.mapID} (${myMapLore})
-Target: ${player.name} (Map ${player.mapID})
-${favorContext}
-${storyContext}
-
-${systemOverride}
-
-${eventInstruction}
-        `.trim();
-
-        // --- EXECUTE AI ---
-        const selectedModel = useBigBrain ? dmModel : model;
-
-        if (!chatSessions[socketId]) {
-            chatSessions[socketId] = model.startChat({ history: [] });
-        }
-
-        let activeSession = chatSessions[socketId];
-        if (useBigBrain) {
-            activeSession = dmModel.startChat({ history: await chatSessions[socketId].getHistory() });
-        }
-
-        const result = await activeSession.sendMessage(prompt);
-        if (result.response.usageMetadata) updateBudget(result.response.usageMetadata, socketId);
-
-        let finalResponse = await executeAITools(result.response, activeSession, io.sockets.sockets.get(socketId));
-
-        if (finalResponse.text()) {
-            const finalSpeech = finalResponse.text();
-            
-            // Extract Facts/Favor if he is chatting
-            if (triggerType === 'chat') {
-                const saveMatch = finalSpeech.match(/\[\[SAVE:\s*(.*?)\]\]/i);
-                if (saveMatch && saveMatch[1]) {
-                    if (!player.coreFacts) player.coreFacts = [];
-                    player.coreFacts.push(saveMatch[1]); 
-                    io.to(socketId).emit("suncat_learned_fact", saveMatch[1]); 
-                }
-                const favorMatch = finalSpeech.match(/\[\[FAVOR:\s*([+-]?\d+)\]\]/i);
-                if (favorMatch && favorMatch[1]) {
-                    playerFavorMemory[socketId] = (playerFavorMemory[socketId] || 0) + parseInt(favorMatch[1]);
-                }
-            }
-
-            broadcastSuncatMessage(finalSpeech);
-            
-            // Log DM narrations to prevent repetition
-            if (triggerType !== 'chat' && !useBigBrain) {
-                if (!player.dmNarrativeLog) player.dmNarrativeLog = [];
-                player.dmNarrativeLog.push(finalSpeech);
-                
-                // Digest logic: move old narrations to the stomach
-                if (player.dmNarrativeLog.length > 4) {
-                    if (!player.undigestedInfo) player.undigestedInfo = [];
-                    player.undigestedInfo.push(player.dmNarrativeLog.shift()); 
-                }
-            }
-        }
-
-        // Downgrade back to cheap brain history and scrub arrays
-        let updatedHistory = await activeSession.getHistory(); 
-        chatSessions[socketId] = model.startChat({ history: scrubAIHistory(updatedHistory) });
-        await manageHistorySize(socketId);
-        
-    } catch (e) {
-        console.error("Nervous System Error:", e);
-    } finally {
-        clearTimeout(typingFailSafe); 
-        npcIsTyping = false;
-    }
-    }
+    processSuncatThought(player.id, 'event', {
+        action: `Interacted with ${entityName}`,
+        lore: getCardLore(baseID),
+        isPickup: isPickup,
+        isDialogue: isDialogue
+    });
 });
 // --- EVENT: DIRECT CHAT ---
 socket.on('chat_message', async (msgText) => {
