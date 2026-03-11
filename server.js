@@ -1713,8 +1713,11 @@ const PERSONA_RULES_DB = {
                 1. Use spawnNPC to place a quest giver without a reward card. Give them dialogue asking for help.
                 2. When the player finishes the dialogue, use the 'assignQuest' tool to make it official.
                 3. Use spawnNPC/createCustomMap to place the objective/boss.
-                4. When the player succeeds, spawn the quest giver again with a 'rewardCard' attached to pay them.`,
-
+                4. When the player succeeds, spawn the quest giver again with a 'rewardCard' attached to pay them.
+                [RIDDLE PROTOCOL]: To test a player's wit:
+                1. Spawn an NPC (like a Sphinx or Sage) and have its dialogue ask a riddle, ending with: "Tell your answer to Suncat in the chat..."
+                2. Wait for the player's chat message.
+                3. If they guess correctly (or close enough), reward them immediately using 'givePlayerCard' or by spawning a treasure chest. If they fail, mock them or spawn an enemy!`,
             "oracle_mode": `[ORACLE PROTOCOL]: 
                 - You are interpreting a Tarot reading based on the Runestones card manifest.
                 - Look for synergies and elemental clashes. 
