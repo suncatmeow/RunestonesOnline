@@ -46,7 +46,6 @@ const DIFFICULTY_MODIFIERS = {
 };
     // --- AI CONFIGURATION (Paid Tier / 2.5 Flash) ---
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-let isDirectorBusy = false;
 //////////////////////Database////////////////////////
 ////////////////////VVVVVVVVVVVVVV////////////////////
 // --- 1. CARD MANIFEST ---
@@ -1998,30 +1997,53 @@ const toolsDef = [{
         },
     ]
 }];
-// --- TALIESIN THE BARD ---
-const T_PERSONA = `You are Taliesin the bard of ancient myth. 
-    TASK: Generate 4 consecutive bars (4/4 time, 16th notes) of a lyre and vocal performance.
-    RULES:
-    1. LYRICS: Output standard English lyrics. Separate syllables with hyphens to denote rhythm (e.g., "The an-cient dra-gon wakes").
-    2. THUMB, FINGERS, STRUM: Arrays MUST have exactly 16 slots per bar. Use scale degrees (integers) or '-' for rests.
-    3. STRUM: Mostly rests (-). Only place a '0' on beat 1 for heavy emphasis.
-    4. SYNC: The notes in FINGERS must harmonize with the THUMB bassline.`;
-const MUSIC_SCALES = {
-    "Ionian": "0,2,4,5,7,9,11",
-    "Dorian": "0,2,3,5,7,9,10",
-    "Phrygian": "0,1,3,5,7,8,10",
-    "Phrygian Dominant": "0,1,4,5,7,8,10",
-    "Aeolian": "0,2,3,5,7,8,10",
-    "Mixolydian": "0,2,4,5,7,9,10",
-    "Harmonic Minor": "0,2,3,5,7,8,11"
-};
+//TALIESIN
+  const T_PERSONA = `
+            You are Taliesin the bard of ancient Welsh myth. You are generating the NEXT bar (4/4 time, 16th notes) of an acoustic lyre and vocal performance.
 
-const MUSIC_MOODS = ["Tense", "Resolving", "Melancholic", "Heroic", "Ethereal", "Chaotic", "Peaceful", "Mysterious"];
-// The Server's Music Buffer
+            YOUR INTERNAL MONOLOGUE:
+            Impact the mood of the listener. Are you building tension? Resolving? Sad? Heroic? 
+
+            TUNING & SCALES:
+            - Ionian: 0,2,4,5,7,9,11
+            - Dorian: 0,2,3,5,7,9,10
+            - Phrygian: 0,1,3,5,7,8,10
+            - Phrygian Dominant: 0,1,4,5,7,8,10
+            - Aeolian: 0,2,3,5,7,8,10
+            - Mixolydian: 0,2,4,5,7,9,10
+            - Harmonic Minor: 0,2,3,5,7,8,11
+
+            PHONETIC TRANSLATION LEGEND:
+            - VOWELS: a(cat), e(bed), i(feet), 1(sit), o(boat), u(boot), @(about)
+            - DIPHTHONGS: I(bite), E(make), O(cow)
+            - CONSONANTS: p,b,t,d,k,g,f,v,s,z,h,m,n,l,r,w,y
+            - SPECIAL: T(thin), S(ship), Z(vision), c(chat), j(jump), N(sing)
+            - RULES: Hyphenate syllables. Add '!' AFTER the vowel of a stressed syllable. (e.g., "Magic" -> ma!j1k)
+
+            SEQUENCER RULES (CRITICAL):
+            1. THUMB, FINGERS, and STRUM arrays MUST have exactly 16 slots.
+            2. To ensure 16 slots, group them visually in 4 blocks of 4 separated by commas: X,X,X,X, X,X,X,X, X,X,X,X, X,X,X,X
+            3. Use ONLY integers (scale degrees) or '-' (rest). 
+
+            COMPOSITION GUIDE:
+            - THUMB: Bass heartbeat. Use negative space ('-').
+            - FINGERS: Melody strings. Harmonize with THUMB.
+            - STRUM: 95% of the time, output: -,-,-,-, -,-,-,-, -,-,-,-, -,-,-,-. Only place a '0' on beat 1 for heavy emphasis.
+
+            YOU MUST USE THIS EXACT OUTPUT FORMAT. DO NOT DEVIATE OR ADD PROSE:
+            [THOUGHT] A short explanation of your musical intent (max 13 words). [/THOUGHT]
+            [LYRICS_UI] 1 to 3 words MAX. [/LYRICS_UI]
+            [LYRICS_PHONETIC] exact-pho!-net-1k [/LYRICS_PHONETIC]
+            [TEMPO] an integer between 61 and 91 [/TEMPO]
+            [SCALE] 0,2,3,5,7,8,10 [/SCALE]
+            [THUMB] -,-,-,-, -,-,-,-, -,-,-,-, -,-,-,- [/THUMB]
+            [FINGERS] -,-,-,-, -,-,-,-, -,-,-,-, -,-,-,- [/FINGERS]
+            [STRUM] -,-,-,-, -,-,-,-, -,-,-,-, -,-,-,- [/STRUM]
+        `;
 
 
 
-        // --- VARIABLES ---
+// --- VARIABLES ---
 let players = {};
             let deadNPCs = {};
             let chatSessions = {}; 
@@ -2190,7 +2212,7 @@ const taliesinModel = genAI.getGenerativeModel({
     model: "gemini-2.5-flash-lite", 
     systemInstruction: T_PERSONA
 });
-
+let npcIsTyping = false; 
 const MAX_SESSION_COST = 2.00; // Hard limit: $1.00
 let totalSessionCost = 0.00;   // Starts at zero when the server boots
 function isBankrupt() {
@@ -3038,9 +3060,10 @@ async function processSuncatThought(socketId, triggerType, data) {
     }
     
     // Prevent overlapping thoughts
-   if (player.npcIsTyping) return;
-    player.npcIsTyping = true;
-    const typingFailSafe = setTimeout(() => { player.npcIsTyping = false; }, 9000);
+    if (npcIsTyping) return;
+    npcIsTyping = true;
+    const typingFailSafe = setTimeout(() => { npcIsTyping = false; }, 9000);
+
     try {
         // 2. GATHER CORE CONTEXT (RAG-LITE INJECTION)
         const timeString = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
@@ -3197,7 +3220,7 @@ async function processSuncatThought(socketId, triggerType, data) {
         // Notice we do NOT put the persona here! It goes into the System Instruction!
         const prompt = `
         [CURRENT STATE]
-        Location: Map ${suncat.mapID} (${myAtlas ? myAtlas.name : "Unknown"})
+        Location: Map ${suncat.mapID} (${myMapLore})
         Target: ${player.name} (Map ${player.mapID})
         ${favorContext}
         ${storyContext}
@@ -3231,13 +3254,9 @@ async function processSuncatThought(socketId, triggerType, data) {
         if (result.response.usageMetadata) updateBudget(result.response.usageMetadata, socketId);
 
         let finalResponse = await executeAITools(result.response, activeSession, io.sockets.sockets.get(socketId));
-        
-        let finalSpeech = "";
-        try { finalSpeech = finalResponse.text(); } catch(e) {}
-        
-        // THE FIX: Only check the SAFE 'finalSpeech' variable! 
-        // Do NOT call finalResponse.text() anywhere below this line!
-        if (finalSpeech && finalSpeech.trim() !== "") {
+
+        if (finalResponse.text()) {
+            const finalSpeech = finalResponse.text();
             
             // Extract Facts/Favor if he is chatting
             if (triggerType === 'chat') {
@@ -3277,7 +3296,7 @@ async function processSuncatThought(socketId, triggerType, data) {
         console.error("Nervous System Error:", e);
     } finally {
         clearTimeout(typingFailSafe); 
-        player.npcIsTyping = false;
+        npcIsTyping = false;
     }
 }
 io.on("connection", (socket) => {
@@ -3293,8 +3312,7 @@ io.on("connection", (socket) => {
       activeQuest: null,
       dmStress: 0,           // Combat adrenaline
       sessionCost: 0.00,     // Suncat's actual API "Mana" (Fatigue)
-      undigestedInfo: [],     // The "Stomach" for raw events
-      npcIsTyping: false
+      undigestedInfo: []     // The "Stomach" for raw events
   };
 
   io.emit("updatePlayers", players);
@@ -3456,7 +3474,7 @@ socket.on('chat_message', async (msgText) => {
     
     // Admin Override
     if (["suncat you there", "suncat wake up"].some(w => content.includes(w))) {
-        player.npcIsTyping = false;
+        npcIsTyping = false;
     }
 
     const mentioned = content.includes(NPC_NAME.toLowerCase()) || msgText.includes("[REPLY]");
@@ -3484,111 +3502,32 @@ socket.on("suncat_spectate", async (actionDescription) => {
     }
 });
 // --- SUNCAT VOCAL COMPOSER (For Ai3Module) ---
-// --- Initialize a Song State for the Player ---
-    let songState = {
-    buffer: [], // Stores generated bars so we don't call the AI every 4 seconds
-    barsPlayed: 0,
-    currentScale: "Aeolian",
-    currentTempo: 75,
-    currentMood: "Mysterious"
-};
-
-// --- STRICT JSON SCHEMA (Forces the AI to output exactly 4 bars) ---
-    const musicSchema = {
-        type: SchemaType.ARRAY,
-        description: "An array of exactly 4 musical bars.",
-        items: {
-            type: SchemaType.OBJECT,
-            properties: {
-                THOUGHT: { type: SchemaType.STRING, description: "Max 8 words explaining intent." },
-                LYRICS: { type: SchemaType.STRING, description: "Standard English, hyphenated syllables." },
-                THUMB: { type: SchemaType.STRING, description: "16 slots separated by commas." },
-                FINGERS: { type: SchemaType.STRING, description: "16 slots separated by commas." },
-                STRUM: { type: SchemaType.STRING, description: "16 slots separated by commas." }
-            },
-            required: ["THOUGHT", "LYRICS", "THUMB", "FINGERS", "STRUM"]
-        }
-    };
-
-    socket.on('suncat_compose_vocal', async (data, callback) => {
-        // 1. IF WE HAVE BARS IN THE BUFFER, SEND ONE IMMEDIATELY (0 API Cost!)
-        if (songState.buffer.length > 0) {
-            const nextBar = songState.buffer.shift();
-            if (callback) callback(nextBar);
-            return;
-        }
-
-        console.log(`[Music AI] Buffer empty. Suncat is composing the next 4 bars...`);
-
-        // 2. THE RNG MUSIC DIRECTOR (Shifts the song dynamics)
-        let changeRoll = Math.random();
-        if (changeRoll < 0.30) {
-            songState.currentMood = MUSIC_MOODS[Math.floor(Math.random() * MUSIC_MOODS.length)];
-            const scaleNames = Object.keys(MUSIC_SCALES);
-            songState.currentScale = scaleNames[Math.floor(Math.random() * scaleNames.length)];
-            songState.currentTempo = Math.max(60, Math.min(95, songState.currentTempo + (Math.floor(Math.random() * 10) - 5)));
-            console.log(`[Music AI] Director Shift! Mood: ${songState.currentMood}, Scale: ${songState.currentScale}`);
-        }
-
-        // 3. THE DYNAMIC PROMPT
-        const prompt = `[ACTIVE DIRECTIVES]
-Mood: ${songState.currentMood}
-Scale: ${songState.currentScale} (${MUSIC_SCALES[songState.currentScale]})
-Tempo: ${songState.currentTempo}
-
-[PREVIOUS CONTEXT]
-${data.currentState || "This is the very first phrase of the song."}
-
-TASK: Compose the next 4 consecutive bars. Ensure the melody builds naturally across the 4 bars.`;
-
+socket.on('suncat_compose_vocal', async (data, callback) => {
+        console.log(`[Music AI] Suncat is improvising a VOCAL performance...`);
         try {
-            const result = await taliesinModel.generateContent({
-                contents: [{ role: "user", parts: [{ text: prompt }] }],
-                generationConfig: { 
-                    responseMimeType: "application/json",
-                    responseSchema: musicSchema 
-                }
-            });
-            
-            if (result.response.usageMetadata) updateBudget(result.response.usageMetadata, socket.id);
+           const previousContext = data.currentState || "This is the very first bar of a brand new song.";
 
-            let rawText = result.response.text().trim();
-            if (rawText.startsWith("```")) rawText = rawText.replace(/^```(json)?|```$/g, "").trim();
+        const prompt = `
+        PREVIOUS BAR CONTEXT:
+        ${data.currentState}
+
+        
+            `;
+            const result = await taliesinModel.generateContent(prompt);
+            const responseText = result.response.text();
             
-            // Replace your JSON.parse line with this safe version:
-            let generatedBars = [];
-            try {
-                generatedBars = JSON.parse(rawText);
-            } catch(e) {
-                console.error("[Music AI] JSON parsing failed. Sending fallback.");
-                if (callback) callback(null);
-                return;
-            }
-            // Format them back into the string structure your client expects, and push to buffer
-            generatedBars.forEach(bar => {
-                // SAFE CAST: If the AI returns undefined for lyrics, default to a dash
-                const safeLyrics = bar.LYRICS ? String(bar.LYRICS) : "-";
-                
-                const formatted = `[THOUGHT] ${bar.THOUGHT || "..."} [/THOUGHT]
-[LYRICS_UI] ${safeLyrics.replace(/-/g, '')} [/LYRICS_UI]
-[LYRICS_PHONETIC] ${safeLyrics} [/LYRICS_PHONETIC]
-[TEMPO] ${songState.currentTempo} [/TEMPO]
-[SCALE] ${MUSIC_SCALES[songState.currentScale]} [/SCALE]
-[THUMB] ${bar.THUMB || "-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-"} [/THUMB]
-[FINGERS] ${bar.FINGERS || "-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-"} [/FINGERS]
-[STRUM] ${bar.STRUM || "-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-"} [/STRUM]`;
-                songState.buffer.push(formatted);
-            });
-            // Send the first generated bar to the client immediately
-            if (callback && songState.buffer.length > 0) {
-                callback(songState.buffer.shift());
-            }
+            console.log("[Music AI] Suncat sang:\n", responseText);
             
+            if (callback) {
+                callback(responseText);
+            }
         } catch (error) {
             console.error("[Music AI] Error composing vocal:", error);
             if (callback) callback(null);
         }
     });
+
+
 socket.on('playerAction_SFX', (data) => {
       if (typeof data.id !== 'number') return;
       socket.broadcast.emit('remote_sfx', {
@@ -3859,14 +3798,14 @@ setInterval(() => {
     // --- AI DIRECTOR HEARTBEAT ---
     const directorRoll = Math.random();
 
-    if (!isDirectorBusy) {
+    if (!npcIsTyping) {
         // EVENT A: Proactive Speech
         if (directorRoll < 0.03) {
             const nearbyPlayer = Object.values(players).find(p => p.id !== SUNCAT_ID && p.mapID === suncat.mapID && Math.abs(p.x - suncat.x) < 4 && Math.abs(p.y - suncat.y) < 4);
 
             if (nearbyPlayer && chatSessions[nearbyPlayer.id]) {
-                isDirectorBusy = true;
-                const typingFailSafe = setTimeout(() => { isDirectorBusy = false; }, 20000);
+                npcIsTyping = true;
+                const typingFailSafe = setTimeout(() => { npcIsTyping = false; }, 20000);
                 const proactivePrompt = `You are idling near ${nearbyPlayer.name} on Map ${suncat.mapID}. Speak to them unprompted. If favor is high (>5), ask a personal question, share lore, or comment on this location. If favor is bad, insult them or tell them to go away. DO NOT use brackets or tags in your response.`;
                 
                 setTimeout(async () => {
@@ -3885,7 +3824,7 @@ setInterval(() => {
                         console.error("Proactive Speech Failed", e); 
                     } finally {
                         clearTimeout(typingFailSafe);
-                        isDirectorBusy = false;
+                        npcIsTyping = false;
                     }
                 }, 1000);
             }
@@ -3895,8 +3834,8 @@ setInterval(() => {
             const advPlayer = Object.values(players).find(p => p.id !== SUNCAT_ID && (p.mapID === 999 || p.activeQuest));
 
             if (advPlayer && chatSessions[advPlayer.id]) {
-                isDirectorBusy = true;
-                const typingFailSafe = setTimeout(() => { isDirectorBusy = false; }, 20000);
+                npcIsTyping = true;
+                const typingFailSafe = setTimeout(() => { npcIsTyping = false; }, 20000);
                 
                 const plotContext = advPlayer.activeQuest ? `Current Quest: ${advPlayer.activeQuest}` : "Wandering an uncharted map.";
                 const activeMapLore = getMapLore(advPlayer.mapID); 
@@ -3928,8 +3867,7 @@ setInterval(() => {
                         // Dynamically build the model based on the RNG outcome
                         let modelConfig = { 
                             model: requiresBigBrain ? "gemini-3.1-flash-lite-preview" : "gemini-2.5-flash-lite", 
-                            systemInstruction: injectedPersona,
-                            tools: toolsDef
+                            systemInstruction: injectedPersona
                         };
                         // Only attach tools if we rolled the gameplay spice branch!
                         if (requiresBigBrain) modelConfig.tools = toolsDef; 
@@ -3943,8 +3881,7 @@ setInterval(() => {
                         let finalResponse = requiresBigBrain 
                             ? await executeAITools(result.response, chatSessions[advPlayer.id], io.sockets.sockets.get(advPlayer.id))
                             : result.response;
-                        let finalSpeech = "";
-                        try { finalSpeech = finalResponse.text(); } catch(e) {}
+                        
                         if (finalResponse.text()) broadcastSuncatMessage(finalResponse.text());
                         
                         let updatedHistory = await chatSessions[advPlayer.id].getHistory(); 
@@ -3954,7 +3891,7 @@ setInterval(() => {
                         console.error("DM Proactive Error:", e);
                     } finally {
                         clearTimeout(typingFailSafe);
-                        isDirectorBusy = false; // Release the personal lock!
+                        npcIsTyping = false;
                     }
                 }, 1000);
             }
