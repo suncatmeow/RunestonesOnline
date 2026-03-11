@@ -3235,10 +3235,13 @@ async function processSuncatThought(socketId, triggerType, data) {
         if (result.response.usageMetadata) updateBudget(result.response.usageMetadata, socketId);
 
         let finalResponse = await executeAITools(result.response, activeSession, io.sockets.sockets.get(socketId));
+        
         let finalSpeech = "";
         try { finalSpeech = finalResponse.text(); } catch(e) {}
-        if (finalResponse.text()) {
-            const finalSpeech = finalResponse.text();
+        
+        // THE FIX: Only check the SAFE 'finalSpeech' variable! 
+        // Do NOT call finalResponse.text() anywhere below this line!
+        if (finalSpeech && finalSpeech.trim() !== "") {
             
             // Extract Facts/Favor if he is chatting
             if (triggerType === 'chat') {
@@ -3294,7 +3297,8 @@ io.on("connection", (socket) => {
       activeQuest: null,
       dmStress: 0,           // Combat adrenaline
       sessionCost: 0.00,     // Suncat's actual API "Mana" (Fatigue)
-      undigestedInfo: []     // The "Stomach" for raw events
+      undigestedInfo: [],     // The "Stomach" for raw events
+      npcIsTyping: false
   };
 
   io.emit("updatePlayers", players);
