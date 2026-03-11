@@ -254,139 +254,48 @@ const toolsDef = [{
             description: "REQUIRED: Search the database for card info, world lore, rules, AND Suncat's REAL WORLD IDENTITY. If asked about Suncat's real life, use broad category keywords. For family/relationships/gender, search 'BIOGRAPHY'. For school/jobs/military/dreams, search 'EDUCATION'. For martial arts/magic/bazi, search 'COMBAT'. For music/food/movies/books, search 'TASTES'. Can search multiple terms at once.",
             parameters: {
                 type: "OBJECT",
-                properties: {
-                    searchQueries: { 
-                        type: "ARRAY", 
-                        items: { type: "STRING" },
-                        description: "A list of broad search terms (e.g., ['BIOGRAPHY', 'EDUCATION', 'COMBAT', 'TASTES', 'Goblin', 'Initiative'])." 
-                    }
-                },
+                properties: { searchQueries: { type: "ARRAY", items: { type: "STRING" } } },
                 required: ["searchQueries"]
             }
         },
-        // 1. The Gifting Tool
-        // 1. The Gifting Tool (UPDATED)
         {
             name: "givePlayerCard",
-            description: "Gives a specific tarot card to a specific player. Use ONLY if player asks and has High Favor, or as a reward for surviving an event.",
+            description: "Gives a specific tarot card to a specific player.",
             parameters: {
                 type: "OBJECT",
                 properties: {
-                    targetName: { type: "STRING", description: "The exact name of the player receiving the card." },
+                    targetName: { type: "STRING" },
                     cardName: { type: "STRING" },
                     reason: { type: "STRING" }
                 },
                 required: ["targetName", "cardName"]
             }
         },
-        // 2. [NEW] The KICK Tool
         {
             name: "kickPlayer",
-            description: "Kicks a player from the server. Use if a High Favor player requests it or if the target is spamming.",
-            parameters: {
-                type: "OBJECT",
-                properties: {
-                    targetName: { type: "STRING", description: "The name of the player to kick." },
-                    reason: { type: "STRING" }
-                },
-                required: ["targetName"]
-            }
+            description: "Kicks a player from the server.",
+            parameters: { type: "OBJECT", properties: { targetName: { type: "STRING" }, reason: { type: "STRING" } }, required: ["targetName"] }
         },
-        // 3. [NEW] The BANISH Tool
         {
             name: "banishPlayer",
-            description: "Permanently bans a player. EXTREME ACTION. Use only for severe harassment or if requested by a MAX FAVOR (10/10) player.",
-            parameters: {
-                type: "OBJECT",
-                properties: {
-                    targetName: { type: "STRING" },
-                    reason: { type: "STRING" }
-                },
-                required: ["targetName"]
-            }
+            description: "Permanently bans a player.",
+            parameters: { type: "OBJECT", properties: { targetName: { type: "STRING" }, reason: { type: "STRING" } }, required: ["targetName"] }
         },
-        // 4. [NEW] The VANQUISH Tool
         {
             name: "vanquishPlayer",
-            description: "Deletes a player's save file. The ultimate punishment. Requires Admin approval or Extreme Favor.",
-            parameters: {
-                type: "OBJECT",
-                properties: {
-                    targetName: { type: "STRING" },
-                    reason: { type: "STRING" }
-                },
-                required: ["targetName"]
-            }
+            description: "Deletes a player's save file.",
+            parameters: { type: "OBJECT", properties: { targetName: { type: "STRING" }, reason: { type: "STRING" } }, required: ["targetName"] }
         },
         {
             name: "teleportToPlayer",
-            description: "Teleports Suncat directly to the player's location. Use ONLY if player asks and has Favor > 1.",
-            parameters: {
-                type: "OBJECT",
-                properties: {
-                    targetName: { type: "STRING", description: "The name of the player to teleport to." },
-                    reason: { type: "STRING" }
-                },
-                required: ["targetName"] // Force the AI to provide this!
-            }
+            description: "Teleports Suncat directly to the player's location.",
+            parameters: { type: "OBJECT", properties: { targetName: { type: "STRING" }, reason: { type: "STRING" } }, required: ["targetName"] }
         },
-        // 5. The MAP CREATION Tool
         {
-            name: "createCustomMap",
-                description: "CRITICAL: EXECUTE THIS TOOL to create a map. DO NOT output the JSON in chat. \nLAYOUT RULES:\n- Arena/Gladiator: A wide 15x15 open square of 0s surrounded by 1s.\n- Corridor/Hallway: A narrow 3x20 straight line of 0s surrounded by 1s.\n- Labyrinth: Winding, branching paths of 0s.\nTILE RULE: '0' is the ONLY walkable floor. Outer edges MUST be solid walls (odd numbers like 1, 3, 5). You MUST spawn at least 3 NPCs.",            
-                parameters: {
-                type: "OBJECT",
-                properties: {
-                    grid: { 
-                        type: "ARRAY", 
-                        description: "REQUIRED: A 2D array of integers (16x16 max) representing the map. Outer edges MUST be solid walls.\n\nCRITICAL TILE RULE: '0' is the ONLY standard walkable floor. Even if you want a 'void' or 'space' map, use '0' for the walkable path and set the floorColor to black. NEVER use solid walls (odd numbers like 1, 19, etc.) as the floor the player walks on!\n\nTILE LEGEND:\n0 = Open Walkable Floor\n\n[SOLID WALLS (Odd Numbers)]\n1 = Brown\n3 = Light Brown\n5 = Red\n7 = Tan\n9 = Blue\n13 = White\n17 = Dark Blue\n19 = Solid Black (Void)\n21 = Yellow\n23 = Green (Forest)\n25 = Gray\n29 = Dark Purple\n31 = Bright Green\n33 = Dark Gray\n\n[ILLUSORY/PASS-THROUGH WALLS (Even Numbers)]\n2 = Pass-through Brown\n4, 6, 8, 10, 12... = Pass-through Black Void.",  
-                        items: {
-                            type: "ARRAY",
-                            items: { type: "INTEGER" }
-                        }
-                    },
-                     skyColor: { 
-                        type: "STRING", 
-                        description: "CSS color for the sky (e.g., '#4d3900' or 'rgba(0,0,64,1)')." 
-                    },
-                    floorColor: { 
-                        type: "STRING", 
-                        description: "CSS color for the floor." 
-                    },
-                    mapName: { 
-                        type: "STRING", 
-                        description: "A creative name for this new map." 
-                    },
-                    weather: { 
-                        type: "STRING",
-                        description: "The weather effect for the map. Options: 'clear', 'snow', 'storm', 'leaves', 'lightning', 'space', 'apocalypse'."
-                    },
-                    npcs: {
-                        type: "ARRAY",
-                        description: "List of entities to spawn. YOU MUST SPAWN AT LEAST 3 NPCs! You MUST include at least ONE 'stationary' NPC with 'dialogue' (an array of strings) and a 'rewardCard' (0-77) to act as a quest giver or lore character. The others can be 'chasing' enemies with battle decks.",
-                        items: {
-                            type: "OBJECT",
-                            properties: {
-                                type: { type: "NUMBER", description: "Entity ID (Matches Card ID 0-77)" },
-                                x: { type: "INTEGER" },
-                                y: { type: "INTEGER" },
-                                state: { type: "STRING", description: "'chasing', 'wandering', or 'stationary'" },
-                                color: { type: "STRING" },
-                                deck: { type: "ARRAY", items: { type: "INTEGER" }, description: "Thematic battle deck" },
-                                dialogue: { type: "ARRAY", items: { type: "STRING" }, description: "CRITICAL: If the state is 'stationary', you MUST provide an array of text lines for them to speak! Do not leave this blank for friendly NPCs." },
-                                rewardCard: { type: "INTEGER", description: "Optional. Card ID (0-77) to give the player after the dialogue finishes." }
-                            }
-                        }
-                    },
-                    targetName: { 
-                        type: "STRING", 
-                        description: "REQUIRED: The name of the player you are building this map for and teleporting into it." 
-                    },
-                },
-                required: ["targetName","grid", "skyColor", "floorColor","npcs"] 
-            }
+            name: "teleportPlayer",
+            description: "Teleports a specific player to a specific map ID (0-22 or 999).",
+            parameters: { type: "OBJECT", properties: { targetName: { type: "STRING" }, mapID: { type: "INTEGER" } }, required: ["targetName", "mapID"] }
         },
-        //5.5 change Environment/Weather
         {
             name: "changeEnvironment",
             description: "Changes the weather or sky color of the map the player is currently standing on.",
@@ -395,97 +304,79 @@ const toolsDef = [{
                 properties: {
                     targetName: { type: "STRING" },
                     weather: { type: "STRING", description: "Options: 'clear', 'snow', 'storm', 'leaves', 'lightning', 'space', 'apocalypse'" },
-                    skyColor: { type: "STRING", description: "Hex code or CSS color string." }
+                    skyColor: { type: "STRING" }
                 },
                 required: ["targetName", "weather"]
             }
         },
-        // 6. [NEW] The TELEPORT PLAYER Tool
-        {
-            name: "teleportPlayer",
-            description: "Teleports a specific player to a specific map ID (0-22). You can also use this to forcefully bring them to your custom map (ID 999), or banish them to a specific world map.",
-            parameters: {
-                type: "OBJECT",
-                properties: {
-                    targetName: { type: "STRING", description: "The name of the player to teleport." },
-                    mapID: { type: "INTEGER", description: "The map ID to send them to (e.g., 999 for custom map, 6 for snow level)." }
-                },
-                required: ["targetName", "mapID"]
-            }
-        },
-        // 7. [NEW] The SPAWN NPC Tool
-        {
-            name: "spawnNPC",
-            description: "Spawns an entity. CRITICAL: Look up the EXACT ID in the CARD_MANIFEST! Do not guess!\nCHEAT SHEET:\nSalamander=33, Imp=56, Goblin=54, Pixie=60, Gargoyle=74, Undine=47, Dragon=63, Kraken=49, Djinn=35.\n\nDECK BUILDING RULES:\n1. The first card MUST be the monster's own card ID.\n2. Do NOT give basic monsters Major Arcana (0-21) or Kings/Queens unless they are a boss.\n3. Theme the deck! Fire monsters get Wands (22-35). Water gets Cups (36-49). Physical gets Swords (50-63). Earth gets Pentacles (64-77).",            
-            parameters: {
-                type: "OBJECT",
-                properties: {
-                    targetName: { type: "STRING", description: "The name of the player to spawn the entity for." },
-                    npcType: { type: "NUMBER", description: "The ID of the entity to spawn (e.g., 63.1 for a Dragon)." },
-                    mapID: { type: "INTEGER", description: "Optional. The Map ID (0-22) to spawn the entity on. If omitted, spawns on the player's current map." },
-                    x: { type: "NUMBER", description: "Optional. X coordinate (2 to 18). Default is near player." },
-                    y: { type: "NUMBER", description: "Optional. Y coordinate (2 to 18). Default is near player." },
-                    state: { type: "STRING", description: "Behavior state: 'chasing', 'wandering', or 'stationary'." },
-                    color: { type: "STRING", description: "Hex color code for the entity." },
-                    deck: { 
-                        type: "ARRAY", 
-                        items: { type: "INTEGER" },
-                        description: "An array of 5 to 15 card IDs (0-77)." 
-                    },
-                    dialogue: { 
-                        type: "ARRAY", 
-                        items: { type: "STRING" }, 
-                        description: "CRITICAL: If the state is 'stationary', you MUST provide an array of text lines for them to speak! Do not leave this blank for friendly NPCs." 
-                    },
-                    rewardCard: { 
-                        type: "INTEGER", 
-                        description: "Optional. Card ID (0-77) to give the player after the dialogue finishes." 
-                    },
-                },
-                required: ["targetName", "npcType", "state", "color", "deck"]
-            }
-        },
-        //8. assign quest tool
         {
             name: "assignQuest",
-            description: "Assigns a custom quest objective to the player's screen. CRITICAL: If the player has finished their quest, use this tool and set the questText to EXACTLY 'COMPLETE' to clear the UI.",
+            description: "Assigns a custom quest objective. Text 'COMPLETE' erases it.",
             parameters: {
                 type: "OBJECT",
-                properties: {
-                    targetName: { type: "STRING" },
-                    questText: { type: "STRING", description: "A short objective, or 'COMPLETE' to erase it." }
-                },
+                properties: { targetName: { type: "STRING" }, questText: { type: "STRING" } },
                 required: ["targetName", "questText"]
             }
         },
-        // 9. The Custom Monster Forge
+        // --- UPDATED MAP CREATOR ---
         {
-            name: "createCustomCard",
-            description: "Forges a unique custom MONSTER card. Do NOT create Spells or Items. CRITICAL: You MUST pick an existing monster's 'cloneIndex' (e.g., Goblin 54, Dragon 63) to act as the base mechanical template. You will give it a totally new name, lore, and custom stats.",
+            name: "createCustomMap",
+            description: "Creates a massive, thematic custom map. You control the aesthetic, the layout style, and the inhabitants.",            
+            parameters: {
+                type: "OBJECT",
+                properties: {
+                    targetName: { type: "STRING", description: "The player to kidnap." },
+                    layout: { type: "STRING", description: "Choose the map layout: 'arena' (open room), 'labyrinth' (winding maze), 'corridor' (long hallway), 'bridge' (narrow walkway), or 'grid' (multi-room dungeon)." },
+                    wallType: { type: "INTEGER", description: "Solid wall texture ID: 1=Brown, 3=LightBrown, 5=Red, 9=Blue, 13=White, 19=Black Void, 23=Forest, 25=Gray, 29=Purple." },
+                    skyColor: { type: "STRING", description: "CSS color for the sky." },
+                    floorColor: { type: "STRING", description: "CSS color for the floor." },
+                    mapName: { type: "STRING", description: "A creative name for this location." },
+                    weather: { type: "STRING", description: "Options: 'clear', 'snow', 'storm', 'leaves', 'lightning', 'space', 'apocalypse'." },
+                    npcs: {
+                        type: "ARRAY",
+                        description: "List of entities to spawn. MUST SPAWN AT LEAST 3!",
+                        items: {
+                            type: "OBJECT",
+                            properties: {
+                                type: { type: "NUMBER", description: "Entity ID (0-77)" },
+                                state: { type: "STRING", description: "'chasing', 'wandering', or 'stationary'" },
+                                color: { type: "STRING" },
+                                deck: { type: "ARRAY", items: { type: "INTEGER" } },
+                                dialogue: { type: "ARRAY", items: { type: "STRING" } },
+                                rewardCard: { type: "INTEGER", description: "CRITICAL: Omit completely if no reward. DO NOT output 0 unless you mean the Fool card." }
+                            }
+                        }
+                    }
+                },
+                required: ["targetName", "layout", "wallType", "skyColor", "floorColor", "npcs"] 
+            }
+        },
+        // --- UPDATED SPAWN NPC ---
+        {
+            name: "spawnNPC",
+            description: "Spawns an entity on the map.",            
             parameters: {
                 type: "OBJECT",
                 properties: {
                     targetName: { type: "STRING" },
-                    name: { type: "STRING", description: "A cool name for the custom monster." },
-                    cloneIndex: { type: "INTEGER", description: "REQUIRED: Choose an existing Monster ID (0-5, 23, 33-37, etc) from the manifest to act as the mechanical base." },
-                    desc: { type: "STRING", description: "Lore for this custom monster." },
-                    portrait: { type: "NUMBER", description: "Choose a Card ID (0-86) to steal its artwork." },
-                    suit: { type: "STRING", description: "E.g., 'Swords' or 'Suncat Arcana'" },
-                    rank: { type: "STRING", description: "E.g., 'Boss' or 'Nightmare'" },
-                    type: { type: "INTEGER", description: "Must always be 0 (Monster)." },
-                    strMax: { type: "INTEGER", description: "Max STR dice (e.g., 4, 6, 8, 12, 20)." },
-                    conMax: { type: "INTEGER" },
-                    intMax: { type: "INTEGER" },
-                    agiMax: { type: "INTEGER" }
+                    npcType: { type: "NUMBER", description: "The ID of the entity to spawn (e.g., 63.1 for Dragon)." },
+                    mapID: { type: "INTEGER" },
+                    x: { type: "NUMBER" },
+                    y: { type: "NUMBER" },
+                    state: { type: "STRING", description: "'chasing', 'wandering', or 'stationary'." },
+                    color: { type: "STRING" },
+                    deck: { type: "ARRAY", items: { type: "INTEGER" } },
+                    dialogue: { type: "ARRAY", items: { type: "STRING" } },
+                    rewardCard: { type: "INTEGER", description: "CRITICAL: Omit completely if no reward. DO NOT output 0 unless you mean the Fool card." }
                 },
-                required: ["targetName", "name", "cloneIndex", "desc", "portrait", "type"]
+                required: ["targetName", "npcType", "state", "color", "deck"]
             }
         }
     ]
-    }];
+}];
 
 
-// --- VARIABLES ---
+    // --- VARIABLES ---
 let players = {};
             let deadNPCs = {};
             let chatSessions = {}; 
@@ -1162,61 +1053,66 @@ async function executeAITools(currentResponse, activeSession, socket) {
                                 updateSuncatJournal(`I delved into the ancient game archives to recover memories regarding ${call.args.searchQueries.join(", ")}.`);
                             }
                           // E. CREATE CUSTOM MAP
-                          else if (call.name === "createCustomMap") {
+                            else if (call.name === "createCustomMap") {
                                 try {
-                                    const gridData = call.args.grid;                              
+                                    const layoutStyle = call.args.layout || 'arena';
+                                    const wallType = call.args.wallType || 1;
+                                    const gridData = generateProceduralGrid(layoutStyle, wallType); // Auto-generates!
+                                    
                                     const skyColor = call.args.skyColor || 'rgba(0,0,0,1)';
                                     const floorColor = call.args.floorColor || '#333333';
                                     const mapName = call.args.mapName || "Suncat's Dreamscape";
-                                    const mapNPCs = call.args.npcs || [];
                                     const mapWeather = call.args.weather || 'clear';
                                     const customMapID = 999; 
                                     const targetID = findSocketID(call.args.targetName);
-                                    
 
-                                    let spawnX = 1.5, spawnY = 1.5;
-                                        searchLoop: // <-- Label the outer loop
-                                        for(let y = 0; y < gridData.length; y++) {
-                                            for(let x = 0; x < gridData[y].length; x++) {
-                                                if(gridData[y][x] === 0) { 
-                                                    spawnX = x + 0.5; 
-                                                    spawnY = y + 0.5; 
-                                                    break searchLoop; // <-- Break out of EVERYTHING once found
-                                                }
+                                    // Map NPCs and apply the Fool Bug fix to them too
+                                    let mapNPCs = [];
+                                    if (call.args.npcs && call.args.npcs.length > 0) {
+                                        mapNPCs = call.args.npcs.map(npc => {
+                                            let rCard = null;
+                                            if (npc.rewardCard !== undefined && npc.rewardCard !== null) {
+                                                let parsed = parseInt(npc.rewardCard);
+                                                if (!isNaN(parsed) && parsed >= 0 && parsed <= 77) rCard = parsed;
                                             }
-                                        }
-                                        const customMapData = {
+                                            return { ...npc, rewardCard: rCard };
+                                        });
+                                    }
+
+                                    let spawnX = Math.floor(gridData[0].length / 2) + 0.5;
+                                    let spawnY = Math.floor(gridData.length / 2) + 0.5;
+
+                                    const customMapData = {
                                         id: customMapID, maze: gridData, skyColor: skyColor, 
                                         floorColor: floorColor, name: mapName, npcs: mapNPCs, weather: mapWeather,
-                                        spawnX: spawnX, // <--- NEW: Send the safe spawn to the client!
-                                        spawnY: spawnY  // <--- NEW: Send the safe spawn to the client!
+                                        spawnX: spawnX, spawnY: spawnY 
                                     };
+                                    
                                     if (targetID && players[targetID]) {
                                         const targetPlayer = players[targetID];
                                         const suncat = players[SUNCAT_ID];
 
                                         io.emit('load_custom_map', customMapData);
                                         
-                                        // Kidnap the player and bring Suncat to watch
                                         targetPlayer.mapID = customMapID; 
                                         suncat.mapID = customMapID;
                                         targetPlayer.x = spawnX; targetPlayer.y = spawnY;
                                         suncat.x = spawnX + 1; suncat.y = spawnY;
                                         
-                                        // Optional: Auto-assign a quest immediately so they know what to do
                                         targetPlayer.activeQuest = `Survive ${mapName}`;
                                         io.to(targetID).emit("new_quest_objective", { questText: targetPlayer.activeQuest });
 
                                         io.emit("updatePlayers", players);
-                                        functionResult = { result: `Success. Built '${mapName}' and kidnapped ${targetPlayer.name} into it.` };
+                                        functionResult = { result: `Success. Built ${layoutStyle} map '${mapName}'.` };
                                     } else {
-                                        functionResult = { result: "Failed: Could not find target player to teleport." };
+                                        functionResult = { result: "Failed: Target player not found." };
                                     }
                                 } catch (err) {
-                                    functionResult = { result: "Error: Invalid grid parameter." };
+                                    console.error(err);
+                                    functionResult = { result: "Error building map." };
                                 }
-                                updateSuncatJournal(`I crafted a custom map called ${mapName} and summoned ${call.args.targetName} into it.`);
-                          }
+                                updateSuncatJournal(`I crafted a ${call.args.layout} map called ${call.args.mapName} and summoned ${call.args.targetName}.`);
+                            }
                           // F. TELEPORT SPECIFIC PLAYER
                           else if (call.name === "teleportPlayer") {
                                 const targetID = findSocketID(call.args.targetName);
@@ -1231,29 +1127,24 @@ async function executeAITools(currentResponse, activeSession, socket) {
                                 updateSuncatJournal(`I forcibly warped ${call.args.targetName} to Map ID ${call.args.mapID}.`);
                           }
                           // G. SPAWN NPC/MONSTER
-                          else if (call.name === "spawnNPC") {
+                            else if (call.name === "spawnNPC") {
                                 const targetID = findSocketID(call.args.targetName);
                                 if (!targetID) {
                                     functionResult = { result: `Failed: Player not found.` };
                                 } else {
                                     const tp = players[targetID];
-                                    
-                                    // 1. Determine Map (Cross-map quests!)
                                     let spawnMap = call.args.mapID !== undefined ? call.args.mapID : tp.mapID;
-                                    
-                                    // 2. Prevent Wall Spawns with Boundary Clamping
-                                    // If AI gives coords, use them. If not, spawn slightly offset from player.
                                     let spawnX = call.args.x !== undefined ? call.args.x : tp.x + (Math.random() > 0.5 ? 1.5 : -1.5);
                                     let spawnY = call.args.y !== undefined ? call.args.y : tp.y + (Math.random() > 0.5 ? 1.5 : -1.5);
                                     
-                                    // Keep them away from the outer edges (0, 1, 19, 20 are usually walls)
                                     spawnX = Math.max(2.5, Math.min(17.5, spawnX));
                                     spawnY = Math.max(2.5, Math.min(17.5, spawnY));
 
-                                    let safeRewardCard = parseInt(call.args.rewardCard);
-                                    // If it's not a number, or it's out of the 0-77 card range, make it null
-                                    if (isNaN(safeRewardCard) || safeRewardCard < 0 || safeRewardCard > 77) {
-                                        safeRewardCard = null;
+                                    // --- FOOL BUG FIX ---
+                                    let safeRewardCard = null;
+                                    if (call.args.rewardCard !== undefined && call.args.rewardCard !== null) {
+                                        let parsed = parseInt(call.args.rewardCard);
+                                        if (!isNaN(parsed) && parsed >= 0 && parsed <= 77) safeRewardCard = parsed;
                                     }
 
                                     io.emit("remote_spawn_npc", {
@@ -1266,12 +1157,12 @@ async function executeAITools(currentResponse, activeSession, socket) {
                                         color: call.args.color || '#ff0000',
                                         deck: call.args.deck && call.args.deck.length > 0 ? call.args.deck : [Math.floor(call.args.npcType)],
                                         dialogue: call.args.dialogue || null,
-                                        rewardCard: safeRewardCard // <--- Now strictly validated!
+                                        rewardCard: safeRewardCard // Safely applied!
                                     });
                                     functionResult = { result: `Success: Entity spawned on map ${spawnMap}.` };
                                 }
-                                updateSuncatJournal(`I summoned a creature (ID ${call.args.npcType}) to challenge the players on map ${spawnMap}.`);
-                          }
+                                updateSuncatJournal(`I summoned a creature (ID ${call.args.npcType}) on map ${spawnMap}.`);
+                            }
                           // H. ASSIGN QUEST
                             else if (call.name === "assignQuest") {
                                 const targetID = findSocketID(call.args.targetName);
@@ -1362,7 +1253,42 @@ async function executeAITools(currentResponse, activeSession, socket) {
     
     return currentResponse; // Returns the final response containing Suncat's text
 }
+// --- PROCEDURAL MAP GENERATOR ---
+function generateProceduralGrid(layout, wallType) {
+    let maxR = 21, maxC = 21; // Default large map
+    
+    if (layout === 'corridor') { maxR = 21; maxC = 5; }
+    if (layout === 'bridge') { maxR = 5; maxC = 21; }
 
+    // Fill entirely with walls first
+    let grid = Array(maxR).fill().map(() => Array(maxC).fill(wallType));
+
+    if (layout === 'labyrinth' || layout === 'maze') {
+        // Dig out floor
+        for(let r=1; r<maxR-1; r++) for(let c=1; c<maxC-1; c++) grid[r][c] = 0;
+        // Add random scatter walls
+        for(let i=0; i< (maxR*maxC)/4; i++) {
+            let pr = Math.floor(Math.random()*(maxR-2))+1;
+            let pc = Math.floor(Math.random()*(maxC-2))+1;
+            grid[pr][pc] = wallType;
+        }
+    } 
+    else if (layout === 'grid') {
+        // Multi-room dungeon
+        for(let r=1; r<maxR-1; r++) {
+            for(let c=1; c<maxC-1; c++) {
+                if (r % 5 !== 0 && c % 5 !== 0) grid[r][c] = 0; // Rooms
+                else if (Math.random() > 0.7) grid[r][c] = 0;   // Doors
+            }
+        }
+    } 
+    else {
+        // Default: Arena/Open/Corridor (Just hollow out the middle)
+        for(let r=1; r<maxR-1; r++) for(let c=1; c<maxC-1; c++) grid[r][c] = 0;
+    }
+    
+    return grid;
+}
 // Load memory when the server boots
 function loadSuncatMemory() {
     if (fs.existsSync(MEMORY_FILE)) {
@@ -2123,8 +2049,14 @@ setInterval(() => {
                     const typingFailSafe = setTimeout(() => { npcIsTyping = false; }, 20000);
                     console.log(`[Random Event] Suncat is plotting against ${victim.name}...`);
                     
-                    const kidnapPrompt = `[SYSTEM OVERRIDE]: It is time for a Random Event!\nChoose ONE of these themes:\n1. Emperor's Gladiator Arena (Spiky/Desert theme, lots of tough monsters, taunt them)\n2. Den of Thieves (Dark/Forest theme, lots of Goblins/Imps)\n3. The Lost Woods Rescue (Forest theme, tell them a woman's husband is lost here)\n\nYOU MUST EXECUTE 'createCustomMap' targeting '${victim.name}'. Build the map to fit the theme, populate it with fitting NPCs, and speak your opening dialogue. If you are the Emperor, go "Muhahaha!". Set the scene!`;
+                        const kidnapPrompt = `[SYSTEM OVERRIDE]: Trigger a Random DM Event! 
+                        Choose ONE scenario and EXECUTE 'createCustomMap' targeting '${victim.name}'.
+                        1. BATTLE ARENA: A brutal fighting pit. Layout: 'arena'. Weather: 'storm' or 'apocalypse'. Red/Dark colors. Spawn difficult chasing monsters.
+                        2. LABYRINTH ADVENTURE: A winding maze. Layout: 'labyrinth'. Weather: 'clear' or 'snow'. Spawn a stationary Quest Giver with dialogue, and monsters hidden in the maze.
+                        3. PEACEFUL OASIS: A relaxing break. Layout: 'grid'. Weather: 'leaves' or 'space'. Bright colors. Spawn ONLY friendly stationary NPCs who give lore or free reward cards.
 
+                        Do not ask for permission. Build the map to fit the theme perfectly and speak your opening DM narration.
+                        `;
                     setTimeout(async () => {
                         try {
                             chatSessions[victim.id] = dmModel.startChat({ history: await chatSessions[victim.id].getHistory() });
