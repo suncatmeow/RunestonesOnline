@@ -1060,59 +1060,123 @@ async function executeAITools(currentResponse, activeSession, socket) {
                                 try {
                                     const layoutStyle = call.args.layout || 'arena';
                                     const wallType = call.args.wallType || 1;
-                                    const gridData = generateProceduralGrid(layoutStyle, wallType); // Auto-generates!
+                                    let gridData = generateProceduralGrid(layoutStyle, wallType); 
                                     
-                                    const skyColor = call.args.skyColor || 'rgba(0,0,0,1)';
-                                    const floorColor = call.args.floorColor || '#333333';
-                                    const mapName = call.args.mapName || "Suncat's Dreamscape";
-                                    const mapWeather = call.args.weather || 'clear';
-                                    const customMapID = 999; 
-                                    const targetID = findSocketID(call.args.targetName);
+                                    let maxR = gridData.length;
+                                    let maxC = gridData[0].length;
+                                    let startX = Math.floor(maxC / 2);
+                                    let startY = Math.floor(maxR / 2);
 
-                                    // Map NPCs and apply the Fool Bug fix to them too
+                                    // 1. GUARANTEE A PATH FROM SPAWN TO PORTAL (1,1)
+                                    let currX = startX, currY = startY;
+                                    while(currX !== 1 || currY !== 1) {
+                                        if(currX > 1) currX--; else if(currX < 1) currX++;
+                                        if(currY > 1) currY--; else if(currY < 1) currY++;
+                                        gridData[currY][currX] = 0; 
+                                    }
+                                    
+                                    // Clear 3x3 around spawn
+                                    for(let dy=-1; dy<=1; dy++) {
+                                        for(let dx=-1; dx<=1; dx++) {
+                                            gridData[startY+dy][startX+dx] = 0;
+                                        }
+                                    }
+                                    gridData[1][1] = 0; // Ensure portal is clear
+
+                                    // 2. BREADTH-FIRST SEARCH (Find all reachable tiles)
+                                    let reachableTiles = [];
+                                    let queue = [{x: 1, y: 1, dist: 0}];
+                                    let visited = new Set();
+                                    visited.add("1,1");
+
+                                    while(queue.length > 0) {
+                                        let curr = queue.shift();
+                                        
+                                        // Do not put NPCs directly on the portal or player spawn
+                                        if (!(curr.x === 1 && curr.y === 1) && !(curr.x === startX && curr.y === startY)) {
+                                            reachableTiles.push(curr);
+                                        }
+
+                                        let neighbors = [[0,1], [1,0], [0,-1], [-1,0]];
+                                        for (let [dx, dy] of neighbors) {
+                                            let nx = curr.x + dx, ny = curr.y + dy;
+                                            if (nx > 0 && ny > 0 && ny < maxR - 1 && nx < maxC - 1) {
+                                                let tile = gridData[ny][nx];
+                                                // Walkable if <= 0 and even (0, -2, -4)
+                                                let isWalkable = (tile <= 0 && Math.abs(tile) % 2 === 0);
+                                                
+                                                if (isWalkable && !visited.has(nx + "," + ny)) {
+                                                    visited.add(nx + "," + ny);
+                                                    queue.push({x: nx, y: ny, dist: curr.dist + 1});
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    // 3. SORT BY DISTANCE (Furthest first)
+                                    reachableTiles.sort((a, b) => b.dist - a.dist);
+
+                                    // 4. SPLIT INTO "DEEP" AND "SCATTER" ZONES
+                                    let deepLimit = Math.max(1, Math.floor(reachableTiles.length * 0.2));
+                                    let deepTiles = reachableTiles.slice(0, deepLimit); // The 20% furthest tiles
+                                    let scatterTiles = reachableTiles.slice(deepLimit);   // The remaining 80%
+                                    scatterTiles.sort(() => Math.random() - 0.5);         // Shuffle scatter
+
+                                    // 5. ALLOCATE NPCS BY ROLE
                                     let mapNPCs = [];
                                     if (call.args.npcs && call.args.npcs.length > 0) {
-                                        // Look for where you map the NPCs
                                         mapNPCs = call.args.npcs.map(npc => {
                                             let rCard = null;
                                             if (npc.rewardCard !== undefined && npc.rewardCard !== null) {
                                                 let parsed = parseInt(npc.rewardCard);
                                                 if (!isNaN(parsed) && parsed >= 0 && parsed <= 77) rCard = parsed;
                                             }
+                                            
+                                            let sRole = npc.role || 'battle';
+                                            let spot;
 
-                                            let sState = npc.state || 'chasing';
-                                            let sDialogue = npc.dialogue || null;
-                                            let sRole = npc.role || 'battle'; // <--- ADD THIS
+                                            // Quest/Reward NPCs get the Deep Tiles. Battles scatter.
+                                            if (sRole === 'quest_giver' || sRole === 'reward') {
+                                                spot = deepTiles.shift() || scatterTiles.shift(); 
+                                            } else {
+                                                spot = scatterTiles.shift() || deepTiles.shift();
+                                            }
 
-                                            return { ...npc, state: sState, dialogue: sDialogue, rewardCard: rCard, role: sRole }; // <--- PASS ROLE
+                                            // Fallback to center if the map is somehow out of tiles
+                                            let finalX = spot ? spot.x + 0.5 : startX + 0.5;
+                                            let finalY = spot ? spot.y + 0.5 : startY + 0.5;
+
+                                            return { ...npc, x: finalX, y: finalY, state: npc.state || 'chasing', role: sRole, rewardCard: rCard };
                                         });
                                     }
 
-                                    let spawnX = Math.floor(gridData[0].length / 2) + 0.5;
-                                    let spawnY = Math.floor(gridData.length / 2) + 0.5;
-
                                     const customMapData = {
-                                        id: customMapID, maze: gridData, skyColor: skyColor, 
-                                        floorColor: floorColor, name: mapName, npcs: mapNPCs, weather: mapWeather,
-                                        spawnX: spawnX, spawnY: spawnY 
+                                        id: 999, maze: gridData, 
+                                        skyColor: call.args.skyColor || 'rgba(0,0,0,1)', 
+                                        floorColor: call.args.floorColor || '#333333', 
+                                        name: call.args.mapName || "Suncat's Dreamscape", 
+                                        npcs: mapNPCs, 
+                                        weather: call.args.weather || 'clear',
+                                        spawnX: startX + 0.5, spawnY: startY + 0.5 
                                     };
                                     
+                                    const targetID = findSocketID(call.args.targetName);
                                     if (targetID && players[targetID]) {
                                         const targetPlayer = players[targetID];
                                         const suncat = players[SUNCAT_ID];
 
                                         io.emit('load_custom_map', customMapData);
                                         
-                                        targetPlayer.mapID = customMapID; 
-                                        suncat.mapID = customMapID;
-                                        targetPlayer.x = spawnX; targetPlayer.y = spawnY;
-                                        suncat.x = spawnX + 1; suncat.y = spawnY;
+                                        targetPlayer.mapID = 999; 
+                                        suncat.mapID = 999;
+                                        targetPlayer.x = startX + 0.5; targetPlayer.y = startY + 0.5;
+                                        suncat.x = startX + 1.5; suncat.y = startY + 0.5;
                                         
-                                        targetPlayer.activeQuest = `Survive ${mapName}`;
+                                        targetPlayer.activeQuest = `Survive ${call.args.mapName}`;
                                         io.to(targetID).emit("new_quest_objective", { questText: targetPlayer.activeQuest });
 
                                         io.emit("updatePlayers", players);
-                                        functionResult = { result: `Success. Built ${layoutStyle} map '${mapName}'.` };
+                                        functionResult = { result: `Success. Built ${layoutStyle} map '${call.args.mapName}'.` };
                                     } else {
                                         functionResult = { result: "Failed: Target player not found." };
                                     }
