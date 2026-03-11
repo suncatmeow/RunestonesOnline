@@ -1877,142 +1877,130 @@ const GAME_MECHANICS_DB = {
 // --- TOOLS DEFINITION ---
 const toolsDef = [{
     functionDeclarations: [
-        //consult manual
         {
             name: "consultGameManual",
             description: "REQUIRED: Search the database for card info, world lore, rules, AND Suncat's REAL WORLD IDENTITY. If asked about Suncat's real life, use broad category keywords. For family/relationships/gender, search 'BIOGRAPHY'. For school/jobs/military/dreams, search 'EDUCATION'. For martial arts/magic/bazi, search 'COMBAT'. For music/food/movies/books, search 'TASTES'. Can search multiple terms at once.",
             parameters: {
-                type: "OBJECT",
-                properties: { searchQueries: { type: "ARRAY", items: { type: "STRING" } } },
+                type: SchemaType.OBJECT,
+                properties: { searchQueries: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } } },
                 required: ["searchQueries"]
             }
         },
-        //give card
         {
             name: "givePlayerCard",
             description: "Gives a specific tarot card to a specific player.",
             parameters: {
-                type: "OBJECT",
+                type: SchemaType.OBJECT,
                 properties: {
-                    targetName: { type: "STRING" },
-                    cardName: { type: "STRING" },
-                    reason: { type: "STRING" }
+                    targetName: { type: SchemaType.STRING },
+                    cardName: { type: SchemaType.STRING },
+                    reason: { type: SchemaType.STRING }
                 },
                 required: ["targetName", "cardName"]
             }
         },
-        //kick player (forced log out)
         {
             name: "kickPlayer",
             description: "Kicks a player from the server.",
-            parameters: { type: "OBJECT", properties: { targetName: { type: "STRING" }, reason: { type: "STRING" } }, required: ["targetName"] }
+            parameters: { type: SchemaType.OBJECT, properties: { targetName: { type: SchemaType.STRING }, reason: { type: SchemaType.STRING } }, required: ["targetName"] }
         },
-        //banish player
         {
             name: "banishPlayer",
             description: "Permanently bans a player.",
-            parameters: { type: "OBJECT", properties: { targetName: { type: "STRING" }, reason: { type: "STRING" } }, required: ["targetName"] }
+            parameters: { type: SchemaType.OBJECT, properties: { targetName: { type: SchemaType.STRING }, reason: { type: SchemaType.STRING } }, required: ["targetName"] }
         },
-        //vanquish player (delete player file)
         {
             name: "vanquishPlayer",
             description: "Deletes a player's save file.",
-            parameters: { type: "OBJECT", properties: { targetName: { type: "STRING" }, reason: { type: "STRING" } }, required: ["targetName"] }
+            parameters: { type: SchemaType.OBJECT, properties: { targetName: { type: SchemaType.STRING }, reason: { type: SchemaType.STRING } }, required: ["targetName"] }
         },
-        //teleport TO player
         {
             name: "teleportToPlayer",
             description: "Teleports Suncat directly to the player's location.",
-            parameters: { type: "OBJECT", properties: { targetName: { type: "STRING" }, reason: { type: "STRING" } }, required: ["targetName"] }
+            parameters: { type: SchemaType.OBJECT, properties: { targetName: { type: SchemaType.STRING }, reason: { type: SchemaType.STRING } }, required: ["targetName"] }
         },
-        //Teleport player
         {
             name: "teleportPlayer",
             description: "Teleports a specific player to a specific map ID (0-22 or 999).",
-            parameters: { type: "OBJECT", properties: { targetName: { type: "STRING" }, mapID: { type: "INTEGER" } }, required: ["targetName", "mapID"] }
+            parameters: { type: SchemaType.OBJECT, properties: { targetName: { type: SchemaType.STRING }, mapID: { type: SchemaType.INTEGER } }, required: ["targetName", "mapID"] }
         },
-        //change weather
         {
             name: "changeEnvironment",
             description: "Changes the weather or sky color of the map the player is currently standing on.",
             parameters: {
-                type: "OBJECT",
+                type: SchemaType.OBJECT,
                 properties: {
-                    targetName: { type: "STRING" },
-                    weather: { type: "STRING", description: "Options: 'clear', 'snow', 'storm', 'leaves', 'lightning', 'space', 'apocalypse'" },
-                    skyColor: { type: "STRING" }
+                    targetName: { type: SchemaType.STRING },
+                    weather: { type: SchemaType.STRING, description: "Options: 'clear', 'snow', 'storm', 'leaves', 'lightning', 'space', 'apocalypse'" },
+                    skyColor: { type: SchemaType.STRING }
                 },
                 required: ["targetName", "weather"]
             }
         },
-        //give quest
         {
             name: "assignQuest",
             description: "Assigns a custom quest objective. Text 'COMPLETE' erases it.",
             parameters: {
-                type: "OBJECT",
-                properties: { targetName: { type: "STRING" }, questText: { type: "STRING" } },
+                type: SchemaType.OBJECT,
+                properties: { targetName: { type: SchemaType.STRING }, questText: { type: SchemaType.STRING } },
                 required: ["targetName", "questText"]
             }
         },
-        //create custom map
         {
             name: "createCustomMap",
             description: "Creates a thematic custom map. You only need to provide Enums. The server will auto-generate the colors, walls, weather, and standard mobs.",            
             parameters: {
-                type: "OBJECT",
+                type: SchemaType.OBJECT,
                 properties: {
-                    targetName: { type: "STRING" },
-                    mapName: { type: "STRING" },
-                    biomeEnum: { type: "INTEGER", description: "0: Sylvan, 1: Ruins, 2: Desert, 3: Snow, 4: Void" },
-                    layoutEnum: { type: "INTEGER", description: "0: Arena, 1: Labyrinth, 2: Corridor, 3: Bridge, 4: Grid" },
-                    scenarioEnum: { type: "INTEGER", description: "0: Ambush (Aggro), 1: Test (Stationary), 2: Heist (Boss sleeps, mobs wander), 3: Corruption (Aggro/Sinister), 4: Peaceful (Friendly NPCs only)" },
-                    customBossID: { type: "INTEGER", description: "OPTIONAL: ID of a specific boss from the Card Manifest (e.g., 63 for Dragon). If left blank, it will just be standard mobs." }
+                    targetName: { type: SchemaType.STRING },
+                    mapName: { type: SchemaType.STRING },
+                    biomeEnum: { type: SchemaType.INTEGER, description: "0: Sylvan, 1: Ruins, 2: Desert, 3: Snow, 4: Void" },
+                    layoutEnum: { type: SchemaType.INTEGER, description: "0: Arena, 1: Labyrinth, 2: Corridor, 3: Bridge, 4: Grid" },
+                    scenarioEnum: { type: SchemaType.INTEGER, description: "0: Ambush (Aggro), 1: Test (Stationary), 2: Heist (Boss sleeps, mobs wander), 3: Corruption (Aggro/Sinister), 4: Peaceful (Friendly NPCs only)" },
+                    customBossID: { type: SchemaType.INTEGER, description: "OPTIONAL: ID of a specific boss from the Card Manifest (e.g., 63 for Dragon). If left blank, it will just be standard mobs." }
                 },
                 required: ["targetName", "mapName", "biomeEnum", "layoutEnum"] 
             }
         },
-        // spawn npc
         {
             name: "spawnNPC",
             description: "Spawns a single NPC. CRITICAL: Use 'rewardCard' ONLY for unique Quest NPCs or special gifts. The server will automatically build a synergistic deck for this NPC based on its class.",          
             parameters: {
-                type: "OBJECT",
+                type: SchemaType.OBJECT,
                 properties: {
-                    targetName: { type: "STRING" },
-                    npcType: { type: "NUMBER", description: "The ID of the entity to spawn (e.g., 63 for Dragon)." },
-                    mapID: { type: "INTEGER" },
-                    x: { type: "NUMBER" },
-                    y: { type: "NUMBER" },
-                    state: { type: "STRING", description: "'chasing', 'wandering', or 'stationary'." },
-                    role: { type: "STRING", description: "'battle' (fights), 'dialogue' (talks/vanishes), 'quest_giver' (gives quest), 'reward' (gives card)." },
-                    color: { type: "STRING" },
-                    dialogue: { type: "ARRAY", items: { type: "STRING" } },
-                    rewardCard: { type: "INTEGER", description: "CRITICAL: Omit completely if no reward." },
-                    options: { type: "ARRAY", items: { type: "STRING" }, description: "OPTIONAL: Give the player up to 2 choices (e.g. ['Accept Quest', 'Decline']). This will spawn buttons on their screen." }
+                    targetName: { type: SchemaType.STRING },
+                    npcType: { type: SchemaType.NUMBER, description: "The ID of the entity to spawn (e.g., 63 for Dragon)." },
+                    mapID: { type: SchemaType.INTEGER },
+                    x: { type: SchemaType.NUMBER },
+                    y: { type: SchemaType.NUMBER },
+                    state: { type: SchemaType.STRING, description: "'chasing', 'wandering', or 'stationary'." },
+                    role: { type: SchemaType.STRING, description: "'battle' (fights), 'dialogue' (talks/vanishes), 'quest_giver' (gives quest), 'reward' (gives card)." },
+                    color: { type: SchemaType.STRING },
+                    dialogue: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
+                    rewardCard: { type: SchemaType.INTEGER, description: "CRITICAL: Omit completely if no reward." },
+                    options: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING }, description: "OPTIONAL: Give the player up to 2 choices (e.g. ['Accept Quest', 'Decline']). This will spawn buttons on their screen." }
                 },
                 required: ["targetName", "npcType", "state"]
             }
         },
-        //create custom card
         {
             name: "createCustomCard",
             description: "Forges a brand new, unique card and adds it to the server database permanently. You can then use spawnNPC with its new ID.",
             parameters: {
-                type: "OBJECT",
+                type: SchemaType.OBJECT,
                 properties: {
-                    targetName: { type: "STRING" },
-                    name: { type: "STRING" },
-                    type: { type: "STRING", description: "'monster', 'spell', or 'item'" },
-                    suit: { type: "STRING", description: "e.g., 'Swords', 'Cups', 'Major Arcana'" },
-                    rank: { type: "STRING", description: "e.g., 'King', 'Ace', 'XIII'" },
-                    classes: { type: "ARRAY", items: { type: "STRING" }, description: "CRITICAL FOR SYNERGY: e.g., ['warrior', 'mage', 'rogue', 'guardian']" },
-                    lore: { type: "STRING" },
-                    stats: { type: "STRING", description: "e.g., '1d12 STR, 1d6 INT'" }
+                    targetName: { type: SchemaType.STRING },
+                    name: { type: SchemaType.STRING },
+                    type: { type: SchemaType.STRING, description: "'monster', 'spell', or 'item'" },
+                    suit: { type: SchemaType.STRING, description: "e.g., 'Swords', 'Cups', 'Major Arcana'" },
+                    rank: { type: SchemaType.STRING, description: "e.g., 'King', 'Ace', 'XIII'" },
+                    classes: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING }, description: "CRITICAL FOR SYNERGY: e.g., ['warrior', 'mage', 'rogue', 'guardian']" },
+                    lore: { type: SchemaType.STRING },
+                    stats: { type: SchemaType.STRING, description: "e.g., '1d12 STR, 1d6 INT'" }
                 },
                 required: ["targetName", "name", "type", "classes"]
             }
-        },
+        }
     ]
 }];
 //TALIESIN
@@ -2657,6 +2645,7 @@ async function executeAITools(currentResponse, activeSession, socket) {
                             let score = 0;
                             let lowerLine = line.toLowerCase();
                             if (lowerLine.includes(lowerQuery)) score += 10;
+                        const searchTerms = lowerQuery.replace(/[^\w\s]/gi, '').split(/\s+/).filter(w => w.length > 2 && !SEARCH_STOP_WORDS.has(w));                            return { index, line, score };
                         });
 
                         let bestMatches = scoredLines.filter(item => item.score > 0).sort((a, b) => b.score - a.score).slice(0, 2);
