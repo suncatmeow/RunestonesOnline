@@ -735,7 +735,17 @@ let players = {};
             [FINGERS] -,-,-,-, -,-,-,-, -,-,-,-, -,-,-,- [/FINGERS]
             [STRUM] -,-,-,-, -,-,-,-, -,-,-,-, -,-,-,- [/STRUM]
     `;
-
+// --- HELPER FUNCTIONS ---
+function findSocketID(playerName) {
+    if (!playerName) return null;
+    const lowerName = String(playerName).toLowerCase();
+    for (let id in players) {
+        if (players[id].name.toLowerCase() === lowerName) {
+            return id;
+        }
+    }
+    return null;
+}
 // --- AI CONFIGURATION ---
 // 1. THE CHEAP BRAIN (Everyday Chatting, Banter, & Basic Reactions)
 // Optimized for speed and low cost.
@@ -1036,24 +1046,35 @@ async function executeAITools(currentResponse, activeSession, socket) {
                                 updateSuncatJournal(`I exercised my authority and ${call.name.replace("Player", "ed")} ${call.args.targetName} for: ${call.args.reason || "no stated reason"}.`);
                           }
                           // C. TELEPORTATION 
-                          else if (call.name === "teleportToPlayer") {
+                        else if (call.name === "teleportToPlayer") {
                                 const suncat = players[SUNCAT_ID];
-                                const requester = players[socket.id];
+                                
+                                // We need to know WHO Suncat is teleporting to. 
+                                // The AI might not have passed a targetName if it assumed it was talking to the person in front of it.
+                                // Let's grab the targetID if provided, or default to the socketId of the session.
+                                let targetID = null;
+                                if (call.args.targetName) {
+                                    targetID = findSocketID(call.args.targetName);
+                                } else if (socket) {
+                                    targetID = socket.id;
+                                }
+
+                                const requester = players[targetID];
                                 
                                 if (suncat && requester) {
                                     suncat.mapID = requester.mapID;
                                     suncat.x = parseFloat(requester.x);
                                     suncat.y = parseFloat(requester.y);
                                     
-                                    currentTargetID = socket.id; 
+                                    currentTargetID = targetID; 
                                     lastSwitchTime = Date.now();
                                     
                                     io.emit("updatePlayers", players);
-                                    functionResult = { result: "Teleport successful. You are now standing next to the player." };
+                                    functionResult = { result: `Teleport successful. You are now standing next to ${requester.name}.` };
                                 } else {
                                     functionResult = { result: "Teleport failed. Could not find player coordinates." };
                                 }
-                          }
+                            }
                           // D. CONSULT MANUAL (Optimized Librarian)
                           else if (call.name === "consultGameManual") {
                                 const queries = call.args.searchQueries || [];
