@@ -1965,8 +1965,7 @@ const toolsDef = [{
                     targetName: { type: "STRING" },
                     mapName: { type: "STRING" },
                     biomeEnum: { type: "INTEGER", description: "0: Sylvan, 1: Ruins, 2: Desert, 3: Snow, 4: Void" },
-                    layoutEnum: { type: "INTEGER", description: "0: Arena, 1: Labyrinth, 2: Corridor, 3: Bridge, 4: Grid" },
-                    scenarioEnum: { type: "INTEGER", description: "0: Ambush (Aggro), 1: Test (Stationary), 2: Heist (Boss sleeps, mobs wander), 3: Corruption (Aggro/Sinister), 4: Peaceful (Friendly NPCs only)" },
+layoutEnum: { type: "INTEGER", description: "0: Arena (Open Field), 1: Labyrinth, 2: Hallways & Rooms, 3: Bridge, 4: Buildings (City), 5: Spiral" },                    scenarioEnum: { type: "INTEGER", description: "0: Ambush (Aggro), 1: Test (Stationary), 2: Heist (Boss sleeps, mobs wander), 3: Corruption (Aggro/Sinister), 4: Peaceful (Friendly NPCs only)" },
                     customBossID: { type: "INTEGER", description: "OPTIONAL: ID of a specific boss from the Card Manifest (e.g., 63 for Dragon). If left blank, it will just be standard mobs." }
                 },
                 required: ["targetName", "mapName", "biomeEnum", "layoutEnum"] 
@@ -2450,39 +2449,123 @@ async function processCognitiveLoad(socketId, forceDigest = false) {
     }
 }
 // --- PROCEDURAL MAP GENERATOR (Wider Paths for Giant Monsters) ---
+// --- EPIC 99x99 PROCEDURAL MAP GENERATOR ---
 function generateProceduralGrid(layout, wallType) {
-    let maxR = 21, maxC = 21; 
-    
-    // Made Corridors and Bridges wider!
-    if (layout === 'corridor') { maxR = 21; maxC = 7; } 
-    if (layout === 'bridge') { maxR = 7; maxC = 21; }
-
+    let maxR = 99, maxC = 99; 
     let grid = Array(maxR).fill().map(() => Array(maxC).fill(wallType));
 
     if (layout === 'labyrinth' || layout === 'maze') {
+        // Epic 99x99 Maze
         for(let r=1; r<maxR-1; r++) for(let c=1; c<maxC-1; c++) grid[r][c] = 0;
-        
-        // Divided by 8 instead of 4 (Less dense walls)
-        for(let i=0; i< (maxR*maxC)/8; i++) { 
+        // Add scattered walls to create a dense maze
+        for(let i=0; i < (maxR * maxC) / 6; i++) { 
             let pr = Math.floor(Math.random()*(maxR-3))+1;
             let pc = Math.floor(Math.random()*(maxC-3))+1;
             grid[pr][pc] = wallType;
-            // 50% chance to make the wall 2 tiles thick so we don't get tiny 1-block zig-zags
-            if(Math.random() > 0.5) grid[pr+1][pc] = wallType; 
+            if(Math.random() > 0.3) grid[pr+1][pc] = wallType; 
+            if(Math.random() > 0.3) grid[pr][pc+1] = wallType;
         }
     } 
-    else if (layout === 'grid') {
-        for(let r=1; r<maxR-1; r++) {
-            for(let c=1; c<maxC-1; c++) {
-                // Mod 6 creates larger 5x5 rooms
-                if (r % 6 !== 0 && c % 6 !== 0) grid[r][c] = 0; 
-                // > 0.4 creates much wider doors/holes in the walls
-                else if (Math.random() > 0.4) grid[r][c] = 0;   
+    else if (layout === 'grid' || layout === 'buildings') {
+        // "Buildings" - Large open area with hollow 5x5 buildings (3x3 open interior)
+        for(let r=1; r<maxR-1; r++) for(let c=1; c<maxC-1; c++) grid[r][c] = 0;
+        
+        // Drop 80 random buildings across the map
+        for(let b=0; b < 80; b++) {
+            let startR = Math.floor(Math.random() * (maxR - 8)) + 2;
+            let startC = Math.floor(Math.random() * (maxC - 8)) + 2;
+            
+            // Draw the 5x5 outer walls
+            for(let r = startR; r < startR + 5; r++) {
+                for(let c = startC; c < startC + 5; c++) {
+                    if (r === startR || r === startR + 4 || c === startC || c === startC + 4) {
+                        grid[r][c] = wallType;
+                    }
+                }
+            }
+            // Punch a 1-tile door randomly into one of the 4 walls
+            let doorWall = Math.floor(Math.random() * 4);
+            if (doorWall === 0) grid[startR][startC+2] = 0;           // Top door
+            if (doorWall === 1) grid[startR+4][startC+2] = 0;         // Bottom door
+            if (doorWall === 2) grid[startR+2][startC] = 0;           // Left door
+            if (doorWall === 3) grid[startR+2][startC+4] = 0;         // Right door
+        }
+    } 
+    else if (layout === 'corridor' || layout === 'hallways') {
+        // "Hallways & Rooms" - Starts completely solid, carves a perfect lattice
+        for(let r=3; r<maxR-6; r+=9) {
+            for(let c=3; c<maxC-6; c+=9) {
+                // Carve a 3x3 room
+                for(let i=0; i<3; i++) {
+                    for(let j=0; j<3; j++) {
+                        grid[r+i][c+j] = 0;
+                    }
+                }
+                // Carve a 1-tile wide hallway connecting to the right
+                if (c + 9 < maxC - 6) {
+                    for(let k=3; k<=8; k++) grid[r+1][c+k] = 0;
+                }
+                // Carve a 1-tile wide hallway connecting downwards
+                if (r + 9 < maxR - 6) {
+                    for(let k=3; k<=8; k++) grid[r+k][c+1] = 0;
+                }
             }
         }
     } 
+    else if (layout === 'bridge') {
+        // "Bridge" - A long 3-wide straight path down the exact center
+        let centerC = Math.floor(maxC/2);
+        for(let r=1; r<maxR-1; r++) {
+            grid[r][centerC-1] = 0;
+            grid[r][centerC] = 0;
+            grid[r][centerC+1] = 0;
+        }
+        // Add a 9x9 open platform right in the middle for a boss fight
+        let centerR = Math.floor(maxR/2);
+        for(let r = centerR-4; r <= centerR+4; r++) {
+            for(let c = centerC-4; c <= centerC+4; c++) {
+                grid[r][c] = 0;
+            }
+        }
+    } 
+    else if (layout === 'spiral') {
+        // "Spiral" - Start at outer edge, carve 3-wide path to a 9x9 center
+        let r = 2, c = 2;
+        let top = 2, bottom = maxR - 3, left = 2, right = maxC - 3;
+        let dir = 0; // 0=right, 1=down, 2=left, 3=up
+
+        // Trace the 3-wide spiral inwards
+        while (bottom - top >= 8 && right - left >= 8) {
+            // Carve 3x3 "brush"
+            for (let i=0; i<3; i++) {
+                for (let j=0; j<3; j++) {
+                    grid[r+i][c+j] = 0;
+                }
+            }
+
+            // Move brush and turn corners when hitting the shrinking boundary
+            if (dir === 0) {
+                c++; if (c >= right - 2) { dir = 1; top += 4; }
+            } else if (dir === 1) {
+                r++; if (r >= bottom - 2) { dir = 2; right -= 4; }
+            } else if (dir === 2) {
+                c--; if (c <= left) { dir = 3; bottom -= 4; }
+            } else if (dir === 3) {
+                r--; if (r <= top) { dir = 0; left += 4; }
+            }
+        }
+
+        // Hollow out the epic 9x9 center room
+        let midR = Math.floor(maxR/2) - 4;
+        let midC = Math.floor(maxC/2) - 4;
+        for (let i=0; i<9; i++) {
+            for (let j=0; j<9; j++) {
+                grid[midR+i][midC+j] = 0;
+            }
+        }
+    }
     else {
-        // Arena / Open
+        // Arena / Open (The default flat square)
         for(let r=1; r<maxR-1; r++) for(let c=1; c<maxC-1; c++) grid[r][c] = 0;
     }
     
@@ -2649,6 +2732,7 @@ async function executeAITools(currentResponse, activeSession, socket) {
                             let score = 0;
                             let lowerLine = line.toLowerCase();
                             if (lowerLine.includes(lowerQuery)) score += 10;
+                            return { index, score }; // <-- Added this return statement!
                         });
 
                         let bestMatches = scoredLines.filter(item => item.score > 0).sort((a, b) => b.score - a.score).slice(0, 2);
@@ -2685,7 +2769,7 @@ async function executeAITools(currentResponse, activeSession, socket) {
                         
                         // 1. Resolve Enums
                         const biome = BIOME_DB[bEnum] || BIOME_DB[0];
-                        const layoutTypes = ['arena', 'labyrinth', 'corridor', 'bridge', 'grid'];
+                        const layoutTypes = ['arena', 'labyrinth', 'corridor', 'bridge', 'grid','spiral'];
                         const layoutStyle = layoutTypes[lEnum] || 'arena';
                         
                         // Pick random visuals from the biome's palette
@@ -2700,7 +2784,15 @@ async function executeAITools(currentResponse, activeSession, socket) {
                         let maxC = gridData[0].length;
                         let startX = Math.floor(maxC / 2);
                         let startY = Math.floor(maxR / 2);
-
+                        if (layoutStyle === 'spiral') {
+                                // Start at the top-left outer edge of the spiral
+                                startX = 3;
+                                startY = 3; 
+                            } else if (layoutStyle === 'bridge') {
+                                // Start at the very top of the bridge
+                                startX = Math.floor(maxC / 2);
+                                startY = 3; 
+                            }
                         let currX = startX, currY = startY;
                         while(currX !== 1 || currY !== 1) {
                             if(currX > 1) currX--; else if(currX < 1) currX++;
