@@ -2851,6 +2851,7 @@ async function executeAITools(currentResponse, activeSession, socket) {
                                 type: CARD_MANIFEST_DB[antagID].sprite || antagID,
                                 x: spot.x + 0.5, y: spot.y + 0.5,
                                 state: 'stationary', role: 'battle',
+                                isBoss: true, // <--- NEW: Client can use this for Boss Music!
                                 dialogue: ["You dare challenge me?!"],
                                 deck: buildSynergisticDeck(antagID),
                                 rewardCard: antagID 
@@ -2876,6 +2877,7 @@ async function executeAITools(currentResponse, activeSession, socket) {
                             name: call.args.mapName || `The ${biome.name} ${layoutStyle}`, 
                             npcs: mapNPCs, weather: weather,
                             spawnX: startX + 0.5, spawnY: startY + 0.5,
+                            biome: biome.name // <--- NEW: Tells client what ambient music to play!
                         };
 
                         // ---> CACHE IT GLOBALLY <---
