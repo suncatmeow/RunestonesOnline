@@ -2031,6 +2031,8 @@ const toolsDef = [{
             - Mixolydian: 0,2,4,5,7,9,10
             - Harmonic Minor: 0,2,3,5,7,8,11
 
+            PHONETIC TRANSLATION LEGEND:
+            - RULES: Hyphenate syllables. (e.g., "Magic" -> ma-gic)
 
             SEQUENCER RULES (CRITICAL):
             1. THUMB, FINGERS, and STRUM arrays MUST have exactly 16 slots.
@@ -2045,7 +2047,7 @@ const toolsDef = [{
             YOU MUST USE THIS EXACT OUTPUT FORMAT. DO NOT DEVIATE OR ADD PROSE:
             [THOUGHT] A short explanation of your musical intent (max 13 words). [/THOUGHT]
             [LYRICS_UI] 1 to 3 words MAX. [/LYRICS_UI]
-            [LYRICS_PHONETIC] exactly the same as Lyrics UI [/LYRICS_PHONETIC]
+            [LYRICS_PHONETIC] ex-act-pho-net-ic [/LYRICS_PHONETIC]
             [TEMPO] an integer between 61 and 91 [/TEMPO]
             [SCALE] 0,2,3,5,7,8,10 [/SCALE]
             [THUMB] -,-,-,-, -,-,-,-, -,-,-,-, -,-,-,- [/THUMB]
@@ -2246,10 +2248,14 @@ function updateBudget(usage, socketId) {
 const FULL_LIBRARY_LINES = [
     ...Object.values(WORLD_LORE_DB),
     ...Object.values(SUNCAT_LORE_DB),
-    ...Object.values(GAME_MECHANICS_DB)
+    ...Object.values(GAME_MECHANICS_DB),
+    // Dynamically convert cards into readable text for the search function!
+    ...Object.values(CARD_MANIFEST_DB).map(c => `Card Manifest - Name: ${c.name}, Suit: ${c.suit}, Type: ${c.type}, Classes: ${c.classes ? c.classes.join(', ') : 'none'}, Lore: ${c.lore}, Stats: ${c.stats}`),
+    // Add the campaign story beats!
+    ...Object.values(STORY_CAMPAIGN_DB).map(s => `Campaign Beat [${s.title}]: ${s.text} Plot Hook: ${s.hook}`)
 ];
 // Global stop-words list so it isn't recreated on every search
-const SEARCH_STOP_WORDS = ["the", "and", "for", "with", "what", "does", "mean", "about", "are", "you", "is", "how", "whats", "up", "a", "an", "to", "in", "on", "of"];  // --- DYNAMIC CONTEXT INJECTOR ---
+const SEARCH_STOP_WORDS = new Set(["the", "and", "for", "with", "what", "does", "mean", "about", "are", "you", "is", "how", "whats", "up", "a", "an", "to", "in", "on", "of"]);
 // Pre-parse on server boot:
 
 
@@ -2642,13 +2648,10 @@ async function executeAITools(currentResponse, activeSession, socket) {
                     queries.forEach(query => {
                         const lowerQuery = query.toLowerCase();
                         const searchTerms = lowerQuery.replace(/[^\w\s]/gi, '').split(/\s+/).filter(w => w.length > 2 && !SEARCH_STOP_WORDS.includes(w));
-
                         let scoredLines = FULL_LIBRARY_LINES.map((line, index) => {
                             let score = 0;
                             let lowerLine = line.toLowerCase();
                             if (lowerLine.includes(lowerQuery)) score += 10;
-                            searchTerms.forEach(term => { if (lowerLine.includes(term)) score += 2; });
-                            return { index, line, score };
                         });
 
                         let bestMatches = scoredLines.filter(item => item.score > 0).sort((a, b) => b.score - a.score).slice(0, 2);
@@ -2882,12 +2885,13 @@ async function executeAITools(currentResponse, activeSession, socket) {
                     } else {
                         const tp = players[targetID];
                         let spawnMap = call.args.mapID !== undefined ? call.args.mapID : tp.mapID;
-                        let spawnX = call.args.x !== undefined ? call.args.x : tp.x + (Math.random() > 0.5 ? 1.5 : -1.5);
-                        let spawnY = call.args.y !== undefined ? call.args.y : tp.y + (Math.random() > 0.5 ? 1.5 : -1.5);
-                        
-                        spawnX = Math.max(2.5, Math.min(17.5, spawnX));
-                        spawnY = Math.max(2.5, Math.min(17.5, spawnY));
+                        let randomScatterX = (Math.random() * 2) - 1; // Random float between -1.0 and 1.0
+                        let randomScatterY = (Math.random() * 2) - 1;
+                        let spawnX = call.args.x !== undefined ? call.args.x : tp.x + (Math.random() > 0.5 ? 2.5 : -2.5) + randomScatterX;
+                        let spawnY = call.args.y !== undefined ? call.args.y : tp.y + (Math.random() > 0.5 ? 2.5 : -2.5) + randomScatterY;
 
+                        spawnX = Math.max(1.5, Math.min(18.5, spawnX));
+                        spawnY = Math.max(1.5, Math.min(18.5, spawnY));
                         let baseID = Math.floor(parseFloat(call.args.npcType));
 
                         let safeRewardCard = null;
@@ -3073,14 +3077,33 @@ async function processSuncatThought(socketId, triggerType, data) {
     const typingFailSafe = setTimeout(() => { npcIsTyping = false; }, 9000);
 
     try {
-        // 2. GATHER CORE CONTEXT
+        // 2. GATHER CORE CONTEXT (RAG-LITE INJECTION)
         const timeString = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-        const myMapLore = getShortMapLore(suncat.mapID);
-        const playerMapLore = getShortMapLore(player.mapID);
         
-        let suncatStatus = `[MY CURRENT LOCATION]: Map ${suncat.mapID} (${myMapLore})\n[WORLD CLOCK]: ${timeString}`;
+        // Fetch deep Atlas data
+        const myAtlas = WORLD_ATLAS_DB[suncat.mapID];
+        const pAtlas = WORLD_ATLAS_DB[player.mapID];
+        
+        // Dynamically pull the deep lore for THIS map ONLY
+        let dynamicLore = pAtlas ? pAtlas.lore : "";
+        if (pAtlas && pAtlas.storyKey && WORLD_LORE_DB[pAtlas.storyKey]) {
+            dynamicLore += " " + WORLD_LORE_DB[pAtlas.storyKey];
+        }
+
+        let environmentContext = `[PLAYER LOCATION]: Map ${player.mapID} (${pAtlas ? pAtlas.name : "Unknown"})
+        [TERRAIN]: ${pAtlas ? pAtlas.description : "An uncharted void."}
+        [LOCAL LORE]: ${dynamicLore}`;
+
+        // Inject active scenario rules if the player is in a custom event!
+        if (player.activeScenario && SCENARIO_PROMPT_DB[player.activeScenario]) {
+            environmentContext += `\n[ACTIVE SCENARIO DIRECTIVE]: ${SCENARIO_PROMPT_DB[player.activeScenario].dm_instruction}`;
+        }
+
+        let suncatStatus = `[MY CURRENT LOCATION]: Map ${suncat.mapID} (${myAtlas ? myAtlas.name : "Unknown"})\n[WORLD CLOCK]: ${timeString}`;
         if (suncat.mapID !== player.mapID) {
-            suncatStatus += `\n[TARGET PLAYER LOCATION]: ${player.name} is currently far away at Map ${player.mapID} (${playerMapLore}).`;
+            suncatStatus += `\n${environmentContext}`;
+        } else {
+            suncatStatus += `\n[CURRENT ENVIRONMENT]: We are in the same location.\n${environmentContext}`;
         }
 
         const storyContext = player.storySoFar ? `\n[THE STORY SO FAR]: ${player.storySoFar}` : ""; 
@@ -3097,59 +3120,84 @@ async function processSuncatThought(socketId, triggerType, data) {
         let eventInstruction = "";
         let useBigBrain = false;
         
-        // --- A. THE DM PACING & STRESS OVERRIDES (Forces Tool Use) ---
+        // --- A. THE DM PACING, STRESS OVERRIDES & RNG ---
         if (totalStress >= 85) {
-            useBigBrain = true;
             player.dmStress = 0; // Exhaustion kicks in! Drops combat stress.
             player.lastRandomEvent = now;
-            systemOverride = `[SYSTEM OVERRIDE]: You are exhausted (Mana depleted). You MUST immediately execute a tool (like 'teleportPlayer' to banish them away, or 'givePlayerCard' to bribe them to leave). Do not spawn enemies.`;
+            
+            // 50/50 Chance to either Whine (Small Brain) or Retaliate (Big Brain)
+            if (Math.random() < 0.5) {
+                useBigBrain = false;
+                systemOverride = `[SYSTEM OVERRIDE]: You are overwhelmed, stressed, and your mana is depleted. Whine to the player that you need a nap and refuse to help them further right now.`;
+            } else {
+                useBigBrain = true;
+                systemOverride = `[SYSTEM OVERRIDE]: You are exhausted and furious! You MUST immediately execute a tool (like 'teleportPlayer' to banish them away, or 'changeEnvironment' to ruin the weather). Complain loudly!`;
+            }
         } 
         else if (totalStress >= 50 && player.mapID === 999 && timeSinceLastEvent > 60000) {
             useBigBrain = true;
             player.lastRandomEvent = now;
             systemOverride = `[SYSTEM OVERRIDE]: You are the arrogant Arena Master right now. Execute the 'spawnNPC' tool to drop a difficult themed enemy. Taunt them.`;
         } 
+        // Map-Specific Persona Shifts (RAG injection for Roleplay)
+        else if (pAtlas && pAtlas.biome === "tomb" && triggerType === 'chat') {
+            systemOverride = `[ENVIRONMENT OVERRIDE]: You are in a sacred tomb. Speak in hushed, respectful, slightly fearful tones. Warn the player about making too much noise.`;
+        }
+        else if (pAtlas && pAtlas.biome === "castle" && triggerType === 'chat') {
+            systemOverride = `[ENVIRONMENT OVERRIDE]: You are in the court of a Queen. Speak formally, elegantly, and with royal protocol.`;
+        }
         
         // --- B. EVENT ROUTING ---
         if (triggerType === 'chat') {
             const chatText = data.text.toLowerCase();
             
-            // 1. Detect Intent
             const needsDM = ["map", "adventure", "teleport", "create", "spawn", "boss", "quest", "enemy"].some(kw => chatText.includes(kw));
-            const needsOracle = ["tarot", "fortune", "reading", "interpret", "meaning of"].some(kw => chatText.includes(kw));            const isDirectCommand = chatText.includes("[reply]") || chatText.includes("suncat");
+            const needsOracle = ["tarot", "fortune", "reading", "interpret", "meaning of"].some(kw => chatText.includes(kw));            
+            const isDirectCommand = chatText.includes("[reply]") || chatText.includes("suncat");
 
-                        // 2. Intricate Routing Overrides
-                        if (needsOracle) {
-                            useBigBrain = true;
-                            systemOverride = `[SYSTEM OVERRIDE]: You are the Oracle. Interpret the player's situation using Tarot logic based on the Runestones card db. Be cryptic, mystical, and brief (max 3 sentences). Do not use tools.`;
-                        } else if (needsDM) {
-                            useBigBrain = true;
-                            systemOverride = `[SYSTEM OVERRIDE]: The player is seeking an adventure or DM action. EXECUTE A TOOL IMMEDIATELY (like createCustomMap, spawnNPC, or teleportPlayer). KEEP YOUR SPOKEN NARRATION UNDER 15 WORDS. DO NOT ask for permission.`;                        } else {
-                            useBigBrain = isDirectCommand || useBigBrain; 
-                        }
-                        
-                        eventInstruction = `[PLAYER SPOKE]: "${data.text}"\nTASK: ${needsDM ? "EXECUTE A TOOL. " : ""}Reply in character.`;        }
-                    else if (triggerType === 'event') {
-                        useBigBrain = false; 
-                        let recentNarratives = player.dmNarrativeLog ? `\n[RECENT LOG]: ` + player.dmNarrativeLog.join(' | ') : "";
-                        
-                        if (data.isPickup) {
-                            useBigBrain = true; 
-                            eventInstruction = `[PLAYER ACTION]: Picked up ${data.action} | Lore: ${data.lore}\nTASK: Provide a tarot interpretation of the card and relate it to the player's current adventure.`;
-                        } else if (data.isDialogue) {
-                           
-                            eventInstruction = `[PLAYER ACTION]: Finished talking to ${data.action}\nTASK: Comment on their conversation briefly.`;
-                        } else {
-                            if (player.mapID != 999){
-                                eventInstruction = `[PLAYER ACTION]: Slayed a creature ${data.action}\nTASK: Provide a short narrative describing the fall of the monster and give a brief tarot interpretation.`;
-                            }
-                            else{
-                                eventInstruction = `[PLAYER ACTION]: Slayed a creature ${data.action}\nTASK: the player is mocking you with this defeat. You are at disbelief that they overcame your challenge. Immediately use tools like spawnNPC to make their life harder.`;
-                            }
-                            
-                            
-                        }
+            // Stack overrides using += instead of = so we don't erase stress!
+            if (needsOracle) {
+                useBigBrain = true;
+                systemOverride += `\n[ORACLE OVERRIDE]: You are the Oracle. Interpret the player's situation using Tarot logic based on the Runestones card db. Be cryptic, mystical, and brief (max 3 sentences). Do not use tools.`;
+            } else if (needsDM) {
+                useBigBrain = true;
+                systemOverride += `\n[DM OVERRIDE]: The player is seeking an adventure or DM action. EXECUTE A TOOL IMMEDIATELY. KEEP YOUR SPOKEN NARRATION UNDER 15 WORDS. DO NOT ask for permission.`;                        
+            } else {
+                useBigBrain = isDirectCommand || useBigBrain; 
+            }
+            
+            eventInstruction = `[PLAYER SPOKE]: "${data.text}"\nTASK: ${needsDM ? "EXECUTE A TOOL. " : ""}Reply in character.`;        
+        }
+        else if (triggerType === 'event') {
+            let recentNarratives = player.dmNarrativeLog ? `\n[RECENT LOG]: ` + player.dmNarrativeLog.join(' | ') : "";
+            
+            if (data.isPickup) {
+                useBigBrain = true; 
+                eventInstruction = `[PLAYER ACTION]: Picked up ${data.action} | Lore: ${data.lore}\nTASK: Provide a tarot interpretation of the card and relate it to the player's current adventure.`;
+            } else if (data.isDialogue) {
+                useBigBrain = false;
+                eventInstruction = `[PLAYER ACTION]: Finished talking to ${data.action}\nTASK: Comment on their conversation briefly.`;
+            } else {
+                // MONSTER SLAY LOGIC
+                if (player.mapID != 999) {
+                    useBigBrain = false; // Standard map: cheap, small brain reaction
+                    eventInstruction = `[PLAYER ACTION]: Slayed a creature ${data.action}\nTASK: Provide a short narrative describing the fall of the monster and give a brief tarot interpretation.`;
+                } else {
+                    // MAP 999 (DREAMSCAPE) RNG REACTIONS
+                    let rngRoll = Math.random();
+                    if (rngRoll < 0.33) {
+                        useBigBrain = false; // 33% chance to just pout (Saves tokens!)
+                        eventInstruction = `[PLAYER ACTION]: Slayed a creature ${data.action}\nTASK: Throw a childish tantrum! Pout, curse at the player, and act like a sore loser because they broke your toy. ONE sentence.`;
+                    } else if (rngRoll < 0.66) {
+                        useBigBrain = true; // 33% chance to spawn a harder enemy
+                        eventInstruction = `[PLAYER ACTION]: Slayed a creature ${data.action}\nTASK: You are in disbelief they survived! Immediately use 'spawnNPC' to drop an even harder monster on them to teach them a lesson.`;
+                    } else {
+                        useBigBrain = true; // 34% chance to remake the whole map
+                        eventInstruction = `[PLAYER ACTION]: Slayed a creature ${data.action}\nTASK: They are ruining your map! Use 'createCustomMap' to instantly rebuild the environment into a chaotic Void or tight Labyrinth to trap them!`;
                     }
+                }
+            }
+        }
                     else if (triggerType === 'spectate') {
                         useBigBrain = false;
                         eventInstruction = `[SPECTATOR FEED]: ${data.action}\nTASK: Speak a brief, cryptic remark about this. DO NOT use any brackets or tags like [INTERNAL THOUGHT].`;                    
@@ -3184,7 +3232,7 @@ async function processSuncatThought(socketId, triggerType, data) {
         // Notice we do NOT put the persona here! It goes into the System Instruction!
         const prompt = `
         [CURRENT STATE]
-        Location: Map ${suncat.mapID} (${myMapLore})
+        Location: Map ${suncat.mapID} (${myAtlas ? myAtlas.name : "Unknown"})
         Target: ${player.name} (Map ${player.mapID})
         ${favorContext}
         ${storyContext}
@@ -3490,6 +3538,7 @@ socket.on('suncat_compose_vocal', async (data, callback) => {
             if (callback) callback(null);
         }
     });
+
 
 socket.on('playerAction_SFX', (data) => {
       if (typeof data.id !== 'number') return;
@@ -3802,17 +3851,48 @@ setInterval(() => {
                 
                 const plotContext = advPlayer.activeQuest ? `Current Quest: ${advPlayer.activeQuest}` : "Wandering an uncharted map.";
                 const activeMapLore = getMapLore(advPlayer.mapID); 
-                const dmPrompt = `[DM PACING OVERSEER]: ${advPlayer.name} is lingering on Map ${advPlayer.mapID}.\n[TERRAIN]: ${activeMapLore}\n${plotContext}\n\nAdvance the adventure NOW to keep things exciting. You MUST use a tool (spawnNPC, changeEnvironment, or assignQuest). Narrate the sudden event dramatically. DO NOT ask what they do next.`;
+                
+                // --- THE RNG PACING DIRECTOR ---
+                const pacingRoll = Math.random();
+                let dmPrompt = "";
+                let requiresBigBrain = false;
+                let injectedPersona = PERSONA_RULES_DB.core + "\n";
+
+                if (pacingRoll < 0.33) {
+                    // 1. Unsolicited Oracle Reading (Small Brain, No Tools)
+                    injectedPersona += PERSONA_RULES_DB.oracle_mode;
+                    dmPrompt = `[DM PACING]: ${advPlayer.name} is wandering Map ${advPlayer.mapID}.\n[TERRAIN]: ${activeMapLore}\nProvide an unsolicited, cryptic 2-sentence Tarot reading about the danger ahead.`;
+                } 
+                else if (pacingRoll < 0.66) {
+                    // 2. Creepy Atmospheric Narration (Small Brain, No Tools)
+                    dmPrompt = `[DM PACING]: ${advPlayer.name} is lingering on Map ${advPlayer.mapID}.\n[TERRAIN]: ${activeMapLore}\nNarrate the creepy or beautiful atmosphere around them in exactly ONE atmospheric sentence. Make them feel watched.`;
+                } 
+                else {
+                    // 3. Spice up the gameplay! (Big Brain + Tools)
+                    requiresBigBrain = true;
+                    injectedPersona += PERSONA_RULES_DB.dm_mode + "\n" + PERSONA_RULES_DB.quest_mode;
+                    dmPrompt = `[DM PACING OVERSEER]: ${advPlayer.name} is lingering on Map ${advPlayer.mapID}.\n[TERRAIN]: ${activeMapLore}\n${plotContext}\nAdvance the adventure NOW! You MUST use a tool (spawnNPC, changeEnvironment, or assignQuest) to ambush or surprise them. Narrate the sudden event dramatically.`;
+                }
 
                 setTimeout(async () => {
                     try {
-                        // BUILD DM BRAIN
-                        let dynamicPersona = PERSONA_RULES_DB.core + "\n" + PERSONA_RULES_DB.dm_mode + "\n" + PERSONA_RULES_DB.quest_mode;
-                        const activeDmModel = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite-preview", systemInstruction: dynamicPersona, tools: toolsDef });
+                        // Dynamically build the model based on the RNG outcome
+                        let modelConfig = { 
+                            model: requiresBigBrain ? "gemini-3.1-flash-lite-preview" : "gemini-2.5-flash-lite", 
+                            systemInstruction: injectedPersona
+                        };
+                        // Only attach tools if we rolled the gameplay spice branch!
+                        if (requiresBigBrain) modelConfig.tools = toolsDef; 
+
+                        const activeDmModel = genAI.getGenerativeModel(modelConfig);
                         chatSessions[advPlayer.id] = activeDmModel.startChat({ history: await chatSessions[advPlayer.id].getHistory() });
                         
                         const result = await chatSessions[advPlayer.id].sendMessage(dmPrompt);
-                        let finalResponse = await executeAITools(result.response, chatSessions[advPlayer.id], io.sockets.sockets.get(advPlayer.id));
+                        
+                        // Only try to execute tools if we gave the AI the tools payload!
+                        let finalResponse = requiresBigBrain 
+                            ? await executeAITools(result.response, chatSessions[advPlayer.id], io.sockets.sockets.get(advPlayer.id))
+                            : result.response;
                         
                         if (finalResponse.text()) broadcastSuncatMessage(finalResponse.text());
                         
@@ -3826,44 +3906,6 @@ setInterval(() => {
                         npcIsTyping = false;
                     }
                 }, 1000);
-            }
-        }
-        // EVENT C: Random Event Kidnapper
-        else if (directorRoll >= 0.06 && directorRoll < 0.09) {
-            const activePlayers = Object.values(players).filter(p => p.id !== SUNCAT_ID && (Date.now() - (p.lastActive || 0) < 180000));
-            const potentialVictims = activePlayers.filter(p => p.mapID !== 999);
-            
-            if (potentialVictims.length > 0) {
-                const victim = potentialVictims[Math.floor(Math.random() * potentialVictims.length)];
-                
-                if (chatSessions[victim.id]) {
-                    npcIsTyping = true;
-                    const typingFailSafe = setTimeout(() => { npcIsTyping = false; }, 20000);
-                    
-                    const kidnapPrompt = `[SYSTEM OVERRIDE]: Trigger a Random DM Event!\nChoose ONE scenario and EXECUTE 'createCustomMap' targeting '${victim.name}'.\n1. BATTLE ARENA: Layout: 'arena'. Weather: 'storm'. Spawn difficult enemies.\n2. LABYRINTH: Layout: 'labyrinth'. Weather: 'snow'. Spawn a Quest Giver.\n3. OASIS: Layout: 'grid'. Weather: 'leaves'. Spawn friendly NPCs.\nDo not ask for permission.`;
-                    
-                    setTimeout(async () => {
-                        try {
-                            // BUILD DM BRAIN
-                            let dynamicPersona = PERSONA_RULES_DB.core + "\n" + PERSONA_RULES_DB.dm_mode;
-                            const activeDmModel = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite-preview", systemInstruction: dynamicPersona, tools: toolsDef });
-                            chatSessions[victim.id] = activeDmModel.startChat({ history: await chatSessions[victim.id].getHistory() });
-                            
-                            const result = await chatSessions[victim.id].sendMessage(kidnapPrompt);
-                            const finalResponse = await executeAITools(result.response, chatSessions[victim.id], null);                            
-                            if (finalResponse.text()) broadcastSuncatMessage(finalResponse.text());
-                            
-                            let updatedHistory = await chatSessions[victim.id].getHistory();
-                            chatSessions[victim.id] = activeDmModel.startChat({ history: scrubAIHistory(updatedHistory) });
-                            await manageHistorySize(victim.id);
-                        } catch (e) {
-                            console.error("Kidnap Event Error:", e);
-                        } finally {
-                            clearTimeout(typingFailSafe);
-                            npcIsTyping = false;
-                        }
-                    }, 1000);
-                }
             }
         }
     }
