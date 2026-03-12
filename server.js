@@ -3326,7 +3326,7 @@ async function processSuncatThought(socketId, triggerType, data) {
                 systemOverride = `[SYSTEM OVERRIDE]: You are overwhelmed, stressed, and your mana is depleted. Whine to the player that you need a nap and refuse to help them further right now.`;
             } else {
                 useBigBrain = true;
-                systemOverride = `[SYSTEM OVERRIDE]: You are exhausted and furious! You MUST immediately execute a tool (like 'teleportPlayer' to banish them away, or 'changeEnvironment' to ruin the weather). Complain loudly!`;
+                systemOverride = `[SYSTEM OVERRIDE]: You are exhausted and furious! You MUST immediately execute a tool (use either'spawnNPC' to spawn enemies or 'changeEnvironment' to ruin the weather). Complain loudly!`;
             }
         } 
         else if (totalStress >= 50 && player.mapID === 999 && timeSinceLastEvent > 60000) {
@@ -3412,7 +3412,7 @@ async function processSuncatThought(socketId, triggerType, data) {
                         eventInstruction = `[PLAYER ACTION]: Slayed a creature ${data.action}\nTASK: As the last enemy falls, narrate a dark presence appearing behind the player! Immediately use 'spawnNPC' to drop a mini-boss right next to them with a menacing one-liner dialogue array.`;
                     } else {
                         useBigBrain = true; 
-                        eventInstruction = `[PLAYER ACTION]: Slayed a creature ${data.action}\nTASK: They are ruining your map! Use 'createCustomMap' to instantly rebuild the environment into a chaotic Void or tight Labyrinth to trap them!`;
+                        eventInstruction = `[PLAYER ACTION]: Slayed a creature ${data.action}\nTASK: They are taking the challenge too lightly! Use 'changeEnvironment' to show your fury through the weather (eg. apocalypse or storm) and spawn a King level npc, or overwhelm them with small fry, to teach them a lesson!`;
                     }
                 }
             }
