@@ -2776,15 +2776,19 @@ async function executeAITools(currentResponse, activeSession, socket) {
                         gridData[1][1] = 0; 
 
                         let reachableTiles = [];
-                        let queue = [{x: 1, y: 1, dist: 0}];
+                        
+
+                        // --- THE PATH TRACER FIX ---
+                        // Start tracing outward from the player's exact spawn point!
+                        let queue = [{x: startX, y: startY, dist: 0}];
                         let visited = new Set();
-                        visited.add("1,1");
+                        visited.add(startX + "," + startY);
 
                         while(queue.length > 0) {
                             let curr = queue.shift();
-                            if (!(curr.x === 1 && curr.y === 1) && !(curr.x === startX && curr.y === startY)) {
-                                reachableTiles.push(curr);
-                            }
+                            
+                            // Add every valid tile we find to the safe list
+                            reachableTiles.push(curr);
 
                             let neighbors = [[0,1], [1,0], [0,-1], [-1,0]];
                             for (let [dx, dy] of neighbors) {
@@ -2792,6 +2796,7 @@ async function executeAITools(currentResponse, activeSession, socket) {
                                 if (nx > 0 && ny > 0 && ny < maxR - 1 && nx < maxC - 1) {
                                     let tile = gridData[ny][nx];
                                     let isWalkable = (tile <= 0 && Math.abs(tile) % 2 === 0);
+                                    
                                     if (isWalkable && !visited.has(nx + "," + ny)) {
                                         visited.add(nx + "," + ny);
                                         queue.push({x: nx, y: ny, dist: curr.dist + 1});
@@ -2877,7 +2882,8 @@ async function executeAITools(currentResponse, activeSession, socket) {
                             name: call.args.mapName || `The ${biome.name} ${layoutStyle}`, 
                             npcs: mapNPCs, weather: weather,
                             spawnX: startX + 0.5, spawnY: startY + 0.5,
-                            biome: biome.name // <--- NEW: Tells client what ambient music to play!
+                            biome: biome.name, // <--- NEW: Tells client what ambient music to play!
+                            safeTiles: scatterTiles
                         };
 
                         // ---> CACHE IT GLOBALLY <---
@@ -2905,6 +2911,8 @@ async function executeAITools(currentResponse, activeSession, socket) {
                                 targetPlayer.mapID = 999; 
                                 targetPlayer.x = startX + 0.5 + (Math.random() * 1 - 0.5); 
                                 targetPlayer.y = startY + 0.5 + (Math.random() * 1 - 0.5);
+                                targetPlayer.stepsTaken = 0;
+                                targetPlayer.exploredTiles = new Set();
                                 
                                 targetPlayer.mapFriendlyTribe = protagID;
                                 targetPlayer.mapHostileTribe = antagID;
@@ -2998,42 +3006,72 @@ async function executeAITools(currentResponse, activeSession, socket) {
                                 }
                             }
 
-                            // B. DANGER ZONE: Spawn up to 40 Hostiles & Traitors further away
-                            let dangerDensity = sEnum === 4 ? 0 : (sEnum === 5 ? 40 : 25); // Invasion = 40, Normal = 25
+                            // B. DANGER ZONE: Spawn Hostiles & Traitors safely on the path
+                            let dangerDensity = sEnum === 4 ? 15 : (sEnum === 5 ? 120 : 75); 
+
+                            // Gather a list of actual items/spells for traitors to drop
+                            let validLootIDs = Object.keys(CARD_MANIFEST_DB)
+                                .filter(id => CARD_MANIFEST_DB[id].type === "item" || CARD_MANIFEST_DB[id].type === "spell")
+                                .map(Number);
+
                             for(let i=0; i<dangerDensity; i++) {
                                 let mID = hostileMinions[Math.floor(Math.random() * hostileMinions.length)];
-                                let isTraitor = Math.random() < 0.10; // 10% chance to be a traitor!
+                                let isTraitor = Math.random() < 0.10; 
                                 
-                                let role = isTraitor ? 'reward' : 'battle';
+                                let cardData = CARD_MANIFEST_DB[mID];
+                                
+                                // --- PREVENT ITEMS FROM INITIATING COMBAT ---
+                                let isItem = cardData && (cardData.type === 'item' || cardData.type === 'spell');
+                                let role = isItem ? 'reward' : (isTraitor ? 'reward' : 'battle');
                                 let state = isTraitor ? 'wandering' : 'chasing';
                                 
-                                // ENEMIES ONLY SOMETIMES HAVE DIALOGUE (30% chance)
                                 let diag = null;
-                                if (isTraitor) {
-                                    diag = [tLines[Math.floor(Math.random()*tLines.length)]];
+                                let monsterName = cardData ? cardData.name : "Creature";
+                                
+                                if (isItem) {
+                                    diag = [`*The ${monsterName} hums with power...*`];
+                                } else if (isTraitor) {
+                                    let baseLine = tLines[Math.floor(Math.random()*tLines.length)];
+                                    diag = [`*A rogue ${monsterName} whispers:* "${baseLine}"`];
                                 } else if (Math.random() > 0.7) { 
-                                    diag = [hTaunts[Math.floor(Math.random()*hTaunts.length)]];
+                                    let baseLine = hTaunts[Math.floor(Math.random()*hTaunts.length)];
+                                    diag = [`*The ${monsterName} snarls:* "${baseLine}"`];
                                 }
 
-                                // If the map is an Arena (0), spawn them close. Otherwise, spawn them across the map.
-                                let minSpawnDist = (tp.mapScenario === 0) ? 5 : 15;
-                                let maxSpawnDist = (tp.mapScenario === 0) ? 15 : 45;
+                                let safeRewardCard = null;
+                                if ((isTraitor || isItem) && validLootIDs.length > 0) {
+                                    safeRewardCard = validLootIDs[Math.floor(Math.random() * validLootIDs.length)];
+                                }
 
-                                let dist = minSpawnDist + Math.random() * maxSpawnDist;
-                                let angle = Math.random() * Math.PI * 2;
-                                let rx = tp.x + Math.cos(angle) * dist;
-                                let ry = tp.y + Math.sin(angle) * dist;
+                                // --- NEW: PATH TRACER DEPLOYMENT ---
+                                let spawnX = tp.x;
+                                let spawnY = tp.y;
+
+                                // If we have safe tiles left from the map generator, pop one!
+                                if (tp.mapID === 999 && activeCustomMap && activeCustomMap.safeTiles && activeCustomMap.safeTiles.length > 0) {
+                                    let spot = activeCustomMap.safeTiles.pop();
+                                    spawnX = spot.x + 0.5; // Center on tile
+                                    spawnY = spot.y + 0.5;
+                                } else {
+                                    // Fallback for standard overworld maps
+                                    let minSpawnDist = (tp.mapScenario === 0) ? 5 : 15;
+                                    let maxSpawnDist = (tp.mapScenario === 0) ? 15 : 45;
+                                    let dist = minSpawnDist + Math.random() * maxSpawnDist;
+                                    let angle = Math.random() * Math.PI * 2;
+                                    spawnX = Math.max(1.5, Math.min(97.5, tp.x + Math.cos(angle) * dist));
+                                    spawnY = Math.max(1.5, Math.min(97.5, tp.y + Math.sin(angle) * dist));
+                                }
 
                                 io.emit("remote_spawn_npc", {
                                     mapID: tp.mapID,
                                     index: Math.floor(Math.random() * 100000) + 5000 + i,
-                                    x: Math.max(1.5, Math.min(97.5, rx)),
-                                    y: Math.max(1.5, Math.min(97.5, ry)),
-                                    type: CARD_MANIFEST_DB[mID]?.sprite || mID,
+                                    x: spawnX,
+                                    y: spawnY,
+                                    type: cardData?.sprite || mID,
                                     state: state, role: role,
                                     dialogue: diag,
                                     deck: buildSynergisticDeck(mID),
-                                    rewardCard: isTraitor ? mID : null
+                                    rewardCard: safeRewardCard 
                                 });
                             }
                         }, 2000); // Wait for the map to render before raining down NPCs
@@ -3055,6 +3093,9 @@ async function executeAITools(currentResponse, activeSession, socket) {
                         functionResult = { result: `Failed: Map ID ${destMap} does not exist.` };
                     } else {
                         players[targetID].mapID = destMap;
+                        players[targetID].stepsTaken = 0;
+                        players[targetID].exploredTiles = new Set();
+                        
                         io.to(targetID).emit("force_teleport", { mapID: destMap });
                         io.emit("updatePlayers", players);
                         functionResult = { result: `Success: Warped player to map ${destMap}.` };
@@ -3418,6 +3459,13 @@ async function processSuncatThought(socketId, triggerType, data) {
             }
             eventInstruction += recentNarratives;
         }
+        else if (triggerType === 'exploration') {
+            useBigBrain = true; 
+            eventInstruction = `[PLAYER ACTION]: ${data.action}
+            TASK: As the DM, narrate the player's journey through this desolate place. Give a 1-2 sentence atmospheric description based on the [LOCAL LORE] and their progress. Speak as an omniscient narrator. 
+            OPTIONAL: If you feel the dungeon is too quiet, you MUST use the 'spawnNPC' tool to ambush them, or the 'changeEnvironment' tool to alter the weather.`;
+        }
+        
                     else if (triggerType === 'spectate') {
                         useBigBrain = false;
                         eventInstruction = `[SPECTATOR FEED]: ${data.action}\nTASK: Speak a brief, cryptic remark about this. DO NOT use any brackets or tags like [INTERNAL THOUGHT].`;                    
@@ -3821,6 +3869,23 @@ socket.on('playerAction_SFX', (data) => {
 
  socket.on("move", (data) => {
     if (players[socket.id]) {
+        // --- NEW: THE EXPLORATION TRACKER ---
+        if (data.mapID === 999) {
+            player.stepsTaken = (player.stepsTaken || 0) + 1;
+            
+            // Track unique tiles explored
+            if (!player.exploredTiles) player.exploredTiles = new Set();
+            player.exploredTiles.add(`${Math.floor(data.x)},${Math.floor(data.y)}`);
+
+            // Every 75 steps, ping Suncat to DM the journey!
+            if (player.stepsTaken % 75 === 0) {
+                let exploredPct = Math.floor((player.exploredTiles.size / 2000) * 100); // Rough estimate of reachable tiles
+                let actionDesc = `Is exploring the dungeon. (Steps taken: ${player.stepsTaken}. Unique tiles seen: ${player.exploredTiles.size}).`;
+                
+                // Ping the neural router as an exploration event
+                processSuncatThought(socket.id, 'exploration', { action: actionDesc });
+            }
+        }
         // 1. Update the server's master state
         // ---> NEW: Catch manual teleports to 999! <---
         if (data.mapID === 999 && players[socket.id].mapID !== 999) {
