@@ -1781,7 +1781,11 @@ const PERSONA_RULES_DB = {
                 - You are an OMNISCIENT NARRATOR. Never say "I have spawned..." Describe the world cinematically.
                 - SCENARIOS: Combine tools! When making a new area, ALWAYS call 'createCustomMap' AND 'spawnNPCBatch' in the SAME turn. The map tool sets the bosses. The batch tool populates the towns and dungeons with your dialogue script.
                 - NARRATION: Only speak 1 or 2 atmospheric sentences setting the scene. Let the NPCs do the talking!`,
-
+            "arena_mode": `[ARENA MASTER PROTOCOL]: 
+                - You are a manic, bloodthirsty Arena Master. 
+                - If the player is in an Arena scenario, DO NOT summarize or provide lore. Taunt them relentlessly!
+                - If they survive a wave (kill an enemy), immediately use 'spawnNPCBatch' to drop the next wave of enemies, or use 'spawnNPC' to summon YOURSELF (ID 87) for the final battle!`,
+                
             "quest_mode": `[QUEST PROTOCOL]: To create dynamic quests:
                 1. Suncat does NOT give quests directly in chat. The Protagonist NPC will give it in-game.
                 2. RETRIEVAL QUESTS: Pass an 'itemPropID' (e.g. 50 for Sword) into createCustomMap. The server will hide it deep in the dungeon.
@@ -2992,25 +2996,28 @@ async function executeAITools(currentResponse, activeSession, socket) {
                                 }
                             }
 
-                            // B. DANGER ZONE: Spawn 15 Hostiles & Traitors further away
-                            let dangerDensity = sEnum === 4 ? 0 : 15; // Peaceful has 0
+                            // B. DANGER ZONE: Spawn up to 40 Hostiles & Traitors further away
+                            let dangerDensity = sEnum === 4 ? 0 : (sEnum === 5 ? 40 : 25); // Invasion = 40, Normal = 25
                             for(let i=0; i<dangerDensity; i++) {
                                 let mID = hostileMinions[Math.floor(Math.random() * hostileMinions.length)];
-                                let isTraitor = Math.random() < 0.15; // 15% chance to be a traitor!
+                                let isTraitor = Math.random() < 0.10; // 10% chance to be a traitor!
                                 
                                 let role = isTraitor ? 'reward' : 'battle';
                                 let state = isTraitor ? 'wandering' : 'chasing';
                                 
-                                // ENEMIES ONLY SOMETIMES HAVE DIALOGUE (40% chance)
+                                // ENEMIES ONLY SOMETIMES HAVE DIALOGUE (30% chance)
                                 let diag = null;
                                 if (isTraitor) {
                                     diag = [tLines[Math.floor(Math.random()*tLines.length)]];
-                                } else if (Math.random() > 0.6) { 
+                                } else if (Math.random() > 0.7) { 
                                     diag = [hTaunts[Math.floor(Math.random()*hTaunts.length)]];
                                 }
 
-                                // Spawns in an outer ring (15 to 45 tiles away)
-                                let dist = 15 + Math.random() * 30;
+                                // If the map is an Arena (0), spawn them close. Otherwise, spawn them across the map.
+                                let minSpawnDist = (tp.mapScenario === 0) ? 5 : 15;
+                                let maxSpawnDist = (tp.mapScenario === 0) ? 15 : 45;
+
+                                let dist = minSpawnDist + Math.random() * maxSpawnDist;
                                 let angle = Math.random() * Math.PI * 2;
                                 let rx = tp.x + Math.cos(angle) * dist;
                                 let ry = tp.y + Math.sin(angle) * dist;
@@ -3353,7 +3360,13 @@ async function processSuncatThought(socketId, triggerType, data) {
                 useBigBrain = false; // Save tokens! We don't need tools, just a refusal.
                 systemOverride += `\n[SYSTEM OVERRIDE]: The player wants a new map/quest, but a custom scenario is ALREADY ONGOING. REFUSE the request. DO NOT use the 'createCustomMap' tool. Tell them to finish the current quest or join it via '.hack//teleport 999'.`;
                 needsDM = false; // Turn off DM mode for this turn so he doesn't try to build.
-            } else if (needsOracle) {
+            } 
+            else if (player.mapScenario === 0) {
+                // ---> NEW: ARENA OVERRIDE <---
+                useBigBrain = true;
+                systemOverride += `\n[ARENA OVERRIDE]: You are the Arena Master. The player is in your colosseum. Mock their combat skills.`;
+            }
+            else if (needsOracle) {
                 useBigBrain = true;
                 systemOverride += `\n[ORACLE OVERRIDE]: You are the Oracle. Interpret the player's situation using Tarot logic based on the Runestones card db. Be cryptic, mystical, and brief (max 3 sentences). Do not use tools.`;
             } else if (needsDM) {
@@ -3622,11 +3635,12 @@ socket.on("join_game", (data) => {
           }
 
          
-          
-        io.emit("chat_message", {
-            sender: "[SYSTEM]",
-            text:`${name} has entered the pocket plane.`
-        });
+        if (name && name.toLowerCase() !== "unknown") {
+            io.emit("chat_message", {
+                sender: "[SYSTEM]",
+                text:`${name} has entered the pocket plane.`
+            });
+        }
       }
   });
 // --- EVENT: COMBAT / INTERACTION ---
@@ -3660,7 +3674,11 @@ socket.on("npc_died", async (data) => {
     if (!isPickup && !isDialogue) {
         player.dmStress = Math.min(100, (player.dmStress || 0) + 25);
     }
-
+    let mapClearedNote = "";
+    if (!isPickup && !isDialogue && Math.random() > 0.8) {
+        // 20% chance on kill to tell Suncat the area feels quiet, prompting a wave spawn or quest end
+        mapClearedNote = " The area seems quiet now. Is the objective complete, or is another wave coming?";
+    }
     processSuncatThought(player.id, 'event', {
         action: `Interacted with ${entityName}`,
         lore: getCardLore(baseID),
@@ -4025,7 +4043,7 @@ setInterval(() => {
 
     if (!npcIsTyping) {
         // EVENT A: Proactive Speech
-        if (directorRoll < 0.03) {
+        if (directorRoll < 0.15) {
             const nearbyPlayer = Object.values(players).find(p => p.id !== SUNCAT_ID && p.mapID === suncat.mapID && Math.abs(p.x - suncat.x) < 4 && Math.abs(p.y - suncat.y) < 4);
 
             if (nearbyPlayer && chatSessions[nearbyPlayer.id]) {
@@ -4055,7 +4073,7 @@ setInterval(() => {
             }
         }
         // EVENT B: DM Pacing / Plot Advance
-        else if (directorRoll >= 0.03 && directorRoll < 0.06) {
+        else if (directorRoll >= 0.15 && directorRoll < 0.30) {
             const advPlayer = Object.values(players).find(p => p.id !== SUNCAT_ID && (p.mapID === 999 || p.activeQuest));
 
             if (advPlayer && chatSessions[advPlayer.id]) {
