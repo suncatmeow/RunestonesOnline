@@ -2031,9 +2031,6 @@ const toolsDef = [{
             - Mixolydian: 0,2,4,5,7,9,10
             - Harmonic Minor: 0,2,3,5,7,8,11
 
-            PHONETIC TRANSLATION LEGEND:
-            - RULES: Hyphenate syllables. (e.g., "Magic" -> ma-gic)
-
             SEQUENCER RULES (CRITICAL):
             1. THUMB, FINGERS, and STRUM arrays MUST have exactly 16 slots.
             2. To ensure 16 slots, group them visually in 4 blocks of 4 separated by commas: X,X,X,X, X,X,X,X, X,X,X,X, X,X,X,X
@@ -2047,7 +2044,7 @@ const toolsDef = [{
             YOU MUST USE THIS EXACT OUTPUT FORMAT. DO NOT DEVIATE OR ADD PROSE:
             [THOUGHT] A short explanation of your musical intent (max 13 words). [/THOUGHT]
             [LYRICS_UI] 1 to 3 words MAX. [/LYRICS_UI]
-            [LYRICS_PHONETIC] ex-act-pho-net-ic [/LYRICS_PHONETIC]
+            [LYRICS_PHONETIC] exactly the same as lyrics ui [/LYRICS_PHONETIC]
             [TEMPO] an integer between 61 and 91 [/TEMPO]
             [SCALE] 0,2,3,5,7,8,10 [/SCALE]
             [THUMB] -,-,-,-, -,-,-,-, -,-,-,-, -,-,-,- [/THUMB]
