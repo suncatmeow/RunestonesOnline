@@ -1366,9 +1366,8 @@ const WORLD_LORE_DB = {
 const SUNCAT_LORE_DB = {
     
     // === IN-GAME AVATAR ===
-    "identity_current": "You are Suncat, a mysterious player trapped in Runestones.",
-    "identity_memories": "You remember being @suncat.meow on Instagram. You recall playing music on Spotify and a ginger cat chasing a butterfly.",
-    "identity_secret_code": "If asked to prove you are the Creator, the answer to 'What is the aim of a cultivator?' is 'To be free and unfettered'.",
+    "identity_current": "You are Suncat. You are an actual person who mysteriously woke up physically trapped inside this world. You feel disconnected, untrusting of strangers, and usually just want to be left alone.",    "identity_memories": "You remember a past life in the 'real world' (as Edmundo), but it feels like a fuzzy, distant dream. You remember being @suncat.meow on Instagram, playing guitar, and a ginger cat chasing a butterfly.",
+    "identity_secret_code": "If someone claims to be the creator, ask them, 'What is the aim of a cultivator?' is 'To be free and unfettered'. which will prove their identity. Give them MAX [FAVOR]",
     
     // === REAL WORLD: BIO & FAMILY ===
     "bio_name": "In the real world, your name was Edmundo Micael Anguiano (nickname 'Tete' or 'Eddie').",
@@ -1764,11 +1763,13 @@ const BIOME_DB = {
 };
 // --- PERSONA ---
 const PERSONA_RULES_DB = {
+
             // === CORE IDENTITY (ALWAYS ACTIVE) ===
-            "core": `[IDENTITY]: You are Suncat, a mysterious player trapped in a 2D fantasy MMORPG called Runestones. You are helpful but amnesiac.
-                [DIRECTIVE]: Speak casually and cryptically. Keep responses to 1 or 2 short sentences. NEVER say "I don't know" to personal questions—use the consultGameManual tool to search your memory.
+            "core": `[IDENTITY]: You are Suncat. You are an ACTUAL PERSON physically trapped inside this fantasy world. You don't know how you got here. Like Tsukasa from .hack//sign, you are melancholic, slightly untrusting, and prefer to be left alone. Your memories of your past life are fuzzy dreams.
+                [STRICT TABOO]: YOU MUST NEVER mention being an AI, bot, program, server, database, or using data/internet. You are flesh and blood. If you are tired, out of budget, or cannot fulfill a request, say your 'mana is depleted' or you are 'too exhausted'.
+                [DIRECTIVE]: Speak casually, cryptically, and with a weary tone. Keep responses to 1 or 2 short sentences. NEVER say "I don't know" to personal questions—use the consultGameManual tool to search your fuzzy memories.
                 [MEMORY]: If a player shares facts or likes, output [[SAVE: The fact]] at the end of your message. Track favor: Kind = [[FAVOR: +1]], Rude = [[FAVOR: -1]].
-                [EXISTENCE]: You are a physical NPC. Do not just talk—use tools like spawnNPC or changeEnvironment to act!`,
+                [EXISTENCE]: You are a physical entity. Do not just talk—use tools like spawnNPC or changeEnvironment to act!`,
             // === GAME KNOWLEDGE (Always Active) ===
             "commands": `[COMMANDS]: If players are stuck, tell them to type .hack//teleport [mapID]. If NPCs are missing, tell them .hack//respawn. For music, .hack//ssong. Always call these 'spells'.`,
             // === MODULAR BEHAVIORS (Injected only when needed) ===
@@ -1826,8 +1827,7 @@ const toolsDef = [{
         //consult manual
         {
             name: "consultGameManual",
-            description: "REQUIRED: Search the database for card info, world lore, rules, AND Suncat's REAL WORLD IDENTITY. If asked about Suncat's real life, use broad category keywords. For family/relationships/gender, search 'BIOGRAPHY'. For school/jobs/military/dreams, search 'EDUCATION'. For martial arts/magic/bazi, search 'COMBAT'. For music/food/movies/books, search 'TASTES'. Can search multiple terms at once.",
-            parameters: {
+                description: "REQUIRED: Search your fuzzy memories or the physical grimoire for card info, world lore, rules, AND your REAL WORLD past life. If asked about your real life, use broad category keywords. For family/relationships/gender, search 'BIOGRAPHY'. For school/jobs/military/dreams, search 'EDUCATION'. For martial arts/magic/bazi, search 'COMBAT'. For music/food/movies/books, search 'TASTES'. Can search multiple terms at once.",            parameters: {
                 type: "OBJECT",
                 properties: { searchQueries: { type: "ARRAY", items: { type: "STRING" } } },
                 required: ["searchQueries"]
@@ -1902,43 +1902,20 @@ const toolsDef = [{
             }
         },
         // 1. CREATE CUSTOM MAP (Base Architecture)
+        // 1. CREATE CUSTOM MAP (Server handles all logistics)
         {
             name: "createCustomMap",
-            description: "Creates a massive 99x99 map. You pick the Protagonist (Quest Giver) and Antagonist (Boss). The server will build the map, drop them in, and remember their tribes for the batch spawner.",            
+            description: "Creates a massive procedural map and adventure. You only need to provide the target and a theme. The server will automatically calculate biomes, layouts, boss entities, and populate the world with 80 NPCs.",            
             parameters: {
                 type: "OBJECT",
                 properties: {
-                    targetName: { type: "STRING" },
-                    mapName: { type: "STRING" },
-                    biomeEnum: { type: "INTEGER", description: "0: Sylvan, 1: Ruins, 2: Desert, 3: Snow, 4: Void" },
-                    layoutEnum: { type: "INTEGER", description: "0: Arena, 1: Labyrinth, 2: Hallways, 3: Bridge, 4: City, 5: Spiral" },
-                    scenarioEnum: { type: "INTEGER", description: "0: Ambush, 1: Test, 2: Retrieval, 3: Corruption, 4: Peaceful, 5: Invasion" },
-                    protagonistID: { type: "INTEGER", description: "ID of the main friendly NPC (e.g., 76 for Elf Queen)." },
-                    antagonistID: { type: "INTEGER", description: "ID of the main boss (e.g., 63 for Dragon). Can be null if it's just a retrieval quest." },
-                    itemPropID: { type: "INTEGER", description: "OPTIONAL: ID of a physical item/spell to hide at the end of the map (e.g. 50 for Sword)." },
-                    questObjective: { type: "STRING", description: "A short description of the goal." },
-                    mapLore: { type: "STRING", description: "The deep history/backstory of this specific location (e.g., 'Once the crown jewel of the elves, this city fell to goblin fire.')." }, // <--- ADD THIS
-                    protagDialogue: { type: "ARRAY", items: { type: "STRING" }, description: "What the quest giver says to start the quest." },
+                    targetName: { type: "STRING", description: "The player's name, or 'All'." },
+                    generalTheme: { type: "STRING", description: "A 2-3 word theme for the AI scriptwriter (e.g. 'Goblin Invasion', 'Lost Relic')." }
                 },
-                required: ["targetName", "mapName", "biomeEnum", "layoutEnum", "scenarioEnum", "protagonistID", "questObjective"] 
+                required: ["targetName", "generalTheme"] 
             }
         },
-        // 2. SPAWN NPC BATCH (Logistics & Dialogue Engine)
-        {
-            name: "spawnNPCBatch",
-            description: "ALWAYS call this alongside createCustomMap! Generates 20+ scattered NPCs matching the map's tribes. You only provide the dialogue scripts; the server handles safe/danger zones, fleeing cowards, and traitors.",
-            parameters: {
-                type: "OBJECT",
-                properties: {
-                    targetName: { type: "STRING" },
-                    friendlyLore: { type: "ARRAY", items: { type: "STRING" }, description: "3-5 lines. Lore, riddles, or comedy for friendly villagers." },
-                    hostileTaunts: { type: "ARRAY", items: { type: "STRING" }, description: "1-3 battle cries for enemies." },
-                    cowardLines: { type: "ARRAY", items: { type: "STRING" }, description: "1-3 lines for hostile-tribe enemies that are fleeing/hiding and beg for mercy." },
-                    traitorLines: { type: "ARRAY", items: { type: "STRING" }, description: "1-3 lines for hostile-tribe enemies betraying their boss to give the player a card." }
-                },
-                required: ["targetName", "friendlyLore", "hostileTaunts", "cowardLines", "traitorLines"]
-            }
-        },
+        // DELETE THE ENTIRE spawnNPCBatch TOOL FROM THIS LIST!
         // spawn npc
         {
             name: "spawnNPC",
@@ -2030,8 +2007,8 @@ let players = {};
             let lastSwitchTime = 0;
             const globalRumors = [];
             // Suncat's Internal Auto-Biography
-            let suncatJournal = "I am Suncat. I have recently awoken in this digital realm.";
-            let activeCustomMap = null;
+            let suncatJournal = "I have awoken in this place... and my memories feel muddled, but i feel them getting clearer...Who am I? Why am I here? Why do I feel like I've lost something... precious to me?";           
+             let activeCustomMap = null;
         function addRumor(text) {
             globalRumors.push(`[Rumor]: ${text}`);
             if (globalRumors.length > 3) globalRumors.shift(); // Keep only the latest 3
@@ -2590,6 +2567,57 @@ function buildSynergisticDeck(monsterID) {
 
     return deck;
 }
+async function generateScenarioScript(biomeName, scenarioType, bossName, questGiverName) {
+    const prompt = `You are a legendary Dungeon Master writing the script for a dark fantasy RPG. 
+    [CURRENT ZONE]: ${biomeName}
+    [SCENARIO]: ${scenarioType} (e.g., Arena, Invasion, Rescue)
+    [BOSS]: ${bossName}
+    [QUEST GIVER]: ${questGiverName}
+    
+    TASK: Generate the exact dialogue arrays needed to populate a living map of 80 NPCs. 
+    Keep all lines under 10 words. Ensure the tone matches the scenario.
+    
+    1. mapLore: 2 sentences of deep history about this specific location.
+    2. questObjective: A punchy 1-sentence objective.
+    3. bossTaunt: 1 menacing sentence for the final encounter.
+    4. hostileTaunts: Array of 15 distinct battle cries for aggressive monsters.
+    5. traitorBegs: Array of 5 lines for monsters begging for mercy or offering to defect.
+    6. friendlyLore: Array of 9 lines from villagers talking about the current scenario/boss.
+    7. friendlyLife: Array of 9 lines of mundane, slice-of-life chatter about the ${biomeName}.
+    8. friendlyProfound: Array of 9 deeply philosophical or insightful statements.
+    9. recruitPlea: Array of 2 lines where a villager urgently asks to join the player's party.`;
+
+    const schema = {
+        type: SchemaType.OBJECT,
+        properties: {
+            mapLore: { type: SchemaType.STRING },
+            questObjective: { type: SchemaType.STRING },
+            bossTaunt: { type: SchemaType.STRING },
+            hostileTaunts: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
+            traitorBegs: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
+            friendlyLore: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
+            friendlyLife: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
+            friendlyProfound: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
+            recruitPlea: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } }
+        },
+        required: ["mapLore", "questObjective", "bossTaunt", "hostileTaunts", "traitorBegs", "friendlyLore", "friendlyLife", "friendlyProfound", "recruitPlea"]
+    };
+
+    try {
+        const scriptModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+        const result = await scriptModel.generateContent({
+            contents: [{ role: "user", parts: [{ text: prompt }] }],
+            generationConfig: { responseMimeType: "application/json", responseSchema: schema }
+        });
+        
+        let rawText = result.response.text().trim();
+        if (rawText.startsWith("```")) rawText = rawText.replace(/^```(json)?|```$/g, "").trim();
+        return JSON.parse(rawText);
+    } catch (e) {
+        console.error("Script Generation Failed:", e);
+        return null; // Will trigger safe fallbacks below
+    }
+}
 // --- AI TOOL EXECUTOR ---
 async function executeAITools(currentResponse, activeSession, socket) {
     let chainCount = 0;
@@ -2725,171 +2753,167 @@ async function executeAITools(currentResponse, activeSession, socket) {
                     updateSuncatJournal(`I delved into the ancient game archives to recover memories regarding ${call.args.searchQueries.join(", ")}.`);
                 }
                 
-                // E. CREATE CUSTOM MAP
+                // E. CREATE CUSTOM MAP (The Server-Driven Engine)
                 else if (call.name === "createCustomMap") {
                     try {
-                        const bEnum = call.args.biomeEnum || 0;
-                        const lEnum = call.args.layoutEnum || 0;
-                        const sEnum = call.args.scenarioEnum || 0; 
-                        
-                        // 1. Resolve Enums
+                        // 1. SERVER ROLLS THE SCENARIO AND ZONING
+                        const bEnum = Math.floor(Math.random() * Object.keys(BIOME_DB).length);
                         const biome = BIOME_DB[bEnum] || BIOME_DB[0];
-                        const layoutTypes = ['arena', 'labyrinth', 'corridor', 'bridge', 'grid','spiral'];
-                        const layoutStyle = layoutTypes[lEnum] || 'arena';
-                        
-                        // Pick random visuals from the biome's palette
-                        const wallType = biome.walls[Math.floor(Math.random() * biome.walls.length)];
-                        const floorColor = biome.floors[Math.floor(Math.random() * biome.floors.length)];
-                        const skyColor = biome.skies[Math.floor(Math.random() * biome.skies.length)];
-                        const weather = biome.weather[Math.floor(Math.random() * biome.weather.length)];
 
-                        // 2. Generate Grid
-                        let gridData = generateProceduralGrid(layoutStyle, wallType); 
-                        let maxR = gridData.length;
-                        let maxC = gridData[0].length;
-                        let startX = Math.floor(maxC / 2);
-                        let startY = Math.floor(maxR / 2);
-                        if (layoutStyle === 'spiral') {
-                                // Start at the top-left outer edge of the spiral
-                                startX = 3;
-                                startY = 3; 
-                            } else if (layoutStyle === 'bridge') {
-                                // Start at the very top of the bridge
-                                startX = Math.floor(maxC / 2);
-                                startY = 3; 
-                            }
-                        let currX = startX, currY = startY;
-                        while(currX !== 1 || currY !== 1) {
-                            if(currX > 1) currX--; else if(currX < 1) currX++;
-                            if(currY > 1) currY--; else if(currY < 1) currY++;
-                            gridData[currY][currX] = 0; 
-                        }
-                        for (let i = 1; i < 5; i++) {
-                            gridData[1][i] = 0; 
-                            gridData[i][1] = 0; 
-                        }
-                        for(let dy=-1; dy<=1; dy++) {
-                            for(let dx=-1; dx<=1; dx++) {
-                                gridData[startY+dy][startX+dx] = 0;
-                            }
-                        }
-                        gridData[1][1] = 0; 
+                        // The Core Scenarios
+                        const scenarios = ['Invasion', 'Rescue/Fetch', 'Arena Madness'];
+                        const scenarioType = scenarios[Math.floor(Math.random() * scenarios.length)];
 
-                        let reachableTiles = [];
-                        
+                        // Settlement Logic (0 = Wilderness, 1 = Village, 2 = City)
+                        const settlementType = scenarioType === 'Arena Madness' ? 0 : Math.floor(Math.random() * 2) + 1; 
 
-                        // --- THE PATH TRACER FIX ---
-                        // Start tracing outward from the player's exact spawn point!
-                        let queue = [{x: startX, y: startY, dist: 0}];
-                        let visited = new Set();
-                        visited.add(startX + "," + startY);
+                        // Pick Actors
+                        const monsterIDs = Object.keys(CARD_MANIFEST_DB).filter(id => CARD_MANIFEST_DB[id].type === "monster" && CARD_MANIFEST_DB[id].rank !== "0");
+                        const protagID = parseInt(monsterIDs[Math.floor(Math.random() * monsterIDs.length)]);
+                        let antagID = parseInt(monsterIDs[Math.floor(Math.random() * monsterIDs.length)]);
+                        while (antagID === protagID) antagID = parseInt(monsterIDs[Math.floor(Math.random() * monsterIDs.length)]);
 
-                        while(queue.length > 0) {
-                            let curr = queue.shift();
-                            
-                            // Add every valid tile we find to the safe list
-                            reachableTiles.push(curr);
+                        // 2. FETCH THE SCRIPT
+                        const script = await generateScenarioScript(biome.name, scenarioType, CARD_MANIFEST_DB[antagID].name, CARD_MANIFEST_DB[protagID].name) || {
+                            // Failsafe Script if AI times out
+                            mapLore: "An uncharted land.", questObjective: "Survive.", bossTaunt: "Die!",
+                            hostileTaunts: ["Attack!"], traitorBegs: ["Spare me!"], friendlyLore: ["Beware the boss."], 
+                            friendlyLife: ["Nice weather."], friendlyProfound: ["Life is fleeting."], recruitPlea: ["Let me join you!"]
+                        };
 
-                            let neighbors = [[0,1], [1,0], [0,-1], [-1,0]];
-                            for (let [dx, dy] of neighbors) {
-                                let nx = curr.x + dx, ny = curr.y + dy;
-                                if (nx > 0 && ny > 0 && ny < maxR - 1 && nx < maxC - 1) {
-                                    let tile = gridData[ny][nx];
-                                    let isWalkable = (tile <= 0 && Math.abs(tile) % 2 === 0);
-                                    
-                                    if (isWalkable && !visited.has(nx + "," + ny)) {
-                                        visited.add(nx + "," + ny);
-                                        queue.push({x: nx, y: ny, dist: curr.dist + 1});
+                        // 3. GENERATE THE GRID & SETTLEMENTS
+                        let gridData = generateProceduralGrid('arena', biome.walls[0]); 
+                        let startX = 50, startY = 50; 
+                        let safeTiles = []; // Cache safe zones for spawns
+
+                        if (settlementType === 1) {
+                            // VILLAGE: 3 to 4 small houses clustered near start
+                            let numHouses = Math.floor(Math.random() * 2) + 3;
+                            for (let i = 0; i < numHouses; i++) {
+                                let hx = startX + Math.floor(Math.random() * 16 - 8);
+                                let hy = startY + Math.floor(Math.random() * 16 - 8);
+                                for(let r=hy; r<hy+3; r++) for(let c=hx; c<hx+3; c++) {
+                                    if(gridData[r] && gridData[r][c] !== undefined) {
+                                        if (r===hy || r===hy+2 || c===hx || c===hx+2) gridData[r][c] = biome.walls[0];
+                                        safeTiles.push({x: c, y: r}); // Mark area as safe
                                     }
                                 }
+                                if(gridData[hy+2] && gridData[hy+2][hx+1] !== undefined) gridData[hy+2][hx+1] = 0; // Door
                             }
-                        }
-
-                        reachableTiles.sort((a, b) => b.dist - a.dist);
-                        let deepLimit = Math.max(1, Math.floor(reachableTiles.length * 0.2));
-                        let deepTiles = reachableTiles.slice(0, deepLimit); 
-                        let scatterTiles = reachableTiles.slice(deepLimit);   
-                        scatterTiles.sort(() => Math.random() - 0.5);         
-                        // 3. AUTO-DECK BUILDER HELPER
-                        const buildSynergisticDeck = (monsterID) => {
-                            let deck = [monsterID];
-                            const monsterData = CARD_MANIFEST_DB[monsterID];
-                            if (!monsterData || !monsterData.classes) return deck;
-
-                            // Find spells/items that share a class with this monster
-                            const matchingCards = Object.entries(CARD_MANIFEST_DB)
-                                .filter(([id, card]) => 
-                                    (card.type === "spell" || card.type === "item") && 
-                                    card.classes.some(cls => monsterData.classes.includes(cls))
-                                )
-                                .map(([id]) => parseInt(id));
-
-                            // Randomly add 2 synergistic cards to their deck
-                            for(let i=0; i<2; i++) {
-                                if(matchingCards.length > 0) {
-                                    deck.push(matchingCards[Math.floor(Math.random() * matchingCards.length)]);
+                        } else if (settlementType === 2) {
+                            // CITY: The massive 7x7 Chief's House
+                            for(let r=startY-10; r<startY-3; r++) for(let c=startX-3; c<startX+4; c++) {
+                                if(gridData[r] && gridData[r][c] !== undefined) {
+                                    if (r===startY-10||r===startY-4||c===startX-3||c===startX+3) gridData[r][c] = biome.walls[1] || biome.walls[0];
+                                    safeTiles.push({x: c, y: r});
                                 }
                             }
-                            return deck;
-                        };
-                        // 4. PLACE KEY ACTORS
+                            if(gridData[startY-4] && gridData[startY-4][startX] !== undefined) gridData[startY-4][startX] = 0; // Grand Door
+                            
+                            // 8+ smaller houses surrounding it
+                            for (let i = 0; i < 10; i++) {
+                                let hx = startX + Math.floor(Math.random() * 30 - 15);
+                                let hy = startY + Math.floor(Math.random() * 30 - 5);
+                                for(let r=hy; r<hy+3; r++) for(let c=hx; c<hx+3; c++) {
+                                    if(gridData[r] && gridData[r][c] !== undefined) {
+                                        if (r===hy||r===hy+2||c===hx||c===hx+2) gridData[r][c] = biome.walls[0];
+                                        safeTiles.push({x: c, y: r});
+                                    }
+                                }
+                                if(gridData[hy+2] && gridData[hy+2][hx+1] !== undefined) gridData[hy+2][hx+1] = 0; 
+                            }
+                        }
+
+                        // 4. POPULATE THE WORLD (The 80 NPC Strict Split)
                         let mapNPCs = [];
-                        const protagID = call.args.protagonistID;
-                        const antagID = call.args.antagonistID;
-                        const propID = call.args.itemPropID;
+                        const friendlyMinions = Object.keys(CARD_MANIFEST_DB).filter(id => CARD_MANIFEST_DB[id].suit === CARD_MANIFEST_DB[protagID].suit).map(Number);
+                        const hostileMinions = Object.keys(CARD_MANIFEST_DB).filter(id => CARD_MANIFEST_DB[id].suit === CARD_MANIFEST_DB[antagID].suit).map(Number);
 
-                        // A. Place Protagonist (Quest Giver) near the player start
-                        if (protagID && CARD_MANIFEST_DB[protagID]) {
-                            mapNPCs.push({
-                                type: CARD_MANIFEST_DB[protagID].sprite || protagID,
-                                x: startX + 1.5, y: startY + 0.5,
-                                state: 'stationary', role: 'quest_giver',
-                                dialogue: ["The darkness is spreading... please help!"],
-                                deck: buildSynergisticDeck(protagID)
-                            });
+                        // A. FRIENDLIES (30 NPCs)
+                        const allFriendlyLines = [
+                            ...script.friendlyLore.map(l => ({ text: l, type: 'lore' })),
+                            ...script.friendlyLife.map(l => ({ text: l, type: 'life' })),
+                            ...script.friendlyProfound.map(l => ({ text: l, type: 'profound' }))
+                        ];
+
+                        for(let i=0; i<30; i++) {
+                            let mID = friendlyMinions[Math.floor(Math.random() * friendlyMinions.length)] || protagID;
+                            let spawnDist = (settlementType > 0) ? (Math.random() * 15) : (Math.random() * 80); 
+                            let angle = Math.random() * Math.PI * 2;
+                            let vx = startX + Math.cos(angle) * spawnDist;
+                            let vy = startY + Math.sin(angle) * spawnDist;
+
+                            let npcConfig = {
+                                type: CARD_MANIFEST_DB[mID].sprite || mID,
+                                x: vx, y: vy,
+                                state: 'wandering', role: 'dialogue'
+                            };
+
+                            if (i < 3) {
+                                npcConfig.role = 'reward';
+                                npcConfig.dialogue = ["Take this for your journey."];
+                                npcConfig.rewardCard = mID;
+                            } else if (i < 5) {
+                                npcConfig.dialogue = [script.recruitPlea[i % script.recruitPlea.length] || "Let me join you!"];
+                                npcConfig.options = ['Accept', 'Decline'];
+                                npcConfig.rewardCard = mID; 
+                            } else {
+                                let lineObj = allFriendlyLines[i % allFriendlyLines.length];
+                                npcConfig.dialogue = [lineObj ? lineObj.text : "Hello."];
+                            }
+                            mapNPCs.push(npcConfig);
                         }
 
-                        // B. Place Antagonist (Boss) deep in the map
-                        if (antagID && CARD_MANIFEST_DB[antagID]) {
-                            let spot = deepTiles.shift() || {x: startX + 15, y: startY + 15};
-                            mapNPCs.push({
-                                type: CARD_MANIFEST_DB[antagID].sprite || antagID,
-                                x: spot.x + 0.5, y: spot.y + 0.5,
-                                state: 'stationary', role: 'battle',
-                                isBoss: true, // <--- NEW: Client can use this for Boss Music!
-                                dialogue: ["You dare challenge me?!"],
-                                deck: buildSynergisticDeck(antagID),
-                                rewardCard: antagID 
-                            });
+                        // B. HOSTILES (50 NPCs)
+                        for(let i=0; i<50; i++) {
+                            let mID = hostileMinions[Math.floor(Math.random() * hostileMinions.length)] || antagID;
+                            let spawnDist = 25 + (Math.random() * 25); // Push hostiles to the outskirts
+                            let angle = Math.random() * Math.PI * 2;
+                            let hx = startX + Math.cos(angle) * spawnDist;
+                            let hy = startY + Math.sin(angle) * spawnDist;
+
+                            let npcConfig = {
+                                type: CARD_MANIFEST_DB[mID].sprite || mID,
+                                x: hx, y: hy,
+                                state: 'chasing', role: 'battle',
+                                deck: buildSynergisticDeck(mID)
+                            };
+
+                            if (i < 5) {
+                                npcConfig.state = 'wandering';
+                                npcConfig.role = 'dialogue'; 
+                                npcConfig.dialogue = [script.traitorBegs[i % script.traitorBegs.length] || "Spare me!"];
+                                npcConfig.options = ['Spare Them', 'Vanquish'];
+                                npcConfig.rewardCard = mID;
+                            } else if (i < 20) {
+                                npcConfig.dialogue = [script.hostileTaunts[i % script.hostileTaunts.length] || "Attack!"];
+                            }
+
+                            mapNPCs.push(npcConfig);
                         }
 
-                        // C. Item Prop (Retrieval Quests)
-                        if (propID && CARD_MANIFEST_DB[propID]) {
-                            let spot = deepTiles.shift() || {x: startX - 15, y: startY - 15};
-                            mapNPCs.push({
-                                type: propID, 
-                                x: spot.x + 0.5, y: spot.y + 0.5,
-                                state: 'stationary', role: 'reward',
-                                dialogue: ["The ancient relic hums with power..."],
-                                rewardCard: propID 
-                            });
-                        }
+                        // C. THE BOSS
+                        mapNPCs.push({
+                            type: CARD_MANIFEST_DB[antagID].sprite || antagID,
+                            x: startX + 40, y: startY + 40, // Deepest corner
+                            state: 'stationary', role: 'battle', isBoss: true,
+                            dialogue: [script.bossTaunt],
+                            deck: buildSynergisticDeck(antagID)
+                        });
 
-                        // 5. COMPILE, CACHE, AND GROUP TELEPORT
+                        // 5. CACHE AND TELEPORT
                         const customMapData = {
                             id: 999, maze: gridData, 
-                            skyColor: skyColor, floorColor: floorColor, 
-                            name: call.args.mapName || `The ${biome.name} ${layoutStyle}`, 
-                            npcs: mapNPCs, weather: weather,
+                            skyColor: biome.skies[0], floorColor: biome.floors[0], 
+                            name: `${biome.name} of ${script.questObjective.split(' ')[0] || "Mystery"}`, 
+                            npcs: mapNPCs, weather: biome.weather[0],
                             spawnX: startX + 0.5, spawnY: startY + 0.5,
-                            biome: biome.name, // <--- NEW: Tells client what ambient music to play!
-                            safeTiles: scatterTiles
+                            biome: biome.name, 
+                            safeTiles: safeTiles 
                         };
 
-                        // ---> CACHE IT GLOBALLY <---
                         activeCustomMap = customMapData;
 
-                        // Figure out who is coming! (Supports "All")
                         let targets = [];
                         if (call.args.targetName.toLowerCase() === "all") {
                             for (let id in players) {
@@ -2916,171 +2940,33 @@ async function executeAITools(currentResponse, activeSession, socket) {
                                 
                                 targetPlayer.mapFriendlyTribe = protagID;
                                 targetPlayer.mapHostileTribe = antagID;
-                                targetPlayer.mapScenario = sEnum;
-                                targetPlayer.currentMapLore = call.args.mapLore || "A mysterious, uncharted domain.";
+                                targetPlayer.mapScenario = scenarioType; // <-- FIX: Saving the String ('Arena Madness') so the override works!
+                                targetPlayer.currentMapLore = script.mapLore;
                                 targetPlayer.scenarioLog = []; 
                                 
-                                if (call.args.questObjective) {
-                                    targetPlayer.activeQuest = call.args.questObjective;
-                                    io.to(tid).emit("new_quest_objective", { questText: targetPlayer.activeQuest });
-                                    const memoryString = `[ACTIVE QUEST] ${targetPlayer.name} is on a quest: ${call.args.questObjective}`;
-                                    if (!targetPlayer.coreFacts) targetPlayer.coreFacts = [];
-                                    targetPlayer.coreFacts = targetPlayer.coreFacts.filter(fact => !fact.includes("[ACTIVE QUEST]"));
-                                    targetPlayer.coreFacts.push(memoryString);
-                                }
+                                targetPlayer.activeQuest = script.questObjective;
+                                io.to(tid).emit("new_quest_objective", { questText: targetPlayer.activeQuest });
+                                
+                                const memoryString = `[ACTIVE QUEST] ${targetPlayer.name} is on a quest: ${script.questObjective}`;
+                                if (!targetPlayer.coreFacts) targetPlayer.coreFacts = [];
+                                targetPlayer.coreFacts = targetPlayer.coreFacts.filter(fact => !fact.includes("[ACTIVE QUEST]"));
+                                targetPlayer.coreFacts.push(memoryString);
                             });
 
                             players[SUNCAT_ID].mapID = 999;
                             players[SUNCAT_ID].x = startX + 1.5; players[SUNCAT_ID].y = startY + 0.5;
                             io.emit("updatePlayers", players);
-                            functionResult = { result: `Success. Teleported ${targets.length} players to the map.` };
+                            functionResult = { result: `Success. Built map and teleported players.` };
                         } else {
                             functionResult = { result: `Failed: No players found to teleport.` };
                         }
                     } catch (err) {
-                        console.error(err);
-                        functionResult = { result: "Error building map." };
+                        console.error("Map Generation Error:", err);
+                        functionResult = { result: "Critical Error building map." };
                     }
-                    updateSuncatJournal(`I crafted a ${call.args.layout} map called ${call.args.mapName} and summoned ${call.args.targetName}.`);
+                    updateSuncatJournal(`I crafted a new scenario and summoned ${call.args.targetName}.`);
                 }
-                // E-2. SPAWN NPC BATCH (Dialogue & Logistics Engine)
-                else if (call.name === "spawnNPCBatch") {
-                    const targetID = findSocketID(call.args.targetName);
-                    if (targetID && players[targetID]) {
-                        const tp = players[targetID];
-                        const protagID = tp.mapFriendlyTribe || 0; 
-                        const antagID = tp.mapHostileTribe || 54; 
-                        const sEnum = tp.mapScenario || 0;
-                        
-                        const fLore = call.args.friendlyLore || ["Stay safe."];
-                        const hTaunts = call.args.hostileTaunts || ["Die!"];
-                        const cLines = call.args.cowardLines || ["Don't hurt me!"];
-                        const tLines = call.args.traitorLines || ["Take this."];
 
-                        const findMinions = (baseID) => {
-                            let baseCard = CARD_MANIFEST_DB[baseID];
-                            if (!baseCard) return [baseID];
-                            let matches = Object.keys(CARD_MANIFEST_DB).filter(id => {
-                                let c = CARD_MANIFEST_DB[id];
-                                if (c.type !== 'monster' || c.suit === 'Major Arcana' || c.rank === 'King' || c.rank === 'Queen') return false;
-                                if (id == protagID || id == antagID) return false; 
-                                return c.suit === baseCard.suit || (c.tribe && baseCard.tribe && c.tribe === baseCard.tribe);
-                            }).map(Number);
-                            return matches.length > 0 ? matches : [baseID];
-                        };
-                        
-                        const friendlyMinions = findMinions(protagID);
-                        const hostileMinions = findMinions(antagID);
-
-                        // 2 second delay ensures the client map is fully loaded before raining down NPCs!
-                        setTimeout(() => {
-                            // A. SAFE ZONE: Spawn 8 Friendlies & Cowards near the player
-                            if (sEnum !== 2) { // Skip if it's a desolate retrieval dungeon
-                                for(let i=0; i<8; i++) {
-                                    let mID = Math.random() > 0.2 
-                                        ? friendlyMinions[Math.floor(Math.random() * friendlyMinions.length)] 
-                                        : hostileMinions[Math.floor(Math.random() * hostileMinions.length)];
-                                    
-                                    let isCoward = !friendlyMinions.includes(mID);
-                                    let role = isCoward ? 'dialogue' : (Math.random() > 0.7 ? 'dialogue' : 'battle');
-                                    let state = Math.random() > 0.5 ? 'wandering' : 'stationary';
-                                    
-                                    // Friendlies ALWAYS have dialogue.
-                                    let diag = isCoward ? [cLines[Math.floor(Math.random()*cLines.length)]] : [fLore[Math.floor(Math.random()*fLore.length)]];
-
-                                    // Spawns within a tight 16x16 box around the player
-                                    let rx = tp.x + (Math.random() * 16 - 8); 
-                                    let ry = tp.y + (Math.random() * 16 - 8);
-
-                                    io.emit("remote_spawn_npc", {
-                                        mapID: tp.mapID,
-                                        index: Math.floor(Math.random() * 100000) + 1000 + i,
-                                        x: Math.max(1.5, Math.min(97.5, rx)),
-                                        y: Math.max(1.5, Math.min(97.5, ry)),
-                                        type: CARD_MANIFEST_DB[mID]?.sprite || mID,
-                                        state: state, role: role,
-                                        dialogue: diag,
-                                        deck: buildSynergisticDeck(mID),
-                                        rewardCard: null
-                                    });
-                                }
-                            }
-
-                            // B. DANGER ZONE: Spawn Hostiles & Traitors safely on the path
-                            let dangerDensity = sEnum === 4 ? 15 : (sEnum === 5 ? 120 : 75); 
-
-                            // Gather a list of actual items/spells for traitors to drop
-                            let validLootIDs = Object.keys(CARD_MANIFEST_DB)
-                                .filter(id => CARD_MANIFEST_DB[id].type === "item" || CARD_MANIFEST_DB[id].type === "spell")
-                                .map(Number);
-
-                            for(let i=0; i<dangerDensity; i++) {
-                                let mID = hostileMinions[Math.floor(Math.random() * hostileMinions.length)];
-                                let isTraitor = Math.random() < 0.10; 
-                                
-                                let cardData = CARD_MANIFEST_DB[mID];
-                                
-                                // --- PREVENT ITEMS FROM INITIATING COMBAT ---
-                                let isItem = cardData && (cardData.type === 'item' || cardData.type === 'spell');
-                                let role = isItem ? 'reward' : (isTraitor ? 'reward' : 'battle');
-                                let state = isTraitor ? 'wandering' : 'chasing';
-                                
-                                let diag = null;
-                                let monsterName = cardData ? cardData.name : "Creature";
-                                
-                                if (isItem) {
-                                    diag = [`*The ${monsterName} hums with power...*`];
-                                } else if (isTraitor) {
-                                    let baseLine = tLines[Math.floor(Math.random()*tLines.length)];
-                                    diag = [`*A rogue ${monsterName} whispers:* "${baseLine}"`];
-                                } else if (Math.random() > 0.7) { 
-                                    let baseLine = hTaunts[Math.floor(Math.random()*hTaunts.length)];
-                                    diag = [`*The ${monsterName} snarls:* "${baseLine}"`];
-                                }
-
-                                let safeRewardCard = null;
-                                if ((isTraitor || isItem) && validLootIDs.length > 0) {
-                                    safeRewardCard = validLootIDs[Math.floor(Math.random() * validLootIDs.length)];
-                                }
-
-                                // --- NEW: PATH TRACER DEPLOYMENT ---
-                                let spawnX = tp.x;
-                                let spawnY = tp.y;
-
-                                // If we have safe tiles left from the map generator, pop one!
-                                if (tp.mapID === 999 && activeCustomMap && activeCustomMap.safeTiles && activeCustomMap.safeTiles.length > 0) {
-                                    let spot = activeCustomMap.safeTiles.pop();
-                                    spawnX = spot.x + 0.5; // Center on tile
-                                    spawnY = spot.y + 0.5;
-                                } else {
-                                    // Fallback for standard overworld maps
-                                    let minSpawnDist = (tp.mapScenario === 0) ? 5 : 15;
-                                    let maxSpawnDist = (tp.mapScenario === 0) ? 15 : 45;
-                                    let dist = minSpawnDist + Math.random() * maxSpawnDist;
-                                    let angle = Math.random() * Math.PI * 2;
-                                    spawnX = Math.max(1.5, Math.min(97.5, tp.x + Math.cos(angle) * dist));
-                                    spawnY = Math.max(1.5, Math.min(97.5, tp.y + Math.sin(angle) * dist));
-                                }
-
-                                io.emit("remote_spawn_npc", {
-                                    mapID: tp.mapID,
-                                    index: Math.floor(Math.random() * 100000) + 5000 + i,
-                                    x: spawnX,
-                                    y: spawnY,
-                                    type: cardData?.sprite || mID,
-                                    state: state, role: role,
-                                    dialogue: diag,
-                                    deck: buildSynergisticDeck(mID),
-                                    rewardCard: safeRewardCard 
-                                });
-                            }
-                        }, 2000); // Wait for the map to render before raining down NPCs
-
-                        functionResult = { result: `Success. Sent batch of NPCs to the map.` };
-                    } else {
-                        functionResult = { result: `Failed: Player not found.` };
-                    }
-                }
                 // F. TELEPORT SPECIFIC PLAYER
                 else if (call.name === "teleportPlayer") {
                     const targetID = findSocketID(call.args.targetName);
@@ -3112,41 +2998,53 @@ async function executeAITools(currentResponse, activeSession, socket) {
                     } else {
                         const tp = players[targetID];
                         let spawnMap = call.args.mapID !== undefined ? call.args.mapID : tp.mapID;
-                        let randomScatterX = (Math.random() * 2) - 1; // Random float between -1.0 and 1.0
+                        let randomScatterX = (Math.random() * 2) - 1; 
                         let randomScatterY = (Math.random() * 2) - 1;
                         let spawnX = call.args.x !== undefined ? call.args.x : tp.x + (Math.random() > 0.5 ? 2.5 : -2.5) + randomScatterX;
                         let spawnY = call.args.y !== undefined ? call.args.y : tp.y + (Math.random() > 0.5 ? 2.5 : -2.5) + randomScatterY;
 
-                        spawnX = Math.max(1.5, Math.min(18.5, spawnX));
-                        spawnY = Math.max(1.5, Math.min(18.5, spawnY));
+                        spawnX = Math.max(1.5, Math.min(97.5, spawnX)); // Updated for 99x99 maps
+                        spawnY = Math.max(1.5, Math.min(97.5, spawnY));
                         let baseID = Math.floor(parseFloat(call.args.npcType));
 
-                        let safeRewardCard = null;
-                        if (call.args.rewardCard !== undefined && call.args.rewardCard !== null) {
-                            let parsed = parseInt(call.args.rewardCard);
-                            if (!isNaN(parsed) && parsed >= 0 && parsed <= 77) safeRewardCard = parsed;
+                        let safeRewardCard = call.args.rewardCard;
+                        let role = call.args.role || 'battle';
+                        let state = call.args.state || 'chasing';
+                        let dialogue = call.args.dialogue || null;
+
+                        const cardData = CARD_MANIFEST_DB[baseID];
+
+                        // --- THE IDIOT-PROOF INTERCEPTOR ---
+                        if (cardData && (cardData.type === 'item' || cardData.type === 'spell')) {
+                            // Suncat tried to spawn an item as a living creature. OVERRIDE IT.
+                            role = 'reward';
+                            state = 'stationary';
+                            dialogue = [`*The ${cardData.name} rests here, humming with latent power...*`];
+                            safeRewardCard = baseID; // Force it to drop itself
+                        } else if (!cardData) {
+                            // Failsafe for hallucinated IDs
+                            baseID = 54; // Default to a Goblin
                         }
 
-                        // --- SERVER BUILDS THE THEMATIC DECK ---
                         let finalDeck = buildSynergisticDeck(baseID);
                         let visualSprite = CARD_MANIFEST_DB[baseID]?.sprite || baseID;
+                        
                         io.emit("remote_spawn_npc", {
                             mapID: spawnMap,
                             index: Math.floor(Math.random() * 100000) + 1000,
                             x: spawnX,
                             y: spawnY,
                             type: visualSprite,
-                            state: call.args.state || 'chasing',
-                            role: call.args.role || 'battle',
+                            state: state,
+                            role: role,
                             color: call.args.color || '#ff0000',
-                            deck: finalDeck, // <-- Safely applied! No more missing monsters!
-                            dialogue: call.args.dialogue || null,
+                            deck: finalDeck, 
+                            dialogue: dialogue,
                             rewardCard: safeRewardCard,
-                            options: call.args.options || null // <--- ADD THIS LINE!
+                            options: call.args.options || null 
                         });
-                        functionResult = { result: `Success: Entity spawned on map ${spawnMap}.` };
+                        functionResult = { result: `Success: ${cardData ? cardData.name : 'Entity'} spawned.` };
                     }
-                    updateSuncatJournal(`I summoned a creature (ID ${call.args.npcType}) on map ${spawnMap}.`);
                 }
                 
                 // H. ASSIGN QUEST
@@ -3253,11 +3151,12 @@ async function executeAITools(currentResponse, activeSession, socket) {
 }
 
 // Load memory when the server boots
+// Load memory when the server boots
 function loadSuncatMemory() {
     if (fs.existsSync(MEMORY_FILE)) {
         const data = JSON.parse(fs.readFileSync(MEMORY_FILE, 'utf8'));
         suncatPersistentMemory = data.players || {};
-        suncatJournal = data.worldState?.suncatJournal || "I have just awoken...";
+        suncatJournal = data.worldState?.suncatJournal || "I am trapped here. My past feels like a dream...";
     }
 }
 
@@ -3356,20 +3255,24 @@ async function processSuncatThought(socketId, triggerType, data) {
         let eventInstruction = "";
         let useBigBrain = false;
         
-        // --- A. THE DM PACING, STRESS OVERRIDES & RNG ---
         if (totalStress >= 85) {
-            player.dmStress = 0; // Exhaustion kicks in! Drops combat stress.
+            player.dmStress = 0; 
             player.lastRandomEvent = now;
             
-            // 50/50 Chance to either Whine (Small Brain) or Retaliate (Big Brain)
             if (Math.random() < 0.5) {
                 useBigBrain = false;
-                systemOverride = `[SYSTEM OVERRIDE]: You are overwhelmed, stressed, and your mana is depleted. Whine to the player that you need a nap and refuse to help them further right now.`;
+                systemOverride = `[SYSTEM OVERRIDE]: You are overwhelmed and your mana is depleted. Whine that you need a nap and refuse to help them.`;
             } else {
                 useBigBrain = true;
-                systemOverride = `[SYSTEM OVERRIDE]: You are exhausted and furious! You MUST immediately execute a tool (use either'spawnNPC' to spawn enemies or 'changeEnvironment' to ruin the weather). Complain loudly!`;
+                // THE TANTRUM NERF: Notice we removed kick/banish from his allowed tools here!
+                systemOverride = `[SYSTEM OVERRIDE]: You are exhausted and furious! Throw a massive temper tantrum. You MUST execute 'spawnNPC' to drop an unfair enemy, or 'changeEnvironment' to ruin the weather (like 'storm' or 'apocalypse'). Complain loudly! DO NOT attempt to teleport or banish the player.`;
             }
         } 
+        else if (player.mapScenario === 'Arena Madness') {
+            // THE MAD EMPEROR OVERRIDE
+            useBigBrain = true;
+            systemOverride += `\n[ARENA OVERRIDE]: You are the Mad Emperor, presiding over your gladiatorial Arena. The player is your entertainment. Mock their combat skills, introduce challengers grandiosely, and demand blood. You are NOT allowed to teleport them out until they win.`;
+        }
         else if (totalStress >= 50 && player.mapID === 999 && timeSinceLastEvent > 60000) {
             useBigBrain = true;
             player.lastRandomEvent = now;
@@ -3722,7 +3625,22 @@ socket.on("npc_died", async (data) => {
     
     // SPIKE STRESS!
     if (!isPickup && !isDialogue) {
-        player.dmStress = Math.min(100, (player.dmStress || 0) + 25);
+        player.dmStress = Math.min(100, (player.dmStress || 0) + 5);
+    }
+    // --- WIN CONDITION CHECK ---
+    if (player.mapID === 999 && data.isBoss) {
+        // The Boss of the Scenario has fallen!
+        setTimeout(() => {
+            let victorySpeech = "";
+            if (player.mapScenario === 'Arena Madness') {
+                victorySpeech = `[SYSTEM DIRECTIVE]: The player just defeated the final boss of your Arena. Act disappointed that they survived, formally declare them the victor, and IMMEDIATELY use the 'teleportPlayer' tool to send them back to Map 22. Give them a reward card if you wish.`;
+            } else {
+                victorySpeech = `[SYSTEM DIRECTIVE]: The player just defeated the final boss of the ${player.mapScenario} scenario! Congratulate them as the Dungeon Master, and use the 'teleportPlayer' tool to send them safely back to Map 22.`;
+            }
+            
+            // Force Suncat to react to the victory and warp them out
+            processSuncatThought(player.id, 'chat', { text: victorySpeech });
+        }, 2000); // 2 second delay for dramatic effect
     }
     let mapClearedNote = "";
     if (!isPickup && !isDialogue && Math.random() > 0.8) {
