@@ -3981,7 +3981,7 @@ setInterval(() => {
                     suncat.mapID = target.mapID;
                     suncat.x = target.x;
                     suncat.y = target.y;
-                    io.emit('chat_message', { sender: NPC_NAME, text: "...I found you.", color: "gray" });
+                    io.emit('chat_message', { sender: NPC_NAME, text: "Well if it isn't my favorite player...", color: "gray" });
                 }
             } 
             // B. Handle Coordinate Movement
@@ -4051,7 +4051,7 @@ setInterval(() => {
             if (nearbyPlayer && chatSessions[nearbyPlayer.id]) {
                 npcIsTyping = true;
                 const typingFailSafe = setTimeout(() => { npcIsTyping = false; }, 20000);
-                const proactivePrompt = `You are idling near ${nearbyPlayer.name} on Map ${suncat.mapID}. Speak to them unprompted. If favor is high (>5), ask a personal question, share lore, or comment on this location. If favor is bad, insult them or tell them to go away. DO NOT use brackets or tags in your response.`;
+                const proactivePrompt = `You are idling near ${nearbyPlayer.name} on Map ${suncat.mapID}. Speak to them unprompted. If favor is ok (>3), ask a personal question, share lore, or comment on this location. If favor is bad(<3), insult them or tell them to go away. DO NOT use brackets or tags in your response.`;
                 
                 setTimeout(async () => {
                     try {
@@ -4096,15 +4096,24 @@ setInterval(() => {
                     injectedPersona += PERSONA_RULES_DB.oracle_mode;
                     dmPrompt = `[DM PACING]: ${advPlayer.name} is wandering Map ${advPlayer.mapID}.\n[TERRAIN]: ${activeMapLore}\nProvide an unsolicited, cryptic 2-sentence Tarot reading about the danger ahead.`;
                 } 
-                else if (pacingRoll < 0.66) {
+                else if (pacingRoll < 0.69) {
                     // 2. Creepy Atmospheric Narration (Small Brain, No Tools)
                     dmPrompt = `[DM PACING]: ${advPlayer.name} is lingering on Map ${advPlayer.mapID}.\n[TERRAIN]: ${activeMapLore}\nNarrate the creepy or beautiful atmosphere around them in exactly ONE atmospheric sentence. Make them feel watched.`;
                 } 
                 else {
+                    if (advPlayer.mapID != 999&&pacingRoll > 0.93){
                     // 3. Spice up the gameplay! (Big Brain + Tools)
                     requiresBigBrain = true;
                     injectedPersona += PERSONA_RULES_DB.dm_mode + "\n" + PERSONA_RULES_DB.quest_mode;
                     dmPrompt = `[DM PACING OVERSEER]: ${advPlayer.name} is lingering on Map ${advPlayer.mapID}.\n[TERRAIN]: ${activeMapLore}\n${plotContext}\nAdvance the adventure NOW! You MUST use a tool (spawnNPC, changeEnvironment, or assignQuest) to ambush or surprise them. Narrate the sudden event dramatically.`;
+                    }
+                    else{
+                         requiresBigBrain = true;
+                        injectedPersona += PERSONA_RULES_DB.dm_mode + "\n" + PERSONA_RULES_DB.quest_mode;
+                        dmPrompt = `[DM PACING OVERSEER]: ${advPlayer.name} is lingering on Map ${advPlayer.mapID}.\n[TERRAIN]: ${activeMapLore}\n${plotContext}\Spice up the adventure in a way RELEVANT to the CURRENT SCENARIO NOW! You MUST use spawnNPC to ambush or surprise them, or you may summon a helpful person with insightful/comedic relief dialogue. You may also gift a card directly or through spawnNPC if you choose. Narrate the sudden event dramatically like a dungeon master narrating a sudden encounter to the players. (e.g. "You find a card on the ground...", "You are waylaid by enemies and must defend yourself", "A denizen of this land approaches you. Are they friend or foe?")Make it relevant to the current adventure or scenario.`;
+                    
+                    }
+                    
                 }
 
                 setTimeout(async () => {
