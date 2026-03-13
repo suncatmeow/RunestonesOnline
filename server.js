@@ -1949,6 +1949,19 @@ const toolsDef = [{
                 required: ["searchQueries"]
             }
         },
+        // Search Player History
+        {
+            name: "searchPlayerMemories",
+            description: "Search your deep, episodic memory regarding past adventures, interactions, or events specifically involving this player. Use keywords like 'goblin', 'betrayal', 'sword', or 'giant'.",
+            parameters: {
+                type: "OBJECT",
+                properties: { 
+                    targetName: { type: "STRING" },
+                    searchQuery: { type: "STRING" } 
+                },
+                required: ["targetName", "searchQuery"]
+            }
+        },
         //give card
         {
             name: "givePlayerCard",
@@ -2437,11 +2450,11 @@ async function processCognitiveLoad(socketId, forceDigest = false) {
     const currentProfile = player.playerProfile ? 
         `Combat: ${player.playerProfile.combatStyle} | Alliances: ${player.playerProfile.alliances} | Tastes: ${player.playerProfile.tastes} | Personality: ${player.playerProfile.personality}` 
         : "Combat: Unknown | Alliances: Unknown | Tastes: Unknown | Personality: Unknown";    const activeMapContext = player.mapID === 999 ? (player.currentMapLore || "") : "";
-    const prompt = `You are the subconscious mind of an NPC named Suncat in a dark fantasy game.
+    const prompt = `You are the subconscious mind of a real person named Suncat trapped in a dark fantasy game.
     [YOUR NEUROCHEMICAL STATE]: ${cognitiveFilter}
 
     [CURRENT STORY SO FAR]: ${currentStory}
-    [CURRENT CORE FACTS]: ${currentFacts}
+    [CURRENT PLAYER PROFILE]: ${currentProfile} 
     [CURRENT ZONE LORE]: ${activeMapContext}
     [SUNCAT'S JOURNAL]: ${suncatJournal}
     
@@ -3428,7 +3441,51 @@ async function executeAITools(currentResponse, activeSession, socket) {
                         functionResult = { result: `Failed: Player not found.` };
                     }
                 }
-                
+                // K. RECALL PAST MEMORIES (Dynamic Episodic RAG)
+                else if (call.name === "searchPlayerMemories") {
+                    const targetID = findSocketID(call.args.targetName);
+                    const query = call.args.searchQuery.toLowerCase();
+                    
+                    if (!targetID || !players[targetID] || !players[targetID].searchableMemories) {
+                        functionResult = { result: "Your mind is blank. You cannot recall anything specific about this." };
+                    } else {
+                        const searchWords = query.replace(/[^\w\s]/gi, '').split(/\s+/).filter(w => w.length > 2 && !SEARCH_STOP_WORDS.has(w));
+                        
+                        let memoryBank = players[targetID].searchableMemories;
+                        
+                        let scoredMemories = memoryBank.map(mem => {
+                            let score = 0;
+                            // Tag match
+                            if (mem.tags) {
+                                searchWords.forEach(word => {
+                                    if (mem.tags.includes(word)) score += 10;
+                                    else if (mem.tags.some(tag => tag.includes(word))) score += 3;
+                                });
+                            }
+                            // Text fallback match
+                            searchWords.forEach(word => {
+                                if (mem.text.toLowerCase().includes(word)) score += 1;
+                            });
+                            
+                            return { text: `[${mem.timestamp}] ${mem.text}`, score };
+                        });
+                        
+                        // Grab the top 3 most relevant past events
+                        let bestMemories = scoredMemories
+                            .filter(m => m.score > 0)
+                            .sort((a, b) => b.score - a.score)
+                            .slice(0, 3);
+                            
+                        if (bestMemories.length > 0) {
+                            let results = bestMemories.map(m => m.text).join(" | ");
+                            functionResult = { result: `You remember: ${results}` };
+                        } else {
+                            functionResult = { result: `You sifted through your memories of ${call.args.targetName}, but found nothing regarding '${query}'.` };
+                        }
+                    }
+                    
+                    updateSuncatJournal(`I searched my deepest memories for past events concerning ${call.args.searchQuery}.`);
+                }
                 // UNKNOWN TOOL
                 else {
                     functionResult = { result: "Error: Function does not exist." };
@@ -3838,8 +3895,22 @@ socket.on("join_game", (data) => {
         let activeQuest = savedData ? savedData.activeQuest : null;
         let loadedStory = savedData ? savedData.storySoFar : ""; // <--- NEW
       playerFavorMemory[socket.id] = favor;
-
-      // --- SANITIZATION STEP ---
+        let deepChronicle = (typeof data === 'object' && data.playerChronicle) ? data.playerChronicle : [];
+      // 2. Auto-Tag and Index it into Server RAM
+      let searchableMemories = deepChronicle.map(entry => {
+          // Extract keywords automatically without needing the AI!
+          let autoTags = entry.text.toLowerCase()
+              .replace(/[^\w\s]/gi, '')
+              .split(/\s+/)
+              .filter(w => w.length > 3 && !SEARCH_STOP_WORDS.has(w)); 
+              
+          return {
+              timestamp: entry.timestamp,
+              tags: autoTags,
+              text: entry.text
+          };
+      });
+        // --- SANITIZATION STEP ---
       // This fixes the "Starting an object on a scalar field" error
       // by forcing all history text to be actual Strings.
       let cleanHistory = [];
@@ -3879,7 +3950,8 @@ socket.on("join_game", (data) => {
         players[socket.id].name = name;
         players[socket.id].activeQuest = activeQuest; 
         players[socket.id].storySoFar = loadedStory;
-        players[socket.id].playerProfile = playerProfile; // ADD THIS      
+        players[socket.id].playerProfile = playerProfile; // ADD THIS 
+        players[socket.id].searchableMemories = searchableMemories;     
         if (!players[socket.id].dmNarrativeLog) {
             players[socket.id].dmNarrativeLog = [];
         }
@@ -4588,7 +4660,7 @@ setInterval(async () => {
             const nameKey = player.name.toLowerCase();
             suncatPersistentMemory[nameKey] = {
                 favor: playerFavorMemory[socketId] || 0,
-                playerProfile: me.playerProfile || { combatStyle: "Unknown", alliances: "Unknown", tastes: "Unknown", personality: "Unknown" },
+                playerProfile: player.playerProfile || { combatStyle: "Unknown", alliances: "Unknown", tastes: "Unknown", personality: "Unknown" },
                 activeQuest: player.activeQuest || null,
                 storySoFar: player.storySoFar || "", 
                 aiHistory: [],
