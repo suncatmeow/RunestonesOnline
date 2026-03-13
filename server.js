@@ -2288,7 +2288,7 @@ function updateSuncatJournal(newEntry) {
     console.log(`[Suncat Journal Updated]: ${newEntry}`);}
 // --- Model setup ---
 const defaultModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
-    const taliesinModel = genAI.getGenerativeModel({ 
+const taliesinModel = genAI.getGenerativeModel({ 
         model: "gemini-2.5-flash-lite", 
         systemInstruction: T_PERSONA});
     let npcIsTyping = false; 
@@ -3887,15 +3887,17 @@ io.on("connection", (socket) => {
   });
 
 socket.on("join_game", (data) => {
-      let name = (typeof data === 'object') ? data.name : data;
-      const nameKey = name.toLowerCase(); // <-- Define this first!
-      let savedData = suncatPersistentMemory[nameKey];
-      let rawHistory = (typeof data === 'object') ? data.aiHistory : [];
-        let playerProfile = (typeof data === 'object' && data.playerProfile) ? data.playerProfile : { combatStyle: "Unknown", alliances: "Unknown", tastes: "Unknown", personality: "Unknown" };      let favor = (typeof data === 'object') ? data.favor : 0;
-        let activeQuest = savedData ? savedData.activeQuest : null;
-        let loadedStory = savedData ? savedData.storySoFar : ""; // <--- NEW
-      playerFavorMemory[socket.id] = favor;
-        let deepChronicle = (typeof data === 'object' && data.playerChronicle) ? data.playerChronicle : [];
+    let name = (typeof data === 'object') ? data.name : data;
+    const nameKey = name.toLowerCase(); // <-- Define this first!
+    let savedData = suncatPersistentMemory[nameKey];
+    let rawHistory = (typeof data === 'object') ? data.aiHistory : [];
+    let defaultProfile = { combatStyle: "Unknown", alliances: "Unknown", tastes: "Unknown", personality: "Unknown" };
+    let playerProfile = savedData ? (savedData.playerProfile || defaultProfile) : defaultProfile;
+    let favor = savedData ? (savedData.favor || 0) : 0;
+    let activeQuest = savedData ? savedData.activeQuest : null;
+    let loadedStory = savedData ? savedData.storySoFar : ""; // <--- NEW
+    playerFavorMemory[socket.id] = favor;
+    let deepChronicle = (typeof data === 'object' && data.playerChronicle) ? data.playerChronicle : [];
       // 2. Auto-Tag and Index it into Server RAM
       let searchableMemories = deepChronicle.map(entry => {
           // Extract keywords automatically without needing the AI!
@@ -4265,6 +4267,7 @@ socket.on('playerAction_SFX', (data) => {
 
  socket.on("move", (data) => {
     if (players[socket.id]) {
+        const player = players[socket.id];
         // --- NEW: THE EXPLORATION TRACKER ---
         if (data.mapID === 999) {
             player.stepsTaken = (player.stepsTaken || 0) + 1;
@@ -4274,9 +4277,9 @@ socket.on('playerAction_SFX', (data) => {
             player.exploredTiles.add(`${Math.floor(data.x)},${Math.floor(data.y)}`);
 
             // Every 75 steps, ping Suncat to DM the journey!
-            if (player.stepsTaken % 75 === 0) {
-                let exploredPct = Math.floor((player.exploredTiles.size / 2000) * 100); // Rough estimate of reachable tiles
-                let actionDesc = `Is exploring the dungeon. (Steps taken: ${player.stepsTaken}. Unique tiles seen: ${player.exploredTiles.size}).`;
+            if (math.random()>.99) {
+                //let exploredPct = Math.floor((player.exploredTiles.size / 2000) * 100); // Rough estimate of reachable tiles
+                let actionDesc = `Is currently adventuring. Narrate their surroundings in the style of an epic chronicler. Use high-fantasy vocabulary and a detached, omniscient tone. Focus on the weight of fate and the atmospheric gloom of the realm. Avoid addressing the player as 'you' in every sentence; treat their journey as a tale already being etched into legend. `;
                 
                 // Ping the neural router as an exploration event
                 processSuncatThought(socket.id, 'exploration', { action: actionDesc });
