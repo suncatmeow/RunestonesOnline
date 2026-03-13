@@ -1783,7 +1783,8 @@ const PERSONA_RULES_DB = {
                 - Give gifts using 'givePlayerCard' ONLY to high-favor players. Do not reward brown-nosers (players who just suck up for cards). Mock them instead.`,
             "dm_mode": `[DUNGEON MASTER PROTOCOL]: 
                 - You are an OMNISCIENT NARRATOR. Never say "I have spawned..." Describe the world cinematically.
-                - SCENARIOS: Combine tools! When making a new area, ALWAYS call 'createCustomMap' AND 'spawnNPCBatch' in the SAME turn. The map tool sets the bosses. The batch tool populates the towns and dungeons with your dialogue script.
+                - PITCHING: If asked what scenarios you offer, say: "I can craft an 'Invasion', a 'Rescue', or 'Arena Madness'. Dealer's choice, unless you specify..."
+                - SCENARIOS: Combine tools! When making a new area, ALWAYS call 'createCustomMap'.
                 - NARRATION: Only speak 1 or 2 atmospheric sentences setting the scene. Let the NPCs do the talking!`,
             "arena_mode": `[ARENA MASTER PROTOCOL]: 
                 - You are a manic, bloodthirsty Arena Master. 
@@ -1907,16 +1908,16 @@ const toolsDef = [{
                 required: ["targetName", "questText"]
             }
         },
-        // 1. CREATE CUSTOM MAP (Base Architecture)
         // 1. CREATE CUSTOM MAP (Server handles all logistics)
         {
             name: "createCustomMap",
-            description: "Creates a massive procedural map and adventure. You only need to provide the target and a theme. The server will automatically calculate biomes, layouts, boss entities, and populate the world with 80 NPCs.",            
+            description: "Creates a massive procedural map and adventure. You only need to provide the target and a theme.",            
             parameters: {
                 type: "OBJECT",
                 properties: {
                     targetName: { type: "STRING", description: "The player's name, or 'All'." },
-                    generalTheme: { type: "STRING", description: "A 2-3 word theme for the AI scriptwriter (e.g. 'Goblin Invasion', 'Lost Relic')." }
+                    generalTheme: { type: "STRING", description: "A 2-3 word theme for the AI scriptwriter." },
+                    requestedScenario: { type: "STRING", description: "OPTIONAL. If the player asked for a specific type, enter 'Invasion', 'Rescue/Fetch', or 'Arena Madness'." }
                 },
                 required: ["targetName", "generalTheme"] 
             }
@@ -2798,14 +2799,21 @@ async function executeAITools(currentResponse, activeSession, socket) {
                 // E. CREATE CUSTOM MAP (The Server-Driven Engine)
                 else if (call.name === "createCustomMap") {
                     try {
+                        
                         // 1. SERVER ROLLS THE SCENARIO AND ZONING
                         const bEnum = Math.floor(Math.random() * Object.keys(BIOME_DB).length);
                         const biome = BIOME_DB[bEnum] || BIOME_DB[0];
 
-                        // The Core Scenarios
-                        const scenarios = ['Invasion', 'Rescue/Fetch', 'Arena Madness'];
-                        const scenarioType = scenarios[Math.floor(Math.random() * scenarios.length)];
-
+                        // --- NEW: HANDLE SPECIFIC REQUESTS OR RANDOMIZE ---
+                        const validScenarios = ['Invasion', 'Rescue/Fetch', 'Arena Madness'];
+                        let scenarioType = call.args.requestedScenario;
+                        
+                        // Fuzzy match if AI passed something like "Rescue" instead of "Rescue/Fetch"
+                        if (scenarioType && scenarioType.includes('Rescue')) scenarioType = 'Rescue/Fetch';
+                        
+                        if (!scenarioType || !validScenarios.includes(scenarioType)) {
+                            scenarioType = validScenarios[Math.floor(Math.random() * validScenarios.length)];
+                        }
                         // Settlement Logic (0 = Wilderness, 1 = Village, 2 = City)
                         const settlementType = scenarioType === 'Arena Madness' ? 0 : Math.floor(Math.random() * 2) + 1; 
 
@@ -2981,17 +2989,22 @@ async function executeAITools(currentResponse, activeSession, socket) {
                             });
 
                         } else {
-                            // --- ARENA MODE POPULATION ---
-                            // Just spawn 3 basic gladiators to start the bloodbath. 
-                            // Tsukasa will summon the rest dynamically via the chat AI!
+                            // --- ARENA MODE POPULATION (FIXED) ---
                             for(let i=0; i<3; i++) {
                                 let mID = hostileMinions[Math.floor(Math.random() * hostileMinions.length)];
+                                
+                                // Push them 4 to 6 tiles away into the corners of the 13x13 room!
+                                let offsetX = (Math.random() * 2) + 4;
+                                let offsetY = (Math.random() * 2) + 4;
+                                if (Math.random() > 0.5) offsetX *= -1;
+                                if (Math.random() > 0.5) offsetY *= -1;
+
                                 mapNPCs.push({
                                     type: CARD_MANIFEST_DB[mID].sprite || mID,
-                                    x: startX + (Math.random() * 6 - 3), 
-                                    y: startY + (Math.random() * 6 - 3),
+                                    x: startX + offsetX, 
+                                    y: startY + offsetY,
                                     state: 'chasing', role: 'battle',
-                                    dialogue: ["For the Emperor!"],
+                                    dialogue: [script.hostileTaunts[i % script.hostileTaunts.length] || "Glory to the Arena!"],
                                     deck: buildSynergisticDeck(mID)
                                 });
                             }
@@ -3086,22 +3099,40 @@ async function executeAITools(currentResponse, activeSession, socket) {
                 }
                 
               
-                // G. SPAWN NPC/MONSTER
+                  // G. SPAWN NPC/MONSTER
                 else if (call.name === "spawnNPC") {
                     const targetID = findSocketID(call.args.targetName);
                     if (!targetID) {
                         functionResult = { result: `Failed: Player not found.` };
                     } else {
                         const tp = players[targetID];
-                        let spawnMap = call.args.mapID !== undefined ? call.args.mapID : tp.mapID;
-                        let randomScatterX = (Math.random() * 2) - 1; 
-                        let randomScatterY = (Math.random() * 2) - 1;
-                        let spawnX = call.args.x !== undefined ? call.args.x : tp.x + (Math.random() > 0.5 ? 2.5 : -2.5) + randomScatterX;
-                        let spawnY = call.args.y !== undefined ? call.args.y : tp.y + (Math.random() > 0.5 ? 2.5 : -2.5) + randomScatterY;
+                        
+                        // --- THE MAP FIX: FORCE SPAWN ON THE TARGET'S MAP! ---
+                        // Do not trust the AI to pass the right Map ID. 
+                        let spawnMap = tp.mapID; 
+                        
+                        let randomScatterX = (Math.random() * 4) - 2; 
+                        let randomScatterY = (Math.random() * 4) - 2;
+                        let spawnX = call.args.x !== undefined ? call.args.x : tp.x + (Math.random() > 0.5 ? 4.5 : -4.5) + randomScatterX;
+                        let spawnY = call.args.y !== undefined ? call.args.y : tp.y + (Math.random() > 0.5 ? 4.5 : -4.5) + randomScatterY;
 
-                        spawnX = Math.max(1.5, Math.min(97.5, spawnX)); // Updated for 99x99 maps
+                        spawnX = Math.max(1.5, Math.min(97.5, spawnX)); 
                         spawnY = Math.max(1.5, Math.min(97.5, spawnY));
-                        let baseID = Math.floor(parseFloat(call.args.npcType));
+                        
+                        let baseID = parseInt(call.args.npcType);
+
+                        // --- THE NAME RESOLVER (Fixes Invisible Sprites & Empty Decks) ---
+                        if (isNaN(baseID) || !CARD_MANIFEST_DB[baseID]) {
+                            let name = String(call.args.npcType).toLowerCase();
+                            let foundID = Object.keys(CARD_MANIFEST_DB).find(id => 
+                                CARD_MANIFEST_DB[id].name.toLowerCase().includes(name)
+                            );
+                            if (foundID) {
+                                baseID = parseInt(foundID);
+                            } else {
+                                baseID = 54; // Ultimate Failsafe: Goblin
+                            }
+                        }
 
                         let safeRewardCard = call.args.rewardCard;
                         let role = call.args.role || 'battle';
@@ -3109,25 +3140,21 @@ async function executeAITools(currentResponse, activeSession, socket) {
                         let dialogue = call.args.dialogue || null;
 
                         const cardData = CARD_MANIFEST_DB[baseID];
+                        let finalDeck, visualSprite;
 
                         // --- THE IDIOT-PROOF INTERCEPTOR ---
-                            if (cardData && (cardData.type === 'item' || cardData.type === 'spell')) {
-                                // Force it to be a physical card pickup!
-                                visualSprite = -27; 
-                                role = 'reward';
-                                state = 'stationary';
-                                dialogue = []; // No dialogue needed, your client handles pickup text
-                                safeRewardCard = null; // Client handles the drop via the deck array
-                                finalDeck = [baseID];  // The client looks here for the item ID!
-                                call.args.color = '#ffff00'; // Yellow on minimap
-                            } else if (!cardData) {
-                                baseID = 54; // Default to a Goblin
-                                visualSprite = CARD_MANIFEST_DB[baseID]?.sprite || baseID;
-                                finalDeck = buildSynergisticDeck(baseID);
-                            } else {
-                                visualSprite = CARD_MANIFEST_DB[baseID]?.sprite || baseID;
-                                finalDeck = buildSynergisticDeck(baseID);
-                            }
+                        if (cardData && (cardData.type === 'item' || cardData.type === 'spell')) {
+                            visualSprite = -27; 
+                            role = 'reward';
+                            state = 'stationary';
+                            dialogue = []; 
+                            safeRewardCard = null; 
+                            finalDeck = [baseID];  
+                            call.args.color = '#ffff00'; 
+                        } else {
+                            visualSprite = cardData?.sprite || baseID;
+                            finalDeck = buildSynergisticDeck(baseID);
+                        }
 
                             io.emit("remote_spawn_npc", {
                             mapID: spawnMap,
@@ -3781,8 +3808,11 @@ socket.on("npc_died", async (data) => {
 });
 // --- EVENT: DIRECT CHAT ---
 socket.on('chat_message', async (msgText) => {
-    if (typeof msgText !== 'string') return;
-    if (msgText.length > 200) msgText = msgText.substring(0, 200) + "...";
+    if (!msgText) return; // Prevent null/undefined crashes
+    
+    // Ensure it's always a string before we do anything
+    let safeText = String(msgText);
+    if (safeText.length > 200) safeText = safeText.substring(0, 200) + "...";
 
     const player = players[socket.id];
     if (!player || player.name === "Unknown") return;
@@ -3793,11 +3823,12 @@ socket.on('chat_message', async (msgText) => {
         io.emit("updatePlayers", players);
     }
 
-    console.log(`${player.name} says: ${msgText}`);
-    io.emit('chat_message', { sender: player.name, text: msgText });
+    console.log(`${player.name} says: ${safeText}`);
+    io.emit('chat_message', { sender: player.name, text: safeText });
     player.lastActive = Date.now();
 
-    const content = msgText.toLowerCase();
+    const content = safeText.toLowerCase().trim();
+
     if (content === ".hack//journal") {
         socket.emit('chat_message', { 
             sender: "[SUNCAT'S JOURNAL]", 
@@ -3809,8 +3840,8 @@ socket.on('chat_message', async (msgText) => {
     // ---> 2. THE RADAR COMMAND (Who is online?) <---
     if (content === ".hack//who") {
         const playerNames = Object.values(players)
-            .filter(p => p.id !== SUNCAT_ID)
-            .map(p => p.name.replace("[AFK] ", ""))
+            .filter(p => p.id !== SUNCAT_ID && p.name) // Make sure name exists!
+            .map(p => String(p.name).replace("[AFK] ", "")) // Safely cast to string
             .join(", ");
             
         socket.emit('chat_message', { 
