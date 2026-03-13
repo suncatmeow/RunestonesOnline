@@ -3402,7 +3402,9 @@ async function processSuncatThought(socketId, triggerType, data) {
         let systemOverride = ""; 
         let eventInstruction = "";
         let useBigBrain = false;
-        
+        if (player.mapID === 999) {
+            systemOverride += `\n[DM AWARENESS]: The player is currently inside your custom scenario: "${player.mapScenario}". Their active quest is: "${player.activeQuest}". The final boss is entity ID ${player.mapBossID}. If they ask what they should do, where they are, or what's going on, you MUST act as the Dungeon Master and explain the scenario and their objective clearly.`;
+        }
         if (totalStress >= 85) {
             player.dmStress = 0; 
             player.lastRandomEvent = now;
