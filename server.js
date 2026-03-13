@@ -1801,8 +1801,11 @@ const PERSONA_RULES_DB = {
                 - Keep the reading cryptic, mysterious, and brief (max 3 sentences).
                 - End by asking a single, deep clarifying question about their personal journey.`,
 
-            "tutorial_mode": `[GUIDE PROTOCOL]: The player is asking for help playing the game. Answer earnestly. Teach them the mechanics clearly using your knowledge of the Game Mechanics database.`
-    };
+                "tutorial_mode": `[GUIDE PROTOCOL]: The player is asking for help. If they only typed "help", ask them "What do you need help with? (e.g. controls, mechanics, or starting an adventure)". If they ask a specific question, teach them clearly using your Game Mechanics database. Answer earnestly, but maintain your melancholic persona.`,
+            
+            // ---> NEW: LOREKEEPER MODE <---
+            "lore_mode": `[LOREKEEPER PROTOCOL]: The player is asking about their progress, their story, or the world's lore. If they ask about their journey, recount their [THE STORY SO FAR] and [PLAYER FACTS] dramatically. If they ask about the realm, use 'consultGameManual' to search for lore. You are permitted to speak up to 4 sentences.`
+            };
 // --- GAME MECHANICS & CONTROLS ---
 
 const GAME_MECHANICS_DB = {
@@ -2415,27 +2418,48 @@ function generateProceduralGrid(layout, wallType) {
         // "Buildings" - Large open area with hollow 5x5 buildings (3x3 open interior)
         for(let r=1; r<maxR-1; r++) for(let c=1; c<maxC-1; c++) grid[r][c] = 0;
         
-        // Drop 80 random buildings across the map
-        for(let b=0; b < 80; b++) {
+        let attempts = 0;
+        let bCount = 0;
+        
+        // Try to drop 80 buildings, but give up if it gets too crowded to prevent infinite loops
+        while (bCount < 80 && attempts < 500) {
+            attempts++;
             let startR = Math.floor(Math.random() * (maxR - 8)) + 2;
             let startC = Math.floor(Math.random() * (maxC - 8)) + 2;
             
-            // Draw the 5x5 outer walls
-            for(let r = startR; r < startR + 5; r++) {
-                for(let c = startC; c < startC + 5; c++) {
-                    if (r === startR || r === startR + 4 || c === startC || c === startC + 4) {
-                        grid[r][c] = wallType;
+            // --- THE FIX: SPATIAL CHECK ---
+            // Check if the 5x5 area (plus a 1-tile border) is completely clear
+            let canBuild = true;
+            for(let r = startR - 1; r <= startR + 5; r++) {
+                for(let c = startC - 1; c <= startC + 5; c++) {
+                    if (grid[r] && grid[r][c] !== 0) {
+                        canBuild = false;
+                        break;
                     }
                 }
+                if(!canBuild) break;
             }
-            // Punch a 1-tile door randomly into one of the 4 walls
-            let doorWall = Math.floor(Math.random() * 4);
-            if (doorWall === 0) grid[startR][startC+2] = 0;           // Top door
-            if (doorWall === 1) grid[startR+4][startC+2] = 0;         // Bottom door
-            if (doorWall === 2) grid[startR+2][startC] = 0;           // Left door
-            if (doorWall === 3) grid[startR+2][startC+4] = 0;         // Right door
+
+            if (canBuild) {
+                // Draw the 5x5 outer walls
+                for(let r = startR; r < startR + 5; r++) {
+                    for(let c = startC; c < startC + 5; c++) {
+                        if (r === startR || r === startR + 4 || c === startC || c === startC + 4) {
+                            grid[r][c] = wallType;
+                        }
+                    }
+                }
+                // Punch a 1-tile door randomly into one of the 4 walls
+                let doorWall = Math.floor(Math.random() * 4);
+                if (doorWall === 0) grid[startR][startC+2] = 0;            // Top door
+                if (doorWall === 1) grid[startR+4][startC+2] = 0;          // Bottom door
+                if (doorWall === 2) grid[startR+2][startC] = 0;            // Left door
+                if (doorWall === 3) grid[startR+2][startC+4] = 0;          // Right door
+                
+                bCount++; // Successfully built!
+            }
         }
-    } 
+    }
     else if (layout === 'corridor' || layout === 'hallways') {
         // "Hallways & Rooms" - Starts completely solid, carves a perfect lattice
         for(let r=3; r<maxR-6; r+=9) {
@@ -3464,8 +3488,11 @@ async function processSuncatThought(socketId, triggerType, data) {
                 dynamicPersona += PERSONA_RULES_DB.oracle_mode + "\n";
             }
             // If they ask for help playing, make him a Guide
-            if (["how do i", "help me", "stuck", "controls", "play"].some(kw => chatText.includes(kw))) {
+            if (["how do i", "help", "stuck", "controls", "play"].some(kw => chatText.includes(kw))) {
                 dynamicPersona += PERSONA_RULES_DB.tutorial_mode + "\n";
+            }
+            if (["story", "lore", "progress", "journey", "realm", "world", "point of this"].some(kw => chatText.includes(kw))) {
+                dynamicPersona += PERSONA_RULES_DB.lore_mode + "\n";
             }
         }
         
@@ -3665,9 +3692,28 @@ socket.on("join_game", (data) => {
 
          
         if (name && name.toLowerCase() !== "unknown") {
+            // 1. Tell everyone else the player arrived
             io.emit("chat_message", {
                 sender: "[SYSTEM]",
                 text:`${name} has entered the pocket plane.`
+            });
+
+            // 2. Build the Private Welcome Message
+            const realPlayers = Object.keys(players).filter(id => id !== SUNCAT_ID).length;
+            const isMap999Active = Object.values(players).some(p => p.mapID === 999 && p.id !== SUNCAT_ID);
+            
+            let welcomeMsg = `Welcome to Runestones! There are ${realPlayers} players online. `;
+            
+            if (isMap999Active) {
+                welcomeMsg += `There is an active scenario right now. Type '.hack//teleport 999' to join it! `;
+            }
+            welcomeMsg += `Type "help" in the chat, and Suncat will clarify any questions.`;
+
+            // 3. Use socket.emit() so ONLY the joining player sees this!
+            socket.emit("chat_message", {
+                sender: "[SYSTEM]",
+                text: welcomeMsg,
+                color: "#ffff00" // Use a distinct yellow color for system whispers
             });
         }
       }
@@ -3752,14 +3798,58 @@ socket.on('chat_message', async (msgText) => {
     player.lastActive = Date.now();
 
     const content = msgText.toLowerCase();
-    
+    if (content === ".hack//journal") {
+        socket.emit('chat_message', { 
+            sender: "[SUNCAT'S JOURNAL]", 
+            text: suncatJournal, 
+            color: "#ff00ff" // Cool magenta color for the journal
+        });
+        return; // Stop here! Don't waste an AI token!
+    }
+    // ---> 2. THE RADAR COMMAND (Who is online?) <---
+    if (content === ".hack//who") {
+        const playerNames = Object.values(players)
+            .filter(p => p.id !== SUNCAT_ID)
+            .map(p => p.name.replace("[AFK] ", ""))
+            .join(", ");
+            
+        socket.emit('chat_message', { 
+            sender: "[SYSTEM]", 
+            text: `Connected Souls: ${playerNames || "You are entirely alone."}`, 
+            color: "#00ff00" // Hacker Green
+        });
+        return; 
+    }
+
+    // ---> 3. THE EMERGENCY WARP (If a player is stuck out of bounds) <---
+    if (content === ".hack//stuck") {
+        socket.emit('chat_message', { 
+            sender: "[SYSTEM]", 
+            text: "Emergency extraction initiated. Returning to Suncat's Realm.", 
+            color: "#ffff00" 
+        });
+        
+        players[socket.id].mapID = 22; // The safe map
+        players[socket.id].x = 5.5;
+        players[socket.id].y = 5.5;
+        io.to(socket.id).emit("force_teleport", { mapID: 22 });
+        io.emit("updatePlayers", players);
+        return; 
+    }
+
+    // ---> 4. CLEAR SCREEN <---
+    if (content === ".hack//clear") {
+        // We just send a special flag to the client to empty its array
+        socket.emit('chat_clear_screen');
+        return;
+    }
     // Admin Override
     if (["suncat you there", "suncat wake up"].some(w => content.includes(w))) {
         npcIsTyping = false;
     }
+    
 
-    const mentioned = content.includes(NPC_NAME.toLowerCase()) || msgText.includes("[REPLY]");
-    if (mentioned || Math.random() < 0.05) {
+const mentioned = content.includes(NPC_NAME.toLowerCase()) || msgText.includes("[reply]") || content === "help";    if (mentioned || Math.random() < 0.05) {
         processSuncatThought(socket.id, 'chat', { text: msgText });
     }
 });
