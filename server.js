@@ -2943,7 +2943,7 @@ async function executeAITools(currentResponse, activeSession, socket) {
                                 targetPlayer.mapScenario = scenarioType; // <-- FIX: Saving the String ('Arena Madness') so the override works!
                                 targetPlayer.currentMapLore = script.mapLore;
                                 targetPlayer.scenarioLog = []; 
-                                
+                                targetPlayer.mapBossID = antagID;
                                 targetPlayer.activeQuest = script.questObjective;
                                 io.to(tid).emit("new_quest_objective", { questText: targetPlayer.activeQuest });
                                 
@@ -3623,32 +3623,35 @@ socket.on("npc_died", async (data) => {
     
     const entityName = getCardName(baseID);
     
-    // SPIKE STRESS!
     if (!isPickup && !isDialogue) {
         player.dmStress = Math.min(100, (player.dmStress || 0) + 5);
-    }
-    // --- WIN CONDITION CHECK ---
-    if (player.mapID === 999 && data.isBoss) {
-        // The Boss of the Scenario has fallen!
-        setTimeout(() => {
-            let victorySpeech = "";
-            if (player.mapScenario === 'Arena Madness') {
-                victorySpeech = `[SYSTEM DIRECTIVE]: The player just defeated the final boss of your Arena. Act disappointed that they survived, formally declare them the victor, and IMMEDIATELY use the 'teleportPlayer' tool to send them back to Map 22. Give them a reward card if you wish.`;
-            } else {
-                victorySpeech = `[SYSTEM DIRECTIVE]: The player just defeated the final boss of the ${player.mapScenario} scenario! Congratulate them as the Dungeon Master, and use the 'teleportPlayer' tool to send them safely back to Map 22.`;
-            }
+        
+        // ---> THE NEW DYNAMIC WIN CONDITION CHECK <---
+        // 1. Is the player in a custom map?
+        // 2. Does the dead NPC match the boss ID? OR did the client explicitly send isBoss: true?
+        if (player.mapID === 999 && (baseID === player.mapBossID || data.isBoss)) {
             
-            // Force Suncat to react to the victory and warp them out
-            processSuncatThought(player.id, 'chat', { text: victorySpeech });
-        }, 2000); // 2 second delay for dramatic effect
+            setTimeout(() => {
+                let victorySpeech = "";
+                if (player.mapScenario === 'Arena Madness') {
+                    victorySpeech = `[SYSTEM DIRECTIVE]: The player just defeated the final boss of your Arena. Act disappointed that they survived, formally declare them the victor, and IMMEDIATELY use the 'teleportPlayer' tool to send them back to Map 22. Give them a reward card if you wish.`;
+                } else if (player.mapScenario === 'Rescue/Fetch') {
+                    victorySpeech = `[SYSTEM DIRECTIVE]: The player just defeated the final boss of the Rescue scenario! Congratulate them as the Dungeon Master, and use the 'teleportPlayer' tool to send them safely back to Map 22.`;
+                } else {
+                    victorySpeech = `[SYSTEM DIRECTIVE]: The player just defeated the final boss of the ${player.mapScenario} scenario! Congratulate them, and use the 'teleportPlayer' tool to send them safely back to Map 22.`;
+                }
+                
+                processSuncatThought(player.id, 'chat', { text: victorySpeech });
+            }, 2000); 
+        }
     }
+
     let mapClearedNote = "";
     if (!isPickup && !isDialogue && Math.random() > 0.8) {
-        // 20% chance on kill to tell Suncat the area feels quiet, prompting a wave spawn or quest end
         mapClearedNote = " The area seems quiet now. Is the objective complete, or is another wave coming?";
     }
     processSuncatThought(player.id, 'event', {
-        action: `Interacted with ${entityName}`,
+        action: `Interacted with ${entityName}${mapClearedNote}`, // Actually passed the note into the action string
         lore: getCardLore(baseID),
         isPickup: isPickup,
         isDialogue: isDialogue
