@@ -2828,10 +2828,26 @@ async function executeAITools(currentResponse, activeSession, socket) {
                         }
 
                         // 4. POPULATE THE WORLD (The 80 NPC Strict Split)
+                        // 4. POPULATE THE WORLD (The 80 NPC Strict Split)
                         let mapNPCs = [];
-                        const friendlyMinions = Object.keys(CARD_MANIFEST_DB).filter(id => CARD_MANIFEST_DB[id].suit === CARD_MANIFEST_DB[protagID].suit).map(Number);
-                        const hostileMinions = Object.keys(CARD_MANIFEST_DB).filter(id => CARD_MANIFEST_DB[id].suit === CARD_MANIFEST_DB[antagID].suit).map(Number);
 
+                        // NEW: Strict Minion Filter (Forces them to be actual monsters, and excludes Bosses/Kings)
+                        const getMinions = (leaderID) => {
+                            let leaderCard = CARD_MANIFEST_DB[leaderID];
+                            let pool = Object.keys(CARD_MANIFEST_DB).filter(id => {
+                                let c = CARD_MANIFEST_DB[id];
+                                return c.type === "monster" && 
+                                    c.suit === leaderCard.suit && 
+                                    c.rank !== "King" && 
+                                    c.rank !== "Queen";
+                            }).map(Number);
+                            
+                            // Failsafe: If the suit has no lesser monsters (like some Major Arcana), default to classic cryptids
+                            return pool.length > 0 ? pool : [54, 56, 23, 42]; // Goblin, Imp, Wisp, Shade
+                        };
+
+                        const friendlyMinions = getMinions(protagID);
+                        const hostileMinions = getMinions(antagID);
                         // A. FRIENDLIES (30 NPCs)
                         const allFriendlyLines = [
                             ...script.friendlyLore.map(l => ({ text: l, type: 'lore' })),
