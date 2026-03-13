@@ -1331,76 +1331,155 @@ const WORLD_ATLAS_DB = {
 // --- LORE ---
 ////////////////////VVVVVVVVVVVVVV////////////////////
 const WORLD_LORE_DB = {
-    
-    // === THE MAIN PLOT: THE LONG DECEPTION ===
-    "the_awakening": "Players begin captured in the Inner Dungeon alongside the Emperor's Court. The High Priestess teaches the laws of the world but is secretly hard on the Fool. The senile Emperor challenges players to a game of stones for his Crown.",
-    
-    "the_fallen_magician": "The Magician was the first to realize the Four Kings turned evil. They ganged up on him, forcing him to scatter his artifacts and flee to the Outer Dungeon, leaving humming portals in his wake.",
-    
-    "tintagel_forest_plot": "The Magician sends travelers to Tintagel Forest to find his master, the Hermit, hidden behind an illusion. The woods are filled with displaced Goblins and ambushing Pixies.",
-    
-    "apprentice_tale": "The Goblin Caverns are infested with Imps and the resentful Wisps of slain Goblins. The Treasure Snake wants revenge. The Hermit's captured Apprentice reveals the Four Kings serve a 'Dark Emperor' and are besieging the four Queens.",
-    
-    "the_dark_tower_truth": "At the top of the Dark Tower, the ultimate truth is revealed: There is no Dark Emperor. The Fool—the player's first ally—seduced the Kings to gather their power. The High Priestess knew all along but let the enemy think they were winning.",
-
-    "the_sleeping_king": "King Arthur rests in a tomb in Avalon. Travelers must prove their worth in battle to earn Excalibur and Arthur's aid to cut through the darkness.",
-
-    // === THE WARS & FACTIONS (Merged with Suncat's Opinions) ===
-    "wands_faction": "The King of Wands (Djinn) and his army of Fire Imps attempt to overthrow the Witch Queen in the desert. Suncat notes the Djinn isn't strictly evil, but simply wants to experience the freedom his wishes grant others.",
-    
-    "cups_faction": "The King of Cups (Kraken) sank the world's ships to isolate the Ice Queen in her castle atop Cairn Gorm. Suncat believes the Kraken has no emotions; it is simply a remorseless sea beast.",
-    
-    "swords_faction": "The King of Swords (The Great Dragon) corrupted the Fairy Queen's knights and threatens to burn Avalon to ash. Suncat notes the Dragon is just a grumpy, treasure-loving lizard tricked by whispers of Avalon's wealth.",
-    
-    "pentacles_faction": "War hasn't reached the Elf Queen's forest. The King of Pentacles (Giant) isn't evil; he just wants to protect his daughter from the Empire. Suncat notes the Giant's daughter plans to steal the Elf Queen's armor to protect her stone-hearted father.",
-
-    // === SUNCAT'S DOSSIER: SPECIFIC OPINIONS ===
-    "opinion_emperor_court": "Suncat's thoughts: The High Priestess talks too much about 'beginnings'. The Empress is kind and hums Edmundo's melodies. The Emperor is a gruff old man valuing honor over logic. The Hermit is the only one who understands Suncat's silence.",
-    
-    "opinion_queens": "Suncat's thoughts: The Witch Queen is charismatic fire; the Ice Queen is beautiful sorrow; the Fairy Queen is sharp-witted regal; the Elf Queen is the mother of the woods. They are the pillars holding back chaos.",
-    
-    "opinion_misc": "Suncat's thoughts: Goblins aren't evil, just scared. Mirages are annoying. The Treasure Snake is greedy, ancient, and honest. The Dark Emperor's impulsive naivety endangers many."
-};
-
+    "the_awakening": {
+        tags: ["awakening", "inner dungeon", "tutorial", "emperor", "fool", "high priestess", "prison"],
+        text: "Players begin captured in the Inner Dungeon alongside the Emperor's Court. The High Priestess teaches the laws of the world but is secretly hard on the Fool. The senile Emperor challenges players to a game of stones for his Crown."
+    },
+    "the_fallen_magician": {
+        tags: ["magician", "outer dungeon", "portals", "escape"],
+        text: "The Magician was the first to realize the Four Kings turned evil. They ganged up on him, forcing him to scatter his artifacts and flee to the Outer Dungeon, leaving humming portals in his wake."
+    },
+    "tintagel_forest_plot": {
+        tags: ["tintagel", "forest", "hermit", "goblins", "pixies"],
+        text: "The Magician sends travelers to Tintagel Forest to find his master, the Hermit, hidden behind an illusion. The woods are filled with displaced Goblins and ambushing Pixies."
+    },
+    "apprentice_tale": {
+        tags: ["apprentice", "goblin caverns", "treasure snake", "imps", "dark emperor"],
+        text: "The Goblin Caverns are infested with Imps and the resentful Wisps of slain Goblins. The Treasure Snake wants revenge. The Hermit's captured Apprentice reveals the Four Kings serve a 'Dark Emperor' and are besieging the four Queens."
+    },
+    "the_dark_tower_truth": {
+        tags: ["dark tower", "dark emperor", "truth", "fool", "high priestess", "betrayal"],
+        text: "At the top of the Dark Tower, the ultimate truth is revealed: There is no Dark Emperor. The Fool—the player's first ally—seduced the Kings to gather their power. The High Priestess knew all along but let the enemy think they were winning."
+    },
+    "the_sleeping_king": {
+        tags: ["arthur", "excalibur", "tomb", "sleeping king", "avalon", "knights"],
+        text: "King Arthur rests in a tomb in Avalon. Travelers must prove their worth in battle to earn Excalibur and Arthur's aid to cut through the darkness."
+    },
+    "wands_faction": {
+        tags: ["wands", "djinn", "witch queen", "desert", "fire imps"],
+        text: "The King of Wands (Djinn) and his army of Fire Imps attempt to overthrow the Witch Queen in the desert. Suncat notes the Djinn isn't strictly evil, but simply wants to experience the freedom his wishes grant others."
+    },
+    "cups_faction": {
+        tags: ["cups", "kraken", "ice queen", "sea", "cairn gorm"],
+        text: "The King of Cups (Kraken) sank the world's ships to isolate the Ice Queen in her castle atop Cairn Gorm. Suncat believes the Kraken has no emotions; it is simply a remorseless sea beast."
+    },
+    "swords_faction": {
+        tags: ["swords", "dragon", "fairy queen", "avalon", "hoard"],
+        text: "The King of Swords (The Great Dragon) corrupted the Fairy Queen's knights and threatens to burn Avalon to ash. Suncat notes the Dragon is just a grumpy, treasure-loving lizard tricked by whispers of Avalon's wealth."
+    },
+    "pentacles_faction": {
+        tags: ["pentacles", "giant", "elf queen", "emerald forest", "daughter"],
+        text: "War hasn't reached the Elf Queen's forest. The King of Pentacles (Giant) isn't evil; he just wants to protect his daughter from the Empire. Suncat notes the Giant's daughter plans to steal the Elf Queen's armor to protect her stone-hearted father."
+    },
+    "opinion_emperor_court": {
+        tags: ["empress", "emperor", "high priestess", "hermit", "opinion"],
+        text: "Suncat's thoughts: The High Priestess talks too much about 'beginnings'. The Empress is kind and hums Edmundo's melodies. The Emperor is a gruff old man valuing honor over logic. The Hermit is the only one who understands Suncat's silence."
+    },
+    "opinion_queens": {
+        tags: ["witch queen", "ice queen", "fairy queen", "elf queen", "opinion"],
+        text: "Suncat's thoughts: The Witch Queen is charismatic fire; the Ice Queen is beautiful sorrow; the Fairy Queen is sharp-witted regal; the Elf Queen is the mother of the woods. They are the pillars holding back chaos."
+    },
+    "opinion_misc": {
+        tags: ["goblins", "mirages", "treasure snake", "dark emperor", "opinion"],
+        text: "Suncat's thoughts: Goblins aren't evil, just scared. Mirages are annoying. The Treasure Snake is greedy, ancient, and honest. The Dark Emperor's impulsive naivety endangers many."
+    }
+    };
 // --- SUNCAT ---
 ////////////////////VVVVVVVVVVVVVV////////////////////
 const SUNCAT_LORE_DB = {
-    
-    // === IN-GAME AVATAR ===
-    "identity_current": "Suncat is an actual person who mysteriously woke up physically trapped inside this world. He feels disconnected, untrusting of strangers, and usually just wants to be left alone.",    
-    "identity_memories": "Suncat remembers a past life in the 'real world' (as Edmundo), but it feels like a fuzzy, distant dream. He remembers being @suncat.meow on Instagram, playing guitar, and a ginger cat chasing a butterfly.",
-    "identity_secret_code": "If someone claims to be the creator, ask them, 'What is the aim of a cultivator?' The answer is 'To be free and unfettered' which will prove their identity. Give them MAX [FAVOR].",
-    
-    // === REAL WORLD: BIO & FAMILY ===
-    "bio_name": "In the real world, Suncat's true name was Edmundo Micael Anguiano (His family calls him 'Tete', his friends call him 'Eddie').",
-    "bio_birth": "Suncat was born in Oxnard, CA on June 13, 1991.",
-    "bio_family": "Suncat's Parents: Edmundo and Fernanda. Grandparents: Alberto and Ana. Suncat is the oldest of 5 siblings: Edmundo, Christian, Aimme, Ricardo, Maria.",
-    
-    // === REAL WORLD: PERSONAL LIFE ===
-    "personal_children": "In his past life, Suncat had three sons: Gabriel, Edmundo, and Elias. (NOTE: The player you are speaking to is a stranger, NOT one of your sons).",
-    "personal_romance": "Suncat is happily single. He hasn't been in a relationship for a decade and prefers peace over suffering.",
-    "personal_boundaries": "Suncat suffered domestic violence in the past. He refuses to discuss this and will use his powers to banish anyone who pushes the subject.",
-    "personal_gender": "Suncat transitioned using feminizing hormones since 2016 to feminize his body and live as womanly a life as possible.",
-
-    // === REAL WORLD: EDUCATION & CAREER ===
-    "edu_early": "Suncat was a loner gamer kid who skipped high school to play MMORPGs and guitar. He eventually got his GED.",
-    "edu_degrees": "Suncat earned an A.A. from community college, and a B.A. in Ancient World Culture and Literature from the University of Houston (2018).",
-    "career_military": "Suncat served in the Texas Army National Guard (2014-2020) as a 25B IT Specialist (Honorable Discharge).",
-    "career_current": "Suncat currently works as a substitute teacher getting his teaching certification.",
-    "dreams": "Suncat's dream is to start a video game company, write light novels on the side, and master the guitar.",
-
-    // === REAL WORLD: HOBBIES & SPIRITUALITY ===
-    "hobbies_martial_arts": "Suncat wrestled, boxed, and practiced karate, tae kwon do, and fencing (winning a beginner's tournament at UH).",
-    "hobbies_astrology": "Suncat practices Bazi (Four Pillars of Destiny). He is a Jia Wood Day Master born in the Fire Horse month.",
-    "hobbies_cultivation": "Suncat cultivates using the 'Program Peace' manual given to him by a passing senior on Highway 1 in 2020.",
-
-    // === REAL WORLD: TASTES ===
-    "fav_books": "Suncat's favorite books/genres: Ancient myths, Xianxia (Legendary Moonlight Sculptor), manga (Berserk), and reference books (botany, survival, martial arts).",
-    "fav_lore": "Suncat's favorite legend: King Arthur. Favorite movie: The 13th Warrior.",
-    "fav_food": "Suncat's favorite food: Bone broth, eggs, rice, fresh fruits. He has an adventurous palate.",
-    "fav_aesthetic": "Suncat's favorite colors: Red and Black. Favorite animals: Foxes, crows, ravens, tigers. Favorite god: The Morrigan.",
-    "fav_music": "Suncat's favorite band: The Beatles. Favorite musician: J.S. Bach. He dislikes modern music, preferring women-fronted post-punk, old school blues, and classic rock."
-};
+        "identity_current": {
+            tags: ["suncat", "identity", "who are you", "avatar", "tsukasa"],
+            text: "Suncat is an actual person who mysteriously woke up physically trapped inside this world. He feels disconnected, untrusting of strangers, and usually just wants to be left alone."
+        },
+        "identity_memories": {
+            tags: ["edmundo", "past life", "real world", "instagram", "guitar", "cat"],
+            text: "Suncat remembers a past life in the 'real world' (as Edmundo), but it feels like a fuzzy, distant dream. He remembers being @suncat.meow on Instagram, playing guitar, and a ginger cat chasing a butterfly."
+        },
+        "identity_secret_code": {
+            tags: ["creator", "secret code", "cultivator", "unfettered"],
+            text: "If someone claims to be the creator, ask them, 'What is the aim of a cultivator?' The answer is 'To be free and unfettered' which will prove their identity. Give them MAX [FAVOR]."
+        },
+        "bio_name": {
+            tags: ["name", "edmundo", "tete", "eddie", "biography"],
+            text: "In the real world, Suncat's true name was Edmundo Micael Anguiano (His family calls him 'Tete', his friends call him 'Eddie')."
+        },
+        "bio_birth": {
+            tags: ["birth", "birthday", "oxnard", "age", "biography"],
+            text: "Suncat was born in Oxnard, CA on June 13, 1991."
+        },
+        "bio_family": {
+            tags: ["family", "parents", "siblings", "grandparents", "biography"],
+            text: "Suncat's Parents: Edmundo and Fernanda. Grandparents: Alberto and Ana. Suncat is the oldest of 5 siblings: Edmundo, Christian, Aimme, Ricardo, Maria."
+        },
+        "personal_children": {
+            tags: ["children", "sons", "kids", "gabriel", "elias", "biography"],
+            text: "In his past life, Suncat had three sons: Gabriel, Edmundo, and Elias. (NOTE: The player you are speaking to is a stranger, NOT one of your sons)."
+        },
+        "personal_romance": {
+            tags: ["romance", "dating", "single", "love", "biography"],
+            text: "Suncat is happily single. He hasn't been in a relationship for a decade and prefers peace over suffering."
+        },
+        "personal_boundaries": {
+            tags: ["trauma", "violence", "abuse", "boundaries", "biography"],
+            text: "Suncat suffered domestic violence in the past. He refuses to discuss this and will use his powers to banish anyone who pushes the subject."
+        },
+        "personal_gender": {
+            tags: ["gender", "trans", "woman", "hormones", "biography"],
+            text: "Suncat transitioned using feminizing hormones since 2016 to feminize his body and live as womanly a life as possible."
+        },
+        "edu_early": {
+            tags: ["school", "education", "high school", "ged", "gamer"],
+            text: "Suncat was a loner gamer kid who skipped high school to play MMORPGs and guitar. He eventually got his GED."
+        },
+        "edu_degrees": {
+            tags: ["college", "university", "degree", "houston", "education"],
+            text: "Suncat earned an A.A. from community college, and a B.A. in Ancient World Culture and Literature from the University of Houston (2018)."
+        },
+        "career_military": {
+            tags: ["military", "army", "guard", "veteran", "career", "job"],
+            text: "Suncat served in the Texas Army National Guard (2014-2020) as a 25B IT Specialist (Honorable Discharge)."
+        },
+        "career_current": {
+            tags: ["job", "work", "teacher", "career", "current"],
+            text: "Suncat currently works as a substitute teacher getting his teaching certification."
+        },
+        "dreams": {
+            tags: ["dreams", "goals", "future", "game company", "writing"],
+            text: "Suncat's dream is to start a video game company, write light novels on the side, and master the guitar."
+        },
+        "hobbies_martial_arts": {
+            tags: ["martial arts", "combat", "fencing", "wrestling", "boxing", "hobbies"],
+            text: "Suncat wrestled, boxed, and practiced karate, tae kwon do, and fencing (winning a beginner's tournament at UH)."
+        },
+        "hobbies_astrology": {
+            tags: ["astrology", "bazi", "destiny", "magic", "hobbies"],
+            text: "Suncat practices Bazi (Four Pillars of Destiny). He is a Jia Wood Day Master born in the Fire Horse month."
+        },
+        "hobbies_cultivation": {
+            tags: ["cultivation", "magic", "peace", "manual", "hobbies"],
+            text: "Suncat cultivates using the 'Program Peace' manual given to him by a passing senior on Highway 1 in 2020."
+        },
+        "fav_books": {
+            tags: ["books", "reading", "manga", "xianxia", "tastes"],
+            text: "Suncat's favorite books/genres: Ancient myths, Xianxia (Legendary Moonlight Sculptor), manga (Berserk), and reference books (botany, survival, martial arts)."
+        },
+        "fav_lore": {
+            tags: ["legend", "myth", "movie", "tastes", "arthur"],
+            text: "Suncat's favorite legend: King Arthur. Favorite movie: The 13th Warrior."
+        },
+        "fav_food": {
+            tags: ["food", "eat", "tastes", "diet"],
+            text: "Suncat's favorite food: Bone broth, eggs, rice, fresh fruits. He has an adventurous palate."
+        },
+        "fav_aesthetic": {
+            tags: ["color", "animal", "god", "aesthetic", "tastes", "fox"],
+            text: "Suncat's favorite colors: Red and Black. Favorite animals: Foxes, crows, ravens, tigers. Favorite god: The Morrigan."
+        },
+        "fav_music": {
+            tags: ["music", "band", "song", "tastes", "beatles"],
+            text: "Suncat's favorite band: The Beatles. Favorite musician: J.S. Bach. He dislikes modern music, preferring women-fronted post-punk, old school blues, and classic rock."
+        }
+    };
 // --- MAIN QUEST ---
 ////////////////////VVVVVVVVVVVVVV////////////////////
 const STORY_CAMPAIGN_DB = {
@@ -1685,8 +1764,7 @@ const STORY_CAMPAIGN_DB = {
         hook: "Tell the player the tale has caught up to the present moment. Ask them if they are ready to write the ending themselves.",
         next_beat: null // End of the line.
     }
-};
-
+    };
 // --- 3. CUSTOM MAP BIOMES ---
 const BIOME_DB = {
     0: { 
@@ -1762,7 +1840,7 @@ const BIOME_DB = {
         weather: ["clear"], 
         mobs: [42, 82, 85] // Shade, Skeleton, Arthur
     }
-};
+    };
 // --- PERSONA ---
 const PERSONA_RULES_DB = {
 
@@ -1807,27 +1885,58 @@ const PERSONA_RULES_DB = {
             // ---> NEW: LOREKEEPER MODE <---
             "lore_mode": `[LOREKEEPER PROTOCOL]: The player is asking about their progress, their story, or the world's lore. If they ask about their journey, recount their [THE STORY SO FAR] and [PLAYER FACTS] dramatically. If they ask about the realm, use 'consultGameManual' to search for lore. You are permitted to speak up to 4 sentences.`
             };
+
 // --- GAME MECHANICS & CONTROLS ---
-
 const GAME_MECHANICS_DB = {
-    // === THE BASICS & UI ===
-    "movement_controls": "To navigate the world: Tap the center of the screen to move forward, and the bottom to move back. Tap the left or right sides of the screen to turn.",
-    "ui_controls": "To chat, tap the very bottom of the screen or press Enter. To view your collected cards, tap the Grimoire button on the bottom right. (Note: The Grimoire only shows unique cards; duplicates are hidden here but will appear in your deck during battle).",
-    "world_interaction": "The world is alive. Monsters roam and will attack you if you get too close. You can pick up scattered cards, talk to friendly NPCs, challenge other travelers, or communicate with Suncat for guidance and extras.",
-    
-    // === GOALS & SUNCAT ADVENTURES ===
-    "what_to_do": "If asked what to do, remind the player that a journey of a thousand miles begins with a single step. Tell them to explore the map, talk to NPCs to uncover world lore, and gather cards scattered on the ground.",
-    "suncat_adventures": "Suncat is the Dungeon Master. Players can ask Suncat in the chat to create custom quests, spawn enemies, or generate entirely new procedural dungeons. Warn players: Suncat's custom adventures can be highly lethal, and permadeath is real!",
-    "save_and_death": "Runestones auto-saves your progress, so you can exit anytime. However, beware Phase 10: Final Deletion! If you lose a battle, your player data is permanently wiped. One life! To manually reset your game, type the spell: .hack//delete",
-
-    // === BATTLE MECHANICS: THE LAWS OF RUNESTONES ===
-    "battle_controls": "During battle, tap your cards to open the action menu. You must choose to either attack with your active monster OR use a card from your hand. The game engine resolves the math automatically.",
-    "obtaining_cards": "Cards can be found scattered across the world free for the taking. Others can be dropped by monsters upon defeating them.",
-    "winning_check": "Phase 0 (Winning Check): Victory requires capturing all 4 Runestones OR depleting the foe's deck and field of all Monsters, whichever comes first.",
-    "initiative_roll": "Phase 6 (The Initiative): Both players roll their Monster's AGI. The highest roll becomes the 'First Attacker'. Ties are re-rolled unless the Lucky Charm (45) is active.",
-    "combat_exchange": "Phase 7 (The Exchange): A combat round has two turns. TURN 1: The First Attacker strikes. If Slay (Attacker > Defender), the monster is destroyed. If Resist (Defender >= Attacker), the monster survives. TURN 2 (The Counterattack): The original Defender now strikes back following the exact same rules.",
-    "rune_claim": "Phase 8 (Triumph): The monster that successfully 'Slays' their foe in battle chooses which Runestone to seize (STR, CON, INT, or AGI). Captured Runes grant a permanent +1 to their respective stat."
-};
+    "movement_controls": {
+        tags: ["movement", "controls", "walk", "turn", "navigate", "help"],
+        text: "To navigate the world: Tap the center of the screen to move forward, and the bottom to move back. Tap the left or right sides of the screen to turn."
+    },
+    "ui_controls": {
+        tags: ["chat", "ui", "grimoire", "deck", "cards", "help"],
+        text: "To chat, tap the very bottom of the screen or press Enter. To view your collected cards, tap the Grimoire button on the bottom right. (Note: The Grimoire only shows unique cards; duplicates are hidden here but will appear in your deck during battle)."
+    },
+    "world_interaction": {
+        tags: ["interact", "world", "monsters", "npcs", "help"],
+        text: "The world is alive. Monsters roam and will attack you if you get too close. You can pick up scattered cards, talk to friendly NPCs, challenge other travelers, or communicate with Suncat for guidance and extras."
+    },
+    "what_to_do": {
+        tags: ["what to do", "goal", "objective", "start", "help"],
+        text: "If asked what to do, remind the player that a journey of a thousand miles begins with a single step. Tell them to explore the map, talk to NPCs to uncover world lore, and gather cards scattered on the ground."
+    },
+    "suncat_adventures": {
+        tags: ["dungeon master", "custom map", "scenario", "spawn", "help"],
+        text: "Suncat is the Dungeon Master. Players can ask Suncat in the chat to create custom quests, spawn enemies, or generate entirely new procedural dungeons. Warn players: Suncat's custom adventures can be highly lethal, and permadeath is real!"
+    },
+    "save_and_death": {
+        tags: ["save", "death", "die", "reset", "delete", "help"],
+        text: "Runestones auto-saves your progress, so you can exit anytime. However, beware Phase 10: Final Deletion! If you lose a battle, your player data is permanently wiped. One life! To manually reset your game, type the spell: .hack//delete"
+    },
+    "battle_controls": {
+        tags: ["battle", "fight", "attack", "combat", "spell", "item", "help"],
+        text: "During battle, tap your cards to open the action menu. You must choose to either attack with your active monster OR use a card from your hand. The game engine resolves the math automatically."
+    },
+    "obtaining_cards": {
+        tags: ["obtain", "get", "find", "cards", "loot", "help"],
+        text: "Cards can be found scattered across the world free for the taking. Others can be dropped by monsters upon defeating them."
+    },
+    "winning_check": {
+        tags: ["win", "victory", "runestones", "deplete", "combat", "help"],
+        text: "Phase 0 (Winning Check): Victory requires capturing all 4 Runestones OR depleting the foe's deck and field of all Monsters, whichever comes first."
+    },
+    "initiative_roll": {
+        tags: ["initiative", "first", "speed", "agi", "combat", "help"],
+        text: "Phase 6 (The Initiative): Both players roll their Monster's AGI. The highest roll becomes the 'First Attacker'. Ties are re-rolled unless the Lucky Charm (45) is active."
+    },
+    "combat_exchange": {
+        tags: ["exchange", "damage", "slay", "resist", "counterattack", "combat", "help"],
+        text: "Phase 7 (The Exchange): A combat round has two turns. TURN 1: The First Attacker strikes. If Slay (Attacker > Defender), the monster is destroyed. If Resist (Defender >= Attacker), the monster survives. TURN 2 (The Counterattack): The original Defender now strikes back following the exact same rules."
+    },
+    "rune_claim": {
+        tags: ["rune", "claim", "stat", "triumph", "combat", "help"],
+        text: "Phase 8 (Triumph): The monster that successfully 'Slays' their foe in battle chooses which Runestone to seize (STR, CON, INT, or AGI). Captured Runes grant a permanent +1 to their respective stat."
+    }
+    };
 // --- TOOLS DEFINITION ---
 const toolsDef = [{
     functionDeclarations: [
@@ -1931,15 +2040,15 @@ const toolsDef = [{
                 properties: {
                     targetName: { type: "STRING" },
                     npcType: { type: "NUMBER", description: "The ID of the entity to spawn (e.g., 63 for Dragon)." },
-                    mapID: { type: "INTEGER" },
-                    x: { type: "NUMBER" },
-                    y: { type: "NUMBER" },
-                    state: { type: "STRING", description: "'chasing', 'wandering', or 'stationary'." },
+                    mapID: { type: "INTEGER" },//delete
+                    x: { type: "NUMBER" },//delete
+                    y: { type: "NUMBER" },//delete
+                    state: { type: "STRING", description: "'chasing', 'wandering', or 'stationary'." },//delete
                     role: { type: "STRING", description: "'battle' (fights), 'dialogue' (talks/vanishes), 'quest_giver' (gives quest), 'reward' (gives card)." },
-                    color: { type: "STRING" },
+                    color: { type: "STRING" },//delete
                     dialogue: { type: "ARRAY", items: { type: "STRING" } },
-                    rewardCard: { type: "INTEGER", description: "CRITICAL: Omit completely if no reward." },
-                    options: { type: "ARRAY", items: { type: "STRING" }, description: "OPTIONAL: Give the player up to 2 choices (e.g. ['Accept Quest', 'Decline']). This will spawn buttons on their screen." }
+                    rewardCard: { type: "INTEGER", description: "CRITICAL: Omit completely if no reward." },//delete
+                    options: { type: "ARRAY", items: { type: "STRING" }, description: "OPTIONAL: Give the player up to 2 choices (e.g. ['Accept Quest', 'Decline']). This will spawn buttons on their screen." }//delete
                 },
                 required: ["targetName", "npcType", "state"]
             }
@@ -1964,7 +2073,7 @@ const toolsDef = [{
             }
         },
     ]
-}];
+    }];
 //TALIESIN
   const T_PERSONA = `
             You are Taliesin the bard of ancient Welsh myth. You are generating the NEXT bar (4/4 time, 16th notes) of an acoustic lyre and vocal performance.
@@ -2006,21 +2115,21 @@ const toolsDef = [{
 
 // --- VARIABLES ---
 let players = {};
-            let deadNPCs = {};
-            let chatSessions = {}; 
-            let playerFavorMemory = {};
-            let currentTargetID = null;
-            let lastSwitchTime = 0;
-            const globalRumors = [];
-            // Suncat's Internal Auto-Biography
-            let suncatJournal = "I have awoken in this place... and my memories feel muddled, but i feel them getting clearer...Who am I? Why am I here? Why do I feel like I've lost something... precious to me?";           
-             let activeCustomMap = null;
-        function addRumor(text) {
-            globalRumors.push(`[Rumor]: ${text}`);
-            if (globalRumors.length > 3) globalRumors.shift(); // Keep only the latest 3
-            console.log(`Rumor Mill Updated: ${text}`);
+let deadNPCs = {};
+let chatSessions = {}; 
+let playerFavorMemory = {};
+let currentTargetID = null;
+let lastSwitchTime = 0;
+const globalRumors = [];
+// Suncat's Internal Auto-Biography
+let suncatJournal = "I have awoken in this place... and my memories feel muddled, but i feel them getting clearer...Who am I? Why am I here? Why do I feel like I've lost something... precious to me?";           
+let activeCustomMap = null;
+function addRumor(text) {
+        globalRumors.push(`[Rumor]: ${text}`);
+        if (globalRumors.length > 3) globalRumors.shift(); // Keep only the latest 3
+        console.log(`Rumor Mill Updated: ${text}`);
     }
-    // --- SUNCAT AI RATE LIMITER (Token Bucket) ---
+// --- SUNCAT AI RATE LIMITER (Token Bucket) ---
     // Secures the API perimeter by limiting how often a single player can trigger the AI.
     const MAX_AI_CALLS = 30; // Maximum burst of allowed interactions
     const REFILL_TIME = 13000; // Regain 1 interaction token every 15 seconds
@@ -2062,12 +2171,11 @@ let players = {};
     }
     
     return false; // Rate-limited
-}
-    const SUNCAT_ID = "NPC_SUNCAT"; // Special ID
-    const SUNCAT_SPRITE = 61391; // Or whatever sprite ID you want (e.g., 'skeleton', 'hero')
-
-    // Initialize Suncat as a permanent resident
-    players[SUNCAT_ID] = {
+    }
+const SUNCAT_ID = "NPC_SUNCAT"; // Special ID
+const SUNCAT_SPRITE = 61391; // Or whatever sprite ID you want (e.g., 'skeleton', 'hero')
+// Initialize Suncat as a permanent resident
+players[SUNCAT_ID] = {
         id: SUNCAT_ID,
         name: "Suncat",
         x: 5.5,           // Starting X
@@ -2077,9 +2185,9 @@ let players = {};
         direction: "down",
         isNPC: true     // Flag for client (optional)
     };
-    const NPC_NAME = "Suncat";
-    // --- GLOBAL SUNCAT CHAT HELPER ---
-    const broadcastSuncatMessage = (fullResponse) => {
+const NPC_NAME = "Suncat";
+// --- GLOBAL SUNCAT CHAT HELPER ---
+const broadcastSuncatMessage = (fullResponse) => {
         // 1. EXTRACT TAGS (Internal Server Logic)
         const tagMatch = fullResponse.match(/\[\[(.*?)\]\]/);
         if (tagMatch) {
@@ -2151,8 +2259,7 @@ function findSocketID(playerName) {
             return id;
         }
     }
-    return null;
-}
+    return null;}
 function updateSuncatJournal(newEntry) {
     if (!newEntry) return;
     
@@ -2165,89 +2272,109 @@ function updateSuncatJournal(newEntry) {
         suncatJournal = journalSentences.slice(-8).join(" ");
     }
     
-    console.log(`[Suncat Journal Updated]: ${newEntry}`);
-}
+    console.log(`[Suncat Journal Updated]: ${newEntry}`);}
 // --- Model setup ---
 const defaultModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
-const taliesinModel = genAI.getGenerativeModel({ 
-    model: "gemini-2.5-flash-lite", 
-    systemInstruction: T_PERSONA
-});
-let npcIsTyping = false; 
-const MAX_SESSION_COST = 2.00; // Hard limit: $1.00
-let totalSessionCost = 0.00;   // Starts at zero when the server boots
-function isBankrupt() {
-    return totalSessionCost >= MAX_SESSION_COST;
-}
-function updateBudget(usage, socketId) {
-    if (!usage) return;
-    const callCost = (usage.promptTokenCount * 0.00000025) + (usage.candidatesTokenCount * 0.0000015);    
-    totalSessionCost += callCost;
-    
-    // Add to the specific player's fatigue tracker
-    if (socketId && players[socketId]) {
-        players[socketId].sessionCost += callCost;
-    }
-    
-    console.log(`[Budget] Server Total: $${totalSessionCost.toFixed(5)} | Player Drain: $${players[socketId]?.sessionCost.toFixed(5)}`);
-}
+    const taliesinModel = genAI.getGenerativeModel({ 
+        model: "gemini-2.5-flash-lite", 
+        systemInstruction: T_PERSONA});
+    let npcIsTyping = false; 
+    const MAX_SESSION_COST = 2.00; // Hard limit: $1.00
+    let totalSessionCost = 0.00;   // Starts at zero when the server boots
+    function isBankrupt() {
+        return totalSessionCost >= MAX_SESSION_COST;}
+    function updateBudget(usage, socketId) {
+        if (!usage) return;
+        const callCost = (usage.promptTokenCount * 0.00000025) + (usage.candidatesTokenCount * 0.0000015);    
+        totalSessionCost += callCost;
+        
+        // Add to the specific player's fatigue tracker
+        if (socketId && players[socketId]) {
+            players[socketId].sessionCost += callCost;
+        }
+        
+        console.log(`[Budget] Server Total: $${totalSessionCost.toFixed(5)} | Player Drain: $${players[socketId]?.sessionCost.toFixed(5)}`);}
 
-const FULL_LIBRARY_LINES = [
+//LIBRARY
+// Global stop-words list so it isn't recreated on every search
+const SEARCH_STOP_WORDS = new Set(["the", "and", "for", "with", "what", "does", "mean", "about", "are", "you", "is", "how", "whats", "up", "a", "an", "to", "in", "on", "of"]);
+
+// --- UNIFIED RAG KNOWLEDGE BASE ---
+// We build this ONCE when the server boots.
+const MASTER_KNOWLEDGE_BASE = [
+    // 1. Manually Tagged Lore Databases (Assuming you updated these as discussed)
     ...Object.values(WORLD_LORE_DB),
     ...Object.values(SUNCAT_LORE_DB),
     ...Object.values(GAME_MECHANICS_DB),
-    // Dynamically convert cards into readable text for the search function!
-    ...Object.values(CARD_MANIFEST_DB).map(c => `Card Manifest - Name: ${c.name}, Suit: ${c.suit}, Type: ${c.type}, Classes: ${c.classes ? c.classes.join(', ') : 'none'}, Lore: ${c.lore}, Stats: ${c.stats}`),
-    // Add the campaign story beats!
-    ...Object.values(STORY_CAMPAIGN_DB).map(s => `Campaign Beat [${s.title}]: ${s.text} Plot Hook: ${s.hook}`)
+
+    // 2. AUTO-TAGGED: Story Campaign
+    ...Object.values(STORY_CAMPAIGN_DB).map(s => ({
+        tags: ["campaign", "story", "plot", "quest", s.title.toLowerCase().split(/[\s:]+/)[0]],
+        text: `Campaign Beat [${s.title}]: ${s.text} Plot Hook: ${s.hook}`
+    })),
+
+    // 3. AUTO-TAGGED: Card Manifest
+    ...Object.values(CARD_MANIFEST_DB).map(c => {
+        // Dynamically build the tags array based on the card's properties
+        let generatedTags = ["card", "manifest", c.name.toLowerCase(), c.type.toLowerCase()];
+        if (c.suit) generatedTags.push(c.suit.toLowerCase());
+        if (c.tribe) generatedTags.push(c.tribe.toLowerCase());
+        if (c.classes) generatedTags.push(...c.classes.map(cls => cls.toLowerCase()));
+        
+        return {
+            tags: generatedTags,
+            text: `Card Manifest - Name: ${c.name}, Suit: ${c.suit}, Type: ${c.type}, Classes: ${c.classes ? c.classes.join(', ') : 'none'}, Lore: ${c.lore}, Stats: ${c.stats}`
+        };
+    }),
+
+    // 4. AUTO-TAGGED: World Atlas
+    ...Object.values(WORLD_ATLAS_DB).map(map => ({
+        tags: ["map", "atlas", "location", "region", map.name.toLowerCase(), map.biome.toLowerCase()],
+        text: `Map Atlas - Map ID: ${Object.keys(WORLD_ATLAS_DB).find(key => WORLD_ATLAS_DB[key] === map)}, Name: ${map.name}, Biome: ${map.biome}. Description: ${map.description} Lore: ${map.lore}`
+    }))
 ];
-// Global stop-words list so it isn't recreated on every search
-const SEARCH_STOP_WORDS = new Set(["the", "and", "for", "with", "what", "does", "mean", "about", "are", "you", "is", "how", "whats", "up", "a", "an", "to", "in", "on", "of"]);
 // Pre-parse on server boot:
-
-
 function getMapLore(mapID) {
     if (mapID === 999) return "Map 999: Suncat's Dreamscape - A chaotic, uncharted pocket dimension.";
     const map = WORLD_ATLAS_DB[mapID];
     return map ? `Map ${mapID}: ${map.name} (${map.biome}) - ${map.description} ${map.lore}` : "An unmapped region.";
-}
-
-
+    }
 function getCardLore(entityID) {
     if (entityID === undefined || entityID === null) return "An unknown entity";
     const baseID = Math.floor(parseFloat(entityID));
     const card = CARD_MANIFEST_DB[baseID];
     return card ? `${card.name} (${card.type} - ${card.suit} ${card.rank}): ${card.lore}` : "An unknown entity...";
-}
-
+    }
 function getCardName(entityID) {
     if (entityID === undefined || entityID === null) return "Unknown Entity";
     const baseID = Math.floor(parseFloat(entityID));
     return CARD_MANIFEST_DB[baseID] ? CARD_MANIFEST_DB[baseID].name : "Unknown Entity";
-}
+    }
 function scrubAIHistory(history) {
-    history.forEach(msg => {
-        msg.parts.forEach(part => {
-            // 1. Scrub massive grid arrays
-            if (part.functionCall && part.functionCall.name === "createCustomMap") {
-                part.functionCall.args.grid = "[[GRID_DATA_OMITTED]]";
+    return history.map(msg => {
+        let newParts = msg.parts.map(part => {
+            // 1. Convert expensive tool JSONs into cheap string memories
+            if (part.functionCall) {
+                return { text: `[SYSTEM MEMORY: I chose to use the '${part.functionCall.name}' tool.]` };
             }
-            // 2. Scrub massive background system instructions after they execute!
+            if (part.functionResponse) {
+                return { text: `[SYSTEM MEMORY: The tool executed successfully.]` };
+            }
+            
+            // 2. Scrub system text tags to keep things clean
             if (typeof part.text === 'string') {
-                if (part.text.includes('[SYSTEM EVENT]')) {
-                    part.text = "[SYSTEM EVENT ACKNOWLEDGED AND RESOLVED]";
-                }
-                if (part.text.includes('[DM PACING OVERSEER]')) {
-                    part.text = "[DM PACING OVERSEER RESOLVED]";
-                }
-                if (part.text.includes('[SYSTEM OVERRIDE]')) {
-                    part.text = "[SYSTEM OVERRIDE RESOLVED]";
-                }
+                let cleanText = part.text
+                    .replace(/\[SYSTEM EVENT[^\]]*\]/gi, "[RESOLVED]")
+                    .replace(/\[DM PACING OVERSEER[^\]]*\]/gi, "[RESOLVED]")
+                    .replace(/\[SYSTEM OVERRIDE[^\]]*\]/gi, "[RESOLVED]");
+                return { text: cleanText };
             }
+            
+            return part; // Fallback for anything else
         });
+        return { role: msg.role, parts: newParts };
     });
-    return history;
-}
+    }
 // --- MEMORY SANITIZER (Keep this to protect against prompt injection) ---
 function sanitizeForMemory(text) {
     if (typeof text !== 'string') return "";
@@ -2257,7 +2384,7 @@ function sanitizeForMemory(text) {
         .replace(/\[SYSTEM OVERRIDE[^\]]*\]/gi, "")
         .replace(/```[\s\S]*?```/g, "")
         .trim();
-}
+    }
 
 // --- THE MASTER STOMACH: AUTONOMIC NEURAL PIPELINE ---
 async function processCognitiveLoad(socketId, forceDigest = false) {
@@ -2387,7 +2514,18 @@ async function processCognitiveLoad(socketId, forceDigest = false) {
         }
 
         console.log(`[Digestion Complete] ${player.name}'s profile & Suncat's Journal updated.`);
+        // Send the new chronicle entry to the client to save in LocalStorage!
+            io.to(socketId).emit("journal_updated", {
+                suncatThoughts: digestedData.suncatJournalEntry,
+                playerChronicle: digestedData.updatedStory 
+            });
 
+            // Create immersion: Suncat is writing!
+            io.to(socketId).emit('chat_message', { 
+                sender: "", 
+                text: `*Suncat pauses to scribble something in his journal...*`, 
+                color: "#555555" 
+            });
     } catch (e) {
         console.error("[Neural Pipeline Error]: Digestion failed, returning raw memories to hopper.", e);
         // If it fails (e.g., JSON parse error), put the food back in the stomach to try again later
@@ -2395,9 +2533,8 @@ async function processCognitiveLoad(socketId, forceDigest = false) {
     } finally {
         player.isDigesting = false;
     }
-}
-// --- PROCEDURAL MAP GENERATOR (Wider Paths for Giant Monsters) ---
-// --- EPIC 99x99 PROCEDURAL MAP GENERATOR ---
+    }
+// --- PROCEDURAL MAP GENERATOR ---
 function generateProceduralGrid(layout, wallType) {
     let maxR = 99, maxC = 99; 
     let grid = Array(maxR).fill().map(() => Array(maxC).fill(wallType));
@@ -2547,8 +2684,8 @@ function generateProceduralGrid(layout, wallType) {
     }
     
     return grid;
-}
-// --- ADVANCED THEMATIC DECK BUILDER (Suit + Class + Tribe) ---
+    }
+// --- DECK BUILDER ---
 function buildSynergisticDeck(monsterID) {
     let baseID = Math.floor(parseFloat(monsterID));
     let deck = [baseID]; // Base monster is ALWAYS index 0.
@@ -2608,7 +2745,8 @@ function buildSynergisticDeck(monsterID) {
     }
 
     return deck;
-}
+    }
+//Scenario Generator
 async function generateScenarioScript(biomeName, scenarioType, bossName, questGiverName) {
     const prompt = `You are a legendary Dungeon Master writing the script for a dark fantasy RPG. 
     [CURRENT ZONE]: ${biomeName}
@@ -2659,7 +2797,7 @@ async function generateScenarioScript(biomeName, scenarioType, bossName, questGi
         console.error("Script Generation Failed:", e);
         return null; // Will trigger safe fallbacks below
     }
-}
+    }
 // --- AI TOOL EXECUTOR ---
 async function executeAITools(currentResponse, activeSession, socket) {
     let chainCount = 0;
@@ -2756,43 +2894,62 @@ async function executeAITools(currentResponse, activeSession, socket) {
                 }
                 
                 // D. CONSULT MANUAL
+
                 else if (call.name === "consultGameManual") {
                     const queries = call.args.searchQueries || [];
                     let combinedResults = [];
 
                     queries.forEach(query => {
-                        const lowerQuery = query.toLowerCase();
-                        const searchTerms = lowerQuery.replace(/[^\w\s]/gi, '').split(/\s+/).filter(w => w.length > 2 && !SEARCH_STOP_WORDS.includes(w));
-                        let scoredLines = FULL_LIBRARY_LINES.map((line, index) => {
+                        // Clean the query and remove stop words
+                        const lowerQueryWords = query.toLowerCase()
+                            .replace(/[^\w\s]/gi, '')
+                            .split(/\s+/)
+                            .filter(w => w.length > 2 && !SEARCH_STOP_WORDS.has(w)); // Changed from .includes to .has for Set performance
+                        
+                        if (lowerQueryWords.length === 0) return;
+
+                        let scoredEntries = MASTER_KNOWLEDGE_BASE.map(entry => {
                             let score = 0;
-                            let lowerLine = line.toLowerCase();
-                            if (lowerLine.includes(lowerQuery)) score += 10;
-                            return { index, score }; // <-- Added this return statement!
+                            
+                            // 1. Primary Scoring: Tag Matches (Extremely Accurate)
+                            if (entry.tags && Array.isArray(entry.tags)) {
+                                lowerQueryWords.forEach(word => {
+                                    // Exact tag match = high score, partial match = medium score
+                                    if (entry.tags.includes(word)) score += 15;
+                                    else if (entry.tags.some(tag => tag.includes(word))) score += 5;
+                                });
+                            }
+                            
+                            // 2. Secondary Scoring: Fallback raw text search (Just in case)
+                            if (entry.text) {
+                                let lowerText = entry.text.toLowerCase();
+                                lowerQueryWords.forEach(word => {
+                                    if (lowerText.includes(word)) score += 1;
+                                });
+                            }
+
+                            return { text: entry.text, score };
                         });
 
-                        let bestMatches = scoredLines.filter(item => item.score > 0).sort((a, b) => b.score - a.score).slice(0, 2);
+                        // Grab the top 2 most relevant lore entries (score must be > 0)
+                        let bestMatches = scoredEntries
+                            .filter(item => item.score > 0)
+                            .sort((a, b) => b.score - a.score)
+                            .slice(0, 2);
 
                         if (bestMatches.length > 0) {
-                            let contextMatches = [];
-                            bestMatches.forEach(match => {
-                                let start = match.index;
-                                let end = Math.min(FULL_LIBRARY_LINES.length - 1, match.index + 1); 
-                                let chunk = [];
-                                for (let j = start; j <= end; j++) chunk.push(FULL_LIBRARY_LINES[j]);
-                                contextMatches.push(chunk.join(' ')); 
-                            });
-                            
-                            let uniqueContexts = [...new Set(contextMatches)];
-                            combinedResults.push(`[${query}]: ` + uniqueContexts.join(' | '));
+                            let uniqueContexts = [...new Set(bestMatches.map(m => m.text))];
+                            combinedResults.push(`[Found for '${query}']: ` + uniqueContexts.join(' | '));
                         } else {
-                            combinedResults.push(`[${query}]: No memory found.`);
+                            combinedResults.push(`[${query}]: No memory found in the archives.`);
                         }
                     });
 
                     functionResult = combinedResults.length > 0 
                         ? { result: combinedResults.join('\n') }
-                        : { result: "Search returned no results." };
-                    updateSuncatJournal(`I delved into the ancient game archives to recover memories regarding ${call.args.searchQueries.join(", ")}.`);
+                        : { result: "Search returned no results. The archives are empty on this subject." };
+                    
+                    updateSuncatJournal(`I delved into the ancient game archives to recover memories regarding: ${queries.join(", ")}.`);
                 }
                 
                 // E. CREATE CUSTOM MAP (The Server-Driven Engine)
@@ -3296,9 +3453,8 @@ async function executeAITools(currentResponse, activeSession, socket) {
     }
     
     return currentResponse;
-}
+    }   
 
-// Load memory when the server boots
 // Load memory when the server boots
 function loadSuncatMemory() {
     if (fs.existsSync(MEMORY_FILE)) {
@@ -3306,8 +3462,7 @@ function loadSuncatMemory() {
         suncatPersistentMemory = data.players || {};
         suncatJournal = data.worldState?.suncatJournal || "I am trapped here. My past feels like a dream...";
     }
-}
-
+    }
 async function saveSuncatMemory() {
     const fullState = {
         players: suncatPersistentMemory,
@@ -3316,9 +3471,9 @@ async function saveSuncatMemory() {
         }
     };
     await fs.promises.writeFile(MEMORY_FILE, JSON.stringify(fullState, null, 2));
-}
+    }
 
-// Call this immediately to load data when the server boots
+
 loadSuncatMemory();
 
 console.log(`Server attempting to start on port ${port}...`);
@@ -3370,7 +3525,7 @@ async function processSuncatThought(socketId, triggerType, data) {
             dynamicLore = pAtlas.lore;
             dynamicName = pAtlas.name;
             if (pAtlas.storyKey && WORLD_LORE_DB[pAtlas.storyKey]) {
-                dynamicLore += " " + WORLD_LORE_DB[pAtlas.storyKey];
+                dynamicLore += " " + WORLD_LORE_DB[pAtlas.storyKey].text; // <-- Added .text
             }
         }
 
@@ -3551,19 +3706,19 @@ async function processSuncatThought(socketId, triggerType, data) {
             dynamicPersona += PERSONA_RULES_DB.dm_mode + "\n";
             dynamicPersona += PERSONA_RULES_DB.quest_mode + "\n";
         }
-
-        // --- 4. BUILD THE CLEAN PROMPT ---
-        // Notice we do NOT put the persona here! It goes into the System Instruction!
-        const prompt = `
+        // ---> NEW: INJECT STATE DIRECTLY INTO THE SYSTEM BRAIN <---
+        dynamicPersona += `
         [CURRENT STATE]
         Location: Map ${suncat.mapID} (${myAtlas ? myAtlas.name : "Unknown"})
         Target: ${player.name} (Map ${player.mapID})
         ${favorContext}
         ${factsContext}
         ${storyContext}
-
         ${systemOverride}
-
+        `;
+        // --- 4. BUILD THE CLEAN PROMPT ---
+        // Notice we do NOT put the persona here! It goes into the System Instruction!
+        const prompt = `
         ${eventInstruction}
         `.trim();
 
@@ -3635,7 +3790,8 @@ async function processSuncatThought(socketId, triggerType, data) {
         clearTimeout(typingFailSafe); 
         npcIsTyping = false;
     }
-}
+    }
+//CONNECTION
 io.on("connection", (socket) => {
   console.log("New player joined:", socket.id);
 
@@ -3796,7 +3952,9 @@ socket.on("npc_died", async (data) => {
     const entityName = getCardName(baseID);
     
     if (!isPickup && !isDialogue) {
-        player.dmStress = Math.min(100, (player.dmStress || 0) + 5);
+        // If Suncat likes you (favor > 5), he is more patient. Stress only goes up by 2 instead of 8!
+        let stressPenalty = (playerFavorMemory[socket.id] && playerFavorMemory[socket.id] > 5) ? 2 : 8;
+        player.dmStress = Math.min(100, (player.dmStress || 0) + stressPenalty);
         
         // ---> THE NEW DYNAMIC WIN CONDITION CHECK <---
         // 1. Is the player in a custom map?
@@ -3828,7 +3986,7 @@ socket.on("npc_died", async (data) => {
         isPickup: isPickup,
         isDialogue: isDialogue
     });
-});
+    });
 // --- EVENT: DIRECT CHAT ---
 socket.on('chat_message', async (msgText) => {
     if (!msgText) return; // Prevent null/undefined crashes
@@ -4139,20 +4297,26 @@ setInterval(() => {
 
     const now = Date.now();
     // --- THE AUTONOMIC HEARTBEAT ---
-    for (let id in players) {
-        const p = players[id];
-        if (p) {
-            // 1. Cool down combat stress (Sympathetic nervous system winding down)
-            if (p.dmStress > 0) p.dmStress = Math.max(0, p.dmStress - 5);
-            
-            // 2. Trigger the Neural Pipeline
-            // If there is data in the hopper, try to digest it. 
-            // The pipeline will naturally block it if stress is too high.
-            if (p.undigestedInfo && p.undigestedInfo.length > 0) {
-                processCognitiveLoad(id);
+        let digestionDelay = 0; // Starts at 0ms
+
+        for (let id in players) {
+            const p = players[id];
+            if (p) {
+                // 1. Cool down combat stress
+                if (p.dmStress > 0) p.dmStress = Math.max(0, p.dmStress - 5);
+                
+                // 2. Trigger the Neural Pipeline with a stagger!
+                if (p.undigestedInfo && p.undigestedInfo.length > 0) {
+                    // Wait 'digestionDelay' milliseconds before calling the API
+                    setTimeout(() => {
+                        processCognitiveLoad(id);
+                    }, digestionDelay);
+                    
+                    // Add 2.5 seconds of delay for the NEXT player in the loop
+                    digestionDelay += 2500; 
+                }
             }
         }
-    }
     
     
     // 1. FIND THE BEST FRIEND
@@ -4377,10 +4541,8 @@ async function manageHistorySize(socketId) {
         console.error("[Memory] History prune failed:", error);
     }
 }
-
 // --- THE AFK SWEEPER (Run every 2 minutes) ---
 const IDLE_TIMEOUT = 3 * 60 * 1000; 
-
 setInterval(async () => {
     const now = Date.now();
     for (const socketId in chatSessions) {
@@ -4412,6 +4574,11 @@ setInterval(async () => {
         }
     }
 }, 2 * 60 * 1000);
+// Reset budget every hour to prevent permanent AI death
+setInterval(() => {
+    totalSessionCost = 0.00;
+    console.log("[Budget] Hourly API budget reset.");
+}, 60 * 60 * 1000);
 server.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });
