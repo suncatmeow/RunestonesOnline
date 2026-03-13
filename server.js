@@ -1916,8 +1916,7 @@ const toolsDef = [{
                 type: "OBJECT",
                 properties: {
                     targetName: { type: "STRING", description: "The player's name, or 'All'." },
-                    generalTheme: { type: "STRING", description: "A 2-3 word theme for the AI scriptwriter." },
-                    requestedScenario: { type: "STRING", description: "OPTIONAL. If the player asked for a specific type, enter 'Invasion', 'Rescue/Fetch', or 'Arena Madness'." }
+                    generalTheme: { type: "STRING", description: "A 2-3 word theme for the AI scriptwriter (e.g. 'Goblin Invasion', 'Lost Relic')." }
                 },
                 required: ["targetName", "generalTheme"] 
             }
@@ -2835,15 +2834,14 @@ async function executeAITools(currentResponse, activeSession, socket) {
                         let layoutTypes = ['labyrinth', 'hallways', 'buildings', 'bridge', 'spiral'];
                         let layoutStyle = layoutTypes[Math.floor(Math.random() * layoutTypes.length)];
                         
-                        // --- ARENA OVERRIDE ---
                         if (scenarioType === 'Arena Madness') {
                             layoutStyle = 'arena';
-                            antagID = 87; // Suncat is the ultimate boss of the Arena!
+                            antagID = 87; // Suncat is the boss!
                         }
 
                         let gridData = generateProceduralGrid(layoutStyle, biome.walls[0]); 
 
-                        // Set start and boss locations based on layout
+                        // Set base locations
                         let startX = 15, startY = 15; 
                         let bossX = 85, bossY = 85;
 
@@ -2851,57 +2849,79 @@ async function executeAITools(currentResponse, activeSession, socket) {
                             startX = 50; startY = 10;
                             bossX = 50; bossY = 85;
                         } else if (layoutStyle === 'arena') {
-                            startX = 50; startY = 50; // Dead center
-                            bossX = 50; bossY = 46;   // North side of the ring
+                            startX = 50; startY = 50; 
+                            bossX = 50; bossY = 46;   
                         }
 
                         let safeTiles = []; 
 
-                        // CARVE THE VILLAGE SAFE ZONE (Only if not Arena)
+                        // CARVE THE VILLAGE SAFE ZONE
                         if (layoutStyle !== 'arena') {
-                            for(let r = startY - 10; r < startY + 10; r++) {
-                                for(let c = startX - 10; c < startX + 10; c++) {
-                                    if (gridData[r] && gridData[r][c] !== undefined) gridData[r][c] = 0; 
+                            for(let r = startY - 15; r < startY + 15; r++) {
+                                for(let c = startX - 15; c < startX + 15; c++) {
+                                    // Ensure we don't carve out of bounds
+                                    if (gridData[r] && gridData[r][c] !== undefined) {
+                                        gridData[r][c] = 0; 
+                                    }
                                 }
                             }
                         }
 
-                        if (settlementType === 1) {
-                            // VILLAGE: Clustered tightly around StartX, StartY
-                            let numHouses = Math.floor(Math.random() * 2) + 3;
+                        // BUILD THE SETTLEMENT (Dense and tightly clustered)
+                        if (settlementType === 1 || settlementType === 2) {
+                            let numHouses = (settlementType === 1) ? 8 : 16; // Big Village or City
                             for (let i = 0; i < numHouses; i++) {
-                                let hx = startX + Math.floor(Math.random() * 12 - 6);
-                                let hy = startY + Math.floor(Math.random() * 12 - 6);
-                                for(let r=hy; r<hy+3; r++) for(let c=hx; c<hx+3; c++) {
-                                    if(gridData[r] && gridData[r][c] !== undefined) {
-                                        if (r===hy || r===hy+2 || c===hx || c===hx+2) gridData[r][c] = biome.walls[0];
-                                        safeTiles.push({x: c, y: r}); 
+                                let attempts = 0;
+                                let built = false;
+                                while (!built && attempts < 50) {
+                                    attempts++;
+                                    let hx = startX + Math.floor((Math.random() * 24) - 12);
+                                    let hy = startY + Math.floor((Math.random() * 24) - 12);
+                                    
+                                    // Check if area is clear
+                                    let clear = true;
+                                    for(let r=hy-1; r<hy+4; r++) {
+                                        for(let c=hx-1; c<hx+4; c++) {
+                                            if (gridData[r] === undefined || gridData[r][c] !== 0) clear = false;
+                                        }
+                                    }
+                                    
+                                    if (clear) {
+                                        for(let r=hy; r<hy+3; r++) {
+                                            for(let c=hx; c<hx+3; c++) {
+                                                if (r===hy || r===hy+2 || c===hx || c===hx+2) {
+                                                    gridData[r][c] = biome.walls[0];
+                                                } else {
+                                                    // The inside of the house is perfectly safe!
+                                                    safeTiles.push({x: c, y: r});
+                                                }
+                                            }
+                                        }
+                                        gridData[hy+2][hx+1] = 0; // Door
+                                        built = true;
                                     }
                                 }
-                                if(gridData[hy+2] && gridData[hy+2][hx+1] !== undefined) gridData[hy+2][hx+1] = 0; 
-                            }
-                        } else if (settlementType === 2) {
-                            // CITY: Chief's house + tightly packed buildings
-                            for(let r=startY-6; r<startY+1; r++) for(let c=startX-3; c<startX+4; c++) {
-                                if(gridData[r] && gridData[r][c] !== undefined) {
-                                    if (r===startY-6||r===startY||c===startX-3||c===startX+3) gridData[r][c] = biome.walls[1] || biome.walls[0];
-                                    safeTiles.push({x: c, y: r});
-                                }
-                            }
-                            if(gridData[startY][startX] !== undefined) gridData[startY][startX] = 0; 
-                            
-                            for (let i = 0; i < 8; i++) {
-                                let hx = startX + Math.floor(Math.random() * 20 - 10);
-                                let hy = startY + Math.floor(Math.random() * 20 - 10);
-                                for(let r=hy; r<hy+3; r++) for(let c=hx; c<hx+3; c++) {
-                                    if(gridData[r] && gridData[r][c] !== undefined) {
-                                        if (r===hy||r===hy+2||c===hx||c===hx+2) gridData[r][c] = biome.walls[0];
-                                        safeTiles.push({x: c, y: r});
-                                    }
-                                }
-                                if(gridData[hy+2] && gridData[hy+2][hx+1] !== undefined) gridData[hy+2][hx+1] = 0; 
                             }
                         }
+
+                        // --- THE PERFECT ANTI-WALL PHYSICS HELPER ---
+                        const getValidSpawn = (originX, originY, minRadius, maxRadius) => {
+                            for (let attempts = 0; attempts < 100; attempts++) {
+                                let dist = minRadius + (Math.random() * (maxRadius - minRadius));
+                                let angle = Math.random() * Math.PI * 2;
+                                let px = Math.floor(originX + Math.cos(angle) * dist);
+                                let py = Math.floor(originY + Math.sin(angle) * dist);
+
+                                px = Math.max(1, Math.min(98, px));
+                                py = Math.max(1, Math.min(98, py));
+
+                                // Only return if it is strictly a floor tile
+                                if (gridData[py] && gridData[py][px] === 0) {
+                                    return { x: px + 0.5, y: py + 0.5 }; 
+                                }
+                            }
+                            return { x: startX + 0.5, y: startY + 0.5 }; // Fallback to spawn point
+                        };
 
                         // 4. POPULATE THE WORLD 
                         let mapNPCs = [];
@@ -2915,17 +2935,16 @@ async function executeAITools(currentResponse, activeSession, socket) {
                                     c.rank !== "King" && 
                                     c.rank !== "Queen";
                             }).map(Number);
-                            return pool.length > 0 ? pool : [54, 56, 23, 42]; // Fallback to basic mobs
+                            return pool.length > 0 ? pool : [54, 56, 23, 42]; 
                         };
 
                         const friendlyMinions = getMinions(protagID);
                         let hostileMinions = getMinions(antagID).filter(id => !friendlyMinions.includes(id));
                         if (hostileMinions.length === 0) hostileMinions = [54, 56, 42, 82]; 
 
-                        // --- BRANCH: ARENA VS STANDARD MAP ---
                         if (scenarioType !== 'Arena Madness') {
                             
-                            // A. FRIENDLIES (30 NPCs)
+                            // A. FRIENDLIES (Spawn inside the 15-tile safe zone radius)
                             const allFriendlyLines = [
                                 ...script.friendlyLore.map(l => ({ text: l, type: 'lore' })),
                                 ...script.friendlyLife.map(l => ({ text: l, type: 'life' })),
@@ -2934,14 +2953,22 @@ async function executeAITools(currentResponse, activeSession, socket) {
 
                             for(let i=0; i<30; i++) {
                                 let mID = friendlyMinions[Math.floor(Math.random() * friendlyMinions.length)] || protagID;
-                                let spawnDist = (settlementType > 0) ? (Math.random() * 10) : (Math.random() * 80); 
-                                let angle = Math.random() * Math.PI * 2;
-                                let vx = startX + Math.cos(angle) * spawnDist;
-                                let vy = startY + Math.sin(angle) * spawnDist;
+                                
+                                let spawnSpot;
+                                // 20% of villagers spawn INSIDE the generated houses!
+                                if (safeTiles.length > 0 && Math.random() < 0.2) {
+                                    let tile = safeTiles[Math.floor(Math.random() * safeTiles.length)];
+                                    spawnSpot = { x: tile.x + 0.5, y: tile.y + 0.5 };
+                                } else {
+                                    // Otherwise wander the village streets
+                                    let maxDist = (settlementType > 0) ? 14 : 40;
+                                    spawnSpot = getValidSpawn(startX, startY, 0, maxDist);
+                                }
 
                                 let npcConfig = {
                                     type: CARD_MANIFEST_DB[mID].sprite || mID,
-                                    x: vx, y: vy, state: 'wandering', role: 'dialogue'
+                                    x: spawnSpot.x, y: spawnSpot.y, 
+                                    state: 'wandering', role: 'dialogue'
                                 };
 
                                 if (i < 3) {
@@ -2956,17 +2983,17 @@ async function executeAITools(currentResponse, activeSession, socket) {
                                 mapNPCs.push(npcConfig);
                             }
 
-                            // B. HOSTILES (50 NPCs)
+                            // B. HOSTILES (Spawn OUTSIDE the 15-tile safe zone)
                             for(let i=0; i<50; i++) {
                                 let mID = hostileMinions[Math.floor(Math.random() * hostileMinions.length)] || antagID;
-                                let spawnDist = 20 + (Math.random() * 60); // Push to the wilds
-                                let angle = Math.random() * Math.PI * 2;
-                                let hx = startX + Math.cos(angle) * spawnDist;
-                                let hy = startY + Math.sin(angle) * spawnDist;
+                                
+                                // Spawn between 20 and 80 tiles away from the village!
+                                let spawnSpot = getValidSpawn(startX, startY, 20, 80);
 
                                 let npcConfig = {
                                     type: CARD_MANIFEST_DB[mID].sprite || mID,
-                                    x: hx, y: hy, state: 'chasing', role: 'battle',
+                                    x: spawnSpot.x, y: spawnSpot.y, 
+                                    state: 'chasing', role: 'battle',
                                     deck: buildSynergisticDeck(mID)
                                 };
 
@@ -2981,30 +3008,24 @@ async function executeAITools(currentResponse, activeSession, socket) {
                             }
 
                             // C. THE BOSS
+                            let bossSpot = getValidSpawn(bossX, bossY, 0, 5); 
                             mapNPCs.push({
                                 type: CARD_MANIFEST_DB[antagID].sprite || antagID,
-                                x: bossX + 0.5, y: bossY + 0.5, 
+                                x: bossSpot.x, y: bossSpot.y, 
                                 state: 'stationary', role: 'battle', isBoss: true,
                                 dialogue: [script.bossTaunt], deck: buildSynergisticDeck(antagID)
                             });
 
                         } else {
-                            // --- ARENA MODE POPULATION (FIXED) ---
+                            // --- ARENA MODE POPULATION ---
                             for(let i=0; i<3; i++) {
                                 let mID = hostileMinions[Math.floor(Math.random() * hostileMinions.length)];
-                                
-                                // Push them 4 to 6 tiles away into the corners of the 13x13 room!
-                                let offsetX = (Math.random() * 2) + 4;
-                                let offsetY = (Math.random() * 2) + 4;
-                                if (Math.random() > 0.5) offsetX *= -1;
-                                if (Math.random() > 0.5) offsetY *= -1;
-
+                                let spawnSpot = getValidSpawn(startX, startY, 2, 5);
                                 mapNPCs.push({
                                     type: CARD_MANIFEST_DB[mID].sprite || mID,
-                                    x: startX + offsetX, 
-                                    y: startY + offsetY,
+                                    x: spawnSpot.x, y: spawnSpot.y,
                                     state: 'chasing', role: 'battle',
-                                    dialogue: [script.hostileTaunts[i % script.hostileTaunts.length] || "Glory to the Arena!"],
+                                    dialogue: [script.hostileTaunts[i % script.hostileTaunts.length] || "For the Emperor!"],
                                     deck: buildSynergisticDeck(mID)
                                 });
                             }
@@ -3434,17 +3455,17 @@ async function processSuncatThought(socketId, triggerType, data) {
                 systemOverride += `\n[SYSTEM OVERRIDE]: The player wants a new map/quest, but a custom scenario is ALREADY ONGOING. REFUSE the request. DO NOT use the 'createCustomMap' tool. Tell them to finish the current quest or join it via '.hack//teleport 999'.`;
                 needsDM = false; // Turn off DM mode for this turn so he doesn't try to build.
             } 
-            else if (player.mapScenario === 0) {
-                // ---> NEW: ARENA OVERRIDE <---
+            else if (player.mapScenario === 'Arena Madness' && player.mapID === 999) {
                 useBigBrain = true;
-                systemOverride += `\n[ARENA OVERRIDE]: You are the Arena Master. The player is in your colosseum. Mock their combat skills.`;
+                systemOverride += `\n[ARENA OVERRIDE]: You are the Arena Master. The player is in your colosseum. Mock their combat skills and hype up the crowd.`;
             }
             else if (needsOracle) {
                 useBigBrain = true;
                 systemOverride += `\n[ORACLE OVERRIDE]: You are the Oracle. Interpret the player's situation using Tarot logic based on the Runestones card db. Be cryptic, mystical, and brief (max 3 sentences). Do not use tools.`;
             } else if (needsDM) {
                 useBigBrain = true;
-                systemOverride += `\n[DM OVERRIDE]: The player is seeking an adventure or DM action. EXECUTE A TOOL IMMEDIATELY. KEEP YOUR SPOKEN NARRATION UNDER 15 WORDS. DO NOT ask for permission.`;                        
+                // ---> THE FIX: TELL HIM TO NARRATE THE SCENARIO! <---
+                systemOverride += `\n[DM OVERRIDE]: The player is seeking an adventure or DM action. EXECUTE A TOOL IMMEDIATELY. Then, as the Dungeon Master, dramatically narrate what you just did (e.g. "I have forged a new realm... Your quest is to slay the dragon!"). Speak in 2-3 sentences.`;                        
             } else {
                 useBigBrain = isDirectCommand || useBigBrain; 
             }
