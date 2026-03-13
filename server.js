@@ -2510,8 +2510,16 @@ function generateProceduralGrid(layout, wallType) {
         }
     }
     else {
-        // Arena / Open (The default flat square)
-        for(let r=1; r<maxR-1; r++) for(let c=1; c<maxC-1; c++) grid[r][c] = 0;
+        // ARENA / COLOSSEUM (Tight 13x13 box in the exact center)
+        let midR = Math.floor(maxR/2);
+        let midC = Math.floor(maxC/2);
+        for(let r = midR - 6; r <= midR + 6; r++) {
+            for(let c = midC - 6; c <= midC + 6; c++) {
+                if (grid[r] && grid[r][c] !== undefined) {
+                    grid[r][c] = 0; // Clear a small 13x13 room
+                }
+            }
+        }
     }
     
     return grid;
@@ -2523,49 +2531,56 @@ function buildSynergisticDeck(monsterID) {
     
     const baseCard = CARD_MANIFEST_DB[baseID];
     if (!baseCard) return deck; // Failsafe
+    
+    // If Suncat tries to build a deck for an inanimate object, 
+    // it just gets itself. (Items don't cast spells!)
+    if (baseCard.type === 'item' || baseCard.type === 'spell') return deck;
 
-    // 1. Gather Thematic Equipment (Matches Suit OR Class OR Tribe)
-    const validEquips = Object.entries(CARD_MANIFEST_DB).filter(([id, card]) => {
-        if (card.type !== "spell" && card.type !== "item") return false;
-        
-        // Match Suit
-        if (card.suit === baseCard.suit) return true;
-        // Match Class
-        if (card.classes && baseCard.classes && card.classes.some(cls => baseCard.classes.includes(cls))) return true;
-        // Match Tribe (If you ever add a 'Bone Sword' item with tribe: 'undead')
-        if (card.tribe && baseCard.tribe && card.tribe === baseCard.tribe) return true;
-        
-        return false;
-    }).map(([id]) => parseInt(id));
-
-    // 2. Gather Cannon Fodder Allies (Matches Suit OR Tribe)
+    // 1. Gather Thematic Backup Monsters (Matches Suit OR Tribe)
+    // Exclude the base ID, Kings, Queens, and Major Arcana.
     const validAllies = Object.entries(CARD_MANIFEST_DB).filter(([id, card]) => {
         let numId = parseInt(id);
         if (card.type !== "monster" || numId === baseID) return false;
-        
-        // NEVER pull Kings, Queens, or Major Arcana as random backup mobs!
         if (card.suit === "Major Arcana" || card.rank === "King" || card.rank === "Queen") return false;
         
-        // Synergy Match: Same Suit
-        if (card.suit === baseCard.suit) return true;
-        
-        // Synergy Match: Same Tribe! (An Undead from Swords will help an Undead from Cups)
-        if (card.tribe && baseCard.tribe && card.tribe === baseCard.tribe) return true;
+        // Match Suit OR Match Tribe
+        return (card.suit === baseCard.suit) || 
+               (card.tribe && baseCard.tribe && card.tribe === baseCard.tribe);
+    }).map(([id]) => parseInt(id));
 
+    // 2. Gather Synergistic Equipment/Spells (Matches CLASS ONLY)
+    // Items and Spells don't care about Suit or Tribe, only that the monster knows how to use them!
+    const validEquips = Object.entries(CARD_MANIFEST_DB).filter(([id, card]) => {
+        if (card.type !== "spell" && card.type !== "item") return false;
+        
+        // If the item/spell has classes, does the base monster share at least one?
+        if (card.classes && baseCard.classes) {
+            return card.classes.some(cls => baseCard.classes.includes(cls));
+        }
         return false;
     }).map(([id]) => parseInt(id));
 
     // 3. Assemble the Deck! 
-    // Add 2 valid equips.
-    for(let i=0; i<2; i++) {
-        if(validEquips.length > 0) {
-            deck.push(validEquips[Math.floor(Math.random() * validEquips.length)]);
+    // Goal: 1-4 Extra Monsters, 1-5 Spells/Items
+
+    // Add 1 to 4 Monsters
+    let numMonstersToAdd = Math.floor(Math.random() * 4) + 1; // Rolls 1, 2, 3, or 4
+    for(let i = 0; i < numMonstersToAdd; i++) {
+        if (validAllies.length > 0) {
+            // Pick a random ally from the pool
+            let randomAlly = validAllies[Math.floor(Math.random() * validAllies.length)];
+            deck.push(randomAlly);
         }
     }
-    
-    // 4. 50% chance to bring a Thematic Ally into battle!
-    if (validAllies.length > 0 && Math.random() > 0.5) {
-        deck.push(validAllies[Math.floor(Math.random() * validAllies.length)]);
+
+    // Add 1 to 5 Equips/Spells
+    let numEquipsToAdd = Math.floor(Math.random() * 5) + 1; // Rolls 1, 2, 3, 4, or 5
+    for(let i = 0; i < numEquipsToAdd; i++) {
+        if (validEquips.length > 0) {
+            // Pick a random spell/item from the pool
+            let randomEquip = validEquips[Math.floor(Math.random() * validEquips.length)];
+            deck.push(randomEquip);
+        }
     }
 
     return deck;
@@ -2785,38 +2800,67 @@ async function executeAITools(currentResponse, activeSession, socket) {
                         };
 
                         // 3. GENERATE THE GRID & SETTLEMENTS
-                        let gridData = generateProceduralGrid('arena', biome.walls[0]); 
-                        let startX = 50, startY = 50; 
-                        let safeTiles = []; // Cache safe zones for spawns
+                        let layoutTypes = ['labyrinth', 'hallways', 'buildings', 'bridge', 'spiral'];
+                        let layoutStyle = layoutTypes[Math.floor(Math.random() * layoutTypes.length)];
+                        
+                        // --- ARENA OVERRIDE ---
+                        if (scenarioType === 'Arena Madness') {
+                            layoutStyle = 'arena';
+                            antagID = 87; // Suncat is the ultimate boss of the Arena!
+                        }
+
+                        let gridData = generateProceduralGrid(layoutStyle, biome.walls[0]); 
+
+                        // Set start and boss locations based on layout
+                        let startX = 15, startY = 15; 
+                        let bossX = 85, bossY = 85;
+
+                        if (layoutStyle === 'spiral' || layoutStyle === 'bridge') {
+                            startX = 50; startY = 10;
+                            bossX = 50; bossY = 85;
+                        } else if (layoutStyle === 'arena') {
+                            startX = 50; startY = 50; // Dead center
+                            bossX = 50; bossY = 46;   // North side of the ring
+                        }
+
+                        let safeTiles = []; 
+
+                        // CARVE THE VILLAGE SAFE ZONE (Only if not Arena)
+                        if (layoutStyle !== 'arena') {
+                            for(let r = startY - 10; r < startY + 10; r++) {
+                                for(let c = startX - 10; c < startX + 10; c++) {
+                                    if (gridData[r] && gridData[r][c] !== undefined) gridData[r][c] = 0; 
+                                }
+                            }
+                        }
 
                         if (settlementType === 1) {
-                            // VILLAGE: 3 to 4 small houses clustered near start
+                            // VILLAGE: Clustered tightly around StartX, StartY
                             let numHouses = Math.floor(Math.random() * 2) + 3;
                             for (let i = 0; i < numHouses; i++) {
-                                let hx = startX + Math.floor(Math.random() * 16 - 8);
-                                let hy = startY + Math.floor(Math.random() * 16 - 8);
+                                let hx = startX + Math.floor(Math.random() * 12 - 6);
+                                let hy = startY + Math.floor(Math.random() * 12 - 6);
                                 for(let r=hy; r<hy+3; r++) for(let c=hx; c<hx+3; c++) {
                                     if(gridData[r] && gridData[r][c] !== undefined) {
                                         if (r===hy || r===hy+2 || c===hx || c===hx+2) gridData[r][c] = biome.walls[0];
-                                        safeTiles.push({x: c, y: r}); // Mark area as safe
+                                        safeTiles.push({x: c, y: r}); 
                                     }
                                 }
-                                if(gridData[hy+2] && gridData[hy+2][hx+1] !== undefined) gridData[hy+2][hx+1] = 0; // Door
+                                if(gridData[hy+2] && gridData[hy+2][hx+1] !== undefined) gridData[hy+2][hx+1] = 0; 
                             }
                         } else if (settlementType === 2) {
-                            // CITY: The massive 7x7 Chief's House
-                            for(let r=startY-10; r<startY-3; r++) for(let c=startX-3; c<startX+4; c++) {
+                            // CITY: Chief's house + tightly packed buildings
+                            for(let r=startY-6; r<startY+1; r++) for(let c=startX-3; c<startX+4; c++) {
                                 if(gridData[r] && gridData[r][c] !== undefined) {
-                                    if (r===startY-10||r===startY-4||c===startX-3||c===startX+3) gridData[r][c] = biome.walls[1] || biome.walls[0];
+                                    if (r===startY-6||r===startY||c===startX-3||c===startX+3) gridData[r][c] = biome.walls[1] || biome.walls[0];
                                     safeTiles.push({x: c, y: r});
                                 }
                             }
-                            if(gridData[startY-4] && gridData[startY-4][startX] !== undefined) gridData[startY-4][startX] = 0; // Grand Door
+                            if(gridData[startY][startX] !== undefined) gridData[startY][startX] = 0; 
                             
-                            // 8+ smaller houses surrounding it
-                            for (let i = 0; i < 10; i++) {
-                                let hx = startX + Math.floor(Math.random() * 30 - 15);
-                                let hy = startY + Math.floor(Math.random() * 30 - 5);
+                            for (let i = 0; i < 8; i++) {
+                                let hx = startX + Math.floor(Math.random() * 20 - 10);
+                                let hy = startY + Math.floor(Math.random() * 20 - 10);
                                 for(let r=hy; r<hy+3; r++) for(let c=hx; c<hx+3; c++) {
                                     if(gridData[r] && gridData[r][c] !== undefined) {
                                         if (r===hy||r===hy+2||c===hx||c===hx+2) gridData[r][c] = biome.walls[0];
@@ -2827,11 +2871,9 @@ async function executeAITools(currentResponse, activeSession, socket) {
                             }
                         }
 
-                        // 4. POPULATE THE WORLD (The 80 NPC Strict Split)
-                        // 4. POPULATE THE WORLD (The 80 NPC Strict Split)
+                        // 4. POPULATE THE WORLD 
                         let mapNPCs = [];
 
-                        // NEW: Strict Minion Filter (Forces them to be actual monsters, and excludes Bosses/Kings)
                         const getMinions = (leaderID) => {
                             let leaderCard = CARD_MANIFEST_DB[leaderID];
                             let pool = Object.keys(CARD_MANIFEST_DB).filter(id => {
@@ -2841,84 +2883,95 @@ async function executeAITools(currentResponse, activeSession, socket) {
                                     c.rank !== "King" && 
                                     c.rank !== "Queen";
                             }).map(Number);
-                            
-                            // Failsafe: If the suit has no lesser monsters (like some Major Arcana), default to classic cryptids
-                            return pool.length > 0 ? pool : [54, 56, 23, 42]; // Goblin, Imp, Wisp, Shade
+                            return pool.length > 0 ? pool : [54, 56, 23, 42]; // Fallback to basic mobs
                         };
 
                         const friendlyMinions = getMinions(protagID);
-                        const hostileMinions = getMinions(antagID);
-                        // A. FRIENDLIES (30 NPCs)
-                        const allFriendlyLines = [
-                            ...script.friendlyLore.map(l => ({ text: l, type: 'lore' })),
-                            ...script.friendlyLife.map(l => ({ text: l, type: 'life' })),
-                            ...script.friendlyProfound.map(l => ({ text: l, type: 'profound' }))
-                        ];
+                        let hostileMinions = getMinions(antagID).filter(id => !friendlyMinions.includes(id));
+                        if (hostileMinions.length === 0) hostileMinions = [54, 56, 42, 82]; 
 
-                        for(let i=0; i<30; i++) {
-                            let mID = friendlyMinions[Math.floor(Math.random() * friendlyMinions.length)] || protagID;
-                            let spawnDist = (settlementType > 0) ? (Math.random() * 15) : (Math.random() * 80); 
-                            let angle = Math.random() * Math.PI * 2;
-                            let vx = startX + Math.cos(angle) * spawnDist;
-                            let vy = startY + Math.sin(angle) * spawnDist;
+                        // --- BRANCH: ARENA VS STANDARD MAP ---
+                        if (scenarioType !== 'Arena Madness') {
+                            
+                            // A. FRIENDLIES (30 NPCs)
+                            const allFriendlyLines = [
+                                ...script.friendlyLore.map(l => ({ text: l, type: 'lore' })),
+                                ...script.friendlyLife.map(l => ({ text: l, type: 'life' })),
+                                ...script.friendlyProfound.map(l => ({ text: l, type: 'profound' }))
+                            ];
 
-                            let npcConfig = {
-                                type: CARD_MANIFEST_DB[mID].sprite || mID,
-                                x: vx, y: vy,
-                                state: 'wandering', role: 'dialogue'
-                            };
+                            for(let i=0; i<30; i++) {
+                                let mID = friendlyMinions[Math.floor(Math.random() * friendlyMinions.length)] || protagID;
+                                let spawnDist = (settlementType > 0) ? (Math.random() * 10) : (Math.random() * 80); 
+                                let angle = Math.random() * Math.PI * 2;
+                                let vx = startX + Math.cos(angle) * spawnDist;
+                                let vy = startY + Math.sin(angle) * spawnDist;
 
-                            if (i < 3) {
-                                npcConfig.role = 'reward';
-                                npcConfig.dialogue = ["Take this for your journey."];
-                                npcConfig.rewardCard = mID;
-                            } else if (i < 5) {
-                                npcConfig.dialogue = [script.recruitPlea[i % script.recruitPlea.length] || "Let me join you!"];
-                                npcConfig.options = ['Accept', 'Decline'];
-                                npcConfig.rewardCard = mID; 
-                            } else {
-                                let lineObj = allFriendlyLines[i % allFriendlyLines.length];
-                                npcConfig.dialogue = [lineObj ? lineObj.text : "Hello."];
-                            }
-                            mapNPCs.push(npcConfig);
-                        }
+                                let npcConfig = {
+                                    type: CARD_MANIFEST_DB[mID].sprite || mID,
+                                    x: vx, y: vy, state: 'wandering', role: 'dialogue'
+                                };
 
-                        // B. HOSTILES (50 NPCs)
-                        for(let i=0; i<50; i++) {
-                            let mID = hostileMinions[Math.floor(Math.random() * hostileMinions.length)] || antagID;
-                            let spawnDist = 25 + (Math.random() * 25); // Push hostiles to the outskirts
-                            let angle = Math.random() * Math.PI * 2;
-                            let hx = startX + Math.cos(angle) * spawnDist;
-                            let hy = startY + Math.sin(angle) * spawnDist;
-
-                            let npcConfig = {
-                                type: CARD_MANIFEST_DB[mID].sprite || mID,
-                                x: hx, y: hy,
-                                state: 'chasing', role: 'battle',
-                                deck: buildSynergisticDeck(mID)
-                            };
-
-                            if (i < 5) {
-                                npcConfig.state = 'wandering';
-                                npcConfig.role = 'dialogue'; 
-                                npcConfig.dialogue = [script.traitorBegs[i % script.traitorBegs.length] || "Spare me!"];
-                                npcConfig.options = ['Spare Them', 'Vanquish'];
-                                npcConfig.rewardCard = mID;
-                            } else if (i < 20) {
-                                npcConfig.dialogue = [script.hostileTaunts[i % script.hostileTaunts.length] || "Attack!"];
+                                if (i < 3) {
+                                    npcConfig.role = 'reward'; npcConfig.dialogue = ["Take this."]; npcConfig.rewardCard = mID;
+                                } else if (i < 5) {
+                                    npcConfig.dialogue = [script.recruitPlea[i % script.recruitPlea.length] || "Let me join you!"];
+                                    npcConfig.options = ['Accept', 'Decline']; npcConfig.rewardCard = mID; 
+                                } else {
+                                    let lineObj = allFriendlyLines[i % allFriendlyLines.length];
+                                    npcConfig.dialogue = [lineObj ? lineObj.text : "Hello."];
+                                }
+                                mapNPCs.push(npcConfig);
                             }
 
-                            mapNPCs.push(npcConfig);
-                        }
+                            // B. HOSTILES (50 NPCs)
+                            for(let i=0; i<50; i++) {
+                                let mID = hostileMinions[Math.floor(Math.random() * hostileMinions.length)] || antagID;
+                                let spawnDist = 20 + (Math.random() * 60); // Push to the wilds
+                                let angle = Math.random() * Math.PI * 2;
+                                let hx = startX + Math.cos(angle) * spawnDist;
+                                let hy = startY + Math.sin(angle) * spawnDist;
 
-                        // C. THE BOSS
-                        mapNPCs.push({
-                            type: CARD_MANIFEST_DB[antagID].sprite || antagID,
-                            x: startX + 40, y: startY + 40, // Deepest corner
-                            state: 'stationary', role: 'battle', isBoss: true,
-                            dialogue: [script.bossTaunt],
-                            deck: buildSynergisticDeck(antagID)
-                        });
+                                let npcConfig = {
+                                    type: CARD_MANIFEST_DB[mID].sprite || mID,
+                                    x: hx, y: hy, state: 'chasing', role: 'battle',
+                                    deck: buildSynergisticDeck(mID)
+                                };
+
+                                if (i < 5) {
+                                    npcConfig.state = 'wandering'; npcConfig.role = 'dialogue'; 
+                                    npcConfig.dialogue = [script.traitorBegs[i % script.traitorBegs.length] || "Spare me!"];
+                                    npcConfig.options = ['Spare Them', 'Vanquish']; npcConfig.rewardCard = mID;
+                                } else if (i < 20) {
+                                    npcConfig.dialogue = [script.hostileTaunts[i % script.hostileTaunts.length] || "Attack!"];
+                                }
+                                mapNPCs.push(npcConfig);
+                            }
+
+                            // C. THE BOSS
+                            mapNPCs.push({
+                                type: CARD_MANIFEST_DB[antagID].sprite || antagID,
+                                x: bossX + 0.5, y: bossY + 0.5, 
+                                state: 'stationary', role: 'battle', isBoss: true,
+                                dialogue: [script.bossTaunt], deck: buildSynergisticDeck(antagID)
+                            });
+
+                        } else {
+                            // --- ARENA MODE POPULATION ---
+                            // Just spawn 3 basic gladiators to start the bloodbath. 
+                            // Tsukasa will summon the rest dynamically via the chat AI!
+                            for(let i=0; i<3; i++) {
+                                let mID = hostileMinions[Math.floor(Math.random() * hostileMinions.length)];
+                                mapNPCs.push({
+                                    type: CARD_MANIFEST_DB[mID].sprite || mID,
+                                    x: startX + (Math.random() * 6 - 3), 
+                                    y: startY + (Math.random() * 6 - 3),
+                                    state: 'chasing', role: 'battle',
+                                    dialogue: ["For the Emperor!"],
+                                    deck: buildSynergisticDeck(mID)
+                                });
+                            }
+                        }
 
                         // 5. CACHE AND TELEPORT
                         const customMapData = {
@@ -3034,21 +3087,25 @@ async function executeAITools(currentResponse, activeSession, socket) {
                         const cardData = CARD_MANIFEST_DB[baseID];
 
                         // --- THE IDIOT-PROOF INTERCEPTOR ---
-                        if (cardData && (cardData.type === 'item' || cardData.type === 'spell')) {
-                            // Suncat tried to spawn an item as a living creature. OVERRIDE IT.
-                            role = 'reward';
-                            state = 'stationary';
-                            dialogue = [`*The ${cardData.name} rests here, humming with latent power...*`];
-                            safeRewardCard = baseID; // Force it to drop itself
-                        } else if (!cardData) {
-                            // Failsafe for hallucinated IDs
-                            baseID = 54; // Default to a Goblin
-                        }
+                            if (cardData && (cardData.type === 'item' || cardData.type === 'spell')) {
+                                // Force it to be a physical card pickup!
+                                visualSprite = -27; 
+                                role = 'reward';
+                                state = 'stationary';
+                                dialogue = []; // No dialogue needed, your client handles pickup text
+                                safeRewardCard = null; // Client handles the drop via the deck array
+                                finalDeck = [baseID];  // The client looks here for the item ID!
+                                call.args.color = '#ffff00'; // Yellow on minimap
+                            } else if (!cardData) {
+                                baseID = 54; // Default to a Goblin
+                                visualSprite = CARD_MANIFEST_DB[baseID]?.sprite || baseID;
+                                finalDeck = buildSynergisticDeck(baseID);
+                            } else {
+                                visualSprite = CARD_MANIFEST_DB[baseID]?.sprite || baseID;
+                                finalDeck = buildSynergisticDeck(baseID);
+                            }
 
-                        let finalDeck = buildSynergisticDeck(baseID);
-                        let visualSprite = CARD_MANIFEST_DB[baseID]?.sprite || baseID;
-                        
-                        io.emit("remote_spawn_npc", {
+                            io.emit("remote_spawn_npc", {
                             mapID: spawnMap,
                             index: Math.floor(Math.random() * 100000) + 1000,
                             x: spawnX,
