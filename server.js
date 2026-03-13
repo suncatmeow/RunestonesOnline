@@ -2434,8 +2434,9 @@ async function processCognitiveLoad(socketId, forceDigest = false) {
     const memoriesToProcess = player.undigestedInfo.splice(0, batchSize);
     const rawMemories = memoriesToProcess.map(m => sanitizeForMemory(m)).filter(m => m !== "").join('\n- ');
     const currentStory = player.storySoFar || "The adventure begins.";
-    const currentFacts = player.coreFacts ? player.coreFacts.join('\n- ') : "None yet.";
-    const activeMapContext = player.mapID === 999 ? (player.currentMapLore || "") : "";
+    const currentProfile = player.playerProfile ? 
+        `Combat: ${player.playerProfile.combatStyle} | Alliances: ${player.playerProfile.alliances} | Tastes: ${player.playerProfile.tastes} | Personality: ${player.playerProfile.personality}` 
+        : "Combat: Unknown | Alliances: Unknown | Tastes: Unknown | Personality: Unknown";    const activeMapContext = player.mapID === 999 ? (player.currentMapLore || "") : "";
     const prompt = `You are the subconscious mind of an NPC named Suncat in a dark fantasy game.
     [YOUR NEUROCHEMICAL STATE]: ${cognitiveFilter}
 
@@ -2447,20 +2448,27 @@ async function processCognitiveLoad(socketId, forceDigest = false) {
     [RAW UNPROCESSED EVENTS]:
     - ${rawMemories}
 
-    TASK: Digest these events. Update the story, consolidate the core facts, whisper a new rumor, and add a short journal reflection.`;
+    TASK: Digest these events. Update the story, update the player profile, whisper a new rumor, and add a short journal reflection.`;
 
+    // Strict Schema Definition using SDK Types
     // Strict Schema Definition using SDK Types
     const memorySchema = {
         type: SchemaType.OBJECT,
         properties: {
             updatedStory: { 
                 type: SchemaType.STRING,
-                description: "A single, cohesive paragraph (max 4 sentences) updating the story so far, colored by your neurochemical state."
+                description: "A single, cohesive paragraph (max 4 sentences) updating the story so far."
             },
-            distilledFacts: { 
-                type: SchemaType.ARRAY, 
-                items: { type: SchemaType.STRING },
-                description: "CRITICAL: Merge the old [CURRENT CORE FACTS] with the new events. Return exactly 1 to 5 of the most important facts Suncat must remember about this player."
+            playerProfile: { 
+                type: SchemaType.OBJECT,
+                description: "A categorized profile of the player. Merge old knowledge with new events. NEVER let a field grow beyond 2 sentences. If no new info applies to a field, keep the old info.",
+                properties: {
+                    combatStyle: { type: SchemaType.STRING, description: "How they fight, strategies, or 'Unknown'." },
+                    alliances: { type: SchemaType.STRING, description: "NPCs or factions they befriended or angered." },
+                    tastes: { type: SchemaType.STRING, description: "Preferences, favorite foods, items, or aesthetic choices." },
+                    personality: { type: SchemaType.STRING, description: "Psychological traits, moral alignment, or quirks." }
+                },
+                required: ["combatStyle", "alliances", "tastes", "personality"]
             },
             newRumor: { 
                 type: SchemaType.STRING,
@@ -2469,9 +2477,13 @@ async function processCognitiveLoad(socketId, forceDigest = false) {
             suncatJournalEntry: { 
                 type: SchemaType.STRING,
                 description: "A 1-2 sentence first-person philosophical reflection by Suncat on what just happened."
+            },
+            suncatPerception: {
+                type: SchemaType.STRING,
+                description: "A short, punchy 1-sentence description of the player in the style of trading card flavor text."
             }
         },
-        required: ["updatedStory", "distilledFacts", "newRumor", "suncatJournalEntry"]
+        required: ["updatedStory", "playerProfile", "newRumor", "suncatJournalEntry", "suncatPerception"]
     };
 
     try {
@@ -2498,10 +2510,10 @@ async function processCognitiveLoad(socketId, forceDigest = false) {
 
         // 4. DISTRIBUTE THE NUTRIENTS TO ALL ORGANS!
         if (digestedData.updatedStory) player.storySoFar = digestedData.updatedStory;
-        
-        if (digestedData.distilledFacts && Array.isArray(digestedData.distilledFacts)) {
-            // Because the AI intelligently merged old and new facts, we safely overwrite the array
-            player.coreFacts = digestedData.distilledFacts;
+        if (digestedData.suncatPerception) player.suncatPerception = digestedData.suncatPerception;
+        // ---> THE NEW PROFILE SAVER <---
+        if (digestedData.playerProfile) {
+            player.playerProfile = digestedData.playerProfile;
         }
         
         if (digestedData.newRumor) addRumor(`${player.name}: ${digestedData.newRumor}`);
@@ -3233,12 +3245,7 @@ async function executeAITools(currentResponse, activeSession, socket) {
                                 targetPlayer.mapBossID = antagID;
                                 targetPlayer.activeQuest = script.questObjective;
                                 io.to(tid).emit("new_quest_objective", { questText: targetPlayer.activeQuest });
-                                
-                                const memoryString = `[ACTIVE QUEST] ${targetPlayer.name} is on a quest: ${script.questObjective}`;
-                                if (!targetPlayer.coreFacts) targetPlayer.coreFacts = [];
-                                targetPlayer.coreFacts = targetPlayer.coreFacts.filter(fact => !fact.includes("[ACTIVE QUEST]"));
-                                targetPlayer.coreFacts.push(memoryString);
-                            });
+                                 });
 
                             players[SUNCAT_ID].mapID = 999;
                             players[SUNCAT_ID].x = startX + 1.5; players[SUNCAT_ID].y = startY + 0.5;
@@ -3359,14 +3366,7 @@ async function executeAITools(currentResponse, activeSession, socket) {
                         io.to(targetID).emit("new_quest_objective", { questText: call.args.questText });
                         players[targetID].activeQuest = call.args.questText; 
                         
-                        const memoryString = `[ACTIVE QUEST] ${call.args.targetName} is currently trying to: ${call.args.questText}`;
                         
-                        if (!players[targetID].coreFacts) players[targetID].coreFacts = [];
-                        players[targetID].coreFacts = players[targetID].coreFacts.filter(fact => !fact.includes("[ACTIVE QUEST]"));
-                        
-                        if (call.args.questText !== "COMPLETE") {
-                            players[targetID].coreFacts.push(memoryString);
-                        }
 
                         functionResult = { result: `Quest assigned.` };
                     } else {
@@ -3546,8 +3546,15 @@ async function processSuncatThought(socketId, triggerType, data) {
 
         const storyContext = player.storySoFar ? `\n[THE STORY SO FAR]: ${player.storySoFar}` : ""; 
         const favorContext = `\n[FAVOR SCORE]: ${playerFavorMemory[socketId] || 0}/10`;
-        const factsContext = (player.coreFacts && player.coreFacts.length > 0) ? `\n[PLAYER FACTS]:\n${player.coreFacts.join("\n")}` : "";
-
+        let factsContext = "";
+        if (player.playerProfile) {
+            factsContext = `\n[PLAYER DOSSIER]:\n- Combat: ${player.playerProfile.combatStyle}\n- Alliances: ${player.playerProfile.alliances}\n- Tastes: ${player.playerProfile.tastes}\n- Personality: ${player.playerProfile.personality}`;
+        }
+        
+        // Don't forget to keep the active quest tracker separated so it doesn't get lost!
+        if (player.activeQuest) {
+            factsContext += `\n- Active Quest: ${player.activeQuest}`;
+        }
         // 3. ASSESS STRESS LEVEL (Adrenaline + API Fatigue)
         const combatStress = player.dmStress || 0;
         const apiFatigue = Math.min(100, ((player.sessionCost || 0) / 0.10) * 100); 
@@ -3754,8 +3761,9 @@ async function processSuncatThought(socketId, triggerType, data) {
             if (triggerType === 'chat') {
                 const saveMatch = finalSpeech.match(/\[\[SAVE:\s*(.*?)\]\]/i);
                 if (saveMatch && saveMatch[1]) {
-                    if (!player.coreFacts) player.coreFacts = [];
-                    player.coreFacts.push(saveMatch[1]); 
+                    // Send it straight to the stomach to be digested into the Profile!
+                    if (!player.undigestedInfo) player.undigestedInfo = [];
+                    player.undigestedInfo.push(`Player revealed a fact: ${saveMatch[1]}`); 
                     io.to(socketId).emit("suncat_learned_fact", saveMatch[1]); 
                 }
                 const favorMatch = finalSpeech.match(/\[\[FAVOR:\s*([+-]?\d+)\]\]/i);
@@ -3826,8 +3834,7 @@ socket.on("join_game", (data) => {
       const nameKey = name.toLowerCase(); // <-- Define this first!
       let savedData = suncatPersistentMemory[nameKey];
       let rawHistory = (typeof data === 'object') ? data.aiHistory : [];
-      let coreFacts = (typeof data === 'object') ? data.coreFacts : [];
-      let favor = (typeof data === 'object') ? data.favor : 0;
+        let playerProfile = (typeof data === 'object' && data.playerProfile) ? data.playerProfile : { combatStyle: "Unknown", alliances: "Unknown", tastes: "Unknown", personality: "Unknown" };      let favor = (typeof data === 'object') ? data.favor : 0;
         let activeQuest = savedData ? savedData.activeQuest : null;
         let loadedStory = savedData ? savedData.storySoFar : ""; // <--- NEW
       playerFavorMemory[socket.id] = favor;
@@ -3869,11 +3876,11 @@ socket.on("join_game", (data) => {
       // --------------------------
 
       if (players[socket.id]) {
-          players[socket.id].name = name;
-            players[socket.id].activeQuest = activeQuest; 
-          players[socket.id].storySoFar = loadedStory;
-          players[socket.id].coreFacts = coreFacts; // <--- ADD THIS LINE!
-          if (!players[socket.id].dmNarrativeLog) {
+        players[socket.id].name = name;
+        players[socket.id].activeQuest = activeQuest; 
+        players[socket.id].storySoFar = loadedStory;
+        players[socket.id].playerProfile = playerProfile; // ADD THIS      
+        if (!players[socket.id].dmNarrativeLog) {
             players[socket.id].dmNarrativeLog = [];
         }
         
@@ -4074,11 +4081,13 @@ const mentioned = content.includes(NPC_NAME.toLowerCase()) || msgText.includes("
       const exploredCount = player.exploredTiles ? player.exploredTiles.size : 0;
       const currentFavor = playerFavorMemory[socket.id] || 0;
       const apiMana = player.sessionCost || 0.00;
+      const perception = player.suncatPerception || "An unpredictable wanderer stepping into the unknown.";
 
       socket.emit("stats_sync_reply", {
           favor: currentFavor,
           mana: apiMana,
-          tiles: exploredCount
+          tiles: exploredCount,
+          perception: perception // <-- Sent to client!
       });
   });
 // --- EVENT: SPECTATOR (HIVE MIND) ---
@@ -4257,10 +4266,11 @@ socket.on("disconnect", async () => {
 
         suncatPersistentMemory[playerNameKey] = {
             favor: playerFavorMemory[socket.id] || 0,
-            coreFacts: me.coreFacts || [], 
+            playerProfile: me.playerProfile || { combatStyle: "Unknown", alliances: "Unknown", tastes: "Unknown", personality: "Unknown" }, 
             activeQuest: me.activeQuest || null,
             storySoFar: me.storySoFar || "",
-            aiHistory: currentHistory 
+            aiHistory: currentHistory,
+            suncatPerception: me.suncatPerception || "An unknown entity."
         };
 
         saveSuncatMemory();
@@ -4578,10 +4588,11 @@ setInterval(async () => {
             const nameKey = player.name.toLowerCase();
             suncatPersistentMemory[nameKey] = {
                 favor: playerFavorMemory[socketId] || 0,
-                coreFacts: player.coreFacts || [],
+                playerProfile: me.playerProfile || { combatStyle: "Unknown", alliances: "Unknown", tastes: "Unknown", personality: "Unknown" },
                 activeQuest: player.activeQuest || null,
                 storySoFar: player.storySoFar || "", 
-                aiHistory: [] 
+                aiHistory: [],
+                suncatPerception: player.suncatPerception || "An unknown entity."
             };
             
             player.name = "[AFK] " + player.name;
