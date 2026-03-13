@@ -4065,6 +4065,22 @@ const mentioned = content.includes(NPC_NAME.toLowerCase()) || msgText.includes("
         processSuncatThought(socket.id, 'chat', { text: msgText });
     }
 });
+// --- NEW: THE STATS SYNCHRONIZER ---
+  socket.on("request_stats_sync", () => {
+      const player = players[socket.id];
+      if (!player) return;
+
+      // Sets don't send over the internet, so we grab the size instead
+      const exploredCount = player.exploredTiles ? player.exploredTiles.size : 0;
+      const currentFavor = playerFavorMemory[socket.id] || 0;
+      const apiMana = player.sessionCost || 0.00;
+
+      socket.emit("stats_sync_reply", {
+          favor: currentFavor,
+          mana: apiMana,
+          tiles: exploredCount
+      });
+  });
 // --- EVENT: SPECTATOR (HIVE MIND) ---
 socket.on("suncat_spectate", async (actionDescription) => {
     const sender = players[socket.id];
