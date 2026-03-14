@@ -38,6 +38,23 @@ const port = process.env.PORT || 3000;
 
     // --- AI CONFIGURATION (Paid Tier / 2.5 Flash) ---
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+// --- VECTOR MEMORY SETUP ---
+const embedder = genAI.getGenerativeModel({ model: "text-embedding-004" });
+
+async function createMemoryVector(text) {
+    const result = await embedder.embedContent(text);
+    return result.embedding.values; 
+}
+
+function cosineSimilarity(vecA, vecB) {
+    let dotProduct = 0, normA = 0, normB = 0;
+    for (let i = 0; i < vecA.length; i++) {
+        dotProduct += vecA[i] * vecB[i];
+        normA += vecA[i] * vecA[i];
+        normB += vecB[i] * vecB[i];
+    }
+    return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
+}
 //////////////////////Database////////////////////////
 ////////////////////VVVVVVVVVVVVVV////////////////////
 // --- 1. CARD MANIFEST ---
@@ -2557,7 +2574,25 @@ async function processCognitiveLoad(socketId, forceDigest = false) {
         const digestedData = JSON.parse(rawText);
 
         // 4. DISTRIBUTE THE NUTRIENTS TO ALL ORGANS!
-        if (digestedData.updatedStory) player.storySoFar = digestedData.updatedStory;
+        if (digestedData.updatedStory) {
+            player.storySoFar = digestedData.updatedStory;
+            
+            // ---> VECTOR MEMORY CREATION <---
+            // Embed this plot beat and store it!
+            try {
+                const vector = await createMemoryVector(digestedData.updatedStory);
+                if (!player.searchableMemories) player.searchableMemories = [];
+                
+                player.searchableMemories.push({
+                    timestamp: new Date().toLocaleTimeString('en-US'),
+                    text: digestedData.updatedStory,
+                    vector: vector
+                });
+            } catch (err) {
+                console.error("[Memory] Failed to embed new memory:", err);
+            }
+        }
+        
         if (digestedData.suncatPerception) player.suncatPerception = digestedData.suncatPerception;
         // ---> THE NEW PROFILE SAVER <---
         if (digestedData.playerProfile) {
@@ -3452,46 +3487,43 @@ async function executeAITools(currentResponse, activeSession, socket) {
                         functionResult = { result: `Failed: Player not found.` };
                     }
                 }
-                // K. RECALL PAST MEMORIES (Dynamic Episodic RAG)
+                // K. RECALL PAST MEMORIES (Dynamic Episodic Vector RAG)
                 else if (call.name === "searchPlayerMemories") {
                     const targetID = findSocketID(call.args.targetName);
-                    const query = call.args.searchQuery.toLowerCase();
+                    const query = call.args.searchQuery;
                     
                     if (!targetID || !players[targetID] || !players[targetID].searchableMemories) {
                         functionResult = { result: "Your mind is blank. You cannot recall anything specific about this." };
                     } else {
-                        const searchWords = query.replace(/[^\w\s]/gi, '').split(/\s+/).filter(w => w.length > 2 && !SEARCH_STOP_WORDS.has(w));
-                        
-                        let memoryBank = players[targetID].searchableMemories;
-                        
-                        let scoredMemories = memoryBank.map(mem => {
-                            let score = 0;
-                            // Tag match
-                            if (mem.tags) {
-                                searchWords.forEach(word => {
-                                    if (mem.tags.includes(word)) score += 10;
-                                    else if (mem.tags.some(tag => tag.includes(word))) score += 3;
-                                });
-                            }
-                            // Text fallback match
-                            searchWords.forEach(word => {
-                                if (mem.text.toLowerCase().includes(word)) score += 1;
+                        try {
+                            // 1. Embed the AI's search query into a vector
+                            const queryVector = await createMemoryVector(query);
+                            let memoryBank = players[targetID].searchableMemories;
+                            
+                            // 2. Score all past memories using Cosine Similarity
+                            let scoredMemories = memoryBank.map(mem => {
+                                // Failsafe for old memories that don't have vectors yet
+                                if (!mem.vector) return { text: mem.text, score: -1 }; 
+                                
+                                let score = cosineSimilarity(queryVector, mem.vector);
+                                return { text: `[${mem.timestamp}] ${mem.text}`, score: score };
                             });
                             
-                            return { text: `[${mem.timestamp}] ${mem.text}`, score };
-                        });
-                        
-                        // Grab the top 3 most relevant past events
-                        let bestMemories = scoredMemories
-                            .filter(m => m.score > 0)
-                            .sort((a, b) => b.score - a.score)
-                            .slice(0, 3);
-                            
-                        if (bestMemories.length > 0) {
-                            let results = bestMemories.map(m => m.text).join(" | ");
-                            functionResult = { result: `You remember: ${results}` };
-                        } else {
-                            functionResult = { result: `You sifted through your memories of ${call.args.targetName}, but found nothing regarding '${query}'.` };
+                            // 3. Grab the most relevant memories (Threshold > 0.45 is usually a strong semantic match)
+                            let bestMemories = scoredMemories
+                                .filter(m => m.score > 0.45)
+                                .sort((a, b) => b.score - a.score)
+                                .slice(0, 3);
+                                
+                            if (bestMemories.length > 0) {
+                                let results = bestMemories.map(m => m.text).join(" | ");
+                                functionResult = { result: `You remember: ${results}` };
+                            } else {
+                                functionResult = { result: `You sifted through your memories of ${call.args.targetName}, but found nothing regarding '${query}'.` };
+                            }
+                        } catch (err) {
+                            console.error("Vector Search Error:", err);
+                            functionResult = { result: "Memory search failed due to a cognitive error." };
                         }
                     }
                     
@@ -3685,6 +3717,7 @@ async function processSuncatThought(socketId, triggerType, data) {
             const needsOracle = ["tarot", "fortune", "reading", "interpret", "meaning of"].some(kw => chatText.includes(kw));            
             const isDirectCommand = chatText.includes("[reply]") || chatText.includes("suncat");
             const asksPersonal = ["who are", "your past", "remember", "real life", "favorite", "you like", "about yourself", "memories", "where are you from", "your name"].some(kw => chatText.includes(kw));
+            const asksHistory = ["remember when", "my past", "did i ever", "what did i do", "our adventure"].some(kw => chatText.includes(kw));
             // ---> NEW: CHECK IF A SCENARIO IS ALREADY ONGOING <---
             const isMap999Active = Object.values(players).some(p => p.mapID === 999 && p.id !== SUNCAT_ID);
 
@@ -3704,10 +3737,12 @@ async function processSuncatThought(socketId, triggerType, data) {
                 useBigBrain = true;
                 systemOverride += `\n[ORACLE OVERRIDE]: You are the Oracle. Interpret the player's situation using Tarot logic based on the Runestones card db. Be cryptic, mystical, and brief (max 3 sentences). Do not use tools.`;
             } 
-            else if (asksPersonal) {
+            else if (asksPersonal || asksHistory) { // <-- Added asksHistory
                 useBigBrain = true;
-                needsDM = true; // This tricks the eventInstruction into saying "EXECUTE A TOOL"
-                systemOverride += `\n[MEMORY OVERRIDE]: The player is asking about your past, your identity, or your preferences. You MUST execute the 'consultGameManual' tool to retrieve your fuzzy memories before replying! Search keywords like 'BIOGRAPHY', 'TASTES', 'EDUCATION', or 'COMBAT'.`;
+                needsDM = true; 
+                
+                // Tell him to use the appropriate memory tool!
+                systemOverride += `\n[MEMORY OVERRIDE]: The player is asking about the past. If they ask about YOUR past/identity, execute 'consultGameManual'. If they ask about THEIR past/adventures, execute 'searchPlayerMemories'!`;
             }
             else if (needsDM) {
                 useBigBrain = true;
@@ -3717,7 +3752,8 @@ async function processSuncatThought(socketId, triggerType, data) {
                 useBigBrain = isDirectCommand || useBigBrain; 
             }
             
-            eventInstruction = `[PLAYER SPOKE]: "${data.text}"\nTASK: Reply in character. Use a tool ONLY if explicitly requested by the player or demanded by a system override.`;        }
+            eventInstruction = `[PLAYER SPOKE]: "${data.text}"\nTASK: Reply in character. Use a tool ONLY if explicitly requested by the player or demanded by a system override.`;        
+        }
         else if (triggerType === 'event') {
             let recentNarratives = player.dmNarrativeLog ? `\n[RECENT LOG]: ` + player.dmNarrativeLog.join(' | ') : "";
             // Add the action to the local dungeon tracker!
@@ -3921,22 +3957,9 @@ socket.on("join_game", (data) => {
     let favor = savedData ? (savedData.favor || 0) : 0;
     let activeQuest = savedData ? savedData.activeQuest : null;
     let loadedStory = savedData ? savedData.storySoFar : ""; // <--- NEW
+    let loadedMemories = savedData ? (savedData.searchableMemories || []) : [];
     playerFavorMemory[socket.id] = favor;
-    let deepChronicle = (typeof data === 'object' && data.playerChronicle) ? data.playerChronicle : [];
-      // 2. Auto-Tag and Index it into Server RAM
-      let searchableMemories = deepChronicle.map(entry => {
-          // Extract keywords automatically without needing the AI!
-          let autoTags = entry.text.toLowerCase()
-              .replace(/[^\w\s]/gi, '')
-              .split(/\s+/)
-              .filter(w => w.length > 3 && !SEARCH_STOP_WORDS.has(w)); 
-              
-          return {
-              timestamp: entry.timestamp,
-              tags: autoTags,
-              text: entry.text
-          };
-      });
+    
         // --- SANITIZATION STEP ---
       // This fixes the "Starting an object on a scalar field" error
       // by forcing all history text to be actual Strings.
@@ -3977,8 +4000,8 @@ socket.on("join_game", (data) => {
         players[socket.id].name = name;
         players[socket.id].activeQuest = activeQuest; 
         players[socket.id].storySoFar = loadedStory;
-        players[socket.id].playerProfile = playerProfile; // ADD THIS 
-        players[socket.id].searchableMemories = searchableMemories;     
+        players[socket.id].playerProfile = playerProfile; 
+        players[socket.id].searchableMemories = loadedMemories;     
         if (!players[socket.id].dmNarrativeLog) {
             players[socket.id].dmNarrativeLog = [];
         }
@@ -4371,7 +4394,8 @@ socket.on("disconnect", async () => {
             activeQuest: me.activeQuest || null,
             storySoFar: me.storySoFar || "",
             aiHistory: currentHistory,
-            suncatPerception: me.suncatPerception || "An unknown entity."
+            suncatPerception: me.suncatPerception || "An unknown entity.",
+            searchableMemories: me.searchableMemories || [] // <-- ADD THIS LINE
         };
 
         saveSuncatMemory();
@@ -4690,7 +4714,8 @@ setInterval(async () => {
                 activeQuest: player.activeQuest || null,
                 storySoFar: player.storySoFar || "", 
                 aiHistory: [],
-                suncatPerception: player.suncatPerception || "An unknown entity."
+                suncatPerception: player.suncatPerception || "An unknown entity.",
+                searchableMemories: player.searchableMemories || [] // <-- ADD THIS LINE
             };
             
             player.name = "[AFK] " + player.name;
