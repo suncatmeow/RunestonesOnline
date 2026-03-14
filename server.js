@@ -2072,23 +2072,19 @@ const toolsDef = [{
         },
         // DELETE THE ENTIRE spawnNPCBatch TOOL FROM THIS LIST!
         // spawn npc
+        // spawn npc
         {
             name: "spawnNPC",
-            description: "Spawns a single NPC. CRITICAL: Use 'rewardCard' ONLY for unique Quest NPCs or special gifts. The server will automatically build a synergistic deck for this NPC based on its class.",          
+            description: "Spawns a single NPC. The server will automatically build a synergistic deck for this NPC based on its class.",          
             parameters: {
                 type: "OBJECT",
                 properties: {
                     targetName: { type: "STRING" },
                     npcType: { type: "NUMBER", description: "The ID of the entity to spawn (e.g., 63 for Dragon)." },
-                    mapID: { type: "INTEGER" },//delete
-                    x: { type: "NUMBER" },//delete
-                    y: { type: "NUMBER" },//delete
-                    state: { type: "STRING", description: "'chasing', 'wandering', or 'stationary'." },//delete
+                    state: { type: "STRING", description: "'chasing', 'wandering', or 'stationary'." },
                     role: { type: "STRING", description: "'battle' (fights), 'dialogue' (talks/vanishes), 'quest_giver' (gives quest), 'reward' (gives card)." },
-                    color: { type: "STRING" },//delete
-                    dialogue: { type: "ARRAY", items: { type: "STRING" } },
-                    rewardCard: { type: "INTEGER", description: "CRITICAL: Omit completely if no reward." },//delete
-                    options: { type: "ARRAY", items: { type: "STRING" }, description: "OPTIONAL: Give the player up to 2 choices (e.g. ['Accept Quest', 'Decline']). This will spawn buttons on their screen." }//delete
+                    color: { type: "STRING" },
+                    dialogue: { type: "ARRAY", items: { type: "STRING" } }
                 },
                 required: ["targetName", "npcType", "state"]
             }
@@ -3358,20 +3354,45 @@ async function executeAITools(currentResponse, activeSession, socket) {
                     } else {
                         const tp = players[targetID];
                         
-                        // --- THE MAP FIX: FORCE SPAWN ON THE TARGET'S MAP! ---
-                        // Do not trust the AI to pass the right Map ID. 
                         let spawnMap = tp.mapID; 
-                        
-                        let randomScatterX = (Math.random() * 4) - 2; 
-                        let randomScatterY = (Math.random() * 4) - 2;
-                        let spawnX = call.args.x !== undefined ? call.args.x : tp.x + (Math.random() > 0.5 ? 4.5 : -4.5) + randomScatterX;
-                        let spawnY = call.args.y !== undefined ? call.args.y : tp.y + (Math.random() > 0.5 ? 4.5 : -4.5) + randomScatterY;
+                        let spawnX = tp.x;
+                        let spawnY = tp.y;
 
-                        spawnX = Math.max(1.5, Math.min(97.5, spawnX)); 
-                        spawnY = Math.max(1.5, Math.min(97.5, spawnY));
-                        
+                        // --- SMART COLLISION RADAR ---
+                        if (spawnMap === 999 && activeCustomMap && activeCustomMap.maze) {
+                            let grid = activeCustomMap.maze;
+                            let foundSafe = false;
+                            
+                            // Scan for a safe floor tile 2 to 4 steps away
+                            for(let i = 0; i < 20; i++) {
+                                let angle = Math.random() * Math.PI * 2;
+                                let dist = 2 + (Math.random() * 2); 
+                                let testX = Math.floor(tp.x + Math.cos(angle) * dist);
+                                let testY = Math.floor(tp.y + Math.sin(angle) * dist);
+
+                                // If the tile is a 0 (Floor), it's safe!
+                                if (grid[testY] && grid[testY][testX] === 0) {
+                                    spawnX = testX + 0.5;
+                                    spawnY = testY + 0.5;
+                                    foundSafe = true;
+                                    break;
+                                }
+                            }
+                            // If they are cornered in a hallway, spawn it right on top of them!
+                            if (!foundSafe) {
+                                spawnX = tp.x + (Math.random() * 0.5 - 0.25);
+                                spawnY = tp.y + (Math.random() * 0.5 - 0.25);
+                            }
+                        } else {
+                            // Standard Maps (0-22) are open 20x20 grids. 
+                            // Add a small 2-tile offset, clamped safely inside 1.5 to 18.5
+                            spawnX = tp.x + (Math.random() > 0.5 ? 2.5 : -2.5);
+                            spawnY = tp.y + (Math.random() > 0.5 ? 2.5 : -2.5);
+                            spawnX = Math.max(1.5, Math.min(18.5, spawnX)); 
+                            spawnY = Math.max(1.5, Math.min(18.5, spawnY));
+                        }
+
                         let baseID = parseInt(call.args.npcType);
-
                         // --- THE NAME RESOLVER (Fixes Invisible Sprites & Empty Decks) ---
                         if (isNaN(baseID) || !CARD_MANIFEST_DB[baseID]) {
                             let name = String(call.args.npcType).toLowerCase();
