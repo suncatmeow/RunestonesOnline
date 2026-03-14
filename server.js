@@ -41,8 +41,12 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 // --- VECTOR MEMORY SETUP ---
 const embedder = genAI.getGenerativeModel({ model: "text-embedding-004" });
 let cachedAggressionVector = null;
+let suncatAttentionVector = null; // Add this
+
 async function initConceptVectors() {
     cachedAggressionVector = await createMemoryVector("ruthless violence, killing, betrayal, aggression");
+    // Define the semantic boundaries of Suncat's role
+    suncatAttentionVector = await createMemoryVector("quest, magic, lore, adventure, combat, rules, tarot, dungeon, fighting, spells");
 }
 initConceptVectors();
 async function createMemoryVector(text) {
@@ -1798,33 +1802,55 @@ const STORY_CAMPAIGN_DB = {
     // === FINALE ===
     "finale_1": {
         title: "Finale: The Center of the World",
-        text: "The final portal opened. They stood at the base of Tintagel Castle, where it all began. The Dark Emperor stood atop the highest tower, overlooking the four liberated realms.",
+        text: "The final portal opened. A Dark Bridge stretched between them and the Dark Tower. Lightning crashed from the sky shaking the foundation. The party climbed up to the top, fighting the shades of the enemies they had once defeated.",
         system_events: [],
         hook: "Ask the player how it feels knowing they've finally reached the end of the road.",
         next_beat: "finale_2"
     },
     "finale_2": {
-        title: "Finale: The Dark Deck",
-        text: "In his hand, the Dark Emperor held a full deck of dark, corrupted Tarot cards. 'You have gathered the suits,' he boomed, his voice shaking the stones.",
-        system_events: [],
-        hook: "Ask the player if they fear dark magic, or if they embrace it.",
+        title: "Finale: The Dark Emperor",
+        text: "As the party reached the top of the Tower, the Fool walked ahead. In his hand, he held a full deck of Tarot cards taken from the Kings they had defeated. 'Actually, there was no Dark Emperor. It was me all along!'",
+        system_events: ['Fool has left your party!'],
+        hook: "Ask the player if they've every been betrayed by a close friend.",
         next_beat: "finale_3"
     },
     "finale_3": {
-        title: "Finale: The Power of the World",
-        text: "'But I hold the power of the World,' he finished, his aura suffocating the air.",
+        title: "Finale: The Dark Emperor",
+        text: "'I offered the four kings what they most desired. The Djinn sought freedom, and the Kraken? control. The Dragon only coveted power. The Giant only wanted security for him and his daughter... they turned so easily...'",
         system_events: [],
-        hook: "Ask the player what their absolute favorite Tarot card is, and why.",
+        hook: "Ask the player what they most desire in life, and if they would join a dark cause to get it?",
         next_beat: "finale_4"
     },
     "finale_4": {
+        title: "Finale: Betrayal",
+        text: "'You monster. Do you think life is a game?' The Magician exclaimed, pointing his sword at the Fool. The Empress wore a face of utter disgust. 'All those people died. For what?'' The Emperor seemed to age one hundred years in an instant. The Heirophant looked to the sky in shame. 'It seems we are the fools...'. The High Priestess let out a knowing smile.",
+        system_events: [],
+        hook: "Ask the player what they would do if they ever thought they were doing the right thing when in reality it was not.",
+        next_beat: "finale_5"
+    },
+    "finale_5": {
+        title: "Finale: I Knew All Along",
+        text: "'I knew all along.' said the High Priestess. The Fool's proud smirk turned into furrowed brows. 'Lies.' 'It's true,' she said,' I realized once the ire of the kings was stoked, the flames of war could not be extinguished. We would have to fight regardless. I would think you would know best. It's better to play the fool and let the enemy THINK they've won.'",
+        system_events: [],
+        hook: "Ask the player if they've ever played the fool.",
+        next_beat: 'finale_6' // End of the line.
+    },
+    "finale_6": {
+        title: "Finale: Who's Stronger, You or Me?",
+        text: "'Heh, no wonder you were so rough on me in the prison...' the Fool, no stranger to shame, approached the party. 'On the other hand, those kings sure had a lot of cards! I wonder... who's stronger, you or me?",
+        system_events: [],
+        hook: "Ask the player if they've ever played the fool.",
+        next_beat: 'finale_7' // End of the line.
+    },
+    "finale_7": {
         title: "Finale: The Final Draw",
-        text: "The Fool, now flanked by the High Priestess, the Magician, the Hermit, and the Four Queens, drew his own deck. The final battle for the fate of the Tarot had begun.",
+        text: "The Fool, now flanked by the High Priestess, the Magician, the Hermit, and the Four Queens, drew his own deck. The final battle for the fate of Tarot had begun.",
         system_events: ["Save Game?"],
         hook: "Tell the player the tale has caught up to the present moment. Ask them if they are ready to write the ending themselves.",
         next_beat: null // End of the line.
     }
     };
+
 // --- 3. CUSTOM MAP BIOMES ---
 const BIOME_DB = {
     0: { 
@@ -4428,38 +4454,48 @@ socket.on('chat_message', async (msgText) => {
     
 
 // ==========================================
-    // THE "SMART" ACTIVE LISTENER (CHILL MODE)
+    // THE SEMANTIC ATTENTION ROUTER
     // ==========================================
     const now = Date.now();
     const chatWords = content.split(/\s+/);
     
-    // 1. Explicit Summons (Always triggers)
-    const explicitlyMentioned = content.includes("suncat") || content.includes("help") || content.includes("dm ");    
-    // 2. The Void Question (Asking the universe a question)
-    const wWords = ["what", "where", "how", "why", "who", "can", "is", "do", "are"];
-    const isAskingVoid = content.includes("?") && wWords.some(w => chatWords.includes(w));
-
-    // 3. Conversational Momentum (If Suncat spoke to you in the last 60 seconds, you are in a conversation)
+    // 1. Zero-Cost Explicit Summons (Fastest bypass)
+    const explicitlyMentioned = content.includes("suncat") || content.includes("help") || content.includes("dm ");  
     const isConversing = player.lastSuncatChat && (now - player.lastSuncatChat < 60000);
-
-    // 4. Roleplay "DM Bait" (Short reactions to the world)
     const isReactingToDM = chatWords.length <= 5 && ["wow", "crazy", "look", "inspect", "run", "attack", "listen", "whoa"].some(kw => chatWords.includes(kw));
 
-    let shouldListen = explicitlyMentioned || isAskingVoid;
-
-    // If you are in an active back-and-forth, he listens to anything you say (as long as it isn't a massive paragraph to another player)
+    let shouldListen = explicitlyMentioned || isReactingToDM;
+    
+    // 2. Maintain conversational momentum if it's a short reply
     if (!shouldListen && isConversing && chatWords.length < 25) {
         shouldListen = true;
     }
-    
-    // If you react shortly after a DM narration, he responds
-    if (!shouldListen && isReactingToDM && player.dmNarrativeLog && player.dmNarrativeLog.length > 0) {
-        shouldListen = true;
+
+    // 3. The Semantic Threshold Check (Math-based routing)
+    // We only execute this if standard logic fails, to save tokens.
+    if (!shouldListen) {
+        try {
+            // Embed the player's message in real-time
+            let msgVector = await createMemoryVector(safeText);
+            
+            // Calculate similarity against Suncat's core interests
+            let topicRelevance = cosineSimilarity(msgVector, suncatAttentionVector);
+            
+            // If the message is highly relevant to the game's core loop, Suncat interrupts.
+            if (topicRelevance > 0.45) {
+                shouldListen = true;
+                console.log(`[Semantic Router] Intercepted message: Relevance Score ${topicRelevance.toFixed(2)}`);
+            }
+        } catch (err) {
+            console.error("[Semantic Router] Vector math failed:", err);
+        }
     }
 
+    // 4. Execution
+    // 5% random entropy to simulate chaotic observation
     if (shouldListen || Math.random() < 0.05) {
-        player.lastSuncatChat = now; // Reset momentum
-        processSuncatThought(socket.id, 'chat', { text: msgText });
+        player.lastSuncatChat = now; 
+        processSuncatThought(socket.id, 'chat', { text: safeText });
     }
 });
 // --- NEW: THE STATS SYNCHRONIZER ---
