@@ -397,28 +397,49 @@ const STORY_CAMPAIGN_DB = {
     // === FINALE ===
     "finale_1": {
         title: "Finale: The Center of the World",
-        text: "The final portal opened. They stood at the base of Tintagel Castle, where it all began. The Dark Emperor stood atop the highest tower, overlooking the four liberated realms.",
+        text: "The final portal opened. A Dark Bridge stretched between them and the Dark Tower. Lightning crashed from the sky shaking the foundation. The party climbed up to the top, fighting the shades of the enemies they had once defeated.",
         system_events: [],
         hook: "Ask the player how it feels knowing they've finally reached the end of the road.",
         next_beat: "finale_2"
     },
     "finale_2": {
-        title: "Finale: The Dark Deck",
-        text: "In his hand, the Dark Emperor held a full deck of dark, corrupted Tarot cards. 'You have gathered the suits,' he boomed, his voice shaking the stones.",
-        system_events: [],
-        hook: "Ask the player if they fear dark magic, or if they embrace it.",
+        title: "Finale: The Dark Emperor",
+        text: "As the party reached the top of the Tower, the Fool walked ahead. In his hand, he held a full deck of Tarot cards taken from the Kings they had defeated. 'Actually, there was no Dark Emperor. It was me all along!'",
+        system_events: ['Fool has left your party!'],
+        hook: "Ask the player if they've every been betrayed by a close friend.",
         next_beat: "finale_3"
     },
     "finale_3": {
-        title: "Finale: The Power of the World",
-        text: "'But I hold the power of the World,' he finished, his aura suffocating the air.",
+        title: "Finale: The Dark Emperor",
+        text: "'I offered the four kings what they most desired. The Djinn sought freedom, and the Kraken? control. The Dragon only coveted power. The Giant only wanted security for him and his daughter... they turned so easily...'",
         system_events: [],
-        hook: "Ask the player what their absolute favorite Tarot card is, and why.",
+        hook: "Ask the player what they most desire in life, and if they would join a dark cause to get it?",
         next_beat: "finale_4"
     },
     "finale_4": {
+        title: "Finale: Betrayal",
+        text: "'You monster. Do you think life is a game?' The Magician exclaimed, pointing his sword at the Fool. The Empress wore a face of utter disgust. 'All those people died. For what?'' The Emperor seemed to age one hundred years in an instant. The Heirophant looked to the sky in shame. 'It seems we are the fools...'. The High Priestess let out a knowing smile.",
+        system_events: [],
+        hook: "Ask the player what they would do if they ever thought they were doing the right thing when in reality it was not.",
+        next_beat: "finale_5"
+    },
+    "finale_5": {
+        title: "Finale: I Knew All Along",
+        text: "'I knew all along.' said the High Priestess. The Fool's proud smirk turned into furrowed brows. 'Lies.' 'It's true,' she said,' I realized once the ire of the kings was stoked, the flames of war could not be extinguished. We would have to fight regardless. I would think you would know best. It's better to play the fool and let the enemy THINK they've won.'",
+        system_events: [],
+        hook: "Ask the player if they've ever played the fool.",
+        next_beat: 'finale_6' // End of the line.
+    },
+    "finale_6": {
+        title: "Finale: Who's Stronger, You or Me?",
+        text: "'Heh, no wonder you were so rough on me in the prison...' the Fool, no stranger to shame, approached the party. 'On the other hand, those kings sure had a lot of cards! I wonder... who's stronger, you or me?",
+        system_events: [],
+        hook: "Ask the player if they've ever played the fool.",
+        next_beat: 'finale_7' // End of the line.
+    },
+    "finale_7": {
         title: "Finale: The Final Draw",
-        text: "The Fool, now flanked by the High Priestess, the Magician, the Hermit, and the Four Queens, drew his own deck. The final battle for the fate of the Tarot had begun.",
+        text: "The Fool, now flanked by the High Priestess, the Magician, the Hermit, and the Four Queens, drew his own deck. The final battle for the fate of Tarot had begun.",
         system_events: ["Save Game?"],
         hook: "Tell the player the tale has caught up to the present moment. Ask them if they are ready to write the ending themselves.",
         next_beat: null // End of the line.
@@ -14742,47 +14763,52 @@ let suncatChronicle = JSON.parse(localStorage.getItem('suncat_chronicle')) || []
           e.preventDefault(); // Stop underlying clicks
 
         // 1. CHECK TAB CLICKS (Adjusted for 6 tabs)
-    if (gridPos.y >= 0.5 && gridPos.y <= 1.5) {
-        const tabs = ['stats', 'story', 'journal', 'quests', 'suncat', 'map'];
-        const tabWidth = 10 / tabs.length;
-        
-        for (let i = 0; i < tabs.length; i++) {
-            let tx = i * tabWidth;
-            if (gridPos.x >= tx && gridPos.x <= tx + tabWidth) {
-                journalTab = tabs[i];
-                journalScroll = 0; 
-                if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('click');
+        if (gridPos.y >= 0.5 && gridPos.y <= 1.5) {
+            const tabs = ['stats', 'quests', 'record', 'suncat', 'story','map', ];
+            const tabWidth = 10 / tabs.length;
+            
+            for (let i = 0; i < tabs.length; i++) {
+                let tx = i * tabWidth;
+                if (gridPos.x >= tx && gridPos.x <= tx + tabWidth) {
+                    journalTab = tabs[i];
+                    journalScroll = 0; 
+                    if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('click');
+                    return;
+                }
+            }
+        }
+
+        // 2. CHECK SCROLL ARROWS (Added 'story' to the scrollable tabs)
+        if (['record', 'suncat', 'story'].includes(journalTab)) {
+            
+            // Define targetArray in this scope so the down arrow knows how far it can scroll
+            let targetArray = [];
+            if (journalTab === 'record') targetArray = playerChronicle;
+            else if (journalTab === 'suncat') targetArray = suncatChronicle;
+            else if (journalTab === 'story') targetArray = playerStoryBeats;
+
+            // UP ARROW
+            if (gridPos.x >= 8.5 && gridPos.x <= 9.5 && gridPos.y >= 2.5 && gridPos.y <= 3.5) {
+                if (journalScroll > 0) {
+                    journalScroll -= (journalTab === 'story' ? 1 : 3);
+                    if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('click');
+                }
+                return;
+            }
+            
+            // DOWN ARROW
+            if (gridPos.x >= 8.5 && gridPos.x <= 9.5 && gridPos.y >= 7.0 && gridPos.y <= 8.0) {
+                let canScroll = (journalTab === 'story') ? 
+                    (journalScroll < playerStoryBeats.length - 1) : 
+                    (journalScroll + 3 < targetArray.length);
+                    
+                if (canScroll) {
+                    journalScroll += (journalTab === 'story' ? 1 : 3);
+                    if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('click');
+                }
                 return;
             }
         }
-    }
-
-        // 2. CHECK SCROLL ARROWS (Added 'story' to the scrollable tabs)
-    if (['journal', 'suncat', 'story'].includes(journalTab)) {
-        let maxIndex = (journalTab === 'story') ? playerStoryBeats.length - 1 : 99; // Story is 1-by-1
-        
-        // UP ARROW
-        if (gridPos.x >= 8.5 && gridPos.x <= 9.5 && gridPos.y >= 2.5 && gridPos.y <= 3.5) {
-            if (journalScroll > 0) {
-                journalScroll -= (journalTab === 'story' ? 1 : 3);
-                if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('click');
-            }
-            return;
-        }
-        
-        // DOWN ARROW
-        if (gridPos.x >= 8.5 && gridPos.x <= 9.5 && gridPos.y >= 7.0 && gridPos.y <= 8.0) {
-            let canScroll = (journalTab === 'story') ? 
-                (journalScroll < playerStoryBeats.length - 1) : 
-                (journalScroll + 3 < targetArray.length);
-                
-            if (canScroll) {
-                journalScroll += (journalTab === 'story' ? 1 : 3);
-                if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('click');
-            }
-            return;
-        }
-    }
 
         // 3. CHECK EXIT BUTTON (Bottom Center)
         if (gridPos.x > 4 && gridPos.x < 6 && gridPos.y > 8.5 && gridPos.y < 9.5) {
@@ -43999,10 +44025,12 @@ socket.on('stats_sync_reply', (data) => {
     
     if (startGame === 'journal') {
       // 1. Dark Overlay Background
+      ctx.fillStyle = "rgba(0,6,13,1)";
+      ctx.fillRect(0,0,wX,wY);
       drawShape('rec', 0, 0, 1, 0, 0, 10, 10, 0, 0, 0, 0, 'rgba(0, 0, 0, 0.95)', 1);
 
       // 2. DRAW THE TOP TABS (Now 6 tabs: stats, story, journal, quests, suncat, map)
-      const tabs = ['stats', 'story', 'journal', 'quests', 'suncat', 'map'];
+      const tabs = ['stats', 'quests', 'record', 'suncat','story', 'map',];
       const tabWidth = 10 / tabs.length; // 1.66 grid spaces each
 
       for (let i = 0; i < tabs.length; i++) {
@@ -44018,7 +44046,7 @@ socket.on('stats_sync_reply', (data) => {
         // 3. DRAW CONTENT BASED ON ACTIVE TAB
         // ----------------------------------------------------
         if (journalTab === 'story') {
-        drawText(1, 1.5, 8, 0.8, "- THE ASCENSION LEGEND -", '#d4af37', 1, 'center');
+        drawText(1, 1.5, 8, 0.8, "- The Fool's Journey -", '#d4af37', 1, 'center');
 
         if (playerStoryBeats.length === 0) {
             drawText(1, 4, 8, 0.5, "The history of this world is yet to be written...", 'gray', 1, 'center');
@@ -44054,9 +44082,9 @@ socket.on('stats_sync_reply', (data) => {
                 drawText(8.5, 7.2, 1, 0.6, "v", '#d4af37', 1, 'center');
             }
         }
-    }
+      }
         else if (journalTab === 'stats') {
-            drawText(1, 2, 8, 1, "- PLAYER METRICS -", '#d4af37', 1, 'center');
+            drawText(1, 2, 8, 1, "- PLAYER STATS -", '#d4af37', 1, 'center');
             
             let totalCards = typeof Dungeon !== 'undefined' && Dungeon.deck ? Dungeon.deck.length : 0;
             
@@ -44070,10 +44098,10 @@ socket.on('stats_sync_reply', (data) => {
           }
         
             // ----------------------------------------------------
-        else if (journalTab === 'journal' || journalTab === 'suncat') {
-            let targetArray = journalTab === 'journal' ? playerChronicle : suncatChronicle;
-            let title = journalTab === 'journal' ? "- Magical Record -" : "- SUNCAT'S JOURNAL -";
-            let color = journalTab === 'journal' ? 'white' : '#ff00ff';
+        else if (journalTab === 'record' || journalTab === 'suncat') {
+            let targetArray = journalTab === 'record' ? playerChronicle : suncatChronicle;
+            let title = journalTab === 'record' ? "- Magical Record -" : "- SUNCAT'S JOURNAL -";
+            let color = journalTab === 'record' ? 'white' : '#ff00ff';
             
             drawText(1, 1.5, 8, 0.8, title, '#d4af37', 1, 'center');
 
