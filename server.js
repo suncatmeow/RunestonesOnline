@@ -4125,7 +4125,9 @@ async function processSuncatThought(socketId, triggerType, data) {
              } else {
                 useBigBrain = isDirectCommand || useBigBrain; 
             }
-            
+            let focusPrompt = (data.isConversing || isDirectCommand) 
+                ? "The player is speaking directly to you. You MUST respond to them and not leave them hanging." 
+                : "You overheard the player say this.";
             eventInstruction = `[PLAYER SPOKE]: "${data.text}"\nTASK: ${focusPrompt} Reply in character. Your current internal narrative tone is: ${dmMood}. Use a tool ONLY if explicitly requested by the player or demanded by a system override.`;        
             }
         else if (triggerType === 'event') {
@@ -4139,12 +4141,12 @@ async function processSuncatThought(socketId, triggerType, data) {
                 eventInstruction = `[PLAYER ACTION]: Picked up ${data.action} | Lore: ${data.lore}\nTASK: Provide a tarot interpretation of the card and relate it to the player's current adventure.`;
             } else if (data.isDialogue) {
                 useBigBrain = true; 
-                messageOptions = { sender: "", color: "#cccccc" }; // Narrator Mode
+                messageOptions = { sender: "", color: "#FFD700" }; // Narrator Mode
                 eventInstruction = `[PLAYER ACTION]: Finished talking to ${data.action}.\nTASK: As the DM, provide a cinematic, omniscient narration (2 sentences max) describing the stakes of the quest or the eerie atmosphere following this conversation. Do not speak as Suncat. DO NOT ask questions.`;
             } else {
                 if (player.mapID != 999) {
                     useBigBrain = false; 
-                    messageOptions = { sender: "", color: "#cccccc" }; // Narrator Mode
+                    messageOptions = { sender: "", color: "#FFD700" }; // Narrator Mode
                     eventInstruction = `[PLAYER ACTION]: Slayed a creature ${data.action}\nTASK: Provide a short narrative (2 sentences MAX) describing the fall of the monster and give a brief tarot interpretation. DO NOT ask questions.`;
                 } else {
                     if (rngRoll < 0.006) {
@@ -4152,7 +4154,7 @@ async function processSuncatThought(socketId, triggerType, data) {
                         eventInstruction = `[PLAYER ACTION]: Slayed a creature ${data.action}\nTASK: They are taking the challenge too lightly! Use 'changeEnvironment' to show your fury through the weather and spawn a King level npc, or overwhelm them with small fry, to teach them a lesson!`;
                     } else if (rngRoll < 0.009) {
                         useBigBrain = true; 
-                        messageOptions = { sender: "", color: "#cccccc" }; // Narrator Mode
+                        messageOptions = { sender: "", color: "#FFD700" }; // Narrator Mode
                         eventInstruction = `[PLAYER ACTION]: Slayed a creature ${data.action}\nTASK: As the last enemy falls, narrate a dark presence appearing behind the player (2 sentences MAX)! Immediately use 'spawnNPC' to drop a mini-boss right next to them with a menacing one-liner dialogue array. DO NOT ask questions.`;
                     }  else if (rngRoll < 0.03) {
                         useBigBrain = false; 
@@ -4163,7 +4165,7 @@ async function processSuncatThought(socketId, triggerType, data) {
             eventInstruction += recentNarratives;
         }
         else if (triggerType === 'exploration') {
-            messageOptions = { sender: "", color: "#cccccc" }; // Narrator Mode
+            messageOptions = { sender: "", color: "#FFD700" }; // Narrator Mode
             if (rngRoll < 0.03) {
                 useBigBrain = false; 
                 eventInstruction = `[PLAYER ACTION]: ${data.action}\nTASK: As the DM, narrate the player's journey through this desolate place. Give an atmospheric description based on the [LOCAL LORE] and their progress (2 sentences MAX). Speak as an omniscient narrator. DO NOT ask questions.`;
