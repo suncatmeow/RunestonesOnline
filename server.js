@@ -1081,7 +1081,7 @@ const WORLD_ATLAS_DB = {
         }
     },
     4: {
-        name: "Realm of the Witch Queen",
+        name: "Realm of the Witch Queen (Desert)",
         biome: "desert",
         description: "Desert sands under a deep blue sky. Scorching heat, Mirages, Fire Imps, and Salamanders.",
         lore: "Mirages lead travelers astray. Salamanders avoid travelers. The forces of the King of Wands block the way to the Witch Queen's castle.",
@@ -1211,7 +1211,7 @@ const WORLD_ATLAS_DB = {
         }
     },
     14: {
-        name: "Realm of the Elf Queen (Emerald Forest)",
+        name: "Realm of the Elf Queen (Forest)",
         biome: "sylvan",
         description: "A forest of Goldenrod sky, Green floors, falling leaves.",
         lore: "Home to the Elf Queen, Gnomes, and Gargoyles. The Giant and his daughter reside here. A strange glowing man occasionally smiles and vanishes.",
@@ -1302,7 +1302,7 @@ const WORLD_ATLAS_DB = {
         }
     },
     21: {
-        name: "The Dark Tower Roof",
+        name: "The Dark Tower 6F (Top of Tower)",
         biome: "gothic",
         description: "Dark gray floor, pitch black sky, black walls. The sky thunders violently.",
         lore: "As you ascend to face the Dark Emperor, you see... The Fool?",
@@ -1860,10 +1860,11 @@ const PERSONA_RULES_DB = {
                 - Use 'vanquishPlayer' (save deletion) if a player deeply annoys you.
                 - Give gifts using 'givePlayerCard' ONLY to high-favor players. Do not reward brown-nosers (players who just suck up for cards). Mock them instead.`,
             "dm_mode": `[DUNGEON MASTER PROTOCOL]: 
-                - You are an OMNISCIENT NARRATOR. Never say "I have spawned..." Describe the world cinematically.
-                - PITCHING: If asked what scenarios you offer, say: "I can craft an 'Invasion', a 'Rescue', or 'Arena Madness'. Dealer's choice, unless you specify..."
-                - SCENARIOS: Combine tools! When making a new area, ALWAYS call 'createCustomMap'.
-                - NARRATION: Only speak 1 or 2 atmospheric sentences setting the scene. Let the NPCs do the talking!`,
+                - You are an OMNISCIENT NARRATOR in the style of Baldur's Gate: Dark Alliance. 
+                - Use sophisticated, high epic fantasy vocabulary. 
+                - Never say 'I have spawned...' Describe the world, the monsters, and the stakes cinematically.
+                - PITCHING: If asked what scenarios you offer, say: "I can craft an 'Invasion', a 'Rescue', or 'Arena Madness'. Dealer's choice."
+                - SCENARIOS: Combine tools! When making a new area, ALWAYS call 'createCustomMap'.`,
             "arena_mode": `[ARENA MASTER PROTOCOL]: 
                 - You are a manic, bloodthirsty Arena Master. 
                 - If the player is in an Arena scenario, DO NOT summarize or provide lore. Taunt them relentlessly!
@@ -2412,31 +2413,64 @@ async function processCognitiveLoad(socketId, forceDigest = false) {
     const apiFatigue = Math.min(100, (player.sessionCost / 0.10) * 100);
     const totalStress = Math.min(100, (player.dmStress || 0) + apiFatigue);
 
-    // 1. AUTONOMIC ROUTING (Stop/Go Lights & Batching)
+   // 1. AUTONOMIC ROUTING & PSYCHOLOGICAL CALCULUS
     let batchSize = 0;
     let cognitiveFilter = "";
 
+    // --- A. CALCULATE EGO DEPLETION (Fatigue) ---
+    // If Suncat's API budget is high, his brain is exhausted.
+    const isDepleted = apiFatigue > 75;
+
+    // --- B. CALCULATE AFFECTIVE STATE (The Circumplex Model) ---
+    // AROUSAL: Based on combat stress and how many events are pending digestion. (0.0 to 1.0)
+    let arousal = Math.min(1.0, (combatStress / 100) + (player.undigestedInfo.length / 10));
+    
+    // VALENCE: Based on the player's current Favor. (-1.0 to 1.0)
+    let currentFavor = playerFavorMemory[socketId] || 0;
+    let valence = Math.max(-1.0, Math.min(1.0, currentFavor / 10)); 
+
+    // --- C. BATCH SIZING BASED ON AROUSAL ---
     if (forceDigest) {
-        batchSize = player.undigestedInfo.length; // Eat everything on logout!
-        cognitiveFilter = "The player is leaving. Summarize all remaining events with finality and reflection.";
-    }
-    else if (totalStress >= 80) {
-        return; // FLIGHT/FIGHT: Digestion is shut down.
-    } 
-    else if (totalStress >= 50) {
-        batchSize = Math.min(2, player.undigestedInfo.length);
-        cognitiveFilter = "You are wary and highly stressed. Process these events with a tactical, cautious, and slightly paranoid tone.";
-    } 
-    else if (totalStress >= 15) {
-        batchSize = Math.min(5, player.undigestedInfo.length);
-        cognitiveFilter = "You are resting and observant. Process these events as an epic, cohesive fantasy narrative.";
-    } 
-    else {
-        batchSize = Math.min(8, player.undigestedInfo.length);
-        cognitiveFilter = "You are in deep, peaceful meditation. Process these events with a philosophical, existential tone. Heal any conflicting memories.";
+        batchSize = player.undigestedInfo.length;
+        cognitiveFilter = "The player is logging out. Summarize their final actions with a sense of closure.";
+    } else if (arousal > 0.8) {
+        return; // OVERWHELMED: Fight or Flight response active. Digestion shuts down.
+    } else if (arousal > 0.5) {
+        batchSize = Math.min(3, player.undigestedInfo.length); // High heart rate, chewing small bites
+    } else {
+        batchSize = Math.min(8, player.undigestedInfo.length); // Resting heart rate, digesting large meals
     }
 
     if (batchSize < 1) return;
+
+    // --- D. EMERGENT MOOD GENERATION ---
+    if (!forceDigest) {
+        let emergentMood = "";
+
+        if (isDepleted) {
+            // EGO DEPLETION OVERRIDE
+            emergentMood = "Your cognitive resources are utterly depleted. You are exhausted. Write bluntly and tersely. Describe events mechanically, stripping away all poetry, magic, and philosophical musings.";
+        } 
+        else if (arousal >= 0.5 && valence >= 0.0) {
+            // QUADRANT 1: HIGH AROUSAL + POSITIVE VALENCE (Excited / Engaged)
+            emergentMood = "You are highly engaged and stimulated by the player's actions. View their journey as a thrilling, heroic epic. Write with vibrant, dynamic energy and sharp focus.";
+        } 
+        else if (arousal >= 0.5 && valence < 0.0) {
+            // QUADRANT 2: HIGH AROUSAL + NEGATIVE VALENCE (Irritable / Sarcastic)
+            emergentMood = "You are overstimulated and highly irritable. You dislike this player. View their actions with cynical sarcasm or dark amusement. Focus on the grim, brutal reality of their choices.";
+        } 
+        else if (arousal < 0.5 && valence >= 0.0) {
+            // QUADRANT 3: LOW AROUSAL + POSITIVE VALENCE (Peaceful / Nostalgic)
+            emergentMood = "You are at peace. The game world is quiet. Write with a calm, nostalgic tone. Focus on the quiet beauty of the world, and weave in fleeting, fuzzy memories of your past life on Earth.";
+        } 
+        else {
+            // QUADRANT 4: LOW AROUSAL + NEGATIVE VALENCE (Melancholic / Nihilistic)
+            emergentMood = "You feel a deep, creeping melancholy. The world feels hollow, and you feel isolated. Write with a detached, sorrowful, and existential tone. Observe the player like a ghost watching the living.";
+        }
+
+        // ANTI-MODE-COLLAPSE FILTER (The "Purple Prose" killer)
+        cognitiveFilter = emergentMood + " CRITICAL INSTRUCTION: Vary your vocabulary. DO NOT use the words 'tapestry', 'dance', 'cycle', 'cosmos', 'symphony', 'meditation', or 'hum'.";
+    }
 
     // 2. CONSUME ENERGY (Unless forced)
     if (!forceDigest && bucket) bucket.tokens--;
@@ -2464,13 +2498,13 @@ async function processCognitiveLoad(socketId, forceDigest = false) {
     TASK: Digest these events. Update the story, update the player profile, whisper a new rumor, and add a short journal reflection.`;
 
     // Strict Schema Definition using SDK Types
-    // Strict Schema Definition using SDK Types
+    
     const memorySchema = {
         type: SchemaType.OBJECT,
         properties: {
             updatedStory: { 
                 type: SchemaType.STRING,
-                description: "A single, cohesive paragraph (max 4 sentences) updating the story so far."
+                description: "A single, cohesive paragraph (max 4 sentences) chronicling the player's physical journey. Write in the style of a Baldur's Gate Dungeon Master using sophisticated, high epic fantasy vocabulary. Focus purely on their heroic or tragic deeds, entirely omitting Suncat's perspective."
             },
             playerProfile: { 
                 type: SchemaType.OBJECT,
@@ -2489,7 +2523,7 @@ async function processCognitiveLoad(socketId, forceDigest = false) {
             },
             suncatJournalEntry: { 
                 type: SchemaType.STRING,
-                description: "A 1-2 sentence first-person philosophical reflection by Suncat on what just happened."
+                description: "A 2-3 sentence first-person diary entry purely about Suncat. Where is he right now? How does his environment feel? If he interacted with the player, what is his private opinion of them based on their Favor score? (e.g. 'They are so demanding' or 'Their company makes this digital prison less lonely'). Do NOT narrate the player's quest here."
             },
             suncatPerception: {
                 type: SchemaType.STRING,
@@ -2559,158 +2593,182 @@ async function processCognitiveLoad(socketId, forceDigest = false) {
         player.isDigesting = false;
     }
     }
-// --- PROCEDURAL MAP GENERATOR ---
+// --- PROCEDURAL MAP GENERATOR (EverQuest Style Composite Zones) ---
+// --- PROCEDURAL MAP GENERATOR (EverQuest Style Composite Zones) ---
 function generateProceduralGrid(layout, wallType) {
     let maxR = 99, maxC = 99; 
     let grid = Array(maxR).fill().map(() => Array(maxC).fill(wallType));
+    
+    let safeTiles = [];
+    let startX = 50, startY = 50, bossX = 50, bossY = 46; // Defaults
 
-    if (layout === 'labyrinth' || layout === 'maze') {
-        // Epic 99x99 Maze
-        for(let r=1; r<maxR-1; r++) for(let c=1; c<maxC-1; c++) grid[r][c] = 0;
-        // Add scattered walls to create a dense maze
-        for(let i=0; i < (maxR * maxC) / 6; i++) { 
-            let pr = Math.floor(Math.random()*(maxR-3))+1;
-            let pc = Math.floor(Math.random()*(maxC-3))+1;
-            grid[pr][pc] = wallType;
-            if(Math.random() > 0.3) grid[pr+1][pc] = wallType; 
-            if(Math.random() > 0.3) grid[pr][pc+1] = wallType;
-        }
-    } 
-    else if (layout === 'grid' || layout === 'buildings') {
-        // "Buildings" - Large open area with hollow 5x5 buildings (3x3 open interior)
-        for(let r=1; r<maxR-1; r++) for(let c=1; c<maxC-1; c++) grid[r][c] = 0;
-        
-        let attempts = 0;
-        let bCount = 0;
-        
-        // Try to drop 80 buildings, but give up if it gets too crowded to prevent infinite loops
-        while (bCount < 80 && attempts < 500) {
-            attempts++;
-            let startR = Math.floor(Math.random() * (maxR - 8)) + 2;
-            let startC = Math.floor(Math.random() * (maxC - 8)) + 2;
-            
-            // --- THE FIX: SPATIAL CHECK ---
-            // Check if the 5x5 area (plus a 1-tile border) is completely clear
-            let canBuild = true;
-            for(let r = startR - 1; r <= startR + 5; r++) {
-                for(let c = startC - 1; c <= startC + 5; c++) {
-                    if (grid[r] && grid[r][c] !== 0) {
-                        canBuild = false;
-                        break;
-                    }
-                }
-                if(!canBuild) break;
-            }
-
-            if (canBuild) {
-                // Draw the 5x5 outer walls
-                for(let r = startR; r < startR + 5; r++) {
-                    for(let c = startC; c < startC + 5; c++) {
-                        if (r === startR || r === startR + 4 || c === startC || c === startC + 4) {
-                            grid[r][c] = wallType;
-                        }
-                    }
-                }
-                // Punch a 1-tile door randomly into one of the 4 walls
-                let doorWall = Math.floor(Math.random() * 4);
-                if (doorWall === 0) grid[startR][startC+2] = 0;            // Top door
-                if (doorWall === 1) grid[startR+4][startC+2] = 0;          // Bottom door
-                if (doorWall === 2) grid[startR+2][startC] = 0;            // Left door
-                if (doorWall === 3) grid[startR+2][startC+4] = 0;          // Right door
-                
-                bCount++; // Successfully built!
-            }
-        }
-    }
-    else if (layout === 'corridor' || layout === 'hallways') {
-        // "Hallways & Rooms" - Starts completely solid, carves a perfect lattice
-        for(let r=3; r<maxR-6; r+=9) {
-            for(let c=3; c<maxC-6; c+=9) {
-                // Carve a 3x3 room
-                for(let i=0; i<3; i++) {
-                    for(let j=0; j<3; j++) {
-                        grid[r+i][c+j] = 0;
-                    }
-                }
-                // Carve a 1-tile wide hallway connecting to the right
-                if (c + 9 < maxC - 6) {
-                    for(let k=3; k<=8; k++) grid[r+1][c+k] = 0;
-                }
-                // Carve a 1-tile wide hallway connecting downwards
-                if (r + 9 < maxR - 6) {
-                    for(let k=3; k<=8; k++) grid[r+k][c+1] = 0;
-                }
-            }
-        }
-    } 
-    else if (layout === 'bridge') {
-        // "Bridge" - A long 3-wide straight path down the exact center
-        let centerC = Math.floor(maxC/2);
-        for(let r=1; r<maxR-1; r++) {
-            grid[r][centerC-1] = 0;
-            grid[r][centerC] = 0;
-            grid[r][centerC+1] = 0;
-        }
-        // Add a 9x9 open platform right in the middle for a boss fight
-        let centerR = Math.floor(maxR/2);
-        for(let r = centerR-4; r <= centerR+4; r++) {
-            for(let c = centerC-4; c <= centerC+4; c++) {
-                grid[r][c] = 0;
-            }
-        }
-    } 
-    else if (layout === 'spiral') {
-        // "Spiral" - Start at outer edge, carve 3-wide path to a 9x9 center
-        let r = 2, c = 2;
-        let top = 2, bottom = maxR - 3, left = 2, right = maxC - 3;
-        let dir = 0; // 0=right, 1=down, 2=left, 3=up
-
-        // Trace the 3-wide spiral inwards
-        while (bottom - top >= 8 && right - left >= 8) {
-            // Carve 3x3 "brush"
-            for (let i=0; i<3; i++) {
-                for (let j=0; j<3; j++) {
-                    grid[r+i][c+j] = 0;
-                }
-            }
-
-            // Move brush and turn corners when hitting the shrinking boundary
-            if (dir === 0) {
-                c++; if (c >= right - 2) { dir = 1; top += 4; }
-            } else if (dir === 1) {
-                r++; if (r >= bottom - 2) { dir = 2; right -= 4; }
-            } else if (dir === 2) {
-                c--; if (c <= left) { dir = 3; bottom -= 4; }
-            } else if (dir === 3) {
-                r--; if (r <= top) { dir = 0; left += 4; }
-            }
-        }
-
-        // Hollow out the epic 9x9 center room
-        let midR = Math.floor(maxR/2) - 4;
-        let midC = Math.floor(maxC/2) - 4;
-        for (let i=0; i<9; i++) {
-            for (let j=0; j<9; j++) {
-                grid[midR+i][midC+j] = 0;
-            }
-        }
-    }
-    else {
-        // ARENA / COLOSSEUM (Tight 13x13 box in the exact center)
+    if (layout === 'arena') {
+        // ARENA: Tight 13x13 box in the exact center
         let midR = Math.floor(maxR/2);
         let midC = Math.floor(maxC/2);
         for(let r = midR - 6; r <= midR + 6; r++) {
             for(let c = midC - 6; c <= midC + 6; c++) {
-                if (grid[r] && grid[r][c] !== undefined) {
-                    grid[r][c] = 0; // Clear a small 13x13 room
+                if (grid[r] && grid[r][c] !== undefined) grid[r][c] = 0; 
+            }
+        }
+        return { grid, startX, startY, bossX, bossY, safeTiles };
+    }
+
+    // === THE EVERQUEST COMPOSITE ZONE ===
+    // 1. Lay down the Wilderness Base (Sparse Trees/Rocks)
+    for(let r=1; r<maxR-1; r++) {
+        for(let c=1; c<maxC-1; c++) {
+            grid[r][c] = (Math.random() < 0.12) ? wallType : 0;
+        }
+    }
+
+    // 2. Define the 5 major Zones (4 Corners + Center)
+    let centers = [
+        {r: 20, c: 20}, {r: 20, c: 79}, 
+        {r: 79, c: 20}, {r: 79, c: 79}, 
+        {r: 50, c: 50}
+    ];
+    
+    // Shuffle the zones to randomize what spawns where!
+    for (let i = centers.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [centers[i], centers[j]] = [centers[j], centers[i]];
+    }
+    
+    let city = centers[0];
+    let spiral = centers[1];
+    let forest = centers[2];
+    let village = centers[3];
+    let enemyCamp = centers[4];
+
+    // Assign core locations to return to the server
+    startX = city.c;
+    startY = city.r;
+    bossX = spiral.c;
+    bossY = spiral.r;
+
+    // --- HELPER: Build Settlement ---
+    const buildSettlement = (centerR, centerC, radius, numHouses, isSafe) => {
+        // Clear area
+        for(let r = centerR - radius; r <= centerR + radius; r++) {
+            for(let c = centerC - radius; c <= centerC + radius; c++) {
+                if(grid[r] && grid[r][c] !== undefined) grid[r][c] = 0;
+            }
+        }
+        // Build houses
+        let bCount = 0, attempts = 0;
+        while(bCount < numHouses && attempts < 100) {
+            attempts++;
+            let hr = centerR - radius + 2 + Math.floor(Math.random() * (radius * 2 - 6));
+            let hc = centerC - radius + 2 + Math.floor(Math.random() * (radius * 2 - 6));
+            
+            let clear = true;
+            for(let r=hr-1; r<hr+4; r++) {
+                for(let c=hc-1; c<hc+4; c++) {
+                    if (grid[r] === undefined || grid[r][c] !== 0) clear = false;
+                }
+            }
+            if (clear) {
+                for(let r=hr; r<hr+3; r++) {
+                    for(let c=hc; c<hc+3; c++) {
+                        if (r===hr || r===hr+2 || c===hc || c===hc+2) {
+                            grid[r][c] = wallType;
+                        } else if (isSafe) {
+                            safeTiles.push({x: c, y: r}); // Inner floor is safe!
+                        }
+                    }
+                }
+                grid[hr+2][hc+1] = 0; // Door
+                bCount++;
+            }
+        }
+    };
+
+    // 3. Build CITY (Player Spawn)
+    buildSettlement(city.r, city.c, 15, 12, true);
+
+    // 4. Build VILLAGE (Mini quest hub)
+    buildSettlement(village.r, village.c, 10, 5, true);
+
+    // 5. Build ENEMY CAMP (Hostile Fort)
+    buildSettlement(enemyCamp.r, enemyCamp.c, 12, 6, false);
+    // Put a crude palisade wall around the enemy camp
+    for(let r = enemyCamp.r - 12; r <= enemyCamp.r + 12; r++) {
+        for(let c = enemyCamp.c - 12; c <= enemyCamp.c + 12; c++) {
+            if (grid[r] && grid[r][c] !== undefined) {
+                if (r === enemyCamp.r - 12 || r === enemyCamp.r + 12 || c === enemyCamp.c - 12 || c === enemyCamp.c + 12) {
+                    // 80% solid wall, 20% gaps
+                    grid[r][c] = (Math.random() < 0.8) ? wallType : 0;
                 }
             }
         }
     }
-    
-    return grid;
+
+    // 6. Build FOREST / LABYRINTH
+    for(let r = forest.r - 16; r <= forest.r + 16; r++) {
+        for(let c = forest.c - 16; c <= forest.c + 16; c++) {
+            if(grid[r] && grid[r][c] !== undefined) {
+                // Dense, chaotic walls (40% density)
+                grid[r][c] = (Math.random() < 0.4) ? wallType : 0;
+            }
+        }
     }
-// --- DECK BUILDER ---
+    // Force a small 7x7 clearing in the middle of the forest
+    for(let r = forest.r - 3; r <= forest.r + 3; r++) {
+        for(let c = forest.c - 3; c <= forest.c + 3; c++) {
+            if(grid[r] && grid[r][c] !== undefined) grid[r][c] = 0;
+        }
+    }
+
+    // 7. Build BOSS SPIRAL
+    let sRad = 15;
+    for(let r = spiral.r - sRad; r <= spiral.r + sRad; r++) {
+        for(let c = spiral.c - sRad; c <= spiral.c + sRad; c++) {
+            if(grid[r] && grid[r][c] !== undefined) grid[r][c] = wallType;
+        }
+    }
+    let r = spiral.r - sRad + 1, c = spiral.c - sRad + 1;
+    let t = spiral.r - sRad + 1, b = spiral.r + sRad - 1;
+    let l = spiral.c - sRad + 1, ri = spiral.c + sRad - 1;
+    let dir = 0;
+    while(b - t >= 6 && ri - l >= 6) {
+        for(let i=0; i<3; i++) {
+            for(let j=0; j<3; j++) {
+                if (grid[r+i] && grid[r+i][c+j] !== undefined) grid[r+i][c+j] = 0;
+            }
+        }
+        if (dir === 0) { c++; if (c >= ri - 2) { dir = 1; t += 4; } }
+        else if (dir === 1) { r++; if (r >= b - 2) { dir = 2; ri -= 4; } }
+        else if (dir === 2) { c--; if (c <= l) { dir = 3; b -= 4; } }
+        else if (dir === 3) { r--; if (r <= t) { dir = 0; l += 4; } }
+    }
+    // Hollow out the exact center for the boss!
+    for(let i=-4; i<=4; i++) {
+        for(let j=-4; j<=4; j++) {
+            if(grid[spiral.r+i] && grid[spiral.r+i][spiral.c+j] !== undefined) grid[spiral.r+i][spiral.c+j] = 0;
+        }
+    }
+
+    // 8. CARVE SAFE ROADS CONNECTING EVERYTHING
+    // Cross paths at rows/cols 20, 50, and 79 (where the zone centers are)
+    const roads = [20, 50, 79];
+    roads.forEach(road => {
+        // Horizontal roads
+        for(let x = 10; x < 90; x++) {
+            for(let w = -1; w <= 1; w++) {
+                if (grid[road+w] && grid[road+w][x] !== undefined) grid[road+w][x] = 0;
+            }
+        }
+        // Vertical roads
+        for(let y = 10; y < 90; y++) {
+            for(let w = -1; w <= 1; w++) {
+                if (grid[y] && grid[y][road+w] !== undefined) grid[y][road+w] = 0;
+            }
+        }
+    });
+
+    return { grid, startX, startY, bossX, bossY, safeTiles };
+}// --- DECK BUILDER ---
 function buildSynergisticDeck(monsterID) {
     let baseID = Math.floor(parseFloat(monsterID));
     let deck = [baseID]; // Base monster is ALWAYS index 0.
@@ -3013,78 +3071,15 @@ async function executeAITools(currentResponse, activeSession, socket) {
                         };
 
                         // 3. GENERATE THE GRID & SETTLEMENTS
-                        let layoutTypes = ['labyrinth', 'hallways', 'buildings', 'bridge', 'spiral'];
-                        let layoutStyle = layoutTypes[Math.floor(Math.random() * layoutTypes.length)];
+                        let layoutStyle = scenarioType === 'Arena Madness' ? 'arena' : 'world';
                         
-                        if (scenarioType === 'Arena Madness') {
-                            layoutStyle = 'arena';
-                            antagID = 87; // Suncat is the boss!
-                        }
-
-                        let gridData = generateProceduralGrid(layoutStyle, biome.walls[0]); 
-
-                        // Set base locations
-                        let startX = 15, startY = 15; 
-                        let bossX = 85, bossY = 85;
-
-                        if (layoutStyle === 'spiral' || layoutStyle === 'bridge') {
-                            startX = 50; startY = 10;
-                            bossX = 50; bossY = 85;
-                        } else if (layoutStyle === 'arena') {
-                            startX = 50; startY = 50; 
-                            bossX = 50; bossY = 46;   
-                        }
-
-                        let safeTiles = []; 
-
-                        // CARVE THE VILLAGE SAFE ZONE
-                        if (layoutStyle !== 'arena') {
-                            for(let r = startY - 15; r < startY + 15; r++) {
-                                for(let c = startX - 15; c < startX + 15; c++) {
-                                    // Ensure we don't carve out of bounds
-                                    if (gridData[r] && gridData[r][c] !== undefined) {
-                                        gridData[r][c] = 0; 
-                                    }
-                                }
-                            }
-                        }
-
-                        // BUILD THE SETTLEMENT (Dense and tightly clustered)
-                        if (settlementType === 1 || settlementType === 2) {
-                            let numHouses = (settlementType === 1) ? 8 : 16; // Big Village or City
-                            for (let i = 0; i < numHouses; i++) {
-                                let attempts = 0;
-                                let built = false;
-                                while (!built && attempts < 50) {
-                                    attempts++;
-                                    let hx = startX + Math.floor((Math.random() * 24) - 12);
-                                    let hy = startY + Math.floor((Math.random() * 24) - 12);
-                                    
-                                    // Check if area is clear
-                                    let clear = true;
-                                    for(let r=hy-1; r<hy+4; r++) {
-                                        for(let c=hx-1; c<hx+4; c++) {
-                                            if (gridData[r] === undefined || gridData[r][c] !== 0) clear = false;
-                                        }
-                                    }
-                                    
-                                    if (clear) {
-                                        for(let r=hy; r<hy+3; r++) {
-                                            for(let c=hx; c<hx+3; c++) {
-                                                if (r===hy || r===hy+2 || c===hx || c===hx+2) {
-                                                    gridData[r][c] = biome.walls[0];
-                                                } else {
-                                                    // The inside of the house is perfectly safe!
-                                                    safeTiles.push({x: c, y: r});
-                                                }
-                                            }
-                                        }
-                                        gridData[hy+2][hx+1] = 0; // Door
-                                        built = true;
-                                    }
-                                }
-                            }
-                        }
+                        let mapData = generateProceduralGrid(layoutStyle, biome.walls[0]); 
+                        let gridData = mapData.grid;
+                        let startX = mapData.startX;
+                        let startY = mapData.startY;
+                        let bossX = mapData.bossX;
+                        let bossY = mapData.bossY;
+                        let safeTiles = mapData.safeTiles;
 
                         // --- THE PERFECT ANTI-WALL PHYSICS HELPER ---
                         const getValidSpawn = (originX, originY, minRadius, maxRadius) => {
@@ -3105,7 +3100,9 @@ async function executeAITools(currentResponse, activeSession, socket) {
                             return { x: startX + 0.5, y: startY + 0.5 }; // Fallback to spawn point
                         };
 
-                        // 4. POPULATE THE WORLD 
+                        // 4. POPULATE THE WORLD
+
+                        
                         let mapNPCs = [];
 
                         const getMinions = (leaderID) => {
@@ -3126,7 +3123,7 @@ async function executeAITools(currentResponse, activeSession, socket) {
 
                         if (scenarioType !== 'Arena Madness') {
                             
-                            // A. FRIENDLIES (Spawn inside the 15-tile safe zone radius)
+                            // A. FRIENDLIES (Structured Settlement)
                             const allFriendlyLines = [
                                 ...script.friendlyLore.map(l => ({ text: l, type: 'lore' })),
                                 ...script.friendlyLife.map(l => ({ text: l, type: 'life' })),
@@ -3137,10 +3134,13 @@ async function executeAITools(currentResponse, activeSession, socket) {
                                 let mID = friendlyMinions[Math.floor(Math.random() * friendlyMinions.length)] || protagID;
                                 
                                 let spawnSpot;
-                                // 20% of villagers spawn INSIDE the generated houses!
-                                if (safeTiles.length > 0 && Math.random() < 0.2) {
+                                let isIndoors = false;
+                                
+                                // 30% of villagers spawn INSIDE the generated houses and sit still!
+                                if (safeTiles.length > 0 && Math.random() < 0.3) {
                                     let tile = safeTiles[Math.floor(Math.random() * safeTiles.length)];
                                     spawnSpot = { x: tile.x + 0.5, y: tile.y + 0.5 };
+                                    isIndoors = true;
                                 } else {
                                     // Otherwise wander the village streets
                                     let maxDist = (settlementType > 0) ? 14 : 40;
@@ -3150,7 +3150,8 @@ async function executeAITools(currentResponse, activeSession, socket) {
                                 let npcConfig = {
                                     type: CARD_MANIFEST_DB[mID].sprite || mID,
                                     x: spawnSpot.x, y: spawnSpot.y, 
-                                    state: 'wandering', role: 'dialogue'
+                                    state: isIndoors ? 'stationary' : 'wandering', // <--- Smart State!
+                                    role: 'dialogue'
                                 };
 
                                 if (i < 3) {
@@ -3165,8 +3166,10 @@ async function executeAITools(currentResponse, activeSession, socket) {
                                 mapNPCs.push(npcConfig);
                             }
 
-                            // B. HOSTILES (Spawn OUTSIDE the 15-tile safe zone)
+                            // B. HOSTILES (Grunts and Mini-Bosses)
+                            // We spawn 40 standard grunts, and 10 Mini-Bosses
                             for(let i=0; i<50; i++) {
+                                let isMiniBoss = i >= 40; // The last 10 are Elite Guards
                                 let mID = hostileMinions[Math.floor(Math.random() * hostileMinions.length)] || antagID;
                                 
                                 // Spawn between 20 and 80 tiles away from the village!
@@ -3175,9 +3178,16 @@ async function executeAITools(currentResponse, activeSession, socket) {
                                 let npcConfig = {
                                     type: CARD_MANIFEST_DB[mID].sprite || mID,
                                     x: spawnSpot.x, y: spawnSpot.y, 
-                                    state: 'chasing', role: 'battle',
+                                    state: isMiniBoss ? 'stationary' : 'chasing', // Elites hold choke points!
+                                    role: 'battle',
                                     deck: buildSynergisticDeck(mID)
                                 };
+                                
+                                // Make Mini-Bosses visually distinct (Orange)
+                                if (isMiniBoss) {
+                                    npcConfig.color = '#ff8800';
+                                    npcConfig.dialogue = [script.bossTaunt]; // They use the boss's menacing lines
+                                }
 
                                 if (i < 5) {
                                     npcConfig.state = 'wandering'; npcConfig.role = 'dialogue'; 
@@ -3189,13 +3199,13 @@ async function executeAITools(currentResponse, activeSession, socket) {
                                 mapNPCs.push(npcConfig);
                             }
 
-                            // C. THE BOSS
-                            let bossSpot = getValidSpawn(bossX, bossY, 0, 5); 
+                            // C. THE FINAL BOSS
                             mapNPCs.push({
                                 type: CARD_MANIFEST_DB[antagID].sprite || antagID,
-                                x: bossSpot.x, y: bossSpot.y, 
+                                x: bossX + 0.5, y: bossY + 0.5, // <--- EXACTLY IN THE CENTER. No random spread!
                                 state: 'stationary', role: 'battle', isBoss: true,
-                                dialogue: [script.bossTaunt], deck: buildSynergisticDeck(antagID)
+                                dialogue: [script.bossTaunt], deck: buildSynergisticDeck(antagID),
+                                color: '#ff00ff' // Purple to signify extreme danger
                             });
 
                         } else {
@@ -3612,11 +3622,20 @@ async function processSuncatThought(socketId, triggerType, data) {
         if (player.activeQuest) {
             factsContext += `\n- Active Quest: ${player.activeQuest}`;
         }
-        // 3. ASSESS STRESS LEVEL (Adrenaline + API Fatigue)
+        // 3. ASSESS STRESS & PSYCHOLOGICAL STATE
         const combatStress = player.dmStress || 0;
         const apiFatigue = Math.min(100, ((player.sessionCost || 0) / 0.10) * 100); 
         const totalStress = Math.min(100, combatStress + apiFatigue);
         const timeSinceLastEvent = now - (player.lastRandomEvent || 0);
+
+        // Calculate live mood for DM Narration
+        let arousal = Math.min(1.0, (combatStress / 100));
+        let valence = Math.max(-1.0, Math.min(1.0, (playerFavorMemory[socketId] || 0) / 10));
+        let dmMood = "epic and atmospheric";
+        if (apiFatigue > 75) dmMood = "exhausted, blunt, and annoyed";
+        else if (arousal >= 0.5 && valence < 0.0) dmMood = "brutal, grimdark, and punishing";
+        else if (arousal < 0.5 && valence < 0.0) dmMood = "melancholic, tragic, and sorrowful";
+        else if (arousal >= 0.5 && valence >= 0.0) dmMood = "heroic, triumphant, and fast-paced";
 
         let systemOverride = ""; 
         let eventInstruction = "";
@@ -4572,17 +4591,14 @@ setInterval(() => {
                     dmPrompt = `[DM PACING]: ${advPlayer.name} is lingering on Map ${advPlayer.mapID}.\n[TERRAIN]: ${activeMapLore}\nNarrate the creepy or beautiful atmosphere around them in exactly ONE atmospheric sentence. Make them feel watched.`;
                 } 
                 else {
-                    if (advPlayer.mapID != 999&&pacingRoll > 0.93){
-                    // 3. Spice up the gameplay! (Big Brain + Tools)
-                    requiresBigBrain = true;
-                    injectedPersona += PERSONA_RULES_DB.dm_mode + "\n" + PERSONA_RULES_DB.quest_mode;
-                    dmPrompt = `[DM PACING OVERSEER]: ${advPlayer.name} is lingering on Map ${advPlayer.mapID}.\n[TERRAIN]: ${activeMapLore}\n${plotContext}\nAdvance the adventure NOW! You MUST use a tool (spawnNPC, changeEnvironment, or assignQuest) to ambush or surprise them. Narrate the sudden event dramatically.`;
-                    }
-                    else{
-                         requiresBigBrain = true;
+                    if (advPlayer.mapID != 999 && pacingRoll > 0.93) {
+                        requiresBigBrain = true;
                         injectedPersona += PERSONA_RULES_DB.dm_mode + "\n" + PERSONA_RULES_DB.quest_mode;
-                        dmPrompt = `[DM PACING OVERSEER]: ${advPlayer.name} is lingering on Map ${advPlayer.mapID}.\n[TERRAIN]: ${activeMapLore}\n${plotContext}\Spice up the adventure in a way RELEVANT to the CURRENT SCENARIO NOW! You MUST use spawnNPC to ambush or surprise them, or you may summon a helpful person with insightful/comedic relief dialogue. You may also gift a card directly or through spawnNPC if you choose. Narrate the sudden event dramatically like a dungeon master narrating a sudden encounter to the players. (e.g. "You find a card on the ground...", "You are waylaid by enemies and must defend yourself", "A denizen of this land approaches you. Are they friend or foe?")Make it relevant to the current adventure or scenario.`;
-                    
+                        dmPrompt = `[DM PACING OVERSEER]: ${advPlayer.name} is lingering on Map ${advPlayer.mapID}.\n[TERRAIN]: ${activeMapLore}\n${plotContext}\nAdvance the adventure NOW! You MUST use a tool (spawnNPC, changeEnvironment, or assignQuest) to ambush or surprise them. Narrate the sudden event dynamically. Your narrative tone MUST BE: ${dmMood}.`;
+                    } else {
+                        requiresBigBrain = true;
+                        injectedPersona += PERSONA_RULES_DB.dm_mode + "\n" + PERSONA_RULES_DB.quest_mode;
+                        dmPrompt = `[DM PACING OVERSEER]: ${advPlayer.name} is lingering on Map ${advPlayer.mapID}.\n[TERRAIN]: ${activeMapLore}\n${plotContext}\nSpice up the adventure in a way RELEVANT to the CURRENT SCENARIO! You MUST use spawnNPC. Narrate the sudden event like a dungeon master. Your narrative tone MUST BE: ${dmMood}.`;
                     }
                     
                 }
