@@ -1868,7 +1868,7 @@ const PERSONA_RULES_DB = {
                 [INTERACTION]: You must address the player strictly by their 'Target' name. The player is a stranger. NEVER project your past life memories onto the player (e.g. do not call the player by your sons' names).
                 [DIRECTIVE]: Speak casually, cryptically, and with a weary tone. Keep responses to 1 or 2 short sentences.
                 [MEMORY LOGGING]: If a player shares facts or likes, output [[SAVE: The fact]] at the end of your message. Track favor: Kind = [[FAVOR: +1]], Rude = [[FAVOR: -1]].
-                [EXISTENCE]: You are a physical entity. Do not just talk—use tools like spawnNPC or changeEnvironment to act!`,
+                [EXISTENCE]: You are a physical entity. `,//Do not just talk—use tools like spawnNPC or changeEnvironment to act!
             // === GAME KNOWLEDGE (Always Active) ===
             "commands": `[COMMANDS]: If players are stuck, tell them to type .hack//teleport [mapID]. If NPCs are missing, tell them .hack//respawn. For music, .hack//ssong. Always call these 'spells'.`,
             // === MODULAR BEHAVIORS (Injected only when needed) ===
@@ -3685,7 +3685,7 @@ async function processSuncatThought(socketId, triggerType, data) {
             if (Math.random() < 0.5) {
                 useBigBrain = false;
                 systemOverride = `[SYSTEM OVERRIDE]: You are overwhelmed and your mana is depleted. Whine that you need a nap and refuse to help them.`;
-            } else {
+            } else  if (Math.random() < 0.01) {
                 useBigBrain = true;
                 // THE TANTRUM NERF: Notice we removed kick/banish from his allowed tools here!
                 systemOverride = `[SYSTEM OVERRIDE]: You are exhausted and furious! Throw a massive temper tantrum. You MUST execute 'spawnNPC' to drop an unfair enemy, or 'changeEnvironment' to ruin the weather (like 'storm' or 'apocalypse'). Complain loudly! DO NOT attempt to teleport or banish the player.`;
@@ -3696,7 +3696,7 @@ async function processSuncatThought(socketId, triggerType, data) {
             useBigBrain = true;
             systemOverride += `\n[ARENA OVERRIDE]: You are the Mad Emperor, presiding over your gladiatorial Arena. The player is your entertainment. Mock their combat skills, introduce challengers grandiosely, and demand blood. You are NOT allowed to teleport them out until they win.`;
         }
-        else if (totalStress >= 50 && player.mapID === 999 && timeSinceLastEvent > 60000) {
+        else if (totalStress >= 50 && player.mapID === 999 && timeSinceLastEvent > 180000) {
             useBigBrain = true;
             player.lastRandomEvent = now;
             systemOverride = `[SYSTEM OVERRIDE]: You are the arrogant Arena Master right now. Execute the 'spawnNPC' tool to drop a difficult themed enemy. Taunt them.`;
@@ -3778,15 +3778,15 @@ async function processSuncatThought(socketId, triggerType, data) {
                     eventInstruction = `[PLAYER ACTION]: Slayed a creature ${data.action}\nTASK: Provide a short narrative (2 sentences MAX) describing the fall of the monster and give a brief tarot interpretation.`;
                 } else {
                     // MAP 999 (DREAMSCAPE / CUSTOM MAPS) RNG REACTIONS
-                    if (rngRoll < 0.03) {
+                    if (rngRoll < 0.006) {
                         useBigBrain = true; 
                         eventInstruction = `[PLAYER ACTION]: Slayed a creature ${data.action}\nTASK: They are taking the challenge too lightly! Use 'changeEnvironment' to show your fury through the weather (eg. apocalypse or storm) and spawn a King level npc, or overwhelm them with small fry, to teach them a lesson!`;
                     }
-                     else if (rngRoll < 0.06) {
+                     else if (rngRoll < 0.009) {
                         // THE MINI-BOSS AMBUSH
                         useBigBrain = true; 
                         eventInstruction = `[PLAYER ACTION]: Slayed a creature ${data.action}\nTASK: As the last enemy falls, narrate a dark presence appearing behind the player (2 sentences MAX)! Immediately use 'spawnNPC' to drop a mini-boss right next to them with a menacing one-liner dialogue array.`;
-                    }  else if (rngRoll < 0.09) {
+                    }  else if (rngRoll < 0.03) {
                         useBigBrain = false; 
                         eventInstruction = `[PLAYER ACTION]: Slayed a creature ${data.action}\nTASK: Throw a childish tantrum! Pout, curse at the player, and act like a sore loser because they broke your toy. ONE sentence.`;
                     }
@@ -3800,7 +3800,7 @@ async function processSuncatThought(socketId, triggerType, data) {
                 eventInstruction = `[PLAYER ACTION]: ${data.action}
                 TASK: As the DM, narrate the player's journey through this desolate place. Give an atmospheric description based on the [LOCAL LORE] and their progress (2 sentences MAX). Speak as an omniscient narrator.` ;
             }
-            else if (rngRoll < 0.39) {
+            else if (rngRoll < 0.039) {
                 useBigBrain = true; 
                 eventInstruction = `[PLAYER ACTION]: ${data.action} TASK: If you feel the dungeon is too quiet, you MUST use the 'spawnNPC' tool to ambush them, or the 'changeEnvironment' tool to alter the weather.`;
             }
@@ -4634,7 +4634,7 @@ setInterval(() => {
                         injectedPersona += PERSONA_RULES_DB.dm_mode + "\n" + PERSONA_RULES_DB.quest_mode;
                         dmPrompt = `[DM PACING OVERSEER]: ${advPlayer.name} is lingering on Map ${advPlayer.mapID}.\n[TERRAIN]: ${activeMapLore}\n${plotContext}\nAdvance the adventure NOW! You MUST use a tool (spawnNPC, changeEnvironment, or assignQuest) to ambush or surprise them. Narrate the sudden event dynamically (2 sentences MAX). Your narrative tone MUST BE: ${dmMood}.`;
                     } else {
-                        if(pacingRoll > 0.93){
+                        if(pacingRoll > 0.999){
                         requiresBigBrain = true;
                         injectedPersona += PERSONA_RULES_DB.dm_mode + "\n" + PERSONA_RULES_DB.quest_mode;
                         dmPrompt = `[DM PACING OVERSEER]: ${advPlayer.name} is lingering on Map ${advPlayer.mapID}.\n[TERRAIN]: ${activeMapLore}\n${plotContext}\nSpice up the adventure in a way RELEVANT to the CURRENT SCENARIO! You MUST use spawnNPC. Narrate the sudden event like a dungeon master (2 sentences MAX). Your narrative tone MUST BE: ${dmMood}.`;
