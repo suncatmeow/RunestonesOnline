@@ -4391,7 +4391,7 @@ socket.on("npc_died", async (data) => {
     }
     
     const entityName = getCardName(baseID);
-    
+    /*
     if (!isPickup && !isDialogue) {
         // If Suncat likes you (favor > 5), he is more patient. Stress only goes up by 2 instead of 8!
         let stressPenalty = (playerFavorMemory[socket.id] && playerFavorMemory[socket.id] > 5) ? 1 : 3;
@@ -4400,7 +4400,7 @@ socket.on("npc_died", async (data) => {
         // ---> THE NEW DYNAMIC WIN CONDITION CHECK <---
         // 1. Is the player in a custom map?
         // 2. Does the dead NPC match the boss ID? OR did the client explicitly send isBoss: true?
-        if (player.mapID === 999 && (baseID === player.mapBossID || data.isBoss)) {
+        if (player.mapID === 999 && (data.isBoss||baseID === player.mapBossID )) {
             
             setTimeout(() => {
                 let victorySpeech = "";
@@ -4415,7 +4415,7 @@ socket.on("npc_died", async (data) => {
                 processSuncatThought(player.id, 'chat', { text: victorySpeech });
             }, 2000); 
         }
-    }
+    }*/
 
     
     processSuncatThought(player.id, 'event', {
