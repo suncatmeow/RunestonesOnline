@@ -3604,6 +3604,7 @@ async function processSuncatThought(socketId, triggerType, data) {
     if (npcIsTyping) return;
     npcIsTyping = true;
     const typingFailSafe = setTimeout(() => { npcIsTyping = false; }, 9000);
+    let rngRoll = Math.random();
 
     try {
         /// 2. GATHER CORE CONTEXT (RAG-LITE INJECTION)
@@ -3776,27 +3777,32 @@ async function processSuncatThought(socketId, triggerType, data) {
                     eventInstruction = `[PLAYER ACTION]: Slayed a creature ${data.action}\nTASK: Provide a short narrative describing the fall of the monster and give a brief tarot interpretation.`;
                 } else {
                     // MAP 999 (DREAMSCAPE / CUSTOM MAPS) RNG REACTIONS
-                    let rngRoll = Math.random();
-                    if (rngRoll < 0.33) {
-                        useBigBrain = false; 
-                        eventInstruction = `[PLAYER ACTION]: Slayed a creature ${data.action}\nTASK: Throw a childish tantrum! Pout, curse at the player, and act like a sore loser because they broke your toy. ONE sentence.`;
-                    } else if (rngRoll < 0.66) {
+                    if (rngRoll < 0.03) {
+                        useBigBrain = true; 
+                        eventInstruction = `[PLAYER ACTION]: Slayed a creature ${data.action}\nTASK: They are taking the challenge too lightly! Use 'changeEnvironment' to show your fury through the weather (eg. apocalypse or storm) and spawn a King level npc, or overwhelm them with small fry, to teach them a lesson!`;
+                    }
+                     else if (rngRoll < 0.06) {
                         // THE MINI-BOSS AMBUSH
                         useBigBrain = true; 
                         eventInstruction = `[PLAYER ACTION]: Slayed a creature ${data.action}\nTASK: As the last enemy falls, narrate a dark presence appearing behind the player! Immediately use 'spawnNPC' to drop a mini-boss right next to them with a menacing one-liner dialogue array.`;
-                    } else {
-                        useBigBrain = true; 
-                        eventInstruction = `[PLAYER ACTION]: Slayed a creature ${data.action}\nTASK: They are taking the challenge too lightly! Use 'changeEnvironment' to show your fury through the weather (eg. apocalypse or storm) and spawn a King level npc, or overwhelm them with small fry, to teach them a lesson!`;
+                    }  else if (rngRoll < 0.09) {
+                        useBigBrain = false; 
+                        eventInstruction = `[PLAYER ACTION]: Slayed a creature ${data.action}\nTASK: Throw a childish tantrum! Pout, curse at the player, and act like a sore loser because they broke your toy. ONE sentence.`;
                     }
                 }
             }
             eventInstruction += recentNarratives;
         }
         else if (triggerType === 'exploration') {
-            useBigBrain = true; 
-            eventInstruction = `[PLAYER ACTION]: ${data.action}
-            TASK: As the DM, narrate the player's journey through this desolate place. Give a 1-2 sentence atmospheric description based on the [LOCAL LORE] and their progress. Speak as an omniscient narrator. 
-            OPTIONAL: If you feel the dungeon is too quiet, you MUST use the 'spawnNPC' tool to ambush them, or the 'changeEnvironment' tool to alter the weather.`;
+            if (rngRoll < 0.03) {
+                useBigBrain = false; 
+                eventInstruction = `[PLAYER ACTION]: ${data.action}
+                TASK: As the DM, narrate the player's journey through this desolate place. Give a 1-2 sentence atmospheric description based on the [LOCAL LORE] and their progress. Speak as an omniscient narrator.` ;
+            }
+            else if (rngRoll < 0.39) {
+                useBigBrain = true; 
+                eventInstruction = `[PLAYER ACTION]: ${data.action} TASK: If you feel the dungeon is too quiet, you MUST use the 'spawnNPC' tool to ambush them, or the 'changeEnvironment' tool to alter the weather.`;
+            }
         }
         
                     else if (triggerType === 'spectate') {
@@ -4627,9 +4633,11 @@ setInterval(() => {
                         injectedPersona += PERSONA_RULES_DB.dm_mode + "\n" + PERSONA_RULES_DB.quest_mode;
                         dmPrompt = `[DM PACING OVERSEER]: ${advPlayer.name} is lingering on Map ${advPlayer.mapID}.\n[TERRAIN]: ${activeMapLore}\n${plotContext}\nAdvance the adventure NOW! You MUST use a tool (spawnNPC, changeEnvironment, or assignQuest) to ambush or surprise them. Narrate the sudden event dynamically. Your narrative tone MUST BE: ${dmMood}.`;
                     } else {
+                        if(pacingRoll > 0.93){
                         requiresBigBrain = true;
                         injectedPersona += PERSONA_RULES_DB.dm_mode + "\n" + PERSONA_RULES_DB.quest_mode;
                         dmPrompt = `[DM PACING OVERSEER]: ${advPlayer.name} is lingering on Map ${advPlayer.mapID}.\n[TERRAIN]: ${activeMapLore}\n${plotContext}\nSpice up the adventure in a way RELEVANT to the CURRENT SCENARIO! You MUST use spawnNPC. Narrate the sudden event like a dungeon master. Your narrative tone MUST BE: ${dmMood}.`;
+                        }
                     }
                     
                 }
