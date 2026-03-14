@@ -4476,8 +4476,8 @@ socket.on('chat_message', async (msgText) => {
     // 1. Zero-Cost Bypass Checks
     const explicitlyMentioned = content.includes("suncat") || content.includes("help") || content.includes("dm ");
     const isConversing = player.lastSuncatChat && (now - player.lastSuncatChat < 60000);
-    const isAskingVoid = content.includes("?") || ["what", "where", "how", "why", "who", "can", "is", "do", "are"].some(w => chatWords.includes(w));
-    const isReactingToDM = chatWords.length <= 5 && ["wow", "crazy", "look", "inspect", "run", "attack", "listen", "whoa", "yes", "no", "idk","ok","ah", "oh", ":(",">:(","XD",":)","amazing","no way","really","i see","that sucks","good","dang","awe","gg","gn","gm","hm","if"].some(kw => chatWords.includes(kw));
+    const isAskingVoid = content.includes("?") || ["what", "where", "how", "why", "who", "can", "is", "do", "are","you"].some(w => chatWords.includes(w));
+    const isReactingToDM = chatWords.length <= 30 && ["i guess","you","i suppose","dont know","don't know","wow", "crazy", "look", "inspect", "run", "attack", "listen", "whoa", "yes", "no", "idk","ok","ah", "oh", ":(",">:(","XD",":)","amazing","no way","really","i see","that sucks","good","dang","awe","gg","gn","gm","hm","if"].some(kw => chatWords.includes(kw));
 
     let shouldListen = explicitlyMentioned || isReactingToDM;
     
