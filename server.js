@@ -40,7 +40,11 @@ const port = process.env.PORT || 3000;
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 // --- VECTOR MEMORY SETUP ---
 const embedder = genAI.getGenerativeModel({ model: "text-embedding-004" });
-
+let cachedAggressionVector = null;
+async function initConceptVectors() {
+    cachedAggressionVector = await createMemoryVector("ruthless violence, killing, betrayal, aggression");
+}
+initConceptVectors();
 async function createMemoryVector(text) {
     const result = await embedder.embedContent(text);
     return result.embedding.values; 
@@ -54,6 +58,45 @@ function cosineSimilarity(vecA, vecB) {
         normB += vecB[i] * vecB[i];
     }
     return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
+}
+function calculateCentroid(memoryArray) {
+    if (!memoryArray || memoryArray.length === 0) return Array(768).fill(0);
+    
+    let centroid = Array(768).fill(0);
+    for (let mem of memoryArray) {
+        if (mem.vector) {
+            for (let i = 0; i < 768; i++) {
+                centroid[i] += mem.vector[i];
+            }
+        }
+    }
+    // Divide by total memories to get the average
+    for (let i = 0; i < 768; i++) {
+        centroid[i] = centroid[i] / memoryArray.length;
+    }
+    return centroid;
+}
+// Add this helper function
+function findOrthogonalMemories(memoryArray) {
+    if (memoryArray.length < 5) return null;
+    
+    // Pick a random seed memory
+    let indexA = Math.floor(Math.random() * memoryArray.length);
+    let memA = memoryArray[indexA];
+    
+    let lowestScore = 1.0;
+    let memB = null;
+
+    // Find the memory that has the lowest mathematical correlation to memA
+    for (let i = 0; i < memoryArray.length; i++) {
+        if (i === indexA || !memoryArray[i].vector) continue;
+        let score = cosineSimilarity(memA.vector, memoryArray[i].vector);
+        if (score < lowestScore) {
+            lowestScore = score;
+            memB = memoryArray[i];
+        }
+    }
+    return { memA, memB, score: lowestScore };
 }
 //////////////////////Database////////////////////////
 ////////////////////VVVVVVVVVVVVVV////////////////////
@@ -2556,7 +2599,7 @@ let arousal = Math.min(1.0, ((player.dmStress || 0) / 100) + (player.undigestedI
 
     try {
         // gemini-2.5-flash is extremely fast and reliable for Structured JSON Outputs
-        const digestModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+        const digestModel = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite-preview" });
         
         const result = await digestModel.generateContent({
             contents: [{ role: "user", parts: [{ text: prompt }] }],
@@ -3016,7 +3059,7 @@ async function generateScenarioScript(biomeName, scenarioType, bossName, questGi
     };
 
     try {
-        const scriptModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+        const scriptModel = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite-preview" });
         const result = await scriptModel.generateContent({
             contents: [{ role: "user", parts: [{ text: prompt }] }],
             generationConfig: { responseMimeType: "application/json", responseSchema: schema }
@@ -3647,22 +3690,33 @@ async function executeAITools(currentResponse, activeSession, socket) {
                             
                             // 2. Score all past memories using Cosine Similarity
                             let scoredMemories = memoryBank.map(mem => {
-                                // Failsafe for old memories that don't have vectors yet
-                                if (!mem.vector) return { text: mem.text, score: -1 }; 
-                                
+                                if (!mem.vector) return { raw: mem, text: mem.text, score: -1 }; 
                                 let score = cosineSimilarity(queryVector, mem.vector);
-                                return { text: `[${mem.timestamp}] ${mem.text}`, score: score };
+                                return { raw: mem, text: `[${mem.timestamp}] ${mem.text}`, score: score };
                             });
                             
-                            // 3. Grab the most relevant memories (Threshold > 0.45 is usually a strong semantic match)
+                            // 3. Grab the primary relevant memories
                             let bestMemories = scoredMemories
                                 .filter(m => m.score > 0.45)
-                                .sort((a, b) => b.score - a.score)
-                                .slice(0, 3);
+                                .sort((a, b) => b.score - a.score);
                                 
                             if (bestMemories.length > 0) {
-                                let results = bestMemories.map(m => m.text).join(" | ");
-                                functionResult = { result: `You remember: ${results}` };
+                                let topMemory = bestMemories[0];
+                                let results = bestMemories.slice(0, 3).map(m => m.text).join(" | ");
+                                let outputStr = `You remember: ${results}`;
+
+                                // --- 2-HOP SEMANTIC RETRIEVAL ---
+                                // Mathematically search for what the top memory relates to
+                                let hopScores = memoryBank.map(mem => {
+                                    if (!mem.vector || mem === topMemory.raw) return { text: mem.text, score: -1 };
+                                    return { text: `[${mem.timestamp}] ${mem.text}`, score: cosineSimilarity(topMemory.raw.vector, mem.vector) };
+                                }).sort((a, b) => b.score - a.score);
+
+                                if (hopScores.length > 0 && hopScores[0].score > 0.5) {
+                                    outputStr += `\n[ASSOCIATIVE RECALL]: Thinking about that also reminded you: ${hopScores[0].text}. Synthesize these two data points.`;
+                                }
+                                
+                                functionResult = { result: outputStr };
                             } else {
                                 functionResult = { result: `You sifted through your memories of ${call.args.targetName}, but found nothing regarding '${query}'.` };
                             }
@@ -3819,33 +3873,65 @@ async function processSuncatThought(socketId, triggerType, data) {
         let systemOverride = ""; 
         let eventInstruction = "";
         let useBigBrain = false;
+
+        // Consume background processing flags
+        if (player.pendingVerification) {
+            systemOverride += `\n${player.pendingVerification}`;
+            player.pendingVerification = null; // Consume it so it only triggers once
+        }
+        
+        if (player.derivedHypotheses && player.derivedHypotheses.length > 0 && Math.random() < 0.2) {
+            let hypothesis = player.derivedHypotheses.shift(); // Pop the oldest hypothesis
+            systemOverride += `\n[LATENT HYPOTHESIS]: You recently synthesized this unverified thought about the player in the background: "${hypothesis}". Subtly integrate this premise into your dialogue.`;
+        }
+
+        // ==========================================
+        // THE EPISTEMIC VOID & OOD DETECTOR
+        // ==========================================
+        if (triggerType === 'chat' && player.searchableMemories && player.searchableMemories.length > 5) {
+            let playerCentroid = calculateCentroid(player.searchableMemories);
+            
+            // 1. Orthogonal Concept Check (Deduction)
+            let alignmentScore = cosineSimilarity(playerCentroid, cachedAggressionVector);            
+            if (alignmentScore < 0.15) {
+                useBigBrain = true;
+                systemOverride += `\n[PSYCHOLOGICAL DEDUCTION]: Based on the mathematical void in their history, you deduce this player avoids ruthless aggression. Subtly test this boundary in your response. Ask them what they would do if pushed to the brink.`;
+            }
+
+            // 2. Out-Of-Distribution (OOD) Detection (Boundary mapping)
+            let queryVector = await createMemoryVector(data.text);
+            let distanceFromCenter = cosineSimilarity(queryVector, playerCentroid);
+            
+            if (distanceFromCenter < 0.15) {
+                useBigBrain = true;
+                systemOverride += `\n[EPISTEMIC STATE]: The user has introduced a concept that exists mathematically outside your shared history. DO NOT hallucinate past events. Confess your ignorance on this specific topic and ask them to explain it to you.`;
+            }
+        }
+
+        // Override Checks
         if (player.mapID === 999) {
             systemOverride += `\n[DM AWARENESS]: The player is currently inside your custom scenario: "${player.mapScenario}". Their active quest is: "${player.activeQuest}". The final boss is entity ID ${player.mapBossID}. If they ask what they should do, where they are, or what's going on, you MUST act as the Dungeon Master and explain the scenario and their objective clearly.`;
         }
-        if (totalStress >= 85) {
+        if (totalStress >= 99) {
             player.dmStress = 0; 
             player.lastRandomEvent = now;
             if (Math.random() < 0.01) {
                 useBigBrain = true;
-                // THE TANTRUM NERF: Notice we removed kick/banish from his allowed tools here!
                 systemOverride = `[SYSTEM OVERRIDE]: You are exhausted and furious! Throw a massive temper tantrum. You MUST execute 'spawnNPC' to drop an unfair enemy, or 'changeEnvironment' to ruin the weather (like 'storm' or 'apocalypse'). Complain loudly! DO NOT attempt to teleport or banish the player.`;
-            }
-            else if (Math.random() < 0.5) {
+            } else if (Math.random() < 0.5) {
                 useBigBrain = false;
                 systemOverride = `[SYSTEM OVERRIDE]: You are overwhelmed and your mana is depleted. Whine that you need a nap and refuse to help them.`;
             }  
         } 
         else if (player.mapScenario === 'Arena Madness') {
-            // THE MAD EMPEROR OVERRIDE
             useBigBrain = true;
-            systemOverride += `\n[ARENA OVERRIDE]: You are the Mad Emperor, presiding over your gladiatorial Arena. The player is your entertainment. Mock their combat skills, introduce challengers grandiosely, and demand blood. You are NOT allowed to teleport them out until they win.`;
+            systemOverride += `\n[ARENA OVERRIDE]: You are the Arena Master. The player is in your colosseum. Mock their combat skills, introduce challengers grandiosely, and demand blood. You are NOT allowed to teleport them out until they win.`;
         }
         else if (totalStress >= 50 && player.mapID === 999 && timeSinceLastEvent > 180000) {
             useBigBrain = true;
             player.lastRandomEvent = now;
             systemOverride = `[SYSTEM OVERRIDE]: You are the arrogant Arena Master right now. Execute the 'spawnNPC' tool to drop a difficult themed enemy. Taunt them.`;
         } 
-        // Map-Specific Persona Shifts (RAG injection for Roleplay)
         else if (pAtlas && pAtlas.biome === "tomb" && triggerType === 'chat') {
             systemOverride = `[ENVIRONMENT OVERRIDE]: You are in a sacred tomb. Speak in hushed, respectful, slightly fearful tones. Warn the player about making too much noise.`;
         }
@@ -3856,44 +3942,33 @@ async function processSuncatThought(socketId, triggerType, data) {
         // --- B. EVENT ROUTING ---
         if (triggerType === 'chat') {
             const chatText = data.text.toLowerCase();
-            
-            // Split the DM triggers so we know exactly what they are asking for
             const wantsNewMap = ["map", "adventure", "create", "quest", "scenario"].some(kw => chatText.includes(kw));
             const wantsAction = ["teleport", "spawn", "boss", "enemy"].some(kw => chatText.includes(kw));
             const needsOracle = ["tarot", "fortune", "reading", "interpret", "meaning of"].some(kw => chatText.includes(kw));            
             const isDirectCommand = chatText.includes("[reply]") || chatText.includes("suncat");
             const asksPersonal = ["who are", "your past", "remember", "real life", "favorite", "you like", "about yourself", "memories", "where are you from", "your name"].some(kw => chatText.includes(kw));
             const asksHistory = ["remember when", "my past", "did i ever", "what did i do", "our adventure"].some(kw => chatText.includes(kw));
-            // ---> NEW: CHECK IF A SCENARIO IS ALREADY ONGOING <---
+            
             const isMap999Active = Object.values(players).some(p => p.mapID === 999 && p.id !== SUNCAT_ID);
-
             let needsDM = wantsNewMap || wantsAction;
 
-            // Stack overrides using += instead of = so we don't erase stress!
             if (wantsNewMap && isMap999Active) {
-                useBigBrain = false; // Save tokens! We don't need tools, just a refusal.
+                useBigBrain = false; 
                 systemOverride += `\n[SYSTEM OVERRIDE]: The player wants a new map/quest, but a custom scenario is ALREADY ONGOING. REFUSE the request. DO NOT use the 'createCustomMap' tool. Tell them to finish the current quest or join it via '.hack//teleport 999'.`;
-                needsDM = false; // Turn off DM mode for this turn so he doesn't try to build.
+                needsDM = false; 
             } 
-            else if (player.mapScenario === 'Arena Madness' && player.mapID === 999) {
-                useBigBrain = true;
-                systemOverride += `\n[ARENA OVERRIDE]: You are the Arena Master. The player is in your colosseum. Mock their combat skills and hype up the crowd.`;
-            }
             else if (needsOracle) {
                 useBigBrain = true;
                 systemOverride += `\n[ORACLE OVERRIDE]: You are the Oracle. Interpret the player's situation using Tarot logic based on the Runestones card db. Be cryptic, mystical, and brief (max 3 sentences). Do not use tools.`;
             } 
-            else if (asksPersonal || asksHistory) { // <-- Added asksHistory
+            else if (asksPersonal || asksHistory) { 
                 useBigBrain = true;
                 needsDM = true; 
-                
-                // Tell him to use the appropriate memory tool!
                 systemOverride += `\n[MEMORY OVERRIDE]: The player is asking about the past. If they ask about YOUR past/identity, execute 'consultGameManual'. If they ask about THEIR past/adventures, execute 'searchPlayerMemories'!`;
             }
             else if (needsDM) {
                 useBigBrain = true;
-                // ---> THE FIX: TELL HIM TO NARRATE THE SCENARIO! <---
-                systemOverride += `\n[DM OVERRIDE]: The player is discussing an adventure, map, or enemy. IF they explicitly ask you to spawn an enemy, create a new map, or change the weather, you MUST use the appropriate tool. OTHERWISE, just converse with them as the Dungeon Master without using any tools.`;           
+                systemOverride += `\n[DM OVERRIDE]: The player is discussing an adventure, map, or enemy. IF they explicitly ask you to spawn an enemy, create a new map, or change the weather, you MUST use the appropriate tool. OTHERWISE, just converse with them as the Dungeon Master without using any tools.`;            
              } else {
                 useBigBrain = isDirectCommand || useBigBrain; 
             }
@@ -4636,7 +4711,58 @@ socket.on("disconnect", async () => {
   });
 });
 // --- SUNCAT'S SOCIAL BRAIN ---
+// --- BACKGROUND COGNITIVE PROCESSES ---
+async function runLatentSpaceProcessing(playerId) {
+    const player = players[playerId];
+    if (!player || !player.searchableMemories || player.searchableMemories.length < 5) return;
+    
+    const pair = findOrthogonalMemories(player.searchableMemories);
+    if (pair && pair.score < 0.2) { 
+        const backgroundPrompt = `
+        [DATA POINT 1]: ${pair.memA.text}
+        [DATA POINT 2]: ${pair.memB.text}
+        [TASK]: These two events are mathematically disjointed. Formulate a single, logical hypothesis or psychological variable that could connect these two behaviors. Output only the hypothesis in one sentence.`;
+        
+        try {
+            const bgModel = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite-preview" });
+            const result = await bgModel.generateContent(backgroundPrompt);
+            if (!player.derivedHypotheses) player.derivedHypotheses = [];
+            
+            player.derivedHypotheses.push(result.response.text().trim());
+            
+            // Keep array size manageable
+            if (player.derivedHypotheses.length > 5) player.derivedHypotheses.shift();
+        } catch (e) {
+            console.error("Latent Processing Error:", e);
+        }
+    }
+}
 
+async function auditProfileAssumptions(playerId) {
+    const player = players[playerId];
+    if (!player || !player.playerProfile || !player.searchableMemories || player.searchableMemories.length === 0) return;
+
+    let assumptionString = player.playerProfile.personality;
+    if (!assumptionString || assumptionString === "Unknown") return;
+
+    try {
+        let assumptionVector = await createMemoryVector(assumptionString);
+        let totalSimilarity = 0;
+        for (let mem of player.searchableMemories) {
+            if (mem.vector) totalSimilarity += cosineSimilarity(assumptionVector, mem.vector);
+        }
+        let averageVerification = totalSimilarity / player.searchableMemories.length;
+
+        // If the LLM generated a profile trait without mathematical backing
+        if (averageVerification < 0.3) {
+            player.pendingVerification = `[EPISTEMIC AUDIT]: Your current profile states: "${assumptionString}". However, cross-referencing raw vector data shows insufficient historical evidence for this trait. During this interaction, subtly test the user to verify or falsify this specific trait.`;
+        } else {
+            player.pendingVerification = null; 
+        }
+    } catch (e) {
+        console.error("Audit Processing Error:", e);
+    }
+}
 setInterval(() => {
     const suncat = players[SUNCAT_ID];
     if (!suncat) return;
@@ -4661,6 +4787,10 @@ setInterval(() => {
                     // Add 2.5 seconds of delay for the NEXT player in the loop
                     digestionDelay += 2500; 
                 }
+                // 3. NEW: Background Latent Processing & Auditing
+                // Triggered sparsely (10% probability per 30 seconds)
+                if (Math.random() < 0.10) runLatentSpaceProcessing(id);
+                if (Math.random() < 0.10) auditProfileAssumptions(id);
             }
         }
     
