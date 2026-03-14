@@ -2159,6 +2159,7 @@ const globalRumors = [];
 // Suncat's Internal Auto-Biography
 let suncatJournal = "I have awoken in this place... and my memories feel muddled, but i feel them getting clearer...Who am I? Why am I here? Why do I feel like I've lost something... precious to me?";           
 let activeCustomMap = null;
+let tintagelHubMap = null; // <--- ADD THIS
 function addRumor(text) {
         globalRumors.push(`[Rumor]: ${text}`);
         if (globalRumors.length > 3) globalRumors.shift(); // Keep only the latest 3
@@ -2806,7 +2807,117 @@ function generateProceduralGrid(layout, wallType) {
     });
 
     return { grid, startX, startY, bossX, bossY, safeTiles };
-}// --- DECK BUILDER ---
+}
+// --- FACTION HUB: TINTAGEL CASTLE ---
+function generateTintagelHub() {
+    let maxR = 99, maxC = 99; 
+    let grid = Array(maxR).fill().map(() => Array(maxC).fill(0));
+    
+    let safeTiles = [];
+    let startX = 50, startY = 50; 
+
+    // Wall Types from BIOME_DB
+    const WALL_TREE = 23;    // Forest green/brown
+    const WALL_STONE = 25;   // Gray
+    const WALL_WOOD = 1;     // Brown
+    const WALL_DIRT = 3;     // Light brown
+
+    // 1. THE NORTH: Forest Labyrinth (Rows 0 to 29)
+    for (let r = 1; r < 29; r++) {
+        for (let c = 1; c < 98; c++) {
+            if (Math.random() < 0.45) grid[r][c] = WALL_TREE;
+        }
+    }
+    let pathC = 50;
+    for (let r = 29; r >= 1; r--) {
+        for (let w = -2; w <= 2; w++) {
+            if (grid[r] && grid[r][pathC + w] !== undefined) grid[r][pathC + w] = 0; 
+        }
+        pathC += Math.floor(Math.random() * 5) - 2;
+        pathC = Math.max(10, Math.min(88, pathC));
+    }
+
+    // 2. THE SOUTH: Goblin Refugee Camp (Rows 70 to 98)
+    for (let r = 72; r < 98; r++) {
+        for (let c = 10; c < 90; c++) {
+            if (Math.random() < 0.15) {
+                grid[r][c] = WALL_WOOD;
+                if (grid[r][c+1] !== undefined) grid[r][c+1] = WALL_WOOD;
+                if (grid[r+1] && grid[r+1][c] !== undefined) grid[r+1][c] = WALL_WOOD;
+            }
+        }
+    }
+
+    // 3. THE EAST: Hermit's Rocky Ridge (Cols 70 to 98, Rows 30 to 69)
+    for (let r = 30; r < 70; r++) {
+        for (let c = 72; c < 98; c++) {
+            if (Math.random() < 0.3) grid[r][c] = WALL_DIRT;
+            if (Math.random() < 0.1) grid[r][c] = WALL_STONE;
+        }
+    }
+
+    // 4. THE WEST: Peaceful Village (Cols 1 to 29, Rows 40 to 60)
+    const buildHouse = (hr, hc) => {
+        for(let r=hr; r<hr+3; r++) {
+            for(let c=hc; c<hc+3; c++) {
+                if (r===hr || r===hr+2 || c===hc || c===hc+2) {
+                    grid[r][c] = Math.random() > 0.5 ? WALL_WOOD : WALL_DIRT; 
+                } else {
+                    safeTiles.push({x: c, y: r}); 
+                }
+            }
+        }
+        grid[hr+2][hc+1] = 0; 
+    };
+
+    let vHouses = [[42, 10], [42, 20], [50, 5], [50, 15], [58, 10], [58, 20]];
+    vHouses.forEach(h => buildHouse(h[0], h[1]));
+
+    // 5. THE CENTER: Tintagel City Walls (39x39 Box)
+    let cityTop = 30, cityBottom = 69, cityLeft = 30, cityRight = 69;
+    for (let r = cityTop; r <= cityBottom; r++) {
+        for (let c = cityLeft; c <= cityRight; c++) {
+            if (r === cityTop || r === cityBottom || c === cityLeft || c === cityRight) {
+                grid[r][c] = WALL_STONE; 
+            }
+        }
+    }
+
+    for (let w = -1; w <= 1; w++) {
+        grid[cityTop][50 + w] = 0;    
+        grid[cityBottom][50 + w] = 0; 
+        grid[50 + w][cityRight] = 0;  
+    }
+
+    for (let c = cityLeft + 2; c < cityRight - 2; c+=5) { if (c !== 50) buildHouse(cityTop + 1, c); }
+    for (let c = cityLeft + 2; c < cityRight - 2; c+=5) { if (c !== 50) buildHouse(cityBottom - 3, c); }
+
+    // 6. THE CENTER: The Castle 
+    let castTop = 43, castBottom = 56, castLeft = 43, castRight = 56;
+    for (let r = castTop; r <= castBottom; r++) {
+        for (let c = castLeft; c <= castRight; c++) {
+            if (r === castTop || r === castBottom || c === castLeft || c === castRight) {
+                grid[r][c] = WALL_STONE; 
+            } else {
+                safeTiles.push({x: c, y: r}); 
+            }
+        }
+    }
+
+    for (let r = castTop + 4; r <= castBottom; r++) { grid[r][48] = WALL_STONE; grid[r][52] = WALL_STONE; } 
+    for (let c = castLeft; c <= castRight; c++) { grid[47][c] = WALL_STONE; } 
+
+    grid[castBottom][50] = 0; 
+    grid[47][50] = 0;         
+    grid[52][48] = 0; grid[52][52] = 0; 
+
+    startX = 50;
+    startY = 45;
+
+    return { grid, startX, startY, bossX: 90, bossY: 50, safeTiles }; 
+}
+
+// --- DECK BUILDER ---
 function buildSynergisticDeck(monsterID) {
     let baseID = Math.floor(parseFloat(monsterID));
     let deck = [baseID]; // Base monster is ALWAYS index 0.
@@ -3329,15 +3440,22 @@ async function executeAITools(currentResponse, activeSession, socket) {
 
                     if (!targetID) {
                         functionResult = { result: `Failed: Player ${call.args.targetName} not found.` };
-                    } else if (isNaN(destMap) || (!WORLD_ATLAS_DB[destMap] && destMap !== 999)) {
-                        // Check if the Map ID actually exists in our DB
+                        } else if (isNaN(destMap) || (!WORLD_ATLAS_DB[destMap] && destMap !== 999 && destMap !== 100)) {
                         functionResult = { result: `Failed: Map ID ${destMap} does not exist.` };
                     } else {
                         players[targetID].mapID = destMap;
                         players[targetID].stepsTaken = 0;
                         players[targetID].exploredTiles = new Set();
                         
+                        // Send the standard teleport command
                         io.to(targetID).emit("force_teleport", { mapID: destMap });
+                        
+                        // IF they went to a big custom map, send the payload!
+                        if (destMap === 999 && activeCustomMap) {
+                            io.to(targetID).emit('load_custom_map', activeCustomMap);
+                        } else if (destMap === 100 && tintagelHubMap) {
+                            io.to(targetID).emit('load_custom_map', tintagelHubMap);
+                        }
                         io.emit("updatePlayers", players);
                         functionResult = { result: `Success: Warped player to map ${destMap}.` };
                     }
@@ -4045,7 +4163,11 @@ socket.on("join_game", (data) => {
         if (!players[socket.id].scenarioLog) {
             players[socket.id].scenarioLog = [];
         }
-        
+        if (players[socket.id].mapID === 999 && activeCustomMap) {
+             socket.emit('load_custom_map', activeCustomMap);
+        } else if (players[socket.id].mapID === 100 && tintagelHubMap) {
+             socket.emit('load_custom_map', tintagelHubMap);
+        }
           if (cleanHistory.length > 0) {
               console.log(`Loading ${cleanHistory.length} memories for ${name}...`);
               try {
@@ -4406,12 +4528,15 @@ socket.on('playerAction_SFX', (data) => {
         }
         // 1. Update the server's master state
         // ---> NEW: Catch manual teleports to 999! <---
+       // 1. Update the server's master state
+        // ---> Catch manual teleports to big maps! <---
         if (data.mapID === 999 && players[socket.id].mapID !== 999) {
-            if (activeCustomMap) {
-                // Instantly send them the cached custom map!
-                socket.emit('load_custom_map', activeCustomMap);
-            }
+            if (activeCustomMap) socket.emit('load_custom_map', activeCustomMap);
         }
+        else if (data.mapID === 100 && players[socket.id].mapID !== 100) {
+            if (tintagelHubMap) socket.emit('load_custom_map', tintagelHubMap);
+        }
+
         let update = { ...players[socket.id], ...data };
         if (!data.name) update.name = players[socket.id].name;
         players[socket.id] = update;
@@ -4803,6 +4928,25 @@ setInterval(() => {
     totalSessionCost = 0.00;
     console.log("[Budget] Hourly API budget reset.");
 }, 60 * 60 * 1000);
+// --- INITIALIZE PERSISTENT MMO HUBS ---
+function buildServerHubs() {
+    let tData = generateTintagelHub();
+    tintagelHubMap = {
+        id: 100, 
+        maze: tData.grid, 
+        skyColor: "rgba(15,30,15,1)", // Sylvan Sky
+        floorColor: "#2d4c1e",        // Sylvan Floor
+        name: "Tintagel Faction Hub", 
+        npcs: [], // You can push static NPCs like the Emperor here later!
+        weather: "leaves",
+        spawnX: tData.startX + 0.5, 
+        spawnY: tData.startY + 0.5,
+        biome: "Sylvan", 
+        safeTiles: tData.safeTiles 
+    };
+    console.log("[World Engine] Map 100 (Tintagel Hub) generated and cached.");
+}
+buildServerHubs(); // Run it!
 server.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });
