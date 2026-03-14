@@ -3366,9 +3366,23 @@ async function executeAITools(currentResponse, activeSession, socket) {
                             return pool.length > 0 ? pool : [54, 56, 23, 42]; 
                         };
 
+                        // --- THE FPS SAVER: HEAVY SPRITE MANAGER ---
+                        // IDs of sprites with massive polygon counts that crash the canvas
+                        const HEAVY_SPRITES = [33, 63, 74, 49,89,37,47,]; // Salamander, Dragon, Gargoyle, Skeleton, Corrupt Sylph
+                        
                         const friendlyMinions = getMinions(protagID);
                         let hostileMinions = getMinions(antagID).filter(id => !friendlyMinions.includes(id));
-                        if (hostileMinions.length === 0) hostileMinions = [54, 56, 42, 82]; 
+                        
+                        // 1. BOSS CHECK: If the Boss is heavy, remove ALL heavy minions from the pool!
+                        if (HEAVY_SPRITES.includes(antagID)) {
+                            hostileMinions = hostileMinions.filter(id => !HEAVY_SPRITES.includes(id));
+                        }
+
+                        // Fallback to purely lightweight sprites if the pool is empty
+                        if (hostileMinions.length === 0) hostileMinions = [54, 56, 42, 23]; // Goblins, Imps, Shades, Wisps
+
+                        let heavySpawnCount = 0;
+                        const MAX_HEAVY_MINIONS = 1; // Only allow 1 wandering heavy minion per map total
 
                         if (scenarioType !== 'Arena Madness') {
                             
@@ -3420,7 +3434,17 @@ async function executeAITools(currentResponse, activeSession, socket) {
                             for(let i=0; i<50; i++) {
                                 let isMiniBoss = i >= 40; // The last 10 are Elite Guards
                                 let mID = hostileMinions[Math.floor(Math.random() * hostileMinions.length)] || antagID;
-                                
+                                // ---> NEW: ENFORCE THE HARD LIMIT <---
+                                if (HEAVY_SPRITES.includes(mID)) {
+                                    if (heavySpawnCount >= MAX_HEAVY_MINIONS) {
+                                        // Swap to a lightweight grunt!
+                                        mID = 54; // Force it to be a Goblin
+                                    } else {
+                                        heavySpawnCount++;
+                                        // Force the solitary heavy minion to wander so it doesn't stand next to the boss
+                                        isMiniBoss = false; 
+                                    }
+                                }
                                 // Spawn between 20 and 80 tiles away from the village!
                                 let spawnSpot = getValidSpawn(startX, startY, 20, 80);
 
