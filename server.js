@@ -74,17 +74,33 @@ async function initConceptVectors() {
 initConceptVectors();
 async function createMemoryVector(text) {
     const result = await embedder.embedContent(text);
-    return result.embedding.values; 
+    const values = result.embedding.values;
+
+    // 1. Calculate the magnitude (length) of the vector
+    let sumOfSquares = 0;
+    for (let i = 0; i < values.length; i++) {
+        sumOfSquares += values[i] * values[i];
+    }
+    const magnitude = Math.sqrt(sumOfSquares);
+
+    // 2. Normalize the vector so its length is exactly 1
+    // Float32Array is heavily optimized by Node's V8 engine for math
+    const normalizedVector = new Float32Array(values.length);
+    for (let i = 0; i < values.length; i++) {
+        normalizedVector[i] = values[i] / magnitude;
+    }
+
+    // Convert back to standard array so it can be saved in JSON
+    return Array.from(normalizedVector); 
 }
 
 function cosineSimilarity(vecA, vecB) {
-    let dotProduct = 0, normA = 0, normB = 0;
+    // Because our vectors are pre-normalized, Cosine Similarity is just the Dot Product!
+    let dotProduct = 0;
     for (let i = 0; i < vecA.length; i++) {
         dotProduct += vecA[i] * vecB[i];
-        normA += vecA[i] * vecA[i];
-        normB += vecB[i] * vecB[i];
     }
-    return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
+    return dotProduct;
 }
 function calculateCentroid(memoryArray) {
     if (!memoryArray || memoryArray.length === 0) return Array(768).fill(0);
@@ -2723,181 +2739,161 @@ let arousal = Math.min(1.0, ((player.dmStress || 0) / 100) + (player.undigestedI
         player.isDigesting = false;
     }
     }
-// --- PROCEDURAL MAP GENERATOR (EverQuest Style Composite Zones) ---
-// --- PROCEDURAL MAP GENERATOR (EverQuest Style Composite Zones) ---
+// --- PROCEDURAL MAP GENERATOR ---
 function generateProceduralGrid(layout, wallType) {
     let maxR = 99, maxC = 99; 
     let grid = Array(maxR).fill().map(() => Array(maxC).fill(wallType));
     
     let safeTiles = [];
-    let startX = 50, startY = 50, bossX = 50, bossY = 46; // Defaults
+    let floorTiles = [];
+    
+    // Hardcoded focal points for the layout
+    let startX = 50, startY = 90; // South Outpost
+    let bossX = 50, bossY = 17;   // North Boss Crypt
 
     if (layout === 'arena') {
-        // ARENA: Tight 13x13 box in the exact center
+        // ARENA: Tight 15x15 box in the exact center
         let midR = Math.floor(maxR/2);
         let midC = Math.floor(maxC/2);
-        for(let r = midR - 6; r <= midR + 6; r++) {
-            for(let c = midC - 6; c <= midC + 6; c++) {
-                if (grid[r] && grid[r][c] !== undefined) grid[r][c] = 0; 
-            }
-        }
-        return { grid, startX, startY, bossX, bossY, safeTiles };
-    }
-
-    // === THE EVERQUEST COMPOSITE ZONE ===
-    // 1. Lay down the Wilderness Base (Sparse Trees/Rocks)
-    for(let r=1; r<maxR-1; r++) {
-        for(let c=1; c<maxC-1; c++) {
-            grid[r][c] = (Math.random() < 0.12) ? wallType : 0;
-        }
-    }
-
-    // 2. Define the 5 major Zones (4 Corners + Center)
-    let centers = [
-        {r: 20, c: 20}, {r: 20, c: 79}, 
-        {r: 79, c: 20}, {r: 79, c: 79}, 
-        {r: 50, c: 50}
-    ];
-    
-    // Shuffle the zones to randomize what spawns where!
-    for (let i = centers.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [centers[i], centers[j]] = [centers[j], centers[i]];
-    }
-    
-    let city = centers[0];
-    let spiral = centers[1];
-    let forest = centers[2];
-    let village = centers[3];
-    let enemyCamp = centers[4];
-
-    // Assign core locations to return to the server
-    startX = city.c;
-    startY = city.r;
-    bossX = spiral.c;
-    bossY = spiral.r;
-
-    // --- HELPER: Build Settlement ---
-    const buildSettlement = (centerR, centerC, radius, numHouses, isSafe) => {
-        // Clear area
-        for(let r = centerR - radius; r <= centerR + radius; r++) {
-            for(let c = centerC - radius; c <= centerC + radius; c++) {
-                if(grid[r] && grid[r][c] !== undefined) grid[r][c] = 0;
-            }
-        }
-        // Build houses
-        let bCount = 0, attempts = 0;
-        while(bCount < numHouses && attempts < 100) {
-            attempts++;
-            let hr = centerR - radius + 2 + Math.floor(Math.random() * (radius * 2 - 6));
-            let hc = centerC - radius + 2 + Math.floor(Math.random() * (radius * 2 - 6));
-            
-            let clear = true;
-            for(let r=hr-1; r<hr+4; r++) {
-                for(let c=hc-1; c<hc+4; c++) {
-                    if (grid[r] === undefined || grid[r][c] !== 0) clear = false;
-                }
-            }
-            if (clear) {
-                for(let r=hr; r<hr+3; r++) {
-                    for(let c=hc; c<hc+3; c++) {
-                        if (r===hr || r===hr+2 || c===hc || c===hc+2) {
-                            grid[r][c] = wallType;
-                        } else if (isSafe) {
-                            safeTiles.push({x: c, y: r}); // Inner floor is safe!
-                        }
+        for(let r = midR - 7; r <= midR + 7; r++) {
+            for(let c = midC - 7; c <= midC + 7; c++) {
+                if (grid[r] && grid[r][c] !== undefined) {
+                    if (r === midR - 7 || r === midR + 7 || c === midC - 7 || c === midC + 7) {
+                        grid[r][c] = wallType; // Outer Wall
+                    } else {
+                        grid[r][c] = 0; // Floor
                     }
                 }
-                grid[hr+2][hc+1] = 0; // Door
-                bCount++;
             }
         }
-    };
+        
+        // Map Valid Floors
+        for (let r = 1; r < maxR - 1; r++) {
+            for (let c = 1; c < maxC - 1; c++) {
+                if (grid[r][c] === 0) floorTiles.push({ x: c, y: r });
+            }
+        }
+        return { grid, startX: midC, startY: midR + 5, bossX: midC, bossY: midR - 4, safeTiles, floorTiles };
+    }
 
-    // 3. Build CITY (Player Spawn)
-    buildSettlement(city.r, city.c, 15, 12, true);
-
-    // 4. Build VILLAGE (Mini quest hub)
-    buildSettlement(village.r, village.c, 10, 5, true);
-
-    // 5. Build ENEMY CAMP (Hostile Fort)
-    buildSettlement(enemyCamp.r, enemyCamp.c, 12, 6, false);
-    // Put a crude palisade wall around the enemy camp
-    for(let r = enemyCamp.r - 12; r <= enemyCamp.r + 12; r++) {
-        for(let c = enemyCamp.c - 12; c <= enemyCamp.c + 12; c++) {
-            if (grid[r] && grid[r][c] !== undefined) {
-                if (r === enemyCamp.r - 12 || r === enemyCamp.r + 12 || c === enemyCamp.c - 12 || c === enemyCamp.c + 12) {
-                    // 80% solid wall, 20% gaps
-                    grid[r][c] = (Math.random() < 0.8) ? wallType : 0;
+    // === THE CLASSIC MMO ZONE (EQOA STYLE) ===
+    
+    // 1. THE WILDS (Rows 40 to 98)
+    // Clear the vast majority of the overland to remove the "choppy" maze feel
+    for(let r = 40; r < 98; r++) {
+        for(let c = 5; c < 94; c++) {
+            grid[r][c] = 0; 
+        }
+    }
+    
+    // Grow thickets/forest clusters instead of random noise pixels
+    for(let i = 0; i < 45; i++) {
+        let tr = 45 + Math.floor(Math.random() * 40);
+        let tc = 10 + Math.floor(Math.random() * 80);
+        let radius = Math.floor(Math.random() * 4) + 2;
+        for(let r = tr - radius; r <= tr + radius; r++) {
+            for(let c = tc - radius; c <= tc + radius; c++) {
+                // Make the clusters roughly circular
+                if (Math.pow(r - tr, 2) + Math.pow(c - tc, 2) <= radius * radius) {
+                    if(grid[r] && grid[r][c] !== undefined) grid[r][c] = wallType;
                 }
             }
         }
     }
 
-    // 6. Build FOREST / LABYRINTH
-    for(let r = forest.r - 16; r <= forest.r + 16; r++) {
-        for(let c = forest.c - 16; c <= forest.c + 16; c++) {
-            if(grid[r] && grid[r][c] !== undefined) {
-                // Dense, chaotic walls (40% density)
-                grid[r][c] = (Math.random() < 0.4) ? wallType : 0;
+    // 2. THE STARTING OUTPOST (Row 85-96, Col 35-65)
+    // A walled safe zone for players to spawn in
+    for(let r = 85; r <= 96; r++) {
+        for(let c = 35; c <= 65; c++) {
+            grid[r][c] = 0; // Clear interior
+            safeTiles.push({x: c, y: r});
+            
+            // Build perimeter wall
+            if (r === 85 || r === 96 || c === 35 || c === 65) {
+                grid[r][c] = wallType; 
             }
         }
     }
-    // Force a small 7x7 clearing in the middle of the forest
-    for(let r = forest.r - 3; r <= forest.r + 3; r++) {
-        for(let c = forest.c - 3; c <= forest.c + 3; c++) {
-            if(grid[r] && grid[r][c] !== undefined) grid[r][c] = 0;
+    // Outpost Gate (North)
+    grid[85][48] = 0; grid[85][49] = 0; grid[85][50] = 0; grid[85][51] = 0; grid[85][52] = 0;
+
+    // Build a couple of tents/structures inside the outpost
+    const buildStructure = (hr, hc) => {
+        for(let r=hr; r<hr+3; r++) {
+            for(let c=hc; c<hc+3; c++) {
+                if (r===hr || r===hr+2 || c===hc || c===hc+2) grid[r][c] = wallType;
+            }
+        }
+        grid[hr+2][hc+1] = 0; // Door facing south
+    };
+    buildStructure(88, 40); buildStructure(88, 55);
+
+    // 3. THE KING'S ROAD
+    // Carve a guaranteed path from the outpost up to the fortress so players don't get blocked by trees
+    for(let r = 40; r <= 85; r++) {
+        let roadCenter = 50 + Math.floor(Math.sin(r / 6) * 12); // Winding path formula
+        for(let w = -3; w <= 3; w++) {
+            if (grid[r] && grid[r][roadCenter + w] !== undefined) {
+                grid[r][roadCenter + w] = 0;
+            }
         }
     }
 
-    // 7. Build BOSS SPIRAL
-    let sRad = 15;
-    for(let r = spiral.r - sRad; r <= spiral.r + sRad; r++) {
-        for(let c = spiral.c - sRad; c <= spiral.c + sRad; c++) {
-            if(grid[r] && grid[r][c] !== undefined) grid[r][c] = wallType;
+    // 4. THE FORTRESS / DUNGEON (Rows 5 to 40)
+    // Classic concentric dungeon design. Players must spiral inward to reach the boss.
+    
+    // Outer Courtyard (Row 20 to 40, Col 15 to 85)
+    for(let r = 20; r <= 40; r++) {
+        for(let c = 15; c <= 85; c++) {
+            grid[r][c] = 0; // Clear interior
+            if (r === 20 || r === 40 || c === 15 || c === 85) grid[r][c] = wallType; // Outer Wall
         }
     }
-    let r = spiral.r - sRad + 1, c = spiral.c - sRad + 1;
-    let t = spiral.r - sRad + 1, b = spiral.r + sRad - 1;
-    let l = spiral.c - sRad + 1, ri = spiral.c + sRad - 1;
-    let dir = 0;
-    while(b - t >= 6 && ri - l >= 6) {
-        for(let i=0; i<3; i++) {
-            for(let j=0; j<3; j++) {
-                if (grid[r+i] && grid[r+i][c+j] !== undefined) grid[r+i][c+j] = 0;
-            }
-        }
-        if (dir === 0) { c++; if (c >= ri - 2) { dir = 1; t += 4; } }
-        else if (dir === 1) { r++; if (r >= b - 2) { dir = 2; ri -= 4; } }
-        else if (dir === 2) { c--; if (c <= l) { dir = 3; b -= 4; } }
-        else if (dir === 3) { r--; if (r <= t) { dir = 0; l += 4; } }
-    }
-    // Hollow out the exact center for the boss!
-    for(let i=-4; i<=4; i++) {
-        for(let j=-4; j<=4; j++) {
-            if(grid[spiral.r+i] && grid[spiral.r+i][spiral.c+j] !== undefined) grid[spiral.r+i][spiral.c+j] = 0;
+    // Main Courtyard Gates (South)
+    grid[40][48] = 0; grid[40][49] = 0; grid[40][50] = 0; grid[40][51] = 0; grid[40][52] = 0;
+    
+    // Add decorative pillars in the courtyard
+    for(let r = 25; r <= 35; r += 5) {
+        for(let c = 25; c <= 75; c += 10) {
+            grid[r][c] = wallType;
         }
     }
 
-    // 8. CARVE SAFE ROADS CONNECTING EVERYTHING
-    // Cross paths at rows/cols 20, 50, and 79 (where the zone centers are)
-    const roads = [20, 50, 79];
-    roads.forEach(road => {
-        // Horizontal roads
-        for(let x = 10; x < 90; x++) {
-            for(let w = -1; w <= 1; w++) {
-                if (grid[road+w] && grid[road+w][x] !== undefined) grid[road+w][x] = 0;
-            }
+    // Inner Keep (Row 8 to 28, Col 25 to 75)
+    for(let r = 8; r <= 28; r++) {
+        for(let c = 25; c <= 75; c++) {
+            grid[r][c] = 0; // Clear interior
+            if (r === 8 || r === 28 || c === 25 || c === 75) grid[r][c] = wallType; // Keep Wall
         }
-        // Vertical roads
-        for(let y = 10; y < 90; y++) {
-            for(let w = -1; w <= 1; w++) {
-                if (grid[y] && grid[y][road+w] !== undefined) grid[y][road+w] = 0;
-            }
-        }
-    });
+    }
+    // Keep Entrance (Offset to the East so they have to walk through the courtyard)
+    grid[28][68] = 0; grid[28][69] = 0; grid[28][70] = 0; 
+    
+    // Break the overlapping wall between the keep and the courtyard
+    for(let c = 26; c <= 74; c++) grid[20][c] = 0; 
 
-    return { grid, startX, startY, bossX, bossY, safeTiles };
+    // The Boss Crypt (Row 12 to 22, Col 40 to 60)
+    for(let r = 12; r <= 22; r++) {
+        for(let c = 40; c <= 60; c++) {
+            grid[r][c] = 0;
+            if (r === 12 || r === 22 || c === 40 || c === 60) grid[r][c] = wallType; // Crypt Wall
+        }
+    }
+    // Crypt Entrance (Offset to the West so they spiral inward through the keep)
+    grid[18][40] = 0; grid[19][40] = 0; grid[20][40] = 0;
+
+    // Add an altar/throne structure in the center of the boss room
+    grid[16][49] = wallType; grid[16][51] = wallType; 
+    grid[15][50] = wallType;
+
+    // --- MAP ALL VALID FLOORS ONCE ---
+    for (let r = 1; r < maxR - 1; r++) {
+        for (let c = 1; c < maxC - 1; c++) {
+            if (grid[r][c] === 0) floorTiles.push({ x: c, y: r });
+        }
+    }
+
+    return { grid, startX, startY, bossX, bossY, safeTiles, floorTiles };
 }
 // --- FACTION HUB: TINTAGEL CASTLE ---
 function generateTintagelHub() {
@@ -3004,71 +3000,72 @@ function generateTintagelHub() {
 
     startX = 50;
     startY = 45;
-
-    return { grid, startX, startY, bossX: 90, bossY: 50, safeTiles }; 
-}
-
-// --- DECK BUILDER ---
-function buildSynergisticDeck(monsterID) {
-    let baseID = Math.floor(parseFloat(monsterID));
-    let deck = [baseID]; // Base monster is ALWAYS index 0.
-    
-    const baseCard = CARD_MANIFEST_DB[baseID];
-    if (!baseCard) return deck; // Failsafe
-    
-    // If Suncat tries to build a deck for an inanimate object, 
-    // it just gets itself. (Items don't cast spells!)
-    if (baseCard.type === 'item' || baseCard.type === 'spell') return deck;
-
-    // 1. Gather Thematic Backup Monsters (Matches Suit OR Tribe)
-    // Exclude the base ID, Kings, Queens, and Major Arcana.
-    const validAllies = Object.entries(CARD_MANIFEST_DB).filter(([id, card]) => {
-        let numId = parseInt(id);
-        if (card.type !== "monster" || numId === baseID) return false;
-        if (card.suit === "Major Arcana" || card.rank === "King" || card.rank === "Queen") return false;
-        
-        // Match Suit OR Match Tribe
-        return (card.suit === baseCard.suit) || 
-               (card.tribe && baseCard.tribe && card.tribe === baseCard.tribe);
-    }).map(([id]) => parseInt(id));
-
-    // 2. Gather Synergistic Equipment/Spells (Matches CLASS ONLY)
-    // Items and Spells don't care about Suit or Tribe, only that the monster knows how to use them!
-    const validEquips = Object.entries(CARD_MANIFEST_DB).filter(([id, card]) => {
-        if (card.type !== "spell" && card.type !== "item") return false;
-        
-        // If the item/spell has classes, does the base monster share at least one?
-        if (card.classes && baseCard.classes) {
-            return card.classes.some(cls => baseCard.classes.includes(cls));
-        }
-        return false;
-    }).map(([id]) => parseInt(id));
-
-    // 3. Assemble the Deck! 
-    // Goal: 1-4 Extra Monsters, 1-5 Spells/Items
-
-    // Add 1 to 4 Monsters
-    let numMonstersToAdd = Math.floor(Math.random() * 4) + 1; // Rolls 1, 2, 3, or 4
-    for(let i = 0; i < numMonstersToAdd; i++) {
-        if (validAllies.length > 0) {
-            // Pick a random ally from the pool
-            let randomAlly = validAllies[Math.floor(Math.random() * validAllies.length)];
-            deck.push(randomAlly);
+    // --- MAP ALL VALID FLOORS ONCE ---
+    let floorTiles = [];
+    for (let r = 1; r < maxR - 1; r++) {
+        for (let c = 1; c < maxC - 1; c++) {
+            if (grid[r][c] === 0) floorTiles.push({ x: c, y: r });
         }
     }
 
-    // Add 1 to 5 Equips/Spells
-    let numEquipsToAdd = Math.floor(Math.random() * 5) + 1; // Rolls 1, 2, 3, 4, or 5
+
+    return { grid, startX, startY, bossX: 90, bossY: 50, safeTiles,floorTiles }; 
+}
+
+// --- DECK BUILDER ---
+// --- SYNERGY CACHE ---
+// Stores the valid pools so we don't recalculate them 80 times per map!
+const deckPoolCache = { allies: {}, equips: {} };
+
+function buildSynergisticDeck(monsterID) {
+    let baseID = Math.floor(parseFloat(monsterID));
+    let deck = [baseID]; 
+    
+    const baseCard = CARD_MANIFEST_DB[baseID];
+    if (!baseCard || baseCard.type === 'item' || baseCard.type === 'spell') return deck; 
+
+    // 1. ALLY MEMOIZATION
+    if (!deckPoolCache.allies[baseID]) {
+        deckPoolCache.allies[baseID] = Object.entries(CARD_MANIFEST_DB)
+            .filter(([id, card]) => {
+                let numId = parseInt(id);
+                if (card.type !== "monster" || numId === baseID) return false;
+                if (card.suit === "Major Arcana" || card.rank === "King" || card.rank === "Queen") return false;
+                return (card.suit === baseCard.suit) || (card.tribe && baseCard.tribe && card.tribe === baseCard.tribe);
+            }).map(([id]) => parseInt(id));
+    }
+    const validAllies = deckPoolCache.allies[baseID];
+
+    // 2. EQUIP MEMOIZATION
+    if (!deckPoolCache.equips[baseID]) {
+        deckPoolCache.equips[baseID] = Object.entries(CARD_MANIFEST_DB)
+            .filter(([id, card]) => {
+                if (card.type !== "spell" && card.type !== "item") return false;
+                if (card.classes && baseCard.classes) {
+                    return card.classes.some(cls => baseCard.classes.includes(cls));
+                }
+                return false;
+            }).map(([id]) => parseInt(id));
+    }
+    const validEquips = deckPoolCache.equips[baseID];
+
+    // 3. ASSEMBLE (Randomized per NPC from the cached pools)
+    let numMonstersToAdd = Math.floor(Math.random() * 4) + 1; 
+    for(let i = 0; i < numMonstersToAdd; i++) {
+        if (validAllies.length > 0) {
+            deck.push(validAllies[Math.floor(Math.random() * validAllies.length)]);
+        }
+    }
+
+    let numEquipsToAdd = Math.floor(Math.random() * 5) + 1; 
     for(let i = 0; i < numEquipsToAdd; i++) {
         if (validEquips.length > 0) {
-            // Pick a random spell/item from the pool
-            let randomEquip = validEquips[Math.floor(Math.random() * validEquips.length)];
-            deck.push(randomEquip);
+            deck.push(validEquips[Math.floor(Math.random() * validEquips.length)]);
         }
     }
 
     return deck;
-    }
+}
 //Scenario Generator
 async function generateScenarioScript(biomeName, scenarioType, bossName, questGiverName) {
     const prompt = `You are a legendary Dungeon Master writing the script for a dark fantasy RPG. 
@@ -3322,22 +3319,34 @@ async function executeAITools(currentResponse, activeSession, socket) {
                         let safeTiles = mapData.safeTiles;
 
                         // --- THE PERFECT ANTI-WALL PHYSICS HELPER ---
+                        // Extract the mapped floors from the generator
+                        let floorTiles = mapData.floorTiles || [];
+
+                        // --- O(1) SPAWN FINDER ---
                         const getValidSpawn = (originX, originY, minRadius, maxRadius) => {
-                            for (let attempts = 0; attempts < 100; attempts++) {
-                                let dist = minRadius + (Math.random() * (maxRadius - minRadius));
-                                let angle = Math.random() * Math.PI * 2;
-                                let px = Math.floor(originX + Math.cos(angle) * dist);
-                                let py = Math.floor(originY + Math.sin(angle) * dist);
+                            if (floorTiles.length === 0) return { x: startX + 0.5, y: startY + 0.5 };
 
-                                px = Math.max(1, Math.min(98, px));
-                                py = Math.max(1, Math.min(98, py));
+                            // Fast filter: Only keep floors that fall within our allowed distance
+                            let validSpots = floorTiles.filter(tile => {
+                                // Fast distance approximation (Manhattan distance is cheaper than Pythagoras)
+                                let dist = Math.abs(tile.x - originX) + Math.abs(tile.y - originY);
+                                return dist >= minRadius && dist <= maxRadius;
+                            });
 
-                                // Only return if it is strictly a floor tile
-                                if (gridData[py] && gridData[py][px] === 0) {
-                                    return { x: px + 0.5, y: py + 0.5 }; 
-                                }
+                            if (validSpots.length > 0) {
+                                // Pick a valid spot and REMOVE IT from the pool so NPCs don't stack!
+                                let randomIndex = Math.floor(Math.random() * validSpots.length);
+                                let chosen = validSpots[randomIndex];
+                                
+                                // Splice it out of the master floor array so no one else spawns here
+                                let masterIndex = floorTiles.findIndex(t => t.x === chosen.x && t.y === chosen.y);
+                                if (masterIndex > -1) floorTiles.splice(masterIndex, 1);
+
+                                return { x: chosen.x + 0.5, y: chosen.y + 0.5 }; 
                             }
-                            return { x: startX + 0.5, y: startY + 0.5 }; // Fallback to spawn point
+                            
+                            // Absolute fallback if the radius is completely walled off
+                            return { x: startX + 0.5, y: startY + 0.5 };
                         };
 
                         // 4. POPULATE THE WORLD
@@ -3735,32 +3744,51 @@ async function executeAITools(currentResponse, activeSession, socket) {
                             // 1. Embed the AI's search query into a vector
                             const queryVector = await createMemoryVector(query);
                             let memoryBank = players[targetID].searchableMemories;
+                            const totalMemories = memoryBank.length;
                             
-                            // 2. Score all past memories using Cosine Similarity
-                            let scoredMemories = memoryBank.map(mem => {
-                                if (!mem.vector) return { raw: mem, text: mem.text, score: -1 }; 
-                                let score = cosineSimilarity(queryVector, mem.vector);
-                                return { raw: mem, text: `[${mem.timestamp}] ${mem.text}`, score: score };
+                            // 2. HYBRID SCORING: Semantic Relevance + Recency
+                            let scoredMemories = memoryBank.map((mem, index) => {
+                                if (!mem.vector) return { raw: mem, text: mem.text, score: -1, semantic: -1 }; 
+                                
+                                // A. Calculate pure meaning (Dot Product)
+                                let semanticScore = cosineSimilarity(queryVector, mem.vector);
+                                
+                                // B. Calculate recency (0.0 is oldest, 1.0 is newest)
+                                let recencyScore = totalMemories > 1 ? (index / (totalMemories - 1)) : 1.0;
+                                
+                                // C. Blend them! (75% Meaning, 25% Time)
+                                let blendedScore = (semanticScore * 0.75) + (recencyScore * 0.25);
+                                
+                                return { 
+                                    raw: mem, 
+                                    text: `[${mem.timestamp}] ${mem.text}`, 
+                                    score: blendedScore, 
+                                    semantic: semanticScore // Keep track of pure meaning
+                                };
                             });
                             
                             // 3. Grab the primary relevant memories
                             let bestMemories = scoredMemories
-                                .filter(m => m.score > 0.45)
-                                .sort((a, b) => b.score - a.score);
+                                .filter(m => m.semantic > 0.40) // CRITICAL: Must be semantically relevant FIRST
+                                .sort((a, b) => b.score - a.score); // Then rank by the blended score
                                 
                             if (bestMemories.length > 0) {
                                 let topMemory = bestMemories[0];
                                 let results = bestMemories.slice(0, 3).map(m => m.text).join(" | ");
                                 let outputStr = `You remember: ${results}`;
 
-                                // --- 2-HOP SEMANTIC RETRIEVAL ---
-                                // Mathematically search for what the top memory relates to
-                                let hopScores = memoryBank.map(mem => {
+                                // --- 2-HOP SEMANTIC RETRIEVAL (Also Hybrid) ---
+                                let hopScores = memoryBank.map((mem, index) => {
                                     if (!mem.vector || mem === topMemory.raw) return { text: mem.text, score: -1 };
-                                    return { text: `[${mem.timestamp}] ${mem.text}`, score: cosineSimilarity(topMemory.raw.vector, mem.vector) };
-                                }).sort((a, b) => b.score - a.score);
+                                    
+                                    let semanticScore = cosineSimilarity(topMemory.raw.vector, mem.vector);
+                                    let recencyScore = totalMemories > 1 ? (index / (totalMemories - 1)) : 1.0;
+                                    let blendedScore = (semanticScore * 0.75) + (recencyScore * 0.25);
+                                    
+                                    return { text: `[${mem.timestamp}] ${mem.text}`, score: blendedScore, semantic: semanticScore };
+                                }).filter(m => m.semantic > 0.40).sort((a, b) => b.score - a.score);
 
-                                if (hopScores.length > 0 && hopScores[0].score > 0.5) {
+                                if (hopScores.length > 0) {
                                     outputStr += `\n[ASSOCIATIVE RECALL]: Thinking about that also reminded you: ${hopScores[0].text}. Synthesize these two data points.`;
                                 }
                                 
@@ -3808,8 +3836,33 @@ function loadSuncatMemory() {
         const data = JSON.parse(fs.readFileSync(MEMORY_FILE, 'utf8'));
         suncatPersistentMemory = data.players || {};
         suncatJournal = data.worldState?.suncatJournal || "I am trapped here. My past feels like a dream...";
+
+        // --- LEGACY MIGRATION: Normalize old vectors on boot ---
+        console.log("[System] Verifying vector normalization for older memories...");
+        for (let playerName in suncatPersistentMemory) {
+            let player = suncatPersistentMemory[playerName];
+            if (player.searchableMemories) {
+                player.searchableMemories.forEach(mem => {
+                    if (mem.vector) {
+                        // Check if it needs normalization
+                        let sumOfSquares = 0;
+                        for (let i = 0; i < mem.vector.length; i++) {
+                            sumOfSquares += mem.vector[i] * mem.vector[i];
+                        }
+                        const magnitude = Math.sqrt(sumOfSquares);
+                        
+                        // If magnitude is far from 1, normalize it!
+                        if (Math.abs(magnitude - 1.0) > 0.01) {
+                            for (let i = 0; i < mem.vector.length; i++) {
+                                mem.vector[i] = mem.vector[i] / magnitude;
+                            }
+                        }
+                    }
+                });
+            }
+        }
     }
-    }
+}
 async function saveSuncatMemory() {
     const fullState = {
         players: suncatPersistentMemory,
@@ -4779,7 +4832,6 @@ async function runLatentSpaceProcessing(playerId) {
         }
     }
 }
-
 async function auditProfileAssumptions(playerId) {
     const player = players[playerId];
     if (!player || !player.playerProfile || !player.searchableMemories || player.searchableMemories.length === 0) return;
@@ -4803,6 +4855,68 @@ async function auditProfileAssumptions(playerId) {
         }
     } catch (e) {
         console.error("Audit Processing Error:", e);
+    }
+}
+// --- MEMORY CONSOLIDATION (REM SLEEP) ---
+async function consolidateMemories(playerId) {
+    const player = players[playerId];
+    
+    // Safety checks: Does the player exist? Are they already consolidating? 
+    if (!player || !player.searchableMemories) return;
+    if (player.isConsolidating) return; 
+
+    const MAX_MEMORIES = 60; // The threshold to trigger sleep cycle
+    const MEMORIES_TO_MERGE = 20; // How many granular memories to squish into 1
+
+    if (player.searchableMemories.length < MAX_MEMORIES) return;
+
+    player.isConsolidating = true;
+    console.log(`[Memory Sleep Cycle] Array full. Consolidating old memories for ${player.name}...`);
+
+    try {
+        // 1. Extract the oldest episodic memories (from the start of the array)
+        const oldestMemories = player.searchableMemories.slice(0, MEMORIES_TO_MERGE);
+        const rawText = oldestMemories.map(m => `[${m.timestamp}]: ${m.text}`).join('\n');
+
+        // 2. Instruct the LLM to act as the subconscious archivist
+        const prompt = `You are the subconscious archivist for a Dark Fantasy RPG. 
+        Review these chronological, granular memories of the player's past:
+        
+        ${rawText}
+        
+        TASK: Synthesize these events into a single, cohesive "Core Memory" paragraph (max 4 sentences). 
+        Focus heavily on the overarching narrative, key locations visited, and major victories or character traits revealed. Omit trivial footsteps or repetitive combat. Write as an omniscient observer.`;
+
+        const consolidationModel = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite-preview" });
+        const result = await consolidationModel.generateContent(prompt);
+        
+        if (result.response.usageMetadata) updateBudget(result.response.usageMetadata, playerId);
+
+        let consolidatedText = result.response.text().trim();
+        
+        // Strip markdown if the AI hallucinated formatting
+        if (consolidatedText.startsWith("```")) {
+            consolidatedText = consolidatedText.replace(/^```(json)?|```$/g, "").trim();
+        }
+
+        // 3. Generate the new mathematical vector for the summary
+        const newVector = await createMemoryVector(consolidatedText);
+
+        // 4. Perform the Brain Surgery (Splice out old, unshift new)
+        player.searchableMemories.splice(0, MEMORIES_TO_MERGE); // Deletes the oldest 20
+        player.searchableMemories.unshift({
+            timestamp: "Core Memory Fragment",
+            text: consolidatedText,
+            vector: newVector,
+            isCore: true // Tagged so we know this is a heavy narrative anchor
+        });
+
+        console.log(`[Memory Sleep Cycle] Successfully consolidated ${MEMORIES_TO_MERGE} memories into 1 Core Memory for ${player.name}. Memory array size reduced to ${player.searchableMemories.length}.`);
+
+    } catch (err) {
+        console.error(`[Memory Sleep Cycle] Error consolidating memories for ${player.name}:`, err);
+    } finally {
+        player.isConsolidating = false;
     }
 }
 setInterval(() => {
@@ -4833,6 +4947,7 @@ setInterval(() => {
                 // Triggered sparsely (10% probability per 30 seconds)
                 if (Math.random() < 0.10) runLatentSpaceProcessing(id);
                 if (Math.random() < 0.10) auditProfileAssumptions(id);
+                if (Math.random() < 0.20) consolidateMemories(id);
             }
         }
     
