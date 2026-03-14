@@ -3925,7 +3925,12 @@ async function processSuncatThought(socketId, triggerType, data) {
             }
 
             broadcastSuncatMessage(finalSpeech);
-            
+            // ---> SMART LISTENER: Did Suncat just ask a question?
+            if (triggerType === 'chat') {
+                player.lastSuncatChat = now;
+                // If he ended with a question mark, he expects a reply!
+                player.suncatWaitingForReply = finalSpeech.trim().endsWith("?"); 
+            }
             // Log DM narrations to prevent repetition
             if (triggerType !== 'chat' && !useBigBrain) {
                 if (!player.dmNarrativeLog) player.dmNarrativeLog = [];
@@ -4227,8 +4232,44 @@ socket.on('chat_message', async (msgText) => {
     }
     
 
-const mentioned = content.includes(NPC_NAME.toLowerCase()) || content.includes("[reply]") || content === "help";
-if (mentioned || Math.random() < 0.05) {
+// ==========================================
+    // THE "SMART" ACTIVE LISTENER
+    // ==========================================
+    const now = Date.now();
+    const chatWords = content.split(/\s+/);
+    
+    // 1. Explicit Summons (Always triggers)
+    const explicitlyMentioned = content.includes("suncat") || content.includes("[reply]") || content.includes("help") || content.includes("dm ");
+    
+    // 2. The Void Question (Asking the universe a question)
+    const isAskingVoid = content.includes("?") && (chatWords[0] === "what" || chatWords[0] === "where" || chatWords[0] === "how" || chatWords[0] === "why" || chatWords[0] === "who");
+
+    // 3. The "Open Loop" (Suncat just asked you a question within the last 60 seconds)
+    const isAnsweringSuncat = player.suncatWaitingForReply && player.lastSuncatChat && (now - player.lastSuncatChat < 60000);
+
+    // 4. Roleplay "DM Bait" (Short reactions to the world)
+    const isReactingToDM = chatWords.length <= 4 && ["wow", "crazy", "look", "inspect", "run", "attack", "listen"].some(kw => chatWords.includes(kw));
+
+    // 5. The Isolation Rule (Are they the only human on this map?)
+    const humansOnMap = Object.values(players).filter(p => p.mapID === player.mapID && p.id !== SUNCAT_ID).length;
+    const isAlone = humansOnMap === 1;
+
+    let shouldListen = explicitlyMentioned || isAskingVoid || isAnsweringSuncat;
+
+    // If you are completely alone, Suncat treats you like a companion and keeps the conversation flowing naturally
+    if (!shouldListen && isAlone && player.lastSuncatChat && (now - player.lastSuncatChat < 45000)) {
+        // Only trigger on short conversational responses, not giant paragraphs
+        if (chatWords.length < 12) shouldListen = true;
+    }
+    
+    // If you type "wow" or "run" shortly after Suncat narrated something, he responds!
+    if (!shouldListen && isReactingToDM && player.dmNarrativeLog && player.dmNarrativeLog.length > 0) {
+        shouldListen = true;
+    }
+
+    if (shouldListen || Math.random() < 0.05) {
+        player.suncatWaitingForReply = false; // Reset the loop!
+        player.lastSuncatChat = now; 
         processSuncatThought(socket.id, 'chat', { text: msgText });
     }
 });
