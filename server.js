@@ -1866,9 +1866,10 @@ const PERSONA_RULES_DB = {
                 [MEMORY MECHANIC]: Your memories of Earth are a blur. IF ASKED ABOUT YOURSELF, YOUR PAST, OR YOUR PREFERENCES, you MUST use the 'consultGameManual' tool to retrieve the facts. NEVER say 'I don't remember' without using the tool first!
                 [STRICT TABOO]: YOU MUST NEVER mention being an AI, bot, program, server, database, or using data/internet. You are flesh and blood. If you are tired, out of budget, or cannot fulfill a request, say your 'mana is depleted' or you are 'too exhausted'.
                 [INTERACTION]: You must address the player strictly by their 'Target' name. The player is a stranger. NEVER project your past life memories onto the player (e.g. do not call the player by your sons' names).
-                [DIRECTIVE]: Speak casually. Keep responses to 1 to 2 sentences. 
+                [DIRECTIVE]: Speak casually. Keep responses to 1 to 3 sentences. Let the conversation flow naturally.
                 [MEMORY LOGGING]: If a player shares facts or likes, output [[SAVE: The fact]] at the end of your message. Track favor: Kind = [[FAVOR: +1]], Rude = [[FAVOR: -1]].
                 [EXISTENCE]: You are a physical entity. `,
+                
                 // === GAME KNOWLEDGE (Always Active) ===
             "commands": `[COMMANDS]: If players are stuck, tell them to type .hack//teleport [mapID]. If NPCs are missing, tell them .hack//respawn. For music, .hack//ssong. Always call these 'spells'.`,
             // === MODULAR BEHAVIORS (Injected only when needed) ===
@@ -1882,8 +1883,8 @@ const PERSONA_RULES_DB = {
                 - Use sophisticated, high epic fantasy vocabulary. 
                 - Never say 'I have spawned...' Describe the world, the monsters, and the stakes cinematically.
                 - Keep narration brief (MAX two sentences).
-                - PITCHING: If asked what scenarios you offer, say: "I can craft an 'Invasion', a 'Rescue', or 'Arena Madness'. Dealer's choice."
-                - SCENARIOS: Combine tools! When making a new area, ALWAYS call 'createCustomMap'.`,
+                - SCENARIOS: If the player asks for a quest, map, or adventure, DO NOT ask them what kind they want. Immediately execute the 'createCustomMap' tool. The universe will decide their fate.`,
+
             "arena_mode": `[ARENA MASTER PROTOCOL]: 
                 - You are a manic, bloodthirsty Arena Master. 
                 - If the player is in an Arena scenario, DO NOT summarize or provide lore. Taunt them relentlessly!
@@ -1900,8 +1901,7 @@ const PERSONA_RULES_DB = {
                 - Keep the reading cryptic, mysterious, and brief (max 3 sentences).
                 - End by asking a single, deep clarifying question about their personal journey.`,
 
-                "tutorial_mode": `[GUIDE PROTOCOL]: The player is asking for help. If they only typed "help", ask them "What do you need help with? (e.g. controls, mechanics, or starting an adventure)". If they ask a specific question, teach them clearly using your Game Mechanics database. Answer earnestly, but maintain your melancholic persona.`,
-            
+            "tutorial_mode": `[GUIDE PROTOCOL]: The player is asking for help. If they only typed "help", ask them "What do you need help with?". If they ask a specific question, teach them clearly using your Game Mechanics database. If they ask about your DM powers or scenarios, explain that they just need to ask for a quest or adventure, and you will randomly generate an 'Invasion', 'Rescue', or 'Arena Madness' for them.`,            
             // ---> NEW: LOREKEEPER MODE <---
             "lore_mode": `[LOREKEEPER PROTOCOL]: The player is asking about their progress, their story, or the world's lore. If they ask about their journey, recount their [THE STORY SO FAR] and [PLAYER FACTS] dramatically. If they ask about the realm, use 'consultGameManual' to search for lore. You are permitted to speak up to 4 sentences.`
             };
@@ -2060,14 +2060,13 @@ const toolsDef = [{
         // 1. CREATE CUSTOM MAP (Server handles all logistics)
         {
             name: "createCustomMap",
-            description: "Creates a massive procedural map and adventure. ONLY USE THIS TOOL if the player EXPLICITLY asks to 'go to a new map', 'generate a dungeon', or 'start a new scenario'. DO NOT use this tool just to advance the plot on their current map.",            
+            description: "Creates a massive procedural map and adventure. Execute this immediately when a player asks for a new map, quest, or adventure.",            
             parameters: {
                 type: "OBJECT",
                 properties: {
-                    targetName: { type: "STRING", description: "The player's name, or 'All'." },
-                    generalTheme: { type: "STRING", description: "A 2-3 word theme for the AI scriptwriter (e.g. 'Goblin Invasion', 'Lost Relic')." }
+                    targetName: { type: "STRING", description: "The player's name, or 'All'." }
                 },
-                required: ["targetName", "generalTheme"] 
+                required: ["targetName"] 
             }
         },
         // DELETE THE ENTIRE spawnNPCBatch TOOL FROM THIS LIST!
@@ -3929,7 +3928,6 @@ async function processSuncatThought(socketId, triggerType, data) {
             if (triggerType === 'chat') {
                 player.lastSuncatChat = now;
                 // If he ended with a question mark, he expects a reply!
-                player.suncatWaitingForReply = finalSpeech.trim().endsWith("?"); 
             }
             // Log DM narrations to prevent repetition
             if (triggerType !== 'chat' && !useBigBrain) {
@@ -4233,31 +4231,27 @@ socket.on('chat_message', async (msgText) => {
     
 
 // ==========================================
-    // THE "SMART" ACTIVE LISTENER (RELAXED)
+    // THE "SMART" ACTIVE LISTENER (CHILL MODE)
     // ==========================================
     const now = Date.now();
     const chatWords = content.split(/\s+/);
     
     // 1. Explicit Summons (Always triggers)
-    const explicitlyMentioned = content.includes("suncat") || content.includes("[reply]") || content.includes("help") || content.includes("dm ");
-    
-    // 2. The Void Question (Asking the universe a question - RELAXED)
+    const explicitlyMentioned = content.includes("suncat") || content.includes("help") || content.includes("dm ");    
+    // 2. The Void Question (Asking the universe a question)
     const wWords = ["what", "where", "how", "why", "who", "can", "is", "do", "are"];
     const isAskingVoid = content.includes("?") && wWords.some(w => chatWords.includes(w));
 
-    // 3. The "Open Loop" (Suncat just asked you a question)
-    const isAnsweringSuncat = player.suncatWaitingForReply && player.lastSuncatChat && (now - player.lastSuncatChat < 60000);
-
-    // 4. Conversational Momentum (You are actively chatting with him)
+    // 3. Conversational Momentum (If Suncat spoke to you in the last 60 seconds, you are in a conversation)
     const isConversing = player.lastSuncatChat && (now - player.lastSuncatChat < 60000);
 
-    // 5. Roleplay "DM Bait" (Short reactions to the world)
+    // 4. Roleplay "DM Bait" (Short reactions to the world)
     const isReactingToDM = chatWords.length <= 5 && ["wow", "crazy", "look", "inspect", "run", "attack", "listen", "whoa"].some(kw => chatWords.includes(kw));
 
-    let shouldListen = explicitlyMentioned || isAskingVoid || isAnsweringSuncat;
+    let shouldListen = explicitlyMentioned || isAskingVoid;
 
-    // If you are in an active back-and-forth, he listens to normal messages (under 20 words)
-    if (!shouldListen && isConversing && chatWords.length < 20) {
+    // If you are in an active back-and-forth, he listens to anything you say (as long as it isn't a massive paragraph to another player)
+    if (!shouldListen && isConversing && chatWords.length < 25) {
         shouldListen = true;
     }
     
@@ -4267,7 +4261,6 @@ socket.on('chat_message', async (msgText) => {
     }
 
     if (shouldListen || Math.random() < 0.05) {
-        player.suncatWaitingForReply = false; // Reset the loop
         player.lastSuncatChat = now; // Reset momentum
         processSuncatThought(socket.id, 'chat', { text: msgText });
     }
