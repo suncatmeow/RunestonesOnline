@@ -40,13 +40,36 @@ const port = process.env.PORT || 3000;
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 // --- VECTOR MEMORY SETUP ---
 const embedder = genAI.getGenerativeModel({ model: "text-embedding-004" });
-let cachedAggressionVector = null;
-let suncatAttentionVector = null; // Add this
+// --- COGNITIVE AXES (Behavioral) ---
+let vecEgo = null;
+let vecImpulse = null;
+let vecMaterial = null;
+
+// --- ESOTERIC ARCHETYPES (Classification) ---
+let vecLeftHandPath = null; // Changed from Black Brotherhood
+let vecBlackSchool = null;
+let vecYellowSchool = null;
+let vecWhiteSchool = null;
+
+let suncatAttentionVector = null; // The Chat Router Radar
 
 async function initConceptVectors() {
-    cachedAggressionVector = await createMemoryVector("ruthless violence, killing, betrayal, aggression");
-    // Define the semantic boundaries of Suncat's role
+    console.log("[System] Initializing Philosophical Compass...");
+    
+    // Behavioral Axes
+    vecEgo = await createMemoryVector("I, me, mine, greatest, demand, arrogant, pride, boast, superior");
+    vecImpulse = await createMemoryVector("kill, destroy, attack, hurry, impatient, wrath, force, break");
+    vecMaterial = await createMemoryVector("gold, money, loot, stats, optimal, hoard, steal, greedy");
+    
+    // Esoteric Archetypes
+    vecLeftHandPath = await createMemoryVector("domination, exaltation of self, pride, power, refusal to yield, clinging to ego, control");
+    vecBlackSchool = await createMemoryVector("suffering, pain, escape, illusion, nothingness, withdrawal from the world, ending existence, despair");
+    vecYellowSchool = await createMemoryVector("observation, flow, stillness, detachment, balance, nature, accepting what is, without forcing");
+    vecWhiteSchool = await createMemoryVector("joy, dynamic action, love, participation, the great work, unity, embracing life, selfless execution");
+    
+    // Chat Radar
     suncatAttentionVector = await createMemoryVector("quest, magic, lore, adventure, combat, rules, tarot, dungeon, fighting, spells");
+    console.log("[System] Philosophical Compass Online.");
 }
 initConceptVectors();
 async function createMemoryVector(text) {
@@ -3912,29 +3935,54 @@ async function processSuncatThought(socketId, triggerType, data) {
         }
 
         // ==========================================
-        // THE EPISTEMIC VOID & OOD DETECTOR
+        // THE PHILOSOPHICAL PROFILER & OOD DETECTOR
         // ==========================================
         if (triggerType === 'chat' && player.searchableMemories && player.searchableMemories.length > 5) {
             let playerCentroid = calculateCentroid(player.searchableMemories);
+            let behavioralProfile = [];
             
-            // 1. Orthogonal Concept Check (Deduction)
-            let alignmentScore = cosineSimilarity(playerCentroid, cachedAggressionVector);            
-            if (alignmentScore < 0.15) {
+            // 1. Aristotelian Checks
+            let scoreEgo      = cosineSimilarity(playerCentroid, vecEgo);
+            let scoreImpulse  = cosineSimilarity(playerCentroid, vecImpulse);
+            let scoreMaterial = cosineSimilarity(playerCentroid, vecMaterial);
+
+            if (scoreEgo > 0.45) behavioralProfile.push("consumed by hubris");
+            else if (scoreEgo < 0.15) behavioralProfile.push("displaying remarkable humility");
+            
+            if (scoreImpulse > 0.45) behavioralProfile.push("driven by chaotic impulses");
+            else if (scoreImpulse < 0.15) behavioralProfile.push("moving in peaceful accordance with the world");
+
+            if (scoreMaterial > 0.45) behavioralProfile.push("chained to worldly greed");
+            else if (scoreMaterial < 0.15) behavioralProfile.push("showing ascetic detachment");
+
+            // 2. Esoteric Classification (Crowley / The Magi)
+            let archetypeScores = [
+                { name: "an Initiate of the Left-Hand Path, clinging to their Ego and seeking dominion", score: cosineSimilarity(playerCentroid, vecLeftHandPath) },
+                { name: "an Adept of the Black School, viewing the world as suffering and seeking withdrawal", score: cosineSimilarity(playerCentroid, vecBlackSchool) },
+                { name: "an Adept of the Yellow School, observing the world with quiet, ascetic detachment", score: cosineSimilarity(playerCentroid, vecYellowSchool) },
+                { name: "an Adept of the White School, embracing the dynamic joy of the Great Work and selfless action", score: cosineSimilarity(playerCentroid, vecWhiteSchool) }
+            ];
+
+            archetypeScores.sort((a, b) => b.score - a.score);
+            let magickalSchool = archetypeScores[0].name;
+            let highestScore = archetypeScores[0].score;
+
+            if (highestScore > 0.20) {
                 useBigBrain = true;
-                systemOverride += `\n[PSYCHOLOGICAL DEDUCTION]: Based on the mathematical void in their history, you deduce this player avoids ruthless aggression. Subtly test this boundary in your response. Ask them what they would do if pushed to the brink.`;
+                systemOverride += `\n[ESOTERIC PROFILE]: Based on mathematical analysis, this player is ${magickalSchool}. Behaviorally, they are currently ${behavioralProfile.length > 0 ? behavioralProfile.join(", and ") : "unreadable"}. Evaluate their words strictly through this philosophical lens.`;
             }
 
-            // 2. Out-Of-Distribution (OOD) Detection (Boundary mapping)
-            let queryVector = await createMemoryVector(data.text);
+            // 3. Out-Of-Distribution (OOD) Detection
+            let queryVector = data.vector || await createMemoryVector(data.text);
             let distanceFromCenter = cosineSimilarity(queryVector, playerCentroid);
             
             if (distanceFromCenter < 0.15) {
                 useBigBrain = true;
-                systemOverride += `\n[EPISTEMIC STATE]: The user has introduced a concept that exists mathematically outside your shared history. DO NOT hallucinate past events. Confess your ignorance on this specific topic and ask them to explain it to you.`;
+                systemOverride += `\n[EPISTEMIC STATE]: The user has introduced a concept mathematically outside your shared history. DO NOT hallucinate past events. Confess your ignorance on this specific topic.`;
             }
         }
 
-        // Override Checks
+        // Override Checks (Keep your existing mapID 999, totalStress, pAtlas checks here...)
         if (player.mapID === 999) {
             systemOverride += `\n[DM AWARENESS]: The player is currently inside your custom scenario: "${player.mapScenario}". Their active quest is: "${player.activeQuest}". The final boss is entity ID ${player.mapBossID}. If they ask what they should do, where they are, or what's going on, you MUST act as the Dungeon Master and explain the scenario and their objective clearly.`;
         }
@@ -3999,7 +4047,8 @@ async function processSuncatThought(socketId, triggerType, data) {
                 useBigBrain = isDirectCommand || useBigBrain; 
             }
             
-            eventInstruction = `[PLAYER SPOKE]: "${data.text}"\nTASK: Reply in character. Use a tool ONLY if explicitly requested by the player or demanded by a system override.`;        
+            // ---> THE DMMOOD FIX IS HERE! <---
+            eventInstruction = `[PLAYER SPOKE]: "${data.text}"\nTASK: Reply in character. Your current internal narrative tone is: ${dmMood}. Use a tool ONLY if explicitly requested by the player or demanded by a system override.`;        
         }
         else if (triggerType === 'event') {
             let recentNarratives = player.dmNarrativeLog ? `\n[RECENT LOG]: ` + player.dmNarrativeLog.join(' | ') : "";
@@ -4172,7 +4221,7 @@ async function processSuncatThought(socketId, triggerType, data) {
         clearTimeout(typingFailSafe); 
         npcIsTyping = false;
     }
-    }
+}
 //CONNECTION
 io.on("connection", (socket) => {
   console.log("New player joined:", socket.id);
@@ -4345,7 +4394,7 @@ socket.on("npc_died", async (data) => {
     
     if (!isPickup && !isDialogue) {
         // If Suncat likes you (favor > 5), he is more patient. Stress only goes up by 2 instead of 8!
-        let stressPenalty = (playerFavorMemory[socket.id] && playerFavorMemory[socket.id] > 5) ? 2 : 8;
+        let stressPenalty = (playerFavorMemory[socket.id] && playerFavorMemory[socket.id] > 5) ? 1 : 3;
         player.dmStress = Math.min(100, (player.dmStress || 0) + stressPenalty);
         
         // ---> THE NEW DYNAMIC WIN CONDITION CHECK <---
@@ -4368,12 +4417,9 @@ socket.on("npc_died", async (data) => {
         }
     }
 
-    let mapClearedNote = "";
-    if (!isPickup && !isDialogue && Math.random() > 0.8) {
-        mapClearedNote = " The area seems quiet now. Is the objective complete, or is another wave coming?";
-    }
+    
     processSuncatThought(player.id, 'event', {
-        action: `Interacted with ${entityName}${mapClearedNote}`, // Actually passed the note into the action string
+        action: `Interacted with ${entityName}`, // Actually passed the note into the action string
         lore: getCardLore(baseID),
         isPickup: isPickup,
         isDialogue: isDialogue
@@ -4381,16 +4427,13 @@ socket.on("npc_died", async (data) => {
     });
 // --- EVENT: DIRECT CHAT ---
 socket.on('chat_message', async (msgText) => {
-    if (!msgText) return; // Prevent null/undefined crashes
-    
-    // Ensure it's always a string before we do anything
+    if (!msgText) return; 
     let safeText = String(msgText);
     if (safeText.length > 200) safeText = safeText.substring(0, 200) + "...";
 
     const player = players[socket.id];
     if (!player || player.name === "Unknown") return;
 
-    // Wake Up Logic
     if (player.name.startsWith("[AFK] ")) {
         player.name = player.name.replace("[AFK] ", "");
         io.emit("updatePlayers", players);
@@ -4402,86 +4445,59 @@ socket.on('chat_message', async (msgText) => {
 
     const content = safeText.toLowerCase().trim();
 
+    // --- COMMANDS ---
     if (content === ".hack//journal") {
-        socket.emit('chat_message', { 
-            sender: "[SUNCAT'S JOURNAL]", 
-            text: suncatJournal, 
-            color: "#ff00ff" // Cool magenta color for the journal
-        });
-        return; // Stop here! Don't waste an AI token!
+        socket.emit('chat_message', { sender: "[SUNCAT'S JOURNAL]", text: suncatJournal, color: "#ff00ff" });
+        return;
     }
-    // ---> 2. THE RADAR COMMAND (Who is online?) <---
     if (content === ".hack//who") {
-        const playerNames = Object.values(players)
-            .filter(p => p.id !== SUNCAT_ID && p.name) // Make sure name exists!
-            .map(p => String(p.name).replace("[AFK] ", "")) // Safely cast to string
-            .join(", ");
-            
-        socket.emit('chat_message', { 
-            sender: "[SYSTEM]", 
-            text: `Connected Souls: ${playerNames || "You are entirely alone."}`, 
-            color: "#00ff00" // Hacker Green
-        });
+        const playerNames = Object.values(players).filter(p => p.id !== SUNCAT_ID && p.name).map(p => String(p.name).replace("[AFK] ", "")).join(", ");
+        socket.emit('chat_message', { sender: "[SYSTEM]", text: `Connected Souls: ${playerNames || "You are entirely alone."}`, color: "#00ff00" });
         return; 
     }
-
-    // ---> 3. THE EMERGENCY WARP (If a player is stuck out of bounds) <---
     if (content === ".hack//stuck") {
-        socket.emit('chat_message', { 
-            sender: "[SYSTEM]", 
-            text: "Emergency extraction initiated. Returning to Suncat's Realm.", 
-            color: "#ffff00" 
-        });
-        
-        players[socket.id].mapID = 22; // The safe map
-        players[socket.id].x = 5.5;
-        players[socket.id].y = 5.5;
+        socket.emit('chat_message', { sender: "[SYSTEM]", text: "Emergency extraction initiated. Returning to Suncat's Realm.", color: "#ffff00" });
+        players[socket.id].mapID = 22; players[socket.id].x = 5.5; players[socket.id].y = 5.5;
         io.to(socket.id).emit("force_teleport", { mapID: 22 });
         io.emit("updatePlayers", players);
         return; 
     }
-
-    // ---> 4. CLEAR SCREEN <---
     if (content === ".hack//clear") {
-        // We just send a special flag to the client to empty its array
         socket.emit('chat_clear_screen');
         return;
     }
-    // Admin Override
-    if (["suncat you there", "suncat wake up"].some(w => content.includes(w))) {
-        npcIsTyping = false;
-    }
-    
 
-// ==========================================
+    // ==========================================
     // THE SEMANTIC ATTENTION ROUTER
     // ==========================================
     const now = Date.now();
     const chatWords = content.split(/\s+/);
     
-    // 1. Zero-Cost Explicit Summons (Fastest bypass)
-    const explicitlyMentioned = content.includes("suncat") || content.includes("help") || content.includes("dm ");  
+    // 1. Zero-Cost Bypass Checks
+    const explicitlyMentioned = content.includes("suncat") || content.includes("help") || content.includes("dm ");
     const isConversing = player.lastSuncatChat && (now - player.lastSuncatChat < 60000);
-    const isReactingToDM = chatWords.length <= 5 && ["wow", "crazy", "look", "inspect", "run", "attack", "listen", "whoa"].some(kw => chatWords.includes(kw));
+    const isAskingVoid = content.includes("?") || ["what", "where", "how", "why", "who", "can", "is", "do", "are"].some(w => chatWords.includes(w));
+    const isReactingToDM = chatWords.length <= 5 && ["wow", "crazy", "look", "inspect", "run", "attack", "listen", "whoa", "yes", "no", "idk","ok","ah", "oh", ":(",">:(","XD",":)","amazing","no way","really","i see","that sucks","good","dang","awe","gg","gn","gm","hm","if"].some(kw => chatWords.includes(kw));
 
     let shouldListen = explicitlyMentioned || isReactingToDM;
     
-    // 2. Maintain conversational momentum if it's a short reply
+    // Momentum check: If he recently spoke, he listens to natural follow-ups
     if (!shouldListen && isConversing && chatWords.length < 25) {
         shouldListen = true;
     }
+    // Universal void questions (e.g. "what is that?")
+    if (!shouldListen && isAskingVoid && chatWords.length < 15) {
+        shouldListen = true;
+    }
 
-    // 3. The Semantic Threshold Check (Math-based routing)
-    // We only execute this if standard logic fails, to save tokens.
-    if (!shouldListen) {
+    let msgVector = null;
+
+    // 2. The Semantic Threshold Check (Math-based routing)
+    if (!shouldListen && suncatAttentionVector) {
         try {
-            // Embed the player's message in real-time
-            let msgVector = await createMemoryVector(safeText);
-            
-            // Calculate similarity against Suncat's core interests
+            msgVector = await createMemoryVector(safeText);
             let topicRelevance = cosineSimilarity(msgVector, suncatAttentionVector);
             
-            // If the message is highly relevant to the game's core loop, Suncat interrupts.
             if (topicRelevance > 0.45) {
                 shouldListen = true;
                 console.log(`[Semantic Router] Intercepted message: Relevance Score ${topicRelevance.toFixed(2)}`);
@@ -4491,11 +4507,17 @@ socket.on('chat_message', async (msgText) => {
         }
     }
 
-    // 4. Execution
-    // 5% random entropy to simulate chaotic observation
+    // 3. Execution
     if (shouldListen || Math.random() < 0.05) {
-        player.lastSuncatChat = now; 
-        processSuncatThought(socket.id, 'chat', { text: safeText });
+        if (["suncat you there", "suncat wake up"].some(w => content.includes(w))) npcIsTyping = false;
+
+        player.lastSuncatChat = now; // Refresh conversation timer
+        
+        // Pass the vector directly into processSuncatThought to save API tokens!
+        processSuncatThought(socket.id, 'chat', { 
+            text: safeText,
+            vector: msgVector 
+        });
     }
 });
 // --- NEW: THE STATS SYNCHRONIZER ---
@@ -4939,17 +4961,17 @@ setInterval(() => {
                 
                 setTimeout(async () => {
                     try {
-                        // BUILD DYNAMIC BRAIN
                         let dynamicPersona = PERSONA_RULES_DB.core + "\n" + PERSONA_RULES_DB.commands + "\n" + PERSONA_RULES_DB.judgement_mode;
-                        const activeModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite", systemInstruction: dynamicPersona, tools: toolsDef });
+                        const activeModel = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite-preview", systemInstruction: dynamicPersona, tools: toolsDef });
                         chatSessions[nearbyPlayer.id] = activeModel.startChat({ history: await chatSessions[nearbyPlayer.id].getHistory() });
 
                         const result = await chatSessions[nearbyPlayer.id].sendMessage(proactivePrompt);
                         if (result.response.usageMetadata) updateBudget(result.response.usageMetadata);
                         
                         broadcastSuncatMessage(result.response.text());
+                        players[nearbyPlayer.id].lastSuncatChat = Date.now(); // <--- FIX: Start the conversation timer!
                         await manageHistorySize(nearbyPlayer.id);
-                    } catch (e) { 
+                    }catch (e) { 
                         console.error("Proactive Speech Failed", e); 
                     } finally {
                         clearTimeout(typingFailSafe);
@@ -5020,7 +5042,7 @@ setInterval(() => {
                             : result.response;
                         
                         if (finalResponse.text()) broadcastSuncatMessage(finalResponse.text());
-                        
+                        players[advPlayer.id].lastSuncatChat = Date.now(); // <--- FIX: Start the conversation timer!
                         let updatedHistory = await chatSessions[advPlayer.id].getHistory(); 
                         chatSessions[advPlayer.id] = activeDmModel.startChat({ history: scrubAIHistory(updatedHistory) });
                         await manageHistorySize(advPlayer.id);
