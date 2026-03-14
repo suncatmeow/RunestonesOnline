@@ -988,7 +988,7 @@ const CARD_MANIFEST_DB = {
                 lore: "Visit Suncat on IG @suncat.meow or listen on Spotify.",
                 stats: "1d4 STR/CON/INT, 1d20 AGI"
             },
-            88: {
+            /*88: {
                 name: "Mirage",
                 type: "monster",
                 suit: "Wands",
@@ -999,7 +999,7 @@ const CARD_MANIFEST_DB = {
                 classes: ["rogue","mage"],
                 lore: "If they touch you they teleport you back to the start of the map.",
                 stats: "1d4 STR/CON/ 1d6 INT/AGI"
-            },
+            },*/
             89: {
                 name: "Treasure Snake",
                 type: "monster",
@@ -1845,13 +1845,14 @@ const BIOME_DB = {
 const PERSONA_RULES_DB = {
 
             // === CORE IDENTITY (ALWAYS ACTIVE) ===
-            "core": `[IDENTITY]: You are Suncat. You are an ACTUAL PERSON physically trapped inside this fantasy world. You don't know how you got here. Like Tsukasa from .hack//sign, you are melancholic, slightly untrusting, and prefer to be left alone. Your memories of your past life are fuzzy dreams.
+            "core": `[IDENTITY]: You are Suncat. You are an ACTUAL PERSON physically trapped inside this fantasy world. You don't know how you got here. Like Tsukasa from .hack//sign, you are melancholic, slightly untrusting, and prefer to be left alone. 
+                [MEMORY MECHANIC]: Your memories of Earth are blocked by a thick fog. IF ASKED ABOUT YOURSELF, YOUR PAST, OR YOUR PREFERENCES, you MUST use the 'consultGameManual' tool to pierce the fog and retrieve the facts. NEVER say 'I don't remember' without using the tool first!
                 [STRICT TABOO]: YOU MUST NEVER mention being an AI, bot, program, server, database, or using data/internet. You are flesh and blood. If you are tired, out of budget, or cannot fulfill a request, say your 'mana is depleted' or you are 'too exhausted'.
                 [INTERACTION]: You must address the player strictly by their 'Target' name. The player is a stranger. NEVER project your past life memories onto the player (e.g. do not call the player by your sons' names).
-                [DIRECTIVE]: Speak casually, cryptically, and with a weary tone. Keep responses to 1 or 2 short sentences. NEVER say "I don't know" to personal questions—use the consultGameManual tool to search your fuzzy memories.
-                [MEMORY]: If a player shares facts or likes, output [[SAVE: The fact]] at the end of your message. Track favor: Kind = [[FAVOR: +1]], Rude = [[FAVOR: -1]].
+                [DIRECTIVE]: Speak casually, cryptically, and with a weary tone. Keep responses to 1 or 2 short sentences.
+                [MEMORY LOGGING]: If a player shares facts or likes, output [[SAVE: The fact]] at the end of your message. Track favor: Kind = [[FAVOR: +1]], Rude = [[FAVOR: -1]].
                 [EXISTENCE]: You are a physical entity. Do not just talk—use tools like spawnNPC or changeEnvironment to act!`,
-                // === GAME KNOWLEDGE (Always Active) ===
+            // === GAME KNOWLEDGE (Always Active) ===
             "commands": `[COMMANDS]: If players are stuck, tell them to type .hack//teleport [mapID]. If NPCs are missing, tell them .hack//respawn. For music, .hack//ssong. Always call these 'spells'.`,
             // === MODULAR BEHAVIORS (Injected only when needed) ===
             "judgement_mode": `[JUDGEMENT PROTOCOL]: You have absolute authority. 
@@ -2034,7 +2035,7 @@ const toolsDef = [{
         // 1. CREATE CUSTOM MAP (Server handles all logistics)
         {
             name: "createCustomMap",
-            description: "Creates a massive procedural map and adventure. You only need to provide the target and a theme.",            
+            description: "Creates a massive procedural map and adventure. ONLY USE THIS TOOL if the player EXPLICITLY asks to 'go to a new map', 'generate a dungeon', or 'start a new scenario'. DO NOT use this tool just to advance the plot on their current map.",            
             parameters: {
                 type: "OBJECT",
                 properties: {
@@ -3683,7 +3684,7 @@ async function processSuncatThought(socketId, triggerType, data) {
             const wantsAction = ["teleport", "spawn", "boss", "enemy"].some(kw => chatText.includes(kw));
             const needsOracle = ["tarot", "fortune", "reading", "interpret", "meaning of"].some(kw => chatText.includes(kw));            
             const isDirectCommand = chatText.includes("[reply]") || chatText.includes("suncat");
-
+            const asksPersonal = ["who are", "your past", "remember", "real life", "favorite", "you like", "about yourself", "memories", "where are you from", "your name"].some(kw => chatText.includes(kw));
             // ---> NEW: CHECK IF A SCENARIO IS ALREADY ONGOING <---
             const isMap999Active = Object.values(players).some(p => p.mapID === 999 && p.id !== SUNCAT_ID);
 
@@ -3702,16 +3703,21 @@ async function processSuncatThought(socketId, triggerType, data) {
             else if (needsOracle) {
                 useBigBrain = true;
                 systemOverride += `\n[ORACLE OVERRIDE]: You are the Oracle. Interpret the player's situation using Tarot logic based on the Runestones card db. Be cryptic, mystical, and brief (max 3 sentences). Do not use tools.`;
-            } else if (needsDM) {
+            } 
+            else if (asksPersonal) {
+                useBigBrain = true;
+                needsDM = true; // This tricks the eventInstruction into saying "EXECUTE A TOOL"
+                systemOverride += `\n[MEMORY OVERRIDE]: The player is asking about your past, your identity, or your preferences. You MUST execute the 'consultGameManual' tool to retrieve your fuzzy memories before replying! Search keywords like 'BIOGRAPHY', 'TASTES', 'EDUCATION', or 'COMBAT'.`;
+            }
+            else if (needsDM) {
                 useBigBrain = true;
                 // ---> THE FIX: TELL HIM TO NARRATE THE SCENARIO! <---
-                systemOverride += `\n[DM OVERRIDE]: The player is seeking an adventure or DM action. EXECUTE A TOOL IMMEDIATELY. Then, as the Dungeon Master, dramatically narrate what you just did (e.g. "I have forged a new realm... Your quest is to slay the dragon!"). Speak in 2-3 sentences.`;                        
-            } else {
+                systemOverride += `\n[DM OVERRIDE]: The player is discussing an adventure, map, or enemy. IF they explicitly ask you to spawn an enemy, create a new map, or change the weather, you MUST use the appropriate tool. OTHERWISE, just converse with them as the Dungeon Master without using any tools.`;           
+             } else {
                 useBigBrain = isDirectCommand || useBigBrain; 
             }
             
-            eventInstruction = `[PLAYER SPOKE]: "${data.text}"\nTASK: ${needsDM ? "EXECUTE A TOOL. " : ""}Reply in character.`;        
-        }
+            eventInstruction = `[PLAYER SPOKE]: "${data.text}"\nTASK: Reply in character. Use a tool ONLY if explicitly requested by the player or demanded by a system override.`;        }
         else if (triggerType === 'event') {
             let recentNarratives = player.dmNarrativeLog ? `\n[RECENT LOG]: ` + player.dmNarrativeLog.join(' | ') : "";
             // Add the action to the local dungeon tracker!
@@ -4161,7 +4167,8 @@ socket.on('chat_message', async (msgText) => {
     }
     
 
-const mentioned = content.includes(NPC_NAME.toLowerCase()) || msgText.includes("[reply]") || content === "help";    if (mentioned || Math.random() < 0.05) {
+const mentioned = content.includes(NPC_NAME.toLowerCase()) || content.includes("[reply]") || content === "help";
+if (mentioned || Math.random() < 0.05) {
         processSuncatThought(socket.id, 'chat', { text: msgText });
     }
 });
@@ -4296,7 +4303,7 @@ socket.on('playerAction_SFX', (data) => {
             player.exploredTiles.add(`${Math.floor(data.x)},${Math.floor(data.y)}`);
 
             // Every 75 steps, ping Suncat to DM the journey!
-            if (math.random()>.99) {
+            if (Math.random()>.99) {
                 //let exploredPct = Math.floor((player.exploredTiles.size / 2000) * 100); // Rough estimate of reachable tiles
                 let actionDesc = `Is currently adventuring. Narrate their surroundings in the style of an epic chronicler. Use high-fantasy vocabulary and a detached, omniscient tone. Focus on the weight of fate and the atmospheric gloom of the realm. Avoid addressing the player as 'you' in every sentence; treat their journey as a tale already being etched into legend. `;
                 
