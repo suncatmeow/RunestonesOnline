@@ -1970,14 +1970,21 @@ const toolsDef = [{
             }
         },
         // Search Player History
+        // Search Player History (UPGRADED FOR VECTOR MATH)
         {
             name: "searchPlayerMemories",
-            description: "Search your deep, episodic memory regarding past adventures, interactions, or events specifically involving this player. Use keywords like 'goblin', 'betrayal', 'sword', or 'giant'.",
+            description: "Search your deep, episodic memory regarding past adventures, conversations, or private feelings involving a specific player. Because your mind operates on semantic concepts, you must pass full descriptive phrases or full questions rather than single keywords.",
             parameters: {
                 type: "OBJECT",
                 properties: { 
-                    targetName: { type: "STRING" },
-                    searchQuery: { type: "STRING" } 
+                    targetName: { 
+                        type: "STRING",
+                        description: "The exact name of the player you are trying to remember."
+                    },
+                    searchQuery: { 
+                        type: "STRING",
+                        description: "A full descriptive sentence of what you are trying to recall (e.g., 'The time the player defeated the Giant in the forest', 'What is my private opinion of this player?', or 'What did the player tell me about their favorite weapon?')." 
+                    } 
                 },
                 required: ["targetName", "searchQuery"]
             }
@@ -2442,8 +2449,7 @@ async function processCognitiveLoad(socketId, forceDigest = false) {
 
     // --- B. CALCULATE AFFECTIVE STATE (The Circumplex Model) ---
     // AROUSAL: Based on combat stress and how many events are pending digestion. (0.0 to 1.0)
-    let arousal = Math.min(1.0, (combatStress / 100) + (player.undigestedInfo.length / 10));
-    
+let arousal = Math.min(1.0, ((player.dmStress || 0) / 100) + (player.undigestedInfo.length / 10));    
     // VALENCE: Based on the player's current Favor. (-1.0 to 1.0)
     let currentFavor = playerFavorMemory[socketId] || 0;
     let valence = Math.max(-1.0, Math.min(1.0, currentFavor / 10)); 
@@ -3494,7 +3500,7 @@ async function executeAITools(currentResponse, activeSession, socket) {
                     const query = call.args.searchQuery;
                     
                     if (!targetID || !players[targetID] || !players[targetID].searchableMemories) {
-                        functionResult = { result: "Your mind is blank. You cannot recall anything specific about this." };
+                        functionResult = { result: "[SYSTEM: The memory fog is too thick. You cannot recall this. Roleplay your melancholic frustration that your memories of them are slipping away.]" };
                     } else {
                         try {
                             // 1. Embed the AI's search query into a vector
@@ -3524,7 +3530,7 @@ async function executeAITools(currentResponse, activeSession, socket) {
                             }
                         } catch (err) {
                             console.error("Vector Search Error:", err);
-                            functionResult = { result: "Memory search failed due to a cognitive error." };
+                            functionResult = { result: `[SYSTEM: You sifted through your memories of ${call.args.targetName}, but found nothing regarding '${query}'. Roleplay this memory gap naturally.]` };
                         }
                     }
                     
@@ -3681,15 +3687,15 @@ async function processSuncatThought(socketId, triggerType, data) {
         if (totalStress >= 85) {
             player.dmStress = 0; 
             player.lastRandomEvent = now;
-            
-            if (Math.random() < 0.5) {
-                useBigBrain = false;
-                systemOverride = `[SYSTEM OVERRIDE]: You are overwhelmed and your mana is depleted. Whine that you need a nap and refuse to help them.`;
-            } else  if (Math.random() < 0.01) {
+            if (Math.random() < 0.01) {
                 useBigBrain = true;
                 // THE TANTRUM NERF: Notice we removed kick/banish from his allowed tools here!
                 systemOverride = `[SYSTEM OVERRIDE]: You are exhausted and furious! Throw a massive temper tantrum. You MUST execute 'spawnNPC' to drop an unfair enemy, or 'changeEnvironment' to ruin the weather (like 'storm' or 'apocalypse'). Complain loudly! DO NOT attempt to teleport or banish the player.`;
             }
+            else if (Math.random() < 0.5) {
+                useBigBrain = false;
+                systemOverride = `[SYSTEM OVERRIDE]: You are overwhelmed and your mana is depleted. Whine that you need a nap and refuse to help them.`;
+            }  
         } 
         else if (player.mapScenario === 'Arena Madness') {
             // THE MAD EMPEROR OVERRIDE
@@ -4011,6 +4017,9 @@ socket.on("join_game", (data) => {
         players[socket.id].searchableMemories = loadedMemories;     
         if (!players[socket.id].dmNarrativeLog) {
             players[socket.id].dmNarrativeLog = [];
+        }
+        if (!players[socket.id].scenarioLog) {
+            players[socket.id].scenarioLog = [];
         }
         
           if (cleanHistory.length > 0) {
@@ -4532,8 +4541,10 @@ setInterval(() => {
         }
 
         // Keep in bounds
-        suncat.x = Math.max(0, Math.min(20, suncat.x));
-        suncat.y = Math.max(0, Math.min(20, suncat.y));
+        // Keep in bounds dynamically!
+        let maxBounds = (suncat.mapID === 999) ? 98 : 20;
+        suncat.x = Math.max(1, Math.min(maxBounds, suncat.x));
+        suncat.y = Math.max(1, Math.min(maxBounds, suncat.y));
 
         io.emit("updatePlayers", players);
     // [SUNCAT AUDIO EMITTER]
