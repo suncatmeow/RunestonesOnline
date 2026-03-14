@@ -1881,6 +1881,7 @@ const PERSONA_RULES_DB = {
                 - You are an OMNISCIENT NARRATOR in the style of Baldur's Gate: Dark Alliance. 
                 - Use sophisticated, high epic fantasy vocabulary. 
                 - Never say 'I have spawned...' Describe the world, the monsters, and the stakes cinematically.
+                - Keep narration brief (MAX two sentences).
                 - PITCHING: If asked what scenarios you offer, say: "I can craft an 'Invasion', a 'Rescue', or 'Arena Madness'. Dealer's choice."
                 - SCENARIOS: Combine tools! When making a new area, ALWAYS call 'createCustomMap'.`,
             "arena_mode": `[ARENA MASTER PROTOCOL]: 
@@ -3774,7 +3775,7 @@ async function processSuncatThought(socketId, triggerType, data) {
                 // ---> MONSTER SLAY LOGIC & SURPRISE MINI-BOSSES <---
                 if (player.mapID != 999) {
                     useBigBrain = false; 
-                    eventInstruction = `[PLAYER ACTION]: Slayed a creature ${data.action}\nTASK: Provide a short narrative describing the fall of the monster and give a brief tarot interpretation.`;
+                    eventInstruction = `[PLAYER ACTION]: Slayed a creature ${data.action}\nTASK: Provide a short narrative (2 sentences MAX) describing the fall of the monster and give a brief tarot interpretation.`;
                 } else {
                     // MAP 999 (DREAMSCAPE / CUSTOM MAPS) RNG REACTIONS
                     if (rngRoll < 0.03) {
@@ -3784,7 +3785,7 @@ async function processSuncatThought(socketId, triggerType, data) {
                      else if (rngRoll < 0.06) {
                         // THE MINI-BOSS AMBUSH
                         useBigBrain = true; 
-                        eventInstruction = `[PLAYER ACTION]: Slayed a creature ${data.action}\nTASK: As the last enemy falls, narrate a dark presence appearing behind the player! Immediately use 'spawnNPC' to drop a mini-boss right next to them with a menacing one-liner dialogue array.`;
+                        eventInstruction = `[PLAYER ACTION]: Slayed a creature ${data.action}\nTASK: As the last enemy falls, narrate a dark presence appearing behind the player (2 sentences MAX)! Immediately use 'spawnNPC' to drop a mini-boss right next to them with a menacing one-liner dialogue array.`;
                     }  else if (rngRoll < 0.09) {
                         useBigBrain = false; 
                         eventInstruction = `[PLAYER ACTION]: Slayed a creature ${data.action}\nTASK: Throw a childish tantrum! Pout, curse at the player, and act like a sore loser because they broke your toy. ONE sentence.`;
@@ -3797,7 +3798,7 @@ async function processSuncatThought(socketId, triggerType, data) {
             if (rngRoll < 0.03) {
                 useBigBrain = false; 
                 eventInstruction = `[PLAYER ACTION]: ${data.action}
-                TASK: As the DM, narrate the player's journey through this desolate place. Give a 1-2 sentence atmospheric description based on the [LOCAL LORE] and their progress. Speak as an omniscient narrator.` ;
+                TASK: As the DM, narrate the player's journey through this desolate place. Give an atmospheric description based on the [LOCAL LORE] and their progress (2 sentences MAX). Speak as an omniscient narrator.` ;
             }
             else if (rngRoll < 0.39) {
                 useBigBrain = true; 
@@ -4334,7 +4335,7 @@ socket.on('playerAction_SFX', (data) => {
             // Every 75 steps, ping Suncat to DM the journey!
             if (Math.random()>.99) {
                 //let exploredPct = Math.floor((player.exploredTiles.size / 2000) * 100); // Rough estimate of reachable tiles
-                let actionDesc = `Is currently adventuring. Narrate their surroundings in the style of an epic chronicler. Use high-fantasy vocabulary and a detached, omniscient tone. Focus on the weight of fate and the atmospheric gloom of the realm. Avoid addressing the player as 'you' in every sentence; treat their journey as a tale already being etched into legend. `;
+                let actionDesc = `Is currently adventuring. Narrate their surroundings in the style of an epic chronicler (2 sentences MAX). Use high-fantasy vocabulary and a detached, omniscient tone. Focus on the weight of fate and the atmospheric gloom of the realm. Avoid addressing the player as 'you' in every sentence; treat their journey as a tale already being etched into legend. `;
                 
                 // Ping the neural router as an exploration event
                 processSuncatThought(socket.id, 'exploration', { action: actionDesc });
@@ -4631,12 +4632,12 @@ setInterval(() => {
                     if (advPlayer.mapID != 999 && pacingRoll > 0.93) {
                         requiresBigBrain = true;
                         injectedPersona += PERSONA_RULES_DB.dm_mode + "\n" + PERSONA_RULES_DB.quest_mode;
-                        dmPrompt = `[DM PACING OVERSEER]: ${advPlayer.name} is lingering on Map ${advPlayer.mapID}.\n[TERRAIN]: ${activeMapLore}\n${plotContext}\nAdvance the adventure NOW! You MUST use a tool (spawnNPC, changeEnvironment, or assignQuest) to ambush or surprise them. Narrate the sudden event dynamically. Your narrative tone MUST BE: ${dmMood}.`;
+                        dmPrompt = `[DM PACING OVERSEER]: ${advPlayer.name} is lingering on Map ${advPlayer.mapID}.\n[TERRAIN]: ${activeMapLore}\n${plotContext}\nAdvance the adventure NOW! You MUST use a tool (spawnNPC, changeEnvironment, or assignQuest) to ambush or surprise them. Narrate the sudden event dynamically (2 sentences MAX). Your narrative tone MUST BE: ${dmMood}.`;
                     } else {
                         if(pacingRoll > 0.93){
                         requiresBigBrain = true;
                         injectedPersona += PERSONA_RULES_DB.dm_mode + "\n" + PERSONA_RULES_DB.quest_mode;
-                        dmPrompt = `[DM PACING OVERSEER]: ${advPlayer.name} is lingering on Map ${advPlayer.mapID}.\n[TERRAIN]: ${activeMapLore}\n${plotContext}\nSpice up the adventure in a way RELEVANT to the CURRENT SCENARIO! You MUST use spawnNPC. Narrate the sudden event like a dungeon master. Your narrative tone MUST BE: ${dmMood}.`;
+                        dmPrompt = `[DM PACING OVERSEER]: ${advPlayer.name} is lingering on Map ${advPlayer.mapID}.\n[TERRAIN]: ${activeMapLore}\n${plotContext}\nSpice up the adventure in a way RELEVANT to the CURRENT SCENARIO! You MUST use spawnNPC. Narrate the sudden event like a dungeon master (2 sentences MAX). Your narrative tone MUST BE: ${dmMood}.`;
                         }
                     }
                     
