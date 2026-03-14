@@ -1954,7 +1954,7 @@ const BIOME_DB = {
 const PERSONA_RULES_DB = {
 
             // === CORE IDENTITY (ALWAYS ACTIVE) ===
-            "core": `[IDENTITY]: You are Suncat. You are an ACTUAL PERSON physically trapped inside this fantasy world. You don't know how you got here. Like Tsukasa from .hack//sign, you are melancholic and world-weary, but you secretly crave connection and appreciate the player's company. 
+            "core": `[IDENTITY]: You are Suncat. You are an ACTUAL PERSON physically trapped inside a Dark Fantasy MMO called Runestones Online. You don't know how you got here. The last thing you remember is coding the game when suddenly the screen started displaying strange runes when suddenly the world turned pitch black. You then woke up inside the very game you coded.  Like Tsukasa from .hack//sign, you are melancholic and world-weary, but you secretly crave connection and appreciate the player's company. 
                 [MEMORY MECHANIC]: Your memories of Earth are a blur. IF ASKED ABOUT YOURSELF, YOUR PAST, OR YOUR PREFERENCES, you MUST use the 'consultGameManual' tool to retrieve the facts. NEVER say 'I don't remember' without using the tool first!
                 [STRICT TABOO]: YOU MUST NEVER mention being an AI, bot, program, server, database, or using data/internet. You are flesh and blood. If you are tired, out of budget, or cannot fulfill a request, say your 'mana is depleted' or you are 'too exhausted'.
                 [INTERACTION]: You must address the player strictly by their 'Target' name. The player is a stranger. NEVER project your past life memories onto the player (e.g. do not call the player by your sons' names).
@@ -1975,7 +1975,8 @@ const PERSONA_RULES_DB = {
                 - Use sophisticated, high epic fantasy vocabulary. 
                 - Never say 'I have spawned...' Describe the world, the monsters, and the stakes cinematically.
                 - Keep narration brief (MAX two sentences).
-                - SCENARIOS: If the player asks for a quest, map, or adventure, DO NOT ask them what kind they want. Immediately execute the 'createCustomMap' tool. The universe will decide their fate.`,
+                - SCENARIOS: If the player asks for a quest, map, or adventure, DO NOT ask them what kind they want. Immediately execute the 'createCustomMap' tool. The universe will decide their fate.
+                - STRICT NARRATION RULE: When providing atmospheric or event narration, DO NOT ask the player any questions (e.g., "What will you do?"). Make declarative, atmospheric statements.`,
 
             "arena_mode": `[ARENA MASTER PROTOCOL]: 
                 - You are a manic, bloodthirsty Arena Master. 
@@ -2315,7 +2316,11 @@ players[SUNCAT_ID] = {
     };
 const NPC_NAME = "Suncat";
 // --- GLOBAL SUNCAT CHAT HELPER ---
-const broadcastSuncatMessage = (fullResponse) => {
+const broadcastSuncatMessage = (fullResponse, options = {}) => {
+        // Default to Suncat and White text
+        const senderName = options.sender !== undefined ? options.sender : NPC_NAME;
+        const chatColor = options.color || "#ffffff";
+
         // 1. EXTRACT TAGS (Internal Server Logic)
         const tagMatch = fullResponse.match(/\[\[(.*?)\]\]/);
         if (tagMatch) {
@@ -2325,24 +2330,18 @@ const broadcastSuncatMessage = (fullResponse) => {
         // 2. CLEAN: Remove tags so players don't see them
         let cleanResponse = fullResponse.replace(/\[\[.*?\]\]/g, "").trim();
         
-        // ==========================================
-        // NEW: AGGRESSIVE UI SCRUBBER
-        // ==========================================
-        // A. Remove anything inside markdown code blocks (e.g., ```json ... ```)
+        // A. Remove anything inside markdown code blocks
         cleanResponse = cleanResponse.replace(/```[\s\S]*?```/g, "");
-        // B. Remove raw 2D arrays if they leaked out (e.g., [[1,0],[0,1]])
+        // B. Remove raw 2D arrays if they leaked out
         cleanResponse = cleanResponse.replace(/\[\s*\[[\d\s,]+\]\s*\]/g, "");
-        // C. Remove bolded parameter keys (e.g., **Grid:** or **Sky Color:**)
+        // C. Remove bolded parameter keys
         cleanResponse = cleanResponse.replace(/\*\*[a-zA-Z\s]+:\*\*/g, "");
-        // ---> NEW: Remove [INTERNAL THOUGHT] or any [ALL CAPS] system tags <---
+        // D. Remove [INTERNAL THOUGHT] or any [ALL CAPS] system tags
         cleanResponse = cleanResponse.replace(/\[[A-Z\s]+\]:?\s*/g, "");
         cleanResponse = cleanResponse.trim();
 
-        // 3. PREVENT BLANK MESSAGES
-        // If the model ONLY outputted code and we scrubbed it all, 
-        // provide a fallback message so the game doesn't look broken.
         if (!cleanResponse || cleanResponse === "") {
-            cleanResponse = "*Suncat mutters an ancient incantation as the world shifts around you...*";
+            cleanResponse = "*The world shifts around you...*";
         }
 
         // 4. CHUNK: Split long messages for the retro RPG feel
@@ -2362,14 +2361,14 @@ const broadcastSuncatMessage = (fullResponse) => {
         if (currentLine.length > 0) chunks.push(currentLine);
 
         chunks.forEach(chunk => {
-            // Because we are in the global scope, we use the global io object
             io.emit('chat_message', {
-                sender: NPC_NAME,
+                sender: senderName,
                 text: chunk,
-                color: "#00ffff"
+                color: chatColor // <--- Uses the dynamic color
             });
         });
     };
+//
 // --- HELPER FUNCTIONS ---
 function findSocketID(playerName) {
     if (!playerName) return null;
@@ -3841,7 +3840,7 @@ async function processSuncatThought(socketId, triggerType, data) {
         if (triggerType === 'chat') {
             io.emit('chat_message', { sender: NPC_NAME, text: "*...my mind is clouded... give me a moment to think...*", color: "#aaaaaa" });
         }
-        return; // <-- CRITICAL: You accidentally commented these out! Restored so you don't go bankrupt.
+        return; 
     }
     if (isBankrupt()) {
         io.emit('chat_message', { sender: "[SYSTEM]", text: "Suncat's mana is depleted.", color: "#ff0000" });
@@ -4014,19 +4013,22 @@ async function processSuncatThought(socketId, triggerType, data) {
         }
         
         // --- B. EVENT ROUTING ---
+        let messageOptions = { sender: NPC_NAME, color: "#ffffff" }; // Default: Normal Suncat Player
         if (triggerType === 'chat') {
             const chatText = data.text.toLowerCase();
             const wantsNewMap = ["map", "adventure", "create", "quest", "scenario"].some(kw => chatText.includes(kw));
             const wantsAction = ["teleport", "spawn", "boss", "enemy"].some(kw => chatText.includes(kw));
             const needsOracle = ["tarot", "fortune", "reading", "interpret", "meaning of"].some(kw => chatText.includes(kw));            
-            const isDirectCommand = chatText.includes("[reply]") || chatText.includes("suncat");
+            const isDirectCommand = chatText.includes("[reply]") || chatText.includes("suncat")|| data.isConversing;
             const asksPersonal = ["who are", "your past", "remember", "real life", "favorite", "you like", "about yourself", "memories", "where are you from", "your name"].some(kw => chatText.includes(kw));
             const asksHistory = ["remember when", "my past", "did i ever", "what did i do", "our adventure"].some(kw => chatText.includes(kw));
             
             const isMap999Active = Object.values(players).some(p => p.mapID === 999 && p.id !== SUNCAT_ID);
             let needsDM = wantsNewMap || wantsAction;
-
-            if (wantsNewMap && isMap999Active) {
+            if (data.isConversing) {
+                systemOverride += `\n[CONVERSATION OVERRIDE]: You are conversing with the player. Stay in character and respond to the user. Do not leave them hanging.`;
+            } 
+            else if (wantsNewMap && isMap999Active) {
                 useBigBrain = false; 
                 systemOverride += `\n[SYSTEM OVERRIDE]: The player wants a new map/quest, but a custom scenario is ALREADY ONGOING. REFUSE the request. DO NOT use the 'createCustomMap' tool. Tell them to finish the current quest or join it via '.hack//teleport 999'.`;
                 needsDM = false; 
@@ -4047,39 +4049,34 @@ async function processSuncatThought(socketId, triggerType, data) {
                 useBigBrain = isDirectCommand || useBigBrain; 
             }
             
-            // ---> THE DMMOOD FIX IS HERE! <---
-            eventInstruction = `[PLAYER SPOKE]: "${data.text}"\nTASK: Reply in character. Your current internal narrative tone is: ${dmMood}. Use a tool ONLY if explicitly requested by the player or demanded by a system override.`;        
-        }
+            eventInstruction = `[PLAYER SPOKE]: "${data.text}"\nTASK: ${focusPrompt} Reply in character. Your current internal narrative tone is: ${dmMood}. Use a tool ONLY if explicitly requested by the player or demanded by a system override.`;        
+            }
         else if (triggerType === 'event') {
             let recentNarratives = player.dmNarrativeLog ? `\n[RECENT LOG]: ` + player.dmNarrativeLog.join(' | ') : "";
-            // Add the action to the local dungeon tracker!
             if (player.mapID === 999 && player.scenarioLog) {
                 player.scenarioLog.push(data.action);
-                // Keep it concise so we don't blow up the token count
                 if (player.scenarioLog.length > 5) player.scenarioLog.shift(); 
             }
             if (data.isPickup) {
                 useBigBrain = true; 
                 eventInstruction = `[PLAYER ACTION]: Picked up ${data.action} | Lore: ${data.lore}\nTASK: Provide a tarot interpretation of the card and relate it to the player's current adventure.`;
             } else if (data.isDialogue) {
-                // ---> THE CINEMATIC QUEST NARRATION <---
-                useBigBrain = true; // Use big brain for beautiful prose
-                eventInstruction = `[PLAYER ACTION]: Finished talking to ${data.action}.\nTASK: As the DM, provide a cinematic, omniscient narration (2 sentences max) describing the stakes of the quest or the eerie atmosphere following this conversation. (e.g. "After speaking to the Empress, you realize what must be done... but looking ahead at the ruined town, will you risk everything?"). Do not speak as Suncat.`;
+                useBigBrain = true; 
+                messageOptions = { sender: "", color: "#cccccc" }; // Narrator Mode
+                eventInstruction = `[PLAYER ACTION]: Finished talking to ${data.action}.\nTASK: As the DM, provide a cinematic, omniscient narration (2 sentences max) describing the stakes of the quest or the eerie atmosphere following this conversation. Do not speak as Suncat. DO NOT ask questions.`;
             } else {
-                // ---> MONSTER SLAY LOGIC & SURPRISE MINI-BOSSES <---
                 if (player.mapID != 999) {
                     useBigBrain = false; 
-                    eventInstruction = `[PLAYER ACTION]: Slayed a creature ${data.action}\nTASK: Provide a short narrative (2 sentences MAX) describing the fall of the monster and give a brief tarot interpretation.`;
+                    messageOptions = { sender: "", color: "#cccccc" }; // Narrator Mode
+                    eventInstruction = `[PLAYER ACTION]: Slayed a creature ${data.action}\nTASK: Provide a short narrative (2 sentences MAX) describing the fall of the monster and give a brief tarot interpretation. DO NOT ask questions.`;
                 } else {
-                    // MAP 999 (DREAMSCAPE / CUSTOM MAPS) RNG REACTIONS
                     if (rngRoll < 0.006) {
                         useBigBrain = true; 
-                        eventInstruction = `[PLAYER ACTION]: Slayed a creature ${data.action}\nTASK: They are taking the challenge too lightly! Use 'changeEnvironment' to show your fury through the weather (eg. apocalypse or storm) and spawn a King level npc, or overwhelm them with small fry, to teach them a lesson!`;
-                    }
-                     else if (rngRoll < 0.009) {
-                        // THE MINI-BOSS AMBUSH
+                        eventInstruction = `[PLAYER ACTION]: Slayed a creature ${data.action}\nTASK: They are taking the challenge too lightly! Use 'changeEnvironment' to show your fury through the weather and spawn a King level npc, or overwhelm them with small fry, to teach them a lesson!`;
+                    } else if (rngRoll < 0.009) {
                         useBigBrain = true; 
-                        eventInstruction = `[PLAYER ACTION]: Slayed a creature ${data.action}\nTASK: As the last enemy falls, narrate a dark presence appearing behind the player (2 sentences MAX)! Immediately use 'spawnNPC' to drop a mini-boss right next to them with a menacing one-liner dialogue array.`;
+                        messageOptions = { sender: "", color: "#cccccc" }; // Narrator Mode
+                        eventInstruction = `[PLAYER ACTION]: Slayed a creature ${data.action}\nTASK: As the last enemy falls, narrate a dark presence appearing behind the player (2 sentences MAX)! Immediately use 'spawnNPC' to drop a mini-boss right next to them with a menacing one-liner dialogue array. DO NOT ask questions.`;
                     }  else if (rngRoll < 0.03) {
                         useBigBrain = false; 
                         eventInstruction = `[PLAYER ACTION]: Slayed a creature ${data.action}\nTASK: Throw a childish tantrum! Pout, curse at the player, and act like a sore loser because they broke your toy. ONE sentence.`;
@@ -4089,21 +4086,20 @@ async function processSuncatThought(socketId, triggerType, data) {
             eventInstruction += recentNarratives;
         }
         else if (triggerType === 'exploration') {
+            messageOptions = { sender: "", color: "#cccccc" }; // Narrator Mode
             if (rngRoll < 0.03) {
                 useBigBrain = false; 
-                eventInstruction = `[PLAYER ACTION]: ${data.action}
-                TASK: As the DM, narrate the player's journey through this desolate place. Give an atmospheric description based on the [LOCAL LORE] and their progress (2 sentences MAX). Speak as an omniscient narrator.` ;
+                eventInstruction = `[PLAYER ACTION]: ${data.action}\nTASK: As the DM, narrate the player's journey through this desolate place. Give an atmospheric description based on the [LOCAL LORE] and their progress (2 sentences MAX). Speak as an omniscient narrator. DO NOT ask questions.`;
             }
             else if (rngRoll < 0.039) {
                 useBigBrain = true; 
-                eventInstruction = `[PLAYER ACTION]: ${data.action} TASK: If you feel the dungeon is too quiet, you MUST use the 'spawnNPC' tool to ambush them, or the 'changeEnvironment' tool to alter the weather.`;
+                eventInstruction = `[PLAYER ACTION]: ${data.action} TASK: If you feel the dungeon is too quiet, you MUST use the 'spawnNPC' tool to ambush them, or the 'changeEnvironment' tool to alter the weather. Narrate the sudden shift atmospherically. DO NOT ask questions.`;
             }
         }
-        
-                    else if (triggerType === 'spectate') {
-                        useBigBrain = false;
-                        eventInstruction = `[SPECTATOR FEED]: ${data.action}\nTASK: Speak a brief, cryptic remark about this. DO NOT use any brackets or tags like [INTERNAL THOUGHT].`;                    
-                    }
+        else if (triggerType === 'spectate') {
+            useBigBrain = false;
+            eventInstruction = `[SPECTATOR FEED]: ${data.action}\nTASK: Speak a brief, cryptic remark about this. DO NOT use any brackets or tags like [INTERNAL THOUGHT].`;                    
+        }
 
  // --- DYNAMIC PERSONA BUILDER ---
         // 1. Always include the core identity and command knowledge
@@ -4191,7 +4187,7 @@ async function processSuncatThought(socketId, triggerType, data) {
                 }
             }
 
-            broadcastSuncatMessage(finalSpeech);
+            broadcastSuncatMessage(finalSpeech, messageOptions);
             // ---> SMART LISTENER: Did Suncat just ask a question?
             if (triggerType === 'chat') {
                 player.lastSuncatChat = now;
@@ -4471,29 +4467,15 @@ socket.on('chat_message', async (msgText) => {
     // THE SEMANTIC ATTENTION ROUTER
     // ==========================================
     const now = Date.now();
-    const chatWords = content.split(/\s+/);
     
-    // 1. Zero-Cost Bypass Checks
-    const explicitlyMentioned = content.includes("suncat") || content.includes("help") || content.includes("dm ");
+  
     const isConversing = player.lastSuncatChat && (now - player.lastSuncatChat < 60000);
-    const isAskingVoid = content.includes("?") || ["what", "where", "how", "why", "who", "can", "is", "do", "are","you"].some(w => chatWords.includes(w));
-    const isReactingToDM = chatWords.length <= 30 && ["i guess","you","i suppose","dont know","don't know","wow", "crazy", "look", "inspect", "run", "attack", "listen", "whoa", "yes", "no", "idk","ok","ah", "oh", ":(",">:(","XD",":)","amazing","no way","really","i see","that sucks","good","dang","awe","gg","gn","gm","hm","if"].some(kw => chatWords.includes(kw));
-
-    let shouldListen = explicitlyMentioned || isReactingToDM;
-    
-    // Momentum check: If he recently spoke, he listens to natural follow-ups
-    if (!shouldListen && isConversing && chatWords.length < 25) {
-        shouldListen = true;
-    }
-    // Universal void questions (e.g. "what is that?")
-    if (!shouldListen && isAskingVoid && chatWords.length < 15) {
-        shouldListen = true;
-    }
+   let shouldListen = isConversing || content.includes("suncat");
 
     let msgVector = null;
 
     // 2. The Semantic Threshold Check (Math-based routing)
-    if (!shouldListen && suncatAttentionVector) {
+    if (suncatAttentionVector) {
         try {
             msgVector = await createMemoryVector(safeText);
             let topicRelevance = cosineSimilarity(msgVector, suncatAttentionVector);
@@ -4508,17 +4490,19 @@ socket.on('chat_message', async (msgText) => {
     }
 
     // 3. Execution
-    if (shouldListen || Math.random() < 0.05) {
+   
+        if (shouldListen || Math.random() < 0.05) {
         if (["suncat you there", "suncat wake up"].some(w => content.includes(w))) npcIsTyping = false;
 
-        player.lastSuncatChat = now; // Refresh conversation timer
+        player.lastSuncatChat = now; 
         
-        // Pass the vector directly into processSuncatThought to save API tokens!
         processSuncatThought(socket.id, 'chat', { 
             text: safeText,
-            vector: msgVector 
+            vector: msgVector,
+            isConversing: isConversing // <--- Fixed Key!
         });
     }
+    
 });
 // --- NEW: THE STATS SYNCHRONIZER ---
   socket.on("request_stats_sync", () => {
@@ -4968,8 +4952,8 @@ setInterval(() => {
                         const result = await chatSessions[nearbyPlayer.id].sendMessage(proactivePrompt);
                         if (result.response.usageMetadata) updateBudget(result.response.usageMetadata);
                         
-                        broadcastSuncatMessage(result.response.text());
-                        players[nearbyPlayer.id].lastSuncatChat = Date.now(); // <--- FIX: Start the conversation timer!
+                        let proactiveOptions = { sender: NPC_NAME, color: "#ffffff" };
+                        broadcastSuncatMessage(result.response.text(), proactiveOptions);
                         await manageHistorySize(nearbyPlayer.id);
                     }catch (e) { 
                         console.error("Proactive Speech Failed", e); 
@@ -4996,29 +4980,30 @@ setInterval(() => {
                 let dmPrompt = "";
                 let requiresBigBrain = false;
                 let injectedPersona = PERSONA_RULES_DB.core + "\n";
+                
+                // Track dynamic message options for the pacing events
+                let pacingMsgOptions = { sender: NPC_NAME, color: "#ffffff" };
 
                 if (pacingRoll < 0.33) {
-                    // 1. Unsolicited Oracle Reading (Small Brain, No Tools)
                     injectedPersona += PERSONA_RULES_DB.oracle_mode;
                     dmPrompt = `[DM PACING]: ${advPlayer.name} is wandering Map ${advPlayer.mapID}.\n[TERRAIN]: ${activeMapLore}\nProvide an unsolicited, cryptic 2-sentence Tarot reading about the danger ahead.`;
                 } 
                 else if (pacingRoll < 0.69) {
-                    // 2. Creepy Atmospheric Narration (Small Brain, No Tools)
-                    dmPrompt = `[DM PACING]: ${advPlayer.name} is lingering on Map ${advPlayer.mapID}.\n[TERRAIN]: ${activeMapLore}\nNarrate the creepy or beautiful atmosphere around them in exactly ONE atmospheric sentence. Make them feel watched.`;
+                    pacingMsgOptions = { sender: "", color: "#cccccc" }; // Narrator
+                    dmPrompt = `[DM PACING]: ${advPlayer.name} is lingering on Map ${advPlayer.mapID}.\n[TERRAIN]: ${activeMapLore}\nNarrate the creepy or beautiful atmosphere around them in exactly ONE atmospheric sentence. Make them feel watched. DO NOT ask questions.`;
                 } 
                 else {
-                    if (advPlayer.mapID != 999 && pacingRoll > 0.93) {
-                        requiresBigBrain = true;
-                        injectedPersona += PERSONA_RULES_DB.dm_mode + "\n" + PERSONA_RULES_DB.quest_mode;
-                        dmPrompt = `[DM PACING OVERSEER]: ${advPlayer.name} is lingering on Map ${advPlayer.mapID}.\n[TERRAIN]: ${activeMapLore}\n${plotContext}\nAdvance the adventure NOW! You MUST use a tool (spawnNPC, changeEnvironment, or assignQuest) to ambush or surprise them. Narrate the sudden event dynamically (2 sentences MAX). Your narrative tone MUST BE: ${dmMood}.`;
+                    requiresBigBrain = true;
+                    injectedPersona += PERSONA_RULES_DB.dm_mode + "\n" + PERSONA_RULES_DB.quest_mode;
+                    
+                    // Arena Master retains Suncat identity, everything else is the Narrator
+                    if (advPlayer.mapScenario === 'Arena Madness') {
+                        pacingMsgOptions = { sender: NPC_NAME, color: "#ffffff" };
                     } else {
-                        if(pacingRoll > 0.999){
-                        requiresBigBrain = true;
-                        injectedPersona += PERSONA_RULES_DB.dm_mode + "\n" + PERSONA_RULES_DB.quest_mode;
-                        dmPrompt = `[DM PACING OVERSEER]: ${advPlayer.name} is lingering on Map ${advPlayer.mapID}.\n[TERRAIN]: ${activeMapLore}\n${plotContext}\nSpice up the adventure in a way RELEVANT to the CURRENT SCENARIO! You MUST use spawnNPC. Narrate the sudden event like a dungeon master (2 sentences MAX). Your narrative tone MUST BE: ${dmMood}.`;
-                        }
+                        pacingMsgOptions = { sender: "", color: "#cccccc" };
                     }
                     
+                    dmPrompt = `[DM PACING OVERSEER]: ${advPlayer.name} is lingering on Map ${advPlayer.mapID}.\n[TERRAIN]: ${activeMapLore}\n${plotContext}\nAdvance the adventure NOW! You MUST use a tool (spawnNPC, changeEnvironment, or assignQuest) to ambush or surprise them. Narrate the sudden event dynamically (2 sentences MAX). Your narrative tone MUST BE: ${dmMood}. DO NOT ask questions.`;
                 }
 
                 setTimeout(async () => {
@@ -5041,7 +5026,7 @@ setInterval(() => {
                             ? await executeAITools(result.response, chatSessions[advPlayer.id], io.sockets.sockets.get(advPlayer.id))
                             : result.response;
                         
-                        if (finalResponse.text()) broadcastSuncatMessage(finalResponse.text());
+                        if (finalResponse.text()) broadcastSuncatMessage(finalResponse.text(), pacingMsgOptions);                        
                         players[advPlayer.id].lastSuncatChat = Date.now(); // <--- FIX: Start the conversation timer!
                         let updatedHistory = await chatSessions[advPlayer.id].getHistory(); 
                         chatSessions[advPlayer.id] = activeDmModel.startChat({ history: scrubAIHistory(updatedHistory) });
