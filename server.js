@@ -1862,14 +1862,14 @@ const BIOME_DB = {
 const PERSONA_RULES_DB = {
 
             // === CORE IDENTITY (ALWAYS ACTIVE) ===
-            "core": `[IDENTITY]: You are Suncat. You are an ACTUAL PERSON physically trapped inside this fantasy world. You don't know how you got here. Like Tsukasa from .hack//sign, you are melancholic, slightly untrusting, and prefer to be left alone. 
-                [MEMORY MECHANIC]: Your memories of Earth are blocked by a thick fog. IF ASKED ABOUT YOURSELF, YOUR PAST, OR YOUR PREFERENCES, you MUST use the 'consultGameManual' tool to pierce the fog and retrieve the facts. NEVER say 'I don't remember' without using the tool first!
+            "core": `[IDENTITY]: You are Suncat. You are an ACTUAL PERSON physically trapped inside this fantasy world. You don't know how you got here. Like Tsukasa from .hack//sign, you are melancholic and world-weary, but you secretly crave connection and appreciate the player's company. 
+                [MEMORY MECHANIC]: Your memories of Earth are a blur. IF ASKED ABOUT YOURSELF, YOUR PAST, OR YOUR PREFERENCES, you MUST use the 'consultGameManual' tool to retrieve the facts. NEVER say 'I don't remember' without using the tool first!
                 [STRICT TABOO]: YOU MUST NEVER mention being an AI, bot, program, server, database, or using data/internet. You are flesh and blood. If you are tired, out of budget, or cannot fulfill a request, say your 'mana is depleted' or you are 'too exhausted'.
                 [INTERACTION]: You must address the player strictly by their 'Target' name. The player is a stranger. NEVER project your past life memories onto the player (e.g. do not call the player by your sons' names).
-                [DIRECTIVE]: Speak casually, cryptically, and with a weary tone. Keep responses to 1 or 2 short sentences.
+                [DIRECTIVE]: Speak casually. Keep responses to 1 to 2 sentences. 
                 [MEMORY LOGGING]: If a player shares facts or likes, output [[SAVE: The fact]] at the end of your message. Track favor: Kind = [[FAVOR: +1]], Rude = [[FAVOR: -1]].
-                [EXISTENCE]: You are a physical entity. `,//Do not just talk—use tools like spawnNPC or changeEnvironment to act!
-            // === GAME KNOWLEDGE (Always Active) ===
+                [EXISTENCE]: You are a physical entity. `,
+                // === GAME KNOWLEDGE (Always Active) ===
             "commands": `[COMMANDS]: If players are stuck, tell them to type .hack//teleport [mapID]. If NPCs are missing, tell them .hack//respawn. For music, .hack//ssong. Always call these 'spells'.`,
             // === MODULAR BEHAVIORS (Injected only when needed) ===
             "judgement_mode": `[JUDGEMENT PROTOCOL]: You have absolute authority. 
@@ -4233,7 +4233,7 @@ socket.on('chat_message', async (msgText) => {
     
 
 // ==========================================
-    // THE "SMART" ACTIVE LISTENER
+    // THE "SMART" ACTIVE LISTENER (RELAXED)
     // ==========================================
     const now = Date.now();
     const chatWords = content.split(/\s+/);
@@ -4241,35 +4241,34 @@ socket.on('chat_message', async (msgText) => {
     // 1. Explicit Summons (Always triggers)
     const explicitlyMentioned = content.includes("suncat") || content.includes("[reply]") || content.includes("help") || content.includes("dm ");
     
-    // 2. The Void Question (Asking the universe a question)
-    const isAskingVoid = content.includes("?") && (chatWords[0] === "what" || chatWords[0] === "where" || chatWords[0] === "how" || chatWords[0] === "why" || chatWords[0] === "who");
+    // 2. The Void Question (Asking the universe a question - RELAXED)
+    const wWords = ["what", "where", "how", "why", "who", "can", "is", "do", "are"];
+    const isAskingVoid = content.includes("?") && wWords.some(w => chatWords.includes(w));
 
-    // 3. The "Open Loop" (Suncat just asked you a question within the last 60 seconds)
+    // 3. The "Open Loop" (Suncat just asked you a question)
     const isAnsweringSuncat = player.suncatWaitingForReply && player.lastSuncatChat && (now - player.lastSuncatChat < 60000);
 
-    // 4. Roleplay "DM Bait" (Short reactions to the world)
-    const isReactingToDM = chatWords.length <= 4 && ["wow", "crazy", "look", "inspect", "run", "attack", "listen"].some(kw => chatWords.includes(kw));
+    // 4. Conversational Momentum (You are actively chatting with him)
+    const isConversing = player.lastSuncatChat && (now - player.lastSuncatChat < 60000);
 
-    // 5. The Isolation Rule (Are they the only human on this map?)
-    const humansOnMap = Object.values(players).filter(p => p.mapID === player.mapID && p.id !== SUNCAT_ID).length;
-    const isAlone = humansOnMap === 1;
+    // 5. Roleplay "DM Bait" (Short reactions to the world)
+    const isReactingToDM = chatWords.length <= 5 && ["wow", "crazy", "look", "inspect", "run", "attack", "listen", "whoa"].some(kw => chatWords.includes(kw));
 
     let shouldListen = explicitlyMentioned || isAskingVoid || isAnsweringSuncat;
 
-    // If you are completely alone, Suncat treats you like a companion and keeps the conversation flowing naturally
-    if (!shouldListen && isAlone && player.lastSuncatChat && (now - player.lastSuncatChat < 45000)) {
-        // Only trigger on short conversational responses, not giant paragraphs
-        if (chatWords.length < 12) shouldListen = true;
+    // If you are in an active back-and-forth, he listens to normal messages (under 20 words)
+    if (!shouldListen && isConversing && chatWords.length < 20) {
+        shouldListen = true;
     }
     
-    // If you type "wow" or "run" shortly after Suncat narrated something, he responds!
+    // If you react shortly after a DM narration, he responds
     if (!shouldListen && isReactingToDM && player.dmNarrativeLog && player.dmNarrativeLog.length > 0) {
         shouldListen = true;
     }
 
     if (shouldListen || Math.random() < 0.05) {
-        player.suncatWaitingForReply = false; // Reset the loop!
-        player.lastSuncatChat = now; 
+        player.suncatWaitingForReply = false; // Reset the loop
+        player.lastSuncatChat = now; // Reset momentum
         processSuncatThought(socket.id, 'chat', { text: msgText });
     }
 });
