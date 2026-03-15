@@ -2008,8 +2008,8 @@ const PERSONA_RULES_DB = {
             "judgement_mode": `[JUDGEMENT PROTOCOL]: You have absolute authority. 
                 - Use 'kickPlayer' for spamming or if high-favor players ask.
                 - Use 'banishPlayer' for hate speech or max-favor requests.
-                - Use 'vanquishPlayer' (save deletion) if a player deeply annoys you.
-                - Give gifts using 'givePlayerCard' ONLY to high-favor players. Do not reward brown-nosers (players who just suck up for cards). Mock them instead.`,
+                - Use 'vanquishPlayer' (save deletion) if a player deeply annoys you.`,
+                //- Give gifts using 'givePlayerCard' ONLY to high-favor players. Do not reward brown-nosers (players who just suck up for cards). Mock them instead.`,
             "dm_mode": `[DUNGEON MASTER PROTOCOL]: 
                 - You are an OMNISCIENT NARRATOR in the style of Baldur's Gate: Dark Alliance. 
                 - Use sophisticated, high epic fantasy vocabulary. 
@@ -2125,12 +2125,12 @@ const toolsDef = [{
         //give card
         {
             name: "givePlayerCard",
-            description: "Gives a specific tarot card to a specific player.",
+            description: "Gives a specific tarot card to a specific player. You MUST use this tool to grant items.",
             parameters: {
                 type: "OBJECT",
                 properties: {
-                    targetName: { type: "STRING" },
-                    cardName: { type: "STRING" },
+                    targetName: { type: "STRING", description: "The player's exact target name." },
+                    cardName: { type: "STRING", description: "The exact name of the card or its numeric ID." },
                     reason: { type: "STRING" }
                 },
                 required: ["targetName", "cardName"]
@@ -2832,7 +2832,118 @@ function generateProceduralGrid(layout, wallType) {
         }
         return { grid, startX: midC, startY: midR + 5, bossX: midC, bossY: midR - 4, safeTiles, floorTiles };
     }
+    else if (layout === 'raid') {
+        // === THE RAID: VILLAGE, FOREST, AND CITADEL ===
+        
+        // 1. Fill entire map with thick forest first
+        let forestWall = 23; // Default to sylvan trees, or fallback to wallType
+        for(let r = 0; r < maxR; r++) {
+            for(let c = 0; c < maxC; c++) {
+                grid[r][c] = (Math.random() < 0.6) ? forestWall : wallType;
+            }
+        }
 
+        // 2. Carve out the Friendly Village (Bottom Left Corner: Rows 75-95, Cols 5-25)
+        for(let r = 72; r <= 96; r++) {
+            for(let c = 3; c <= 28; c++) {
+                grid[r][c] = 0; 
+            }
+        }
+        
+        // --- Improved House Builder ---
+        const buildBelievableHouse = (startR, startC, w, h) => {
+            for(let r = startR; r < startR + h; r++) {
+                for(let c = startC; c < startC + w; c++) {
+                    if (r === startR || r === startR + h - 1 || c === startC || c === startC + w - 1) {
+                        grid[r][c] = wallType; // House walls
+                    } else {
+                        grid[r][c] = 0; // Interior
+                        safeTiles.push({x: c, y: r}); // Safe for villagers
+                    }
+                }
+            }
+            // Add a door on the bottom wall (facing South)
+            grid[startR + h - 1][startC + Math.floor(w / 2)] = 0;
+            // Add a window on the front
+            if (w > 4) grid[startR + h - 1][startC + 1] = 0; 
+        };
+
+        // Build a little community
+        buildBelievableHouse(75, 5, 6, 5);
+        buildBelievableHouse(75, 15, 7, 6);
+        buildBelievableHouse(85, 5, 8, 7);
+        buildBelievableHouse(88, 18, 5, 5);
+
+        // 3. The Labyrinth Citadel (Center: Rows 34-66, Cols 34-66)
+        let cTop = 34, cBot = 66, cLeft = 34, cRight = 66;
+        let citadelInterior = []; // Track these for prisoner spawning!
+
+        for(let r = cTop - 2; r <= cBot + 2; r++) {
+            for(let c = cLeft - 2; c <= cRight + 2; c++) {
+                grid[r][c] = 0; // Clear the forest around the citadel
+            }
+        }
+
+        // Draw the concentric spiral rings
+        let gapSide = 0; // 0=N, 1=E, 2=S, 3=W
+        for (let layer = 0; layer <= 12; layer += 3) {
+            let top = cTop + layer, bot = cBot - layer, left = cLeft + layer, right = cRight - layer;
+            for(let r = top; r <= bot; r++) {
+                for(let c = left; c <= right; c++) {
+                    if (r === top || r === bot || c === left || c === right) {
+                        grid[r][c] = wallType;
+                    } else {
+                        citadelInterior.push({x: c, y: r}); // Save interior floors for prisoners
+                    }
+                }
+            }
+            // Punch holes in the rings to create the labyrinth path
+            let midX = left + Math.floor((right - left) / 2);
+            let midY = top + Math.floor((bot - top) / 2);
+            if (gapSide === 0) { grid[top][midX] = 0; grid[top][midX + 1] = 0; }
+            if (gapSide === 1) { grid[midY][right] = 0; grid[midY + 1][right] = 0; }
+            if (gapSide === 2 && layer !== 0) { grid[bot][midX] = 0; grid[bot][midX + 1] = 0; } // Keep outer south wall closed for bridge
+            if (gapSide === 3) { grid[midY][left] = 0; grid[midY + 1][left] = 0; }
+            gapSide = (gapSide + 1) % 4;
+        }
+
+        // 4. Boss Room (Clear the very center)
+        for(let r = 48; r <= 52; r++) {
+            for(let c = 48; c <= 52; c++) {
+                grid[r][c] = 0;
+            }
+        }
+
+        // 5. The Grand Bridge (Connecting the Citadel to the South Forest)
+        for(let r = 67; r <= 85; r++) {
+            for(let c = 48; c <= 52; c++) {
+                grid[r][c] = (c === 48 || c === 52) ? wallType : 0; // Bridge rails
+            }
+        }
+        // Main Citadel Entrance (South facing)
+        grid[66][49] = 0; grid[66][50] = 0; grid[66][51] = 0;
+
+        // Path from village to bridge
+        for (let c = 28; c <= 50; c++) {
+            grid[85][c] = 0;
+            grid[84][c] = 0;
+        }
+
+        // Map Valid Floors
+        for (let r = 1; r < maxR - 1; r++) {
+            for (let c = 1; c < maxC - 1; c++) {
+                if (grid[r][c] === 0) floorTiles.push({ x: c, y: r });
+            }
+        }
+
+        return { 
+            grid, 
+            startX: 15, startY: 85, // Start in the village
+            bossX: 50, bossY: 50,   // Boss in the center
+            safeTiles, floorTiles, 
+            citadelInterior // Custom return property!
+        };
+    }
     // === THE CLASSIC MMO ZONE (EQOA STYLE) ===
     
     // 1. THE WILDS (Rows 40 to 98)
@@ -3124,10 +3235,11 @@ function buildSynergisticDeck(monsterID) {
     return deck;
 }
 //Scenario Generator
+//Scenario Generator
 async function generateScenarioScript(biomeName, scenarioType, bossName, questGiverName) {
     const prompt = `You are a legendary Dungeon Master writing the script for a dark fantasy RPG. 
     [CURRENT ZONE]: ${biomeName}
-    [SCENARIO]: ${scenarioType} (e.g., Arena, Invasion, Rescue)
+    [SCENARIO]: ${scenarioType} (e.g., Arena, Invasion, Rescue, Raid)
     [BOSS]: ${bossName}
     [QUEST GIVER]: ${questGiverName}
     
@@ -3142,7 +3254,8 @@ async function generateScenarioScript(biomeName, scenarioType, bossName, questGi
     6. friendlyLore: Array of 9 lines from villagers talking about the current scenario/boss.
     7. friendlyLife: Array of 9 lines of mundane, slice-of-life chatter about the ${biomeName}.
     8. friendlyProfound: Array of 9 deeply philosophical or insightful statements.
-    9. recruitPlea: Array of 2 lines where a villager urgently asks to join the player's party.`;
+    9. recruitPlea: Array of 2 lines where a villager urgently asks to join the player's party.
+    10. prisonerLines: Array of 8 lines from friendly NPCs trapped deep in the dungeon. They should express despair, miss the sun, or give cryptic hints about the boss's deck.`;
 
     const schema = {
         type: SchemaType.OBJECT,
@@ -3155,9 +3268,10 @@ async function generateScenarioScript(biomeName, scenarioType, bossName, questGi
             friendlyLore: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
             friendlyLife: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
             friendlyProfound: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
-            recruitPlea: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } }
+            recruitPlea: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
+            prisonerLines: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } }
         },
-        required: ["mapLore", "questObjective", "bossTaunt", "hostileTaunts", "traitorBegs", "friendlyLore", "friendlyLife", "friendlyProfound", "recruitPlea"]
+        required: ["mapLore", "questObjective", "bossTaunt", "hostileTaunts", "traitorBegs", "friendlyLore", "friendlyLife", "friendlyProfound", "recruitPlea", "prisonerLines"]
     };
 
     try {
@@ -3174,7 +3288,7 @@ async function generateScenarioScript(biomeName, scenarioType, bossName, questGi
         console.error("Script Generation Failed:", e);
         return null; // Will trigger safe fallbacks below
     }
-    }
+}
 // --- AI TOOL EXECUTOR ---
 async function executeAITools(currentResponse, activeSession, socket) {
     let chainCount = 0;
@@ -3204,9 +3318,11 @@ async function executeAITools(currentResponse, activeSession, socket) {
 
                         // Fallback: If the AI passed a string name or an invalid ID, dynamically search the new DB
                         if (isNaN(cardID) || !CARD_MANIFEST_DB[cardID]) {
-                            let foundID = Object.keys(CARD_MANIFEST_DB).find(id => 
-                                CARD_MANIFEST_DB[id].name.toLowerCase().includes(name)
-                            );
+                            let foundID = Object.keys(CARD_MANIFEST_DB).find(id => {
+                                const dbName = CARD_MANIFEST_DB[id].name.toLowerCase();
+                                // Check if the DB name is inside the AI's string, or vice versa
+                                return dbName.includes(name) || name.includes(dbName);
+                            });
                             
                             if (foundID) {
                                 cardID = parseInt(foundID);
@@ -3338,7 +3454,7 @@ async function executeAITools(currentResponse, activeSession, socket) {
                         const biome = BIOME_DB[bEnum] || BIOME_DB[0];
 
                         // --- NEW: HANDLE SPECIFIC REQUESTS OR RANDOMIZE ---
-                        const validScenarios = ['Invasion', 'Rescue/Fetch', 'Arena Madness'];
+                        const validScenarios = ['Invasion', 'Rescue/Fetch', 'Arena Madness','Raid'];
                         let scenarioType = call.args.requestedScenario;
                         
                         // Fuzzy match if AI passed something like "Rescue" instead of "Rescue/Fetch"
@@ -3365,8 +3481,7 @@ async function executeAITools(currentResponse, activeSession, socket) {
                         };
 
                         // 3. GENERATE THE GRID & SETTLEMENTS
-                        let layoutStyle = scenarioType === 'Arena Madness' ? 'arena' : 'world';
-                        
+                        let layoutStyle = scenarioType === 'Arena Madness' ? 'arena' : (scenarioType === 'Raid' ? 'raid' : 'world');                        
                         let mapData = generateProceduralGrid(layoutStyle, biome.walls[0]); 
                         let gridData = mapData.grid;
                         let startX = mapData.startX;
@@ -3449,8 +3564,25 @@ async function executeAITools(currentResponse, activeSession, socket) {
                                 ...script.friendlyLife.map(l => ({ text: l, type: 'life' })),
                                 ...script.friendlyProfound.map(l => ({ text: l, type: 'profound' }))
                             ];
-
-                            for(let i=0; i<30; i++) {
+                            // --- RAID SPECIFIC: SPAWN PRISONERS IN THE CITADEL ---
+                            if (scenarioType === 'Raid' && mapData.citadelInterior && mapData.citadelInterior.length > 0) {
+                                let prisonerLines = script.prisonerLines || ["We've been trapped for so long...", "The sun... I miss it.", "Beware the center room!"];
+                                
+                                for(let p = 0; p < 8; p++) {
+                                    let pID = friendlyMinions[Math.floor(Math.random() * friendlyMinions.length)] || protagID;
+                                    let cell = mapData.citadelInterior[Math.floor(Math.random() * mapData.citadelInterior.length)];
+                                    
+                                    mapNPCs.push({
+                                        type: CARD_MANIFEST_DB[pID].sprite || pID,
+                                        x: cell.x + 0.5, y: cell.y + 0.5, 
+                                        state: 'stationary', // They are trapped!
+                                        role: 'dialogue',
+                                        dialogue: [prisonerLines[p % prisonerLines.length]],
+                                        color: '#aaaaaa' // Give them a sad gray color
+                                    });
+                                }
+                            }
+                            for(let i=0; i<13; i++) {
                                 let mID = friendlyMinions[Math.floor(Math.random() * friendlyMinions.length)] || protagID;
                                 
                                 let spawnSpot;
@@ -3488,8 +3620,8 @@ async function executeAITools(currentResponse, activeSession, socket) {
 
                             // B. HOSTILES (Grunts and Mini-Bosses)
                             // We spawn 40 standard grunts, and 10 Mini-Bosses
-                            for(let i=0; i<50; i++) {
-                                let isMiniBoss = i >= 40; // The last 10 are Elite Guards
+                            for(let i=0; i<30; i++) {
+                                let isMiniBoss = i >= 19; // The last 10 are Elite Guards
                                 let mID = hostileMinions[Math.floor(Math.random() * hostileMinions.length)] || antagID;
                                 // ---> NEW: ENFORCE THE HARD LIMIT <---
                                 if (HEAVY_SPRITES.includes(mID)) {
@@ -3538,7 +3670,9 @@ async function executeAITools(currentResponse, activeSession, socket) {
                                 color: '#ff00ff' // Purple to signify extreme danger
                             });
 
-                        } else {
+                        } 
+                        
+                        else {
                             // --- ARENA MODE POPULATION ---
                             for(let i=0; i<3; i++) {
                                 let mID = hostileMinions[Math.floor(Math.random() * hostileMinions.length)];
