@@ -4092,6 +4092,9 @@ async function processSuncatThought(socketId, triggerType, data) {
         // --- B. EVENT ROUTING ---
         let messageOptions = { sender: NPC_NAME, color: "#ffffff" }; // Default: Normal Suncat Player
         if (triggerType === 'chat') {
+            if (data.text.includes("[SYSTEM DIRECTIVE]")) {
+                messageOptions = { sender: "", color: "#FFD700" }; // Epic Gold Narration
+            }
             const chatText = data.text.toLowerCase();
             const wantsNewMap = ["map", "adventure", "create", "quest", "scenario"].some(kw => chatText.includes(kw));
             const wantsAction = ["teleport", "spawn", "boss", "enemy"].some(kw => chatText.includes(kw));
@@ -4138,7 +4141,8 @@ async function processSuncatThought(socketId, triggerType, data) {
             }
             if (data.isPickup) {
                 useBigBrain = true; 
-                eventInstruction = `[PLAYER ACTION]: Picked up ${data.action} | Lore: ${data.lore}\nTASK: Provide a tarot interpretation of the card and relate it to the player's current adventure.`;
+                messageOptions = { sender: "", color: "#ADD8E6" }; // Light blue/Cyan for Mystical Tarot readings
+                eventInstruction = `[PLAYER ACTION]: Picked up ${data.action} | Lore: ${data.lore}\nTASK: Provide a tarot interpretation of the card and relate it to the player's current adventure.DO NOT ask questions.`;
             } else if (data.isDialogue) {
                 useBigBrain = true; 
                 messageOptions = { sender: "", color: "#FFD700" }; // Narrator Mode
