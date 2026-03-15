@@ -4269,7 +4269,7 @@ async function processSuncatThought(socketId, triggerType, data) {
         }
         
         // If Suncat needs to build something, load his DM and Quest brains
-        if (useBigBrain || needsDM) {
+        if (useBigBrain) {
             dynamicPersona += PERSONA_RULES_DB.dm_mode + "\n";
             dynamicPersona += PERSONA_RULES_DB.quest_mode + "\n";
         }
