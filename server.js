@@ -2376,13 +2376,48 @@ const broadcastSuncatMessage = (fullResponse, options = {}) => {
         });
         if (currentLine.length > 0) chunks.push(currentLine);
 
+        // 1. Check if this is an omniscient DM narration (sender is empty)
+        const isNarrator = (senderName === "");
+
+        // Helper function to send borders to the correct target!
+        const sendBorder = () => {
+            const borderPayload = {
+                sender: "",
+                text: "✧ --------------------------------------------------- ✧",
+                color: "#555555"
+            };
+            if (options.targetId) {
+                io.to(options.targetId).emit('chat_message', borderPayload);
+            } else {
+                io.emit('chat_message', borderPayload);
+            }
+        };
+
+        // 2. Print a top border
+        if (isNarrator) {
+            sendBorder();
+        }
+
+        // 3. Print the actual text chunks
         chunks.forEach(chunk => {
-            io.emit('chat_message', {
+            const payload = {
                 sender: senderName,
                 text: chunk,
-                color: chatColor // <--- Uses the dynamic color
-            });
+                color: chatColor 
+            };
+
+            // If a specific player was targeted, whisper it to them. Otherwise, yell it globally.
+            if (options.targetId) {
+                io.to(options.targetId).emit('chat_message', payload);
+            } else {
+                io.emit('chat_message', payload);
+            }
         });
+
+        // 4. Optional: Print a bottom border
+        if (isNarrator) {
+            sendBorder();
+        }
     };
 //
 // --- HELPER FUNCTIONS ---
@@ -4091,6 +4126,9 @@ async function processSuncatThought(socketId, triggerType, data) {
         
         // --- B. EVENT ROUTING ---
         let messageOptions = { sender: NPC_NAME, color: "#ffffff" }; // Default: Normal Suncat Player
+        if (triggerType !== 'chat') {
+            messageOptions.targetId = socketId;
+        }
         if (triggerType === 'chat') {
             if (data.text.includes("[SYSTEM DIRECTIVE]")) {
                 messageOptions = { sender: "", color: "#FFD700" }; // Epic Gold Narration
