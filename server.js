@@ -2479,7 +2479,7 @@ const defaultModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" }
 const taliesinModel = genAI.getGenerativeModel({ 
         model: "gemini-2.5-flash-lite", 
         systemInstruction: T_PERSONA});
-    let npcIsTyping = false; 
+    
     const MAX_SESSION_COST = 2.00; // Hard limit: $1.00
     let totalSessionCost = 0.00;   // Starts at zero when the server boots
     function isBankrupt() {
@@ -4388,7 +4388,8 @@ io.on("connection", (socket) => {
       activeQuest: null,
       dmStress: 0,           // Combat adrenaline
       sessionCost: 0.00,     // Suncat's actual API "Mana" (Fatigue)
-      undigestedInfo: []     // The "Stomach" for raw events
+      undigestedInfo: [],     // The "Stomach" for raw events
+      npcIsTyping:false
   };
 
   io.emit("updatePlayers", players);
@@ -5155,7 +5156,7 @@ setInterval(() => {
     // --- AI DIRECTOR HEARTBEAT ---
     const directorRoll = Math.random();
 
-    if (!npcIsTyping) {
+    if (!target.npcIsTyping) {
         // EVENT A: Proactive Speech
         if (directorRoll < 0.15) {
             const nearbyPlayer = Object.values(players).find(p => p.id !== SUNCAT_ID && p.mapID === suncat.mapID && Math.abs(p.x - suncat.x) < 4 && Math.abs(p.y - suncat.y) < 4);
