@@ -2407,7 +2407,7 @@ const broadcastSuncatMessage = (fullResponse, options = {}) => {
         const sendBorder = () => {
             const borderPayload = {
                 sender: "",
-                text: "✧ oooooooooooooooooooooooooooooooooooooooooooooooooooooooo ✧",                
+                text: "✧ ******************************************************** ✧",                
                 color: "#555555"
             };
             if (options.targetId) {
