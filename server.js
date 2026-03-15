@@ -3981,7 +3981,7 @@ async function processSuncatThought(socketId, triggerType, data) {
     }
     
     // Prevent overlapping thoughts
-    if (player.npcIsTyping) return;
+    //if (player.npcIsTyping) return;
     player.npcIsTyping = true;
     const typingFailSafe = setTimeout(() => { player.npcIsTyping = false; }, 9000);
     let rngRoll = Math.random();
