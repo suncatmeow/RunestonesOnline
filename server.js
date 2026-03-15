@@ -2407,7 +2407,8 @@ const broadcastSuncatMessage = (fullResponse, options = {}) => {
         const sendBorder = () => {
             const borderPayload = {
                 sender: "",
-                text: "✧ -------------------------------------------------------- ✧",                color: "#555555"
+                text: "✧ -------------------------------------------------------------------------------------------------- ✧",                
+                color: "#555555"
             };
             if (options.targetId) {
                 io.to(options.targetId).emit('chat_message', borderPayload);
