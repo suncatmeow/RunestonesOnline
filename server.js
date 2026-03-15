@@ -4903,9 +4903,9 @@ socket.on("disconnect", async () => {
   socket.on("force_ai_action", async (instruction) => {
       const player = players[socket.id];
       if (!player) return;
-      
+      if(player.name!="Unknown"){
       console.log(`[Force AI Action] Triggered by client for ${player.name}: ${instruction}`);
-      
+      }
       // We pass it to Suncat's brain disguised as a chat message, 
       // but wrapped in a System Directive so he knows to obey it immediately.
       processSuncatThought(socket.id, 'chat', { 
