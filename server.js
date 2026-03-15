@@ -4202,7 +4202,12 @@ async function processSuncatThought(socketId, triggerType, data) {
                 player.scenarioLog.push(data.action);
                 if (player.scenarioLog.length > 5) player.scenarioLog.shift(); 
             }
-            if (data.isPickup) {
+            if (data.isBoss) {
+                useBigBrain = true; 
+                messageOptions = { sender: "", color: "#FFD700" }; // Light blue/Cyan for Mystical Tarot readings
+                eventInstruction = `[PLAYER ACTION]: Slayed the Boss! ${data.action} | [DM AWARENESS]:The player is currently inside your custom scenario: "${player.mapScenario}". Their active quest is: "${player.activeQuest}" and have slayed the boss, completing the quest. \nTASK: Provide a short narrative describing the fall of the monster and the aftermath. Give a brief tarot interpretation which accurately represents the results of the scenario. YOU MUST use the 'teleportPlayer' tool to send them to Map ${data.prevMap}, and use 'givePlayerCard' to reward them!`;
+            } 
+            else if (data.isPickup) {
                 useBigBrain = true; 
                 messageOptions = { sender: "", color: "#ADD8E6" }; // Light blue/Cyan for Mystical Tarot readings
                 eventInstruction = `[PLAYER ACTION]: Picked up ${data.action} | Lore: ${data.lore}\nTASK: Provide a tarot interpretation of the card and relate it to the player's current adventure.DO NOT ask questions.`;
@@ -4533,7 +4538,7 @@ socket.on("npc_died", async (data) => {
     player.lastKillReaction = now;
 
     let baseID = Math.floor(parseFloat(data.type));
-    let isPickup = false, isDialogue = false;
+    let isPickup = false, isDialogue = false; let isBoss = data.isBoss;let prevMap = data.prevMap;
     
     if (data.reason && data.reason.startsWith('pickup_')) {
         let extractedID = parseInt(data.reason.split('_')[1]);
@@ -4575,7 +4580,9 @@ socket.on("npc_died", async (data) => {
         action: `Interacted with ${entityName}`, // Actually passed the note into the action string
         lore: getCardLore(baseID),
         isPickup: isPickup,
-        isDialogue: isDialogue
+        isDialogue: isDialogue,
+        isBoss:isBoss,
+        prevMap
     });
     });
 // --- EVENT: DIRECT CHAT ---
