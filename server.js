@@ -5144,19 +5144,11 @@ setInterval(() => {
             y: suncat.y,
             sourcePlayerID: SUNCAT_ID
         });
-        
-        // Optional: Add a text emote to match
-        //io.emit('chat_message', { 
-           // sender: "", 
-            //text: `*${NPC_NAME} emits a ${randomSFX} sound*`, 
-            //color: "#aaaaaa", 
-            //isItalic: true 
-        //});
     }
     // --- AI DIRECTOR HEARTBEAT ---
     const directorRoll = Math.random();
 
-    if (!target.npcIsTyping) {
+    
         // EVENT A: Proactive Speech
         if (directorRoll < 0.15) {
             const nearbyPlayer = Object.values(players).find(p => p.id !== SUNCAT_ID && p.mapID === suncat.mapID && Math.abs(p.x - suncat.x) < 4 && Math.abs(p.y - suncat.y) < 4);
@@ -5263,7 +5255,7 @@ setInterval(() => {
                 }, 1000);
             }
         }
-    }
+    
 }, 30000); // END OF THE 10 SECOND INTERVAL
 async function manageHistorySize(socketId) {
     if (!chatSessions[socketId]) return;
