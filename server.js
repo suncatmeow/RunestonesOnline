@@ -4389,7 +4389,6 @@ io.on("connection", (socket) => {
       dmStress: 0,           // Combat adrenaline
       sessionCost: 0.00,     // Suncat's actual API "Mana" (Fatigue)
       undigestedInfo: [],     // The "Stomach" for raw events
-      npcIsTyping:false
   };
 
   io.emit("updatePlayers", players);
