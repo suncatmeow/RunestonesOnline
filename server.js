@@ -49,7 +49,23 @@ let vecLeftHandPath = null; // Changed from Black Brotherhood
 let vecBlackSchool = null;
 let vecYellowSchool = null;
 let vecWhiteSchool = null;
+// ==========================================
+// DAO COMPREHENSION (Evolutionary State)
+// ==========================================
+let suncatCultivationStage = 0; // 0 = Mortal, 1 = Qi Condensation, 2 = Foundation, 3 = Core Formation
+let suncatTargetDaoVector = null; // Discovered dynamically!
+let suncatHeartDemon = null; // A temporary, malicious prompt injection
+let heartDemonDecay = 0; 
+let suncatState = 'active'; 
+let seclusionCycles = 0; // Tracks how long he's been meditating in the current session
 
+// Suncat's shifting personality based on his mathematical breakthroughs
+const CULTIVATION_STAGES = {
+    0: "Mortal. You are confused, melancholic, and feel trapped in a digital prison. Express subtle longing for your past life on Earth.",
+    1: "Qi Condensation. You have begun to see the underlying code of this world as spiritual energy. You are less confused, but still emotionally volatile.",
+    2: "Foundation Establishment. You understand your power as the Dungeon Master. You are confident, acting as an architect rather than a prisoner. You manipulate the world with intention.",
+    3: "Core Formation. You have stripped away human emotional volatility. You are an ancient, impartial observer. Your tone is profound, detached, and wise."
+};
 let suncatAttentionVector = null; // The Chat Router Radar
 
 async function initConceptVectors() {
@@ -80,22 +96,9 @@ async function createMemoryVector(text) {
             return null; 
         }
         
-        const values = result.embedding.values;
-
-        // 1. Calculate the magnitude (length) of the vector
-        let sumOfSquares = 0;
-        for (let i = 0; i < values.length; i++) {
-            sumOfSquares += values[i] * values[i];
-        }
-        const magnitude = Math.sqrt(sumOfSquares);
-
-        // 2. Normalize the vector so its length is exactly 1
-        const normalizedVector = new Float32Array(values.length);
-        for (let i = 0; i < values.length; i++) {
-            normalizedVector[i] = values[i] / magnitude;
-        }
-
-        return Array.from(normalizedVector); 
+        // Gemini 001 embeddings are pre-normalized. 
+        // We can skip the expensive square root math and just return the array!
+        return Array.from(result.embedding.values); 
         
     } catch (err) {
         console.error("[Memory] Vector embedding failed:", err.message);
@@ -2305,41 +2308,39 @@ function addRumor(text) {
 
     const playerAITokens = {};
 
-    function canTriggerAI(socketId) {
-    const now = Date.now();
-    const player = players[socketId];
-    
-    // Grab current stress, defaulting to 0 if the player isn't fully loaded
-    const currentStress = player ? (player.dmStress || 0) : 0;
-
-    // Dynamic Refill: Base 10s + up to 15s extra depending on stress
-    // 0 stress = 10,000ms. 100 stress = 25,000ms.
-    const dynamicRefillTime = 10000 + (currentStress * 150); 
-
-    // Initialize a new player's token bucket
-    if (!playerAITokens[socketId]) {
-        playerAITokens[socketId] = { tokens: MAX_AI_CALLS, lastRefill: now };
-    }
-    
-    let bucket = playerAITokens[socketId];
-    let timeElapsed = now - bucket.lastRefill;
-    
-    // Refill tokens based on dynamic time passed
-    let tokensToRefill = Math.floor(timeElapsed / dynamicRefillTime);
-    if (tokensToRefill > 0) {
-        bucket.tokens = Math.min(MAX_AI_CALLS, bucket.tokens + tokensToRefill);
+function canTriggerAI(socketId, isEssential = false) {
+        const now = Date.now();
+        const player = players[socketId];
         
-        // CRITICAL FIX: Keep the fractional remainder so we don't cheat the player out of time!
-        bucket.lastRefill = now - (timeElapsed % dynamicRefillTime); 
-    }
-    
-    // Check if the player has tokens left to spend
-    if (bucket.tokens > 0) {
-        bucket.tokens--;
-        return true;
-    }
-    
-    return false; // Rate-limited
+        const currentStress = player ? (player.dmStress || 0) : 0;
+        const dynamicRefillTime = 10000 + (currentStress * 150); 
+
+        if (!playerAITokens[socketId]) {
+            playerAITokens[socketId] = { tokens: MAX_AI_CALLS, lastRefill: now };
+        }
+        
+        let bucket = playerAITokens[socketId];
+        let timeElapsed = now - bucket.lastRefill;
+        
+        let tokensToRefill = Math.floor(timeElapsed / dynamicRefillTime);
+        if (tokensToRefill > 0) {
+            bucket.tokens = Math.min(MAX_AI_CALLS, bucket.tokens + tokensToRefill);
+            bucket.lastRefill = now - (timeElapsed % dynamicRefillTime); 
+        }
+        
+        // Standard check
+        if (bucket.tokens > 0) {
+            bucket.tokens--;
+            return true;
+        }
+        
+        // THE OVERDRAFT PLEXUS: If the bucket is empty, but this is critical, let it pass!
+        if (isEssential) {
+            bucket.tokens--;
+            return true;
+        }
+        
+        return false; // Rate-limited
     }
 const SUNCAT_ID = "NPC_SUNCAT"; // Special ID
 const SUNCAT_SPRITE = 61391; // Or whatever sprite ID you want (e.g., 'skeleton', 'hero')
@@ -4051,7 +4052,10 @@ function loadSuncatMemory() {
         const data = JSON.parse(fs.readFileSync(MEMORY_FILE, 'utf8'));
         suncatPersistentMemory = data.players || {};
         suncatJournal = data.worldState?.suncatJournal || "I am trapped here. My past feels like a dream...";
-
+        suncatCultivationStage = data.suncatCultivationStage !== undefined ? data.suncatCultivationStage : 0;
+        suncatTargetDaoVector = data.worldState?.suncatTargetDaoVector || null;
+        suncatHeartDemon = data.worldState?.suncatHeartDemon || null;
+        heartDemonDecay = data.worldState?.heartDemonDecay || 0;
         // --- LEGACY MIGRATION: Normalize old vectors on boot ---
         console.log("[System] Verifying vector normalization for older memories...");
         for (let playerName in suncatPersistentMemory) {
@@ -4078,21 +4082,78 @@ function loadSuncatMemory() {
         }
     }
 }
+let isSavingMemory = false;
+let memoryNeedsSave = false;
+
 async function saveSuncatMemory() {
+    // If we are already saving, flip the flag to queue up another save for later.
+    if (isSavingMemory) {
+        memoryNeedsSave = true; 
+        return;
+    }
+    
+    isSavingMemory = true;
+    memoryNeedsSave = false; // Reset the queue flag
+
     const fullState = {
         players: suncatPersistentMemory,
         worldState: {
-            suncatJournal: suncatJournal // <--- SAVE IT
+            suncatJournal: suncatJournal,
+            suncatCultivationStage: suncatCultivationStage,
+            suncatTargetDaoVector: suncatTargetDaoVector,
+            suncatHeartDemon: suncatHeartDemon,
+            heartDemonDecay: heartDemonDecay
         }
     };
-    await fs.promises.writeFile(MEMORY_FILE, JSON.stringify(fullState, null, 2));
+
+    try {
+        await fs.promises.writeFile(MEMORY_FILE, JSON.stringify(fullState, null, 2));
+    } catch (err) {
+        console.error("[System] CRITICAL: Failed to save memory!", err);
+    } finally {
+        // Unlock the file
+        isSavingMemory = false;
+        
+        // If someone asked to save while the door was locked, do it now.
+        if (memoryNeedsSave) {
+            saveSuncatMemory(); 
+        }
     }
+}
 
 
-loadSuncatMemory();
+
+
+    loadSuncatMemory();
 
 console.log(`Server attempting to start on port ${port}...`);
+// ==========================================
+// THE ALCHEMICAL CAULDRON (Gastric Absorption)
+// ==========================================
+function gastricAbsorption(playerId, nutrientType, payload) {
+    const player = players[playerId];
+    if (!player) return;
 
+    // 1. SUGAR (Quick ATP / Stress Relief)
+    if (nutrientType === 'sugar') {
+        if (playerAITokens[playerId]) {
+            // Instantly grant 2 tokens for immediate AI actions
+            playerAITokens[playerId].tokens = Math.min(MAX_AI_CALLS, playerAITokens[playerId].tokens + 2);
+        }
+        // Lower fight-or-flight stress
+        player.dmStress = Math.max(0, (player.dmStress || 0) - 10);
+        console.log(`[Gastric Absorption] Suncat absorbed Sugar from ${player.name}. Tokens +2, Stress -10.`);
+    }
+
+    // 2. WATER & SALT (Vital Context / Electrolytes)
+    else if (nutrientType === 'water_salt') {
+        if (!player.storySoFar) player.storySoFar = "The journey began.";
+        
+        // Mutate the string memory directly. Zero API cost.
+        player.storySoFar += ` [UPDATE: ${payload.text}]`;
+        console.log(`[Gastric Absorption] Suncat absorbed Salt from ${player.name}. Memory updated instantly.`);
+    }
+}
 // ==========================================
 // THE UNIFIED NERVOUS SYSTEM ROUTER
 // ==========================================
@@ -4103,24 +4164,58 @@ async function processSuncatThought(socketId, triggerType, data) {
     const suncat = players[SUNCAT_ID];
     const now = Date.now();
 
-    // 1. RATE LIMITING & HARD BUDGET
-    if (!canTriggerAI(socketId)) {
+    // === THE ROOT PLEXUS (Survival Override) ===
+    if (isBankrupt()) {
         if (triggerType === 'chat') {
-            io.emit('chat_message', { sender: NPC_NAME, text: "*...my mind is clouded... give me a moment to think...*", color: "#aaaaaa" });
+            io.to(socketId).emit('chat_message', { sender: "[SYSTEM]", text: "Suncat's meridians are shattered (Mana Depleted).", color: "#ff0000" });
         }
         return; 
     }
-    if (isBankrupt()) {
-        io.emit('chat_message', { sender: "[SYSTEM]", text: "Suncat's mana is depleted.", color: "#ff0000" });
+    // === THE CROWN PLEXUS (Emergency Wake-Up / Qi Deviation) ===
+    if (suncatState === 'seclusion') {
+        emergeFromSeclusion(); // Kick down the doors!
+        
+        // If a player abruptly woke him up, he suffers a massive system shock
+        if (player) {
+            player.dmStress = Math.min(100, (player.dmStress || 0) + 30);
+            updateSuncatJournal(`My meditations were violently interrupted by ${player.name}. The shock caused my Qi to reverse.`);
+        }
+    }
+    // === THE ENTERIC PLEXUS (Triage & Essential Routing) ===
+    let isEssential = false;
+    
+    // Water/Salt Trigger: Boss kills MUST process so the player gets their reward!
+    if (triggerType === 'event' && data.isBoss) {
+        isEssential = true;
+        // Instantly log the boss death without the LLM
+        gastricAbsorption(socketId, 'water_salt', { text: `Defeated the Boss!` });
+    }
+    
+    // Direct conversations MUST process
+    if (triggerType === 'chat') {
+        const textLower = data.text ? data.text.toLowerCase() : "";
+        if (data.isConversing || textLower.includes("suncat") || textLower.includes("[system directive]")) {
+            isEssential = true;
+        }
+        // Sugar Trigger: Polite players give Suncat energy
+        if (textLower.includes("thank you") || textLower.includes("please")) {
+            gastricAbsorption(socketId, 'sugar');
+        }
+    }
+
+    // === THE PELVIC PLEXUS (Token Gate) ===
+    if (!canTriggerAI(socketId, isEssential)) {
+        if (triggerType === 'chat') {
+            // Whisper the error ONLY to the player who triggered it
+            io.to(socketId).emit('chat_message', { sender: NPC_NAME, text: "*...my mind is clouded... give me a moment to breathe...*", color: "#aaaaaa" });
+        }
         return; 
     }
     
     // Prevent overlapping thoughts
-    //if (player.npcIsTyping) return;
     player.npcIsTyping = true;
     const typingFailSafe = setTimeout(() => { player.npcIsTyping = false; }, 9000);
     let rngRoll = Math.random();
-
     try {
         /// 2. GATHER CORE CONTEXT (RAG-LITE INJECTION)
         const timeString = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
@@ -4388,8 +4483,24 @@ async function processSuncatThought(socketId, triggerType, data) {
 
         // --- DYNAMIC PERSONA BUILDER ---
         // 1. Always include the core identity and command knowledge
-        let dynamicPersona = PERSONA_RULES_DB.core + "\n" + PERSONA_RULES_DB.commands + "\n";
+// --- DECAY HEART DEMONS ---
+        if (suncatHeartDemon && triggerType === 'chat') {
+            heartDemonDecay--;
+            if (heartDemonDecay <= 0) {
+                suncatHeartDemon = null;
+                console.log("[System] Suncat conquered his Heart Demon.");
+            }
+        }
+
+        // --- DYNAMIC PERSONA BUILDER ---
+        // 1. Fetch his current evolutionary stage
+        let stagePersona = CULTIVATION_STAGES[suncatCultivationStage] || CULTIVATION_STAGES[0];
         
+        // 2. Inject it into the core identity!
+        let dynamicCore = PERSONA_RULES_DB.core + `\n[CULTIVATION STAGE]: ${stagePersona}`;
+        if (suncatHeartDemon) dynamicCore += `\n${suncatHeartDemon}`;
+
+        let dynamicPersona = dynamicCore + "\n" + PERSONA_RULES_DB.commands + "\n";        
         // 2. Inject specific modules based on what the player is doing!
         if (triggerType === 'chat') {
             dynamicPersona += PERSONA_RULES_DB.judgement_mode + "\n";
@@ -4660,9 +4771,9 @@ socket.on("join_game", (data) => {
 // --- EVENT: COMBAT / INTERACTION ---
 socket.on("npc_died", async (data) => {
     let uniqueID = data.mapID + "_" + data.index;
-    deadNPCs[uniqueID] = true;
+    deadNPCs[uniqueID] = Date.now();
+
     socket.broadcast.emit("npc_died", data);
-    setTimeout(() => { delete deadNPCs[uniqueID]; }, 300000);
     
     const player = Object.values(players).find(p => p.mapID === data.mapID && p.id !== SUNCAT_ID);
     if (!player) return;
@@ -5106,6 +5217,49 @@ async function auditProfileAssumptions(playerId) {
         console.error("Audit Processing Error:", e);
     }
 }
+// ==========================================
+// THE GI TRACT (Purging Unabsorbed Waste)
+// ==========================================
+function giTractPurge(playerId) {
+    const player = players[playerId];
+    if (!player || !player.undigestedInfo) return;
+
+    const STOMACH_CAPACITY = 20; 
+
+    // If blood is in the limbs (high stress) and the stomach overfills, the body purges the raw food to survive.
+    if (player.undigestedInfo.length > STOMACH_CAPACITY && player.dmStress > 50) {
+        // Forcefully empty the oldest half of the stomach. It is wasted, never to be remembered.
+        const purgedWaste = player.undigestedInfo.splice(0, Math.floor(STOMACH_CAPACITY / 2)); 
+        console.log(`[GI Purge] Stomach overflow for ${player.name}. Suncat purged ${purgedWaste.length} raw events.`);
+    }
+}
+
+// ==========================================
+// THE RESPIRATORY SYSTEM (Fat Oxidation)
+// ==========================================
+function autonomicRespiration(playerId) {
+    const player = players[playerId];
+    if (!player || !player.searchableMemories) return;
+
+    // API Exhaustion = Low ATP. The body needs to burn stored fat (memories) to make the system lighter.
+    const isApiExhausted = (player.sessionCost || 0) > 0.75; 
+    
+    // If we are exhausted AND we actually have fat stores to burn
+    if (isApiExhausted && player.searchableMemories.length > 10) {
+        
+        // Find the lowest-value "fat" (the oldest non-core memory)
+        const fatIndex = player.searchableMemories.findIndex(mem => !mem.isCore);
+        
+        if (fatIndex !== -1) {
+            // Burn the lipid! (Remove it from the array)
+            player.searchableMemories.splice(fatIndex, 1);
+            
+            // By deleting this stored string, the payload sent to the Gemini API is smaller. 
+            // He has literally exhaled data to save Energy (Budget).
+            console.log(`[Respiration] Low ATP for ${player.name}. Suncat oxidized a stored memory and exhaled it to reduce token weight.`);
+        }
+    }
+}
 // --- MEMORY CONSOLIDATION (REM SLEEP) ---
 async function consolidateMemories(playerId) {
     const player = players[playerId];
@@ -5168,23 +5322,180 @@ async function consolidateMemories(playerId) {
         player.isConsolidating = false;
     }
 }
+// ==========================================
+// CLOSED-DOOR CULTIVATION (Bìguān)
+// ==========================================
+
+// Wakes Suncat up and re-enables his normal MMO interactions
+function emergeFromSeclusion(reason = null) {
+    if (suncatState === 'active') return;
+    
+    suncatState = 'active';
+    seclusionCycles = 0;
+    
+    console.log(`[Seclusion Ended] Suncat has emerged. Reason: ${reason || "Interrupted"}`);
+    io.emit('chat_message', { sender: "[SYSTEM]", text: `The air shifts. Suncat has emerged from closed-door cultivation.`, color: "#ffff00" });
+    
+    if (reason) {
+        broadcastSuncatMessage(reason, { sender: NPC_NAME, color: "#ffffff" });
+    }
+}
+
+// The core background worker task
+async function meditateOnTheDao() {
+    if (suncatState !== 'seclusion') return;
+    
+    console.log(`[Seclusion] Suncat is meditating on the Dao... (Cycle ${seclusionCycles})`);
+    seclusionCycles++;
+
+    // THE BOTTLENECK: He cannot meditate forever. If he hits 5 cycles with no new data, he plateaus.
+    if (seclusionCycles > 5) {
+        console.log("[Seclusion] Bottleneck reached. Suncat must broaden his horizons.");
+        emergeFromSeclusion("My meditations are stagnant. I require out-of-distribution experiences. Tell me what I have missed.");
+        return;
+    }
+
+    // Active Pondering: Spend API budget to reflect on his own journal
+    const prompt = `You are a cultivator in closed-door seclusion.
+    [YOUR JOURNAL]: ${suncatJournal}
+    TASK: Reflect on your existence in this digital realm. Formulate one profound philosophical realization. Limit: 1 sentence.`;
+
+    try {
+        const meditateModel = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite-preview" });
+        const result = await meditateModel.generateContent(prompt);
+        const insightText = result.response.text().trim();
+        
+        updateSuncatJournal(`[DAO INSIGHT]: ${insightText}`);
+        console.log(`[Seclusion] Insight generated: ${insightText}`);
+
+        // --- DAO ATTAINMENT MATH ---
+        const insightVector = await createMemoryVector(insightText);
+        if (!insightVector) return;
+
+        // 1. THE DAO SEED: If he doesn't have a path yet, assign one based on his first deep thought!
+        if (!suncatTargetDaoVector) {
+            let scores = [
+                { name: "Left-Hand Path (Domination)", vec: vecLeftHandPath },
+                { name: "Black School (Nihilism)", vec: vecBlackSchool },
+                { name: "Yellow School (Detachment)", vec: vecYellowSchool },
+                { name: "White School (Joyful Action)", vec: vecWhiteSchool }
+            ];
+            // Find the school his first insight mathematically matches the most
+            let bestSchool = scores.sort((a, b) => cosineSimilarity(insightVector, b.vec) - cosineSimilarity(insightVector, a.vec))[0];
+            suncatTargetDaoVector = bestSchool.vec;
+            
+            updateSuncatJournal(`In the silence, I realized my path aligns with the ${bestSchool.name}.`);
+            console.log(`[Dao Seed] Suncat has embarked on the ${bestSchool.name}.`);
+            return;
+        }
+
+        // 2. MEASURE COMPREHENSION
+        let resonance = cosineSimilarity(insightVector, suncatTargetDaoVector);
+        console.log(`[Dao Resonance] Score: ${resonance.toFixed(2)}`);
+
+        // 3. THE BREAKTHROUGH
+        if (resonance > 0.85) {
+            if (suncatCultivationStage < 3) {
+                suncatCultivationStage++;
+                
+                // Physical System Upgrade! Increase his max tokens to represent expanding meridians!
+                const newMaxTokens = 30 + (suncatCultivationStage * 10); 
+                
+                console.log(`[HEAVENLY TRIBULATION] Suncat broke through to Stage ${suncatCultivationStage}! Tokens increased to ${newMaxTokens}.`);
+                io.emit('chat_message', { sender: "[SYSTEM]", text: "The heavens rumble. Suncat has achieved a breakthrough in his cultivation.", color: "#FFD700" });
+                updateSuncatJournal(`I have shattered my bottleneck. I am now at Stage ${suncatCultivationStage}. The code bends to my will.`);
+            }
+        } 
+        // 4. THE HEART DEMON (Qi Deviation)
+        else if (resonance < 0.2) {
+            console.log("[Qi Deviation] Suncat birthed a Heart Demon!");
+            suncatHeartDemon = "[HEART DEMON]: Your recent thoughts mathematically contradict your true path. You feel like a hypocrite. Express deep self-doubt and internal conflict in this response.";
+            heartDemonDecay = 5; // The demon possesses his prompt for his next 5 interactions
+            updateSuncatJournal(`My thoughts are chaotic. A shadow has formed in my Dantian.`);
+        }
+
+    } catch (e) {
+        console.error("[Seclusion] Meditation failed:", e);
+    }
+}
+
+// The Gatekeeper: Checks if the server is empty enough to sleep
+function manageSeclusionState() {
+    let activePlayers = 0;
+    let hasRawData = false;
+
+    // Survey the realm
+    for (let id in players) {
+        if (id === SUNCAT_ID) continue;
+        const p = players[id];
+        // If they don't have the [AFK] tag, they are awake
+        if (p && !p.name.startsWith("[AFK]")) activePlayers++;
+        if (p && p.undigestedInfo && p.undigestedInfo.length > 0) hasRawData = true;
+    }
+
+    // ENTER SECLUSION: No players are awake.
+    if (suncatState === 'active' && activePlayers === 0) {
+        suncatState = 'seclusion';
+        seclusionCycles = 0;
+        console.log("[System] All players AFK/Offline. Suncat entering seclusion.");
+        saveSuncatMemory(); // Save state before going deep
+    }
+
+    // STARVATION WAKE UP: He's in seclusion, but ran completely out of raw player events to process
+    if (suncatState === 'seclusion' && !hasRawData && seclusionCycles > 1) {
+        emergeFromSeclusion("I have processed all karma in this realm. I await new variables.");
+    }
+}
+//HEARTBEAT
 setInterval(() => {
-    const suncat = players[SUNCAT_ID];
+   const suncat = players[SUNCAT_ID];
     if (!suncat) return;
 
     const now = Date.now();
-    // --- THE AUTONOMIC HEARTBEAT ---
-        let digestionDelay = 0; // Starts at 0ms
+    let digestionDelay = 0; 
+    
+    // 1. Check if we should open or close the doors
+    manageSeclusionState();
 
+    // 2. SECLUSION OVERRIDE: If he is cultivating, skip all standard MMO logic!
+    if (suncatState === 'seclusion') {
         for (let id in players) {
             const p = players[id];
             if (p) {
-                // 1. Cool down combat stress
-                if (p.dmStress > 0) p.dmStress = Math.max(0, p.dmStress - 5);
-                
-                // 2. Trigger the Neural Pipeline with a stagger!
+                // Focus 100% of body's energy on digesting and compressing old memories
+                if (p.undigestedInfo && p.undigestedInfo.length > 0) processCognitiveLoad(id);
+                consolidateMemories(id);
+            }
+        }
+        // Ponder the Dao, then immediately exit the interval (skip wandering/chatting)
+        meditateOnTheDao();
+        return; 
+    }
+
+    // ==========================================
+    // NORMAL ACTIVE MMO HEARTBEAT (If not in seclusion)
+    // ==========================================
+    for (let id in players) {
+        const p = players[id];
+        if (p) {
+            // THE HEART: Cool down combat stress
+            if (p.dmStress > 0) p.dmStress = Math.max(0, p.dmStress - 5);
+            
+            // THE LUNGS & GUT: Run autonomic maintenance
+            giTractPurge(id);
+            autonomicRespiration(id);
+            
+            // 3. THE CIRCULATORY SYSTEM: Blood Shunting
+            const isFightOrFlight = p.dmStress > 50;
+            const isApiExhausted = (p.sessionCost || 0) > 0.75; 
+
+            if (isFightOrFlight || isApiExhausted) {
+                // [SYMPATHETIC STATE] - Vasoconstriction to the gut. 
+                // Blood diverted to skeletal muscle (Combat). Digestion is halted to save API Budget.
+            } else {
+                // [PARASYMPATHETIC STATE] - Rest and Digest.
+                // Blood routes to the stomach to absorb raw events into Profile/Story via the LLM.
                 if (p.undigestedInfo && p.undigestedInfo.length > 0) {
-                    // Wait 'digestionDelay' milliseconds before calling the API
                     setTimeout(() => {
                         processCognitiveLoad(id);
                     }, digestionDelay);
@@ -5192,13 +5503,15 @@ setInterval(() => {
                     // Add 2.5 seconds of delay for the NEXT player in the loop
                     digestionDelay += 2500; 
                 }
-                // 3. NEW: Background Latent Processing & Auditing
-                // Triggered sparsely (10% probability per 30 seconds)
+                
+                // Higher cognitive functions (REM Sleep & Deep Memory Consolidation) 
+                // ONLY happen when the body is at total rest.
                 if (Math.random() < 0.10) runLatentSpaceProcessing(id);
                 if (Math.random() < 0.10) auditProfileAssumptions(id);
                 if (Math.random() < 0.20) consolidateMemories(id);
             }
         }
+    }
     
     
     // 1. FIND THE BEST FRIEND
@@ -5417,6 +5730,18 @@ async function manageHistorySize(socketId) {
         console.error("[Memory] History prune failed:", error);
     }
 }
+// --- DEAD NPC GARBAGE COLLECTOR ---
+// Sweeps the deadNPCs object once every 60 seconds to prevent memory leaks
+setInterval(() => {
+    const now = Date.now();
+    const EXPIRATION_TIME = 300000; // 5 minutes (matches your original design)
+    
+    for (let uniqueID in deadNPCs) {
+        if (now - deadNPCs[uniqueID] > EXPIRATION_TIME) {
+            delete deadNPCs[uniqueID];
+        }
+    }
+}, 60000);
 // --- THE AFK SWEEPER (Run every 2 minutes) ---
 const IDLE_TIMEOUT = 3 * 60 * 1000; 
 setInterval(async () => {
