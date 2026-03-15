@@ -39,8 +39,7 @@ const port = process.env.PORT || 3000;
     // --- AI CONFIGURATION (Paid Tier / 2.5 Flash) ---
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 // --- VECTOR MEMORY SETUP ---
-const embedder = genAI.getGenerativeModel({ model: "text-embedding-004" });
-// --- COGNITIVE AXES (Behavioral) ---
+const embedder = genAI.getGenerativeModel({ model: "gemini-embedding-001" });// --- COGNITIVE AXES (Behavioral) ---
 let vecEgo = null;
 let vecImpulse = null;
 let vecMaterial = null;
@@ -73,49 +72,74 @@ async function initConceptVectors() {
 }
 initConceptVectors();
 async function createMemoryVector(text) {
-    const result = await embedder.embedContent(text);
-    const values = result.embedding.values;
+    try {
+        const result = await embedder.embedContent(text);
+        
+        // SHIELD: If the API returns an empty shell, abort safely!
+        if (!result || !result.embedding || !result.embedding.values) {
+            return null; 
+        }
+        
+        const values = result.embedding.values;
 
-    // 1. Calculate the magnitude (length) of the vector
-    let sumOfSquares = 0;
-    for (let i = 0; i < values.length; i++) {
-        sumOfSquares += values[i] * values[i];
+        // 1. Calculate the magnitude (length) of the vector
+        let sumOfSquares = 0;
+        for (let i = 0; i < values.length; i++) {
+            sumOfSquares += values[i] * values[i];
+        }
+        const magnitude = Math.sqrt(sumOfSquares);
+
+        // 2. Normalize the vector so its length is exactly 1
+        const normalizedVector = new Float32Array(values.length);
+        for (let i = 0; i < values.length; i++) {
+            normalizedVector[i] = values[i] / magnitude;
+        }
+
+        return Array.from(normalizedVector); 
+        
+    } catch (err) {
+        console.error("[Memory] Vector embedding failed:", err.message);
+        return null; // Prevents the server from passing undefined variables
     }
-    const magnitude = Math.sqrt(sumOfSquares);
-
-    // 2. Normalize the vector so its length is exactly 1
-    // Float32Array is heavily optimized by Node's V8 engine for math
-    const normalizedVector = new Float32Array(values.length);
-    for (let i = 0; i < values.length; i++) {
-        normalizedVector[i] = values[i] / magnitude;
-    }
-
-    // Convert back to standard array so it can be saved in JSON
-    return Array.from(normalizedVector); 
 }
 
 function cosineSimilarity(vecA, vecB) {
+    // 1. SHIELD: If either vector is missing or corrupted, abort safely!
+    if (!vecA || !vecB || !vecA.length || !vecB.length) return 0;
+
     // Because our vectors are pre-normalized, Cosine Similarity is just the Dot Product!
     let dotProduct = 0;
-    for (let i = 0; i < vecA.length; i++) {
+    const minLength = Math.min(vecA.length, vecB.length); // Double safety
+    for (let i = 0; i < minLength; i++) {
         dotProduct += vecA[i] * vecB[i];
     }
     return dotProduct;
 }
 function calculateCentroid(memoryArray) {
-    if (!memoryArray || memoryArray.length === 0) return Array(768).fill(0);
+    // 1. Dynamically detect the dimension size (New Gemini model is 3072)
+    const firstValid = memoryArray.find(mem => mem.vector && mem.vector.length > 0);
+    const dimensions = firstValid ? firstValid.vector.length : 3072; 
+
+    if (!memoryArray || memoryArray.length === 0) return Array(dimensions).fill(0);
     
-    let centroid = Array(768).fill(0);
+    let centroid = Array(dimensions).fill(0);
+    let validCount = 0;
+
     for (let mem of memoryArray) {
-        if (mem.vector) {
-            for (let i = 0; i < 768; i++) {
+        // Only average vectors that match our current model's dimensions!
+        if (mem.vector && mem.vector.length === dimensions) {
+            for (let i = 0; i < dimensions; i++) {
                 centroid[i] += mem.vector[i];
             }
+            validCount++;
         }
     }
-    // Divide by total memories to get the average
-    for (let i = 0; i < 768; i++) {
-        centroid[i] = centroid[i] / memoryArray.length;
+    
+    if (validCount === 0) return Array(dimensions).fill(0);
+
+    // Divide by total valid memories to get the average
+    for (let i = 0; i < dimensions; i++) {
+        centroid[i] = centroid[i] / validCount;
     }
     return centroid;
 }
@@ -4082,11 +4106,14 @@ async function processSuncatThought(socketId, triggerType, data) {
 
             // 3. Out-Of-Distribution (OOD) Detection
             let queryVector = data.vector || await createMemoryVector(data.text);
-            let distanceFromCenter = cosineSimilarity(queryVector, playerCentroid);
-            
-            if (distanceFromCenter < 0.15) {
-                useBigBrain = true;
-                systemOverride += `\n[EPISTEMIC STATE]: The user has introduced a concept mathematically outside your shared history. DO NOT hallucinate past events. Confess your ignorance on this specific topic.`;
+            // SHIELD: Only do the math if the vector exists!
+            if (queryVector) {
+                let distanceFromCenter = cosineSimilarity(queryVector, playerCentroid);
+                
+                if (distanceFromCenter < 0.15) {
+                    useBigBrain = true;
+                    systemOverride += `\n[EPISTEMIC STATE]: The user has introduced a concept mathematically outside your shared history. DO NOT hallucinate past events. Confess your ignorance on this specific topic.`;
+                }
             }
         }
 
@@ -4604,15 +4631,19 @@ socket.on('chat_message', async (msgText) => {
     let msgVector = null;
 
     // 2. The Semantic Threshold Check (Math-based routing)
-    if (suncatAttentionVector) {
-        try {
-            msgVector = await createMemoryVector(safeText);
-            let topicRelevance = cosineSimilarity(msgVector, suncatAttentionVector);
-            
-            if (topicRelevance > 0.45) {
-                shouldListen = true;
-                console.log(`[Semantic Router] Intercepted message: Relevance Score ${topicRelevance.toFixed(2)}`);
-            }
+   if (suncatAttentionVector) {
+            try {
+                msgVector = await createMemoryVector(safeText);
+                
+                // SHIELD: Only do the math if the vector was successfully created!
+                if (msgVector) {
+                    let topicRelevance = cosineSimilarity(msgVector, suncatAttentionVector);
+                    
+                    if (topicRelevance > 0.45) {
+                        shouldListen = true;
+                        console.log(`[Semantic Router] Intercepted message: Relevance Score ${topicRelevance.toFixed(2)}`);
+                    }
+                }
         } catch (err) {
             console.error("[Semantic Router] Vector math failed:", err);
         }
@@ -4960,7 +4991,7 @@ async function consolidateMemories(playerId) {
         
         ${rawText}
         
-        TASK: Synthesize these events into a single, cohesive "Core Memory" paragraph (max 4 sentences). 
+        TASK: Synthesize these events into a detailed, multi-paragraph "Core Chapter" of the player's saga (max 8-10 sentences).
         Focus heavily on the overarching narrative, key locations visited, and major victories or character traits revealed. Omit trivial footsteps or repetitive combat. Write as an omniscient observer.`;
 
         const consolidationModel = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite-preview" });
