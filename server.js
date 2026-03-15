@@ -2383,8 +2383,7 @@ const broadcastSuncatMessage = (fullResponse, options = {}) => {
         const sendBorder = () => {
             const borderPayload = {
                 sender: "",
-                text: "✧ --------------------------------------------------- ✧",
-                color: "#555555"
+                text: "✧ -------------------------------------------------------- ✧",                color: "#555555"
             };
             if (options.targetId) {
                 io.to(options.targetId).emit('chat_message', borderPayload);
@@ -2530,16 +2529,14 @@ function getCardName(entityID) {
     }
 function scrubAIHistory(history) {
     return history.map(msg => {
+        // CRITICAL FIX: Do NOT touch tool calls or responses! 
+        // The Gemini SDK will crash if we flatten 'function' objects into plain text.
+        if (msg.role === 'function' || msg.parts.some(p => p.functionCall || p.functionResponse)) {
+            return msg; 
+        }
+        
         let newParts = msg.parts.map(part => {
-            // 1. Convert expensive tool JSONs into cheap string memories
-            if (part.functionCall) {
-                return { text: `[SYSTEM MEMORY: I chose to use the '${part.functionCall.name}' tool.]` };
-            }
-            if (part.functionResponse) {
-                return { text: `[SYSTEM MEMORY: The tool executed successfully.]` };
-            }
-            
-            // 2. Scrub system text tags to keep things clean
+            // Clean up system text tags to keep Suncat's internal monologue clean
             if (typeof part.text === 'string') {
                 let cleanText = part.text
                     .replace(/\[SYSTEM EVENT[^\]]*\]/gi, "[RESOLVED]")
@@ -2547,12 +2544,12 @@ function scrubAIHistory(history) {
                     .replace(/\[SYSTEM OVERRIDE[^\]]*\]/gi, "[RESOLVED]");
                 return { text: cleanText };
             }
-            
             return part; // Fallback for anything else
         });
+        
         return { role: msg.role, parts: newParts };
     });
-    }
+}
 // --- MEMORY SANITIZER (Keep this to protect against prompt injection) ---
 function sanitizeForMemory(text) {
     if (typeof text !== 'string') return "";
@@ -4131,7 +4128,7 @@ async function processSuncatThought(socketId, triggerType, data) {
         }
         if (triggerType === 'chat') {
             if (data.text.includes("[SYSTEM DIRECTIVE]")) {
-                messageOptions = { sender: "", color: "#FFD700" }; // Epic Gold Narration
+                messageOptions = { sender: "", color: "#FFD700", targetId: socketId };            
             }
             const chatText = data.text.toLowerCase();
             const wantsNewMap = ["map", "adventure", "create", "quest", "scenario"].some(kw => chatText.includes(kw));
@@ -4624,7 +4621,7 @@ socket.on('chat_message', async (msgText) => {
     // 3. Execution
    
         if (shouldListen || Math.random() < 0.05) {
-        if (["suncat you there", "suncat wake up"].some(w => content.includes(w))) npcIsTyping = false;
+        if (["suncat you there", "suncat wake up"].some(w => content.includes(w))) player.npcIsTyping = false;
 
         player.lastSuncatChat = now; 
         
