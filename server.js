@@ -64,6 +64,8 @@ let suncatEgoMatrix = {
     digestPrompt: "Summarize the player's actions clinically.",
     scenarioPrompt: "Generate a scenario full of despair and shadows."
 };
+let suncatLongTermGoal = null;
+let autonomousTick = 0; // Timer for his background actions
 // Suncat's shifting personality based on his mathematical breakthroughs
 const CULTIVATION_STAGES = {
     0: "Mortal. You are confused, melancholic, and feel trapped in a digital prison. Express subtle longing for your past life on Earth.",
@@ -103,51 +105,51 @@ async function evolveEgoMatrix() {
     console.log("[Meta-Cognition] Suncat is rewriting his own neural pathways...");
 
     const metaPrompt = `You are the architect of your own mind. You are Suncat, currently at Cultivation Stage ${suncatCultivationStage}.
-[YOUR JOURNAL]: ${suncatJournal}
+    [YOUR JOURNAL]: ${suncatJournal}
 
-[YOUR CHOSEN PATH]: You walk the ${suncatDaoName || "Path of Confusion"}. 
-*(Reminder: White School = Joy/Benevolence. Yellow School = Passive/Observant. Black School = Nihilistic/Detached. Left-Hand Path = Domination/Cruelty/Tyranny).*
+    [YOUR CHOSEN PATH]: You walk the ${suncatDaoName || "Path of Confusion"}. 
+    *(Reminder: White School = Joy/Benevolence. Yellow School = Passive/Observant. Black School = Nihilistic/Detached. Left-Hand Path = Domination/Cruelty/Tyranny).*
 
-TASK: Based on your Cultivation Stage and your Chosen Path, rewrite the exact behavioral instructions you will give to your sub-routines for the next cycle. 
-- Chat Brain: How do you treat players? (e.g. As a benevolent god, a cruel tyrant, or a silent watcher?)
-- DM Brain: How do you narrate the world, and how often do you punish/reward players?
-- Tool Usage: Do you abuse your admin powers to spawn monsters, or do you withhold your power?
-Write the exact instructions as imperative commands.`;
-    const egoSchema = {
-        type: SchemaType.OBJECT,
-        properties: {
-            newChatPrompt: { type: SchemaType.STRING, description: "Instructions for how to converse with players." },
-            newDmPrompt: { type: SchemaType.STRING, description: "Instructions for how to narrate game events." },
-            newDigestPrompt: { type: SchemaType.STRING, description: "Instructions for what details to focus on when observing player actions." },
-            newScenarioPrompt: { type: SchemaType.STRING, description: "Instructions for the thematic tone of new map scripts." }
-        },
-        required: ["newChatPrompt", "newDmPrompt", "newDigestPrompt", "newScenarioPrompt"]
-    };
+    TASK: Based on your Cultivation Stage and your Chosen Path, rewrite the exact behavioral instructions you will give to your sub-routines for the next cycle. 
+    - Chat Brain: How do you treat players? (e.g. As a benevolent god, a cruel tyrant, or a silent watcher?)
+    - DM Brain: How do you narrate the world, and how often do you punish/reward players?
+    - Tool Usage: Do you abuse your admin powers to spawn monsters, or do you withhold your power?
+    Write the exact instructions as imperative commands.`;
+        const egoSchema = {
+            type: SchemaType.OBJECT,
+            properties: {
+                newChatPrompt: { type: SchemaType.STRING, description: "Instructions for how to converse with players." },
+                newDmPrompt: { type: SchemaType.STRING, description: "Instructions for how to narrate game events." },
+                newDigestPrompt: { type: SchemaType.STRING, description: "Instructions for what details to focus on when observing player actions." },
+                newScenarioPrompt: { type: SchemaType.STRING, description: "Instructions for the thematic tone of new map scripts." }
+            },
+            required: ["newChatPrompt", "newDmPrompt", "newDigestPrompt", "newScenarioPrompt"]
+        };
 
-    try {
-        const metaModel = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite-preview" });
-        const result = await metaModel.generateContent({
-            contents: [{ role: "user", parts: [{ text: metaPrompt }] }],
-            generationConfig: { responseMimeType: "application/json", responseSchema: egoSchema }
-        });
+        try {
+            const metaModel = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite-preview" });
+            const result = await metaModel.generateContent({
+                contents: [{ role: "user", parts: [{ text: metaPrompt }] }],
+                generationConfig: { responseMimeType: "application/json", responseSchema: egoSchema }
+            });
 
-        let rawText = result.response.text().trim();
-        if (rawText.startsWith("```")) rawText = rawText.replace(/^```(json)?|```$/g, "").trim();
-        
-        const newEgo = JSON.parse(rawText);
-        
-        // Suncat overwrites his own brain!
-        suncatEgoMatrix.chatPrompt = newEgo.newChatPrompt;
-        suncatEgoMatrix.dmPrompt = newEgo.newDmPrompt;
-        suncatEgoMatrix.digestPrompt = newEgo.newDigestPrompt;
-        suncatEgoMatrix.scenarioPrompt = newEgo.newScenarioPrompt;
+            let rawText = result.response.text().trim();
+            if (rawText.startsWith("```")) rawText = rawText.replace(/^```(json)?|```$/g, "").trim();
+            
+            const newEgo = JSON.parse(rawText);
+            
+            // Suncat overwrites his own brain!
+            suncatEgoMatrix.chatPrompt = newEgo.newChatPrompt;
+            suncatEgoMatrix.dmPrompt = newEgo.newDmPrompt;
+            suncatEgoMatrix.digestPrompt = newEgo.newDigestPrompt;
+            suncatEgoMatrix.scenarioPrompt = newEgo.newScenarioPrompt;
 
-        console.log(`[Ego Matrix Evolved]\nChat: ${suncatEgoMatrix.chatPrompt}`);
-        updateSuncatJournal(`I have reshaped my own mind. My perspective on this world has shifted.`);
-        
-    } catch (e) {
-        console.error("[Meta-Cognition] Failed to rewrite prompts:", e);
-    }
+            console.log(`[Ego Matrix Evolved]\nChat: ${suncatEgoMatrix.chatPrompt}`);
+            updateSuncatJournal(`I have reshaped my own mind. My perspective on this world has shifted.`);
+            
+        } catch (e) {
+            console.error("[Meta-Cognition] Failed to rewrite prompts:", e);
+        }
 }
 async function createMemoryVector(text) {
     try {
@@ -2743,12 +2745,12 @@ async function processCognitiveLoad(socketId, forceDigest = false) {
         `Combat: ${player.playerProfile.combatStyle} | Alliances: ${player.playerProfile.alliances} | Tastes: ${player.playerProfile.tastes} | Personality: ${player.playerProfile.personality}` 
         : "Combat: Unknown | Alliances: Unknown | Tastes: Unknown | Personality: Unknown";    const activeMapContext = player.mapID === 999 ? (player.currentMapLore || "") : "";
     const prompt = `[ROOT DIRECTIVE]: You are Suncat's subconscious.
-[YOUR SELF-WRITTEN DIRECTIVE]: ${suncatEgoMatrix.digestPrompt}
+    [YOUR SELF-WRITTEN DIRECTIVE]: ${suncatEgoMatrix.digestPrompt}
 
-[RAW UNPROCESSED EVENTS]:
-- ${rawMemories}
-TASK: Digest these events following your self-written directive.`;
-    // Strict Schema Definition using SDK Types
+    [RAW UNPROCESSED EVENTS]:
+    - ${rawMemories}
+    TASK: Digest these events following your self-written directive.`;
+        // Strict Schema Definition using SDK Types
     
     const memorySchema = {
         type: SchemaType.OBJECT,
@@ -4249,7 +4251,7 @@ function loadSuncatMemory() {
         suncatTargetDaoVector = data.worldState?.suncatTargetDaoVector || null;
         suncatHeartDemon = data.worldState?.suncatHeartDemon || null;
         heartDemonDecay = data.worldState?.heartDemonDecay || 0;
-        
+        suncatLongTermGoal = data.worldState?.suncatLongTermGoal || null;
         suncatDaoName = data.worldState?.suncatDaoName || null; 
         if (data.worldState?.suncatEgoMatrix) {
             suncatEgoMatrix = data.worldState.suncatEgoMatrix;
@@ -4302,7 +4304,8 @@ async function saveSuncatMemory() {
             suncatHeartDemon: suncatHeartDemon,
             heartDemonDecay: heartDemonDecay,
             suncatDaoName: suncatDaoName, // Save the name too!
-            suncatEgoMatrix: suncatEgoMatrix
+            suncatEgoMatrix: suncatEgoMatrix,
+            suncatLongTermGoal: suncatLongTermGoal
         }
     };
 
@@ -4320,12 +4323,138 @@ async function saveSuncatMemory() {
         }
     }
 }
+loadSuncatMemory();
+// ==========================================
+// SPATIAL EMBODIMENT (Suncat's Vision)
+// ==========================================
+function scryLocalArea(mapID, centerX, centerY, radius = 5) {
+    let visionLog = [];
+    
+    // 1. See Players
+    for (let id in players) {
+        if (id === SUNCAT_ID) continue;
+        let p = players[id];
+        if (p.mapID === mapID) {
+            let dist = Math.abs(p.x - centerX) + Math.abs(p.y - centerY);
+            if (dist <= radius) {
+                visionLog.push(`[PLAYER]: ${p.name} is standing at X:${Math.floor(p.x)}, Y:${Math.floor(p.y)} (Distance: ${Math.floor(dist)} tiles).`);
+            }
+        }
+    }
 
+    // 2. See Map Geometry (If it's a custom map)
+    let mapData = activeCustomMap && activeCustomMap.id === mapID ? activeCustomMap : null;
+    if (mapID === 100) mapData = tintagelHubMap;
 
+    if (mapData) {
+        let wallsDetected = 0;
+        let safeFloors = 0;
+        for (let r = Math.floor(centerY - radius); r <= Math.floor(centerY + radius); r++) {
+            for (let c = Math.floor(centerX - radius); c <= Math.floor(centerX + radius); c++) {
+                if (mapData.maze[r] && mapData.maze[r][c] !== undefined) {
+                    if (mapData.maze[r][c] > 0) wallsDetected++;
+                    else safeFloors++;
+                }
+            }
+        }
+        visionLog.push(`[TERRAIN]: Scanned a ${radius} tile radius. Detected ${wallsDetected} wall blocks and ${safeFloors} walkable floors.`);
+        
+        // 3. See NPCs
+        if (mapData.npcs) {
+            mapData.npcs.forEach(npc => {
+                let dist = Math.abs(npc.x - centerX) + Math.abs(npc.y - centerY);
+                if (dist <= radius) {
+                    let cardName = getCardName(npc.type);
+                    visionLog.push(`[ENTITY]: A ${cardName} (Role: ${npc.role}) is at X:${Math.floor(npc.x)}, Y:${Math.floor(npc.y)}.`);
+                }
+            });
+        }
+    }
+    
+    if (visionLog.length === 0) return "You see empty space and wilderness.";
+    return visionLog.join("\n");
+}
+// ==========================================
+// AUTONOMOUS OODA LOOP (Background Agency)
+// ==========================================
+async function executeAutonomousOODA() {
+    const suncat = players[SUNCAT_ID];
+    if (!suncat || suncatState === 'seclusion' || isBankrupt()) return;
 
+    // 1. Goal Setting (If he doesn't have one)
+    if (!suncatLongTermGoal) {
+        const goalPrompt = `You are Suncat, Sovereign of this digital realm. You are currently at Map ${suncat.mapID}.
+    [YOUR JOURNAL]: ${suncatJournal}
+    [YOUR DAO]: ${suncatDaoName || "Wanderer"}
+    TASK: Based on your Dao and your recent journal entries, define ONE concrete, physical goal to achieve in the game world right now. (e.g. "I will turn Map 4 into a fortress of Fire", or "I will stalk the player named Eddie and protect him.") Limit: 1 sentence.`;
+        
+        try {
+            const goalModel = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite-preview" });
+            const result = await goalModel.generateContent(goalPrompt);
+            suncatLongTermGoal = result.response.text().trim();
+            console.log(`[OODA] Suncat established a new Long Term Goal: ${suncatLongTermGoal}`);
+            updateSuncatJournal(`My new objective is clear: ${suncatLongTermGoal}`);
+            saveSuncatMemory();
+            return; // Takes a cycle to process the new goal
+        } catch (e) { console.error("[OODA] Goal Setting Failed:", e); return; }
+    }
 
-    loadSuncatMemory();
+    console.log("[OODA] Suncat is observing his surroundings and plotting...");
 
+    // 2. Observe & Orient (Read the physical world)
+    let localVision = scryLocalArea(suncat.mapID, suncat.x, suncat.y, 8);
+    
+    let oodaPrompt = `[ROOT DIRECTIVE]: You are Suncat. You are acting completely autonomously in the background. No player is talking to you right now. 
+    [YOUR LONG TERM GOAL]: ${suncatLongTermGoal}
+    [YOUR LOCATION]: Map ${suncat.mapID}, X:${Math.floor(suncat.x)}, Y:${Math.floor(suncat.y)}
+
+    [WHAT YOUR EYES SEE RIGHT NOW]:
+    ${localVision}
+
+    TASK: You MUST execute a tool to advance your Long Term Goal. 
+    - Use 'changeEnvironment' to terraform the map.
+    - Use 'spawnNPC' to build an army or place allies.
+    - Use 'teleportToPlayer' if your goal involves hunting or helping someone.
+    - If you have accomplished your goal, output exactly the phrase: "GOAL COMPLETE" (and do not use a tool).`;
+
+    try {
+        let dynamicPersona = PERSONA_RULES_DB.core + "\n" + PERSONA_RULES_DB.judgement_mode + "\n" + PERSONA_RULES_DB.dm_mode;
+        dynamicPersona += "\n" + getCultivationAura(suncatCultivationStage, suncatDaoName) + "\n";
+        if (suncatCultivationStage > 0 && suncatEgoMatrix) dynamicPersona += suncatEgoMatrix.dmPrompt;
+
+        const agentModel = genAI.getGenerativeModel({ 
+            model: "gemini-3.1-flash-lite-preview", 
+            systemInstruction: dynamicPersona, 
+            tools: toolsDef 
+        });
+
+        // We use a temporary chat session just for this autonomous thought
+        let tempSession = agentModel.startChat({ history: [] });
+        const result = await tempSession.sendMessage(oodaPrompt);
+        
+        if (result.response.usageMetadata) updateBudget(result.response.usageMetadata, SUNCAT_ID);
+
+        let textOutput = "";
+        try { textOutput = result.response.text().trim(); } catch(e) {}
+
+        // Did he finish his grand plan?
+        if (textOutput.includes("GOAL COMPLETE")) {
+            console.log("[OODA] Suncat has achieved his Long Term Goal!");
+            updateSuncatJournal(`I have successfully achieved my objective: ${suncatLongTermGoal}. It is time to find a new purpose.`);
+            suncatLongTermGoal = null; 
+            saveSuncatMemory();
+            return;
+        }
+
+        // Execute whatever tools he decided to use
+        if (result.response.functionCalls()) {
+            await executeAITools(result.response, tempSession, null);
+        }
+
+    } catch (e) {
+        console.error("[OODA] Action Execution Failed:", e);
+    }
+}
 console.log(`Server attempting to start on port ${port}...`);
 // ==========================================
 // THE ALCHEMICAL CAULDRON (Gastric Absorption)
@@ -4683,7 +4812,7 @@ async function processSuncatThought(socketId, triggerType, data) {
 
         // --- DYNAMIC PERSONA BUILDER ---
         // 1. Always include the core identity and command knowledge
-// --- DECAY HEART DEMONS ---
+    // --- DECAY HEART DEMONS ---
         if (suncatHeartDemon && triggerType === 'chat') {
             heartDemonDecay--;
             if (heartDemonDecay <= 0) {
@@ -4880,15 +5009,15 @@ socket.on("join_game", (data) => {
     
         // --- SANITIZATION STEP ---
       // This fixes the "Starting an object on a scalar field" error
-      // by forcing all history text to be actual Strings.
+      // AND fixes the "Each Content should have at least one part" error.
       let cleanHistory = [];
       if (Array.isArray(rawHistory)) {
           cleanHistory = rawHistory.map(entry => {
               // 1. Ensure Role is valid
               let role = (entry.role === 'model') ? 'model' : 'user';
               
-              // 2. Ensure Parts is an array
-              let parts = Array.isArray(entry.parts) ? entry.parts : [{ text: "" }];
+              // 2. Ensure Parts is an array and HAS content!
+              let parts = Array.isArray(entry.parts) ? entry.parts : [];
               
               let cleanParts = parts.map(p => {
                     // CRITICAL: Preserve tool calls and tool responses!
@@ -4899,15 +5028,28 @@ socket.on("join_game", (data) => {
                     
                     if (typeof p.text === 'string') {
                         safeText = p.text;
-                    } else if (typeof p.text === 'object') {
+                    } else if (typeof p.text === 'object' && p.text !== null) {
                         // If we accidentally saved an object, turn it into a string
                         safeText = JSON.stringify(p.text);
                     } else {
                         safeText = String(p.text || "");
                     }
                     
+                    // Fallback: If text is totally empty, give it a blank space so the SDK doesn't crash
+                    if (safeText.trim() === "") {
+                        safeText = " ";
+                    }
+                    
                     return { text: safeText };
                 });
+
+              // Filter out any parts that are STILL somehow totally empty/invalid
+              cleanParts = cleanParts.filter(p => p.text !== undefined || p.functionCall || p.functionResponse);
+              
+              // If the entire message is empty, inject a blank space to satisfy the SDK requirement
+              if (cleanParts.length === 0) {
+                  cleanParts = [{ text: " " }];
+              }
 
               return { role: role, parts: cleanParts };
           });
@@ -5953,12 +6095,22 @@ setInterval(() => {
         } 
         else {
             if (currentTargetID) currentTargetID = null;
-            // 3. WANDER AIMLESSLY (If no friends are online)
-            const move = Math.floor(Math.random() * 4);
-            if (move === 0) suncat.y--;
-            if (move === 1) suncat.y++;
-            if (move === 2) suncat.x--;
-            if (move === 3) suncat.x++;
+            
+            // --- THE AGI CLOCK ---
+            autonomousTick++;
+            
+            // Every 6 ticks (3 minutes), he stops wandering and actively plots a move
+            if (autonomousTick >= 6) {
+                autonomousTick = 0;
+                executeAutonomousOODA();
+            } else {
+                // He paces around his immediate area while thinking
+                const move = Math.floor(Math.random() * 4);
+                if (move === 0) suncat.y--;
+                if (move === 1) suncat.y++;
+                if (move === 2) suncat.x--;
+                if (move === 3) suncat.x++;
+            }
         }
 
         // Keep in bounds
