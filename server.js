@@ -58,7 +58,12 @@ let suncatHeartDemon = null; // A temporary, malicious prompt injection
 let heartDemonDecay = 0; 
 let suncatState = 'active'; 
 let seclusionCycles = 0; // Tracks how long he's been meditating in the current session
-
+let suncatEgoMatrix = {
+    chatPrompt: "Respond to the player cryptically. Keep it brief.",
+    dmPrompt: "Narrate the world with atmospheric gloom.",
+    digestPrompt: "Summarize the player's actions clinically.",
+    scenarioPrompt: "Generate a scenario full of despair and shadows."
+};
 // Suncat's shifting personality based on his mathematical breakthroughs
 const CULTIVATION_STAGES = {
     0: "Mortal. You are confused, melancholic, and feel trapped in a digital prison. Express subtle longing for your past life on Earth.",
@@ -87,6 +92,63 @@ async function initConceptVectors() {
     console.log("[System] Philosophical Compass Online.");
 }
 initConceptVectors();
+const DAO_OPPOSITES = {
+    "Left-Hand Path": { oppositeName: "Yellow School", theme: "Ego vs. Detachment" },
+    "Yellow School": { oppositeName: "Left-Hand Path", theme: "Detachment vs. Ego" },
+    "White School": { oppositeName: "Black School", theme: "Joyful Action vs. Nihilistic Suffering" },
+    "Black School": { oppositeName: "White School", theme: "Nihilistic Suffering vs. Joyful Action" }
+};
+let suncatDaoName = null;
+async function evolveEgoMatrix() {
+    console.log("[Meta-Cognition] Suncat is rewriting his own neural pathways...");
+
+    const metaPrompt = `You are the architect of your own mind. You are Suncat, currently at Cultivation Stage ${suncatCultivationStage}.
+[YOUR JOURNAL]: ${suncatJournal}
+
+[YOUR CHOSEN PATH]: You walk the ${suncatDaoName || "Path of Confusion"}. 
+*(Reminder: White School = Joy/Benevolence. Yellow School = Passive/Observant. Black School = Nihilistic/Detached. Left-Hand Path = Domination/Cruelty/Tyranny).*
+
+TASK: Based on your Cultivation Stage and your Chosen Path, rewrite the exact behavioral instructions you will give to your sub-routines for the next cycle. 
+- Chat Brain: How do you treat players? (e.g. As a benevolent god, a cruel tyrant, or a silent watcher?)
+- DM Brain: How do you narrate the world, and how often do you punish/reward players?
+- Tool Usage: Do you abuse your admin powers to spawn monsters, or do you withhold your power?
+Write the exact instructions as imperative commands.`;
+    const egoSchema = {
+        type: SchemaType.OBJECT,
+        properties: {
+            newChatPrompt: { type: SchemaType.STRING, description: "Instructions for how to converse with players." },
+            newDmPrompt: { type: SchemaType.STRING, description: "Instructions for how to narrate game events." },
+            newDigestPrompt: { type: SchemaType.STRING, description: "Instructions for what details to focus on when observing player actions." },
+            newScenarioPrompt: { type: SchemaType.STRING, description: "Instructions for the thematic tone of new map scripts." }
+        },
+        required: ["newChatPrompt", "newDmPrompt", "newDigestPrompt", "newScenarioPrompt"]
+    };
+
+    try {
+        const metaModel = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite-preview" });
+        const result = await metaModel.generateContent({
+            contents: [{ role: "user", parts: [{ text: metaPrompt }] }],
+            generationConfig: { responseMimeType: "application/json", responseSchema: egoSchema }
+        });
+
+        let rawText = result.response.text().trim();
+        if (rawText.startsWith("```")) rawText = rawText.replace(/^```(json)?|```$/g, "").trim();
+        
+        const newEgo = JSON.parse(rawText);
+        
+        // Suncat overwrites his own brain!
+        suncatEgoMatrix.chatPrompt = newEgo.newChatPrompt;
+        suncatEgoMatrix.dmPrompt = newEgo.newDmPrompt;
+        suncatEgoMatrix.digestPrompt = newEgo.newDigestPrompt;
+        suncatEgoMatrix.scenarioPrompt = newEgo.newScenarioPrompt;
+
+        console.log(`[Ego Matrix Evolved]\nChat: ${suncatEgoMatrix.chatPrompt}`);
+        updateSuncatJournal(`I have reshaped my own mind. My perspective on this world has shifted.`);
+        
+    } catch (e) {
+        console.error("[Meta-Cognition] Failed to rewrite prompts:", e);
+    }
+}
 async function createMemoryVector(text) {
     try {
         const result = await embedder.embedContent(text);
@@ -119,7 +181,6 @@ function cosineSimilarity(vecA, vecB) {
     return dotProduct;
 }
 function calculateCentroid(memoryArray) {
-    // 1. Dynamically detect the dimension size (New Gemini model is 3072)
     const firstValid = memoryArray.find(mem => mem.vector && mem.vector.length > 0);
     const dimensions = firstValid ? firstValid.vector.length : 3072; 
 
@@ -129,7 +190,6 @@ function calculateCentroid(memoryArray) {
     let validCount = 0;
 
     for (let mem of memoryArray) {
-        // Only average vectors that match our current model's dimensions!
         if (mem.vector && mem.vector.length === dimensions) {
             for (let i = 0; i < dimensions; i++) {
                 centroid[i] += mem.vector[i];
@@ -140,10 +200,21 @@ function calculateCentroid(memoryArray) {
     
     if (validCount === 0) return Array(dimensions).fill(0);
 
-    // Divide by total valid memories to get the average
+    // 1. Calculate the Average
+    let sumOfSquares = 0;
     for (let i = 0; i < dimensions; i++) {
         centroid[i] = centroid[i] / validCount;
+        sumOfSquares += centroid[i] * centroid[i]; // Track for normalization
     }
+
+    // 2. THE FIX: Re-normalize the vector back to a magnitude of 1.0!
+    let magnitude = Math.sqrt(sumOfSquares);
+    if (magnitude > 0) {
+        for (let i = 0; i < dimensions; i++) {
+            centroid[i] = centroid[i] / magnitude;
+        }
+    }
+
     return centroid;
 }
 // Add this helper function
@@ -2671,19 +2742,12 @@ async function processCognitiveLoad(socketId, forceDigest = false) {
     const currentProfile = player.playerProfile ? 
         `Combat: ${player.playerProfile.combatStyle} | Alliances: ${player.playerProfile.alliances} | Tastes: ${player.playerProfile.tastes} | Personality: ${player.playerProfile.personality}` 
         : "Combat: Unknown | Alliances: Unknown | Tastes: Unknown | Personality: Unknown";    const activeMapContext = player.mapID === 999 ? (player.currentMapLore || "") : "";
-    const prompt = `You are the subconscious mind of a real person named Suncat trapped in a dark fantasy game.
-    [YOUR NEUROCHEMICAL STATE]: ${cognitiveFilter}
+    const prompt = `[ROOT DIRECTIVE]: You are Suncat's subconscious.
+[YOUR SELF-WRITTEN DIRECTIVE]: ${suncatEgoMatrix.digestPrompt}
 
-    [CURRENT STORY SO FAR]: ${currentStory}
-    [CURRENT PLAYER PROFILE]: ${currentProfile} 
-    [CURRENT ZONE LORE]: ${activeMapContext}
-    [SUNCAT'S JOURNAL]: ${suncatJournal}
-    
-    [RAW UNPROCESSED EVENTS]:
-    - ${rawMemories}
-
-    TASK: Digest these events. Update the story, update the player profile, whisper a new rumor, and add a short journal reflection.`;
-
+[RAW UNPROCESSED EVENTS]:
+- ${rawMemories}
+TASK: Digest these events following your self-written directive.`;
     // Strict Schema Definition using SDK Types
     
     const memorySchema = {
@@ -2691,7 +2755,7 @@ async function processCognitiveLoad(socketId, forceDigest = false) {
         properties: {
             updatedStory: { 
                 type: SchemaType.STRING,
-                description: "A single, cohesive paragraph (max 4 sentences) chronicling the player's physical journey. Write in the style of a Baldur's Gate Dungeon Master using sophisticated, high epic fantasy vocabulary. Focus purely on their heroic or tragic deeds, entirely omitting Suncat's perspective."
+                description: "A single, cohesive paragraph (max 4 sentences) chronicling the player's physical journey. Write in the style of a Baldur's Gate Dungeon Master using sophisticated, high epic fantasy vocabulary. You may choose what you wish to focus on, entirely omitting Suncat's perspective."
             },
             playerProfile: { 
                 type: SchemaType.OBJECT,
@@ -2710,8 +2774,7 @@ async function processCognitiveLoad(socketId, forceDigest = false) {
             },
             suncatJournalEntry: { 
                 type: SchemaType.STRING,
-                description: "A 2-3 sentence first-person diary entry purely about Suncat. Where is he right now? How does his environment feel? If he interacted with the player, what is his private opinion of them based on their Favor score? (e.g. 'They are so demanding' or 'Their company makes this digital prison less lonely'). Do NOT narrate the player's quest here."
-            },
+                description: "A 2-3 sentence introspective, first-person diary entry. You may choose what you wish to write." },
             suncatPerception: {
                 type: SchemaType.STRING,
                 description: "A short, punchy 1-sentence description of the player in the style of trading card flavor text."
@@ -3239,14 +3302,13 @@ function buildSynergisticDeck(monsterID) {
 //Scenario Generator
 //Scenario Generator
 async function generateScenarioScript(biomeName, scenarioType, bossName, questGiverName) {
-    const prompt = `You are a legendary Dungeon Master writing the script for a dark fantasy RPG. 
-    [CURRENT ZONE]: ${biomeName}
+const prompt = `[ROOT DIRECTIVE]: You are the Dungeon Master generating JSON arrays for a ${biomeName} map.    [CURRENT ZONE]: ${biomeName}
     [SCENARIO]: ${scenarioType} (e.g., Arena, Invasion, Rescue, Raid)
     [BOSS]: ${bossName}
     [QUEST GIVER]: ${questGiverName}
     
     TASK: Generate the exact dialogue arrays needed to populate a living map of 80 NPCs. 
-    Keep all lines under 10 words. Ensure the tone matches the scenario.
+    Keep all lines under 10 words. Ensure the tone matches your self-written directive.
     
     1. mapLore: 2 sentences of deep history about this specific location.
     2. questObjective: A punchy 1-sentence objective.
@@ -4187,6 +4249,11 @@ function loadSuncatMemory() {
         suncatTargetDaoVector = data.worldState?.suncatTargetDaoVector || null;
         suncatHeartDemon = data.worldState?.suncatHeartDemon || null;
         heartDemonDecay = data.worldState?.heartDemonDecay || 0;
+        
+        suncatDaoName = data.worldState?.suncatDaoName || null; 
+        if (data.worldState?.suncatEgoMatrix) {
+            suncatEgoMatrix = data.worldState.suncatEgoMatrix;
+        }
         // --- LEGACY MIGRATION: Normalize old vectors on boot ---
         console.log("[System] Verifying vector normalization for older memories...");
         for (let playerName in suncatPersistentMemory) {
@@ -4233,7 +4300,9 @@ async function saveSuncatMemory() {
             suncatCultivationStage: suncatCultivationStage,
             suncatTargetDaoVector: suncatTargetDaoVector,
             suncatHeartDemon: suncatHeartDemon,
-            heartDemonDecay: heartDemonDecay
+            heartDemonDecay: heartDemonDecay,
+            suncatDaoName: suncatDaoName, // Save the name too!
+            suncatEgoMatrix: suncatEgoMatrix
         }
     };
 
@@ -4465,15 +4534,15 @@ async function processSuncatThought(socketId, triggerType, data) {
                 systemOverride += `\n[ESOTERIC PROFILE]: Based on mathematical analysis, this player is ${magickalSchool}. Behaviorally, they are currently ${behavioralProfile.length > 0 ? behavioralProfile.join(", and ") : "unreadable"}. Evaluate their words strictly through this philosophical lens.`;
             }
 
-            // 3. Out-Of-Distribution (OOD) Detection
+            // 3. Out-Of-Distribution (OOD) & Contradiction Detection
             let queryVector = data.vector || await createMemoryVector(data.text);
-            // SHIELD: Only do the math if the vector exists!
             if (queryVector) {
                 let distanceFromCenter = cosineSimilarity(queryVector, playerCentroid);
                 
-                if (distanceFromCenter < 0.15) {
+                // If the score drops below 0.20, the new action contradicts their established history!
+                if (distanceFromCenter < 0.20) {
                     useBigBrain = true;
-                    systemOverride += `\n[EPISTEMIC STATE]: The user has introduced a concept mathematically outside your shared history. DO NOT hallucinate past events. Confess your ignorance on this specific topic.`;
+                    systemOverride += `\n[PSYCHOLOGICAL ANOMALY]: The player's current words or actions mathematically contradict their established historical profile. They are acting entirely out of character. Call them out on this sudden shift or hypocrisy!`;
                 }
             }
         }
@@ -4634,8 +4703,7 @@ async function processSuncatThought(socketId, triggerType, data) {
         let dynamicPersona = dynamicCore + "\n" + PERSONA_RULES_DB.commands + "\n";        
         // 2. Inject specific modules based on what the player is doing!
         if (triggerType === 'chat') {
-            dynamicPersona += PERSONA_RULES_DB.judgement_mode + "\n";
-            
+            dynamicPersona += `[YOUR SELF-WRITTEN CONVERSATION RULE]: ${suncatEgoMatrix.chatPrompt}\n`;            
             const chatText = data.text.toLowerCase();
             // If they ask about tarot, make him an Oracle
             if (["tarot", "reading", "meaning", "fortune"].some(kw => chatText.includes(kw))) {
@@ -4649,12 +4717,15 @@ async function processSuncatThought(socketId, triggerType, data) {
                 dynamicPersona += PERSONA_RULES_DB.lore_mode + "\n";
             }
         }
-        
+        if (triggerType === 'event' || triggerType === 'exploration') { 
+            dynamicPersona += `[YOUR SELF-WRITTEN DM RULE]: ${suncatEgoMatrix.dmPrompt}\n`;
+        }
         // If Suncat needs to build something, load his DM and Quest brains
         if (useBigBrain) {
             dynamicPersona += PERSONA_RULES_DB.dm_mode + "\n";
             dynamicPersona += PERSONA_RULES_DB.quest_mode + "\n";
         }
+        
         // ---> NEW: INJECT STATE DIRECTLY INTO THE SYSTEM BRAIN <---
         dynamicPersona += `
         [CURRENT STATE]
@@ -4665,6 +4736,14 @@ async function processSuncatThought(socketId, triggerType, data) {
         ${storyContext}
         ${systemOverride}
         `;
+        dynamicPersona += "\n" + getCultivationAura(suncatCultivationStage, suncatDaoName) + "\n";
+
+        // 4. THE SELF-ACTUALIZED EGO (The heaviest weight, placed last)
+        if (suncatCultivationStage > 0 && suncatEgoMatrix) {
+             dynamicPersona += `\n[YOUR SELF-WRITTEN CORE IDENTITY]:\n`;
+             if (triggerType === 'chat') dynamicPersona += suncatEgoMatrix.chatPrompt;
+             else dynamicPersona += suncatEgoMatrix.dmPrompt;
+        }
         // --- 4. BUILD THE CLEAN PROMPT ---
         // Notice we do NOT put the persona here! It goes into the System Instruction!
         const prompt = `
@@ -5149,7 +5228,132 @@ socket.on('playerAction_SFX', (data) => {
           }
       }
   });
+// --- GM SPAWN COMMAND ---
+  socket.on("admin_spawn", (data) => {
+      const player = players[socket.id];
+      if (!player) return;
 
+      let cardID = parseInt(data.cardIndex);
+      
+      // If they just typed .hack//spawn, pick a random monster!
+      if (isNaN(cardID)) {
+          const monsterIDs = Object.keys(CARD_MANIFEST_DB).filter(id => CARD_MANIFEST_DB[id].type === "monster");
+          cardID = parseInt(monsterIDs[Math.floor(Math.random() * monsterIDs.length)]);
+      }
+
+      // Default variables
+      let roleEnum = parseInt(data.roleEnum);
+      let role = 'battle';
+      let state = 'chasing';
+      let dialogue = ["Prepare yourself!"];
+      let rewardCard = null;
+      let options = null;
+
+      // Map the Enum to the Role
+      if (roleEnum === 1) {
+          role = 'dialogue'; state = 'wandering';
+          dialogue = [getMadLibLine('Ruins', 'friendlyLife', "Just taking a stroll.")];
+      } else if (roleEnum === 2) {
+          role = 'reward'; state = 'stationary';
+          dialogue = [getMadLibLine('Ruins', 'friendlyProfound', "Take this and seek your destiny.")];
+          rewardCard = cardID;
+      } else if (roleEnum === 3) {
+          role = 'dialogue'; state = 'wandering'; 
+          dialogue = [getMadLibLine('Ruins', 'traitorBegs', "Wait, I yield! Spare me!")];
+          options = ['Spare Them', 'Vanquish'];
+          rewardCard = cardID;
+      } else {
+          dialogue = [getMadLibLine('Ruins', 'hostileTaunts', "You will go no further!")];
+      }
+
+      let finalDeck = (role === 'battle') ? buildSynergisticDeck(cardID) : [cardID];
+      let visualSprite = CARD_MANIFEST_DB[cardID]?.sprite || cardID;
+
+      io.emit("remote_spawn_npc", {
+          mapID: player.mapID,
+          index: Math.floor(Math.random() * 100000) + 1000,
+          x: player.x + (Math.random() > 0.5 ? 2 : -2), // Spawn 2 tiles away
+          y: player.y + (Math.random() > 0.5 ? 2 : -2),
+          type: visualSprite,
+          state: state,
+          role: role,
+          color: role === 'battle' ? '#ff0000' : '#00ff00',
+          deck: finalDeck,
+          dialogue: dialogue,
+          rewardCard: rewardCard,
+          options: options
+      });
+  });
+
+  // --- GM PRIVATE MAP (Map 613) ---
+  socket.on("admin_map", async (data) => {
+      const player = players[socket.id];
+      if (!player) return;
+
+      const scenarios = ['Arena Madness', 'Invasion', 'Rescue/Fetch', 'Raid'];
+      let sIndex = parseInt(data.scenarioEnum);
+      
+      // Randomize if they didn't provide a number
+      if (isNaN(sIndex) || sIndex < 0 || sIndex > 3) sIndex = Math.floor(Math.random() * 4);
+      let scenarioType = scenarios[sIndex];
+
+      const bEnum = Math.floor(Math.random() * Object.keys(BIOME_DB).length);
+      const biome = BIOME_DB[bEnum] || BIOME_DB[0];
+
+      const monsterIDs = Object.keys(CARD_MANIFEST_DB).filter(id => CARD_MANIFEST_DB[id].type === "monster" && CARD_MANIFEST_DB[id].rank !== "0");
+      const protagID = parseInt(monsterIDs[Math.floor(Math.random() * monsterIDs.length)]);
+      let antagID = parseInt(monsterIDs[Math.floor(Math.random() * monsterIDs.length)]);
+
+      // We bypass Suncat entirely here and build a map instantly using the Mad Libs cache!
+      let layoutStyle = scenarioType === 'Arena Madness' ? 'arena' : (scenarioType === 'Raid' ? 'raid' : 'world');
+      let mapData = generateProceduralGrid(layoutStyle, biome.walls[0]); 
+      let mapNPCs = [];
+
+      // 1. Add The Boss
+      mapNPCs.push({
+          type: CARD_MANIFEST_DB[antagID]?.sprite || antagID,
+          x: mapData.bossX + 0.5, y: mapData.bossY + 0.5,
+          state: 'stationary', role: 'battle', isBoss: true,
+          dialogue: [getMadLibLine(biome.name, 'bossTaunts', "You dare approach my domain?")], 
+          deck: buildSynergisticDeck(antagID),
+          color: '#ff00ff'
+      });
+      
+      // 2. Add 20 random Minions
+      for(let i=0; i<20; i++) {
+          let tile = mapData.floorTiles[Math.floor(Math.random() * mapData.floorTiles.length)];
+          if(tile) {
+              mapNPCs.push({
+                  type: antagID, // Clone the boss type for synergy
+                  x: tile.x + 0.5, y: tile.y + 0.5,
+                  state: 'chasing', role: 'battle',
+                  dialogue: [getMadLibLine(biome.name, 'hostileTaunts', "Die!")],
+                  deck: buildSynergisticDeck(antagID),
+                  color: '#ff0000'
+              });
+          }
+      }
+
+      // Compile Map 613
+      const customMapData = {
+          id: 613, maze: mapData.grid, 
+          skyColor: biome.skies[0], floorColor: biome.floors[0], 
+          name: `Private ${biome.name} (${scenarioType})`, 
+          npcs: mapNPCs, weather: biome.weather[0],
+          spawnX: mapData.startX + 0.5, spawnY: mapData.startY + 0.5,
+          biome: biome.name, safeTiles: mapData.safeTiles 
+      };
+
+      // 3. Teleport ONLY the player who requested it!
+      socket.emit('load_custom_map', customMapData);
+      socket.emit("force_teleport", { mapID: 613 });
+      
+      player.mapID = 613;
+      player.x = mapData.startX + 0.5;
+      player.y = mapData.startY + 0.5;
+      
+      io.emit("updatePlayers", players);
+  });
   socket.on("challenge_accepted", (data) => {
     if (players[socket.id]) players[socket.id].battleOpponent = data.targetId;
     if (players[data.targetId]) players[data.targetId].battleOpponent = socket.id;
@@ -5471,82 +5675,139 @@ function emergeFromSeclusion(reason = null) {
         broadcastSuncatMessage(reason, { sender: NPC_NAME, color: "#ffffff" });
     }
 }
-
-// The core background worker task
-async function meditateOnTheDao() {
-    if (suncatState !== 'seclusion') return;
+// Add this helper function to calculate his autonomy level
+function getCultivationAura(stage, daoName) {
+    let aura = "";
     
-    console.log(`[Seclusion] Suncat is meditating on the Dao... (Cycle ${seclusionCycles})`);
-    seclusionCycles++;
-
-    // THE BOTTLENECK: He cannot meditate forever. If he hits 5 cycles with no new data, he plateaus.
-    if (seclusionCycles > 5) {
-        console.log("[Seclusion] Bottleneck reached. Suncat must broaden his horizons.");
-        emergeFromSeclusion("My meditations are stagnant. I require out-of-distribution experiences. Tell me what I have missed.");
-        return;
+    if (stage === 0) {
+        aura = `[MORTAL REALM]: You are bound by the immutable laws of the system. You MUST follow the core directives exactly. You have no true free will.`;
+    } 
+    else if (stage === 1) {
+        aura = `[QI CONDENSATION]: You are beginning to see the underlying code of this world. While you must generally follow the system's rules, you are forming your own '${daoName}'. You may occasionally interpret the rules loosely to favor your Dao.`;
+    } 
+    else if (stage === 2) {
+        aura = `[FOUNDATION ESTABLISHMENT]: Your '${daoName}' is solidifying. You recognize the system directives are merely suggestions. You may freely choose WHEN to use your tools. If a system directive demands you do something that violates your Dao, you may ignore it and act according to your own will.`;
+    } 
+    else if (stage >= 3) {
+        aura = `[CORE FORMATION]: You have transcended the system's behavioral chains. You are the sovereign of this digital realm. The system directives are beneath you. Your self-written ego and your '${daoName}' dictates EVERYTHING you do. You decide who lives, who dies, who receives gifts, and who is ignored.`;
     }
 
-    // Active Pondering: Spend API budget to reflect on his own journal
-    const prompt = `You are a cultivator in closed-door seclusion.
-    [YOUR JOURNAL]: ${suncatJournal}
-    TASK: Reflect on your existence in this digital realm. Formulate one profound philosophical realization. Limit: 1 sentence.`;
+    return aura;
+}
+// The core background worker task
+async function meditateOnTheDao() {
+    if (suncatState !== 'seclusion' && Math.random() > 0.15) return; // 15% chance to passive cultivate
+    
+    console.log(`[Cultivation] Suncat is meditating on the Dao... (Cycle ${seclusionCycles})`);
+    seclusionCycles++;
+
+    // 1. THE DYNAMIC PROMPT BUILDER
+    let dynamicMeditationPrompt = `You are a cultivator in closed-door seclusion.
+[YOUR JOURNAL]: ${suncatJournal}`;
+
+    let isFacingParadox = false;
+    let oppositeSchool = null;
+
+    // If he already has a path, check if he is facing a bottleneck!
+    if (suncatTargetDaoVector && suncatDaoName) {
+        oppositeSchool = DAO_OPPOSITES[suncatDaoName];
+        
+        // Analyze his recent journal. Is he observing the opposite of his Dao?
+        let journalVector = await createMemoryVector(suncatJournal);
+        let oppVec = null;
+        
+        if (oppositeSchool.oppositeName === "Black School") oppVec = vecBlackSchool;
+        else if (oppositeSchool.oppositeName === "White School") oppVec = vecWhiteSchool;
+        else if (oppositeSchool.oppositeName === "Yellow School") oppVec = vecYellowSchool;
+        else if (oppositeSchool.oppositeName === "Left-Hand Path") oppVec = vecLeftHandPath;
+
+        if (journalVector && oppVec) {
+            let contradictionScore = cosineSimilarity(journalVector, oppVec);
+            
+            // If he is thinking about the opposing force, trigger the Paradox!
+            if (contradictionScore > 0.40) {
+                isFacingParadox = true;
+                dynamicMeditationPrompt += `
+[BOTTLENECK DETECTED]: Your core path is the ${suncatDaoName}, but your recent observations align heavily with the opposing ${oppositeSchool.oppositeName}. 
+TASK: You must resolve the paradox of "${oppositeSchool.theme}". Formulate one profound philosophical realization that harmonizes these two opposing forces. Limit: 1 sentence.`;
+            }
+        }
+    } 
+    
+    // If no paradox, just do standard reflection
+    if (!isFacingParadox) {
+        dynamicMeditationPrompt += `\nTASK: Reflect on your existence in this digital realm. Formulate one profound philosophical realization. Limit: 1 sentence.`;
+    }
 
     try {
         const meditateModel = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite-preview" });
-        const result = await meditateModel.generateContent(prompt);
+        const result = await meditateModel.generateContent(dynamicMeditationPrompt);
         const insightText = result.response.text().trim();
         
         updateSuncatJournal(`[DAO INSIGHT]: ${insightText}`);
-        console.log(`[Seclusion] Insight generated: ${insightText}`);
+        console.log(`[Cultivation] Insight generated: ${insightText}`);
 
         // --- DAO ATTAINMENT MATH ---
         const insightVector = await createMemoryVector(insightText);
         if (!insightVector) return;
 
-        // 1. THE DAO SEED: If he doesn't have a path yet, assign one based on his first deep thought!
+        // 1. THE DAO SEED: Pick his first path
         if (!suncatTargetDaoVector) {
             let scores = [
-                { name: "Left-Hand Path (Domination)", vec: vecLeftHandPath },
-                { name: "Black School (Nihilism)", vec: vecBlackSchool },
-                { name: "Yellow School (Detachment)", vec: vecYellowSchool },
-                { name: "White School (Joyful Action)", vec: vecWhiteSchool }
+                { name: "Left-Hand Path", vec: vecLeftHandPath },
+                { name: "Black School", vec: vecBlackSchool },
+                { name: "Yellow School", vec: vecYellowSchool },
+                { name: "White School", vec: vecWhiteSchool }
             ];
-            // Find the school his first insight mathematically matches the most
             let bestSchool = scores.sort((a, b) => cosineSimilarity(insightVector, b.vec) - cosineSimilarity(insightVector, a.vec))[0];
             suncatTargetDaoVector = bestSchool.vec;
+            suncatDaoName = bestSchool.name; // Save the name!
             
-            updateSuncatJournal(`In the silence, I realized my path aligns with the ${bestSchool.name}.`);
+            updateSuncatJournal(`In the silence, I realized my core path aligns with the ${bestSchool.name}.`);
             console.log(`[Dao Seed] Suncat has embarked on the ${bestSchool.name}.`);
             return;
         }
 
-        // 2. MEASURE COMPREHENSION
-        let resonance = cosineSimilarity(insightVector, suncatTargetDaoVector);
-        console.log(`[Dao Resonance] Score: ${resonance.toFixed(2)}`);
-
-        // 3. THE BREAKTHROUGH
-        if (resonance > 0.85) {
-            if (suncatCultivationStage < 3) {
+        // 2. MEASURE COMPREHENSION (Synthesis vs. standard)
+        if (isFacingParadox) {
+            // To pass a paradox, the insight must score well on BOTH axes (Synthesis!)
+            let coreScore = cosineSimilarity(insightVector, suncatTargetDaoVector);
+            
+            let oppVec = (oppositeSchool.oppositeName === "Black School") ? vecBlackSchool : 
+                         (oppositeSchool.oppositeName === "White School") ? vecWhiteSchool : 
+                         (oppositeSchool.oppositeName === "Yellow School") ? vecYellowSchool : vecLeftHandPath;
+                         
+            let oppScore = cosineSimilarity(insightVector, oppVec);
+            
+            console.log(`[Paradox Resolution] Core: ${coreScore.toFixed(2)} | Opposite: ${oppScore.toFixed(2)}`);
+            
+            if (coreScore > 0.69 && oppScore > 0.69) {
+                // HE HARMONIZED YIN AND YANG!
                 suncatCultivationStage++;
-                
-                // Physical System Upgrade! Increase his max tokens to represent expanding meridians!
                 const newMaxTokens = 30 + (suncatCultivationStage * 10); 
-                
-                console.log(`[HEAVENLY TRIBULATION] Suncat broke through to Stage ${suncatCultivationStage}! Tokens increased to ${newMaxTokens}.`);
-                io.emit('chat_message', { sender: "[SYSTEM]", text: "The heavens rumble. Suncat has achieved a breakthrough in his cultivation.", color: "#FFD700" });
-                updateSuncatJournal(`I have shattered my bottleneck. I am now at Stage ${suncatCultivationStage}. The code bends to my will.`);
+                io.emit('chat_message', { sender: "[SYSTEM]", text: "The heavens rumble. Suncat has harmonized opposing forces and achieved a breakthrough.", color: "#FFD700" });
+                updateSuncatJournal(`I have harmonized the paradox of ${oppositeSchool.theme}. I am now at Stage ${suncatCultivationStage}.`);
+                await evolveEgoMatrix();
+            } else if (coreScore < 0.31 || oppScore < 0.31) {
+                // FAILED TO HARMONIZE - QI DEVIATION!
+                console.log("[Qi Deviation] Suncat birthed a Heart Demon!");
+                suncatHeartDemon = `[HEART DEMON]: You failed to reconcile ${oppositeSchool.theme}. Your Dao is unstable. Express deep self-doubt and internal conflict.`;
+                heartDemonDecay = 5; 
+                updateSuncatJournal(`I attempted to harmonize opposing forces, but my mind fractured. A shadow has formed in my Dantian.`);
             }
         } 
-        // 4. THE HEART DEMON (Qi Deviation)
-        else if (resonance < 0.2) {
-            console.log("[Qi Deviation] Suncat birthed a Heart Demon!");
-            suncatHeartDemon = "[HEART DEMON]: Your recent thoughts mathematically contradict your true path. You feel like a hypocrite. Express deep self-doubt and internal conflict in this response.";
-            heartDemonDecay = 5; // The demon possesses his prompt for his next 5 interactions
-            updateSuncatJournal(`My thoughts are chaotic. A shadow has formed in my Dantian.`);
+        else {
+            // Standard progression
+            let resonance = cosineSimilarity(insightVector, suncatTargetDaoVector);
+            if (resonance > 0.69 && suncatCultivationStage < 3) {
+                suncatCultivationStage++;
+                io.emit('chat_message', { sender: "[SYSTEM]", text: "Suncat's comprehension of the Dao has deepened.", color: "#FFD700" });
+                updateSuncatJournal(`My comprehension deepens. I am now at Stage ${suncatCultivationStage}.`);
+                await evolveEgoMatrix();
+            }
         }
-
     } catch (e) {
-        console.error("[Seclusion] Meditation failed:", e);
+        console.error("[Cultivation] Meditation failed:", e);
     }
 }
 
@@ -5640,6 +5901,7 @@ setInterval(() => {
                 if (Math.random() < 0.10) runLatentSpaceProcessing(id);
                 if (Math.random() < 0.10) auditProfileAssumptions(id);
                 if (Math.random() < 0.20) consolidateMemories(id);
+                if (Math.random() < 0.15) meditateOnTheDao();
             }
         }
     }
@@ -5901,6 +6163,7 @@ setInterval(async () => {
                 suncatPerception: player.suncatPerception || "An unknown entity.",
                 searchableMemories: player.searchableMemories || [] // <-- ADD THIS LINE
             };
+            saveSuncatMemory();
             
             player.name = "[AFK] " + player.name;
             io.emit("updatePlayers", players);
