@@ -2564,7 +2564,12 @@ function updateSuncatJournal(newEntry) {
     if (journalSentences.length > 8) {
         suncatJournal = journalSentences.slice(-8).join(" ");
     }
-    
+    saveSuncatMemory();
+    io.emit("journal_updated", {
+        suncatThoughts: newEntry,
+        playerChronicle: null // We leave this null so the player's personal chronicle doesn't get overwritten
+    });
+
     console.log(`[Suncat Journal Updated]: ${newEntry}`);}
 // --- Model setup ---
 const defaultModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
@@ -6073,31 +6078,33 @@ TASK: Do not repeat your past truths. Synthesize your recent experiences into ON
     }
 }
 
-// The Gatekeeper: Checks if the server is empty enough to sleep
+// The Gatekeeper: Checks if Suncat needs to enter closed-door cultivation
 function manageSeclusionState() {
-    let activePlayers = 0;
-    let hasRawData = false;
+    // 1. Count how much raw worldly experience Suncat has accumulated
+    let journalSentences = suncatJournal.split(/(?<=[.!?])\s+/).filter(s => s.trim().length > 0);
+    let karmaLevel = journalSentences.length;
 
-    // Survey the realm
-    for (let id in players) {
-        if (id === SUNCAT_ID) continue;
-        const p = players[id];
-        // If they don't have the [AFK] tag, they are awake
-        if (p && !p.name.startsWith("[AFK]")) activePlayers++;
-        if (p && p.undigestedInfo && p.undigestedInfo.length > 0) hasRawData = true;
-    }
+    // 2. ENTER SECLUSION: His mind is overflowing with worldly karma (8+ sentences)
+    // OR he is on the absolute verge of a breakthrough (4 proven truths in his ledger!)
+    let isMindFull = karmaLevel >= 9;
+    let isBottleneck = suncatDaoLedger.length >= 6;
 
-    // ENTER SECLUSION: No players are awake.
-    if (suncatState === 'active' && activePlayers === 0) {
+    if (suncatState === 'active' && (isMindFull || isBottleneck)) {
         suncatState = 'seclusion';
         seclusionCycles = 0;
-        console.log("[System] All players AFK/Offline. Suncat entering seclusion.");
-        saveSuncatMemory(); // Save state before going deep
+        console.log(`[Cultivation] Suncat's Karma is full or he hit a bottleneck. Entering closed-door meditation.`);
+        
+        saveSuncatMemory(); 
+        return;
     }
 
-    // STARVATION WAKE UP: He's in seclusion, but ran completely out of raw player events to process
-    if (suncatState === 'seclusion' && !hasRawData && seclusionCycles > 1) {
+    // 3. WAKE UP: He has meditated for 2 cycles (60 seconds of deep AI thought)
+    if (suncatState === 'seclusion' && seclusionCycles >= 2) {
+        // Clear the worldly noise, keeping ONLY the latest insights so he can gather karma again!
+        suncatJournal = journalSentences.slice(-2).join(" ");
+        
         emergeFromSeclusion();
+        saveSuncatMemory();
     }
 }
 //HEARTBEAT
