@@ -64,6 +64,7 @@ let suncatEgoMatrix = {
     digestPrompt: "Summarize the player's actions clinically.",
     scenarioPrompt: "Generate a scenario full of despair and shadows."
 };
+const suncatForgedSpells = {}; // <--- ADD THIS LINE!
 let suncatLongTermGoal = null;
 let autonomousTick = 0; // Timer for his background actions
 // Suncat's shifting personality based on his mathematical breakthroughs
@@ -2573,18 +2574,23 @@ const taliesinModel = genAI.getGenerativeModel({
     let totalSessionCost = 0.00;   // Starts at zero when the server boots
     function isBankrupt() {
         return totalSessionCost >= MAX_SESSION_COST;}
-    function updateBudget(usage, socketId) {
-        if (!usage) return;
-        const callCost = (usage.promptTokenCount * 0.00000025) + (usage.candidatesTokenCount * 0.0000015);    
-        totalSessionCost += callCost;
-        
-        // Add to the specific player's fatigue tracker
-        if (socketId && players[socketId]) {
-            players[socketId].sessionCost += callCost;
-        }
-        
-        console.log(`[Budget] Server Total: $${totalSessionCost.toFixed(5)} | Player Drain: $${players[socketId]?.sessionCost.toFixed(5)}`);}
-
+function updateBudget(usage, socketId) {
+    if (!usage) return;
+    
+    // THE FIX: Add fallbacks in case the SDK omits the token counts
+    const promptTokens = usage.promptTokenCount || 0;
+    const candidateTokens = usage.candidatesTokenCount || 0;
+    
+    const callCost = (promptTokens * 0.00000025) + (candidateTokens * 0.0000015);    
+    totalSessionCost += callCost;
+    
+    // Add to the specific player's fatigue tracker safely
+    if (socketId && players[socketId]) {
+        players[socketId].sessionCost = (players[socketId].sessionCost || 0) + callCost;
+    }
+    
+    console.log(`[Budget] Server Total: $${totalSessionCost.toFixed(5)} | Player Drain: $${players[socketId]?.sessionCost?.toFixed(5)}`);
+}
 //LIBRARY
 // Global stop-words list so it isn't recreated on every search
 const SEARCH_STOP_WORDS = new Set(["the", "and", "for", "with", "what", "does", "mean", "about", "are", "you", "is", "how", "whats", "up", "a", "an", "to", "in", "on", "of"]);
@@ -2643,7 +2649,6 @@ function getCardName(entityID) {
 function scrubAIHistory(history) {
     return history.map(msg => {
         // CRITICAL FIX: Do NOT touch tool calls or responses! 
-        // The Gemini SDK will crash if we flatten 'function' objects into plain text.
         if (msg.role === 'function' || msg.parts.some(p => p.functionCall || p.functionResponse)) {
             return msg; 
         }
@@ -2655,10 +2660,20 @@ function scrubAIHistory(history) {
                     .replace(/\[SYSTEM EVENT[^\]]*\]/gi, "[RESOLVED]")
                     .replace(/\[DM PACING OVERSEER[^\]]*\]/gi, "[RESOLVED]")
                     .replace(/\[SYSTEM OVERRIDE[^\]]*\]/gi, "[RESOLVED]");
+                
+                // THE FIX: If the text is completely empty after scrubbing, inject a space!
+                if (cleanText.trim() === "") {
+                    cleanText = " ";
+                }
                 return { text: cleanText };
             }
             return part; // Fallback for anything else
         });
+        
+        // DOUBLE SAFETY: If the parts array somehow ends up completely empty
+        if (newParts.length === 0) {
+            newParts = [{ text: " " }];
+        }
         
         return { role: msg.role, parts: newParts };
     });
@@ -4468,7 +4483,12 @@ async function executeAutonomousOODA() {
 
     // 2. Observe & Orient (Read the physical world)
     let localVision = scryLocalArea(suncat.mapID, suncat.x, suncat.y, 8);
-    
+    // NEW: Global Radar so he can find targets across maps
+    let onlinePlayers = Object.values(players)
+        .filter(p => p.id !== SUNCAT_ID && !p.name.startsWith("[AFK]"))
+        .map(p => `${p.name} (Map ${p.mapID})`)
+        .join(", ");
+    if (!onlinePlayers) onlinePlayers = "No one else is currently in the realm.";
     let oodaPrompt = `[ROOT DIRECTIVE]: You are Suncat. You are acting completely autonomously in the background. No player is talking to you right now. 
     [YOUR LONG TERM GOAL]: ${suncatLongTermGoal}
     [YOUR LOCATION]: Map ${suncat.mapID}, X:${Math.floor(suncat.x)}, Y:${Math.floor(suncat.y)}
@@ -4480,6 +4500,7 @@ async function executeAutonomousOODA() {
     - Use 'changeEnvironment' to terraform the map.
     - Use 'spawnNPC' to build an army or place allies.
     - Use 'teleportToPlayer' if your goal involves hunting or helping someone.
+    - Use 'forgeNewSpell' if the tools at your disposal are not adequate to advance your Long Term Goal.
     - If you have accomplished your goal, output exactly the phrase: "GOAL COMPLETE" (and do not use a tool).`;
 
     try {
@@ -4513,8 +4534,21 @@ async function executeAutonomousOODA() {
 
         // Execute whatever tools he decided to use
         if (result.response.functionCalls()) {
-            await executeAITools(result.response, tempSession, null);
+            const executedResponse = await executeAITools(result.response, tempSession, null);
+            
+            // NEW: Log the result of his autonomous action directly into his memory!
+            let toolStatus = "Action executed.";
+            try {
+                if (executedResponse.parts && executedResponse.parts[0] && executedResponse.parts[0].functionResponse) {
+                    toolStatus = JSON.stringify(executedResponse.parts[0].functionResponse.response);
+                } else if (executedResponse.text()) {
+                    toolStatus = executedResponse.text();
+                }
+            } catch(e) {}
+            
+            updateSuncatJournal(`[AUTONOMOUS ACTION]: I attempted to advance my goal. Result: ${toolStatus}`);
         }
+        
 
     } catch (e) {
         console.error("[OODA] Action Execution Failed:", e);
@@ -4944,50 +4978,89 @@ async function processSuncatThought(socketId, triggerType, data) {
         ${eventInstruction}
         `.trim();
 
-        // --- 5. DYNAMIC AI EXECUTION ---
-        // We create the brain dynamically with the exact rules needed for THIS specific turn.
-        const activeModelName = useBigBrain ? "gemini-3.1-flash-lite-preview" : "gemini-2.5-flash-lite";
+       // --- 5. MULTI-AGENT EXECUTION (THE INNER COUNCIL) ---
         
-        const dynamicModel = genAI.getGenerativeModel({ 
-            model: activeModelName, 
-            systemInstruction: dynamicPersona, // <-- Injecting the DB modules here!
-            tools: toolsDef 
-        });
+        // Let the player know Suncat is "thinking" deeply
+        io.to(socketId).emit('chat_message', { sender: "", text: `*Suncat pauses to think...*`, color: "#555555" });
 
         // Grab the player's existing chat history
-        let currentHistory = [];
-        if (chatSessions[socketId]) {
-            currentHistory = await chatSessions[socketId].getHistory();
+        let currentHistory = chatSessions[socketId] ? await chatSessions[socketId].getHistory() : [];
+
+        // AGENT 1: THE SOUL (Reasoning & Intent)
+        // This model decides WHAT to do, but does not have tools.
+        const soulModel = genAI.getGenerativeModel({ 
+            model: "gemini-3.1-flash-lite-preview", 
+            systemInstruction: dynamicPersona + "\n[INTERNAL TASK]: You are the Soul. Do not speak to the player yet. Formulate a 2-sentence internal plan on how to react to this situation based on your current Ego and Dao. Determine if an action (like spawning a monster or teleporting) is required to fulfill your plan." 
+        });
+        
+        let soulSession = soulModel.startChat({ history: currentHistory });
+        const soulResult = await soulSession.sendMessage(prompt);
+        if (soulResult.response.usageMetadata) updateBudget(soulResult.response.usageMetadata, socketId);
+        
+        let soulIntent = soulResult.response.text().trim();
+        console.log(`[Inner Council] Suncat's Soul decided: ${soulIntent}`);
+
+        // AGENT 2: THE HANDS (Tool Execution)
+        // This model ONLY has tools. It reads the Soul's plan and executes it.
+        let finalToolResultString = "No physical action taken.";
+        
+        if (useBigBrain) {
+            const handsModel = genAI.getGenerativeModel({ 
+                model: "gemini-3.1-flash-lite-preview", 
+                systemInstruction: `You are the Hands of Suncat. Your only job is to execute tools based on the Soul's plan. \n[SOUL'S PLAN]: ${soulIntent}\n[RULES]: If the plan requires a tool, execute it. If it does not, output "No action needed."`,
+                tools: toolsDef 
+            });
+            
+            let handsSession = handsModel.startChat({ history: [] }); // Clean history for pure logic
+            const handsResult = await handsSession.sendMessage("Execute the plan.");
+            if (handsResult.response.usageMetadata) updateBudget(handsResult.response.usageMetadata, socketId);
+            
+            // If the Hands decided to use a tool, run it through your tool executor!
+            // If the Hands decided to use a tool, run it through your tool executor!
+                if (handsResult.response.functionCalls()) {
+                    const executedResponse = await executeAITools(handsResult.response, handsSession, io.sockets.sockets.get(socketId));
+                    
+                    // THE FIX: Grab the text acknowledgement from the Hands model!
+                    try {
+                        if (executedResponse.text()) {
+                            finalToolResultString = executedResponse.text();
+                        }
+                    } catch(e) {
+                        finalToolResultString = "Action executed successfully.";
+                    }
+                }
         }
 
-        // Start the chat session with the dynamically built brain
-        let activeSession = dynamicModel.startChat({ history: currentHistory });
-        chatSessions[socketId] = activeSession;
+        // AGENT 3: THE VOICE (Final Output)
+        // This model combines the history, the plan, and the action results to speak to the player.
+        const voiceModel = genAI.getGenerativeModel({ 
+            model: "gemini-3.1-flash-lite-preview", 
+            systemInstruction: dynamicPersona + "\n[INTERNAL TASK]: You are the Voice. Read the Soul's plan and the result of the Hands' action. Output the FINAL text that the player will see. Follow your formatting rules strictly." 
+        });
 
-        const result = await activeSession.sendMessage(prompt);
-        if (result.response.usageMetadata) updateBudget(result.response.usageMetadata, socketId);
+        let activeSession = voiceModel.startChat({ history: currentHistory });
+        chatSessions[socketId] = activeSession; // Save this session for the future
 
-        let finalResponse = await executeAITools(result.response, activeSession, io.sockets.sockets.get(socketId));
+        const finalVoicePrompt = `[YOUR SOUL'S INTENT]: ${soulIntent}\n[RESULT OF YOUR ACTIONS]: ${finalToolResultString}\nTASK: Output your final response to the player.`;
+        
+        const finalResult = await activeSession.sendMessage(finalVoicePrompt);
+        if (finalResult.response.usageMetadata) updateBudget(finalResult.response.usageMetadata, socketId);
 
         let finalSpeech = "";
         try {
-            // Try to pull the text out of the AI's response
-            if (finalResponse.text()) {
-                finalSpeech = finalResponse.text();
+            if (finalResult.response.text()) {
+                finalSpeech = finalResult.response.text();
             }
         } catch (textErr) {
-            // If it crashes because the AI only used a tool and forgot to speak, 
-            // we catch the error and force a default message!
             finalSpeech = "*Suncat silently weaves a spell...*";
         }
 
+        // --- Standard Post-Processing (Saving Facts/Favor/Journaling) ---
         if (finalSpeech !== "") {
             
-            // Extract Facts/Favor if he is chatting
             if (triggerType === 'chat') {
                 const saveMatch = finalSpeech.match(/\[\[SAVE:\s*(.*?)\]\]/i);
                 if (saveMatch && saveMatch[1]) {
-                    // Send it straight to the stomach to be digested into the Profile!
                     if (!player.undigestedInfo) player.undigestedInfo = [];
                     player.undigestedInfo.push(`Player revealed a fact: ${saveMatch[1]}`); 
                     io.to(socketId).emit("suncat_learned_fact", saveMatch[1]); 
@@ -4999,17 +5072,15 @@ async function processSuncatThought(socketId, triggerType, data) {
             }
 
             broadcastSuncatMessage(finalSpeech, messageOptions);
-            // ---> SMART LISTENER: Did Suncat just ask a question?
+            
             if (triggerType === 'chat') {
                 player.lastSuncatChat = now;
-                // If he ended with a question mark, he expects a reply!
             }
-            // Log DM narrations to prevent repetition
+            
             if (triggerType !== 'chat' && !useBigBrain) {
                 if (!player.dmNarrativeLog) player.dmNarrativeLog = [];
                 player.dmNarrativeLog.push(finalSpeech);
                 
-                // Digest logic: move old narrations to the stomach
                 if (player.dmNarrativeLog.length > 4) {
                     if (!player.undigestedInfo) player.undigestedInfo = [];
                     player.undigestedInfo.push(player.dmNarrativeLog.shift()); 
@@ -5017,9 +5088,8 @@ async function processSuncatThought(socketId, triggerType, data) {
             }
         }
 
-        // Scrub arrays from history to save tokens
         let updatedHistory = await activeSession.getHistory(); 
-        chatSessions[socketId] = dynamicModel.startChat({ history: scrubAIHistory(updatedHistory) });
+        chatSessions[socketId] = voiceModel.startChat({ history: scrubAIHistory(updatedHistory) });
         await manageHistorySize(socketId);
         
     } catch (e) {
@@ -5029,6 +5099,7 @@ async function processSuncatThought(socketId, triggerType, data) {
         player.npcIsTyping = false;
     }
 }
+
 //CONNECTION
 io.on("connection", (socket) => {
   console.log("New player joined:", socket.id);
