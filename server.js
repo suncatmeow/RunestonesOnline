@@ -7,7 +7,7 @@ const MEMORY_FILE = path.join(__dirname, 'suncat_memory.json');
 
 // This will hold all long-term player data, keyed by their lowercase name.
 let suncatPersistentMemory = {};
-
+const GLOBAL_LORE_CACHE = {};
 const { GoogleGenerativeAI, SchemaType } = require("@google/generative-ai");
 const http = require('http');
 
@@ -2576,6 +2576,7 @@ function scrubAIHistory(history) {
         return { role: msg.role, parts: newParts };
     });
 }
+
 // --- MEMORY SANITIZER (Keep this to protect against prompt injection) ---
 function sanitizeForMemory(text) {
     if (typeof text !== 'string') return "";
@@ -2610,7 +2611,7 @@ async function processCognitiveLoad(socketId, forceDigest = false) {
 
     // --- B. CALCULATE AFFECTIVE STATE (The Circumplex Model) ---
     // AROUSAL: Based on combat stress and how many events are pending digestion. (0.0 to 1.0)
-let arousal = Math.min(1.0, ((player.dmStress || 0) / 100) + (player.undigestedInfo.length / 10));    
+    let arousal = Math.min(1.0, ((player.dmStress || 0) / 100) + (player.undigestedInfo.length / 10));    
     // VALENCE: Based on the player's current Favor. (-1.0 to 1.0)
     let currentFavor = playerFavorMemory[socketId] || 0;
     let valence = Math.max(-1.0, Math.min(1.0, currentFavor / 10)); 
@@ -3290,6 +3291,53 @@ async function generateScenarioScript(biomeName, scenarioType, bossName, questGi
         return null; // Will trigger safe fallbacks below
     }
 }
+// Helper to safely dump a successful script into the cache
+function cacheScriptLines(biomeName, script) {
+    if (!GLOBAL_LORE_CACHE[biomeName]) {
+        GLOBAL_LORE_CACHE[biomeName] = {
+            objectives: [], bossTaunts: [], hostileTaunts: [], traitorBegs: [], 
+            friendlyLore: [], friendlyLife: [], friendlyProfound: [], recruitPlea: [], prisonerLines: []
+        };
+    }
+    const cache = GLOBAL_LORE_CACHE[biomeName];
+    
+    // Push lines into the cache (Keep arrays under 100 items to save RAM)
+    if (script.questObjective) cache.objectives.push(script.questObjective);
+    if (script.bossTaunt) cache.bossTaunts.push(script.bossTaunt);
+    if (script.hostileTaunts) cache.hostileTaunts.push(...script.hostileTaunts);
+    if (script.traitorBegs) cache.traitorBegs.push(...script.traitorBegs);
+    if (script.friendlyLore) cache.friendlyLore.push(...script.friendlyLore);
+    if (script.friendlyLife) cache.friendlyLife.push(...script.friendlyLife);
+    if (script.friendlyProfound) cache.friendlyProfound.push(...script.friendlyProfound);
+    if (script.recruitPlea) cache.recruitPlea.push(...script.recruitPlea);
+    if (script.prisonerLines) cache.prisonerLines.push(...script.prisonerLines);
+
+    // Trim cache to prevent memory leaks
+    for (let key in cache) {
+        if (cache[key].length > 100) cache[key] = cache[key].slice(-100);
+    }
+}
+// Helper to pull a random line from the cache (or a generic fallback)
+function getMadLibLine(biomeName, category, fallbackText) {
+    const cache = GLOBAL_LORE_CACHE[biomeName];
+    if (cache && cache[category] && cache[category].length > 0) {
+        return cache[category][Math.floor(Math.random() * cache[category].length)];
+    }
+    return fallbackText;
+}
+// Helper to shuffle arrays so dialogue doesn't spawn in the exact same order
+function shuffleArray(array) {
+    if (!array || !Array.isArray(array)) return [];
+    let curId = array.length;
+    while (0 !== curId) {
+        let randId = Math.floor(Math.random() * curId);
+        curId -= 1;
+        let tmp = array[curId];
+        array[curId] = array[randId];
+        array[randId] = tmp;
+    }
+    return array;
+}
 // --- AI TOOL EXECUTOR ---
 async function executeAITools(currentResponse, activeSession, socket) {
     let chainCount = 0;
@@ -3473,13 +3521,73 @@ async function executeAITools(currentResponse, activeSession, socket) {
                         let antagID = parseInt(monsterIDs[Math.floor(Math.random() * monsterIDs.length)]);
                         while (antagID === protagID) antagID = parseInt(monsterIDs[Math.floor(Math.random() * monsterIDs.length)]);
 
-                        // 2. FETCH THE SCRIPT
-                        const script = await generateScenarioScript(biome.name, scenarioType, CARD_MANIFEST_DB[antagID].name, CARD_MANIFEST_DB[protagID].name) || {
-                            // Failsafe Script if AI times out
-                            mapLore: "An uncharted land.", questObjective: "Survive.", bossTaunt: "Die!",
-                            hostileTaunts: ["Attack!"], traitorBegs: ["Spare me!"], friendlyLore: ["Beware the boss."], 
-                            friendlyLife: ["Nice weather."], friendlyProfound: ["Life is fleeting."], recruitPlea: ["Let me join you!"]
-                        };
+                        // 2. FETCH THE SCRIPT & REDUNDANCY CHECKER
+                        let script = null;
+                        let attempts = 0;
+                        const targetPlayer = players[findSocketID(call.args.targetName)];
+
+                        while (attempts < 2) {
+                            script = await generateScenarioScript(biome.name, scenarioType, CARD_MANIFEST_DB[antagID].name, CARD_MANIFEST_DB[protagID].name);
+                            
+                            if (!script || !script.questObjective) {
+                                attempts++;
+                                continue;
+                            }
+
+                            // Calculate the math vector for this new quest
+                            let newQuestVector = await createMemoryVector(script.questObjective);
+                            let isRedundant = false;
+
+                            // Compare against the player's last 5 quests
+                            if (targetPlayer && targetPlayer.pastQuestVectors && newQuestVector) {
+                                for (let pastVec of targetPlayer.pastQuestVectors) {
+                                    let score = cosineSimilarity(newQuestVector, pastVec);
+                                    if (score > 0.85) { // 85% match means it's basically the exact same quest!
+                                        isRedundant = true;
+                                        break;
+                                    }
+                                }
+                            }
+
+                            if (isRedundant) {
+                                console.log(`[Redundancy] Script rejected! Cosine similarity too high. Retrying...`);
+                                script = null;
+                                attempts++;
+                            } else {
+                                // Script is UNIQUE and GOOD! 
+                                // Save the vector so we don't repeat this next time
+                                if (targetPlayer && newQuestVector) {
+                                    if (!targetPlayer.pastQuestVectors) targetPlayer.pastQuestVectors = [];
+                                    targetPlayer.pastQuestVectors.push(newQuestVector);
+                                    if (targetPlayer.pastQuestVectors.length > 5) targetPlayer.pastQuestVectors.shift();
+                                }
+                                
+                                // Feed the good script into the Global Cache for later!
+                                cacheScriptLines(biome.name, script);
+                                break; 
+                            }
+                        }
+
+                        // THE MAD LIBS FALLBACK: If we failed twice, assemble a script from the cache!
+                        if (!script) {
+                            console.log(`[Mad Libs Fallback] API failed or was too redundant. Building script from Global Cache.`);
+                            script = {
+                                mapLore: getMadLibLine(biome.name, 'mapLore', "An uncharted land."),
+                                questObjective: getMadLibLine(biome.name, 'objectives', "Survive and conquer."),
+                                bossTaunt: getMadLibLine(biome.name, 'bossTaunts', "You dare approach my domain?"),
+                                hostileTaunts: [], traitorBegs: [], friendlyLore: [], friendlyLife: [], friendlyProfound: [], recruitPlea: [], prisonerLines: []
+                            };
+                            // We don't need to fill the arrays here, because our popping logic below will auto-pull from the cache!
+                        }
+
+                        // SHUFFLE THE ARRAYS so we can .pop() them cleanly!
+                        if (script.friendlyLore) shuffleArray(script.friendlyLore);
+                        if (script.friendlyLife) shuffleArray(script.friendlyLife);
+                        if (script.friendlyProfound) shuffleArray(script.friendlyProfound);
+                        if (script.recruitPlea) shuffleArray(script.recruitPlea);
+                        if (script.hostileTaunts) shuffleArray(script.hostileTaunts);
+                        if (script.traitorBegs) shuffleArray(script.traitorBegs);
+                        if (script.prisonerLines) shuffleArray(script.prisonerLines);
 
                         // 3. GENERATE THE GRID & SETTLEMENTS
                         let layoutStyle = scenarioType === 'Arena Madness' ? 'arena' : (scenarioType === 'Raid' ? 'raid' : 'world');                        
@@ -3579,7 +3687,9 @@ async function executeAITools(currentResponse, activeSession, socket) {
                                         state: 'stationary', // They are trapped!
                                         role: 'dialogue',
                                         dialogue: [prisonerLines[p % prisonerLines.length]],
-                                        color: '#aaaaaa' // Give them a sad gray color
+                                        color: '#aaaaaa', // Give them a sad gray color
+                                        alignment: 'ally',
+                                        subRole:'prisoner',
                                     });
                                 }
                             }
@@ -3604,17 +3714,31 @@ async function executeAITools(currentResponse, activeSession, socket) {
                                     type: CARD_MANIFEST_DB[mID].sprite || mID,
                                     x: spawnSpot.x, y: spawnSpot.y, 
                                     state: isIndoors ? 'stationary' : 'wandering', // <--- Smart State!
-                                    role: 'dialogue'
+                                    role: 'dialogue',
+                                    alignment: 'ally',
+                                    subRole:'villager',
+
                                 };
 
                                 if (i < 3) {
-                                    npcConfig.role = 'reward'; npcConfig.dialogue = ["Take this."]; npcConfig.rewardCard = mID;
+                                    npcConfig.role = 'reward'; 
+                                    npcConfig.dialogue = [script.friendlyProfound.pop() || getMadLibLine(biome.name, 'friendlyProfound', "The arcane paths provide...")]; 
+                                    let deckPool = buildSynergisticDeck(mID);
+                                    npcConfig.rewardCard = deckPool[Math.floor(Math.random() * deckPool.length)]; 
                                 } else if (i < 5) {
-                                    npcConfig.dialogue = [script.recruitPlea[i % script.recruitPlea.length] || "Let me join you!"];
-                                    npcConfig.options = ['Accept', 'Decline']; npcConfig.rewardCard = mID; 
+                                    npcConfig.role = 'dialogue'; // Ensure they don't attack
+                                    npcConfig.dialogue = [script.recruitPlea.pop() || getMadLibLine(biome.name, 'recruitPlea', "Please, let me join your party!")];
+                                    npcConfig.options = ['Accept', 'Decline']; 
+                                    npcConfig.rewardCard = mID; 
                                 } else {
-                                    let lineObj = allFriendlyLines[i % allFriendlyLines.length];
-                                    npcConfig.dialogue = [lineObj ? lineObj.text : "Hello."];
+                                    // Mix up the lore and life arrays for standard villagers
+                                    let lineText = "";
+                                    if (Math.random() > 0.5) {
+                                        lineText = script.friendlyLore.pop() || getMadLibLine(biome.name, 'friendlyLore', "The monsters are restless lately.");
+                                    } else {
+                                        lineText = script.friendlyLife.pop() || getMadLibLine(biome.name, 'friendlyLife', "I just want to rest.");
+                                    }
+                                    npcConfig.dialogue = [lineText];
                                 }
                                 mapNPCs.push(npcConfig);
                             }
@@ -3643,7 +3767,9 @@ async function executeAITools(currentResponse, activeSession, socket) {
                                     x: spawnSpot.x, y: spawnSpot.y, 
                                     state: isMiniBoss ? 'stationary' : 'chasing', // Elites hold choke points!
                                     role: 'battle',
-                                    deck: buildSynergisticDeck(mID)
+                                    deck: buildSynergisticDeck(mID),
+                                    alignment: 'foe',
+                                    subRole:'miniBoss',
                                 };
                                 
                                 // Make Mini-Bosses visually distinct (Orange)
@@ -3654,10 +3780,11 @@ async function executeAITools(currentResponse, activeSession, socket) {
 
                                 if (i < 5) {
                                     npcConfig.state = 'wandering'; npcConfig.role = 'dialogue'; 
-                                    npcConfig.dialogue = [script.traitorBegs[i % script.traitorBegs.length] || "Spare me!"];
-                                    npcConfig.options = ['Spare Them', 'Vanquish']; npcConfig.rewardCard = mID;
+                                    npcConfig.dialogue = [script.traitorBegs.pop() || getMadLibLine(biome.name, 'traitorBegs', "Wait, I yield! Spare me!")];
+                                    npcConfig.options = ['Spare Them', 'Vanquish']; 
+                                    npcConfig.rewardCard = mID;
                                 } else if (i < 20) {
-                                    npcConfig.dialogue = [script.hostileTaunts[i % script.hostileTaunts.length] || "Attack!"];
+                                    npcConfig.dialogue = [script.hostileTaunts.pop() || getMadLibLine(biome.name, 'hostileTaunts', "Your journey ends here!")];
                                 }
                                 mapNPCs.push(npcConfig);
                             }
@@ -3668,7 +3795,9 @@ async function executeAITools(currentResponse, activeSession, socket) {
                                 x: bossX + 0.5, y: bossY + 0.5, // <--- EXACTLY IN THE CENTER. No random spread!
                                 state: 'stationary', role: 'battle', isBoss: true,
                                 dialogue: [script.bossTaunt], deck: buildSynergisticDeck(antagID),
-                                color: '#ff00ff' // Purple to signify extreme danger
+                                color: '#ff00ff', // Purple to signify extreme danger
+                                alignment: 'foe',
+                                subRole:'Boss',
                             });
 
                         } 
@@ -3683,7 +3812,9 @@ async function executeAITools(currentResponse, activeSession, socket) {
                                     x: spawnSpot.x, y: spawnSpot.y,
                                     state: 'chasing', role: 'battle',
                                     dialogue: [script.hostileTaunts[i % script.hostileTaunts.length] || "For the Emperor!"],
-                                    deck: buildSynergisticDeck(mID)
+                                    deck: buildSynergisticDeck(mID),
+                                    alignment: 'foe',
+                                    subRole:'gladiator',
                                 });
                             }
                         }
@@ -4779,7 +4910,7 @@ socket.on("npc_died", async (data) => {
     if (!player) return;
 
     const now = Date.now();
-    if (player.lastKillReaction && (now - player.lastKillReaction < 5000)) return; 
+    if (!data.isBoss && player.lastKillReaction && (now - player.lastKillReaction < 5000)) return; 
     player.lastKillReaction = now;
 
     let baseID = Math.floor(parseFloat(data.type));
