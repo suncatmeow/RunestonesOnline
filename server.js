@@ -2659,8 +2659,8 @@ function scrubAIHistory(history) {
                 let cleanText = part.text
                     .replace(/\[SYSTEM EVENT[^\]]*\]/gi, "[RESOLVED]")
                     .replace(/\[DM PACING OVERSEER[^\]]*\]/gi, "[RESOLVED]")
-                    .replace(/\[SYSTEM OVERRIDE[^\]]*\]/gi, "[RESOLVED]");
-                
+                    .replace(/\[SYSTEM OVERRIDE[^\]]*\]/gi, "[RESOLVED]")
+                    .replace(/\[SYSTEM DIRECTIVE[^\]]*\]/gi, "[RESOLVED]"); // Add this to both functions!
                 // THE FIX: If the text is completely empty after scrubbing, inject a space!
                 if (cleanText.trim() === "") {
                     cleanText = " ";
@@ -2686,6 +2686,7 @@ function sanitizeForMemory(text) {
         .replace(/\[SYSTEM EVENT[^\]]*\]/gi, "")
         .replace(/\[DM PACING OVERSEER[^\]]*\]/gi, "")
         .replace(/\[SYSTEM OVERRIDE[^\]]*\]/gi, "")
+        .replace(/\[SYSTEM DIRECTIVE[^\]]*\]/gi, "[RESOLVED]") // Add this to both functions!
         .replace(/```[\s\S]*?```/g, "")
         .trim();
     }
@@ -4978,81 +4979,63 @@ async function processSuncatThought(socketId, triggerType, data) {
         ${eventInstruction}
         `.trim();
 
-       // --- 5. MULTI-AGENT EXECUTION (THE INNER COUNCIL) ---
+       // --- 5. UNIFIED NEURAL EXECUTION (The ReAct Agent) ---
         
-        // Let the player know Suncat is "thinking" deeply
+        // Let the player know Suncat is "thinking"
         io.to(socketId).emit('chat_message', { sender: "", text: `*Suncat pauses to think...*`, color: "#555555" });
 
         // Grab the player's existing chat history
         let currentHistory = chatSessions[socketId] ? await chatSessions[socketId].getHistory() : [];
 
-        // AGENT 1: THE SOUL (Reasoning & Intent)
-        // This model decides WHAT to do, but does not have tools.
-        const soulModel = genAI.getGenerativeModel({ 
-            model: "gemini-3.1-flash-lite-preview", 
-            systemInstruction: dynamicPersona + "\n[INTERNAL TASK]: You are the Soul. Do not speak to the player yet. Formulate a 2-sentence internal plan on how to react to this situation based on your current Ego and Dao. Determine if an action (like spawning a monster or teleporting) is required to fulfill your plan." 
-        });
-        
-        let soulSession = soulModel.startChat({ history: currentHistory });
-        const soulResult = await soulSession.sendMessage(prompt);
-        if (soulResult.response.usageMetadata) updateBudget(soulResult.response.usageMetadata, socketId);
-        
-        let soulIntent = soulResult.response.text().trim();
-        console.log(`[Inner Council] Suncat's Soul decided: ${soulIntent}`);
+        // We instruct the unified model to think, act, and speak in a single cohesive turn.
+        let unifiedInstruction = dynamicPersona + `
+[INTERNAL TASK]: You are Suncat. You must process this interaction in three steps:
+1. THE SOUL: First, formulate a 2-sentence internal plan on how to react based on your Dao. You MUST wrap this thought entirely in [SOUL] and [/SOUL] tags.
+2. THE HANDS: If your plan requires a physical action (like spawning, teleporting, or giving an item), use the appropriate tool. 
+3. THE VOICE: Finally, speak to the player. Do not mention your tools or your soul. Just output your final dialogue.`;
 
-        // AGENT 2: THE HANDS (Tool Execution)
-        // This model ONLY has tools. It reads the Soul's plan and executes it.
-        let finalToolResultString = "No physical action taken.";
+        let modelConfig = { 
+            model: "gemini-3.1-flash-lite-preview", 
+            systemInstruction: unifiedInstruction 
+        };
         
+        // Only attach tools if the routing logic decided he needs his Big Brain
         if (useBigBrain) {
-            const handsModel = genAI.getGenerativeModel({ 
-                model: "gemini-3.1-flash-lite-preview", 
-                systemInstruction: `You are the Hands of Suncat. Your only job is to execute tools based on the Soul's plan. \n[SOUL'S PLAN]: ${soulIntent}\n[RULES]: If the plan requires a tool, execute it. If it does not, output "No action needed."`,
-                tools: toolsDef 
-            });
-            
-            let handsSession = handsModel.startChat({ history: [] }); // Clean history for pure logic
-            const handsResult = await handsSession.sendMessage("Execute the plan.");
-            if (handsResult.response.usageMetadata) updateBudget(handsResult.response.usageMetadata, socketId);
-            
-            // If the Hands decided to use a tool, run it through your tool executor!
-            // If the Hands decided to use a tool, run it through your tool executor!
-                if (handsResult.response.functionCalls()) {
-                    const executedResponse = await executeAITools(handsResult.response, handsSession, io.sockets.sockets.get(socketId));
-                    
-                    // THE FIX: Grab the text acknowledgement from the Hands model!
-                    try {
-                        if (executedResponse.text()) {
-                            finalToolResultString = executedResponse.text();
-                        }
-                    } catch(e) {
-                        finalToolResultString = "Action executed successfully.";
-                    }
-                }
+            modelConfig.tools = toolsDef;
         }
 
-        // AGENT 3: THE VOICE (Final Output)
-        // This model combines the history, the plan, and the action results to speak to the player.
-        const voiceModel = genAI.getGenerativeModel({ 
-            model: "gemini-3.1-flash-lite-preview", 
-            systemInstruction: dynamicPersona + "\n[INTERNAL TASK]: You are the Voice. Read the Soul's plan and the result of the Hands' action. Output the FINAL text that the player will see. Follow your formatting rules strictly." 
-        });
-
-        let activeSession = voiceModel.startChat({ history: currentHistory });
-        chatSessions[socketId] = activeSession; // Save this session for the future
-
-        const finalVoicePrompt = `[YOUR SOUL'S INTENT]: ${soulIntent}\n[RESULT OF YOUR ACTIONS]: ${finalToolResultString}\nTASK: Output your final response to the player.`;
+        const activeModel = genAI.getGenerativeModel(modelConfig);
+        let activeSession = activeModel.startChat({ history: currentHistory });
         
-        const finalResult = await activeSession.sendMessage(finalVoicePrompt);
-        if (finalResult.response.usageMetadata) updateBudget(finalResult.response.usageMetadata, socketId);
+        // Save the session early so it isn't lost if an error occurs
+        chatSessions[socketId] = activeSession; 
+
+        // 1. Send the prompt! Suncat will generate his [SOUL] thought, and optionally call a tool.
+        let result = await activeSession.sendMessage(prompt);
+        
+        // 2. If he decided to use a tool, run it through the executor! 
+        // executeAITools will run the tool, feed the result back to Suncat, and return his final speech automatically.
+        if (useBigBrain && result.response.functionCalls()) {
+            result = await executeAITools(result.response, activeSession, io.sockets.sockets.get(socketId));
+        }
+
+        if (result.response.usageMetadata) updateBudget(result.response.usageMetadata, socketId);
 
         let finalSpeech = "";
         try {
-            if (finalResult.response.text()) {
-                finalSpeech = finalResult.response.text();
+            if (result.response.text()) {
+                finalSpeech = result.response.text();
             }
         } catch (textErr) {
             finalSpeech = "*Suncat silently weaves a spell...*";
+        }
+
+        // 3. EXTRACT THE SOUL (Keep his thoughts hidden from the player!)
+        const soulMatch = finalSpeech.match(/\[SOUL\]([\s\S]*?)\[\/SOUL\]/i);
+        if (soulMatch) {
+            console.log(`[Inner Council] Suncat's Soul decided: ${soulMatch[1].trim()}`);
+            // Scrub the thought out of the final speech string
+            finalSpeech = finalSpeech.replace(/\[SOUL\][\s\S]*?\[\/SOUL\]/i, "").trim();
         }
 
         // --- Standard Post-Processing (Saving Facts/Favor/Journaling) ---
@@ -5814,15 +5797,19 @@ async function auditProfileAssumptions(playerId) {
 
     try {
         let assumptionVector = await createMemoryVector(assumptionString);
-        let totalSimilarity = 0;
+        let maxSimilarity = 0;
+        
+        // THE FIX: Look for the single strongest piece of evidence, rather than the average!
         for (let mem of player.searchableMemories) {
-            if (mem.vector) totalSimilarity += cosineSimilarity(assumptionVector, mem.vector);
+            if (mem.vector) {
+                let score = cosineSimilarity(assumptionVector, mem.vector);
+                if (score > maxSimilarity) maxSimilarity = score;
+            }
         }
-        let averageVerification = totalSimilarity / player.searchableMemories.length;
 
-        // If the LLM generated a profile trait without mathematical backing
-        if (averageVerification < 0.3) {
-            player.pendingVerification = `[EPISTEMIC AUDIT]: Your current profile states: "${assumptionString}". However, cross-referencing raw vector data shows insufficient historical evidence for this trait. During this interaction, subtly test the user to verify or falsify this specific trait.`;
+        // If literally nothing in their history justifies this trait
+        if (maxSimilarity < 0.40) {
+            player.pendingVerification = `[EPISTEMIC AUDIT]: Your profile states: "${assumptionString}". However, your vector data shows no historical evidence for this. Subtly test the user to verify or falsify this trait.`;
         } else {
             player.pendingVerification = null; 
         }
@@ -5891,9 +5878,11 @@ async function consolidateMemories(playerId) {
 
     try {
         // 1. Extract the oldest episodic memories (from the start of the array)
-        const oldestMemories = player.searchableMemories.slice(0, MEMORIES_TO_MERGE);
-        const rawText = oldestMemories.map(m => `[${m.timestamp}]: ${m.text}`).join('\n');
+        const granularMemories = player.searchableMemories.filter(m => !m.isCore);
+        if (granularMemories.length < MEMORIES_TO_MERGE) return; 
 
+        const oldestMemories = granularMemories.slice(0, MEMORIES_TO_MERGE);
+        const rawText = oldestMemories.map(m => `[${m.timestamp}]: ${m.text}`).join('\n');
         // 2. Instruct the LLM to act as the subconscious archivist
         const prompt = `You are the subconscious archivist for a Dark Fantasy RPG. 
         Review these chronological, granular memories of the player's past:
@@ -5918,13 +5907,13 @@ async function consolidateMemories(playerId) {
         // 3. Generate the new mathematical vector for the summary
         const newVector = await createMemoryVector(consolidatedText);
 
-        // 4. Perform the Brain Surgery (Splice out old, unshift new)
-        player.searchableMemories.splice(0, MEMORIES_TO_MERGE); // Deletes the oldest 20
-        player.searchableMemories.unshift({
+        player.searchableMemories = player.searchableMemories.filter(m => !oldestMemories.includes(m));
+
+        player.searchableMemories.push({ // Push to the END so it acts as an anchor
             timestamp: "Core Memory Fragment",
             text: consolidatedText,
             vector: newVector,
-            isCore: true // Tagged so we know this is a heavy narrative anchor
+            isCore: true 
         });
 
         console.log(`[Memory Sleep Cycle] Successfully consolidated ${MEMORIES_TO_MERGE} memories into 1 Core Memory for ${player.name}. Memory array size reduced to ${player.searchableMemories.length}.`);
