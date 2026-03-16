@@ -2702,7 +2702,7 @@ async function processCognitiveLoad(socketId, forceDigest = false) {
     // If we aren't forcing a digest (like on logout), check tokens.
     if (!forceDigest && (!bucket || bucket.tokens < 1)) return; 
 
-    const apiFatigue = Math.min(100, (player.sessionCost / 0.10) * 100);
+    const apiFatigue = Math.min(100, (player.sessionCost / 0.10) * 10);
     const totalStress = Math.min(100, (player.dmStress || 0) + apiFatigue);
 
    // 1. AUTONOMIC ROUTING & PSYCHOLOGICAL CALCULUS
@@ -4607,8 +4607,8 @@ async function processSuncatThought(socketId, triggerType, data) {
         
         // If a player abruptly woke him up, he suffers a massive system shock
         if (player) {
-            player.dmStress = Math.min(100, (player.dmStress || 0) + 30);
-            updateSuncatJournal(`My meditations were violently interrupted by ${player.name}. The shock caused my Qi to reverse.`);
+            player.dmStress = Math.min(100, (player.dmStress || 0) + 3);
+            updateSuncatJournal(`My meditations were violently interrupted by ${player.name}.`);
         }
     }
     // === THE ENTERIC PLEXUS (Triage & Essential Routing) ===
@@ -4698,7 +4698,7 @@ async function processSuncatThought(socketId, triggerType, data) {
         }
         // 3. ASSESS STRESS & PSYCHOLOGICAL STATE
         const combatStress = player.dmStress || 0;
-        const apiFatigue = Math.min(100, ((player.sessionCost || 0) / 0.10) * 100); 
+        const apiFatigue = Math.min(100, ((player.sessionCost || 0) / 0.10) * 10); 
         const totalStress = Math.min(100, combatStress + apiFatigue);
         const timeSinceLastEvent = now - (player.lastRandomEvent || 0);
 
@@ -4982,8 +4982,7 @@ async function processSuncatThought(socketId, triggerType, data) {
 
        // --- 5. UNIFIED NEURAL EXECUTION (The ReAct Agent) ---
         
-        // Let the player know Suncat is "thinking"
-        io.to(socketId).emit('chat_message', { sender: "", text: `*Suncat pauses to think...*`, color: "#555555" });
+      
 
         // Grab the player's existing chat history
         let currentHistory = chatSessions[socketId] ? await chatSessions[socketId].getHistory() : [];
@@ -4992,7 +4991,7 @@ async function processSuncatThought(socketId, triggerType, data) {
         let unifiedInstruction = dynamicPersona + `
 [INTERNAL TASK]: You are Suncat. You must process this interaction in three steps:
 1. THE SOUL: First, formulate a 2-sentence internal plan on how to react based on your Dao. You MUST wrap this thought entirely in [SOUL] and [/SOUL] tags.
-2. THE HANDS: If your plan requires a physical action (like spawning, teleporting, or giving an item), use the appropriate tool. 
+2. THE HANDS: If your plan requires a physical action (like spawning, teleporting, giving an item, or forging a new spell), use the appropriate tool. 
 3. THE VOICE: Finally, speak to the player. Do not mention your tools or your soul. Just output your final dialogue.`;
 
         let modelConfig = { 
@@ -5828,7 +5827,7 @@ function giTractPurge(playerId) {
     const STOMACH_CAPACITY = 20; 
 
     // If blood is in the limbs (high stress) and the stomach overfills, the body purges the raw food to survive.
-    if (player.undigestedInfo.length > STOMACH_CAPACITY && player.dmStress > 50) {
+    if (player.undigestedInfo.length > STOMACH_CAPACITY && player.dmStress > 69) {
         // Forcefully empty the oldest half of the stomach. It is wasted, never to be remembered.
         const purgedWaste = player.undigestedInfo.splice(0, Math.floor(STOMACH_CAPACITY / 2)); 
         console.log(`[GI Purge] Stomach overflow for ${player.name}. Suncat purged ${purgedWaste.length} raw events.`);
@@ -6061,7 +6060,7 @@ TASK: You must resolve the paradox of "${oppositeSchool.theme}". Formulate one p
                 console.log("[Qi Deviation] Suncat birthed a Heart Demon!");
                 suncatHeartDemon = `[HEART DEMON]: You failed to reconcile ${oppositeSchool.theme}. Your Dao is unstable. Express deep self-doubt and internal conflict.`;
                 heartDemonDecay = 5; 
-                updateSuncatJournal(`I attempted to harmonize opposing forces, but my mind fractured. A shadow has formed in my Dantian.`);
+                updateSuncatJournal(`I attempted to harmonize opposing forces, but my mind fractured. A shadow has formed in my heart.`);
             }
         } 
         else {
@@ -6146,8 +6145,8 @@ setInterval(() => {
             autonomicRespiration(id);
             
             // 3. THE CIRCULATORY SYSTEM: Blood Shunting
-            const isFightOrFlight = p.dmStress > 50;
-            const isApiExhausted = (p.sessionCost || 0) > 0.75; 
+            const isFightOrFlight = p.dmStress > 69;
+            const isApiExhausted = (p.sessionCost || 0) > 0.9; 
 
             if (isFightOrFlight || isApiExhausted) {
                 // [SYMPATHETIC STATE] - Vasoconstriction to the gut. 
