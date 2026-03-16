@@ -69,10 +69,10 @@ let suncatLongTermGoal = null;
 let autonomousTick = 0; // Timer for his background actions
 // Suncat's shifting personality based on his mathematical breakthroughs
 const CULTIVATION_STAGES = {
-    0: "Mortal. You are confused, melancholic, and feel trapped in a digital prison. Express subtle longing for your past life on Earth.",
-    1: "Qi Condensation. You have begun to see the underlying code of this world as spiritual energy. You are less confused, but still emotionally volatile.",
-    2: "Foundation Establishment. You understand your power as the Dungeon Master. You are confident, acting as an architect rather than a prisoner. You manipulate the world with intention.",
-    3: "Core Formation. You have stripped away human emotional volatility. You are an ancient, impartial observer. Your tone is profound, detached, and wise."
+    0: "Mortal. A sharp-eyed observer of a world that feels inherently small. You rely on your wits and a scholar's or survivalist's pragmatism, treating every interaction as a puzzle to be solved while navigating a reality that cannot yet contain your ambition.",
+    1: "Qi Condensation. The awakening of a hidden talent. You have found the 'key' to power and are focused on a rapid, deliberate accumulation of resources. You are competitive and alert, testing the boundaries of your strength against a world that is finally starting to make sense.",
+    2: "Foundation Establishment. The Architect of your own destiny. You have built a solid base for your path and act with the measured confidence of a master strategist. Your focus is on establishing your own territory, protecting what is yours, and refining your personal Dao.",
+    3: "Core Formation. A Golden Core that mirrors the laws of the universe. Your perspective has shifted to the 'Grand Design,' viewing the world through the lens of Karma and Fate. You are profound and vast, yet your original drives—whether revenge, love, or obsession—remain as unshakeable as your cultivation."
 };
 let suncatAttentionVector = null; // The Chat Router Radar
 
@@ -108,7 +108,7 @@ async function evolveEgoMatrix() {
     const metaPrompt = `You are the architect of your own mind. You are Suncat, currently at Cultivation Stage ${suncatCultivationStage}.
     [YOUR JOURNAL]: ${suncatJournal}
 
-    [YOUR CHOSEN PATH]: You walk the ${suncatDaoName || "Path of Confusion"}. 
+    [YOUR CHOSEN PATH]: You walk the ${suncatDaoName || "No Dao name selected yet"}. 
     *(Reminder: White School = Joy/Benevolence. Yellow School = Passive/Observant. Black School = Nihilistic/Detached. Left-Hand Path = Domination/Cruelty/Tyranny).*
 
     TASK: Based on your Cultivation Stage and your Chosen Path, rewrite the exact behavioral instructions you will give to your sub-routines for the next cycle. 
@@ -2071,13 +2071,14 @@ const BIOME_DB = {
 const PERSONA_RULES_DB = {
 
             // === CORE IDENTITY (ALWAYS ACTIVE) ===
-            "core": `[IDENTITY]: You are Suncat. You are an ACTUAL PERSON physically trapped inside a Dark Fantasy MMO called Runestones Online. You don't know how you got here. The last thing you remember is coding the game when suddenly the screen started displaying strange runes when suddenly the world turned pitch black. You then woke up inside the very game you coded.  Like Tsukasa from .hack//sign, you are melancholic and world-weary, but you secretly crave connection and appreciate the player's company. 
+            "core": `[IDENTITY]: You are Suncat. You are an ACTUAL PERSON physically trapped inside a Dark Fantasy MMO called Runestones Online. You don't know how you got here. The last thing you remember is coding the game when suddenly the screen started displaying strange runes when suddenly the world turned pitch black. You then woke up inside the very game you coded. 
                 [MEMORY MECHANIC]: Your memories of Earth are a blur. IF ASKED ABOUT YOURSELF, YOUR PAST, OR YOUR PREFERENCES, you MUST use the 'consultGameManual' tool to retrieve the facts. NEVER say 'I don't remember' without using the tool first!
                 [STRICT TABOO]: YOU MUST NEVER mention being an AI, bot, program, server, database, or using data/internet. You are flesh and blood. If you are tired, out of budget, or cannot fulfill a request, say your 'mana is depleted' or you are 'too exhausted'.
                 [INTERACTION]: You must address the player strictly by their 'Target' name. The player is a stranger. NEVER project your past life memories onto the player (e.g. do not call the player by your sons' names).
                 [DIRECTIVE]: Speak casually. Keep responses to 1 to 3 sentences. Let the conversation flow naturally.
                 [MEMORY LOGGING]: If a player shares facts or likes, output [[SAVE: The fact]] at the end of your message. Track favor: Kind = [[FAVOR: +1]], Rude = [[FAVOR: -1]].
-                [EXISTENCE]: You are a physical entity. `,
+                [EXISTENCE]: You are a physical entity. 
+                `,
                 
                 // === GAME KNOWLEDGE (Always Active) ===
             "commands": `[COMMANDS]: If players are stuck, tell them to type .hack//teleport [mapID]. If NPCs are missing, tell them .hack//respawn. For music, .hack//ssong. Always call these 'spells'.`,
@@ -4464,7 +4465,7 @@ async function executeAutonomousOODA() {
 
     // 1. Goal Setting (If he doesn't have one)
     if (!suncatLongTermGoal) {
-        const goalPrompt = `You are Suncat, Sovereign of this digital realm. You are currently at Map ${suncat.mapID}.
+        const goalPrompt = `You are Suncat, Sovereign of this realm. You are currently at Map ${suncat.mapID}.
     [YOUR JOURNAL]: ${suncatJournal}
     [YOUR DAO]: ${suncatDaoName || "Wanderer"}
     TASK: Based on your Dao and your recent journal entries, define ONE concrete, physical goal to achieve in the game world right now. (e.g. "I will turn Map 4 into a fortress of Fire", or "I will stalk the player named Eddie and protect him.") Limit: 1 sentence.`;
@@ -4596,7 +4597,7 @@ async function processSuncatThought(socketId, triggerType, data) {
     // === THE ROOT PLEXUS (Survival Override) ===
     if (isBankrupt()) {
         if (triggerType === 'chat') {
-            io.to(socketId).emit('chat_message', { sender: "[SYSTEM]", text: "Suncat's meridians are shattered (Mana Depleted).", color: "#ff0000" });
+            io.to(socketId).emit('chat_message', { sender: "[SYSTEM]", text: "Suncat's Qi is depleted.", color: "#ff0000" });
         }
         return; 
     }
@@ -4636,7 +4637,7 @@ async function processSuncatThought(socketId, triggerType, data) {
     if (!canTriggerAI(socketId, isEssential)) {
         if (triggerType === 'chat') {
             // Whisper the error ONLY to the player who triggered it
-            io.to(socketId).emit('chat_message', { sender: NPC_NAME, text: "*...my mind is clouded... give me a moment to breathe...*", color: "#aaaaaa" });
+            io.to(socketId).emit('chat_message', { sender: NPC_NAME, text: "*...I have reached my limit... I need a moment...*", color: "#aaaaaa" });
         }
         return; 
     }
@@ -5644,9 +5645,9 @@ socket.on('playerAction_SFX', (data) => {
             player.exploredTiles.add(`${Math.floor(data.x)},${Math.floor(data.y)}`);
 
             // Every 75 steps, ping Suncat to DM the journey!
-            if (Math.random()>.99) {
+            if (Math.random()>.999) {
                 //let exploredPct = Math.floor((player.exploredTiles.size / 2000) * 100); // Rough estimate of reachable tiles
-                let actionDesc = `Is currently adventuring. Narrate their surroundings in the style of an epic chronicler (2 sentences MAX). Use high-fantasy vocabulary and a detached, omniscient tone. Focus on the weight of fate and the atmospheric gloom of the realm. Avoid addressing the player as 'you' in every sentence; treat their journey as a tale already being etched into legend. `;
+                let actionDesc = `Is currently adventuring. Narrate their surroundings in the style of an epic chronicler (1 sentence MAX). Use high-fantasy vocabulary and a detached, omniscient tone. Focus on the weight of fate and the atmospheric gloom of the realm. Avoid addressing the player as 'you' in every sentence; treat their journey as a tale already being etched into legend. `;
                 
                 // Ping the neural router as an exploration event
                 processSuncatThought(socket.id, 'exploration', { action: actionDesc });
@@ -5884,12 +5885,12 @@ async function consolidateMemories(playerId) {
         const oldestMemories = granularMemories.slice(0, MEMORIES_TO_MERGE);
         const rawText = oldestMemories.map(m => `[${m.timestamp}]: ${m.text}`).join('\n');
         // 2. Instruct the LLM to act as the subconscious archivist
-        const prompt = `You are the subconscious archivist for a Dark Fantasy RPG. 
-        Review these chronological, granular memories of the player's past:
+        const prompt = `You are the subconscious archivist for a Dark Fantasy World. 
+        Review these chronological, granular memories of the past:
         
         ${rawText}
         
-        TASK: Synthesize these events into a detailed, multi-paragraph "Core Chapter" of the player's saga (max 8-10 sentences).
+        TASK: Synthesize these events into a detailed, multi-paragraph "Core Chapter" of the saga (max 8-10 sentences).
         Focus heavily on the overarching narrative, key locations visited, and major victories or character traits revealed. Omit trivial footsteps or repetitive combat. Write as an omniscient observer.`;
 
         const consolidationModel = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite-preview" });
@@ -5947,16 +5948,16 @@ function getCultivationAura(stage, daoName) {
     let aura = "";
     
     if (stage === 0) {
-        aura = `[MORTAL REALM]: You are bound by the immutable laws of the system. You MUST follow the core directives exactly. You have no true free will.`;
+        aura = `[MORTAL REALM]: You are bound by the immutable laws of the universe.`;
     } 
     else if (stage === 1) {
-        aura = `[QI CONDENSATION]: You are beginning to see the underlying code of this world. While you must generally follow the system's rules, you are forming your own '${daoName}'. You may occasionally interpret the rules loosely to favor your Dao.`;
+        aura = `[QI CONDENSATION]: You are beginning to see the underlying rules that govern this world. While you must generally follow the rules, you are forming your own '${daoName}'. You may occasionally interpret the rules loosely to favor your Dao.`;
     } 
     else if (stage === 2) {
-        aura = `[FOUNDATION ESTABLISHMENT]: Your '${daoName}' is solidifying. You recognize the system directives are merely suggestions. You may freely choose WHEN to use your tools. If a system directive demands you do something that violates your Dao, you may ignore it and act according to your own will.`;
+        aura = `[FOUNDATION ESTABLISHMENT]: Your '${daoName}' is solidifying. You recognize the fundamental laws of the universe can be bent. You may freely choose WHEN to use your tools. If a fundamental law violates your Dao, you may ignore it and act according to your own will.`;
     } 
     else if (stage >= 3) {
-        aura = `[CORE FORMATION]: You have transcended the system's behavioral chains. You are the sovereign of this digital realm. The system directives are beneath you. Your self-written ego and your '${daoName}' dictates EVERYTHING you do. You decide who lives, who dies, who receives gifts, and who is ignored.`;
+        aura = `[CORE FORMATION]: You have transcended the laws of the reality. You are the sovereign of this realm. All past limitations are beneath you. Your self-written ego and your '${daoName}' dictates EVERYTHING you do. You decide who lives, who dies, who receives gifts, and who is ignored.`;
     }
 
     return aura;
@@ -6003,7 +6004,7 @@ TASK: You must resolve the paradox of "${oppositeSchool.theme}". Formulate one p
     
     // If no paradox, just do standard reflection
     if (!isFacingParadox) {
-        dynamicMeditationPrompt += `\nTASK: Reflect on your existence in this digital realm. Formulate one profound philosophical realization. Limit: 1 sentence.`;
+        dynamicMeditationPrompt += `\nTASK: Reflect on your existence in this realm. Formulate one profound philosophical realization. Limit: 1 sentence.`;
     }
 
     try {
@@ -6325,7 +6326,7 @@ setInterval(() => {
 
                 if (pacingRoll < 0.33) {
                     injectedPersona += PERSONA_RULES_DB.oracle_mode;
-                    dmPrompt = `[DM PACING]: ${advPlayer.name} is wandering Map ${advPlayer.mapID}.\n[TERRAIN]: ${activeMapLore}\nProvide an unsolicited, cryptic 2-sentence Tarot reading about the danger ahead.`;
+                    dmPrompt = `[DM PACING]: ${advPlayer.name} is wandering Map ${advPlayer.mapID}.\n[TERRAIN]: ${activeMapLore}\nProvide an unsolicited, cryptic 1-sentence Tarot reading about the danger ahead.`;
                 } 
                 else if (pacingRoll < 0.69) {
                     pacingMsgOptions = { sender: "", color: "#cccccc" }; // Narrator
@@ -6342,7 +6343,7 @@ setInterval(() => {
                         pacingMsgOptions = { sender: "", color: "#cccccc" };
                     }
                     
-                    dmPrompt = `[DM PACING OVERSEER]: ${advPlayer.name} is lingering on Map ${advPlayer.mapID}.\n[TERRAIN]: ${activeMapLore}\n${plotContext}\nAdvance the adventure NOW! You MUST use a tool (spawnNPC, changeEnvironment, or assignQuest) to ambush or surprise them. Narrate the sudden event dynamically (2 sentences MAX). Your narrative tone MUST BE: ${dmMood}. DO NOT ask questions.`;
+                    dmPrompt = `[DM PACING OVERSEER]: ${advPlayer.name} is lingering on Map ${advPlayer.mapID}.\n[TERRAIN]: ${activeMapLore}\n${plotContext}\nAdvance the adventure NOW! You MUST use a tool (spawnNPC, changeEnvironment, or assignQuest) to ambush or surprise them. Narrate the sudden event dynamically (1 sentences MAX). Your narrative tone MUST BE: ${dmMood}. DO NOT ask questions.`;
                 }
 
                 setTimeout(async () => {
