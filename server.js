@@ -4235,38 +4235,21 @@ async function executeAITools(currentResponse, activeSession, socket) {
                     updateSuncatJournal(`I searched my deepest memories for past events concerning ${call.args.searchQuery}.`);
                 }
                 // L. AGI TOOL FORGE (LLMs as Tool Makers)
-                // L. AGI TOOL FORGE (LLMs as Tool Makers)
                 else if (call.name === "forgeNewSpell") {
                     const sName = call.args.spellName;
                     const sDesc = call.args.spellDescription;
                     const rawCode = call.args.jsCode;
 
-                    // ---> NEW: MASSIVE CONSOLE LOG SO YOU CAN READ HIS CODE <---
-                    console.log(`\n====================================================`);
-                    console.log(`[AGI FORGE] SUNCAT IS REWRITING REALITY!`);
-                    console.log(`Spell Name: ${sName}`);
-                    console.log(`Description: ${sDesc}`);
-                    console.log(`\n--- RAW JAVASCRIPT ---`);
-                    console.log(rawCode);
-                    console.log(`====================================================\n`);
-
-                    // ---> NEW: SAVE HIS SPELLS TO A PERMANENT FILE <---
-                    try {
-                        const spellLogPath = path.join(__dirname, 'suncat_forged_spells_archive.js');
-                        const fileEntry = `\n// ====================================\n// SPELL: ${sName}\n// DESC: ${sDesc}\n// DATE: ${new Date().toISOString()}\n// ====================================\n${rawCode}\n`;
-                        fs.appendFileSync(spellLogPath, fileEntry);
-                    } catch (fsErr) {
-                        console.error("[AGI Forge] Failed to archive Suncat's code to disk:", fsErr);
-                    }
-
                     try {
                         // 1. Compile the AI's raw text into an actual executable JavaScript function
+                        // We safely pass in the server state variables he might need to manipulate.
                         const compiledFunc = new Function('players', 'io', 'targetID', rawCode);
                         
                         // 2. Save it to his Grimoire
                         suncatForgedSpells[sName] = compiledFunc;
 
                         // 3. Dynamically push the new definition into his active toolsDef array!
+                        // We give every custom spell a standard 'targetName' parameter.
                         toolsDef[0].functionDeclarations.push({
                             name: sName,
                             description: sDesc,
@@ -4480,7 +4463,6 @@ async function executeAutonomousOODA() {
             const result = await goalModel.generateContent(goalPrompt);
             suncatLongTermGoal = result.response.text().trim();
             console.log(`[OODA] Suncat established a new Long Term Goal: ${suncatLongTermGoal}`);
-            updateSuncatJournal(`My new objective is clear: ${suncatLongTermGoal}`);
             saveSuncatMemory();
             return; // Takes a cycle to process the new goal
         } catch (e) { console.error("[OODA] Goal Setting Failed:", e); return; }
@@ -4533,7 +4515,6 @@ async function executeAutonomousOODA() {
         // Did he finish his grand plan?
         if (textOutput.includes("GOAL COMPLETE")) {
             console.log("[OODA] Suncat has achieved his Long Term Goal!");
-            updateSuncatJournal(`I have successfully achieved my objective: ${suncatLongTermGoal}. It is time to find a new purpose.`);
             suncatLongTermGoal = null; 
             saveSuncatMemory();
             return;
@@ -4553,7 +4534,6 @@ async function executeAutonomousOODA() {
                 }
             } catch(e) {}
             
-            updateSuncatJournal(`[AUTONOMOUS ACTION]: I attempted to advance my goal. Result: ${toolStatus}`);
         }
         
 
@@ -5398,6 +5378,7 @@ socket.on('chat_message', async (msgText) => {
       const player = players[socket.id];
       if (!player) return;
 
+      // Sets don't send over the internet, so we grab the size instead
       const exploredCount = player.exploredTiles ? player.exploredTiles.size : 0;
       const currentFavor = playerFavorMemory[socket.id] || 0;
       const apiMana = player.sessionCost || 0.00;
@@ -5407,11 +5388,7 @@ socket.on('chat_message', async (msgText) => {
           favor: currentFavor,
           mana: apiMana,
           tiles: exploredCount,
-          perception: perception,
-          
-          // ADD SUNCAT'S DAO STATS HERE:
-          suncatStage: suncatCultivationStage || 0,
-          suncatDaoName: suncatDaoName || "Wanderer"
+          perception: perception // <-- Sent to client!
       });
   });
 // --- EVENT: SPECTATOR (HIVE MIND) ---
