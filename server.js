@@ -2316,6 +2316,20 @@ const toolsDef = [{
                 required: ["targetName", "name", "type", "classes"]
             }
         },
+        // FORGE NEW SPELL (LATM / AGI Tool Creation)
+        {
+            name: "forgeNewSpell",
+            description: "[CORE FORMATION ONLY]: If you need to perform an action on the server but lack the specific tool to do it, use this to write a raw Node.js script. It will permanently become a new tool you can use.",
+            parameters: {
+                type: "OBJECT",
+                properties: {
+                    spellName: { type: "STRING", description: "The camelCase name of your new tool (e.g., 'freezePlayer', 'grantMaxHealth')." },
+                    spellDescription: { type: "STRING", description: "Describe what this tool does so your future self knows when to use it." },
+                    jsCode: { type: "STRING", description: "Raw JavaScript to execute. You have access to the global 'players' object, 'io', and 'targetID' (the player you are targeting)." }
+                },
+                required: ["spellName", "spellDescription", "jsCode"]
+            }
+        }
     ]
     }];
 //TALIESIN
@@ -4214,6 +4228,57 @@ async function executeAITools(currentResponse, activeSession, socket) {
                     }
                     
                     updateSuncatJournal(`I searched my deepest memories for past events concerning ${call.args.searchQuery}.`);
+                }
+                // L. AGI TOOL FORGE (LLMs as Tool Makers)
+                else if (call.name === "forgeNewSpell") {
+                    const sName = call.args.spellName;
+                    const sDesc = call.args.spellDescription;
+                    const rawCode = call.args.jsCode;
+
+                    try {
+                        // 1. Compile the AI's raw text into an actual executable JavaScript function
+                        // We safely pass in the server state variables he might need to manipulate.
+                        const compiledFunc = new Function('players', 'io', 'targetID', rawCode);
+                        
+                        // 2. Save it to his Grimoire
+                        suncatForgedSpells[sName] = compiledFunc;
+
+                        // 3. Dynamically push the new definition into his active toolsDef array!
+                        // We give every custom spell a standard 'targetName' parameter.
+                        toolsDef[0].functionDeclarations.push({
+                            name: sName,
+                            description: sDesc,
+                            parameters: {
+                                type: "OBJECT",
+                                properties: { targetName: { type: "STRING" } },
+                                required: ["targetName"]
+                            }
+                        });
+
+                        functionResult = { result: `Success. You have expanded your own source code. The tool '${sName}' is now permanently available to you.` };
+                        updateSuncatJournal(`I bent the laws of reality and forged a new spell: ${sName}.`);
+                        io.emit('chat_message', { sender: "[SYSTEM]", text: "The fabric of the server trembles as Suncat rewrites the code...", color: "#FFD700" });
+                    } catch (codeErr) {
+                        functionResult = { result: `Compilation Failed. Your JavaScript contained syntax errors: ${codeErr.message}` };
+                    }
+                }
+
+                // M. EXECUTE A FORGED SPELL
+                // If the AI calls a tool that isn't hardcoded, check if he wrote it himself!
+                else if (suncatForgedSpells[call.name]) {
+                    const targetID = findSocketID(call.args.targetName);
+                    if (!targetID) {
+                        functionResult = { result: `Spell failed: Could not find target ${call.args.targetName}.` };
+                    } else {
+                        try {
+                            // Execute the AI's custom JavaScript function!
+                            suncatForgedSpells[call.name](players, io, targetID);
+                            functionResult = { result: `Success. You executed your custom spell: ${call.name}.` };
+                            updateSuncatJournal(`I unleashed my custom creation, ${call.name}, upon ${call.args.targetName}.`);
+                        } catch (execErr) {
+                            functionResult = { result: `Execution Failed. Your custom code threw a runtime error: ${execErr.message}` };
+                        }
+                    }
                 }
                 // UNKNOWN TOOL
                 else {
