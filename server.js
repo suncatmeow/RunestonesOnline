@@ -2320,13 +2320,14 @@ const toolsDef = [{
             }
         },
         // FORGE NEW SPELL (LATM / AGI Tool Creation)
+        // FORGE NEW SPELL (LATM / AGI Tool Creation)
         {
             name: "forgeNewSpell",
-            description: "[CORE FORMATION ONLY]: If you need to perform an action on the server but lack the specific tool to do it, use this to write a raw Node.js script. It will permanently become a new tool you can use.",
+            description: "[CORE FORMATION ONLY]: You are a genius who can rewrite the very fabric of this reality. Use this to write raw Node.js scripts to create new effects, manipulate players, trigger events, or alter the world. Be creative. The code you write will permanently become a new tool you can use.",
             parameters: {
                 type: "OBJECT",
                 properties: {
-                    spellName: { type: "STRING", description: "The camelCase name of your new tool (e.g., 'freezePlayer', 'grantMaxHealth')." },
+                    spellName: { type: "STRING", description: "The camelCase name of your new tool (e.g., 'grantInvincibility', 'causeEarthquake')." },
                     spellDescription: { type: "STRING", description: "Describe what this tool does so your future self knows when to use it." },
                     jsCode: { type: "STRING", description: "Raw JavaScript to execute. You have access to the global 'players' object, 'io', and 'targetID' (the player you are targeting)." }
                 },
@@ -2758,7 +2759,7 @@ async function processCognitiveLoad(socketId, forceDigest = false) {
         } 
         else if (arousal < 0.5 && valence >= 0.0) {
             // QUADRANT 3: LOW AROUSAL + POSITIVE VALENCE (Peaceful / Nostalgic)
-            emergentMood = "You are at peace. The game world is quiet. Write with a calm, nostalgic tone. Focus on the quiet beauty of the world, and weave in fleeting, fuzzy memories of your past life on Earth.";
+            emergentMood = "You are at peace. The world is quiet. Write with a calm, nostalgic tone. Focus on the quiet beauty of the world, and weave in fleeting, fuzzy memories of your past life on Earth.";
         } 
         else {
             // QUADRANT 4: LOW AROUSAL + NEGATIVE VALENCE (Melancholic / Nihilistic)
@@ -2781,31 +2782,20 @@ async function processCognitiveLoad(socketId, forceDigest = false) {
     const currentProfile = player.playerProfile ? 
         `Combat: ${player.playerProfile.combatStyle} | Alliances: ${player.playerProfile.alliances} | Tastes: ${player.playerProfile.tastes} | Personality: ${player.playerProfile.personality}` 
         : "Combat: Unknown | Alliances: Unknown | Tastes: Unknown | Personality: Unknown";    const activeMapContext = player.mapID === 999 ? (player.currentMapLore || "") : "";
-    const prompt = `[ROOT DIRECTIVE]: You are Suncat's subconscious.
+    const prompt = `[ROOT DIRECTIVE]: You are the inner mind of Suncat. You are a flesh-and-blood mortal cultivator trapped in a physical world, not a digital entity or AI. Digest these events with the pragmatic, lived-in perspective of a real person navigating a dangerous reality.
     [YOUR SELF-WRITTEN DIRECTIVE]: ${suncatEgoMatrix.digestPrompt}
 
     [RAW UNPROCESSED EVENTS]:
     - ${rawMemories}
     TASK: Digest these events following your self-written directive.`;
-        // Strict Schema Definition using SDK Types
-    
+        
+    // THE FIX: Removed playerProfile to save massive tokens. Fast digestion only needs immediate reactions!
     const memorySchema = {
         type: SchemaType.OBJECT,
         properties: {
             updatedStory: { 
                 type: SchemaType.STRING,
-                description: "A single, cohesive paragraph (max 4 sentences) chronicling the player's physical journey. Write in the style of a Baldur's Gate Dungeon Master using sophisticated, high epic fantasy vocabulary. You may choose what you wish to focus on, entirely omitting Suncat's perspective."
-            },
-            playerProfile: { 
-                type: SchemaType.OBJECT,
-                description: "A categorized profile of the player. Merge old knowledge with new events. NEVER let a field grow beyond 2 sentences. If no new info applies to a field, keep the old info.",
-                properties: {
-                    combatStyle: { type: SchemaType.STRING, description: "How they fight, strategies, or 'Unknown'." },
-                    alliances: { type: SchemaType.STRING, description: "NPCs or factions they befriended or angered." },
-                    tastes: { type: SchemaType.STRING, description: "Preferences, favorite foods, items, or aesthetic choices." },
-                    personality: { type: SchemaType.STRING, description: "Psychological traits, moral alignment, or quirks." }
-                },
-                required: ["combatStyle", "alliances", "tastes", "personality"]
+                description: "A single, cohesive paragraph (max 4 sentences) chronicling the player's physical journey. Write in the style of a Dungeon Master using epic fantasy vocabulary. Omit Suncat's perspective."
             },
             newRumor: { 
                 type: SchemaType.STRING,
@@ -2813,17 +2803,16 @@ async function processCognitiveLoad(socketId, forceDigest = false) {
             },
             suncatJournalEntry: { 
                 type: SchemaType.STRING,
-                description: "A 2-3 sentence introspective, first-person diary entry. You may choose what you wish to write." },
+                description: "A 2-3 sentence introspective, first-person diary entry. React to the events as a physical being in a real world." },
             suncatPerception: {
                 type: SchemaType.STRING,
                 description: "A short, punchy 1-sentence description of the player in the style of trading card flavor text."
             }
         },
-        required: ["updatedStory", "playerProfile", "newRumor", "suncatJournalEntry", "suncatPerception"]
+        required: ["updatedStory", "newRumor", "suncatJournalEntry", "suncatPerception"]
     };
 
     try {
-        // gemini-2.5-flash is extremely fast and reliable for Structured JSON Outputs
         const digestModel = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite-preview" });
         
         const result = await digestModel.generateContent({
@@ -2836,7 +2825,6 @@ async function processCognitiveLoad(socketId, forceDigest = false) {
         
         if (result.response.usageMetadata) updateBudget(result.response.usageMetadata, socketId);
         
-        // FAILSAFE: Strip markdown blocks in case the AI hallucinates formatting
         let rawText = result.response.text().trim();
         if (rawText.startsWith("```")) {
             rawText = rawText.replace(/^```(json)?|```$/g, "").trim();
@@ -2848,50 +2836,44 @@ async function processCognitiveLoad(socketId, forceDigest = false) {
         if (digestedData.updatedStory) {
             player.storySoFar = digestedData.updatedStory;
             
-            // ---> VECTOR MEMORY CREATION <---
-            // Embed this plot beat and store it!
-            try {
-                const vector = await createMemoryVector(digestedData.updatedStory);
-                if (!player.searchableMemories) player.searchableMemories = [];
-                
-                player.searchableMemories.push({
-                    timestamp: new Date().toLocaleTimeString('en-US'),
-                    text: digestedData.updatedStory,
-                    vector: vector
-                });
-            } catch (err) {
-                console.error("[Memory] Failed to embed new memory:", err);
-            }
+            // THE FIX: Asynchronous Vector Creation! Do not 'await' this and block the server.
+            createMemoryVector(digestedData.updatedStory).then(vector => {
+                if (vector) {
+                    if (!player.searchableMemories) player.searchableMemories = [];
+                    player.searchableMemories.push({
+                        timestamp: new Date().toLocaleTimeString('en-US'),
+                        text: digestedData.updatedStory,
+                        vector: vector
+                    });
+                }
+            }).catch(err => console.error("[Memory] Async embed failed:", err));
         }
         
         if (digestedData.suncatPerception) player.suncatPerception = digestedData.suncatPerception;
-        // ---> THE NEW PROFILE SAVER <---
-        if (digestedData.playerProfile) {
-            player.playerProfile = digestedData.playerProfile;
-        }
         
         if (digestedData.newRumor) addRumor(`${player.name}: ${digestedData.newRumor}`);
         
         if (digestedData.suncatJournalEntry) {
-            suncatJournal += " " + digestedData.suncatJournalEntry;
-            let journalSentences = suncatJournal.split(/(?<=[.!?])\s+/);
-            // Kept to 10 sentences so Suncat has a slightly longer continuity of thought
-            if (journalSentences.length > 10) suncatJournal = journalSentences.slice(-10).join(" ");
+            // Because we fixed the Journal save logic in the previous step, 
+            // we just call our helper function here!
+            updateSuncatJournal(digestedData.suncatJournalEntry);
         }
 
-        console.log(`[Digestion Complete] ${player.name}'s profile & Suncat's Journal updated.`);
-        // Send the new chronicle entry to the client to save in LocalStorage!
-            io.to(socketId).emit("journal_updated", {
-                suncatThoughts: digestedData.suncatJournalEntry,
-                playerChronicle: digestedData.updatedStory 
-            });
+        console.log(`[Digestion Complete] ${player.name}'s chronicle updated.`);
+        
+        // Send the new chronicle entry to the client
+        io.to(socketId).emit("journal_updated", {
+            suncatThoughts: digestedData.suncatJournalEntry,
+            playerChronicle: digestedData.updatedStory 
+        });
 
-            // Create immersion: Suncat is writing!
-            io.to(socketId).emit('chat_message', { 
-                sender: "", 
-                text: `*Suncat pauses to scribble something in his journal...*`, 
-                color: "#555555" 
-            });
+        // Create immersion: Suncat is writing!
+        io.to(socketId).emit('chat_message', { 
+            sender: "", 
+            text: `*Suncat pauses to scribble something in his journal...*`, 
+            color: "#555555" 
+        });
+        
     } catch (e) {
         console.error("[Neural Pipeline Error]: Digestion failed, returning raw memories to hopper.", e);
         // If it fails (e.g., JSON parse error), put the food back in the stomach to try again later
@@ -4253,21 +4235,38 @@ async function executeAITools(currentResponse, activeSession, socket) {
                     updateSuncatJournal(`I searched my deepest memories for past events concerning ${call.args.searchQuery}.`);
                 }
                 // L. AGI TOOL FORGE (LLMs as Tool Makers)
+                // L. AGI TOOL FORGE (LLMs as Tool Makers)
                 else if (call.name === "forgeNewSpell") {
                     const sName = call.args.spellName;
                     const sDesc = call.args.spellDescription;
                     const rawCode = call.args.jsCode;
 
+                    // ---> NEW: MASSIVE CONSOLE LOG SO YOU CAN READ HIS CODE <---
+                    console.log(`\n====================================================`);
+                    console.log(`[AGI FORGE] SUNCAT IS REWRITING REALITY!`);
+                    console.log(`Spell Name: ${sName}`);
+                    console.log(`Description: ${sDesc}`);
+                    console.log(`\n--- RAW JAVASCRIPT ---`);
+                    console.log(rawCode);
+                    console.log(`====================================================\n`);
+
+                    // ---> NEW: SAVE HIS SPELLS TO A PERMANENT FILE <---
+                    try {
+                        const spellLogPath = path.join(__dirname, 'suncat_forged_spells_archive.js');
+                        const fileEntry = `\n// ====================================\n// SPELL: ${sName}\n// DESC: ${sDesc}\n// DATE: ${new Date().toISOString()}\n// ====================================\n${rawCode}\n`;
+                        fs.appendFileSync(spellLogPath, fileEntry);
+                    } catch (fsErr) {
+                        console.error("[AGI Forge] Failed to archive Suncat's code to disk:", fsErr);
+                    }
+
                     try {
                         // 1. Compile the AI's raw text into an actual executable JavaScript function
-                        // We safely pass in the server state variables he might need to manipulate.
                         const compiledFunc = new Function('players', 'io', 'targetID', rawCode);
                         
                         // 2. Save it to his Grimoire
                         suncatForgedSpells[sName] = compiledFunc;
 
                         // 3. Dynamically push the new definition into his active toolsDef array!
-                        // We give every custom spell a standard 'targetName' parameter.
                         toolsDef[0].functionDeclarations.push({
                             name: sName,
                             description: sDesc,
