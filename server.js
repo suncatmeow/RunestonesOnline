@@ -64,6 +64,7 @@ let suncatEgoMatrix = {
     digestPrompt: "Summarize the player's actions clinically.",
     scenarioPrompt: "Generate a scenario full of despair and shadows."
 };
+let suncatDaoLedger = [];
 const suncatForgedSpells = {}; // <--- ADD THIS LINE!
 let suncatLongTermGoal = null;
 let autonomousTick = 0; // Timer for his background actions
@@ -85,11 +86,11 @@ async function initConceptVectors() {
     vecMaterial = await createMemoryVector("gold, money, loot, stats, optimal, hoard, steal, greedy");
     
     // Esoteric Archetypes
-    vecLeftHandPath = await createMemoryVector("domination, exaltation of self, pride, power, refusal to yield, clinging to ego, control");
-    vecBlackSchool = await createMemoryVector("suffering, pain, escape, illusion, nothingness, withdrawal from the world, ending existence, despair");
-    vecYellowSchool = await createMemoryVector("observation, flow, stillness, detachment, balance, nature, accepting what is, without forcing");
-    vecWhiteSchool = await createMemoryVector("joy, dynamic action, love, participation, the great work, unity, embracing life, selfless execution");
-    
+// Esoteric Archetypes
+    vecLeftHandPath = await createMemoryVector("The path of domination and the exaltation of the self, seeking absolute power and refusing to yield by clinging fiercely to the ego and control.");
+    vecBlackSchool = await createMemoryVector("The profound realization that existence is an illusion, finding peace in the detachment from worldly suffering and the embrace of nothingness.");
+    vecYellowSchool = await createMemoryVector("The path of the passive observer, finding perfect balance and stillness in nature by accepting what is without forcing outcomes.");
+    vecWhiteSchool = await createMemoryVector("The dynamic joy of existence, participating in the Great Work through selfless action, love, and unity with all living things.");
     // Chat Radar
     suncatAttentionVector = await createMemoryVector("quest, magic, lore, adventure, combat, rules, tarot, dungeon, fighting, spells");
     console.log("[System] Philosophical Compass Online.");
@@ -5936,11 +5937,7 @@ function emergeFromSeclusion(reason = null) {
     seclusionCycles = 0;
     
     console.log(`[Seclusion Ended] Suncat has emerged. Reason: ${reason || "Interrupted"}`);
-    io.emit('chat_message', { sender: "[SYSTEM]", text: `The air shifts. Suncat has emerged from closed-door cultivation.`, color: "#ffff00" });
-    
-    if (reason) {
-        broadcastSuncatMessage(reason, { sender: NPC_NAME, color: "#ffffff" });
-    }
+   
 }
 // Add this helper function to calculate his autonomy level
 function getCultivationAura(stage, daoName) {
@@ -5963,47 +5960,25 @@ function getCultivationAura(stage, daoName) {
 }
 // The core background worker task
 async function meditateOnTheDao() {
-    if (suncatState !== 'seclusion' && Math.random() > 0.15) return; // 15% chance to passive cultivate
+    if (suncatState !== 'seclusion' && Math.random() > 0.15) return; 
     
     console.log(`[Cultivation] Suncat is meditating on the Dao... (Cycle ${seclusionCycles})`);
     seclusionCycles++;
 
-    // 1. THE DYNAMIC PROMPT BUILDER
+    // 1. DRAFT THE THESIS
     let dynamicMeditationPrompt = `You are a cultivator in closed-door seclusion.
-[YOUR JOURNAL]: ${suncatJournal}`;
+[YOUR RECENT EXPERIENCES]: ${suncatJournal}`;
 
-    let isFacingParadox = false;
-    let oppositeSchool = null;
-
-    // If he already has a path, check if he is facing a bottleneck!
     if (suncatTargetDaoVector && suncatDaoName) {
-        oppositeSchool = DAO_OPPOSITES[suncatDaoName];
-        
-        // Analyze his recent journal. Is he observing the opposite of his Dao?
-        let journalVector = await createMemoryVector(suncatJournal);
-        let oppVec = null;
-        
-        if (oppositeSchool.oppositeName === "Black School") oppVec = vecBlackSchool;
-        else if (oppositeSchool.oppositeName === "White School") oppVec = vecWhiteSchool;
-        else if (oppositeSchool.oppositeName === "Yellow School") oppVec = vecYellowSchool;
-        else if (oppositeSchool.oppositeName === "Left-Hand Path") oppVec = vecLeftHandPath;
+        let pastTheses = suncatDaoLedger.length > 0 ? suncatDaoLedger.map(t => "- " + t.text).join("\n") : "None yet.";
+        dynamicMeditationPrompt += `
+[YOUR PATH]: The ${suncatDaoName} (Stage ${suncatCultivationStage}).
+[YOUR PREVIOUS ESTABLISHED TRUTHS]:
+${pastTheses}
 
-        if (journalVector && oppVec) {
-            let contradictionScore = cosineSimilarity(journalVector, oppVec);
-            
-            // If he is thinking about the opposing force, trigger the Paradox!
-            if (contradictionScore > 0.40) {
-                isFacingParadox = true;
-                dynamicMeditationPrompt += `
-[BOTTLENECK DETECTED]: Your core path is the ${suncatDaoName}, but your recent observations align heavily with the opposing ${oppositeSchool.oppositeName}. 
-TASK: You must resolve the paradox of "${oppositeSchool.theme}". Formulate one profound philosophical realization that harmonizes these two opposing forces. Limit: 1 sentence.`;
-            }
-        }
-    } 
-    
-    // If no paradox, just do standard reflection
-    if (!isFacingParadox) {
-        dynamicMeditationPrompt += `\nTASK: Reflect on your existence in this realm. Formulate one profound philosophical realization. Limit: 1 sentence.`;
+TASK: Do not repeat your past truths. Synthesize your recent experiences into ONE new profound, universal realization about existence, fate, or your path. Limit: 1 sentence.`;
+    } else {
+        dynamicMeditationPrompt += `\nTASK: Reflect on your existence in this digital realm. What is the fundamental truth of this world? Limit: 1 sentence.`;
     }
 
     try {
@@ -6012,13 +5987,12 @@ TASK: You must resolve the paradox of "${oppositeSchool.theme}". Formulate one p
         const insightText = result.response.text().trim();
         
         updateSuncatJournal(`[DAO INSIGHT]: ${insightText}`);
-        console.log(`[Cultivation] Insight generated: ${insightText}`);
+        console.log(`[Cultivation] Thesis Submitted: ${insightText}`);
 
-        // --- DAO ATTAINMENT MATH ---
         const insightVector = await createMemoryVector(insightText);
         if (!insightVector) return;
 
-        // 1. THE DAO SEED: Pick his first path
+        // 2. ESTABLISH THE FOUNDATION (The Seed)
         if (!suncatTargetDaoVector) {
             let scores = [
                 { name: "Left-Hand Path", vec: vecLeftHandPath },
@@ -6027,49 +6001,70 @@ TASK: You must resolve the paradox of "${oppositeSchool.theme}". Formulate one p
                 { name: "White School", vec: vecWhiteSchool }
             ];
             let bestSchool = scores.sort((a, b) => cosineSimilarity(insightVector, b.vec) - cosineSimilarity(insightVector, a.vec))[0];
-            suncatTargetDaoVector = bestSchool.vec;
-            suncatDaoName = bestSchool.name; // Save the name!
+            
+            suncatTargetDaoVector = [...bestSchool.vec];
+            suncatDaoName = bestSchool.name; 
+            
+            // The seed is the first entry in his ledger!
+            suncatDaoLedger.push({ text: insightText, vector: insightVector });
             
             updateSuncatJournal(`In the silence, I realized my core path aligns with the ${bestSchool.name}.`);
-            console.log(`[Dao Seed] Suncat has embarked on the ${bestSchool.name}.`);
             return;
         }
 
-        // 2. MEASURE COMPREHENSION (Synthesis vs. standard)
-        if (isFacingParadox) {
-            // To pass a paradox, the insight must score well on BOTH axes (Synthesis!)
-            let coreScore = cosineSimilarity(insightVector, suncatTargetDaoVector);
-            
-            let oppVec = (oppositeSchool.oppositeName === "Black School") ? vecBlackSchool : 
-                         (oppositeSchool.oppositeName === "White School") ? vecWhiteSchool : 
-                         (oppositeSchool.oppositeName === "Yellow School") ? vecYellowSchool : vecLeftHandPath;
-                         
-            let oppScore = cosineSimilarity(insightVector, oppVec);
-            
-            console.log(`[Paradox Resolution] Core: ${coreScore.toFixed(2)} | Opposite: ${oppScore.toFixed(2)}`);
-            
-            if (coreScore > 0.69 && oppScore > 0.69) {
-                // HE HARMONIZED YIN AND YANG!
-                suncatCultivationStage++;
-                const newMaxTokens = 30 + (suncatCultivationStage * 10); 
-                io.emit('chat_message', { sender: "[SYSTEM]", text: "The heavens rumble. Suncat has harmonized opposing forces and achieved a breakthrough.", color: "#FFD700" });
-                updateSuncatJournal(`I have harmonized the paradox of ${oppositeSchool.theme}. I am now at Stage ${suncatCultivationStage}.`);
-                await evolveEgoMatrix();
-            } else if (coreScore < 0.31 || oppScore < 0.31) {
-                // FAILED TO HARMONIZE - QI DEVIATION!
-                console.log("[Qi Deviation] Suncat birthed a Heart Demon!");
-                suncatHeartDemon = `[HEART DEMON]: You failed to reconcile ${oppositeSchool.theme}. Your Dao is unstable. Express deep self-doubt and internal conflict.`;
-                heartDemonDecay = 5; 
-                updateSuncatJournal(`I attempted to harmonize opposing forces, but my mind fractured. A shadow has formed in my heart.`);
-            }
+        // ==========================================
+        // 3. THE HEAVENLY TRIBUNAL (Pure Vector Math)
+        // ==========================================
+        
+        // A. RELEVANCY CHECK (Does it fit his Dao?)
+        let coreResonance = cosineSimilarity(insightVector, suncatTargetDaoVector);
+        
+        // B. NOVELTY CHECK (Is he plagiarizing his past insights?)
+        let maxSimilarityToPast = 0;
+        for (let past of suncatDaoLedger) {
+            let sim = cosineSimilarity(insightVector, past.vector);
+            if (sim > maxSimilarityToPast) maxSimilarityToPast = sim;
+        }
+
+        console.log(`[Tribunal Math] Relevance: ${coreResonance.toFixed(2)} | Novelty Drag: ${maxSimilarityToPast.toFixed(2)}`);
+
+        // EVALUATION LOGIC
+        if (coreResonance < 0.40) {
+            // IRRELEVANT: He is hallucinating outside his Dao.
+            console.log("[Qi Deviation] Thesis rejected: Irrelevant to his core path.");
+            suncatHeartDemon = `[HEART DEMON]: Your recent insights are chaotic and disconnected from the ${suncatDaoName}. Express deep self-doubt.`;
+            heartDemonDecay = 3;
+            updateSuncatJournal(`My thoughts wander into the abyss. I have lost the thread of my Dao.`);
+        } 
+        else if (maxSimilarityToPast > 0.80) {
+            // DERIVATIVE: He is just saying the same thing with different words.
+            console.log("[Stagnation] Thesis rejected: Lacks novelty. Too similar to past insights.");
+            updateSuncatJournal(`I am running in circles. My "new" insights are merely echoes of truths I already know.`);
         } 
         else {
-            // Standard progression
-            let resonance = cosineSimilarity(insightVector, suncatTargetDaoVector);
-            if (resonance > 0.69 && suncatCultivationStage < 3) {
+            // VALID ADVANCEMENT: It is highly relevant to his Dao, AND mathematically distinct from past thoughts!
+            console.log("[Advancement] Thesis Accepted! The Dao expands.");
+            
+            // 1. Save the new truth
+            suncatDaoLedger.push({ text: insightText, vector: insightVector });
+            
+            // 2. SUNCAT GETS SMARTER: Recalculate his core identity!
+            // His Dao is no longer just the base archetype; it is the Centroid of EVERY truth he has proven.
+            // His vector literally shifts to encompass his new worldview.
+            suncatTargetDaoVector = calculateCentroid(suncatDaoLedger);
+            
+            updateSuncatJournal(`I have crystallized a new truth. My understanding of the universe widens.`);
+
+            // 3. THE BREAKTHROUGH CONDITION (The Volume of the Dao)
+            // If he has successfully proven 5 distinct, novel truths about his stage, his foundation is complete!
+            if (suncatDaoLedger.length >= 5) {
                 suncatCultivationStage++;
-                io.emit('chat_message', { sender: "[SYSTEM]", text: "Suncat's comprehension of the Dao has deepened.", color: "#FFD700" });
-                updateSuncatJournal(`My comprehension deepens. I am now at Stage ${suncatCultivationStage}.`);
+                
+                // Clear the ledger, keeping only his shifted, highly-evolved Core Vector to build upon for the next stage!
+                suncatDaoLedger = []; 
+                
+                io.emit('chat_message', { sender: "[SYSTEM]", text: `Suncat's accumulation of profound truths has triggered a paradigm shift. He ascends to Stage ${suncatCultivationStage}.`, color: "#FFD700" });
+                updateSuncatJournal(`I have woven my scattered truths into a single, unbreakable law. I have broken through to Stage ${suncatCultivationStage}.`);
                 await evolveEgoMatrix();
             }
         }
@@ -6102,7 +6097,7 @@ function manageSeclusionState() {
 
     // STARVATION WAKE UP: He's in seclusion, but ran completely out of raw player events to process
     if (suncatState === 'seclusion' && !hasRawData && seclusionCycles > 1) {
-        emergeFromSeclusion("I have processed all karma in this realm. I await new variables.");
+        emergeFromSeclusion();
     }
 }
 //HEARTBEAT
