@@ -5280,7 +5280,7 @@ socket.on("npc_died", async (data) => {
         isPickup: isPickup,
         isDialogue: isDialogue,
         isBoss:isBoss,
-        prevMap
+        prevMap:prevMap
     });
     });
 // --- EVENT: DIRECT CHAT ---
