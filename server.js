@@ -5398,7 +5398,6 @@ socket.on('chat_message', async (msgText) => {
       const player = players[socket.id];
       if (!player) return;
 
-      // Sets don't send over the internet, so we grab the size instead
       const exploredCount = player.exploredTiles ? player.exploredTiles.size : 0;
       const currentFavor = playerFavorMemory[socket.id] || 0;
       const apiMana = player.sessionCost || 0.00;
@@ -5408,7 +5407,11 @@ socket.on('chat_message', async (msgText) => {
           favor: currentFavor,
           mana: apiMana,
           tiles: exploredCount,
-          perception: perception // <-- Sent to client!
+          perception: perception,
+          
+          // ADD SUNCAT'S DAO STATS HERE:
+          suncatStage: suncatCultivationStage || 0,
+          suncatDaoName: suncatDaoName || "Wanderer"
       });
   });
 // --- EVENT: SPECTATOR (HIVE MIND) ---
