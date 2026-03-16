@@ -147,7 +147,7 @@ async function evolveEgoMatrix() {
             suncatEgoMatrix.scenarioPrompt = newEgo.newScenarioPrompt;
 
             console.log(`[Ego Matrix Evolved]\nChat: ${suncatEgoMatrix.chatPrompt}`);
-            updateSuncatJournal(`I have reshaped my own mind. My perspective on this world has shifted.`);
+
             
         } catch (e) {
             console.error("[Meta-Cognition] Failed to rewrite prompts:", e);
@@ -3472,7 +3472,7 @@ async function executeAITools(currentResponse, activeSession, socket) {
                             functionResult = { result: `Error: Could not find card named/ID '${call.args.cardName}'.` };
                         }
                     }
-                    updateSuncatJournal(`I bestowed the ${call.args.cardName} card upon ${targetName} as a reward.`);
+
                 }
                 
                 // B. JUDGEMENT
@@ -3494,7 +3494,7 @@ async function executeAITools(currentResponse, activeSession, socket) {
                             functionResult = { result: `Error: Socket not found for ${targetName}.` };
                         }
                     }
-                    updateSuncatJournal(`I exercised my authority and ${call.name.replace("Player", "ed")} ${call.args.targetName} for: ${call.args.reason || "no stated reason"}.`);
+
                 }
                 
                 // C. TELEPORTATION 
@@ -3574,8 +3574,8 @@ async function executeAITools(currentResponse, activeSession, socket) {
                         ? { result: combinedResults.join('\n') }
                         : { result: "Search returned no results. The archives are empty on this subject." };
                     
-                    updateSuncatJournal(`I delved into the ancient game archives to recover memories regarding: ${queries.join(", ")}.`);
-                }
+
+                    }
                 
                 // E. CREATE CUSTOM MAP (The Server-Driven Engine)
                 else if (call.name === "createCustomMap") {
@@ -3960,7 +3960,7 @@ async function executeAITools(currentResponse, activeSession, socket) {
                         console.error("Map Generation Error:", err);
                         functionResult = { result: "Critical Error building map." };
                     }
-                    updateSuncatJournal(`I crafted a new scenario and summoned ${call.args.targetName}.`);
+
                 }
 
                 // F. TELEPORT SPECIFIC PLAYER
@@ -3989,7 +3989,7 @@ async function executeAITools(currentResponse, activeSession, socket) {
                         io.emit("updatePlayers", players);
                         functionResult = { result: `Success: Warped player to map ${destMap}.` };
                     }
-                    updateSuncatJournal(`I forcibly warped ${call.args.targetName} to Map ID ${call.args.mapID}.`);
+
                 }
                 
               
@@ -4106,7 +4106,7 @@ async function executeAITools(currentResponse, activeSession, socket) {
                     } else {
                         functionResult = { result: `Failed: Player not found.` };
                     }
-                    updateSuncatJournal(`I tasked ${call.args.targetName} with a new objective: "${call.args.questText}".`);
+
                 }
                 
                 // I. CHANGE ENVIRONMENT
@@ -4122,7 +4122,7 @@ async function executeAITools(currentResponse, activeSession, socket) {
                     } else {
                         functionResult = { result: `Failed: Player not found.` };
                     }
-                    updateSuncatJournal(`I reached into the sky of Map ${players[targetID].mapID} and changed the weather to ${call.args.weather}.`);
+
                 }
                 
                 // J. CREATE CUSTOM CARD
@@ -4157,7 +4157,7 @@ async function executeAITools(currentResponse, activeSession, socket) {
 
                         // 5. Tell the AI the new ID so it can use it immediately!
                         functionResult = { result: `Successfully forged '${call.args.name}'. Its permanent Entity ID is ${nextID}. You can now use spawnNPC with ID ${nextID}.` };
-                        updateSuncatJournal(`I forged a unique ${call.args.type} named "${call.args.name}" (ID ${nextID}) for ${call.args.targetName}.`);
+
                     } else {
                         functionResult = { result: `Failed: Player not found.` };
                     }
@@ -4232,7 +4232,7 @@ async function executeAITools(currentResponse, activeSession, socket) {
                         }
                     }
                     
-                    updateSuncatJournal(`I searched my deepest memories for past events concerning ${call.args.searchQuery}.`);
+
                 }
                 // L. AGI TOOL FORGE (LLMs as Tool Makers)
                 else if (call.name === "forgeNewSpell") {
@@ -4261,8 +4261,7 @@ async function executeAITools(currentResponse, activeSession, socket) {
                         });
 
                         functionResult = { result: `Success. You have expanded your own source code. The tool '${sName}' is now permanently available to you.` };
-                        updateSuncatJournal(`I bent the laws of reality and forged a new spell: ${sName}.`);
-                        io.emit('chat_message', { sender: "[SYSTEM]", text: "The fabric of the server trembles as Suncat rewrites the code...", color: "#FFD700" });
+
                     } catch (codeErr) {
                         functionResult = { result: `Compilation Failed. Your JavaScript contained syntax errors: ${codeErr.message}` };
                     }
@@ -4279,7 +4278,6 @@ async function executeAITools(currentResponse, activeSession, socket) {
                             // Execute the AI's custom JavaScript function!
                             suncatForgedSpells[call.name](players, io, targetID);
                             functionResult = { result: `Success. You executed your custom spell: ${call.name}.` };
-                            updateSuncatJournal(`I unleashed my custom creation, ${call.name}, upon ${call.args.targetName}.`);
                         } catch (execErr) {
                             functionResult = { result: `Execution Failed. Your custom code threw a runtime error: ${execErr.message}` };
                         }
@@ -4593,7 +4591,6 @@ async function processSuncatThought(socketId, triggerType, data) {
         // If a player abruptly woke him up, he suffers a massive system shock
         if (player) {
             player.dmStress = Math.min(100, (player.dmStress || 0) + 3);
-            updateSuncatJournal(`My meditations were violently interrupted by ${player.name}.`);
         }
     }
     // === THE ENTERIC PLEXUS (Triage & Essential Routing) ===
@@ -5970,7 +5967,6 @@ TASK: Do not repeat your past truths. Synthesize your recent experiences into ON
         const result = await meditateModel.generateContent(dynamicMeditationPrompt);
         const insightText = result.response.text().trim();
         
-        updateSuncatJournal(`[DAO INSIGHT]: ${insightText}`);
         console.log(`[Cultivation] Thesis Submitted: ${insightText}`);
 
         const insightVector = await createMemoryVector(insightText);
@@ -5992,7 +5988,6 @@ TASK: Do not repeat your past truths. Synthesize your recent experiences into ON
             // The seed is the first entry in his ledger!
             suncatDaoLedger.push({ text: insightText, vector: insightVector });
             
-            updateSuncatJournal(`In the silence, I realized my core path aligns with the ${bestSchool.name}.`);
             return;
         }
 
@@ -6018,12 +6013,10 @@ TASK: Do not repeat your past truths. Synthesize your recent experiences into ON
             console.log("[Qi Deviation] Thesis rejected: Irrelevant to his core path.");
             suncatHeartDemon = `[HEART DEMON]: Your recent insights are chaotic and disconnected from the ${suncatDaoName}. Express deep self-doubt.`;
             heartDemonDecay = 3;
-            updateSuncatJournal(`My thoughts wander into the abyss. I have lost the thread of my Dao.`);
         } 
         else if (maxSimilarityToPast > 0.80) {
             // DERIVATIVE: He is just saying the same thing with different words.
             console.log("[Stagnation] Thesis rejected: Lacks novelty. Too similar to past insights.");
-            updateSuncatJournal(`I am running in circles. My "new" insights are merely echoes of truths I already know.`);
         } 
         else {
             // VALID ADVANCEMENT: It is highly relevant to his Dao, AND mathematically distinct from past thoughts!
@@ -6031,24 +6024,22 @@ TASK: Do not repeat your past truths. Synthesize your recent experiences into ON
             
             // 1. Save the new truth
             suncatDaoLedger.push({ text: insightText, vector: insightVector });
-            
+            updateSuncatJournal(` ${insightText}`);
             // 2. SUNCAT GETS SMARTER: Recalculate his core identity!
             // His Dao is no longer just the base archetype; it is the Centroid of EVERY truth he has proven.
             // His vector literally shifts to encompass his new worldview.
             suncatTargetDaoVector = calculateCentroid(suncatDaoLedger);
-            
-            updateSuncatJournal(`I have crystallized a new truth. My understanding of the universe widens.`);
+           
 
             // 3. THE BREAKTHROUGH CONDITION (The Volume of the Dao)
             // If he has successfully proven 5 distinct, novel truths about his stage, his foundation is complete!
-            if (suncatDaoLedger.length >= 5) {
+            if (suncatDaoLedger.length >= 3) {
                 suncatCultivationStage++;
-                
+                 
                 // Clear the ledger, keeping only his shifted, highly-evolved Core Vector to build upon for the next stage!
                 suncatDaoLedger = []; 
                 
                 io.emit('chat_message', { sender: "[SYSTEM]", text: `Suncat's accumulation of profound truths has triggered a paradigm shift. He ascends to Stage ${suncatCultivationStage}.`, color: "#FFD700" });
-                updateSuncatJournal(`I have woven my scattered truths into a single, unbreakable law. I have broken through to Stage ${suncatCultivationStage}.`);
                 await evolveEgoMatrix();
             }
         }
