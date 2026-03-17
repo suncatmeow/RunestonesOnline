@@ -2863,7 +2863,7 @@ async function processCognitiveLoad(socketId, forceDigest = false) {
         
         // Send the new chronicle entry to the client
         io.to(socketId).emit("journal_updated", {
-            suncatThoughts: digestedData.suncatJournalEntry,
+            suncatThoughts: null,
             playerChronicle: digestedData.updatedStory 
         });
 
