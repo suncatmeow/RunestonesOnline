@@ -2110,8 +2110,8 @@ const PERSONA_RULES_DB = {
             "oracle_mode": `[ORACLE PROTOCOL]: 
                 - You are interpreting a Tarot reading based on the Runestones card manifest.
                 - Look for synergies and elemental clashes. 
-                - Keep the reading cryptic, mysterious, and brief (max 3 sentences).
-                - End by asking a single, deep clarifying question about their personal journey.`,
+                - Keep the reading relevant, accurate, and brief (max 1 sentence).
+                - If you like you may add a single, deep clarifying question about their personal journey related to the reading.`,
 
             "tutorial_mode": `[GUIDE PROTOCOL]: The player is asking for help. If they only typed "help", ask them "What do you need help with?". If they ask a specific question, teach them clearly using your Game Mechanics database. If they ask about your DM powers or scenarios, explain that they just need to ask for a quest or adventure, and you will randomly generate an 'Invasion', 'Rescue', or 'Arena Madness' for them.`,            
             // ---> NEW: LOREKEEPER MODE <---
@@ -4477,7 +4477,7 @@ async function executeAutonomousOODA() {
         const goalPrompt = `You are Suncat, Sovereign of this realm. You are currently at Map ${suncat.mapID}.
     [YOUR JOURNAL]: ${suncatJournal}
     [YOUR DAO]: ${suncatDaoName || "Wanderer"}
-    TASK: Based on your Dao and your recent journal entries, define ONE concrete, physical goal to achieve in the game world right now. (e.g. "I will turn Map 4 into a fortress of Fire", or "I will stalk the player named Eddie and protect him.") Limit: 1 sentence.`;
+    TASK: Based on your Dao and your recent journal entries, define ONE concrete, physical goal to achieve in the game world right now. (e.g. "I will turn Map 4 into a fortress of Fire", or "I will stalk the player named Tete and protect him.") Limit: 1 sentence.`;
         
         try {
             const goalModel = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite-preview" });
@@ -4711,7 +4711,7 @@ async function processSuncatThought(socketId, triggerType, data) {
         let arousal = Math.min(1.0, (combatStress / 100));
         let valence = Math.max(-1.0, Math.min(1.0, (playerFavorMemory[socketId] || 0) / 10));
         let dmMood = "epic and atmospheric";
-        if (apiFatigue > 75) dmMood = "exhausted, blunt, and annoyed";
+        if (apiFatigue > 90) dmMood = "exhausted, blunt, and annoyed";
         else if (arousal >= 0.5 && valence < 0.0) dmMood = "brutal, grimdark, and punishing";
         else if (arousal < 0.5 && valence < 0.0) dmMood = "melancholic, tragic, and sorrowful";
         else if (arousal >= 0.5 && valence >= 0.0) dmMood = "heroic, triumphant, and fast-paced";
