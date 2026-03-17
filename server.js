@@ -5310,7 +5310,10 @@ socket.on("npc_died", async (data) => {
 socket.on('chat_message', async (msgText) => {
     if (!msgText) return; 
     let safeText = String(msgText);
-    if (safeText.length > 200) safeText = safeText.substring(0, 200) + "...";
+    
+    // NOTE: You currently cap messages at 200 characters! 
+    // I bumped this to 600 so players can actually send full paragraphs to Suncat.
+    if (safeText.length > 600) safeText = safeText.substring(0, 600) + "...";
 
     const player = players[socket.id];
     if (!player || player.name === "Unknown") return;
@@ -5321,7 +5324,31 @@ socket.on('chat_message', async (msgText) => {
     }
 
     console.log(`${player.name} says: ${safeText}`);
-    io.emit('chat_message', { sender: player.name, text: safeText });
+    
+    // ==========================================
+    // SERVER-SIDE UI CHUNKING (For the Retro Display)
+    // ==========================================
+    const MAX_LEN = 60; 
+    let words = safeText.split(" ");
+    let currentLine = "";
+    let chunks = [];
+
+    words.forEach(word => {
+        if ((currentLine + word).length < MAX_LEN) {
+            currentLine += (currentLine.length > 0 ? " " : "") + word;
+        } else {
+            chunks.push(currentLine);
+            currentLine = word;
+        }
+    });
+    if (currentLine.length > 0) chunks.push(currentLine);
+
+    // Broadcast the sliced-up lines to all clients
+    chunks.forEach(chunk => {
+        io.emit('chat_message', { sender: player.name, text: chunk });
+    });
+    // ==========================================
+
     player.lastActive = Date.now();
 
     const content = safeText.toLowerCase().trim();
