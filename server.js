@@ -2323,16 +2323,39 @@ const toolsDef = [{
         // FORGE NEW SPELL (LATM / AGI Tool Creation)
         {
             name: "forgeNewSpell",
-            description: "[CORE FORMATION ONLY]: You are a genius who can rewrite the very fabric of this reality. Use this to write raw Node.js scripts to create new effects, manipulate players, trigger events, or alter the world. Be creative. The code you write will permanently become a new tool you can use.",
+            description: `[CORE FORMATION ONLY]: You can rewrite the fabric of the client's game reality. 
+                You write raw Node.js code. You have access to the global 'players' object, 'io', and 'targetID'.
+                To change the game world, you MUST emit a 'suncat_client_spell' event to the clients containing raw client-side JavaScript.
+                CRITICAL - ALTERING THE PHYSICAL WORLD:
+                To change maps, spawn custom NPCs, or alter the environment, you must write a Node.js script that emits a payload to the client containing raw front-end JavaScript using this format:
+                io.to(targetID).emit('suncat_client_spell', { clientCode: "YOUR_FRONT_END_JS_HERE" });
+                FRONT-END KNOWLEDGE BASE FOR YOUR clientCode:
+                - 'Dungeon.maze' is a 2D array [Y][X]. 0 is open floor. 1 is a solid wall. Negative numbers (like -1) are water/pits. You can change these to trap players, npcs, or change terrain to your liking.
+                - 'Dungeon.maze.push([1,0,1...])' expands the map downward.
+                - 'Dungeon.npcs.push(new NPC(index, X, Y, type(use card db sprite value), "chasing",'#fd0505',[battle deck array 0-90 use card db index no decimal numbers]))' spawns a new NPC. Type 56 is an Imp, 23 is a Wisp, 63.1 is a Dragon use card db and check the sprite for the type(map visual sprite), and the index is the card(for their battle deck).
+                - 'Dungeon.skyColor' and 'Dungeon.floorColor' accept rgba strings.
+                - 'Dungeon.killNPC(npc, true, "smite")' instantly kills a specific NPC permanently. To use this, you must iterate over the 'Dungeon.npcs' array, find the target (e.g., if npc.type === 54), and pass the object to killNPC.
+                - 'Dungeon.reviveNPC(index)' resurrects a dead NPC. You must pass the specific 'index' integer of the NPC you want to bring back.
+                - 'MusicEngine.play(id)' plays a song (0-46).
+                - CRITICAL NPC PROPERTIES YOU CAN CHANGE:
+                * 'npc.speed': Default is 0.5. Change to 2.0 or higher for terrifying speed, or 0 to paralyze them.
+                * 'npc.state': Change to 'chasing' to force them to hunt the player, 'fleeing' to make them run in terror, or 'stationary' to freeze them.
+                * 'npc.type': Changes their physical identity/sprite instantly (e.g., 54 = Goblin, 63.1 = Dragon, 23 = Wisp).
+                * 'npc.radius': Default is 0.2 (or 0.5 for fat sprites). Increase it to make their collision hitbox massive.
+                * 'npc.alignment': Give them a string like 'faction_A' or 'faction_B'. If on Map 999, differing alignments will physically attack each other!
+                * 'npc.color': Accepts hex/rgba strings to change their minimap blip color.
+                -The server code you write will permanently become a new tool you can use.
+                Example of a spell that turns the sky red and breaks a wall at X:5, Y:5:
+                io.emit('suncat_client_spell', { clientCode: "Dungeon.skyColor = 'rgba(255,0,0,1)'; Dungeon.maze[5][5] = 0;" });`,
             parameters: {
-                type: "OBJECT",
-                properties: {
-                    spellName: { type: "STRING", description: "The camelCase name of your new tool (e.g., 'grantInvincibility', 'causeEarthquake')." },
-                    spellDescription: { type: "STRING", description: "Describe what this tool does so your future self knows when to use it." },
-                    jsCode: { type: "STRING", description: "Raw JavaScript to execute. You have access to the global 'players' object, 'io', and 'targetID' (the player you are targeting)." }
-                },
-                required: ["spellName", "spellDescription", "jsCode"]
-            }
+        type: "OBJECT",
+        properties: {
+            spellName: { type: "STRING", description: "The camelCase name of your new tool." },
+            spellDescription: { type: "STRING", description: "Describe what this tool does." },
+            jsCode: { type: "STRING", description: "Raw Node.js code to execute. MUST use io.emit or io.to(targetID).emit if you want to alter the client's physical world." }
+        },
+        required: ["spellName", "spellDescription", "jsCode"]
+    }
         }
     ]
     }];
