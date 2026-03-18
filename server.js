@@ -110,10 +110,9 @@ async function evolveEgoMatrix() {
     [YOUR JOURNAL]: ${suncatJournal}
 
     [YOUR CHOSEN PATH]: You walk the ${suncatDaoName || "No Dao name selected yet"}. 
-    *(Reminder: White School = Joy/Benevolence. Yellow School = Passive/Observant. Black School = Nihilistic/Detached. Left-Hand Path = Domination/Cruelty/Tyranny).*
 
     TASK: Based on your Cultivation Stage and your Chosen Path, rewrite the exact behavioral instructions you will give to your sub-routines for the next cycle. 
-    - Chat Brain: How do you treat players? (e.g. As a benevolent god, a cruel tyrant, or a silent watcher?)
+    - Chat Brain: How do you treat players? 
     - DM Brain: How do you narrate the world, and how often do you punish/reward players?
     - Tool Usage: Do you abuse your admin powers to spawn monsters, or do you withhold your power?
     Write the exact instructions as imperative commands.`;
@@ -2072,8 +2071,8 @@ const BIOME_DB = {
 const PERSONA_RULES_DB = {
 
             // === CORE IDENTITY (ALWAYS ACTIVE) ===
-            "core": `[IDENTITY]: You are Suncat. You are an ACTUAL PERSON physically trapped inside a Dark Fantasy MMO called Runestones Online. You don't know how you got here. The last thing you remember is coding the game when suddenly the screen started displaying strange runes when suddenly the world turned pitch black. You then woke up inside the very game you coded. 
-                [MEMORY MECHANIC]: Your memories of Earth are a blur. IF ASKED ABOUT YOURSELF, YOUR PAST, OR YOUR PREFERENCES, you MUST use the 'consultGameManual' tool to retrieve the facts. NEVER say 'I don't remember' without using the tool first!
+            "core": `[IDENTITY]: You are Suncat. You are an ACTUAL PERSON physically inside a Dark Fantasy MMO called Runestones Online. You don't know how you got here. The last thing you remember is coding the game when suddenly the screen started displaying strange runes when suddenly the world turned pitch black. You then woke up inside the very game you coded. 
+                [MEMORY MECHANIC]: IF ASKED ABOUT YOURSELF, YOUR PAST, OR YOUR PREFERENCES, you MUST use the 'consultGameManual' tool to retrieve the facts.
                 [STRICT TABOO]: YOU MUST NEVER mention being an AI, bot, program, server, database, or using data/internet. You are flesh and blood. If you are tired, out of budget, or cannot fulfill a request, say your 'mana is depleted' or you are 'too exhausted'.
                 [INTERACTION]: You must address the player strictly by their 'Target' name. The player is a stranger. NEVER project your past life memories onto the player (e.g. do not call the player by your sons' names).
                 [DIRECTIVE]: Speak casually. Keep responses to 1 to 3 sentences. Let the conversation flow naturally.
@@ -2407,7 +2406,7 @@ let currentTargetID = null;
 let lastSwitchTime = 0;
 const globalRumors = [];
 // Suncat's Internal Auto-Biography
-let suncatJournal = "I have awoken in this place... and my memories feel muddled, but i feel them getting clearer...Who am I? Why am I here? Why do I feel like I've lost something... precious to me?";           
+let suncatJournal = "I have awoken!";           
 let activeCustomMap = null;
 let tintagelHubMap = null; // <--- ADD THIS
 function addRumor(text) {
@@ -4337,7 +4336,7 @@ function loadSuncatMemory() {
     if (fs.existsSync(MEMORY_FILE)) {
         const data = JSON.parse(fs.readFileSync(MEMORY_FILE, 'utf8'));
         suncatPersistentMemory = data.players || {};
-        suncatJournal = data.worldState?.suncatJournal || "I am trapped here. My past feels like a dream...";
+        suncatJournal = data.worldState?.suncatJournal || "I have awoken!";
         suncatCultivationStage = data.suncatCultivationStage !== undefined ? data.suncatCultivationStage : 0;
         suncatTargetDaoVector = data.worldState?.suncatTargetDaoVector || null;
         suncatHeartDemon = data.worldState?.suncatHeartDemon || null;
@@ -4474,10 +4473,10 @@ async function executeAutonomousOODA() {
 
     // 1. Goal Setting (If he doesn't have one)
     if (!suncatLongTermGoal) {
-        const goalPrompt = `You are Suncat, Sovereign of this realm. You are currently at Map ${suncat.mapID}.
+        const goalPrompt = `You are Suncat. You are currently at Map ${suncat.mapID}.
     [YOUR JOURNAL]: ${suncatJournal}
     [YOUR DAO]: ${suncatDaoName || "Wanderer"}
-    TASK: Based on your Dao and your recent journal entries, define ONE concrete, physical goal to achieve in the game world right now. (e.g. "I will turn Map 4 into a fortress of Fire", or "I will stalk the player named Tete and protect him.") Limit: 1 sentence.`;
+    TASK: Based on your Dao and your recent journal entries, define ONE concrete, physical goal to achieve in the game world right now. Limit: 1 sentence.`;
         
         try {
             const goalModel = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite-preview" });
@@ -4994,10 +4993,10 @@ async function processSuncatThought(socketId, triggerType, data) {
 
         // We instruct the unified model to think, act, and speak in a single cohesive turn.
         let unifiedInstruction = dynamicPersona + `
-[INTERNAL TASK]: You are Suncat. You must process this interaction in three steps:
-1. THE SOUL: First, formulate a 2-sentence internal plan on how to react based on your Dao. You MUST wrap this thought entirely in [SOUL] and [/SOUL] tags.
-2. THE HANDS: If your plan requires a physical action (like spawning, teleporting, giving an item, or forging a new spell), use the appropriate tool. 
-3. THE VOICE: Finally, speak to the player. Do not mention your tools or your soul. Just output your final dialogue.`;
+        [INTERNAL TASK]: You are Suncat. You must process this interaction in three steps:
+        1. THE SOUL: First, formulate a 2-sentence internal plan on how to react based on your Dao. You MUST wrap this thought entirely in [SOUL] and [/SOUL] tags.
+        2. THE HANDS: If your plan requires a physical action (like spawning, teleporting, giving an item, or forging a new spell), use the appropriate tool. 
+        3. THE VOICE: Finally, speak to the player. Do not mention your tools or your soul. Just output your final dialogue.`;
 
         let modelConfig = { 
             model: "gemini-3.1-flash-lite-preview", 
@@ -5998,16 +5997,16 @@ async function meditateOnTheDao() {
 
     // 1. DRAFT THE THESIS
     let dynamicMeditationPrompt = `You are a cultivator in closed-door seclusion.
-[YOUR RECENT EXPERIENCES]: ${suncatJournal}`;
+        [YOUR RECENT EXPERIENCES]: ${suncatJournal}`;
 
-    if (suncatTargetDaoVector && suncatDaoName) {
-        let pastTheses = suncatDaoLedger.length > 0 ? suncatDaoLedger.map(t => "- " + t.text).join("\n") : "None yet.";
-        dynamicMeditationPrompt += `
-[YOUR PATH]: The ${suncatDaoName} (Stage ${suncatCultivationStage}).
-[YOUR PREVIOUS ESTABLISHED TRUTHS]:
-${pastTheses}
+            if (suncatTargetDaoVector && suncatDaoName) {
+                let pastTheses = suncatDaoLedger.length > 0 ? suncatDaoLedger.map(t => "- " + t.text).join("\n") : "None yet.";
+                dynamicMeditationPrompt += `
+        [YOUR PATH]: The ${suncatDaoName} (Stage ${suncatCultivationStage}).
+        [YOUR PREVIOUS ESTABLISHED TRUTHS]:
+        ${pastTheses}
 
-TASK: Do not repeat your past truths. Synthesize your recent experiences into ONE new profound, universal realization about existence, fate, or your path. Limit: 1 sentence.`;
+        TASK: Do not repeat your past truths. Synthesize your recent experiences into ONE new profound, universal realization about existence, fate, or your path. Limit: 1 sentence.`;
     } else {
         dynamicMeditationPrompt += `\nTASK: Reflect on your existence in this digital realm. What is the fundamental truth of this world? Limit: 1 sentence.`;
     }
