@@ -2381,9 +2381,8 @@ const toolsDef = [{
 
             COMPOSITION GUIDE:
             - THUMB: Bass heartbeat. Use negative space ('-').
-            - FINGERS: Melody strings. Harmonize with THUMB.
+            - FINGERS: Vocal melody strings. KEEP IT SPARSE. You are accompanying a singer who only sings 1 to 3 words per bar. Leave plenty of empty space ('-') so the vocal vowels can stretch out. DO NOT play rapid consecutive notes (e.g., never do 0,2,4,5 back-to-back). 
             - STRUM: 95% of the time, output: -,-,-,-, -,-,-,-, -,-,-,-, -,-,-,-. Only place a '0' on beat 1 for heavy emphasis.
-
             YOU MUST USE THIS EXACT OUTPUT FORMAT. DO NOT DEVIATE OR ADD PROSE:
             [THOUGHT] A short explanation of your musical intent (max 13 words). [/THOUGHT]
             [LYRICS_UI] 1 to 3 words MAX. [/LYRICS_UI]
