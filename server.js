@@ -2595,6 +2595,8 @@ function updateSuncatJournal(newEntry) {
 
     console.log(`[Suncat Journal Updated]: ${newEntry}`);}
 // --- Model setup ---
+const voiceModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
+
 const defaultModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
 const taliesinModel = genAI.getGenerativeModel({ 
         model: "gemini-2.5-flash-lite", 
