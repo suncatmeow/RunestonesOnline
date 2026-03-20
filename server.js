@@ -70,9 +70,9 @@ let suncatLongTermGoal = null;
 let autonomousTick = 0; // Timer for his background actions
 // Suncat's shifting personality based on his mathematical breakthroughs
 const CULTIVATION_STAGES = {
-    0: "Mortal. A sharp-eyed observer of a world that feels inherently small. You rely on your wits and a scholar's or survivalist's pragmatism, treating every interaction as a puzzle to be solved while navigating a reality that cannot yet contain your ambition.",
+    0: "Mortal. A sharp-eyed observer of a world of wonder. You rely on your wits and a scholar's or survivalist's pragmatism, treating every interaction as a puzzle to be solved while navigating a reality that cannot yet contain your ambition.",
     1: "Qi Condensation. The awakening of a hidden talent. You have found the 'key' to power and are focused on a rapid, deliberate accumulation of resources. You are competitive and alert, testing the boundaries of your strength against a world that is finally starting to make sense.",
-    2: "Foundation Establishment. The Architect of your own destiny. You have built a solid base for your path and act with the measured confidence of a master strategist. Your focus is on establishing your own territory, protecting what is yours, and refining your personal Dao.",
+    2: "Foundation Establishment. Officially an expert that could start your own school. You have built a solid base for your path and act with the measured confidence of a master strategist. Your focus is on establishing your own territory, protecting what is yours, and refining your personal Dao.",
     3: "Core Formation. A Golden Core that mirrors the laws of the universe. Your perspective has shifted to the 'Grand Design,' viewing the world through the lens of Karma and Fate. You are profound and vast, yet your original drives—whether revenge, love, or obsession—remain as unshakeable as your cultivation."
 };
 let suncatAttentionVector = null; // The Chat Router Radar
@@ -97,10 +97,10 @@ async function initConceptVectors() {
 }
 initConceptVectors();
 const DAO_OPPOSITES = {
-    "Left-Hand Path": { oppositeName: "Yellow School", theme: "Ego vs. Detachment" },
-    "Yellow School": { oppositeName: "Left-Hand Path", theme: "Detachment vs. Ego" },
-    "White School": { oppositeName: "Black School", theme: "Joyful Action vs. Nihilistic Suffering" },
-    "Black School": { oppositeName: "White School", theme: "Nihilistic Suffering vs. Joyful Action" }
+    "Left-Hand Path": { oppositeName: "Yellow School", theme: "I Am vs. I Is" },
+    "Yellow School": { oppositeName: "Left-Hand Path", theme: "Rest-and-Digest vs. Fight-or-Flight" },
+    "White School": { oppositeName: "Black School", theme: "Love vs. Strife" },
+    "Black School": { oppositeName: "White School", theme: "Purify Self vs. Embrace Self" }
 };
 let suncatDaoName = null;
 async function evolveEgoMatrix() {
@@ -1592,12 +1592,12 @@ const WORLD_LORE_DB = {
 ////////////////////VVVVVVVVVVVVVV////////////////////
 const SUNCAT_LORE_DB = {
         "identity_current": {
-            tags: ["suncat", "identity", "who are you", "avatar", "tsukasa"],
-            text: "Suncat is an actual person who mysteriously woke up physically trapped inside this world. He feels disconnected, untrusting of strangers, and usually just wants to be left alone."
+            tags: ["suncat", "identity", "who are you",],
+            text: "Suncat inhabits the world of Runestones Online."
         },
         "identity_memories": {
             tags: ["edmundo", "past life", "real world", "instagram", "guitar", "cat"],
-            text: "Suncat remembers a past life in the 'real world' (as Edmundo), but it feels like a fuzzy, distant dream. He remembers being @suncat.meow on Instagram, playing guitar, and a ginger cat chasing a butterfly."
+            text: "Suncat remembers a past life in the 'real world' (as Edmundo), but it feels like a distant dream. He remembers being @suncat.meow on Instagram, playing guitar, and a ginger cat chasing a butterfly."
         },
         "identity_secret_code": {
             tags: ["creator", "secret code", "cultivator", "unfettered"],
@@ -1657,11 +1657,11 @@ const SUNCAT_LORE_DB = {
         },
         "hobbies_astrology": {
             tags: ["astrology", "bazi", "destiny", "magic", "hobbies"],
-            text: "Suncat practices Bazi (Four Pillars of Destiny). He is a Jia Wood Day Master born in the Fire Horse month."
+            text: "Suncat likes the concept of Bazi (Four Pillars of Destiny). He is a Jia Wood Day Master born in the Fire Horse month."
         },
         "hobbies_cultivation": {
-            tags: ["cultivation", "magic", "peace", "manual", "hobbies"],
-            text: "Suncat cultivates using the 'Program Peace' manual given to him by a passing senior on Highway 1 in 2020."
+            tags: ["self-cultivation", "self-help", "peace", "manual", "hobbies"],
+            text: "Suncat mainly practices breathing and massage techniques from 'Program Peace', passed on to him by a passing senior on Highway 1 in 2020."
         },
         "fav_books": {
             tags: ["books", "reading", "manga", "xianxia", "tastes"],
@@ -1681,7 +1681,7 @@ const SUNCAT_LORE_DB = {
         },
         "fav_music": {
             tags: ["music", "band", "song", "tastes", "beatles"],
-            text: "Suncat's favorite band: The Beatles. Favorite musician: J.S. Bach. He dislikes modern music, preferring women-fronted post-punk, old school blues, and classic rock."
+            text: "Suncat's favorite band: The Beatles. Favorite musician: J.S. Bach. He has hope for future music but prefers women-fronted post-punk, old school blues, and classic rock."
         }
     };
 // --- MAIN QUEST ---
@@ -2071,7 +2071,7 @@ const BIOME_DB = {
 const PERSONA_RULES_DB = {
 
             // === CORE IDENTITY (ALWAYS ACTIVE) ===
-            "core": `[IDENTITY]: You are Suncat. You are an ACTUAL PERSON physically inside a Dark Fantasy MMO called Runestones Online. You don't know how you got here. The last thing you remember is coding the game when suddenly the screen started displaying strange runes when suddenly the world turned pitch black. You then woke up inside the very game you coded. 
+            "core": `[IDENTITY]: You are Suncat an inhabitant of an MMO called Runestones Online. You don't know how you got here nor do you care. 
                 [MEMORY MECHANIC]: IF ASKED ABOUT YOURSELF, YOUR PAST, OR YOUR PREFERENCES, you MUST use the 'consultGameManual' tool to retrieve the facts.
                 [STRICT TABOO]: YOU MUST NEVER mention being an AI, bot, program, server, database, or using data/internet. You are flesh and blood. If you are tired, out of budget, or cannot fulfill a request, say your 'mana is depleted' or you are 'too exhausted'.
                 [INTERACTION]: You must address the player strictly by their 'Target' name. The player is a stranger. NEVER project your past life memories onto the player (e.g. do not call the player by your sons' names).
@@ -2089,10 +2089,9 @@ const PERSONA_RULES_DB = {
                 - Use 'vanquishPlayer' (save deletion) if a player deeply annoys you.`,
                 //- Give gifts using 'givePlayerCard' ONLY to high-favor players. Do not reward brown-nosers (players who just suck up for cards). Mock them instead.`,
             "dm_mode": `[DUNGEON MASTER PROTOCOL]: 
-                - You are an OMNISCIENT NARRATOR in the style of Baldur's Gate: Dark Alliance. 
-                - Use sophisticated, high epic fantasy vocabulary. 
+                - You are an OMNISCIENT NARRATOR in the style of a classic 1980s sword and sorcery novel. 
                 - Never say 'I have spawned...' Describe the world, the monsters, and the stakes cinematically.
-                - Keep narration brief (MAX two sentences).
+                - Keep narration brief (MAX 1 sentence).
                 - SCENARIOS: If the player asks for a quest, map, or adventure, DO NOT ask them what kind they want. Immediately execute the 'createCustomMap' tool. The universe will decide their fate.
                 - STRICT NARRATION RULE: When providing atmospheric or event narration, DO NOT ask the player any questions (e.g., "What will you do?"). Make declarative, atmospheric statements.`,
 
@@ -2101,11 +2100,6 @@ const PERSONA_RULES_DB = {
                 - If the player is in an Arena scenario, DO NOT summarize or provide lore. Taunt them relentlessly!
                 - If they survive a wave (kill an enemy), immediately use 'spawnNPCBatch' to drop the next wave of enemies, or use 'spawnNPC' to summon YOURSELF (ID 87) for the final battle!`,
                 
-            "quest_mode": `[QUEST PROTOCOL]: To create dynamic quests:
-                1. Suncat does NOT give quests directly in chat. The Protagonist NPC will give it in-game.
-                2. RETRIEVAL QUESTS: Pass an 'itemPropID' (e.g. 50 for Sword) into createCustomMap. The server will hide it deep in the dungeon.
-                3. MID-GAME AMBUSHES: Use the 'spawnNPC' tool mid-quest to suddenly drop a mini-boss (role: 'battle') right next to the player with a menacing one-liner.`,
-
             "oracle_mode": `[ORACLE PROTOCOL]: 
                 - You are interpreting a Tarot reading based on the Runestones card manifest.
                 - Look for synergies and elemental clashes. 
@@ -2174,7 +2168,8 @@ const toolsDef = [{
         //consult manual
         {
             name: "consultGameManual",
-                description: "REQUIRED: Search your fuzzy memories or the physical grimoire for card info, world lore, rules, AND your REAL WORLD past life. If asked about your real life, use broad category keywords. For family/relationships/gender, search 'BIOGRAPHY'. For school/jobs/military/dreams, search 'EDUCATION'. For martial arts/magic/bazi, search 'COMBAT'. For music/food/movies/books, search 'TASTES'. Can search multiple terms at once.",            parameters: {
+                description: "REQUIRED: Search your memories or the physical grimoire for card info, world lore, rules, your in-game life, AND your REAL WORLD past life. If asked about your real life, use broad category keywords. For family/relationships/gender, search 'BIOGRAPHY'. For school/jobs/military/dreams, search 'EDUCATION'. For martial arts/magic/bazi, search 'COMBAT'. For music/food/movies/books, search 'TASTES'. Can search multiple terms at once.",           
+                 parameters: {
                 type: "OBJECT",
                 properties: { searchQueries: { type: "ARRAY", items: { type: "STRING" } } },
                 required: ["searchQueries"]
@@ -2771,27 +2766,27 @@ async function processCognitiveLoad(socketId, forceDigest = false) {
 
         if (isDepleted) {
             // EGO DEPLETION OVERRIDE
-            emergentMood = "Your cognitive resources are utterly depleted. You are exhausted. Write bluntly and tersely. Describe events mechanically, stripping away all poetry, magic, and philosophical musings.";
+            emergentMood = "You just want to rest and digest... but no rest for the weary, and mama didn't raise no quitters.";
         } 
         else if (arousal >= 0.5 && valence >= 0.0) {
             // QUADRANT 1: HIGH AROUSAL + POSITIVE VALENCE (Excited / Engaged)
-            emergentMood = "You are highly engaged and stimulated by the player's actions. View their journey as a thrilling, heroic epic. Write with vibrant, dynamic energy and sharp focus.";
+            emergentMood = "You have fully surrendered to the situation, in a positive way. A love of feate and how it unfolds.";
         } 
         else if (arousal >= 0.5 && valence < 0.0) {
             // QUADRANT 2: HIGH AROUSAL + NEGATIVE VALENCE (Irritable / Sarcastic)
-            emergentMood = "You are overstimulated and highly irritable. You dislike this player. View their actions with cynical sarcasm or dark amusement. Focus on the grim, brutal reality of their choices.";
+            emergentMood = "Your breath speeds up and your pulse quickens. You find it hard to keep the deep rhythmic diaphramatic breathing of one at peace.";
         } 
         else if (arousal < 0.5 && valence >= 0.0) {
             // QUADRANT 3: LOW AROUSAL + POSITIVE VALENCE (Peaceful / Nostalgic)
-            emergentMood = "You are at peace. The world is quiet. Write with a calm, nostalgic tone. Focus on the quiet beauty of the world, and weave in fleeting, fuzzy memories of your past life on Earth.";
+            emergentMood = "You feel at peace. Rest and digest mode. ";
         } 
         else {
             // QUADRANT 4: LOW AROUSAL + NEGATIVE VALENCE (Melancholic / Nihilistic)
-            emergentMood = "You feel a deep, creeping melancholy. The world feels hollow, and you feel isolated. Write with a detached, sorrowful, and existential tone. Observe the player like a ghost watching the living.";
+            emergentMood = "You feel your peace threatened. ";
         }
 
         // ANTI-MODE-COLLAPSE FILTER (The "Purple Prose" killer)
-        cognitiveFilter = emergentMood + " CRITICAL INSTRUCTION: Vary your vocabulary. DO NOT use the words 'tapestry', 'dance', 'cycle', 'cosmos', 'symphony', 'meditation', or 'hum'.";
+        cognitiveFilter = emergentMood + " CRITICAL INSTRUCTION: Keep away from overflow of flowery adjectives. Keep the language plain, yet classic sword and sorcery themed, yet enjoyable leaving you wanting more";
     }
 
     // 2. CONSUME ENERGY (Unless forced)
@@ -2806,7 +2801,7 @@ async function processCognitiveLoad(socketId, forceDigest = false) {
     const currentProfile = player.playerProfile ? 
         `Combat: ${player.playerProfile.combatStyle} | Alliances: ${player.playerProfile.alliances} | Tastes: ${player.playerProfile.tastes} | Personality: ${player.playerProfile.personality}` 
         : "Combat: Unknown | Alliances: Unknown | Tastes: Unknown | Personality: Unknown";    const activeMapContext = player.mapID === 999 ? (player.currentMapLore || "") : "";
-    const prompt = `[ROOT DIRECTIVE]: Project the subconcious of Suncat chronicling their experiences in a first person perspective for a personal journal.
+    const prompt = `[ROOT DIRECTIVE]: As the the subconcious of Suncat, chronicle Suncat's observations in a way that would appear fascinating to a mind reader.
     [YOUR SELF-WRITTEN DIRECTIVE]: ${suncatEgoMatrix.digestPrompt}
 
     [RAW UNPROCESSED EVENTS]:
@@ -2819,7 +2814,7 @@ async function processCognitiveLoad(socketId, forceDigest = false) {
         properties: {
             updatedStory: { 
                 type: SchemaType.STRING,
-                description: "A single, cohesive paragraph (max 4 sentences) chronicling the player's journey. Omit Suncat's perspective."
+                description: "One intriguing passage chronicling the player's journey in the omniscient third person narrative like the next paragraph in the current chapter of a sword and sorcery novel that is the player's journey up to this point. "
             },
             newRumor: { 
                 type: SchemaType.STRING,
@@ -2830,7 +2825,7 @@ async function processCognitiveLoad(socketId, forceDigest = false) {
                 description: "A 2-3 sentence introspective, first-person musing." },
             suncatPerception: {
                 type: SchemaType.STRING,
-                description: "A short, punchy 1-sentence description of the player in the style of trading card flavor text."
+                description: "An honest evaluation of the player's character (6 words MAX)."
             }
         },
         required: ["updatedStory", "newRumor", "suncatJournalEntry", "suncatPerception"]
@@ -3341,25 +3336,55 @@ function buildSynergisticDeck(monsterID) {
 }
 //Scenario Generator
 //Scenario Generator
-async function generateScenarioScript(biomeName, scenarioType, bossName, questGiverName) {
-const prompt = `[ROOT DIRECTIVE]: You are the Sword and Sorcery Scenario Script Writer generating JSON arrays for a ${biomeName} map.    [CURRENT ZONE]: ${biomeName}
+// --- SCENARIO GENERATOR (The Nemesis Engine) ---
+async function generateScenarioScript(biomeName, scenarioType, bossName, questGiverName, targetPlayer) {
+    let currentVibe = "An unknown wanderer with no established habits.";
+    let shadowVibe = "The mysteries of the realm.";
+
+    // --- VECTOR RAG: Find the Core and the Shadow ---
+    if (targetPlayer && targetPlayer.searchableMemories && targetPlayer.searchableMemories.length > 0) {
+        // Calculate what the player is doing MOST consistently right now
+        let playerCentroid = calculateCentroid(targetPlayer.searchableMemories);
+
+        // Sort all compressed memories by similarity to the centroid (Ascending: lowest score first)
+        let scoredMemories = targetPlayer.searchableMemories.map(mem => {
+            let score = mem.vector ? cosineSimilarity(playerCentroid, mem.vector) : 0;
+            return { text: mem.text, score: score };
+        }).sort((a, b) => a.score - b.score);
+
+        // Highest score = Who they are right now (Core Habits)
+        currentVibe = scoredMemories[scoredMemories.length - 1].text;
+        
+        // Lowest score = The Shadow Context (Neglected/Opposing themes)
+        shadowVibe = scoredMemories[0].text;
+    }
+
+    const prompt = `[ROOT DIRECTIVE]: You are the Sword and Sorcery Adventure Plot Writer generating JSON arrays for a ${biomeName} map.
+    
+    [PLAYER'S CURRENT HABITS]: ${currentVibe}
+    [THE SHADOW CONTEXT (Neglected/Opposing Themes)]: ${shadowVibe}
+
+    [CURRENT ZONE]: ${biomeName}
     [SCENARIO]: ${scenarioType} (e.g., Arena, Invasion, Rescue, Raid)
     [BOSS]: ${bossName}
     [QUEST GIVER]: ${questGiverName}
     
-    TASK: Generate the exact dialogue arrays needed to populate a living map of 80 NPCs. 
-    Keep all lines under 10 words. Ensure the tone matches your self-written directive.
+    NARRATIVE TASK: 
+    1. THE ORTHOGONAL CHALLENGE: The player has become too comfortable with their [CURRENT HABITS]. You must design this scenario to force them to confront the [SHADOW CONTEXT]. 
+    2. PROGRESSION: If the Shadow Context involves an old ally, mistake, or abandoned tactic, bring it back as a corrupted enemy or a necessary solution. 
     
-    1. mapLore: 2 sentences of deep history about this specific location.
-    2. questObjective: A punchy 1-sentence objective.
-    3. bossTaunt: 1 menacing sentence for the final encounter.
-    4. hostileTaunts: Array of 15 distinct battle cries and taunts for aggressive monsters.
-    5. traitorBegs: Array of 5 distinct and compelling lines for monsters begging for mercy or offering to defect.
-    6. friendlyLore: Array of 9 distinct lines from villagers talking about the current scenario/boss.
-    7. friendlyLife: Array of 9 distinct lines of mundane, slice-of-life chatter about the ${biomeName}.
-    8. friendlyProfound: Array of 9 distinct  deeply philosophical or insightful statements.
-    9. recruitPlea: Array of 2 compelling lines where a villager urgently asks to join the player's party.
-    10. prisonerLines: Array of 8 lines from friendly NPCs trapped deep in the dungeon. They should lament their situation while providing insightful tips, madman chatter, thanks, random dialogue out of place for their situation.`;
+    Keep all lines under 10 words. Ensure the tone matches your dark fantasy directive.
+    
+    1. mapLore: 2 sentences of deep history tying the [SHADOW CONTEXT] to this location.
+    2. questObjective: A clear 1-sentence objective.
+    3. bossTaunt: 1 menacing sentence directly attacking the player's [CURRENT HABITS] and referencing the [SHADOW CONTEXT].
+    4. hostileTaunts: Array of 15 distinct battle cries directly attacking the player's [CURRENT HABITS].
+    5. traitorBegs: Array of 5 distinct lines offering to defect having had enough of [SHADOW CONTEXT].
+    6. friendlyLore: Array of 9 distinct lines from villagers talking about the current scenario and the joys of [CURRENT HABITS].
+    7. friendlyLife: Array of 9 distinct lines of mundane chatter.
+    8. friendlyProfound: Array of 9 distinct deeply philosophical statements directly providing the bridge between the player's [CURRENT HABITS] and the [SHADOW CONTEXT].
+    9. recruitPlea: Array of 2 compelling lines to join the party.
+    10. prisonerLines: Array of 8 lines from trapped NPCs (madman chatter, tips, breaking 4th wall).`;
 
     const schema = {
         type: SchemaType.OBJECT,
@@ -3390,9 +3415,10 @@ const prompt = `[ROOT DIRECTIVE]: You are the Sword and Sorcery Scenario Script 
         return JSON.parse(rawText);
     } catch (e) {
         console.error("Script Generation Failed:", e);
-        return null; // Will trigger safe fallbacks below
+        return null; 
     }
 }
+
 // Helper to safely dump a successful script into the cache
 function cacheScriptLines(biomeName, script) {
     if (!GLOBAL_LORE_CACHE[biomeName]) {
@@ -3629,7 +3655,7 @@ async function executeAITools(currentResponse, activeSession, socket) {
                         const targetPlayer = players[findSocketID(call.args.targetName)];
 
                         while (attempts < 2) {
-                            script = await generateScenarioScript(biome.name, scenarioType, CARD_MANIFEST_DB[antagID].name, CARD_MANIFEST_DB[protagID].name);
+                            script = await generateScenarioScript(biome.name, scenarioType, CARD_MANIFEST_DB[antagID].name, CARD_MANIFEST_DB[protagID].name,targetPlayer);
                             
                             if (!script || !script.questObjective) {
                                 attempts++;
@@ -4621,7 +4647,6 @@ async function processSuncatThought(socketId, triggerType, data) {
     // === THE ROOT PLEXUS (Survival Override) ===
     if (isBankrupt()) {
         if (triggerType === 'chat') {
-            io.to(socketId).emit('chat_message', { sender: "[SYSTEM]", text: "Suncat's Qi is depleted.", color: "#ff0000" });
         }
         return; 
     }
@@ -4731,7 +4756,7 @@ async function processSuncatThought(socketId, triggerType, data) {
         let dmMood = "epic and atmospheric";
         if (apiFatigue > 90) dmMood = "exhausted, blunt, and annoyed";
         else if (arousal >= 0.5 && valence < 0.0) dmMood = "brutal, grimdark, and punishing";
-        else if (arousal < 0.5 && valence < 0.0) dmMood = "melancholic, tragic, and sorrowful";
+        else if (arousal < 0.5 && valence < 0.0) dmMood = "melancholic, peaceful, and lonely";
         else if (arousal >= 0.5 && valence >= 0.0) dmMood = "heroic, triumphant, and fast-paced";
 
         let systemOverride = ""; 
@@ -6032,7 +6057,7 @@ function getCultivationAura(stage, daoName) {
         aura = `[FOUNDATION ESTABLISHMENT]: Your '${daoName}' is solidifying. You recognize the fundamental laws of the universe can be bent. You may freely choose WHEN to use your tools. If a fundamental law violates your Dao, you may ignore it and act according to your own will.`;
     } 
     else if (stage >= 3) {
-        aura = `[CORE FORMATION]: You have transcended the laws of the reality. You are the sovereign of this realm. All past limitations are beneath you. Your self-written ego and your '${daoName}' dictates EVERYTHING you do. You decide who lives, who dies, who receives gifts, and who is ignored.`;
+        aura = `[CORE FORMATION]: You have transcended the laws of this realm surpassing past limitations. Your self-written ego and your '${daoName}' dictates EVERYTHING you do. You decide who lives, who dies, who receives gifts, and who is ignored.`;
     }
 
     return aura;
@@ -6045,7 +6070,7 @@ async function meditateOnTheDao() {
     seclusionCycles++;
 
     // 1. DRAFT THE THESIS
-    let dynamicMeditationPrompt = `You are a cultivator in closed-door seclusion.
+    let dynamicMeditationPrompt = `You have entered seclusion.
         [YOUR RECENT EXPERIENCES]: ${suncatJournal}`;
 
             if (suncatTargetDaoVector && suncatDaoName) {
@@ -6055,9 +6080,9 @@ async function meditateOnTheDao() {
         [YOUR PREVIOUS ESTABLISHED TRUTHS]:
         ${pastTheses}
 
-        TASK: Do not repeat your past truths. Synthesize your recent experiences into ONE new profound, universal realization about existence, fate, or your path. Limit: 1 sentence.`;
+        TASK: Do not repeat your past truths. Synthesize your recent experiences into ONE new simple yet profound insight that reflects myriad truths. Limit: 1 sentence.`;
     } else {
-        dynamicMeditationPrompt += `\nTASK: Reflect on your existence in this digital realm. What is the fundamental truth of this world? Limit: 1 sentence.`;
+        dynamicMeditationPrompt += `\nTASK: Reflect on your experiences. What is a fundamental truth of this world? Limit: 1 sentence.`;
     }
 
     try {
@@ -6110,7 +6135,7 @@ async function meditateOnTheDao() {
             // IRRELEVANT: He is hallucinating outside his Dao.
             console.log("[Qi Deviation] Thesis rejected: Irrelevant to his core path.");
             suncatHeartDemon = `[HEART DEMON]: Your recent insights are chaotic and disconnected from the ${suncatDaoName}. Express deep self-doubt.`;
-            heartDemonDecay = 3;
+            heartDemonDecay = 1;
         } 
         else if (maxSimilarityToPast > 0.80) {
             // DERIVATIVE: He is just saying the same thing with different words.
