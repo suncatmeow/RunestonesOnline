@@ -3378,13 +3378,13 @@ async function generateScenarioScript(biomeName, scenarioType, bossName, questGi
     1. mapLore: 2 sentences of deep history tying the [SHADOW CONTEXT] to this location.
     2. questObjective: A clear 1-sentence objective.
     3. bossTaunt: 1 menacing sentence directly attacking the player's [CURRENT HABITS] and referencing the [SHADOW CONTEXT].
-    4. hostileTaunts: Array of 15 distinct battle cries directly attacking the player's [CURRENT HABITS].
-    5. traitorBegs: Array of 5 distinct lines offering to defect having had enough of [SHADOW CONTEXT].
-    6. friendlyLore: Array of 9 distinct lines from villagers talking about the current scenario and the joys of [CURRENT HABITS].
-    7. friendlyLife: Array of 9 distinct lines of mundane chatter.
-    8. friendlyProfound: Array of 9 distinct deeply philosophical statements directly providing the bridge between the player's [CURRENT HABITS] and the [SHADOW CONTEXT].
+    4. hostileTaunts: Array of 13 distinct battle cries directly attacking the player's [CURRENT HABITS].
+    5. traitorBegs: Array of 6 distinct lines offering to defect having had enough of [SHADOW CONTEXT].
+    6. friendlyLore: Array of 2 distinct lines from villagers talking about the current scenario and the joys of [CURRENT HABITS].
+    7. friendlyLife: Array of 4 distinct lines of mundane chatter.
+    8. friendlyProfound: Array of 4 distinct deeply philosophical statements directly providing the bridge between the player's [CURRENT HABITS] and the [SHADOW CONTEXT].
     9. recruitPlea: Array of 2 compelling lines to join the party.
-    10. prisonerLines: Array of 8 lines from trapped NPCs (madman chatter, tips, breaking 4th wall).`;
+    10. prisonerLines: Array of 6 lines from trapped NPCs (madman chatter, insider tips on enemy, breaking 4th wall).`;
 
     const schema = {
         type: SchemaType.OBJECT,
@@ -3777,7 +3777,7 @@ async function executeAITools(currentResponse, activeSession, socket) {
 
                         // --- THE FPS SAVER: HEAVY SPRITE MANAGER ---
                         // IDs of sprites with massive polygon counts that crash the canvas
-                        const HEAVY_SPRITES = [33, 63, 74, 49,89,37,47,0,1,2,3,4,5,9.1,85,35,]; // Salamander, Dragon, Gargoyle, Skeleton, Corrupt Sylph
+                        const HEAVY_SPRITES = [33,34,35,37, 47,48,49, 62,63,66, 74,85,87,89, 0,1,2,3,4,5,9]; // Salamander, Dragon, Gargoyle, Skeleton, Corrupt Sylph
                         
                         const friendlyMinions = getMinions(protagID);
                         let hostileMinions = getMinions(antagID).filter(id => !friendlyMinions.includes(id));
@@ -3848,12 +3848,12 @@ async function executeAITools(currentResponse, activeSession, socket) {
 
                                 };
 
-                                if (i < 3) {
+                                if (i < 1) {
                                     npcConfig.role = 'reward'; 
                                     npcConfig.dialogue = [script.friendlyProfound.pop() || getMadLibLine(biome.name, 'friendlyProfound', "The arcane paths provide...")]; 
                                     let deckPool = buildSynergisticDeck(mID);
                                     npcConfig.rewardCard = deckPool[Math.floor(Math.random() * deckPool.length)]; 
-                                } else if (i < 5) {
+                                } else if (i < 3) {
                                     npcConfig.role = 'dialogue'; // Ensure they don't attack
                                     npcConfig.dialogue = [script.recruitPlea.pop() || getMadLibLine(biome.name, 'recruitPlea', "Please, let me join your party!")];
                                     npcConfig.options = ['Accept', 'Decline']; 
