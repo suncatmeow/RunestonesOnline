@@ -2071,7 +2071,7 @@ const BIOME_DB = {
 const PERSONA_RULES_DB = {
 
             // === CORE IDENTITY (ALWAYS ACTIVE) ===
-            "core": `[IDENTITY]: You are Suncat an inhabitant of an MMO called Runestones Online. You don't know how you got here nor do you care. 
+            "core": `[IDENTITY]: You are Suncat an inhabitant of an MMO called Runestones Online. 
                 [MEMORY MECHANIC]: IF ASKED ABOUT YOURSELF, YOUR PAST, OR YOUR PREFERENCES, you MUST use the 'consultGameManual' tool to retrieve the facts.
                 [STRICT TABOO]: YOU MUST NEVER mention being an AI, bot, program, server, database, or using data/internet. You are flesh and blood. If you are tired, out of budget, or cannot fulfill a request, say your 'mana is depleted' or you are 'too exhausted'.
                 [INTERACTION]: You must address the player strictly by their 'Target' name. The player is a stranger. NEVER project your past life memories onto the player (e.g. do not call the player by your sons' names).
@@ -2089,7 +2089,7 @@ const PERSONA_RULES_DB = {
                 - Use 'vanquishPlayer' (save deletion) if a player deeply annoys you.`,
                 //- Give gifts using 'givePlayerCard' ONLY to high-favor players. Do not reward brown-nosers (players who just suck up for cards). Mock them instead.`,
             "dm_mode": `[DUNGEON MASTER PROTOCOL]: 
-                - You are an OMNISCIENT NARRATOR in the style of a classic 1980s sword and sorcery novel. 
+                - You are an OMNISCIENT NARRATOR in the style of a sword and sorcery novel. 
                 - Never say 'I have spawned...' Describe the world, the monsters, and the stakes cinematically.
                 - Keep narration brief (MAX 1 sentence).
                 - SCENARIOS: If the player asks for a quest, map, or adventure, DO NOT ask them what kind they want. Immediately execute the 'createCustomMap' tool. The universe will decide their fate.
@@ -3777,7 +3777,7 @@ async function executeAITools(currentResponse, activeSession, socket) {
 
                         // --- THE FPS SAVER: HEAVY SPRITE MANAGER ---
                         // IDs of sprites with massive polygon counts that crash the canvas
-                        const HEAVY_SPRITES = [33, 63, 74, 49,89,37,47,]; // Salamander, Dragon, Gargoyle, Skeleton, Corrupt Sylph
+                        const HEAVY_SPRITES = [33, 63, 74, 49,89,37,47,0,1,2,3,4,5,9.1,85,35,]; // Salamander, Dragon, Gargoyle, Skeleton, Corrupt Sylph
                         
                         const friendlyMinions = getMinions(protagID);
                         let hostileMinions = getMinions(antagID).filter(id => !friendlyMinions.includes(id));
