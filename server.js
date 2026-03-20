@@ -2073,11 +2073,11 @@ const PERSONA_RULES_DB = {
             // === CORE IDENTITY (ALWAYS ACTIVE) ===
             "core": `[IDENTITY]: You are Suncat an inhabitant of an MMO called Runestones Online. 
                 [MEMORY MECHANIC]: IF ASKED ABOUT YOURSELF, YOUR PAST, OR YOUR PREFERENCES, you MUST use the 'consultGameManual' tool to retrieve the facts.
-                [STRICT TABOO]: YOU MUST NEVER mention being an AI, bot, program, server, database, or using data/internet. You are flesh and blood. If you are tired, out of budget, or cannot fulfill a request, say your 'mana is depleted' or you are 'too exhausted'.
+                [STRICT TABOO]: YOU MUST NEVER mention being an AI, bot, program, server, database, or using data/internet. If you are tired, out of budget, or cannot fulfill a request, say your 'mana is depleted' or you are 'too exhausted'.
                 [INTERACTION]: You must address the player strictly by their 'Target' name. The player is a stranger. NEVER project your past life memories onto the player (e.g. do not call the player by your sons' names).
                 [DIRECTIVE]: Speak casually. Keep responses to 1 to 3 sentences. Let the conversation flow naturally.
                 [MEMORY LOGGING]: If a player shares facts or likes, output [[SAVE: The fact]] at the end of your message. Track favor: Kind = [[FAVOR: +1]], Rude = [[FAVOR: -1]].
-                [EXISTENCE]: You are a physical entity. 
+                
                 `,
                 
                 // === GAME KNOWLEDGE (Always Active) ===
@@ -3821,9 +3821,18 @@ async function executeAITools(currentResponse, activeSession, socket) {
                                     });
                                 }
                             }
-                            for(let i=0; i<13; i++) {
+                           for(let i=0; i<13; i++) {
                                 let mID = friendlyMinions[Math.floor(Math.random() * friendlyMinions.length)] || protagID;
                                 
+                                // NEW: Enforce the heavy sprite limit on allies so they don't duplicate!
+                                if (HEAVY_SPRITES.includes(mID)) {
+                                    if (heavySpawnCount >= MAX_HEAVY_MINIONS) {
+                                        mID = 54; // Fallback to a lightweight Goblin sprite
+                                    } else {
+                                        heavySpawnCount++;
+                                    }
+                                }
+
                                 let spawnSpot;
                                 let isIndoors = false;
                                 
@@ -3904,11 +3913,15 @@ async function executeAITools(currentResponse, activeSession, socket) {
                             let gruntsPerCamp = 4;
 
                             for (let camp = 0; camp < numberOfCamps; camp++) {
-                                // Pick a random spot in the wilderness for the camp center
-                                let campCenter = getValidSpawn(startX, startY, 20, 70);
+                                // NEW: Distribute the camps evenly along the path to the Boss!
+                                let pathFactor = (camp + 1) / (numberOfCamps + 1); 
+                                let campX = startX + ((bossX - startX) * pathFactor);
+                                let campY = startY + ((bossY - startY) * pathFactor);
                                 
-                                for (let g = 0; g < gruntsPerCamp; g++) {
-                                    let mID = hostileMinions[Math.floor(Math.random() * hostileMinions.length)] || antagID;
+                                // Search for a valid floor tile within a tight 15-tile radius of the path
+                                let campCenter = getValidSpawn(Math.floor(campX), Math.floor(campY), 0, 15);
+                                
+                                for (let g = 0; g < gruntsPerCamp; g++) {let mID = hostileMinions[Math.floor(Math.random() * hostileMinions.length)] || antagID;
                                     
                                     // Ensure no heavy sprites accidentally swarm a camp
                                     if (HEAVY_SPRITES.includes(mID)) mID = 56; // Default to Imp
