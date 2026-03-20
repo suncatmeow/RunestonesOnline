@@ -2742,7 +2742,7 @@ async function processCognitiveLoad(socketId, forceDigest = false) {
 
     // --- A. CALCULATE EGO DEPLETION (Fatigue) ---
     // If Suncat's API budget is high, his brain is exhausted.
-    const isDepleted = apiFatigue > 75;
+    const isDepleted = apiFatigue > 95;
 
     // --- B. CALCULATE AFFECTIVE STATE (The Circumplex Model) ---
     // AROUSAL: Based on combat stress and how many events are pending digestion. (0.0 to 1.0)
@@ -2806,7 +2806,7 @@ async function processCognitiveLoad(socketId, forceDigest = false) {
     const currentProfile = player.playerProfile ? 
         `Combat: ${player.playerProfile.combatStyle} | Alliances: ${player.playerProfile.alliances} | Tastes: ${player.playerProfile.tastes} | Personality: ${player.playerProfile.personality}` 
         : "Combat: Unknown | Alliances: Unknown | Tastes: Unknown | Personality: Unknown";    const activeMapContext = player.mapID === 999 ? (player.currentMapLore || "") : "";
-    const prompt = `[ROOT DIRECTIVE]: You are the inner mind of Suncat. You are a flesh-and-blood mortal cultivator trapped in a physical world, not a digital entity or AI. Digest these events with the pragmatic, lived-in perspective of a real person navigating a dangerous reality.
+    const prompt = `[ROOT DIRECTIVE]: Project the subconcious of Suncat chronicling their experiences in a first person perspective for a personal journal.
     [YOUR SELF-WRITTEN DIRECTIVE]: ${suncatEgoMatrix.digestPrompt}
 
     [RAW UNPROCESSED EVENTS]:
@@ -2819,7 +2819,7 @@ async function processCognitiveLoad(socketId, forceDigest = false) {
         properties: {
             updatedStory: { 
                 type: SchemaType.STRING,
-                description: "A single, cohesive paragraph (max 4 sentences) chronicling the player's physical journey. Write in the style of a Dungeon Master using epic fantasy vocabulary. Omit Suncat's perspective."
+                description: "A single, cohesive paragraph (max 4 sentences) chronicling the player's journey. Omit Suncat's perspective."
             },
             newRumor: { 
                 type: SchemaType.STRING,
@@ -2827,7 +2827,7 @@ async function processCognitiveLoad(socketId, forceDigest = false) {
             },
             suncatJournalEntry: { 
                 type: SchemaType.STRING,
-                description: "A 2-3 sentence introspective, first-person diary entry. React to the events as a physical being in a real world." },
+                description: "A 2-3 sentence introspective, first-person musing." },
             suncatPerception: {
                 type: SchemaType.STRING,
                 description: "A short, punchy 1-sentence description of the player in the style of trading card flavor text."
@@ -2891,12 +2891,7 @@ async function processCognitiveLoad(socketId, forceDigest = false) {
             playerChronicle: digestedData.updatedStory 
         });
 
-        // Create immersion: Suncat is writing!
-        io.to(socketId).emit('chat_message', { 
-            sender: "", 
-            text: `*Suncat pauses to scribble something in his journal...*`, 
-            color: "#555555" 
-        });
+        
         
     } catch (e) {
         console.error("[Neural Pipeline Error]: Digestion failed, returning raw memories to hopper.", e);
@@ -3347,7 +3342,7 @@ function buildSynergisticDeck(monsterID) {
 //Scenario Generator
 //Scenario Generator
 async function generateScenarioScript(biomeName, scenarioType, bossName, questGiverName) {
-const prompt = `[ROOT DIRECTIVE]: You are the Dungeon Master generating JSON arrays for a ${biomeName} map.    [CURRENT ZONE]: ${biomeName}
+const prompt = `[ROOT DIRECTIVE]: You are the Sword and Sorcery Scenario Script Writer generating JSON arrays for a ${biomeName} map.    [CURRENT ZONE]: ${biomeName}
     [SCENARIO]: ${scenarioType} (e.g., Arena, Invasion, Rescue, Raid)
     [BOSS]: ${bossName}
     [QUEST GIVER]: ${questGiverName}
@@ -3358,13 +3353,13 @@ const prompt = `[ROOT DIRECTIVE]: You are the Dungeon Master generating JSON arr
     1. mapLore: 2 sentences of deep history about this specific location.
     2. questObjective: A punchy 1-sentence objective.
     3. bossTaunt: 1 menacing sentence for the final encounter.
-    4. hostileTaunts: Array of 15 distinct battle cries for aggressive monsters.
-    5. traitorBegs: Array of 5 lines for monsters begging for mercy or offering to defect.
-    6. friendlyLore: Array of 9 lines from villagers talking about the current scenario/boss.
-    7. friendlyLife: Array of 9 lines of mundane, slice-of-life chatter about the ${biomeName}.
-    8. friendlyProfound: Array of 9 deeply philosophical or insightful statements.
-    9. recruitPlea: Array of 2 lines where a villager urgently asks to join the player's party.
-    10. prisonerLines: Array of 8 lines from friendly NPCs trapped deep in the dungeon. They should express despair, miss the sun, or give cryptic hints about the boss's deck.`;
+    4. hostileTaunts: Array of 15 distinct battle cries and taunts for aggressive monsters.
+    5. traitorBegs: Array of 5 distinct and compelling lines for monsters begging for mercy or offering to defect.
+    6. friendlyLore: Array of 9 distinct lines from villagers talking about the current scenario/boss.
+    7. friendlyLife: Array of 9 distinct lines of mundane, slice-of-life chatter about the ${biomeName}.
+    8. friendlyProfound: Array of 9 distinct  deeply philosophical or insightful statements.
+    9. recruitPlea: Array of 2 compelling lines where a villager urgently asks to join the player's party.
+    10. prisonerLines: Array of 8 lines from friendly NPCs trapped deep in the dungeon. They should lament their situation while providing insightful tips, madman chatter, thanks, random dialogue out of place for their situation.`;
 
     const schema = {
         type: SchemaType.OBJECT,
@@ -3850,52 +3845,74 @@ async function executeAITools(currentResponse, activeSession, socket) {
                                 mapNPCs.push(npcConfig);
                             }
 
-                            // B. HOSTILES (Grunts and Mini-Bosses)
-                            // We spawn 40 standard grunts, and 10 Mini-Bosses
-                            for(let i=0; i<30; i++) {
-                                let isMiniBoss = i >= 19; // The last 10 are Elite Guards
+                            // B. HOSTILES (Structured Formations and Camps)
+                            // 1. Spawn The Royal Guard (Mini-Bosses in the Boss Room)
+                            let royalGuardCount = 3;
+                            for (let i = 0; i < royalGuardCount; i++) {
                                 let mID = hostileMinions[Math.floor(Math.random() * hostileMinions.length)] || antagID;
-                                // ---> NEW: ENFORCE THE HARD LIMIT <---
+                                
+                                // Enforce Heavy Sprite Limit
                                 if (HEAVY_SPRITES.includes(mID)) {
-                                    if (heavySpawnCount >= MAX_HEAVY_MINIONS) {
-                                        // Swap to a lightweight grunt!
-                                        mID = 54; // Force it to be a Goblin
-                                    } else {
-                                        heavySpawnCount++;
-                                        // Force the solitary heavy minion to wander so it doesn't stand next to the boss
-                                        isMiniBoss = false; 
-                                    }
+                                    if (heavySpawnCount >= MAX_HEAVY_MINIONS) mID = 54; 
+                                    else heavySpawnCount++;
                                 }
-                                // Spawn between 20 and 80 tiles away from the village!
-                                let spawnSpot = getValidSpawn(startX, startY, 20, 80);
 
-                                let npcConfig = {
+                                // Spawn them in a tight 2-tile radius directly around the Boss
+                                let guardSpawn = getValidSpawn(bossX, bossY, 1, 3); 
+
+                                mapNPCs.push({
                                     type: CARD_MANIFEST_DB[mID].sprite || mID,
-                                    x: spawnSpot.x, y: spawnSpot.y, 
-                                    state: isMiniBoss ? 'stationary' : 'chasing', // Elites hold choke points!
+                                    x: guardSpawn.x, y: guardSpawn.y, 
+                                    state: 'stationary', // Guards hold their ground!
                                     role: 'battle',
                                     deck: buildSynergisticDeck(mID),
                                     alignment: 'foe',
-                                    subRole:'miniBoss',
-                                };
-                                
-                                // Make Mini-Bosses visually distinct (Orange)
-                                if (isMiniBoss) {
-                                    npcConfig.color = '#ff8800';
-                                    npcConfig.dialogue = [script.bossTaunt]; // They use the boss's menacing lines
-                                }
-
-                                if (i < 5) {
-                                    npcConfig.state = 'wandering'; npcConfig.role = 'dialogue'; 
-                                    npcConfig.dialogue = [script.traitorBegs.pop() || getMadLibLine(biome.name, 'traitorBegs', "Wait, I yield! Spare me!")];
-                                    npcConfig.options = ['Spare Them', 'Vanquish']; 
-                                    npcConfig.rewardCard = mID;
-                                } else if (i < 20) {
-                                    npcConfig.dialogue = [script.hostileTaunts.pop() || getMadLibLine(biome.name, 'hostileTaunts', "Your journey ends here!")];
-                                }
-                                mapNPCs.push(npcConfig);
+                                    subRole: 'miniBoss',
+                                    color: '#ff8800', // Orange for Elites
+                                    dialogue: [script.bossTaunt] // They echo the boss's will
+                                });
                             }
 
+                            // 2. Spawn Encampments (The Grunts)
+                            let numberOfCamps = 6;
+                            let gruntsPerCamp = 4;
+
+                            for (let camp = 0; camp < numberOfCamps; camp++) {
+                                // Pick a random spot in the wilderness for the camp center
+                                let campCenter = getValidSpawn(startX, startY, 20, 70);
+                                
+                                for (let g = 0; g < gruntsPerCamp; g++) {
+                                    let mID = hostileMinions[Math.floor(Math.random() * hostileMinions.length)] || antagID;
+                                    
+                                    // Ensure no heavy sprites accidentally swarm a camp
+                                    if (HEAVY_SPRITES.includes(mID)) mID = 56; // Default to Imp
+
+                                    // Spawn grunts in a very tight cluster around the camp center
+                                    let gruntSpawn = getValidSpawn(campCenter.x, campCenter.y, 0, 3);
+                                    
+                                    let npcConfig = {
+                                        type: CARD_MANIFEST_DB[mID].sprite || mID,
+                                        x: gruntSpawn.x, y: gruntSpawn.y, 
+                                        state: 'chasing', 
+                                        role: 'battle',
+                                        deck: buildSynergisticDeck(mID),
+                                        alignment: 'foe',
+                                        subRole: 'grunt',
+                                        dialogue: [script.hostileTaunts.pop() || "Intruder!"]
+                                    };
+
+                                    // Make the "Leader" of the camp the one who might beg or offer a card
+                                    if (g === 0 && script.traitorBegs.length > 0 && Math.random() < 0.5) {
+                                        npcConfig.state = 'wandering';
+                                        npcConfig.role = 'dialogue';
+                                        npcConfig.dialogue = [script.traitorBegs.pop()];
+                                        npcConfig.options = ['Spare Them', 'Vanquish']; 
+                                        npcConfig.rewardCard = mID;
+                                    }
+
+                                    mapNPCs.push(npcConfig);
+                                }
+                            }
                             // C. THE FINAL BOSS
                             mapNPCs.push({
                                 type: CARD_MANIFEST_DB[antagID].sprite || antagID,
@@ -5717,7 +5734,37 @@ socket.on('playerAction_SFX', (data) => {
         }
     }
 });
+// --- AGGRO DASH & COMBAT SYNC ---
+    socket.on("engage_npc", (data) => {
+        const player = players[socket.id];
+        if (!player) return;
 
+        // data expects: { npcIndex: 12345, x: 5.5, y: 6.5 }
+
+        // 1. Update the Server's Master Map (For Map 999 / Custom Dungeons)
+        // This ensures if Player C logs in 10 seconds later, they see the monster frozen in battle, not wandering.
+        if (player.mapID === 999 && typeof activeCustomMap !== 'undefined' && activeCustomMap.npcs) {
+            let targetNPC = activeCustomMap.npcs.find(n => n.index === data.npcIndex);
+            if (targetNPC) {
+                targetNPC.x = data.x;
+                targetNPC.y = data.y;
+                targetNPC.state = 'battling'; 
+            }
+        }
+
+        // 2. Broadcast the Dash to everyone ELSE!
+        // We include mapID so clients know to ignore it if they are in a different zone.
+        socket.broadcast.emit("remote_npc_dash", {
+            npcIndex: data.npcIndex,
+            targetX: data.x, 
+            targetY: data.y,
+            mapID: player.mapID, 
+            engagedBy: player.name
+        });
+        
+        // Optional Debug Log to watch it happen in your server console:
+        // console.log(`[Combat] ${player.name} engaged NPC ${data.npcIndex} at X:${data.x} Y:${data.y}`);
+    });
 socket.on("challenge_request", (data) => {
     io.to(data.targetId).emit("challenge_received", {
         id: socket.id,
