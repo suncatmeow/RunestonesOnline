@@ -2822,7 +2822,7 @@ async function processCognitiveLoad(socketId, forceDigest = false) {
             },
             suncatJournalEntry: { 
                 type: SchemaType.STRING,
-                description: "A 2-3 sentence introspective, first-person musing." },
+                description: "A 2-3 sentence introspective, first-person musing.Omit all player perception and focus on Suncat's Personal Journey in this world." },
             suncatPerception: {
                 type: SchemaType.STRING,
                 description: "An honest evaluation of the player's character (6 words MAX)."
