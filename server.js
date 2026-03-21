@@ -2814,7 +2814,7 @@ async function processCognitiveLoad(socketId, forceDigest = false) {
         properties: {
             updatedStory: { 
                 type: SchemaType.STRING,
-                description: "One intriguing passage chronicling the player's journey in the omniscient third person narrative like the next paragraph in the current chapter of a sword and sorcery novel that is the player's journey up to this point. "
+                description: "One intriguing passage (2-3 sentences MAX) chronicling the player's journey in the omniscient third person narrative like the next paragraph in the current chapter of a sword and sorcery novel that is the player's journey up to this point. "
             },
             newRumor: { 
                 type: SchemaType.STRING,
