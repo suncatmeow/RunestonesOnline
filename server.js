@@ -6160,7 +6160,7 @@ async function meditateOnTheDao() {
             
             // 1. Save the new truth
             suncatDaoLedger.push({ text: insightText, vector: insightVector });
-            updateSuncatJournal(` ${insightText}`);
+            //updateSuncatJournal(` ${insightText}`);
             // 2. SUNCAT GETS SMARTER: Recalculate his core identity!
             // His Dao is no longer just the base archetype; it is the Centroid of EVERY truth he has proven.
             // His vector literally shifts to encompass his new worldview.
