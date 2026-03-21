@@ -4855,7 +4855,7 @@ async function processSuncatThought(socketId, triggerType, data) {
         } 
         else if (player.mapScenario === 'Arena Madness') {
             useBigBrain = true;
-            systemOverride += `\n[ARENA OVERRIDE]: You are the Arena Master. The player is in your colosseum. Mock their combat skills, introduce challengers grandiosely, and demand blood. You are NOT allowed to teleport them out until they win.`;
+            systemOverride += `\n[ARENA OVERRIDE]: You are the Arena Master. The player is in your colosseum. Mock their combat skills, introduce challengers grandiosely, and demand blood. You are NOT allowed to teleport them out until they prove themselves to you.`;
         }
         else if (totalStress >= 50 && player.mapID === 999 && timeSinceLastEvent > 180000) {
             useBigBrain = true;
@@ -4925,7 +4925,7 @@ async function processSuncatThought(socketId, triggerType, data) {
             if (data.isBoss) {
                 useBigBrain = true; 
                 messageOptions = { sender: "", color: "#FFD700" }; // Light blue/Cyan for Mystical Tarot readings
-                eventInstruction = `[PLAYER ACTION]: Slayed the Boss! ${data.action} | [DM AWARENESS]:The player is currently inside your custom scenario: "${player.mapScenario}". Their active quest is: "${player.activeQuest}" and have slayed the boss, completing the quest. \nTASK: Provide a short narrative describing the fall of the monster and the aftermath. Give a brief tarot interpretation which accurately represents the results of the scenario. YOU MUST use the 'teleportPlayer' tool to send them to Map ${data.prevMap}, and use 'givePlayerCard' to reward them!`;
+                eventInstruction = `[PLAYER ACTION]: Slayed the Boss! ${data.action} | [DM AWARENESS]:The player is currently inside your custom scenario: "${player.mapScenario}". Their active quest is: "${player.activeQuest}" and have slayed the boss, completing the quest. \nTASK: Provide a short narrative describing the fall of the monster and the aftermath. YOU MUST use 'givePlayerCard' to reward them and then congratulate them on completing the quest!`;
             } 
             else if (data.isPickup) {
                 useBigBrain = true; 
@@ -4939,7 +4939,7 @@ async function processSuncatThought(socketId, triggerType, data) {
                 if (player.mapID != 999) {
                     useBigBrain = false; 
                     messageOptions = { sender: "", color: "#FFD700" }; // Narrator Mode
-                    eventInstruction = `[PLAYER ACTION]: Slayed a creature ${data.action}\nTASK: Provide a short narrative (2 sentences MAX) describing the fall of the monster and give a brief tarot interpretation. DO NOT ask questions.`;
+                    eventInstruction = `[PLAYER ACTION]: Slayed a creature ${data.action}\nTASK: Provide a short narrative (1 sentence MAX) describing the fall of the monster. DO NOT ask questions.`;
                 } else {
                     if (rngRoll < 0.006) {
                         useBigBrain = true; 
