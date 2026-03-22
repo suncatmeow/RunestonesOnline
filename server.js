@@ -2841,22 +2841,27 @@ async function processCognitiveLoad(socketId, forceDigest = false) {
     const currentProfile = player.playerProfile ? 
         `Combat: ${player.playerProfile.combatStyle} | Alliances: ${player.playerProfile.alliances} | Tastes: ${player.playerProfile.tastes} | Personality: ${player.playerProfile.personality}` 
         : "Combat: Unknown | Alliances: Unknown | Tastes: Unknown | Personality: Unknown";    
-    const activeMapContext = player.mapID === 999 ? (player.currentMapLore || "") : "";
+    // Fetch the overarching lore of the zone they are currently standing in!
+    const activeMapContext = player.mapID === 999 ? 
+        (player.currentMapLore || "An ephemeral pocket dimension.") : 
+        getMapLore(player.mapID);
     
-    const prompt = `[ROOT DIRECTIVE]: You are the omniscient narrator of a dark sword-and-sorcery saga.
+    const prompt = `[ROOT DIRECTIVE]: You are the omniscient narrator of the dark sword-and-sorcery saga "Runestones Online".
     
     [THE STORY SO FAR]: "${currentStory}"
     [PLAYER'S DOSSIER]: ${currentProfile}
-    [LOCAL REGION LORE]: ${activeMapContext}
+    [CURRENT LOCATION & LORE]: ${activeMapContext}
+
     [NEW EVENTS TO INTEGRATE]:
     - ${rawMemories}
 
     TASK: 
     1. Write the NEXT 2-3 sentences of the saga, continuing logically from [THE STORY SO FAR]. Do not repeat what was already written. 
-    2. WEAVE IN THE LORE: Anchor the prose in the [LOCAL REGION LORE] and the specific nature of the enemies/items mentioned in the new events. Make it feel distinctly like the Runestones universe, not generic fantasy.
-    3. Tailor the narrative style to match the [PLAYER'S DOSSIER]. Use strong verbs and sparse adjectives.
-    4. Generate a cryptic 1-sentence rumor about these recent events.`;
-    // THE FIX: Removed playerProfile to save massive tokens. Fast digestion only needs immediate reactions!
+    2. WEAVE IN THE LORE: Anchor the prose in the [CURRENT LOCATION & LORE] and the specific nature of the enemies/items. 
+    3. STRICT GEOGRAPHY RULE: DO NOT invent city, town, or region names! You MUST only use the locations provided in the context.
+    4. Tailor the narrative style to match the [PLAYER'S DOSSIER]. Use strong verbs and sparse adjectives.
+    5. Generate a cryptic 1-sentence rumor about these recent events.`;
+     // THE FIX: Removed playerProfile to save massive tokens. Fast digestion only needs immediate reactions!
     const memorySchema = {
         type: SchemaType.OBJECT,
         properties: {
@@ -4607,9 +4612,9 @@ async function writeSuncatJournal() {
     "${suncatJournal}"
 
     TASK: 
-    1. Write your next 2-3 sentence journal entry continuing your train of thought. Reflect on your past life, observe the mundane NPCs around you, or describe a quiet moment of peace within this specific map. Ground it deeply in the Runestones universe using the [WORLD CONTEXT]. Keep it grounded and slightly melancholic. DO NOT talk about epic quests.
-    2. Write a 1-sentence update to [YOUR STORY SO FAR] summarizing your quiet existence today in the third-person.`;
-
+    1. Write a BRAND NEW 2-3 sentence journal entry. Build upon the themes of your previous thoughts, but ABSOLUTELY DO NOT copy, paste, or repeat the previous sentences. Write entirely new text.
+    2. Reflect on your past life, observe the mundane NPCs around you, or describe a quiet moment of peace within this specific map. Ground it deeply in the Runestones universe using the [WORLD CONTEXT]. Keep it grounded and slightly melancholic. DO NOT talk about epic quests.
+    3. Write a 1-sentence update to [YOUR STORY SO FAR] summarizing your quiet existence today in the third-person.`;
     const schema = {
         type: SchemaType.OBJECT,
         properties: {
