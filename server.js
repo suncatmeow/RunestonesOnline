@@ -6445,9 +6445,9 @@ setInterval(() => {
             if (suncat.mapID !== target.mapID) {
                 // 5% chance to "glitch" to the friend's map
                 if (Math.random() < 0.05) {
-                    suncat.mapID = Math.floor(Math.random()*22);
-                    suncat.x = 5.5;
-                    suncat.y = 5.5;
+                    suncat.mapID = target.mapID;
+                    suncat.x = target.x;
+                    suncat.y = target.y;
                     io.emit('chat_message', { sender: NPC_NAME, text: "Well if it isn't my favorite player...", color: "gray" });
                 }
             } 
@@ -6469,16 +6469,20 @@ setInterval(() => {
             // Every 6 ticks (3 minutes), he stops wandering and actively plots a move
             if (autonomousTick >= 6) {
                 autonomousTick = 0;
-                if(Math.random()<.0613){
+                if (Math.random() < 0.01) {
                 executeAutonomousOODA();
                 }
             } else {
                 // He paces around his immediate area while thinking
+                
                 const move = Math.floor(Math.random() * 4);
                 if (move === 0) suncat.y--;
                 if (move === 1) suncat.y++;
                 if (move === 2) suncat.x--;
                 if (move === 3) suncat.x++;
+                if(Math.random()>.9){
+                    suncat.mapID = Math.floor(Math.random()*22);
+                }
                 if (Math.random() < 0.01) {
                     writeSuncatJournal();
                 }
