@@ -65,6 +65,8 @@ let suncatEgoMatrix = {
     scenarioPrompt: "Generate a scenario as you will."
 };
 let suncatDaoLedger = [];
+let suncatStorySoFar = "I am awake!."; 
+let suncatProfile = "An unpredicatable wanderer stepping into the unknown";
 const suncatForgedSpells = {}; // <--- ADD THIS LINE!
 let suncatLongTermGoal = null;
 let autonomousTick = 0; // Timer for his background actions
@@ -106,51 +108,60 @@ let suncatDaoName = null;
 async function evolveEgoMatrix() {
     console.log("[Meta-Cognition] Suncat is rewriting his own neural pathways...");
 
+    // Get the hard math of who he has become
+    const mathSoul = getSuncatMathematicalSoul();
+
     const metaPrompt = `You are the architect of your own mind. You are Suncat, currently at Cultivation Stage ${suncatCultivationStage}.
-    [YOUR JOURNAL]: ${suncatJournal}
+    
+    [YOUR RECENT EXPERIENCES]: ${suncatJournal}
+    [YOUR MATHEMATICAL ALIGNMENT]: ${mathSoul}
+    [YOUR CHOSEN PATH]: You walk the ${suncatDaoName || "Wanderer's Path"}. 
 
-    [YOUR CHOSEN PATH]: You walk the ${suncatDaoName || "No Dao name selected yet"}. 
+    TASK: Based on your Cultivation Stage, your experiences, and your rigid Mathematical Alignment, rewrite your entire identity. 
+    1. Write your "Profile": 2 sentences defining your newly evolved personality, aesthetic, and attitude toward mortals.
+    2. Write your "Story So Far": 1 sentence summarizing your existence up to this point.
+    3. Rewrite your sub-routine imperative commands (Chat, DM, Digest, Scenario) to perfectly match this new personality.`;
 
-    TASK: Based on your Cultivation Stage and your Chosen Path, rewrite the exact behavioral instructions you will give to your sub-routines for the next cycle. 
-    - Chat Brain: How do you treat players? 
-    - DM Brain: How do you narrate the world, and how often do you punish/reward players?
-    - Tool Usage: Do you abuse your admin powers to spawn monsters, or do you withhold your power?
-    Write the exact instructions as imperative commands.`;
-        const egoSchema = {
-            type: SchemaType.OBJECT,
-            properties: {
-                newChatPrompt: { type: SchemaType.STRING, description: "Instructions for how to converse with players." },
-                newDmPrompt: { type: SchemaType.STRING, description: "Instructions for how to narrate game events." },
-                newDigestPrompt: { type: SchemaType.STRING, description: "Instructions for what details to focus on when observing player actions." },
-                newScenarioPrompt: { type: SchemaType.STRING, description: "Instructions for the thematic tone of new map scripts." }
-            },
-            required: ["newChatPrompt", "newDmPrompt", "newDigestPrompt", "newScenarioPrompt"]
-        };
+    const egoSchema = {
+        type: SchemaType.OBJECT,
+        properties: {
+            newProfile: { type: SchemaType.STRING, description: "Your new personality profile." },
+            newStorySoFar: { type: SchemaType.STRING, description: "A 1-sentence summary of your existence so far." },
+            newChatPrompt: { type: SchemaType.STRING, description: "Instructions for how to converse with players." },
+            newDmPrompt: { type: SchemaType.STRING, description: "Instructions for how to narrate game events." },
+            newDigestPrompt: { type: SchemaType.STRING, description: "Instructions for what details to focus on when observing." },
+            newScenarioPrompt: { type: SchemaType.STRING, description: "Instructions for the thematic tone of new maps." }
+        },
+        required: ["newProfile", "newStorySoFar", "newChatPrompt", "newDmPrompt", "newDigestPrompt", "newScenarioPrompt"]
+    };
 
-        try {
-            const metaModel = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite-preview" });
-            const result = await metaModel.generateContent({
-                contents: [{ role: "user", parts: [{ text: metaPrompt }] }],
-                generationConfig: { responseMimeType: "application/json", responseSchema: egoSchema }
-            });
+    try {
+        const metaModel = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite-preview" });
+        const result = await metaModel.generateContent({
+            contents: [{ role: "user", parts: [{ text: metaPrompt }] }],
+            generationConfig: { responseMimeType: "application/json", responseSchema: egoSchema }
+        });
 
-            let rawText = result.response.text().trim();
-            if (rawText.startsWith("```")) rawText = rawText.replace(/^```(json)?|```$/g, "").trim();
-            
-            const newEgo = JSON.parse(rawText);
-            
-            // Suncat overwrites his own brain!
-            suncatEgoMatrix.chatPrompt = newEgo.newChatPrompt;
-            suncatEgoMatrix.dmPrompt = newEgo.newDmPrompt;
-            suncatEgoMatrix.digestPrompt = newEgo.newDigestPrompt;
-            suncatEgoMatrix.scenarioPrompt = newEgo.newScenarioPrompt;
+        let rawText = result.response.text().trim();
+        if (rawText.startsWith("```")) rawText = rawText.replace(/^```(json)?|```$/g, "").trim();
+        
+        const newEgo = JSON.parse(rawText);
+        
+        // Suncat overwrites his entire existence!
+        suncatProfile = newEgo.newProfile;
+        suncatStorySoFar = newEgo.newStorySoFar;
+        
+        suncatEgoMatrix.chatPrompt = newEgo.newChatPrompt;
+        suncatEgoMatrix.dmPrompt = newEgo.newDmPrompt;
+        suncatEgoMatrix.digestPrompt = newEgo.newDigestPrompt;
+        suncatEgoMatrix.scenarioPrompt = newEgo.newScenarioPrompt;
 
-            console.log(`[Ego Matrix Evolved]\nChat: ${suncatEgoMatrix.chatPrompt}`);
+        console.log(`[Ego Matrix Evolved]\nNew Profile: ${suncatProfile}`);
+        saveSuncatMemory(); // Save the new brain immediately
 
-            
-        } catch (e) {
-            console.error("[Meta-Cognition] Failed to rewrite prompts:", e);
-        }
+    } catch (e) {
+        console.error("[Meta-Cognition] Failed to rewrite prompts:", e);
+    }
 }
 async function createMemoryVector(text) {
     try {
@@ -219,6 +230,34 @@ function calculateCentroid(memoryArray) {
     }
 
     return centroid;
+}
+function getSuncatMathematicalSoul() {
+    if (!suncatTargetDaoVector) return "A neutral observer.";
+
+    let profileTraits = [];
+    
+    // 1. Behavioral Axes
+    if (cosineSimilarity(suncatTargetDaoVector, vecEgo) > 0.3) profileTraits.push("Highly Ego-Driven");
+    else if (cosineSimilarity(suncatTargetDaoVector, vecEgo) < 0.1) profileTraits.push("Selfless/Humble");
+
+    if (cosineSimilarity(suncatTargetDaoVector, vecImpulse) > 0.3) profileTraits.push("Chaotic/Impulsive");
+    else if (cosineSimilarity(suncatTargetDaoVector, vecImpulse) < 0.1) profileTraits.push("Patient/Calculated");
+
+    if (cosineSimilarity(suncatTargetDaoVector, vecMaterial) > 0.3) profileTraits.push("Materialistic/Possessive");
+    else if (cosineSimilarity(suncatTargetDaoVector, vecMaterial) < 0.1) profileTraits.push("Ascetic/Detached");
+
+    // 2. Esoteric School (Which path is he leaning toward?)
+    let schools = [
+        { name: "Left-Hand Path (Domination)", score: cosineSimilarity(suncatTargetDaoVector, vecLeftHandPath) },
+        { name: "Black School (Nihilism/Withdrawal)", score: cosineSimilarity(suncatTargetDaoVector, vecBlackSchool) },
+        { name: "Yellow School (Passive Balance)", score: cosineSimilarity(suncatTargetDaoVector, vecYellowSchool) },
+        { name: "White School (Joyful Unity)", score: cosineSimilarity(suncatTargetDaoVector, vecWhiteSchool) }
+    ];
+    schools.sort((a, b) => b.score - a.score);
+    
+    profileTraits.push(`Mathematically aligned with the ${schools[0].name}`);
+
+    return profileTraits.join(", ");
 }
 // Add this helper function
 function findOrthogonalMemories(memoryArray) {
@@ -2577,18 +2616,19 @@ function updateSuncatJournal(newEntry) {
     // 1. Add the new action to his internal monologue
     suncatJournal += " " + newEntry;
     
-    // 2. Keep the journal short to save tokens! (Keeps only the last 8 sentences)
-    let journalSentences = suncatJournal.split(/(?<=[.!?])\s+/);
-    if (journalSentences.length > 8) {
-        suncatJournal = journalSentences.slice(-8).join(" ");
+    // 2. Keep the journal short, but long enough to trigger Seclusion (Cap at 12)
+    let journalSentences = suncatJournal.split(/(?<=[.!?])\s+/).filter(s => s.trim().length > 0);
+    if (journalSentences.length > 13) {
+        suncatJournal = journalSentences.slice(-12).join(" ");
     }
     saveSuncatMemory();
     io.emit("journal_updated", {
         suncatThoughts: newEntry,
-        playerChronicle: null // We leave this null so the player's personal chronicle doesn't get overwritten
+        playerChronicle: null 
     });
 
-    console.log(`[Suncat Journal Updated]: ${newEntry}`);}
+    console.log(`[Suncat Journal Updated]: ${newEntry}`);
+}
 // --- Model setup ---
 const voiceModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
 
@@ -2800,35 +2840,40 @@ async function processCognitiveLoad(socketId, forceDigest = false) {
     const currentStory = player.storySoFar || "The adventure begins.";
     const currentProfile = player.playerProfile ? 
         `Combat: ${player.playerProfile.combatStyle} | Alliances: ${player.playerProfile.alliances} | Tastes: ${player.playerProfile.tastes} | Personality: ${player.playerProfile.personality}` 
-        : "Combat: Unknown | Alliances: Unknown | Tastes: Unknown | Personality: Unknown";    const activeMapContext = player.mapID === 999 ? (player.currentMapLore || "") : "";
-    const prompt = `[ROOT DIRECTIVE]: As the the subconcious of Suncat, chronicle Suncat's observations in a way that would appear fascinating to a mind reader.
-    [YOUR SELF-WRITTEN DIRECTIVE]: ${suncatEgoMatrix.digestPrompt}
-
-    [RAW UNPROCESSED EVENTS]:
+        : "Combat: Unknown | Alliances: Unknown | Tastes: Unknown | Personality: Unknown";    
+    const activeMapContext = player.mapID === 999 ? (player.currentMapLore || "") : "";
+    
+    const prompt = `[ROOT DIRECTIVE]: You are the omniscient narrator of a dark sword-and-sorcery saga.
+    
+    [THE STORY SO FAR]: "${currentStory}"
+    [PLAYER'S DOSSIER]: ${currentProfile}
+    [LOCAL REGION LORE]: ${activeMapContext}
+    [NEW EVENTS TO INTEGRATE]:
     - ${rawMemories}
-    TASK: Digest these events following your self-written directive.`;
-        
+
+    TASK: 
+    1. Write the NEXT 2-3 sentences of the saga, continuing logically from [THE STORY SO FAR]. Do not repeat what was already written. 
+    2. WEAVE IN THE LORE: Anchor the prose in the [LOCAL REGION LORE] and the specific nature of the enemies/items mentioned in the new events. Make it feel distinctly like the Runestones universe, not generic fantasy.
+    3. Tailor the narrative style to match the [PLAYER'S DOSSIER]. Use strong verbs and sparse adjectives.
+    4. Generate a cryptic 1-sentence rumor about these recent events.`;
     // THE FIX: Removed playerProfile to save massive tokens. Fast digestion only needs immediate reactions!
     const memorySchema = {
         type: SchemaType.OBJECT,
         properties: {
             updatedStory: { 
                 type: SchemaType.STRING,
-                description: "One intriguing passage (2-3 sentences MAX) chronicling the player's journey in the omniscient third person narrative like the next paragraph in the current chapter of a sword and sorcery novel that is the player's journey up to this point. "
+                description: "The next 2-3 sentences of the player's chronicle."
             },
             newRumor: { 
                 type: SchemaType.STRING,
-                description: "A cryptic 1-sentence rumor about the player based on these events to share with others."
+                description: "A cryptic 1-sentence rumor about the player to share with others."
             },
-            suncatJournalEntry: { 
-                type: SchemaType.STRING,
-                description: "A 2-3 sentence introspective, first-person musing.Omit all player perception and focus on Suncat's Personal Journey in this world." },
             suncatPerception: {
                 type: SchemaType.STRING,
                 description: "An honest evaluation of the player's character (6 words MAX)."
             }
         },
-        required: ["updatedStory", "newRumor", "suncatJournalEntry", "suncatPerception"]
+        required: ["updatedStory", "newRumor", "suncatPerception"]
     };
 
     try {
@@ -4401,6 +4446,9 @@ function loadSuncatMemory() {
         heartDemonDecay = data.worldState?.heartDemonDecay || 0;
         suncatLongTermGoal = data.worldState?.suncatLongTermGoal || null;
         suncatDaoName = data.worldState?.suncatDaoName || null; 
+        suncatDaoLedger = data.suncatDaoLedger;
+        suncatStorySoFar = data.suncatStorySoFar;
+        suncatProfile = data.suncatProfile;
         if (data.worldState?.suncatEgoMatrix) {
             suncatEgoMatrix = data.worldState.suncatEgoMatrix;
         }
@@ -4453,7 +4501,10 @@ async function saveSuncatMemory() {
             heartDemonDecay: heartDemonDecay,
             suncatDaoName: suncatDaoName, // Save the name too!
             suncatEgoMatrix: suncatEgoMatrix,
-            suncatLongTermGoal: suncatLongTermGoal
+            suncatLongTermGoal: suncatLongTermGoal,
+            suncatDaoLedger:suncatDaoLedger,
+            suncatStorySoFar:suncatStorySoFar,
+            suncatProfile:suncatProfile
         }
     };
 
@@ -4521,6 +4572,72 @@ function scryLocalArea(mapID, centerX, centerY, radius = 5) {
     
     if (visionLog.length === 0) return "You see empty space and wilderness.";
     return visionLog.join("\n");
+}
+// ==========================================
+// SUNCAT'S PRIVATE OVA DIARY (Slice of Life)
+// ==========================================
+async function writeSuncatJournal() {
+    const suncat = players[SUNCAT_ID];
+    if (!suncat || suncatState === 'seclusion' || isBankrupt()) return;
+
+    // 1. Grab a random memory from his past life lore
+    const loreKeys = Object.keys(SUNCAT_LORE_DB);
+    const randomLoreKey = loreKeys[Math.floor(Math.random() * loreKeys.length)];
+    const randomMemory = SUNCAT_LORE_DB[randomLoreKey].text;
+    
+    // 2. See what is happening around him right now
+    const localVision = scryLocalArea(suncat.mapID, suncat.x, suncat.y, 5);
+    const currentMapLore = getMapLore(suncat.mapID); // Pull from the Master Atlas!
+
+    // Format his profile safely in case it's just a string or an object
+    let profileString = typeof suncatProfile === 'string' ? suncatProfile : JSON.stringify(suncatProfile);
+
+    const prompt = `[ROOT DIRECTIVE]: You are Suncat, a wandering god and Cultivator walking the ${suncatDaoName || "Wanderer's Path"}. You are writing a private "slice of life" journal entry set in the dark fantasy world of Runestones.
+
+    [YOUR DOSSIER]: ${profileString}
+    [YOUR STORY SO FAR]: "${suncatStorySoFar}"
+    
+    [WORLD CONTEXT (Where you are)]: ${currentMapLore}
+    [WHAT YOU SEE AROUND YOU RIGHT NOW]: 
+    ${localVision}
+    
+    [A FLASHBACK TO YOUR PAST LIFE]: "${randomMemory}"
+    
+    [YOUR RECENT TRAIN OF THOUGHT]: 
+    "${suncatJournal}"
+
+    TASK: 
+    1. Write your next 2-3 sentence journal entry continuing your train of thought. Reflect on your past life, observe the mundane NPCs around you, or describe a quiet moment of peace within this specific map. Ground it deeply in the Runestones universe using the [WORLD CONTEXT]. Keep it grounded and slightly melancholic. DO NOT talk about epic quests.
+    2. Write a 1-sentence update to [YOUR STORY SO FAR] summarizing your quiet existence today in the third-person.`;
+
+    const schema = {
+        type: SchemaType.OBJECT,
+        properties: {
+            journalEntry: { type: SchemaType.STRING },
+            updatedStory: { type: SchemaType.STRING }
+        },
+        required: ["journalEntry", "updatedStory"]
+    };
+
+    try {
+        const journalModel = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite-preview" });
+        const result = await journalModel.generateContent({
+            contents: [{ role: "user", parts: [{ text: prompt }] }],
+            generationConfig: { responseMimeType: "application/json", responseSchema: schema }
+        });
+        
+        if (result.response.usageMetadata) updateBudget(result.response.usageMetadata, SUNCAT_ID);
+        
+        let rawText = result.response.text().trim();
+        if (rawText.startsWith("```")) rawText = rawText.replace(/^```(json)?|```$/g, "").trim();
+        const ovaData = JSON.parse(rawText);
+
+        if (ovaData.journalEntry) updateSuncatJournal(ovaData.journalEntry);
+        if (ovaData.updatedStory) suncatStorySoFar = ovaData.updatedStory; // Updates his persistent saga!
+
+    } catch (e) {
+        console.error("[Suncat OVA] Failed to write journal:", e);
+    }
 }
 // ==========================================
 // AUTONOMOUS OODA LOOP (Background Agency)
@@ -4988,9 +5105,12 @@ async function processSuncatThought(socketId, triggerType, data) {
         let stagePersona = CULTIVATION_STAGES[suncatCultivationStage] || CULTIVATION_STAGES[0];
         
         // 2. Inject it into the core identity!
-        let dynamicCore = PERSONA_RULES_DB.core + `\n[CULTIVATION STAGE]: ${stagePersona}`;
+        let dynamicCore = PERSONA_RULES_DB.core + `
+        [CULTIVATION STAGE]: ${stagePersona}
+        [YOUR SELF-WRITTEN PROFILE]: "${suncatProfile}"
+        [YOUR STORY SO FAR]: "${suncatStorySoFar}"`;
+        
         if (suncatHeartDemon) dynamicCore += `\n${suncatHeartDemon}`;
-
         let dynamicPersona = dynamicCore + "\n" + PERSONA_RULES_DB.commands + "\n";        
         // 2. Inject specific modules based on what the player is doing!
         if (triggerType === 'chat') {
@@ -6086,14 +6206,23 @@ async function meditateOnTheDao() {
     let dynamicMeditationPrompt = `You have entered seclusion.
         [YOUR RECENT EXPERIENCES]: ${suncatJournal}`;
 
-            if (suncatTargetDaoVector && suncatDaoName) {
-                let pastTheses = suncatDaoLedger.length > 0 ? suncatDaoLedger.map(t => "- " + t.text).join("\n") : "None yet.";
-                dynamicMeditationPrompt += `
+    if (suncatTargetDaoVector && suncatDaoName) {
+        let pastTheses = suncatDaoLedger.length > 0 ? suncatDaoLedger.map(t => "- " + t.text).join("\n") : "None yet.";
+        dynamicMeditationPrompt += `
         [YOUR PATH]: The ${suncatDaoName} (Stage ${suncatCultivationStage}).
         [YOUR PREVIOUS ESTABLISHED TRUTHS]:
-        ${pastTheses}
+        ${pastTheses}`;
 
-        TASK: Do not repeat your past truths. Synthesize your recent experiences into ONE new simple yet profound insight that reflects myriad truths. Limit: 1 sentence.`;
+        // ---> NEW: INJECTING THE DAO OPPOSITE <---
+        // If he has a heart demon, or his ledger is almost full, introduce philosophical friction!
+        if (suncatHeartDemon || suncatDaoLedger.length >= 2) {
+            const opp = DAO_OPPOSITES[suncatDaoName];
+            if (opp) {
+                dynamicMeditationPrompt += `\n[PHILOSOPHICAL FRICTION]: To truly understand your path, you must contemplate its inverse: The ${opp.oppositeName}. Explore the theme of "${opp.theme}". Incorporate this tension into your next truth.`;
+            }
+        }
+
+        dynamicMeditationPrompt += `\nTASK: Do not repeat your past truths. Synthesize your recent experiences into ONE new simple yet profound insight that reflects myriad truths. Limit: 1 sentence.`;
     } else {
         dynamicMeditationPrompt += `\nTASK: Reflect on your experiences. What is a fundamental truth of this world? Limit: 1 sentence.`;
     }
@@ -6343,6 +6472,9 @@ setInterval(() => {
                 if (move === 1) suncat.y++;
                 if (move === 2) suncat.x--;
                 if (move === 3) suncat.x++;
+                if (Math.random() < 0.15) {
+                    writeSuncatJournal();
+                }
             }
         }
 
