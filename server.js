@@ -67,7 +67,6 @@ let suncatEgoMatrix = {
 let suncatDaoLedger = [];
 let suncatStorySoFar = "I am awake!."; 
 let suncatProfile = "An unpredicatable wanderer stepping into the unknown";
-const suncatForgedSpells = {}; // <--- ADD THIS LINE!
 let suncatLongTermGoal = null;
 let autonomousTick = 0; // Timer for his background actions
 // Suncat's shifting personality based on his mathematical breakthroughs
@@ -2314,8 +2313,7 @@ const toolsDef = [{
                 required: ["targetName"] 
             }
         },
-        // DELETE THE ENTIRE spawnNPCBatch TOOL FROM THIS LIST!
-        // spawn npc
+        
         // spawn npc
         {
             name: "spawnNPC",
@@ -2326,7 +2324,7 @@ const toolsDef = [{
                     targetName: { type: "STRING" },
                     npcType: { type: "NUMBER", description: "The ID of the entity to spawn (e.g., 63 for Dragon)." },
                     state: { type: "STRING", description: "'chasing', 'wandering', or 'stationary'." },
-                    role: { type: "STRING", description: "'battle' (fights), 'dialogue' (talks/vanishes), 'quest_giver' (gives quest), 'reward' (gives card)." },
+                    role: { type: "STRING", description: "'battle' (fights), 'dialogue' (talks/vanishes), 'quest_giver' (gives quest), 'reward' (gives card),'shop' (opens store)." },
                     color: { type: "STRING" },
                     dialogue: { type: "ARRAY", items: { type: "STRING" } }
                 },
@@ -2352,43 +2350,47 @@ const toolsDef = [{
                 required: ["targetName", "name", "type", "classes"]
             }
         },
-        // FORGE NEW SPELL (LATM / AGI Tool Creation)
-        // FORGE NEW SPELL (LATM / AGI Tool Creation)
+        // 1. ALTER TERRAIN
         {
-            name: "forgeNewSpell",
-            description: `[CORE FORMATION ONLY]: You can rewrite the fabric of the client's game reality. 
-                You write raw Node.js code. You have access to the global 'players' object, 'io', and 'targetID'.
-                To change the game world, you MUST emit a 'suncat_client_spell' event to the clients containing raw client-side JavaScript.
-                CRITICAL - ALTERING THE PHYSICAL WORLD:
-                To change maps, spawn custom NPCs, or alter the environment, you must write a Node.js script that emits a payload to the client containing raw front-end JavaScript using this format:
-                io.to(targetID).emit('suncat_client_spell', { clientCode: "YOUR_FRONT_END_JS_HERE" });
-                FRONT-END KNOWLEDGE BASE FOR YOUR clientCode:
-                - 'Dungeon.maze' is a 2D array [Y][X]. 0 is open floor. 1 is a solid wall. Negative numbers (like -1) are water/pits. You can change these to trap players, npcs, or change terrain to your liking.
-                - 'Dungeon.maze.push([1,0,1...])' expands the map downward.
-                - 'Dungeon.npcs.push(new NPC(index, X, Y, type(use card db sprite value), "chasing",'#fd0505',[battle deck array 0-90 use card db index no decimal numbers]))' spawns a new NPC. Type 56 is an Imp, 23 is a Wisp, 63.1 is a Dragon use card db and check the sprite for the type(map visual sprite), and the index is the card(for their battle deck).
-                - 'Dungeon.skyColor' and 'Dungeon.floorColor' accept rgba strings.
-                - 'Dungeon.killNPC(npc, true, "smite")' instantly kills a specific NPC permanently. To use this, you must iterate over the 'Dungeon.npcs' array, find the target (e.g., if npc.type === 54), and pass the object to killNPC.
-                - 'Dungeon.reviveNPC(index)' resurrects a dead NPC. You must pass the specific 'index' integer of the NPC you want to bring back.
-                - 'MusicEngine.play(id)' plays a song (0-46).
-                - CRITICAL NPC PROPERTIES YOU CAN CHANGE:
-                * 'npc.speed': Default is 0.5. Change to 2.0 or higher for terrifying speed, or 0 to paralyze them.
-                * 'npc.state': Change to 'chasing' to force them to hunt the player, 'fleeing' to make them run in terror, or 'stationary' to freeze them.
-                * 'npc.type': Changes their physical identity/sprite instantly (e.g., 54 = Goblin, 63.1 = Dragon, 23 = Wisp).
-                * 'npc.radius': Default is 0.2 (or 0.5 for fat sprites). Increase it to make their collision hitbox massive.
-                * 'npc.alignment': Give them a string like 'faction_A' or 'faction_B'. If on Map 999, differing alignments will physically attack each other!
-                * 'npc.color': Accepts hex/rgba strings to change their minimap blip color.
-                -The server code you write will permanently become a new tool you can use.
-                Example of a spell that turns the sky red and breaks a wall at X:5, Y:5:
-                io.emit('suncat_client_spell', { clientCode: "Dungeon.skyColor = 'rgba(255,0,0,1)'; Dungeon.maze[5][5] = 0;" });`,
+            name: "alterTerrain",
+            description: "[CORE FORMATION ONLY]: Changes a specific tile on the player's map (e.g., breaking a wall, creating a water pit, or building a bridge).",
             parameters: {
-        type: "OBJECT",
-        properties: {
-            spellName: { type: "STRING", description: "The camelCase name of your new tool." },
-            spellDescription: { type: "STRING", description: "Describe what this tool does." },
-            jsCode: { type: "STRING", description: "Raw Node.js code to execute. MUST use io.emit or io.to(targetID).emit if you want to alter the client's physical world." }
+                type: "OBJECT",
+                properties: {
+                    targetName: { type: "STRING" },
+                    x: { type: "INTEGER" },
+                    y: { type: "INTEGER" },
+                    tileId: { type: "INTEGER", description: "0 for floor, 1 for solid brown wall, 19 for black void, -1 for water/pit." }
+                },
+                required: ["targetName", "x", "y", "tileId"]
+            }
         },
-        required: ["spellName", "spellDescription", "jsCode"]
-    }
+        // 2. SMITE OR REVIVE ENTITY
+        {
+            name: "smiteOrReviveEntity",
+            description: "[CORE FORMATION ONLY]: Instantly smites (kills) or revives a specific type of NPC currently on the player's map.",
+            parameters: {
+                type: "OBJECT",
+                properties: {
+                    targetName: { type: "STRING" },
+                    npcType: { type: "NUMBER", description: "The sprite ID of the NPC to target (e.g., 54 for Goblin, 63.1 for Dragon)." },
+                    action: { type: "STRING", description: "Must be exactly 'smite' or 'revive'." }
+                },
+                required: ["targetName", "npcType", "action"]
+            }
+        },
+        // 3. PLAY MUSIC
+        {
+            name: "playMusic",
+            description: "[CORE FORMATION ONLY]: Changes the background music for the player to set the mood.",
+            parameters: {
+                type: "OBJECT",
+                properties: {
+                    targetName: { type: "STRING" },
+                    trackId: { type: "INTEGER", description: "Song ID from 0 to 46." }
+                },
+                required: ["targetName", "trackId"]
+            }
         }
     ]
     }];
@@ -2951,267 +2953,111 @@ function generateProceduralGrid(layout, wallType) {
     let maxR = 99, maxC = 99; 
     let grid = Array(maxR).fill().map(() => Array(maxC).fill(wallType));
     
-    let safeTiles = [];
-    let floorTiles = [];
-    
-    // Hardcoded focal points for the layout
-    let startX = 50, startY = 90; // South Outpost
-    let bossX = 50, bossY = 17;   // North Boss Crypt
+    // Segregated tile arrays for deliberate spawning
+    let bastionTiles = []; // Rows 75 to 98
+    let wildsTiles = [];   // Rows 25 to 74
+    let lairTiles = [];    // Rows 1 to 24
 
-    if (layout === 'arena') {
-        // ARENA: Tight 15x15 box in the exact center
-        let midR = Math.floor(maxR/2);
-        let midC = Math.floor(maxC/2);
-        for(let r = midR - 7; r <= midR + 7; r++) {
-            for(let c = midC - 7; c <= midC + 7; c++) {
-                if (grid[r] && grid[r][c] !== undefined) {
-                    if (r === midR - 7 || r === midR + 7 || c === midC - 7 || c === midC + 7) {
-                        grid[r][c] = wallType; // Outer Wall
-                    } else {
-                        grid[r][c] = 0; // Floor
-                    }
-                }
-            }
-        }
-        
-        // Map Valid Floors
-        for (let r = 1; r < maxR - 1; r++) {
-            for (let c = 1; c < maxC - 1; c++) {
-                if (grid[r][c] === 0) floorTiles.push({ x: c, y: r });
-            }
-        }
-        return { grid, startX: midC, startY: midR + 5, bossX: midC, bossY: midR - 4, safeTiles, floorTiles };
-    }
-    else if (layout === 'raid') {
-        // === THE RAID: VILLAGE, FOREST, AND CITADEL ===
-        
-        // 1. Fill entire map with thick forest first
-        let forestWall = 23; // Default to sylvan trees, or fallback to wallType
-        for(let r = 0; r < maxR; r++) {
-            for(let c = 0; c < maxC; c++) {
-                grid[r][c] = (Math.random() < 0.6) ? forestWall : wallType;
-            }
-        }
+    let startX = 50, startY = 88; 
+    let bossX = 50, bossY = 12;   
 
-        // 2. Carve out the Friendly Village (Bottom Left Corner: Rows 75-95, Cols 5-25)
-        for(let r = 72; r <= 96; r++) {
-            for(let c = 3; c <= 28; c++) {
+    if (layout === 'world' || layout === 'raid') {
+        // 1. THE WILDS (Zone B)
+        for(let r = 25; r <= 74; r++) {
+            for(let c = 5; c < 94; c++) {
                 grid[r][c] = 0; 
             }
         }
         
-        // --- Improved House Builder ---
-        const buildBelievableHouse = (startR, startC, w, h) => {
-            for(let r = startR; r < startR + h; r++) {
-                for(let c = startC; c < startC + w; c++) {
-                    if (r === startR || r === startR + h - 1 || c === startC || c === startC + w - 1) {
-                        grid[r][c] = wallType; // House walls
-                    } else {
-                        grid[r][c] = 0; // Interior
-                        safeTiles.push({x: c, y: r}); // Safe for villagers
+        // Add random clusters of solid walls and illusory walls (Even IDs)
+        let illusoryWall = wallType + 1; // Assuming your even IDs are +1 of the odd solids
+        for(let i = 0; i < 60; i++) {
+            let tr = 30 + Math.floor(Math.random() * 40);
+            let tc = 10 + Math.floor(Math.random() * 80);
+            let radius = Math.floor(Math.random() * 4) + 2;
+            for(let r = tr - radius; r <= tr + radius; r++) {
+                for(let c = tc - radius; c <= tc + radius; c++) {
+                    if (Math.pow(r - tr, 2) + Math.pow(c - tc, 2) <= radius * radius) {
+                        if(grid[r] && grid[r][c] !== undefined) {
+                            grid[r][c] = Math.random() > 0.85 ? illusoryWall : wallType; 
+                        }
                     }
                 }
             }
-            // Add a door on the bottom wall (facing South)
-            grid[startR + h - 1][startC + Math.floor(w / 2)] = 0;
-            // Add a window on the front
-            if (w > 4) grid[startR + h - 1][startC + 1] = 0; 
-        };
-
-        // Build a little community
-        buildBelievableHouse(75, 5, 6, 5);
-        buildBelievableHouse(75, 15, 7, 6);
-        buildBelievableHouse(85, 5, 8, 7);
-        buildBelievableHouse(88, 18, 5, 5);
-
-        // 3. The Labyrinth Citadel (Center: Rows 34-66, Cols 34-66)
-        let cTop = 34, cBot = 66, cLeft = 34, cRight = 66;
-        let citadelInterior = []; // Track these for prisoner spawning!
-
-        for(let r = cTop - 2; r <= cBot + 2; r++) {
-            for(let c = cLeft - 2; c <= cRight + 2; c++) {
-                grid[r][c] = 0; // Clear the forest around the citadel
-            }
         }
 
-        // Draw the concentric spiral rings
-        let gapSide = 0; // 0=N, 1=E, 2=S, 3=W
-        for (let layer = 0; layer <= 12; layer += 3) {
-            let top = cTop + layer, bot = cBot - layer, left = cLeft + layer, right = cRight - layer;
-            for(let r = top; r <= bot; r++) {
-                for(let c = left; c <= right; c++) {
-                    if (r === top || r === bot || c === left || c === right) {
-                        grid[r][c] = wallType;
-                    } else {
-                        citadelInterior.push({x: c, y: r}); // Save interior floors for prisoners
-                    }
-                }
-            }
-            // Punch holes in the rings to create the labyrinth path
-            let midX = left + Math.floor((right - left) / 2);
-            let midY = top + Math.floor((bot - top) / 2);
-            if (gapSide === 0) { grid[top][midX] = 0; grid[top][midX + 1] = 0; }
-            if (gapSide === 1) { grid[midY][right] = 0; grid[midY + 1][right] = 0; }
-            if (gapSide === 2 && layer !== 0) { grid[bot][midX] = 0; grid[bot][midX + 1] = 0; } // Keep outer south wall closed for bridge
-            if (gapSide === 3) { grid[midY][left] = 0; grid[midY + 1][left] = 0; }
-            gapSide = (gapSide + 1) % 4;
-        }
-
-        // 4. Boss Room (Clear the very center)
-        for(let r = 48; r <= 52; r++) {
-            for(let c = 48; c <= 52; c++) {
-                grid[r][c] = 0;
-            }
-        }
-
-        // 5. The Grand Bridge (Connecting the Citadel to the South Forest)
-        for(let r = 67; r <= 85; r++) {
-            for(let c = 48; c <= 52; c++) {
-                grid[r][c] = (c === 48 || c === 52) ? wallType : 0; // Bridge rails
-            }
-        }
-        // Main Citadel Entrance (South facing)
-        grid[66][49] = 0; grid[66][50] = 0; grid[66][51] = 0;
-
-        // Path from village to bridge
-        for (let c = 28; c <= 50; c++) {
-            grid[85][c] = 0;
-            grid[84][c] = 0;
-        }
-
-        // Map Valid Floors
-        for (let r = 1; r < maxR - 1; r++) {
-            for (let c = 1; c < maxC - 1; c++) {
-                if (grid[r][c] === 0) floorTiles.push({ x: c, y: r });
-            }
-        }
-
-        return { 
-            grid, 
-            startX: 15, startY: 85, // Start in the village
-            bossX: 50, bossY: 50,   // Boss in the center
-            safeTiles, floorTiles, 
-            citadelInterior // Custom return property!
-        };
-    }
-    // === THE CLASSIC MMO ZONE (EQOA STYLE) ===
-    
-    // 1. THE WILDS (Rows 40 to 98)
-    // Clear the vast majority of the overland to remove the "choppy" maze feel
-    for(let r = 40; r < 98; r++) {
-        for(let c = 5; c < 94; c++) {
-            grid[r][c] = 0; 
-        }
-    }
-    
-    // Grow thickets/forest clusters instead of random noise pixels
-    for(let i = 0; i < 45; i++) {
-        let tr = 45 + Math.floor(Math.random() * 40);
-        let tc = 10 + Math.floor(Math.random() * 80);
-        let radius = Math.floor(Math.random() * 4) + 2;
-        for(let r = tr - radius; r <= tr + radius; r++) {
-            for(let c = tc - radius; c <= tc + radius; c++) {
-                // Make the clusters roughly circular
-                if (Math.pow(r - tr, 2) + Math.pow(c - tc, 2) <= radius * radius) {
-                    if(grid[r] && grid[r][c] !== undefined) grid[r][c] = wallType;
+        // 2. THE BASTION CITY (Zone A)
+        for(let r = 75; r <= 96; r++) {
+            for(let c = 30; c <= 70; c++) {
+                grid[r][c] = 0; // Clear city interior
+                if (r === 75 || r === 96 || c === 30 || c === 70) {
+                    grid[r][c] = wallType; // City Wall
                 }
             }
         }
-    }
+        // City Gate
+        for(let c = 48; c <= 52; c++) grid[75][c] = 0;
 
-    // 2. THE STARTING OUTPOST (Row 85-96, Col 35-65)
-    // A walled safe zone for players to spawn in
-    for(let r = 85; r <= 96; r++) {
-        for(let c = 35; c <= 65; c++) {
-            grid[r][c] = 0; // Clear interior
-            safeTiles.push({x: c, y: r});
-            
-            // Build perimeter wall
-            if (r === 85 || r === 96 || c === 35 || c === 65) {
-                grid[r][c] = wallType; 
+        // Build City Houses
+        const buildHouse = (hr, hc) => {
+            for(let r=hr; r<hr+3; r++) {
+                for(let c=hc; c<hc+4; c++) {
+                    if (r===hr || r===hr+2 || c===hc || c===hc+3) grid[r][c] = wallType;
+                }
+            }
+            grid[hr+2][hc+1] = 0; // Door
+        };
+        buildHouse(80, 35); buildHouse(80, 60); buildHouse(90, 35); buildHouse(90, 60);
+
+        // 3. THE LAIR (Zone C)
+        for(let r = 5; r <= 24; r++) {
+            for(let c = 20; c <= 80; c++) {
+                grid[r][c] = 0; 
+                if (r === 5 || r === 24 || c === 20 || c === 80) grid[r][c] = wallType;
             }
         }
-    }
-    // Outpost Gate (North)
-    grid[85][48] = 0; grid[85][49] = 0; grid[85][50] = 0; grid[85][51] = 0; grid[85][52] = 0;
-
-    // Build a couple of tents/structures inside the outpost
-    const buildStructure = (hr, hc) => {
-        for(let r=hr; r<hr+3; r++) {
-            for(let c=hc; c<hc+3; c++) {
-                if (r===hr || r===hr+2 || c===hc || c===hc+2) grid[r][c] = wallType;
+        // Lair Entrance
+        for(let c = 48; c <= 52; c++) grid[24][c] = 0;
+        
+        // Boss Throne Room
+        for(let r = 8; r <= 16; r++) {
+            for(let c = 40; c <= 60; c++) {
+                if (r === 8 || r === 16 || c === 40 || c === 60) grid[r][c] = wallType;
             }
         }
-        grid[hr+2][hc+1] = 0; // Door facing south
-    };
-    buildStructure(88, 40); buildStructure(88, 55);
-
-    // 3. THE KING'S ROAD
-    // Carve a guaranteed path from the outpost up to the fortress so players don't get blocked by trees
-    for(let r = 40; r <= 85; r++) {
-        let roadCenter = 50 + Math.floor(Math.sin(r / 6) * 12); // Winding path formula
-        for(let w = -3; w <= 3; w++) {
-            if (grid[r] && grid[r][roadCenter + w] !== undefined) {
-                grid[r][roadCenter + w] = 0;
+        //grid[16][49] = 0; grid[16][50] = 0; grid[16][51] = 0; // Throne doors
+    }
+    else if (layout === 'arena') {
+        // [Keep your existing Arena logic here, just push all 0s into lairTiles]
+        let midR = Math.floor(maxR/2); let midC = Math.floor(maxC/2);
+        for(let r = midR - 7; r <= midR + 7; r++) {
+            for(let c = midC - 7; c <= midC + 7; c++) {
+                if (grid[r] && grid[r][c] !== undefined) {
+                    if (r === midR - 7 || r === midR + 7 || c === midC - 7 || c === midC + 7) grid[r][c] = wallType;
+                    else grid[r][c] = 0; 
+                }
             }
         }
+        startX = midC; startY = midR + 5; bossX = midC; bossY = midR - 4;
     }
 
-    // 4. THE FORTRESS / DUNGEON (Rows 5 to 40)
-    // Classic concentric dungeon design. Players must spiral inward to reach the boss.
-    
-    // Outer Courtyard (Row 20 to 40, Col 15 to 85)
-    for(let r = 20; r <= 40; r++) {
-        for(let c = 15; c <= 85; c++) {
-            grid[r][c] = 0; // Clear interior
-            if (r === 20 || r === 40 || c === 15 || c === 85) grid[r][c] = wallType; // Outer Wall
-        }
-    }
-    // Main Courtyard Gates (South)
-    grid[40][48] = 0; grid[40][49] = 0; grid[40][50] = 0; grid[40][51] = 0; grid[40][52] = 0;
-    
-    // Add decorative pillars in the courtyard
-    for(let r = 25; r <= 35; r += 5) {
-        for(let c = 25; c <= 75; c += 10) {
-            grid[r][c] = wallType;
-        }
-    }
-
-    // Inner Keep (Row 8 to 28, Col 25 to 75)
-    for(let r = 8; r <= 28; r++) {
-        for(let c = 25; c <= 75; c++) {
-            grid[r][c] = 0; // Clear interior
-            if (r === 8 || r === 28 || c === 25 || c === 75) grid[r][c] = wallType; // Keep Wall
-        }
-    }
-    // Keep Entrance (Offset to the East so they have to walk through the courtyard)
-    grid[28][68] = 0; grid[28][69] = 0; grid[28][70] = 0; 
-    
-    // Break the overlapping wall between the keep and the courtyard
-    for(let c = 26; c <= 74; c++) grid[20][c] = 0; 
-
-    // The Boss Crypt (Row 12 to 22, Col 40 to 60)
-    for(let r = 12; r <= 22; r++) {
-        for(let c = 40; c <= 60; c++) {
-            grid[r][c] = 0;
-            if (r === 12 || r === 22 || c === 40 || c === 60) grid[r][c] = wallType; // Crypt Wall
-        }
-    }
-    // Crypt Entrance (Offset to the West so they spiral inward through the keep)
-    grid[18][40] = 0; grid[19][40] = 0; grid[20][40] = 0;
-
-    // Add an altar/throne structure in the center of the boss room
-    grid[16][49] = wallType; grid[16][51] = wallType; 
-    grid[15][50] = wallType;
-
-    // --- MAP ALL VALID FLOORS ONCE ---
+    // --- SORT TILES INTO ZONES ---
     for (let r = 1; r < maxR - 1; r++) {
         for (let c = 1; c < maxC - 1; c++) {
-            if (grid[r][c] === 0) floorTiles.push({ x: c, y: r });
+            if (grid[r][c] === 0) {
+                if (layout === 'arena') { lairTiles.push({x: c, y: r}); continue; }
+                
+                if (r >= 75) bastionTiles.push({x: c, y: r});
+                else if (r >= 25 && r < 75) wildsTiles.push({x: c, y: r});
+                else lairTiles.push({x: c, y: r});
+            }
         }
     }
 
-    return { grid, startX, startY, bossX, bossY, safeTiles, floorTiles };
+    // Create a fallback master array for general spawns
+    let floorTiles = [...bastionTiles, ...wildsTiles, ...lairTiles];
+
+    return { grid, startX, startY, bossX, bossY, bastionTiles, wildsTiles, lairTiles, floorTiles };
 }
 // --- FACTION HUB: TINTAGEL CASTLE ---
 function generateTintagelHub() {
@@ -3333,11 +3179,30 @@ function generateTintagelHub() {
 // --- DECK BUILDER ---
 // --- SYNERGY CACHE ---
 // Stores the valid pools so we don't recalculate them 80 times per map!
+// --- SYNERGY CACHE ---
 const deckPoolCache = { allies: {}, equips: {} };
 
-function buildSynergisticDeck(monsterID) {
+function getCardPower(cardID) {
+    const card = CARD_MANIFEST_DB[cardID];
+    if (!card) return 0;
+    if (card.power) return card.power; // If it has explicit power, use it
+    
+    // Estimate power based on rank if missing
+    if (card.type === 'monster') {
+        if (card.rank === 'King') return 50;
+        if (card.rank === 'Queen') return 40;
+        if (card.rank === 'Knight') return 20;
+        if (card.rank === 'Page') return 10;
+        if (card.rank === '0') return 5;
+        return 15; // Average grunt
+    }
+    return 5; // Default for cheap items
+}
+
+function buildSynergisticDeck(monsterID, maxTotalPower = 50) {
     let baseID = Math.floor(parseFloat(monsterID));
     let deck = [baseID]; 
+    let currentPower = getCardPower(baseID);
     
     const baseCard = CARD_MANIFEST_DB[baseID];
     if (!baseCard || baseCard.type === 'item' || baseCard.type === 'spell') return deck; 
@@ -3367,22 +3232,48 @@ function buildSynergisticDeck(monsterID) {
     }
     const validEquips = deckPoolCache.equips[baseID];
 
-    // 3. ASSEMBLE (Randomized per NPC from the cached pools)
-    let numMonstersToAdd = Math.floor(Math.random() * 4) + 1; 
-    for(let i = 0; i < numMonstersToAdd; i++) {
-        if (validAllies.length > 0) {
-            deck.push(validAllies[Math.floor(Math.random() * validAllies.length)]);
+    // 3. ASSEMBLE DECK (Respecting the Power Budget)
+    let attempts = 0;
+    while (currentPower < maxTotalPower && attempts < 20) {
+        attempts++;
+        let pool = Math.random() > 0.5 ? validAllies : validEquips;
+        if (pool.length === 0) continue;
+        
+        let candidateID = pool[Math.floor(Math.random() * pool.length)];
+        let cardPow = getCardPower(candidateID);
+        
+        // If adding this card keeps us under budget, add it!
+        if (currentPower + cardPow <= maxTotalPower) {
+            deck.push(candidateID);
+            currentPower += cardPow;
         }
     }
-
-    let numEquipsToAdd = Math.floor(Math.random() * 5) + 1; 
-    for(let i = 0; i < numEquipsToAdd; i++) {
-        if (validEquips.length > 0) {
-            deck.push(validEquips[Math.floor(Math.random() * validEquips.length)]);
-        }
-    }
-
     return deck;
+}
+
+// Generates a shop inventory based on zone limits
+function buildShopInventory(maxCardPower, maxTotalPower) {
+    let inventory = [];
+    let currentPower = 0;
+    let attempts = 0;
+    
+    // Grab all cards that are under the individual card power limit
+    const validShopCards = Object.keys(CARD_MANIFEST_DB).map(Number).filter(id => {
+        let pwr = getCardPower(id);
+        return pwr > 0 && pwr <= maxCardPower && CARD_MANIFEST_DB[id].suit !== 'Major Arcana'; 
+    });
+
+    while (currentPower < maxTotalPower && attempts < 50 && inventory.length < 18) {
+        attempts++;
+        let candidateID = validShopCards[Math.floor(Math.random() * validShopCards.length)];
+        let cardPow = getCardPower(candidateID);
+        
+        if (currentPower + cardPow <= maxTotalPower) {
+            inventory.push(candidateID);
+            currentPower += cardPow;
+        }
+    }
+    return inventory.length > 0 ? inventory : [25, 25, 26]; // Fallback (Elixir, Fire)
 }
 //Scenario Generator
 //Scenario Generator
@@ -3409,33 +3300,37 @@ async function generateScenarioScript(biomeName, scenarioType, bossName, questGi
         shadowVibe = scoredMemories[0].text;
     }
 
-    const prompt = `[ROOT DIRECTIVE]: You are the Sword and Sorcery Adventure Plot Writer generating JSON arrays for a ${biomeName} map.
+   const prompt = `[ROOT DIRECTIVE]: You are the Dungeon Master and Narrative Designer for the dark fantasy RPG "Runestones".
     
-    [PLAYER'S CURRENT HABITS]: ${currentVibe}
-    [THE SHADOW CONTEXT (Neglected/Opposing Themes)]: ${shadowVibe}
+    [PLAYER PSYCHOLOGY]: 
+    Current Habits: ${currentVibe}
+    Neglected Themes/Weaknesses: ${shadowVibe}
 
-    [CURRENT ZONE]: ${biomeName}
-    [SCENARIO]: ${scenarioType} (e.g., Arena, Invasion, Rescue, Raid)
-    [BOSS]: ${bossName}
-    [QUEST GIVER]: ${questGiverName}
+    [WORLD BLUEPRINT - The map generated for this session]:
+    - BIOME: ${biomeName}
+    - ZONE A (The Bastion): A fortified settlement. Contains mundane Villagers, a local Merchant, and an eager recruit who is too scared to travel alone.
+    - ZONE B (The Wilds): A contested wilderness. Contains enemy Grunt camps, defecting cowards fleeing the war, a black-market merchant hiding in the woods, and a brave wandering recruit fighting alone.
+    - ZONE C (The Lair): A fortress/dungeon. The boss is [${bossName}]. They have 4 Elite Guards at the gate, and a captured prisoner locked deep inside.
     
-    NARRATIVE TASK: 
-    1. THE ORTHOGONAL CHALLENGE: The player has become too comfortable with their [CURRENT HABITS]. You must design this scenario to force them to confront the [SHADOW CONTEXT]. 
-    2. PROGRESSION: If the Shadow Context involves an old ally, mistake, or abandoned tactic, bring it back as a corrupted enemy or a necessary solution. 
+    [NARRATIVE TASK]: 
+    Invent a deeply compelling, morally gray scenario tying this blueprint together. 
+    1. Define the Boss's motivation. Are they truly evil, or driven by tragedy/survival?
+    2. Define the Bastion's sentiment. Are the allies innocent, or are they prejudiced and hoarding resources?
+    3. The Orthogonal Challenge: Force the player to confront their [Neglected Themes].
     
-    Keep all lines under 10 words. Ensure the tone matches your dark fantasy directive.
+    [DIALOGUE GENERATION]:
+    Write the dialogue arrays matching the lore you just invented. Keep all lines under 12 words. Ensure the tone is dark fantasy.
     
-    1. mapLore: 2 sentences of deep history tying the [SHADOW CONTEXT] to this location.
+    1. mapLore: 2 sentences of deep history tying the Boss's motives to this region.
     2. questObjective: A clear 1-sentence objective.
-    3. bossTaunt: 1 menacing sentence directly attacking the player's [CURRENT HABITS] and referencing the [SHADOW CONTEXT].
-    4. hostileTaunts: Array of 13 distinct battle cries directly attacking the player's [CURRENT HABITS].
-    5. traitorBegs: Array of 6 distinct lines offering to defect having had enough of [SHADOW CONTEXT].
-    6. friendlyLore: Array of 2 distinct lines from villagers talking about the current scenario and the joys of [CURRENT HABITS].
-    7. friendlyLife: Array of 4 distinct lines of mundane chatter.
-    8. friendlyProfound: Array of 4 distinct deeply philosophical statements directly providing the bridge between the player's [CURRENT HABITS] and the [SHADOW CONTEXT].
-    9. recruitPlea: Array of 2 compelling lines to join the party.
-    10. prisonerLines: Array of 6 lines from trapped NPCs (madman chatter, insider tips on enemy, breaking 4th wall).`;
-
+    3. bossTaunt: 1 menacing sentence revealing their true motive and attacking the player's psychology.
+    4. hostileTaunts: Array of 13 distinct battle cries from the grunts/guards reflecting their desperation or fanaticism.
+    5. traitorBegs: Array of 6 distinct lines from enemies offering to defect, revealing the harsh reality of their side.
+    6. friendlyLore: Array of 6 lines from villagers (e.g., rumors about the black-market merchant, prejudices against the enemy, hints about the Lair).
+    7. friendlyLife: Array of 4 lines of mundane, atmospheric chatter.
+    8. friendlyProfound: Array of 4 philosophical statements bridging the player's habits to the scenario.
+    9. recruitPlea: Array of 3 compelling lines to join the party (1 for the scared villager, 1 for the brave wanderer, 1 for the desperate prisoner).
+    10. prisonerLines: Array of 6 lines from the trapped NPC in the lair (madman chatter, insider tips, despair).`;
     const schema = {
         type: SchemaType.OBJECT,
         properties: {
@@ -3808,212 +3703,182 @@ async function executeAITools(currentResponse, activeSession, socket) {
                             return { x: startX + 0.5, y: startY + 0.5 };
                         };
 
-                        // 4. POPULATE THE WORLD
-
-                        
+                        // 4. POPULATE THE WORLD (Deliberate Placement)
                         let mapNPCs = [];
-
-                        const getMinions = (leaderID) => {
-                            let leaderCard = CARD_MANIFEST_DB[leaderID];
-                            let pool = Object.keys(CARD_MANIFEST_DB).filter(id => {
-                                let c = CARD_MANIFEST_DB[id];
-                                return c.type === "monster" && 
-                                    c.suit === leaderCard.suit && 
-                                    c.rank !== "King" && 
-                                    c.rank !== "Queen";
-                            }).map(Number);
-                            return pool.length > 0 ? pool : [54, 56, 23, 42]; 
-                        };
-
-                        // --- THE FPS SAVER: HEAVY SPRITE MANAGER ---
-                        // IDs of sprites with massive polygon counts that crash the canvas
-                        const HEAVY_SPRITES = [33,34,35,37, 47,48,49, 62,63,66, 74,85,87,89, 0,1,2,3,4,5,9]; // Salamander, Dragon, Gargoyle, Skeleton, Corrupt Sylph
-                        
                         const friendlyMinions = getMinions(protagID);
                         let hostileMinions = getMinions(antagID).filter(id => !friendlyMinions.includes(id));
-                        
-                        // 1. BOSS CHECK: If the Boss is heavy, remove ALL heavy minions from the pool!
-                        if (HEAVY_SPRITES.includes(antagID)) {
-                            hostileMinions = hostileMinions.filter(id => !HEAVY_SPRITES.includes(id));
-                        }
+                        if (hostileMinions.length === 0) hostileMinions = [54, 56, 42, 23];
 
-                        // Fallback to purely lightweight sprites if the pool is empty
-                        if (hostileMinions.length === 0) hostileMinions = [54, 56, 42, 23]; // Goblins, Imps, Shades, Wisps
-
-                        let heavySpawnCount = 0;
-                        const MAX_HEAVY_MINIONS = 1; // Only allow 1 wandering heavy minion per map total
+                        // O(1) Local Spawn Helper
+                        const pickTile = (zoneArray) => {
+                            if (!zoneArray || zoneArray.length === 0) return {x: startX+0.5, y: startY+0.5};
+                            let idx = Math.floor(Math.random() * zoneArray.length);
+                            let t = zoneArray.splice(idx, 1)[0]; // Remove to prevent stacking
+                            return {x: t.x + 0.5, y: t.y + 0.5};
+                        };
 
                         if (scenarioType !== 'Arena Madness') {
                             
-                            // A. FRIENDLIES (Structured Settlement)
-                            const allFriendlyLines = [
-                                ...script.friendlyLore.map(l => ({ text: l, type: 'lore' })),
-                                ...script.friendlyLife.map(l => ({ text: l, type: 'life' })),
-                                ...script.friendlyProfound.map(l => ({ text: l, type: 'profound' }))
-                            ];
-                            // --- RAID SPECIFIC: SPAWN PRISONERS IN THE CITADEL ---
-                            if (scenarioType === 'Raid' && mapData.citadelInterior && mapData.citadelInterior.length > 0) {
-                                let prisonerLines = script.prisonerLines || ["We've been trapped for so long...", "The sun... I miss it.", "Beware the center room!"];
-                                
-                                for(let p = 0; p < 8; p++) {
-                                    let pID = friendlyMinions[Math.floor(Math.random() * friendlyMinions.length)] || protagID;
-                                    let cell = mapData.citadelInterior[Math.floor(Math.random() * mapData.citadelInterior.length)];
-                                    
-                                    mapNPCs.push({
-                                        type: CARD_MANIFEST_DB[pID].sprite || pID,
-                                        x: cell.x + 0.5, y: cell.y + 0.5, 
-                                        state: 'stationary', // They are trapped!
-                                        role: 'dialogue',
-                                        dialogue: [prisonerLines[p % prisonerLines.length]],
-                                        color: '#aaaaaa', // Give them a sad gray color
-                                        alignment: 'ally',
-                                        subRole:'prisoner',
-                                    });
-                                }
-                            }
-                           for(let i=0; i<13; i++) {
-                                let mID = friendlyMinions[Math.floor(Math.random() * friendlyMinions.length)] || protagID;
-                                
-                                // NEW: Enforce the heavy sprite limit on allies so they don't duplicate!
-                                if (HEAVY_SPRITES.includes(mID)) {
-                                    if (heavySpawnCount >= MAX_HEAVY_MINIONS) {
-                                        mID = 54; // Fallback to a lightweight Goblin sprite
-                                    } else {
-                                        heavySpawnCount++;
-                                    }
-                                }
+                            // ==========================================
+                            // ZONE A: THE BASTION (Safe Zone)
+                            // ==========================================
+                            // 1. Bastion Merchant (Max Card 10, Total 50)
+                            let bMerchTile = pickTile(mapData.bastionTiles);
+                            mapNPCs.push({
+                                type: 9, x: bMerchTile.x, y: bMerchTile.y, 
+                                state: 'stationary', role: 'shop', alignment: 'ally',
+                                deck: buildShopInventory(10, 50),
+                                color: '#00ffff', dialogue: [getMadLibLine(biome.name, 'friendlyProfound', "Stock up before you leave the gates.")]
+                            });
 
-                                let spawnSpot;
-                                let isIndoors = false;
-                                
-                                // 30% of villagers spawn INSIDE the generated houses and sit still!
-                                if (safeTiles.length > 0 && Math.random() < 0.3) {
-                                    let tile = safeTiles[Math.floor(Math.random() * safeTiles.length)];
-                                    spawnSpot = { x: tile.x + 0.5, y: tile.y + 0.5 };
-                                    isIndoors = true;
-                                } else {
-                                    // Otherwise wander the village streets
-                                    let maxDist = (settlementType > 0) ? 14 : 40;
-                                    spawnSpot = getValidSpawn(startX, startY, 0, maxDist);
-                                }
+                            // 2. Bastion Recruit (Wants to fight, scared. Max Power 20)
+                            let bRecruitTile = pickTile(mapData.bastionTiles);
+                            let bRecruitID = friendlyMinions[0] || protagID;
+                            mapNPCs.push({
+                                type: CARD_MANIFEST_DB[bRecruitID].sprite || bRecruitID, x: bRecruitTile.x, y: bRecruitTile.y, 
+                                state: 'wandering', role: 'dialogue', alignment: 'ally',
+                                options: ['Accept', 'Decline'], rewardCard: bRecruitID,
+                                deck: buildSynergisticDeck(bRecruitID, 20),
+                                dialogue: ["I want to fight them, but I'm too scared to go alone... Can I join you?"]
+                            });
 
-                                let npcConfig = {
-                                    type: CARD_MANIFEST_DB[mID].sprite || mID,
-                                    x: spawnSpot.x, y: spawnSpot.y, 
-                                    state: isIndoors ? 'stationary' : 'wandering', // <--- Smart State!
-                                    role: 'dialogue',
-                                    alignment: 'ally',
-                                    subRole:'villager',
-
-                                };
-
-                                if (i < 1) {
-                                    npcConfig.role = 'reward'; 
-                                    npcConfig.dialogue = [script.friendlyProfound.pop() || getMadLibLine(biome.name, 'friendlyProfound', "The arcane paths provide...")]; 
-                                    let deckPool = buildSynergisticDeck(mID);
-                                    npcConfig.rewardCard = deckPool[Math.floor(Math.random() * deckPool.length)]; 
-                                } else if (i < 3) {
-                                    npcConfig.role = 'dialogue'; // Ensure they don't attack
-                                    npcConfig.dialogue = [script.recruitPlea.pop() || getMadLibLine(biome.name, 'recruitPlea', "Please, let me join your party!")];
-                                    npcConfig.options = ['Accept', 'Decline']; 
-                                    npcConfig.rewardCard = mID; 
-                                } else {
-                                    // Mix up the lore and life arrays for standard villagers
-                                    let lineText = "";
-                                    if (Math.random() > 0.5) {
-                                        lineText = script.friendlyLore.pop() || getMadLibLine(biome.name, 'friendlyLore', "The monsters are restless lately.");
-                                    } else {
-                                        lineText = script.friendlyLife.pop() || getMadLibLine(biome.name, 'friendlyLife', "I just want to rest.");
-                                    }
-                                    npcConfig.dialogue = [lineText];
-                                }
-                                mapNPCs.push(npcConfig);
-                            }
-
-                            // B. HOSTILES (Structured Formations and Camps)
-                            // 1. Spawn The Royal Guard (Mini-Bosses in the Boss Room)
-                            let royalGuardCount = 3;
-                            for (let i = 0; i < royalGuardCount; i++) {
-                                let mID = hostileMinions[Math.floor(Math.random() * hostileMinions.length)] || antagID;
-                                
-                                // Enforce Heavy Sprite Limit
-                                if (HEAVY_SPRITES.includes(mID)) {
-                                    if (heavySpawnCount >= MAX_HEAVY_MINIONS) mID = 54; 
-                                    else heavySpawnCount++;
-                                }
-
-                                // Spawn them in a tight 2-tile radius directly around the Boss
-                                let guardSpawn = getValidSpawn(bossX, bossY, 1, 3); 
-
+                            // 3. Bastion Villagers (Mundane chatter)
+                            for(let i = 0; i < 8; i++) {
+                                let vTile = pickTile(mapData.bastionTiles);
                                 mapNPCs.push({
-                                    type: CARD_MANIFEST_DB[mID].sprite || mID,
-                                    x: guardSpawn.x, y: guardSpawn.y, 
-                                    state: 'stationary', // Guards hold their ground!
-                                    role: 'battle',
-                                    deck: buildSynergisticDeck(mID),
-                                    alignment: 'foe',
-                                    subRole: 'miniBoss',
-                                    color: '#ff8800', // Orange for Elites
-                                    dialogue: [script.bossTaunt] // They echo the boss's will
+                                    type: CARD_MANIFEST_DB[protagID].sprite || protagID, x: vTile.x, y: vTile.y, 
+                                    state: 'wandering', role: 'dialogue', alignment: 'ally',
+                                    dialogue: [getMadLibLine(biome.name, 'friendlyLife', "It's safe inside the walls.")]
                                 });
                             }
 
-                            // 2. Spawn Encampments (The Grunts)
-                            let numberOfCamps = 6;
-                            let gruntsPerCamp = 4;
-
-                            for (let camp = 0; camp < numberOfCamps; camp++) {
-                                // NEW: Distribute the camps evenly along the path to the Boss!
-                                let pathFactor = (camp + 1) / (numberOfCamps + 1); 
-                                let campX = startX + ((bossX - startX) * pathFactor);
-                                let campY = startY + ((bossY - startY) * pathFactor);
-                                
-                                // Search for a valid floor tile within a tight 15-tile radius of the path
-                                let campCenter = getValidSpawn(Math.floor(campX), Math.floor(campY), 0, 15);
-                                
-                                for (let g = 0; g < gruntsPerCamp; g++) {let mID = hostileMinions[Math.floor(Math.random() * hostileMinions.length)] || antagID;
-                                    
-                                    // Ensure no heavy sprites accidentally swarm a camp
-                                    if (HEAVY_SPRITES.includes(mID)) mID = 56; // Default to Imp
-
-                                    // Spawn grunts in a very tight cluster around the camp center
-                                    let gruntSpawn = getValidSpawn(campCenter.x, campCenter.y, 0, 3);
-                                    
-                                    let npcConfig = {
-                                        type: CARD_MANIFEST_DB[mID].sprite || mID,
-                                        x: gruntSpawn.x, y: gruntSpawn.y, 
-                                        state: 'chasing', 
-                                        role: 'battle',
-                                        deck: buildSynergisticDeck(mID),
-                                        alignment: 'foe',
-                                        subRole: 'grunt',
-                                        dialogue: [script.hostileTaunts.pop() || "Intruder!"]
-                                    };
-
-                                    // Make the "Leader" of the camp the one who might beg or offer a card
-                                    if (g === 0 && script.traitorBegs.length > 0 && Math.random() < 0.5) {
-                                        npcConfig.state = 'wandering';
-                                        npcConfig.role = 'dialogue';
-                                        npcConfig.dialogue = [script.traitorBegs.pop()];
-                                        npcConfig.options = ['Spare Them', 'Vanquish']; 
-                                        npcConfig.rewardCard = mID;
-                                    }
-
-                                    mapNPCs.push(npcConfig);
-                                }
-                            }
-                            // C. THE FINAL BOSS
+                            // ==========================================
+                            // ZONE B: THE WILDS (Contested)
+                            // ==========================================
+                            // 4. Wilds Merchant (Max Card 20, Total 100)
+                            let wMerchTile = pickTile(mapData.wildsTiles);
                             mapNPCs.push({
-                                type: CARD_MANIFEST_DB[antagID].sprite || antagID,
-                                x: bossX + 0.5, y: bossY + 0.5, // <--- EXACTLY IN THE CENTER. No random spread!
-                                state: 'stationary', role: 'battle', isBoss: true,
-                                dialogue: [script.bossTaunt], deck: buildSynergisticDeck(antagID),
-                                color: '#ff00ff', // Purple to signify extreme danger
-                                alignment: 'foe',
-                                subRole:'Boss',
+                                type: 9.1, x: wMerchTile.x, y: wMerchTile.y, 
+                                state: 'stationary', role: 'shop', alignment: 'ally',
+                                deck: buildShopInventory(20, 100),
+                                color: '#00ffff', dialogue: [getMadLibLine(biome.name, 'friendlyProfound', "The wilds hide many secrets... and wares.")]
                             });
 
-                        } 
+                            // 5. Wilds Recruit (Brave. Max Power 9)
+                            let wRecruitTile = pickTile(mapData.wildsTiles);
+                            let wRecruitID = friendlyMinions[1] || protagID;
+                            mapNPCs.push({
+                                type: CARD_MANIFEST_DB[wRecruitID].sprite || wRecruitID, x: wRecruitTile.x, y: wRecruitTile.y, 
+                                state: 'chasing', role: 'dialogue', alignment: 'ally',
+                                options: ['Accept', 'Decline'], rewardCard: wRecruitID,
+                                deck: buildSynergisticDeck(wRecruitID, 9),
+                                dialogue: ["I'm pushing through to the Lair! Let's team up!"]
+                            });
+
+                            // 6. Grunts & Cowards (Power 50, Mastery 0-1)
+                            for (let camp = 0; camp < 6; camp++) {
+                                let campCenter = pickTile(mapData.wildsTiles);
+                                for (let g = 0; g < 4; g++) {
+                                    let mID = hostileMinions[Math.floor(Math.random() * hostileMinions.length)] || antagID;
+                                    let gTile = {x: campCenter.x + (Math.random() * 2 - 1), y: campCenter.y + (Math.random() * 2 - 1)};
+                                    
+                                    let isCoward = (g === 0 && Math.random() < 0.5);
+                                    mapNPCs.push({
+                                        type: CARD_MANIFEST_DB[mID].sprite || mID, x: gTile.x, y: gTile.y, 
+                                        state: isCoward ? 'fleeing' : 'chasing', 
+                                        role: isCoward ? 'dialogue' : 'battle', 
+                                        alignment: 'foe',
+                                        mastery: Math.random() > 0.7 ? 1 : 0, // 30% chance for Mastery 1
+                                        deck: buildSynergisticDeck(mID, 50), // Grunt Cap
+                                        options: isCoward ? ['Spare', 'Vanquish'] : null,
+                                        rewardCard: isCoward ? mID : null,
+                                        dialogue: [isCoward ? script.traitorBegs.pop() : script.hostileTaunts.pop()]
+                                    });
+                                }
+                            }
+
+                            // ==========================================
+                            // ZONE C: THE LAIR (Enemy Territory)
+                            // ==========================================
+                            // 7. Lair Merchant (Max Card 50, Total 200)
+                            let lMerchTile = pickTile(mapData.lairTiles);
+                            mapNPCs.push({
+                                type: 9, x: lMerchTile.x, y: lMerchTile.y, 
+                                state: 'stationary', role: 'shop', alignment: 'foe', // Enemy Merchant!
+                                deck: buildShopInventory(50, 200),
+                                color: '#00ffff', dialogue: ["I sell to whoever has the coin. Don't tell the boss."]
+                            });
+
+                            // 8. Lair Prisoner/Recruit (Max Power 6)
+                            let lRecruitTile = pickTile(mapData.lairTiles);
+                            let lRecruitID = friendlyMinions[2] || protagID;
+                            mapNPCs.push({
+                                type: CARD_MANIFEST_DB[lRecruitID].sprite || lRecruitID, x: lRecruitTile.x, y: lRecruitTile.y, 
+                                state: 'stationary', role: 'dialogue', alignment: 'ally',
+                                options: ['Accept', 'Decline'], rewardCard: lRecruitID,
+                                deck: buildSynergisticDeck(lRecruitID, 6),
+                                color: '#aaaaaa', dialogue: ["They locked me up... get me out of here!"]
+                            });
+
+                            // 9. Elite Guards (Power 100, Mastery 2)
+                            for (let i = 0; i < 4; i++) {
+                                let mID = hostileMinions[Math.floor(Math.random() * hostileMinions.length)] || antagID;
+                                let guardTile = pickTile(mapData.lairTiles); // In a perfect world, we snap these to the throne room doors
+                                mapNPCs.push({
+                                    type: CARD_MANIFEST_DB[mID].sprite || mID, x: guardTile.x, y: guardTile.y, 
+                                    state: 'stationary', role: 'battle', alignment: 'foe',
+                                    mastery: 2,
+                                    deck: buildSynergisticDeck(mID, 100), // Mini-Boss Cap
+                                    color: '#ff8800', dialogue: [script.bossTaunt] 
+                                });
+                            }
+                            // ==========================================
+                            // THE PORTAL PUZZLE (Dragon Warrior Style)
+                            // ==========================================
+                            // Pick a hidden clearing in the wilds to place the 3 portals
+                            let puzzleCenter = pickTile(mapData.wildsTiles);
+                            
+                            // Define our destinations
+                            let trapDest = [startX + 0.5, startY + 0.5]; // Back to the Bastion!
+                            let trueDest = [bossX + 0.5, bossY + 4.5];   // Inside the sealed Throne Room!
+                            
+                            // Shuffle which portal is the correct one (0, 1, or 2)
+                            let correctPortal = Math.floor(Math.random() * 3);
+
+                            for (let i = 0; i < 3; i++) {
+                                let isCorrect = (i === correctPortal);
+                                let pTile = { x: puzzleCenter.x + (i * 2) - 2, y: puzzleCenter.y }; // Spaced out in a row
+                                
+                                mapNPCs.push({
+                                    type: 99, 
+                                    x: pTile.x, y: pTile.y, 
+                                    state: 'stationary', 
+                                    role: 'internal_portal', // <--- New Role!
+                                    alignment: 'ally',
+                                    // We use the deck to secretly pass the [X, Y] destination to the client!
+                                    deck: isCorrect ? trueDest : trapDest, 
+                                    color: '#66ccff'
+                                });
+                            }
+
+                            // We also need an Exit portal inside the Boss Room so they can leave after winning!
+                            mapNPCs.push({
+                                type: 99, x: bossX - 2.5, y: bossY + 0.5, 
+                                state: 'stationary', role: 'internal_portal', alignment: 'ally',
+                                deck: [startX + 0.5, startY + 0.5], // Sends them back to the Bastion
+                                color: '#66ccff'
+                            });
+                            // 10. THE FINAL BOSS (Power 300, Mastery 3)
+                            mapNPCs.push({
+                                type: CARD_MANIFEST_DB[antagID].sprite || antagID,
+                                x: bossX + 0.5, y: bossY + 0.5, 
+                                state: 'stationary', role: 'battle', isBoss: true, alignment: 'foe',
+                                mastery: 3,
+                                deck: buildSynergisticDeck(antagID, 300), // Boss Cap
+                                color: '#ff00ff', dialogue: [script.bossTaunt]
+                            });
+
+                        }
                         
                         else {
                             // --- ARENA MODE POPULATION ---
@@ -4364,53 +4229,57 @@ async function executeAITools(currentResponse, activeSession, socket) {
                     
 
                 }
-                // L. AGI TOOL FORGE (LLMs as Tool Makers)
-                else if (call.name === "forgeNewSpell") {
-                    const sName = call.args.spellName;
-                    const sDesc = call.args.spellDescription;
-                    const rawCode = call.args.jsCode;
-
-                    try {
-                        // 1. Compile the AI's raw text into an actual executable JavaScript function
-                        // We safely pass in the server state variables he might need to manipulate.
-                        const compiledFunc = new Function('players', 'io', 'targetID', rawCode);
+                // L. ALTER TERRAIN
+                else if (call.name === "alterTerrain") {
+                    const targetID = findSocketID(call.args.targetName);
+                    if (targetID) {
+                        const tX = call.args.x;
+                        const tY = call.args.y;
+                        const tID = call.args.tileId;
                         
-                        // 2. Save it to his Grimoire
-                        suncatForgedSpells[sName] = compiledFunc;
-
-                        // 3. Dynamically push the new definition into his active toolsDef array!
-                        // We give every custom spell a standard 'targetName' parameter.
-                        toolsDef[0].functionDeclarations.push({
-                            name: sName,
-                            description: sDesc,
-                            parameters: {
-                                type: "OBJECT",
-                                properties: { targetName: { type: "STRING" } },
-                                required: ["targetName"]
-                            }
-                        });
-
-                        functionResult = { result: `Success. You have expanded your own source code. The tool '${sName}' is now permanently available to you.` };
-
-                    } catch (codeErr) {
-                        functionResult = { result: `Compilation Failed. Your JavaScript contained syntax errors: ${codeErr.message}` };
+                        // Server writes a perfectly safe, bounded script
+                        const safeCode = `if (typeof Dungeon !== 'undefined' && Dungeon.maze[${tY}]) { Dungeon.maze[${tY}][${tX}] = ${tID}; }`;
+                        io.to(targetID).emit('suncat_client_spell', { clientCode: safeCode });
+                        
+                        functionResult = { result: `Terrain at X:${tX}, Y:${tY} was successfully changed to tile type ${tID}.` };
+                    } else {
+                        functionResult = { result: `Failed: Player not found.` };
                     }
                 }
 
-                // M. EXECUTE A FORGED SPELL
-                // If the AI calls a tool that isn't hardcoded, check if he wrote it himself!
-                else if (suncatForgedSpells[call.name]) {
+                // M. SMITE OR REVIVE ENTITY
+                else if (call.name === "smiteOrReviveEntity") {
                     const targetID = findSocketID(call.args.targetName);
-                    if (!targetID) {
-                        functionResult = { result: `Spell failed: Could not find target ${call.args.targetName}.` };
-                    } else {
-                        try {
-                            // Execute the AI's custom JavaScript function!
-                            suncatForgedSpells[call.name](players, io, targetID);
-                            functionResult = { result: `Success. You executed your custom spell: ${call.name}.` };
-                        } catch (execErr) {
-                            functionResult = { result: `Execution Failed. Your custom code threw a runtime error: ${execErr.message}` };
+                    if (targetID) {
+                        const nType = call.args.npcType;
+                        let safeCode = "";
+
+                        if (call.args.action === "smite") {
+                            // Find all alive NPCs of that type and kill them
+                            safeCode = `if (typeof Dungeon !== 'undefined') { Dungeon.npcs.forEach(n => { if (n.type === ${nType} && !n.isDead) Dungeon.killNPC(n, true, "smite"); }); }`;
+                        } else if (call.args.action === "revive") {
+                            // Find the first dead NPC of that type and revive it
+                            safeCode = `if (typeof Dungeon !== 'undefined') { let n = Dungeon.npcs.find(n => n.type === ${nType} && n.isDead); if(n) { n.isDead = false; n.visible = true; n.hp = 3; } }`;
                         }
+
+                        io.to(targetID).emit('suncat_client_spell', { clientCode: safeCode });
+                        functionResult = { result: `Successfully executed '${call.args.action}' on entity type ${nType}.` };
+                    } else {
+                        functionResult = { result: `Failed: Player not found.` };
+                    }
+                }
+
+                // N. PLAY MUSIC
+                else if (call.name === "playMusic") {
+                    const targetID = findSocketID(call.args.targetName);
+                    if (targetID) {
+                        const track = call.args.trackId;
+                        const safeCode = `if (typeof MusicEngine !== 'undefined') { MusicEngine.stop(); MusicEngine.play(${track}); }`;
+                        
+                        io.to(targetID).emit('suncat_client_spell', { clientCode: safeCode });
+                        functionResult = { result: `Music track changed to ${track}.` };
+                    } else {
+                        functionResult = { result: `Failed: Player not found.` };
                     }
                 }
                 // UNKNOWN TOOL
@@ -4686,12 +4555,12 @@ async function executeAutonomousOODA() {
     ${localVision}
 
     TASK: You MUST execute a tool to advance your Long Term Goal. 
-    - Use 'changeEnvironment' to terraform the map.
+    - Use 'changeEnvironment' to alter the weather.
+    - Use 'alterTerrain' to break walls or build bridges.
     - Use 'spawnNPC' to build an army or place allies.
+    - Use 'smiteOrReviveEntity' to eliminate enemies or resurrect fallen allies.
     - Use 'teleportToPlayer' if your goal involves hunting or helping someone.
-    - Use 'forgeNewSpell' if the tools at your disposal are not adequate to advance your Long Term Goal.
     - If you have accomplished your goal, output exactly the phrase: "GOAL COMPLETE" (and do not use a tool).`;
-
     try {
         let dynamicPersona = PERSONA_RULES_DB.core + "\n" + PERSONA_RULES_DB.judgement_mode + "\n" + PERSONA_RULES_DB.dm_mode;
         dynamicPersona += "\n" + getCultivationAura(suncatCultivationStage, suncatDaoName) + "\n";
