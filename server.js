@@ -3111,7 +3111,7 @@ function generateProceduralGrid(layout, wallType) {
     let bastionTiles = []; // Rows 75 to 98
     let wildsTiles = [];   // Rows 25 to 74
     let lairTiles = [];    // Rows 1 to 24
-
+    let houseTiles = [];  
     let startX = 50, startY = 88; 
     let bossX = 50, bossY = 12;   
 
@@ -3152,7 +3152,6 @@ function generateProceduralGrid(layout, wallType) {
         // City Gate
         for(let c = 48; c <= 52; c++) grid[75][c] = 0;
 
-        let houseTiles = []; // --- NEW: Track house interiors ---
         // Build City Houses
         const buildHouse = (hr, hc) => {
             for(let r=hr; r<hr+3; r++) {
@@ -3576,7 +3575,7 @@ async function executeAITools(currentResponse, activeSession, socket) {
         chainCount++;
         const calls = currentResponse.functionCalls();
         console.log(`[AI TOOL CHAIN ${chainCount}]: Executing ${calls.length} tools!`); 
-
+        
         let toolResponsesBatch = [];
 
         for (let call of calls) {
