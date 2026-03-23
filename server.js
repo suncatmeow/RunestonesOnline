@@ -2454,14 +2454,15 @@ const toolsDef = [{
                 required: ["targetName", "questText"]
             }
         },
-        // 1. CREATE CUSTOM MAP (Server handles all logistics)
+        // 1. CREATE CUSTOM MAP
         {
             name: "createCustomMap",
             description: "Creates a massive procedural map and adventure. Execute this immediately when a player asks for a new map, quest, or adventure.",            
             parameters: {
                 type: "OBJECT",
                 properties: {
-                    targetName: { type: "STRING", description: "The player's name, or 'All'." }
+                    targetName: { type: "STRING", description: "The player's name, or 'All'." },
+                    requestedScenario: { type: "STRING", description: "Optional. Choose from: 'Invasion', 'Rescue/Fetch', 'Arena Madness', or 'Raid'" }
                 },
                 required: ["targetName"] 
             }
@@ -4100,8 +4101,10 @@ async function executeAITools(currentResponse, activeSession, socket) {
                                 targetPlayer.scenarioLog = []; 
                                 targetPlayer.mapBossID = antagID;
                                 targetPlayer.activeQuest = script.questObjective;
+                                targetPlayer.scenarioContext = `The enemy is the ${CARD_MANIFEST_DB[antagID].name} tribe. Boss Motive: "${script.bossTaunt}". The allies are the ${CARD_MANIFEST_DB[protagID].name} tribe. Local sentiment: "${script.friendlyLore[0]}". GEOGRAPHY: The Bastion (Safe Village) is in the South. The Wilds are North of the gates. The Lair is at the extreme North end of the map. Merchants are hidden in the Bastion, the Wilds, and the Lair.`;
                                 io.to(tid).emit("new_quest_objective", { questText: targetPlayer.activeQuest });
-                                 });
+                                io.to(tid).emit("force_teleport", { mapID: 999 });
+                            });
 
                             players[SUNCAT_ID].mapID = 999;
                             players[SUNCAT_ID].x = startX + 1.5; players[SUNCAT_ID].y = startY + 0.5;
@@ -4869,9 +4872,10 @@ async function processSuncatThought(socketId, triggerType, data) {
         let dynamicName = "Unknown Area";
 
         if (player.mapID === 999) {
-            // Use the procedurally generated lore!
-            dynamicLore = player.currentMapLore || "An ephemeral pocket dimension.";
-            dynamicName = "Procedural Zone";
+            systemOverride += `\n[DM SCENARIO AWARENESS]: You are the Dungeon Master for "${player.mapScenario}".
+            - Active Quest: ${player.activeQuest}
+            - Scenario Dossier: ${player.scenarioContext || "An unknown, shifting realm."}
+            If the player asks for hints, locations, lore, or what they should do next, use the Scenario Dossier to guide them. Tell them to head North to find the boss, or search the zones for merchants. Answer deeply in-character as the omniscient narrator. DO NOT invent new geography.`;
         } else if (pAtlas) {
             // Use the static world database
             dynamicLore = pAtlas.lore;
@@ -5055,10 +5059,14 @@ async function processSuncatThought(socketId, triggerType, data) {
                 needsDM = true; 
                 systemOverride += `\n[MEMORY OVERRIDE]: The player is asking about the past. If they ask about YOUR past/identity, execute 'consultGameManual'. If they ask about THEIR past/adventures, execute 'searchPlayerMemories'!`;
             }
-            else if (needsDM) {
+            else if (wantsNewMap && !isMap999Active) {
                 useBigBrain = true;
-                systemOverride += `\n[DM OVERRIDE]: The player is discussing an adventure, map, or enemy. IF they explicitly ask you to spawn an enemy, create a new map, or change the weather, you MUST use the appropriate tool. OTHERWISE, just converse with them as the Dungeon Master without using any tools.`;            
-             } else {
+                systemOverride += `\n[CRITICAL OVERRIDE]: The player is asking for a new map, adventure, or quest. DO NOT roleplay the terrain shifting. DO NOT tell the player to use a .hack command. You MUST execute the 'createCustomMap' tool right now to physically generate the world.`;
+            }
+            else if (wantsAction) {
+                useBigBrain = true;
+                systemOverride += `\n[DM OVERRIDE]: The player wants you to alter the world. You MUST use your tools (spawnNPC, alterTerrain, changeEnvironment). Do not just roleplay it.`;
+            } else {
                 useBigBrain = isDirectCommand || useBigBrain; 
             }
             let focusPrompt = (data.isConversing || isDirectCommand) 
@@ -5401,6 +5409,7 @@ socket.on("join_game", (data) => {
         if (!players[socket.id].scenarioLog) {
             players[socket.id].scenarioLog = [];
         }
+        players[socket.id].scenarioContext = savedData ? savedData.scenarioContext : null;
         if (players[socket.id].mapID === 999 && activeCustomMap) {
              socket.emit('load_custom_map', activeCustomMap);
         } else if (players[socket.id].mapID === 100 && tintagelHubMap) {
@@ -5987,7 +5996,8 @@ socket.on("disconnect", async () => {
             storySoFar: me.storySoFar || "",
             aiHistory: currentHistory,
             suncatPerception: me.suncatPerception || "An unknown entity.",
-            searchableMemories: me.searchableMemories || [] // <-- ADD THIS LINE
+            searchableMemories: me.searchableMemories || [],
+            scenarioContext: me.scenarioContext || null
         };
 
         saveSuncatMemory();
