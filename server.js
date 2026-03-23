@@ -3687,6 +3687,7 @@ async function executeAITools(currentResponse, activeSession, socket) {
                     let combinedResults = [];
 
                     queries.forEach(query => {
+                        if (typeof query !== 'string') return; // <-- Add this safety net!
                         // Clean the query and remove stop words
                         const lowerQueryWords = query.toLowerCase()
                             .replace(/[^\w\s]/gi, '')
@@ -4313,8 +4314,7 @@ async function executeAITools(currentResponse, activeSession, socket) {
                             suit: call.args.suit || "Unique",
                             rank: call.args.rank || "???",
                             rarity: "unique",
-                            classes: call.args.classes || ["rogue"], // Synergy engine needs this!
-                            lore: call.args.lore || "A mysterious entity forged from the ether.",
+                            classes: Array.isArray(call.args.classes) ? call.args.classes : (call.args.classes ? [String(call.args.classes)] : ["rogue"]),                            lore: call.args.lore || "A mysterious entity forged from the ether.",
                             stats: call.args.stats || "1d10 to all stats"
                         };
 
@@ -4338,7 +4338,11 @@ async function executeAITools(currentResponse, activeSession, socket) {
                 else if (call.name === "searchPlayerMemories") {
                     const targetID = findSocketID(call.args.targetName);
                     const query = call.args.searchQuery;
-                    
+                    // Put this right below `const query = call.args.searchQuery;`
+                    if (!query || typeof query !== 'string') {
+                        functionResult = { result: "[SYSTEM: You tried to recall something, but your mind went completely blank. Ask the player for more details.]" };
+                        continue; // Skip the rest of this tool's execution
+                    }
                     if (!targetID || !players[targetID] || !players[targetID].searchableMemories) {
                         functionResult = { result: "[SYSTEM: The memory fog is too thick. You cannot recall this. Roleplay your melancholic frustration that your memories of them are slipping away.]" };
                     } else {
