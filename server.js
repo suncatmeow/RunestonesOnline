@@ -2998,6 +2998,7 @@ function generateProceduralGrid(layout, wallType) {
         // City Gate
         for(let c = 48; c <= 52; c++) grid[75][c] = 0;
 
+        let houseTiles = []; // --- NEW: Track house interiors ---
         // Build City Houses
         const buildHouse = (hr, hc) => {
             for(let r=hr; r<hr+3; r++) {
@@ -3006,9 +3007,10 @@ function generateProceduralGrid(layout, wallType) {
                 }
             }
             grid[hr+2][hc+1] = 0; // Door
+            houseTiles.push({x: hc+1.5, y: hr+1.5}); // Save the exact center of the house!
+            safeTiles.push({x: hc+2, y: hr+1}); // An extra safe tile
         };
         buildHouse(80, 35); buildHouse(80, 60); buildHouse(90, 35); buildHouse(90, 60);
-
         // 3. THE LAIR (Zone C)
         for(let r = 5; r <= 24; r++) {
             for(let c = 20; c <= 80; c++) {
@@ -3057,7 +3059,7 @@ function generateProceduralGrid(layout, wallType) {
     // Create a fallback master array for general spawns
     let floorTiles = [...bastionTiles, ...wildsTiles, ...lairTiles];
 
-    return { grid, startX, startY, bossX, bossY, bastionTiles, wildsTiles, lairTiles, floorTiles };
+    return { grid, startX, startY, bossX, bossY, bastionTiles, wildsTiles, lairTiles, floorTiles,houseTiles };
 }
 // --- FACTION HUB: TINTAGEL CASTLE ---
 function generateTintagelHub() {
@@ -3709,11 +3711,17 @@ async function executeAITools(currentResponse, activeSession, socket) {
                         let hostileMinions = getMinions(antagID).filter(id => !friendlyMinions.includes(id));
                         if (hostileMinions.length === 0) hostileMinions = [54, 56, 42, 23];
 
+                        // Dynamically select sprites that match the local factions!
+                        let allySpriteID = friendlyMinions[0] || protagID;
+                        let allySprite = CARD_MANIFEST_DB[allySpriteID].sprite || allySpriteID;
+                        let foeSpriteID = hostileMinions[0] || antagID;
+                        let foeSprite = CARD_MANIFEST_DB[foeSpriteID].sprite || foeSpriteID;
+
                         // O(1) Local Spawn Helper
                         const pickTile = (zoneArray) => {
                             if (!zoneArray || zoneArray.length === 0) return {x: startX+0.5, y: startY+0.5};
                             let idx = Math.floor(Math.random() * zoneArray.length);
-                            let t = zoneArray.splice(idx, 1)[0]; // Remove to prevent stacking
+                            let t = zoneArray.splice(idx, 1)[0]; 
                             return {x: t.x + 0.5, y: t.y + 0.5};
                         };
 
@@ -3725,59 +3733,72 @@ async function executeAITools(currentResponse, activeSession, socket) {
                             // 1. Bastion Merchant (Max Card 10, Total 50)
                             let bMerchTile = pickTile(mapData.bastionTiles);
                             mapNPCs.push({
-                                type: 9, x: bMerchTile.x, y: bMerchTile.y, 
+                                type: allySprite, x: bMerchTile.x, y: bMerchTile.y, 
                                 state: 'stationary', role: 'shop', alignment: 'ally',
                                 deck: buildShopInventory(10, 50),
                                 color: '#00ffff', dialogue: [getMadLibLine(biome.name, 'friendlyProfound', "Stock up before you leave the gates.")]
                             });
 
-                            // 2. Bastion Recruit (Wants to fight, scared. Max Power 20)
+                            // 2. Bastion Recruit (Wants to fight, scared. Max Power 6)
                             let bRecruitTile = pickTile(mapData.bastionTiles);
-                            let bRecruitID = friendlyMinions[0] || protagID;
                             mapNPCs.push({
-                                type: CARD_MANIFEST_DB[bRecruitID].sprite || bRecruitID, x: bRecruitTile.x, y: bRecruitTile.y, 
+                                type: allySprite, x: bRecruitTile.x, y: bRecruitTile.y, 
                                 state: 'wandering', role: 'dialogue', alignment: 'ally',
-                                options: ['Accept', 'Decline'], rewardCard: bRecruitID,
-                                deck: buildSynergisticDeck(bRecruitID, 20),
+                                options: ['Accept', 'Decline'], rewardCard: allySpriteID,
+                                deck: buildSynergisticDeck(allySpriteID, 6),
                                 dialogue: ["I want to fight them, but I'm too scared to go alone... Can I join you?"]
                             });
 
-                            // 3. Bastion Villagers (Mundane chatter)
-                            for(let i = 0; i < 8; i++) {
+                            // 3. Occupy Every House!
+                            if (mapData.houseTiles) {
+                                mapData.houseTiles.forEach(tile => {
+                                    mapNPCs.push({
+                                        type: allySprite, x: tile.x, y: tile.y, 
+                                        state: 'stationary', role: 'dialogue', alignment: 'ally',
+                                        dialogue: [getMadLibLine(biome.name, 'friendlyLife', "I am staying inside until the monsters are gone.")]
+                                    });
+                                });
+                            }
+
+                            // 4. Wandering Villagers (Bastion Streets)
+                            for(let i = 0; i < 4; i++) {
                                 let vTile = pickTile(mapData.bastionTiles);
                                 mapNPCs.push({
-                                    type: CARD_MANIFEST_DB[protagID].sprite || protagID, x: vTile.x, y: vTile.y, 
+                                    type: allySprite, x: vTile.x, y: vTile.y, 
                                     state: 'wandering', role: 'dialogue', alignment: 'ally',
-                                    dialogue: [getMadLibLine(biome.name, 'friendlyLife', "It's safe inside the walls.")]
+                                    dialogue: [getMadLibLine(biome.name, 'friendlyLore', "The monsters are restless lately.")]
                                 });
                             }
 
                             // ==========================================
                             // ZONE B: THE WILDS (Contested)
                             // ==========================================
-                            // 4. Wilds Merchant (Max Card 20, Total 100)
+                            // 5. Wilds Merchant (Max Card 20, Total 100)
                             let wMerchTile = pickTile(mapData.wildsTiles);
                             mapNPCs.push({
-                                type: 9.1, x: wMerchTile.x, y: wMerchTile.y, 
+                                type: allySprite, x: wMerchTile.x, y: wMerchTile.y, 
                                 state: 'stationary', role: 'shop', alignment: 'ally',
                                 deck: buildShopInventory(20, 100),
                                 color: '#00ffff', dialogue: [getMadLibLine(biome.name, 'friendlyProfound', "The wilds hide many secrets... and wares.")]
                             });
 
-                            // 5. Wilds Recruit (Brave. Max Power 9)
+                            // 6. Wilds Recruit (Brave. Max Power 9)
                             let wRecruitTile = pickTile(mapData.wildsTiles);
-                            let wRecruitID = friendlyMinions[1] || protagID;
                             mapNPCs.push({
-                                type: CARD_MANIFEST_DB[wRecruitID].sprite || wRecruitID, x: wRecruitTile.x, y: wRecruitTile.y, 
+                                type: allySprite, x: wRecruitTile.x, y: wRecruitTile.y, 
                                 state: 'chasing', role: 'dialogue', alignment: 'ally',
-                                options: ['Accept', 'Decline'], rewardCard: wRecruitID,
-                                deck: buildSynergisticDeck(wRecruitID, 9),
+                                options: ['Accept', 'Decline'], rewardCard: allySpriteID,
+                                deck: buildSynergisticDeck(allySpriteID, 9),
                                 dialogue: ["I'm pushing through to the Lair! Let's team up!"]
                             });
 
-                            // 6. Grunts & Cowards (Power 50, Mastery 0-1)
+                            // 7. Grunts & Cowards (Scaling Power, Mastery 0-1)
                             for (let camp = 0; camp < 6; camp++) {
                                 let campCenter = pickTile(mapData.wildsTiles);
+                                
+                                // DYNAMIC POWER: Closer to Bastion (Y > 60) = 6. Deep Wilds = 9. Lair Border (Y < 30) = 30.
+                                let campPower = campCenter.y > 60 ? 6 : (campCenter.y > 30 ? 9 : 30);
+
                                 for (let g = 0; g < 4; g++) {
                                     let mID = hostileMinions[Math.floor(Math.random() * hostileMinions.length)] || antagID;
                                     let gTile = {x: campCenter.x + (Math.random() * 2 - 1), y: campCenter.y + (Math.random() * 2 - 1)};
@@ -3788,11 +3809,11 @@ async function executeAITools(currentResponse, activeSession, socket) {
                                         state: isCoward ? 'fleeing' : 'chasing', 
                                         role: isCoward ? 'dialogue' : 'battle', 
                                         alignment: 'foe',
-                                        mastery: Math.random() > 0.7 ? 1 : 0, // 30% chance for Mastery 1
-                                        deck: buildSynergisticDeck(mID, 50), // Grunt Cap
+                                        mastery: Math.random() > 0.5 ? 1 : 0, // Mastery 0 to 1
+                                        deck: buildSynergisticDeck(mID, campPower), // Strict Power Cap!
                                         options: isCoward ? ['Spare', 'Vanquish'] : null,
                                         rewardCard: isCoward ? mID : null,
-                                        dialogue: [isCoward ? script.traitorBegs.pop() : script.hostileTaunts.pop()]
+                                        dialogue: [isCoward ? (script.traitorBegs.pop() || "I yield!") : (script.hostileTaunts.pop() || "Intruder!")]
                                     });
                                 }
                             }
@@ -3800,84 +3821,69 @@ async function executeAITools(currentResponse, activeSession, socket) {
                             // ==========================================
                             // ZONE C: THE LAIR (Enemy Territory)
                             // ==========================================
-                            // 7. Lair Merchant (Max Card 50, Total 200)
+                            // 8. Lair Merchant (Enemy merchant, Max Card 50, Total 200)
                             let lMerchTile = pickTile(mapData.lairTiles);
                             mapNPCs.push({
-                                type: 9, x: lMerchTile.x, y: lMerchTile.y, 
+                                type: foeSprite, x: lMerchTile.x, y: lMerchTile.y, 
                                 state: 'stationary', role: 'shop', alignment: 'foe', // Enemy Merchant!
                                 deck: buildShopInventory(50, 200),
                                 color: '#00ffff', dialogue: ["I sell to whoever has the coin. Don't tell the boss."]
                             });
 
-                            // 8. Lair Prisoner/Recruit (Max Power 6)
+                            // 9. Lair Recruit/Prisoner (Max Power 20)
                             let lRecruitTile = pickTile(mapData.lairTiles);
-                            let lRecruitID = friendlyMinions[2] || protagID;
                             mapNPCs.push({
-                                type: CARD_MANIFEST_DB[lRecruitID].sprite || lRecruitID, x: lRecruitTile.x, y: lRecruitTile.y, 
+                                type: allySprite, x: lRecruitTile.x, y: lRecruitTile.y, 
                                 state: 'stationary', role: 'dialogue', alignment: 'ally',
-                                options: ['Accept', 'Decline'], rewardCard: lRecruitID,
-                                deck: buildSynergisticDeck(lRecruitID, 6),
+                                options: ['Accept', 'Decline'], rewardCard: allySpriteID,
+                                deck: buildSynergisticDeck(allySpriteID, 20),
                                 color: '#aaaaaa', dialogue: ["They locked me up... get me out of here!"]
                             });
 
-                            // 9. Elite Guards (Power 100, Mastery 2)
+                            // 10. Elite Guards (Mastery 2, Power 100)
                             for (let i = 0; i < 4; i++) {
                                 let mID = hostileMinions[Math.floor(Math.random() * hostileMinions.length)] || antagID;
-                                let guardTile = pickTile(mapData.lairTiles); // In a perfect world, we snap these to the throne room doors
+                                let guardTile = pickTile(mapData.lairTiles); 
                                 mapNPCs.push({
                                     type: CARD_MANIFEST_DB[mID].sprite || mID, x: guardTile.x, y: guardTile.y, 
                                     state: 'stationary', role: 'battle', alignment: 'foe',
-                                    mastery: 2,
+                                    mastery: 2, // Elite Mastery
                                     deck: buildSynergisticDeck(mID, 100), // Mini-Boss Cap
                                     color: '#ff8800', dialogue: [script.bossTaunt] 
                                 });
                             }
+
                             // ==========================================
                             // THE PORTAL PUZZLE (Dragon Warrior Style)
                             // ==========================================
-                            // Pick a hidden clearing in the wilds to place the 3 portals
                             let puzzleCenter = pickTile(mapData.wildsTiles);
-                            
-                            // Define our destinations
                             let trapDest = [startX + 0.5, startY + 0.5]; // Back to the Bastion!
                             let trueDest = [bossX + 0.5, bossY + 4.5];   // Inside the sealed Throne Room!
-                            
-                            // Shuffle which portal is the correct one (0, 1, or 2)
                             let correctPortal = Math.floor(Math.random() * 3);
 
                             for (let i = 0; i < 3; i++) {
                                 let isCorrect = (i === correctPortal);
-                                let pTile = { x: puzzleCenter.x + (i * 2) - 2, y: puzzleCenter.y }; // Spaced out in a row
-                                
+                                let pTile = { x: puzzleCenter.x + (i * 2) - 2, y: puzzleCenter.y }; 
                                 mapNPCs.push({
-                                    type: 99, 
-                                    x: pTile.x, y: pTile.y, 
-                                    state: 'stationary', 
-                                    role: 'internal_portal', // <--- New Role!
-                                    alignment: 'ally',
-                                    // We use the deck to secretly pass the [X, Y] destination to the client!
-                                    deck: isCorrect ? trueDest : trapDest, 
-                                    color: '#66ccff'
+                                    type: 99, x: pTile.x, y: pTile.y, state: 'stationary', role: 'internal_portal', alignment: 'ally',
+                                    deck: isCorrect ? trueDest : trapDest, color: '#66ccff'
                                 });
                             }
-
-                            // We also need an Exit portal inside the Boss Room so they can leave after winning!
+                            // Boss Room Exit
                             mapNPCs.push({
-                                type: 99, x: bossX - 2.5, y: bossY + 0.5, 
-                                state: 'stationary', role: 'internal_portal', alignment: 'ally',
-                                deck: [startX + 0.5, startY + 0.5], // Sends them back to the Bastion
-                                color: '#66ccff'
+                                type: 99, x: bossX - 2.5, y: bossY + 0.5, state: 'stationary', role: 'internal_portal', alignment: 'ally',
+                                deck: [startX + 0.5, startY + 0.5], color: '#66ccff'
                             });
-                            // 10. THE FINAL BOSS (Power 300, Mastery 3)
+
+                            // 11. THE FINAL BOSS (Mastery 3, Power 300)
                             mapNPCs.push({
                                 type: CARD_MANIFEST_DB[antagID].sprite || antagID,
                                 x: bossX + 0.5, y: bossY + 0.5, 
                                 state: 'stationary', role: 'battle', isBoss: true, alignment: 'foe',
-                                mastery: 3,
+                                mastery: 3, // Supreme Mastery
                                 deck: buildSynergisticDeck(antagID, 300), // Boss Cap
                                 color: '#ff00ff', dialogue: [script.bossTaunt]
                             });
-
                         }
                         
                         else {
