@@ -3111,6 +3111,7 @@ function generateProceduralGrid(layout, wallType) {
     let wildsTiles = [];   // Rows 25 to 74
     let lairTiles = [];    // Rows 1 to 24
     let houseTiles = [];  
+    let safeTiles = [];
     let startX = 50, startY = 88; 
     let bossX = 50, bossY = 12;   
 
@@ -3211,7 +3212,7 @@ function generateProceduralGrid(layout, wallType) {
     // Create a fallback master array for general spawns
     let floorTiles = [...bastionTiles, ...wildsTiles, ...lairTiles];
 
-    return { grid, startX, startY, bossX, bossY, bastionTiles, wildsTiles, lairTiles, floorTiles,houseTiles };
+    return { grid, startX, startY, bossX, bossY, bastionTiles, wildsTiles, lairTiles, floorTiles,houseTiles,safeTiles };
 }
 // --- FACTION HUB: TINTAGEL CASTLE ---
 function generateTintagelHub() {
@@ -5246,14 +5247,13 @@ async function processSuncatThought(socketId, triggerType, data) {
         // 1. Send the prompt! Suncat will generate his [SOUL] thought, and optionally call a tool.
         let result = await activeSession.sendMessage(prompt);
         
-        // 2. If he decided to use a tool, run it through the executor! 
-        // executeAITools will run the tool, feed the result back to Suncat, and return his final speech automatically.
+       // 2. If he decided to use a tool, run it through the executor! 
         if (useBigBrain && result.response.functionCalls()) {
-            result = await executeAITools(result.response, activeSession, io.sockets.sockets.get(socketId));
+            const toolOutput = await executeAITools(result.response, activeSession, io.sockets.sockets.get(socketId));
+            result = { response: toolOutput }; // <-- Re-wrap it to prevent the crash!
         }
 
         if (result.response.usageMetadata) updateBudget(result.response.usageMetadata, socketId);
-
         let finalSpeech = "";
         try {
             if (result.response.text()) {
