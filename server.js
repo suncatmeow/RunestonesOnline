@@ -1738,11 +1738,25 @@ const STORY_CAMPAIGN_DB = {
         text: "The High Priestess stepped forward, her blue robes trailing on the cold floor, looking toward the dark corridor with concern. 'The Magician has gone to confront our captors, but has not returned in some time,' she said. 'I fear for the worst...'",
         system_events: [],
         hook: "Ask the player what they would do if their strongest ally suddenly went missing.",
+        next_beat: "prologue_2b"
+    },
+    "prologue_2b": {
+        title: "Prologue: A Game of Stones",
+        text: "Before they could move, the old Emperor sat cross-legged on the cold stone, rattling a few pebbles in his weathered hands. 'A game of stones for my Crown, traveler?' he mumbled, his mind clearly fractured by the imprisonment.",
+        system_events: [],
+        hook: "Ask the player how they handle seeing once-great leaders brought low.",
+        next_beat: "prologue_2c"
+    },
+    "prologue_2c": {
+        title: "Prologue: A Soothing Melody",
+        text: "The Empress knelt beside the Emperor, her eyes filled with gentle kindness. She began to hum a sweet, familiar tune—Edmundo's melody. The old man's tense shoulders relaxed, and he let her coax him to his feet. The Hierophant bowed his head in a silent prayer of thanks.",
+        system_events: [],
+        hook: "Ask the player if music has ever helped them through a dark time.",
         next_beat: "prologue_3"
     },
     "prologue_3": {
         title: "Prologue: The Portal",
-        text: "She turned her gaze to the glowing rift pulsating nearby. 'The portal created by the Magician still works, so let us depart.'",
+        text: "The High Priestess turned her gaze to the glowing rift pulsating nearby. 'The portal created by the Magician still works, so let us depart.'",
         system_events: [],
         hook: "Ask the player if they would step blindly into an unstable magical rift.",
         next_beat: "prologue_4"
@@ -1750,15 +1764,29 @@ const STORY_CAMPAIGN_DB = {
     "prologue_4": {
         title: "Prologue: The Court Gathers",
         text: "With the Emperor, Empress, and Hierophant rallying behind them, The Fool stepped bravely through the portal, leaving their prison behind.",
-        system_events: ["The High Priestess, Empress, Emperor, and Heirophant join your party!"],
+        system_events: ["The High Priestess, Empress, Emperor, and Hierophant join your party!"],
         hook: "Ask the player who they would want standing by their side in the dark.",
         next_beat: "ch1_1"
     },
 
     // === CHAPTER 1 ===
     "ch1_1": {
+        title: "Chapter 1: The Outer Dungeon",
+        text: "The portal deposited them into the scarred passageways of the Outer Dungeon. The dark gray stonework was shattered, and outside the broken ceiling, a harsh storm brewed in the black sky.",
+        system_events: [],
+        hook: "Ask the player if hearing the echoes of a storm makes them more or less eager to explore.",
+        next_beat: "ch1_1a"
+    },
+    "ch1_1a": {
+        title: "Chapter 1: The Resentful Stone",
+        text: "From the shadows, a lone Wisp floated aimlessly. It didn't attack; it merely watched the party with a dull, resentful glow, mourning the quiet dark that the Magician's frantic escape had violently disrupted.",
+        system_events: [],
+        hook: "Ask the player if they ever feel bad for the monsters whose homes they barge into.",
+        next_beat: "ch1_1b"
+    },
+    "ch1_1b": {
         title: "Chapter 1: The Magician's Humility",
-        text: "The portal deposited them into a stone chamber littered with broken vials and scorched parchment. Huddled in the corner was The Magician, nursing a bruised arm and looking far less confident than usual.",
+        text: "Navigating past the spirits, they found a stone chamber littered with broken vials and scorched parchment. Huddled in the corner was The Magician, nursing a bruised arm and looking far less confident than usual.",
         system_events: [],
         hook: "Ask the player if they've ever found a powerful mentor utterly defeated.",
         next_beat: "ch1_2"
@@ -1772,37 +1800,51 @@ const STORY_CAMPAIGN_DB = {
     },
     "ch1_3": {
         title: "Chapter 1: Empty Pockets",
-        text: "The Magician gestured to his empty belt. 'I exhausted all my spells and items to just barely get away. Without magical artifacts, I dare not venture forth.'",
+        text: "The Magician gestured to his empty belt. 'I exhausted all my spells and artifacts to just barely get away. Without them, I dare not venture forth.'",
         system_events: [],
         hook: "Ask the player how terrifying it feels to lose all their hard-earned gear.",
         next_beat: "ch1_4"
     },
     "ch1_4": {
         title: "Chapter 1: Gathering the Pieces",
-        text: "He looked at The Fool’s hopeful expression and shook his head. 'Ever the optimist... Before we go, let's collect my things. We may need them.'",
-        system_events: ["The Magician joins your party!"],
-        hook: "Ask the player if they are ready to venture into the Tintagel Forest.",
+        text: "He looked at The Fool’s hopeful expression and shook his head. 'Ever the optimist... Before we go, let's collect my things from these halls. We will need them for the forest.'",
+        system_events: ["The Magician joins your party!", "You collected scattered Artifacts!"],
+        hook: "Ask the player if they are ready to venture into the eerie Tintagel Forest.",
         next_beat: "ch2_1"
     },
 
     // === CHAPTER 2 ===
     "ch2_1": {
+        title: "Chapter 2: Scared Shadows",
+        text: "Guided by the Magician, the party emerged into the dense, misty woods of Tintagel Forest. A group of Goblins darted across the path, but instead of attacking, they cowered in the brush. 'They aren't evil,' the Magician noted, 'just terrified. Driven from their caverns.'",
+        system_events: [],
+        hook: "Ask the player if they ever spare monsters who are just trying to survive.",
+        next_beat: "ch2_1a"
+    },
+    "ch2_1a": {
+        title: "Chapter 2: Eyes in the Brush",
+        text: "Beneath a canopy of dark green leaves, a small Goblin clutched a stolen berry, watching the heavily armed party walk by. It held its breath, praying to the forest spirits that these tall, scary humans wouldn't notice its hiding spot.",
+        system_events: [],
+        hook: "Ask the player if they realize how scary they look to a level 1 enemy.",
+        next_beat: "ch2_1b"
+    },
+    "ch2_1b": {
         title: "Chapter 2: The Hidden Hermitage",
-        text: "Guided by the Magician, the party emerged into the dense, misty woods of Tintagel Forest. Navigating past illusions, they found an old man holding a lantern—The Hermit.",
+        text: "Navigating past further illusions, they found an old man holding a lantern—The Hermit. He sat in perfect stillness, enjoying a silence so profound that only a creature like the mythical Suncat could truly understand it.",
         system_events: ["The Hermit joins your party!"],
-        hook: "Ask the player if they generally trust old men hiding in misty woods.",
+        hook: "Ask the player if they can appreciate sitting in absolute, uninterrupted silence.",
         next_beat: "ch2_2"
     },
     "ch2_2": {
         title: "Chapter 2: A Missing Apprentice",
-        text: "'If you came, this means the four kings have made their move,' he said gravely. 'The goblins have been driven from their caverns by a dark force. My apprentice went to investigate, but hasn't returned.'",
+        text: "'If you came, this means the four kings have made their move,' the Hermit said gravely, breaking his silence. 'My apprentice went to investigate the dark force that drove the Goblins out, but hasn't returned.'",
         system_events: [],
         hook: "Ask the player if they would risk a dark cavern to save a foolish apprentice.",
         next_beat: "ch2_3"
     },
     "ch2_3": {
         title: "Chapter 2: The Pixie's Trap",
-        text: "No sooner had they left the hermitage than a mischievous Pixie fluttered down, blocking their path. 'Heh, letting you escape was part of the plan!' the Pixie sneered, revealing it was a trap.",
+        text: "No sooner had they left the hermitage than a mischievous Pixie fluttered down, blocking their path. 'Heh, letting you escape the dungeon was part of the plan!' the Pixie sneered, revealing an ambush.",
         system_events: [],
         hook: "Ask the player if they hate it when enemies take the time to gloat.",
         next_beat: "ch2_4"
@@ -1811,33 +1853,33 @@ const STORY_CAMPAIGN_DB = {
         title: "Chapter 2: A Deep Fall",
         text: "After a chaotic skirmish, the chase led them deep into the Goblin Caverns. In the darkness, The Fool lost his footing and tumbled into a deep pit... landing face-to-face with a massive Treasure Snake.",
         system_events: [],
-        hook: "Pause for dramatic effect. Ask the player what their first move is when facing a giant snake.",
+        hook: "Pause for dramatic effect. Ask the player what their first move is when facing a giant ancient snake.",
         next_beat: "ch2_5"
     },
     "ch2_5": {
         title: "Chapter 2: The Snake's Bargain",
-        text: "The Treasure Snake hissed, worried about the goblins who used to bring it offerings. 'Vanquish whatever killed them, and I will give you... something,' the snake promised.",
+        text: "The Treasure Snake hissed, greedy but honest, lamenting the loss of the goblins who used to bring it offerings. 'Vanquish whatever killed them, and I will give you... something,' the snake promised.",
         system_events: [],
         hook: "Ask the player if they would trust a bargain made with a serpent.",
         next_beat: "ch2_6"
     },
     "ch2_6": {
         title: "Chapter 2: The Inner Sanctum",
-        text: "With a flick of its tail, the snake launched The Fool back to the upper level! Reunited with the party, they fought through a horde of Imps until they reached the inner sanctum, defeating the Imp Leader to free the bound Apprentice.",
+        text: "With a flick of its tail, the snake launched The Fool back to the upper level! Reunited with the party, they fought through a horde of Wisps and Imps until they breached the sanctum, freeing the bound Apprentice.",
         system_events: [],
         hook: "Ask the player how satisfying it feels to finally turn the tables on an ambush.",
         next_beat: "ch2_7"
     },
     "ch2_7": {
         title: "Chapter 2: The Dark Plot Revealed",
-        text: "Gasping for air, the Apprentice revealed what he learned while captive. 'The Dark Emperor commands the Four Kings! They seek to topple the Empire completely! The King of Wands assaults the Witch Queen's realm as we speak!'",
+        text: "Gasping for air, the Apprentice revealed what he learned. 'A Dark Emperor commands the Four Kings! They seek to topple the Queens! The King of Wands assaults the Witch Queen's realm as we speak!'",
         system_events: ["The Apprentice joins your party!"],
         hook: "Ask the player if they expected a much bigger villain behind the scenes.",
         next_beat: "ch2_8"
     },
     "ch2_8": {
         title: "Chapter 2: Preparing for Fire",
-        text: "Before diving into the portal to save the Witch Queen, The Fool returned to the pit. The Treasure Snake nodded approvingly and handed over a rare artifact.",
+        text: "Before diving into the portal to save the Witch Queen, The Fool returned to the pit. The Treasure Snake nodded approvingly and handed over a rare artifact from its hoard.",
         system_events: ["You obtained a new Card from the Treasure Snake!"],
         hook: "Ask the player if they are ready to brave the scorching heat of the Realm of Fire.",
         next_beat: "ch3_1"
@@ -1846,28 +1888,42 @@ const STORY_CAMPAIGN_DB = {
     // === CHAPTER 3 ===
     "ch3_1": {
         title: "Chapter 3: The Scorching Desert",
-        text: "The portal opened into a scorching desert. Dodging fire imps and teleporting mirages, they finally breached the Witch Queen's pink marble castle.",
+        text: "The portal opened into a scorching desert under a deep blue sky. The heat reflecting off the pale sand was oppressive, and the air shimmered with magic.",
         system_events: [],
         hook: "Ask the player how they handle extreme heat when traveling.",
+        next_beat: "ch3_1b"
+    },
+    "ch3_1b": {
+        title: "Chapter 3: Shifting Sands",
+        text: "Mirages materialized constantly, twisting the landscape and leading the party in circles. The High Priestess muttered under her breath, highly annoyed by the illusions disrupting her sense of direction.",
+        system_events: [],
+        hook: "Ask the player if they trust their own eyes when wandering a desert.",
+        next_beat: "ch3_1c"
+    },
+    "ch3_1c": {
+        title: "Chapter 3: The Sunbather",
+        text: "Atop a sun-baked rock, a massive Salamander opened one lazy eye. It watched the humans frantically swinging their weapons at thin air, huffed a small plume of smoke in amusement, and went right back to sleep. Let the Imps deal with them.",
+        system_events: [],
+        hook: "Ask the player if they wish they could just sleep through the plot like the Salamander.",
         next_beat: "ch3_2"
     },
     "ch3_2": {
         title: "Chapter 3: The Djinn's Wrath",
-        text: "In the throne room, a massive Djinn—The King of Wands—loomed over the Witch Queen. He turned, his eyes blazing with fury. 'You dare?' the Djinn roared. 'You're courting death!'",
+        text: "Breaching the pink marble castle, they entered the fiery red throne room. A massive Djinn—The King of Wands—loomed over the Witch Queen. 'You dare?' the Djinn roared, his eyes blazing. 'You're courting death!'",
         system_events: [],
         hook: "Ask the player how they would fight a creature made entirely of fire and rage.",
         next_beat: "ch3_3"
     },
     "ch3_3": {
         title: "Chapter 3: Embers",
-        text: "The Magician and Apprentice combined their magic while The Fool struck the final blow, dissolving the Djinn into embers. The Witch Queen stepped down, looking exhausted but regal.",
+        text: "The Magician and Apprentice combined their magic while The Fool struck the final blow, dissolving the Djinn into embers. He wasn't entirely evil, just a being desperate to experience the freedom his wishes granted others.",
         system_events: [],
-        hook: "Ask the player if they enjoy slaying giants.",
+        hook: "Ask the player if they feel sympathy for a villain who just wanted to be free.",
         next_beat: "ch3_4"
     },
     "ch3_4": {
         title: "Chapter 3: The Witch Queen's Request",
-        text: "'Thank you,' she said softly. 'The Ice Queen needs our help now. The King of Cups assails her lonely fortress as we speak. I'll open a portal to her realm.'",
+        text: "The Witch Queen stepped down, fanning herself. Her charismatic fire was undimmed despite the exhaustion. 'Thank you,' she said smoothly. 'But the Ice Queen needs our help now. The King of Cups assails her lonely fortress. I'll open a portal, try to bring a coat.'",
         system_events: ["The Witch Queen joins your party!"],
         hook: "Ask the player if they prefer the scorching desert or the freezing tundra.",
         next_beat: "ch4_1"
@@ -1875,29 +1931,50 @@ const STORY_CAMPAIGN_DB = {
 
     // === CHAPTER 4 ===
     "ch4_1": {
-        title: "Chapter 4: The Lonely Peak",
-        text: "The heat vanished, replaced by the biting wind of Cairn Gorm. Ascending the frozen peak, they found the Ice Queen standing alone in her sapphire fortress.",
-        system_events: ["The Ice Queen joins your party!"],
-        hook: "Ask the player if they have ever felt trapped inside their own home.",
+        title: "Chapter 4: The Ice Cave",
+        text: "The heat vanished instantly, replaced by the biting wind of Cairn Gorm. To reach the peak, they had to navigate a deep, frozen cavern beneath a pitch-black sky. The chilling cold bit at their souls.",
+        system_events: [],
+        hook: "Ask the player what memory they would hold onto to stay warm in a freezing cave.",
+        next_beat: "ch4_1b"
+    },
+    "ch4_1b": {
+        title: "Chapter 4: Spirits Who Can't Let Go",
+        text: "The cave was haunted by the spirits of those who couldn't let go of the mortal realm, manifesting as hostile Skeletons and Shades. Defeating the undead yielded a grim prize—the Death card.",
+        system_events: ["You obtained the Death Card!"],
+        hook: "Ask the player if they view Death as an end, or just a transition.",
+        next_beat: "ch4_1c"
+    },
+    "ch4_1c": {
+        title: "Chapter 4: A Frozen Tear",
+        text: "As they walked, the High Priestess traced her fingers along the pale blue ice walls. 'So much tragic beauty here,' she noted softly. 'A world perfectly preserved, yet entirely devoid of warmth.'",
+        system_events: [],
+        hook: "Ask the player if they find beauty in desolate places.",
         next_beat: "ch4_2"
     },
     "ch4_2": {
+        title: "Chapter 4: The Lonely Peak",
+        text: "Emerging from the cave, they found the Ice Queen standing alone in her sapphire fortress. She was a picture of beautiful sorrow amidst the unending snowfall, looking out over the frozen horizon.",
+        system_events: ["The Ice Queen joins your party!"],
+        hook: "Ask the player if they have ever felt trapped inside their own home.",
+        next_beat: "ch4_3"
+    },
+    "ch4_3": {
         title: "Chapter 4: The Blockade",
         text: "'He is not here,' she said, her voice like cracking ice. 'The King of Cups—the Kraken—controls the sea around my realm. I am a prisoner. You may use my ship to confront him.'",
         system_events: ["You obtained the Sailboat Card!"],
         hook: "Ask the player if they get seasick easily, because things are about to get rough.",
-        next_beat: "ch4_3"
-    },
-    "ch4_3": {
-        title: "Chapter 4: The Boreal Sea",
-        text: "They teleported to the Boreal Sea. The stormy water churned as massive tentacles breached the hull, initiating a desperate battle on the slippery deck.",
-        system_events: [],
-        hook: "Ask the player how they would fight off a sea monster while balancing on a boat.",
         next_beat: "ch4_4"
     },
     "ch4_4": {
+        title: "Chapter 4: The Boreal Sea",
+        text: "They teleported to the Boreal Sea. The stormy water churned under a black sky as massive tentacles breached the hull. A haunting Siren's melody sounded amidst the roaring winds.",
+        system_events: [],
+        hook: "Ask the player how they would fight off a sea monster while balancing on a sinking boat.",
+        next_beat: "ch4_5"
+    },
+    "ch4_5": {
         title: "Chapter 4: The Beast of the Deep",
-        text: "Finally, the Kraken surfaced, a nightmare of beak and suction cups. The party fought amidst the freezing spray, finally sending the beast back to the abyss. In the distance, the Isle of Avalon appeared.",
+        text: "Finally, the Kraken surfaced, a remorseless nightmare of beak and suction cups. The party fought amidst the freezing spray, finally sending the emotionless beast back to the abyss. In the distance, the otherworldly mists of Avalon appeared.",
         system_events: [],
         hook: "Ask the player if they have a fear of the deep, dark ocean.",
         next_beat: "ch5_1"
@@ -1906,28 +1983,56 @@ const STORY_CAMPAIGN_DB = {
     // === CHAPTER 5 ===
     "ch5_1": {
         title: "Chapter 5: The Queen of Swords",
-        text: "Making landfall on Avalon, they found the Queen of Swords looking grim amidst her knights. 'The Dragon—the King of Swords—has demanded I hand over my kingdom,' she warned.",
+        text: "Making landfall, they found the Queen of Swords looking grim amidst the charred trees of her realm. 'The Dragon—the King of Swords—has corrupted my knights and demanded I hand over my kingdom,' she warned, her sharp wit replaced by battlefield pragmatism.",
         system_events: [],
         hook: "Ask the player if they would ever hand over their home to a dragon just to survive.",
+        next_beat: "ch5_1a"
+    },
+    "ch5_1a": {
+        title: "Chapter 5: The Purple Mist",
+        text: "As they spoke, the otherworldly purple mist of Avalon swirled around their ankles. A Sylph fluttered past, giggling at the gruff Emperor's scowl before vanishing into the lush green underbrush.",
+        system_events: [],
+        hook: "Ask the player if they enjoy whimsical places, even when danger is near.",
         next_beat: "ch5_2"
     },
     "ch5_2": {
         title: "Chapter 5: The Ultimatum",
-        text: "'...or he will burn it to ash,' she finished. The Fool signaled that it was time to take the fight to him. They marched straight into the dark tunnels of the Dragon's Lair.",
+        text: "'...or he will burn it to ash,' the Queen finished. 'But before we march into his dark tunnels, we must visit the hallowed ground to the north.'",
         system_events: [],
-        hook: "Ask the player if they prefer negotiating with monsters or just fighting them.",
+        hook: "Ask the player if they prefer negotiating with monsters or just preparing for war.",
+        next_beat: "ch5_2b"
+    },
+    "ch5_2b": {
+        title: "Chapter 5: The Sleeping King",
+        text: "The Queen led them to a sanctified tomb made of smooth gray stone. 'King Arthur rests here,' she explained. 'We will need his legendary blade to cut through the Dragon's scales.'",
+        system_events: [],
+        hook: "Ask the player if they believe they are worthy to pull a legendary sword from its stone.",
+        next_beat: "ch5_2b1"
+    },
+    "ch5_2b1": {
+        title: "Chapter 5: Please Keep It Down",
+        text: "Inside, a Ghostly Knight floated up through the floorboards, looking incredibly annoyed. 'Do you mind?!' it hissed. 'His Majesty has been asleep for centuries, and your armor is clanking!' It immediately drew its sword.",
+        system_events: [],
+        hook: "Ask the player if they've ever been attacked purely for being too loud.",
+        next_beat: "ch5_2c"
+    },
+    "ch5_2c": {
+        title: "Chapter 5: The King's Test",
+        text: "After the party proved their worth—and quieted down—in a solemn duel, King Arthur's spirit bequeathed them Excalibur.",
+        system_events: ["You obtained Excalibur!"],
+        hook: "Ask the player how heavy the weight of a legend feels in their hands.",
         next_beat: "ch5_3"
     },
     "ch5_3": {
         title: "Chapter 5: The Hoard",
-        text: "The great beast sat atop a massive hoard of gold. 'You speak with the arrogance of the Djinn,' the Dragon rumbled, smoke curling from his nostrils. 'Burn!'",
+        text: "Armed with the blade, they marched into the cavernous Dragon's Lair. The grumpy, treasure-loving lizard sat atop a massive hoard. 'You speak with the arrogance of the Djinn,' the Dragon rumbled, smoke curling from his nostrils. 'Burn!'",
         system_events: [],
         hook: "Ask the player how exactly one dodges a wall of dragon fire.",
         next_beat: "ch5_4"
     },
     "ch5_4": {
         title: "Chapter 5: An Aerial Clash",
-        text: "The battle was aerial and chaotic, but the Queen's precision and the Fool’s agility brought the towering King of Swords crashing down. 'My scouts report strange news,' the Queen said, catching her breath. 'The King of Pentacles has been too quiet...'",
+        text: "The battle was chaotic, but Excalibur's edge brought the towering King of Swords crashing down. 'My scouts report strange news,' the Queen said, catching her breath. 'The King of Pentacles has been too quiet...'",
         system_events: ["You obtained the Dragon's Hoard Card!"],
         hook: "Ask the player if quiet enemies worry them more than loud ones.",
         next_beat: "ch6_1"
@@ -1936,42 +2041,56 @@ const STORY_CAMPAIGN_DB = {
     // === CHAPTER 6 ===
     "ch6_1": {
         title: "Chapter 6: The Forest Rescue",
-        text: "The party arrived in the lush forests of the Elf Queen. Suddenly, a woman with rough features ran toward them, pursued by goblins. 'Help me!' she cried.",
+        text: "The party arrived in the goldenrod-skied forests of the Elf Queen. Suddenly, a woman with rough features ran toward them, pursued by Gargoyles. 'Help me!' she cried.",
         system_events: [],
         hook: "Ask the player if they enjoy playing the hero when strangers ask for help.",
+        next_beat: "ch6_1a"
+    },
+    "ch6_1a": {
+        title: "Chapter 6: Goldenrod Canopy",
+        text: "High above the skirmish, a tiny Gnome sat on a tree branch, idly kicking his feet. He watched the adventurers slay the Gargoyles while autumn leaves drifted lazily through the air. The war hadn't truly reached these woods, and he intended to keep enjoying the view.",
+        system_events: [],
+        hook: "Ask the player if they ever just stop to admire the scenery in a video game.",
+        next_beat: "ch6_1b"
+    },
+    "ch6_1b": {
+        title: "Chapter 6: The Cultivator",
+        text: "After dispatching the beasts, a strange, glowing man appeared from the trees. He offered the party a warm, enigmatic smile, nodded approvingly at their strength, and vanished into the falling leaves like a phantom.",
+        system_events: [],
+        hook: "Ask the player if they think the world is full of ancient watchers.",
         next_beat: "ch6_2"
     },
     "ch6_2": {
         title: "Chapter 6: Unwanted Affection",
-        text: "The party dispatched the monsters easily. The woman blushed, looking at The Fool with starry eyes. 'My hero... I must return to my father. I shall never forget you.' Confused, the party continued to the castle.",
+        text: "The rescued woman blushed, looking at The Fool with starry eyes. 'My hero... I must return to my father. I shall never forget you.' Confused, the party continued to the castle.",
         system_events: [],
         hook: "Ask the player if they are good at handling sudden, unwanted romantic attention.",
         next_beat: "ch6_3"
     },
     "ch6_3": {
         title: "Chapter 6: The Giant's Assault",
-        text: "As the Elf Queen welcomed them, the castle wall smashed open. The Giant—King of Pentacles—burst in, attacking without warning! But strangely, he seemed to be holding back.",
+        text: "As the Elf Queen—the gentle mother of the woods—welcomed them, the castle wall smashed open. The Giant—King of Pentacles—burst in, attacking without warning! But strangely, he seemed to be holding back.",
         system_events: [],
         hook: "Ask the player if they can usually tell when an opponent isn't fighting with their full strength.",
         next_beat: "ch6_4"
     },
     "ch6_4": {
         title: "Chapter 6: The Giant's Proposal",
-        text: "Suddenly, the woman from the forest ran in. 'Father, stop!' she begged. The Giant lowered his club. 'I planned to side with the Dark Emperor,' he sighed, 'But seeing as my daughter has fallen for you... Will you marry her?'",
+        text: "Suddenly, the woman from the forest ran in. 'Father, stop!' she begged. The Giant lowered his club. 'I planned to side with the Dark Emperor to protect her,' he sighed, 'But seeing as my daughter has fallen for you... Will you marry her?'",
         system_events: [],
         hook: "Pause dramatically. Ask the player: If it meant stopping a war, would they marry a Giant's daughter?",
         next_beat: "ch6_5"
     },
     "ch6_5": {
         title: "Chapter 6: A Heart of Stone",
-        text: "The Fool looked at the woman, then at the Giant, and gently shook his head No. The Giant roared in absolute fury. 'Then you reject my mercy! Die!'",
+        text: "The Fool looked at the woman, then at the Giant, and gently shook his head No. The Giant roared in absolute fury, his stone heart breaking for his child. 'Then you reject my mercy! Die!'",
         system_events: [],
         hook: "Ask the player if they have ever accidentally enraged a protective father.",
         next_beat: "ch6_6"
     },
     "ch6_6": {
         title: "Chapter 6: The Final Push",
-        text: "He fought with earth-shattering power, but the combined might of the party was too great. As he fell, his weeping daughter turned to them with fierce resolve. 'I blame the Dark Emperor for this. Please... destroy him.'",
+        text: "He fought with earth-shattering power, but the combined might of the party was too great. As he fell, his weeping daughter turned to them. 'I blame the Dark Emperor for this. Please... destroy him.'",
         system_events: ["The Elf Queen joins your party!"],
         hook: "Ask the player if they are mentally prepared for the final confrontation.",
         next_beat: "finale_1"
@@ -1979,56 +2098,90 @@ const STORY_CAMPAIGN_DB = {
 
     // === FINALE ===
     "finale_1": {
-        title: "Finale: The Center of the World",
-        text: "The final portal opened. A Dark Bridge stretched between them and the Dark Tower. Lightning crashed from the sky shaking the foundation. The party climbed up to the top, fighting the shades of the enemies they had once defeated.",
+        title: "Finale: The Dark Bridge",
+        text: "The final portal opened. A gothic stone bridge stretched over a pitch-black void toward the misty Dark Tower. Lightning crashed from the sky, shaking the very foundation of the realm.",
         system_events: [],
         hook: "Ask the player how it feels knowing they've finally reached the end of the road.",
+        next_beat: "finale_1a"
+    },
+    "finale_1a": {
+        title: "Finale: The Weight of the Void",
+        text: "The party walked across the bridge in heavy silence. The Hierophant muttered a prayer under his breath with every flash of lightning. The sheer emptiness of the void below threatened to pull at their sanity.",
+        system_events: [],
+        hook: "Ask the player if standing over a bottomless pit makes them dizzy.",
+        next_beat: "finale_1b"
+    },
+    "finale_1b": {
+        title: "Finale: Ascent of Fire",
+        text: "Entering the first floor, the space resembled outer space, twinkling with distant stars. On the second floor, a menacing fiery figure loomed—the Shade of the Djinn, forced by the Emperor to fight one last time.",
+        system_events: [],
+        hook: "Ask the player if it's harder to fight an enemy the second time around.",
+        next_beat: "finale_1c"
+    },
+    "finale_1c": {
+        title: "Finale: Ascent of the Depths",
+        text: "Defeating the flames, they climbed to the third floor. The room plunged into freezing astral darkness as the massive, tentacled Shade of the Kraken materialized from the void to crush them.",
+        system_events: [],
+        hook: "Ask the player how much endurance they have left.",
+        next_beat: "finale_1d"
+    },
+    "finale_1d": {
+        title: "Finale: Ascent of Smoke",
+        text: "Breaching the fourth floor, the air grew thick with phantom smoke. The winged Shade of the Dragon descended from the starry ceiling, roaring with silent, ghostly fury.",
+        system_events: [],
+        hook: "Ask the player if they are tired of giant flying reptiles yet.",
+        next_beat: "finale_1e"
+    },
+    "finale_1e": {
+        title: "Finale: Ascent of Stone",
+        text: "On the fifth floor, a towering figure blocked the final stairway. The Shade of the Giant, still guarding the passage upward, swung its spectral club in a heartbreaking display of loyalty.",
+        system_events: ["You obtained Alchemy!"],
+        hook: "Ask the player to take a deep breath before opening the final door.",
         next_beat: "finale_2"
     },
     "finale_2": {
-        title: "Finale: The Dark Emperor",
-        text: "As the party reached the top of the Tower, the Fool walked ahead. In his hand, he held a full deck of Tarot cards taken from the Kings they had defeated. 'Actually, there was no Dark Emperor. It was me all along!'",
+        title: "Finale: The Center of the World",
+        text: "As the party reached the stormy rooftop, the Fool walked ahead. In his hand, he held a full deck of Tarot cards taken from the Kings they had defeated. 'Actually, there was no Dark Emperor. It was me all along!'",
         system_events: ['Fool has left your party!'],
-        hook: "Ask the player if they've every been betrayed by a close friend.",
+        hook: "Ask the player if they've ever been betrayed by a close friend.",
         next_beat: "finale_3"
     },
     "finale_3": {
-        title: "Finale: The Dark Emperor",
-        text: "'I offered the four kings what they most desired. The Djinn sought freedom, and the Kraken? control. The Dragon only coveted power. The Giant only wanted security for him and his daughter... they turned so easily...'",
+        title: "Finale: The True Motivations",
+        text: "'I offered the four kings what they most desired,' the Fool gloated, his impulsive naivety revealing its dark edge. 'The Djinn sought freedom, the Kraken sought control. The Dragon coveted power, and the Giant only wanted security... they turned so easily...'",
         system_events: [],
         hook: "Ask the player what they most desire in life, and if they would join a dark cause to get it?",
         next_beat: "finale_4"
     },
     "finale_4": {
-        title: "Finale: Betrayal",
-        text: "'You monster. Do you think life is a game?' The Magician exclaimed, pointing his sword at the Fool. The Empress wore a face of utter disgust. 'All those people died. For what?'' The Emperor seemed to age one hundred years in an instant. The Heirophant looked to the sky in shame. 'It seems we are the fools...'. The High Priestess let out a knowing smile.",
+        title: "Finale: Disgust",
+        text: "The Magician pointed his sword at the Fool. 'Do you think life is a game?' The Empress wore a face of utter disgust. The Emperor seemed to age one hundred years in an instant. The Hierophant looked to the sky in shame. Only the High Priestess let out a knowing smile.",
         system_events: [],
-        hook: "Ask the player what they would do if they ever thought they were doing the right thing when in reality it was not.",
+        hook: "Ask the player what they would do if they ever thought they were doing the right thing, when in reality it was a lie.",
         next_beat: "finale_5"
     },
     "finale_5": {
         title: "Finale: I Knew All Along",
-        text: "'I knew all along.' said the High Priestess. The Fool's proud smirk turned into furrowed brows. 'Lies.' 'It's true,' she said,' I realized once the ire of the kings was stoked, the flames of war could not be extinguished. We would have to fight regardless. I would think you would know best. It's better to play the fool and let the enemy THINK they've won.'",
+        text: "'I knew all along,' said the High Priestess, her strict demeanor unshaken. 'Once the ire of the kings was stoked, the flames of war could not be extinguished. We would have to fight regardless. It's better to play the fool and let the enemy THINK they've won.'",
         system_events: [],
         hook: "Ask the player if they've ever played the fool.",
-        next_beat: 'finale_6' // End of the line.
+        next_beat: "finale_6"
     },
     "finale_6": {
-        title: "Finale: Who's Stronger, You or Me?",
-        text: "'Heh, no wonder you were so rough on me in the prison...' the Fool, no stranger to shame, approached the party. 'On the other hand, those kings sure had a lot of cards! I wonder... who's stronger, you or me?",
+        title: "Finale: Who's Stronger?",
+        text: "'Heh, no wonder you were so rough on me in the prison...' the Fool, no stranger to shame, recovered his smirk. 'On the other hand, those kings sure had a lot of cards! I wonder... who's stronger, you or me?'",
         system_events: [],
-        hook: "Ask the player if they've ever played the fool.",
-        next_beat: 'finale_7' // End of the line.
+        hook: "Ask the player if they are ready to test their limits.",
+        next_beat: "finale_7"
     },
     "finale_7": {
         title: "Finale: The Final Draw",
-        text: "The Fool, now flanked by the High Priestess, the Magician, the Hermit, and the Four Queens, drew his own deck. The final battle for the fate of Tarot had begun.",
+        text: "The Fool, now flanked by the dark power he had stolen, drew his deck. The High Priestess, the Magician, the Hermit, and the Four Queens stood united. The final battle for the fate of Tarot had begun.",
         system_events: ["Save Game?"],
         hook: "Tell the player the tale has caught up to the present moment. Ask them if they are ready to write the ending themselves.",
-        next_beat: null // End of the line.
+        next_beat: null
     }
-    };
-
+};
 // --- 3. CUSTOM MAP BIOMES ---
 const BIOME_DB = {
     0: { 
