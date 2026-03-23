@@ -4877,7 +4877,9 @@ async function processSuncatThought(socketId, triggerType, data) {
         
         const myAtlas = WORLD_ATLAS_DB[suncat.mapID];
         const pAtlas = WORLD_ATLAS_DB[player.mapID];
-        
+        let systemOverride = ""; 
+        let eventInstruction = "";
+        let useBigBrain = false;
         // ---> THE NEW CUSTOM LORE SWAP <---
         let dynamicLore = "";
         let dynamicName = "Unknown Area";
@@ -4937,9 +4939,7 @@ async function processSuncatThought(socketId, triggerType, data) {
         else if (arousal < 0.5 && valence < 0.0) dmMood = "melancholic, peaceful, and lonely";
         else if (arousal >= 0.5 && valence >= 0.0) dmMood = "heroic, triumphant, and fast-paced";
 
-        let systemOverride = ""; 
-        let eventInstruction = "";
-        let useBigBrain = false;
+        
 
         // Consume background processing flags
         if (player.pendingVerification) {
@@ -6118,7 +6118,9 @@ function giTractPurge(playerId) {
     if (!player || !player.undigestedInfo) return;
 
     const STOMACH_CAPACITY = 20; 
-
+    if (player.undigestedInfo.length > STOMACH_CAPACITY * 2) {
+         player.undigestedInfo.splice(0, player.undigestedInfo.length - STOMACH_CAPACITY);
+    }
     // If blood is in the limbs (high stress) and the stomach overfills, the body purges the raw food to survive.
     if (player.undigestedInfo.length > STOMACH_CAPACITY && player.dmStress > 69) {
         // Forcefully empty the oldest half of the stomach. It is wasted, never to be remembered.
