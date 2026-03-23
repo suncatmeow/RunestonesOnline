@@ -5493,7 +5493,7 @@ socket.on("join_game", (data) => {
       }
   });
 // --- EVENT: COMBAT / INTERACTION ---
-    cket.on("npc_died", async (data) => {
+    socket.on("npc_died", async (data) => {
     let uniqueID = data.mapID + "_" + data.index;
     deadNPCs[uniqueID] = Date.now();
 
