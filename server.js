@@ -3496,8 +3496,8 @@ async function generateScenarioScript(biomeName, scenarioType, bossName, questGi
     1. mapLore: 2 sentences of deep history tying the Boss's motives to this region.
     2. questObjective: A clear 1-sentence objective.
     3. bossTaunt: 1 menacing sentence revealing their true motive and attacking the player's psychology.
-    4. hostileTaunts: Array of 13 distinct battle cries from the grunts/guards reflecting their desperation or fanaticism.
-    5. traitorBegs: Array of 6 distinct lines from enemies offering to defect, revealing the harsh reality of their side.
+    4. hostileTaunts: Array of 30 distinct battle cries from the grunts/guards reflecting their desperation or fanaticism.
+    5. traitorBegs: Array of 15 distinct lines from enemies offering to defect, revealing the harsh reality of their side.
     6. friendlyLore: Array of 6 lines from villagers (e.g., rumors about the black-market merchant, prejudices against the enemy, hints about the Lair).
     7. friendlyLife: Array of 4 lines of mundane, atmospheric chatter.
     8. friendlyProfound: Array of 4 philosophical statements bridging the player's habits to the scenario.
