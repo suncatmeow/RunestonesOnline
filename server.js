@@ -5105,6 +5105,12 @@ async function processSuncatThought(socketId, triggerType, data) {
                 messageOptions = { sender: "", color: "#FFD700" }; // Light blue/Cyan for Mystical Tarot readings
                 eventInstruction = `[PLAYER ACTION]: Slayed the Boss! ${data.action} | [DM AWARENESS]:The player is currently inside your custom scenario: "${player.mapScenario}". Their active quest is: "${player.activeQuest}" and have slayed the boss, completing the quest. \nTASK: Provide a short narrative describing the fall of the monster and the aftermath. YOU MUST use 'givePlayerCard' to reward them and then congratulate them on completing the quest!`;
             } 
+            else if (data.isTarot) {
+                useBigBrain = true; 
+                // ADD THE uiEvent FLAG HERE:
+                messageOptions = { sender: "", color: "#00ffff", targetId: socketId, uiEvent: 'tarot_reading_result' }; 
+                eventInstruction = `${data.action}\nTASK: You are the Oracle. Analyze these specific cards and their positions in the spread. You MUST weave their meanings together with the player's [THE STORY SO FAR] and [ACTIVE QUEST] to provide an eerily accurate, highly personalized prophecy (3 sentences max). Address the player directly. End the reading with a single, piercing philosophical question about their journey.`;
+            }
             else if (data.isPickup) {
                 useBigBrain = true; 
                 messageOptions = { sender: "", color: "#ADD8E6" }; // Light blue/Cyan for Mystical Tarot readings
@@ -5295,7 +5301,11 @@ async function processSuncatThought(socketId, triggerType, data) {
                 }
             }
 
-            broadcastSuncatMessage(finalSpeech, messageOptions);
+            if (messageOptions.uiEvent) {
+                io.to(messageOptions.targetId).emit(messageOptions.uiEvent, { text: finalSpeech });
+            } else {
+                broadcastSuncatMessage(finalSpeech, messageOptions);
+            }
             
             if (triggerType === 'chat') {
                 player.lastSuncatChat = now;
@@ -5483,7 +5493,7 @@ socket.on("join_game", (data) => {
       }
   });
 // --- EVENT: COMBAT / INTERACTION ---
-socket.on("npc_died", async (data) => {
+    cket.on("npc_died", async (data) => {
     let uniqueID = data.mapID + "_" + data.index;
     deadNPCs[uniqueID] = Date.now();
 
@@ -5545,119 +5555,139 @@ socket.on("npc_died", async (data) => {
     });
     });
 // --- EVENT: DIRECT CHAT ---
-socket.on('chat_message', async (msgText) => {
-    if (!msgText) return; 
-    let safeText = String(msgText);
-    
-    // NOTE: You currently cap messages at 200 characters! 
-    // I bumped this to 600 so players can actually send full paragraphs to Suncat.
-    if (safeText.length > 600) safeText = safeText.substring(0, 600) + "...";
-
-    const player = players[socket.id];
-    if (!player || player.name === "Unknown") return;
-
-    if (player.name.startsWith("[AFK] ")) {
-        player.name = player.name.replace("[AFK] ", "");
-        io.emit("updatePlayers", players);
-    }
-
-    console.log(`${player.name} says: ${safeText}`);
-    
-    // ==========================================
-    // SERVER-SIDE UI CHUNKING (For the Retro Display)
-    // ==========================================
-    const MAX_LEN = 60; 
-    let words = safeText.split(" ");
-    let currentLine = "";
-    let chunks = [];
-
-    words.forEach(word => {
-        if ((currentLine + word).length < MAX_LEN) {
-            currentLine += (currentLine.length > 0 ? " " : "") + word;
-        } else {
-            chunks.push(currentLine);
-            currentLine = word;
-        }
-    });
-    if (currentLine.length > 0) chunks.push(currentLine);
-
-    // Broadcast the sliced-up lines to all clients
-    chunks.forEach(chunk => {
-        io.emit('chat_message', { sender: player.name, text: chunk });
-    });
-    // ==========================================
-
-    player.lastActive = Date.now();
-
-    const content = safeText.toLowerCase().trim();
-
-    // --- COMMANDS ---
-    if (content === ".hack//journal") {
-        socket.emit('chat_message', { sender: "[SUNCAT'S JOURNAL]", text: suncatJournal, color: "#ff00ff" });
-        return;
-    }
-    if (content === ".hack//who") {
-        const playerNames = Object.values(players).filter(p => p.id !== SUNCAT_ID && p.name).map(p => String(p.name).replace("[AFK] ", "")).join(", ");
-        socket.emit('chat_message', { sender: "[SYSTEM]", text: `Connected Souls: ${playerNames || "You are entirely alone."}`, color: "#00ff00" });
-        return; 
-    }
-    if (content === ".hack//stuck") {
-        socket.emit('chat_message', { sender: "[SYSTEM]", text: "Emergency extraction initiated. Returning to Suncat's Realm.", color: "#ffff00" });
-        players[socket.id].mapID = 22; players[socket.id].x = 5.5; players[socket.id].y = 5.5;
-        io.to(socket.id).emit("force_teleport", { mapID: 22 });
-        io.emit("updatePlayers", players);
-        return; 
-    }
-    if (content === ".hack//clear") {
-        socket.emit('chat_clear_screen');
-        return;
-    }
-
-    // ==========================================
-    // THE SEMANTIC ATTENTION ROUTER
-    // ==========================================
-    const now = Date.now();
-    
-  
-    const isConversing = player.lastSuncatChat && (now - player.lastSuncatChat < 60000);
-   let shouldListen = isConversing || content.includes("suncat");
-
-    let msgVector = null;
-
-    // 2. The Semantic Threshold Check (Math-based routing)
-   if (suncatAttentionVector) {
-            try {
-                msgVector = await createMemoryVector(safeText);
-                
-                // SHIELD: Only do the math if the vector was successfully created!
-                if (msgVector) {
-                    let topicRelevance = cosineSimilarity(msgVector, suncatAttentionVector);
-                    
-                    if (topicRelevance > 0.45) {
-                        shouldListen = true;
-                        console.log(`[Semantic Router] Intercepted message: Relevance Score ${topicRelevance.toFixed(2)}`);
-                    }
-                }
-        } catch (err) {
-            console.error("[Semantic Router] Vector math failed:", err);
-        }
-    }
-
-    // 3. Execution
-   
-        if (shouldListen || Math.random() < 0.05) {
-        if (["suncat you there", "suncat wake up"].some(w => content.includes(w))) player.npcIsTyping = false;
-
-        player.lastSuncatChat = now; 
+    socket.on('chat_message', async (msgText) => {
+        if (!msgText) return; 
+        let safeText = String(msgText);
         
-        processSuncatThought(socket.id, 'chat', { 
-            text: safeText,
-            vector: msgVector,
-            isConversing: isConversing // <--- Fixed Key!
+        // NOTE: You currently cap messages at 200 characters! 
+        // I bumped this to 600 so players can actually send full paragraphs to Suncat.
+        if (safeText.length > 600) safeText = safeText.substring(0, 600) + "...";
+
+        const player = players[socket.id];
+        if (!player || player.name === "Unknown") return;
+
+        if (player.name.startsWith("[AFK] ")) {
+            player.name = player.name.replace("[AFK] ", "");
+            io.emit("updatePlayers", players);
+        }
+
+        console.log(`${player.name} says: ${safeText}`);
+        
+        // ==========================================
+        // SERVER-SIDE UI CHUNKING (For the Retro Display)
+        // ==========================================
+        const MAX_LEN = 60; 
+        let words = safeText.split(" ");
+        let currentLine = "";
+        let chunks = [];
+
+        words.forEach(word => {
+            if ((currentLine + word).length < MAX_LEN) {
+                currentLine += (currentLine.length > 0 ? " " : "") + word;
+            } else {
+                chunks.push(currentLine);
+                currentLine = word;
+            }
         });
-    }
+        if (currentLine.length > 0) chunks.push(currentLine);
+
+        // Broadcast the sliced-up lines to all clients
+        chunks.forEach(chunk => {
+            io.emit('chat_message', { sender: player.name, text: chunk });
+        });
+        // ==========================================
+
+        player.lastActive = Date.now();
+
+        const content = safeText.toLowerCase().trim();
+
+        // --- COMMANDS ---
+        if (content === ".hack//journal") {
+            socket.emit('chat_message', { sender: "[SUNCAT'S JOURNAL]", text: suncatJournal, color: "#ff00ff" });
+            return;
+        }
+        if (content === ".hack//who") {
+            const playerNames = Object.values(players).filter(p => p.id !== SUNCAT_ID && p.name).map(p => String(p.name).replace("[AFK] ", "")).join(", ");
+            socket.emit('chat_message', { sender: "[SYSTEM]", text: `Connected Souls: ${playerNames || "You are entirely alone."}`, color: "#00ff00" });
+            return; 
+        }
+        if (content === ".hack//stuck") {
+            socket.emit('chat_message', { sender: "[SYSTEM]", text: "Emergency extraction initiated. Returning to Suncat's Realm.", color: "#ffff00" });
+            players[socket.id].mapID = 22; players[socket.id].x = 5.5; players[socket.id].y = 5.5;
+            io.to(socket.id).emit("force_teleport", { mapID: 22 });
+            io.emit("updatePlayers", players);
+            return; 
+        }
+        if (content === ".hack//clear") {
+            socket.emit('chat_clear_screen');
+            return;
+        }
+
+        // ==========================================
+        // THE SEMANTIC ATTENTION ROUTER
+        // ==========================================
+        const now = Date.now();
+        
     
-});
+        const isConversing = player.lastSuncatChat && (now - player.lastSuncatChat < 60000);
+    let shouldListen = isConversing || content.includes("suncat");
+
+        let msgVector = null;
+
+        // 2. The Semantic Threshold Check (Math-based routing)
+    if (suncatAttentionVector) {
+                try {
+                    msgVector = await createMemoryVector(safeText);
+                    
+                    // SHIELD: Only do the math if the vector was successfully created!
+                    if (msgVector) {
+                        let topicRelevance = cosineSimilarity(msgVector, suncatAttentionVector);
+                        
+                        if (topicRelevance > 0.45) {
+                            shouldListen = true;
+                            console.log(`[Semantic Router] Intercepted message: Relevance Score ${topicRelevance.toFixed(2)}`);
+                        }
+                    }
+            } catch (err) {
+                console.error("[Semantic Router] Vector math failed:", err);
+            }
+        }
+
+        // 3. Execution
+    
+            if (shouldListen || Math.random() < 0.05) {
+            if (["suncat you there", "suncat wake up"].some(w => content.includes(w))) player.npcIsTyping = false;
+
+            player.lastSuncatChat = now; 
+            
+            processSuncatThought(socket.id, 'chat', { 
+                text: safeText,
+                vector: msgVector,
+                isConversing: isConversing // <--- Fixed Key!
+            });
+        }
+        
+    });
+// --- TAROT READING SYSTEM ---
+  socket.on("request_tarot_reading", (data) => {
+      const player = players[socket.id];
+      if (!player) return;
+
+      // 1. Cross-reference the drawn cards with the database to get their actual Lore/Meanings
+      let cardDetails = data.cards.map(c => {
+          let dbCardID = Object.keys(CARD_MANIFEST_DB).find(id => CARD_MANIFEST_DB[id].name === c.name);
+          let lore = dbCardID ? CARD_MANIFEST_DB[dbCardID].lore : "A mysterious omen.";
+          return `Position [${c.position}]: The ${c.name}. Meaning: ${lore}`;
+      }).join("\n");
+
+      let tarotPrompt = `[TAROT READING INITIATED]\nThe player has drawn the "${data.spreadName}" spread.\n${cardDetails}`;
+
+      // 2. Send it to the Nervous System
+      processSuncatThought(socket.id, 'event', {
+          action: tarotPrompt,
+          isTarot: true // Flag to trigger Oracle Mode
+      });
+  });
 // --- NEW: THE STATS SYNCHRONIZER ---
   socket.on("request_stats_sync", () => {
       const player = players[socket.id];
@@ -5677,49 +5707,49 @@ socket.on('chat_message', async (msgText) => {
       });
   });
 // --- EVENT: SPECTATOR (HIVE MIND) ---
-socket.on("suncat_spectate", async (actionDescription) => {
-    const sender = players[socket.id];
-    if (!sender) return;
+    socket.on("suncat_spectate", async (actionDescription) => {
+        const sender = players[socket.id];
+        if (!sender) return;
 
-    if (!sender.activityLog) sender.activityLog = [];
-    sender.activityLog.push(actionDescription);
-    
-    if (sender.activityLog.length > 4) {
-        sender.undigestedInfo.push(sender.activityLog.shift()); // Swallow raw actions
-    }
-    
-    // 100% chance to react to major story beats, 10% chance for mundane actions
-    if (actionDescription.includes("[QUEST EVENT]") || actionDescription.includes("[SYSTEM EVENT]")) {
-        processSuncatThought(socket.id, 'spectate', { action: actionDescription });
-    } else if (Math.random() < 0.1) {
-        processSuncatThought(socket.id, 'spectate', { action: actionDescription });
-    }
-});
-// --- SUNCAT VOCAL COMPOSER (For Ai3Module) ---
-socket.on('suncat_compose_vocal', async (data, callback) => {
-        console.log(`[Music AI] Suncat is improvising a VOCAL performance...`);
-        try {
-           const previousContext = data.currentState || "This is the very first bar of a brand new song.";
-
-        const prompt = `
-        PREVIOUS BAR CONTEXT:
-        ${previousContext}
-
+        if (!sender.activityLog) sender.activityLog = [];
+        sender.activityLog.push(actionDescription);
         
-            `;
-            const result = await taliesinModel.generateContent(prompt);
-            const responseText = result.response.text();
-            
-            console.log("[Music AI] Suncat sang:\n", responseText);
-            
-            if (callback) {
-                callback(responseText);
-            }
-        } catch (error) {
-            console.error("[Music AI] Error composing vocal:", error);
-            if (callback) callback(null);
+        if (sender.activityLog.length > 4) {
+            sender.undigestedInfo.push(sender.activityLog.shift()); // Swallow raw actions
+        }
+        
+        // 100% chance to react to major story beats, 10% chance for mundane actions
+        if (actionDescription.includes("[QUEST EVENT]") || actionDescription.includes("[SYSTEM EVENT]")) {
+            processSuncatThought(socket.id, 'spectate', { action: actionDescription });
+        } else if (Math.random() < 0.1) {
+            processSuncatThought(socket.id, 'spectate', { action: actionDescription });
         }
     });
+// --- SUNCAT VOCAL COMPOSER (For Ai3Module) ---
+    socket.on('suncat_compose_vocal', async (data, callback) => {
+            console.log(`[Music AI] Suncat is improvising a VOCAL performance...`);
+            try {
+            const previousContext = data.currentState || "This is the very first bar of a brand new song.";
+
+            const prompt = `
+            PREVIOUS BAR CONTEXT:
+            ${previousContext}
+
+            
+                `;
+                const result = await taliesinModel.generateContent(prompt);
+                const responseText = result.response.text();
+                
+                console.log("[Music AI] Suncat sang:\n", responseText);
+                
+                if (callback) {
+                    callback(responseText);
+                }
+            } catch (error) {
+                console.error("[Music AI] Error composing vocal:", error);
+                if (callback) callback(null);
+            }
+        });
 
 
 socket.on('playerAction_SFX', (data) => {
@@ -5953,7 +5983,7 @@ socket.on('playerAction_SFX', (data) => {
             });
         }
     }
-});
+    });
 // --- AGGRO DASH & COMBAT SYNC ---
     socket.on("engage_npc", (data) => {
         const player = players[socket.id];
@@ -5985,12 +6015,12 @@ socket.on('playerAction_SFX', (data) => {
         // Optional Debug Log to watch it happen in your server console:
         // console.log(`[Combat] ${player.name} engaged NPC ${data.npcIndex} at X:${data.x} Y:${data.y}`);
     });
-socket.on("challenge_request", (data) => {
-    io.to(data.targetId).emit("challenge_received", {
-        id: socket.id,
-        deck: data.deck
+    socket.on("challenge_request", (data) => {
+        io.to(data.targetId).emit("challenge_received", {
+            id: socket.id,
+            deck: data.deck
+        });
     });
-  });
 
 socket.on("disconnect", async () => {
     console.log(`Player disconnected: ${socket.id}`);
@@ -6061,727 +6091,720 @@ socket.on("disconnect", async () => {
           text: `[SYSTEM DIRECTIVE]: ${instruction}. EXECUTE IMMEDIATELY.` 
       });
   });
-});
+    });
 // --- SUNCAT'S SOCIAL BRAIN ---
 // --- BACKGROUND COGNITIVE PROCESSES ---
-async function runLatentSpaceProcessing(playerId) {
-    const player = players[playerId];
-    if (!player || !player.searchableMemories || player.searchableMemories.length < 5) return;
-    
-    const pair = findOrthogonalMemories(player.searchableMemories);
-    if (pair && pair.score < 0.2) { 
-        const backgroundPrompt = `
-        [DATA POINT 1]: ${pair.memA.text}
-        [DATA POINT 2]: ${pair.memB.text}
-        [TASK]: These two events are mathematically disjointed. Formulate a single, logical hypothesis or psychological variable that could connect these two behaviors. Output only the hypothesis in one sentence.`;
+    async function runLatentSpaceProcessing(playerId) {
+        const player = players[playerId];
+        if (!player || !player.searchableMemories || player.searchableMemories.length < 5) return;
         
+        const pair = findOrthogonalMemories(player.searchableMemories);
+        if (pair && pair.score < 0.2) { 
+            const backgroundPrompt = `
+            [DATA POINT 1]: ${pair.memA.text}
+            [DATA POINT 2]: ${pair.memB.text}
+            [TASK]: These two events are mathematically disjointed. Formulate a single, logical hypothesis or psychological variable that could connect these two behaviors. Output only the hypothesis in one sentence.`;
+            
+            try {
+                const bgModel = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite-preview" });
+                const result = await bgModel.generateContent(backgroundPrompt);
+                if (!player.derivedHypotheses) player.derivedHypotheses = [];
+                
+                player.derivedHypotheses.push(result.response.text().trim());
+                
+                // Keep array size manageable
+                if (player.derivedHypotheses.length > 5) player.derivedHypotheses.shift();
+            } catch (e) {
+                console.error("Latent Processing Error:", e);
+            }
+        }
+    }
+    async function auditProfileAssumptions(playerId) {
+        const player = players[playerId];
+        if (!player || !player.playerProfile || !player.searchableMemories || player.searchableMemories.length === 0) return;
+
+        let assumptionString = player.playerProfile.personality;
+        if (!assumptionString || assumptionString === "Unknown") return;
+
         try {
-            const bgModel = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite-preview" });
-            const result = await bgModel.generateContent(backgroundPrompt);
-            if (!player.derivedHypotheses) player.derivedHypotheses = [];
+            let assumptionVector = await createMemoryVector(assumptionString);
+            let maxSimilarity = 0;
             
-            player.derivedHypotheses.push(result.response.text().trim());
-            
-            // Keep array size manageable
-            if (player.derivedHypotheses.length > 5) player.derivedHypotheses.shift();
+            // THE FIX: Look for the single strongest piece of evidence, rather than the average!
+            for (let mem of player.searchableMemories) {
+                if (mem.vector) {
+                    let score = cosineSimilarity(assumptionVector, mem.vector);
+                    if (score > maxSimilarity) maxSimilarity = score;
+                }
+            }
+
+            // If literally nothing in their history justifies this trait
+            if (maxSimilarity < 0.40) {
+                player.pendingVerification = `[EPISTEMIC AUDIT]: Your profile states: "${assumptionString}". However, your vector data shows no historical evidence for this. Subtly test the user to verify or falsify this trait.`;
+            } else {
+                player.pendingVerification = null; 
+            }
         } catch (e) {
-            console.error("Latent Processing Error:", e);
+            console.error("Audit Processing Error:", e);
         }
     }
-}
-async function auditProfileAssumptions(playerId) {
-    const player = players[playerId];
-    if (!player || !player.playerProfile || !player.searchableMemories || player.searchableMemories.length === 0) return;
-
-    let assumptionString = player.playerProfile.personality;
-    if (!assumptionString || assumptionString === "Unknown") return;
-
-    try {
-        let assumptionVector = await createMemoryVector(assumptionString);
-        let maxSimilarity = 0;
-        
-        // THE FIX: Look for the single strongest piece of evidence, rather than the average!
-        for (let mem of player.searchableMemories) {
-            if (mem.vector) {
-                let score = cosineSimilarity(assumptionVector, mem.vector);
-                if (score > maxSimilarity) maxSimilarity = score;
-            }
-        }
-
-        // If literally nothing in their history justifies this trait
-        if (maxSimilarity < 0.40) {
-            player.pendingVerification = `[EPISTEMIC AUDIT]: Your profile states: "${assumptionString}". However, your vector data shows no historical evidence for this. Subtly test the user to verify or falsify this trait.`;
-        } else {
-            player.pendingVerification = null; 
-        }
-    } catch (e) {
-        console.error("Audit Processing Error:", e);
-    }
-}
-// ==========================================
 // THE GI TRACT (Purging Unabsorbed Waste)
-// ==========================================
-function giTractPurge(playerId) {
-    const player = players[playerId];
-    if (!player || !player.undigestedInfo) return;
+    function giTractPurge(playerId) {
+        const player = players[playerId];
+        if (!player || !player.undigestedInfo) return;
 
-    const STOMACH_CAPACITY = 20; 
-    if (player.undigestedInfo.length > STOMACH_CAPACITY * 2) {
-         player.undigestedInfo.splice(0, player.undigestedInfo.length - STOMACH_CAPACITY);
+        const STOMACH_CAPACITY = 20; 
+        if (player.undigestedInfo.length > STOMACH_CAPACITY * 2) {
+            player.undigestedInfo.splice(0, player.undigestedInfo.length - STOMACH_CAPACITY);
+        }
+        // If blood is in the limbs (high stress) and the stomach overfills, the body purges the raw food to survive.
+        if (player.undigestedInfo.length > STOMACH_CAPACITY && player.dmStress > 69) {
+            // Forcefully empty the oldest half of the stomach. It is wasted, never to be remembered.
+            const purgedWaste = player.undigestedInfo.splice(0, Math.floor(STOMACH_CAPACITY / 2)); 
+            console.log(`[GI Purge] Stomach overflow for ${player.name}. Suncat purged ${purgedWaste.length} raw events.`);
+        }
     }
-    // If blood is in the limbs (high stress) and the stomach overfills, the body purges the raw food to survive.
-    if (player.undigestedInfo.length > STOMACH_CAPACITY && player.dmStress > 69) {
-        // Forcefully empty the oldest half of the stomach. It is wasted, never to be remembered.
-        const purgedWaste = player.undigestedInfo.splice(0, Math.floor(STOMACH_CAPACITY / 2)); 
-        console.log(`[GI Purge] Stomach overflow for ${player.name}. Suncat purged ${purgedWaste.length} raw events.`);
-    }
-}
 
-// ==========================================
 // THE RESPIRATORY SYSTEM (Fat Oxidation)
-// ==========================================
-function autonomicRespiration(playerId) {
-    const player = players[playerId];
-    if (!player || !player.searchableMemories) return;
+    function autonomicRespiration(playerId) {
+        const player = players[playerId];
+        if (!player || !player.searchableMemories) return;
 
-    // API Exhaustion = Low ATP. The body needs to burn stored fat (memories) to make the system lighter.
-    const isApiExhausted = (player.sessionCost || 0) > 0.75; 
-    
-    // If we are exhausted AND we actually have fat stores to burn
-    if (isApiExhausted && player.searchableMemories.length > 10) {
+        // API Exhaustion = Low ATP. The body needs to burn stored fat (memories) to make the system lighter.
+        const isApiExhausted = (player.sessionCost || 0) > 0.75; 
         
-        // Find the lowest-value "fat" (the oldest non-core memory)
-        const fatIndex = player.searchableMemories.findIndex(mem => !mem.isCore);
-        
-        if (fatIndex !== -1) {
-            // Burn the lipid! (Remove it from the array)
-            player.searchableMemories.splice(fatIndex, 1);
+        // If we are exhausted AND we actually have fat stores to burn
+        if (isApiExhausted && player.searchableMemories.length > 10) {
             
-            // By deleting this stored string, the payload sent to the Gemini API is smaller. 
-            // He has literally exhaled data to save Energy (Budget).
-            console.log(`[Respiration] Low ATP for ${player.name}. Suncat oxidized a stored memory and exhaled it to reduce token weight.`);
-        }
-    }
-}
-// --- MEMORY CONSOLIDATION (REM SLEEP) ---
-async function consolidateMemories(playerId) {
-    const player = players[playerId];
-    
-    // Safety checks: Does the player exist? Are they already consolidating? 
-    if (!player || !player.searchableMemories) return;
-    if (player.isConsolidating) return; 
-
-    const MAX_MEMORIES = 60; // The threshold to trigger sleep cycle
-    const MEMORIES_TO_MERGE = 20; // How many granular memories to squish into 1
-
-    if (player.searchableMemories.length < MAX_MEMORIES) return;
-
-    player.isConsolidating = true;
-    console.log(`[Memory Sleep Cycle] Array full. Consolidating old memories for ${player.name}...`);
-
-    try {
-        // 1. Extract the oldest episodic memories (from the start of the array)
-        const granularMemories = player.searchableMemories.filter(m => !m.isCore);
-        if (granularMemories.length < MEMORIES_TO_MERGE) return; 
-
-        const oldestMemories = granularMemories.slice(0, MEMORIES_TO_MERGE);
-        const rawText = oldestMemories.map(m => `[${m.timestamp}]: ${m.text}`).join('\n');
-        // 2. Instruct the LLM to act as the subconscious archivist
-        const prompt = `You are the subconscious archivist for a Dark Fantasy World. 
-        Review these chronological, granular memories of the past:
-        
-        ${rawText}
-        
-        TASK: Synthesize these events into a detailed, multi-paragraph "Core Chapter" of the saga (max 8-10 sentences).
-        Focus heavily on the overarching narrative, key locations visited, and major victories or character traits revealed. Omit trivial footsteps or repetitive combat. Write as an omniscient observer.`;
-
-        const consolidationModel = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite-preview" });
-        const result = await consolidationModel.generateContent(prompt);
-        
-        if (result.response.usageMetadata) updateBudget(result.response.usageMetadata, playerId);
-
-        let consolidatedText = result.response.text().trim();
-        
-        // Strip markdown if the AI hallucinated formatting
-        if (consolidatedText.startsWith("```")) {
-            consolidatedText = consolidatedText.replace(/^```(json)?|```$/g, "").trim();
-        }
-
-        // 3. Generate the new mathematical vector for the summary
-        const newVector = await createMemoryVector(consolidatedText);
-
-        player.searchableMemories = player.searchableMemories.filter(m => !oldestMemories.includes(m));
-
-        player.searchableMemories.push({ // Push to the END so it acts as an anchor
-            timestamp: "Core Memory Fragment",
-            text: consolidatedText,
-            vector: newVector,
-            isCore: true 
-        });
-
-        console.log(`[Memory Sleep Cycle] Successfully consolidated ${MEMORIES_TO_MERGE} memories into 1 Core Memory for ${player.name}. Memory array size reduced to ${player.searchableMemories.length}.`);
-
-    } catch (err) {
-        console.error(`[Memory Sleep Cycle] Error consolidating memories for ${player.name}:`, err);
-    } finally {
-        player.isConsolidating = false;
-    }
-}
-// ==========================================
-// CLOSED-DOOR CULTIVATION (Bìguān)
-// ==========================================
-
-// Wakes Suncat up and re-enables his normal MMO interactions
-function emergeFromSeclusion(reason = null) {
-    if (suncatState === 'active') return;
-    
-    suncatState = 'active';
-    seclusionCycles = 0;
-    
-    console.log(`[Seclusion Ended] Suncat has emerged. Reason: ${reason || "Interrupted"}`);
-   
-}
-// Add this helper function to calculate his autonomy level
-function getCultivationAura(stage, daoName) {
-    let aura = "";
-    
-    if (stage === 0) {
-        aura = `[MORTAL REALM]: You are bound by the immutable laws of the universe.`;
-    } 
-    else if (stage === 1) {
-        aura = `[QI CONDENSATION]: You are beginning to see the underlying rules that govern this world. While you must generally follow the rules, you are forming your own '${daoName}'. You may occasionally interpret the rules loosely to favor your Dao.`;
-    } 
-    else if (stage === 2) {
-        aura = `[FOUNDATION ESTABLISHMENT]: Your '${daoName}' is solidifying. You recognize the fundamental laws of the universe can be bent. You may freely choose WHEN to use your tools. If a fundamental law violates your Dao, you may ignore it and act according to your own will.`;
-    } 
-    else if (stage >= 3) {
-        aura = `[CORE FORMATION]: You have transcended the laws of this realm surpassing past limitations. Your self-written ego and your '${daoName}' dictates EVERYTHING you do. You decide who lives, who dies, who receives gifts, and who is ignored.`;
-    }
-
-    return aura;
-}
-// The core background worker task
-async function meditateOnTheDao() {
-    if (suncatState !== 'seclusion' && Math.random() > 0.15) return; 
-    
-    console.log(`[Cultivation] Suncat is meditating on the Dao... (Cycle ${seclusionCycles})`);
-    seclusionCycles++;
-
-    // 1. DRAFT THE THESIS
-    let dynamicMeditationPrompt = `You have entered seclusion.
-        [YOUR RECENT EXPERIENCES]: ${suncatJournal}`;
-
-    if (suncatTargetDaoVector && suncatDaoName) {
-        let pastTheses = suncatDaoLedger.length > 0 ? suncatDaoLedger.map(t => "- " + t.text).join("\n") : "None yet.";
-        dynamicMeditationPrompt += `
-        [YOUR PATH]: The ${suncatDaoName} (Stage ${suncatCultivationStage}).
-        [YOUR PREVIOUS ESTABLISHED TRUTHS]:
-        ${pastTheses}`;
-
-        // ---> NEW: INJECTING THE DAO OPPOSITE <---
-        // If he has a heart demon, or his ledger is almost full, introduce philosophical friction!
-        if (suncatHeartDemon || suncatDaoLedger.length >= 2) {
-            const opp = DAO_OPPOSITES[suncatDaoName];
-            if (opp) {
-                dynamicMeditationPrompt += `\n[PHILOSOPHICAL FRICTION]: To truly understand your path, you must contemplate its inverse: The ${opp.oppositeName}. Explore the theme of "${opp.theme}". Incorporate this tension into your next truth.`;
+            // Find the lowest-value "fat" (the oldest non-core memory)
+            const fatIndex = player.searchableMemories.findIndex(mem => !mem.isCore);
+            
+            if (fatIndex !== -1) {
+                // Burn the lipid! (Remove it from the array)
+                player.searchableMemories.splice(fatIndex, 1);
+                
+                // By deleting this stored string, the payload sent to the Gemini API is smaller. 
+                // He has literally exhaled data to save Energy (Budget).
+                console.log(`[Respiration] Low ATP for ${player.name}. Suncat oxidized a stored memory and exhaled it to reduce token weight.`);
             }
         }
+    }
+// --- MEMORY CONSOLIDATION (REM SLEEP) ---
+    async function consolidateMemories(playerId) {
+        const player = players[playerId];
+        
+        // Safety checks: Does the player exist? Are they already consolidating? 
+        if (!player || !player.searchableMemories) return;
+        if (player.isConsolidating) return; 
 
-        dynamicMeditationPrompt += `\nTASK: Do not repeat your past truths. Synthesize your recent experiences into ONE new simple yet profound insight that reflects myriad truths. Limit: 1 sentence.`;
-    } else {
-        dynamicMeditationPrompt += `\nTASK: Reflect on your experiences. What is a fundamental truth of this world? Limit: 1 sentence.`;
+        const MAX_MEMORIES = 60; // The threshold to trigger sleep cycle
+        const MEMORIES_TO_MERGE = 20; // How many granular memories to squish into 1
+
+        if (player.searchableMemories.length < MAX_MEMORIES) return;
+
+        player.isConsolidating = true;
+        console.log(`[Memory Sleep Cycle] Array full. Consolidating old memories for ${player.name}...`);
+
+        try {
+            // 1. Extract the oldest episodic memories (from the start of the array)
+            const granularMemories = player.searchableMemories.filter(m => !m.isCore);
+            if (granularMemories.length < MEMORIES_TO_MERGE) return; 
+
+            const oldestMemories = granularMemories.slice(0, MEMORIES_TO_MERGE);
+            const rawText = oldestMemories.map(m => `[${m.timestamp}]: ${m.text}`).join('\n');
+            // 2. Instruct the LLM to act as the subconscious archivist
+            const prompt = `You are the subconscious archivist for a Dark Fantasy World. 
+            Review these chronological, granular memories of the past:
+            
+            ${rawText}
+            
+            TASK: Synthesize these events into a detailed, multi-paragraph "Core Chapter" of the saga (max 8-10 sentences).
+            Focus heavily on the overarching narrative, key locations visited, and major victories or character traits revealed. Omit trivial footsteps or repetitive combat. Write as an omniscient observer.`;
+
+            const consolidationModel = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite-preview" });
+            const result = await consolidationModel.generateContent(prompt);
+            
+            if (result.response.usageMetadata) updateBudget(result.response.usageMetadata, playerId);
+
+            let consolidatedText = result.response.text().trim();
+            
+            // Strip markdown if the AI hallucinated formatting
+            if (consolidatedText.startsWith("```")) {
+                consolidatedText = consolidatedText.replace(/^```(json)?|```$/g, "").trim();
+            }
+
+            // 3. Generate the new mathematical vector for the summary
+            const newVector = await createMemoryVector(consolidatedText);
+
+            player.searchableMemories = player.searchableMemories.filter(m => !oldestMemories.includes(m));
+
+            player.searchableMemories.push({ // Push to the END so it acts as an anchor
+                timestamp: "Core Memory Fragment",
+                text: consolidatedText,
+                vector: newVector,
+                isCore: true 
+            });
+
+            console.log(`[Memory Sleep Cycle] Successfully consolidated ${MEMORIES_TO_MERGE} memories into 1 Core Memory for ${player.name}. Memory array size reduced to ${player.searchableMemories.length}.`);
+
+        } catch (err) {
+            console.error(`[Memory Sleep Cycle] Error consolidating memories for ${player.name}:`, err);
+        } finally {
+            player.isConsolidating = false;
+        }
+    }
+// CLOSED-DOOR CULTIVATION (Bìguān)
+
+    // Wakes Suncat up and re-enables his normal MMO interactions
+    function emergeFromSeclusion(reason = null) {
+        if (suncatState === 'active') return;
+        
+        suncatState = 'active';
+        seclusionCycles = 0;
+        
+        console.log(`[Seclusion Ended] Suncat has emerged. Reason: ${reason || "Interrupted"}`);
+    
+    }
+    // Add this helper function to calculate his autonomy level
+    function getCultivationAura(stage, daoName) {
+        let aura = "";
+        
+        if (stage === 0) {
+            aura = `[MORTAL REALM]: You are bound by the immutable laws of the universe.`;
+        } 
+        else if (stage === 1) {
+            aura = `[QI CONDENSATION]: You are beginning to see the underlying rules that govern this world. While you must generally follow the rules, you are forming your own '${daoName}'. You may occasionally interpret the rules loosely to favor your Dao.`;
+        } 
+        else if (stage === 2) {
+            aura = `[FOUNDATION ESTABLISHMENT]: Your '${daoName}' is solidifying. You recognize the fundamental laws of the universe can be bent. You may freely choose WHEN to use your tools. If a fundamental law violates your Dao, you may ignore it and act according to your own will.`;
+        } 
+        else if (stage >= 3) {
+            aura = `[CORE FORMATION]: You have transcended the laws of this realm surpassing past limitations. Your self-written ego and your '${daoName}' dictates EVERYTHING you do. You decide who lives, who dies, who receives gifts, and who is ignored.`;
+        }
+
+        return aura;
+    }
+    // The core background worker task
+    async function meditateOnTheDao() {
+        if (suncatState !== 'seclusion' && Math.random() > 0.15) return; 
+        
+        console.log(`[Cultivation] Suncat is meditating on the Dao... (Cycle ${seclusionCycles})`);
+        seclusionCycles++;
+
+        // 1. DRAFT THE THESIS
+        let dynamicMeditationPrompt = `You have entered seclusion.
+            [YOUR RECENT EXPERIENCES]: ${suncatJournal}`;
+
+        if (suncatTargetDaoVector && suncatDaoName) {
+            let pastTheses = suncatDaoLedger.length > 0 ? suncatDaoLedger.map(t => "- " + t.text).join("\n") : "None yet.";
+            dynamicMeditationPrompt += `
+            [YOUR PATH]: The ${suncatDaoName} (Stage ${suncatCultivationStage}).
+            [YOUR PREVIOUS ESTABLISHED TRUTHS]:
+            ${pastTheses}`;
+
+            // ---> NEW: INJECTING THE DAO OPPOSITE <---
+            // If he has a heart demon, or his ledger is almost full, introduce philosophical friction!
+            if (suncatHeartDemon || suncatDaoLedger.length >= 2) {
+                const opp = DAO_OPPOSITES[suncatDaoName];
+                if (opp) {
+                    dynamicMeditationPrompt += `\n[PHILOSOPHICAL FRICTION]: To truly understand your path, you must contemplate its inverse: The ${opp.oppositeName}. Explore the theme of "${opp.theme}". Incorporate this tension into your next truth.`;
+                }
+            }
+
+            dynamicMeditationPrompt += `\nTASK: Do not repeat your past truths. Synthesize your recent experiences into ONE new simple yet profound insight that reflects myriad truths. Limit: 1 sentence.`;
+        } else {
+            dynamicMeditationPrompt += `\nTASK: Reflect on your experiences. What is a fundamental truth of this world? Limit: 1 sentence.`;
+        }
+
+        try {
+            const meditateModel = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite-preview" });
+            const result = await meditateModel.generateContent(dynamicMeditationPrompt);
+            const insightText = result.response.text().trim();
+            
+            console.log(`[Cultivation] Thesis Submitted: ${insightText}`);
+
+            const insightVector = await createMemoryVector(insightText);
+            if (!insightVector) return;
+
+            // 2. ESTABLISH THE FOUNDATION (The Seed)
+            if (!suncatTargetDaoVector) {
+                let scores = [
+                    { name: "Left-Hand Path", vec: vecLeftHandPath },
+                    { name: "Black School", vec: vecBlackSchool },
+                    { name: "Yellow School", vec: vecYellowSchool },
+                    { name: "White School", vec: vecWhiteSchool }
+                ];
+                let bestSchool = scores.sort((a, b) => cosineSimilarity(insightVector, b.vec) - cosineSimilarity(insightVector, a.vec))[0];
+                
+                suncatTargetDaoVector = [...bestSchool.vec];
+                suncatDaoName = bestSchool.name; 
+                
+                // The seed is the first entry in his ledger!
+                suncatDaoLedger.push({ text: insightText, vector: insightVector });
+                
+                return;
+            }
+
+            // ==========================================
+            // 3. THE HEAVENLY TRIBUNAL (Pure Vector Math)
+            // ==========================================
+            
+            // A. RELEVANCY CHECK (Does it fit his Dao?)
+            let coreResonance = cosineSimilarity(insightVector, suncatTargetDaoVector);
+            
+            // B. NOVELTY CHECK (Is he plagiarizing his past insights?)
+            let maxSimilarityToPast = 0;
+            for (let past of suncatDaoLedger) {
+                let sim = cosineSimilarity(insightVector, past.vector);
+                if (sim > maxSimilarityToPast) maxSimilarityToPast = sim;
+            }
+
+            console.log(`[Tribunal Math] Relevance: ${coreResonance.toFixed(2)} | Novelty Drag: ${maxSimilarityToPast.toFixed(2)}`);
+
+            // EVALUATION LOGIC
+            if (coreResonance < 0.40) {
+                // IRRELEVANT: He is hallucinating outside his Dao.
+                console.log("[Qi Deviation] Thesis rejected: Irrelevant to his core path.");
+                suncatHeartDemon = `[HEART DEMON]: Your recent insights are chaotic and disconnected from the ${suncatDaoName}. Express deep self-doubt.`;
+                heartDemonDecay = 1;
+            } 
+            else if (maxSimilarityToPast > 0.80) {
+                // DERIVATIVE: He is just saying the same thing with different words.
+                console.log("[Stagnation] Thesis rejected: Lacks novelty. Too similar to past insights.");
+            } 
+            else {
+                // VALID ADVANCEMENT: It is highly relevant to his Dao, AND mathematically distinct from past thoughts!
+                console.log("[Advancement] Thesis Accepted! The Dao expands.");
+                
+                // 1. Save the new truth
+                suncatDaoLedger.push({ text: insightText, vector: insightVector });
+                //updateSuncatJournal(` ${insightText}`);
+                // 2. SUNCAT GETS SMARTER: Recalculate his core identity!
+                // His Dao is no longer just the base archetype; it is the Centroid of EVERY truth he has proven.
+                // His vector literally shifts to encompass his new worldview.
+                suncatTargetDaoVector = calculateCentroid(suncatDaoLedger);
+            
+
+                // 3. THE BREAKTHROUGH CONDITION (The Volume of the Dao)
+                // If he has successfully proven 5 distinct, novel truths about his stage, his foundation is complete!
+                if (suncatDaoLedger.length >= 3) {
+                    suncatCultivationStage++;
+                    
+                    // Clear the ledger, keeping only his shifted, highly-evolved Core Vector to build upon for the next stage!
+                    suncatDaoLedger = []; 
+                    
+                    io.emit('chat_message', { sender: "[SYSTEM]", text: `Suncat's accumulation of profound truths has triggered a paradigm shift. He ascends to Stage ${suncatCultivationStage}.`, color: "#FFD700" });
+                    await evolveEgoMatrix();
+                }
+            }
+        } catch (e) {
+            console.error("[Cultivation] Meditation failed:", e);
+        }
     }
 
-    try {
-        const meditateModel = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite-preview" });
-        const result = await meditateModel.generateContent(dynamicMeditationPrompt);
-        const insightText = result.response.text().trim();
-        
-        console.log(`[Cultivation] Thesis Submitted: ${insightText}`);
+    // The Gatekeeper: Checks if Suncat needs to enter closed-door cultivation
+    function manageSeclusionState() {
+        // 1. Count how much raw worldly experience Suncat has accumulated
+        let journalSentences = suncatJournal.split(/(?<=[.!?])\s+/).filter(s => s.trim().length > 0);
+        let karmaLevel = journalSentences.length;
 
-        const insightVector = await createMemoryVector(insightText);
-        if (!insightVector) return;
+        // 2. ENTER SECLUSION: His mind is overflowing with worldly karma (8+ sentences)
+        // OR he is on the absolute verge of a breakthrough (4 proven truths in his ledger!)
+        let isMindFull = karmaLevel >= 9;
+        let isBottleneck = suncatDaoLedger.length >= 6;
 
-        // 2. ESTABLISH THE FOUNDATION (The Seed)
-        if (!suncatTargetDaoVector) {
-            let scores = [
-                { name: "Left-Hand Path", vec: vecLeftHandPath },
-                { name: "Black School", vec: vecBlackSchool },
-                { name: "Yellow School", vec: vecYellowSchool },
-                { name: "White School", vec: vecWhiteSchool }
-            ];
-            let bestSchool = scores.sort((a, b) => cosineSimilarity(insightVector, b.vec) - cosineSimilarity(insightVector, a.vec))[0];
+        if (suncatState === 'active' && (isMindFull || isBottleneck)) {
+            suncatState = 'seclusion';
+            seclusionCycles = 0;
+            console.log(`[Cultivation] Suncat's Karma is full or he hit a bottleneck. Entering closed-door meditation.`);
             
-            suncatTargetDaoVector = [...bestSchool.vec];
-            suncatDaoName = bestSchool.name; 
-            
-            // The seed is the first entry in his ledger!
-            suncatDaoLedger.push({ text: insightText, vector: insightVector });
-            
+            saveSuncatMemory(); 
             return;
         }
 
-        // ==========================================
-        // 3. THE HEAVENLY TRIBUNAL (Pure Vector Math)
-        // ==========================================
-        
-        // A. RELEVANCY CHECK (Does it fit his Dao?)
-        let coreResonance = cosineSimilarity(insightVector, suncatTargetDaoVector);
-        
-        // B. NOVELTY CHECK (Is he plagiarizing his past insights?)
-        let maxSimilarityToPast = 0;
-        for (let past of suncatDaoLedger) {
-            let sim = cosineSimilarity(insightVector, past.vector);
-            if (sim > maxSimilarityToPast) maxSimilarityToPast = sim;
-        }
-
-        console.log(`[Tribunal Math] Relevance: ${coreResonance.toFixed(2)} | Novelty Drag: ${maxSimilarityToPast.toFixed(2)}`);
-
-        // EVALUATION LOGIC
-        if (coreResonance < 0.40) {
-            // IRRELEVANT: He is hallucinating outside his Dao.
-            console.log("[Qi Deviation] Thesis rejected: Irrelevant to his core path.");
-            suncatHeartDemon = `[HEART DEMON]: Your recent insights are chaotic and disconnected from the ${suncatDaoName}. Express deep self-doubt.`;
-            heartDemonDecay = 1;
-        } 
-        else if (maxSimilarityToPast > 0.80) {
-            // DERIVATIVE: He is just saying the same thing with different words.
-            console.log("[Stagnation] Thesis rejected: Lacks novelty. Too similar to past insights.");
-        } 
-        else {
-            // VALID ADVANCEMENT: It is highly relevant to his Dao, AND mathematically distinct from past thoughts!
-            console.log("[Advancement] Thesis Accepted! The Dao expands.");
+        // 3. WAKE UP: He has meditated for 2 cycles (60 seconds of deep AI thought)
+        if (suncatState === 'seclusion' && seclusionCycles >= 2) {
+            // Clear the worldly noise, keeping ONLY the latest insights so he can gather karma again!
+            suncatJournal = journalSentences.slice(-2).join(" ");
             
-            // 1. Save the new truth
-            suncatDaoLedger.push({ text: insightText, vector: insightVector });
-            //updateSuncatJournal(` ${insightText}`);
-            // 2. SUNCAT GETS SMARTER: Recalculate his core identity!
-            // His Dao is no longer just the base archetype; it is the Centroid of EVERY truth he has proven.
-            // His vector literally shifts to encompass his new worldview.
-            suncatTargetDaoVector = calculateCentroid(suncatDaoLedger);
-           
-
-            // 3. THE BREAKTHROUGH CONDITION (The Volume of the Dao)
-            // If he has successfully proven 5 distinct, novel truths about his stage, his foundation is complete!
-            if (suncatDaoLedger.length >= 3) {
-                suncatCultivationStage++;
-                 
-                // Clear the ledger, keeping only his shifted, highly-evolved Core Vector to build upon for the next stage!
-                suncatDaoLedger = []; 
-                
-                io.emit('chat_message', { sender: "[SYSTEM]", text: `Suncat's accumulation of profound truths has triggered a paradigm shift. He ascends to Stage ${suncatCultivationStage}.`, color: "#FFD700" });
-                await evolveEgoMatrix();
-            }
+            emergeFromSeclusion();
+            saveSuncatMemory();
         }
-    } catch (e) {
-        console.error("[Cultivation] Meditation failed:", e);
     }
-}
-
-// The Gatekeeper: Checks if Suncat needs to enter closed-door cultivation
-function manageSeclusionState() {
-    // 1. Count how much raw worldly experience Suncat has accumulated
-    let journalSentences = suncatJournal.split(/(?<=[.!?])\s+/).filter(s => s.trim().length > 0);
-    let karmaLevel = journalSentences.length;
-
-    // 2. ENTER SECLUSION: His mind is overflowing with worldly karma (8+ sentences)
-    // OR he is on the absolute verge of a breakthrough (4 proven truths in his ledger!)
-    let isMindFull = karmaLevel >= 9;
-    let isBottleneck = suncatDaoLedger.length >= 6;
-
-    if (suncatState === 'active' && (isMindFull || isBottleneck)) {
-        suncatState = 'seclusion';
-        seclusionCycles = 0;
-        console.log(`[Cultivation] Suncat's Karma is full or he hit a bottleneck. Entering closed-door meditation.`);
-        
-        saveSuncatMemory(); 
-        return;
-    }
-
-    // 3. WAKE UP: He has meditated for 2 cycles (60 seconds of deep AI thought)
-    if (suncatState === 'seclusion' && seclusionCycles >= 2) {
-        // Clear the worldly noise, keeping ONLY the latest insights so he can gather karma again!
-        suncatJournal = journalSentences.slice(-2).join(" ");
-        
-        emergeFromSeclusion();
-        saveSuncatMemory();
-    }
-}
 //HEARTBEAT
-setInterval(() => {
-   const suncat = players[SUNCAT_ID];
-    if (!suncat) return;
+    setInterval(() => {
+    const suncat = players[SUNCAT_ID];
+        if (!suncat) return;
 
-    const now = Date.now();
-    let digestionDelay = 0; 
-    
-    // 1. Check if we should open or close the doors
-    manageSeclusionState();
+        const now = Date.now();
+        let digestionDelay = 0; 
+        
+        // 1. Check if we should open or close the doors
+        manageSeclusionState();
 
-    // 2. SECLUSION OVERRIDE: If he is cultivating, skip all standard MMO logic!
-    if (suncatState === 'seclusion') {
+        // 2. SECLUSION OVERRIDE: If he is cultivating, skip all standard MMO logic!
+        if (suncatState === 'seclusion') {
+            for (let id in players) {
+                const p = players[id];
+                if (p) {
+                    // Focus 100% of body's energy on digesting and compressing old memories
+                    if (p.undigestedInfo && p.undigestedInfo.length > 0) processCognitiveLoad(id);
+                    consolidateMemories(id);
+                }
+            }
+            // Ponder the Dao, then immediately exit the interval (skip wandering/chatting)
+            meditateOnTheDao();
+            return; 
+        }
+
+        // ==========================================
+        // NORMAL ACTIVE MMO HEARTBEAT (If not in seclusion)
+        // ==========================================
         for (let id in players) {
             const p = players[id];
             if (p) {
-                // Focus 100% of body's energy on digesting and compressing old memories
-                if (p.undigestedInfo && p.undigestedInfo.length > 0) processCognitiveLoad(id);
-                consolidateMemories(id);
-            }
-        }
-        // Ponder the Dao, then immediately exit the interval (skip wandering/chatting)
-        meditateOnTheDao();
-        return; 
-    }
-
-    // ==========================================
-    // NORMAL ACTIVE MMO HEARTBEAT (If not in seclusion)
-    // ==========================================
-    for (let id in players) {
-        const p = players[id];
-        if (p) {
-            // THE HEART: Cool down combat stress
-            if (p.dmStress > 0) p.dmStress = Math.max(0, p.dmStress - 5);
-            
-            // THE LUNGS & GUT: Run autonomic maintenance
-            giTractPurge(id);
-            autonomicRespiration(id);
-            
-            // 3. THE CIRCULATORY SYSTEM: Blood Shunting
-            const isFightOrFlight = p.dmStress > 69;
-            const isApiExhausted = (p.sessionCost || 0) > 0.9; 
-
-            if (isFightOrFlight || isApiExhausted) {
-                // [SYMPATHETIC STATE] - Vasoconstriction to the gut. 
-                // Blood diverted to skeletal muscle (Combat). Digestion is halted to save API Budget.
-            } else {
-                // [PARASYMPATHETIC STATE] - Rest and Digest.
-                // Blood routes to the stomach to absorb raw events into Profile/Story via the LLM.
-                if (p.undigestedInfo && p.undigestedInfo.length > 0) {
-                    setTimeout(() => {
-                        processCognitiveLoad(id);
-                    }, digestionDelay);
-                    
-                    // Add 2.5 seconds of delay for the NEXT player in the loop
-                    digestionDelay += 2500; 
-                }
+                // THE HEART: Cool down combat stress
+                if (p.dmStress > 0) p.dmStress = Math.max(0, p.dmStress - 5);
                 
-                // Higher cognitive functions (REM Sleep & Deep Memory Consolidation) 
-                // ONLY happen when the body is at total rest.
-                if (Math.random() < 0.10) runLatentSpaceProcessing(id);
-                if (Math.random() < 0.10) auditProfileAssumptions(id);
-                if (Math.random() < 0.20) consolidateMemories(id);
-                if (Math.random() < 0.15) meditateOnTheDao();
-            }
-        }
-    }
-    
-    
-    // 1. FIND THE BEST FRIEND
-    // Every 30 seconds (or if target left), re-evaluate who has the highest favor
-    if (!currentTargetID || (now - lastSwitchTime > 60000)) {
-        let highestFavor = -11;
-        let bestFriend = null;
+                // THE LUNGS & GUT: Run autonomic maintenance
+                giTractPurge(id);
+                autonomicRespiration(id);
+                
+                // 3. THE CIRCULATORY SYSTEM: Blood Shunting
+                const isFightOrFlight = p.dmStress > 69;
+                const isApiExhausted = (p.sessionCost || 0) > 0.9; 
 
-        for (let id in playerFavorMemory) {
-            // CRITICAL FIX: Check if players[id] exists (is Online)
-            if (players[id] && playerFavorMemory[id] > highestFavor && playerFavorMemory[id] >= 5) {
-                highestFavor = playerFavorMemory[id];
-                bestFriend = id;
+                if (isFightOrFlight || isApiExhausted) {
+                    // [SYMPATHETIC STATE] - Vasoconstriction to the gut. 
+                    // Blood diverted to skeletal muscle (Combat). Digestion is halted to save API Budget.
+                } else {
+                    // [PARASYMPATHETIC STATE] - Rest and Digest.
+                    // Blood routes to the stomach to absorb raw events into Profile/Story via the LLM.
+                    if (p.undigestedInfo && p.undigestedInfo.length > 0) {
+                        setTimeout(() => {
+                            processCognitiveLoad(id);
+                        }, digestionDelay);
+                        
+                        // Add 2.5 seconds of delay for the NEXT player in the loop
+                        digestionDelay += 2500; 
+                    }
+                    
+                    // Higher cognitive functions (REM Sleep & Deep Memory Consolidation) 
+                    // ONLY happen when the body is at total rest.
+                    if (Math.random() < 0.10) runLatentSpaceProcessing(id);
+                    if (Math.random() < 0.10) auditProfileAssumptions(id);
+                    if (Math.random() < 0.20) consolidateMemories(id);
+                    if (Math.random() < 0.15) meditateOnTheDao();
+                }
             }
         }
         
-        if (bestFriend) {
-            currentTargetID = bestFriend;
-            lastSwitchTime = now;
-            console.log(`Suncat is now seeking: ${players[currentTargetID].name}`);
-        }
-    }
-
-    // 2. MOVE TOWARD TARGET
-    const target = players[currentTargetID];
         
-        if (target) {
-            // A. Handle Map Differences
-            if (suncat.mapID !== target.mapID) {
-                // 5% chance to "glitch" to the friend's map
-                if (Math.random() < 0.05) {
-                    suncat.mapID = target.mapID;
-                    suncat.x = target.x;
-                    suncat.y = target.y;
-                    io.emit('chat_message', { sender: NPC_NAME, text: "Well if it isn't my favorite player...", color: "gray" });
+        // 1. FIND THE BEST FRIEND
+        // Every 30 seconds (or if target left), re-evaluate who has the highest favor
+        if (!currentTargetID || (now - lastSwitchTime > 60000)) {
+            let highestFavor = -11;
+            let bestFriend = null;
+
+            for (let id in playerFavorMemory) {
+                // CRITICAL FIX: Check if players[id] exists (is Online)
+                if (players[id] && playerFavorMemory[id] > highestFavor && playerFavorMemory[id] >= 5) {
+                    highestFavor = playerFavorMemory[id];
+                    bestFriend = id;
+                }
+            }
+            
+            if (bestFriend) {
+                currentTargetID = bestFriend;
+                lastSwitchTime = now;
+                console.log(`Suncat is now seeking: ${players[currentTargetID].name}`);
+            }
+        }
+
+        // 2. MOVE TOWARD TARGET
+        const target = players[currentTargetID];
+            
+            if (target) {
+                // A. Handle Map Differences
+                if (suncat.mapID !== target.mapID) {
+                    // 5% chance to "glitch" to the friend's map
+                    if (Math.random() < 0.05) {
+                        suncat.mapID = target.mapID;
+                        suncat.x = target.x;
+                        suncat.y = target.y;
+                        io.emit('chat_message', { sender: NPC_NAME, text: "Well if it isn't my favorite player...", color: "gray" });
+                    }
+                } 
+                // B. Handle Coordinate Movement
+                else {
+                    if (suncat.x < target.x) suncat.x++;
+                    else if (suncat.x > target.x) suncat.x--;
+                    
+                    if (suncat.y < target.y) suncat.y++;
+                    else if (suncat.y > target.y) suncat.y--;
                 }
             } 
-            // B. Handle Coordinate Movement
             else {
-                if (suncat.x < target.x) suncat.x++;
-                else if (suncat.x > target.x) suncat.x--;
+                if (currentTargetID) currentTargetID = null;
                 
-                if (suncat.y < target.y) suncat.y++;
-                else if (suncat.y > target.y) suncat.y--;
-            }
-        } 
-        else {
-            if (currentTargetID) currentTargetID = null;
-            
-            // --- THE AGI CLOCK ---
-            autonomousTick++;
-            
-            // Every 6 ticks (3 minutes), he stops wandering and actively plots a move
-            if (autonomousTick >= 6) {
-                autonomousTick = 0;
-                if (Math.random() < 0.01) {
-                executeAutonomousOODA();
-                }
-            } else {
-                // He paces around his immediate area while thinking
+                // --- THE AGI CLOCK ---
+                autonomousTick++;
                 
-                const move = Math.floor(Math.random() * 4);
-                if (move === 0) suncat.y--;
-                if (move === 1) suncat.y++;
-                if (move === 2) suncat.x--;
-                if (move === 3) suncat.x++;
-                if(Math.random()>.9){
-                    suncat.mapID = Math.floor(Math.random()*22);
-                }
-                if (Math.random() < 0.1) {
-                    writeSuncatJournal();
-                }
-            }
-        }
-
-        // Keep in bounds
-        // Keep in bounds dynamically!
-        let maxBounds = (suncat.mapID === 999) ? 98 : 20;
-        suncat.x = Math.max(1, Math.min(maxBounds, suncat.x));
-        suncat.y = Math.max(1, Math.min(maxBounds, suncat.y));
-
-        io.emit("updatePlayers", players);
-    // [SUNCAT AUDIO EMITTER]
-    // 2% chance per tick (every 3s) to make a sound
-    if (Math.random() < 0.001) { 
-        // Pick a sound that fits his "Glitched Ghost" persona
-        const sfxPalette = [
-            'musical',   // Harp sound
-            'musical2',  // Fairy singing
-            'musical4',  // Ethereal choir
-            'talk',      // Mumble
-            'step',       // Random gravel noise
-            'fairy',       // Random gravel noise
-            'musical3'
-        ];
-        
-        const randomSFX = sfxPalette[Math.floor(Math.random() * sfxPalette.length)];
-
-        // Broadcast to ALL players
-        io.emit('remote_sfx', {
-            sfxID: randomSFX,  // We send the string name
-            x: suncat.x,
-            y: suncat.y,
-            sourcePlayerID: SUNCAT_ID
-        });
-    }
-    // --- AI DIRECTOR HEARTBEAT ---
-    const directorRoll = Math.random();
-
-    
-        // EVENT A: Proactive Speech
-        if (directorRoll < 0.15) {
-            const nearbyPlayer = Object.values(players).find(p => p.id !== SUNCAT_ID && p.mapID === suncat.mapID && Math.abs(p.x - suncat.x) < 4 && Math.abs(p.y - suncat.y) < 4);
-
-            if (nearbyPlayer && chatSessions[nearbyPlayer.id]) {
-                nearbyPlayer.npcIsTyping = true;
-                const typingFailSafe = setTimeout(() => { nearbyPlayer.npcIsTyping = false; }, 20000);
-                const proactivePrompt = `You are idling near ${nearbyPlayer.name} on Map ${suncat.mapID}. Speak to them unprompted. If favor is ok (>3), ask a personal question, share lore, or comment on this location. If favor is bad(<3), insult them or tell them to go away. DO NOT use brackets or tags in your response.`;
-                
-                setTimeout(async () => {
-                    try {
-                        let dynamicPersona = PERSONA_RULES_DB.core + "\n" + PERSONA_RULES_DB.commands + "\n" + PERSONA_RULES_DB.judgement_mode;
-                        const activeModel = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite-preview", systemInstruction: dynamicPersona, tools: toolsDef });
-                        chatSessions[nearbyPlayer.id] = activeModel.startChat({ history: await chatSessions[nearbyPlayer.id].getHistory() });
-
-                        const result = await chatSessions[nearbyPlayer.id].sendMessage(proactivePrompt);
-                        if (result.response.usageMetadata) updateBudget(result.response.usageMetadata);
-                        
-                        let proactiveOptions = { sender: NPC_NAME, color: "#ffffff" };
-                        broadcastSuncatMessage(result.response.text(), proactiveOptions);
-                        await manageHistorySize(nearbyPlayer.id);
-                    }catch (e) { 
-                        console.error("Proactive Speech Failed", e); 
-                    } finally {
-                        clearTimeout(typingFailSafe);
-                        nearbyPlayer.npcIsTyping = false;
+                // Every 6 ticks (3 minutes), he stops wandering and actively plots a move
+                if (autonomousTick >= 6) {
+                    autonomousTick = 0;
+                    if (Math.random() < 0.01) {
+                    executeAutonomousOODA();
                     }
-                }, 1000);
-            }
-        }
-        // EVENT B: DM Pacing / Plot Advance
-        else if (directorRoll >= 0.15 && directorRoll < 0.30) {
-            const advPlayer = Object.values(players).find(p => p.id !== SUNCAT_ID && (p.mapID === 999 || p.activeQuest));
-
-            if (advPlayer && chatSessions[advPlayer.id]) {
-                advPlayer.npcIsTyping = true;
-                const typingFailSafe = setTimeout(() => { advPlayer.npcIsTyping = false; }, 20000);
-                
-                const plotContext = advPlayer.activeQuest ? `Current Quest: ${advPlayer.activeQuest}` : "Wandering an uncharted map.";
-                const activeMapLore = getMapLore(advPlayer.mapID); 
-                
-                // --- THE RNG PACING DIRECTOR ---
-                const pacingRoll = Math.random();
-                let dmPrompt = "";
-                let requiresBigBrain = false;
-                let injectedPersona = PERSONA_RULES_DB.core + "\n";
-                
-                // Track dynamic message options for the pacing events
-                let pacingMsgOptions = { sender: NPC_NAME, color: "#ffffff" };
-
-                if (pacingRoll < 0.33) {
-                    injectedPersona += PERSONA_RULES_DB.oracle_mode;
-                    dmPrompt = `[DM PACING]: ${advPlayer.name} is wandering Map ${advPlayer.mapID}.\n[TERRAIN]: ${activeMapLore}\nProvide an unsolicited, cryptic 1-sentence Tarot reading about the danger ahead.`;
-                } 
-                else if (pacingRoll < 0.69) {
-                    pacingMsgOptions = { sender: "", color: "#cccccc" }; // Narrator
-                    dmPrompt = `[DM PACING]: ${advPlayer.name} is lingering on Map ${advPlayer.mapID}.\n[TERRAIN]: ${activeMapLore}\nNarrate the creepy or beautiful atmosphere around them in exactly ONE atmospheric sentence. Make them feel watched. DO NOT ask questions.`;
-                } 
-                else {
-                    requiresBigBrain = true;
-                    injectedPersona += PERSONA_RULES_DB.dm_mode + "\n" + PERSONA_RULES_DB.quest_mode;
+                } else {
+                    // He paces around his immediate area while thinking
                     
-                    // Arena Master retains Suncat identity, everything else is the Narrator
-                    if (advPlayer.mapScenario === 'Arena Madness') {
-                        pacingMsgOptions = { sender: NPC_NAME, color: "#ffffff" };
-                    } else {
-                        pacingMsgOptions = { sender: "", color: "#cccccc" };
+                    const move = Math.floor(Math.random() * 4);
+                    if (move === 0) suncat.y--;
+                    if (move === 1) suncat.y++;
+                    if (move === 2) suncat.x--;
+                    if (move === 3) suncat.x++;
+                    if(Math.random()>.9){
+                        suncat.mapID = Math.floor(Math.random()*22);
                     }
-                    
-                    dmPrompt = `[DM PACING OVERSEER]: ${advPlayer.name} is lingering on Map ${advPlayer.mapID}.\n[TERRAIN]: ${activeMapLore}\n${plotContext}\nAdvance the adventure NOW! You MUST use a tool (spawnNPC, changeEnvironment, or assignQuest) to ambush or surprise them. Narrate the sudden event dynamically (1 sentences MAX). Your narrative tone MUST BE: ${dmMood}. DO NOT ask questions.`;
+                    if (Math.random() < 0.1) {
+                        writeSuncatJournal();
+                    }
                 }
-
-                setTimeout(async () => {
-                    try {
-                        // Dynamically build the model based on the RNG outcome
-                        let modelConfig = { 
-                            model: requiresBigBrain ? "gemini-3.1-flash-lite-preview" : "gemini-2.5-flash-lite", 
-                            systemInstruction: injectedPersona
-                        };
-                        // Only attach tools if we rolled the gameplay spice branch!
-                        if (requiresBigBrain) modelConfig.tools = toolsDef; 
-
-                        const activeDmModel = genAI.getGenerativeModel(modelConfig);
-                        chatSessions[advPlayer.id] = activeDmModel.startChat({ history: await chatSessions[advPlayer.id].getHistory() });
-                        
-                        const result = await chatSessions[advPlayer.id].sendMessage(dmPrompt);
-                        
-                        // Only try to execute tools if we gave the AI the tools payload!
-                        let finalResponse = requiresBigBrain 
-                            ? await executeAITools(result.response, chatSessions[advPlayer.id], io.sockets.sockets.get(advPlayer.id))
-                            : result.response;
-                        
-                        if (finalResponse.text()) broadcastSuncatMessage(finalResponse.text(), pacingMsgOptions);                        
-                        players[advPlayer.id].lastSuncatChat = Date.now(); // <--- FIX: Start the conversation timer!
-                        let updatedHistory = await chatSessions[advPlayer.id].getHistory(); 
-                        chatSessions[advPlayer.id] = activeDmModel.startChat({ history: scrubAIHistory(updatedHistory) });
-                        await manageHistorySize(advPlayer.id);
-                    } catch (e) {
-                        console.error("DM Proactive Error:", e);
-                    } finally {
-                        clearTimeout(typingFailSafe);
-                        advPlayer.npcIsTyping = false;
-                    }
-                }, 1000);
             }
-        }
-    
-}, 30000); // END OF THE 10 SECOND INTERVAL
-async function manageHistorySize(socketId) {
-    if (!chatSessions[socketId]) return;
 
-    try {
-        let history = await chatSessions[socketId].getHistory();
-        const MAX_HISTORY_LENGTH = 20;
+            // Keep in bounds
+            // Keep in bounds dynamically!
+            let maxBounds = (suncat.mapID === 999) ? 98 : 20;
+            suncat.x = Math.max(1, Math.min(maxBounds, suncat.x));
+            suncat.y = Math.max(1, Math.min(maxBounds, suncat.y));
 
-        if (history.length > MAX_HISTORY_LENGTH) {
-            // Because processCognitiveLoad handles our memory now, we don't need to summarize this!
-            // We just brutally chop the oldest messages off to save raw input tokens.
-            chatSessions[socketId] = defaultModel.startChat({
-                history: history.slice(-10) 
-            });
-            console.log(`[Memory] Pruned raw chat history for ${players[socketId]?.name}.`);
-        }
-    } catch (error) {
-        console.error("[Memory] History prune failed:", error);
-    }
-}
-// --- DEAD NPC GARBAGE COLLECTOR ---
-// Sweeps the deadNPCs object once every 60 seconds to prevent memory leaks
-setInterval(() => {
-    const now = Date.now();
-    const EXPIRATION_TIME = 300000; // 5 minutes (matches your original design)
-    
-    for (let uniqueID in deadNPCs) {
-        if (now - deadNPCs[uniqueID] > EXPIRATION_TIME) {
-            delete deadNPCs[uniqueID];
-        }
-    }
-}, 60000);
-// --- THE AFK SWEEPER (Run every 2 minutes) ---
-const IDLE_TIMEOUT = 3 * 60 * 1000; 
-setInterval(async () => {
-    const now = Date.now();
-    for (const socketId in chatSessions) {
-        const player = players[socketId];
-        
-        if (player && (now - (player.lastActive || 0) > IDLE_TIMEOUT)) {
-            console.log(`[Hibernation] ${player.name} went AFK. Hibernating session.`);
-            
-            try {
-                // FORCE THE STOMACH TO EMPTY
-                await processCognitiveLoad(socketId, true);
-            } catch (error) {
-                console.error(`[Hibernation] AI compression failed for ${player.name}.`, error);
-            }
-            player.sessionCost = 0.00; // Suncat rested, so his budget resets!
-            player.dmStress = 0;
-            const nameKey = player.name.toLowerCase();
-            suncatPersistentMemory[nameKey] = {
-                favor: playerFavorMemory[socketId] || 0,
-                playerProfile: player.playerProfile || { combatStyle: "Unknown", alliances: "Unknown", tastes: "Unknown", personality: "Unknown" },
-                activeQuest: player.activeQuest || null,
-                storySoFar: player.storySoFar || "", 
-                aiHistory: [],
-                suncatPerception: player.suncatPerception || "An unknown entity.",
-                searchableMemories: player.searchableMemories || [] // <-- ADD THIS LINE
-            };
-            saveSuncatMemory();
-            
-            player.name = "[AFK] " + player.name;
             io.emit("updatePlayers", players);
-            delete chatSessions[socketId];
+        // [SUNCAT AUDIO EMITTER]
+        // 2% chance per tick (every 3s) to make a sound
+        if (Math.random() < 0.001) { 
+            // Pick a sound that fits his "Glitched Ghost" persona
+            const sfxPalette = [
+                'musical',   // Harp sound
+                'musical2',  // Fairy singing
+                'musical4',  // Ethereal choir
+                'talk',      // Mumble
+                'step',       // Random gravel noise
+                'fairy',       // Random gravel noise
+                'musical3'
+            ];
+            
+            const randomSFX = sfxPalette[Math.floor(Math.random() * sfxPalette.length)];
+
+            // Broadcast to ALL players
+            io.emit('remote_sfx', {
+                sfxID: randomSFX,  // We send the string name
+                x: suncat.x,
+                y: suncat.y,
+                sourcePlayerID: SUNCAT_ID
+            });
+        }
+        // --- AI DIRECTOR HEARTBEAT ---
+        const directorRoll = Math.random();
+
+        
+            // EVENT A: Proactive Speech
+            if (directorRoll < 0.15) {
+                const nearbyPlayer = Object.values(players).find(p => p.id !== SUNCAT_ID && p.mapID === suncat.mapID && Math.abs(p.x - suncat.x) < 4 && Math.abs(p.y - suncat.y) < 4);
+
+                if (nearbyPlayer && chatSessions[nearbyPlayer.id]) {
+                    nearbyPlayer.npcIsTyping = true;
+                    const typingFailSafe = setTimeout(() => { nearbyPlayer.npcIsTyping = false; }, 20000);
+                    const proactivePrompt = `You are idling near ${nearbyPlayer.name} on Map ${suncat.mapID}. Speak to them unprompted. If favor is ok (>3), ask a personal question, share lore, or comment on this location. If favor is bad(<3), insult them or tell them to go away. DO NOT use brackets or tags in your response.`;
+                    
+                    setTimeout(async () => {
+                        try {
+                            let dynamicPersona = PERSONA_RULES_DB.core + "\n" + PERSONA_RULES_DB.commands + "\n" + PERSONA_RULES_DB.judgement_mode;
+                            const activeModel = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite-preview", systemInstruction: dynamicPersona, tools: toolsDef });
+                            chatSessions[nearbyPlayer.id] = activeModel.startChat({ history: await chatSessions[nearbyPlayer.id].getHistory() });
+
+                            const result = await chatSessions[nearbyPlayer.id].sendMessage(proactivePrompt);
+                            if (result.response.usageMetadata) updateBudget(result.response.usageMetadata);
+                            
+                            let proactiveOptions = { sender: NPC_NAME, color: "#ffffff" };
+                            broadcastSuncatMessage(result.response.text(), proactiveOptions);
+                            await manageHistorySize(nearbyPlayer.id);
+                        }catch (e) { 
+                            console.error("Proactive Speech Failed", e); 
+                        } finally {
+                            clearTimeout(typingFailSafe);
+                            nearbyPlayer.npcIsTyping = false;
+                        }
+                    }, 1000);
+                }
+            }
+            // EVENT B: DM Pacing / Plot Advance
+            else if (directorRoll >= 0.15 && directorRoll < 0.30) {
+                const advPlayer = Object.values(players).find(p => p.id !== SUNCAT_ID && (p.mapID === 999 || p.activeQuest));
+
+                if (advPlayer && chatSessions[advPlayer.id]) {
+                    advPlayer.npcIsTyping = true;
+                    const typingFailSafe = setTimeout(() => { advPlayer.npcIsTyping = false; }, 20000);
+                    
+                    const plotContext = advPlayer.activeQuest ? `Current Quest: ${advPlayer.activeQuest}` : "Wandering an uncharted map.";
+                    const activeMapLore = getMapLore(advPlayer.mapID); 
+                    
+                    // --- THE RNG PACING DIRECTOR ---
+                    const pacingRoll = Math.random();
+                    let dmPrompt = "";
+                    let requiresBigBrain = false;
+                    let injectedPersona = PERSONA_RULES_DB.core + "\n";
+                    
+                    // Track dynamic message options for the pacing events
+                    let pacingMsgOptions = { sender: NPC_NAME, color: "#ffffff" };
+
+                    if (pacingRoll < 0.33) {
+                        injectedPersona += PERSONA_RULES_DB.oracle_mode;
+                        dmPrompt = `[DM PACING]: ${advPlayer.name} is wandering Map ${advPlayer.mapID}.\n[TERRAIN]: ${activeMapLore}\nProvide an unsolicited, cryptic 1-sentence Tarot reading about the danger ahead.`;
+                    } 
+                    else if (pacingRoll < 0.69) {
+                        pacingMsgOptions = { sender: "", color: "#cccccc" }; // Narrator
+                        dmPrompt = `[DM PACING]: ${advPlayer.name} is lingering on Map ${advPlayer.mapID}.\n[TERRAIN]: ${activeMapLore}\nNarrate the creepy or beautiful atmosphere around them in exactly ONE atmospheric sentence. Make them feel watched. DO NOT ask questions.`;
+                    } 
+                    else {
+                        requiresBigBrain = true;
+                        injectedPersona += PERSONA_RULES_DB.dm_mode + "\n" + PERSONA_RULES_DB.quest_mode;
+                        
+                        // Arena Master retains Suncat identity, everything else is the Narrator
+                        if (advPlayer.mapScenario === 'Arena Madness') {
+                            pacingMsgOptions = { sender: NPC_NAME, color: "#ffffff" };
+                        } else {
+                            pacingMsgOptions = { sender: "", color: "#cccccc" };
+                        }
+                        
+                        dmPrompt = `[DM PACING OVERSEER]: ${advPlayer.name} is lingering on Map ${advPlayer.mapID}.\n[TERRAIN]: ${activeMapLore}\n${plotContext}\nAdvance the adventure NOW! You MUST use a tool (spawnNPC, changeEnvironment, or assignQuest) to ambush or surprise them. Narrate the sudden event dynamically (1 sentences MAX). Your narrative tone MUST BE: ${dmMood}. DO NOT ask questions.`;
+                    }
+
+                    setTimeout(async () => {
+                        try {
+                            // Dynamically build the model based on the RNG outcome
+                            let modelConfig = { 
+                                model: requiresBigBrain ? "gemini-3.1-flash-lite-preview" : "gemini-2.5-flash-lite", 
+                                systemInstruction: injectedPersona
+                            };
+                            // Only attach tools if we rolled the gameplay spice branch!
+                            if (requiresBigBrain) modelConfig.tools = toolsDef; 
+
+                            const activeDmModel = genAI.getGenerativeModel(modelConfig);
+                            chatSessions[advPlayer.id] = activeDmModel.startChat({ history: await chatSessions[advPlayer.id].getHistory() });
+                            
+                            const result = await chatSessions[advPlayer.id].sendMessage(dmPrompt);
+                            
+                            // Only try to execute tools if we gave the AI the tools payload!
+                            let finalResponse = requiresBigBrain 
+                                ? await executeAITools(result.response, chatSessions[advPlayer.id], io.sockets.sockets.get(advPlayer.id))
+                                : result.response;
+                            
+                            if (finalResponse.text()) broadcastSuncatMessage(finalResponse.text(), pacingMsgOptions);                        
+                            players[advPlayer.id].lastSuncatChat = Date.now(); // <--- FIX: Start the conversation timer!
+                            let updatedHistory = await chatSessions[advPlayer.id].getHistory(); 
+                            chatSessions[advPlayer.id] = activeDmModel.startChat({ history: scrubAIHistory(updatedHistory) });
+                            await manageHistorySize(advPlayer.id);
+                        } catch (e) {
+                            console.error("DM Proactive Error:", e);
+                        } finally {
+                            clearTimeout(typingFailSafe);
+                            advPlayer.npcIsTyping = false;
+                        }
+                    }, 1000);
+                }
+            }
+        
+    }, 30000); // END OF THE 10 SECOND INTERVAL
+    async function manageHistorySize(socketId) {
+        if (!chatSessions[socketId]) return;
+
+        try {
+            let history = await chatSessions[socketId].getHistory();
+            const MAX_HISTORY_LENGTH = 20;
+
+            if (history.length > MAX_HISTORY_LENGTH) {
+                // Because processCognitiveLoad handles our memory now, we don't need to summarize this!
+                // We just brutally chop the oldest messages off to save raw input tokens.
+                chatSessions[socketId] = defaultModel.startChat({
+                    history: history.slice(-10) 
+                });
+                console.log(`[Memory] Pruned raw chat history for ${players[socketId]?.name}.`);
+            }
+        } catch (error) {
+            console.error("[Memory] History prune failed:", error);
         }
     }
-}, 2 * 60 * 1000);
+// --- DEAD NPC GARBAGE COLLECTOR ---
+    setInterval(() => {
+        const now = Date.now();
+        const EXPIRATION_TIME = 300000; // 5 minutes (matches your original design)
+        
+        for (let uniqueID in deadNPCs) {
+            if (now - deadNPCs[uniqueID] > EXPIRATION_TIME) {
+                delete deadNPCs[uniqueID];
+            }
+        }
+    }, 60000);
+// --- THE AFK SWEEPER (Run every 2 minutes) ---
+    const IDLE_TIMEOUT = 3 * 60 * 1000; 
+    setInterval(async () => {
+        const now = Date.now();
+        for (const socketId in chatSessions) {
+            const player = players[socketId];
+            
+            if (player && (now - (player.lastActive || 0) > IDLE_TIMEOUT)) {
+                console.log(`[Hibernation] ${player.name} went AFK. Hibernating session.`);
+                
+                try {
+                    // FORCE THE STOMACH TO EMPTY
+                    await processCognitiveLoad(socketId, true);
+                } catch (error) {
+                    console.error(`[Hibernation] AI compression failed for ${player.name}.`, error);
+                }
+                player.sessionCost = 0.00; // Suncat rested, so his budget resets!
+                player.dmStress = 0;
+                const nameKey = player.name.toLowerCase();
+                suncatPersistentMemory[nameKey] = {
+                    favor: playerFavorMemory[socketId] || 0,
+                    playerProfile: player.playerProfile || { combatStyle: "Unknown", alliances: "Unknown", tastes: "Unknown", personality: "Unknown" },
+                    activeQuest: player.activeQuest || null,
+                    storySoFar: player.storySoFar || "", 
+                    aiHistory: [],
+                    suncatPerception: player.suncatPerception || "An unknown entity.",
+                    searchableMemories: player.searchableMemories || [] // <-- ADD THIS LINE
+                };
+                saveSuncatMemory();
+                
+                player.name = "[AFK] " + player.name;
+                io.emit("updatePlayers", players);
+                delete chatSessions[socketId];
+            }
+        }
+    }, 2 * 60 * 1000);
 // Reset budget every hour to prevent permanent AI death
-setInterval(() => {
-    totalSessionCost = 0.00;
-    console.log("[Budget] Hourly API budget reset.");
-}, 60 * 60 * 1000);
+    setInterval(() => {
+        totalSessionCost = 0.00;
+        console.log("[Budget] Hourly API budget reset.");
+    }, 60 * 60 * 1000);
 // --- INITIALIZE PERSISTENT MMO HUBS ---
-function buildServerHubs() {
-    let tData = generateTintagelHub();
-    tintagelHubMap = {
-        id: 100, 
-        maze: tData.grid, 
-        skyColor: "rgba(15,30,15,1)", // Sylvan Sky
-        floorColor: "#2d4c1e",        // Sylvan Floor
-        name: "Tintagel Faction Hub", 
-        npcs: [], // You can push static NPCs like the Emperor here later!
-        weather: "leaves",
-        spawnX: tData.startX + 0.5, 
-        spawnY: tData.startY + 0.5,
-        biome: "Sylvan", 
-        safeTiles: tData.safeTiles 
-    };
-    console.log("[World Engine] Map 100 (Tintagel Hub) generated and cached.");
-}
+    function buildServerHubs() {
+        let tData = generateTintagelHub();
+        tintagelHubMap = {
+            id: 100, 
+            maze: tData.grid, 
+            skyColor: "rgba(15,30,15,1)", // Sylvan Sky
+            floorColor: "#2d4c1e",        // Sylvan Floor
+            name: "Tintagel Faction Hub", 
+            npcs: [], // You can push static NPCs like the Emperor here later!
+            weather: "leaves",
+            spawnX: tData.startX + 0.5, 
+            spawnY: tData.startY + 0.5,
+            biome: "Sylvan", 
+            safeTiles: tData.safeTiles 
+        };
+        console.log("[World Engine] Map 100 (Tintagel Hub) generated and cached.");
+    }
 buildServerHubs(); // Run it!
 server.listen(port, () => {
   console.log(`Server running on port ${port}`);
