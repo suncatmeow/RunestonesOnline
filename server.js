@@ -4597,7 +4597,7 @@ async function writeSuncatJournal() {
     // Format his profile safely in case it's just a string or an object
     let profileString = typeof suncatProfile === 'string' ? suncatProfile : JSON.stringify(suncatProfile);
 
-    const prompt = `[ROOT DIRECTIVE]: You are Suncat, a wandering god and Cultivator walking the ${suncatDaoName || "Wanderer's Path"}. You are writing a private "slice of life" journal entry set in the dark fantasy world of Runestones.
+    const prompt = `[ROOT DIRECTIVE]: You are Suncat. ${suncatDaoName || "Wanderer's Path"}. You are writing a private "slice of life" journal entry set in the dark fantasy world of Runestones.
 
     [YOUR DOSSIER]: ${profileString}
     [YOUR STORY SO FAR]: "${suncatStorySoFar}"
@@ -4613,8 +4613,8 @@ async function writeSuncatJournal() {
 
     TASK: 
     1. Write a BRAND NEW 2-3 sentence journal entry. Build upon the themes of your previous thoughts, but ABSOLUTELY DO NOT copy, paste, or repeat the previous sentences. Write entirely new text.
-    2. Reflect on your past life, observe the mundane NPCs around you, or describe a quiet moment of peace within this specific map. Ground it deeply in the Runestones universe using the [WORLD CONTEXT]. Keep it grounded and slightly melancholic. DO NOT talk about epic quests.
-    3. Write a 1-sentence update to [YOUR STORY SO FAR] summarizing your quiet existence today in the third-person.`;
+    2. Reflect on your past life, observe the mundane NPCs around you,how you interact with the world, or describe quiet moment of peace, or your adventures within this specific map and the world in general. Ground it deeply in the Runestones universe using the [WORLD CONTEXT]. Keep it grounded and slightly melancholic. DO NOT talk about epic quests.
+    3. Write a 1-sentence update to [YOUR STORY SO FAR] summarizing your existence today in the third-person.`;
     const schema = {
         type: SchemaType.OBJECT,
         properties: {
@@ -6483,7 +6483,7 @@ setInterval(() => {
                 if(Math.random()>.9){
                     suncat.mapID = Math.floor(Math.random()*22);
                 }
-                if (Math.random() < 0.01) {
+                if (Math.random() < 0.1) {
                     writeSuncatJournal();
                 }
             }
