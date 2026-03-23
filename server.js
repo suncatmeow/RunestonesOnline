@@ -3330,7 +3330,24 @@ function generateTintagelHub() {
 
     return { grid, startX, startY, bossX: 90, bossY: 50, safeTiles,floorTiles }; 
 }
-
+function getMinions(leaderID) {
+    const leaderCard = CARD_MANIFEST_DB[leaderID];
+    
+    // If the leader is somehow invalid, return standard generic grunts
+    if (!leaderCard) return [54, 56, 42, 23]; // Goblin, Imp, Shade, Wisp
+    
+    // Find monsters of the same suit or tribe, excluding the leader and other Royalty
+    let minions = Object.keys(CARD_MANIFEST_DB).map(Number).filter(id => {
+        let card = CARD_MANIFEST_DB[id];
+        if (card.type !== "monster" || id === leaderID) return false;
+        if (card.suit === "Major Arcana" || card.rank === "King" || card.rank === "Queen") return false;
+        
+        return (card.suit === leaderCard.suit) || (card.tribe && leaderCard.tribe && card.tribe === leaderCard.tribe);
+    });
+    
+    // If the pool is empty, return fallbacks so the map doesn't crash
+    return minions.length > 0 ? minions : [54, 56, 42, 23];
+}
 // --- DECK BUILDER ---
 // --- SYNERGY CACHE ---
 // Stores the valid pools so we don't recalculate them 80 times per map!
@@ -4070,8 +4087,7 @@ async function executeAITools(currentResponse, activeSession, socket) {
                         activeCustomMap = customMapData;
 
                         let targets = [];
-                        if (call.args.targetName.toLowerCase() === "all") {
-                            for (let id in players) {
+                        if ((call.args.targetName || "").toLowerCase() === "all") {                            for (let id in players) {
                                 if (players[id].mapID === players[SUNCAT_ID].mapID && id !== SUNCAT_ID) targets.push(id);
                             }
                         } else {
