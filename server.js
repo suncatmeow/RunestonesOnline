@@ -3180,7 +3180,7 @@ function generateProceduralGrid(layout, wallType) {
                 if (r === 8 || r === 16 || c === 40 || c === 60) grid[r][c] = wallType;
             }
         }
-        //grid[16][49] = 0; grid[16][50] = 0; grid[16][51] = 0; // Throne doors
+        grid[16][49] = 0; grid[16][50] = 0; grid[16][51] = 0; // Throne doors
     }
     else if (layout === 'arena') {
         // [Keep your existing Arena logic here, just push all 0s into lairTiles]
@@ -3907,7 +3907,7 @@ async function executeAITools(currentResponse, activeSession, socket) {
                             mapNPCs.push({
                                 type: allySprite, x: bMerchTile.x, y: bMerchTile.y, 
                                 state: 'stationary', role: 'shop', alignment: 'ally',
-                                deck: buildShopInventory(10, 50),
+                                deck: buildShopInventory(50, 100),
                                 color: '#00ffff', dialogue: [getDialogue('recruitPlea', "I want to fight them, but I'm too scared to go alone... Can I join you?")]
                             });
 
@@ -3917,7 +3917,7 @@ async function executeAITools(currentResponse, activeSession, socket) {
                                 type: allySprite, x: bRecruitTile.x, y: bRecruitTile.y, 
                                 state: 'wandering', role: 'dialogue', alignment: 'ally',
                                 options: ['Accept', 'Decline'], rewardCard: allySpriteID,
-                                deck: buildSynergisticDeck(allySpriteID, 6),
+                                deck: buildSynergisticDeck(allySpriteID, 10),
                                 dialogue: [getDialogue('recruitPlea', "I want to fight them, but I'm too scared to go alone... Can I join you?")]
                             });
 
@@ -3950,7 +3950,7 @@ async function executeAITools(currentResponse, activeSession, socket) {
                             mapNPCs.push({
                                 type: allySprite, x: wMerchTile.x, y: wMerchTile.y, 
                                 state: 'stationary', role: 'shop', alignment: 'ally',
-                                deck: buildShopInventory(20, 100),
+                                deck: buildShopInventory(100, 200),
                                 color: '#00ffff', dialogue: [getMadLibLine(biome.name, 'friendlyProfound', "The wilds hide many secrets... and wares.")]
                             });
 
@@ -3960,7 +3960,7 @@ async function executeAITools(currentResponse, activeSession, socket) {
                                 type: allySprite, x: wRecruitTile.x, y: wRecruitTile.y, 
                                 state: 'chasing', role: 'dialogue', alignment: 'ally',
                                 options: ['Accept', 'Decline'], rewardCard: allySpriteID,
-                                deck: buildSynergisticDeck(allySpriteID, 9),
+                                deck: buildSynergisticDeck(allySpriteID, 20),
                                 dialogue: [getDialogue('recruitPlea', "I'm pushing through to the Lair! Let's team up!")]
                             });
 
@@ -3998,7 +3998,7 @@ async function executeAITools(currentResponse, activeSession, socket) {
                             mapNPCs.push({
                                 type: foeSprite, x: lMerchTile.x, y: lMerchTile.y, 
                                 state: 'stationary', role: 'shop', alignment: 'foe', // Enemy Merchant!
-                                deck: buildShopInventory(50, 200),
+                                deck: buildShopInventory(100, 300),
                                 color: '#00ffff', dialogue: [getDialogue('friendlyLife', "I sell to whoever has the coin. Don't tell the boss.")]
                             });
 
@@ -4008,7 +4008,7 @@ async function executeAITools(currentResponse, activeSession, socket) {
                                 type: allySprite, x: lRecruitTile.x, y: lRecruitTile.y, 
                                 state: 'stationary', role: 'dialogue', alignment: 'ally',
                                 options: ['Accept', 'Decline'], rewardCard: allySpriteID,
-                                deck: buildSynergisticDeck(allySpriteID, 20),
+                                deck: buildSynergisticDeck(allySpriteID,30),
                                 color: '#aaaaaa', dialogue: [getDialogue('prisonerLines', "They locked me up... get me out of here!")]
                             });
 
