@@ -2461,8 +2461,7 @@ const toolsDef = [{
             parameters: {
                 type: "OBJECT",
                 properties: {
-                    targetName: { type: "STRING", description: "The player's name, or 'All'." },
-                    requestedScenario: { type: "STRING", description: "Optional. Choose from: 'Invasion', 'Rescue/Fetch', 'Arena Madness', or 'Raid'" }
+                    targetName: { type: "STRING", description: "The player's name, or 'All'." }
                 },
                 required: ["targetName"] 
             }
@@ -3748,16 +3747,9 @@ async function executeAITools(currentResponse, activeSession, socket) {
                         const bEnum = Math.floor(Math.random() * Object.keys(BIOME_DB).length);
                         const biome = BIOME_DB[bEnum] || BIOME_DB[0];
 
-                        // --- NEW: HANDLE SPECIFIC REQUESTS OR RANDOMIZE ---
+                        // --- FORCE SERVER-SIDE RANDOM SCENARIO ---
                         const validScenarios = ['Invasion', 'Rescue/Fetch', 'Arena Madness','Raid'];
-                        let scenarioType = call.args.requestedScenario;
-                        
-                        // Fuzzy match if AI passed something like "Rescue" instead of "Rescue/Fetch"
-                        if (scenarioType && scenarioType.includes('Rescue')) scenarioType = 'Rescue/Fetch';
-                        
-                        if (!scenarioType || !validScenarios.includes(scenarioType)) {
-                            scenarioType = validScenarios[Math.floor(Math.random() * validScenarios.length)];
-                        }
+                        let scenarioType = validScenarios[Math.floor(Math.random() * validScenarios.length)];
                         // Settlement Logic (0 = Wilderness, 1 = Village, 2 = City)
                         const settlementType = scenarioType === 'Arena Madness' ? 0 : Math.floor(Math.random() * 2) + 1; 
 
