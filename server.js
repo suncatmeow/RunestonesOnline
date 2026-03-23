@@ -3888,7 +3888,15 @@ async function executeAITools(currentResponse, activeSession, socket) {
                             let t = zoneArray.splice(idx, 1)[0]; 
                             return {x: t.x + 0.5, y: t.y + 0.5};
                         };
-
+                        // --- SMART DIALOGUE FETCHER ---
+                        const getDialogue = (category, fallback) => {
+                            // 1. Try to pop a fresh line from the newly generated script
+                            if (script && script[category] && script[category].length > 0) {
+                                return script[category].pop();
+                            }
+                            // 2. If we ran out (or if the AI failed), pull a random line from the Global Lore Cache!
+                            return getMadLibLine(biome.name, category, fallback);
+                        };
                         if (scenarioType !== 'Arena Madness') {
                             
                             // ==========================================
@@ -3900,7 +3908,7 @@ async function executeAITools(currentResponse, activeSession, socket) {
                                 type: allySprite, x: bMerchTile.x, y: bMerchTile.y, 
                                 state: 'stationary', role: 'shop', alignment: 'ally',
                                 deck: buildShopInventory(10, 50),
-                                color: '#00ffff', dialogue: [getMadLibLine(biome.name, 'friendlyProfound', "Stock up before you leave the gates.")]
+                                color: '#00ffff', dialogue: [getDialogue('recruitPlea', "I want to fight them, but I'm too scared to go alone... Can I join you?")]
                             });
 
                             // 2. Bastion Recruit (Wants to fight, scared. Max Power 6)
@@ -3910,7 +3918,7 @@ async function executeAITools(currentResponse, activeSession, socket) {
                                 state: 'wandering', role: 'dialogue', alignment: 'ally',
                                 options: ['Accept', 'Decline'], rewardCard: allySpriteID,
                                 deck: buildSynergisticDeck(allySpriteID, 6),
-                                dialogue: ["I want to fight them, but I'm too scared to go alone... Can I join you?"]
+                                dialogue: [getDialogue('recruitPlea', "I want to fight them, but I'm too scared to go alone... Can I join you?")]
                             });
 
                             // 3. Occupy Every House!
@@ -3919,7 +3927,7 @@ async function executeAITools(currentResponse, activeSession, socket) {
                                     mapNPCs.push({
                                         type: allySprite, x: tile.x, y: tile.y, 
                                         state: 'stationary', role: 'dialogue', alignment: 'ally',
-                                        dialogue: [getMadLibLine(biome.name, 'friendlyLife', "I am staying inside until the monsters are gone.")]
+                                        dialogue: [getDialogue('friendlyLife', "I am staying inside until the monsters are gone.")]
                                     });
                                 });
                             }
@@ -3930,7 +3938,7 @@ async function executeAITools(currentResponse, activeSession, socket) {
                                 mapNPCs.push({
                                     type: allySprite, x: vTile.x, y: vTile.y, 
                                     state: 'wandering', role: 'dialogue', alignment: 'ally',
-                                    dialogue: [getMadLibLine(biome.name, 'friendlyLore', "The monsters are restless lately.")]
+                                    dialogue: [getDialogue('friendlyLore', "The monsters are restless lately.")]
                                 });
                             }
 
@@ -3953,7 +3961,7 @@ async function executeAITools(currentResponse, activeSession, socket) {
                                 state: 'chasing', role: 'dialogue', alignment: 'ally',
                                 options: ['Accept', 'Decline'], rewardCard: allySpriteID,
                                 deck: buildSynergisticDeck(allySpriteID, 9),
-                                dialogue: ["I'm pushing through to the Lair! Let's team up!"]
+                                dialogue: [getDialogue('recruitPlea', "I'm pushing through to the Lair! Let's team up!")]
                             });
 
                             // 7. Grunts & Cowards (Scaling Power, Mastery 0-1)
@@ -3977,7 +3985,7 @@ async function executeAITools(currentResponse, activeSession, socket) {
                                         deck: buildSynergisticDeck(mID, campPower), // Strict Power Cap!
                                         options: isCoward ? ['Spare', 'Vanquish'] : null,
                                         rewardCard: isCoward ? mID : null,
-                                        dialogue: [isCoward ? (script.traitorBegs.pop() || "I yield!") : (script.hostileTaunts.pop() || "Intruder!")]
+                                        dialogue: [isCoward ? getDialogue('traitorBegs', "I yield!") : getDialogue('hostileTaunts', "Intruder!")]
                                     });
                                 }
                             }
@@ -3991,7 +3999,7 @@ async function executeAITools(currentResponse, activeSession, socket) {
                                 type: foeSprite, x: lMerchTile.x, y: lMerchTile.y, 
                                 state: 'stationary', role: 'shop', alignment: 'foe', // Enemy Merchant!
                                 deck: buildShopInventory(50, 200),
-                                color: '#00ffff', dialogue: ["I sell to whoever has the coin. Don't tell the boss."]
+                                color: '#00ffff', dialogue: [getDialogue('friendlyLife', "I sell to whoever has the coin. Don't tell the boss.")]
                             });
 
                             // 9. Lair Recruit/Prisoner (Max Power 20)
@@ -4001,7 +4009,7 @@ async function executeAITools(currentResponse, activeSession, socket) {
                                 state: 'stationary', role: 'dialogue', alignment: 'ally',
                                 options: ['Accept', 'Decline'], rewardCard: allySpriteID,
                                 deck: buildSynergisticDeck(allySpriteID, 20),
-                                color: '#aaaaaa', dialogue: ["They locked me up... get me out of here!"]
+                                color: '#aaaaaa', dialogue: [getDialogue('prisonerLines', "They locked me up... get me out of here!")]
                             });
 
                             // 10. Elite Guards (Mastery 2, Power 100)
@@ -4013,7 +4021,7 @@ async function executeAITools(currentResponse, activeSession, socket) {
                                     state: 'stationary', role: 'battle', alignment: 'foe',
                                     mastery: 2, // Elite Mastery
                                     deck: buildSynergisticDeck(mID, 100), // Mini-Boss Cap
-                                    color: '#ff8800', dialogue: [script.bossTaunt] 
+                                    color: '#ff8800', dialogue: [getDialogue('hostileTaunts', "None shall pass!")]
                                 });
                             }
 
@@ -4046,7 +4054,7 @@ async function executeAITools(currentResponse, activeSession, socket) {
                                 state: 'stationary', role: 'battle', isBoss: true, alignment: 'foe',
                                 mastery: 3, // Supreme Mastery
                                 deck: buildSynergisticDeck(antagID, 300), // Boss Cap
-                                color: '#ff00ff', dialogue: [script.bossTaunt]
+                                color: '#ff00ff', dialogue: [script.bossTaunt || getMadLibLine(biome.name, 'bossTaunts', "You dare approach my domain?")]
                             });
                         }
                         
