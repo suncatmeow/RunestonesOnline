@@ -5316,6 +5316,7 @@ io.on("connection", (socket) => {
       mapID: 0,
       battleOpponent: null,
       activeQuest: null,
+      scenarioContext: null,
       dmStress: 0,           // Combat adrenaline
       sessionCost: 0.00,     // Suncat's actual API "Mana" (Fatigue)
       undigestedInfo: [],     // The "Stomach" for raw events
