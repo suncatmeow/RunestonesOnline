@@ -3166,28 +3166,43 @@ function generateProceduralGrid(layout, wallType) {
 
     if (layout === 'world' || layout === 'raid') {
         // 1. THE WILDS (Zone B)
-        for(let r = 25; r <= 74; r++) {
-            for(let c = 5; c < 94; c++) {
-                grid[r][c] = 0; 
+        // --- 1. THE WILDS (Organic Generation via Cellular Automata) ---
+    // Step A: Fill the Wilds with random noise (50% solid, 50% open)
+    for(let r = 25; r <= 74; r++) {
+        for(let c = 5; c < 94; c++) {
+            // Leave the edges as solid walls to prevent map escapes
+            if (c === 5 || c === 93) {
+                grid[r][c] = wallType;
+            } else {
+                grid[r][c] = Math.random() > 0.45 ? wallType : 0; 
             }
         }
+    }
+
+    // Step B: Smooth the noise (4 passes makes it look very natural)
+    for (let pass = 0; pass < 4; pass++) {
+        // Create a temporary grid so we don't alter cells we are currently checking
+        let tempGrid = grid.map(row => [...row]); 
         
-        // Add random clusters of solid walls and illusory walls (Even IDs)
-        let illusoryWall = wallType + 1; // Assuming your even IDs are +1 of the odd solids
-        for(let i = 0; i < 60; i++) {
-            let tr = 30 + Math.floor(Math.random() * 40);
-            let tc = 10 + Math.floor(Math.random() * 80);
-            let radius = Math.floor(Math.random() * 4) + 2;
-            for(let r = tr - radius; r <= tr + radius; r++) {
-                for(let c = tc - radius; c <= tc + radius; c++) {
-                    if (Math.pow(r - tr, 2) + Math.pow(c - tc, 2) <= radius * radius) {
-                        if(grid[r] && grid[r][c] !== undefined) {
-                            grid[r][c] = Math.random() > 0.85 ? illusoryWall : wallType; 
-                        }
+        for(let r = 26; r <= 73; r++) {
+            for(let c = 6; c < 93; c++) {
+                let neighborWalls = 0;
+                // Check all 8 surrounding tiles
+                for (let i = -1; i <= 1; i++) {
+                    for (let j = -1; j <= 1; j++) {
+                        if (i === 0 && j === 0) continue;
+                        if (grid[r + i][c + j] !== 0) neighborWalls++;
                     }
                 }
+                
+                // The Cellular Rule: If a tile is surrounded by walls, it becomes a wall.
+                // If it has lots of open space around it, it becomes open space.
+                if (neighborWalls > 4) tempGrid[r][c] = wallType;
+                else if (neighborWalls < 4) tempGrid[r][c] = 0;
             }
         }
+        grid = tempGrid;
+    }
 
         // 2. THE BASTION CITY (Zone A)
         for(let r = 75; r <= 96; r++) {
