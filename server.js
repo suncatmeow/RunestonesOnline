@@ -3155,66 +3155,89 @@ function generateProceduralGrid(layout, wallType) {
     let maxR = 99, maxC = 99; 
     let grid = Array(maxR).fill().map(() => Array(maxC).fill(wallType));
     
-    // Segregated tile arrays for deliberate spawning
-    let bastionTiles = []; // Rows 75 to 98
-    let wildsTiles = [];   // Rows 25 to 74
-    let lairTiles = [];    // Rows 1 to 24
+    let bastionTiles = []; 
+    let wildsTiles = [];   
+    let lairTiles = [];    
+    let ambushTiles = []; // NEW: Secret Easter Egg Room
     let houseTiles = [];  
     let safeTiles = [];
+    
     let startX = 50, startY = 88; 
-    let bossX = 50, bossY = 12;   
+    let bossX = 15, bossY = 15;   // Moved Boss to the isolated Lair
 
     if (layout === 'world' || layout === 'raid') {
-        // 1. THE WILDS (Zone B)
-        // --- 1. THE WILDS (Organic Generation via Cellular Automata) ---
-    // Step A: Fill the Wilds with random noise (50% solid, 50% open)
-    for(let r = 25; r <= 74; r++) {
-        for(let c = 5; c < 94; c++) {
-            // Leave the edges as solid walls to prevent map escapes
-            if (c === 5 || c === 93) {
-                grid[r][c] = wallType;
-            } else {
-                grid[r][c] = Math.random() > 0.45 ? wallType : 0; 
+        // --- 1. THE WILDS (Organic Generation) ---
+        for(let r = 5; r <= 74; r++) {
+            for(let c = 5; c < 94; c++) {
+                if (c === 5 || c === 93) grid[r][c] = wallType;
+                else grid[r][c] = Math.random() > 0.45 ? wallType : 0; 
             }
         }
-    }
-
-    // Step B: Smooth the noise (4 passes makes it look very natural)
-    for (let pass = 0; pass < 4; pass++) {
-        // Create a temporary grid so we don't alter cells we are currently checking
-        let tempGrid = grid.map(row => [...row]); 
-        
-        for(let r = 26; r <= 73; r++) {
-            for(let c = 6; c < 93; c++) {
-                let neighborWalls = 0;
-                // Check all 8 surrounding tiles
-                for (let i = -1; i <= 1; i++) {
-                    for (let j = -1; j <= 1; j++) {
-                        if (i === 0 && j === 0) continue;
-                        if (grid[r + i][c + j] !== 0) neighborWalls++;
+        // Smooth the Wilds
+        for (let pass = 0; pass < 4; pass++) {
+            let tempGrid = grid.map(row => [...row]); 
+            for(let r = 6; r <= 73; r++) {
+                for(let c = 6; c < 93; c++) {
+                    let neighborWalls = 0;
+                    for (let i = -1; i <= 1; i++) {
+                        for (let j = -1; j <= 1; j++) {
+                            if (i === 0 && j === 0) continue;
+                            if (grid[r + i][c + j] !== 0) neighborWalls++;
+                        }
                     }
+                    if (neighborWalls > 4) tempGrid[r][c] = wallType;
+                    else if (neighborWalls < 4) tempGrid[r][c] = 0;
                 }
-                
-                // The Cellular Rule: If a tile is surrounded by walls, it becomes a wall.
-                // If it has lots of open space around it, it becomes open space.
-                if (neighborWalls > 4) tempGrid[r][c] = wallType;
-                else if (neighborWalls < 4) tempGrid[r][c] = 0;
+            }
+            grid = tempGrid;
+        }
+
+        // --- 2. THE ISOLATED LAIR (Top Left, 5 to 30) ---
+        // We overwrite the wilds here with a completely sealed dungeon box
+        for(let r = 2; r <= 32; r++) {
+            for(let c = 2; c <= 32; c++) {
+                grid[r][c] = wallType; // Solidify the shell
             }
         }
-        grid = tempGrid;
-    }
+        for(let r = 5; r <= 29; r++) {
+            for(let c = 5; c <= 29; c++) {
+                grid[r][c] = 0; // Hollow out the inside
+            }
+        }
+        // Inner Throne Room
+        for(let r = 8; r <= 20; r++) {
+            for(let c = 8; c <= 22; c++) {
+                if (r === 8 || r === 20 || c === 8 || c === 22) grid[r][c] = wallType;
+            }
+        }
+        grid[20][15] = 0; // Door to throne room
 
-        // 2. THE BASTION CITY (Zone A)
+        // --- 3. THE AMBUSH / EASTER EGG ROOM (Top Right, 5 to 20) ---
+        for(let r = 2; r <= 22; r++) {
+            for(let c = 75; c <= 95; c++) {
+                grid[r][c] = wallType; 
+            }
+        }
+        for(let r = 5; r <= 19; r++) {
+            for(let c = 78; c <= 92; c++) {
+                grid[r][c] = 0; // Hollow out
+            }
+        }
+
+        // --- 4. THE BASTION CITY (Zone A) ---
         for(let r = 75; r <= 96; r++) {
             for(let c = 30; c <= 70; c++) {
-                grid[r][c] = 0; // Clear city interior
+                grid[r][c] = 0; 
                 if (r === 75 || r === 96 || c === 30 || c === 70) {
-                    grid[r][c] = wallType; // City Wall
+                    grid[r][c] = wallType; 
                 }
             }
         }
         // City Gate
         for(let c = 48; c <= 52; c++) grid[75][c] = 0;
+
+        // Central Bonfire/Plaza
+        safeTiles.push({x: 50, y: 85}); // Merchant goes here
 
         // Build City Houses
         const buildHouse = (hr, hc) => {
@@ -3223,31 +3246,13 @@ function generateProceduralGrid(layout, wallType) {
                     if (r===hr || r===hr+2 || c===hc || c===hc+3) grid[r][c] = wallType;
                 }
             }
-            grid[hr+2][hc+1] = 0; // Door
-            houseTiles.push({x: hc+1.5, y: hr+1.5}); // Save the exact center of the house!
-            safeTiles.push({x: hc+2, y: hr+1}); // An extra safe tile
+            grid[hr+2][hc+1] = 0; 
+            houseTiles.push({x: hc+1.5, y: hr+1.5}); 
+            safeTiles.push({x: hc+2, y: hr+1}); 
         };
         buildHouse(80, 35); buildHouse(80, 60); buildHouse(90, 35); buildHouse(90, 60);
-        // 3. THE LAIR (Zone C)
-        for(let r = 5; r <= 24; r++) {
-            for(let c = 20; c <= 80; c++) {
-                grid[r][c] = 0; 
-                if (r === 5 || r === 24 || c === 20 || c === 80) grid[r][c] = wallType;
-            }
-        }
-        // Lair Entrance
-        for(let c = 48; c <= 52; c++) grid[24][c] = 0;
-        
-        // Boss Throne Room
-        for(let r = 8; r <= 16; r++) {
-            for(let c = 40; c <= 60; c++) {
-                if (r === 8 || r === 16 || c === 40 || c === 60) grid[r][c] = wallType;
-            }
-        }
-        grid[16][49] = 0; grid[16][50] = 0; grid[16][51] = 0; // Throne doors
     }
     else if (layout === 'arena') {
-        // [Keep your existing Arena logic here, just push all 0s into lairTiles]
         let midR = Math.floor(maxR/2); let midC = Math.floor(maxC/2);
         for(let r = midR - 7; r <= midR + 7; r++) {
             for(let c = midC - 7; c <= midC + 7; c++) {
@@ -3267,16 +3272,16 @@ function generateProceduralGrid(layout, wallType) {
                 if (layout === 'arena') { lairTiles.push({x: c, y: r}); continue; }
                 
                 if (r >= 75) bastionTiles.push({x: c, y: r});
-                else if (r >= 25 && r < 75) wildsTiles.push({x: c, y: r});
-                else lairTiles.push({x: c, y: r});
+                else if (r <= 30 && c <= 30) lairTiles.push({x: c, y: r});
+                else if (r <= 20 && c >= 75) ambushTiles.push({x: c, y: r});
+                else wildsTiles.push({x: c, y: r});
             }
         }
     }
 
-    // Create a fallback master array for general spawns
-    let floorTiles = [...bastionTiles, ...wildsTiles, ...lairTiles];
+    let floorTiles = [...bastionTiles, ...wildsTiles, ...lairTiles, ...ambushTiles];
 
-    return { grid, startX, startY, bossX, bossY, bastionTiles, wildsTiles, lairTiles, floorTiles,houseTiles,safeTiles };
+    return { grid, startX, startY, bossX, bossY, bastionTiles, wildsTiles, lairTiles, ambushTiles, floorTiles, houseTiles, safeTiles };
 }
 // --- FACTION HUB: TINTAGEL CASTLE ---
 function generateTintagelHub() {
@@ -3969,10 +3974,10 @@ async function executeAITools(currentResponse, activeSession, socket) {
                             // 1. Bastion Merchant (Max Card 10, Total 50)
                             let bMerchTile = pickTile(mapData.bastionTiles);
                             mapNPCs.push({
-                                type: allySprite, x: bMerchTile.x, y: bMerchTile.y, 
+                                type: allySprite, x: 50.5, y: 85.5, // Dead center of the Bastion
                                 state: 'stationary', role: 'shop', alignment: 'ally',
                                 deck: buildShopInventory(50, 100),
-                                color: '#00ffff', dialogue: [getDialogue('recruitPlea', "I want to fight them, but I'm too scared to go alone... Can I join you?")]
+                                color: '#00ffff', dialogue: [getDialogue('friendlyLife', "Rest by the fire, traveler.")]
                             });
 
                             // 2. Bastion Recruit (Wants to fight, scared. Max Power 6)
@@ -4089,27 +4094,42 @@ async function executeAITools(currentResponse, activeSession, socket) {
                                 });
                             }
 
-                            // ==========================================
-                            // THE PORTAL PUZZLE (Dragon Warrior Style)
-                            // ==========================================
-                            let puzzleCenter = pickTile(mapData.wildsTiles);
-                            let trapDest = [startX + 0.5, startY + 0.5]; // Back to the Bastion!
-                            let trueDest = [bossX + 0.5, bossY + 4.5];   // Inside the sealed Throne Room!
-                            let correctPortal = Math.floor(Math.random() * 3);
-
-                            for (let i = 0; i < 3; i++) {
-                                let isCorrect = (i === correctPortal);
-                                let pTile = { x: puzzleCenter.x + (i * 2) - 2, y: puzzleCenter.y }; 
-                                mapNPCs.push({
-                                    type: 99, x: pTile.x, y: pTile.y, state: 'stationary', role: 'internal_portal', alignment: 'ally',
-                                    deck: isCorrect ? trueDest : trapDest, color: '#66ccff'
-                                });
-                            }
-                            // Boss Room Exit
+                            // 1. Dungeon Entrance (In the Wilds) -> Warps to Lair
+                            let dungeonEntrance = pickTile(mapData.wildsTiles);
                             mapNPCs.push({
-                                type: 99, x: bossX - 2.5, y: bossY + 0.5, state: 'stationary', role: 'internal_portal', alignment: 'ally',
-                                deck: [startX + 0.5, startY + 0.5], color: '#66ccff'
+                                type: 99, x: dungeonEntrance.x, y: dungeonEntrance.y, 
+                                state: 'stationary', role: 'internal_portal', alignment: 'ally',
+                                deck: [15.5, 27.5], // Coordinates inside the isolated Lair
+                                color: '#ff0000' // Ominous red portal
                             });
+
+                            // Lair Exit -> Warps back to Bastion
+                            mapNPCs.push({
+                                type: 99, x: 15.5, y: 28.5, 
+                                state: 'stationary', role: 'internal_portal', alignment: 'ally',
+                                deck: [50.5, 88.5], 
+                                color: '#66ccff'
+                            });
+
+                            // 2. The Easter Egg/Ambush Portal (Randomly hidden in the Wilds)
+                            let secretPortal = pickTile(mapData.wildsTiles);
+                            let ambushCenter = pickTile(mapData.ambushTiles);
+                            mapNPCs.push({
+                                type: 99, x: secretPortal.x, y: secretPortal.y, 
+                                state: 'stationary', role: 'internal_portal', alignment: 'ally',
+                                deck: [ambushCenter.x, ambushCenter.y], // Warps to isolated top-right box
+                                color: '#ffff00' // Golden mysterious portal
+                            });
+                            
+                            // Put a crazy reward (or a horrible monster) in the Ambush Room!
+                            mapNPCs.push({
+                                type: 10, x: ambushCenter.x + 1, y: ambushCenter.y, // Treasure Chest Sprite
+                                state: 'stationary', role: 'reward', alignment: 'ally',
+                                deck: [21], // The Crown!
+                                rewardCard: 21,
+                                dialogue: []
+                            });
+
 
                             // 11. THE FINAL BOSS (Mastery 3, Power 300)
                             mapNPCs.push({
@@ -5837,32 +5857,32 @@ socket.on('playerAction_SFX', (data) => {
       });
   });
 
-  socket.on("admin_refresh_npcs", () => {
+socket.on("admin_refresh_npcs", () => {
       console.log("Admin: Refreshing all NPCs.");
       deadNPCs = {}; 
       io.emit("force_npc_reset"); 
   });
 
-  // MANUAL ADMIN BUTTONS (Kept for your control panel)
-  socket.on("admin_action", (data) => {
-      const target = io.sockets.sockets.get(data.targetId);
-      if (target) {
-          if (data.action === 'kick') {
-              target.emit("admin_command", { type: 'kick' });
-              target.disconnect(true);
-          }
-          else if (data.action === 'banish') {
-              target.emit("admin_command", { type: 'banish' });
-              target.disconnect(true);
-          }
-          else if (data.action === 'vanquish') {
-              target.emit("admin_command", { type: 'vanquish' });
-          }
-          else if (data.action === 'give_card') {
-              target.emit("receive_card", { cardIndex: data.payload });
-          }
-      }
-  });
+// MANUAL ADMIN BUTTONS (Kept for your control panel)
+    socket.on("admin_action", (data) => {
+        const target = io.sockets.sockets.get(data.targetId);
+        if (target) {
+            if (data.action === 'kick') {
+                target.emit("admin_command", { type: 'kick' });
+                target.disconnect(true);
+            }
+            else if (data.action === 'banish') {
+                target.emit("admin_command", { type: 'banish' });
+                target.disconnect(true);
+            }
+            else if (data.action === 'vanquish') {
+                target.emit("admin_command", { type: 'vanquish' });
+            }
+            else if (data.action === 'give_card') {
+                target.emit("receive_card", { cardIndex: data.payload });
+            }
+        }
+    });
 // --- GM SPAWN COMMAND ---
   socket.on("admin_spawn", (data) => {
       const player = players[socket.id];
