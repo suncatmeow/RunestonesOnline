@@ -1242,7 +1242,7 @@ const CARD_MANIFEST_DB = {
                 lore: "If they touch you they teleport you back to the start of the map.",
                 stats: "1d4 STR/CON/ 1d6 INT/AGI"
             },*/
-            89: {
+        89: {
                 name: "Treasure Snake",
                 type: "monster",
                 suit: "Major",
@@ -1254,7 +1254,7 @@ const CARD_MANIFEST_DB = {
                 lore: "A money hungry serpent.",
                 stats: "1d4 STR/CON/INT/AGI"
             },
-            90: {
+        90: {
                 name: "Giant's Daughter",
                 type: "monster",
                 suit: "Pentacles",
@@ -1265,6 +1265,55 @@ const CARD_MANIFEST_DB = {
                 classes: ["rogue","mage","warrior","guardian"],
                 lore: "Seeks security in love and family.",
                 stats: "1d8 STR, 1d12 CON 1d6 INT, 1d10 AGI"
+            },
+        
+        92: {
+                name: "Fire Sword",
+                type: "item",
+                suit: "Sword",
+                rank: "Ace",
+                
+               
+                rarity:"Unique",
+                classes: ["warrior"],
+                lore: "While equipped, gain +2 to STR rolls..",
+                stats: "none"
+            },
+        93: {
+                name: "Lightning",
+                type: "spell",
+                suit: "Sword",
+                rank: "Ace",
+                
+               
+                rarity:"unique",
+                classes: ["mage"],
+                lore: "If caster INT roll > target AGI roll, foe is vanquished.",
+                stats: "none"
+            },
+        94: {
+            name: "Lich",
+                type: "monster",
+                suit: "Major Arcana",
+                rank: "IX",
+                sprite: 13,
+                tribe: "undead",
+                rarity:"unique",
+                classes: ["mage","guardian"],
+                lore: "Seeks security in love and family.",
+                stats: "1d12 INT, 1d10 CON, 1d4 STR/AGI"
+        },
+        99: {
+                name: "Suncat",
+                type: "monster",
+                suit: "Major Arcana",
+                rank: "I",
+                sprite: 61391,
+                tribe: "human",
+                rarity:"rare",
+                classes: ["rogue","mage","warrior","guardian"],
+                lore: "Seeks security in love and family.",
+                stats: "1d12 + 1 STR/CON/INT/AGI"
             },
 };
 // --- 2: ATLAS ---
