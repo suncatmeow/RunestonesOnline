@@ -4074,7 +4074,9 @@ async function executeAITools(currentResponse, activeSession, socket) {
                                 });
                             }
                         }
-
+                        mapNPCs.forEach((npc, idx) => {
+                            npc.index = 10000 + idx; 
+                        });
                         // 5. CACHE AND TELEPORT
                         const customMapData = {
                             id: 999, maze: gridData, 
@@ -4246,7 +4248,13 @@ async function executeAITools(currentResponse, activeSession, socket) {
                             call.args.color = '#ffff00'; 
                         } else {
                             visualSprite = cardData?.sprite || baseID;
-                            finalDeck = buildSynergisticDeck(baseID);
+                            
+                            // THE FIX: Check if the AI wants to open a shop!
+                            if (role === 'shop') {
+                                finalDeck = buildShopInventory(100, 300); // Give them a proper shop inventory
+                            } else {
+                                finalDeck = buildSynergisticDeck(baseID); // Otherwise, give them a combat deck
+                            }
                         }
 
                             io.emit("remote_spawn_npc", {
