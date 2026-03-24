@@ -5449,6 +5449,7 @@ socket.on("join_game", (data) => {
     let loadedStory = savedData ? savedData.storySoFar : ""; // <--- NEW
     let loadedMemories = savedData ? (savedData.searchableMemories || []) : [];
     playerFavorMemory[socket.id] = favor;
+    let perception = savedData ? (savedData.suncatPerception || "An unpredictable wanderer stepping into the unknown.") : "An unpredictable wanderer stepping into the unknown.";
     
         // --- SANITIZATION STEP ---
       // This fixes the "Starting an object on a scalar field" error
@@ -5504,7 +5505,8 @@ socket.on("join_game", (data) => {
         players[socket.id].activeQuest = activeQuest; 
         players[socket.id].storySoFar = loadedStory;
         players[socket.id].playerProfile = playerProfile; 
-        players[socket.id].searchableMemories = loadedMemories;     
+        players[socket.id].searchableMemories = loadedMemories;   
+        players[socket.id].suncatPerception = perception;  
         if (!players[socket.id].dmNarrativeLog) {
             players[socket.id].dmNarrativeLog = [];
         }
