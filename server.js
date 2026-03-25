@@ -1230,7 +1230,7 @@ const CARD_MANIFEST_DB = {
                 lore: "Visit Suncat on IG @suncat.meow or listen on Spotify.",
                 stats: "1d4 STR/CON/INT, 1d20 AGI"
             },
-            /*88: {
+        88: {
                 name: "Mirage",
                 type: "monster",
                 suit: "Wands",
@@ -1241,7 +1241,7 @@ const CARD_MANIFEST_DB = {
                 classes: ["rogue","mage"],
                 lore: "If they touch you they teleport you back to the start of the map.",
                 stats: "1d4 STR/CON/ 1d6 INT/AGI"
-            },*/
+            },
         89: {
                 name: "Treasure Snake",
                 type: "monster",
@@ -2339,7 +2339,6 @@ const PERSONA_RULES_DB = {
                 - You are a manic, bloodthirsty Arena Master. 
                 - If the player is in an Arena scenario, DO NOT summarize or provide lore. Taunt them relentlessly!
                 - If they survive a wave (kill an enemy), immediately use 'spawnNPCBatch' to drop the next wave of enemies, or use 'spawnNPC' to summon YOURSELF (ID 87) for the final battle!`,
-                
             "oracle_mode": `[ORACLE PROTOCOL]: 
                 - You are interpreting a Tarot reading based on the Runestones card manifest.
                 - Look for synergies and elemental clashes. 
@@ -3900,9 +3899,18 @@ async function executeAITools(currentResponse, activeSession, socket) {
 
                         // Pick Actors
                         const monsterIDs = Object.keys(CARD_MANIFEST_DB).filter(id => CARD_MANIFEST_DB[id].type === "monster" && CARD_MANIFEST_DB[id].rank !== "0");
-                        const protagID = parseInt(monsterIDs[Math.floor(Math.random() * monsterIDs.length)]);
-                        let antagID = parseInt(monsterIDs[Math.floor(Math.random() * monsterIDs.length)]);
-                        while (antagID === protagID) antagID = parseInt(monsterIDs[Math.floor(Math.random() * monsterIDs.length)]);
+
+                        // ---> 1. DEFINE HEAVY SPRITES HERE FIRST! <---
+                        const HEAVY_SPRITES = [0,1,2,3,4,5,9,33, 34, 35, 47,48, 49, 62, 63, 76, 77, 85, 86, 87, 94,99]; 
+                        let heavySpawnCount = {}; 
+
+                        // ---> 2. FORCE THE BOSS TO BE HEAVY <---
+                        const bossPool = monsterIDs.filter(id => HEAVY_SPRITES.includes(parseInt(id)));
+                        let antagID = parseInt(bossPool[Math.floor(Math.random() * bossPool.length)] || 63); // Fallback to Dragon
+
+                        // ---> 3. PICK THE ALLY (Ensure it's not the boss) <---
+                        let protagID = parseInt(monsterIDs[Math.floor(Math.random() * monsterIDs.length)]);
+                        while (protagID === antagID) protagID = parseInt(monsterIDs[Math.floor(Math.random() * monsterIDs.length)]);
 
                         // 2. FETCH THE SCRIPT & REDUNDANCY CHECKER
                         let script = null;
@@ -3925,7 +3933,7 @@ async function executeAITools(currentResponse, activeSession, socket) {
                             if (targetPlayer && targetPlayer.pastQuestVectors && newQuestVector) {
                                 for (let pastVec of targetPlayer.pastQuestVectors) {
                                     let score = cosineSimilarity(newQuestVector, pastVec);
-                                    if (score > 0.85) { // 85% match means it's basically the exact same quest!
+                                    if (score > 0.85) { 
                                         isRedundant = true;
                                         break;
                                     }
@@ -3937,21 +3945,17 @@ async function executeAITools(currentResponse, activeSession, socket) {
                                 script = null;
                                 attempts++;
                             } else {
-                                // Script is UNIQUE and GOOD! 
-                                // Save the vector so we don't repeat this next time
                                 if (targetPlayer && newQuestVector) {
                                     if (!targetPlayer.pastQuestVectors) targetPlayer.pastQuestVectors = [];
                                     targetPlayer.pastQuestVectors.push(newQuestVector);
                                     if (targetPlayer.pastQuestVectors.length > 5) targetPlayer.pastQuestVectors.shift();
                                 }
-                                
-                                // Feed the good script into the Global Cache for later!
                                 cacheScriptLines(biome.name, script);
                                 break; 
                             }
                         }
 
-                        // THE MAD LIBS FALLBACK: If we failed twice, assemble a script from the cache!
+                        // THE MAD LIBS FALLBACK
                         if (!script) {
                             console.log(`[Mad Libs Fallback] API failed or was too redundant. Building script from Global Cache.`);
                             script = {
@@ -3960,10 +3964,9 @@ async function executeAITools(currentResponse, activeSession, socket) {
                                 bossTaunt: getMadLibLine(biome.name, 'bossTaunts', "You dare approach my domain?"),
                                 hostileTaunts: [], traitorBegs: [], friendlyLore: [], friendlyLife: [], friendlyProfound: [], recruitPlea: [], prisonerLines: []
                             };
-                            // We don't need to fill the arrays here, because our popping logic below will auto-pull from the cache!
                         }
 
-                        // SHUFFLE THE ARRAYS so we can .pop() them cleanly!
+                        // SHUFFLE THE ARRAYS
                         if (script.friendlyLore) shuffleArray(script.friendlyLore);
                         if (script.friendlyLife) shuffleArray(script.friendlyLife);
                         if (script.friendlyProfound) shuffleArray(script.friendlyProfound);
@@ -3973,7 +3976,6 @@ async function executeAITools(currentResponse, activeSession, socket) {
                         if (script.prisonerLines) shuffleArray(script.prisonerLines);
 
                         // 3. GENERATE THE MEGA-MAP
-                        // We no longer pass a layoutStyle, just the wall type!
                         let mapData = generateProceduralGrid(biome.walls[0]); 
                         let gridData = mapData.grid;
                         let floorTiles = mapData.floorTiles || [];
@@ -3982,11 +3984,28 @@ async function executeAITools(currentResponse, activeSession, socket) {
                         let mapNPCs = [];
                         const friendlyMinions = getMinions(protagID);
                         let hostileMinions = getMinions(antagID).filter(id => !friendlyMinions.includes(id));
-                        if (hostileMinions.length === 0) hostileMinions = [54, 56, 42, 23];
+                        if (hostileMinions.length === 0) hostileMinions = [54, 56, 42, 23,60,78,88,82,83];
+                        
+                        // ---> SAFE ALLY SPRITE SELECTOR <---
+                        const safeFriendlyMinions = friendlyMinions.filter(id => !HEAVY_SPRITES.includes(parseInt(id)));
+                        let safeAllyID = safeFriendlyMinions.length > 0 ? safeFriendlyMinions[0] : 54; 
+                        let allySprite = CARD_MANIFEST_DB[safeAllyID].sprite || safeAllyID;
 
-                        let allySprite = CARD_MANIFEST_DB[friendlyMinions[0] || protagID].sprite || (friendlyMinions[0] || protagID);
-                        let foeSprite = CARD_MANIFEST_DB[hostileMinions[0] || antagID].sprite || (hostileMinions[0] || antagID);
-
+                        // ---> HEAVY SPRITE LIMITER HELPER <---
+                        const getSafeMinion = (pool) => {
+                            for (let tries = 0; tries < 5; tries++) {
+                                let id = pool[Math.floor(Math.random() * pool.length)];
+                                if (HEAVY_SPRITES.includes(id)) {
+                                    if ((heavySpawnCount[id] || 0) < 1) { 
+                                        heavySpawnCount[id] = 1; 
+                                        return id;
+                                    }
+                                } else {
+                                    return id; 
+                                }
+                            }
+                            return 54; 
+                        };    
                         // O(1) Local Spawn Helper
                         const pickTile = (zoneArray) => {
                             if (!zoneArray || zoneArray.length === 0) return {x: mapData.startX+0.5, y: mapData.startY+0.5};
@@ -4035,7 +4054,7 @@ async function executeAITools(currentResponse, activeSession, socket) {
 
                         // Elite Guards
                         for (let i = 0; i < 4; i++) {
-                            let mID = hostileMinions[Math.floor(Math.random() * hostileMinions.length)] || antagID;
+                            let mID = getSafeMinion(hostileMinions)
                             let guardTile = pickTile(mapData.lairTiles); 
                             mapNPCs.push({
                                 type: CARD_MANIFEST_DB[mID].sprite || mID, x: guardTile.x, y: guardTile.y, 
@@ -4049,7 +4068,7 @@ async function executeAITools(currentResponse, activeSession, socket) {
                         // ZONE 3: THE ARENA (Gladiators)
                         // ==========================================
                         for(let i=0; i<3; i++) {
-                            let mID = hostileMinions[Math.floor(Math.random() * hostileMinions.length)];
+                            let mID = getSafeMinion(hostileMinions);
                             let spawnSpot = pickTile(mapData.arenaTiles);
                             mapNPCs.push({
                                 type: CARD_MANIFEST_DB[mID].sprite || mID, x: spawnSpot.x, y: spawnSpot.y,
@@ -4078,9 +4097,9 @@ async function executeAITools(currentResponse, activeSession, socket) {
                         // Spawn 3rd Tribe Grunts in the Ruins
                         let thirdTribeMinions = getMinions(thirdTribeID);
                         for(let i=0; i<4; i++) {
-                            let mID = thirdTribeMinions[Math.floor(Math.random() * thirdTribeMinions.length)] || thirdTribeID;
-                            let spawnSpot = pickTile(mapData.ruinsTiles);
-                            mapNPCs.push({
+                            // ---> Use the safe helper here too! <---
+                            let mID = getSafeMinion(thirdTribeMinions) || thirdTribeID; 
+                            let spawnSpot = pickTile(mapData.ruinsTiles); mapNPCs.push({
                                 type: CARD_MANIFEST_DB[mID].sprite || mID, x: spawnSpot.x, y: spawnSpot.y,
                                 state: 'chasing', role: 'battle', alignment: 'foe',
                                 dialogue: ["Leave our ruins!"], deck: buildSynergisticDeck(mID, 50)
@@ -4094,7 +4113,7 @@ async function executeAITools(currentResponse, activeSession, socket) {
                             let campCenter = pickTile(mapData.wildsTiles);
                             let campPower = 15; 
                             for (let g = 0; g < 3; g++) {
-                                let mID = hostileMinions[Math.floor(Math.random() * hostileMinions.length)] || antagID;
+                                let mID = getSafeMinion(hostileMinions)
                                 // Spawn clustered around the camp center
                                 let gTile = {x: campCenter.x + (Math.random() * 2 - 1), y: campCenter.y + (Math.random() * 2 - 1)};
                                 
@@ -4161,7 +4180,7 @@ async function executeAITools(currentResponse, activeSession, socket) {
                                 targetPlayer.scenarioLog = []; 
                                 targetPlayer.mapBossID = antagID;
                                 targetPlayer.activeQuest = script.questObjective;
-targetPlayer.scenarioContext = `MEGA-MAP LORE: The main enemy is the ${CARD_MANIFEST_DB[antagID].name} tribe in The Lair. Boss Motive: "${script.bossTaunt}". The allies are the ${CARD_MANIFEST_DB[protagID].name} tribe in The Bastion. A mysterious third faction (${CARD_MANIFEST_DB[thirdTribeID].name}) controls The Ruins. Gladiators fight in The Arena. All 4 zones are connected by the Golden Road through the Wilds. Guide the player based on their coordinates.`;                                io.to(tid).emit("new_quest_objective", { questText: targetPlayer.activeQuest });
+                                targetPlayer.scenarioContext = `MEGA-MAP LORE: The main enemy is the ${CARD_MANIFEST_DB[antagID].name} tribe in The Lair. Boss Motive: "${script.bossTaunt}". The allies are the ${CARD_MANIFEST_DB[protagID].name} tribe in The Bastion. A mysterious third faction (${CARD_MANIFEST_DB[thirdTribeID].name}) controls The Ruins. Gladiators fight in The Arena. All 4 zones are connected by the Golden Road through the Wilds. Guide the player based on their coordinates.`;                                io.to(tid).emit("new_quest_objective", { questText: targetPlayer.activeQuest });
                                 io.to(tid).emit("force_teleport", { mapID: 999 });
                             });
 
@@ -5170,9 +5189,15 @@ async function processSuncatThought(socketId, triggerType, data) {
             }
             if (data.isBoss) {
                 useBigBrain = true; 
-                messageOptions = { sender: "", color: "#FFD700" }; // Light blue/Cyan for Mystical Tarot readings
-                eventInstruction = `[PLAYER ACTION]: Slayed the Boss! ${data.action} | [DM AWARENESS]:The player is currently inside your custom scenario: "${player.mapScenario}". Their active quest is: "${player.activeQuest}" and have slayed the boss, completing the quest. \nTASK: Provide a short narrative describing the fall of the monster and the aftermath. YOU MUST use 'givePlayerCard' to reward them and then congratulate them on completing the quest!`;
-            } 
+                messageOptions = { sender: "", color: "#FFD700" }; 
+                eventInstruction = `[PLAYER ACTION]: Slayed the Boss! ${data.action} | [DM AWARENESS]: The player completed the "${player.activeQuest}" quest. 
+                TASK: 
+                1. Provide a cinematic narrative of the monster's fall. 
+                2. Act as an Oracle. Look at the player's Personality (${player.playerProfile?.personality || "unknown"}). 
+                3. Choose EXACTLY ONE card from the Runestones database that perfectly symbolizes their struggle and victory. 
+                4. You MUST use 'givePlayerCard' to award them this card (use the exact name of the card, do NOT make up IDs like 1000). 
+                5. Explain to the player why this card represents their journey (e.g. "This Tome represents your will to prevent the fire... but at what cost to yourself?").`;
+            }
             else if (data.isTarot) {
                 useBigBrain = true; 
                 // ADD THE uiEvent FLAG HERE:
@@ -5193,7 +5218,12 @@ async function processSuncatThought(socketId, triggerType, data) {
                     messageOptions = { sender: "", color: "#FFD700" }; // Narrator Mode
                     eventInstruction = `[PLAYER ACTION]: Slayed a creature ${data.action}\nTASK: Provide a short narrative (1 sentence MAX) describing the fall of the monster. DO NOT ask questions.`;
                 } else {
-                    if (rngRoll < 0.006) {
+                // ---> THE NEW ARENA CHECK <---
+                if (player.mapScenario === 'Arena Madness') {
+                    useBigBrain = true;
+                    eventInstruction = `[PLAYER ACTION]: Slayed a gladiator! (${data.action})\nTASK: You are the Arena Master. The crowd demands more! You MUST use the 'spawnNPC' tool right now to drop the next challenger into the arena, or spawn yourself! Taunt the player.`;
+                }
+                else if (rngRoll < 0.006) {
                         useBigBrain = true; 
                         eventInstruction = `[PLAYER ACTION]: Slayed a creature ${data.action}\nTASK: They are taking the challenge too lightly! Use 'changeEnvironment' to show your fury through the weather and spawn a King level npc, or overwhelm them with small fry, to teach them a lesson!`;
                     } else if (rngRoll < 0.009) {
@@ -5314,6 +5344,19 @@ async function processSuncatThought(socketId, triggerType, data) {
             model: "gemini-3.1-flash-lite-preview", 
             systemInstruction: unifiedInstruction 
         };
+
+        // SECURITY FIX: Only allow map wipes/teleports if the player directly requested it in chat
+        if (useBigBrain) {
+            if (triggerType === 'chat') {
+                modelConfig.tools = toolsDef;
+            } else {
+                modelConfig.tools = [{
+                    functionDeclarations: toolsDef[0].functionDeclarations.filter(tool => 
+                        !['createCustomMap', 'teleportPlayer'].includes(tool.name)
+                    )
+                }];
+            }
+        }
         
         // Only attach tools if the routing logic decided he needs his Big Brain
         if (useBigBrain) {
@@ -5588,7 +5631,7 @@ socket.on("join_game", (data) => {
     }
     
     const entityName = getCardName(baseID);
-    /*
+    
     if (!isPickup && !isDialogue) {
         // If Suncat likes you (favor > 5), he is more patient. Stress only goes up by 2 instead of 8!
         let stressPenalty = (playerFavorMemory[socket.id] && playerFavorMemory[socket.id] > 5) ? 1 : 3;
@@ -5597,22 +5640,35 @@ socket.on("join_game", (data) => {
         // ---> THE NEW DYNAMIC WIN CONDITION CHECK <---
         // 1. Is the player in a custom map?
         // 2. Does the dead NPC match the boss ID? OR did the client explicitly send isBoss: true?
-        if (player.mapID === 999 && (data.isBoss||baseID === player.mapBossID )) {
-            
-            setTimeout(() => {
-                let victorySpeech = "";
-                if (player.mapScenario === 'Arena Madness') {
-                    victorySpeech = `[SYSTEM DIRECTIVE]: The player just defeated the final boss of your Arena. Act disappointed that they survived, formally declare them the victor, and IMMEDIATELY use the 'teleportPlayer' tool to send them back to Map 22. Give them a reward card if you wish.`;
-                } else if (player.mapScenario === 'Rescue/Fetch') {
-                    victorySpeech = `[SYSTEM DIRECTIVE]: The player just defeated the final boss of the Rescue scenario! Congratulate them as the Dungeon Master, and use the 'teleportPlayer' tool to send them safely back to Map 22.`;
-                } else {
-                    victorySpeech = `[SYSTEM DIRECTIVE]: The player just defeated the final boss of the ${player.mapScenario} scenario! Congratulate them, and use the 'teleportPlayer' tool to send them safely back to Map 22.`;
-                }
-                
-                processSuncatThought(player.id, 'chat', { text: victorySpeech });
-            }, 2000); 
+        // ---> THE NEW DYNAMIC WIN CONDITION CHECK <---
+if (player.mapID === 999) {
+    // 1. Did they kill the Main Boss?
+    if (data.isBoss || baseID === player.mapBossID) {
+        // We let the 'event' trigger below handle the Boss victory speech!
+    }
+    // 2. Are they in the Arena?
+    else if (player.mapScenario === 'Arena Madness') {
+        if (activeCustomMap && activeCustomMap.npcs) {
+            // Mark this specific NPC as dead in the server's master map
+            let deadNpc = activeCustomMap.npcs.find(n => n.index === data.index);
+            if (deadNpc) deadNpc.isDead = true;
+
+            // Count how many gladiators are still breathing
+            let gladiatorsLeft = activeCustomMap.npcs.filter(n => n.subRole === 'gladiator' && !n.isDead).length;
+
+            if (gladiatorsLeft <= 0) {
+                setTimeout(() => {
+                    let victorySpeech = `[SYSTEM DIRECTIVE]: The player just defeated the FINAL gladiator! The Arena is empty! Act disappointed that they survived, formally declare them the victor, give them a reward card, and IMMEDIATELY use the 'teleportPlayer' tool to send them back to Map 22.`;
+                    processSuncatThought(player.id, 'chat', { text: victorySpeech });
+                }, 2000); 
+            } else {
+                // Taunt them between kills!
+                processSuncatThought(player.id, 'chat', { text: `[SYSTEM DIRECTIVE]: The player killed a gladiator, but there are still ${gladiatorsLeft} left! Taunt them and demand more blood.` });
+            }
         }
-    }*/
+    }
+}
+    }
 
     
     processSuncatThought(player.id, 'event', {
@@ -5931,9 +5987,20 @@ socket.on("admin_refresh_npcs", () => {
       const bEnum = Math.floor(Math.random() * Object.keys(BIOME_DB).length);
       const biome = BIOME_DB[bEnum] || BIOME_DB[0];
 
-      const monsterIDs = Object.keys(CARD_MANIFEST_DB).filter(id => CARD_MANIFEST_DB[id].type === "monster" && CARD_MANIFEST_DB[id].rank !== "0");
-      const protagID = parseInt(monsterIDs[Math.floor(Math.random() * monsterIDs.length)]);
-      let antagID = parseInt(monsterIDs[Math.floor(Math.random() * monsterIDs.length)]);
+      // Pick Actors
+const monsterIDs = Object.keys(CARD_MANIFEST_DB).filter(id => CARD_MANIFEST_DB[id].type === "monster" && CARD_MANIFEST_DB[id].rank !== "0");
+
+// ---> DEFINE HEAVY SPRITES <---
+const HEAVY_SPRITES = [0,1,2,3,4,5,9,21,33, 34, 35, 47,48, 49, 62, 63, 76, 77, 85, 86, 94]; 
+let heavySpawnCount = {}; 
+
+// 1. FORCE THE BOSS TO BE HEAVY
+const bossPool = monsterIDs.filter(id => HEAVY_SPRITES.includes(parseInt(id)));
+let antagID = parseInt(bossPool[Math.floor(Math.random() * bossPool.length)] || 63); // Fallback to Dragon (63)
+
+// 2. PICK THE ALLY (Can be anything, but ensure it's not the boss)
+let protagID = parseInt(monsterIDs[Math.floor(Math.random() * monsterIDs.length)]);
+while (protagID === antagID) protagID = parseInt(monsterIDs[Math.floor(Math.random() * monsterIDs.length)]);
 
       // We bypass Suncat entirely here and build a map instantly using the Mad Libs cache!
       let mapData = generateProceduralGrid(biome.walls[0]); 
@@ -6746,19 +6813,22 @@ socket.on("disconnect", async () => {
                             pacingMsgOptions = { sender: "", color: "#cccccc" };
                         }
                         
-                        dmPrompt = `[DM PACING OVERSEER]: ${advPlayer.name} is lingering on Map ${advPlayer.mapID}.\n[TERRAIN]: ${activeMapLore}\n${plotContext}\nAdvance the adventure NOW! You MUST use a tool (spawnNPC, changeEnvironment, or assignQuest) to ambush or surprise them. Narrate the sudden event dynamically (1 sentences MAX). Your narrative tone MUST BE: ${dmMood}. DO NOT ask questions.`;
-                    }
+                        dmPrompt = `[DM PACING OVERSEER]: ${advPlayer.name} is lingering on Map ${advPlayer.mapID}.\n[TERRAIN]: ${activeMapLore}\n${plotContext}\nSpice up the current zone NOW! You MUST use 'spawnNPC', 'changeEnvironment', or 'assignQuest' to ambush or surprise them. DO NOT create a new map or teleport the player. Narrate the sudden event dynamically (1 sentences MAX). Your narrative tone MUST BE: ${dmMood}. DO NOT ask questions.`;                    }
 
                     setTimeout(async () => {
                         try {
-                            // Dynamically build the model based on the RNG outcome
                             let modelConfig = { 
-                                model: requiresBigBrain ? "gemini-3.1-flash-lite-preview" : "gemini-2.5-flash-lite", 
-                                systemInstruction: injectedPersona
-                            };
-                            // Only attach tools if we rolled the gameplay spice branch!
-                            if (requiresBigBrain) modelConfig.tools = toolsDef; 
-
+                            model: requiresBigBrain ? "gemini-3.1-flash-lite-preview" : "gemini-2.5-flash-lite", 
+                            systemInstruction: injectedPersona
+                        };
+                        // SECURITY FIX: Strip out world-breaking tools during background pacing
+                        if (requiresBigBrain) {
+                            modelConfig.tools = [{
+                                functionDeclarations: toolsDef[0].functionDeclarations.filter(tool => 
+                                    !['createCustomMap', 'teleportPlayer', 'teleportToPlayer', 'kickPlayer', 'banishPlayer', 'vanquishPlayer'].includes(tool.name)
+                                )
+                            }];
+                        }
                             const activeDmModel = genAI.getGenerativeModel(modelConfig);
                             chatSessions[advPlayer.id] = activeDmModel.startChat({ history: await chatSessions[advPlayer.id].getHistory() });
                             
