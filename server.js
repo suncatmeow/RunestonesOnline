@@ -3626,14 +3626,15 @@ async function generateScenarioScript(biomeName, scenarioType, bossName, questGi
     - ZONE 1 (The Bastion): A fortified settlement. Contains mundane Villagers and a local Merchant.
     - ZONE 2 (The Lair): The main dungeon. The boss is [${bossName}]. They have 4 Elite Guards at the gate, and a captured prisoner locked deep inside.
     - ZONE 3 (The Arena): A bloody colosseum. Gladiators fight here relentlessly, either for the Boss's amusement or as rebels.
-    - ZONE 4 (The Ruins): Ancient, crumbling architecture held by a mysterious 3rd Tribe. They hold a secret, artifact, or key required to defeat the Boss.
+    - ZONE 4 (The Ruins): Ancient, crumbling architecture held by a mysterious 3rd Tribe. 
     - ZONE 5 (The Wilds): The contested wilderness connecting all the zones. Contains enemy Grunt camps and defecting cowards fleeing the war.
 
     [NARRATIVE TASK]: 
     Invent a deeply compelling, morally gray scenario tying this blueprint together. 
-    1. THE GOLDEN THREAD: The player CANNOT simply walk into the Lair and win. They must need something from the other zones first. Detail how the [3rd Tribe] in the Ruins holds a secret, a key, or an artifact needed to weaken the Boss.
-    2. Define the Boss's motivation. Are they truly evil, or driven by tragedy?
-    3. Define the Bastion's sentiment. Are the allies innocent, or are they prejudiced and hoarding resources from the Wilds?
+    1. Define the Boss's motivation. Are they truly evil, or driven by tragedy?
+    2. Define the Bastion's sentiment. Are the allies innocent, or are they prejudiced and hoarding resources from the Wilds?
+    3. What is happening in this land besides the bastion/lair conflict? Add sub-Lore for the other zones such as the wilds, the arena, and the ruins, tying it all together to the main plot of the scenario. Detail how the [3rd Tribe] in the Ruins got to be there, who they are, and why theyre hostile. Detail the arena specifics. Who are the combatants there and why do they fight? What do they desire? 
+
     4. The Orthogonal Challenge: Force the player to confront their [Neglected Themes].
     
     [DIALOGUE GENERATION]:
