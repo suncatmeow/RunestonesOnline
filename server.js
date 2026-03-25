@@ -3623,29 +3623,32 @@ async function generateScenarioScript(biomeName, scenarioType, bossName, questGi
 
     [WORLD BLUEPRINT - The map generated for this session]:
     - BIOME: ${biomeName}
-    - ZONE A (The Bastion): A fortified settlement. Contains mundane Villagers, a local Merchant, and an eager recruit who is too scared to travel alone.
-    - ZONE B (The Wilds): A contested wilderness. Contains enemy Grunt camps, defecting cowards fleeing the war, a black-market merchant hiding in the woods, and a brave wandering recruit fighting alone.
-    - ZONE C (The Lair): A fortress/dungeon. The boss is [${bossName}]. They have 4 Elite Guards at the gate, and a captured prisoner locked deep inside.
+    - ZONE 1 (The Bastion): A fortified settlement. Contains mundane Villagers and a local Merchant.
+    - ZONE 2 (The Lair): The main dungeon. The boss is [${bossName}]. They have 4 Elite Guards at the gate, and a captured prisoner locked deep inside.
+    - ZONE 3 (The Arena): A bloody colosseum. Gladiators fight here relentlessly, either for the Boss's amusement or as rebels.
+    - ZONE 4 (The Ruins): Ancient, crumbling architecture held by a mysterious 3rd Tribe. They hold a secret, artifact, or key required to defeat the Boss.
+    - ZONE 5 (The Wilds): The contested wilderness connecting all the zones. Contains enemy Grunt camps and defecting cowards fleeing the war.
     
     [NARRATIVE TASK]: 
     Invent a deeply compelling, morally gray scenario tying this blueprint together. 
-    1. Define the Boss's motivation. Are they truly evil, or driven by tragedy/survival?
-    2. Define the Bastion's sentiment. Are the allies innocent, or are they prejudiced and hoarding resources?
-    3. The Orthogonal Challenge: Force the player to confront their [Neglected Themes].
+    1. THE GOLDEN THREAD: The player CANNOT simply walk into the Lair and win. They must need something from the other zones first. Detail how the [3rd Tribe] in the Ruins holds a secret, a key, or an artifact needed to weaken the Boss.
+    2. Define the Boss's motivation. Are they truly evil, or driven by tragedy?
+    3. Define the Bastion's sentiment. Are the allies innocent, or are they prejudiced and hoarding resources from the Wilds?
+    4. The Orthogonal Challenge: Force the player to confront their [Neglected Themes].
     
     [DIALOGUE GENERATION]:
     Write the dialogue arrays matching the lore you just invented. Keep all lines under 12 words. Ensure the tone is dark fantasy.
     
     1. mapLore: 2 sentences of deep history tying the Boss's motives to this region.
-    2. questObjective: A clear 1-sentence objective.
+    2. questObjective: A clear 1-sentence objective (e.g., "Retrieve the relic from the Ruins before confronting the Lair.")
     3. bossTaunt: 1 menacing sentence revealing their true motive and attacking the player's psychology.
-    4. hostileTaunts: Array of 30 distinct battle cries from the grunts/guards reflecting their desperation or fanaticism.
-    5. traitorBegs: Array of 15 distinct lines from enemies offering to defect, revealing the harsh reality of their side.
-    6. friendlyLore: Array of 6 lines from villagers (e.g., rumors about the black-market merchant, prejudices against the enemy, hints about the Lair).
+    4. hostileTaunts: Array of 30 distinct battle cries from the grunts/guards.
+    5. traitorBegs: 15 lines from fleeing enemies. At least 5 of these MUST mention how terrifying the 3rd Tribe in the Ruins is.
+    6. friendlyLore: Array of 6 lines from Bastion villagers. They MUST give rumors about the Arena, the Ruins, and the Lair.
     7. friendlyLife: Array of 4 lines of mundane, atmospheric chatter.
     8. friendlyProfound: Array of 4 philosophical statements bridging the player's habits to the scenario.
-    9. recruitPlea: Array of 3 compelling lines to join the party (1 for the scared villager, 1 for the brave wanderer, 1 for the desperate prisoner).
-    10. prisonerLines: Array of 6 lines from the trapped NPC in the lair (madman chatter, insider tips, despair).`;
+    9. recruitPlea: Array of 3 compelling lines to join the party.
+    10. prisonerLines: Array of 6 lines from the trapped NPC in the lair. They MUST reveal a secret weakness about the Boss that involves the Wilds or the Ruins.`;
     const schema = {
         type: SchemaType.OBJECT,
         properties: {
@@ -6074,7 +6077,28 @@ while (protagID === antagID) protagID = parseInt(monsterIDs[Math.floor(Math.rand
         // --- NEW: THE EXPLORATION TRACKER ---
         if (data.mapID === 999) {
             player.stepsTaken = (player.stepsTaken || 0) + 1;
-            
+          
+            // ---> ZONE TRANSITION RADAR <---
+            if (activeCustomMap) {
+                let pX = data.x, pY = data.y;
+                let newZone = "The Wilds";
+                
+                if (Math.abs(pX - activeCustomMap.spawnX) < 14 && Math.abs(pY - activeCustomMap.spawnY) < 14) newZone = "The Bastion";
+                else if (Math.abs(pX - activeCustomMap.bossX) < 16 && Math.abs(pY - activeCustomMap.bossY) < 16) newZone = "The Lair";
+                else if (Math.abs(pX - activeCustomMap.arenaX) < 12 && Math.abs(pY - activeCustomMap.arenaY) < 12) newZone = "The Arena";
+                else if (Math.abs(pX - activeCustomMap.miniX) < 13 && Math.abs(pY - activeCustomMap.miniY) < 13) newZone = "The Ruins";
+
+                // Did the player just step into a new zone?
+                if (player.currentZoneName !== newZone) {
+                    player.currentZoneName = newZone;
+                    
+                    // Don't narrate stepping back into the Wilds, only narrate entering POIs
+                    if (newZone !== "The Wilds") {
+                        let actionDesc = `The player just crossed the threshold and entered [${newZone}]. As the DM, provide ONE dramatic, cinematic sentence describing the atmospheric shift, the smell of the air, or the looming architecture. Build dread or awe. DO NOT address the player directly.`;
+                        processSuncatThought(socket.id, 'exploration', { action: actionDesc });
+                    }
+                }
+            }
             // Track unique tiles explored
             if (!player.exploredTiles) player.exploredTiles = new Set();
             player.exploredTiles.add(`${Math.floor(data.x)},${Math.floor(data.y)}`);
