@@ -4155,17 +4155,20 @@ async function executeAITools(currentResponse, activeSession, socket) {
                         // ---> THE CRITICAL LINE THAT GOT DELETED! <---
                         activeCustomMap = customMapData;
 
-                        // 1. Identify who asked for the map
-                        let requesterID = findSocketID(call.args.targetName);
+                        // 1. Identify who asked for the map using their unique socket connection
+                        // This prevents the duplicate name bug!
+                        let requesterID = socket ? socket.id : findSocketID(call.args.targetName);
+
                         let targets = [];
-                        
-                        // 2. Gather everyone currently on Suncat's map
+
+                        // 2. Gather EVERYONE in the game who is NOT currently in Map 999 (and isn't Suncat)
                         for (let id in players) {
-                            if (players[id].mapID === players[SUNCAT_ID].mapID && id !== SUNCAT_ID) {
+                            if (id !== SUNCAT_ID && players[id].mapID !== 999) {
                                 targets.push(id);
                             }
                         }
-                        // Ensure the requester is included even if they aren't on the same map
+
+                        // Ensure the requester is always included in the target array
                         if (requesterID && !targets.includes(requesterID)) {
                             targets.push(requesterID);
                         }
@@ -4176,7 +4179,7 @@ async function executeAITools(currentResponse, activeSession, socket) {
                         if (targets.length > 0) {
                             targets.forEach(tid => {
                                 const targetPlayer = players[tid];
-                                
+                                if (!targetPlayer) return;
                                 // Quietly set up destination variables in the background
                                 targetPlayer.prevMapID = targetPlayer.mapID; 
                                 targetPlayer.mapFriendlyTribe = protagID;
