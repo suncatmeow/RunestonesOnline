@@ -3633,7 +3633,7 @@ async function generateScenarioScript(biomeName, scenarioType, bossName, questGi
     Invent a deeply compelling, morally gray scenario tying this blueprint together. 
     1. Define the Boss's motivation. Are they truly evil, or driven by tragedy?
     2. Define the Bastion's sentiment. Are the allies innocent, or are they prejudiced and hoarding resources from the Wilds?
-    3. What is happening in this land besides the bastion/lair conflict? Add sub-Lore for the other zones such as the wilds, the arena, and the ruins, tying it all together to the main plot of the scenario. Detail how the [3rd Tribe] in the Ruins got to be there, who they are, and why theyre hostile. Detail the arena specifics. Who are the combatants there and why do they fight? What do they desire? 
+    3. What is happening in this land besides the bastion/lair conflict? Add sub-Lore for the other zones such as the wilds, the arena, and the ruins, making the backstory of these zones relevant to the main plot of the scenario. Detail how the [3rd Tribe] in the Ruins got to be there, who they are, and why theyre hostile. Detail the arena specifics. Who are the combatants there and why do they fight? What do they desire? 
 
     4. The Orthogonal Challenge: Force the player to confront their [Neglected Themes].
     
@@ -3641,7 +3641,7 @@ async function generateScenarioScript(biomeName, scenarioType, bossName, questGi
     Write the dialogue arrays matching the lore you just invented. Keep all lines under 12 words. Ensure the tone is dark fantasy.
     
     1. mapLore: 2 sentences of deep history tying the Boss's motives to this region.
-    2. questObjective: A clear 1-sentence objective (e.g., "Retrieve the relic from the Ruins before confronting the Lair.")
+    2. questObjective: A clear 1-sentence objective (e.g., "${bossName}[the Boss's motives for being the antagonist in this region from mapLore]. Slay them before they [whatever the boss is trying to do]")
     3. bossTaunt: 1 menacing sentence revealing their true motive and attacking the player's psychology.
     4. hostileTaunts: Array of 30 distinct battle cries from the grunts/guards.
     5. traitorBegs: 15 lines from fleeing enemies. At least 5 of these MUST mention how terrifying the 3rd Tribe in the Ruins is.
@@ -4810,9 +4810,10 @@ async function writeSuncatJournal() {
     "${suncatJournal}"
 
     TASK: 
-    1. Write a BRAND NEW 2-3 sentence journal entry. Build upon the themes of your previous thoughts, but ABSOLUTELY DO NOT copy, paste, or repeat the previous sentences. Write entirely new text.
-    2. Reflect on your past life, observe the mundane NPCs around you,how you interact with the world, or describe quiet moment of peace, or your adventures within this specific map and the world in general. Ground it deeply in the Runestones universe using the [WORLD CONTEXT]. Keep it grounded and slightly melancholic. DO NOT talk about epic quests.
-    3. Write a 1-sentence update to [YOUR STORY SO FAR] summarizing your existence today in the third-person.`;
+    1. Write the NEXT 2-3 sentences of the saga, continuing logically from [YOUR RECENT TRAIN OF THOUGHT] and [YOUR STORY SO FAR]. Do not repeat what was already written. Reflect on your past life, observe the mundane NPCs around you,how you interact with the world, or describe quiet moment of peace, or your adventures within this specific map and the world in general. Ground it deeply in the Runestones universe using the [WORLD CONTEXT].
+    2. WEAVE IN THE LORE: Anchor the prose in the [WORLD CONTEXT (Where you are)] and [WHAT YOU SEE AROUND YOU RIGHT NOW] and the specific nature of the enemies/items. 
+    3. STRICT GEOGRAPHY RULE: DO NOT invent city, town, or region names! You MUST only use the locations provided in the context. DO NOT talk about epic quests or players
+    4. Write a 1-sentence update to [YOUR STORY SO FAR] summarizing your existence today in the third-person.`;
     const schema = {
         type: SchemaType.OBJECT,
         properties: {
@@ -5322,11 +5323,11 @@ async function processSuncatThought(socketId, triggerType, data) {
             messageOptions = { sender: "", color: "#FFD700" }; // Narrator Mode
             if (rngRoll < 0.03) {
                 useBigBrain = false; 
-                eventInstruction = `[PLAYER ACTION]: ${data.action}\nTASK: As the DM, narrate the player's journey through this desolate place. Give an atmospheric description based on the [LOCAL LORE] and their progress (2 sentences MAX). Speak as an omniscient narrator. DO NOT ask questions.`;
+                eventInstruction = `[PLAYER ACTION]: ${data.action}\nTASK: As the DM, narrate the player's journey through this desolate place. Give an atmospheric description based on the [LOCAL LORE] and their progress (2 sentences MAX). Speak as an omniscient narrator. DO NOT ask questions.Omit Suncat's perspective.`;
             }
             else if (rngRoll < 0.039) {
                 useBigBrain = true; 
-                eventInstruction = `[PLAYER ACTION]: ${data.action} TASK: If you feel the dungeon is too quiet, you MUST use the 'spawnNPC' tool to ambush them, or the 'changeEnvironment' tool to alter the weather. Narrate the sudden shift atmospherically. DO NOT ask questions.`;
+                eventInstruction = `[PLAYER ACTION]: ${data.action} TASK: If you feel the dungeon is too quiet, you MUST use the 'spawnNPC' tool to ambush them, or the 'changeEnvironment' tool to alter the weather. Narrate the sudden shift atmospherically. DO NOT ask questions.Omit Suncat's perspective.`;
             }
         }
         else if (triggerType === 'spectate') {
@@ -6934,7 +6935,7 @@ socket.on("disconnect", async () => {
                     } 
                     else if (pacingRoll < 0.69) {
                         pacingMsgOptions = { sender: "", color: "#cccccc" }; // Narrator
-                        dmPrompt = `[DM PACING]: ${advPlayer.name} is lingering on Map ${advPlayer.mapID}.\n[TERRAIN]: ${activeMapLore}\nNarrate the creepy or beautiful atmosphere around them in exactly ONE atmospheric sentence. Make them feel watched. DO NOT ask questions.`;
+                        dmPrompt = `[DM PACING]: ${advPlayer.name} is lingering on Map ${advPlayer.mapID}.\n[TERRAIN]: ${activeMapLore}\nNarrate the creepy or beautiful atmosphere around them in exactly ONE atmospheric sentence. Make them feel watched. DO NOT ask questions.Omit Suncat's perspective.`;
                     } 
                     else {
                         requiresBigBrain = true;
