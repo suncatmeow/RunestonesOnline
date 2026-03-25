@@ -998,7 +998,7 @@ const CARD_MANIFEST_DB = {
         },
         66: {
             name: "Armor",
-            type: "monster",
+            type: "item",
             suit: "Pentacles",
             rank: "3",
             rarity:"unique",
@@ -5037,22 +5037,20 @@ async function processSuncatThought(socketId, triggerType, data) {
         let systemOverride = ""; 
         let eventInstruction = "";
         let useBigBrain = false;
-        // ---> THE NEW CUSTOM LORE SWAP <---
         let dynamicLore = "";
         let dynamicName = "Unknown Area";
 
-        if (player.mapID === 999) {
-            let currentZone = "The Wilds";
+        // ---> NEW: HOISTED ZONE CALCULATION <---
+        let currentZone = "The Wilds";
+        if (player.mapID === 999 && activeCustomMap) {
             let pX = player.x, pY = player.y;
+            if (Math.abs(pX - activeCustomMap.spawnX) < 14 && Math.abs(pY - activeCustomMap.spawnY) < 14) currentZone = "The Bastion";
+            else if (Math.abs(pX - activeCustomMap.bossX) < 16 && Math.abs(pY - activeCustomMap.bossY) < 16) currentZone = "The Lair";
+            else if (Math.abs(pX - activeCustomMap.arenaX) < 12 && Math.abs(pY - activeCustomMap.arenaY) < 12) currentZone = "The Ruined Arena";
+            else if (Math.abs(pX - activeCustomMap.miniX) < 13 && Math.abs(pY - activeCustomMap.miniY) < 13) currentZone = "The Ancient Ruins";
             
-            // Note: We check activeCustomMap to get the coordinates of the current session's map
-            if (activeCustomMap) {
-                if (Math.abs(pX - activeCustomMap.spawnX) < 14 && Math.abs(pY - activeCustomMap.spawnY) < 14) currentZone = "The Bastion";
-                else if (Math.abs(pX - activeCustomMap.bossX) < 16 && Math.abs(pY - activeCustomMap.bossY) < 16) currentZone = "The Lair";
-                else if (Math.abs(pX - activeCustomMap.arenaX) < 12 && Math.abs(pY - activeCustomMap.arenaY) < 12) currentZone = "The Ruined Arena";
-                else if (Math.abs(pX - activeCustomMap.miniX) < 13 && Math.abs(pY - activeCustomMap.miniY) < 13) currentZone = "The Ancient Ruins";
-            }
-
+            player.currentZoneName = currentZone; // Save it for exploration radar!
+            
             systemOverride += `\n[DM AWARENESS]: The player is exploring the custom Mega-Map. They are currently standing in sub-zone: [${currentZone}]. Their MAIN active quest is: "${player.activeQuest}". The final boss is entity ID ${player.mapBossID} located in The Lair.`;
 
             if (currentZone === "The Ruined Arena") {
@@ -5071,7 +5069,7 @@ async function processSuncatThought(socketId, triggerType, data) {
             dynamicLore = pAtlas.lore;
             dynamicName = pAtlas.name;
             if (pAtlas.storyKey && WORLD_LORE_DB[pAtlas.storyKey]) {
-                dynamicLore += " " + WORLD_LORE_DB[pAtlas.storyKey].text; // <-- Added .text
+                dynamicLore += " " + WORLD_LORE_DB[pAtlas.storyKey].text;
             }
         }
 
@@ -5195,10 +5193,7 @@ async function processSuncatThought(socketId, triggerType, data) {
                 systemOverride = `[SYSTEM OVERRIDE]: You are overwhelmed and your mana is depleted. Whine that you need a nap and refuse to help them.`;
             }  
         } 
-        else if (player.mapScenario === 'Arena Madness') {
-            useBigBrain = true;
-            systemOverride += `\n[ARENA OVERRIDE]: You are the Arena Master. The player is in your colosseum. Mock their combat skills, introduce challengers grandiosely, and demand blood. You are NOT allowed to teleport them out until they prove themselves to you.`;
-        }
+        
         else if (totalStress >= 50 && player.mapID === 999 && timeSinceLastEvent > 180000) {
             useBigBrain = true;
             player.lastRandomEvent = now;
@@ -5276,7 +5271,7 @@ async function processSuncatThought(socketId, triggerType, data) {
                 1. Provide a cinematic narrative of the monster's fall. 
                 2. Act as an Oracle. Look at the player's Personality (${player.playerProfile?.personality || "unknown"}). 
                 3. Choose EXACTLY ONE card from the Runestones database that perfectly symbolizes their struggle and victory. 
-                4. You MUST use 'givePlayerCard' to award them this card (use the exact name of the card, do NOT make up IDs like 1000). 
+                4. You MUST use 'givePlayerCard' to award them this card (IDs 0-99) (use the exact name of the card, do NOT make up IDs like 1000. Do not create a custom card.). 
                 5. Explain to the player why this card represents their journey (e.g. "This Tome represents your will to prevent the fire... but at what cost to yourself?").`;
             }
             else if (data.isTarot) {
@@ -5299,10 +5294,10 @@ async function processSuncatThought(socketId, triggerType, data) {
                     messageOptions = { sender: "", color: "#FFD700" }; // Narrator Mode
                     eventInstruction = `[PLAYER ACTION]: Slayed a creature ${data.action}\nTASK: Provide a short narrative (1 sentence MAX) describing the fall of the monster. DO NOT ask questions.`;
                 } else {
-                // ---> THE NEW ARENA CHECK <---
-                if (player.mapScenario === 'Arena Madness') {
+                // ---> LOCALIZED ARENA CHECK <---
+                if (currentZone === "The Ruined Arena") {
                     useBigBrain = true;
-                    eventInstruction = `[PLAYER ACTION]: Slayed a gladiator! (${data.action})\nTASK: You are the Arena Master. The crowd demands more! You MUST use the 'spawnNPC' tool right now to drop the next challenger into the arena, or spawn yourself! Taunt the player.`;
+                    eventInstruction = `[PLAYER ACTION]: Slayed an enemy in the Arena! (${data.action})\nTASK: You are the Arena Master. The crowd demands more! You MUST use the 'spawnNPC' tool right now to drop the next challenger into the arena, or spawn yourself! Taunt the player.`;
                 }
                 else if (rngRoll < 0.006) {
                         useBigBrain = true; 
@@ -5734,21 +5729,23 @@ socket.on("join_game", (data) => {
                 let deadNpc = activeCustomMap.npcs.find(n => n.index === data.index);
                 if (deadNpc) deadNpc.isDead = true;
 
-                // Count how many gladiators are still breathing
-                let gladiatorsLeft = activeCustomMap.npcs.filter(n => n.subRole === 'gladiator' && !n.isDead).length;
+                // ---> NEW: Make sure they actually killed a gladiator before taunting! <---
+                if (deadNpc && deadNpc.subRole === 'gladiator') {
+                    // Count how many gladiators are still breathing
+                    let gladiatorsLeft = activeCustomMap.npcs.filter(n => n.subRole === 'gladiator' && !n.isDead).length;
 
-                if (gladiatorsLeft <= 0) {
-                    setTimeout(() => {
-                        let victorySpeech = `[SYSTEM DIRECTIVE]: The player just defeated the FINAL gladiator! The Arena is empty! Act disappointed that they survived, formally declare them the victor, give them a reward card, and IMMEDIATELY use the 'teleportPlayer' tool to send them back to Map 22.`;
-                        processSuncatThought(player.id, 'chat', { text: victorySpeech });
-                    }, 2000); 
-                } else {
-                    // Taunt them between kills!
-                    processSuncatThought(player.id, 'chat', { text: `[SYSTEM DIRECTIVE]: The player killed a gladiator, but there are still ${gladiatorsLeft} left! Taunt them and demand more blood.` });
+                    if (gladiatorsLeft <= 0) {
+                        setTimeout(() => {
+                            let victorySpeech = `[SYSTEM DIRECTIVE]: The player just defeated the FINAL gladiator! The Arena is empty! Act disappointed that they survived, formally declare them the victor, give them a reward card, and IMMEDIATELY use the 'teleportPlayer' tool to send them back to Map 22.`;
+                            processSuncatThought(player.id, 'chat', { text: victorySpeech });
+                        }, 2000); 
+                    } else {
+                        // Taunt them between kills!
+                        processSuncatThought(player.id, 'chat', { text: `[SYSTEM DIRECTIVE]: The player killed a gladiator, but there are still ${gladiatorsLeft} left! Taunt them and demand more blood.` });
+                    }
                 }
             }
-        }
-        }
+        }}
             }
 
     
@@ -6941,14 +6938,12 @@ socket.on("disconnect", async () => {
                         requiresBigBrain = true;
                         injectedPersona += PERSONA_RULES_DB.dm_mode + "\n" + PERSONA_RULES_DB.quest_mode;
                         
-                        // Arena Master retains Suncat identity, everything else is the Narrator
-                        if (advPlayer.mapScenario === 'Arena Madness') {
-                            pacingMsgOptions = { sender: NPC_NAME, color: "#ffffff" };
-                        } else {
-                            pacingMsgOptions = { sender: "", color: "#cccccc" };
-                        }
                         
-                        dmPrompt = `[DM PACING OVERSEER]: ${advPlayer.name} is lingering on Map ${advPlayer.mapID}.\n[TERRAIN]: ${activeMapLore}\n${plotContext}\nSpice up the current zone NOW! You MUST use 'spawnNPC', 'changeEnvironment', or 'assignQuest' to ambush or surprise them. DO NOT create a new map or teleport the player. Narrate the sudden event dynamically (1 sentences MAX). Your narrative tone MUST BE: ${dmMood}. DO NOT ask questions.`;                    }
+                            pacingMsgOptions = { sender: "", color: "#cccccc" };
+                        
+                        
+                        dmPrompt = `[DM PACING OVERSEER]: ${advPlayer.name} is lingering on Map ${advPlayer.mapID}.\n[TERRAIN]: ${activeMapLore}\n${plotContext}\nSpice up the current zone NOW! You MUST use 'spawnNPC' or 'changeEnvironment', to ambush or surprise them. DO NOT create a new map or teleport the player. Narrate the sudden event dynamically (1 sentences MAX). Your narrative tone MUST BE: ${dmMood}. DO NOT ask questions.Omit Suncat's perspective`;                    
+                    }
 
                     setTimeout(async () => {
                         try {
