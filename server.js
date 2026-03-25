@@ -1211,7 +1211,7 @@ const CARD_MANIFEST_DB = {
                 type: "monster",
                 suit: "Swords",
                 rank: "Knight",
-                sprite: 4.1,
+                sprite: 61.2,
                 tribe: "human",
                 rarity:"unique",
                 classes: ["warrior","guardian","rogue","mage"],
