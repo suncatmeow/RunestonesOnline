@@ -3628,7 +3628,7 @@ async function generateScenarioScript(biomeName, scenarioType, bossName, questGi
     - ZONE 3 (The Arena): A bloody colosseum. Gladiators fight here relentlessly, either for the Boss's amusement or as rebels.
     - ZONE 4 (The Ruins): Ancient, crumbling architecture held by a mysterious 3rd Tribe. They hold a secret, artifact, or key required to defeat the Boss.
     - ZONE 5 (The Wilds): The contested wilderness connecting all the zones. Contains enemy Grunt camps and defecting cowards fleeing the war.
-    
+
     [NARRATIVE TASK]: 
     Invent a deeply compelling, morally gray scenario tying this blueprint together. 
     1. THE GOLDEN THREAD: The player CANNOT simply walk into the Lair and win. They must need something from the other zones first. Detail how the [3rd Tribe] in the Ruins holds a secret, a key, or an artifact needed to weaken the Boss.
@@ -4167,26 +4167,84 @@ async function executeAITools(currentResponse, activeSession, socket) {
                         if (targets.length > 0) {
                             io.emit('load_custom_map', customMapData);
                             
+                            // We DO NOT send the map or teleport them yet! 
+                            
                             targets.forEach(tid => {
                                 const targetPlayer = players[tid];
-                                targetPlayer.prevMapID = targetPlayer.mapID; 
-                                targetPlayer.mapID = 999; 
-                                targetPlayer.x = startX + 0.5 + (Math.random() * 1 - 0.5); 
-                                targetPlayer.y = startY + 0.5 + (Math.random() * 1 - 0.5);
-                                targetPlayer.stepsTaken = 0;
-                                targetPlayer.exploredTiles = new Set();
                                 
+                                // We quietly set up their destination variables in the background
+                                targetPlayer.prevMapID = targetPlayer.mapID; 
                                 targetPlayer.mapFriendlyTribe = protagID;
                                 targetPlayer.mapHostileTribe = antagID;
-                                targetPlayer.mapScenario = scenarioType; // <-- FIX: Saving the String ('Arena Madness') so the override works!
+                                targetPlayer.mapScenario = scenarioType; 
                                 targetPlayer.currentMapLore = script.mapLore;
                                 targetPlayer.scenarioLog = []; 
                                 targetPlayer.mapBossID = antagID;
+                                targetPlayer.mapMiniBossID = thirdTribeID; 
+                                targetPlayer.sideQuestComplete = false;    
                                 targetPlayer.activeQuest = script.questObjective;
-                                targetPlayer.scenarioContext = `MEGA-MAP LORE: The main enemy is the ${CARD_MANIFEST_DB[antagID].name} tribe in The Lair. Boss Motive: "${script.bossTaunt}". The allies are the ${CARD_MANIFEST_DB[protagID].name} tribe in The Bastion. A mysterious third faction (${CARD_MANIFEST_DB[thirdTribeID].name}) controls The Ruins. Gladiators fight in The Arena. All 4 zones are connected by the Golden Road through the Wilds. Guide the player based on their coordinates.`;                                io.to(tid).emit("new_quest_objective", { questText: targetPlayer.activeQuest });
-                                io.to(tid).emit("force_teleport", { mapID: 999 });
-                            });
 
+                                // ---> BULLETPROOF SPAWN RADAR <---
+                                let impX = targetPlayer.x;
+                                let impY = targetPlayer.y;
+
+                                // Server-side mirror of your client's isWall logic
+                                const isSafeTile = (grid, mX, mY) => {
+                                    if (!grid || !grid[mY] || grid[mY][mX] === undefined) return false;
+                                    let tile = grid[mY][mX];
+                                    if (tile > 0 && tile % 2 !== 0) return false; // Solid wall
+                                    if (tile < 0 && Math.abs(tile) % 2 === 1) return false; // Pit / Water
+                                    return true; // Safe floor
+                                };
+
+                                let currentGrid = null;
+                                if (targetPlayer.mapID === 999 && activeCustomMap) currentGrid = activeCustomMap.maze;
+                                else if (targetPlayer.mapID === 100 && tintagelHubMap) currentGrid = tintagelHubMap.maze;
+
+                                if (currentGrid) {
+                                    let foundSafe = false;
+                                    // Scan in a circle (1 to 2 tiles away)
+                                    for(let i = 0; i < 15; i++) {
+                                        let angle = Math.random() * Math.PI * 2;
+                                        let dist = 1 + Math.random(); 
+                                        let testX = Math.floor(targetPlayer.x + Math.cos(angle) * dist);
+                                        let testY = Math.floor(targetPlayer.y + Math.sin(angle) * dist);
+                                        
+                                        if (isSafeTile(currentGrid, testX, testY)) {
+                                            impX = testX + 0.5;
+                                            impY = testY + 0.5;
+                                            foundSafe = true;
+                                            break;
+                                        }
+                                    }
+                                    if (!foundSafe) {
+                                        // Micro-offset if cornered
+                                        impX = targetPlayer.x + (Math.random() * 0.4 - 0.2); 
+                                        impY = targetPlayer.y + (Math.random() * 0.4 - 0.2);
+                                    }
+                                } else {
+                                    // Standard Maps (0-22): The server doesn't have the maze arrays.
+                                    // By offsetting by only 0.2 to 0.3, the Imp shares the player's exact 1x1 grid cell,
+                                    // guaranteeing it is safely out of the walls while still being clickable!
+                                    impX = targetPlayer.x + (Math.random() > 0.5 ? 0.3 : -0.3);
+                                    impY = targetPlayer.y + (Math.random() > 0.5 ? 0.3 : -0.3);
+                                }
+
+                                // SPAWN THE MESSENGER IMP
+                                io.to(tid).emit("remote_spawn_npc", {
+                                    mapID: targetPlayer.mapID,
+                                    index: Math.floor(Math.random() * 100000) + 1000,
+                                    x: impX,
+                                    y: impY,
+                                    type: 56, // Imp Sprite
+                                    state: 'stationary',
+                                    role: 'portal_invite', 
+                                    color: '#ff8800',
+                                    deck: [56],
+                                    dialogue: [`My master Suncat sent me to bring you to the adventure realm to partake in the ${scenarioType}. Shall we go?`],
+                                    options: ['Yes', 'No']
+                                });
+                            });
                             players[SUNCAT_ID].mapID = 999;
                             players[SUNCAT_ID].x = startX + 1.5; players[SUNCAT_ID].y = startY + 0.5;
                             io.emit("updatePlayers", players);
@@ -5644,34 +5702,34 @@ socket.on("join_game", (data) => {
         // 1. Is the player in a custom map?
         // 2. Does the dead NPC match the boss ID? OR did the client explicitly send isBoss: true?
         // ---> THE NEW DYNAMIC WIN CONDITION CHECK <---
-if (player.mapID === 999) {
-    // 1. Did they kill the Main Boss?
-    if (data.isBoss || baseID === player.mapBossID) {
-        // We let the 'event' trigger below handle the Boss victory speech!
-    }
-    // 2. Are they in the Arena?
-    else if (player.mapScenario === 'Arena Madness') {
-        if (activeCustomMap && activeCustomMap.npcs) {
-            // Mark this specific NPC as dead in the server's master map
-            let deadNpc = activeCustomMap.npcs.find(n => n.index === data.index);
-            if (deadNpc) deadNpc.isDead = true;
+    if (player.mapID === 999) {
+        // 1. Did they kill the Main Boss?
+        if (data.isBoss || baseID === player.mapBossID) {
+            // We let the 'event' trigger below handle the Boss victory speech!
+        }
+        // 2. Are they in the Arena?
+        else if (player.mapScenario === 'Arena Madness') {
+            if (activeCustomMap && activeCustomMap.npcs) {
+                // Mark this specific NPC as dead in the server's master map
+                let deadNpc = activeCustomMap.npcs.find(n => n.index === data.index);
+                if (deadNpc) deadNpc.isDead = true;
 
-            // Count how many gladiators are still breathing
-            let gladiatorsLeft = activeCustomMap.npcs.filter(n => n.subRole === 'gladiator' && !n.isDead).length;
+                // Count how many gladiators are still breathing
+                let gladiatorsLeft = activeCustomMap.npcs.filter(n => n.subRole === 'gladiator' && !n.isDead).length;
 
-            if (gladiatorsLeft <= 0) {
-                setTimeout(() => {
-                    let victorySpeech = `[SYSTEM DIRECTIVE]: The player just defeated the FINAL gladiator! The Arena is empty! Act disappointed that they survived, formally declare them the victor, give them a reward card, and IMMEDIATELY use the 'teleportPlayer' tool to send them back to Map 22.`;
-                    processSuncatThought(player.id, 'chat', { text: victorySpeech });
-                }, 2000); 
-            } else {
-                // Taunt them between kills!
-                processSuncatThought(player.id, 'chat', { text: `[SYSTEM DIRECTIVE]: The player killed a gladiator, but there are still ${gladiatorsLeft} left! Taunt them and demand more blood.` });
+                if (gladiatorsLeft <= 0) {
+                    setTimeout(() => {
+                        let victorySpeech = `[SYSTEM DIRECTIVE]: The player just defeated the FINAL gladiator! The Arena is empty! Act disappointed that they survived, formally declare them the victor, give them a reward card, and IMMEDIATELY use the 'teleportPlayer' tool to send them back to Map 22.`;
+                        processSuncatThought(player.id, 'chat', { text: victorySpeech });
+                    }, 2000); 
+                } else {
+                    // Taunt them between kills!
+                    processSuncatThought(player.id, 'chat', { text: `[SYSTEM DIRECTIVE]: The player killed a gladiator, but there are still ${gladiatorsLeft} left! Taunt them and demand more blood.` });
+                }
             }
         }
-    }
-}
-    }
+        }
+            }
 
     
     processSuncatThought(player.id, 'event', {
@@ -5973,10 +6031,10 @@ socket.on("admin_refresh_npcs", () => {
           rewardCard: rewardCard,
           options: options
       });
-  });
+    });
 
-  // --- GM PRIVATE MAP (Map 613) ---
-  socket.on("admin_map", async (data) => {
+// --- GM PRIVATE MAP (Map 613) ---
+    socket.on("admin_map", async (data) => {
       const player = players[socket.id];
       if (!player) return;
 
@@ -5991,70 +6049,103 @@ socket.on("admin_refresh_npcs", () => {
       const biome = BIOME_DB[bEnum] || BIOME_DB[0];
 
       // Pick Actors
-const monsterIDs = Object.keys(CARD_MANIFEST_DB).filter(id => CARD_MANIFEST_DB[id].type === "monster" && CARD_MANIFEST_DB[id].rank !== "0");
+        const monsterIDs = Object.keys(CARD_MANIFEST_DB).filter(id => CARD_MANIFEST_DB[id].type === "monster" && CARD_MANIFEST_DB[id].rank !== "0");
 
-// ---> DEFINE HEAVY SPRITES <---
-const HEAVY_SPRITES = [0,1,2,3,4,5,9,21,33, 34, 35, 47,48, 49, 62, 63, 76, 77, 85, 86, 94]; 
-let heavySpawnCount = {}; 
+        // ---> DEFINE HEAVY SPRITES <---
+        const HEAVY_SPRITES = [0,1,2,3,4,5,9,21,33, 34, 35, 47,48, 49, 62, 63, 76, 77, 85, 86, 94]; 
+        let heavySpawnCount = {}; 
 
-// 1. FORCE THE BOSS TO BE HEAVY
-const bossPool = monsterIDs.filter(id => HEAVY_SPRITES.includes(parseInt(id)));
-let antagID = parseInt(bossPool[Math.floor(Math.random() * bossPool.length)] || 63); // Fallback to Dragon (63)
+        // 1. FORCE THE BOSS TO BE HEAVY
+        const bossPool = monsterIDs.filter(id => HEAVY_SPRITES.includes(parseInt(id)));
+        let antagID = parseInt(bossPool[Math.floor(Math.random() * bossPool.length)] || 63); // Fallback to Dragon (63)
 
-// 2. PICK THE ALLY (Can be anything, but ensure it's not the boss)
-let protagID = parseInt(monsterIDs[Math.floor(Math.random() * monsterIDs.length)]);
-while (protagID === antagID) protagID = parseInt(monsterIDs[Math.floor(Math.random() * monsterIDs.length)]);
+        // 2. PICK THE ALLY (Can be anything, but ensure it's not the boss)
+        let protagID = parseInt(monsterIDs[Math.floor(Math.random() * monsterIDs.length)]);
+        while (protagID === antagID) protagID = parseInt(monsterIDs[Math.floor(Math.random() * monsterIDs.length)]);
 
-      // We bypass Suncat entirely here and build a map instantly using the Mad Libs cache!
-      let mapData = generateProceduralGrid(biome.walls[0]); 
-      let mapNPCs = [];
+        // We bypass Suncat entirely here and build a map instantly using the Mad Libs cache!
+        let mapData = generateProceduralGrid(biome.walls[0]); 
+        let mapNPCs = [];
 
-      // 1. Add The Boss
-      mapNPCs.push({
-          type: CARD_MANIFEST_DB[antagID]?.sprite || antagID,
-          x: mapData.bossX + 0.5, y: mapData.bossY + 0.5,
-          state: 'stationary', role: 'battle', isBoss: true,
-          dialogue: [getMadLibLine(biome.name, 'bossTaunts', "You dare approach my domain?")], 
-          deck: buildSynergisticDeck(antagID),
-          color: '#ff00ff'
-      });
+        // 1. Add The Boss
+        mapNPCs.push({
+            type: CARD_MANIFEST_DB[antagID]?.sprite || antagID,
+            x: mapData.bossX + 0.5, y: mapData.bossY + 0.5,
+            state: 'stationary', role: 'battle', isBoss: true,
+            dialogue: [getMadLibLine(biome.name, 'bossTaunts', "You dare approach my domain?")], 
+            deck: buildSynergisticDeck(antagID),
+            color: '#ff00ff'
+        });
+        
+        // 2. Add 20 random Minions
+        for(let i=0; i<20; i++) {
+            let tile = mapData.floorTiles[Math.floor(Math.random() * mapData.floorTiles.length)];
+            if(tile) {
+                mapNPCs.push({
+                    type: antagID, // Clone the boss type for synergy
+                    x: tile.x + 0.5, y: tile.y + 0.5,
+                    state: 'chasing', role: 'battle',
+                    dialogue: [getMadLibLine(biome.name, 'hostileTaunts', "Die!")],
+                    deck: buildSynergisticDeck(antagID),
+                    color: '#ff0000'
+                });
+            }
+        }
+
+        // Compile Map 613
+        const customMapData = {
+            id: 613, maze: mapData.grid, 
+            skyColor: biome.skies[0], floorColor: biome.floors[0], 
+            name: `Private ${biome.name} (${scenarioType})`, 
+            npcs: mapNPCs, weather: biome.weather[0],
+            spawnX: mapData.startX + 0.5, spawnY: mapData.startY + 0.5,
+            biome: biome.name, safeTiles: mapData.safeTiles 
+        };
+
+        // 3. Teleport ONLY the player who requested it!
+        socket.emit('load_custom_map', customMapData);
+        socket.emit("force_teleport", { mapID: 613 });
+        
+        player.mapID = 613;
+        player.x = mapData.startX + 0.5;
+        player.y = mapData.startY + 0.5;
+        
+        io.emit("updatePlayers", players);
+    });
+//
+// --- ACCEPT ADVENTURE INVITE ---
+  socket.on("accept_teleport_invite", () => {
+      const player = players[socket.id];
       
-      // 2. Add 20 random Minions
-      for(let i=0; i<20; i++) {
-          let tile = mapData.floorTiles[Math.floor(Math.random() * mapData.floorTiles.length)];
-          if(tile) {
-              mapNPCs.push({
-                  type: antagID, // Clone the boss type for synergy
-                  x: tile.x + 0.5, y: tile.y + 0.5,
-                  state: 'chasing', role: 'battle',
-                  dialogue: [getMadLibLine(biome.name, 'hostileTaunts', "Die!")],
-                  deck: buildSynergisticDeck(antagID),
-                  color: '#ff0000'
-              });
+      // Make sure the player exists and a custom map is actually waiting for them!
+      if (player && activeCustomMap) {
+          
+          // 1. Move them to the Mega-Map and set their spawn coordinates
+          player.mapID = 999; 
+          player.x = activeCustomMap.spawnX + (Math.random() * 1 - 0.5); 
+          player.y = activeCustomMap.spawnY + (Math.random() * 1 - 0.5);
+          player.stepsTaken = 0;
+          player.exploredTiles = new Set();
+          
+          // 2. Send them the massive map payload
+          socket.emit('load_custom_map', activeCustomMap);
+          
+          // 3. Update their UI with the new Quest Objective
+          if (player.activeQuest) {
+              socket.emit("new_quest_objective", { questText: player.activeQuest });
           }
+          
+          // 4. Force the client to visually warp
+          socket.emit("force_teleport", { mapID: 999 });
+          
+          // 5. Tell everyone else their coordinates updated
+          io.emit("updatePlayers", players);
+          
+          // Optional: Prompt Suncat to narrate their arrival!
+          processSuncatThought(socket.id, 'exploration', { action: `Player has accepted the invitation and stepped through the portal into the new scenario: ${player.mapScenario}.` });
       }
-
-      // Compile Map 613
-      const customMapData = {
-          id: 613, maze: mapData.grid, 
-          skyColor: biome.skies[0], floorColor: biome.floors[0], 
-          name: `Private ${biome.name} (${scenarioType})`, 
-          npcs: mapNPCs, weather: biome.weather[0],
-          spawnX: mapData.startX + 0.5, spawnY: mapData.startY + 0.5,
-          biome: biome.name, safeTiles: mapData.safeTiles 
-      };
-
-      // 3. Teleport ONLY the player who requested it!
-      socket.emit('load_custom_map', customMapData);
-      socket.emit("force_teleport", { mapID: 613 });
-      
-      player.mapID = 613;
-      player.x = mapData.startX + 0.5;
-      player.y = mapData.startY + 0.5;
-      
-      io.emit("updatePlayers", players);
   });
-  socket.on("challenge_accepted", (data) => {
+socket.on("challenge_accepted", (data) => {
     if (players[socket.id]) players[socket.id].battleOpponent = data.targetId;
     if (players[data.targetId]) players[data.targetId].battleOpponent = socket.id;
     io.to(data.targetId).emit("challenge_accepted", {
