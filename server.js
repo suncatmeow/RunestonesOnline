@@ -4151,6 +4151,9 @@ async function executeAITools(currentResponse, activeSession, socket) {
                             biome: biome.name
                         };
 
+                        // ---> THE CRITICAL LINE THAT GOT DELETED! <---
+                        activeCustomMap = customMapData;
+
                         // 1. Identify who asked for the map
                         let requesterID = findSocketID(call.args.targetName);
                         let targets = [];
@@ -4188,13 +4191,13 @@ async function executeAITools(currentResponse, activeSession, socket) {
                                 // --- THE REQUESTER: AUTO-TELEPORT ---
                                 if (tid === requesterID) {
                                     targetPlayer.mapID = 999; 
-                                    targetPlayer.x = activeCustomMap.spawnX + (Math.random() * 1 - 0.5); 
-                                    targetPlayer.y = activeCustomMap.spawnY + (Math.random() * 1 - 0.5);
+                                    targetPlayer.x = customMapData.spawnX + (Math.random() * 1 - 0.5); 
+                                    targetPlayer.y = customMapData.spawnY + (Math.random() * 1 - 0.5);
                                     targetPlayer.stepsTaken = 0;
                                     targetPlayer.exploredTiles = new Set();
                                     
                                     // Send the map payload ONLY to the requester
-                                    io.to(tid).emit('load_custom_map', activeCustomMap);
+                                    io.to(tid).emit('load_custom_map', customMapData);
                                     io.to(tid).emit("new_quest_objective", { questText: targetPlayer.activeQuest });
                                     io.to(tid).emit("force_teleport", { mapID: 999 });
                                 } 
@@ -4212,7 +4215,7 @@ async function executeAITools(currentResponse, activeSession, socket) {
                                     };
 
                                     let currentGrid = null;
-                                    if (targetPlayer.mapID === 999 && activeCustomMap) currentGrid = activeCustomMap.maze;
+                                    if (targetPlayer.mapID === 999 && customMapData) currentGrid = customMapData.maze;
                                     else if (targetPlayer.mapID === 100 && tintagelHubMap) currentGrid = tintagelHubMap.maze;
 
                                     if (currentGrid) {
@@ -4258,8 +4261,8 @@ async function executeAITools(currentResponse, activeSession, socket) {
 
                             // Move Suncat to the new map
                             players[SUNCAT_ID].mapID = 999;
-                            players[SUNCAT_ID].x = activeCustomMap.spawnX + 1.5; 
-                            players[SUNCAT_ID].y = activeCustomMap.spawnY + 0.5;
+                            players[SUNCAT_ID].x = customMapData.spawnX + 1.5; 
+                            players[SUNCAT_ID].y = customMapData.spawnY + 0.5;
                             io.emit("updatePlayers", players);
                             functionResult = { result: `Success. Teleported requester and invited bystanders.` };
                         } else {
