@@ -4151,28 +4151,29 @@ async function executeAITools(currentResponse, activeSession, socket) {
                             biome: biome.name
                         };
 
-                        activeCustomMap = customMapData;
-
+                        // 1. Identify who asked for the map
+                        let requesterID = findSocketID(call.args.targetName);
                         let targets = [];
-                        if ((call.args.targetName || "").toLowerCase() === "all") {                            for (let id in players) {
-                                if (players[id].mapID === players[SUNCAT_ID].mapID && id !== SUNCAT_ID) targets.push(id);
+                        
+                        // 2. Gather everyone currently on Suncat's map
+                        for (let id in players) {
+                            if (players[id].mapID === players[SUNCAT_ID].mapID && id !== SUNCAT_ID) {
+                                targets.push(id);
                             }
-                        } else {
-                            let tid = findSocketID(call.args.targetName);
-                            if (tid) targets.push(tid);
+                        }
+                        // Ensure the requester is included even if they aren't on the same map
+                        if (requesterID && !targets.includes(requesterID)) {
+                            targets.push(requesterID);
                         }
 
+                        // We DO NOT globally emit the map! We target players individually.
                         io.emit("force_npc_reset"); 
 
                         if (targets.length > 0) {
-                            io.emit('load_custom_map', customMapData);
-                            
-                            // We DO NOT send the map or teleport them yet! 
-                            
                             targets.forEach(tid => {
                                 const targetPlayer = players[tid];
                                 
-                                // We quietly set up their destination variables in the background
+                                // Quietly set up destination variables in the background
                                 targetPlayer.prevMapID = targetPlayer.mapID; 
                                 targetPlayer.mapFriendlyTribe = protagID;
                                 targetPlayer.mapHostileTribe = antagID;
@@ -4184,71 +4185,83 @@ async function executeAITools(currentResponse, activeSession, socket) {
                                 targetPlayer.sideQuestComplete = false;    
                                 targetPlayer.activeQuest = script.questObjective;
 
-                                // ---> BULLETPROOF SPAWN RADAR <---
-                                let impX = targetPlayer.x;
-                                let impY = targetPlayer.y;
+                                // --- THE REQUESTER: AUTO-TELEPORT ---
+                                if (tid === requesterID) {
+                                    targetPlayer.mapID = 999; 
+                                    targetPlayer.x = activeCustomMap.spawnX + (Math.random() * 1 - 0.5); 
+                                    targetPlayer.y = activeCustomMap.spawnY + (Math.random() * 1 - 0.5);
+                                    targetPlayer.stepsTaken = 0;
+                                    targetPlayer.exploredTiles = new Set();
+                                    
+                                    // Send the map payload ONLY to the requester
+                                    io.to(tid).emit('load_custom_map', activeCustomMap);
+                                    io.to(tid).emit("new_quest_objective", { questText: targetPlayer.activeQuest });
+                                    io.to(tid).emit("force_teleport", { mapID: 999 });
+                                } 
+                                // --- THE INVITEES: SPAWN THE IMP ---
+                                else {
+                                    let impX = targetPlayer.x;
+                                    let impY = targetPlayer.y;
 
-                                // Server-side mirror of your client's isWall logic
-                                const isSafeTile = (grid, mX, mY) => {
-                                    if (!grid || !grid[mY] || grid[mY][mX] === undefined) return false;
-                                    let tile = grid[mY][mX];
-                                    if (tile > 0 && tile % 2 !== 0) return false; // Solid wall
-                                    if (tile < 0 && Math.abs(tile) % 2 === 1) return false; // Pit / Water
-                                    return true; // Safe floor
-                                };
+                                    const isSafeTile = (grid, mX, mY) => {
+                                        if (!grid || !grid[mY] || grid[mY][mX] === undefined) return false;
+                                        let tile = grid[mY][mX];
+                                        if (tile > 0 && tile % 2 !== 0) return false; 
+                                        if (tile < 0 && Math.abs(tile) % 2 === 1) return false; 
+                                        return true; 
+                                    };
 
-                                let currentGrid = null;
-                                if (targetPlayer.mapID === 999 && activeCustomMap) currentGrid = activeCustomMap.maze;
-                                else if (targetPlayer.mapID === 100 && tintagelHubMap) currentGrid = tintagelHubMap.maze;
+                                    let currentGrid = null;
+                                    if (targetPlayer.mapID === 999 && activeCustomMap) currentGrid = activeCustomMap.maze;
+                                    else if (targetPlayer.mapID === 100 && tintagelHubMap) currentGrid = tintagelHubMap.maze;
 
-                                if (currentGrid) {
-                                    let foundSafe = false;
-                                    // Scan in a circle (1 to 2 tiles away)
-                                    for(let i = 0; i < 15; i++) {
-                                        let angle = Math.random() * Math.PI * 2;
-                                        let dist = 1 + Math.random(); 
-                                        let testX = Math.floor(targetPlayer.x + Math.cos(angle) * dist);
-                                        let testY = Math.floor(targetPlayer.y + Math.sin(angle) * dist);
-                                        
-                                        if (isSafeTile(currentGrid, testX, testY)) {
-                                            impX = testX + 0.5;
-                                            impY = testY + 0.5;
-                                            foundSafe = true;
-                                            break;
+                                    if (currentGrid) {
+                                        let foundSafe = false;
+                                        for(let i = 0; i < 15; i++) {
+                                            let angle = Math.random() * Math.PI * 2;
+                                            let dist = 1 + Math.random(); 
+                                            let testX = Math.floor(targetPlayer.x + Math.cos(angle) * dist);
+                                            let testY = Math.floor(targetPlayer.y + Math.sin(angle) * dist);
+                                            
+                                            if (isSafeTile(currentGrid, testX, testY)) {
+                                                impX = testX + 0.5;
+                                                impY = testY + 0.5;
+                                                foundSafe = true;
+                                                break;
+                                            }
                                         }
+                                        if (!foundSafe) {
+                                            impX = targetPlayer.x + (Math.random() * 0.4 - 0.2); 
+                                            impY = targetPlayer.y + (Math.random() * 0.4 - 0.2);
+                                        }
+                                    } else {
+                                        impX = targetPlayer.x + (Math.random() > 0.5 ? 0.3 : -0.3);
+                                        impY = targetPlayer.y + (Math.random() > 0.5 ? 0.3 : -0.3);
                                     }
-                                    if (!foundSafe) {
-                                        // Micro-offset if cornered
-                                        impX = targetPlayer.x + (Math.random() * 0.4 - 0.2); 
-                                        impY = targetPlayer.y + (Math.random() * 0.4 - 0.2);
-                                    }
-                                } else {
-                                    // Standard Maps (0-22): The server doesn't have the maze arrays.
-                                    // By offsetting by only 0.2 to 0.3, the Imp shares the player's exact 1x1 grid cell,
-                                    // guaranteeing it is safely out of the walls while still being clickable!
-                                    impX = targetPlayer.x + (Math.random() > 0.5 ? 0.3 : -0.3);
-                                    impY = targetPlayer.y + (Math.random() > 0.5 ? 0.3 : -0.3);
-                                }
 
-                                // SPAWN THE MESSENGER IMP
-                                io.to(tid).emit("remote_spawn_npc", {
-                                    mapID: targetPlayer.mapID,
-                                    index: Math.floor(Math.random() * 100000) + 1000,
-                                    x: impX,
-                                    y: impY,
-                                    type: 56, // Imp Sprite
-                                    state: 'stationary',
-                                    role: 'portal_invite', 
-                                    color: '#ff8800',
-                                    deck: [56],
-                                    dialogue: [`My master Suncat sent me to bring you to the adventure realm to partake in the ${scenarioType}. Shall we go?`],
-                                    options: ['Yes', 'No']
-                                });
+                                    // SPAWN THE MESSENGER IMP
+                                    io.to(tid).emit("remote_spawn_npc", {
+                                        mapID: targetPlayer.mapID, // Spawn it on their CURRENT map!
+                                        index: Math.floor(Math.random() * 100000) + 1000,
+                                        x: impX,
+                                        y: impY,
+                                        type: 56, // Imp Sprite
+                                        state: 'stationary',
+                                        role: 'portal_invite', 
+                                        color: '#ff8800',
+                                        deck: [], // <--- EMPTY DECK PREVENTS AUTO-BATTLE!
+                                        dialogue: [`My master Suncat sent me to bring you to the adventure realm to partake in the ${scenarioType}. Shall we go?`],
+                                        options: ['Yes', 'No']
+                                    });
+                                }
                             });
+
+                            // Move Suncat to the new map
                             players[SUNCAT_ID].mapID = 999;
-                            players[SUNCAT_ID].x = startX + 1.5; players[SUNCAT_ID].y = startY + 0.5;
+                            players[SUNCAT_ID].x = activeCustomMap.spawnX + 1.5; 
+                            players[SUNCAT_ID].y = activeCustomMap.spawnY + 0.5;
                             io.emit("updatePlayers", players);
-                            functionResult = { result: `Success. Built map and teleported players.` };
+                            functionResult = { result: `Success. Teleported requester and invited bystanders.` };
                         } else {
                             functionResult = { result: `Failed: No players found to teleport.` };
                         }
@@ -4256,7 +4269,6 @@ async function executeAITools(currentResponse, activeSession, socket) {
                         console.error("Map Generation Error:", err);
                         functionResult = { result: "Critical Error building map." };
                     }
-
                 }
 
                 // F. TELEPORT SPECIFIC PLAYER
