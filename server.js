@@ -2274,26 +2274,7 @@
                     required: ["searchQueries"]
                 }
             },
-            // Search Player History
-            // Search Player History (UPGRADED FOR VECTOR MATH)
-            {
-                name: "searchPlayerMemories",
-                description: "Search your deep, episodic memory regarding past adventures, conversations, or private feelings involving a specific player. Because your mind operates on semantic concepts, you must pass full descriptive phrases or full questions rather than single keywords.",
-                parameters: {
-                    type: "OBJECT",
-                    properties: { 
-                        targetName: { 
-                            type: "STRING",
-                            description: "The exact name of the player you are trying to remember."
-                        },
-                        searchQuery: { 
-                            type: "STRING",
-                            description: "A full descriptive sentence of what you are trying to recall (e.g., 'The time the player defeated the Giant in the forest', 'What is my private opinion of this player?', or 'What did the player tell me about their favorite weapon?')." 
-                        } 
-                    },
-                    required: ["targetName", "searchQuery"]
-                }
-            },
+            
             //give card
             {
                 name: "givePlayerCard",
@@ -2670,7 +2651,6 @@
 
         // 1. Memory & Lore Tools (Only if they ask questions)
         if (["who", "what", "where", "remember", "past", "history", "lore", "story", "rule", "how"].some(kw => lowerText.includes(kw))) {
-            activeTools.push(toolsDef[0].functionDeclarations.find(t => t.name === 'searchPlayerMemories'));
             activeTools.push(toolsDef[0].functionDeclarations.find(t => t.name === 'consultGameManual'));
         }
 
@@ -4314,82 +4294,7 @@
                             functionResult = { result: `Failed: Player not found.` };
                         }
                     }
-                    // K. RECALL PAST MEMORIES (Dynamic Episodic Vector RAG)
-                    else if (call.name === "searchPlayerMemories") {
-                        const targetID = findSocketID(call.args.targetName);
-                        const query = call.args.searchQuery;
-                        // Put this right below `const query = call.args.searchQuery;`
-                        if (!query || typeof query !== 'string') {
-                            functionResult = { result: "[SYSTEM: You tried to recall something, but your mind went completely blank. Ask the player for more details.]" };
-                            continue; // Skip the rest of this tool's execution
-                        }
-                        if (!targetID || !players[targetID] || !players[targetID].searchableMemories) {
-                            functionResult = { result: "[SYSTEM: The memory fog is too thick. You cannot recall this. Roleplay your melancholic frustration that your memories of them are slipping away.]" };
-                        } else {
-                            try {
-                                // 1. Embed the AI's search query into a vector
-                                const queryVector = await createMemoryVector(query);
-                                let memoryBank = players[targetID].searchableMemories;
-                                const totalMemories = memoryBank.length;
-                                
-                                // 2. HYBRID SCORING: Semantic Relevance + Recency
-                                let scoredMemories = memoryBank.map((mem, index) => {
-                                    if (!mem.vector) return { raw: mem, text: mem.text, score: -1, semantic: -1 }; 
-                                    
-                                    // A. Calculate pure meaning (Dot Product)
-                                    let semanticScore = cosineSimilarity(queryVector, mem.vector);
-                                    
-                                    // B. Calculate recency (0.0 is oldest, 1.0 is newest)
-                                    let recencyScore = totalMemories > 1 ? (index / (totalMemories - 1)) : 1.0;
-                                    
-                                    // C. Blend them! (75% Meaning, 25% Time)
-                                    let blendedScore = (semanticScore * 0.75) + (recencyScore * 0.25);
-                                    
-                                    return { 
-                                        raw: mem, 
-                                        text: `[${mem.timestamp}] ${mem.text}`, 
-                                        score: blendedScore, 
-                                        semantic: semanticScore // Keep track of pure meaning
-                                    };
-                                });
-                                
-                                // 3. Grab the primary relevant memories
-                                let bestMemories = scoredMemories
-                                    .filter(m => m.semantic > 0.40) // CRITICAL: Must be semantically relevant FIRST
-                                    .sort((a, b) => b.score - a.score); // Then rank by the blended score
-                                    
-                                if (bestMemories.length > 0) {
-                                    let topMemory = bestMemories[0];
-                                    let results = bestMemories.slice(0, 3).map(m => m.text).join(" | ");
-                                    let outputStr = `You remember: ${results}`;
-
-                                    // --- 2-HOP SEMANTIC RETRIEVAL (Also Hybrid) ---
-                                    let hopScores = memoryBank.map((mem, index) => {
-                                        if (!mem.vector || mem === topMemory.raw) return { text: mem.text, score: -1 };
-                                        
-                                        let semanticScore = cosineSimilarity(topMemory.raw.vector, mem.vector);
-                                        let recencyScore = totalMemories > 1 ? (index / (totalMemories - 1)) : 1.0;
-                                        let blendedScore = (semanticScore * 0.75) + (recencyScore * 0.25);
-                                        
-                                        return { text: `[${mem.timestamp}] ${mem.text}`, score: blendedScore, semantic: semanticScore };
-                                    }).filter(m => m.semantic > 0.40).sort((a, b) => b.score - a.score);
-
-                                    if (hopScores.length > 0) {
-                                        outputStr += `\n[ASSOCIATIVE RECALL]: Thinking about that also reminded you: ${hopScores[0].text}. Synthesize these two data points.`;
-                                    }
-                                    
-                                    functionResult = { result: outputStr };
-                                } else {
-                                    functionResult = { result: `You sifted through your memories of ${call.args.targetName}, but found nothing regarding '${query}'.` };
-                                }
-                            } catch (err) {
-                                console.error("Vector Search Error:", err);
-                                functionResult = { result: `[SYSTEM: You sifted through your memories of ${call.args.targetName}, but found nothing regarding '${query}'. Roleplay this memory gap naturally.]` };
-                            }
-                        }
-                        
-
-                    }
+                    
                     // L. ALTER TERRAIN
                     else if (call.name === "alterTerrain") {
                         const targetID = findSocketID(call.args.targetName);
@@ -5539,7 +5444,7 @@
                 } 
                 else if (asksPersonal) { 
                     useBigBrain = true; // Needs memory tools
-                    systemOverride += `\n[MEMORY OVERRIDE]: The player is asking about the past. Use 'searchPlayerMemories' or 'consultGameManual'.`;
+                    systemOverride += `\n[MEMORY OVERRIDE]: The player is asking about the past. Refer to any [RECALLED MEMORY] provided in your context, or use 'consultGameManual' if they are asking about the world or your own history.`;
                 }
                 else if (wantsNewMap && !isMap999Active) {
                     useBigBrain = true;
@@ -6282,25 +6187,49 @@ io.on("connection", (socket) => {
             const isConversing = player.lastSuncatChat && (now - player.lastSuncatChat < 60000);
             let shouldListen = isConversing || content.includes("suncat");
 
-                let msgVector = null;
+                // ... inside processSuncatThought, under the triggerType === 'chat' block ...
 
-                // 2. The Semantic Threshold Check (Math-based routing)
+            let msgVector = null;
+            let injectedMemories = ""; // Keep track of what we find
+
             if (suncatAttentionVector) {
-                    try {
-                        msgVector = await createMemoryVector(safeText);
-                        
-                        // SHIELD: Only do the math if the vector was successfully created!
-                        if (msgVector) {
-                            let topicRelevance = cosineSimilarity(msgVector, suncatAttentionVector);
-                            
-                            if (topicRelevance > 0.45) {
-                                shouldListen = true;
-                                console.log(`[Semantic Router] Intercepted message: Relevance Score ${topicRelevance.toFixed(2)}`);
+                try {
+                    msgVector = await createMemoryVector(safeText);
+                    
+                    if (msgVector) {
+                        let topicRelevance = cosineSimilarity(msgVector, suncatAttentionVector);
+                        if (topicRelevance > 0.45) {
+                            shouldListen = true;
+                        }
+
+                        // ---> THE UPGRADE: PRE-API LOCAL RAG <---
+                        // If the player has memories, do the math locally right now!
+                        if (player.searchableMemories && player.searchableMemories.length > 0) {
+                            let relevantMemories = player.searchableMemories
+                                .filter(mem => mem.vector) // Ensure it has a vector
+                                .map(mem => {
+                                    // Hybrid score: Meaning + Recency (just like your digestion logic!)
+                                    let semanticScore = cosineSimilarity(msgVector, mem.vector);
+                                    return { text: mem.text, score: semanticScore };
+                                })
+                                .filter(mem => mem.score > 0.65) // Only grab highly relevant hits
+                                .sort((a, b) => b.score - a.score)
+                                .slice(0, 2); // Take the top 2 best matches
+
+                            if (relevantMemories.length > 0) {
+                                injectedMemories = `\n[RECALLED MEMORY: You suddenly remember that: ${relevantMemories.map(m => m.text).join(" | ")}]`;
+                                console.log(`[Local RAG] Silently injected ${relevantMemories.length} memories into Suncat's prompt.`);
                             }
                         }
+                    }
                 } catch (err) {
                     console.error("[Semantic Router] Vector math failed:", err);
                 }
+            }
+
+            // ... later down in the function, where you build systemOverride ...
+            if (injectedMemories !== "") {
+                systemOverride += injectedMemories; 
             }
 
             // 3. Execution
