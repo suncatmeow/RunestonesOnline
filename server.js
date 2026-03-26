@@ -5092,7 +5092,7 @@
             }
 
             try {
-                const meditateModel = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite-preview" });
+                const meditateModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
                 const result = await meditateModel.generateContent(dynamicMeditationPrompt);
                 const insightText = result.response.text().trim();
                 
