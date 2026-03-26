@@ -6608,94 +6608,94 @@ io.on("connection", (socket) => {
             });
 
         socket.on("admin_map", async (data) => {
-        const player = players[socket.id];
-        if (!player) return;
+            const player = players[socket.id];
+            if (!player) return;
 
-        const scenarios = ['Arena Madness', 'Invasion', 'Rescue/Fetch', 'Raid'];
-        let sIndex = parseInt(data.scenarioEnum);
-        
-        // Randomize if they didn't provide a number
-        if (isNaN(sIndex) || sIndex < 0 || sIndex > 3) sIndex = Math.floor(Math.random() * 4);
-        let scenarioType = scenarios[sIndex];
-
-        const bEnum = Math.floor(Math.random() * Object.keys(BIOME_DB).length);
-        const biome = BIOME_DB[bEnum] || BIOME_DB[0];
-
-        // Pick Actors
-            const monsterIDs = Object.keys(CARD_MANIFEST_DB).filter(id => CARD_MANIFEST_DB[id].type === "monster" && CARD_MANIFEST_DB[id].rank !== "0");
-
-            // ---> DEFINE HEAVY SPRITES <---
-            const HEAVY_SPRITES = [0,1,2,3,4,5,9,21,33, 34, 35, 47,48, 49, 62, 63, 76, 77, 85, 86, 94]; 
-            let heavySpawnCount = {}; 
-
-            // 1. FORCE THE BOSS TO BE HEAVY
-            const bossPool = monsterIDs.filter(id => HEAVY_SPRITES.includes(parseInt(id)));
-            let antagID = parseInt(bossPool[Math.floor(Math.random() * bossPool.length)] || 63); // Fallback to Dragon (63)
-
-            // 2. PICK THE ALLY (Can be anything, but ensure it's not the boss)
-            let protagID = parseInt(monsterIDs[Math.floor(Math.random() * monsterIDs.length)]);
-            while (protagID === antagID) protagID = parseInt(monsterIDs[Math.floor(Math.random() * monsterIDs.length)]);
-
-            // We bypass Suncat entirely here and build a map instantly using the Mad Libs cache!
-            let mapData = generateProceduralGrid(biome.walls[0]); 
-            let mapNPCs = [];
-
-            // 1. Add The Boss
-            mapNPCs.push({
-                type: CARD_MANIFEST_DB[antagID]?.sprite || antagID,
-                x: mapData.bossX + 0.5, y: mapData.bossY + 0.5,
-                state: 'stationary', role: 'battle', isBoss: true,
-                dialogue: [getMadLibLine(biome.name, 'bossTaunts', "You dare approach my domain?")], 
-                deck: buildSynergisticDeck(antagID),
-                color: '#ff00ff'
-            });
+            const scenarios = ['Arena Madness', 'Invasion', 'Rescue/Fetch', 'Raid'];
+            let sIndex = parseInt(data.scenarioEnum);
             
-            // 2. Add 20 random Minions
-            for(let i=0; i<20; i++) {
-                let tile = mapData.floorTiles[Math.floor(Math.random() * mapData.floorTiles.length)];
-                if(tile) {
-                    mapNPCs.push({
-                        type: antagID, // Clone the boss type for synergy
-                        x: tile.x + 0.5, y: tile.y + 0.5,
-                        state: 'chasing', role: 'battle',
-                        dialogue: [getMadLibLine(biome.name, 'hostileTaunts', "Die!")],
-                        deck: buildSynergisticDeck(antagID),
-                        color: '#ff0000'
-                    });
+            // Randomize if they didn't provide a number
+            if (isNaN(sIndex) || sIndex < 0 || sIndex > 3) sIndex = Math.floor(Math.random() * 4);
+            let scenarioType = scenarios[sIndex];
+
+            const bEnum = Math.floor(Math.random() * Object.keys(BIOME_DB).length);
+            const biome = BIOME_DB[bEnum] || BIOME_DB[0];
+
+            // Pick Actors
+                const monsterIDs = Object.keys(CARD_MANIFEST_DB).filter(id => CARD_MANIFEST_DB[id].type === "monster" && CARD_MANIFEST_DB[id].rank !== "0");
+
+                // ---> DEFINE HEAVY SPRITES <---
+                const HEAVY_SPRITES = [0,1,2,3,4,5,9,21,33, 34, 35, 47,48, 49, 62, 63, 76, 77, 85, 86, 94]; 
+                let heavySpawnCount = {}; 
+
+                // 1. FORCE THE BOSS TO BE HEAVY
+                const bossPool = monsterIDs.filter(id => HEAVY_SPRITES.includes(parseInt(id)));
+                let antagID = parseInt(bossPool[Math.floor(Math.random() * bossPool.length)] || 63); // Fallback to Dragon (63)
+
+                // 2. PICK THE ALLY (Can be anything, but ensure it's not the boss)
+                let protagID = parseInt(monsterIDs[Math.floor(Math.random() * monsterIDs.length)]);
+                while (protagID === antagID) protagID = parseInt(monsterIDs[Math.floor(Math.random() * monsterIDs.length)]);
+
+                // We bypass Suncat entirely here and build a map instantly using the Mad Libs cache!
+                let mapData = generateProceduralGrid(biome.walls[0]); 
+                let mapNPCs = [];
+
+                // 1. Add The Boss
+                mapNPCs.push({
+                    type: CARD_MANIFEST_DB[antagID]?.sprite || antagID,
+                    x: mapData.bossX + 0.5, y: mapData.bossY + 0.5,
+                    state: 'stationary', role: 'battle', isBoss: true,
+                    dialogue: [getMadLibLine(biome.name, 'bossTaunts', "You dare approach my domain?")], 
+                    deck: buildSynergisticDeck(antagID),
+                    color: '#ff00ff'
+                });
+                
+                // 2. Add 20 random Minions
+                for(let i=0; i<20; i++) {
+                    let tile = mapData.floorTiles[Math.floor(Math.random() * mapData.floorTiles.length)];
+                    if(tile) {
+                        mapNPCs.push({
+                            type: antagID, // Clone the boss type for synergy
+                            x: tile.x + 0.5, y: tile.y + 0.5,
+                            state: 'chasing', role: 'battle',
+                            dialogue: [getMadLibLine(biome.name, 'hostileTaunts', "Die!")],
+                            deck: buildSynergisticDeck(antagID),
+                            color: '#ff0000'
+                        });
+                    }
                 }
+
+                // Compile Map 613
+                const customMapData = {
+                    id: 613, maze: mapData.grid, 
+                    skyColor: biome.skies[0], floorColor: biome.floors[0], 
+                    name: `Private ${biome.name} (${scenarioType})`, 
+                    npcs: mapNPCs, weather: biome.weather[0],
+                    spawnX: mapData.startX + 0.5, spawnY: mapData.startY + 0.5,
+                    biome: biome.name, safeTiles: mapData.safeTiles 
+                };
+
+                // 3. Teleport ONLY the player who requested it!
+                socket.emit('load_custom_map', customMapData);
+                socket.emit("force_teleport", { mapID: 613 });
+                
+                player.mapID = 613;
+                player.x = mapData.startX + 0.5;
+                player.y = mapData.startY + 0.5;
+                
+                io.emit("updatePlayers", players);
+                });
+            socket.on("force_ai_action", async (instruction) => {
+            const player = players[socket.id];
+            if (!player) return;
+            if(player.name!="Unknown"){
+            console.log(`[Force AI Action] Triggered by client for ${player.name}: ${instruction}`);
             }
-
-            // Compile Map 613
-            const customMapData = {
-                id: 613, maze: mapData.grid, 
-                skyColor: biome.skies[0], floorColor: biome.floors[0], 
-                name: `Private ${biome.name} (${scenarioType})`, 
-                npcs: mapNPCs, weather: biome.weather[0],
-                spawnX: mapData.startX + 0.5, spawnY: mapData.startY + 0.5,
-                biome: biome.name, safeTiles: mapData.safeTiles 
-            };
-
-            // 3. Teleport ONLY the player who requested it!
-            socket.emit('load_custom_map', customMapData);
-            socket.emit("force_teleport", { mapID: 613 });
-            
-            player.mapID = 613;
-            player.x = mapData.startX + 0.5;
-            player.y = mapData.startY + 0.5;
-            
-            io.emit("updatePlayers", players);
+            // We pass it to Suncat's brain disguised as a chat message, 
+            // but wrapped in a System Directive so he knows to obey it immediately.
+            processSuncatThought(socket.id, 'chat', { 
+                text: `[SYSTEM DIRECTIVE]: ${instruction}. EXECUTE IMMEDIATELY.` 
             });
-        socket.on("force_ai_action", async (instruction) => {
-        const player = players[socket.id];
-        if (!player) return;
-        if(player.name!="Unknown"){
-        console.log(`[Force AI Action] Triggered by client for ${player.name}: ${instruction}`);
-        }
-        // We pass it to Suncat's brain disguised as a chat message, 
-        // but wrapped in a System Directive so he knows to obey it immediately.
-        processSuncatThought(socket.id, 'chat', { 
-            text: `[SYSTEM DIRECTIVE]: ${instruction}. EXECUTE IMMEDIATELY.` 
-        });
         });
     //////////////
     });
@@ -6755,10 +6755,10 @@ io.on("connection", (socket) => {
                         
                         // Higher cognitive functions (REM Sleep & Deep Memory Consolidation) 
                         // ONLY happen when the body is at total rest.
-                        if (Math.random() < 0.10) runLatentSpaceProcessing(id);
-                        if (Math.random() < 0.10) auditProfileAssumptions(id);
-                        if (Math.random() < 0.20) consolidateMemories(id);
-                        if (Math.random() < 0.15) meditateOnTheDao();
+                        if (Math.random() < 0.02) runLatentSpaceProcessing(id);
+                        if (Math.random() < 0.02) auditProfileAssumptions(id);
+                        if (Math.random() < 0.05) consolidateMemories(id);
+                        if (Math.random() < 0.03) meditateOnTheDao();
                     }
                 }
             }
