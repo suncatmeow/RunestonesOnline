@@ -32,10 +32,7 @@
         // --- Model setup ---
         const voiceModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
         const defaultModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
-        const taliesinModel = genAI.getGenerativeModel({ 
-        model: "gemini-2.5-flash-lite", 
-        systemInstruction: T_PERSONA
-        });
+        
     
    
 //GLOBAL STATE & VARIABLES
@@ -2478,6 +2475,10 @@
 
 
 
+    const taliesinModel = genAI.getGenerativeModel({ 
+            model: "gemini-2.5-flash-lite", 
+            systemInstruction: T_PERSONA
+            });
 //HELPER FUNCTIONS (CORE UTILITIES & MATH)
     async function createMemoryVector(text) {
         try {
