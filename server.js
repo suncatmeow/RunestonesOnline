@@ -6149,14 +6149,15 @@ io.on("connection", (socket) => {
                     players[socket.id].name = players[socket.id].name.replace("[AFK] ", "");
                     // Only broadcast the FULL list if a name changed/someone woke up
                     io.emit("updatePlayers", players); 
-                } else {
-                    // 3. THE FIX: Only broadcast the ID and the new coordinates to everyone else!
-                    socket.broadcast.emit("playerMoved", { 
-                        id: socket.id, 
-                        x: data.x, 
-                        y: data.y,
-                        direction: data.direction // if you track facing direction
-                    });
+                // Inside server.js -> socket.on("move")
+            } else {
+                socket.broadcast.emit("playerMoved", { 
+                    id: socket.id, 
+                    x: data.x, 
+                    y: data.y,
+                    mapID: data.mapID, // <-- ADD THIS so clients know what map they are on
+                    direction: data.direction 
+                });
                 }
             }
             });
