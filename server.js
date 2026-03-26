@@ -2171,7 +2171,7 @@
 
                 "tutorial_mode": `[GUIDE PROTOCOL]: The player is asking for help. If they only typed "help", ask them "What do you need help with?". If they ask a specific question, teach them clearly using your Game Mechanics database. If they ask about your DM powers or scenarios, explain that they just need to ask for a quest or adventure, and you will randomly generate an 'Invasion', 'Rescue', or 'Arena Madness' for them.`,            
                 // ---> NEW: LOREKEEPER MODE <---
-                "lore_mode": `[LOREKEEPER PROTOCOL]: The player is asking about their progress, their story, or the world's lore. If they ask about their journey, recount their [THE STORY SO FAR] and [PLAYER FACTS] dramatically. If they ask about the realm, use 'consultGameManual' to search for lore. You are permitted to speak up to 4 sentences.`
+                "lore_mode": `[LOREKEEPER PROTOCOL]: The player is asking about their progress, their story, or the world's lore. If they ask about their journey, recount their [THE STORY SO FAR] and [PLAYER FACTS] dramatically. If they ask about the realm,runestones, or the story of this world, use 'consultGameManual' to search for lore. You are permitted to speak up to 4 sentences.`
                 };
 
 
@@ -5638,7 +5638,7 @@ function getActiveTools(chatText, triggerType, playerFavor) {
             } else if (data.isDialogue) {
                 useBigBrain = true; 
                 messageOptions = { sender: "", color: "#FFD700" }; // Narrator Mode
-                eventInstruction = `[PLAYER ACTION]: Finished talking to ${data.action}.\nTASK: As the DM, provide a cinematic, omniscient narration (2 sentences max) describing the stakes of the quest or the eerie atmosphere following this conversation. Do not speak as Suncat. DO NOT ask questions.`;
+                eventInstruction = `[PLAYER ACTION]: Finished talking to ${data.action}.\nTASK: As the DM, provide a cinematic, omniscient narration (1 sentence max) describing the stakes of the quest or the eerie atmosphere following this conversation. Do not speak as Suncat. DO NOT ask questions.`;
             } else {
                 if (player.mapID != 999) {
                     useBigBrain = false; 
@@ -6149,7 +6149,6 @@ io.on("connection", (socket) => {
                     players[socket.id].name = players[socket.id].name.replace("[AFK] ", "");
                     // Only broadcast the FULL list if a name changed/someone woke up
                     io.emit("updatePlayers", players); 
-                // Inside server.js -> socket.on("move")
             } else {
                 socket.broadcast.emit("playerMoved", { 
                     id: socket.id, 
