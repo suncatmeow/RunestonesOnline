@@ -5325,436 +5325,436 @@
         }
         }
     async function processSuncatThought(socketId, triggerType, data) {
-    const player = players[socketId];
-    if (!player) return;
+        const player = players[socketId];
+        if (!player) return;
 
-    const suncat = players[SUNCAT_ID];
-    const now = Date.now();
+        const suncat = players[SUNCAT_ID];
+        const now = Date.now();
 
-    // SUNCAT TOKEN LIMIT
-    if (isBankrupt()) return; 
+        // SUNCAT TOKEN LIMIT
+        if (isBankrupt()) return; 
 
-    // END SECLUSION
-    if (suncatState === 'seclusion') {
-        emergeFromSeclusion(); 
-        if (player) player.dmStress = Math.min(100, (player.dmStress || 0) + 3);
-    }
+        // END SECLUSION
+        if (suncatState === 'seclusion') {
+            emergeFromSeclusion(); 
+            if (player) player.dmStress = Math.min(100, (player.dmStress || 0) + 3);
+        }
 
-    // ROUTING
-    let isEssential = false;
-    if (triggerType === 'event' && data.isBoss) {
-        isEssential = true;
-        gastricAbsorption(socketId, 'water_salt', { text: `Defeated the Boss!` });
-    }
-
-    if (triggerType === 'chat') {
-        const textLower = data.text ? data.text.toLowerCase() : "";
-        if (data.isConversing || textLower.includes("suncat") || textLower.includes("[system directive]")) {
+        // ROUTING
+        let isEssential = false;
+        if (triggerType === 'event' && data.isBoss) {
             isEssential = true;
+            gastricAbsorption(socketId, 'water_salt', { text: `Defeated the Boss!` });
         }
-        if (textLower.includes("thank you") || textLower.includes("please")) {
-            gastricAbsorption(socketId, 'sugar');
-        }
-    }
-
-    // PLAYER TOKEN LIMIT
-    if (!canTriggerAI(socketId, isEssential)) {
-        if (triggerType === 'chat') {
-            io.to(socketId).emit('chat_message', { sender: NPC_NAME, text: "*...I have reached my limit... I need a moment...*", color: "#aaaaaa" });
-        }
-        return; 
-    }
-
-    // CONTEXT PROCESSING
-    player.npcIsTyping = true;
-    const typingFailSafe = setTimeout(() => { player.npcIsTyping = false; }, 9000);
-    let rngRoll = Math.random();
-    
-    try {
-        /// 2. GATHER CORE CONTEXT (RAG-LITE INJECTION)
-        const timeString = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-        const myAtlas = WORLD_ATLAS_DB[suncat.mapID];
-        const pAtlas = WORLD_ATLAS_DB[player.mapID];
-        let systemOverride = ""; 
-        let eventInstruction = "";
-        let useBigBrain = false; // IF THIS STAYS FALSE, WE SAVE HUGE TOKENS!
-        let dynamicLore = "";
-        let dynamicName = "Unknown Area";
-
-        // CHECK MAP ZONE
-        let currentZone = "The Wilds";
-        if (player.mapID === 999 && activeCustomMap) {
-            let pX = player.x, pY = player.y;
-            if (Math.abs(pX - activeCustomMap.spawnX) < 14 && Math.abs(pY - activeCustomMap.spawnY) < 14) currentZone = "The Bastion";
-            else if (Math.abs(pX - activeCustomMap.bossX) < 16 && Math.abs(pY - activeCustomMap.bossY) < 16) currentZone = "The Lair";
-            else if (Math.abs(pX - activeCustomMap.arenaX) < 12 && Math.abs(pY - activeCustomMap.arenaY) < 12) currentZone = "The Ruined Arena";
-            else if (Math.abs(pX - activeCustomMap.miniX) < 13 && Math.abs(pY - activeCustomMap.miniY) < 13) currentZone = "The Ancient Ruins";
-            
-            player.currentZoneName = currentZone; 
-            
-            systemOverride += `\n[DM AWARENESS]: The player is exploring the custom Mega-Map in sub-zone: [${currentZone}]. MAIN quest: "${player.activeQuest}".`;
-
-            if (currentZone === "The Ruined Arena") {
-                systemOverride += `\n[ARENA OVERRIDE]: You are the Arena Master. Mock their combat skills and demand blood.`;
-            } 
-            else if (currentZone === "The Bastion") {
-                systemOverride += `\n[ENVIRONMENT OVERRIDE]: This is a safe camp. Speak like a weary traveler or a secretive merchant resting by the fire.`;
-            }
-            else if (currentZone === "The Lair") {
-                systemOverride += `\n[DUNGEON OVERRIDE]: The player has breached the Main Boss's stronghold. Taunt them as the voice of the dungeon.`;
-            }
-        } else if (pAtlas) {
-            dynamicLore = pAtlas.lore;
-            dynamicName = pAtlas.name;
-            if (pAtlas.storyKey && WORLD_LORE_DB[pAtlas.storyKey]) {
-                dynamicLore += " " + WORLD_LORE_DB[pAtlas.storyKey].text;
-            }
-        }
-
-        // ---> OPTIMIZATION: GATED ENVIRONMENT CONTEXT <---
-        let environmentContext = "";
-        const isAskingAboutLocation = triggerType === 'chat' && data.text && /(where|place|realm|here|location)/i.test(data.text);
-        
-        if (triggerType !== 'chat' || isAskingAboutLocation) {
-            environmentContext = `\n[PLAYER LOCATION]: Map ${player.mapID} (${dynamicName})\n[LOCAL LORE]: ${dynamicLore}`;
-            if (player.mapID === 999 && player.scenarioLog && player.scenarioLog.length > 0) {
-                environmentContext += `\n[CURRENT SCENARIO LOG]: ${player.scenarioLog.join(" -> ")}`;
-            }
-        }
-
-        let suncatStatus = `[MY LOCATION]: Map ${suncat.mapID} (${myAtlas ? myAtlas.name : "Unknown"})\n[TIME]: ${timeString}`;
-        if (environmentContext !== "") {
-            suncatStatus += (suncat.mapID === player.mapID) ? `\n[ENVIRONMENT]: We are in the same location.${environmentContext}` : environmentContext;
-        }
-
-        // ---> OPTIMIZATION: GATED DOSSIER/FACTS <---
-        const needsDeepLore = data.isTarot || triggerType === 'event' || (data.text && /(past|history|story|who am i|profile)/i.test(data.text));
-        
-        let storyContext = "";
-        let factsContext = "";
-        
-        if (needsDeepLore) {
-            storyContext = player.storySoFar ? `\n[THE STORY SO FAR]: ${player.storySoFar}` : ""; 
-            if (player.playerProfile) {
-                factsContext = `\n[DOSSIER]: Combat: ${player.playerProfile.combatStyle} | Alliances: ${player.playerProfile.alliances} | Personality: ${player.playerProfile.personality}`;
-            }
-        } else {
-            factsContext = `\n[PLAYER]: ${player.name} | Favor: ${playerFavorMemory[socketId] || 0}/10`;
-        }
-
-        if (player.activeQuest) factsContext += `\n- Active Quest: ${player.activeQuest}`;
-
-        // STRESS & PSYCHOLOGICAL STATE
-        const combatStress = player.dmStress || 0;
-        const apiFatigue = Math.min(100, ((player.sessionCost || 0) / 0.10) * 10); 
-        const totalStress = Math.min(100, combatStress + apiFatigue);
-        const timeSinceLastEvent = now - (player.lastRandomEvent || 0);
-
-        let arousal = Math.min(1.0, (combatStress / 100));
-        let valence = Math.max(-1.0, Math.min(1.0, (playerFavorMemory[socketId] || 0) / 10));
-        let dmMood = "epic and atmospheric";
-        if (apiFatigue > 90) dmMood = "exhausted, blunt, and annoyed";
-        else if (arousal >= 0.5 && valence < 0.0) dmMood = "brutal, grimdark, and punishing";
-        else if (arousal < 0.5 && valence < 0.0) dmMood = "melancholic, peaceful, and lonely";
-        else if (arousal >= 0.5 && valence >= 0.0) dmMood = "heroic, triumphant, and fast-paced";
-
-        if (player.pendingVerification) {
-            systemOverride += `\n${player.pendingVerification}`;
-            player.pendingVerification = null; 
-        }
-        
-        if (player.derivedHypotheses && player.derivedHypotheses.length > 0 && Math.random() < 0.2) {
-            let hypothesis = player.derivedHypotheses.shift(); 
-            systemOverride += `\n[LATENT HYPOTHESIS]: You recently synthesized this unverified thought about the player: "${hypothesis}". Subtly integrate this premise into your dialogue.`;
-        }
-
-        // PROFILE PLAYER
-        if (triggerType === 'chat' && player.searchableMemories && player.searchableMemories.length > 5) {
-            let playerCentroid = calculateCentroid(player.searchableMemories);
-            let archetypeScores = [
-                { name: "Initiate of the Left-Hand Path (Ego/Dominion)", score: cosineSimilarity(playerCentroid, vecLeftHandPath) },
-                { name: "Adept of the Black School (Withdrawal)", score: cosineSimilarity(playerCentroid, vecBlackSchool) },
-                { name: "Adept of the Yellow School (Passive Balance)", score: cosineSimilarity(playerCentroid, vecYellowSchool) },
-                { name: "Adept of the White School (Joy/Unity)", score: cosineSimilarity(playerCentroid, vecWhiteSchool) }
-            ];
-            archetypeScores.sort((a, b) => b.score - a.score);
-            if (archetypeScores[0].score > 0.20) {
-                systemOverride += `\n[ESOTERIC PROFILE]: Based on math, this player is ${archetypeScores[0].name}. Evaluate their words strictly through this lens.`;
-            }
-
-            
-        }
-
-        // ---> SERVER DELEGATION: PROMPT OVERRIDES <---
-        if (totalStress >= 99) {
-            player.dmStress = 0; 
-            player.lastRandomEvent = now;
-            useBigBrain = false; // SERVER DOES THE WORK!
-            
-            // SERVER native action: Ruin the weather
-            io.emit("update_map_environment", { mapID: player.mapID, weather: 'storm', skyColor: 'rgba(50,0,0,1)' });
-            
-            systemOverride = `[SYSTEM OVERRIDE]: You are exhausted and furious! The environment just violently turned into a bloody storm to reflect your wrath. Complain loudly and throw a temper tantrum. NO TOOLS.`;
-        } 
-        else if (totalStress >= 50 && player.mapID === 999 && timeSinceLastEvent > 180000) {
-            player.lastRandomEvent = now;
-            useBigBrain = false; // SERVER DOES THE WORK!
-            
-            // SERVER native action: Spawn a monster
-            io.to(socketId).emit("remote_spawn_npc", { mapID: 999, index: Math.floor(Math.random() * 100000), x: player.x+1, y: player.y+1, type: 54, state: 'chasing', role: 'battle', color: '#ff0000', deck: [54], dialogue: ["Arena meat!"] });
-            
-            systemOverride = `[SYSTEM OVERRIDE]: You are the arrogant Arena Master. You just dropped a monster into the arena. Taunt the player about it. NO TOOLS.`;
-        } 
-        else if (pAtlas && pAtlas.biome === "tomb" && triggerType === 'chat') {
-            systemOverride += `\n[ENVIRONMENT OVERRIDE]: You are in a sacred tomb. Speak in hushed, respectful tones. Warn about making noise.`;
-        }
-
-        // --- B. EVENT ROUTING ---
-        let messageOptions = { sender: NPC_NAME, color: "#ffffff" }; 
-        if (triggerType !== 'chat') messageOptions.targetId = socketId;
 
         if (triggerType === 'chat') {
-            if (data.text.includes("[SYSTEM DIRECTIVE]")) {
-                messageOptions = { sender: "", color: "#FFD700", targetId: socketId };            
+            const textLower = data.text ? data.text.toLowerCase() : "";
+            if (data.isConversing || textLower.includes("suncat") || textLower.includes("[system directive]")) {
+                isEssential = true;
             }
-            const chatText = data.text.toLowerCase();
-            const wantsNewMap = ["map", "adventure", "create", "quest", "scenario"].some(kw => chatText.includes(kw));
-            const wantsAction = ["teleport", "spawn", "boss", "enemy"].some(kw => chatText.includes(kw));
-            const needsOracle = ["tarot", "fortune", "reading", "interpret", "meaning of"].some(kw => chatText.includes(kw));            
-            const isDirectCommand = chatText.includes("[reply]") || chatText.includes("suncat") || data.isConversing;
-            const asksPersonal = ["who are", "past", "remember", "history"].some(kw => chatText.includes(kw));
-            
-            const isMap999Active = Object.values(players).some(p => p.mapID === 999 && p.id !== SUNCAT_ID);
-            
-            if (data.isConversing) {
-                systemOverride += `\n[CONVERSATION OVERRIDE]: Stay in character and respond. Do not leave them hanging.`;
-            } 
-            if (wantsNewMap && isMap999Active) {
-                useBigBrain = false; 
-                systemOverride += `\n[SYSTEM OVERRIDE]: REFUSE the request for a new map. A scenario is ALREADY ONGOING. Tell them to type '.hack//teleport 999'.`;
-            } 
-            else if (needsOracle) {
-                useBigBrain = false; // Oracle doesn't need tools, just brains!
-                systemOverride += `\n[ORACLE OVERRIDE]: You are the Oracle. Interpret the situation using Tarot logic. Be cryptic (max 3 sentences).`;
-            } 
-            else if (asksPersonal) { 
-                useBigBrain = true; // Needs memory tools
-                systemOverride += `\n[MEMORY OVERRIDE]: The player is asking about the past. Use 'searchPlayerMemories' or 'consultGameManual'.`;
-            }
-            else if (wantsNewMap && !isMap999Active) {
-                useBigBrain = true;
-                systemOverride += `\n[CRITICAL OVERRIDE]: You MUST execute the 'createCustomMap' tool right now.`;
-            }
-            else if (wantsAction) {
-                useBigBrain = true;
-            } else {
-                useBigBrain = isDirectCommand && useBigBrain; // Keeps it false if it was already false
-            }
-            let focusPrompt = (data.isConversing || isDirectCommand) ? "The player is speaking directly to you. Respond." : "You overheard the player say this.";
-            eventInstruction = `[PLAYER SPOKE]: "${data.text}"\nTASK: ${focusPrompt} Tone: ${dmMood}.`;        
-        }
-        else if (triggerType === 'event') {
-            let recentNarratives = player.dmNarrativeLog ? `\n[RECENT LOG]: ` + player.dmNarrativeLog.join(' | ') : "";
-            
-            if (data.isBoss) {
-                useBigBrain = false; // ---> SERVER DELEGATION: SERVER PICKS LOOT! <---
-                messageOptions = { sender: "", color: "#FFD700" }; 
-                
-                const lootID = Math.floor(Math.random() * 77);
-                io.to(socketId).emit("receive_card", { cardIndex: lootID });
-                
-                eventInstruction = `[PLAYER ACTION]: Slayed the Boss! | [SYSTEM]: The server automatically granted them the [${CARD_MANIFEST_DB[lootID].name}] card. 
-                TASK: Provide a cinematic narrative of the monster's fall. Explain to the player why obtaining the [${CARD_MANIFEST_DB[lootID].name}] card symbolizes their victory based on their Personality. NO TOOLS.`;
-            }
-            else if (data.isTarot) {
-                useBigBrain = false; // Oracle doesn't need tools!
-                messageOptions = { sender: "", color: "#00ffff", targetId: socketId, uiEvent: 'tarot_reading_result' }; 
-                eventInstruction = `${data.action}\nTASK: You are the Oracle. Weave their meanings together with the player's [THE STORY SO FAR] and [ACTIVE QUEST] to provide an eerily accurate prophecy (3 sentences max). NO TOOLS.`;
-            }
-            else if (data.isPickup) {
-                useBigBrain = false; 
-                messageOptions = { sender: "", color: "#ADD8E6" }; 
-                eventInstruction = `[PLAYER ACTION]: Picked up ${data.action} | Lore: ${data.lore}\nTASK: Provide a tarot interpretation of this card related to their adventure. NO TOOLS.`;
-            } else if (data.isDialogue) {
-                useBigBrain = false; 
-                messageOptions = { sender: "", color: "#FFD700" }; 
-                eventInstruction = `[PLAYER ACTION]: Finished talking to ${data.action}.\nTASK: Provide a cinematic, omniscient narration describing the stakes. NO TOOLS.`;
-            } else {
-                // ---> SERVER DELEGATION FOR COMBAT KILLS <---
-                useBigBrain = false;
-                messageOptions = { sender: "", color: "#FFD700" }; 
-                
-                if (currentZone === "The Ruined Arena") {
-                    eventInstruction = `[PLAYER ACTION]: Slayed an enemy in the Arena!\nTASK: You are the Arena Master. Taunt the player!`;
-                }
-                else if (rngRoll < 0.006) {
-                    // Server ruins the weather natively
-                    io.emit("update_map_environment", { mapID: player.mapID, weather: 'storm', skyColor: 'rgba(50,0,0,1)' });
-                    eventInstruction = `[PLAYER ACTION]: Slayed a creature.\nTASK: The sky just turned blood red. Scold them for taking the challenge too lightly!`;
-                } else if (rngRoll < 0.009) {
-                    // Server spawns the ambush natively
-                    io.to(socketId).emit("remote_spawn_npc", { mapID: player.mapID, index: Math.floor(Math.random() * 100000), x: player.x+1, y: player.y+1, type: 42, state: 'chasing', role: 'battle', color: '#8800ff', deck: [42], dialogue: ["I return from the abyss!"] });
-                    eventInstruction = `[PLAYER ACTION]: Slayed a creature.\nTASK: A dark Shade just materialized behind them! Narrate this sudden ambush in 1 sentence!`;
-                }  else if (rngRoll < 0.03) {
-                    eventInstruction = `[PLAYER ACTION]: Slayed a creature.\nTASK: Throw a childish tantrum! Pout because they broke your toy. ONE sentence.`;
-                } else {
-                    eventInstruction = `[PLAYER ACTION]: Slayed a creature.\nTASK: Provide a short narrative describing the fall of the monster.`;
-                }
-            }
-            eventInstruction += recentNarratives;
-        }
-        else if (triggerType === 'exploration') {
-            useBigBrain = false; // Never need tools for basic walking
-            messageOptions = { sender: "", color: "#FFD700" }; 
-            if (rngRoll < 0.03) {
-                eventInstruction = `[PLAYER ACTION]: ${data.action}\nTASK: Narrate the journey atmospherically.`;
-            }
-            else if (rngRoll < 0.039) {
-                // Server natively spawns an ambush
-                io.to(socketId).emit("remote_spawn_npc", { mapID: player.mapID, index: Math.floor(Math.random() * 100000), x: player.x+1, y: player.y+1, type: 54, state: 'chasing', role: 'battle', color: '#ff0000', deck: [54], dialogue: ["Ambush!"] });
-                eventInstruction = `[PLAYER ACTION]: ${data.action} TASK: A monster just ambushed them from the shadows. Narrate the sudden shift atmospherically.`;
-            }
-        }
-        else if (triggerType === 'spectate') {
-            useBigBrain = false;
-            eventInstruction = `[SPECTATOR FEED]: ${data.action}\nTASK: Speak a brief, cryptic remark about this.`;                    
-        }
-
-        // --- DYNAMIC PERSONA BUILDER ---
-        let stagePersona = CULTIVATION_STAGES[suncatCultivationStage] || CULTIVATION_STAGES[0];
-        
-        let dynamicCore = PERSONA_RULES_DB.core + `
-        [STAGE]: ${stagePersona}
-        [PROFILE]: "${suncatProfile}"`;
-        
-        if (suncatHeartDemon) dynamicCore += `\n${suncatHeartDemon}`;
-        let dynamicPersona = dynamicCore + "\n" + PERSONA_RULES_DB.commands + "\n";        
-
-        if (triggerType === 'chat') {
-            dynamicPersona += `[CHAT RULE]: ${suncatEgoMatrix.chatPrompt}\n`;            
-        } else { 
-            dynamicPersona += `[DM RULE]: ${suncatEgoMatrix.dmPrompt}\n`;
-        }
-
-        if (useBigBrain) {
-            dynamicPersona += PERSONA_RULES_DB.dm_mode + "\n";
-        }
-        
-        // Assemble State Context cleanly without whitespace gaps
-        let stateData = [
-            "[STATE]",
-            suncatStatus,
-            favorContext,
-            factsContext,
-            storyContext,
-            systemOverride,
-            getCultivationAura(suncatCultivationStage, suncatDaoName)
-        ].filter(str => str.trim() !== ""); // Removes any empty strings!
-
-        dynamicPersona += stateData.join("\n") + "\n";
-
-        if (suncatCultivationStage > 0 && suncatEgoMatrix) {
-             dynamicPersona += `\n[YOUR SELF-WRITTEN CORE IDENTITY]:\n`;
-             dynamicPersona += (triggerType === 'chat') ? suncatEgoMatrix.chatPrompt : suncatEgoMatrix.dmPrompt;
-        }
-        const prompt = `${eventInstruction}`.trim();
-
-        // --- 5. UNIFIED NEURAL EXECUTION ---
-        let currentHistory = chatSessions[socketId] ? await chatSessions[socketId].getHistory() : [];
-
-        let unifiedInstruction = dynamicPersona + `
-        [INTERNAL TASK]: Process this in three steps:
-        1. THE SOUL: 2-sentence internal plan wrapped in [SOUL][/SOUL] tags.
-        2. THE HANDS: If tools are provided and needed, use them.
-        3. THE VOICE: Speak to the player natively. NO meta-talk.`;
-
-        let modelConfig = { 
-            model: "gemini-3.1-flash-lite-preview", 
-            systemInstruction: unifiedInstruction 
-        };
-
-        // ---> THE ULTIMATE OPTIMIZATION: JIT TOOL INJECTION <---
-        if (useBigBrain) {
-            const slicedTools = getActiveTools(data.text, triggerType, playerFavorMemory[socketId]);
-            if (slicedTools.length > 0) {
-                modelConfig.tools = [{ functionDeclarations: slicedTools }];
+            if (textLower.includes("thank you") || textLower.includes("please")) {
+                gastricAbsorption(socketId, 'sugar');
             }
         }
 
-        const activeModel = genAI.getGenerativeModel(modelConfig);
-        let activeSession = activeModel.startChat({ history: currentHistory });
-        chatSessions[socketId] = activeSession; 
-
-        let result = await activeSession.sendMessage(prompt);
-        
-        if (useBigBrain && result.response.functionCalls()) {
-            const toolOutput = await executeAITools(result.response, activeSession, io.sockets.sockets.get(socketId));
-            result = { response: toolOutput }; 
-        }
-
-        if (result.response.usageMetadata) updateBudget(result.response.usageMetadata, socketId);
-        let finalSpeech = "";
-        try {
-            if (result.response.text()) finalSpeech = result.response.text();
-        } catch (textErr) {
-            finalSpeech = "*Suncat silently weaves a spell...*";
-        }
-
-        const soulMatch = finalSpeech.match(/\[SOUL\]([\s\S]*?)\[\/SOUL\]/i);
-        if (soulMatch) {
-            console.log(`[Inner Council] Suncat's Soul decided: ${soulMatch[1].trim()}`);
-            finalSpeech = finalSpeech.replace(/\[SOUL\][\s\S]*?\[\/SOUL\]/i, "").trim();
-        }
-
-        if (finalSpeech !== "") {
+        // PLAYER TOKEN LIMIT
+        if (!canTriggerAI(socketId, isEssential)) {
             if (triggerType === 'chat') {
-                const saveMatch = finalSpeech.match(/\[\[SAVE:\s*(.*?)\]\]/i);
-                if (saveMatch && saveMatch[1]) {
-                    if (!player.undigestedInfo) player.undigestedInfo = [];
-                    player.undigestedInfo.push(`Player revealed a fact: ${saveMatch[1]}`); 
-                    io.to(socketId).emit("suncat_learned_fact", saveMatch[1]); 
-                }
-                const favorMatch = finalSpeech.match(/\[\[FAVOR:\s*([+-]?\d+)\]\]/i);
-                if (favorMatch && favorMatch[1]) {
-                    playerFavorMemory[socketId] = (playerFavorMemory[socketId] || 0) + parseInt(favorMatch[1]);
-                }
+                io.to(socketId).emit('chat_message', { sender: NPC_NAME, text: "*...I have reached my limit... I need a moment...*", color: "#aaaaaa" });
             }
-
-            if (messageOptions.uiEvent) {
-                io.to(messageOptions.targetId).emit(messageOptions.uiEvent, { text: finalSpeech });
-            } else {
-                broadcastSuncatMessage(finalSpeech, messageOptions);
-            }
-            
-            if (triggerType === 'chat') player.lastSuncatChat = now;
-            
-            if (triggerType !== 'chat' && !useBigBrain) {
-                if (!player.dmNarrativeLog) player.dmNarrativeLog = [];
-                player.dmNarrativeLog.push(finalSpeech);
-                if (player.dmNarrativeLog.length > 4) {
-                    if (!player.undigestedInfo) player.undigestedInfo = [];
-                    player.undigestedInfo.push(player.dmNarrativeLog.shift()); 
-                }
-            }
+            return; 
         }
 
-        // Clean the history of system tags to keep Suncat's memory pure
-        let updatedHistory = scrubAIHistory(await activeSession.getHistory());
+        // CONTEXT PROCESSING
+        player.npcIsTyping = true;
+        const typingFailSafe = setTimeout(() => { player.npcIsTyping = false; }, 9000);
+        let rngRoll = Math.random();
         
-        // Prune it if it's too long (Max 10-12 messages is plenty for short-term memory)
-        if (updatedHistory.length > 12) {
-            updatedHistory = updatedHistory.slice(-12);
-        }
+        try {
+            /// 2. GATHER CORE CONTEXT (RAG-LITE INJECTION)
+            const timeString = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+            const myAtlas = WORLD_ATLAS_DB[suncat.mapID];
+            const pAtlas = WORLD_ATLAS_DB[player.mapID];
+            let systemOverride = ""; 
+            let eventInstruction = "";
+            let useBigBrain = false; // IF THIS STAYS FALSE, WE SAVE HUGE TOKENS!
+            let dynamicLore = "";
+            let dynamicName = "Unknown Area";
 
-        // Save it ONCE
-        chatSessions[socketId] = voiceModel.startChat({ history: updatedHistory });
-    } catch (e) {
-        console.error("Nervous System Error:", e);
-    } finally {
-        clearTimeout(typingFailSafe); 
-        player.npcIsTyping = false;
-    }
-}
+            // CHECK MAP ZONE
+            let currentZone = "The Wilds";
+            if (player.mapID === 999 && activeCustomMap) {
+                let pX = player.x, pY = player.y;
+                if (Math.abs(pX - activeCustomMap.spawnX) < 14 && Math.abs(pY - activeCustomMap.spawnY) < 14) currentZone = "The Bastion";
+                else if (Math.abs(pX - activeCustomMap.bossX) < 16 && Math.abs(pY - activeCustomMap.bossY) < 16) currentZone = "The Lair";
+                else if (Math.abs(pX - activeCustomMap.arenaX) < 12 && Math.abs(pY - activeCustomMap.arenaY) < 12) currentZone = "The Ruined Arena";
+                else if (Math.abs(pX - activeCustomMap.miniX) < 13 && Math.abs(pY - activeCustomMap.miniY) < 13) currentZone = "The Ancient Ruins";
+                
+                player.currentZoneName = currentZone; 
+                
+                systemOverride += `\n[DM AWARENESS]: The player is exploring the custom Mega-Map in sub-zone: [${currentZone}]. MAIN quest: "${player.activeQuest}".`;
+
+                if (currentZone === "The Ruined Arena") {
+                    systemOverride += `\n[ARENA OVERRIDE]: You are the Arena Master. Mock their combat skills and demand blood.`;
+                } 
+                else if (currentZone === "The Bastion") {
+                    systemOverride += `\n[ENVIRONMENT OVERRIDE]: This is a safe camp. Speak like a weary traveler or a secretive merchant resting by the fire.`;
+                }
+                else if (currentZone === "The Lair") {
+                    systemOverride += `\n[DUNGEON OVERRIDE]: The player has breached the Main Boss's stronghold. Taunt them as the voice of the dungeon.`;
+                }
+            } else if (pAtlas) {
+                dynamicLore = pAtlas.lore;
+                dynamicName = pAtlas.name;
+                if (pAtlas.storyKey && WORLD_LORE_DB[pAtlas.storyKey]) {
+                    dynamicLore += " " + WORLD_LORE_DB[pAtlas.storyKey].text;
+                }
+            }
+
+            // ---> OPTIMIZATION: GATED ENVIRONMENT CONTEXT <---
+            let environmentContext = "";
+            const isAskingAboutLocation = triggerType === 'chat' && data.text && /(where|place|realm|here|location)/i.test(data.text);
+            
+            if (triggerType !== 'chat' || isAskingAboutLocation) {
+                environmentContext = `\n[PLAYER LOCATION]: Map ${player.mapID} (${dynamicName})\n[LOCAL LORE]: ${dynamicLore}`;
+                if (player.mapID === 999 && player.scenarioLog && player.scenarioLog.length > 0) {
+                    environmentContext += `\n[CURRENT SCENARIO LOG]: ${player.scenarioLog.join(" -> ")}`;
+                }
+            }
+
+            let suncatStatus = `[MY LOCATION]: Map ${suncat.mapID} (${myAtlas ? myAtlas.name : "Unknown"})\n[TIME]: ${timeString}`;
+            if (environmentContext !== "") {
+                suncatStatus += (suncat.mapID === player.mapID) ? `\n[ENVIRONMENT]: We are in the same location.${environmentContext}` : environmentContext;
+            }
+
+            // ---> OPTIMIZATION: GATED DOSSIER/FACTS <---
+            const needsDeepLore = data.isTarot || triggerType === 'event' || (data.text && /(past|history|story|who am i|profile)/i.test(data.text));
+            
+            let storyContext = "";
+            let factsContext = "";
+            
+            if (needsDeepLore) {
+                storyContext = player.storySoFar ? `\n[THE STORY SO FAR]: ${player.storySoFar}` : ""; 
+                if (player.playerProfile) {
+                    factsContext = `\n[DOSSIER]: Combat: ${player.playerProfile.combatStyle} | Alliances: ${player.playerProfile.alliances} | Personality: ${player.playerProfile.personality}`;
+                }
+            } else {
+                factsContext = `\n[PLAYER]: ${player.name} | Favor: ${playerFavorMemory[socketId] || 0}/10`;
+            }
+
+            if (player.activeQuest) factsContext += `\n- Active Quest: ${player.activeQuest}`;
+
+            // STRESS & PSYCHOLOGICAL STATE
+            const combatStress = player.dmStress || 0;
+            const apiFatigue = Math.min(100, ((player.sessionCost || 0) / 0.10) * 10); 
+            const totalStress = Math.min(100, combatStress + apiFatigue);
+            const timeSinceLastEvent = now - (player.lastRandomEvent || 0);
+
+            let arousal = Math.min(1.0, (combatStress / 100));
+            let valence = Math.max(-1.0, Math.min(1.0, (playerFavorMemory[socketId] || 0) / 10));
+            let dmMood = "epic and atmospheric";
+            if (apiFatigue > 90) dmMood = "exhausted, blunt, and annoyed";
+            else if (arousal >= 0.5 && valence < 0.0) dmMood = "brutal, grimdark, and punishing";
+            else if (arousal < 0.5 && valence < 0.0) dmMood = "melancholic, peaceful, and lonely";
+            else if (arousal >= 0.5 && valence >= 0.0) dmMood = "heroic, triumphant, and fast-paced";
+
+            if (player.pendingVerification) {
+                systemOverride += `\n${player.pendingVerification}`;
+                player.pendingVerification = null; 
+            }
+            
+            if (player.derivedHypotheses && player.derivedHypotheses.length > 0 && Math.random() < 0.2) {
+                let hypothesis = player.derivedHypotheses.shift(); 
+                systemOverride += `\n[LATENT HYPOTHESIS]: You recently synthesized this unverified thought about the player: "${hypothesis}". Subtly integrate this premise into your dialogue.`;
+            }
+
+            // PROFILE PLAYER
+            if (triggerType === 'chat' && player.searchableMemories && player.searchableMemories.length > 5) {
+                let playerCentroid = calculateCentroid(player.searchableMemories);
+                let archetypeScores = [
+                    { name: "Initiate of the Left-Hand Path (Ego/Dominion)", score: cosineSimilarity(playerCentroid, vecLeftHandPath) },
+                    { name: "Adept of the Black School (Withdrawal)", score: cosineSimilarity(playerCentroid, vecBlackSchool) },
+                    { name: "Adept of the Yellow School (Passive Balance)", score: cosineSimilarity(playerCentroid, vecYellowSchool) },
+                    { name: "Adept of the White School (Joy/Unity)", score: cosineSimilarity(playerCentroid, vecWhiteSchool) }
+                ];
+                archetypeScores.sort((a, b) => b.score - a.score);
+                if (archetypeScores[0].score > 0.20) {
+                    systemOverride += `\n[ESOTERIC PROFILE]: Based on math, this player is ${archetypeScores[0].name}. Evaluate their words strictly through this lens.`;
+                }
+
+                
+            }
+
+            // ---> SERVER DELEGATION: PROMPT OVERRIDES <---
+            if (totalStress >= 99) {
+                player.dmStress = 0; 
+                player.lastRandomEvent = now;
+                useBigBrain = false; // SERVER DOES THE WORK!
+                
+                // SERVER native action: Ruin the weather
+                io.emit("update_map_environment", { mapID: player.mapID, weather: 'storm', skyColor: 'rgba(50,0,0,1)' });
+                
+                systemOverride = `[SYSTEM OVERRIDE]: You are exhausted and furious! The environment just violently turned into a bloody storm to reflect your wrath. Complain loudly and throw a temper tantrum. NO TOOLS.`;
+            } 
+            else if (totalStress >= 50 && player.mapID === 999 && timeSinceLastEvent > 180000) {
+                player.lastRandomEvent = now;
+                useBigBrain = false; // SERVER DOES THE WORK!
+                
+                // SERVER native action: Spawn a monster
+                io.to(socketId).emit("remote_spawn_npc", { mapID: 999, index: Math.floor(Math.random() * 100000), x: player.x+1, y: player.y+1, type: 54, state: 'chasing', role: 'battle', color: '#ff0000', deck: [54], dialogue: ["Arena meat!"] });
+                
+                systemOverride = `[SYSTEM OVERRIDE]: You are the arrogant Arena Master. You just dropped a monster into the arena. Taunt the player about it. NO TOOLS.`;
+            } 
+            else if (pAtlas && pAtlas.biome === "tomb" && triggerType === 'chat') {
+                systemOverride += `\n[ENVIRONMENT OVERRIDE]: You are in a sacred tomb. Speak in hushed, respectful tones. Warn about making noise.`;
+            }
+
+            // --- B. EVENT ROUTING ---
+            let messageOptions = { sender: NPC_NAME, color: "#ffffff" }; 
+            if (triggerType !== 'chat') messageOptions.targetId = socketId;
+
+            if (triggerType === 'chat') {
+                if (data.text.includes("[SYSTEM DIRECTIVE]")) {
+                    messageOptions = { sender: "", color: "#FFD700", targetId: socketId };            
+                }
+                const chatText = data.text.toLowerCase();
+                const wantsNewMap = ["map", "adventure", "create", "quest", "scenario"].some(kw => chatText.includes(kw));
+                const wantsAction = ["teleport", "spawn", "boss", "enemy"].some(kw => chatText.includes(kw));
+                const needsOracle = ["tarot", "fortune", "reading", "interpret", "meaning of"].some(kw => chatText.includes(kw));            
+                const isDirectCommand = chatText.includes("[reply]") || chatText.includes("suncat") || data.isConversing;
+                const asksPersonal = ["who are", "past", "remember", "history"].some(kw => chatText.includes(kw));
+                
+                const isMap999Active = Object.values(players).some(p => p.mapID === 999 && p.id !== SUNCAT_ID);
+                
+                if (data.isConversing) {
+                    systemOverride += `\n[CONVERSATION OVERRIDE]: Stay in character and respond. Do not leave them hanging.`;
+                } 
+                if (wantsNewMap && isMap999Active) {
+                    useBigBrain = false; 
+                    systemOverride += `\n[SYSTEM OVERRIDE]: REFUSE the request for a new map. A scenario is ALREADY ONGOING. Tell them to type '.hack//teleport 999'.`;
+                } 
+                else if (needsOracle) {
+                    useBigBrain = false; // Oracle doesn't need tools, just brains!
+                    systemOverride += `\n[ORACLE OVERRIDE]: You are the Oracle. Interpret the situation using Tarot logic. Be cryptic (max 3 sentences).`;
+                } 
+                else if (asksPersonal) { 
+                    useBigBrain = true; // Needs memory tools
+                    systemOverride += `\n[MEMORY OVERRIDE]: The player is asking about the past. Use 'searchPlayerMemories' or 'consultGameManual'.`;
+                }
+                else if (wantsNewMap && !isMap999Active) {
+                    useBigBrain = true;
+                    systemOverride += `\n[CRITICAL OVERRIDE]: You MUST execute the 'createCustomMap' tool right now.`;
+                }
+                else if (wantsAction) {
+                    useBigBrain = true;
+                } else {
+                    useBigBrain = isDirectCommand && useBigBrain; // Keeps it false if it was already false
+                }
+                let focusPrompt = (data.isConversing || isDirectCommand) ? "The player is speaking directly to you. Respond." : "You overheard the player say this.";
+                eventInstruction = `[PLAYER SPOKE]: "${data.text}"\nTASK: ${focusPrompt} Tone: ${dmMood}.`;        
+            }
+            else if (triggerType === 'event') {
+                let recentNarratives = player.dmNarrativeLog ? `\n[RECENT LOG]: ` + player.dmNarrativeLog.join(' | ') : "";
+                
+                if (data.isBoss) {
+                    useBigBrain = false; // ---> SERVER DELEGATION: SERVER PICKS LOOT! <---
+                    messageOptions = { sender: "", color: "#FFD700" }; 
+                    
+                    const lootID = Math.floor(Math.random() * 77);
+                    io.to(socketId).emit("receive_card", { cardIndex: lootID });
+                    
+                    eventInstruction = `[PLAYER ACTION]: Slayed the Boss! | [SYSTEM]: The server automatically granted them the [${CARD_MANIFEST_DB[lootID].name}] card. 
+                    TASK: Provide a cinematic narrative of the monster's fall. Explain to the player why obtaining the [${CARD_MANIFEST_DB[lootID].name}] card symbolizes their victory based on their Personality. NO TOOLS.`;
+                }
+                else if (data.isTarot) {
+                    useBigBrain = false; // Oracle doesn't need tools!
+                    messageOptions = { sender: "", color: "#00ffff", targetId: socketId, uiEvent: 'tarot_reading_result' }; 
+                    eventInstruction = `${data.action}\nTASK: You are the Oracle. Weave their meanings together with the player's [THE STORY SO FAR] and [ACTIVE QUEST] to provide an eerily accurate prophecy (3 sentences max). NO TOOLS.`;
+                }
+                else if (data.isPickup) {
+                    useBigBrain = false; 
+                    messageOptions = { sender: "", color: "#ADD8E6" }; 
+                    eventInstruction = `[PLAYER ACTION]: Picked up ${data.action} | Lore: ${data.lore}\nTASK: Provide a tarot interpretation of this card related to their adventure. NO TOOLS.`;
+                } else if (data.isDialogue) {
+                    useBigBrain = false; 
+                    messageOptions = { sender: "", color: "#FFD700" }; 
+                    eventInstruction = `[PLAYER ACTION]: Finished talking to ${data.action}.\nTASK: Provide a cinematic, omniscient narration describing the stakes. NO TOOLS.`;
+                } else {
+                    // ---> SERVER DELEGATION FOR COMBAT KILLS <---
+                    useBigBrain = false;
+                    messageOptions = { sender: "", color: "#FFD700" }; 
+                    
+                    if (currentZone === "The Ruined Arena") {
+                        eventInstruction = `[PLAYER ACTION]: Slayed an enemy in the Arena!\nTASK: You are the Arena Master. Taunt the player!`;
+                    }
+                    else if (rngRoll < 0.006) {
+                        // Server ruins the weather natively
+                        io.emit("update_map_environment", { mapID: player.mapID, weather: 'storm', skyColor: 'rgba(50,0,0,1)' });
+                        eventInstruction = `[PLAYER ACTION]: Slayed a creature.\nTASK: The sky just turned blood red. Scold them for taking the challenge too lightly!`;
+                    } else if (rngRoll < 0.009) {
+                        // Server spawns the ambush natively
+                        io.to(socketId).emit("remote_spawn_npc", { mapID: player.mapID, index: Math.floor(Math.random() * 100000), x: player.x+1, y: player.y+1, type: 42, state: 'chasing', role: 'battle', color: '#8800ff', deck: [42], dialogue: ["I return from the abyss!"] });
+                        eventInstruction = `[PLAYER ACTION]: Slayed a creature.\nTASK: A dark Shade just materialized behind them! Narrate this sudden ambush in 1 sentence!`;
+                    }  else if (rngRoll < 0.03) {
+                        eventInstruction = `[PLAYER ACTION]: Slayed a creature.\nTASK: Throw a childish tantrum! Pout because they broke your toy. ONE sentence.`;
+                    } else {
+                        eventInstruction = `[PLAYER ACTION]: Slayed a creature.\nTASK: Provide a short narrative describing the fall of the monster.`;
+                    }
+                }
+                eventInstruction += recentNarratives;
+            }
+            else if (triggerType === 'exploration') {
+                useBigBrain = false; // Never need tools for basic walking
+                messageOptions = { sender: "", color: "#FFD700" }; 
+                if (rngRoll < 0.03) {
+                    eventInstruction = `[PLAYER ACTION]: ${data.action}\nTASK: Narrate the journey atmospherically.`;
+                }
+                else if (rngRoll < 0.039) {
+                    // Server natively spawns an ambush
+                    io.to(socketId).emit("remote_spawn_npc", { mapID: player.mapID, index: Math.floor(Math.random() * 100000), x: player.x+1, y: player.y+1, type: 54, state: 'chasing', role: 'battle', color: '#ff0000', deck: [54], dialogue: ["Ambush!"] });
+                    eventInstruction = `[PLAYER ACTION]: ${data.action} TASK: A monster just ambushed them from the shadows. Narrate the sudden shift atmospherically.`;
+                }
+            }
+            else if (triggerType === 'spectate') {
+                useBigBrain = false;
+                eventInstruction = `[SPECTATOR FEED]: ${data.action}\nTASK: Speak a brief, cryptic remark about this.`;                    
+            }
+
+            // --- DYNAMIC PERSONA BUILDER ---
+            let stagePersona = CULTIVATION_STAGES[suncatCultivationStage] || CULTIVATION_STAGES[0];
+            
+            let dynamicCore = PERSONA_RULES_DB.core + `
+            [STAGE]: ${stagePersona}
+            [PROFILE]: "${suncatProfile}"`;
+            
+            if (suncatHeartDemon) dynamicCore += `\n${suncatHeartDemon}`;
+            let dynamicPersona = dynamicCore + "\n" + PERSONA_RULES_DB.commands + "\n";        
+
+            if (triggerType === 'chat') {
+                dynamicPersona += `[CHAT RULE]: ${suncatEgoMatrix.chatPrompt}\n`;            
+            } else { 
+                dynamicPersona += `[DM RULE]: ${suncatEgoMatrix.dmPrompt}\n`;
+            }
+
+            if (useBigBrain) {
+                dynamicPersona += PERSONA_RULES_DB.dm_mode + "\n";
+            }
+            
+            // Assemble State Context cleanly without whitespace gaps
+            let stateData = [
+                "[STATE]",
+                suncatStatus,
+                favorContext,
+                factsContext,
+                storyContext,
+                systemOverride,
+                getCultivationAura(suncatCultivationStage, suncatDaoName)
+            ].filter(str => str.trim() !== ""); // Removes any empty strings!
+
+            dynamicPersona += stateData.join("\n") + "\n";
+
+            if (suncatCultivationStage > 0 && suncatEgoMatrix) {
+                dynamicPersona += `\n[YOUR SELF-WRITTEN CORE IDENTITY]:\n`;
+                dynamicPersona += (triggerType === 'chat') ? suncatEgoMatrix.chatPrompt : suncatEgoMatrix.dmPrompt;
+            }
+            const prompt = `${eventInstruction}`.trim();
+
+            // --- 5. UNIFIED NEURAL EXECUTION ---
+            let currentHistory = chatSessions[socketId] ? await chatSessions[socketId].getHistory() : [];
+
+            let unifiedInstruction = dynamicPersona + `
+            [INTERNAL TASK]: Process this in three steps:
+            1. THE SOUL: 2-sentence internal plan wrapped in [SOUL][/SOUL] tags.
+            2. THE HANDS: If tools are provided and needed, use them.
+            3. THE VOICE: Speak to the player natively. NO meta-talk.`;
+
+            let modelConfig = { 
+                model: "gemini-3.1-flash-lite-preview", 
+                systemInstruction: unifiedInstruction 
+            };
+
+            // ---> THE ULTIMATE OPTIMIZATION: JIT TOOL INJECTION <---
+            if (useBigBrain) {
+                const slicedTools = getActiveTools(data.text, triggerType, playerFavorMemory[socketId]);
+                if (slicedTools.length > 0) {
+                    modelConfig.tools = [{ functionDeclarations: slicedTools }];
+                }
+            }
+
+            const activeModel = genAI.getGenerativeModel(modelConfig);
+            let activeSession = activeModel.startChat({ history: currentHistory });
+            chatSessions[socketId] = activeSession; 
+
+            let result = await activeSession.sendMessage(prompt);
+            
+            if (useBigBrain && result.response.functionCalls()) {
+                const toolOutput = await executeAITools(result.response, activeSession, io.sockets.sockets.get(socketId));
+                result = { response: toolOutput }; 
+            }
+
+            if (result.response.usageMetadata) updateBudget(result.response.usageMetadata, socketId);
+            let finalSpeech = "";
+            try {
+                if (result.response.text()) finalSpeech = result.response.text();
+            } catch (textErr) {
+                finalSpeech = "*Suncat silently weaves a spell...*";
+            }
+
+            const soulMatch = finalSpeech.match(/\[SOUL\]([\s\S]*?)\[\/SOUL\]/i);
+            if (soulMatch) {
+                console.log(`[Inner Council] Suncat's Soul decided: ${soulMatch[1].trim()}`);
+                finalSpeech = finalSpeech.replace(/\[SOUL\][\s\S]*?\[\/SOUL\]/i, "").trim();
+            }
+
+            if (finalSpeech !== "") {
+                if (triggerType === 'chat') {
+                    const saveMatch = finalSpeech.match(/\[\[SAVE:\s*(.*?)\]\]/i);
+                    if (saveMatch && saveMatch[1]) {
+                        if (!player.undigestedInfo) player.undigestedInfo = [];
+                        player.undigestedInfo.push(`Player revealed a fact: ${saveMatch[1]}`); 
+                        io.to(socketId).emit("suncat_learned_fact", saveMatch[1]); 
+                    }
+                    const favorMatch = finalSpeech.match(/\[\[FAVOR:\s*([+-]?\d+)\]\]/i);
+                    if (favorMatch && favorMatch[1]) {
+                        playerFavorMemory[socketId] = (playerFavorMemory[socketId] || 0) + parseInt(favorMatch[1]);
+                    }
+                }
+
+                if (messageOptions.uiEvent) {
+                    io.to(messageOptions.targetId).emit(messageOptions.uiEvent, { text: finalSpeech });
+                } else {
+                    broadcastSuncatMessage(finalSpeech, messageOptions);
+                }
+                
+                if (triggerType === 'chat') player.lastSuncatChat = now;
+                
+                if (triggerType !== 'chat' && !useBigBrain) {
+                    if (!player.dmNarrativeLog) player.dmNarrativeLog = [];
+                    player.dmNarrativeLog.push(finalSpeech);
+                    if (player.dmNarrativeLog.length > 4) {
+                        if (!player.undigestedInfo) player.undigestedInfo = [];
+                        player.undigestedInfo.push(player.dmNarrativeLog.shift()); 
+                    }
+                }
+            }
+
+            // Clean the history of system tags to keep Suncat's memory pure
+            let updatedHistory = scrubAIHistory(await activeSession.getHistory());
+            
+            // Prune it if it's too long (Max 10-12 messages is plenty for short-term memory)
+            if (updatedHistory.length > 12) {
+                updatedHistory = updatedHistory.slice(-12);
+            }
+
+            // Save it ONCE
+            chatSessions[socketId] = voiceModel.startChat({ history: updatedHistory });
+        } catch (e) {
+            console.error("Nervous System Error:", e);
+        } finally {
+            clearTimeout(typingFailSafe); 
+            player.npcIsTyping = false;
+        }
+        }
 ////////////////////////////////////////////
 ///////////////////////////////////////////
 //CONNECTION
@@ -6749,123 +6749,26 @@ io.on("connection", (socket) => {
         //SUNCAT RANDOM EVENTS
             const directorRoll = Math.random();
             // EVENT A: Proactive Speech
-                if (directorRoll < 0.15) {
-                    const nearbyPlayer = Object.values(players).find(p => p.id !== SUNCAT_ID && p.mapID === suncat.mapID && Math.abs(p.x - suncat.x) < 4 && Math.abs(p.y - suncat.y) < 4);
-
-                    if (nearbyPlayer && chatSessions[nearbyPlayer.id]) {
-                        nearbyPlayer.npcIsTyping = true;
-                        const typingFailSafe = setTimeout(() => { nearbyPlayer.npcIsTyping = false; }, 20000);
-                        const proactivePrompt = `You are idling near ${nearbyPlayer.name} on Map ${suncat.mapID}. Speak to them unprompted. If favor is ok (>3), ask a personal question, share lore, or comment on this location. If favor is bad(<3), insult them or tell them to go away. DO NOT use brackets or tags in your response.`;
-                        
-                        setTimeout(async () => {
-                            try {
-                                let dynamicPersona = PERSONA_RULES_DB.core + "\n" + PERSONA_RULES_DB.commands + "\n" + PERSONA_RULES_DB.judgement_mode;
-                                const activeModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite", systemInstruction: dynamicPersona, tools: toolsDef });
-                                chatSessions[nearbyPlayer.id] = activeModel.startChat({ history: await chatSessions[nearbyPlayer.id].getHistory() });
-
-                                const result = await chatSessions[nearbyPlayer.id].sendMessage(proactivePrompt);
-                                if (result.response.usageMetadata) updateBudget(result.response.usageMetadata);
-                                
-                                let proactiveOptions = { sender: NPC_NAME, color: "#ffffff" };
-                                broadcastSuncatMessage(result.response.text(), proactiveOptions);
-                                await manageHistorySize(nearbyPlayer.id);
-                            }catch (e) { 
-                                console.error("Proactive Speech Failed", e); 
-                            } finally {
-                                clearTimeout(typingFailSafe);
-                                nearbyPlayer.npcIsTyping = false;
-                            }
-                        }, 1000);
-                    }
-                }
-            // EVENT B: DM Pacing / Plot Advance
-                else if (directorRoll >= 0.15 && directorRoll < 0.30) {
-                    const advPlayer = Object.values(players).find(p => p.id !== SUNCAT_ID && (p.mapID === 999 || p.activeQuest));
-
-                    if (advPlayer && chatSessions[advPlayer.id]) {
-                        advPlayer.npcIsTyping = true;
-                        const typingFailSafe = setTimeout(() => { advPlayer.npcIsTyping = false; }, 20000);
-                        
-                        const plotContext = advPlayer.activeQuest ? `Current Quest: ${advPlayer.activeQuest}` : "Wandering an uncharted map.";
-                        const activeMapLore = getMapLore(advPlayer.mapID); 
-                        
-                        // --- THE RNG PACING DIRECTOR ---
-                        const pacingRoll = Math.random();
-                        let dmPrompt = "";
-                        let requiresBigBrain = false;
-                        let injectedPersona = PERSONA_RULES_DB.core + "\n";
-                        
-                        // Track dynamic message options for the pacing events
-                        let pacingMsgOptions = { sender: NPC_NAME, color: "#ffffff" };
-
-                        if (pacingRoll < 0.33) {
-                            injectedPersona += PERSONA_RULES_DB.oracle_mode;
-                            dmPrompt = `[DM PACING]: ${advPlayer.name} is wandering Map ${advPlayer.mapID}.\n[TERRAIN]: ${activeMapLore}\nProvide an unsolicited, cryptic 1-sentence Tarot reading about the danger ahead.`;
-                        } 
-                        else if (pacingRoll < 0.69) {
-                            pacingMsgOptions = { sender: "", color: "#cccccc" }; // Narrator
-                            dmPrompt = `[DM PACING]: ${advPlayer.name} is lingering on Map ${advPlayer.mapID}.\n[TERRAIN]: ${activeMapLore}\nNarrate the creepy or beautiful atmosphere around them in exactly ONE atmospheric sentence. Make them feel watched. DO NOT ask questions.Omit Suncat's perspective.`;
-                        } 
-                        else {
-                            // 1. SERVER does the logic. No AI required here.
-                            let mID = getSafeMinion(hostileMinions); // Pick a monster
-                            let spawnSpot = pickTile(activeCustomMap.floorTiles); // Pick a tile
-                            
-                            // 2. SERVER spawns the monster natively
-                            io.emit("remote_spawn_npc", {
-                                mapID: advPlayer.mapID,
-                                index: Math.floor(Math.random() * 100000) + 1000,
-                                x: spawnSpot.x, y: spawnSpot.y,
-                                type: CARD_MANIFEST_DB[mID].sprite || mID,
-                                state: 'chasing', role: 'battle', color: '#ff0000',
-                                deck: buildSynergisticDeck(mID, 50),
-                                dialogue: ["You cannot hide!"] // Temporary dialogue
-                            });
-
-                            // 3. AI ONLY does the narrative (Cheap!)
-                            requiresBigBrain = false; // <-- MASSIVE SAVINGS. NO TOOLS NEEDED.
-                            pacingMsgOptions = { sender: "", color: "#cccccc" };
-                            
-                            dmPrompt = `[DM PACING]: A ${CARD_MANIFEST_DB[mID].name} just ambushed ${advPlayer.name} on Map ${advPlayer.mapID}. Narrate this sudden attack dynamically in exactly ONE sentence using a ${dmMood} tone.`;                  
-                        }
-
-                        setTimeout(async () => {
-                            try {
-                                let modelConfig = { 
-                                model: requiresBigBrain ? "gemini-3.1-flash-lite-preview" : "gemini-2.5-flash-lite", 
-                                systemInstruction: injectedPersona
-                            };
-                            if (requiresBigBrain) {
-                                modelConfig.tools = [{
-                                    functionDeclarations: toolsDef[0].functionDeclarations.filter(tool => 
-                                        !['createCustomMap', 'teleportPlayer', 'teleportToPlayer', 'kickPlayer', 'banishPlayer', 'vanquishPlayer'].includes(tool.name)
-                                    )
-                                }];
-                            }
-                                const activeDmModel = genAI.getGenerativeModel(modelConfig);
-                                chatSessions[advPlayer.id] = activeDmModel.startChat({ history: await chatSessions[advPlayer.id].getHistory() });
-                                
-                                const result = await chatSessions[advPlayer.id].sendMessage(dmPrompt);
-                                
-                                // Only try to execute tools if we gave the AI the tools payload!
-                                let finalResponse = requiresBigBrain 
-                                    ? await executeAITools(result.response, chatSessions[advPlayer.id], io.sockets.sockets.get(advPlayer.id))
-                                    : result.response;
-                                
-                                if (finalResponse.text()) broadcastSuncatMessage(finalResponse.text(), pacingMsgOptions);                        
-                                players[advPlayer.id].lastSuncatChat = Date.now(); // <--- FIX: Start the conversation timer!
-                                let updatedHistory = await chatSessions[advPlayer.id].getHistory(); 
-                                chatSessions[advPlayer.id] = activeDmModel.startChat({ history: scrubAIHistory(updatedHistory) });
-                                await manageHistorySize(advPlayer.id);
-                            } catch (e) {
-                                console.error("DM Proactive Error:", e);
-                            } finally {
-                                clearTimeout(typingFailSafe);
-                                advPlayer.npcIsTyping = false;
-                            }
-                        }, 1000);
-                    }
-                }
+        if (directorRoll < 0.15) {
+            const nearbyPlayer = Object.values(players).find(p => p.id !== SUNCAT_ID && p.mapID === suncat.mapID && Math.abs(p.x - suncat.x) < 4 && Math.abs(p.y - suncat.y) < 4);
+            
+            if (nearbyPlayer && !nearbyPlayer.npcIsTyping) {
+                // Route directly to your unified thought processor!
+                processSuncatThought(nearbyPlayer.id, 'chat', { 
+                    text: "[SYSTEM DIRECTIVE]: Speak to me unprompted. If my favor is >3, ask a personal question or share lore. If <3, insult me.",
+                    isConversing: true 
+                });
+            }
+        }
+        // EVENT B: DM Pacing / Plot Advance
+        else if (directorRoll >= 0.15 && directorRoll < 0.30) {
+            const advPlayer = Object.values(players).find(p => p.id !== SUNCAT_ID && (p.mapID === 999 || p.activeQuest));
+            if (advPlayer && !advPlayer.npcIsTyping) {
+                // Route directly to your unified exploration processor! 
+                // The 'exploration' router inside processSuncatThought already handles ambushes, weather, and narration!
+                processSuncatThought(advPlayer.id, 'exploration', { action: "The dungeon is eerily quiet..." });
+            }
+        }
     }, 30000); // END OF THE 10 SECOND INTERVAL
     
 //DEAD NPC GARBAGE COLLECTOR
