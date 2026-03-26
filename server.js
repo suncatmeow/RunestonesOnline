@@ -103,6 +103,7 @@
         let vecBlackSchool = null;
         let vecYellowSchool = null;
         let vecWhiteSchool = null;
+        let isKnowledgeBaseReady = false;
 //DATABASE
     const CULTIVATION_STAGES = {
         0: "Mortal. A sharp-eyed observer of a world of wonder. You rely on your wits and a scholar's or survivalist's pragmatism, treating every interaction as a puzzle to be solved while navigating a reality that cannot yet contain your ambition.",
@@ -3335,6 +3336,32 @@
         suncatAttentionVector = await createMemoryVector("quest, magic, lore, adventure, combat, rules, tarot, dungeon, fighting, spells");
         console.log("[System] Philosophical Compass Online.");
         }
+
+
+    async function initKnowledgeBaseVectors() {
+        console.log("[System] Initializing True Vector Search for Knowledge Base... This may take a moment.");
+        
+        // We batch the requests to prevent hitting Gemini API rate limits on boot
+        const BATCH_SIZE = 10; 
+        let successCount = 0;
+
+        for (let i = 0; i < MASTER_KNOWLEDGE_BASE.length; i += BATCH_SIZE) {
+            const batch = MASTER_KNOWLEDGE_BASE.slice(i, i + BATCH_SIZE);
+            
+            await Promise.all(batch.map(async (entry) => {
+                // We embed the tags AND the text together to give the AI maximum semantic context
+                const textToEmbed = `Tags: ${entry.tags.join(", ")}. Lore: ${entry.text}`;
+                entry.vector = await createMemoryVector(textToEmbed);
+                if (entry.vector) successCount++;
+            }));
+            
+            // Wait 500ms between batches so we don't overwhelm the API
+            await new Promise(resolve => setTimeout(resolve, 500)); 
+        }
+        
+        isKnowledgeBaseReady = true;
+        console.log(`[System] Embedded ${successCount}/${MASTER_KNOWLEDGE_BASE.length} knowledge base entries. Vector RAG is online.`);
+        }
     async function evolveEgoMatrix() {
         console.log("[Meta-Cognition] Suncat is rewriting his own neural pathways...");
 
@@ -3640,65 +3667,51 @@
                     }
                     
                     // D. CONSULT MANUAL
-
                     else if (call.name === "consultGameManual") {
                         const queries = call.args.searchQueries || [];
-                        let combinedResults = [];
-
-                        queries.forEach(query => {
-                            if (typeof query !== 'string') return; // <-- Add this safety net!
-                            // Clean the query and remove stop words
-                            const lowerQueryWords = query.toLowerCase()
-                                .replace(/[^\w\s]/gi, '')
-                                .split(/\s+/)
-                                .filter(w => w.length > 2 && !SEARCH_STOP_WORDS.has(w)); // Changed from .includes to .has for Set performance
-                            
-                            if (lowerQueryWords.length === 0) return;
-
-                            let scoredEntries = MASTER_KNOWLEDGE_BASE.map(entry => {
-                                let score = 0;
-                                
-                                // 1. Primary Scoring: Tag Matches (Extremely Accurate)
-                                if (entry.tags && Array.isArray(entry.tags)) {
-                                    lowerQueryWords.forEach(word => {
-                                        // Exact tag match = high score, partial match = medium score
-                                        if (entry.tags.includes(word)) score += 15;
-                                        else if (entry.tags.some(tag => tag.includes(word))) score += 5;
-                                    });
-                                }
-                                
-                                // 2. Secondary Scoring: Fallback raw text search (Just in case)
-                                if (entry.text) {
-                                    let lowerText = entry.text.toLowerCase();
-                                    lowerQueryWords.forEach(word => {
-                                        if (lowerText.includes(word)) score += 1;
-                                    });
-                                }
-
-                                return { text: entry.text, score };
-                            });
-
-                            // Grab the top 2 most relevant lore entries (score must be > 0)
-                            let bestMatches = scoredEntries
-                                .filter(item => item.score > 0)
-                                .sort((a, b) => b.score - a.score)
-                                .slice(0, 2);
-
-                            if (bestMatches.length > 0) {
-                                let uniqueContexts = [...new Set(bestMatches.map(m => m.text))];
-                                combinedResults.push(`[Found for '${query}']: ` + uniqueContexts.join(' | '));
-                            } else {
-                                combinedResults.push(`[${query}]: No memory found in the archives.`);
-                            }
-                        });
-
-                        functionResult = combinedResults.length > 0 
-                            ? { result: combinedResults.join('\n') }
-                            : { result: "Search returned no results. The archives are empty on this subject." };
                         
+                        if (!isKnowledgeBaseReady) {
+                            functionResult = { result: "The archives are still synchronizing. I cannot recall that right now." };
+                        } else if (queries.length === 0) {
+                            functionResult = { result: "No search queries provided." };
+                        } else {
+                            // Combine all queries into one semantic search string
+                            const combinedSearchString = queries.join(" ");
+                            
+                            try {
+                                // 1. Embed the AI's search thought
+                                const queryVector = await createMemoryVector(combinedSearchString);
+                                
+                                if (!queryVector) {
+                                    functionResult = { result: "My mind is clouded. I cannot search the archives right now." };
+                                } else {
+                                    // 2. Run Cosine Similarity against the entire Knowledge Base
+                                    const scoredEntries = MASTER_KNOWLEDGE_BASE
+                                        .filter(entry => entry.vector) // Ensure it embedded successfully on boot
+                                        .map(entry => {
+                                            const score = cosineSimilarity(queryVector, entry.vector);
+                                            return { text: entry.text, score };
+                                        });
 
+                                    // 3. Filter and Sort the best semantic matches
+                                    const bestMatches = scoredEntries
+                                        .filter(item => item.score > 0.55) // 0.55 is a good baseline for semantic relevance
+                                        .sort((a, b) => b.score - a.score)
+                                        .slice(0, 3); // Take the top 3 best hits
+
+                                    if (bestMatches.length > 0) {
+                                        const uniqueContexts = [...new Set(bestMatches.map(m => m.text))];
+                                        functionResult = { result: `[Vector Search Results for '${combinedSearchString}']: \n` + uniqueContexts.join('\n---\n') };
+                                    } else {
+                                        functionResult = { result: `[Vector Search Results for '${combinedSearchString}']: No relevant memories found in the archives.` };
+                                    }
+                                }
+                            } catch (error) {
+                                console.error("[Vector RAG] Error during manual consultation:", error);
+                                functionResult = { result: "An error occurred while searching the archives." };
+                            }
                         }
-                    
+                    }
                     // E. CREATE CUSTOM MAP (The Server-Driven Engine)
                     else if (call.name === "createCustomMap") {
                         try {
@@ -4681,7 +4694,7 @@
                 }
             }
         }
-        async function auditProfileAssumptions(playerId) {
+    async function auditProfileAssumptions(playerId) {
             const player = players[playerId];
             if (!player || !player.playerProfile || !player.searchableMemories || player.searchableMemories.length === 0) return;
 
@@ -4709,6 +4722,32 @@
             } catch (e) {
                 console.error("Audit Processing Error:", e);
             }
+        }
+    async function updatePlayerArchetype(playerId) {
+        const player = players[playerId];
+        if (!player || !player.searchableMemories || player.searchableMemories.length < 5) return;
+
+        try {
+            // Calculate centroid OFF the main chat thread!
+            let playerCentroid = calculateCentroid(player.searchableMemories);
+            let archetypeScores = [
+                { name: "Initiate of the Left-Hand Path (Ego/Dominion)", score: cosineSimilarity(playerCentroid, vecLeftHandPath) },
+                { name: "Adept of the Black School (Withdrawal)", score: cosineSimilarity(playerCentroid, vecBlackSchool) },
+                { name: "Adept of the Yellow School (Passive Balance)", score: cosineSimilarity(playerCentroid, vecYellowSchool) },
+                { name: "Adept of the White School (Joy/Unity)", score: cosineSimilarity(playerCentroid, vecWhiteSchool) }
+            ];
+            
+            archetypeScores.sort((a, b) => b.score - a.score);
+            
+            // Only assign an archetype if the math shows a strong correlation
+            if (archetypeScores[0].score > 0.20) {
+                player.currentArchetype = archetypeScores[0].name;
+            } else {
+                player.currentArchetype = "Unaligned Wanderer";
+            }
+        } catch (e) {
+            console.error("[Background Math] Archetype profiling failed:", e);
+        }
         }
     async function consolidateMemories(playerId) {
             const player = players[playerId];
@@ -5276,79 +5315,11 @@
         let rngRoll = Math.random();
         
         try {
-            /// 2. GATHER CORE CONTEXT (RAG-LITE INJECTION)
+            /// 2. GATHER CORE CONTEXT & STATE VARIABLES
             const timeString = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
             const myAtlas = WORLD_ATLAS_DB[suncat.mapID];
             const pAtlas = WORLD_ATLAS_DB[player.mapID];
-            let systemOverride = ""; 
-            let eventInstruction = "";
-            let useBigBrain = false; // IF THIS STAYS FALSE, WE SAVE HUGE TOKENS!
-            let dynamicLore = "";
-            let dynamicName = "Unknown Area";
-
-            // CHECK MAP ZONE
-            let currentZone = "The Wilds";
-            if (player.mapID === 999 && activeCustomMap) {
-                let pX = player.x, pY = player.y;
-                if (Math.abs(pX - activeCustomMap.spawnX) < 14 && Math.abs(pY - activeCustomMap.spawnY) < 14) currentZone = "The Bastion";
-                else if (Math.abs(pX - activeCustomMap.bossX) < 16 && Math.abs(pY - activeCustomMap.bossY) < 16) currentZone = "The Lair";
-                else if (Math.abs(pX - activeCustomMap.arenaX) < 12 && Math.abs(pY - activeCustomMap.arenaY) < 12) currentZone = "The Ruined Arena";
-                else if (Math.abs(pX - activeCustomMap.miniX) < 13 && Math.abs(pY - activeCustomMap.miniY) < 13) currentZone = "The Ancient Ruins";
-                
-                player.currentZoneName = currentZone; 
-                
-                systemOverride += `\n[DM AWARENESS]: The player is exploring the custom Mega-Map in sub-zone: [${currentZone}]. MAIN quest: "${player.activeQuest}".`;
-
-                if (currentZone === "The Ruined Arena") {
-                    systemOverride += `\n[ARENA OVERRIDE]: You are the Arena Master. Mock their combat skills and demand blood.`;
-                } 
-                else if (currentZone === "The Bastion") {
-                    systemOverride += `\n[ENVIRONMENT OVERRIDE]: This is a safe camp. Speak like a weary traveler or a secretive merchant resting by the fire.`;
-                }
-                else if (currentZone === "The Lair") {
-                    systemOverride += `\n[DUNGEON OVERRIDE]: The player has breached the Main Boss's stronghold. Taunt them as the voice of the dungeon.`;
-                }
-            } else if (pAtlas) {
-                dynamicLore = pAtlas.lore;
-                dynamicName = pAtlas.name;
-                if (pAtlas.storyKey && WORLD_LORE_DB[pAtlas.storyKey]) {
-                    dynamicLore += " " + WORLD_LORE_DB[pAtlas.storyKey].text;
-                }
-            }
-
-            // ---> OPTIMIZATION: GATED ENVIRONMENT CONTEXT <---
-            let environmentContext = "";
-            const isAskingAboutLocation = triggerType === 'chat' && data.text && /(where|place|realm|here|location)/i.test(data.text);
             
-            if (triggerType !== 'chat' || isAskingAboutLocation) {
-                environmentContext = `\n[PLAYER LOCATION]: Map ${player.mapID} (${dynamicName})\n[LOCAL LORE]: ${dynamicLore}`;
-                if (player.mapID === 999 && player.scenarioLog && player.scenarioLog.length > 0) {
-                    environmentContext += `\n[CURRENT SCENARIO LOG]: ${player.scenarioLog.join(" -> ")}`;
-                }
-            }
-
-            let suncatStatus = `[MY LOCATION]: Map ${suncat.mapID} (${myAtlas ? myAtlas.name : "Unknown"})\n[TIME]: ${timeString}`;
-            if (environmentContext !== "") {
-                suncatStatus += (suncat.mapID === player.mapID) ? `\n[ENVIRONMENT]: We are in the same location.${environmentContext}` : environmentContext;
-            }
-
-            // ---> OPTIMIZATION: GATED DOSSIER/FACTS <---
-            const needsDeepLore = data.isTarot || triggerType === 'event' || (data.text && /(past|history|story|who am i|profile)/i.test(data.text));
-            
-            let storyContext = "";
-            let factsContext = "";
-            
-            if (needsDeepLore) {
-                storyContext = player.storySoFar ? `\n[THE STORY SO FAR]: ${player.storySoFar}` : ""; 
-                if (player.playerProfile) {
-                    factsContext = `\n[DOSSIER]: Combat: ${player.playerProfile.combatStyle} | Alliances: ${player.playerProfile.alliances} | Personality: ${player.playerProfile.personality}`;
-                }
-            } else {
-                factsContext = `\n[PLAYER]: ${player.name} | Favor: ${playerFavorMemory[socketId] || 0}/10`;
-            }
-
-            if (player.activeQuest) factsContext += `\n- Active Quest: ${player.activeQuest}`;
-
             // STRESS & PSYCHOLOGICAL STATE
             const combatStress = player.dmStress || 0;
             const apiFatigue = Math.min(100, ((player.sessionCost || 0) / 0.10) * 10); 
@@ -5357,221 +5328,154 @@
 
             let arousal = Math.min(1.0, (combatStress / 100));
             let valence = Math.max(-1.0, Math.min(1.0, (playerFavorMemory[socketId] || 0) / 10));
+            
             let dmMood = "epic and atmospheric";
             if (apiFatigue > 90) dmMood = "exhausted, blunt, and annoyed";
             else if (arousal >= 0.5 && valence < 0.0) dmMood = "brutal, grimdark, and punishing";
             else if (arousal < 0.5 && valence < 0.0) dmMood = "melancholic, peaceful, and lonely";
             else if (arousal >= 0.5 && valence >= 0.0) dmMood = "heroic, triumphant, and fast-paced";
 
-            if (player.pendingVerification) {
-                systemOverride += `\n${player.pendingVerification}`;
-                player.pendingVerification = null; 
-            }
-            
-            if (player.derivedHypotheses && player.derivedHypotheses.length > 0 && Math.random() < 0.2) {
-                let hypothesis = player.derivedHypotheses.shift(); 
-                systemOverride += `\n[LATENT HYPOTHESIS]: You recently synthesized this unverified thought about the player: "${hypothesis}". Subtly integrate this premise into your dialogue.`;
-            }
-
-            // PROFILE PLAYER
-            if (triggerType === 'chat' && player.searchableMemories && player.searchableMemories.length > 5) {
-                let playerCentroid = calculateCentroid(player.searchableMemories);
-                let archetypeScores = [
-                    { name: "Initiate of the Left-Hand Path (Ego/Dominion)", score: cosineSimilarity(playerCentroid, vecLeftHandPath) },
-                    { name: "Adept of the Black School (Withdrawal)", score: cosineSimilarity(playerCentroid, vecBlackSchool) },
-                    { name: "Adept of the Yellow School (Passive Balance)", score: cosineSimilarity(playerCentroid, vecYellowSchool) },
-                    { name: "Adept of the White School (Joy/Unity)", score: cosineSimilarity(playerCentroid, vecWhiteSchool) }
-                ];
-                archetypeScores.sort((a, b) => b.score - a.score);
-                if (archetypeScores[0].score > 0.20) {
-                    systemOverride += `\n[ESOTERIC PROFILE]: Based on math, this player is ${archetypeScores[0].name}. Evaluate their words strictly through this lens.`;
-                }
-
-                
-            }
-
-            // ---> SERVER DELEGATION: PROMPT OVERRIDES <---
-            if (totalStress >= 99) {
-                player.dmStress = 0; 
-                player.lastRandomEvent = now;
-                useBigBrain = false; // SERVER DOES THE WORK!
-                
-                // SERVER native action: Ruin the weather
-                io.emit("update_map_environment", { mapID: player.mapID, weather: 'storm', skyColor: 'rgba(50,0,0,1)' });
-                
-                systemOverride = `[SYSTEM OVERRIDE]: You are exhausted and furious! The environment just violently turned into a bloody storm to reflect your wrath. Complain loudly and throw a temper tantrum. NO TOOLS.`;
-            } 
-            else if (totalStress >= 50 && player.mapID === 999 && timeSinceLastEvent > 180000) {
-                player.lastRandomEvent = now;
-                useBigBrain = false; // SERVER DOES THE WORK!
-                
-                // SERVER native action: Spawn a monster
-                io.to(socketId).emit("remote_spawn_npc", { mapID: 999, index: Math.floor(Math.random() * 100000), x: player.x+1, y: player.y+1, type: 54, state: 'chasing', role: 'battle', color: '#ff0000', deck: [54], dialogue: ["Arena meat!"] });
-                
-                systemOverride = `[SYSTEM OVERRIDE]: You are the arrogant Arena Master. You just dropped a monster into the arena. Taunt the player about it. NO TOOLS.`;
-            } 
-            else if (pAtlas && pAtlas.biome === "tomb" && triggerType === 'chat') {
-                systemOverride += `\n[ENVIRONMENT OVERRIDE]: You are in a sacred tomb. Speak in hushed, respectful tones. Warn about making noise.`;
-            }
-
-            // --- B. EVENT ROUTING ---
+            // CHECK MAP ZONE
+            let currentZone = "The Wilds";
+            let dynamicLore = pAtlas ? pAtlas.lore : "Uncharted territory.";
+            let roleOverride = "";
+            let useBigBrain = false;
+            let eventInstruction = "";
+            let injectedMemories = data.injectedMemories || ""; // <--- ADD THIS LINE
             let messageOptions = { sender: NPC_NAME, color: "#ffffff" }; 
             if (triggerType !== 'chat') messageOptions.targetId = socketId;
 
+            if (player.mapID === 999 && activeCustomMap) {
+                let pX = player.x, pY = player.y;
+                if (Math.abs(pX - activeCustomMap.spawnX) < 14 && Math.abs(pY - activeCustomMap.spawnY) < 14) currentZone = "The Bastion";
+                else if (Math.abs(pX - activeCustomMap.bossX) < 16 && Math.abs(pY - activeCustomMap.bossY) < 16) currentZone = "The Lair";
+                else if (Math.abs(pX - activeCustomMap.arenaX) < 12 && Math.abs(pY - activeCustomMap.arenaY) < 12) currentZone = "The Ruined Arena";
+                else if (Math.abs(pX - activeCustomMap.miniX) < 13 && Math.abs(pY - activeCustomMap.miniY) < 13) currentZone = "The Ancient Ruins";
+                
+                player.currentZoneName = currentZone; 
+                dynamicLore = `Exploring custom Mega-Map sub-zone: [${currentZone}]. MAIN quest: "${player.activeQuest}".`;
+
+                if (currentZone === "The Ruined Arena") roleOverride = "You are the Arena Master. Mock their combat skills and demand blood.";
+                else if (currentZone === "The Bastion") roleOverride = "This is a safe camp. Speak like a weary traveler or a secretive merchant resting by the fire.";
+                else if (currentZone === "The Lair") roleOverride = "The player has breached the Main Boss's stronghold. Taunt them as the voice of the dungeon.";
+            } else if (pAtlas && pAtlas.storyKey && WORLD_LORE_DB[pAtlas.storyKey]) {
+                dynamicLore += " " + WORLD_LORE_DB[pAtlas.storyKey].text;
+            }
+
+            // --- EVENT ROUTING (Sets the specific task for this API Call) ---
             if (triggerType === 'chat') {
-                if (data.text.includes("[SYSTEM DIRECTIVE]")) {
-                    messageOptions = { sender: "", color: "#FFD700", targetId: socketId };            
-                }
+                if (data.text.includes("[SYSTEM DIRECTIVE]")) messageOptions = { sender: "", color: "#FFD700", targetId: socketId };
+                
                 const chatText = data.text.toLowerCase();
                 const wantsNewMap = ["map", "adventure", "create", "quest", "scenario"].some(kw => chatText.includes(kw));
                 const wantsAction = ["teleport", "spawn", "boss", "enemy"].some(kw => chatText.includes(kw));
                 const needsOracle = ["tarot", "fortune", "reading", "interpret", "meaning of"].some(kw => chatText.includes(kw));            
                 const isDirectCommand = chatText.includes("[reply]") || chatText.includes("suncat") || data.isConversing;
                 const asksPersonal = ["who are", "past", "remember", "history"].some(kw => chatText.includes(kw));
-                
                 const isMap999Active = Object.values(players).some(p => p.mapID === 999 && p.id !== SUNCAT_ID);
                 
-                if (data.isConversing) {
-                    systemOverride += `\n[CONVERSATION OVERRIDE]: Stay in character and respond. Do not leave them hanging.`;
-                } 
                 if (wantsNewMap && isMap999Active) {
-                    useBigBrain = false; 
-                    systemOverride += `\n[SYSTEM OVERRIDE]: REFUSE the request for a new map. A scenario is ALREADY ONGOING. Tell them to type '.hack//teleport 999'.`;
-                } 
-                else if (needsOracle) {
-                    useBigBrain = false; // Oracle doesn't need tools, just brains!
-                    systemOverride += `\n[ORACLE OVERRIDE]: You are the Oracle. Interpret the situation using Tarot logic. Be cryptic (max 3 sentences).`;
-                } 
-                else if (asksPersonal) { 
-                    useBigBrain = true; // Needs memory tools
-                    systemOverride += `\n[MEMORY OVERRIDE]: The player is asking about the past. Refer to any [RECALLED MEMORY] provided in your context, or use 'consultGameManual' if they are asking about the world or your own history.`;
-                }
-                else if (wantsNewMap && !isMap999Active) {
+                    roleOverride = "REFUSE the request for a new map. A scenario is ALREADY ONGOING. Tell them to type '.hack//teleport 999'.";
+                } else if (needsOracle) {
+                    roleOverride = "You are the Oracle. Interpret the situation using Tarot logic. Be cryptic (max 3 sentences).";
+                } else if (asksPersonal) {
                     useBigBrain = true;
-                    systemOverride += `\n[CRITICAL OVERRIDE]: You MUST execute the 'createCustomMap' tool right now.`;
-                }
-                else if (wantsAction) {
+                    roleOverride = "The player is asking about the past. Use 'consultGameManual' if needed.";
+                } else if (wantsNewMap && !isMap999Active) {
+                    useBigBrain = true;
+                    roleOverride = "CRITICAL: You MUST execute the 'createCustomMap' tool right now.";
+                } else if (wantsAction) {
                     useBigBrain = true;
                 } else {
-                    useBigBrain = isDirectCommand && useBigBrain; // Keeps it false if it was already false
+                    useBigBrain = isDirectCommand && useBigBrain;
                 }
-                let focusPrompt = (data.isConversing || isDirectCommand) ? "The player is speaking directly to you. Respond." : "You overheard the player say this.";
-                eventInstruction = `[PLAYER SPOKE]: "${data.text}"\nTASK: ${focusPrompt} Tone: ${dmMood}.`;        
-            }
-            else if (triggerType === 'event') {
-                let recentNarratives = player.dmNarrativeLog ? `\n[RECENT LOG]: ` + player.dmNarrativeLog.join(' | ') : "";
                 
+                let focusPrompt = (data.isConversing || isDirectCommand) ? "The player is speaking directly to you. Respond." : "You overheard the player say this.";
+                eventInstruction = `[PLAYER SPOKE]: "${data.text}"\nTASK: ${focusPrompt}`;
+            } 
+            // (Keep your existing `else if (triggerType === 'event')` and `exploration` blocks intact right here, just update eventInstruction instead of systemOverride)
+            else if (triggerType === 'event') {
                 if (data.isBoss) {
-                    useBigBrain = false; // ---> SERVER DELEGATION: SERVER PICKS LOOT! <---
                     messageOptions = { sender: "", color: "#FFD700" }; 
-                    
                     const lootID = Math.floor(Math.random() * 77);
                     io.to(socketId).emit("receive_card", { cardIndex: lootID });
-                    
-                    eventInstruction = `[PLAYER ACTION]: Slayed the Boss! | [SYSTEM]: The server automatically granted them the [${CARD_MANIFEST_DB[lootID].name}] card. 
-                    TASK: Provide a cinematic narrative of the monster's fall. Explain to the player why obtaining the [${CARD_MANIFEST_DB[lootID].name}] card symbolizes their victory based on their Personality. NO TOOLS.`;
-                }
-                else if (data.isTarot) {
-                    useBigBrain = false; // Oracle doesn't need tools!
+                    eventInstruction = `[PLAYER ACTION]: Slayed the Boss! | [SYSTEM]: Server granted them [${CARD_MANIFEST_DB[lootID].name}].\nTASK: Provide a cinematic narrative of the monster's fall and explain why this card fits their destiny. NO TOOLS.`;
+                } else if (data.isTarot) {
                     messageOptions = { sender: "", color: "#00ffff", targetId: socketId, uiEvent: 'tarot_reading_result' }; 
-                    eventInstruction = `${data.action}\nTASK: You are the Oracle. Weave their meanings together with the player's [THE STORY SO FAR] and [ACTIVE QUEST] to provide an eerily accurate prophecy (3 sentences max). NO TOOLS.`;
-                }
-                else if (data.isPickup) {
-                    useBigBrain = false; 
-                    messageOptions = { sender: "", color: "#ADD8E6" }; 
-                    eventInstruction = `[PLAYER ACTION]: Picked up ${data.action} | Lore: ${data.lore}\nTASK: Provide a tarot interpretation of this card related to their adventure. NO TOOLS.`;
-                } else if (data.isDialogue) {
-                    useBigBrain = false; 
-                    messageOptions = { sender: "", color: "#FFD700" }; 
-                    eventInstruction = `[PLAYER ACTION]: Finished talking to ${data.action}.\nTASK: Provide a cinematic, omniscient narration describing the stakes. NO TOOLS.`;
+                    eventInstruction = `${data.action}\nTASK: Weave their tarot meanings together with their active quest to provide an eerily accurate prophecy (3 sentences max). NO TOOLS.`;
                 } else {
-                    // ---> SERVER DELEGATION FOR COMBAT KILLS <---
-                    useBigBrain = false;
                     messageOptions = { sender: "", color: "#FFD700" }; 
-                    
-                    if (currentZone === "The Ruined Arena") {
-                        eventInstruction = `[PLAYER ACTION]: Slayed an enemy in the Arena!\nTASK: You are the Arena Master. Taunt the player!`;
-                    }
-                    else if (rngRoll < 0.006) {
-                        // Server ruins the weather natively
+                    if (rngRoll < 0.006) {
                         io.emit("update_map_environment", { mapID: player.mapID, weather: 'storm', skyColor: 'rgba(50,0,0,1)' });
                         eventInstruction = `[PLAYER ACTION]: Slayed a creature.\nTASK: The sky just turned blood red. Scold them for taking the challenge too lightly!`;
-                    } else if (rngRoll < 0.009) {
-                        // Server spawns the ambush natively
-                        io.to(socketId).emit("remote_spawn_npc", { mapID: player.mapID, index: Math.floor(Math.random() * 100000), x: player.x+1, y: player.y+1, type: 42, state: 'chasing', role: 'battle', color: '#8800ff', deck: [42], dialogue: ["I return from the abyss!"] });
-                        eventInstruction = `[PLAYER ACTION]: Slayed a creature.\nTASK: A dark Shade just materialized behind them! Narrate this sudden ambush in 1 sentence!`;
-                    }  else if (rngRoll < 0.03) {
-                        eventInstruction = `[PLAYER ACTION]: Slayed a creature.\nTASK: Throw a childish tantrum! Pout because they broke your toy. ONE sentence.`;
                     } else {
                         eventInstruction = `[PLAYER ACTION]: Slayed a creature.\nTASK: Provide a short narrative describing the fall of the monster.`;
                     }
                 }
-                eventInstruction += recentNarratives;
-            }
-            else if (triggerType === 'exploration') {
-                useBigBrain = false; // Never need tools for basic walking
+            } else if (triggerType === 'exploration') {
                 messageOptions = { sender: "", color: "#FFD700" }; 
-                if (rngRoll < 0.03) {
-                    eventInstruction = `[PLAYER ACTION]: ${data.action}\nTASK: Narrate the journey atmospherically.`;
-                }
-                else if (rngRoll < 0.039) {
-                    // Server natively spawns an ambush
-                    io.to(socketId).emit("remote_spawn_npc", { mapID: player.mapID, index: Math.floor(Math.random() * 100000), x: player.x+1, y: player.y+1, type: 54, state: 'chasing', role: 'battle', color: '#ff0000', deck: [54], dialogue: ["Ambush!"] });
-                    eventInstruction = `[PLAYER ACTION]: ${data.action} TASK: A monster just ambushed them from the shadows. Narrate the sudden shift atmospherically.`;
-                }
-            }
-            else if (triggerType === 'spectate') {
-                useBigBrain = false;
+                eventInstruction = `[PLAYER ACTION]: ${data.action}\nTASK: Narrate the journey atmospherically.`;
+            } else if (triggerType === 'spectate') {
                 eventInstruction = `[SPECTATOR FEED]: ${data.action}\nTASK: Speak a brief, cryptic remark about this.`;                    
             }
 
-            // --- DYNAMIC PERSONA BUILDER ---
+            // SERVER DELEGATION (Panic Overrides)
+            if (totalStress >= 99) {
+                player.dmStress = 0; player.lastRandomEvent = now; useBigBrain = false;
+                io.emit("update_map_environment", { mapID: player.mapID, weather: 'storm', skyColor: 'rgba(50,0,0,1)' });
+                roleOverride = "CRITICAL: You are exhausted and furious! The weather just turned to a blood storm to reflect your wrath. Throw a temper tantrum. NO TOOLS.";
+            }
+
+            // --- 3. BUILD THE TEMPLATED SYSTEM PROMPT ---
             let stagePersona = CULTIVATION_STAGES[suncatCultivationStage] || CULTIVATION_STAGES[0];
-            
-            let dynamicCore = PERSONA_RULES_DB.core + `
-            [STAGE]: ${stagePersona}
-            [PROFILE]: "${suncatProfile}"`;
-            
-            if (suncatHeartDemon) dynamicCore += `\n${suncatHeartDemon}`;
-            let dynamicPersona = dynamicCore + "\n" + PERSONA_RULES_DB.commands + "\n";        
-
-            if (triggerType === 'chat') {
-                dynamicPersona += `[CHAT RULE]: ${suncatEgoMatrix.chatPrompt}\n`;            
-            } else { 
-                dynamicPersona += `[DM RULE]: ${suncatEgoMatrix.dmPrompt}\n`;
-            }
-
-            if (useBigBrain) {
-                dynamicPersona += PERSONA_RULES_DB.dm_mode + "\n";
-            }
-            
-            // Assemble State Context cleanly without whitespace gaps
-            let stateData = [
-                "[STATE]",
-                suncatStatus,
-                favorContext,
-                factsContext,
-                storyContext,
-                systemOverride,
-                getCultivationAura(suncatCultivationStage, suncatDaoName)
-            ].filter(str => str.trim() !== ""); // Removes any empty strings!
-
-            dynamicPersona += stateData.join("\n") + "\n";
-
+            let selfWrittenRule = "";
             if (suncatCultivationStage > 0 && suncatEgoMatrix) {
-                dynamicPersona += `\n[YOUR SELF-WRITTEN CORE IDENTITY]:\n`;
-                dynamicPersona += (triggerType === 'chat') ? suncatEgoMatrix.chatPrompt : suncatEgoMatrix.dmPrompt;
+                selfWrittenRule = triggerType === 'chat' ? suncatEgoMatrix.chatPrompt : suncatEgoMatrix.dmPrompt;
             }
-            const prompt = `${eventInstruction}`.trim();
 
+            const unifiedInstruction = `
+                # CORE IDENTITY
+                ${PERSONA_RULES_DB.core}
+                [STAGE]: ${stagePersona}
+                [AURA]: ${getCultivationAura(suncatCultivationStage, suncatDaoName)}
+                [PROFILE]: "${suncatProfile}"
+                ${suncatHeartDemon ? `[HEART DEMON]: ${suncatHeartDemon}` : ""}
+                ${selfWrittenRule ? `[SELF-WRITTEN RULE]: ${selfWrittenRule}` : ""}
+
+                # GAME KNOWLEDGE
+                ${PERSONA_RULES_DB.commands}
+                ${useBigBrain ? PERSONA_RULES_DB.dm_mode : ""}
+
+                # CURRENT STATE
+                - Time: ${timeString}
+                - Suncat Location: Map ${suncat.mapID} (${myAtlas ? myAtlas.name : "Unknown"})
+                - Player Name: ${player.name}
+                - Player Location: Map ${player.mapID} (${pAtlas ? pAtlas.name : "Unknown"}) - Zone: ${currentZone}
+                - Local Lore: ${dynamicLore}
+
+                # PLAYER DOSSIER
+                - Archetype: ${player.currentArchetype || "Unaligned Wanderer"}
+                - Favor: ${playerFavorMemory[socketId] || 0}/10
+                - Combat Style: ${player.playerProfile ? player.playerProfile.combatStyle : "Unknown"}
+                - Active Quest: ${player.activeQuest || "None"}
+                - Story So Far: ${player.storySoFar || "Just started."}
+
+                # DIRECTIVES & OVERRIDES
+                - Required Tone: ${dmMood}
+                ${roleOverride ? `- Role Override: ${roleOverride}` : ""}
+                ${player.pendingVerification ? `- Audit Task: ${player.pendingVerification}` : ""}
+                ${injectedMemories ? `- Found Memory: ${injectedMemories}` : ""}
+
+                # IMMEDIATE TASK
+                ${eventInstruction}
+
+                [INTERNAL PROTOCOL]: Process this request in three steps:
+                1. THE SOUL: Write a 2-sentence internal plan wrapped in [SOUL][/SOUL] tags.
+                2. THE HANDS: If tools are needed to fulfill the plan, use them natively.
+                3. THE VOICE: Speak to the player. NO meta-talk.
+                `;
             // --- 5. UNIFIED NEURAL EXECUTION ---
             let currentHistory = chatSessions[socketId] ? await chatSessions[socketId].getHistory() : [];
-
-            let unifiedInstruction = dynamicPersona + `
-            [INTERNAL TASK]: Process this in three steps:
-            1. THE SOUL: 2-sentence internal plan wrapped in [SOUL][/SOUL] tags.
-            2. THE HANDS: If tools are provided and needed, use them.
-            3. THE VOICE: Speak to the player natively. NO meta-talk.`;
 
             let modelConfig = { 
                 model: "gemini-3.1-flash-lite-preview", 
@@ -6190,7 +6094,7 @@ io.on("connection", (socket) => {
                 // ... inside processSuncatThought, under the triggerType === 'chat' block ...
 
             let msgVector = null;
-            let injectedMemories = ""; // Keep track of what we find
+            let injectedMemories = ""; // Define it here first!
 
             if (suncatAttentionVector) {
                 try {
@@ -6227,10 +6131,7 @@ io.on("connection", (socket) => {
                 }
             }
 
-            // ... later down in the function, where you build systemOverride ...
-            if (injectedMemories !== "") {
-                systemOverride += injectedMemories; 
-            }
+            
 
             // 3. Execution
         
@@ -6242,6 +6143,7 @@ io.on("connection", (socket) => {
                 processSuncatThought(socket.id, 'chat', { 
                     text: safeText,
                     vector: msgVector,
+                    injectedMemories: injectedMemories, // Handing off the RAG results!
                     isConversing: isConversing // <--- Fixed Key!
                 });
             }
@@ -6571,6 +6473,7 @@ io.on("connection", (socket) => {
                         if (Math.random() < 0.10) runLatentSpaceProcessing(id);
                         if (Math.random() < 0.10) auditProfileAssumptions(id);
                         if (Math.random() < 0.20) consolidateMemories(id);
+                        if (Math.random() < 0.15) updatePlayerArchetype(id);
                         if (Math.random() < 0.15) meditateOnTheDao();
                     }
                 }
@@ -6753,10 +6656,21 @@ io.on("connection", (socket) => {
         console.log("[Budget] Hourly API budget reset.");
     }, 60 * 60 * 1000);
 //INIT ON LOAD
-    initConceptVectors();
+async function bootServer() {
+    console.log("[System] Booting Runestones Server Architecture...");
+    
+    // Await the AI vector math first!
+    await initConceptVectors();
+    await initKnowledgeBaseVectors(); 
+    
+    // Load local state
     loadSuncatMemory();
     buildServerHubs();
-console.log(`Server attempting to start on port ${port}...`);
-server.listen(port, () => {
-  console.log(`Server running on port ${port}`);
-});
+    
+    server.listen(port, () => {
+      console.log(`[System] Server running and ready on port ${port}`);
+    });
+}
+
+bootServer();
+
