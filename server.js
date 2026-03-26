@@ -25,8 +25,9 @@
             });
     const port = process.env.PORT || 3000;
     //AI CONFIG ---
+            const { GoogleGenerativeAI, SchemaType } = require("@google/generative-ai");
+
         const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-        const { GoogleGenerativeAI, SchemaType } = require("@google/generative-ai");
         const embedder = genAI.getGenerativeModel({ model: "gemini-embedding-001" });// --- COGNITIVE AXES (Behavioral) ---
         // --- Model setup ---
         const voiceModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
