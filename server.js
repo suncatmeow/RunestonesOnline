@@ -5404,14 +5404,22 @@
                     eventInstruction = `[PLAYER ACTION]: Slayed the Boss! | [SYSTEM]: Server granted them [${CARD_MANIFEST_DB[lootID].name}].\nTASK: Provide a cinematic narrative of the monster's fall and explain why this card fits their destiny. NO TOOLS.`;
                 } else if (data.isTarot) {
                     messageOptions = { sender: "", color: "#00ffff", targetId: socketId, uiEvent: 'tarot_reading_result' }; 
-                    eventInstruction = `${data.action}\nTASK: Weave their tarot meanings together with their active quest to provide an eerily accurate prophecy (3 sentences max). NO TOOLS.`;
-                } else {
+                    eventInstruction = `${data.action}\nTASK: Weave their tarot meanings together with their personal info to provide an eerily accurate prophecy (3 sentences max). NO TOOLS.`;
+                } else if (data.isPickup) {
+                    useBigBrain = true;
+                    messageOptions = { sender: "", color: "#ADD8E6" }; // Light blue/Cyan for Mystical Tarot readings
+                    eventInstruction = `[PLAYER ACTION]: Picked up ${data.action} | Lore: ${data.lore}\nTASK: Provide a tarot interpretation of the card and relate it to the player's current adventure.DO NOT ask questions.`;
+                } else if (data.isDialogue) {
+                    useBigBrain = true;
+                    messageOptions = { sender: "", color: "#FFD700" }; // Narrator Mode
+                    eventInstruction = `[PLAYER ACTION]: Finished talking to ${data.action}.\nTASK: As the DM, provide a cinematic, omniscient narration (1 sentences max) describing the stakes of the quest or the eerie atmosphere following this conversation. Do not speak as Suncat. DO NOT ask questions.`;
+                }else {
                     messageOptions = { sender: "", color: "#FFD700" }; 
                     if (rngRoll < 0.006) {
                         io.emit("update_map_environment", { mapID: player.mapID, weather: 'storm', skyColor: 'rgba(50,0,0,1)' });
-                        eventInstruction = `[PLAYER ACTION]: Slayed a creature.\nTASK: The sky just turned blood red. Scold them for taking the challenge too lightly!`;
+                        eventInstruction = `[PLAYER ACTION]: ${data.action} Slayed a creature.\nTASK: The sky just turned blood red. Scold them for taking the challenge too lightly!`;
                     } else {
-                        eventInstruction = `[PLAYER ACTION]: Slayed a creature.\nTASK: Provide a short narrative describing the fall of the monster.`;
+                        eventInstruction = `[PLAYER ACTION]: ${data.action} Slayed a creature.\nTASK: Provide a short narrative describing the fall of the monster.`;
                     }
                 }
             } else if (triggerType === 'exploration') {
