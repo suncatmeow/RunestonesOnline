@@ -5496,7 +5496,7 @@
             let activeSession = activeModel.startChat({ history: currentHistory });
             chatSessions[socketId] = activeSession; 
 
-            let result = await activeSession.sendMessage(prompt);
+            let result = await activeSession.sendMessage(unifiedInstruction);
             
             if (useBigBrain && result.response.functionCalls()) {
                 const toolOutput = await executeAITools(result.response, activeSession, io.sockets.sockets.get(socketId));
