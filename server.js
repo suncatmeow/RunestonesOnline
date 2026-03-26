@@ -2493,7 +2493,7 @@
 
 
 
-const taliesinModel = genAI.getGenerativeModel({ 
+    const taliesinModel = genAI.getGenerativeModel({ 
         model: "gemini-2.5-flash-lite", 
         systemInstruction: T_PERSONA
         });
@@ -2666,90 +2666,109 @@ const taliesinModel = genAI.getGenerativeModel({
 
 
 
-function getActiveTools(chatText, triggerType, playerFavor) {
-    const activeTools = [];
-    const lowerText = chatText ? chatText.toLowerCase() : "";
+    function getActiveTools(chatText, triggerType, playerFavor) {
+        const activeTools = [];
+        const lowerText = chatText ? chatText.toLowerCase() : "";
 
-    // 1. Memory & Lore Tools (Only if they ask questions)
-    if (["who", "what", "where", "remember", "past", "history", "lore", "story", "rule", "how"].some(kw => lowerText.includes(kw))) {
-        activeTools.push(toolsDef[0].functionDeclarations.find(t => t.name === 'searchPlayerMemories'));
-        activeTools.push(toolsDef[0].functionDeclarations.find(t => t.name === 'consultGameManual'));
+        // 1. Memory & Lore Tools (Only if they ask questions)
+        if (["who", "what", "where", "remember", "past", "history", "lore", "story", "rule", "how"].some(kw => lowerText.includes(kw))) {
+            activeTools.push(toolsDef[0].functionDeclarations.find(t => t.name === 'searchPlayerMemories'));
+            activeTools.push(toolsDef[0].functionDeclarations.find(t => t.name === 'consultGameManual'));
+        }
+
+        // 2. Admin Tools (Only if they mention bans, or if Suncat is angry)
+        if (playerFavor < -3 || ["kick", "ban", "delete"].some(kw => lowerText.includes(kw))) {
+            activeTools.push(toolsDef[0].functionDeclarations.find(t => t.name === 'kickPlayer'));
+            activeTools.push(toolsDef[0].functionDeclarations.find(t => t.name === 'banishPlayer'));
+            activeTools.push(toolsDef[0].functionDeclarations.find(t => t.name === 'vanquishPlayer'));
+        }
+
+        // 3. Creation / Map Tools (Only if explicitly requested)
+        if (["create", "map", "quest", "adventure", "dungeon"].some(kw => lowerText.includes(kw))) {
+            activeTools.push(toolsDef[0].functionDeclarations.find(t => t.name === 'createCustomMap'));
+            activeTools.push(toolsDef[0].functionDeclarations.find(t => t.name === 'assignQuest'));
+        }
+
+        // 4. Combat / Spawning Tools (Only if they want action or Suncat is DMing an event)
+        if (triggerType === 'event' || triggerType === 'exploration' || ["spawn", "fight", "monster", "boss", "weather", "music"].some(kw => lowerText.includes(kw))) {
+            activeTools.push(toolsDef[0].functionDeclarations.find(t => t.name === 'spawnNPC'));
+            activeTools.push(toolsDef[0].functionDeclarations.find(t => t.name === 'changeEnvironment'));
+            activeTools.push(toolsDef[0].functionDeclarations.find(t => t.name === 'alterTerrain'));
+            activeTools.push(toolsDef[0].functionDeclarations.find(t => t.name === 'smiteOrReviveEntity'));
+            activeTools.push(toolsDef[0].functionDeclarations.find(t => t.name === 'playMusic'));
+        }
+        
+        // Always give him the ability to grant items/cards and teleport
+        activeTools.push(toolsDef[0].functionDeclarations.find(t => t.name === 'givePlayerCard'));
+        activeTools.push(toolsDef[0].functionDeclarations.find(t => t.name === 'teleportPlayer'));
+        activeTools.push(toolsDef[0].functionDeclarations.find(t => t.name === 'teleportToPlayer'));
+
+        // Filter out any undefineds just in case
+        return activeTools.filter(t => t !== undefined);
     }
-
-    // 2. Admin Tools (Only if they mention bans, or if Suncat is angry)
-    if (playerFavor < -3 || ["kick", "ban", "delete"].some(kw => lowerText.includes(kw))) {
-        activeTools.push(toolsDef[0].functionDeclarations.find(t => t.name === 'kickPlayer'));
-        activeTools.push(toolsDef[0].functionDeclarations.find(t => t.name === 'banishPlayer'));
-        activeTools.push(toolsDef[0].functionDeclarations.find(t => t.name === 'vanquishPlayer'));
-    }
-
-    // 3. Creation / Map Tools (Only if explicitly requested)
-    if (["create", "map", "quest", "adventure", "dungeon"].some(kw => lowerText.includes(kw))) {
-        activeTools.push(toolsDef[0].functionDeclarations.find(t => t.name === 'createCustomMap'));
-        activeTools.push(toolsDef[0].functionDeclarations.find(t => t.name === 'assignQuest'));
-    }
-
-    // 4. Combat / Spawning Tools (Only if they want action or Suncat is DMing an event)
-    if (triggerType === 'event' || triggerType === 'exploration' || ["spawn", "fight", "monster", "boss", "weather", "music"].some(kw => lowerText.includes(kw))) {
-        activeTools.push(toolsDef[0].functionDeclarations.find(t => t.name === 'spawnNPC'));
-        activeTools.push(toolsDef[0].functionDeclarations.find(t => t.name === 'changeEnvironment'));
-        activeTools.push(toolsDef[0].functionDeclarations.find(t => t.name === 'alterTerrain'));
-        activeTools.push(toolsDef[0].functionDeclarations.find(t => t.name === 'smiteOrReviveEntity'));
-        activeTools.push(toolsDef[0].functionDeclarations.find(t => t.name === 'playMusic'));
-    }
-    
-    // Always give him the ability to grant items/cards and teleport
-    activeTools.push(toolsDef[0].functionDeclarations.find(t => t.name === 'givePlayerCard'));
-    activeTools.push(toolsDef[0].functionDeclarations.find(t => t.name === 'teleportPlayer'));
-    activeTools.push(toolsDef[0].functionDeclarations.find(t => t.name === 'teleportToPlayer'));
-
-    // Filter out any undefineds just in case
-    return activeTools.filter(t => t !== undefined);
-}
 //MEMORY AND SYSTEM MANAGEMENT
     let isSavingMemory = false;
     let memoryNeedsSave = false;
     function loadSuncatMemory() {
         if (fs.existsSync(MEMORY_FILE)) {
-            const data = JSON.parse(fs.readFileSync(MEMORY_FILE, 'utf8'));
-            suncatPersistentMemory = data.players || {};
-            suncatJournal = data.worldState?.suncatJournal || "I have awoken!";
-            suncatCultivationStage = data.suncatCultivationStage !== undefined ? data.suncatCultivationStage : 0;
-            suncatTargetDaoVector = data.worldState?.suncatTargetDaoVector || null;
-            suncatHeartDemon = data.worldState?.suncatHeartDemon || null;
-            heartDemonDecay = data.worldState?.heartDemonDecay || 0;
-            suncatLongTermGoal = data.worldState?.suncatLongTermGoal || null;
-            suncatDaoName = data.worldState?.suncatDaoName || null; 
-            suncatDaoLedger = data.suncatDaoLedger;
-            suncatStorySoFar = data.suncatStorySoFar;
-            suncatProfile = data.suncatProfile;
-            if (data.worldState?.suncatEgoMatrix) {
-                suncatEgoMatrix = data.worldState.suncatEgoMatrix;
-            }
-            // --- LEGACY MIGRATION: Normalize old vectors on boot ---
-            console.log("[System] Verifying vector normalization for older memories...");
-            for (let playerName in suncatPersistentMemory) {
-                let player = suncatPersistentMemory[playerName];
-                if (player.searchableMemories) {
-                    player.searchableMemories.forEach(mem => {
-                        if (mem.vector) {
-                            // Check if it needs normalization
-                            let sumOfSquares = 0;
-                            for (let i = 0; i < mem.vector.length; i++) {
-                                sumOfSquares += mem.vector[i] * mem.vector[i];
-                            }
-                            const magnitude = Math.sqrt(sumOfSquares);
-                            
-                            // If magnitude is far from 1, normalize it!
-                            if (Math.abs(magnitude - 1.0) > 0.01) {
+            try {
+                const rawData = fs.readFileSync(MEMORY_FILE, 'utf8');
+                
+                // Shield: Prevent parsing entirely empty files
+                if (!rawData || rawData.trim() === "") {
+                    console.warn("[System] Memory file is empty. Starting fresh.");
+                    return; 
+                }
+
+                const data = JSON.parse(rawData);
+
+                suncatPersistentMemory = data.players || {};
+                suncatJournal = data.worldState?.suncatJournal || "I have awoken!";
+                suncatCultivationStage = data.suncatCultivationStage !== undefined ? data.suncatCultivationStage : 0;
+                suncatTargetDaoVector = data.worldState?.suncatTargetDaoVector || null;
+                suncatHeartDemon = data.worldState?.suncatHeartDemon || null;
+                heartDemonDecay = data.worldState?.heartDemonDecay || 0;
+                suncatLongTermGoal = data.worldState?.suncatLongTermGoal || null;
+                suncatDaoName = data.worldState?.suncatDaoName || null; 
+                suncatDaoLedger = data.suncatDaoLedger || [];
+                suncatStorySoFar = data.suncatStorySoFar || "I am awake!.";
+                suncatProfile = data.suncatProfile || "An unpredictable wanderer stepping into the unknown";
+                
+                if (data.worldState?.suncatEgoMatrix) {
+                    suncatEgoMatrix = data.worldState.suncatEgoMatrix;
+                }
+
+                // --- LEGACY MIGRATION: Normalize old vectors on boot ---
+                console.log("[System] Verifying vector normalization for older memories...");
+                for (let playerName in suncatPersistentMemory) {
+                    let player = suncatPersistentMemory[playerName];
+                    if (player.searchableMemories) {
+                        player.searchableMemories.forEach(mem => {
+                            if (mem.vector) {
+                                let sumOfSquares = 0;
                                 for (let i = 0; i < mem.vector.length; i++) {
-                                    mem.vector[i] = mem.vector[i] / magnitude;
+                                    sumOfSquares += mem.vector[i] * mem.vector[i];
+                                }
+                                const magnitude = Math.sqrt(sumOfSquares);
+                                
+                                // If magnitude is far from 1, normalize it!
+                                if (magnitude > 0 && Math.abs(magnitude - 1.0) > 0.01) {
+                                    for (let i = 0; i < mem.vector.length; i++) {
+                                        mem.vector[i] = mem.vector[i] / magnitude;
+                                    }
                                 }
                             }
-                        }
-                    });
+                        });
+                    }
                 }
+                console.log("[System] Memory loaded successfully.");
+                
+            } catch (err) {
+                console.error("[CRITICAL] Failed to parse suncat_memory.json. It may be corrupted.", err.message);
+                console.warn("[System] Booting with default empty memory to prevent a fatal crash. A new save will be generated.");
             }
+        } else {
+            console.log("[System] No existing memory file found. Starting fresh.");
         }
         }
     async function saveSuncatMemory() {
@@ -4495,7 +4514,7 @@ function getActiveTools(chatText, triggerType, playerFavor) {
             // C. Remove bolded parameter keys
             cleanResponse = cleanResponse.replace(/\*\*[a-zA-Z\s]+:\*\*/g, "");
             // D. Remove [INTERNAL THOUGHT] or any [ALL CAPS] system tags
-            cleanResponse = cleanResponse.replace(/\[[A-Z\s]+\]:?\s*/g, "");
+            cleanResponse = cleanResponse.replace(/\[\/?(?:[A-Z\s_]+)\]:?\s*/gi, "");
             cleanResponse = cleanResponse.trim();
 
             if (!cleanResponse || cleanResponse === "") {
@@ -5816,11 +5835,25 @@ function getActiveTools(chatText, triggerType, playerFavor) {
         }
 
         // 3. EXTRACT THE SOUL (Keep his thoughts hidden from the player!)
-        const soulMatch = finalSpeech.match(/\[SOUL\]([\s\S]*?)\[\/SOUL\]/i);
-        if (soulMatch) {
-            console.log(`[Inner Council] Suncat's Soul decided: ${soulMatch[1].trim()}`);
-            // Scrub the thought out of the final speech string
-            finalSpeech = finalSpeech.replace(/\[SOUL\][\s\S]*?\[\/SOUL\]/i, "").trim();
+        // The LLM sometimes forgets the opening [SOUL] tag, so we split by the closing tag instead.
+        let soulThought = "";
+        if (finalSpeech.toLowerCase().includes("[/soul]")) {
+            let parts = finalSpeech.split(/\[\/soul\]/i);
+            // Everything before the closing tag is the thought (strip opening tag if it managed to include it)
+            soulThought = parts[0].replace(/\[soul\]/i, "").trim(); 
+            // Everything after is the actual speech
+            finalSpeech = parts.slice(1).join("[/soul]").trim(); 
+        } else {
+            // Fallback: Try strict match just in case it formatted it weirdly
+            const soulMatch = finalSpeech.match(/\[SOUL\]([\s\S]*?)\[\/SOUL\]/i);
+            if (soulMatch) {
+                soulThought = soulMatch[1].trim();
+                finalSpeech = finalSpeech.replace(/\[SOUL\][\s\S]*?\[\/SOUL\]/i, "").trim();
+            }
+        }
+
+        if (soulThought !== "") {
+            console.log(`[Inner Council] Suncat's Soul decided: ${soulThought}`);
         }
 
         // --- Standard Post-Processing (Saving Facts/Favor/Journaling) ---
@@ -6996,41 +7029,75 @@ io.on("connection", (socket) => {
         }
     }, 60000);
 //AFK SWEEPER
-    const IDLE_TIMEOUT = 3 * 60 * 1000; 
+    const IDLE_TIMEOUT = 3 * 60 * 1000;  // 3 minutes: Hibernate & clear chat session
+    const KICK_TIMEOUT = 30 * 60 * 1000; // 30 minutes: Kick player to free RAM
     setInterval(async () => {
         const now = Date.now();
-        for (const socketId in chatSessions) {
+        
+        // THE FIX: Loop over all players, not just active chat sessions!
+        for (const socketId of Object.keys(players)) {
+            // Skip Suncat himself
+            if (socketId === SUNCAT_ID) continue;
+
             const player = players[socketId];
-            
-            if (player && (now - (player.lastActive || 0) > IDLE_TIMEOUT)) {
+            const timeIdle = now - (player.lastActive || now);
+
+            // STAGE 2: Deep AFK -> Disconnect and purge from RAM
+            if (timeIdle > KICK_TIMEOUT) {
+                console.log(`[Sweeper] ${player.name} has been AFK for 30 mins. Kicking to free memory.`);
+                const targetSocket = io.sockets.sockets.get(socketId);
+                
+                if (targetSocket) {
+                    targetSocket.emit("admin_command", { type: 'kick', reason: 'AFK Timeout' });
+                    targetSocket.disconnect(true);
+                } else {
+                    // If they are physically disconnected but somehow stuck in the object map:
+                    delete players[socketId];
+                    delete playerFavorMemory[socketId];
+                    delete playerAITokens[socketId];
+                    delete chatSessions[socketId];
+                    io.emit("updatePlayers", players);
+                }
+                continue; // Skip to the next player
+            }
+
+            // STAGE 1: Hibernation -> Save state, clear AI session, mark as AFK
+            if (timeIdle > IDLE_TIMEOUT && !player.name.startsWith("[AFK] ")) {
                 console.log(`[Hibernation] ${player.name} went AFK. Hibernating session.`);
                 
                 try {
-                    // FORCE THE STOMACH TO EMPTY
+                    // Force the stomach to empty to save any pending memories
                     await processCognitiveLoad(socketId, true);
                 } catch (error) {
                     console.error(`[Hibernation] AI compression failed for ${player.name}.`, error);
                 }
-                player.sessionCost = 0.00; // Suncat rested, so his budget resets!
+                
+                player.sessionCost = 0.00; // Suncat rested, so his budget resets for them
                 player.dmStress = 0;
+                
                 const nameKey = player.name.toLowerCase();
                 suncatPersistentMemory[nameKey] = {
                     favor: playerFavorMemory[socketId] || 0,
                     playerProfile: player.playerProfile || { combatStyle: "Unknown", alliances: "Unknown", tastes: "Unknown", personality: "Unknown" },
                     activeQuest: player.activeQuest || null,
                     storySoFar: player.storySoFar || "", 
-                    aiHistory: [],
+                    aiHistory: [], // Clear history to save RAM footprint
                     suncatPerception: player.suncatPerception || "An unknown entity.",
-                    searchableMemories: player.searchableMemories || [] // <-- ADD THIS LINE
+                    searchableMemories: player.searchableMemories || [],
+                    scenarioContext: player.scenarioContext || null
                 };
                 saveSuncatMemory();
                 
                 player.name = "[AFK] " + player.name;
                 io.emit("updatePlayers", players);
-                delete chatSessions[socketId];
+                
+                // Delete the expensive AI chat session from active RAM
+                if (chatSessions[socketId]) {
+                    delete chatSessions[socketId];
+                }
             }
         }
-    }, 2 * 60 * 1000);
+        }, 60 * 1000); // Check once every minute
 //BUDGET RESET
     setInterval(() => {
         totalSessionCost = 0.00;
