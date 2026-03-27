@@ -2314,7 +2314,7 @@
                     type: "OBJECT",
                     properties: {
                         targetName: { type: "STRING", description: "The player's exact target name." },
-                        cardName: { type: "STRING", description: "The exact name of the card or its numeric ID." },
+                        cardName: { type: "STRING", description: "The exact name of the card or its numeric ID (0-77)." },
                         reason: { type: "STRING" }
                     },
                     required: ["targetName", "cardName"]
@@ -2426,7 +2426,7 @@
             // 1. ALTER TERRAIN
             {
                 name: "alterTerrain",
-                description: "[CORE FORMATION ONLY]: Changes a specific tile on the player's map (e.g., breaking a wall, creating a water pit, or building a bridge).",
+                description: "Changes a specific tile on the player's map (e.g., breaking a wall, creating a water pit, or building a bridge).",
                 parameters: {
                     type: "OBJECT",
                     properties: {
@@ -2441,7 +2441,7 @@
             // 2. SMITE OR REVIVE ENTITY
             {
                 name: "smiteOrReviveEntity",
-                description: "[CORE FORMATION ONLY]: Instantly smites (kills) or revives a specific type of NPC currently on the player's map.",
+                description: "Instantly smites (kills) or revives a specific type of NPC currently on the player's map.",
                 parameters: {
                     type: "OBJECT",
                     properties: {
@@ -2455,7 +2455,7 @@
             // 3. PLAY MUSIC
             {
                 name: "playMusic",
-                description: "[CORE FORMATION ONLY]: Changes the background music for the player to set the mood.",
+                description: "Changes the background music for the player to set the mood.",
                 parameters: {
                     type: "OBJECT",
                     properties: {
@@ -5717,7 +5717,7 @@
                         } 
                     else if (needsSlayer) {
                         useBigBrain = true;
-                        systemOverride += `\n[COMBAT ASSIST OVERRIDE]: The player wants you to smite an npc on their map. Use the tool "smiteOrReviveEntity" to smite the npc on their map, then if Favor < 5 complain about having to risk your skin and ask if you could at least keep some of the loot. If Favor >= 5 tell them you'll always protect a friend of your heart and ask if there is anyone else you want them to smite.CRITICAL: Keep your verbal response to exactly ONE short, punchy sentence.`;
+                        systemOverride += `\n[COMBAT ASSIST OVERRIDE]: The player wants you to smite an npc (or group of npcs) on their map. You MUST use the tool "smiteOrReviveEntity" to smite it/them IMMEDIATELY.  Afterwards, If Favor < 5 complain about having to risk your skin and ask if you could at least keep some of the loot. If Favor >= 5 tell them you'll always protect a friend of your heart and ask if there is anyone else you want them to smite.CRITICAL: Keep your verbal response to exactly ONE short, punchy sentence.`;
                         } 
                     else if (asksPersonal || asksHistory) { 
                         useBigBrain = true;
