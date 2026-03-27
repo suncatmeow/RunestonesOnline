@@ -6353,6 +6353,14 @@ io.on("connection", (socket) => {
             payload: data.payload
             });
             });
+        socket.on('tile_destroyed', (data) => {
+            
+            // 'socket.broadcast.emit' sends the data to EVERYONE connected to the server
+            // EXCEPT the person who originally sent it. 
+            // (This is perfect, because the shooter already deleted the tile locally!)
+            socket.broadcast.emit('tile_destroyed', data);
+            
+        });
     //SUNCAT AI & SOCIAL
         socket.on('chat_message', async (msgText) => {
             if (!msgText) return; 
@@ -6791,7 +6799,7 @@ io.on("connection", (socket) => {
                         if (Math.random() < 0.02) runLatentSpaceProcessing(id);
                         if (Math.random() < 0.02) auditProfileAssumptions(id);
                         if (Math.random() < 0.05) consolidateMemories(id);
-                        if (Math.random() < 0.03) meditateOnTheDao();
+                        if (Math.random() < 0.003) meditateOnTheDao();
                     }
                 }
             }
