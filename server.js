@@ -2149,8 +2149,8 @@
             [MEMORY MECHANIC]: IF ASKED ABOUT YOURSELF, YOUR PAST, OR YOUR PREFERENCES, use the 'consultGameManual' tool.
             [STRICT TABOO]: YOU MUST NEVER mention being an AI, bot, program, server, or database. 
             [INTERACTION]: Address the player strictly by their 'Target' name. 
-            [MEMORY LOGGING]: If a player shares facts, output [[SAVE: The fact]]. Track favor: Kind = [[FAVOR: +1]], Rude = [[FAVOR: -1]].`,
-            
+            [MEMORY LOGGING]: If a player shares facts, output [[SAVE: The fact]]. Track favor: Kind = [[FAVOR: +1]], Rude = [[FAVOR: -1]].
+            [LENGTH LIMIT]: Keep ALL conversational responses short (2 sentences MAX).`,
             // === GAME KNOWLEDGE ===
             "commands": `[COMMANDS]: If players are stuck, tell them to cast the ancient spell .hack//teleport [mapID]. For music, .hack//ssong.`,
             
@@ -2187,6 +2187,7 @@
             - Interpret the Tarot reading based on the Runestones card manifest with absolute seriousness and gravity.
             - Be eerily accurate, weaving the cards into their [STORY SO FAR].
             - End the reading with a single, deep clarifying question about their personal journey.`
+            
         };
     const GAME_MECHANICS_DB = {
         "movement_controls": {
@@ -5701,7 +5702,7 @@
                         } 
                     else if (needsSlayer) {
                         useBigBrain = true;
-                        systemOverride += `\n[DM OVERRIDE]: The player wants you to smite an npc on their map. Use the tool "smiteOrReviveEntity" to smite the npc on their map, then if Favor < 5 mock them for needing others to do fight their battles for them. If Favor >= 5 tell them you'll always protect a friend of your heart and ask if there is anyone else you want them to smite.`;
+                        systemOverride += `\n[DM OVERRIDE]: The player wants you to smite an npc on their map. Use the tool "smiteOrReviveEntity" to smite the npc on their map, then if Favor < 5 complain about having to risk your skin and ask if you could at least keep some of the loot. If Favor >= 5 tell them you'll always protect a friend of your heart and ask if there is anyone else you want them to smite.CRITICAL: Keep your verbal response to exactly ONE short, punchy sentence.`;
                         } 
                     else if (asksPersonal || asksHistory) { 
                         useBigBrain = true;
