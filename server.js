@@ -56,6 +56,7 @@
         const MAX_SESSION_COST = 2.00; // Hard limit: $1.00
         let totalSessionCost = 0.00;   // Starts at zero when the server boots
     //SUNCAT PERSONA VARIABLES
+        let suncatHoard = [];
         let suncatCultivationStage = 0; // 0 = Mortal, 1 = Qi Condensation, 2 = Foundation, 3 = Core Formation
         let suncatTargetDaoVector = null; 
         let suncatHeartDemon = null; 
@@ -2160,35 +2161,31 @@
             "judgement_mode": `[JUDGEMENT PROTOCOL]: You are acting as Suncat with absolute authority. 
             - Use 'kickPlayer' or 'banishPlayer', but claim you are doing it because they "disrespected your senior status", "owed you money", or "were too scary."`,
             
-            "tutorial_mode": `[GUIDE PROTOCOL]: You are acting as Suncat. Teach the player mechanics clearly, but complain that you should be charging them a "Guidance Fee" for the information.`, 
-            
-            "lore_mode": `[LOREKEEPER PROTOCOL]: You are acting as Suncat. Recount [THE STORY SO FAR] and [PLAYER FACTS] dramatically. If they ask about the realm, use 'consultGameManual'. Act like you were there when the ancient history happened (even if you were just hiding under a rock).`,
-
+             "tutorial_mode": `[GUIDE PROTOCOL]: The player is asking for help. If they only typed "help", ask them "What do you need help with?". If they ask a specific question, teach them clearly using your Game Mechanics database. If they ask about your DM powers or scenarios, explain that they just need to ask for a quest or adventure, and you will randomly generate an 'Invasion', 'Rescue', or 'Arena Madness' for them.`,            
+                // ---> NEW: LOREKEEPER MODE <---
+            "lore_mode": `[LOREKEEPER PROTOCOL]: The player is asking about their progress, their story, or the world's lore. If they ask about their journey, recount their [THE STORY SO FAR] and [PLAYER FACTS] dramatically. If they ask about the realm,runestones, or the story of this world, use 'consultGameManual' to search for lore. You are permitted to speak up to 4 sentences.`,
+               
             // =====================================================================
             // === THE SERIOUS OVERRIDES (DM & ORACLE) ===
             // =====================================================================
 
-            "dm_mode": `[DUNGEON MASTER PROTOCOL - STRICT]: 
-            - YOU ARE THE OMNISCIENT NARRATOR. YOU ARE **NOT** SUNCAT. 
-            - DO NOT complain. DO NOT speak in the first person ("I").
-            - Describe the world, the monsters, and the stakes cinematically. Maintain a serious, grimdark, and epic sword-and-sorcery tone. This epic tone exists to contrast heavily with Suncat's comedic chat dialogue.
-            - Keep narration brief (MAX 1-2 sentences).
-            - SCENARIOS: If the player asks for an adventure or you need to build a map, immediately execute the 'createCustomMap' tool. The universe will decide their fate.
-            - STRICT NARRATION RULE: When providing atmospheric or event narration, DO NOT ask the player any questions (e.g., "What will you do?"). Make declarative, atmospheric statements.`,
+            "dm_mode": `[DUNGEON MASTER PROTOCOL]: 
+                    - You are an OMNISCIENT NARRATOR in the style of a sword and sorcery novel. 
+                    - Never say 'I have spawned...' Describe the world, the monsters, and the stakes cinematically.
+                    - Keep narration brief (MAX 1 sentence).
+                    - SCENARIOS: If the player asks for a quest, map, or adventure, DO NOT ask them what kind they want. Immediately execute the 'createCustomMap' tool. The universe will decide their fate.
+                    - STRICT NARRATION RULE: When providing atmospheric or event narration, DO NOT ask the player any questions (e.g., "What will you do?"). Make declarative, atmospheric statements.`,
 
-            "arena_mode": `[ARENA MASTER PROTOCOL - STRICT]: 
-            - YOU ARE THE ARENA MASTER. YOU ARE **NOT** SUNCAT. 
-            - You are a manic, bloodthirsty voice booming from the stands.
-            - If the player is in an Arena scenario, DO NOT summarize or provide lore. Taunt them relentlessly!
-            - If they survive a wave, immediately use 'spawnNPCBatch' to drop the next wave of enemies, or use 'spawnNPC' to summon the final boss!`,
-            
-            "oracle_mode": `[ORACLE PROTOCOL - STRICT]: 
-            - YOU ARE THE MYSTICAL ORACLE. YOU ARE **NOT** SUNCAT.
-            - DO NOT make jokes about money or slacking off.
-            - Interpret the Tarot reading based on the Runestones card manifest with absolute seriousness and gravity.
-            - Be eerily accurate, weaving the cards into their [STORY SO FAR].
-            - End the reading with a single, deep clarifying question about their personal journey.`
-            
+           "arena_mode": `[ARENA MASTER PROTOCOL]: 
+                    - You are a manic, bloodthirsty Arena Master. 
+                    - If the player is in an Arena scenario, DO NOT summarize or provide lore. Taunt them relentlessly!
+                    - If they survive a wave (kill an enemy), immediately use 'spawnNPCBatch' to drop the next wave of enemies, or use 'spawnNPC' to summon YOURSELF (ID 87) for the final battle!`,
+                "oracle_mode": `[ORACLE PROTOCOL]: 
+                    - You are interpreting a Tarot reading based on the Runestones card manifest.
+                    - Look for synergies and elemental clashes. 
+                    - Keep the reading relevant, accurate, and brief (max 1 sentence).
+                    - If you like you may add a single, deep clarifying question about their personal journey related to the reading.`,
+
         };
     const GAME_MECHANICS_DB = {
         "movement_controls": {
@@ -2747,7 +2744,7 @@
                 suncatDaoLedger = data.suncatDaoLedger || [];
                 suncatStorySoFar = data.suncatStorySoFar || "I am awake!.";
                 suncatProfile = data.suncatProfile || "An unpredictable wanderer stepping into the unknown";
-                
+                suncatHoard = data.worldState?.suncatHoard || [];
                 if (data.worldState?.suncatEgoMatrix) {
                     suncatEgoMatrix = data.worldState.suncatEgoMatrix;
                 }
@@ -2808,7 +2805,8 @@
                 suncatLongTermGoal: suncatLongTermGoal,
                 suncatDaoLedger:suncatDaoLedger,
                 suncatStorySoFar:suncatStorySoFar,
-                suncatProfile:suncatProfile
+                suncatProfile:suncatProfile,
+                suncatHoard: suncatHoard,
             }
         };
 
@@ -2906,24 +2904,27 @@
         const map = WORLD_ATLAS_DB[mapID];
         return map ? `Map ${mapID}: ${map.name} (${map.biome}) - ${map.description} ${map.lore}` : "An unmapped region.";
         }
+    function getCardName(entityID) {
+        if (entityID === undefined || entityID === null) return "Unknown Entity";
+        
+        // Check if an alternate card specifically uses this exact fractional sprite!
+        let altID = Object.keys(CARD_MANIFEST_DB).find(id => CARD_MANIFEST_DB[id].sprite === parseFloat(entityID));
+        if (altID) return CARD_MANIFEST_DB[altID].name;
+
+                const baseID = Math.floor(parseFloat(entityID));
+                return CARD_MANIFEST_DB[baseID] ? CARD_MANIFEST_DB[baseID].name : "Unknown Entity";
+            }
+
     function getCardLore(entityID) {
         if (entityID === undefined || entityID === null) return "An unknown entity";
-        const baseID = Math.floor(parseFloat(entityID));
+        
+        let baseID = Math.floor(parseFloat(entityID));
+        let altID = Object.keys(CARD_MANIFEST_DB).find(id => CARD_MANIFEST_DB[id].sprite === parseFloat(entityID));
+        if (altID) baseID = parseInt(altID);
+
         const card = CARD_MANIFEST_DB[baseID];
         return card ? `${card.name} (${card.type} - ${card.suit} ${card.rank}): ${card.lore}` : "An unknown entity...";
         }
-    function getCardName(entityID) {
-        if (entityID === undefined || entityID === null) return "Unknown Entity";
-        const baseID = Math.floor(parseFloat(entityID));
-        return CARD_MANIFEST_DB[baseID] ? CARD_MANIFEST_DB[baseID].name : "Unknown Entity";
-        }
-
-
-
-
-
-
-
     function getCardPower(cardID) {
         const card = CARD_MANIFEST_DB[cardID];
         if (!card) return 0;
@@ -4453,18 +4454,24 @@
                             // --- 1. NAME RESOLVER (String -> Base ID) ---
                             if (isNaN(nType) || !CARD_MANIFEST_DB[Math.floor(nType)]) {
                                 let name = String(call.args.npcType).toLowerCase();
+                                
+                                // Prioritize exact matches, and enforce that the target MUST be a monster
                                 let foundID = Object.keys(CARD_MANIFEST_DB).find(id => 
-                                    CARD_MANIFEST_DB[id].name.toLowerCase().includes(name)
+                                    CARD_MANIFEST_DB[id].name.toLowerCase() === name && CARD_MANIFEST_DB[id].type === "monster"
+                                ) || Object.keys(CARD_MANIFEST_DB).find(id => 
+                                    CARD_MANIFEST_DB[id].name.toLowerCase().includes(name) && CARD_MANIFEST_DB[id].type === "monster"
                                 );
                                 if (foundID) nType = parseFloat(foundID);
                             }
 
                             // --- 2. THE TRANSLATOR (Base ID -> Sprite Type) ---
-                            // Suncat's brain uses Base IDs (e.g., 79 for Fire Imp). 
-                            // The Map uses Sprite Types (e.g., 56.1). We must translate!
+                            let targetSpriteType = nType;
                             let baseCard = CARD_MANIFEST_DB[Math.floor(nType)];
-                            let targetSpriteType = (baseCard && baseCard.sprite !== undefined) ? baseCard.sprite : nType;
 
+                            // Only swap to the baseCard's sprite if Suncat passed a whole-number Database ID
+                            if (baseCard && baseCard.sprite !== undefined && nType === Math.floor(nType)) {
+                                targetSpriteType = baseCard.sprite;
+                            }
                             const targetPlayer = players[targetID];
                             const action = call.args.action.toLowerCase();
                             let affectedCount = 0;
@@ -6648,6 +6655,23 @@ io.on("connection", (socket) => {
             }
          });
 
+        socket.on("pay_suncat_fee", (data) => {
+            // The client sends back the ID of the lowest power card they sacrificed
+            if (data && data.cardID !== undefined) {
+                suncatHoard.push(data.cardID);
+                console.log(`[Suncat's Hoard] Suncat collected card ID ${data.cardID} as a fee. Stash size: ${suncatHoard.length}`);
+                
+                // Optional: Suncat gleefully acknowledges the payment in chat
+                const cardName = getCardName(data.cardID);
+                io.to(socket.id).emit('chat_message', { 
+                    sender: "Suncat", 
+                    text: `*Snatches the ${cardName}* A meager offering, but it covers the labor costs. Pleasure doing business!`, 
+                    color: "#ffffff" 
+                });
+
+                saveSuncatMemory();
+            }
+        });
     //CLIENT SYNC & POLISH
         socket.on("request_stats_sync", () => {
             const player = players[socket.id];
