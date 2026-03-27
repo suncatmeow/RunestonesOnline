@@ -4450,7 +4450,7 @@
                         if (targetID) {
                             let nType = parseFloat(call.args.npcType); 
                             
-                            // --- NAME RESOLVER (Fixes AI passing strings instead of IDs) ---
+                            // --- 1. NAME RESOLVER (String -> Base ID) ---
                             if (isNaN(nType) || !CARD_MANIFEST_DB[Math.floor(nType)]) {
                                 let name = String(call.args.npcType).toLowerCase();
                                 let foundID = Object.keys(CARD_MANIFEST_DB).find(id => 
@@ -4459,11 +4459,16 @@
                                 if (foundID) nType = parseFloat(foundID);
                             }
 
+                            // --- 2. THE TRANSLATOR (Base ID -> Sprite Type) ---
+                            // Suncat's brain uses Base IDs (e.g., 79 for Fire Imp). 
+                            // The Map uses Sprite Types (e.g., 56.1). We must translate!
+                            let baseCard = CARD_MANIFEST_DB[Math.floor(nType)];
+                            let targetSpriteType = (baseCard && baseCard.sprite !== undefined) ? baseCard.sprite : nType;
+
                             const targetPlayer = players[targetID];
                             const action = call.args.action.toLowerCase();
                             let affectedCount = 0;
 
-                            // Determine which master map we are looking at
                             let currentMapData = null;
                             if (targetPlayer.mapID === 999 && activeCustomMap) currentMapData = activeCustomMap;
                             else if (targetPlayer.mapID === 100 && tintagelHubMap) currentMapData = tintagelHubMap;
@@ -4471,18 +4476,16 @@
                             if (["smite", "kill", "slay", "destroy", "defeat"].includes(action)) {
                                 
                                 if (currentMapData && currentMapData.npcs) {
-                                    // SERVER-SIDE SMITE: Update the master array so Suncat's radar updates
+                                    // SERVER-SIDE SMITE (Custom Maps)
                                     currentMapData.npcs.forEach(n => {
-                                        // THE FIX: Math.floor allows base ID (63) to match sprite ID (63.1)
-                                        if (Math.floor(n.type) === Math.floor(nType) && !n.isDead) {
+                                        // Exactly match the translated Sprite Type!
+                                        if (n.type === targetSpriteType && !n.isDead) {
                                             n.isDead = true;
                                             affectedCount++;
                                             
-                                            // Add to the garbage collector
                                             let uniqueID = targetPlayer.mapID + "_" + n.index;
                                             deadNPCs[uniqueID] = Date.now();
                                             
-                                            // Broadcast the death globally so all clients sync
                                             io.emit("npc_died", { 
                                                 mapID: targetPlayer.mapID, 
                                                 index: n.index, 
@@ -4496,7 +4499,7 @@
                                     // FALLBACK FOR STANDARD MAPS (0-22)
                                     io.to(targetID).emit("npc_died", { 
                                         mapID: targetPlayer.mapID, 
-                                        type: nType, // Sending type since server doesn't track exact index here
+                                        type: targetSpriteType, // <--- Send the exact Sprite Type to the client
                                         reason: "suncat_smite" 
                                     });
                                     affectedCount = 1; 
@@ -4507,18 +4510,15 @@
                             } else if (action === "revive") {
                                 
                                 if (currentMapData && currentMapData.npcs) {
-                                    // SERVER-SIDE REVIVE
-                                    let n = currentMapData.npcs.find(npc => Math.floor(npc.type) === Math.floor(nType) && npc.isDead);
+                                    let n = currentMapData.npcs.find(npc => npc.type === targetSpriteType && npc.isDead);
                                     if (n) {
                                         n.isDead = false;
                                         n.visible = true;
                                         affectedCount++;
                                         
-                                        // Remove from garbage collector
                                         let uniqueID = targetPlayer.mapID + "_" + n.index;
                                         delete deadNPCs[uniqueID];
                                         
-                                        // Force clients to reload the visual
                                         io.emit("remote_spawn_npc", {
                                             mapID: targetPlayer.mapID,
                                             index: n.index,
@@ -4531,8 +4531,7 @@
                                         });
                                     }
                                 } else {
-                                    // FALLBACK FOR STANDARD MAPS
-                                    io.to(targetID).emit('suncat_revive_npc', { nType: nType });
+                                    io.to(targetID).emit('suncat_revive_npc', { nType: targetSpriteType });
                                     affectedCount = 1;
                                 }
                                 
@@ -4708,7 +4707,7 @@
             }
         }
 
-        // 2. See Map Geometry & NPCs
+        // 2. See Map Geometry & Live Custom NPCs
         let mapData = activeCustomMap && activeCustomMap.id === mapID ? activeCustomMap : null;
         if (mapID === 100) mapData = tintagelHubMap;
 
@@ -4725,26 +4724,25 @@
             }
             visionLog.push(`[TERRAIN]: Scanned a ${radius} tile radius. Detected ${wallsDetected} wall blocks.`);
             
-            // 3. See Live NPCs on Custom Maps
+            // 3. See Live NPCs on Custom Maps (With IDs for tools!)
             if (mapData.npcs) {
                 mapData.npcs.forEach(npc => {
-                    if (npc.isDead) return; // THE FIX: Don't look at corpses!
+                    if (npc.isDead) return; // Don't look at corpses!
                     let dist = Math.abs(npc.x - centerX) + Math.abs(npc.y - centerY);
                     if (dist <= radius) {
                         let cardName = getCardName(npc.type);
-                        visionLog.push(`[ENTITY]: A ${cardName} (Role: ${npc.role}) is at X:${Math.floor(npc.x)}, Y:${Math.floor(npc.y)}.`);
+                        visionLog.push(`[ENTITY]: A ${cardName} (ID: ${npc.type}) is at X:${Math.floor(npc.x)}, Y:${Math.floor(npc.y)}.`);
                     }
                 });
             }
         } else if (WORLD_ATLAS_DB[mapID]) {
-            // THE FIX: Standard Map Fallback!
-            // The server doesn't track exact live coordinates here, but it knows what spawns in this biome.
+            // 4. THE FIX: Standard Map Fallback! (Now with IDs injected!)
             let atlas = WORLD_ATLAS_DB[mapID];
             let mobNames = [];
             if (atlas.spawns) {
-                if (atlas.spawns.hostiles) mobNames.push(...atlas.spawns.hostiles.map(id => getCardName(id)));
-                if (atlas.spawns.friendlies) mobNames.push(...atlas.spawns.friendlies.map(id => getCardName(id)));
-                if (atlas.spawns.uniques) mobNames.push(...atlas.spawns.uniques.map(id => getCardName(id)));
+                if (atlas.spawns.hostiles) mobNames.push(...atlas.spawns.hostiles.map(id => `${getCardName(id)} (ID: ${id})`));
+                if (atlas.spawns.friendlies) mobNames.push(...atlas.spawns.friendlies.map(id => `${getCardName(id)} (ID: ${id})`));
+                if (atlas.spawns.uniques) mobNames.push(...atlas.spawns.uniques.map(id => `${getCardName(id)} (ID: ${id})`));
             }
             if (mobNames.length > 0) {
                 visionLog.push(`[WILDLIFE]: You sense the presence of: ${[...new Set(mobNames)].join(', ')} roaming this region.`);
