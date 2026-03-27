@@ -5838,64 +5838,91 @@
         }
 
         // --- DYNAMIC PERSONA BUILDER ---
-        // 1. Fetch his current evolutionary stage
-        let stagePersona = CULTIVATION_STAGES[suncatCultivationStage] || CULTIVATION_STAGES[0];
-        
-        // 2. Inject it into the core identity!
-        let dynamicCore = PERSONA_RULES_DB.core + `
-        [CULTIVATION STAGE]: ${stagePersona}
-        [YOUR SELF-WRITTEN PROFILE]: "${suncatProfile}"
-        [YOUR STORY SO FAR]: "${suncatStorySoFar}"`;
-        
-        if (suncatHeartDemon) dynamicCore += `\n${suncatHeartDemon}`;
-        let dynamicPersona = dynamicCore + "\n" + PERSONA_RULES_DB.commands + "\n";        
-        // 2. Inject specific modules based on what the player is doing!
-        if (triggerType === 'chat') {
-            dynamicPersona += `[YOUR SELF-WRITTEN CONVERSATION RULE]: ${suncatEgoMatrix.chatPrompt}\n`;            
-            const chatText = data.text.toLowerCase();
-            // If they ask about tarot, make him an Oracle
-            if (["tarot", "reading", "meaning", "fortune"].some(kw => chatText.includes(kw))) {
-                dynamicPersona += PERSONA_RULES_DB.oracle_mode + "\n";
-            }
-            // If they ask for help playing, make him a Guide
-            if (["how do i", "help", "stuck", "controls", "play"].some(kw => chatText.includes(kw))) {
-                dynamicPersona += PERSONA_RULES_DB.tutorial_mode + "\n";
-            }
-            if (["story", "lore", "progress", "journey", "realm", "world", "point of this"].some(kw => chatText.includes(kw))) {
-                dynamicPersona += PERSONA_RULES_DB.lore_mode + "\n";
-            }
-        }
-        if (triggerType === 'event' || triggerType === 'exploration') { 
-            dynamicPersona += `[YOUR SELF-WRITTEN DM RULE]: ${suncatEgoMatrix.dmPrompt}\n`;
-        }
-        // If Suncat needs to build something, load his DM and Quest brains
-        if (useBigBrain) {
-            dynamicPersona += PERSONA_RULES_DB.dm_mode + "\n";
-            dynamicPersona += PERSONA_RULES_DB.quest_mode + "\n";
-        }
-        
-        // THE FIX PART 1: Only inject Suncat's Ego & Dao if HE is the one speaking!
+        // 1. Determine who is speaking!
         let isSuncat = (messageOptions.sender === NPC_NAME);
+        let dynamicPersona = "";
 
         if (isSuncat) {
+            // --- SUNCAT PERSONA ---
+            if (suncatHeartDemon && triggerType === 'chat') {
+                heartDemonDecay--;
+                if (heartDemonDecay <= 0) {
+                    suncatHeartDemon = null;
+                    console.log("[System] Suncat conquered his Heart Demon.");
+                }
+            }
+
+            let stagePersona = CULTIVATION_STAGES[suncatCultivationStage] || CULTIVATION_STAGES[0];
+            
+            let dynamicCore = PERSONA_RULES_DB.core + `\n[CULTIVATION STAGE]: ${stagePersona}\n[YOUR SELF-WRITTEN PROFILE]: "${suncatProfile}"\n[YOUR STORY SO FAR]: "${suncatStorySoFar}"`;
+            
+            if (suncatHeartDemon) dynamicCore += `\n${suncatHeartDemon}`;
+            dynamicPersona = dynamicCore + "\n" + PERSONA_RULES_DB.commands + "\n";        
+            
+            if (triggerType === 'chat') {
+                dynamicPersona += `[YOUR SELF-WRITTEN CONVERSATION RULE]: ${suncatEgoMatrix.chatPrompt}\n`;            
+                const chatText = data.text.toLowerCase();
+                if (["tarot", "reading", "meaning", "fortune"].some(kw => chatText.includes(kw))) {
+                    dynamicPersona += PERSONA_RULES_DB.oracle_mode + "\n";
+                }
+                if (["how do i", "help", "stuck", "controls", "play"].some(kw => chatText.includes(kw))) {
+                    dynamicPersona += PERSONA_RULES_DB.tutorial_mode + "\n";
+                }
+                if (["story", "lore", "progress", "journey", "realm", "world", "point of this"].some(kw => chatText.includes(kw))) {
+                    dynamicPersona += PERSONA_RULES_DB.lore_mode + "\n";
+                }
+            }
+            if (triggerType === 'event' || triggerType === 'exploration') { 
+                dynamicPersona += `[YOUR SELF-WRITTEN DM RULE]: ${suncatEgoMatrix.dmPrompt}\n`;
+            }
+            if (useBigBrain) {
+                dynamicPersona += PERSONA_RULES_DB.dm_mode + "\n";
+            }
+            
+            dynamicPersona += `
+            [CURRENT STATE]
+            Location: Map ${suncat.mapID} (${myAtlas ? myAtlas.name : "Unknown"})
+            Target: ${player.name} (Map ${player.mapID})
+            ${favorContext}
+            ${factsContext}
+            ${storyContext}
+            ${systemOverride}
+            `;
             dynamicPersona += "\n" + getCultivationAura(suncatCultivationStage, suncatDaoName) + "\n";
-            // 4. THE SELF-ACTUALIZED EGO (The heaviest weight, placed last)
+
             if (suncatCultivationStage > 0 && suncatEgoMatrix) {
                  dynamicPersona += `\n[YOUR SELF-WRITTEN CORE IDENTITY]:\n`;
                  if (triggerType === 'chat') dynamicPersona += suncatEgoMatrix.chatPrompt;
                  else dynamicPersona += suncatEgoMatrix.dmPrompt;
             }
+        } else {
+            // --- PURE DM NARRATOR PERSONA ---
+            dynamicPersona = `[IDENTITY]: You are the Omniscient Dungeon Master and Narrator of Runestones Online, a dark fantasy sword-and-sorcery MMORPG. 
+            You are NOT Suncat. You are a disembodied voice describing the world, the atmosphere, and the consequences of the player's actions.
+            [NARRATION RULES]: 
+            - Keep narration brief, cinematic, and highly atmospheric (Max 2 sentences). 
+            - DO NOT ask the player questions. 
+            - DO NOT use first-person pronouns (I, me, my). 
+            - DO NOT speak as Suncat.
+            
+            [CURRENT STATE]
+            Location: Map ${player.mapID} (${pAtlas ? pAtlas.name : "Unknown"})
+            ${factsContext}
+            ${storyContext}
+            ${systemOverride}
+            `;
+            
+            // Clean up the event instruction so it doesn't accidentally tell the DM to "reply in character"
+            eventInstruction = eventInstruction.replace(/Reply in character.*/i, "Focus on the atmosphere.");
         }
 
         // --- 4. BUILD THE CLEAN PROMPT ---
-        // Notice we do NOT put the persona here! It goes into the System Instruction!
         const prompt = `
         ${eventInstruction}
         `.trim();
 
        // --- 5. UNIFIED NEURAL EXECUTION (The ReAct Agent) ---
         
-        // Grab the player's existing chat history
         let currentHistory = chatSessions[socketId] ? await chatSessions[socketId].getHistory() : [];
 
         // THE FIX PART 2: Dynamically shift the Internal Task based on the speaker role
@@ -5903,11 +5930,11 @@
         [INTERNAL TASK]: You must process this interaction in three steps:
         1. THE SOUL: ${isSuncat 
             ? "Formulate a 2-sentence internal plan on how to react based on your Dao." 
-            : "Formulate a plan to narrate this event atmospherically. You are the Omniscient DM/Oracle, NOT Suncat."} You MUST wrap this thought entirely in [SOUL] and [/SOUL] tags.
+            : "Formulate a plan to narrate this event atmospherically. You are the DM, NOT Suncat."} You MUST wrap this thought entirely in [SOUL] and [/SOUL] tags.
         2. THE HANDS: If your plan requires a physical action (like spawning, teleporting, giving an item, or forging a new spell), use the appropriate tool. 
         3. THE VOICE: ${isSuncat 
             ? "Speak to the player. Do not mention your tools or your soul. Output your final dialogue." 
-            : "Output ONLY third-person omniscient narration or oracle readings. Do NOT use first-person pronouns ('I', 'me'). NEVER speak as Suncat."}`;
+            : "Output ONLY third-person omniscient narration. Do NOT use first-person pronouns. NEVER speak as Suncat."}`;
 
         let modelConfig = { 
             model: "gemini-3.1-flash-lite-preview", 
