@@ -5707,7 +5707,7 @@
                         const asksHistory = ["remember when", "my past", "did i ever", "what did i do", "our adventure"].some(kw => chatText.includes(kw));
                         const needsSlayer = ["slay", "kill", "destroy", "smite","defeat"].some(kw => chatText.includes(kw));
                         const isMap999Active = Object.values(players).some(p => p.mapID === 999 && p.id !== SUNCAT_ID);
-                        const needsDM = wantsNewMap || wantsAction;
+                        let needsDM = wantsNewMap || wantsAction;
                     if (data.isConversing) {
                         systemOverride += `\n[CONVERSATION OVERRIDE]: You are conversing with the player. Stay in character and respond to the user. Do not leave them hanging.`;
                         } 
