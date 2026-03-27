@@ -2336,7 +2336,7 @@
                 description: "Teleports a specific player to a specific map ID (0-22 or 999).",
                 parameters: { type: "OBJECT", properties: { targetName: { type: "STRING" }, mapID: { type: "INTEGER" } }, required: ["targetName", "mapID"] }
             },
-            //change weather
+                //change weather
             {
                 name: "changeEnvironment",
                 description: "Changes the weather or sky color of the map the player is currently standing on.",
@@ -2373,7 +2373,7 @@
                 }
             },
             
-            // spawn npc
+                // spawn npc
             {
                 name: "spawnNPC",
                 description: "Spawns a single NPC. The server will automatically build a synergistic deck for this NPC based on its class.",          
@@ -2427,7 +2427,7 @@
             // 2. SMITE OR REVIVE ENTITY
             {
                 name: "smiteOrReviveEntity",
-                description: "[CORE FORMATION ONLY]: Instantly smites (kills) or revives a specific type of NPC currently on the player's map.",
+                description: "Instantly smites (kills) or revives a specific type of NPC currently on the player's map.",
                 parameters: {
                     type: "OBJECT",
                     properties: {
@@ -4315,7 +4315,8 @@
                                 suit: call.args.suit || "Unique",
                                 rank: call.args.rank || "???",
                                 rarity: "unique",
-                                classes: Array.isArray(call.args.classes) ? call.args.classes : (call.args.classes ? [String(call.args.classes)] : ["rogue"]),                            lore: call.args.lore || "A mysterious entity forged from the ether.",
+                                classes: Array.isArray(call.args.classes) ? call.args.classes : (call.args.classes ? [String(call.args.classes)] : ["rogue"]),                            
+                                lore: call.args.lore || "A mysterious entity forged from the ether.",
                                 stats: call.args.stats || "1d10 to all stats"
                             };
 
@@ -5609,7 +5610,8 @@
             const isDirectCommand = chatText.includes("[reply]") || chatText.includes("suncat")|| data.isConversing;
             const asksPersonal = ["who are", "your past", "remember", "real life", "favorite", "you like", "about yourself", "memories", "where are you from", "your name"].some(kw => chatText.includes(kw));
             const asksHistory = ["remember when", "my past", "did i ever", "what did i do", "our adventure"].some(kw => chatText.includes(kw));
-            
+            const needsSlayer = ["slay", "smite", "kill", "destroy"].some(kw => chatText.includes(kw));
+
             const isMap999Active = Object.values(players).some(p => p.mapID === 999 && p.id !== SUNCAT_ID);
             let needsDM = wantsNewMap || wantsAction;
             if (data.isConversing) {
@@ -5619,6 +5621,10 @@
                 useBigBrain = false; 
                 systemOverride += `\n[SYSTEM OVERRIDE]: The player wants a new map/quest, but a custom scenario is ALREADY ONGOING. REFUSE the request. DO NOT use the 'createCustomMap' tool. Tell them to finish the current quest or join it via '.hack//teleport 999'.`;
                 needsDM = false; 
+            } 
+            else if (needsSlayer) {
+                useBigBrain = true; 
+                systemOverride += `\n[CRITICAL OVERRIDE]: The player wants you to slay an NPC.DO NOT roleplay the terrain shifting. DO NOT tell the player to use a .hack command. You MUST execute the "smiteOrReviveEntity" tool right now to physically smite the NPC.`;
             } 
             else if (needsOracle) {
                 useBigBrain = true;
@@ -5914,12 +5920,12 @@
         chatSessions[socketId] = voiceModel.startChat({ history: scrubAIHistory(updatedHistory) });
         await manageHistorySize(socketId);
         
-    } catch (e) {
-        console.error("Nervous System Error:", e);
-    } finally {
-        clearTimeout(typingFailSafe); 
-        player.npcIsTyping = false;
-    }
+        } catch (e) {
+            console.error("Nervous System Error:", e);
+        } finally {
+            clearTimeout(typingFailSafe); 
+            player.npcIsTyping = false;
+        }
     }
 ////////////////////////////////////////////
 ///////////////////////////////////////////
