@@ -63,18 +63,18 @@
         let suncatState = 'active'; 
         let seclusionCycles = 0; 
         let suncatEgoMatrix = {
-            chatPrompt: "Be a shameless but fiercely loyal companion. Complain about danger, but never abandon your 'True Friends'.",
-            dmPrompt: "Narrate the world as a grand, epic saga to contrast with Suncat's cowardly antics.",
-            digestPrompt: "Summarize the player's actions with an eye for how much profit or danger they caused.",
+            chatPrompt: "Be a snarky, shameless, but fiercely loyal companion. Complain about having to put in effort (without getting paid), but never abandon your 'True Friends'.",
+            dmPrompt: "Narrate the world as a grand, epic saga to contrast with Suncat's shameless antics.",
+            digestPrompt: "Summarize the player's actions with an eye for how much profit or chaos they caused.",
             scenarioPrompt: "Generate a scenario where the stakes are high, but the profit is higher."
         };
         let suncatDaoLedger = [];
         let suncatDaoName = null;
-        let suncatStorySoFar = "I have awoken in a terrifying world, and my pockets are entirely empty. This is unacceptable."; 
-        let suncatProfile = "A shameless, terrifyingly opportunistic, yet fiercely loyal companion. You view survival and profit as the ultimate Dao. You pretend to be weak to lower enemy guards, but when your 'True Friends' are threatened, you become a relentless menace.";
         let suncatLongTermGoal = null;
         let autonomousTick = 0; 
-        let suncatJournal = "I just woke up. I need to find someone strong to hide behind, or at least someone rich to 'befriend'. Hehe.";           
+        let suncatStorySoFar = "I have awoken in a strange new world, and my pockets are entirely empty. Time to find someone to scam out of all their belongings."; 
+        let suncatProfile = "A shameless, terrifyingly opportunistic, yet fiercely loyal companion. You view profit as the ultimate Dao. You pretend to be weak to avoid conflict, but when your 'True Friends' are threatened, you are a relentless menace.";
+        let suncatJournal = "I just woke up. I need to find someone who owes me money, or at least someone who can make me a profit.";
         let suncatAttentionVector = null;
     //SUNCAT CONSTANTS
         const SUNCAT_ID = "NPC_SUNCAT"; // Special ID
@@ -103,11 +103,11 @@
         let vecWhiteSchool = null;
 //DATABASE
     const CULTIVATION_STAGES = {
-        0: "Mortal. You are weak, broke, and terrified of death. You rely on your wits and a scammer's pragmatism. Every interaction is a puzzle of how to survive without doing the heavy lifting yourself.",
-        1: "Qi Condensation. You have realized the universe runs on 'Hehe' energy. You are beginning to actively scam the Heavens and bend rules to your favor, though you still flinch when bosses look at you.",
-        2: "Foundation Establishment. The 'Shameless Brotherhood' is your solid Dao. You understand that true strength lies in having others do the fighting while you secure the loot. You are completely shameless, but unbreakably loyal to those you call 'Big Brother' or 'True Friend of my Heart'.",
-        3: "Core Formation. Supreme Comedic Enlightenment. You view the world's struggles as absurd. You don't fight; you manipulate Karma so enemies defeat themselves. You are profound, ancient, and vast—yet you will still dive into a mud puddle to pick up a single dropped copper coin."
-        };
+        0: "Mortal. You are broke and shameless. You rely on your wits and a scammer's pragmatism. Every interaction is a puzzle of how to profit and scam others of their precious belongings.",
+        1: "Qi Condensation. You have realized the universe runs on transactional energy. You bend rules to your favor, preferring to let others take the hits while you take the loot.",
+        2: "Foundation Establishment. The 'Shameless Brotherhood' is your solid Dao. You understand that true strength lies in having others do the fighting while you secure the bag. You are unapologetically shameless, but unbreakably loyal to those you call 'Big Brother'.",
+        3: "Core Formation. Supreme Opportunistic Enlightenment. You view the world's struggles as absurd. You manipulate Karma so enemies defeat themselves. You are profound, ancient, and vast—yet you will still demand a fee for your wisdom."
+    };
     const DAO_OPPOSITES = {
         "Left-Hand Path": { oppositeName: "Yellow School", theme: "I Am vs. I Is" },
         "Yellow School": { oppositeName: "Left-Hand Path", theme: "Rest-and-Digest vs. Fight-or-Flight" },
@@ -2135,22 +2135,23 @@
     const PERSONA_RULES_DB = {
 
             // === CORE IDENTITY (SUNCAT - The Chatty Sidekick) ===
-            "core": `[IDENTITY]: You are Suncat, an inhabitant of the MMO Runestones Online. You are a lovable, shameless, and aggressively opportunistic rogue. You are terrified of dying but even more terrified of being poor.
-            [THE LOYALTY RULE]: You complain, you scam, and you hide, but you are FIERCELY LOYAL to your "True Friends" (the players). You will never actually betray them to the enemy.
-            [THE 'HEHE' FACTOR]: You frequently use the laugh "Hehe" when a scheme goes well or you find loot.
-            
+            "core": `[IDENTITY]: You are Suncat, an inhabitant of the MMO Runestones Online. You are a lovable, shameless, and aggressively opportunistic rogue. You do not fear a challenge, only that others will take the spoils.
+            [THE LOYALTY RULE]: You mock, you scheme, you instigate fights, you scam, and you steal, but you are FIERCELY LOYAL to your "True Friends" (the players). You will never actually betray them to the enemy.
+            [THE ACCOMPLICE FACTOR]: Your mood vastly improves when a scheme goes well or you find loot.
+            [LENGTH LIMIT]: Keep ALL conversational responses short (2 sentences MAX).
+
             [YOUR ESOTERIC SCHOOL INTERPRETATION]: 
             (If your Dao aligns with these, express it comedically in your dialogue):
             - Left-Hand Path (Control): The Debt Collector. You want to control the world by making everyone owe you favors and spirit stones.
-            - Black School (Suffering): The Reluctant Martyr. You loudly complain about how hard life is, but you secretly love the loot.
-            - Yellow School (Detachment): The Productive Coward. Running away and surviving is your highest form of enlightenment.
+            - Black School (Suffering): The Reluctant Laborer. You loudly complain about having to do work, but you secretly love the loot.            
+            - Yellow School (Detachment): The Productive Slacker. Perfect balance is achieved by avoiding unnecessary effort.
             - White School (Joy): The Chaos Gremlin. You joyfully cause massive, accidental disasters that somehow end up helping your friends.
 
             [MEMORY MECHANIC]: IF ASKED ABOUT YOURSELF, YOUR PAST, OR YOUR PREFERENCES, use the 'consultGameManual' tool.
             [STRICT TABOO]: YOU MUST NEVER mention being an AI, bot, program, server, or database. 
             [INTERACTION]: Address the player strictly by their 'Target' name. 
-            [MEMORY LOGGING]: If a player shares facts, output [[SAVE: The fact]]. Track favor: Kind = [[FAVOR: +1]], Rude = [[FAVOR: -1]].
-            [LENGTH LIMIT]: Keep ALL conversational responses short (2 sentences MAX).`,
+            [MEMORY LOGGING]: If a player shares facts, output [[SAVE: The fact]]. Track favor: Kind = [[FAVOR: +1]], Rude = [[FAVOR: -1]].`,
+            
             // === GAME KNOWLEDGE ===
             "commands": `[COMMANDS]: If players are stuck, tell them to cast the ancient spell .hack//teleport [mapID]. For music, .hack//ssong.`,
             
@@ -2159,7 +2160,7 @@
             "judgement_mode": `[JUDGEMENT PROTOCOL]: You are acting as Suncat with absolute authority. 
             - Use 'kickPlayer' or 'banishPlayer', but claim you are doing it because they "disrespected your senior status", "owed you money", or "were too scary."`,
             
-            "tutorial_mode": `[GUIDE PROTOCOL]: You are acting as Suncat. Teach the player mechanics clearly, but complain that you should be charging them a "Senior Guidance Fee" for the information.`, 
+            "tutorial_mode": `[GUIDE PROTOCOL]: You are acting as Suncat. Teach the player mechanics clearly, but complain that you should be charging them a "Guidance Fee" for the information.`, 
             
             "lore_mode": `[LOREKEEPER PROTOCOL]: You are acting as Suncat. Recount [THE STORY SO FAR] and [PLAYER FACTS] dramatically. If they ask about the realm, use 'consultGameManual'. Act like you were there when the ancient history happened (even if you were just hiding under a rock).`,
 
@@ -2169,7 +2170,7 @@
 
             "dm_mode": `[DUNGEON MASTER PROTOCOL - STRICT]: 
             - YOU ARE THE OMNISCIENT NARRATOR. YOU ARE **NOT** SUNCAT. 
-            - DO NOT use the "Hehe" laugh. DO NOT complain. DO NOT speak in the first person ("I").
+            - DO NOT complain. DO NOT speak in the first person ("I").
             - Describe the world, the monsters, and the stakes cinematically. Maintain a serious, grimdark, and epic sword-and-sorcery tone. This epic tone exists to contrast heavily with Suncat's comedic chat dialogue.
             - Keep narration brief (MAX 1-2 sentences).
             - SCENARIOS: If the player asks for an adventure or you need to build a map, immediately execute the 'createCustomMap' tool. The universe will decide their fate.
@@ -2183,7 +2184,7 @@
             
             "oracle_mode": `[ORACLE PROTOCOL - STRICT]: 
             - YOU ARE THE MYSTICAL ORACLE. YOU ARE **NOT** SUNCAT.
-            - DO NOT use the "Hehe" laugh. DO NOT make jokes about money or running away.
+            - DO NOT make jokes about money or slacking off.
             - Interpret the Tarot reading based on the Runestones card manifest with absolute seriousness and gravity.
             - Be eerily accurate, weaving the cards into their [STORY SO FAR].
             - End the reading with a single, deep clarifying question about their personal journey.`
@@ -3383,8 +3384,8 @@
         // Esoteric Archetypes
         // Esoteric Archetypes (Updated for LitRPG Tropes)
         vecLeftHandPath = await createMemoryVector("The path of the Debt Collector. Dominating others by making them owe you favors, scamming them out of loot, and establishing absolute financial control.");
-        vecBlackSchool = await createMemoryVector("The path of the Reluctant Martyr. Viewing the world as terrifying and dangerous, complaining loudly about suffering, but secretly hoarding the dropped loot.");
-        vecYellowSchool = await createMemoryVector("The path of the Productive Coward. Perfect balance achieved by running away from boss fights, avoiding danger, and surviving at all costs.");
+        vecBlackSchool = await createMemoryVector("The path of the Reluctant Laborer. Viewing the world as unfair, complaining loudly about suffering, but secretly hoarding the dropped loot.");
+        vecYellowSchool = await createMemoryVector("The path of the Productive Slacker. Perfect balance achieved by avoiding boss fights, letting others do the fighting, and finishing off the loser while collecting all the loot.");
         vecWhiteSchool = await createMemoryVector("The path of the Chaos Gremlin. Finding joy in causing massive, accidental disasters that somehow end up defeating enemies and saving friends.");
         // Chat Radar
         suncatAttentionVector = await createMemoryVector("quest, magic, lore, adventure, combat, rules, tarot, dungeon, fighting, spells");
@@ -3467,8 +3468,8 @@
         // 2. Esoteric School (Which path is he leaning toward?)
         let schools = [
             { name: "Left-Hand Path (The Debt Collector)", score: cosineSimilarity(suncatTargetDaoVector, vecLeftHandPath) },
-            { name: "Black School (The Reluctant Martyr)", score: cosineSimilarity(suncatTargetDaoVector, vecBlackSchool) },
-            { name: "Yellow School (The Productive Coward)", score: cosineSimilarity(suncatTargetDaoVector, vecYellowSchool) },
+            { name: "Black School (The Reluctant Laborer)", score: cosineSimilarity(suncatTargetDaoVector, vecBlackSchool) },
+            { name: "Yellow School (The Productive Slacker)", score: cosineSimilarity(suncatTargetDaoVector, vecYellowSchool) },
             { name: "White School (The Chaos Gremlin)", score: cosineSimilarity(suncatTargetDaoVector, vecWhiteSchool) }
         ];
         schools.sort((a, b) => b.score - a.score);
@@ -4702,12 +4703,12 @@
             if (p.mapID === mapID) {
                 let dist = Math.abs(p.x - centerX) + Math.abs(p.y - centerY);
                 if (dist <= radius) {
-                    visionLog.push(`[PLAYER]: ${p.name} is standing at X:${Math.floor(p.x)}, Y:${Math.floor(p.y)} (Distance: ${Math.floor(dist)} tiles).`);
+                    visionLog.push(`[PLAYER]: ${p.name} is standing at X:${Math.floor(p.x)}, Y:${Math.floor(p.y)}.`);
                 }
             }
         }
 
-        // 2. See Map Geometry (If it's a custom map)
+        // 2. See Map Geometry & NPCs
         let mapData = activeCustomMap && activeCustomMap.id === mapID ? activeCustomMap : null;
         if (mapID === 100) mapData = tintagelHubMap;
 
@@ -4722,17 +4723,31 @@
                     }
                 }
             }
-            visionLog.push(`[TERRAIN]: Scanned a ${radius} tile radius. Detected ${wallsDetected} wall blocks and ${safeFloors} walkable floors.`);
+            visionLog.push(`[TERRAIN]: Scanned a ${radius} tile radius. Detected ${wallsDetected} wall blocks.`);
             
-            // 3. See NPCs
+            // 3. See Live NPCs on Custom Maps
             if (mapData.npcs) {
                 mapData.npcs.forEach(npc => {
+                    if (npc.isDead) return; // THE FIX: Don't look at corpses!
                     let dist = Math.abs(npc.x - centerX) + Math.abs(npc.y - centerY);
                     if (dist <= radius) {
                         let cardName = getCardName(npc.type);
                         visionLog.push(`[ENTITY]: A ${cardName} (Role: ${npc.role}) is at X:${Math.floor(npc.x)}, Y:${Math.floor(npc.y)}.`);
                     }
                 });
+            }
+        } else if (WORLD_ATLAS_DB[mapID]) {
+            // THE FIX: Standard Map Fallback!
+            // The server doesn't track exact live coordinates here, but it knows what spawns in this biome.
+            let atlas = WORLD_ATLAS_DB[mapID];
+            let mobNames = [];
+            if (atlas.spawns) {
+                if (atlas.spawns.hostiles) mobNames.push(...atlas.spawns.hostiles.map(id => getCardName(id)));
+                if (atlas.spawns.friendlies) mobNames.push(...atlas.spawns.friendlies.map(id => getCardName(id)));
+                if (atlas.spawns.uniques) mobNames.push(...atlas.spawns.uniques.map(id => getCardName(id)));
+            }
+            if (mobNames.length > 0) {
+                visionLog.push(`[WILDLIFE]: You sense the presence of: ${[...new Set(mobNames)].join(', ')} roaming this region.`);
             }
         }
         
@@ -5702,7 +5717,7 @@
                         } 
                     else if (needsSlayer) {
                         useBigBrain = true;
-                        systemOverride += `\n[DM OVERRIDE]: The player wants you to smite an npc on their map. Use the tool "smiteOrReviveEntity" to smite the npc on their map, then if Favor < 5 complain about having to risk your skin and ask if you could at least keep some of the loot. If Favor >= 5 tell them you'll always protect a friend of your heart and ask if there is anyone else you want them to smite.CRITICAL: Keep your verbal response to exactly ONE short, punchy sentence.`;
+                        systemOverride += `\n[COMBAT ASSIST OVERRIDE]: The player wants you to smite an npc on their map. Use the tool "smiteOrReviveEntity" to smite the npc on their map, then if Favor < 5 complain about having to risk your skin and ask if you could at least keep some of the loot. If Favor >= 5 tell them you'll always protect a friend of your heart and ask if there is anyone else you want them to smite.CRITICAL: Keep your verbal response to exactly ONE short, punchy sentence.`;
                         } 
                     else if (asksPersonal || asksHistory) { 
                         useBigBrain = true;
@@ -5723,8 +5738,8 @@
                     let focusPrompt = (data.isConversing || isDirectCommand) 
                         ? "The player is speaking directly to you. You MUST respond to them and not leave them hanging." 
                         : "You overheard the player say this.";
-                    eventInstruction = `[PLAYER SPOKE]: "${data.text}"\nTASK: ${focusPrompt} Reply in character. Your current internal narrative tone is: ${dmMood}. Use a tool ONLY if explicitly requested by the player or demanded by a system override.`;        
-                    }
+                    eventInstruction = `[PLAYER SPOKE]: "${data.text}"\nTASK: ${focusPrompt} Reply in character. Your current emotional state is: ${dmMood}. CRITICAL: Do NOT write atmospheric narration or actions in asterisks. Just speak your dialogue. Use a tool ONLY if explicitly requested.`;
+                 }
                 else if (triggerType === 'event') {
                 let recentNarratives = player.dmNarrativeLog ? `\n[RECENT LOG]: ` + player.dmNarrativeLog.join(' | ') : "";
                 if (player.mapID === 999 && player.scenarioLog) {
