@@ -5624,7 +5624,7 @@
             } 
             else if (needsSlayer) {
                 useBigBrain = true; 
-                systemOverride += `\n[CRITICAL OVERRIDE]: The player wants you to slay an NPC.DO NOT roleplay the terrain shifting. DO NOT tell the player to use a .hack command. You MUST execute the "smiteOrReviveEntity" tool right now to physically smite the NPC.`;
+                systemOverride += `\n[CRITICAL OVERRIDE]: The player wants you to slay an NPC.DO NOT roleplay the smiting. DO NOT tell the player to use a .hack command. DO NOT tell the player to do it themselves. You MUST execute the "smiteOrReviveEntity" tool right now to physically smite the NPC.`;
             } 
             else if (needsOracle) {
                 useBigBrain = true;
