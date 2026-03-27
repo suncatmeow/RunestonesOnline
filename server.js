@@ -5469,14 +5469,22 @@
                 return; 
             }
         //END SECLUSION
-            if (suncatState === 'seclusion') {
+            //END SECLUSION
+        if (suncatState === 'seclusion') {
+            // THE FIX: Only wake him up if the player is actively yelling in the chat!
+            if (triggerType === 'chat') {
                 emergeFromSeclusion(); // Kick down the doors!
                 
                 // If a player abruptly woke him up, he suffers a massive system shock
                 if (player) {
                     player.dmStress = Math.min(100, (player.dmStress || 0) + 3);
                 }
+            } else {
+                // It's just the DM narrating an event (combat, exploration, etc.)
+                // Let Suncat continue to meditate in the background!
+                console.log(`[Neural Pipeline] DM is narrating an event while Suncat meditates.`);
             }
+        }
         //ROUTING
             let isEssential = false;
             // Boss kills MUST process so the player gets their reward!
