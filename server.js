@@ -3578,12 +3578,12 @@
         }
         }
     function getMadLibLine(biomeName, category, fallbackText) {
-    const cache = GLOBAL_LORE_CACHE[biomeName];
-    if (cache && cache[category] && cache[category].length > 0) {
-        return cache[category][Math.floor(Math.random() * cache[category].length)];
-    }
-    return fallbackText;
-    }
+        const cache = GLOBAL_LORE_CACHE[biomeName];
+        if (cache && cache[category] && cache[category].length > 0) {
+            return cache[category][Math.floor(Math.random() * cache[category].length)];
+        }
+        return fallbackText;
+        }
     async function executeAITools(currentResponse, activeSession, socket) {
         let chainCount = 0;
         const MAX_CHAIN = 6; 
@@ -4433,19 +4433,36 @@
                     else if (call.name === "smiteOrReviveEntity") {
                         const targetID = findSocketID(call.args.targetName);
                         if (targetID) {
-                            const nType = call.args.npcType;
-                            let safeCode = "";
+                            // 1. Get the raw input from the AI (could be "54" or "Goblin")
+                            let rawType = call.args.npcType;
+                            let baseID = parseInt(rawType);
 
+                            // 2. Name Resolution: If it's not a number, search the DB by name
+                            if (isNaN(baseID)) {
+                                const nameToFind = String(rawType).toLowerCase();
+                                const foundID = Object.keys(CARD_MANIFEST_DB).find(id => 
+                                    CARD_MANIFEST_DB[id].name.toLowerCase().includes(nameToFind)
+                                );
+                                // If found, update baseID; otherwise default to Goblin (54)
+                                baseID = foundID ? parseInt(foundID) : 54;
+                            }
+
+                            // 3. Sprite Resolution: Look up the card and pull its custom sprite ID
+                            // If the card has a .sprite property, use it. Otherwise, use the baseID.
+                            const cardData = CARD_MANIFEST_DB[baseID];
+                            const finalSpriteID = cardData?.sprite !== undefined ? cardData.sprite : baseID;
+
+                            // 4. Client Injection: Use the finalSpriteID in the generated code
+                            let safeCode = "";
                             if (call.args.action === "smite") {
-                                // Find all alive NPCs of that type and kill them
-                                safeCode = `if (typeof Dungeon !== 'undefined') { Dungeon.npcs.forEach(n => { if (n.type === ${nType} && !n.isDead) Dungeon.killNPC(n, true, "smite"); }); }`;
+                                // We target finalSpriteID because that is what the client's npc.type actually is
+                                safeCode = `if (typeof Dungeon !== 'undefined') { Dungeon.npcs.forEach(n => { if (n.type === ${finalSpriteID} && !n.isDead) Dungeon.killNPC(n, true, "smite"); }); }`;
                             } else if (call.args.action === "revive") {
-                                // Find the first dead NPC of that type and revive it
-                                safeCode = `if (typeof Dungeon !== 'undefined') { let n = Dungeon.npcs.find(n => n.type === ${nType} && n.isDead); if(n) { n.isDead = false; n.visible = true; n.hp = 3; } }`;
+                                safeCode = `if (typeof Dungeon !== 'undefined') { let n = Dungeon.npcs.find(n => n.type === ${finalSpriteID} && n.isDead); if(n) { n.isDead = false; n.visible = true; n.hp = 3; } }`;
                             }
 
                             io.to(targetID).emit('suncat_client_spell', { clientCode: safeCode });
-                            functionResult = { result: `Successfully executed '${call.args.action}' on entity type ${nType}.` };
+                            functionResult = { result: `Successfully executed '${call.args.action}' on ${cardData?.name || 'entity'} (Sprite ID: ${finalSpriteID}).` };
                         } else {
                             functionResult = { result: `Failed: Player not found.` };
                         }
