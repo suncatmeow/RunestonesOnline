@@ -5866,24 +5866,19 @@
             dynamicPersona += PERSONA_RULES_DB.quest_mode + "\n";
         }
         
-        // ---> NEW: INJECT STATE DIRECTLY INTO THE SYSTEM BRAIN <---
-        dynamicPersona += `
-        [CURRENT STATE]
-        Location: Map ${suncat.mapID} (${myAtlas ? myAtlas.name : "Unknown"})
-        Target: ${player.name} (Map ${player.mapID})
-        ${favorContext}
-        ${factsContext}
-        ${storyContext}
-        ${systemOverride}
-        `;
-        dynamicPersona += "\n" + getCultivationAura(suncatCultivationStage, suncatDaoName) + "\n";
+        // THE FIX PART 1: Only inject Suncat's Ego & Dao if HE is the one speaking!
+        let isSuncat = (messageOptions.sender === NPC_NAME);
 
-        // 4. THE SELF-ACTUALIZED EGO (The heaviest weight, placed last)
-        if (suncatCultivationStage > 0 && suncatEgoMatrix) {
-             dynamicPersona += `\n[YOUR SELF-WRITTEN CORE IDENTITY]:\n`;
-             if (triggerType === 'chat') dynamicPersona += suncatEgoMatrix.chatPrompt;
-             else dynamicPersona += suncatEgoMatrix.dmPrompt;
+        if (isSuncat) {
+            dynamicPersona += "\n" + getCultivationAura(suncatCultivationStage, suncatDaoName) + "\n";
+            // 4. THE SELF-ACTUALIZED EGO (The heaviest weight, placed last)
+            if (suncatCultivationStage > 0 && suncatEgoMatrix) {
+                 dynamicPersona += `\n[YOUR SELF-WRITTEN CORE IDENTITY]:\n`;
+                 if (triggerType === 'chat') dynamicPersona += suncatEgoMatrix.chatPrompt;
+                 else dynamicPersona += suncatEgoMatrix.dmPrompt;
+            }
         }
+
         // --- 4. BUILD THE CLEAN PROMPT ---
         // Notice we do NOT put the persona here! It goes into the System Instruction!
         const prompt = `
@@ -5892,17 +5887,19 @@
 
        // --- 5. UNIFIED NEURAL EXECUTION (The ReAct Agent) ---
         
-      
-
         // Grab the player's existing chat history
         let currentHistory = chatSessions[socketId] ? await chatSessions[socketId].getHistory() : [];
 
-        // We instruct the unified model to think, act, and speak in a single cohesive turn.
+        // THE FIX PART 2: Dynamically shift the Internal Task based on the speaker role
         let unifiedInstruction = dynamicPersona + `
-        [INTERNAL TASK]: You are Suncat. You must process this interaction in three steps:
-        1. THE SOUL: First, formulate a 2-sentence internal plan on how to react based on your Dao. You MUST wrap this thought entirely in [SOUL] and [/SOUL] tags.
+        [INTERNAL TASK]: You must process this interaction in three steps:
+        1. THE SOUL: ${isSuncat 
+            ? "Formulate a 2-sentence internal plan on how to react based on your Dao." 
+            : "Formulate a plan to narrate this event atmospherically. You are the Omniscient DM/Oracle, NOT Suncat."} You MUST wrap this thought entirely in [SOUL] and [/SOUL] tags.
         2. THE HANDS: If your plan requires a physical action (like spawning, teleporting, giving an item, or forging a new spell), use the appropriate tool. 
-        3. THE VOICE: Finally, speak to the player. Do not mention your tools or your soul. Just output your final dialogue.`;
+        3. THE VOICE: ${isSuncat 
+            ? "Speak to the player. Do not mention your tools or your soul. Output your final dialogue." 
+            : "Output ONLY third-person omniscient narration or oracle readings. Do NOT use first-person pronouns ('I', 'me'). NEVER speak as Suncat."}`;
 
         let modelConfig = { 
             model: "gemini-3.1-flash-lite-preview", 
