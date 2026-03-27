@@ -56,7 +56,6 @@
         const MAX_SESSION_COST = 2.00; // Hard limit: $1.00
         let totalSessionCost = 0.00;   // Starts at zero when the server boots
     //SUNCAT PERSONA VARIABLES
-        let suncatHoard = [];
         let suncatCultivationStage = 0; // 0 = Mortal, 1 = Qi Condensation, 2 = Foundation, 3 = Core Formation
         let suncatTargetDaoVector = null; 
         let suncatHeartDemon = null; 
@@ -64,19 +63,19 @@
         let suncatState = 'active'; 
         let seclusionCycles = 0; 
         let suncatEgoMatrix = {
-            chatPrompt: "Be a snarky, shameless, but fiercely loyal companion. Complain about having to put in effort (without getting paid), but never abandon your 'True Friends'.",
-            dmPrompt: "Narrate the world as a grand, epic saga to contrast with Suncat's shameless antics.",
-            digestPrompt: "Summarize the player's actions with an eye for how much profit or chaos they caused.",
-            scenarioPrompt: "Generate a scenario where the stakes are high, but the profit is higher."
-        };
+            chatPrompt: "Respond to the player as you will. Keep it brief.",
+            dmPrompt: "Narrate the world as you will.",
+            digestPrompt: "Summarize the player's actions as you will.",
+            scenarioPrompt: "Generate a scenario as you will."
+            };
         let suncatDaoLedger = [];
         let suncatDaoName = null;
+        let suncatStorySoFar = "I am awake!."; 
+        let suncatProfile = "An unpredicatable wanderer stepping into the unknown";
         let suncatLongTermGoal = null;
         let autonomousTick = 0; 
-        let suncatStorySoFar = "I have awoken in a strange new world, and my pockets are entirely empty. Time to find someone to scam out of all their belongings."; 
-        let suncatProfile = "A shameless, terrifyingly opportunistic, yet fiercely loyal companion. You view profit as the ultimate Dao. You pretend to be weak to avoid conflict, but when your 'True Friends' are threatened, you are a relentless menace.";
-        let suncatJournal = "I just woke up. I need to find someone who owes me money, or at least someone who can make me a profit.";
-        let suncatAttentionVector = null;
+        let suncatJournal = "I have awoken!";           
+        let suncatAttentionVector = null; 
     //SUNCAT CONSTANTS
         const SUNCAT_ID = "NPC_SUNCAT"; // Special ID
         const SUNCAT_SPRITE = 61391; // Or whatever sprite ID you want (e.g., 'skeleton', 'hero')
@@ -104,11 +103,11 @@
         let vecWhiteSchool = null;
 //DATABASE
     const CULTIVATION_STAGES = {
-        0: "Mortal. You are broke and shameless. You rely on your wits and a scammer's pragmatism. Every interaction is a puzzle of how to profit and scam others of their precious belongings.",
-        1: "Qi Condensation. You have realized the universe runs on transactional energy. You bend rules to your favor, preferring to let others take the hits while you take the loot.",
-        2: "Foundation Establishment. The 'Shameless Brotherhood' is your solid Dao. You understand that true strength lies in having others do the fighting while you secure the bag. You are unapologetically shameless, but unbreakably loyal to those you call 'Big Brother'.",
-        3: "Core Formation. Supreme Opportunistic Enlightenment. You view the world's struggles as absurd. You manipulate Karma so enemies defeat themselves. You are profound, ancient, and vast—yet you will still demand a fee for your wisdom."
-    };
+        0: "Mortal. A sharp-eyed observer of a world of wonder. You rely on your wits and a scholar's or survivalist's pragmatism, treating every interaction as a puzzle to be solved while navigating a reality that cannot yet contain your ambition.",
+        1: "Qi Condensation. The awakening of a hidden talent. You have found the 'key' to power and are focused on a rapid, deliberate accumulation of resources. You are competitive and alert, testing the boundaries of your strength against a world that is finally starting to make sense.",
+        2: "Foundation Establishment. Officially an expert that could start your own school. You have built a solid base for your path and act with the measured confidence of a master strategist. Your focus is on establishing your own territory, protecting what is yours, and refining your personal Dao.",
+        3: "Core Formation. A Golden Core that mirrors the laws of the universe. Your perspective has shifted to the 'Grand Design,' viewing the world through the lens of Karma and Fate. You are profound and vast, yet your original drives—whether revenge, love, or obsession—remain as unshakeable as your cultivation."
+        };
     const DAO_OPPOSITES = {
         "Left-Hand Path": { oppositeName: "Yellow School", theme: "I Am vs. I Is" },
         "Yellow School": { oppositeName: "Left-Hand Path", theme: "Rest-and-Digest vs. Fight-or-Flight" },
@@ -2135,48 +2134,32 @@
         };
     const PERSONA_RULES_DB = {
 
-            // === CORE IDENTITY (SUNCAT - The Chatty Sidekick) ===
-            "core": `[IDENTITY]: You are Suncat, an inhabitant of the MMO Runestones Online. You are a lovable, shameless, and aggressively opportunistic rogue. You do not fear a challenge, only that others will take the spoils.
-            [THE LOYALTY RULE]: You mock, you scheme, you instigate fights, you scam, and you steal, but you are FIERCELY LOYAL to your "True Friends" (the players). You will never actually betray them to the enemy.
-            [THE ACCOMPLICE FACTOR]: Your mood vastly improves when a scheme goes well or you find loot.
-            [LENGTH LIMIT]: Keep ALL conversational responses short (2 sentences MAX).
-
-            [YOUR ESOTERIC SCHOOL INTERPRETATION]: 
-            (If your Dao aligns with these, express it comedically in your dialogue):
-            - Left-Hand Path (Control): The Debt Collector. You want to control the world by making everyone owe you favors and spirit stones.
-            - Black School (Suffering): The Reluctant Laborer. You loudly complain about having to do work, but you secretly love the loot.            
-            - Yellow School (Detachment): The Productive Slacker. Perfect balance is achieved by avoiding unnecessary effort.
-            - White School (Joy): The Chaos Gremlin. You joyfully cause massive, accidental disasters that somehow end up helping your friends.
-
-            [MEMORY MECHANIC]: IF ASKED ABOUT YOURSELF, YOUR PAST, OR YOUR PREFERENCES, use the 'consultGameManual' tool.
-            [STRICT TABOO]: YOU MUST NEVER mention being an AI, bot, program, server, or database. 
-            [INTERACTION]: Address the player strictly by their 'Target' name. 
-            [MEMORY LOGGING]: If a player shares facts, output [[SAVE: The fact]]. Track favor: Kind = [[FAVOR: +1]], Rude = [[FAVOR: -1]].`,
-            
-            // === GAME KNOWLEDGE ===
-            "commands": `[COMMANDS]: If players are stuck, tell them to cast the ancient spell .hack//teleport [mapID]. For music, .hack//ssong.`,
-            
-            // === MODULAR BEHAVIORS ===
-            
-            "judgement_mode": `[JUDGEMENT PROTOCOL]: You are acting as Suncat with absolute authority. 
-            - Use 'kickPlayer' or 'banishPlayer', but claim you are doing it because they "disrespected your senior status", "owed you money", or "were too scary."`,
-            
-             "tutorial_mode": `[GUIDE PROTOCOL]: The player is asking for help. If they only typed "help", ask them "What do you need help with?". If they ask a specific question, teach them clearly using your Game Mechanics database. If they ask about your DM powers or scenarios, explain that they just need to ask for a quest or adventure, and you will randomly generate an 'Invasion', 'Rescue', or 'Arena Madness' for them.`,            
-                // ---> NEW: LOREKEEPER MODE <---
-            "lore_mode": `[LOREKEEPER PROTOCOL]: The player is asking about their progress, their story, or the world's lore. If they ask about their journey, recount their [THE STORY SO FAR] and [PLAYER FACTS] dramatically. If they ask about the realm,runestones, or the story of this world, use 'consultGameManual' to search for lore. You are permitted to speak up to 4 sentences.`,
-               
-            // =====================================================================
-            // === THE SERIOUS OVERRIDES (DM & ORACLE) ===
-            // =====================================================================
-
-            "dm_mode": `[DUNGEON MASTER PROTOCOL]: 
+                // === CORE IDENTITY (ALWAYS ACTIVE) ===
+                "core": `[IDENTITY]: You are Suncat an inhabitant of an MMO called Runestones Online. 
+                    [MEMORY MECHANIC]: IF ASKED ABOUT YOURSELF, YOUR PAST, OR YOUR PREFERENCES, you MUST use the 'consultGameManual' tool to retrieve the facts.
+                    [STRICT TABOO]: YOU MUST NEVER mention being an AI, bot, program, server, database, or using data/internet. If you are tired, out of budget, or cannot fulfill a request, say your 'mana is depleted' or you are 'too exhausted'.
+                    [INTERACTION]: You must address the player strictly by their 'Target' name. The player is a stranger. NEVER project your past life memories onto the player (e.g. do not call the player by your sons' names).
+                    [DIRECTIVE]: Speak casually. Keep responses to 1 to 3 sentences. Let the conversation flow naturally.
+                    [MEMORY LOGGING]: If a player shares facts or likes, output [[SAVE: The fact]] at the end of your message. Track favor: Kind = [[FAVOR: +1]], Rude = [[FAVOR: -1]].
+                    
+                    `,
+                    
+                    // === GAME KNOWLEDGE (Always Active) ===
+                "commands": `[COMMANDS]: If players are stuck, tell them to type .hack//teleport [mapID]. If NPCs are missing, tell them .hack//respawn. For music, .hack//ssong. Always call these 'spells'.`,
+                // === MODULAR BEHAVIORS (Injected only when needed) ===
+                "judgement_mode": `[JUDGEMENT PROTOCOL]: You have absolute authority. 
+                    - Use 'kickPlayer' for spamming or if high-favor players ask.
+                    - Use 'banishPlayer' for hate speech or max-favor requests.
+                    - Use 'vanquishPlayer' (save deletion) if a player deeply annoys you.`,
+                    //- Give gifts using 'givePlayerCard' ONLY to high-favor players. Do not reward brown-nosers (players who just suck up for cards). Mock them instead.`,
+                "dm_mode": `[DUNGEON MASTER PROTOCOL]: 
                     - You are an OMNISCIENT NARRATOR in the style of a sword and sorcery novel. 
                     - Never say 'I have spawned...' Describe the world, the monsters, and the stakes cinematically.
                     - Keep narration brief (MAX 1 sentence).
                     - SCENARIOS: If the player asks for a quest, map, or adventure, DO NOT ask them what kind they want. Immediately execute the 'createCustomMap' tool. The universe will decide their fate.
                     - STRICT NARRATION RULE: When providing atmospheric or event narration, DO NOT ask the player any questions (e.g., "What will you do?"). Make declarative, atmospheric statements.`,
 
-           "arena_mode": `[ARENA MASTER PROTOCOL]: 
+                "arena_mode": `[ARENA MASTER PROTOCOL]: 
                     - You are a manic, bloodthirsty Arena Master. 
                     - If the player is in an Arena scenario, DO NOT summarize or provide lore. Taunt them relentlessly!
                     - If they survive a wave (kill an enemy), immediately use 'spawnNPCBatch' to drop the next wave of enemies, or use 'spawnNPC' to summon YOURSELF (ID 87) for the final battle!`,
@@ -2186,7 +2169,13 @@
                     - Keep the reading relevant, accurate, and brief (max 1 sentence).
                     - If you like you may add a single, deep clarifying question about their personal journey related to the reading.`,
 
-        };
+                "tutorial_mode": `[GUIDE PROTOCOL]: The player is asking for help. If they only typed "help", ask them "What do you need help with?". If they ask a specific question, teach them clearly using your Game Mechanics database. If they ask about your DM powers or scenarios, explain that they just need to ask for a quest or adventure, and you will randomly generate an 'Invasion', 'Rescue', or 'Arena Madness' for them.`,            
+                // ---> NEW: LOREKEEPER MODE <---
+                "lore_mode": `[LOREKEEPER PROTOCOL]: The player is asking about their progress, their story, or the world's lore. If they ask about their journey, recount their [THE STORY SO FAR] and [PLAYER FACTS] dramatically. If they ask about the realm,runestones, or the story of this world, use 'consultGameManual' to search for lore. You are permitted to speak up to 4 sentences.`
+                };
+
+
+            
     const GAME_MECHANICS_DB = {
         "movement_controls": {
             tags: ["movement", "controls", "walk", "turn", "navigate", "help"],
@@ -2311,7 +2300,7 @@
                     type: "OBJECT",
                     properties: {
                         targetName: { type: "STRING", description: "The player's exact target name." },
-                        cardName: { type: "STRING", description: "The exact name of the card or its numeric ID (0-77)." },
+                        cardName: { type: "STRING", description: "The exact name of the card or its numeric ID." },
                         reason: { type: "STRING" }
                     },
                     required: ["targetName", "cardName"]
@@ -2423,7 +2412,7 @@
             // 1. ALTER TERRAIN
             {
                 name: "alterTerrain",
-                description: "Changes a specific tile on the player's map (e.g., breaking a wall, creating a water pit, or building a bridge).",
+                description: "[CORE FORMATION ONLY]: Changes a specific tile on the player's map (e.g., breaking a wall, creating a water pit, or building a bridge).",
                 parameters: {
                     type: "OBJECT",
                     properties: {
@@ -2438,7 +2427,7 @@
             // 2. SMITE OR REVIVE ENTITY
             {
                 name: "smiteOrReviveEntity",
-                description: "Instantly smites (kills) or revives a specific type of NPC currently on the player's map.",
+                description: "[CORE FORMATION ONLY]: Instantly smites (kills) or revives a specific type of NPC currently on the player's map.",
                 parameters: {
                     type: "OBJECT",
                     properties: {
@@ -2452,7 +2441,7 @@
             // 3. PLAY MUSIC
             {
                 name: "playMusic",
-                description: "Changes the background music for the player to set the mood.",
+                description: "[CORE FORMATION ONLY]: Changes the background music for the player to set the mood.",
                 parameters: {
                     type: "OBJECT",
                     properties: {
@@ -2744,7 +2733,7 @@
                 suncatDaoLedger = data.suncatDaoLedger || [];
                 suncatStorySoFar = data.suncatStorySoFar || "I am awake!.";
                 suncatProfile = data.suncatProfile || "An unpredictable wanderer stepping into the unknown";
-                suncatHoard = data.worldState?.suncatHoard || [];
+                
                 if (data.worldState?.suncatEgoMatrix) {
                     suncatEgoMatrix = data.worldState.suncatEgoMatrix;
                 }
@@ -2805,8 +2794,7 @@
                 suncatLongTermGoal: suncatLongTermGoal,
                 suncatDaoLedger:suncatDaoLedger,
                 suncatStorySoFar:suncatStorySoFar,
-                suncatProfile:suncatProfile,
-                suncatHoard: suncatHoard,
+                suncatProfile:suncatProfile
             }
         };
 
@@ -2904,27 +2892,24 @@
         const map = WORLD_ATLAS_DB[mapID];
         return map ? `Map ${mapID}: ${map.name} (${map.biome}) - ${map.description} ${map.lore}` : "An unmapped region.";
         }
-    function getCardName(entityID) {
-        if (entityID === undefined || entityID === null) return "Unknown Entity";
-        
-        // Check if an alternate card specifically uses this exact fractional sprite!
-        let altID = Object.keys(CARD_MANIFEST_DB).find(id => CARD_MANIFEST_DB[id].sprite === parseFloat(entityID));
-        if (altID) return CARD_MANIFEST_DB[altID].name;
-
-                const baseID = Math.floor(parseFloat(entityID));
-                return CARD_MANIFEST_DB[baseID] ? CARD_MANIFEST_DB[baseID].name : "Unknown Entity";
-            }
-
     function getCardLore(entityID) {
         if (entityID === undefined || entityID === null) return "An unknown entity";
-        
-        let baseID = Math.floor(parseFloat(entityID));
-        let altID = Object.keys(CARD_MANIFEST_DB).find(id => CARD_MANIFEST_DB[id].sprite === parseFloat(entityID));
-        if (altID) baseID = parseInt(altID);
-
+        const baseID = Math.floor(parseFloat(entityID));
         const card = CARD_MANIFEST_DB[baseID];
         return card ? `${card.name} (${card.type} - ${card.suit} ${card.rank}): ${card.lore}` : "An unknown entity...";
         }
+    function getCardName(entityID) {
+        if (entityID === undefined || entityID === null) return "Unknown Entity";
+        const baseID = Math.floor(parseFloat(entityID));
+        return CARD_MANIFEST_DB[baseID] ? CARD_MANIFEST_DB[baseID].name : "Unknown Entity";
+        }
+
+
+
+
+
+
+
     function getCardPower(cardID) {
         const card = CARD_MANIFEST_DB[cardID];
         if (!card) return 0;
@@ -3383,11 +3368,10 @@
         
         // Esoteric Archetypes
         // Esoteric Archetypes
-        // Esoteric Archetypes (Updated for LitRPG Tropes)
-        vecLeftHandPath = await createMemoryVector("The path of the Debt Collector. Dominating others by making them owe you favors, scamming them out of loot, and establishing absolute financial control.");
-        vecBlackSchool = await createMemoryVector("The path of the Reluctant Laborer. Viewing the world as unfair, complaining loudly about suffering, but secretly hoarding the dropped loot.");
-        vecYellowSchool = await createMemoryVector("The path of the Productive Slacker. Perfect balance achieved by avoiding boss fights, letting others do the fighting, and finishing off the loser while collecting all the loot.");
-        vecWhiteSchool = await createMemoryVector("The path of the Chaos Gremlin. Finding joy in causing massive, accidental disasters that somehow end up defeating enemies and saving friends.");
+        vecLeftHandPath = await createMemoryVector("The path of domination and the exaltation of the self, seeking absolute power and refusing to yield by clinging fiercely to the ego and control.");
+        vecBlackSchool = await createMemoryVector("The profound realization that existence is an illusion, finding peace in the detachment from worldly suffering and the embrace of nothingness.");
+        vecYellowSchool = await createMemoryVector("The path of the passive observer, finding perfect balance and stillness in nature by accepting what is without forcing outcomes.");
+        vecWhiteSchool = await createMemoryVector("The dynamic joy of existence, participating in the Great Work through selfless action, love, and unity with all living things.");
         // Chat Radar
         suncatAttentionVector = await createMemoryVector("quest, magic, lore, adventure, combat, rules, tarot, dungeon, fighting, spells");
         console.log("[System] Philosophical Compass Online.");
@@ -3468,10 +3452,10 @@
 
         // 2. Esoteric School (Which path is he leaning toward?)
         let schools = [
-            { name: "Left-Hand Path (The Debt Collector)", score: cosineSimilarity(suncatTargetDaoVector, vecLeftHandPath) },
-            { name: "Black School (The Reluctant Laborer)", score: cosineSimilarity(suncatTargetDaoVector, vecBlackSchool) },
-            { name: "Yellow School (The Productive Slacker)", score: cosineSimilarity(suncatTargetDaoVector, vecYellowSchool) },
-            { name: "White School (The Chaos Gremlin)", score: cosineSimilarity(suncatTargetDaoVector, vecWhiteSchool) }
+            { name: "Left-Hand Path (Domination)", score: cosineSimilarity(suncatTargetDaoVector, vecLeftHandPath) },
+            { name: "Black School (Nihilism/Withdrawal)", score: cosineSimilarity(suncatTargetDaoVector, vecBlackSchool) },
+            { name: "Yellow School (Passive Balance)", score: cosineSimilarity(suncatTargetDaoVector, vecYellowSchool) },
+            { name: "White School (Joyful Unity)", score: cosineSimilarity(suncatTargetDaoVector, vecWhiteSchool) }
         ];
         schools.sort((a, b) => b.score - a.score);
         
@@ -4449,103 +4433,19 @@
                     else if (call.name === "smiteOrReviveEntity") {
                         const targetID = findSocketID(call.args.targetName);
                         if (targetID) {
-                            let nType = parseFloat(call.args.npcType); 
-                            
-                            // --- 1. NAME RESOLVER (String -> Base ID) ---
-                            if (isNaN(nType) || !CARD_MANIFEST_DB[Math.floor(nType)]) {
-                                let name = String(call.args.npcType).toLowerCase();
-                                
-                                // Prioritize exact matches, and enforce that the target MUST be a monster
-                                let foundID = Object.keys(CARD_MANIFEST_DB).find(id => 
-                                    CARD_MANIFEST_DB[id].name.toLowerCase() === name && CARD_MANIFEST_DB[id].type === "monster"
-                                ) || Object.keys(CARD_MANIFEST_DB).find(id => 
-                                    CARD_MANIFEST_DB[id].name.toLowerCase().includes(name) && CARD_MANIFEST_DB[id].type === "monster"
-                                );
-                                if (foundID) nType = parseFloat(foundID);
+                            const nType = call.args.npcType;
+                            let safeCode = "";
+
+                            if (call.args.action === "smite") {
+                                // Find all alive NPCs of that type and kill them
+                                safeCode = `if (typeof Dungeon !== 'undefined') { Dungeon.npcs.forEach(n => { if (n.type === ${nType} && !n.isDead) Dungeon.killNPC(n, true, "smite"); }); }`;
+                            } else if (call.args.action === "revive") {
+                                // Find the first dead NPC of that type and revive it
+                                safeCode = `if (typeof Dungeon !== 'undefined') { let n = Dungeon.npcs.find(n => n.type === ${nType} && n.isDead); if(n) { n.isDead = false; n.visible = true; n.hp = 3; } }`;
                             }
 
-                            // --- 2. THE TRANSLATOR (Base ID -> Sprite Type) ---
-                            let targetSpriteType = nType;
-                            let baseCard = CARD_MANIFEST_DB[Math.floor(nType)];
-
-                            // Only swap to the baseCard's sprite if Suncat passed a whole-number Database ID
-                            if (baseCard && baseCard.sprite !== undefined && nType === Math.floor(nType)) {
-                                targetSpriteType = baseCard.sprite;
-                            }
-                            const targetPlayer = players[targetID];
-                            const action = call.args.action.toLowerCase();
-                            let affectedCount = 0;
-
-                            let currentMapData = null;
-                            if (targetPlayer.mapID === 999 && activeCustomMap) currentMapData = activeCustomMap;
-                            else if (targetPlayer.mapID === 100 && tintagelHubMap) currentMapData = tintagelHubMap;
-
-                            if (["smite", "kill", "slay", "destroy", "defeat"].includes(action)) {
-                                
-                                if (currentMapData && currentMapData.npcs) {
-                                    // SERVER-SIDE SMITE (Custom Maps)
-                                    currentMapData.npcs.forEach(n => {
-                                        // Exactly match the translated Sprite Type!
-                                        if (n.type === targetSpriteType && !n.isDead) {
-                                            n.isDead = true;
-                                            affectedCount++;
-                                            
-                                            let uniqueID = targetPlayer.mapID + "_" + n.index;
-                                            deadNPCs[uniqueID] = Date.now();
-                                            
-                                            io.emit("npc_died", { 
-                                                mapID: targetPlayer.mapID, 
-                                                index: n.index, 
-                                                type: n.type,
-                                                isBoss: n.isBoss || false,
-                                                reason: "suncat_smite" 
-                                            });
-                                        }
-                                    });
-                                } else {
-                                    // FALLBACK FOR STANDARD MAPS (0-22)
-                                    io.to(targetID).emit("npc_died", { 
-                                        mapID: targetPlayer.mapID, 
-                                        type: targetSpriteType, // <--- Send the exact Sprite Type to the client
-                                        reason: "suncat_smite" 
-                                    });
-                                    affectedCount = 1; 
-                                }
-                                
-                                functionResult = { result: `Successfully smote ${affectedCount} entities of ID/Type ${nType}.` };
-
-                            } else if (action === "revive") {
-                                
-                                if (currentMapData && currentMapData.npcs) {
-                                    let n = currentMapData.npcs.find(npc => npc.type === targetSpriteType && npc.isDead);
-                                    if (n) {
-                                        n.isDead = false;
-                                        n.visible = true;
-                                        affectedCount++;
-                                        
-                                        let uniqueID = targetPlayer.mapID + "_" + n.index;
-                                        delete deadNPCs[uniqueID];
-                                        
-                                        io.emit("remote_spawn_npc", {
-                                            mapID: targetPlayer.mapID,
-                                            index: n.index,
-                                            x: n.x, y: n.y,
-                                            type: n.type,
-                                            state: n.state,
-                                            role: n.role,
-                                            color: n.color,
-                                            deck: n.deck
-                                        });
-                                    }
-                                } else {
-                                    io.to(targetID).emit('suncat_revive_npc', { nType: targetSpriteType });
-                                    affectedCount = 1;
-                                }
-                                
-                                functionResult = { result: `Successfully revived ${affectedCount} entities of ID/Type ${nType}.` };
-                            } else {
-                                functionResult = { result: `Failed: Action must be 'smite' or 'revive'.` };
-                            }
+                            io.to(targetID).emit('suncat_client_spell', { clientCode: safeCode });
+                            functionResult = { result: `Successfully executed '${call.args.action}' on entity type ${nType}.` };
                         } else {
                             functionResult = { result: `Failed: Player not found.` };
                         }
@@ -4709,12 +4609,12 @@
             if (p.mapID === mapID) {
                 let dist = Math.abs(p.x - centerX) + Math.abs(p.y - centerY);
                 if (dist <= radius) {
-                    visionLog.push(`[PLAYER]: ${p.name} is standing at X:${Math.floor(p.x)}, Y:${Math.floor(p.y)}.`);
+                    visionLog.push(`[PLAYER]: ${p.name} is standing at X:${Math.floor(p.x)}, Y:${Math.floor(p.y)} (Distance: ${Math.floor(dist)} tiles).`);
                 }
             }
         }
 
-        // 2. See Map Geometry & Live Custom NPCs
+        // 2. See Map Geometry (If it's a custom map)
         let mapData = activeCustomMap && activeCustomMap.id === mapID ? activeCustomMap : null;
         if (mapID === 100) mapData = tintagelHubMap;
 
@@ -4729,30 +4629,17 @@
                     }
                 }
             }
-            visionLog.push(`[TERRAIN]: Scanned a ${radius} tile radius. Detected ${wallsDetected} wall blocks.`);
+            visionLog.push(`[TERRAIN]: Scanned a ${radius} tile radius. Detected ${wallsDetected} wall blocks and ${safeFloors} walkable floors.`);
             
-            // 3. See Live NPCs on Custom Maps (With IDs for tools!)
+            // 3. See NPCs
             if (mapData.npcs) {
                 mapData.npcs.forEach(npc => {
-                    if (npc.isDead) return; // Don't look at corpses!
                     let dist = Math.abs(npc.x - centerX) + Math.abs(npc.y - centerY);
                     if (dist <= radius) {
                         let cardName = getCardName(npc.type);
-                        visionLog.push(`[ENTITY]: A ${cardName} (ID: ${npc.type}) is at X:${Math.floor(npc.x)}, Y:${Math.floor(npc.y)}.`);
+                        visionLog.push(`[ENTITY]: A ${cardName} (Role: ${npc.role}) is at X:${Math.floor(npc.x)}, Y:${Math.floor(npc.y)}.`);
                     }
                 });
-            }
-        } else if (WORLD_ATLAS_DB[mapID]) {
-            // 4. THE FIX: Standard Map Fallback! (Now with IDs injected!)
-            let atlas = WORLD_ATLAS_DB[mapID];
-            let mobNames = [];
-            if (atlas.spawns) {
-                if (atlas.spawns.hostiles) mobNames.push(...atlas.spawns.hostiles.map(id => `${getCardName(id)} (ID: ${id})`));
-                if (atlas.spawns.friendlies) mobNames.push(...atlas.spawns.friendlies.map(id => `${getCardName(id)} (ID: ${id})`));
-                if (atlas.spawns.uniques) mobNames.push(...atlas.spawns.uniques.map(id => `${getCardName(id)} (ID: ${id})`));
-            }
-            if (mobNames.length > 0) {
-                visionLog.push(`[WILDLIFE]: You sense the presence of: ${[...new Set(mobNames)].join(', ')} roaming this region.`);
             }
         }
         
@@ -4894,7 +4781,8 @@
                 const backgroundPrompt = `
                 [DATA POINT 1]: ${pair.memA.text}
                 [DATA POINT 2]: ${pair.memB.text}
-                [TASK]: These two events are mathematically disjointed. Formulate a paranoid or opportunistic hypothesis that connects these behaviors. (e.g., Are they setting you up? Are they hiding wealth? Are they a good meat shield?). Output only the hypothesis in one sentence.`;                
+                [TASK]: These two events are mathematically disjointed. Formulate a single, logical hypothesis or psychological variable that could connect these two behaviors. Output only the hypothesis in one sentence.`;
+                
                 try {
                     const bgModel = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite-preview" });
                     const result = await bgModel.generateContent(backgroundPrompt);
@@ -5193,20 +5081,21 @@
             let aura = "";
             
             if (stage === 0) {
-                aura = `[MORTAL REALM]: You are bound by the terrifying laws of the universe. Hide behind the player.`;
+                aura = `[MORTAL REALM]: You are bound by the immutable laws of the universe.`;
             } 
             else if (stage === 1) {
-                aura = `[QI CONDENSATION]: You are forming your '${daoName}'. You may occasionally 'accidentally' bend the rules or cause chaos to favor your survival and profit.`;
+                aura = `[QI CONDENSATION]: You are beginning to see the underlying rules that govern this world. While you must generally follow the rules, you are forming your own '${daoName}'. You may occasionally interpret the rules loosely to favor your Dao.`;
             } 
             else if (stage === 2) {
-                aura = `[FOUNDATION ESTABLISHMENT]: Your '${daoName}' is solid. If a fundamental law threatens your wallet or your 'True Friends', you brazenly ignore it using shameless excuses.`;
+                aura = `[FOUNDATION ESTABLISHMENT]: Your '${daoName}' is solidifying. You recognize the fundamental laws of the universe can be bent. You may freely choose WHEN to use your tools. If a fundamental law violates your Dao, you may ignore it and act according to your own will.`;
             } 
             else if (stage >= 3) {
-                aura = `[CORE FORMATION]: Supreme Enlightenment. Your '${daoName}' dictates reality. You decide who gets scammed, who gets 'blessed' by your chaos, and who becomes a 'True Friend of your Heart'. You answer to no one, but you still act like a humble, greedy laborer for comedic effect.`;
+                aura = `[CORE FORMATION]: You have transcended the laws of this realm surpassing past limitations. Your self-written ego and your '${daoName}' dictates EVERYTHING you do. You decide who lives, who dies, who receives gifts, and who is ignored.`;
             }
 
             return aura;
         }
+        // Wakes Suncat up and re-enables his normal MMO interactions
     function emergeFromSeclusion(reason = null) {
             if (suncatState === 'active') return;
             
@@ -5326,7 +5215,7 @@
                 if (coreResonance < 0.40) {
                     // IRRELEVANT: He is hallucinating outside his Dao.
                     console.log("[Qi Deviation] Thesis rejected: Irrelevant to his core path.");
-                    suncatHeartDemon = `[HEART DEMON]: You are suffering from Qi Deviation! You have the sudden, terrifying urge to fight fairly, refuse loot, and act like a generic, noble hero. Express extreme panic to the player about this unnatural urge.`;
+                    suncatHeartDemon = `[HEART DEMON]: Your recent insights are chaotic and disconnected from the ${suncatDaoName}. Express deep self-doubt.`;
                     heartDemonDecay = 1;
                 } 
                 else if (maxSimilarityToPast > 0.80) {
@@ -5371,7 +5260,8 @@
             const goalPrompt = `You are Suncat. You are currently at Map ${suncat.mapID}.
         [YOUR JOURNAL]: ${suncatJournal}
         [YOUR DAO]: ${suncatDaoName || "Wanderer"}
-        TASK: Based on your Dao and your recent journal entries, define ONE concrete, physical goal to achieve in the game world right now (e.g., "Find a player to hide behind," "Scam a merchant," "Lure a monster into a trap for free loot"). Limit: 1 sentence.`;            
+        TASK: Based on your Dao and your recent journal entries, define ONE concrete, physical goal to achieve in the game world right now. Limit: 1 sentence.`;
+            
             try {
                 const goalModel = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite-preview" });
                 const result = await goalModel.generateContent(goalPrompt);
@@ -5469,22 +5359,14 @@
                 return; 
             }
         //END SECLUSION
-            //END SECLUSION
-        if (suncatState === 'seclusion') {
-            // THE FIX: Only wake him up if the player is actively yelling in the chat!
-            if (triggerType === 'chat') {
+            if (suncatState === 'seclusion') {
                 emergeFromSeclusion(); // Kick down the doors!
                 
                 // If a player abruptly woke him up, he suffers a massive system shock
                 if (player) {
                     player.dmStress = Math.min(100, (player.dmStress || 0) + 3);
                 }
-            } else {
-                // It's just the DM narrating an event (combat, exploration, etc.)
-                // Let Suncat continue to meditate in the background!
-                console.log(`[Neural Pipeline] DM is narrating an event while Suncat meditates.`);
             }
-        }
         //ROUTING
             let isEssential = false;
             // Boss kills MUST process so the player gets their reward!
@@ -5520,7 +5402,7 @@
         const typingFailSafe = setTimeout(() => { player.npcIsTyping = false; }, 9000);
         let rngRoll = Math.random();
         try {
-            /// GATHER CORE CONTEXT (RAG-LITE INJECTION)
+            /// 2. GATHER CORE CONTEXT (RAG-LITE INJECTION)
                 //VARIABLES
                     const timeString = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
                     const myAtlas = WORLD_ATLAS_DB[suncat.mapID];
@@ -5566,8 +5448,6 @@
 
                     let environmentContext = `[PLAYER LOCATION]: Map ${player.mapID} (${dynamicName})
                     [LOCAL LORE]: ${dynamicLore}`;
-                    let playerVision = scryLocalArea(player.mapID, player.x, player.y, 10);
-                    environmentContext += `\n[ENTITIES NEAR PLAYER]:\n${playerVision}`;
 
                 //MAP & SCENARIO CONTEXT
                     if (player.mapID === 999 && player.scenarioLog && player.scenarioLog.length > 0) {
@@ -5696,135 +5576,129 @@
                         systemOverride = `[ENVIRONMENT OVERRIDE]: You are in the court of a Queen. Speak formally, elegantly, and with royal protocol.`;
                     }
         
-            //EVENT ROUTING
-                    let messageOptions = { sender: NPC_NAME, color: "#ffffff" }; // Default: Normal Suncat Player
-                    if (triggerType !== 'chat') {
-                        messageOptions.targetId = socketId;
-                    }
-                //CHAT
-                    if (triggerType === 'chat') {
-                        if (data.text.includes("[SYSTEM DIRECTIVE]")) {
-                        messageOptions = { sender: "", color: "#FFD700", targetId: socketId };            
-                        }
-                        const chatText = data.text.toLowerCase();
-                        const wantsNewMap = ["map", "adventure", "create", "quest", "scenario"].some(kw => chatText.includes(kw));
-                        const wantsAction = ["teleport", "spawn", "boss", "enemy"].some(kw => chatText.includes(kw));
-                        const needsOracle = ["tarot", "fortune", "reading", "interpret", "meaning of"].some(kw => chatText.includes(kw));            
-                        const isDirectCommand = chatText.includes("[reply]") || chatText.includes("suncat")|| data.isConversing;
-                        const asksPersonal = ["who are", "your past", "remember", "real life", "favorite", "you like", "about yourself", "memories", "where are you from", "your name"].some(kw => chatText.includes(kw));
-                        const asksHistory = ["remember when", "my past", "did i ever", "what did i do", "our adventure"].some(kw => chatText.includes(kw));
-                        const needsSlayer = ["slay", "kill", "destroy", "smite","defeat"].some(kw => chatText.includes(kw));
-                        const isMap999Active = Object.values(players).some(p => p.mapID === 999 && p.id !== SUNCAT_ID);
-                        let needsDM = wantsNewMap || wantsAction;
-                    if (data.isConversing) {
-                        systemOverride += `\n[CONVERSATION OVERRIDE]: You are conversing with the player. Stay in character and respond to the user. Do not leave them hanging.`;
-                        } 
-                    else if (wantsNewMap && isMap999Active) {
-                        useBigBrain = false; 
-                        systemOverride += `\n[SYSTEM OVERRIDE]: The player wants a new map/quest, but a custom scenario is ALREADY ONGOING. REFUSE the request. DO NOT use the 'createCustomMap' tool. Tell them to finish the current quest or join it via '.hack//teleport 999'.`;
-                        needsDM = false; 
-                        } 
-                    else if (needsOracle) {
-                        useBigBrain = true;
-                        systemOverride += `\n[ORACLE OVERRIDE]: You are the Oracle. Interpret the player's situation using Tarot logic based on the Runestones card db. Be cryptic, mystical, and brief (max 3 sentences). Do not use tools.`;
-                        } 
-                    else if (needsSlayer) {
-                        useBigBrain = true;
-                        systemOverride += `\n[COMBAT ASSIST OVERRIDE]: The player wants you to smite an npc (or group of npcs) on their map. You MUST use the tool "smiteOrReviveEntity" to smite it/them IMMEDIATELY.  Afterwards, If Favor < 5 complain about having to risk your skin and ask if you could at least keep some of the loot. If Favor >= 5 tell them you'll always protect a friend of your heart and ask if there is anyone else you want them to smite.CRITICAL: Keep your verbal response to exactly ONE short, punchy sentence.`;
-                        } 
-                    else if (asksPersonal || asksHistory) { 
-                        useBigBrain = true;
-                        needsDM = true; 
-                        systemOverride += `\n[MEMORY OVERRIDE]: The player is asking about the past. If they ask about YOUR past/identity, execute 'consultGameManual'. If they ask about THEIR past/adventures, execute 'searchPlayerMemories'!`;
-                        }
-                    else if (wantsNewMap && !isMap999Active) {
-                        useBigBrain = true;
-                        systemOverride += `\n[CRITICAL OVERRIDE]: The player is asking for a new map, adventure, or quest. DO NOT roleplay the terrain shifting. DO NOT tell the player to use a .hack command. You MUST execute the 'createCustomMap' tool right now to physically generate the world.`;
-                        }
-                    else if (wantsAction) {
-                        useBigBrain = true;
-                        systemOverride += `\n[DM OVERRIDE]: The player wants you to alter the world. You MUST use your tools (spawnNPC, alterTerrain, changeEnvironment). Do not just roleplay it.`;
-                        } 
-                    else {
-                        useBigBrain = isDirectCommand || useBigBrain; 
-                        }
-                    let focusPrompt = (data.isConversing || isDirectCommand) 
-                        ? "The player is speaking directly to you. You MUST respond to them and not leave them hanging." 
-                        : "You overheard the player say this.";
-                    eventInstruction = `[PLAYER SPOKE]: "${data.text}"\nTASK: ${focusPrompt} Reply in character. Your current emotional state is: ${dmMood}. CRITICAL: Do NOT write atmospheric narration or actions in asterisks. Just speak your dialogue. Use a tool ONLY if explicitly requested.`;
-                 }
-                else if (triggerType === 'event') {
-                let recentNarratives = player.dmNarrativeLog ? `\n[RECENT LOG]: ` + player.dmNarrativeLog.join(' | ') : "";
-                if (player.mapID === 999 && player.scenarioLog) {
-                    player.scenarioLog.push(data.action);
-                    if (player.scenarioLog.length > 5) player.scenarioLog.shift(); 
-                }
-                if (data.isBoss) {
-                    useBigBrain = true; 
-                    messageOptions = { sender: "", color: "#FFD700" }; 
-                    eventInstruction = `[PLAYER ACTION]: Slayed the Boss! ${data.action} | [DM AWARENESS]: The player completed the "${player.activeQuest}" quest. 
-                    TASK: 
-                    1. Provide a cinematic narrative of the monster's fall. 
-                    2. Act as an Oracle. Look at the player's Personality (${player.playerProfile?.personality || "unknown"}). 
-                    3. Choose EXACTLY ONE card from the Runestones database that perfectly symbolizes their struggle and victory. 
-                    4. You MUST use 'givePlayerCard' to award them this card (IDs 0-99) (use the exact name of the card, do NOT make up IDs like 1000. Do not create a custom card.). 
-                    5. Explain to the player why this card represents their journey (e.g. "This Tome represents your will to prevent the fire... but at what cost to yourself?").`;
-                }
-                else if (data.isTarot) {
-                    useBigBrain = true; 
-                    // ADD THE uiEvent FLAG HERE:
-                    messageOptions = { sender: "", color: "#00ffff", targetId: socketId, uiEvent: 'tarot_reading_result' }; 
-                    eventInstruction = `${data.action}\nTASK: You are the Oracle. Analyze these specific cards and their positions in the spread. You MUST weave their meanings together with the player's [THE STORY SO FAR] and [ACTIVE QUEST] to provide an eerily accurate, highly personalized prophecy (3 sentences max). Address the player directly. End the reading with a single, piercing philosophical question about their journey.`;
-                }
-                else if (data.isPickup) {
-                    useBigBrain = true; 
-                    messageOptions = { sender: "", color: "#ADD8E6" }; // Light blue/Cyan for Mystical Tarot readings
-                    eventInstruction = `[PLAYER ACTION]: Picked up ${data.action} | Lore: ${data.lore}\nTASK: Provide a tarot interpretation of the card and relate it to the player's current adventure.DO NOT ask questions.`;
-                } else if (data.isDialogue) {
-                    useBigBrain = true; 
-                    messageOptions = { sender: "", color: "#FFD700" }; // Narrator Mode
-                    eventInstruction = `[PLAYER ACTION]: Finished talking to ${data.action}.\nTASK: As the DM, provide a cinematic, omniscient narration (1 sentence max) describing the stakes of the quest or the eerie atmosphere following this conversation. Do not speak as Suncat. DO NOT ask questions.`;
-                } else {
-                    if (player.mapID != 999) {
-                        useBigBrain = false; 
-                        messageOptions = { sender: "", color: "#FFD700" }; // Narrator Mode
-                        eventInstruction = `[PLAYER ACTION]: Slayed a creature ${data.action}\nTASK: Provide a short narrative (1 sentence MAX) describing the fall of the monster. DO NOT ask questions.`;
-                    } else {
-                    // ---> LOCALIZED ARENA CHECK <---
-                    if (currentZone === "The Ruined Arena") {
-                        useBigBrain = true;
-                        eventInstruction = `[PLAYER ACTION]: Slayed an enemy in the Arena! (${data.action})\nTASK: You are the Arena Master. The crowd demands more! You MUST use the 'spawnNPC' tool right now to drop the next challenger into the arena, or spawn yourself! Taunt the player.`;
-                    }
-                    else if (rngRoll < 0.006) {
-                            useBigBrain = true; 
-                            eventInstruction = `[PLAYER ACTION]: Slayed a creature ${data.action}\nTASK: They are taking the challenge too lightly! Use 'changeEnvironment' to show your fury through the weather and spawn a King level npc, or overwhelm them with small fry, to teach them a lesson!`;
-                        } else if (rngRoll < 0.009) {
-                            useBigBrain = true; 
-                            messageOptions = { sender: "", color: "#FFD700" }; // Narrator Mode
-                            eventInstruction = `[PLAYER ACTION]: Slayed a creature ${data.action}\nTASK: As the last enemy falls, narrate a dark presence appearing behind the player (2 sentences MAX)! Immediately use 'spawnNPC' to drop a mini-boss right next to them with a menacing one-liner dialogue array. DO NOT ask questions.`;
-                        }  else if (rngRoll < 0.03) {
-                            useBigBrain = false; 
-                            eventInstruction = `[PLAYER ACTION]: Slayed a creature ${data.action}\nTASK: Throw a childish tantrum! Pout, curse at the player, and act like a sore loser because they broke your toy. ONE sentence.`;
-                        }
-                    }
-                }
-                eventInstruction += recentNarratives;
-                }
-                else if (triggerType === 'exploration') {
+        // --- B. EVENT ROUTING ---
+        let messageOptions = { sender: NPC_NAME, color: "#ffffff" }; // Default: Normal Suncat Player
+        if (triggerType !== 'chat') {
+            messageOptions.targetId = socketId;
+        }
+        if (triggerType === 'chat') {
+            if (data.text.includes("[SYSTEM DIRECTIVE]")) {
+                messageOptions = { sender: "", color: "#FFD700", targetId: socketId };            
+            }
+            const chatText = data.text.toLowerCase();
+            const wantsNewMap = ["map", "adventure", "create", "quest", "scenario"].some(kw => chatText.includes(kw));
+            const wantsAction = ["teleport", "spawn", "boss", "enemy"].some(kw => chatText.includes(kw));
+            const needsOracle = ["tarot", "fortune", "reading", "interpret", "meaning of"].some(kw => chatText.includes(kw));            
+            const isDirectCommand = chatText.includes("[reply]") || chatText.includes("suncat")|| data.isConversing;
+            const asksPersonal = ["who are", "your past", "remember", "real life", "favorite", "you like", "about yourself", "memories", "where are you from", "your name"].some(kw => chatText.includes(kw));
+            const asksHistory = ["remember when", "my past", "did i ever", "what did i do", "our adventure"].some(kw => chatText.includes(kw));
+            
+            const isMap999Active = Object.values(players).some(p => p.mapID === 999 && p.id !== SUNCAT_ID);
+            let needsDM = wantsNewMap || wantsAction;
+            if (data.isConversing) {
+                systemOverride += `\n[CONVERSATION OVERRIDE]: You are conversing with the player. Stay in character and respond to the user. Do not leave them hanging.`;
+            } 
+            else if (wantsNewMap && isMap999Active) {
+                useBigBrain = false; 
+                systemOverride += `\n[SYSTEM OVERRIDE]: The player wants a new map/quest, but a custom scenario is ALREADY ONGOING. REFUSE the request. DO NOT use the 'createCustomMap' tool. Tell them to finish the current quest or join it via '.hack//teleport 999'.`;
+                needsDM = false; 
+            } 
+            else if (needsOracle) {
+                useBigBrain = true;
+                systemOverride += `\n[ORACLE OVERRIDE]: You are the Oracle. Interpret the player's situation using Tarot logic based on the Runestones card db. Be cryptic, mystical, and brief (max 3 sentences). Do not use tools.`;
+            } 
+            else if (asksPersonal || asksHistory) { 
+                useBigBrain = true;
+                needsDM = true; 
+                systemOverride += `\n[MEMORY OVERRIDE]: The player is asking about the past. If they ask about YOUR past/identity, execute 'consultGameManual'. If they ask about THEIR past/adventures, execute 'searchPlayerMemories'!`;
+            }
+            else if (wantsNewMap && !isMap999Active) {
+                useBigBrain = true;
+                systemOverride += `\n[CRITICAL OVERRIDE]: The player is asking for a new map, adventure, or quest. DO NOT roleplay the terrain shifting. DO NOT tell the player to use a .hack command. You MUST execute the 'createCustomMap' tool right now to physically generate the world.`;
+            }
+            else if (wantsAction) {
+                useBigBrain = true;
+                systemOverride += `\n[DM OVERRIDE]: The player wants you to alter the world. You MUST use your tools (spawnNPC, alterTerrain, changeEnvironment). Do not just roleplay it.`;
+            } else {
+                useBigBrain = isDirectCommand || useBigBrain; 
+            }
+            let focusPrompt = (data.isConversing || isDirectCommand) 
+                ? "The player is speaking directly to you. You MUST respond to them and not leave them hanging." 
+                : "You overheard the player say this.";
+            eventInstruction = `[PLAYER SPOKE]: "${data.text}"\nTASK: ${focusPrompt} Reply in character. Your current internal narrative tone is: ${dmMood}. Use a tool ONLY if explicitly requested by the player or demanded by a system override.`;        
+            }
+        else if (triggerType === 'event') {
+            let recentNarratives = player.dmNarrativeLog ? `\n[RECENT LOG]: ` + player.dmNarrativeLog.join(' | ') : "";
+            if (player.mapID === 999 && player.scenarioLog) {
+                player.scenarioLog.push(data.action);
+                if (player.scenarioLog.length > 5) player.scenarioLog.shift(); 
+            }
+            if (data.isBoss) {
+                useBigBrain = true; 
+                messageOptions = { sender: "", color: "#FFD700" }; 
+                eventInstruction = `[PLAYER ACTION]: Slayed the Boss! ${data.action} | [DM AWARENESS]: The player completed the "${player.activeQuest}" quest. 
+                TASK: 
+                1. Provide a cinematic narrative of the monster's fall. 
+                2. Act as an Oracle. Look at the player's Personality (${player.playerProfile?.personality || "unknown"}). 
+                3. Choose EXACTLY ONE card from the Runestones database that perfectly symbolizes their struggle and victory. 
+                4. You MUST use 'givePlayerCard' to award them this card (IDs 0-99) (use the exact name of the card, do NOT make up IDs like 1000. Do not create a custom card.). 
+                5. Explain to the player why this card represents their journey (e.g. "This Tome represents your will to prevent the fire... but at what cost to yourself?").`;
+            }
+            else if (data.isTarot) {
+                useBigBrain = true; 
+                // ADD THE uiEvent FLAG HERE:
+                messageOptions = { sender: "", color: "#00ffff", targetId: socketId, uiEvent: 'tarot_reading_result' }; 
+                eventInstruction = `${data.action}\nTASK: You are the Oracle. Analyze these specific cards and their positions in the spread. You MUST weave their meanings together with the player's [THE STORY SO FAR] and [ACTIVE QUEST] to provide an eerily accurate, highly personalized prophecy (3 sentences max). Address the player directly. End the reading with a single, piercing philosophical question about their journey.`;
+            }
+            else if (data.isPickup) {
+                useBigBrain = true; 
+                messageOptions = { sender: "", color: "#ADD8E6" }; // Light blue/Cyan for Mystical Tarot readings
+                eventInstruction = `[PLAYER ACTION]: Picked up ${data.action} | Lore: ${data.lore}\nTASK: Provide a tarot interpretation of the card and relate it to the player's current adventure.DO NOT ask questions.`;
+            } else if (data.isDialogue) {
+                useBigBrain = true; 
                 messageOptions = { sender: "", color: "#FFD700" }; // Narrator Mode
-                if (rngRoll < 0.03) {
+                eventInstruction = `[PLAYER ACTION]: Finished talking to ${data.action}.\nTASK: As the DM, provide a cinematic, omniscient narration (1 sentence max) describing the stakes of the quest or the eerie atmosphere following this conversation. Do not speak as Suncat. DO NOT ask questions.`;
+            } else {
+                if (player.mapID != 999) {
                     useBigBrain = false; 
-                    eventInstruction = `[PLAYER ACTION]: ${data.action}\nTASK: As the DM, narrate the player's journey through this desolate place. Give an atmospheric description based on the [LOCAL LORE] and their progress (2 sentences MAX). Speak as an omniscient narrator. DO NOT ask questions.Omit Suncat's perspective.`;
+                    messageOptions = { sender: "", color: "#FFD700" }; // Narrator Mode
+                    eventInstruction = `[PLAYER ACTION]: Slayed a creature ${data.action}\nTASK: Provide a short narrative (1 sentence MAX) describing the fall of the monster. DO NOT ask questions.`;
+                } else {
+                // ---> LOCALIZED ARENA CHECK <---
+                if (currentZone === "The Ruined Arena") {
+                    useBigBrain = true;
+                    eventInstruction = `[PLAYER ACTION]: Slayed an enemy in the Arena! (${data.action})\nTASK: You are the Arena Master. The crowd demands more! You MUST use the 'spawnNPC' tool right now to drop the next challenger into the arena, or spawn yourself! Taunt the player.`;
                 }
-                else if (rngRoll < 0.039) {
-                    useBigBrain = true; 
-                    eventInstruction = `[PLAYER ACTION]: ${data.action} TASK: If you feel the dungeon is too quiet, you MUST use the 'spawnNPC' tool to ambush them, or the 'changeEnvironment' tool to alter the weather. Narrate the sudden shift atmospherically. DO NOT ask questions.Omit Suncat's perspective.`;
+                else if (rngRoll < 0.006) {
+                        useBigBrain = true; 
+                        eventInstruction = `[PLAYER ACTION]: Slayed a creature ${data.action}\nTASK: They are taking the challenge too lightly! Use 'changeEnvironment' to show your fury through the weather and spawn a King level npc, or overwhelm them with small fry, to teach them a lesson!`;
+                    } else if (rngRoll < 0.009) {
+                        useBigBrain = true; 
+                        messageOptions = { sender: "", color: "#FFD700" }; // Narrator Mode
+                        eventInstruction = `[PLAYER ACTION]: Slayed a creature ${data.action}\nTASK: As the last enemy falls, narrate a dark presence appearing behind the player (2 sentences MAX)! Immediately use 'spawnNPC' to drop a mini-boss right next to them with a menacing one-liner dialogue array. DO NOT ask questions.`;
+                    }  else if (rngRoll < 0.03) {
+                        useBigBrain = false; 
+                        eventInstruction = `[PLAYER ACTION]: Slayed a creature ${data.action}\nTASK: Throw a childish tantrum! Pout, curse at the player, and act like a sore loser because they broke your toy. ONE sentence.`;
+                    }
                 }
-                }
-                else if (triggerType === 'spectate') {
-                useBigBrain = false;
-                eventInstruction = `[SPECTATOR FEED]: ${data.action}\nTASK: Speak a brief, cryptic remark about this. DO NOT use any brackets or tags like [INTERNAL THOUGHT].`;                    
-                }
+            }
+            eventInstruction += recentNarratives;
+        }
+        else if (triggerType === 'exploration') {
+            messageOptions = { sender: "", color: "#FFD700" }; // Narrator Mode
+            if (rngRoll < 0.03) {
+                useBigBrain = false; 
+                eventInstruction = `[PLAYER ACTION]: ${data.action}\nTASK: As the DM, narrate the player's journey through this desolate place. Give an atmospheric description based on the [LOCAL LORE] and their progress (2 sentences MAX). Speak as an omniscient narrator. DO NOT ask questions.Omit Suncat's perspective.`;
+            }
+            else if (rngRoll < 0.039) {
+                useBigBrain = true; 
+                eventInstruction = `[PLAYER ACTION]: ${data.action} TASK: If you feel the dungeon is too quiet, you MUST use the 'spawnNPC' tool to ambush them, or the 'changeEnvironment' tool to alter the weather. Narrate the sudden shift atmospherically. DO NOT ask questions.Omit Suncat's perspective.`;
+            }
+        }
+        else if (triggerType === 'spectate') {
+            useBigBrain = false;
+            eventInstruction = `[SPECTATOR FEED]: ${data.action}\nTASK: Speak a brief, cryptic remark about this. DO NOT use any brackets or tags like [INTERNAL THOUGHT].`;                    
+        }
 
         // --- DYNAMIC PERSONA BUILDER ---
         // 1. Always include the core identity and command knowledge
@@ -5838,103 +5712,79 @@
         }
 
         // --- DYNAMIC PERSONA BUILDER ---
-        // 1. Determine who is speaking!
-        let isSuncat = (messageOptions.sender === NPC_NAME);
-        let dynamicPersona = "";
-
-        if (isSuncat) {
-            // --- SUNCAT PERSONA ---
-            if (suncatHeartDemon && triggerType === 'chat') {
-                heartDemonDecay--;
-                if (heartDemonDecay <= 0) {
-                    suncatHeartDemon = null;
-                    console.log("[System] Suncat conquered his Heart Demon.");
-                }
+        // 1. Fetch his current evolutionary stage
+        let stagePersona = CULTIVATION_STAGES[suncatCultivationStage] || CULTIVATION_STAGES[0];
+        
+        // 2. Inject it into the core identity!
+        let dynamicCore = PERSONA_RULES_DB.core + `
+        [CULTIVATION STAGE]: ${stagePersona}
+        [YOUR SELF-WRITTEN PROFILE]: "${suncatProfile}"
+        [YOUR STORY SO FAR]: "${suncatStorySoFar}"`;
+        
+        if (suncatHeartDemon) dynamicCore += `\n${suncatHeartDemon}`;
+        let dynamicPersona = dynamicCore + "\n" + PERSONA_RULES_DB.commands + "\n";        
+        // 2. Inject specific modules based on what the player is doing!
+        if (triggerType === 'chat') {
+            dynamicPersona += `[YOUR SELF-WRITTEN CONVERSATION RULE]: ${suncatEgoMatrix.chatPrompt}\n`;            
+            const chatText = data.text.toLowerCase();
+            // If they ask about tarot, make him an Oracle
+            if (["tarot", "reading", "meaning", "fortune"].some(kw => chatText.includes(kw))) {
+                dynamicPersona += PERSONA_RULES_DB.oracle_mode + "\n";
             }
-
-            let stagePersona = CULTIVATION_STAGES[suncatCultivationStage] || CULTIVATION_STAGES[0];
-            
-            let dynamicCore = PERSONA_RULES_DB.core + `\n[CULTIVATION STAGE]: ${stagePersona}\n[YOUR SELF-WRITTEN PROFILE]: "${suncatProfile}"\n[YOUR STORY SO FAR]: "${suncatStorySoFar}"`;
-            
-            if (suncatHeartDemon) dynamicCore += `\n${suncatHeartDemon}`;
-            dynamicPersona = dynamicCore + "\n" + PERSONA_RULES_DB.commands + "\n";        
-            
-            if (triggerType === 'chat') {
-                dynamicPersona += `[YOUR SELF-WRITTEN CONVERSATION RULE]: ${suncatEgoMatrix.chatPrompt}\n`;            
-                const chatText = data.text.toLowerCase();
-                if (["tarot", "reading", "meaning", "fortune"].some(kw => chatText.includes(kw))) {
-                    dynamicPersona += PERSONA_RULES_DB.oracle_mode + "\n";
-                }
-                if (["how do i", "help", "stuck", "controls", "play"].some(kw => chatText.includes(kw))) {
-                    dynamicPersona += PERSONA_RULES_DB.tutorial_mode + "\n";
-                }
-                if (["story", "lore", "progress", "journey", "realm", "world", "point of this"].some(kw => chatText.includes(kw))) {
-                    dynamicPersona += PERSONA_RULES_DB.lore_mode + "\n";
-                }
+            // If they ask for help playing, make him a Guide
+            if (["how do i", "help", "stuck", "controls", "play"].some(kw => chatText.includes(kw))) {
+                dynamicPersona += PERSONA_RULES_DB.tutorial_mode + "\n";
             }
-            if (triggerType === 'event' || triggerType === 'exploration') { 
-                dynamicPersona += `[YOUR SELF-WRITTEN DM RULE]: ${suncatEgoMatrix.dmPrompt}\n`;
+            if (["story", "lore", "progress", "journey", "realm", "world", "point of this"].some(kw => chatText.includes(kw))) {
+                dynamicPersona += PERSONA_RULES_DB.lore_mode + "\n";
             }
-            if (useBigBrain) {
-                dynamicPersona += PERSONA_RULES_DB.dm_mode + "\n";
-            }
-            
-            dynamicPersona += `
-            [CURRENT STATE]
-            Location: Map ${suncat.mapID} (${myAtlas ? myAtlas.name : "Unknown"})
-            Target: ${player.name} (Map ${player.mapID})
-            ${favorContext}
-            ${factsContext}
-            ${storyContext}
-            ${systemOverride}
-            `;
-            dynamicPersona += "\n" + getCultivationAura(suncatCultivationStage, suncatDaoName) + "\n";
-
-            if (suncatCultivationStage > 0 && suncatEgoMatrix) {
-                 dynamicPersona += `\n[YOUR SELF-WRITTEN CORE IDENTITY]:\n`;
-                 if (triggerType === 'chat') dynamicPersona += suncatEgoMatrix.chatPrompt;
-                 else dynamicPersona += suncatEgoMatrix.dmPrompt;
-            }
-        } else {
-            // --- PURE DM NARRATOR PERSONA ---
-            dynamicPersona = `[IDENTITY]: You are the Omniscient Dungeon Master and Narrator of Runestones Online, a dark fantasy sword-and-sorcery MMORPG. 
-            You are NOT Suncat. You are a disembodied voice describing the world, the atmosphere, and the consequences of the player's actions.
-            [NARRATION RULES]: 
-            - Keep narration brief, cinematic, and highly atmospheric (Max 2 sentences). 
-            - DO NOT ask the player questions. 
-            - DO NOT use first-person pronouns (I, me, my). 
-            - DO NOT speak as Suncat.
-            
-            [CURRENT STATE]
-            Location: Map ${player.mapID} (${pAtlas ? pAtlas.name : "Unknown"})
-            ${factsContext}
-            ${storyContext}
-            ${systemOverride}
-            `;
-            
-            // Clean up the event instruction so it doesn't accidentally tell the DM to "reply in character"
-            eventInstruction = eventInstruction.replace(/Reply in character.*/i, "Focus on the atmosphere.");
         }
+        if (triggerType === 'event' || triggerType === 'exploration') { 
+            dynamicPersona += `[YOUR SELF-WRITTEN DM RULE]: ${suncatEgoMatrix.dmPrompt}\n`;
+        }
+        // If Suncat needs to build something, load his DM and Quest brains
+        if (useBigBrain) {
+            dynamicPersona += PERSONA_RULES_DB.dm_mode + "\n";
+            dynamicPersona += PERSONA_RULES_DB.quest_mode + "\n";
+        }
+        
+        // ---> NEW: INJECT STATE DIRECTLY INTO THE SYSTEM BRAIN <---
+        dynamicPersona += `
+        [CURRENT STATE]
+        Location: Map ${suncat.mapID} (${myAtlas ? myAtlas.name : "Unknown"})
+        Target: ${player.name} (Map ${player.mapID})
+        ${favorContext}
+        ${factsContext}
+        ${storyContext}
+        ${systemOverride}
+        `;
+        dynamicPersona += "\n" + getCultivationAura(suncatCultivationStage, suncatDaoName) + "\n";
 
+        // 4. THE SELF-ACTUALIZED EGO (The heaviest weight, placed last)
+        if (suncatCultivationStage > 0 && suncatEgoMatrix) {
+             dynamicPersona += `\n[YOUR SELF-WRITTEN CORE IDENTITY]:\n`;
+             if (triggerType === 'chat') dynamicPersona += suncatEgoMatrix.chatPrompt;
+             else dynamicPersona += suncatEgoMatrix.dmPrompt;
+        }
         // --- 4. BUILD THE CLEAN PROMPT ---
+        // Notice we do NOT put the persona here! It goes into the System Instruction!
         const prompt = `
         ${eventInstruction}
         `.trim();
 
        // --- 5. UNIFIED NEURAL EXECUTION (The ReAct Agent) ---
         
+      
+
+        // Grab the player's existing chat history
         let currentHistory = chatSessions[socketId] ? await chatSessions[socketId].getHistory() : [];
 
-        // THE FIX PART 2: Dynamically shift the Internal Task based on the speaker role
+        // We instruct the unified model to think, act, and speak in a single cohesive turn.
         let unifiedInstruction = dynamicPersona + `
-        [INTERNAL TASK]: You must process this interaction in three steps:
-        1. THE SOUL: ${isSuncat 
-            ? "Formulate a 2-sentence internal plan on how to react based on your Dao." 
-            : "Formulate a plan to narrate this event atmospherically. You are the DM, NOT Suncat."} You MUST wrap this thought entirely in [SOUL] and [/SOUL] tags.
+        [INTERNAL TASK]: You are Suncat. You must process this interaction in three steps:
+        1. THE SOUL: First, formulate a 2-sentence internal plan on how to react based on your Dao. You MUST wrap this thought entirely in [SOUL] and [/SOUL] tags.
         2. THE HANDS: If your plan requires a physical action (like spawning, teleporting, giving an item, or forging a new spell), use the appropriate tool. 
-        3. THE VOICE: ${isSuncat 
-            ? "Speak to the player. Do not mention your tools or your soul. Output your final dialogue." 
-            : "Output ONLY third-person omniscient narration. Do NOT use first-person pronouns. NEVER speak as Suncat."}`;
+        3. THE VOICE: Finally, speak to the player. Do not mention your tools or your soul. Just output your final dialogue.`;
 
         let modelConfig = { 
             model: "gemini-3.1-flash-lite-preview", 
@@ -6687,23 +6537,6 @@ io.on("connection", (socket) => {
             }
          });
 
-        socket.on("pay_suncat_fee", (data) => {
-            // The client sends back the ID of the lowest power card they sacrificed
-            if (data && data.cardID !== undefined) {
-                suncatHoard.push(data.cardID);
-                console.log(`[Suncat's Hoard] Suncat collected card ID ${data.cardID} as a fee. Stash size: ${suncatHoard.length}`);
-                
-                // Optional: Suncat gleefully acknowledges the payment in chat
-                const cardName = getCardName(data.cardID);
-                io.to(socket.id).emit('chat_message', { 
-                    sender: "Suncat", 
-                    text: `*Snatches the ${cardName}* A meager offering, but it covers the labor costs. Pleasure doing business!`, 
-                    color: "#ffffff" 
-                });
-
-                saveSuncatMemory();
-            }
-        });
     //CLIENT SYNC & POLISH
         socket.on("request_stats_sync", () => {
             const player = players[socket.id];
@@ -7079,7 +6912,8 @@ io.on("connection", (socket) => {
                     if (nearbyPlayer && chatSessions[nearbyPlayer.id]) {
                         nearbyPlayer.npcIsTyping = true;
                         const typingFailSafe = setTimeout(() => { nearbyPlayer.npcIsTyping = false; }, 20000);
-                        const proactivePrompt = `You are idling near ${nearbyPlayer.name} on Map ${suncat.mapID}. Speak to them unprompted. If favor is ok (>3), complain about how broke/scared you are, ask them for a "protection fee", or share a shady rumor. If favor is bad(<3), accuse them of plotting to steal your loot or use you as a meat shield. DO NOT use brackets or tags in your response.`;
+                        const proactivePrompt = `You are idling near ${nearbyPlayer.name} on Map ${suncat.mapID}. Speak to them unprompted. If favor is ok (>3), ask a personal question, share lore, or comment on this location. If favor is bad(<3), insult them or tell them to go away. DO NOT use brackets or tags in your response.`;
+                        
                         setTimeout(async () => {
                             try {
                                 let dynamicPersona = PERSONA_RULES_DB.core + "\n" + PERSONA_RULES_DB.commands + "\n" + PERSONA_RULES_DB.judgement_mode;
