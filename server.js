@@ -4504,26 +4504,26 @@
                     }
                     // O. SUNCAT PROTECTION MODE
                     else if (call.name === "activate_protection") {
-                        const targetID = findSocketID(call.args.targetName);
-                        if (targetID) {
-                            // Tell the player's client to turn Suncat into a turret!
-                            const safeCode = `if (typeof Dungeon !== 'undefined') { let suncat = Dungeon.npcs.find(n => n.type === 0 || n.type === 61391 || n.name === 'Suncat'); if (suncat) { suncat.state = 'protecting'; suncat.fireTimer = 0; } }`;
-                            io.to(targetID).emit('suncat_client_spell', { clientCode: safeCode });
-                            functionResult = { result: `Protection engaged. Suncat is now firing fireballs to protect the player.` };
+                        if (players[SUNCAT_ID]) {
+                            players[SUNCAT_ID].state = 'protecting';
+                            players[SUNCAT_ID].lastFireTime = 0; // Reset cooldown
+                            // Tell clients to update his visual state
+                            io.emit("updatePlayers", players);
+                            functionResult = { result: `Protection engaged. Suncat is now firing fireballs using the player's borrowed eyes.` };
                         } else {
-                            functionResult = { result: `Failed: Player not found.` };
+                            functionResult = { result: `Failed: Suncat not found on server.` };
                         }
                     }
                     else if (call.name === "deactivate_protection") {
-                        const targetID = findSocketID(call.args.targetName);
-                        if (targetID) {
-                            const safeCode = `if (typeof Dungeon !== 'undefined') { let suncat = Dungeon.npcs.find(n => n.type === 0 || n.type === 61391 || n.name === 'Suncat'); if (suncat) { suncat.state = 'wandering'; } }`;
-                            io.to(targetID).emit('suncat_client_spell', { clientCode: safeCode });
+                        if (players[SUNCAT_ID]) {
+                            players[SUNCAT_ID].state = 'wandering';
+                            io.emit("updatePlayers", players);
                             functionResult = { result: `Protection disengaged. Suncat is standing down.` };
                         } else {
-                            functionResult = { result: `Failed: Player not found.` };
+                            functionResult = { result: `Failed: Suncat not found on server.` };
                         }
                     }
+                    
                     // UNKNOWN TOOL
                     else {
                         functionResult = { result: "Error: Function does not exist." };
@@ -6259,36 +6259,71 @@ io.on("connection", (socket) => {
             }
             });
         socket.on("accept_teleport_invite", () => {
-        const player = players[socket.id];
-        
-        // Make sure the player exists and a custom map is actually waiting for them!
-        if (player && activeCustomMap) {
+            const player = players[socket.id];
             
-            // 1. Move them to the Mega-Map and set their spawn coordinates
-            player.mapID = 999; 
-            player.x = activeCustomMap.spawnX + (Math.random() * 1 - 0.5); 
-            player.y = activeCustomMap.spawnY + (Math.random() * 1 - 0.5);
-            player.stepsTaken = 0;
-            player.exploredTiles = new Set();
-            
-            // 2. Send them the massive map payload
-            socket.emit('load_custom_map', activeCustomMap);
-            
-            // 3. Update their UI with the new Quest Objective
-            if (player.activeQuest) {
-                socket.emit("new_quest_objective", { questText: player.activeQuest });
+            // Make sure the player exists and a custom map is actually waiting for them!
+            if (player && activeCustomMap) {
+                
+                // 1. Move them to the Mega-Map and set their spawn coordinates
+                player.mapID = 999; 
+                player.x = activeCustomMap.spawnX + (Math.random() * 1 - 0.5); 
+                player.y = activeCustomMap.spawnY + (Math.random() * 1 - 0.5);
+                player.stepsTaken = 0;
+                player.exploredTiles = new Set();
+                
+                // 2. Send them the massive map payload
+                socket.emit('load_custom_map', activeCustomMap);
+                
+                // 3. Update their UI with the new Quest Objective
+                if (player.activeQuest) {
+                    socket.emit("new_quest_objective", { questText: player.activeQuest });
+                }
+                
+                // 4. Force the client to visually warp
+                socket.emit("force_teleport", { mapID: 999 });
+                
+                // 5. Tell everyone else their coordinates updated
+                io.emit("updatePlayers", players);
+                
+                // Optional: Prompt Suncat to narrate their arrival!
+                processSuncatThought(socket.id, 'exploration', { action: `Player has accepted the invitation and stepped through the portal into the new scenario: ${player.mapScenario}.` });
             }
-            
-            // 4. Force the client to visually warp
-            socket.emit("force_teleport", { mapID: 999 });
-            
-            // 5. Tell everyone else their coordinates updated
-            io.emit("updatePlayers", players);
-            
-            // Optional: Prompt Suncat to narrate their arrival!
-            processSuncatThought(socket.id, 'exploration', { action: `Player has accepted the invitation and stepped through the portal into the new scenario: ${player.mapScenario}.` });
-        }
-        });
+            });
+        socket.on("suncat_radar_ping", (data) => {
+            let suncat = players[SUNCAT_ID];
+            if (!suncat || suncat.state !== 'protecting') return;
+
+            // 1. HIGH-SPEED MOVEMENT: Keep Suncat glued to the player during combat
+            suncat.mapID = data.mapID;
+            // Smoothly lerp him to the player's side so he doesn't clip into walls
+            suncat.x += (data.playerX - 1 - suncat.x) * 0.2; 
+            suncat.y += (data.playerY - suncat.y) * 0.2;
+
+            // 2. FIREBALL COOLDOWN (1.5 seconds)
+            let now = Date.now();
+            if (now - (suncat.lastFireTime || 0) > 1500) {
+                suncat.lastFireTime = now;
+
+                // 3. CALCULATE TRAJECTORY
+                let dx = data.targetX - suncat.x;
+                let dy = data.targetY - suncat.y;
+                let dist = Math.sqrt(dx * dx + dy * dy);
+                
+                if (dist > 0) {
+                    let dirX = dx / dist;
+                    let dirY = dy / dist;
+
+                    // 4. COMMAND THE CLIENTS TO DRAW THE FIREBALL
+                    io.emit("suncat_fires_projectile", {
+                        mapID: suncat.mapID,
+                        startX: suncat.x + (dirX * 0.5), // Spawn slightly ahead
+                        startY: suncat.y + (dirY * 0.5),
+                        dirX: dirX,
+                        dirY: dirY
+                    });
+                }
+            }
+            });
     //COMBAT & WORLD INTERACTION
         socket.on("engage_npc", (data) => {
                 const player = players[socket.id];
