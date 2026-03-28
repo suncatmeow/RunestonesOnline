@@ -2450,7 +2450,27 @@
                     },
                     required: ["targetName", "trackId"]
                 }
-            }
+            },
+            // 1. ACTIVATE PROTECTION
+            {
+                name: "activate_protection",
+                description: "Use this IMMEDIATELY when the player says 'Help', 'I am surrounded', or asks Suncat to protect them. Suncat will warp to the player and shoot fireballs at enemies.",
+                parameters: {
+                    type: "OBJECT",
+                    properties: { targetName: { type: "STRING" } },
+                    required: ["targetName"]
+                }
+            },
+            // 2. DEACTIVATE PROTECTION
+            {
+                name: "deactivate_protection",
+                description: "Use this when the player says 'Thanks', 'You got them', or tells Suncat to stop fighting.",
+                parameters: {
+                    type: "OBJECT",
+                    properties: { targetName: { type: "STRING" } },
+                    required: ["targetName"]
+                }
+            },
         ]
         }];
 
@@ -4478,6 +4498,28 @@
                             
                             io.to(targetID).emit('suncat_client_spell', { clientCode: safeCode });
                             functionResult = { result: `Music track changed to ${track}.` };
+                        } else {
+                            functionResult = { result: `Failed: Player not found.` };
+                        }
+                    }
+                    // O. SUNCAT PROTECTION MODE
+                    else if (call.name === "activate_protection") {
+                        const targetID = findSocketID(call.args.targetName);
+                        if (targetID) {
+                            // Tell the player's client to turn Suncat into a turret!
+                            const safeCode = `if (typeof Dungeon !== 'undefined') { let suncat = Dungeon.npcs.find(n => n.type === 0 || n.type === 61391 || n.name === 'Suncat'); if (suncat) { suncat.state = 'protecting'; suncat.fireTimer = 0; } }`;
+                            io.to(targetID).emit('suncat_client_spell', { clientCode: safeCode });
+                            functionResult = { result: `Protection engaged. Suncat is now firing fireballs to protect the player.` };
+                        } else {
+                            functionResult = { result: `Failed: Player not found.` };
+                        }
+                    }
+                    else if (call.name === "deactivate_protection") {
+                        const targetID = findSocketID(call.args.targetName);
+                        if (targetID) {
+                            const safeCode = `if (typeof Dungeon !== 'undefined') { let suncat = Dungeon.npcs.find(n => n.type === 0 || n.type === 61391 || n.name === 'Suncat'); if (suncat) { suncat.state = 'wandering'; } }`;
+                            io.to(targetID).emit('suncat_client_spell', { clientCode: safeCode });
+                            functionResult = { result: `Protection disengaged. Suncat is standing down.` };
                         } else {
                             functionResult = { result: `Failed: Player not found.` };
                         }
