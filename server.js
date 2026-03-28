@@ -4507,7 +4507,6 @@
                         if (players[SUNCAT_ID]) {
                             players[SUNCAT_ID].state = 'protecting';
                             players[SUNCAT_ID].lastFireTime = 0; // Reset cooldown
-                            // Tell clients to update his visual state
                             io.emit("updatePlayers", players);
                             functionResult = { result: `Protection engaged. Suncat is now firing fireballs using the player's borrowed eyes.` };
                         } else {
