@@ -340,7 +340,6 @@
                 type: "item",
                 suit: "Major Arcana",
                 rank: "XXI",
-                sprite:-26,
                 rarity:"unique",
                 classes: ["mage","rogue","warrior","guardian"],
                 lore: "While equipped, +3 to all stat rolls.",
@@ -963,7 +962,6 @@
                 type: "monster",
                 suit: "wands",
                 rank: "Page",
-                sprite:32.1,
                 tribe: "human",
                 rarity:"rare",
                 classes: ["mage"],
@@ -975,7 +973,6 @@
                 type: "monster",
                 suit: "swords",
                 rank: "7",
-                sprite:56.1,
                 tribe: "cryptid",
                 rarity:"rare",
                 classes: ["mage", "rogue"],
@@ -1018,7 +1015,6 @@
                 type: "item",
                 suit: "Swords",
                 rank:"Ace",
-                sprite: -15.2,
                 rarity: "unique",
                 classes: ["rogue","warrior","guardian","mage"],
                 lore:"While equipped, +3 to STR  rolls.",
@@ -1030,7 +1026,6 @@
                     type: "monster",
                     suit: "Major Arcana",
                     rank: "IV",
-                    sprite: 4.1,
                     tribe: "human",
                     rarity:"unique",
                     classes: ["warrior","guardian","rogue","mage"],
@@ -1042,7 +1037,6 @@
                     type: "monster",
                     suit: "Swords",
                     rank: "Knight",
-                    sprite: 61.2,
                     tribe: "human",
                     rarity:"unique",
                     classes: ["warrior","guardian","rogue","mage"],
@@ -1054,7 +1048,6 @@
                     type: "monster",
                     suit: "Major Arcana",
                     rank: "0",
-                    sprite: .61391,
                     tribe: "human",
                     rarity:"rare",
                     classes: ["rogue"],
@@ -1066,7 +1059,6 @@
                     type: "monster",
                     suit: "Wands",
                     rank: "2",
-                    sprite: 23.1,
                     tribe: "undead",
                     rarity:"rare",
                     classes: ["rogue","mage"],
@@ -1078,7 +1070,6 @@
                     type: "monster",
                     suit: "Major",
                     rank: "X",
-                    sprite: 21.1,
                     tribe: "beast",
                     rarity:"rare",
                     classes: ["rogue","mage","warrior","guardian"],
@@ -1090,7 +1081,6 @@
                     type: "monster",
                     suit: "Pentacles",
                     rank: "Queen",
-                    sprite: 21.1,
                     tribe: "human",
                     rarity:"rare",
                     classes: ["rogue","mage","warrior","guardian"],
@@ -1127,19 +1117,17 @@
                     type: "monster",
                     suit: "Major Arcana",
                     rank: "IX",
-                    sprite: 13,
                     tribe: "undead",
                     rarity:"unique",
                     classes: ["mage","guardian"],
                     lore: "Seeks security in love and family.",
                     stats: "1d12 INT, 1d10 CON, 1d4 STR/AGI"
             },
-            99: {
+            999: {
                     name: "Suncat",
                     type: "monster",
                     suit: "Major Arcana",
                     rank: "I",
-                    sprite: 61391,
                     tribe: "human",
                     rarity:"rare",
                     classes: ["rogue","mage","warrior","guardian"],
@@ -2661,22 +2649,22 @@
         });
         }
     function findSocketID(playerName) {
-    if (!playerName) return null;
-    const lowerTarget = String(playerName).toLowerCase().trim();
-    
-    // Pass 1: Try exact match first
-    for (let id in players) {
-        if (players[id].name.toLowerCase() === lowerTarget) return id;
-    }
-    
-    // Pass 2: Fuzzy match (handles [AFK] tags or AI typos)
-    for (let id in players) {
-        const pName = players[id].name.toLowerCase();
-        if (pName.includes(lowerTarget) || lowerTarget.includes(pName)) {
-            return id;
+        if (!playerName) return null;
+        const lowerTarget = String(playerName).toLowerCase().trim();
+        
+        // Pass 1: Try exact match first
+        for (let id in players) {
+            if (players[id].name.toLowerCase() === lowerTarget) return id;
         }
-    }
-    return null;}
+        
+        // Pass 2: Fuzzy match (handles [AFK] tags or AI typos)
+        for (let id in players) {
+            const pName = players[id].name.toLowerCase();
+            if (pName.includes(lowerTarget) || lowerTarget.includes(pName)) {
+                return id;
+            }
+        }
+        return null;}
 
     function addRumor(text) {
             globalRumors.push(`[Rumor]: ${text}`);
@@ -6356,6 +6344,9 @@ io.on("connection", (socket) => {
             });
         socket.on("npc_died", async (data) => {
             let uniqueID = data.mapID + "_" + data.index;
+            if (deadNPCs[uniqueID]) {
+                return; 
+            }
             deadNPCs[uniqueID] = Date.now();
 
             socket.broadcast.emit("npc_died", data);
