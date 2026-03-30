@@ -3753,155 +3753,157 @@
                         try {
                             
                             // 1. SERVER ROLLS THE SCENARIO AND ZONING
-                            const bEnum = Math.floor(Math.random() * Object.keys(BIOME_DB).length);
-                            const biome = BIOME_DB[bEnum] || BIOME_DB[0];
+                                const bEnum = Math.floor(Math.random() * Object.keys(BIOME_DB).length);
+                                const biome = BIOME_DB[bEnum] || BIOME_DB[0];
 
-                            // --- FORCE SERVER-SIDE RANDOM SCENARIO ---
-                            const validScenarios = ['Invasion', 'Rescue/Fetch', 'Arena Madness','Raid'];
-                            let scenarioType = validScenarios[Math.floor(Math.random() * validScenarios.length)];
-                            // Settlement Logic (0 = Wilderness, 1 = Village, 2 = City)
-                            const settlementType = scenarioType === 'Arena Madness' ? 0 : Math.floor(Math.random() * 2) + 1; 
+                                // --- FORCE SERVER-SIDE RANDOM SCENARIO ---
+                                const validScenarios = ['Invasion', 'Rescue/Fetch', 'Arena Madness','Raid'];
+                                let scenarioType = validScenarios[Math.floor(Math.random() * validScenarios.length)];
+                                // Settlement Logic (0 = Wilderness, 1 = Village, 2 = City)
+                                const settlementType = scenarioType === 'Arena Madness' ? 0 : Math.floor(Math.random() * 2) + 1; 
 
-                            // Pick Actors
-                            const monsterIDs = Object.keys(CARD_MANIFEST_DB).filter(id => CARD_MANIFEST_DB[id].type === "monster" && CARD_MANIFEST_DB[id].rank !== "0");
+                                // Pick Actors
+                                const monsterIDs = Object.keys(CARD_MANIFEST_DB).filter(id => CARD_MANIFEST_DB[id].type === "monster" && CARD_MANIFEST_DB[id].rank !== "0");
 
-                            // ---> 1. DEFINE HEAVY SPRITES HERE FIRST! <---
-                            const HEAVY_SPRITES = [0,1,2,3,4,5,9,33, 34, 35, 47,48, 49, 62, 63, 76, 77, 85, 86, 87, 94,99]; 
-                            let heavySpawnCount = {}; 
+                                // ---> 1. DEFINE HEAVY SPRITES HERE FIRST! <---
+                                const HEAVY_SPRITES = [0,1,2,3,4,5,9,33, 34, 35, 47,48, 49, 62, 63, 76, 77, 85, 86, 87, 94,99]; 
+                                let heavySpawnCount = {}; 
 
-                            // ---> 2. FORCE THE BOSS TO BE HEAVY <---
-                            const bossPool = monsterIDs.filter(id => HEAVY_SPRITES.includes(parseInt(id)));
-                            let antagID = parseInt(bossPool[Math.floor(Math.random() * bossPool.length)] || 63); // Fallback to Dragon
+                                // ---> 2. FORCE THE BOSS TO BE HEAVY <---
+                                const bossPool = monsterIDs.filter(id => HEAVY_SPRITES.includes(parseInt(id)));
+                                let antagID = parseInt(bossPool[Math.floor(Math.random() * bossPool.length)] || 63); // Fallback to Dragon
 
-                            // ---> 3. PICK THE ALLY (Ensure it's not the boss) <---
-                            let protagID = parseInt(monsterIDs[Math.floor(Math.random() * monsterIDs.length)]);
-                            while (protagID === antagID) protagID = parseInt(monsterIDs[Math.floor(Math.random() * monsterIDs.length)]);
+                                // ---> 3. PICK THE ALLY (Ensure it's not the boss) <---
+                                let protagID = parseInt(monsterIDs[Math.floor(Math.random() * monsterIDs.length)]);
+                                while (protagID === antagID) protagID = parseInt(monsterIDs[Math.floor(Math.random() * monsterIDs.length)]);
 
                             // 2. FETCH THE SCRIPT & REDUNDANCY CHECKER
-                            let script = null;
-                            let attempts = 0;
-                            const targetPlayer = players[findSocketID(call.args.targetName)];
+                                let script = null;
+                                let attempts = 0;
+                                const targetPlayer = players[findSocketID(call.args.targetName)];
 
-                            while (attempts < 2) {
-                                script = await generateScenarioScript(biome.name, scenarioType, CARD_MANIFEST_DB[antagID].name, CARD_MANIFEST_DB[protagID].name,targetPlayer);
-                                
-                                if (!script || !script.questObjective) {
-                                    attempts++;
-                                    continue;
-                                }
+                                while (attempts < 2) {
+                                    script = await generateScenarioScript(biome.name, scenarioType, CARD_MANIFEST_DB[antagID].name, CARD_MANIFEST_DB[protagID].name,targetPlayer);
+                                    
+                                    if (!script || !script.questObjective) {
+                                        attempts++;
+                                        continue;
+                                    }
 
-                                // Calculate the math vector for this new quest
-                                let newQuestVector = await createMemoryVector(script.questObjective);
-                                let isRedundant = false;
+                                    // Calculate the math vector for this new quest
+                                    let newQuestVector = await createMemoryVector(script.questObjective);
+                                    let isRedundant = false;
 
-                                // Compare against the player's last 5 quests
-                                if (targetPlayer && targetPlayer.pastQuestVectors && newQuestVector) {
-                                    for (let pastVec of targetPlayer.pastQuestVectors) {
-                                        let score = cosineSimilarity(newQuestVector, pastVec);
-                                        if (score > 0.85) { 
-                                            isRedundant = true;
-                                            break;
+                                    // Compare against the player's last 5 quests
+                                    if (targetPlayer && targetPlayer.pastQuestVectors && newQuestVector) {
+                                        for (let pastVec of targetPlayer.pastQuestVectors) {
+                                            let score = cosineSimilarity(newQuestVector, pastVec);
+                                            if (score > 0.85) { 
+                                                isRedundant = true;
+                                                break;
+                                            }
                                         }
                                     }
-                                }
 
-                                if (isRedundant) {
-                                    console.log(`[Redundancy] Script rejected! Cosine similarity too high. Retrying...`);
-                                    script = null;
-                                    attempts++;
-                                } else {
-                                    if (targetPlayer && newQuestVector) {
-                                        if (!targetPlayer.pastQuestVectors) targetPlayer.pastQuestVectors = [];
-                                        targetPlayer.pastQuestVectors.push(newQuestVector);
-                                        if (targetPlayer.pastQuestVectors.length > 5) targetPlayer.pastQuestVectors.shift();
+                                    if (isRedundant) {
+                                        console.log(`[Redundancy] Script rejected! Cosine similarity too high. Retrying...`);
+                                        script = null;
+                                        attempts++;
+                                    } else {
+                                        if (targetPlayer && newQuestVector) {
+                                            if (!targetPlayer.pastQuestVectors) targetPlayer.pastQuestVectors = [];
+                                            targetPlayer.pastQuestVectors.push(newQuestVector);
+                                            if (targetPlayer.pastQuestVectors.length > 5) targetPlayer.pastQuestVectors.shift();
+                                        }
+                                        cacheScriptLines(biome.name, script);
+                                        break; 
                                     }
-                                    cacheScriptLines(biome.name, script);
-                                    break; 
                                 }
-                            }
 
-                            // THE MAD LIBS FALLBACK
-                            if (!script) {
-                                console.log(`[Mad Libs Fallback] API failed or was too redundant. Building script from Global Cache.`);
-                                script = {
-                                    mapLore: getMadLibLine(biome.name, 'mapLore', "An uncharted land."),
-                                    questObjective: getMadLibLine(biome.name, 'objectives', "Survive and conquer."),
-                                    bossTaunt: getMadLibLine(biome.name, 'bossTaunts', "You dare approach my domain?"),
-                                    hostileTaunts: [], traitorBegs: [], friendlyLore: [], friendlyLife: [], friendlyProfound: [], recruitPlea: [], prisonerLines: []
-                                };
-                            }
+                                // THE MAD LIBS FALLBACK
+                                if (!script) {
+                                    console.log(`[Mad Libs Fallback] API failed or was too redundant. Building script from Global Cache.`);
+                                    script = {
+                                        mapLore: getMadLibLine(biome.name, 'mapLore', "An uncharted land."),
+                                        questObjective: getMadLibLine(biome.name, 'objectives', "Survive and conquer."),
+                                        bossTaunt: getMadLibLine(biome.name, 'bossTaunts', "You dare approach my domain?"),
+                                        hostileTaunts: [], traitorBegs: [], friendlyLore: [], friendlyLife: [], friendlyProfound: [], recruitPlea: [], prisonerLines: []
+                                    };
+                                }
 
-                            // SHUFFLE THE ARRAYS
-                            if (script.friendlyLore) shuffleArray(script.friendlyLore);
-                            if (script.friendlyLife) shuffleArray(script.friendlyLife);
-                            if (script.friendlyProfound) shuffleArray(script.friendlyProfound);
-                            if (script.recruitPlea) shuffleArray(script.recruitPlea);
-                            if (script.hostileTaunts) shuffleArray(script.hostileTaunts);
-                            if (script.traitorBegs) shuffleArray(script.traitorBegs);
-                            if (script.prisonerLines) shuffleArray(script.prisonerLines);
+                                // SHUFFLE THE ARRAYS
+                                if (script.friendlyLore) shuffleArray(script.friendlyLore);
+                                if (script.friendlyLife) shuffleArray(script.friendlyLife);
+                                if (script.friendlyProfound) shuffleArray(script.friendlyProfound);
+                                if (script.recruitPlea) shuffleArray(script.recruitPlea);
+                                if (script.hostileTaunts) shuffleArray(script.hostileTaunts);
+                                if (script.traitorBegs) shuffleArray(script.traitorBegs);
+                                if (script.prisonerLines) shuffleArray(script.prisonerLines);
 
                             // 3. GENERATE THE MEGA-MAP
-                            let mapData = generateProceduralGrid(biome.walls[0]); 
-                            let gridData = mapData.grid;
-                            let floorTiles = mapData.floorTiles || [];
+                                let mapData = generateProceduralGrid(biome.walls[0]); 
+                                let gridData = mapData.grid;
+                                let floorTiles = mapData.floorTiles || [];
 
-                            // 4. POPULATE THE WORLD (Component-Based Spawning)
-                            let mapNPCs = [];
-                            const friendlyMinions = getMinions(protagID);
-                            let hostileMinions = getMinions(antagID).filter(id => !friendlyMinions.includes(id));
-                            if (hostileMinions.length === 0) hostileMinions = [54, 56, 42, 23,60,78,88,82,83];
-                            
-                            // ---> SAFE ALLY SPRITE SELECTOR <---
-                            const safeFriendlyMinions = friendlyMinions.filter(id => !HEAVY_SPRITES.includes(parseInt(id)));
-                            let safeAllyID = safeFriendlyMinions.length > 0 ? safeFriendlyMinions[0] : 54; 
-                            let allySprite = CARD_MANIFEST_DB[safeAllyID].sprite || safeAllyID;
+                                // 4. POPULATE THE WORLD (Component-Based Spawning)
+                                let mapNPCs = [];
+                                const friendlyMinions = getMinions(protagID);
+                                let hostileMinions = getMinions(antagID).filter(id => !friendlyMinions.includes(id));
+                                if (hostileMinions.length === 0) hostileMinions = [54, 56, 42, 23,60,78,88,82,83];
+                                
+                                // ---> SAFE ALLY SPRITE SELECTOR <---
+                                const safeFriendlyMinions = friendlyMinions.filter(id => !HEAVY_SPRITES.includes(parseInt(id)));
+                                let safeAllyID = safeFriendlyMinions.length > 0 ? safeFriendlyMinions[0] : 54; 
+                                let allySprite = CARD_MANIFEST_DB[safeAllyID].sprite || safeAllyID;
 
-                            // ---> HEAVY SPRITE LIMITER HELPER <---
-                            const getSafeMinion = (pool) => {
-                                for (let tries = 0; tries < 5; tries++) {
-                                    let id = pool[Math.floor(Math.random() * pool.length)];
-                                    if (HEAVY_SPRITES.includes(id)) {
-                                        if ((heavySpawnCount[id] || 0) < 1) { 
-                                            heavySpawnCount[id] = 1; 
-                                            return id;
+                                // ---> HEAVY SPRITE LIMITER HELPER <---
+                                const getSafeMinion = (pool) => {
+                                    for (let tries = 0; tries < 5; tries++) {
+                                        let id = pool[Math.floor(Math.random() * pool.length)];
+                                        if (HEAVY_SPRITES.includes(id)) {
+                                            if ((heavySpawnCount[id] || 0) < 1) { 
+                                                heavySpawnCount[id] = 1; 
+                                                return id;
+                                            }
+                                        } else {
+                                            return id; 
                                         }
-                                    } else {
-                                        return id; 
                                     }
-                                }
-                                return 54; 
-                            };    
-                            // O(1) Local Spawn Helper
-                            const pickTile = (zoneArray) => {
-                                if (!zoneArray || zoneArray.length === 0) return {x: mapData.startX+0.5, y: mapData.startY+0.5};
-                                let idx = Math.floor(Math.random() * zoneArray.length);
-                                let t = zoneArray.splice(idx, 1)[0]; 
-                                return {x: t.x + 0.5, y: t.y + 0.5};
-                            };
+                                    return 54; 
+                                };    
+                                // O(1) Local Spawn Helper
+                                const pickTile = (zoneArray) => {
+                                    if (!zoneArray || zoneArray.length === 0) return {x: mapData.startX+0.5, y: mapData.startY+0.5};
+                                    let idx = Math.floor(Math.random() * zoneArray.length);
+                                    let t = zoneArray.splice(idx, 1)[0]; 
+                                    return {x: t.x + 0.5, y: t.y + 0.5};
+                                };
 
-                            const getDialogue = (category, fallback) => {
-                                if (script && script[category] && script[category].length > 0) return script[category].pop();
-                                return getMadLibLine(biome.name, category, fallback);
-                            };
+                                const getDialogue = (category, fallback) => {
+                                    if (script && script[category] && script[category].length > 0) return script[category].pop();
+                                    return getMadLibLine(biome.name, category, fallback);
+                                };
 
+                            
                             // ==========================================
                             // ZONE 1: THE BASTION (Safe Zone)
                             // ==========================================
-                            // Place the Merchant exactly at the Bastion's Anchor Point (The Bonfire)
+                            // Shopkeeper is FRIENDLY (Pacifist)
                             mapNPCs.push({
                                 type: allySprite, x: mapData.startX + 0.5, y: mapData.startY + 0.5, 
-                                state: 'stationary', role: 'shop', alignment: 'ally',
+                                state: 'stationary', role: 'shop', alignment: 'friendly', // <--- FIXED
                                 deck: buildShopInventory(50, 100), color: '#00ffff', 
                                 dialogue: [getDialogue('friendlyLife', "Rest by the fire, traveler.")]
                             });
 
-                            // Bastion Villagers
+                            // Bastion Guards are DEFENDERS
                             for(let i = 0; i < 4; i++) {
                                 let vTile = pickTile(mapData.bastionTiles);
                                 mapNPCs.push({
                                     type: allySprite, x: vTile.x, y: vTile.y, 
-                                    state: 'wandering', role: 'dialogue', alignment: 'ally',
-                                    dialogue: [getDialogue('friendlyLore', "The roads connecting the zones are dangerous.")]
+                                    state: 'wandering', role: 'battle', alignment: 'defender', 
+                                    deck: buildSynergisticDeck(allySprite, 100), 
+                                    dialogue: [getDialogue('friendlyLore', "We protect our own.")]
                                 });
                             }
 
@@ -3923,7 +3925,7 @@
                                 let guardTile = pickTile(mapData.lairTiles); 
                                 mapNPCs.push({
                                     type: CARD_MANIFEST_DB[mID].sprite || mID, x: guardTile.x, y: guardTile.y, 
-                                    state: 'stationary', role: 'battle', alignment: 'foe', mastery: 2, 
+                                    state: 'wandering', role: 'battle', alignment: 'foe', mastery: 2, 
                                     deck: buildSynergisticDeck(mID, 100), color: '#ff8800', 
                                     dialogue: [getDialogue('hostileTaunts', "None shall pass!")]
                                 });
@@ -3937,7 +3939,7 @@
                                 let spawnSpot = pickTile(mapData.arenaTiles);
                                 mapNPCs.push({
                                     type: CARD_MANIFEST_DB[mID].sprite || mID, x: spawnSpot.x, y: spawnSpot.y,
-                                    state: 'chasing', role: 'battle', alignment: 'foe', subRole:'gladiator',
+                                    state: 'stationary', role: 'battle', alignment: 'foe_gladiator', subRole:'gladiator',
                                     dialogue: [script.hostileTaunts[i % script.hostileTaunts.length] || "For glory!"],
                                     deck: buildSynergisticDeck(mID, 120)
                                 });
@@ -3954,9 +3956,9 @@
                             mapNPCs.push({
                                 type: CARD_MANIFEST_DB[thirdTribeID].sprite || thirdTribeID,
                                 x: mapData.miniX + 0.5, y: mapData.miniY + 0.5,
-                                state: 'stationary', role: 'battle', alignment: 'foe',
+                                state: 'stationary', role: 'battle', alignment: 'foe_miniBoss',
                                 mastery: 2, deck: buildSynergisticDeck(thirdTribeID, 150), color: '#ffaa00',
-                                dialogue: ["This territory belongs to us!"]
+                                dialogue: [script.bossTaunt || getMadLibLine(biome.name, 'bossTaunts', "You dare?")]
                             });
 
                             // Spawn 3rd Tribe Grunts in the Ruins
@@ -3966,8 +3968,9 @@
                                 let mID = getSafeMinion(thirdTribeMinions) || thirdTribeID; 
                                 let spawnSpot = pickTile(mapData.ruinsTiles); mapNPCs.push({
                                     type: CARD_MANIFEST_DB[mID].sprite || mID, x: spawnSpot.x, y: spawnSpot.y,
-                                    state: 'chasing', role: 'battle', alignment: 'foe',
-                                    dialogue: ["Leave our ruins!"], deck: buildSynergisticDeck(mID, 50)
+                                    state: 'chasing', role: 'battle', alignment: 'foe_miniBoss',
+                                    dialogue:  [script.hostileTaunts[i % script.hostileTaunts.length]||"Leave our ruins!"], 
+                                    deck: buildSynergisticDeck(mID, 50)
                                 });
                             }
 
@@ -4115,11 +4118,13 @@
                                             y: impY,
                                             type: 56, // Imp Sprite
                                             state: 'stationary',
+                                            isBoss: false,
                                             role: 'portal_invite', 
                                             color: '#ff8800',
                                             deck: [], // <--- EMPTY DECK PREVENTS AUTO-BATTLE!
                                             dialogue: [`My master Suncat sent me to bring you to the adventure realm to partake in the ${scenarioType}. Shall we go?`],
-                                            options: ['Yes', 'No']
+                                            options: ['Yes', 'No'],
+                                            alignment:'friendly'
                                         });
                                     }
                                 });
@@ -4233,7 +4238,7 @@
                             let role = call.args.role || 'battle';
                             let state = call.args.state || 'chasing';
                             let dialogue = call.args.dialogue || null;
-
+                            let alignment = 'foe'
                             const cardData = CARD_MANIFEST_DB[baseID];
                             let finalDeck, visualSprite;
 
@@ -4242,6 +4247,7 @@
                                 visualSprite = -27; 
                                 role = 'reward';
                                 state = 'stationary';
+                                alignment = 'friendly'
                                 dialogue = []; 
                                 safeRewardCard = null; 
                                 finalDeck = [baseID];  
@@ -4250,8 +4256,9 @@
                                 visualSprite = cardData?.sprite || baseID;
                                 
                                 // THE FIX: Check if the AI wants to open a shop!
-                                if (role === 'shop') {
+                                if (role === 'shop'||role === 'dialogue') {
                                     finalDeck = buildShopInventory(100, 300); // Give them a proper shop inventory
+                                    alignment = 'friendly'
                                 } else {
                                     finalDeck = buildSynergisticDeck(baseID); // Otherwise, give them a combat deck
                                 }
@@ -4268,8 +4275,10 @@
                                 color: call.args.color || '#ff0000',
                                 deck: finalDeck, 
                                 dialogue: dialogue,
+                                isBoss: false,
                                 rewardCard: safeRewardCard,
-                                options: call.args.options || null 
+                                options: call.args.options || null ,
+                                alignment: alignment
                             });
                             functionResult = { result: `Success: ${cardData ? cardData.name : 'Entity'} spawned.` };
                         }
@@ -6698,6 +6707,7 @@ io.on("connection", (socket) => {
             let roleEnum = parseInt(data.roleEnum);
             let role = 'battle';
             let state = 'chasing';
+            let alignment = 'friendly';
             let dialogue = ["Prepare yourself!"];
             let rewardCard = null;
             let options = null;
@@ -6715,8 +6725,10 @@ io.on("connection", (socket) => {
                 dialogue = [getMadLibLine('Ruins', 'traitorBegs', "Wait, I yield! Spare me!")];
                 options = ['Spare Them', 'Vanquish'];
                 rewardCard = cardID;
+                alignment = 'friendly';
             } else {
                 dialogue = [getMadLibLine('Ruins', 'hostileTaunts', "You will go no further!")];
+                 alignment = 'foe';
             }
 
             let finalDeck = (role === 'battle') ? buildSynergisticDeck(cardID) : [cardID];
@@ -6733,8 +6745,10 @@ io.on("connection", (socket) => {
                 color: role === 'battle' ? '#ff0000' : '#00ff00',
                 deck: finalDeck,
                 dialogue: dialogue,
+                isBoss: false,
                 rewardCard: rewardCard,
-                options: options
+                options: options,
+                alignment:alignment,
             });
             });
 
@@ -7066,7 +7080,10 @@ io.on("connection", (socket) => {
                                 type: CARD_MANIFEST_DB[mID].sprite || mID,
                                 state: 'chasing', role: 'battle', color: '#ff0000',
                                 deck: buildSynergisticDeck(mID, 50),
-                                dialogue: ["You cannot hide!"] // Temporary dialogue
+                                dialogue: ["You cannot hide!"], // Temporary dialogue
+                                isBoss: false,
+                                alignment:'foe',
+                                role:'battle'
                             });
 
                             // 3. AI ONLY does the narrative (Cheap!)
