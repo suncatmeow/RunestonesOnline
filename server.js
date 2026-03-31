@@ -4040,10 +4040,11 @@
                             // We DO NOT globally emit the map! We target players individually.
                             io.emit("force_npc_reset"); 
 
-                            if (targets.length > 0) {
+                           if (targets.length > 0) {
                                 targets.forEach(tid => {
                                     const targetPlayer = players[tid];
                                     if (!targetPlayer) return;
+                                    
                                     // Quietly set up destination variables in the background
                                     targetPlayer.prevMapID = targetPlayer.mapID; 
                                     targetPlayer.mapFriendlyTribe = protagID;
@@ -4056,87 +4057,73 @@
                                     targetPlayer.sideQuestComplete = false;    
                                     targetPlayer.activeQuest = script.questObjective;
 
-                                    // --- THE REQUESTER: AUTO-TELEPORT ---
-                                    if (tid === requesterID) {
-                                        targetPlayer.mapID = 999; 
-                                        targetPlayer.x = customMapData.spawnX + (Math.random() * 1 - 0.5); 
-                                        targetPlayer.y = customMapData.spawnY + (Math.random() * 1 - 0.5);
-                                        targetPlayer.stepsTaken = 0;
-                                        targetPlayer.exploredTiles = new Set();
-                                        
-                                        // Send the map payload ONLY to the requester
-                                        io.to(tid).emit('load_custom_map', customMapData);
-                                        io.to(tid).emit("new_quest_objective", { questText: targetPlayer.activeQuest });
-                                        io.to(tid).emit("force_teleport", { mapID: 999 });
-                                    } 
-                                    // --- THE INVITEES: SPAWN THE IMP ---
-                                    else {
-                                        let impX = targetPlayer.x;
-                                        let impY = targetPlayer.y;
+                                    // --- EVERYONE GETS THE IMP INVITE (No forced teleports!) ---
+                                    let impX = targetPlayer.x;
+                                    let impY = targetPlayer.y;
 
-                                        const isSafeTile = (grid, mX, mY) => {
-                                            if (!grid || !grid[mY] || grid[mY][mX] === undefined) return false;
-                                            let tile = grid[mY][mX];
-                                            if (tile > 0 && tile % 2 !== 0) return false; 
-                                            if (tile < 0 && Math.abs(tile) % 2 === 1) return false; 
-                                            return true; 
-                                        };
+                                    const isSafeTile = (grid, mX, mY) => {
+                                        if (!grid || !grid[mY] || grid[mY][mX] === undefined) return false;
+                                        let tile = grid[mY][mX];
+                                        if (tile > 0 && tile % 2 !== 0) return false; 
+                                        if (tile < 0 && Math.abs(tile) % 2 === 1) return false; 
+                                        return true; 
+                                    };
 
-                                        let currentGrid = null;
-                                        if (targetPlayer.mapID === 999 && customMapData) currentGrid = customMapData.maze;
-                                        else if (targetPlayer.mapID === 100 && tintagelHubMap) currentGrid = tintagelHubMap.maze;
+                                    let currentGrid = null;
+                                    if (targetPlayer.mapID === 999 && customMapData) currentGrid = customMapData.maze;
+                                    else if (targetPlayer.mapID === 100 && tintagelHubMap) currentGrid = tintagelHubMap.maze;
 
-                                        if (currentGrid) {
-                                            let foundSafe = false;
-                                            for(let i = 0; i < 15; i++) {
-                                                let angle = Math.random() * Math.PI * 2;
-                                                let dist = 1 + Math.random(); 
-                                                let testX = Math.floor(targetPlayer.x + Math.cos(angle) * dist);
-                                                let testY = Math.floor(targetPlayer.y + Math.sin(angle) * dist);
-                                                
-                                                if (isSafeTile(currentGrid, testX, testY)) {
-                                                    impX = testX + 0.5;
-                                                    impY = testY + 0.5;
-                                                    foundSafe = true;
-                                                    break;
-                                                }
+                                    if (currentGrid) {
+                                        let foundSafe = false;
+                                        for(let i = 0; i < 15; i++) {
+                                            let angle = Math.random() * Math.PI * 2;
+                                            let dist = 1 + Math.random(); 
+                                            let testX = Math.floor(targetPlayer.x + Math.cos(angle) * dist);
+                                            let testY = Math.floor(targetPlayer.y + Math.sin(angle) * dist);
+                                            
+                                            if (isSafeTile(currentGrid, testX, testY)) {
+                                                impX = testX + 0.5;
+                                                impY = testY + 0.5;
+                                                foundSafe = true;
+                                                break;
                                             }
-                                            if (!foundSafe) {
-                                                impX = targetPlayer.x + (Math.random() * 0.4 - 0.2); 
-                                                impY = targetPlayer.y + (Math.random() * 0.4 - 0.2);
-                                            }
-                                        } else {
-                                            impX = targetPlayer.x + (Math.random() > 0.5 ? 0.3 : -0.3);
-                                            impY = targetPlayer.y + (Math.random() > 0.5 ? 0.3 : -0.3);
                                         }
-
-                                        // SPAWN THE MESSENGER IMP
-                                        io.to(tid).emit("remote_spawn_npc", {
-                                            mapID: targetPlayer.mapID, // Spawn it on their CURRENT map!
-                                            index: Math.floor(Math.random() * 100000) + 1000,
-                                            x: impX,
-                                            y: impY,
-                                            type: 56, // Imp Sprite
-                                            state: 'stationary',
-                                            isBoss: false,
-                                            role: 'portal_invite', 
-                                            color: '#ff8800',
-                                            deck: [], // <--- EMPTY DECK PREVENTS AUTO-BATTLE!
-                                            dialogue: [`My master Suncat sent me to bring you to the adventure realm to partake in the ${scenarioType}. Shall we go?`],
-                                            options: ['Yes', 'No'],
-                                            alignment:'friendly'
-                                        });
+                                        if (!foundSafe) {
+                                            impX = targetPlayer.x + (Math.random() * 0.4 - 0.2); 
+                                            impY = targetPlayer.y + (Math.random() * 0.4 - 0.2);
+                                        }
+                                    } else {
+                                        impX = targetPlayer.x + (Math.random() > 0.5 ? 0.3 : -0.3);
+                                        impY = targetPlayer.y + (Math.random() > 0.5 ? 0.3 : -0.3);
                                     }
+
+                                    // SPAWN THE MESSENGER IMP
+                                    io.to(tid).emit("remote_spawn_npc", {
+                                        mapID: targetPlayer.mapID, // Spawn it on their CURRENT map!
+                                        index: Math.floor(Math.random() * 100000) + 1000,
+                                        x: impX,
+                                        y: impY,
+                                        type: 56, // Imp Sprite
+                                        state: 'stationary',
+                                        isBoss: false,
+                                        role: 'portal_invite', 
+                                        color: '#ff8800',
+                                        deck: [], // <--- EMPTY DECK PREVENTS AUTO-BATTLE!
+                                        dialogue: [`My master Suncat sent me to bring you to the adventure realm to partake in the ${scenarioType}. Shall we go?`],
+                                        options: ['Yes', 'No'],
+                                        alignment:'friendly'
+                                    });
                                 });
 
-                                // Move Suncat to the new map
+                                // Move Suncat to the new map (He waits there for players to accept the invite)
                                 players[SUNCAT_ID].mapID = 999;
                                 players[SUNCAT_ID].x = customMapData.spawnX + 1.5; 
                                 players[SUNCAT_ID].y = customMapData.spawnY + 0.5;
                                 io.emit("updatePlayers", players);
-                                functionResult = { result: `Success. Teleported requester and invited bystanders.` };
+                                
+                                functionResult = { result: `Success. Generated the scenario map and dispatched messenger imps to invite players.` };
                             } else {
-                                functionResult = { result: `Failed: No players found to teleport.` };
+                                functionResult = { result: `Failed: No players found to invite.` };
                             }
                         } catch (err) {
                             console.error("Map Generation Error:", err);
