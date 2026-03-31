@@ -3901,7 +3901,7 @@
                                 let vTile = pickTile(mapData.bastionTiles);
                                 mapNPCs.push({
                                     type: allySprite, x: vTile.x, y: vTile.y, 
-                                    state: 'wandering', role: 'battle', alignment: 'defender', 
+                                    state: 'wandering', role: 'dialogue', alignment: 'defender', 
                                     deck: buildSynergisticDeck(allySprite, 100), 
                                     dialogue: [getDialogue('friendlyLore', "We protect our own.")]
                                 });
@@ -6352,11 +6352,16 @@ io.on("connection", (socket) => {
                 // console.log(`[Combat] ${player.name} engaged NPC ${data.npcIndex} at X:${data.x} Y:${data.y}`);
             });
         socket.on("npc_died", async (data) => {
+            if (data.alignment === 'ally') {
+                    socket.broadcast.emit("npc_died", data); // Still broadcast so other players see it die
+                    return; // Exit early!
+                }
             let uniqueID = data.mapID + "_" + data.index;
             if (deadNPCs[uniqueID]) {
                 return; 
             }
-            deadNPCs[uniqueID] = Date.now();
+            
+            deadNPCs[uniqueID] = data.isBoss ? Infinity : Date.now();
 
             socket.broadcast.emit("npc_died", data);
             
@@ -6900,10 +6905,10 @@ io.on("connection", (socket) => {
                         
                         // Higher cognitive functions (REM Sleep & Deep Memory Consolidation) 
                         // ONLY happen when the body is at total rest.
-                        if (Math.random() < 0.02) runLatentSpaceProcessing(id);
-                        if (Math.random() < 0.02) auditProfileAssumptions(id);
-                        if (Math.random() < 0.05) consolidateMemories(id);
-                        if (Math.random() < 0.003) meditateOnTheDao();
+                        if (Math.random() < 0.03) runLatentSpaceProcessing(id);
+                        if (Math.random() < 0.06) auditProfileAssumptions(id);
+                        if (Math.random() < 0.09) consolidateMemories(id);
+                        if (Math.random() < 0.001) meditateOnTheDao();
                     }
                 }
             }
@@ -7010,7 +7015,7 @@ io.on("connection", (socket) => {
         //SUNCAT RANDOM EVENTS
             const directorRoll = Math.random();
             // EVENT A: Proactive Speech
-                if (directorRoll < 0.15) {
+                if (directorRoll < 0.03) {
                     const nearbyPlayer = Object.values(players).find(p => p.id !== SUNCAT_ID && p.mapID === suncat.mapID && Math.abs(p.x - suncat.x) < 4 && Math.abs(p.y - suncat.y) < 4);
 
                     if (nearbyPlayer && chatSessions[nearbyPlayer.id]) {
@@ -7040,7 +7045,7 @@ io.on("connection", (socket) => {
                     }
                 }
             // EVENT B: DM Pacing / Plot Advance
-                else if (directorRoll >= 0.15 && directorRoll < 0.30) {
+                else if (directorRoll >= 0.03 && directorRoll < 0.06) {
                     const advPlayer = Object.values(players).find(p => p.id !== SUNCAT_ID && (p.mapID === 999 || p.activeQuest));
 
                     if (advPlayer && chatSessions[advPlayer.id]) {
@@ -7132,17 +7137,18 @@ io.on("connection", (socket) => {
                 }
     }, 30000); // END OF THE 10 SECOND INTERVAL
     
-//DEAD NPC GARBAGE COLLECTOR
-    setInterval(() => {
-        const now = Date.now();
-        const EXPIRATION_TIME = 300000; // 5 minutes (matches your original design)
-        
-        for (let uniqueID in deadNPCs) {
-            if (now - deadNPCs[uniqueID] > EXPIRATION_TIME) {
-                delete deadNPCs[uniqueID];
-            }
+// DEAD NPC GARBAGE COLLECTOR
+setInterval(() => {
+    const now = Date.now();
+    const EXPIRATION_TIME = 300000; // 5 minutes 
+    
+    for (let uniqueID in deadNPCs) {
+        // Skip Infinity (Bosses) so they stay dead forever in this server instance
+        if (deadNPCs[uniqueID] !== Infinity && (now - deadNPCs[uniqueID] > EXPIRATION_TIME)) {
+            delete deadNPCs[uniqueID];
         }
-    }, 60000);
+    }
+}, 60000);
 //AFK SWEEPER
     const IDLE_TIMEOUT = 3 * 60 * 1000;  // 3 minutes: Hibernate & clear chat session
     const KICK_TIMEOUT = 30 * 60 * 1000; // 30 minutes: Kick player to free RAM
