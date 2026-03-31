@@ -6612,7 +6612,7 @@ io.on("connection", (socket) => {
         // 100% chance to react to major story beats, 10% chance for mundane actions
         if (actionDescription.includes("[QUEST EVENT]") || actionDescription.includes("[SYSTEM EVENT]")) {
             processSuncatThought(socket.id, 'spectate', { action: actionDescription });
-        } else if (Math.random() < 0.1) {
+        } else if (Math.random() < 0.01) {
             processSuncatThought(socket.id, 'spectate', { action: actionDescription });
         }
         });
