@@ -3891,7 +3891,7 @@
                             // Shopkeeper is FRIENDLY (Pacifist)
                             mapNPCs.push({
                                 type: allySprite, x: mapData.startX + 0.5, y: mapData.startY + 0.5, 
-                                state: 'stationary', role: 'shop', alignment: 'friendly', // <--- FIXED
+                                state: 'wandering', role: 'shop', alignment: 'friendly', // <--- FIXED
                                 deck: buildShopInventory(50, 100), color: '#00ffff', 
                                 dialogue: [getDialogue('friendlyLife', "Rest by the fire, traveler.")]
                             });
@@ -4104,14 +4104,14 @@
                                         x: impX,
                                         y: impY,
                                         type: 56, // Imp Sprite
-                                        state: 'stationary',
+                                        state: 'following',
                                         isBoss: false,
                                         role: 'portal_invite', 
                                         color: '#ff8800',
                                         deck: [], // <--- EMPTY DECK PREVENTS AUTO-BATTLE!
                                         dialogue: [`My master Suncat sent me to bring you to the adventure realm to partake in the ${scenarioType}. Shall we go?`],
                                         options: ['Yes', 'No'],
-                                        alignment:'friendly'
+                                        alignment:'friendly_messenger'
                                     });
                                 });
 
