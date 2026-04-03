@@ -2706,7 +2706,7 @@
           console.log("Starting Battle...");
           startGame = 'battle';
           preGame = 'explore';
-          if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('air2');
+          if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('slash');
             if (typeof Field !== 'undefined') {
               Player[0] = new Field(0, 0); // 0 = Player Side, 0 = Human
               Player[1] = new Field(1, 1);    // 1 = Foe Side,    1 = CPU
@@ -3578,7 +3578,7 @@
         if (!this.isDead && typeof MusicEngine !== 'undefined') {
             if (this.type === 23 || this.type === 23.1 || this.type === 42) {
                 this.wispTimer++;
-                if (this.wispTimer > 3691) {
+                if (this.wispTimer > 963) {
                     if (Math.random() > 0.25) {
                         MusicEngine.play3DSFX('ghost', this.x, this.y, playerX, playerY, dungeon.dir);
                         this.wispTimer = 0 - (Math.random() * 60);
@@ -3587,7 +3587,7 @@
             }
             if (this.type === 74.1 ||this.type === 77.2 ||this.type ===90 ||this.type === 54 || this.type === 56 || this.type == 56.1||this.type ==81||this.type == 37.1||this.type == 61.2) {
                 this.gruntTimer++;
-                if(this.gruntTimer > 3691){
+                if(this.gruntTimer > 100){
                     if (Math.random() > 0.75) {
                         if (Math.random() > 0) {
                             MusicEngine.play3DSFX('musical2', this.x, this.y, playerX, playerY, dungeon.dir);
@@ -3596,7 +3596,7 @@
                     }
                 }
                 else if((this.type == 77.2||this.type == 90)&&isChasingNPC == true){
-                    if (this.gruntTimer > 3691) {
+                    if (this.gruntTimer > 963) {
                         if (Math.random() > 0) {
                             MusicEngine.play3DSFX('scream', this.x, this.y, playerX, playerY, dungeon.dir);
                             this.gruntTimer = 0;
@@ -3604,7 +3604,7 @@
                     }
                 }
                 else {
-                    if (this.gruntTimer > 3691) {
+                    if (this.gruntTimer > 963) {
                         if (Math.random() > 0.75) {
                             MusicEngine.play3DSFX('grunt', this.x, this.y, playerX, playerY, dungeon.dir);
                             this.gruntTimer = 0;
@@ -8965,7 +8965,7 @@
                   if (this.dCounter == 4){
                     this.extra.push(new Card(9,0))
                     this.dCounter =5;
-                    MusicEngine.playSFX('buff2');
+                    MusicEngine.playSFX('heal');
 
                   }
                   if (this.dCounter == 5){
@@ -8987,7 +8987,6 @@
                 if (this.dCounter == 1){MessageBox.show(.5,8,1,9,2,"And just like that we found The Hermit as well.",'dialogue',1,0)}
                 if (this.dCounter == 2){MessageBox.show(.5,8,1,9,2,"Don't worry about your apprentice old man, we'll take care of him!",'dialogue',1,0)}
                 if (this.dCounter == 3){
-                  MusicEngine.playSFX('air2')
                     this.npcs.push(new NPC(14, this.x, this.y, 60.1, 'stationary', '#ff0000', [60,6,50,50,51,59,58], 'battle', false, 'friendly_messenger')); // pixie ambush
                     this.endDialogue(true)         
                     socket.emit('suncat_spectate', `Player was ambushed by the Pixie outside of the hermitage refer to world lore..`);
@@ -9006,7 +9005,7 @@
                     if (this.dCounter == 6){
                         this.extra.push(new Card(32,0))
                         this.dCounter =7;
-                        MusicEngine.playSFX('buff2');
+                        MusicEngine.playSFX('heal');
                       }
                     if (this.dCounter == 7){
                         MessageBox.show(0.5, 8, 1, 9, 2, 'Apprentice joins your party!', 'dialogue', 1, -27);
@@ -9083,7 +9082,7 @@
                     // SUCCESS: Give Reward
                     this.extra.push(new Card(38,0))
                     this.dCounter = 4;
-                    if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('buff2');
+                    if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('heal');
                   }
                   else{
                     // FAILURE: Teleport
@@ -9121,7 +9120,7 @@
                 if (this.dCounter == 1){
                   this.extra.push(new Card(20,0))
                   this.dCounter =2;
-                  MusicEngine.playSFX('buff2');
+                  MusicEngine.playSFX('heal');
                 }
                 if (this.dCounter == 2){
                   MessageBox.show(0.5, 8, 1, 9, 2, 'You obtained a new card!', 'dialogue', 1, -27);
@@ -9145,7 +9144,6 @@
                 if (this.dCounter == 3){
                     this.spawnPersistentNPC(3, 5, this.x, this.y-1, 56, 'stationary', '#ff0000',[56,40,26,56,58,56,59,15,26,12,56,68,50],null,null,'battle',null,true,'friendly_messenger');    
                       
-                    MusicEngine.playSFX('air2')
                     this.endDialogue(true)         
                     socket.emit('suncat_spectate', `player has encountered the imp holding the apprentice hostage.`);
                   }
@@ -9158,7 +9156,6 @@
                 if (this.dCounter == 1){MessageBox.show(.5,8,1,9,2,"You're courting death!",'dialogue',1,0)}
                 if (this.dCounter == 2){
                     this.spawnPersistentNPC(5, 11, this.x, this.y-1, 35.1, 'stationary', '#ff0000',[35,35,35,16,18,26,26,26,26,15,28,44],null,null,'battle',null,true,'friendly_messenger');    
-                  MusicEngine.playSFX('air2')
 
                     this.endDialogue(true)         
                     socket.emit('suncat_spectate', `Player has confronted the Djinn in the witch queen's castle.`);
@@ -9190,7 +9187,7 @@
                 if (this.dCounter == 4){
                   this.extra.push(new Card(34,0))
                   this.dCounter =5;
-                  MusicEngine.playSFX('buff2');
+                  MusicEngine.playSFX('heal');
 
                 }
                 if (this.dCounter == 5){
@@ -9219,7 +9216,7 @@
                     if (this.dCounter == 5){
                     this.extra.push(new Card(48,0))
                     this.dCounter =6;
-                    MusicEngine.playSFX('buff2');
+                    MusicEngine.playSFX('heal');
 
                   }
                   if (this.dCounter == 6){
@@ -9270,7 +9267,7 @@
                       if (this.dCounter == 10){
                       this.extra.push(new Card(62,0))
                       this.dCounter =11;
-                      MusicEngine.playSFX('buff2');
+                      MusicEngine.playSFX('heal');
 
                       }
                       if (this.dCounter == 11){
@@ -9326,7 +9323,6 @@
                   if (this.dCounter == 0){MessageBox.show(.5,8,1,9,2,'Arrogant fools...','dialogue',1,0)}
                   if (this.dCounter == 1){MessageBox.show(.5,8,1,9,2,"You don't know the difference between heaven and earth!",'dialogue',1,0)}
                   if (this.dCounter == 2){
-                    MusicEngine.playSFX('air2')
                     this.spawnPersistentNPC(12, 12, this.x, this.y-1, 63.1, 'chasing', '#ff0000',[39,39,51,59,58,26,26,28,19,63,63,63],null,null,'battle',null,true,'friendly_messenger');    
                     socket.emit('suncat_spectate', `player has encountered the Dragon in his lair. Time to teach this overgrown lizard a lesson. Careful not to get burned...`);
                     this.endDialogue(true)         
@@ -9359,7 +9355,6 @@
                     if (this.dCounter == 6){MessageBox.show(.5,8,1,9,2,"Prove your worth to me!",'dialogue',1,0)}
 
                   if (this.dCounter == 7){
-                    MusicEngine.playSFX('air2')
                     this.spawnPersistentNPC(13, 3, this.x, this.y-1, 85, 'chasing', '#00ff00',[50,64,59,51,8,28,85],null,null,'battle',null,true,'friendly_messenger');    
                     socket.emit('suncat_spectate', `player has awoken sleeping king in his tomb and asked for aid and must not prove their worth.`);
                     this.endDialogue(true)         
@@ -9373,7 +9368,7 @@
                   if (this.dCounter == 3){
                     MusicEngine.stop();
                     MusicEngine.play(37)
-                    MusicEngine.playSFX('buff2')
+                    MusicEngine.playSFX('heal')
                     this.endDialogue(true)         
                     socket.emit('suncat_spectate', `player has proven their worth to the sleeping king and can now take excalibur.`);
                   }
@@ -9519,7 +9514,7 @@
                   if (this.dCounter == 9){
                     this.extra.push(new Card(72,0))
                     this.dCounter =10;
-                    MusicEngine.playSFX('buff2');
+                    MusicEngine.playSFX('heal');
                     }
                   if (this.dCounter == 10){
                     MessageBox.show(0.5, 8, 1, 9, 2, 'You obtained a new card!', 'dialogue', 1, -27);
@@ -20339,7 +20334,7 @@
               }
           }
           // --- 4. CHANNEL TAB INTERACTIONS ---
-          if (activeShopTab === 'channel') {
+          if (activeShopTab === 'absorb') {
               let groupedExtra = groupCards(Dungeon.extra);
 
               // A. SCROLLING (Extras)
@@ -20400,7 +20395,7 @@
               }
           }
           // --- 5. INFUSE TAB INTERACTIONS ---
-          if (activeShopTab === 'infuse') {
+          if (activeShopTab === 'refine') {
               let allOwnedMonsters = [...Dungeon.deck, ...(Dungeon.extra || [])].filter(c => c.type === 0);
               let uniqueMonsters = groupCards(allOwnedMonsters);
 
@@ -20465,7 +20460,7 @@
                           }
                           // -------------------------
 
-                          if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('heal'); 
+                          if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('buff2'); 
                       } else {
                           if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('cancel');
                       }
@@ -20708,7 +20703,7 @@
             console.log("IMPOSSIBLE VICTORY! Crown Obtained.");
             //socket.emit('force_ai_action', `Player has defeated the Emperor in a friendly game of stones. The player defeated the emperor's full deck of cards with only a handful of cards. The emperor hands the player a Crown card as acknowledgement of his mastery over the game. Narrate this scenario from a third person perspective and provide a short tarot interpretation of what it means to face and overcome the Emperor. (2 SENTENCES MAX)`);
 
-            if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('buff2');
+            if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('heal');
               MusicEngine.stop();
               MusicEngine.play(22);
               resize = 0;
@@ -33592,8 +33587,8 @@
                 lfo.connect(lfoGain); lfoGain.connect(gain.gain); // Wire LFO to Volume
                 osc.connect(gain); gain.connect(this.ctx.destination);
                 
-                lfo.start(startTime); lfo.stop(startTime + 2.5);
-                osc.start(startTime); osc.stop(startTime + 2.5);
+                lfo.start(startTime); lfo.stop(startTime + .5);
+                osc.start(startTime); osc.stop(startTime + .5);
              } else {
                 // The leading notes
                 this.createTone(startTime, freq, 'sine', 0.4, 0.8, 0);
@@ -53514,22 +53509,22 @@
               // Ensure playerStats exist
      
 
-      let pts = Dungeon.statPoints || 0;
+              let pts = Dungeon.statPoints || 0;
 
-      // Only draw the upgrade UI if they have points to spend
-      if (pts > 0) {
-         xptext = `Stat Points Remaining: ${pts}`;
-          xtcolor = 'green';
-          //STR
-             drawPortrait(-39,.275,2.5,.2)
-              //con
-            drawPortrait(-40,7.75,2.5,.2)
+              // Only draw the upgrade UI if they have points to spend
+              if (pts > 0) {
+                xptext = `Stat Points Remaining: ${pts}`;
+                  xtcolor = 'green';
+                  //STR
+                    drawPortrait(-39,.275,2.5,.2)
+                      //con
+                    drawPortrait(-40,7.75,2.5,.2)
 
-              //int
-              drawPortrait(-41,.275,6.25,.2)
-              //agi
-              drawPortrait(-42,7.75,6.45,.2)
-      }
+                      //int
+                      drawPortrait(-41,.275,6.25,.2)
+                      //agi
+                      drawPortrait(-42,7.75,6.45,.2)
+              }
                     drawText(0, 1, 10, 0.6,`${xptext}`, `${xtcolor}`, 1, 'center');      
 
               // REPLACED THE HARDCODED STRINGS WITH LIVE DATA!
@@ -53718,7 +53713,7 @@
         drawShape('rec', 0, 0, 1, 0, 0, 10, 10, 0, 0, 0, 0, 'rgba(0, 0, 0, 0.95)', 1);
 
         // 2. TABS (Browse, Channel, Infuse, Combo)
-        const tabs = ['browse', 'channel', 'infuse','combo'];
+        const tabs = ['browse', 'refine', 'absorb','combo'];
         const tabWidth = 10 / tabs.length; // Will automatically be 2.5 grid spaces each
 
         for (let i = 0; i < tabs.length; i++) {
@@ -53868,7 +53863,7 @@
                 drawText(1, 9.35, 1.5, 0.4, "< BACK", 'white', 1, 'center');
             }
         }
-        else if (activeShopTab === 'channel') {
+        else if (activeShopTab === 'absorb') {
             // --- 1. TITLES ---
             drawText(.5, 1.2, 3.5, 0.6, "- EXTRAS -", '#00ffff', 1, 'center');
             drawText(6, 1.2, 3.5, 0.6, "- PLAYER -", '#ffaa00', 1, 'center');
@@ -53925,7 +53920,7 @@
 
             drawText(5.5, 8, 4.5, 0.4, `Max Deck Power: ${Dungeon.power}`, '#00ffff', 1, 'center');
         }
-        else if (activeShopTab === 'infuse') {
+        else if (activeShopTab === 'refine') {
             // --- 1. TITLES ---
             drawText(0.5, 1.2, 3, 0.5, "- MONSTERS -", '#00ffff', 1, 'center');
             drawText(6.5, 1.2, 3, 0.5, "- EXTRAS -", '#ffaa00', 1, 'center');
