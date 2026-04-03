@@ -4038,7 +4038,7 @@
                             }
 
                             // We DO NOT globally emit the map! We target players individually.
-                            io.emit("force_npc_reset"); 
+                            //io.emit("force_npc_reset"); 
 
                            if (targets.length > 0) {
                                 targets.forEach(tid => {
@@ -4104,14 +4104,14 @@
                                         x: impX,
                                         y: impY,
                                         type: 56, // Imp Sprite
-                                        state: 'stationary',
-                                        isBoss: false,
+                                        state: 'chasing',
+                                        isBoss: true,
                                         role: 'portal_invite', 
                                         color: '#ff8800',
                                         deck: [], // <--- EMPTY DECK PREVENTS AUTO-BATTLE!
                                         dialogue: [`My master Suncat sent me to bring you to the adventure realm to partake in the ${scenarioType}. Shall we go?`],
                                         options: ['Yes', 'No'],
-                                        alignment:'friendly_messenger'
+                                        alignment:'friendly'
                                     });
                                 });
 
@@ -4714,15 +4714,15 @@
         [WHAT YOU SEE AROUND YOU RIGHT NOW]: 
         ${localVision}
         
-        [A FLASHBACK TO YOUR PAST LIFE]: "${randomMemory}"
+        
         
         [YOUR RECENT TRAIN OF THOUGHT]: 
         "${suncatJournal}"
 
         TASK: 
-        1. Write the NEXT 2-3 sentences of the saga, continuing logically from [YOUR RECENT TRAIN OF THOUGHT] and [YOUR STORY SO FAR]. Do not repeat what was already written. Reflect on your past life, observe the mundane NPCs around you,how you interact with the world, or describe quiet moment of peace, or your adventures within this specific map and the world in general. Ground it deeply in the Runestones universe using the [WORLD CONTEXT].
+        1. Write the NEXT 2-3 sentences of the saga, continuing logically from [YOUR RECENT TRAIN OF THOUGHT] and [YOUR STORY SO FAR]. Do not repeat what was already written. Reflect on your experiences, observe the mundane NPCs around you,how you interact with the world, or describe quiet moment of peace, or your adventures within this specific map and the world in general. Ground it deeply in the Runestones universe using the [WORLD CONTEXT].
         2. WEAVE IN THE LORE: Anchor the prose in the [WORLD CONTEXT (Where you are)] and [WHAT YOU SEE AROUND YOU RIGHT NOW] and the specific nature of the enemies/items. 
-        3. STRICT GEOGRAPHY RULE: DO NOT invent city, town, or region names! You MUST only use the locations provided in the context. DO NOT talk about epic quests or players
+        3. STRICT GEOGRAPHY RULE: DO NOT invent city, town, or region names! You MUST only use the locations provided in the context. DO NOT talk about epic quests or players.
         4. Write a 1-sentence update to [YOUR STORY SO FAR] summarizing your existence today in the third-person.`;
         const schema = {
             type: SchemaType.OBJECT,
@@ -6366,7 +6366,7 @@ io.on("connection", (socket) => {
                 let extractedID = parseInt(data.reason.split('_')[1]);
                 if (!isNaN(extractedID)) baseID = extractedID;
                 isPickup = true;
-            } else if (data.reason === 'dialogue') {
+            } else if (data.reason === 'dialogue'||data.reason != 'battle') {
                 isDialogue = true; 
             }
             
@@ -6963,7 +6963,7 @@ io.on("connection", (socket) => {
                     if(Math.random()>.9){
                         suncat.mapID = Math.floor(Math.random()*22);
                     }
-                    if (Math.random() < 0.1) {
+                    if (Math.random() < 0.01) {
                         writeSuncatJournal();
                     }
                 }
