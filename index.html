@@ -20087,21 +20087,21 @@
               if (pts > 0) {
                    if (pos.x >= (tL/10)*7 && pos.x <= (tL/10)*10  &&//AGI
                     pos.y > (tH/10)*6  && pos.y < (tH/10)*9){
-                      Dungeon.playerStats[3][2] += 1;
+                      Dungeon.stat[3][2] += 1;
                       Dungeon.statPoints -= 1;
                       if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('heal');
                       return;
                     }
                   if (pos.x >= (tL/10)*0 && pos.x <= (tL/10)*3  &&//INT
                     pos.y > (tH/10)*6  && pos.y < (tH/10)*9){
-                      Dungeon.playerStats[2][2] += 1;
+                      Dungeon.stat[2][2] += 1;
                       Dungeon.statPoints -= 1;
                       if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('heal');
                       return;
                     }
                   if (pos.x >= (tL/10)*7 && pos.x <= (tL/10)*10  &&//CON
                     pos.y > (tH/10)*2  && pos.y < (tH/10)*5){
-                     Dungeon.playerStats[1][2] += 1;
+                     Dungeon.stat[1][2] += 1;
                       Dungeon.statPoints -= 1;
                       if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('heal');
                       Player[0].sendAction('CULTIVATE', { s: 1 });
@@ -20109,7 +20109,7 @@
                     }
                   if (pos.x >= (tL/10)*0 && pos.x <= (tL/10)*3  &&//STR
                     pos.y > (tH/10)*2  && pos.y < (tH/10)*5){
-                      Dungeon.playerStats[0][2] += 1;
+                      Dungeon.stat[0][2] += 1;
                       Dungeon.statPoints -= 1;
                       if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('heal');
                        return;
