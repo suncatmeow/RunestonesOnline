@@ -3897,7 +3897,7 @@
                             });
 
                             // Bastion Guards are DEFENDERS
-                            for(let i = 0; i < 4; i++) {
+                            for(let i = 0; i < 9; i++) {
                                 let vTile = pickTile(mapData.bastionTiles);
                                 mapNPCs.push({
                                     type: allySprite, x: vTile.x, y: vTile.y, 
@@ -3920,7 +3920,7 @@
                             });
 
                             // Elite Guards
-                            for (let i = 0; i < 4; i++) {
+                            for (let i = 0; i < 10; i++) {
                                 let mID = getSafeMinion(hostileMinions)
                                 let guardTile = pickTile(mapData.lairTiles); 
                                 mapNPCs.push({
@@ -3963,7 +3963,7 @@
 
                             // Spawn 3rd Tribe Grunts in the Ruins
                             let thirdTribeMinions = getMinions(thirdTribeID);
-                            for(let i=0; i<4; i++) {
+                            for(let i=0; i<9; i++) {
                                 // ---> Use the safe helper here too! <---
                                 let mID = getSafeMinion(thirdTribeMinions) || thirdTribeID; 
                                 let spawnSpot = pickTile(mapData.ruinsTiles); mapNPCs.push({
@@ -3977,7 +3977,7 @@
                             // ==========================================
                             // ZONE 5: THE WILDS (The Connective Tissue)
                             // ==========================================
-                            for (let camp = 0; camp < 6; camp++) {
+                            for (let camp = 0; camp < 13; camp++) {
                                 let campCenter = pickTile(mapData.wildsTiles);
                                 let campPower = 15; 
                                 for (let g = 0; g < 3; g++) {
@@ -4104,7 +4104,7 @@
                                         x: impX,
                                         y: impY,
                                         type: 56, // Imp Sprite
-                                        state: 'following',
+                                        state: 'stationary',
                                         isBoss: false,
                                         role: 'portal_invite', 
                                         color: '#ff8800',
