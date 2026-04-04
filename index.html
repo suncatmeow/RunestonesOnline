@@ -3877,7 +3877,7 @@
     this.camDist = 2.5;   // How many tiles to pull the camera back
     this.camZ = .5;      // Camera height (0.5 is normal eye level, 1.2 is above the walls)
     this.pitch = 0;     // Horizon shift (positive numbers = looking down)
-     this.cameraMode = 'hybrid'; // Can be 'hybrid' or 'first_person'
+     this.cameraMode = 'first_person'; // Can be 'hybrid' or 'first_person'
     //tutorial w high priestess stuff
         this.card= [];
         this.card[0] = new Card(2, 0);//hp
@@ -7385,7 +7385,7 @@
             let hover = 0.0; // Default height off the floor: 0 (feet touching the ground)
             if (sprite.isPlayer) {
                 scale = 0.5; // Drops the player to about waist-height on the screen!
-                hover = 0.25;  // Keeps feet perfectly on the ground
+                hover = 0;  // Keeps feet perfectly on the ground
             }
             // 1. Tiny / Flying things (Cards, Pixies, Wisps)
             if (sprite.type === -27 || sprite.type === 60.1 || sprite.type === 60 || sprite.type === 23) {
