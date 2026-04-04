@@ -157,7 +157,8 @@
         // --- DEBUFFS (Fired as Projectiles!) ---
         15: { type: 'debuff', name: 'Curse', castStat: 2, defStat: 0, debuffStat: 0, duration: 600, visual: 'aura', auraColor: 'rgba(128, 0, 128, 0.7)', color: [1,0,1], glow: '#800080', model3D: 'd4', isHoming: true },
         12: { type: 'debuff', name: 'Bind',  castStat: 2, defStat: 3, bind: true, duration: 450, visual: 'chains', auraColor: 'rgba(100, 100, 100, 0.8)', color: [1,1,1], glow: '#888888', model3D: 'd4', isHoming: true }
-    };
+    };//
+    
   //TIMER VARIABLES
     var globalDt = 0;
     var timer = 0;
@@ -3872,7 +3873,12 @@
         this.status = 'normal'; // Can be 'normal' or 'dueling'
         this.isChallenger = false; // <--- ADD THIS LINE
       ////////
-      //tutorial w high priestess stuff
+      // Add these inside constructor()
+    this.camDist = 2.5;   // How many tiles to pull the camera back
+    this.camZ = .5;      // Camera height (0.5 is normal eye level, 1.2 is above the walls)
+    this.pitch = 0;     // Horizon shift (positive numbers = looking down)
+     this.cameraMode = 'hybrid'; // Can be 'hybrid' or 'first_person'
+    //tutorial w high priestess stuff
         this.card= [];
         this.card[0] = new Card(2, 0);//hp
         this.card[1] = new Card(0, 0);//fool
@@ -5627,7 +5633,11 @@
       }
     //Collision checking
       isWall(mapX, mapY) {
-        if (!this.maze || this.maze.length === 0 || !this.maze[0]) return true;
+       if (!this.maze || this.maze.length === 0 || !this.maze[0]) return true;
+        
+        // --- NEW: PROTECT AGAINST NaN CRASHES ---
+        if (isNaN(mapX) || isNaN(mapY)) return true;
+
         // 1. Boundary Check
         if (mapX < 0 || mapX >= this.maze[0].length || mapY < 0 || mapY >= this.maze.length) return true;
 
@@ -5930,14 +5940,16 @@
             // Reset Z-Buffer for this frame
             this.zBuffer = new Array(viewW).fill(0);
 
-        // 3. Draw Background (Floor/Ceiling)
-          // Draw Sky (Top Half)
-          ctx.fillStyle = this.skyColor;
-          ctx.fillRect(viewX, viewY, viewW, viewH / 2);
+       // Calculate the new shifted horizon line
+        const horizon = (viewH / 2) + this.pitch;
 
-          // FLOOR: Gradient (Fades from black at horizon to floorColor at bottom)
-          const floorGrad = ctx.createLinearGradient(0, viewY + viewH / 2, 0, viewY + viewH);
-          if (this.mapID == 10) {
+        // Draw Sky
+        ctx.fillStyle = this.skyColor;
+        ctx.fillRect(viewX, viewY, viewW, horizon);
+
+        // FLOOR: Gradient
+        const floorGrad = ctx.createLinearGradient(0, viewY + horizon, 0, viewY + viewH);
+        if (this.mapID == 10) {
               // AVALON FOG: The floor fades into the dark violet sky color at the horizon
               floorGrad.addColorStop(0, '#1a1838');       // Horizon: Dark Purple (blends with Sky)
               floorGrad.addColorStop(0.2, '#0d1a0d');     // Mid: Dark Shadow
@@ -5957,25 +5969,89 @@
               floorGrad.addColorStop(1, this.floorColor); 
           }
           ctx.fillStyle = floorGrad;
-          ctx.fillRect(viewX, viewY + viewH / 2, viewW, viewH / 2);
+        ctx.fillRect(viewX, viewY + horizon, viewW, viewH - horizon);
 
-        // 4. Raycasting Variables
-          const angle = this.dir * Math.PI / 2;
-          const dirX = Math.sin(angle);
-          const dirY = -Math.cos(angle);
-          const planeX = -dirY * 0.66; // Negative dirY
-          const planeY = dirX * 0.66;  // Positive dirX
+         // 1. Calculate the player's direction vectors
+        const angle = this.dir * Math.PI / 2;
+        const dirX = Math.sin(angle);
+        const dirY = -Math.cos(angle);
+        const planeX = -dirY * 0.66;
+        const planeY = dirX * 0.66;
 
-        // 5. Cast Rays for Walls
-          for (let x = 0; x < viewW; x += resStep) {
+       // 2. Determine the "Target" POV
+        let targetPOVDist = 2; // Your preferred 3rd person distance
+        
+        // --- THE CAMERA OVERRIDE CHECK ---
+        if (this.cameraMode === 'first_person') {
+            targetPOVDist = 0; // Force 1st person immediately!
+        } else {
+            // --- AUTO-SWITCH TRIGGERS (Only run in 'hybrid' mode) ---
+            
+            // Trigger A: Facing a wall too closely
+            // FIXED: Changed 1.5 to 0.8 so it only triggers on the immediate next block
+            let checkFrontX = Math.floor(this.x + dirX * 0.8);
+            let checkFrontY = Math.floor(this.y + dirY * 0.8);
+            if (this.isWall(checkFrontX, checkFrontY)) targetPOVDist = 0;
+
+            // Trigger B: Sprite in front of me (Blocking view)
+            if (targetPOVDist > 0) {
+                for (let npc of this.npcs) {
+                    if (npc.isDead || !npc.visible || npc.type === -27||npc.alignment==='ally'||npc.role ==='shop') continue;
+                    let dx = npc.x - this.x;
+                    let dy = npc.y - this.y;
+                    let distSq = dx*dx + dy*dy;
+                    if (distSq < 2.25) { 
+                        let dot = (dx * dirX + dy * dirY) / Math.sqrt(distSq);
+                        if (dot > 0.8) { targetPOVDist = 0; break; }
+                    }
+                }
+            }
+        }
+
+        // 3. Handle the physical Camera Pull-back
+        let actualCamDist = 0;
+        if (targetPOVDist > 0) {
+            let step = 0.1;
+            while (actualCamDist < targetPOVDist) {
+                let checkX = this.x - dirX * (actualCamDist + step + 0.2); 
+                let checkY = this.y - dirY * (actualCamDist + step + 0.2);
+                if (this.isWall(Math.floor(checkX), Math.floor(checkY))) break;
+                actualCamDist += step;
+            }
+            if (actualCamDist < 1.0) actualCamDist = 0;
+        }
+
+        // 4. APPLY YOUR CUSTOM SETTINGS BASED ON THE FINAL DISTANCE
+        if (actualCamDist <= 0.01) {
+            // --- FIRST PERSON MODE ---
+            this.isFirstPerson = true;
+            this.camZ = 0.5;   // Eye level
+            this.pitch = 0;    // Level horizon
+        } else {
+            // --- YOUR THIRD PERSON SETTINGS ---
+            this.isFirstPerson = false;
+            // FIXED: Changed from 1.5 to 1.0 to eliminate the hollow roof bleed
+            this.camZ = 1.0;   // Flush with the ceiling
+            this.pitch = -100; // Looking down
+        }
+
+        // 5. Finalize Coordinates
+        let camX = this.x - dirX * actualCamDist;
+        let camY = this.y - dirY * actualCamDist;
+
+        // Store this so we know whether to draw the player sprite later!
+        this.isFirstPerson = (actualCamDist <= 0.01);
+       // 5. Cast Rays for Walls
+        for (let x = 0; x < viewW; x += resStep) {
             const cameraX = 2 * x / viewW - 1;
             const rayDirX = dirX + planeX * cameraX;
             const rayDirY = dirY + planeY * cameraX;
-            
-          this.castWallRay(rayDirX, rayDirY, x, viewX, viewY, viewW, viewH, resStep);    }
-          // 1. Ensure weather system matches current table size (tL)
-          // tL is your square size calculated in resizeCanvas
-          this.weather.resize(tL,tL); 
+                    
+            this.castWallRay(rayDirX, rayDirY, x, viewX, viewY, viewW, viewH, resStep, camX, camY);          
+        } 
+
+        // 1. Ensure weather system matches current table size (tL)
+        this.weather.resize(tL,tL);
 
           // 2. Update Physics
           this.weather.update(dt);
@@ -6022,11 +6098,24 @@
                   }
               }
             }
+            if (!this.isFirstPerson) {
+              renderList.push({
+                  x: this.x,
+                  y: this.y,
+                  type: playerSprite, // Your current player portrait ID
+                  visible: true,
+                  isDead: false,
+                  alignment: 'ally', 
+                  isPlayer: true 
+              });
+          }
           // 3. Draw everything
-          this.drawCombinedSprites(ctx, viewX, viewY, viewW, viewH, dirX, dirY, planeX, planeY, renderList); // 7. Draw Minimap
+          this.drawCombinedSprites(ctx, viewX, viewY, viewW, viewH, dirX, dirY, planeX, planeY, renderList, camX, camY);
           this.drawMinimap(ctx, viewX, viewY, viewW, viewH);
           btnDeck.show(9, 9, 1, 1, 1, 'Deck', 'jrpg_btn', 1, 0);
           btnJournal.show(0, 9, 1, 1, 1, 'Journal', 'jrpg_btn', 1, 0);
+          btnPOV.show(0, 7.9, 1, 1, 1, 'POV', 'jrpg_btn', 1, 0);
+          
           // Draw the Spell Slots
           if (btnSpell1.assignedCard) btnSpell1.show(9, 7.95, 1, 1, 1, btnSpell1.text, 'jrpg_btn', 1, 'spell');
           if (btnSpell2.assignedCard) btnSpell2.show(9, 6.9, 1, 1, 1, btnSpell2.text, 'jrpg_btn', 1, 'spell');
@@ -6620,30 +6709,30 @@
                   break;
           }
       }
-      castWallRay(rayDirX, rayDirY, stripX, viewX, viewY, viewW, viewH,width = 1) {
-        let mapX = this.x | 0;
-        let mapY = Math.floor(this.y);
-        const deltaDistX = Math.abs(1 / rayDirX);
-        const deltaDistY = Math.abs(1 / rayDirY);
-        let stepX, stepY, sideDistX, sideDistY;
-
-        if (rayDirX < 0) { stepX = -1; sideDistX = (this.x - mapX) * deltaDistX; }
-        else { stepX = 1; sideDistX = (mapX + 1 - this.x) * deltaDistX; }
-        if (rayDirY < 0) { stepY = -1; sideDistY = (this.y - mapY) * deltaDistY; }
-        else { stepY = 1; sideDistY = (mapY + 1 - this.y) * deltaDistY; }
-
-        let hit = 0, side;
-        let wallID = 1;
+      castWallRay(rayDirX, rayDirY, stripX, viewX, viewY, viewW, viewH, width = 1, camX, camY) {
+          let mapX = Math.floor(camX);
+          let mapY = Math.floor(camY);
+              const deltaDistX = (rayDirX === 0) ? 1e30 : Math.abs(1 / rayDirX);
+        const deltaDistY = (rayDirY === 0) ? 1e30 : Math.abs(1 / rayDirY);
+              let stepX, stepY, sideDistX, sideDistY;
+          if (rayDirX < 0) { stepX = -1; sideDistX = (camX - mapX) * deltaDistX; }
+          else { stepX = 1; sideDistX = (mapX + 1 - camX) * deltaDistX; }
+          if (rayDirY < 0) { stepY = -1; sideDistY = (camY - mapY) * deltaDistY; }
+          else { stepY = 1; sideDistY = (mapY + 1 - camY) * deltaDistY; }
+              let hit = 0, side;
+              let wallID = 1;
 
         while (!hit) {
-          if (sideDistX < sideDistY) { sideDistX += deltaDistX; mapX += stepX; side = 0; }
-          else { sideDistY += deltaDistY; mapY += stepY; side = 1; }
-          // If the ray goes out of bounds, pretend it hit a solid wall and stop.
-          if (mapY < 0 || mapY >= this.maze.length || mapX < 0 || mapX >= this.maze[0].length) {
-              hit = 1;
-              wallID = 19; // Default to black void wall (19) if the AI left a hole
-              break; 
-          }
+        if (sideDistX < sideDistY) { sideDistX += deltaDistX; mapX += stepX; side = 0; }
+        else { sideDistY += deltaDistY; mapY += stepY; side = 1; }
+        
+        // Add the isNaN checks here!
+        if (isNaN(mapY) || isNaN(mapX) || mapY < 0 || mapY >= this.maze.length || mapX < 0 || mapX >= this.maze[0].length) {
+            hit = 1;
+            wallID = 19; 
+            break; 
+        } // If the ray goes out of bounds, pretend it hit a solid wall and stop.
+          
           if (this.explored[mapY] && this.explored[mapY][mapX] !== undefined) {
               this.explored[mapY][mapX] = 1;
           }
@@ -6659,17 +6748,36 @@
           
         }
 
+        // --- 1. THE FIX: SAFE DISTANCE CALCULATION ---
         let perpWallDist;
-        if (side === 0) perpWallDist = (mapX - this.x + (1 - stepX) / 2) / rayDirX;
-        else perpWallDist = (mapY - this.y + (1 - stepY) / 2) / rayDirY;
+        
+        // If we hit a boundary or a math error, just draw a fake wall far away
+        if (isNaN(mapX) || isNaN(mapY) || isNaN(rayDirX) || isNaN(rayDirY) || rayDirX === 0 || rayDirY === 0) {
+            perpWallDist = 100; // Force a far distance so it just renders black fog
+        } else {
+            // Normal calculation
+            if (side === 0) perpWallDist = (mapX - camX + (1 - stepX) / 2) / rayDirX;
+            else            perpWallDist = (mapY - camY + (1 - stepY) / 2) / rayDirY;
+        }
+        
+        // Safety check: if the distance somehow still becomes negative or NaN, force it positive
+        if (isNaN(perpWallDist) || perpWallDist <= 0) {
+            perpWallDist = 0.1;
+        }
 
         this.zBuffer[stripX] = perpWallDist;
+          this.zBuffer[stripX] = perpWallDist;
 
-        const lineHeight = viewH / perpWallDist;
-        const trueDrawStart = -lineHeight / 2 + viewH / 2; // <-- ADD THIS LINE
-        const drawStart = Math.max(0, trueDrawStart);      // <-- UPDATE THIS LINE
-        const drawEnd = Math.min(viewH, lineHeight / 2 + viewH / 2);
+          // --- THE MAGIC 3RD PERSON MATH ---
+          const lineHeight = viewH / perpWallDist;
+          const horizon = (viewH / 2) + this.pitch;
+          
+          // Shift walls down based on camera height and distance
+          const zShift = lineHeight * (this.camZ - 0.5); 
 
+          const trueDrawStart = -lineHeight / 2 + horizon + zShift;
+          const drawStart = Math.max(0, trueDrawStart);      
+          const drawEnd = Math.min(viewH, lineHeight / 2 + horizon + zShift);
         // --- COLOR & TEXTURE LOGIC ---
         let colorStr = this.wallColors[wallID] || '#8b4513';
         let { r: baseR, g: baseG, b: baseB } = this.parseColor(colorStr);
@@ -7015,16 +7123,16 @@
 
             let weight = (currentDist - distPlayer) / (distWall - distPlayer);
 
-            let currentFloorX = weight * floorXWall + (1.0 - weight) * this.x;
-            let currentFloorY = weight * floorYWall + (1.0 - weight) * this.y;
-
+            let currentFloorX = weight * floorXWall + (1.0 - weight) * camX;
+            let currentFloorY = weight * floorYWall + (1.0 - weight) * camY;
+            // Get the tile at this floor position
             // Get the tile at this floor position
             let floorMapX = Math.floor(currentFloorX);
             let floorMapY = Math.floor(currentFloorY);
 
-            // 1. Boundary Check
-            if (floorMapX < 0 || floorMapX >= this.maze[0].length || floorMapY < 0 || floorMapY >= this.maze.length) {
-                continue; // Skip boundaries
+            // 1. Boundary Check (UPGRADED WITH ISNAN)
+            if (isNaN(floorMapX) || isNaN(floorMapY) || floorMapX < 0 || floorMapX >= this.maze[0].length || floorMapY < 0 || floorMapY >= this.maze.length) {
+                continue; // Skip boundaries safely!
             }
 
             let tile = this.maze[floorMapY][floorMapX];
@@ -7248,71 +7356,80 @@
           ctx.lineWidth = 1;
           ctx.stroke();
       }
-      drawCombinedSprites(ctx, viewX, viewY, viewW, viewH, dirX, dirY, planeX, planeY, spriteList) {
+      drawCombinedSprites(ctx, viewX, viewY, viewW, viewH, dirX, dirY, planeX, planeY, spriteList, camX, camY) {        
         spriteList.forEach(npc => {
-            npc.dist = ((this.x - npc.x) * (this.x - npc.x) + (this.y - npc.y) * (this.y - npc.y));
+            // CHANGED: Calculate distance from CAMERA, not Player
+            npc.dist = ((camX - npc.x) * (camX - npc.x) + (camY - npc.y) * (camY - npc.y));
         });
         spriteList.sort((a, b) => b.dist - a.dist);
 
-        // 2. Loop through the list
         for (let i = 0; i < spriteList.length; i++) {
-            const sprite = spriteList[i]; // Use spriteList instead of this.npcs
-            // Transform sprite position to camera space
-            const spriteX = sprite.x - this.x;
-            const spriteY = sprite.y - this.y;
+            const sprite = spriteList[i]; 
+            
+            // CHANGED: Position relative to CAMERA, not Player
+            const spriteX = sprite.x - camX;
+            const spriteY = sprite.y - camY;
 
             const invDet = 1.0 / (planeX * dirY - dirX * planeY);
             const transformX = invDet * (dirY * spriteX - dirX * spriteY);
             const transformY = invDet * (-planeY * spriteX + planeX * spriteY); // Depth
 
             // --- FIX 1: NEAR PLANE CLIPPING ---
-            if (transformY <= 0.2) continue; 
-
-            // --- FIX 3: FAR PLANE CLIPPING (FOG) ---
-            // If the sprite is more than 15 tiles away, don't draw it.
-            // This prevents seeing tiny dots on the horizon.
-            if (transformY > 7) continue;
-
-            // --- NEW: CUSTOM SCALING LOGIC ---
-            let scale = 1.0; 
-            let vMove = 1.0; // Vertical shift (optional)
-
-            // If it is a Card (Type -27), shrink it!
-            if (sprite.type === -27) {
-                scale = 0.25; // 40% of standard size
-                // Optional: You can make it hover slightly higher/lower by changing vMove
-                // vMove = 0.0; 
+            if (transformY <= .5) continue; 
+            if (transformY > 15) continue; // Fog clipping
+              if (sprite.isPlayer && transformY < 0.35) {
+                continue; 
             }
-            if (sprite.type === 60.1||sprite.type === 60) {
-                scale = .25; // 40% of standard size
-                // Optional: You can make it hover slightly higher/lower by changing vMove
-                // vMove = 0.0; 
+            // --- TRULY 3D SCALING & ANCHORING LOGIC ---
+            let scale = 0.8; // Default height: 80% of a wall block (Humans, Player, etc)
+            let hover = 0.0; // Default height off the floor: 0 (feet touching the ground)
+            if (sprite.isPlayer) {
+                scale = 0.5; // Drops the player to about waist-height on the screen!
+                hover = 0.25;  // Keeps feet perfectly on the ground
             }
-            if ((sprite.type === 33.1||sprite.type === 33)) {
-                scale = .75; // 40% of standard size
-                // Optional: You can make it hover slightly higher/lower by changing vMove
+            // 1. Tiny / Flying things (Cards, Pixies, Wisps)
+            if (sprite.type === -27 || sprite.type === 60.1 || sprite.type === 60 || sprite.type === 23) {
+                scale = 0.3; 
+                hover = 0.4; // Make them float in the air
             }
-            if ((sprite.type === 63.1||sprite.type === 63||sprite.type === 49.1||sprite.type === 49)&&(sprite.alignment=='ally'||this.mapID == 999)) {
-                scale = .75; // 40% of standard size
-                // Optional: You can make it hover slightly higher/lower by changing vMove
-                // vMove = 0.0; 
+            // 2. Short ground creatures (Imps, Goblins, Gnomes, Snakes)
+            else if (sprite.type === 56 || sprite.type === 54 || sprite.type === 75 || sprite.type === 75.1 || sprite.type === 89) {
+                scale = 0.5; // Half a block tall
+                hover = -.25; // On the ground
             }
-            // Calculate Screen Dimensions with SCALE applied
+            // 3. Floating medium creatures (Shade, Sylph)
+            else if (sprite.type === 42 || sprite.type === 86 || sprite.type === 61.1) {
+                scale = 0.8;
+                hover = 0.2; // Hovering slightly
+            }
+            // 4. Massive creatures (Dragons, Kraken, Giants)
+            else if (sprite.type === 63.1 || sprite.type === 63 || sprite.type === 49.1 || sprite.type === 77.1 || sprite.type === 90) {
+                scale = 1.4; // Taller than the walls!
+                hover = 0.0;
+            }
+            else if ((sprite.type <= -29&&sprite.type >= -35)) {
+                scale = 1; // Taller than the walls!
+                hover = 0.0;
+            }
+            // Calculate Base Screen Dimensions
             const spriteScreenX = Math.floor((viewW / 2) * (1 + transformX / transformY));
+            const spriteSize = Math.abs(Math.floor((viewH / transformY) * scale)); 
             
-            // Apply scale here
-            const spriteSize = Math.abs(Math.floor(viewH / transformY)) * scale; 
-
-            const yOffset = (sprite.zHeight || 0) * spriteSize;
-
-            // drawStartY calculation:
-            // -spriteSize / 2 centers it vertically on the horizon
-            // + vMove shifts it up/down
-            const drawStartY = Math.floor(-spriteSize / 2 + viewH / 2 + viewY - yOffset + vMove);
+            // --- THE MAGIC 3RD PERSON Y-SHIFT (ANCHORED TO FLOOR) ---
+            const horizon = (viewH / 2) + this.pitch;
+            
+            // This calculates exactly where the 3D floor is at this specific distance
+            const floorY = horizon + (viewH / transformY) * this.camZ;
+            
+            // This calculates how high off the floor the sprite should be floating
+            const hoverOffset = (viewH / transformY) * (hover + (sprite.zHeight || 0));
+            
+            // Subtracting spriteSize draws it from the bottom up, anchoring feet to the floor!
+            // --- THE FIX: ADD + viewY TO ACCOUNT FOR MOBILE SCREEN PADDING ---
+            const drawStartY = Math.floor(floorY - spriteSize - hoverOffset) + viewY;
             const drawStartX = Math.floor(-spriteSize / 2 + spriteScreenX + viewX);
 
             if (drawStartX >= viewX + viewW || drawStartX + spriteSize <= viewX) continue;
-            
             if (sprite.model) {
                 if (spriteScreenX > 0 && spriteScreenX < viewW) {
                     if (transformY < this.zBuffer[spriteScreenX]) {
@@ -7321,19 +7438,19 @@
                         sprite.model.draw(ctx, centerX, centerY, spriteSize * 0.5, 4);
                     }
                 }
-                // --- NEW FIX FOR FIREBALL SPRITE ---
-                // If it's a projectile (type -37) and has no model, force it to draw here
+                
                 if (sprite.type === -37) {
                     const oldTX = tX; const oldTY = tY; const oldTL = tL; const oldTH = tH;
                     tX = drawStartX; tY = drawStartY; tL = spriteSize; tH = spriteSize;
 
                     if (typeof drawPortrait === 'function') {
-                        drawPortrait(-37, 0, 0, 1); // Draw the fireball sprite
+                        drawPortrait(-37, 0, 0, 1); 
                     }
 
                     tX = oldTX; tY = oldTY; tL = oldTL; tH = oldTH;
-                    continue; // Move to next sprite
+                    continue; 
                 }
+                
                 // Interaction Check for 3D
                 if (this.clickInput) {
                     if (transformY < 1.0 && 
@@ -7341,7 +7458,6 @@
                         this.clickInput.y >= drawStartY && this.clickInput.y <= drawStartY + spriteSize) 
                     {
                         if (sprite.type === 99 ) {
-                            //sprite.triggerInteraction(this);
                             this.clickInput = null;
                         }
                     }
@@ -7350,7 +7466,6 @@
             }
 
             // --- 2D RENDER BRANCH ---
-
             const toPlayerX = this.x - sprite.x;
             const toPlayerY = this.y - sprite.y;
             const dotProd = (sprite.dirX * toPlayerX) + (sprite.dirY * toPlayerY);
@@ -7359,7 +7474,6 @@
             // ONLINE--- INTERACTION CHECK (PLAYERS ONLY) ---
             if (this.clickInput) {
                 
-                // 1. Check if click is inside the sprite box
                 let inBounds = (
                     this.clickInput.x >= drawStartX && 
                     this.clickInput.x <= drawStartX + spriteSize &&
@@ -7368,12 +7482,7 @@
                 );
 
                 if (inBounds) {
-                    // Debug Log (Press F12 to see this)
-                      console.log(`[Click Debug] Type: ${sprite.type} | ID: ${sprite.socketId} | Dist: ${transformY.toFixed(2)}`);
-                    // 2. Distance Check (Increased to 2.5 so you don't have to be touching)
                     if (transformY < 2.5) {
-                        
-                        // 3. Wall Check (Prevent clicking through walls)
                         const localClickX = Math.floor(this.clickInput.x - viewX);
                         let wallBlock = false;
                         if (localClickX >= 0 && localClickX < viewW) {
@@ -7381,43 +7490,16 @@
                         }
 
                         if (!wallBlock) {
-                            // 4. PLAYER CHALLENGE LOGIC
                             if (sprite.socketId) {
-                              // NEW CHECK: Is the target already busy?
                                 if (sprite.status === 'dueling') {
                                     console.log("Target is already in a battle.");
                                     MessageBox.show(0.5, 8, 1, 9, 2, 'That player is busy fighting!', 'dialogue', 1, 0);
                                     this.clickInput = null;
                                     continue;
                                 }
-                                /*
-                                console.log(">> SENDING CHALLENGE...");
-                          // 1. Sanitize Deck: Convert complex Card objects to simple ID array
-                              let mySimpleDeck = Dungeon.deck.map(c => c.index);
-
-                              // 2. Send Challenge + Deck
-                              socket.emit("challenge_request", {
-                                  targetId: sprite.socketId,
-                                  deck: mySimpleDeck
-                              });                            
-                              // 2. Set Game State (CRITICAL FIX)
-                        this.currentSpeaker = sprite; 
-                        this.dCounter = 0; 
-                        this.status = 'dueling'; // Mark myself as busy
-                        this.isChallenger = true; // <--- MARK AS SENDER
-                        startGame = 'dialogue';  // STOP exploring, START talking
-                                MessageBox.show(0.5, 8, 1, 9, 2, 'Challenge sent!', 'dialogue', 1, 0);
-                                this.clickInput = null; // Consume click
-                                continue;*/
-                            } else {
-                               // console.log("-- Ignored: Not a Player[0].");
-                            }
-                        } else {
-                          //  console.log("-- Ignored: Blocked by wall.");
-                        }
-                    } else {
-                        //console.log("-- Ignored: Too far away.");
-                    }
+                            } 
+                        } 
+                    } 
                 }
             }
 
@@ -7467,59 +7549,56 @@
         tX = drawStartX; tY = drawStartY; tL = spriteSize; tH = spriteSize;
 
         if (typeof drawPortrait === 'function') {
+            
+            // --- GHOST THE PLAYER ---
+            if (sprite.isPlayer) {
+                ctx.globalAlpha = 0.7; // Make the player 30% see-through
+            } else {
+                ctx.globalAlpha = 1.0; // Everyone else is solid
+            }
             if (sprite.type == -27){
                 let cardID = sprite.deck[0];
                 
-                ctx.imageSmoothingEnabled = true; // <--- TURN ON
+                ctx.imageSmoothingEnabled = true; 
                 drawPortrait(-27, 0, 0, 1, cardID); 
-                ctx.imageSmoothingEnabled = false; // <--- TURN OFF
+                ctx.imageSmoothingEnabled = false; 
                 
             } else {
                 let imageToDraw = (sprite.type !== undefined) ? sprite.type : 0;
                 
-                ctx.imageSmoothingEnabled = true; // <--- TURN ON
+                ctx.imageSmoothingEnabled = true; 
                 drawPortrait(imageToDraw, 0, 0, 1);
-                ctx.imageSmoothingEnabled = false; // <--- TURN OFF
-              // --- DRAW BUFF VISUALS ---
-        if (sprite.activeBuffs && sprite.activeBuffs.length > 0) {
-            sprite.activeBuffs.forEach(buff => {
+                ctx.imageSmoothingEnabled = false; 
                 
-                // 1. Calculate Blinking
-                let showVisual = true;
-                if (buff.type === 'buff' && buff.duration < 180) { // Last 6 seconds
-                    let blinkRate = buff.duration < 60 ? 5 : 10;
-                    showVisual = (Math.floor(buff.duration) % blinkRate < (blinkRate / 2));
+                // --- DRAW BUFF VISUALS ---
+                if (sprite.activeBuffs && sprite.activeBuffs.length > 0) {
+                    sprite.activeBuffs.forEach(buff => {
+                        
+                        let showVisual = true;
+                        if (buff.type === 'buff' && buff.duration < 180) { 
+                            let blinkRate = buff.duration < 60 ? 5 : 10;
+                            showVisual = (Math.floor(buff.duration) % blinkRate < (blinkRate / 2));
+                        }
+
+                        if (showVisual) {
+                            ctx.beginPath();
+                            ctx.strokeStyle = buff.auraColor;
+                            
+                            if (buff.visual === 'arc') {
+                                ctx.arc(drawStartX + spriteSize/2, drawStartY, spriteSize * 0.6, Math.PI, 0);
+                                ctx.stroke();
+                            } 
+                            else if (buff.visual === 'shield') {
+                                let gap = Math.PI / buff.hits; 
+                                ctx.setLineDash([20, 10]); 
+                                ctx.arc(drawStartX + spriteSize/2, drawStartY + spriteSize/2, spriteSize * 0.5, 0, Math.PI * 2);
+                                ctx.stroke();
+                                ctx.setLineDash([]); 
+                            }
+                        }
+                    });
                 }
 
-                if (showVisual) {
-                    ctx.beginPath();
-                    ctx.strokeStyle = buff.auraColor;
-                    
-                    if (buff.visual === 'arc') {
-                        // Draws a glowing dome over their head
-                        ctx.arc(drawStartX + spriteSize/2, drawStartY, spriteSize * 0.6, Math.PI, 0);
-                        ctx.stroke();
-                    } 
-                    else if (buff.visual === 'shield') {
-                        // Draws a thick, rotating broken circle around them based on how many hits are left
-                        let gap = Math.PI / buff.hits; // Visual breaks based on health
-                        ctx.setLineDash([20, 10]); // Dash pattern
-                        ctx.arc(drawStartX + spriteSize/2, drawStartY + spriteSize/2, spriteSize * 0.5, 0, Math.PI * 2);
-                        ctx.stroke();
-                        ctx.setLineDash([]); // Reset dash
-                    }
-                }
-            });
-        }
-
-          //}
-          //else if (isBackTurned ) {
-          // if(imageToDraw != 21.1 && imageToDraw != 33.1&&imageToDraw != 61391 &&imageToDraw!=.61391){
-          //    ctx.filter = 'brightness(10%) contrast(90%) sepia(0%) hue-rotate(0deg)'; 
-          // }
-            //  drawPortrait(imageToDraw, 0, 0, 1);
-            //   ctx.filter = 'none'; 
-        //   }
           if (sprite.name && sprite.name !== "undefined") {
               drawText(3.75, 0, 2.5, .69, ''+sprite.name, 'green', 1, 'center')
               } 
@@ -10836,33 +10915,33 @@
             
           case 'jrpg_btn':
             bSize = 0.04; // Border/Bevel thickness
-            isPressed = this.isPressed;
-            
-            // 1. OUTER SHADOW (Grounds the UI)
-            drawShape('rec', this.x + 0.03, this.y + 0.03, this.z, 0, 0, this.l, this.h, 0, 0, 0, 0, 'rgba(0,0,0,0.5)', 1);
+              isPressed = this.isPressed;
+              
+              // 1. OUTER SHADOW (Grounds the UI)
+              drawShape('rec', this.x + 0.03, this.y + 0.03, this.z, 0, 0, this.l, this.h, 0, 0, 0, 0, 'rgba(0,0,0,0.5)', 1);
 
-            // 2. MAIN BODY (The Gradient)
-            // We use a slightly lighter color if pressed
-            
-            baseCol = isPressed ? '#1a1a99' : '#000066'; 
-            
-            drawShape('rec', this.x, this.y, this.z, 0, 0, this.l, this.h, 0, 0, 0, 0, baseCol, 1);
-            // Secondary "Wash" for top half to simulate light hitting silk/glass
-            drawShape('rec', this.x, this.y, this.z, 0, 0, this.l, this.h * 0.5, 0, 0, 0, 0, 'rgba(255,255,255,0.1)', 1);
+              // 2. MAIN BODY (The Gradient)
+              // We use a slightly lighter color if pressed
+              
+              baseCol = isPressed ? '#1a1a99' : '#000066'; 
+              
+              drawShape('rec', this.x, this.y, this.z, 0, 0, this.l, this.h, 0, 0, 0, 0, baseCol, 1);
+              // Secondary "Wash" for top half to simulate light hitting silk/glass
+              drawShape('rec', this.x, this.y, this.z, 0, 0, this.l, this.h * 0.5, 0, 0, 0, 0, 'rgba(255,255,255,0.1)', 1);
 
-            // 3. THE BEVEL (Lighting Simulation)
-            // Top Highlight (Light hitting the top edge)
-            drawShape('lin', this.x, this.y, this.z, 0, 0, this.l, 0, 0, 0, 0, 0, 'rgba(255,255,255,0.8)', 0);
-            // Left Highlight
-            drawShape('lin', this.x, this.y, this.z, 0, 0, 0, this.h, 0, 0, 0, 0, 'rgba(255,255,255,0.5)', 0);
-            // Bottom Shadow (Ambient occlusion)
-            drawShape('lin', this.x, this.y + (this.h * this.z), this.z, 0, 0, this.l, 0, 0, 0, 0, 0, 'rgba(0,0,0,0.8)', 0);
+              // 3. THE BEVEL (Lighting Simulation)
+              // Top Highlight (Light hitting the top edge)
+              drawShape('lin', this.x, this.y, this.z, 0, 0, this.l, 0, 0, 0, 0, 0, 'rgba(255,255,255,0.8)', 0);
+              // Left Highlight
+              drawShape('lin', this.x, this.y, this.z, 0, 0, 0, this.h, 0, 0, 0, 0, 'rgba(255,255,255,0.5)', 0);
+              // Bottom Shadow (Ambient occlusion)
+              drawShape('lin', this.x, this.y + (this.h * this.z), this.z, 0, 0, this.l, 0, 0, 0, 0, 0, 'rgba(0,0,0,0.8)', 0);
 
-            // 4. THE PINSTRIPE (The "Golden" Frame)
-            frameCol = isPressed ? '#ffffff' : '#d4af37'; // Glows white when clicked
-            if (this.foe == 'spell'){
               // 4. THE PINSTRIPE (The "Golden" Frame)
-            frameCol = isPressed ? '#ffffff' : '#d4af37'; // Glows white when clicked
+              frameCol = isPressed ? '#ffffff' : '#d4af37'; // Glows white when clicked
+              if (this.foe == 'spell'){
+                // 4. THE PINSTRIPE (The "Golden" Frame)
+              frameCol = isPressed ? '#ffffff' : '#d4af37'; // Glows white when clicked
             
             if (this.foe == 'spell'){
               if (this.assignedCard.type == 0){
@@ -10896,20 +10975,34 @@
             inset = 0.05;
             drawShape('rec', this.x, this.y, this.z, inset, inset, this.l - (inset * 2), this.h - (inset * 2), 0, 0, 0, 0, frameCol, 0);
 
-            // 5. THE TEXT (With subtle drop shadow)
-            // Draw shadow text first
-            //drawText(this.x + 0.01, this.y + 0.01, this.l, this.h, this.text, 'black', this.z);
-            // Draw main text
-            //drawText(this.x, this.y, this.l*.98, this.h*.98, this.text, 'white', this.z);
-            //if (this.text == 'Second'){
-            //}else{
-              // Draw shadow text first
-            // drawText(this.x + 0.01, this.y + 0.01, this.l, this.h, this.text, 'black', this.z);
-              // Draw main text
-              //drawText(this.x, this.y, this.l, this.h, this.text, 'white', this.z);
-              //}
-                    // --- NEW CODE START ---
-                                // --- NEW CODE START ---
+            
+                //BTN TYPES
+               if (this.text === 'POV') {
+                    // 1. Set your icon scale (keeping your 0.29 ratio, but tying it to button's z-scale)
+                    let iconScale = 0.085 * this.z; 
+
+                    // 2. Find the exact mathematical center of the button (in grid units)
+                    let btnCenterX = this.x + (this.l * this.z) / 2;
+                    let btnCenterY = this.y + (this.h * this.z) / 2;
+
+                    // 3. Calculate the portrait's width/height in grid units 
+                    // (drawPortrait width is tL * scale, so in tL/10 grid units, it's 10 * scale)
+                    let portraitGridSize = 10 * iconScale;
+
+                    // 4. Subtract half the portrait's size to find the perfect top-left starting coordinate
+                    let drawX = btnCenterX - (portraitGridSize / 2);
+                    let drawY = btnCenterY - (portraitGridSize / 2);
+
+                    // 5. NUDGE OFFSETS
+                    // If the drawing inside portrait -28 has empty transparent padding and isn't 
+                    // dead-center in its 512x512 cache, the math will be right but the art will look off.
+                    // Tweak these numbers slightly (e.g., -0.05, 0.1) only if the art itself is off-center.
+                    let nudgeX = 0; 
+                    let nudgeY = 0;
+
+                    // Draw it!
+                    drawPortrait(-22, drawX + nudgeX, drawY + nudgeY, iconScale); 
+                }
                 if (this.text === 'Deck') {
                     // 1. Set your icon scale (keeping your 0.29 ratio, but tying it to button's z-scale)
                     let iconScale = 0.085 * this.z; 
@@ -11005,7 +11098,7 @@
                   drawPortrait(displayIcon, this.x+.1, this.y+.1, this.z*.075); 
                 }
                 //Draw Text
-                if (this.foe != 'spell' &&this.text != 'Deck'&&this.text != 'Journal'&&this.text != 'fire') {
+                if (this.text != 'POV' &&this.foe != 'spell' &&this.text != 'Deck'&&this.text != 'Journal'&&this.text != 'fire') {
                   drawText(this.x + 0.07, this.y + 0.21, this.l*.75, this.h*.96, this.text, 'black', this.z,'center');
                   drawText(this.x+.13, this.y+.2, this.l*.75, this.h*.93, this.text, 'white', this.z,'center');
                   drawText(this.x + 0.07, this.y + 0.21, this.l * .75, this.h * .96, this.text, 'black', this.z,'center');
@@ -11332,6 +11425,13 @@
               }
           }
       }
+      if(this.text ==='POV'){  
+        if(Dungeon.cameraMode ==='hybrid'){
+              Dungeon.cameraMode = 'first_person';
+             }else{
+              Dungeon.cameraMode = 'hybrid';
+             }
+            }
       // ==========================================
       // --- END D-PAD MOVEMENT LOGIC ---
       // ==========================================
@@ -11346,78 +11446,83 @@
           // ==========================================
         // --- NEW DYNAMIC SPELL SLOT LOGIC ---
         // ==========================================
+        case 'POV':
+            
+              break;
+        
+        
         case 'spell_slot':
-            // 1. Failsafe: Do nothing if the button is empty
-            if (!this.assignedCard) {
-                if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('cancel');
-                return; 
-            }
-            
-            let cardObj = this.assignedCard;
-            let cardWasUsed = false;
+              // 1. Failsafe: Do nothing if the button is empty
+              if (!this.assignedCard) {
+                  if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('cancel');
+                  return; 
+              }
+              
+              let cardObj = this.assignedCard;
+              let cardWasUsed = false;
 
-            // 2. ROUTE THE ACTION BASED ON CARD TYPE
-            if (cardObj.type === 0) { 
-                // --- MONSTER TOGGLE LOGIC ---
-                let summonData = null;
-                if (Dungeon.activeSummons) {
-                    summonData = Dungeon.activeSummons.find(s => typeof s === 'object' && s.uid === cardObj.uid);
-                }
-                
-                if (summonData) {
-                    // -> UN-SUMMON IT!
-                    // 1. Find the specific NPC walking around using the saved npcId
-                    let npcIndexToRemove = Dungeon.npcs.findIndex(n => n.index === summonData.npcId);
-                    if (npcIndexToRemove !== -1) {
-                        Dungeon.npcs.splice(npcIndexToRemove, 1);
-                    }
-                    
-                    // 2. Remove ONLY this specific card from the active array
-                    Dungeon.activeSummons = Dungeon.activeSummons.filter(s => s.uid !== cardObj.uid);
-                    
-                    if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('cancel'); 
-                    if (typeof Dungeon.saveGame === 'function') Dungeon.saveGame();
-                    
-                    // Do not delete the card from extras, just leave it in the slot.
-                    // It will cycle away naturally on the next 5-second shuffle!
-                    cardWasUsed = false; 
-                } else {
-                    // -> SUMMON IT!
-                    // Pass the whole card object so we can read its UID
-                    
-                    Dungeon.summonAlly(cardObj);
-                    cardWasUsed = false; 
-                }
-            }
-            else if (cardObj.type === 1) {}
-            else if (cardObj.type === 2) {
-                // SPELL: Cast based on the card's index
-                Dungeon.castSpell(cardObj.index);
-                cardWasUsed = true;
-                if (cardObj.index === 26){
-                if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('fire2');
-                }
-                else{ MusicEngine.playSFX('arcane');
-}
-                
-            }
+              // 2. ROUTE THE ACTION BASED ON CARD TYPE
+              if (cardObj.type === 0) { 
+                  // --- MONSTER TOGGLE LOGIC ---
+                  let summonData = null;
+                  if (Dungeon.activeSummons) {
+                      summonData = Dungeon.activeSummons.find(s => typeof s === 'object' && s.uid === cardObj.uid);
+                  }
+                  
+                  if (summonData) {
+                      // -> UN-SUMMON IT!
+                      // 1. Find the specific NPC walking around using the saved npcId
+                      let npcIndexToRemove = Dungeon.npcs.findIndex(n => n.index === summonData.npcId);
+                      if (npcIndexToRemove !== -1) {
+                          Dungeon.npcs.splice(npcIndexToRemove, 1);
+                      }
+                      
+                      // 2. Remove ONLY this specific card from the active array
+                      Dungeon.activeSummons = Dungeon.activeSummons.filter(s => s.uid !== cardObj.uid);
+                      
+                      if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('cancel'); 
+                      if (typeof Dungeon.saveGame === 'function') Dungeon.saveGame();
+                      
+                      // Do not delete the card from extras, just leave it in the slot.
+                      // It will cycle away naturally on the next 5-second shuffle!
+                      cardWasUsed = false; 
+                  } else {
+                      // -> SUMMON IT!
+                      // Pass the whole card object so we can read its UID
+                      
+                      Dungeon.summonAlly(cardObj);
+                      cardWasUsed = false; 
+                  }
+              }
+              else if (cardObj.type === 1) {}
+              else if (cardObj.type === 2) {
+                  // SPELL: Cast based on the card's index
+                  Dungeon.castSpell(cardObj.index);
+                  cardWasUsed = true;
+                  if (cardObj.index === 26){
+                  if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('fire2');
+                  }
+                  else{ MusicEngine.playSFX('arcane');
+              }
+                  
+              }
 
-            // 3. CLEANUP: If used, remove it from extras and immediately draw a new one
-            // 3. CLEANUP: If used, remove THIS EXACT CARD from the hand
-            if (cardWasUsed) {
-                
-                // Look for the exact card using its Unique ID (uid)
-                let handIndex = Dungeon.hand.findIndex(c => c !== null && c.uid === cardObj.uid);
-                
-                if (handIndex !== -1) {
-                    Dungeon.hand[handIndex] = null; // Destroy only this specific card!
-                }
-                
-                // Shuffle the remaining cards to immediately fill the empty slot
-                Dungeon.shuffleSpells(); 
-            }
-            
-            break;
+              // 3. CLEANUP: If used, remove it from extras and immediately draw a new one
+              // 3. CLEANUP: If used, remove THIS EXACT CARD from the hand
+              if (cardWasUsed) {
+                  
+                  // Look for the exact card using its Unique ID (uid)
+                  let handIndex = Dungeon.hand.findIndex(c => c !== null && c.uid === cardObj.uid);
+                  
+                  if (handIndex !== -1) {
+                      Dungeon.hand[handIndex] = null; // Destroy only this specific card!
+                  }
+                  
+                  // Shuffle the remaining cards to immediately fill the empty slot
+                  Dungeon.shuffleSpells(); 
+              }
+              
+              break;
         
         case '2D3D':
           
@@ -19060,7 +19165,7 @@
   var btnJournal = new btn(0, 0, 1, 1, 1, 'Journal', 'blue', 'white', 'journal_view', 1);     
   var btn2D3D = new btn(0, 0, 1, 1, 1, '2D', 'blue', 'white', '2D3D', 0);     
   var btnMove = new btn(0, 0, 1, 1, 1, '', 'blue', 'white', 'd_pad', 0);     
-  var btnFire = new btn(0, 0, 1, 1, 1, '', 'red', 'white', 'fire', 0); 
+  var btnPOV = new btn(0, 0, 1, 1, 1, 'POV', 'red', 'white', 'POV', 0); 
 
   var aniDFire = new Dice('d4');
   var aniDice = new Dice('d8');
@@ -21085,9 +21190,9 @@
             console.log(`Spell button pressed`);
             return; 
         }
-        if (btnFire.isTouched(gridPos.x, gridPos.y) && btnFire.visible == true&&btnFire.type != 'jrpg') {
+        if (btnPOV.isTouched(gridPos.x, gridPos.y) && btnPOV.visible == true&&btnPOV.type != 'jrpg') {
             // Just call press(). The Btn class handles the sound, animation, and logic.
-            btnFire.press(); 
+            btnPOV.press(); 
             console.log(`Spell button pressed`);
             return; 
         }
