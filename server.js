@@ -3979,7 +3979,7 @@
                             // ==========================================
                             for (let camp = 0; camp < 13; camp++) {
                                 let campCenter = pickTile(mapData.wildsTiles);
-                                let campPower = 15; 
+                                let campPower = 30; 
                                 for (let g = 0; g < 3; g++) {
                                     let mID = getSafeMinion(hostileMinions)
                                     // Spawn clustered around the camp center
