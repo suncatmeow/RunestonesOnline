@@ -6122,12 +6122,12 @@
           this.drawMinimap(ctx, viewX, viewY, viewW, viewH);
           btnDeck.show(9, 9, 1, 1, 1, 'Deck', 'jrpg_btn', 1, 0);
           btnJournal.show(0, 9, 1, 1, 1, 'Journal', 'jrpg_btn', 1, 0);
-          btnPOV.show(0, 7.9, 1, 1, 1, 'POV', 'jrpg_btn', 1, 0);
+          btnPOV.show(9.45, 2.275, .5, 1, 1, 'POV', 'jrpg_btn', 1, 0);
           
           // Draw the Spell Slots
-          if (btnSpell1.assignedCard) btnSpell1.show(9, 7.95, 1, 1, 1, btnSpell1.text, 'jrpg_btn', 1, 'spell');
-          if (btnSpell2.assignedCard) btnSpell2.show(9, 6.9, 1, 1, 1, btnSpell2.text, 'jrpg_btn', 1, 'spell');
-          if (btnSpell3.assignedCard) btnSpell3.show(9, 5.85, 1, 1, 1, btnSpell3.text, 'jrpg_btn', 1, 'spell');
+          if (btnSpell1.assignedCard) btnSpell1.show(7.95,9, 1, 1, 1, btnSpell1.text, 'jrpg_btn', 1, 'spell');
+          if (btnSpell2.assignedCard) btnSpell2.show(6.9, 9, 1, 1, 1, btnSpell2.text, 'jrpg_btn', 1, 'spell');
+          if (btnSpell3.assignedCard) btnSpell3.show(5.85, 9, 1, 1, 1, btnSpell3.text, 'jrpg_btn', 1, 'spell');
 
           // --- NEW: THE SPELL TIMER ---
           let currentTime = Date.now();
@@ -20772,7 +20772,7 @@
           return; 
       }
     //vvvCHATvvv/////
-      if (gridPos.x >= 1 && gridPos.x <= 9 && gridPos.y >= 9.5 && gridPos.y <= 10.5) {
+      if (gridPos.x >= 0 && gridPos.x <= 7.7 && gridPos.y >= 0 && gridPos.y <= 2.25) {
           e.preventDefault();
           //setTimeout(function() {}, 500);
             isChatActive = true;
@@ -23081,9 +23081,9 @@
       if(startGame == 'explore'||startGame == 'battle'){
       chatInput.type = 'text';
       chatInput.style.position = 'fixed';
-      chatInput.style.top = `${tY+(tL/10)*9.36}px`;        // Put it at the top
-      chatInput.style.left = `${tX+(tL/10)*.85}px`;       // Put it at the left
-      chatInput.style.width = `${(tL/10)*7.9}px`;
+      chatInput.style.top = `${tY}px`;        // Put it at the top
+      chatInput.style.left = `${tX}px`;       // Put it at the left
+      chatInput.style.width = `${(tL/10)*7.8}px`;
       chatInput.style.height = `${(tL/10)*.5}px`;
       chatInput.style.opacity = `${.01}px`;       // VISIBLE
       chatInput.style.background = 'rgba(255,255,255,.01)';  // RED BACKGROUND
@@ -33135,10 +33135,10 @@
             ". When reversed: " + coreRev + ' ' +ctxRev + ".";
       }
     }
-  function drawChatInterface() {
-      // 1. Draw the "CHAT" button indicator (Bottom Left)
-      let btnX = tX + (tL/10) * 1.1; 
-      let btnY = tY + (tH/10) * 9.39;
+ function drawChatInterface() {
+      // 1. Draw the "CHAT" button indicator (Now Top Left)
+      let btnX = tX + (tH/10) * 0.01; 
+      let btnY = tY + (tH/10) * 0.1; // Changed from 9.39 to 0.1
       let btnS = (tH/10) * 0.5;
 
       ctx.fillStyle = "rgba(0,0,0,0.5)";
@@ -33152,9 +33152,9 @@
       let fadeStart = 5000; 
       let fadeTime = 2000;
       let alpha = 1;
-      if (startGame == "battle"||startGame > 3){
+      if (startGame == "battle" || startGame > 3){
         fadeStart = 1500; 
-      fadeTime = 1500;
+        fadeTime = 1500;
       }
       if (!isChatActive) {
           if (timeSince > fadeStart) {
@@ -33167,8 +33167,8 @@
       // 3. Draw the Chat Box
       ctx.globalAlpha = alpha;
       
-      let chatX = 1.1;        
-      let chatY = 6.3;      
+      let chatX = 0;        
+      let chatY =0; // Changed from 6.3 to 0.6 (anchors the box to the top)
       let chatW = 7.8;       
       let rowHeight = 0.25; 
 
@@ -33177,14 +33177,15 @@
       let bgX = tX + (tL/10) * chatX;
       let bgY = tY + (tH/10) * chatY;
       let bgW = (tL/10) * chatW;
-      let bgH = (tH/10) * 3.69; 
+      let bgH = (tH/10) * 2.36; 
       ctx.fillRect(bgX, bgY, bgW, bgH);
 
       // History
-      let maxLines = 13;
+      let maxLines = 9;
       let visibleLog = chatLog.slice(-maxLines); 
       
       for (let i = 0; i < visibleLog.length; i++) {
+          // Because we start at chatY (0.6), the text naturally "drops" from the top down
           let lineY = chatY + (i * rowHeight) + 0.1;
           let msgObj = visibleLog[i];
           
@@ -33199,23 +33200,24 @@
               displayText = msgObj; // Legacy support
           }
 
-          // ---> THE FIX: PASS THE DYNAMIC COLOR <---
           drawText(chatX + 0.2, lineY, chatW - 0.4, rowHeight, displayText, displayColor, 1, "left");
       }
 
       // Input Line (What you are typing)
       if (isChatActive) {
-          let inputY = chatY + (maxLines * rowHeight) + 0.9;
           let cursor = (Date.now() % 1000 < 500) ? "_" : " "; 
-          drawText(chatX + 0.2, 9.75, chatW - 0.4, rowHeight, "> " + chatDraft + cursor, "yellow", 1, "left");
-          drawText(chatX + 0.2, -.25, chatW - 0.4, rowHeight, "> " + chatDraft + cursor, "yellow", 1, "left");
-
-        }
+          
+          // I removed the two hardcoded 9.75 and -.25 lines. 
+          // This dynamically places the input line near the bottom of your top-left background box.
+          let inputLineY = 2.52; 
+          ctx.fillStyle = "rgba(0,0,0,0.5)";
+          ctx.fillRect(btnX, btnY+(tH/10) * 2.26, btnS * 15.6, btnS);
+          drawText(chatX + 0.2, inputLineY, chatW - 0.4, rowHeight, "> " + chatDraft + cursor, "yellow", 1, "left");
+      }
 
       ctx.globalAlpha = 1; // Reset opacity
     }
-  
-//////////////////////////[ONLINE MEMORY]/////////////////////////////
+    //////////////////////////[ONLINE MEMORY]/////////////////////////////
 ///////////////////vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv//////////////////////
   function initBattle(data, role) {
       console.log("Initializing Battle...", data);
