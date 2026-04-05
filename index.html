@@ -101,6 +101,7 @@
     var tX = 0; //table top-left x coordinate(0,0)
     var tY = 0; //table top-left x coordinate(0,0)
     var spriteCache = {};
+    
   //GLOBAL CARD DIMENSIONS
     var cL = 2.25; //card length
     var cH = 3.5; //card height
@@ -6125,9 +6126,9 @@
           btnPOV.show(9.45, 2.275, .5, 1, 1, 'POV', 'jrpg_btn', 1, 0);
           
           // Draw the Spell Slots
-          if (btnSpell1.assignedCard) btnSpell1.show(7.95,9, 1, 1, 1, btnSpell1.text, 'jrpg_btn', 1, 'spell');
-          if (btnSpell2.assignedCard) btnSpell2.show(6.9, 9, 1, 1, 1, btnSpell2.text, 'jrpg_btn', 1, 'spell');
-          if (btnSpell3.assignedCard) btnSpell3.show(5.85, 9, 1, 1, 1, btnSpell3.text, 'jrpg_btn', 1, 'spell');
+          if (btnSpell1.assignedCard) btnSpell1.show(4.5,9, 1, 1, 1, btnSpell1.text, 'jrpg_btn', 1, 'spell');
+          if (btnSpell2.assignedCard) btnSpell2.show(3.45, 9, 1, 1, 1, btnSpell2.text, 'jrpg_btn', 1, 'spell');
+          if (btnSpell3.assignedCard) btnSpell3.show(5.55, 9, 1, 1, 1, btnSpell3.text, 'jrpg_btn', 1, 'spell');
 
           // --- NEW: THE SPELL TIMER ---
           let currentTime = Date.now();
@@ -6529,14 +6530,14 @@
                 status: this.status, type: playerSprite, name: playerName 
             });
         }
-        btnDeck.show(0, 9, 1, 1, 1, 'Deck', 'jrpg_btn', 1, 0);
-        btnJournal.show(9, 9, 1, 1, 1, 'Journal', 'jrpg_btn', 1, 0);
-        
-          btn2D3D.show(8.5, .5, 1, 1, 1, '3D', 'jrpg_btn', 1, 0);
-           btnMove.show(5, 3, 5, 1, 1, '', 'd_pad', 1, 0);
-        if (btnSpell1.assignedCard) btnSpell1.show(0, 7.95, 1, 1, 1, btnSpell1.text, 'jrpg_btn', 1, 'spell');
-          if (btnSpell2.assignedCard) btnSpell2.show(0, 6.9, 1, 1, 1, btnSpell2.text, 'jrpg_btn', 1, 'spell');
-          if (btnSpell3.assignedCard) btnSpell3.show(0, 5.85, 1, 1, 1, btnSpell3.text, 'jrpg_btn', 1, 'spell');
+        btnDeck.show(9, 9, 1, 1, 1, 'Deck', 'jrpg_btn', 1, 0);
+          btnJournal.show(0, 9, 1, 1, 1, 'Journal', 'jrpg_btn', 1, 0);
+                      btn2D3D.show(8.5, .5, 1, 1, 1, '3D', 'jrpg_btn', 1, 0);
+
+          // Draw the Spell Slots
+          if (btnSpell1.assignedCard) btnSpell1.show(4.5,9, 1, 1, 1, btnSpell1.text, 'jrpg_btn', 1, 'spell');
+          if (btnSpell2.assignedCard) btnSpell2.show(3.45, 9, 1, 1, 1, btnSpell2.text, 'jrpg_btn', 1, 'spell');
+          if (btnSpell3.assignedCard) btnSpell3.show(5.55, 9, 1, 1, 1, btnSpell3.text, 'jrpg_btn', 1, 'spell');
 
           // --- NEW: THE SPELL TIMER ---
           let currentTime = Date.now();
