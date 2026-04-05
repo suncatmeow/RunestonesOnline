@@ -3392,6 +3392,27 @@ window.settingsChat = true;
                             total += entity.stat[statIndex][2];
                         }
                         
+                        // ==========================================
+                        // NEW: COMMANDER BONUS (Player's Dice applied to Allies)
+                        // ==========================================
+                        // Check if it's an ally, and NOT an Intelligence (2) roll
+                        if (entity.alignment === 'ally' && statIndex !== 2) {
+                            // Grab the player's dice sides for this specific stat
+                            // dungeon.stat format: [amount, sides, modifier]
+                            let playerSides = dungeon.stat[statIndex][1]; 
+                            let commanderBonus = 0;
+
+                            // Map the dice type to the bonus you requested
+                            if (playerSides === 6) commanderBonus = 1;
+                            else if (playerSides === 8) commanderBonus = 2;
+                            else if (playerSides === 10) commanderBonus = 3;
+                            else if (playerSides === 12) commanderBonus = 4;
+                            else if (playerSides === 20) commanderBonus = 5;
+
+                            total += commanderBonus;
+                        }
+                        // ==========================================
+
                         return total;
                     };
 
@@ -3671,6 +3692,25 @@ window.settingsChat = true;
             if (hasteBuff && hasteBuff.speedBoost) {
                 currentSpeed += hasteBuff.speedBoost; 
             }
+
+            // ==========================================
+            // NEW: COMMANDER SPEED BONUS (AGI)
+            // ==========================================
+            if (this.alignment === 'ally') {
+                let agiSides = dungeon.stat[3][1]; // AGI is index 3
+                let speedBonus = 0;
+
+                // Scale the speed bonus up based on your dice!
+                if (agiSides === 6) speedBonus = 0.5;
+                else if (agiSides === 8) speedBonus = 1.0;
+                else if (agiSides === 10) speedBonus = 1.5;
+                else if (agiSides === 12) speedBonus = 2.0;
+                else if (agiSides === 20) speedBonus = 3.0;
+
+                currentSpeed += speedBonus;
+            }
+            // ==========================================
+
             const moveStep = currentSpeed * dt;
             
             let sepX = 0; let sepY = 0;
@@ -6142,11 +6182,35 @@ window.settingsChat = true;
           btnJournal.show(0, 9, 1, 1, 1, 'Journal', 'jrpg_btn', 1, 0);
           btnPOV.show(9.45, 2.275, .5, 1, 1, 'POV', 'jrpg_btn', 1, 0);
           
-          // Draw the Spell Slots
-          if (btnSpell1.assignedCard) btnSpell1.show(4.5,9, 1, 1, 1, btnSpell1.text, 'jrpg_btn', 1, 'spell');
-          if (btnSpell2.assignedCard) btnSpell2.show(3.45, 9, 1, 1, 1, btnSpell2.text, 'jrpg_btn', 1, 'spell');
-          if (btnSpell3.assignedCard) btnSpell3.show(5.55, 9, 1, 1, 1, btnSpell3.text, 'jrpg_btn', 1, 'spell');
+          // --- DYNAMIC SPELL SLOTS LAYOUT ---
+          let intSides = this.stat[2][1];
+          let maxSlots = 1;
+          if (intSides >= 6) maxSlots = 2;
+          if (intSides >= 8) maxSlots = 3;
+          if (intSides >= 10) maxSlots = 4;
+          if (intSides >= 12) maxSlots = 5;
+          if (intSides >= 20) maxSlots = 6;
 
+          let btnWidth = 1;
+          let btnGap = 0.05;
+          let totalW = (maxSlots * btnWidth) + ((maxSlots - 1) * btnGap);
+          let startX = 5 - (totalW / 2); // Center on the screen
+
+          let uiButtons = [
+              typeof btnSpell1 !== 'undefined' ? btnSpell1 : null,
+              typeof btnSpell2 !== 'undefined' ? btnSpell2 : null,
+              typeof btnSpell3 !== 'undefined' ? btnSpell3 : null,
+              typeof btnSpell4 !== 'undefined' ? btnSpell4 : null,
+              typeof btnSpell5 !== 'undefined' ? btnSpell5 : null,
+              typeof btnSpell6 !== 'undefined' ? btnSpell6 : null
+          ];
+
+          for (let i = 0; i < maxSlots; i++) {
+              let btn = uiButtons[i];
+              if (btn && btn.assignedCard) {
+                  btn.show(startX + (i * (btnWidth + btnGap)), 9, btnWidth, 1, 1, btn.text, 'jrpg_btn', 1, 'spell');
+              }
+          }
           // --- NEW: THE SPELL TIMER ---
           let currentTime = Date.now();
           if (currentTime - this.lastSpellShuffleTime > this.spellShuffleCooldown) {
@@ -6552,11 +6616,35 @@ window.settingsChat = true;
           btn2D3D.show(8.5, .5, 1, 1, 1, '3D', 'jrpg_btn', 1, 0);
           btnMove.show(5, 3, 5, 1, 1, '', 'd_pad', 1, 0);
 
-          // Draw the Spell Slots
-          if (btnSpell1.assignedCard) btnSpell1.show(4.5,9, 1, 1, 1, btnSpell1.text, 'jrpg_btn', 1, 'spell');
-          if (btnSpell2.assignedCard) btnSpell2.show(3.45, 9, 1, 1, 1, btnSpell2.text, 'jrpg_btn', 1, 'spell');
-          if (btnSpell3.assignedCard) btnSpell3.show(5.55, 9, 1, 1, 1, btnSpell3.text, 'jrpg_btn', 1, 'spell');
+          // --- DYNAMIC SPELL SLOTS LAYOUT ---
+          let intSides = this.stat[2][1];
+          let maxSlots = 1;
+          if (intSides >= 6) maxSlots = 2;
+          if (intSides >= 8) maxSlots = 3;
+          if (intSides >= 10) maxSlots = 4;
+          if (intSides >= 12) maxSlots = 5;
+          if (intSides >= 20) maxSlots = 6;
 
+          let btnWidth = 1;
+          let btnGap = 0.05;
+          let totalW = (maxSlots * btnWidth) + ((maxSlots - 1) * btnGap);
+          let startX = 5 - (totalW / 2); // Center on the screen
+
+          let uiButtons = [
+              typeof btnSpell1 !== 'undefined' ? btnSpell1 : null,
+              typeof btnSpell2 !== 'undefined' ? btnSpell2 : null,
+              typeof btnSpell3 !== 'undefined' ? btnSpell3 : null,
+              typeof btnSpell4 !== 'undefined' ? btnSpell4 : null,
+              typeof btnSpell5 !== 'undefined' ? btnSpell5 : null,
+              typeof btnSpell6 !== 'undefined' ? btnSpell6 : null
+          ];
+
+          for (let i = 0; i < maxSlots; i++) {
+              let btn = uiButtons[i];
+              if (btn && btn.assignedCard) {
+                  btn.show(startX + (i * (btnWidth + btnGap)), 9, btnWidth, 1, 1, btn.text, 'jrpg_btn', 1, 'spell');
+              }
+          }
           // --- NEW: THE SPELL TIMER ---
           let currentTime = Date.now();
           if (currentTime - this.lastSpellShuffleTime > this.spellShuffleCooldown) {
@@ -7814,7 +7902,7 @@ window.settingsChat = true;
                 
                 // 3. THE PENALTY: DESTROY THE SPECIFIC CARD FROM THE HAND
                   let foundInHand = false;
-                  for (let i = 0; i < 3; i++) {
+                  for (let i = 0; i < this.hand.length; i++) {
                       if (this.hand[i] && this.hand[i].uid === deadUID) {
                           this.hand[i] = null; // Card is permanently destroyed
                           foundInHand = true;
@@ -7824,6 +7912,9 @@ window.settingsChat = true;
                           if (i === 0 && typeof btnSpell1 !== 'undefined') btnSpell1.assignedCard = null;
                           if (i === 1 && typeof btnSpell2 !== 'undefined') btnSpell2.assignedCard = null;
                           if (i === 2 && typeof btnSpell3 !== 'undefined') btnSpell3.assignedCard = null;
+                          if (i === 3 && typeof btnSpell4 !== 'undefined') btnSpell4.assignedCard = null;
+                          if (i === 4 && typeof btnSpell5 !== 'undefined') btnSpell5.assignedCard = null;
+                          if (i === 5 && typeof btnSpell6 !== 'undefined') btnSpell6.assignedCard = null;
                       }
                   }
 
@@ -9851,7 +9942,27 @@ window.settingsChat = true;
         this.saveGame();
       }
       shuffleSpells() {
-            // 1. Identify UIDs of actively summoned allies to lock them
+            // 1. CALCULATE MAX SLOTS BASED ON INT (Index 2)
+            let intSides = this.stat[2][1];
+            let maxSlots = 1; // Default 1d4
+            if (intSides >= 6) maxSlots = 2;
+            if (intSides >= 8) maxSlots = 3;
+            if (intSides >= 10) maxSlots = 4;
+            if (intSides >= 12) maxSlots = 5;
+            if (intSides >= 20) maxSlots = 6;
+
+            // 2. RESIZE HAND DYNAMICALLY
+            // If hand is too big (stat debuff?), pop overflow to extras
+            while (this.hand.length > maxSlots) {
+                let dropped = this.hand.pop();
+                if (dropped) this.extra.push(dropped);
+            }
+            // If hand is too small, add empty slots
+            while (this.hand.length < maxSlots) {
+                this.hand.push(null);
+            }
+
+            // 3. Identify UIDs of actively summoned allies to lock them
             let activeUIDs = [];
             if (this.activeSummons) {
                 activeUIDs = this.activeSummons.map(s => typeof s === 'object' ? s.uid : null).filter(id => id !== null);
@@ -9860,47 +9971,45 @@ window.settingsChat = true;
             let uiButtons = [
                 typeof btnSpell1 !== 'undefined' ? btnSpell1 : null,
                 typeof btnSpell2 !== 'undefined' ? btnSpell2 : null,
-                typeof btnSpell3 !== 'undefined' ? btnSpell3 : null
+                typeof btnSpell3 !== 'undefined' ? btnSpell3 : null,
+                typeof btnSpell4 !== 'undefined' ? btnSpell4 : null,
+                typeof btnSpell5 !== 'undefined' ? btnSpell5 : null,
+                typeof btnSpell6 !== 'undefined' ? btnSpell6 : null
             ];
 
-            // 2. Return unused hand cards back to the extra pile
-            for (let i = 0; i < 3; i++) {
+            // 4. Return unused hand cards back to the extra pile
+            for (let i = 0; i < maxSlots; i++) {
                 let currentCard = this.hand[i];
                 if (currentCard) {
-                    // If the card is NOT actively summoned, put it back in extra
                     if (!activeUIDs.includes(currentCard.uid)) {
                         this.extra.push(currentCard);
                         this.hand[i] = null;
                     }
                 }
             }
-             
-            // 3. Find valid cards in extra to draw (Monsters and specific Spells)
+               
+            // 5. Find valid cards in extra to draw
             const activeSpellIDs = [26, 13,93,28,8,29,66,15,12]; 
             let validExtraIndices = [];
             
             for (let i = 0; i < this.extra.length; i++) {
                 let card = this.extra[i];
-                // Ensure the card has a UID
                 if (!card.uid) card.uid = 'uid_' + Math.random().toString(36).substr(2, 9);
                 
                 let isSpell = card.type === 2 && activeSpellIDs.includes(card.index);
                 let isMonster = card.type === 0;
                 
-                if (isSpell || isMonster) {
-                    validExtraIndices.push(i);
-                }
+                if (isSpell || isMonster) validExtraIndices.push(i);
             }
 
-            // Shuffle the valid indices array
             for (let i = validExtraIndices.length - 1; i > 0; i--) {
                 let j = Math.floor(Math.random() * (i + 1));
                 [validExtraIndices[i], validExtraIndices[j]] = [validExtraIndices[j], validExtraIndices[i]];
             }
 
-            // 4. Deal new cards from extra into empty hand slots
+            // 6. Deal new cards
             let drawCount = 0;
-            for (let i = 0; i < 3; i++) {
+            for (let i = 0; i < maxSlots; i++) {
                 if (this.hand[i] === null && drawCount < validExtraIndices.length) {
                     let targetIndexInExtra = validExtraIndices[drawCount];
                     this.hand[i] = this.extra[targetIndexInExtra];
@@ -9909,16 +10018,20 @@ window.settingsChat = true;
                 }
             }
 
-            // Clean up the extra array by removing the nulls we just spliced out
             this.extra = this.extra.filter(c => c !== null);
 
-            // 5. Sync the UI buttons directly to the hand array
-            for (let i = 0; i < 3; i++) {
+            // 7. Sync UI buttons
+            for (let i = 0; i < 6; i++) {
                 let btn = uiButtons[i];
                 if (btn) {
-                    btn.assignedCard = this.hand[i];
-                    btn.visible = this.hand[i] !== null;
-                    btn.text = btn.assignedCard ? btn.assignedCard.name : '';
+                    if (i < maxSlots) {
+                        btn.assignedCard = this.hand[i];
+                        btn.visible = this.hand[i] !== null;
+                        btn.text = btn.assignedCard ? btn.assignedCard.name : '';
+                    } else {
+                        btn.assignedCard = null;
+                        btn.visible = false;
+                    }
                 }
             }
         }
@@ -19177,10 +19290,12 @@ window.settingsChat = true;
   var cRune = new stone(7.625,4.625,1,eSTAT.C);
   var iRune = new stone(3.545,4.49,1,eSTAT.I);
   var aRune = new stone(5.545,4.53,1,eSTAT.A);
-    var btnSpell1 = new btn(0, 0, 1, 1, 1, '', 'red', 'white', 'spell_slot', 0);    
+  var btnSpell1 = new btn(0, 0, 1, 1, 1, '', 'red', 'white', 'spell_slot', 0);    
   var btnSpell2 = new btn(0, 0, 1, 1, 1, '', 'red', 'white', 'spell_slot', 0);    
   var btnSpell3 = new btn(0, 0, 1, 1, 1, '', 'red', 'white', 'spell_slot', 0);
-  
+  var btnSpell4 = new btn(0, 0, 1, 1, 1, '', 'red', 'white', 'spell_slot', 0);
+  var btnSpell5 = new btn(0, 0, 1, 1, 1, '', 'red', 'white', 'spell_slot', 0);
+  var btnSpell6 = new btn(0, 0, 1, 1, 1, '', 'red', 'white', 'spell_slot', 0);
   var Player = [
       new Field(0),
       new Field(1, 1)
@@ -20339,35 +20454,61 @@ window.settingsChat = true;
               let pts = Dungeon.statPoints || 0;
               
               if (pts > 0) {
-                   if (pos.x >= (tL/10)*7 && pos.x <= (tL/10)*10  &&//AGI
-                    pos.y > (tH/10)*6  && pos.y < (tH/10)*9){
-                      Dungeon.stat[3][2] += 1;
+                  // --- NEW: THE DICE UPGRADE HELPER ---
+                  const upgradeDice = (statIndex) => {
+                      let stat = Dungeon.stat[statIndex];
+                      // stat[0] = Dice Count, stat[1] = Dice Sides, stat[2] = Modifier
+                      
+                      if (stat[2] >= 3) {
+                          // They are at +3! Reset modifier to 0 and upgrade the dice
+                          stat[2] = 0; 
+                          
+                          if (stat[1] === 4) stat[1] = 6;
+                          else if (stat[1] === 6) stat[1] = 8;
+                          else if (stat[1] === 8) stat[1] = 10;
+                          else if (stat[1] === 10) stat[1] = 12;
+                          else if (stat[1] === 12) stat[1] = 20;
+                          else if (stat[1] === 20) {
+                              // If they maxed out a d20, reset to d4 but ADD another dice (e.g., 2d4)
+                              stat[1] = 4; 
+                              stat[0] += 1; 
+                          }
+                      } else {
+                          // Standard upgrade, just add +1 to the modifier
+                          stat[2] += 1;
+                      }
+                  };
+                  // ------------------------------------
+
+                  // AGI
+                  if (pos.x >= (tL/10)*7 && pos.x <= (tL/10)*10  && pos.y > (tH/10)*6  && pos.y < (tH/10)*9){
+                      upgradeDice(3); // Call the helper for AGI (Index 3)
                       Dungeon.statPoints -= 1;
-                      if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('heal');
+                      if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('buff2'); // Upgraded sound!
                       return;
-                    }
-                  if (pos.x >= (tL/10)*0 && pos.x <= (tL/10)*3  &&//INT
-                    pos.y > (tH/10)*6  && pos.y < (tH/10)*9){
-                      Dungeon.stat[2][2] += 1;
+                  }
+                  // INT
+                  if (pos.x >= (tL/10)*0 && pos.x <= (tL/10)*3  && pos.y > (tH/10)*6  && pos.y < (tH/10)*9){
+                      upgradeDice(2); // Call the helper for INT (Index 2)
                       Dungeon.statPoints -= 1;
-                      if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('heal');
+                      if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('buff2');
                       return;
-                    }
-                  if (pos.x >= (tL/10)*7 && pos.x <= (tL/10)*10  &&//CON
-                    pos.y > (tH/10)*2  && pos.y < (tH/10)*5){
-                     Dungeon.stat[1][2] += 1;
+                  }
+                  // CON
+                  if (pos.x >= (tL/10)*7 && pos.x <= (tL/10)*10  && pos.y > (tH/10)*2  && pos.y < (tH/10)*5){
+                      upgradeDice(1); // Call the helper for CON (Index 1)
                       Dungeon.statPoints -= 1;
-                      if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('heal');
+                      if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('buff2');
                       Player[0].sendAction('CULTIVATE', { s: 1 });
-                    return;
-                    }
-                  if (pos.x >= (tL/10)*0 && pos.x <= (tL/10)*3  &&//STR
-                    pos.y > (tH/10)*2  && pos.y < (tH/10)*5){
-                      Dungeon.stat[0][2] += 1;
+                      return;
+                  }
+                  // STR
+                  if (pos.x >= (tL/10)*0 && pos.x <= (tL/10)*3  && pos.y > (tH/10)*2  && pos.y < (tH/10)*5){
+                      upgradeDice(0); // Call the helper for STR (Index 0)
                       Dungeon.statPoints -= 1;
-                      if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('heal');
-                       return;
-                    }
+                      if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('buff2');
+                      return;
+                  }
               }
           }
         // 3. EXIT BUTTON (Bottom Right Corner, matching Journal logic)
@@ -21293,6 +21434,18 @@ window.settingsChat = true;
             // Just call press(). The Btn class handles the sound, animation, and logic.
             btnSpell3.press(); 
             console.log(`Spell button pressed`);
+            return; 
+        }
+        if (btnSpell4 && btnSpell4.isTouched(gridPos.x, gridPos.y) && btnSpell4.visible == true && btnSpell4.type != 'jrpg') {
+            btnSpell4.press(); 
+            return; 
+        }
+        if (btnSpell5 && btnSpell5.isTouched(gridPos.x, gridPos.y) && btnSpell5.visible == true && btnSpell5.type != 'jrpg') {
+            btnSpell5.press(); 
+            return; 
+        }
+        if (btnSpell6 && btnSpell6.isTouched(gridPos.x, gridPos.y) && btnSpell6.visible == true && btnSpell6.type != 'jrpg') {
+            btnSpell6.press(); 
             return; 
         }
         if (btnPOV.isTouched(gridPos.x, gridPos.y) && btnPOV.visible == true&&btnPOV.type != 'jrpg') {
