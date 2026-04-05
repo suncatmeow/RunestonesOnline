@@ -5391,7 +5391,9 @@
     async function processSuncatThought(socketId, triggerType, data) {
         const player = players[socketId];
         if (!player) return;
-
+        if (player.narrationEnabled === false) {
+            return;
+        }
         const suncat = players[SUNCAT_ID];
         const now = Date.now();
 
@@ -5967,10 +5969,11 @@ io.on("connection", (socket) => {
             battleOpponent: null,
             activeQuest: null,
             scenarioContext: null,
-            dmStress: 0,           // Combat adrenaline
-            sessionCost: 0.00,     // Suncat's actual API "Mana" (Fatigue)
-            undigestedInfo: [],     // The "Stomach" for raw events
-            };
+            dmStress: 0,           
+            sessionCost: 0.00,     
+            undigestedInfo: [],     
+            narrationEnabled: true // <--- ADD THIS
+        };
         io.emit("updatePlayers", players);
         socket.emit("load_dead_npcs", deadNPCs);
     //SESSION LIFECYCLE
@@ -6167,6 +6170,12 @@ io.on("connection", (socket) => {
                 if (isMapEmpty) activeCustomMap = null;
             }, 500);
             });
+        socket.on('toggle_narration', (isEnabled) => {
+            if (players[socket.id]) {
+                players[socket.id].narrationEnabled = isEnabled;
+                console.log(`[Settings] ${players[socket.id].name} set AI Narration to: ${isEnabled}`);
+            }
+        });
     //MOVEMENT & NAVIGATION
         socket.on("move", (data) => {
             if (players[socket.id]) {
@@ -6496,7 +6505,9 @@ io.on("connection", (socket) => {
             // ==========================================
 
             player.lastActive = Date.now();
-
+            if (player.narrationEnabled === false) {
+                return; // Players can talk, but Suncat stops listening here.
+            }
             const content = safeText.toLowerCase().trim();
 
             // --- COMMANDS ---
@@ -6586,23 +6597,23 @@ io.on("connection", (socket) => {
             });
             });
         socket.on("suncat_spectate", async (actionDescription) => {
-        const sender = players[socket.id];
-        if (!sender) return;
+            const sender = players[socket.id];
+            if (!sender) return;
 
-        if (!sender.activityLog) sender.activityLog = [];
-        sender.activityLog.push(actionDescription);
-        
-        if (sender.activityLog.length > 4) {
-            sender.undigestedInfo.push(sender.activityLog.shift()); // Swallow raw actions
-        }
-        
-        // 100% chance to react to major story beats, 10% chance for mundane actions
-        if (actionDescription.includes("[QUEST EVENT]") || actionDescription.includes("[SYSTEM EVENT]")) {
-            processSuncatThought(socket.id, 'spectate', { action: actionDescription });
-        } else if (Math.random() < 0.01) {
-            processSuncatThought(socket.id, 'spectate', { action: actionDescription });
-        }
-        });
+            if (!sender.activityLog) sender.activityLog = [];
+            sender.activityLog.push(actionDescription);
+            
+            if (sender.activityLog.length > 4) {
+                sender.undigestedInfo.push(sender.activityLog.shift()); // Swallow raw actions
+            }
+            
+            // 100% chance to react to major story beats, 10% chance for mundane actions
+            if (actionDescription.includes("[QUEST EVENT]") || actionDescription.includes("[SYSTEM EVENT]")) {
+                processSuncatThought(socket.id, 'spectate', { action: actionDescription });
+            } else if (Math.random() < 0.01) {
+                processSuncatThought(socket.id, 'spectate', { action: actionDescription });
+            }
+            });
         socket.on('suncat_compose_vocal', async (data, callback) => {
             console.log(`[Music AI] Suncat is improvising a VOCAL performance...`);
             try {
@@ -7003,7 +7014,7 @@ io.on("connection", (socket) => {
             const directorRoll = Math.random();
             // EVENT A: Proactive Speech
                 if (directorRoll < 0.03) {
-                    const nearbyPlayer = Object.values(players).find(p => p.id !== SUNCAT_ID && p.mapID === suncat.mapID && Math.abs(p.x - suncat.x) < 4 && Math.abs(p.y - suncat.y) < 4);
+                    const nearbyPlayer = Object.values(players).find(p => p.id !== SUNCAT_ID && p.mapID === suncat.mapID && Math.abs(p.x - suncat.x) < 4 && Math.abs(p.y - suncat.y) < 4&& p.narrationEnabled !== false);
 
                     if (nearbyPlayer && chatSessions[nearbyPlayer.id]) {
                         nearbyPlayer.npcIsTyping = true;
@@ -7033,7 +7044,7 @@ io.on("connection", (socket) => {
                 }
             // EVENT B: DM Pacing / Plot Advance
                 else if (directorRoll >= 0.03 && directorRoll < 0.06) {
-                    const advPlayer = Object.values(players).find(p => p.id !== SUNCAT_ID && (p.mapID === 999 || p.activeQuest));
+                    const advPlayer = Object.values(players).find(p => p.id !== SUNCAT_ID && (p.mapID === 999 || p.activeQuest)&& p.narrationEnabled !== false);
 
                     if (advPlayer && chatSessions[advPlayer.id]) {
                         advPlayer.npcIsTyping = true;
