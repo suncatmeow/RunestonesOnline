@@ -6118,24 +6118,24 @@ window.settingsChat = true;
         // Store this so we know whether to draw the player sprite later!
         this.isFirstPerson = (actualCamDist <= 0.01);
        // 5. Cast Rays for Walls
-        for (let x = 0; x < viewW; x += resStep) {
-            const cameraX = 2 * x / viewW - 1;
-            const rayDirX = dirX + planeX * cameraX;
-            const rayDirY = dirY + planeY * cameraX;
-                    
-            this.castWallRay(rayDirX, rayDirY, x, viewX, viewY, viewW, viewH, resStep, camX, camY);          
-        } 
+          for (let x = 0; x < viewW; x += resStep) {
+              const cameraX = 2 * x / viewW - 1;
+              const rayDirX = dirX + planeX * cameraX;
+              const rayDirY = dirY + planeY * cameraX;
+                      
+              this.castWallRay(rayDirX, rayDirY, x, viewX, viewY, viewW, viewH, resStep, camX, camY);          
+          } 
 
-        // 1. Ensure weather system matches current table size (tL)
-        this.weather.resize(tL,tL);
+          // 1. Ensure weather system matches current table size (tL)
+          this.weather.resize(tL,tL);
 
-          // 2. Update Physics
-          this.weather.update(dt);
+            // 2. Update Physics
+            this.weather.update(dt);
 
-        // 6. Draw
+       // 6. Draw
           // Pass tX (Start X) and tY (Start Y) so it draws perfectly inside the square
           this.weather.draw(ctx, tX, tY);
-        // 7. --- ONLINE NETWORK: SEND MY POSITION ---
+       // 7. --- ONLINE NETWORK: SEND MY POSITION ---
           // Allow multiplayer on any map (or keep if(this.mapID === 0) if you only want it in lobby)
           if (this.frame % 3 === 0) { 
                 socket.emit("move", {
@@ -6149,7 +6149,7 @@ window.settingsChat = true;
               });
           }
 
-        // 8.--- RENDERING: COMBINE NPCs AND PLAYERS ---
+       // 8.--- RENDERING: COMBINE NPCs AND PLAYERS ---
 
           // 1. Create a temporary list of things to draw
           let renderList = this.npcs.filter(npc => npc.visible && !npc.isDead);
@@ -6194,17 +6194,16 @@ window.settingsChat = true;
           
           // --- DYNAMIC SPELL SLOTS LAYOUT ---
           let intSides = this.stat[2][1];
-          let maxSlots = 1;
-          if (intSides >= 6) maxSlots = 2;
-          if (intSides >= 8) maxSlots = 3;
-          if (intSides >= 10) maxSlots = 4;
-          if (intSides >= 12) maxSlots = 5;
-          if (intSides >= 20) maxSlots = 6;
+          let maxSlots = 2; // <--- CHANGED: Default 1d4 now gives 2 slots
+          if (intSides >= 6) maxSlots = 3;
+          if (intSides >= 8) maxSlots = 4;
+          if (intSides >= 10) maxSlots = 5;
+          if (intSides >= 12) maxSlots = 6;
 
           let btnWidth = 1;
           let btnGap = 0.05;
           let totalW = (maxSlots * btnWidth) + ((maxSlots - 1) * btnGap);
-          let startX = 5 - (totalW / 2); // Center on the screen
+          let startX = 5 - (totalW / 2); // Perfectly centers the hotbar on the screen!
 
           let uiButtons = [
               typeof btnSpell1 !== 'undefined' ? btnSpell1 : null,
@@ -6221,6 +6220,7 @@ window.settingsChat = true;
                   btn.show(startX + (i * (btnWidth + btnGap)), 9, btnWidth, 1, 1, btn.text, 'jrpg_btn', 1, 'spell');
               }
           }
+          // ----------------------------------
           // --- NEW: THE SPELL TIMER ---
           let currentTime = Date.now();
           if (currentTime - this.lastSpellShuffleTime > this.spellShuffleCooldown) {
@@ -6628,17 +6628,16 @@ window.settingsChat = true;
 
           // --- DYNAMIC SPELL SLOTS LAYOUT ---
           let intSides = this.stat[2][1];
-          let maxSlots = 1;
-          if (intSides >= 6) maxSlots = 2;
-          if (intSides >= 8) maxSlots = 3;
-          if (intSides >= 10) maxSlots = 4;
-          if (intSides >= 12) maxSlots = 5;
-          if (intSides >= 20) maxSlots = 6;
+          let maxSlots = 2; // <--- CHANGED: Default 1d4 now gives 2 slots
+          if (intSides >= 6) maxSlots = 3;
+          if (intSides >= 8) maxSlots = 4;
+          if (intSides >= 10) maxSlots = 5;
+          if (intSides >= 12) maxSlots = 6;
 
           let btnWidth = 1;
           let btnGap = 0.05;
           let totalW = (maxSlots * btnWidth) + ((maxSlots - 1) * btnGap);
-          let startX = 5 - (totalW / 2); // Center on the screen
+          let startX = 5 - (totalW / 2); // Perfectly centers the hotbar on the screen!
 
           let uiButtons = [
               typeof btnSpell1 !== 'undefined' ? btnSpell1 : null,
@@ -6655,6 +6654,7 @@ window.settingsChat = true;
                   btn.show(startX + (i * (btnWidth + btnGap)), 9, btnWidth, 1, 1, btn.text, 'jrpg_btn', 1, 'spell');
               }
           }
+          // ----------------------------------
           // --- NEW: THE SPELL TIMER ---
           let currentTime = Date.now();
           if (currentTime - this.lastSpellShuffleTime > this.spellShuffleCooldown) {
@@ -9954,20 +9954,17 @@ window.settingsChat = true;
       shuffleSpells() {
             // 1. CALCULATE MAX SLOTS BASED ON INT (Index 2)
             let intSides = this.stat[2][1];
-            let maxSlots = 1; // Default 1d4
-            if (intSides >= 6) maxSlots = 2;
-            if (intSides >= 8) maxSlots = 3;
-            if (intSides >= 10) maxSlots = 4;
-            if (intSides >= 12) maxSlots = 5;
-            if (intSides >= 20) maxSlots = 6;
+            let maxSlots = 2; // Baseline: 1d4 gives 2 slots (1 Monster, 1 Spell/Item)
+            if (intSides >= 6) maxSlots = 3;
+            if (intSides >= 8) maxSlots = 4;
+            if (intSides >= 10) maxSlots = 5;
+            if (intSides >= 12) maxSlots = 6;
 
             // 2. RESIZE HAND DYNAMICALLY
-            // If hand is too big (stat debuff?), pop overflow to extras
             while (this.hand.length > maxSlots) {
                 let dropped = this.hand.pop();
                 if (dropped) this.extra.push(dropped);
             }
-            // If hand is too small, add empty slots
             while (this.hand.length < maxSlots) {
                 this.hand.push(null);
             }
@@ -9998,36 +9995,69 @@ window.settingsChat = true;
                 }
             }
                
-            // 5. Find valid cards in extra to draw
-            const activeSpellIDs = [26, 13,93,28,8,29,66,15,12]; 
-            let validExtraIndices = [];
+            // 5. CATEGORIZE AVAILABLE CARDS IN EXTRA
+            // Add IDs to these arrays as you finish coding their logic!
+            const activeSpellIDs = [26, 13, 93, 28, 8, 29, 66, 15, 12]; 
+            const activeItemIDs = []; // Currently empty! No items will be drawn.
+            
+            let availableMonsters = [];
+            let availableSpellsItems = [];
             
             for (let i = 0; i < this.extra.length; i++) {
                 let card = this.extra[i];
                 if (!card.uid) card.uid = 'uid_' + Math.random().toString(36).substr(2, 9);
                 
+                // ONLY allow the card if its index is explicitly in our "active" arrays
                 let isSpell = card.type === 2 && activeSpellIDs.includes(card.index);
+                let isItem = card.type === 1 && activeItemIDs.includes(card.index); 
                 let isMonster = card.type === 0;
                 
-                if (isSpell || isMonster) validExtraIndices.push(i);
-            }
-
-            for (let i = validExtraIndices.length - 1; i > 0; i--) {
-                let j = Math.floor(Math.random() * (i + 1));
-                [validExtraIndices[i], validExtraIndices[j]] = [validExtraIndices[j], validExtraIndices[i]];
-            }
-
-            // 6. Deal new cards
-            let drawCount = 0;
-            for (let i = 0; i < maxSlots; i++) {
-                if (this.hand[i] === null && drawCount < validExtraIndices.length) {
-                    let targetIndexInExtra = validExtraIndices[drawCount];
-                    this.hand[i] = this.extra[targetIndexInExtra];
-                    this.extra[targetIndexInExtra] = null; // Mark for deletion
-                    drawCount++;
+                if (isMonster) {
+                    availableMonsters.push(i);
+                } else if (isSpell || isItem) {
+                    availableSpellsItems.push(i);
                 }
             }
 
+            // Shuffle Arrays Helper
+            const shuffleArray = (arr) => {
+                for (let i = arr.length - 1; i > 0; i--) {
+                    let j = Math.floor(Math.random() * (i + 1));
+                    [arr[i], arr[j]] = [arr[j], arr[i]];
+                }
+            };
+
+            shuffleArray(availableMonsters);
+            shuffleArray(availableSpellsItems);
+
+            // 6. DEAL CARDS BASED ON STRICT SLOT RULES
+            // Slot 1 (Index 0): Monster Only
+            if (this.hand[0] === null && availableMonsters.length > 0) {
+                let targetIndex = availableMonsters.pop();
+                this.hand[0] = this.extra[targetIndex];
+                this.extra[targetIndex] = null; // Mark for deletion
+            }
+
+            // Slot 2 (Index 1): Spell or Item Only
+            if (this.hand[1] === null && availableSpellsItems.length > 0) {
+                let targetIndex = availableSpellsItems.pop();
+                this.hand[1] = this.extra[targetIndex];
+                this.extra[targetIndex] = null; // Mark for deletion
+            }
+
+            // Slots 3+ (Indices 2 to maxSlots): Any Card
+            let remainingCards = [...availableMonsters, ...availableSpellsItems];
+            shuffleArray(remainingCards);
+
+            for (let i = 2; i < maxSlots; i++) {
+                if (this.hand[i] === null && remainingCards.length > 0) {
+                    let targetIndex = remainingCards.pop();
+                    this.hand[i] = this.extra[targetIndex];
+                    this.extra[targetIndex] = null; // Mark for deletion
+                }
+            }
+
+            // Clean up the extra array by removing the nulls we just spliced out
             this.extra = this.extra.filter(c => c !== null);
 
             // 7. Sync UI buttons
