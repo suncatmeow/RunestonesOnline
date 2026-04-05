@@ -2943,7 +2943,14 @@ window.settingsChat = true;
       }
     }
     startDialogue(dungeon) {
+        // --- NEW: SAVE CAMERA STATE ---
+        // We store the current mode and view settings to restore them later
+        dungeon.savedViewMode = window.gameViewMode; // '2d' or '3d'
+        dungeon.savedCameraMode = dungeon.cameraMode; // 'hybrid' or 'first_person'
 
+        // --- FORCE 3D FIRST PERSON ---
+        window.gameViewMode = '3d';
+        dungeon.cameraMode = 'first_person';
         dungeon.npcs.forEach(npc => npc.visible = false);
         dungeon.currentSpeaker = this;
         console.log("Starting dialogue...");
@@ -3936,6 +3943,9 @@ window.settingsChat = true;
       this.camZ = .5;      // Camera height (0.5 is normal eye level, 1.2 is above the walls)
       this.pitch = 0;     // Horizon shift (positive numbers = looking down)
      this.cameraMode = 'first_person'; // Can be 'hybrid' or 'first_person'
+        this.savedViewMode = '3d';
+      this.savedCameraMode = 'first_person';
+   
       //tutorial w high priestess stuff
           this.card= [];
           this.card[0] = new Card(2, 0);//hp
@@ -7550,10 +7560,15 @@ window.settingsChat = true;
                 scale = .9;
                 hover = 0.0;
             }
+            else if (sprite.name && sprite.socketId && sprite.name !== "Suncat") {
+                scale = 0.8; // Makes them about shoulder-height compared to a wall
+                hover = -0.1; // Nudge them slightly into the floor to ground them
+            }
             if ((sprite.alignment == 'ally'&& !sprite.isPlayer)) {
                 scale = .65; 
                 hover = -.15;
             }
+            
             // Calculate Base Screen Dimensions
             const spriteScreenX = Math.floor((viewW / 2) * (1 + transformX / transformY));
         // Multiply viewH by this.zScale in all 3 places!
@@ -8983,6 +8998,12 @@ window.settingsChat = true;
                   }
                   // On next click, exit dialogue without doing anything else
                   if (this.dCounter >= 1) {
+                      if (Dungeon.savedViewMode) {
+                        window.gameViewMode = Dungeon.savedViewMode;
+                    }
+                    if (Dungeon.savedCameraMode) {
+                        Dungeon.cameraMode = Dungeon.savedCameraMode;
+                    }
                       startGame = 'explore';
                       preGame = 'explore';
                       this.dCounter = 0;
@@ -9005,7 +9026,12 @@ window.settingsChat = true;
                 //EMPEROR JOINS PARTY
                 if (this.dCounter === 2&&preGame =='emperor battle') {
                     socket.emit('suncat_spectate', `${smsg}`);
-
+                    if (Dungeon.savedViewMode) {
+                    window.gameViewMode = Dungeon.savedViewMode;
+                    }
+                    if (Dungeon.savedCameraMode) {
+                        Dungeon.cameraMode = Dungeon.savedCameraMode;
+                    }
                     preGame = 'explore';
                     startGame = 'explore';
                     this.dCounter = 0;
@@ -9014,7 +9040,13 @@ window.settingsChat = true;
                                           Dungeon.saveGame();
                 }
                 //STANDARD DUNGEON BATTLE LOOT
-                if (this.dCounter === 1&&preGame !='emperor battle') {
+                    if (this.dCounter === 1&&preGame !='emperor battle') {
+                        if (Dungeon.savedViewMode) {
+                        window.gameViewMode = Dungeon.savedViewMode;
+                    }
+                    if (Dungeon.savedCameraMode) {
+                        Dungeon.cameraMode = Dungeon.savedCameraMode;
+                    }
                     startGame = 'explore';
                     preGame = 'explore'
                     this.dCounter = 0;
@@ -9937,7 +9969,12 @@ window.settingsChat = true;
       endDialogue(killSpeaker = false) {
         startGame = 'explore';  
         this.dCounter = 0; 
-        
+        if (this.savedViewMode) {
+            window.gameViewMode = this.savedViewMode;
+        }
+        if (this.savedCameraMode) {
+            Dungeon.cameraMode = this.savedCameraMode;
+        }
         if (killSpeaker && this.currentSpeaker) {
             this.killNPC(this.currentSpeaker, true,'dialogue');
         }
@@ -11784,6 +11821,7 @@ window.settingsChat = true;
             //Dungeon.x = 1.5;Dungeon.y = 1.5;
             //Emperor YES
             if (this.foe == 'emperor'){
+           
               Dungeon.saveGame();
               // 2. INITIALIZE BATTLE
               preGame = 'explore';
@@ -11921,6 +11959,12 @@ window.settingsChat = true;
                 
                 
             }
+              if (Dungeon.savedViewMode) {
+                    window.gameViewMode = Dungeon.savedViewMode;
+                }
+                if (Dungeon.savedCameraMode) {
+                    Dungeon.cameraMode = Dungeon.savedCameraMode;
+                }
             btnYes.visible = false;
             btnNo.visible = false;
             
@@ -11931,6 +11975,12 @@ window.settingsChat = true;
                 if (Dungeon.currentSpeaker.socketId != 'NPC_SUNCAT'){
                   if (this.foe == 'emperor'){Dungeon.y = Dungeon.y-1;}
                   else{Dungeon.y = Dungeon.y+1;Dungeon.MainQuest = 1;}
+                }
+                if (Dungeon.savedViewMode) {
+                    window.gameViewMode = Dungeon.savedViewMode;
+                }
+                if (Dungeon.savedCameraMode) {
+                    Dungeon.cameraMode = Dungeon.savedCameraMode;
                 }
                 startGame = 'explore'
                 Dungeon.dCounter = 0;
@@ -11944,6 +11994,13 @@ window.settingsChat = true;
               else if (this.foe == 'giant'){
                 Dungeon.gd = 4;
                 Dungeon.dCounter = 0;
+                MusicEngine.playSFX('cancel')
+                if (Dungeon.savedViewMode) {
+                    window.gameViewMode = Dungeon.savedViewMode;
+                }
+                if (Dungeon.savedCameraMode) {
+                    Dungeon.cameraMode = Dungeon.savedCameraMode;
+                }
               }
               //CUSTOM NPCS
               else if(this.foe == 'ai_no'){
@@ -11992,6 +12049,12 @@ window.settingsChat = true;
                 if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('death');
                 btnYes.visible = false;
                 btnNo.visible = false;
+            if (Dungeon.savedViewMode) {
+                    window.gameViewMode = Dungeon.savedViewMode;
+                }
+                if (Dungeon.savedCameraMode) {
+                    Dungeon.cameraMode = Dungeon.savedCameraMode;
+                }
             }
             //ONLINE//////////////////////////////
               else if (this.foe == 'pvp_cancel') {
@@ -12030,6 +12093,7 @@ window.settingsChat = true;
                 });
               }
             }
+              
             ///////////////////////////////////////////////
             break;
           case 3://btnAction, btnAction2
@@ -21080,7 +21144,12 @@ window.settingsChat = true;
           // 3. LEAVE BUTTON (Bottom Center)
           if (gridPos.x > 4 && gridPos.x < 6 && gridPos.y > 9.2 && gridPos.y < 10) {
               if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('cancel');
-              
+              if (Dungeon.savedViewMode) {
+                    window.gameViewMode = Dungeon.savedViewMode;
+                }
+                if (Dungeon.savedCameraMode) {
+                    Dungeon.cameraMode = Dungeon.savedCameraMode;
+                }
               // REFUND CARDS BEFORE LEAVING!
               while(offeredCards.length > 0) { Dungeon.extra.push(offeredCards.pop()); }
               
