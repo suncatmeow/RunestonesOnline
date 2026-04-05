@@ -812,48 +812,64 @@ window.settingsChat = true;
             }
           });
         socket.on('chat_message', function(data) {
-            // 1. Determine if it's a simple string (Old) or a fancy object (New)
-            let messageText = "";
-            let senderName = "Player";
-            let msgColor = "white"; // Default color
+          // 1. Determine if it's a simple string (Old) or a fancy object (New)
+          let messageText = "";
+          let senderName = "Player";
+          let msgColor = "white"; // Default color
 
-            if (typeof data === 'string') {
-                messageText = data;
-            } else {
-                messageText = data.text;
-                senderName = data.sender;
-                if (data.color) msgColor = data.color;
-            }
-            
-            messageText = messageText.replace(/\[REPLY\]:?\s*/gi, "");
+          if (typeof data === 'string') {
+              messageText = data;
+          } else {
+              messageText = data.text;
+              senderName = data.sender;
+              if (data.color) msgColor = data.color;
+          }
+          
+          messageText = messageText.replace(/\[REPLY\]:?\s*/gi, "");
 
-            // 2. Add to Chat Log as a RICH OBJECT
-            if (typeof chatLog !== 'undefined') {
-                let currentTime = Date.now();
-                let timeDiff = currentTime - lastMessageTimeReceived;
-                let displayText = "";
-                
-                // 1. Rapid-fire indentation (Continuation of the same paragraph)
-                if (senderName === lastSenderName && timeDiff < 200) {
-                    // Only indent if the text is NOT a decorative border!
-                    if (messageText.includes("✧ *****")) {
-                        displayText = messageText;
-                    } else {
-                        displayText = "    " + messageText; 
-                    }
-                }
-                // 2. Brand new message from a named player/NPC
-                else if (senderName && senderName !== "" && senderName !== "[SYSTEM]" && senderName !== "[SUNCAT'S JOURNAL]") {
-                    displayText = `[${senderName}]: ${messageText}`;
-                } 
-                // 3. DM Narration or System Message (No brackets)
-                else {
-                    displayText = messageText; 
-                }
+          // ==========================================
+          // NEW: THE CHAT SETTINGS GATEKEEPER
+          // ==========================================
+          if (!window.settingsChat) {
+              let sName = senderName ? senderName.toLowerCase() : "";
+              
+              // Allow System, Suncat, or empty senders (often used for raw narration)
+              let isNarration = sName.includes("system") || sName.includes("suncat") || sName === "";
 
-                // ---> THE FIX: PUSH THE OBJECT, NOT A STRING <---
-                chatLog.push({ 
-                    text: displayText, 
+              // If Chat is OFF and this is from a normal player, drop it!
+              if (!isNarration) {
+                  return; 
+              }
+          }
+          // ==========================================
+
+          // 2. Add to Chat Log as a RICH OBJECT
+          if (typeof chatLog !== 'undefined') {
+              let currentTime = Date.now();
+              let timeDiff = currentTime - lastMessageTimeReceived;
+              let displayText = "";
+              
+              // 1. Rapid-fire indentation (Continuation of the same paragraph)
+              if (senderName === lastSenderName && timeDiff < 200) {
+                  // Only indent if the text is NOT a decorative border!
+                  if (messageText.includes("✧ *****")) {
+                      displayText = messageText;
+                  } else {
+                      displayText = "    " + messageText; 
+                  }
+              }
+              // 2. Brand new message from a named player/NPC
+              else if (senderName && senderName !== "" && senderName !== "[SYSTEM]" && senderName !== "[SUNCAT'S JOURNAL]") {
+                  displayText = `[${senderName}]: ${messageText}`;
+              } 
+              // 3. DM Narration or System Message (No brackets)
+              else {
+                  displayText = messageText; 
+              }
+
+              // ---> THE FIX: PUSH THE OBJECT, NOT A STRING <---
+              chatLog.push({ 
+                  text: displayText, 
                     color: msgColor 
                 });
                 
@@ -863,12 +879,11 @@ window.settingsChat = true;
             }
 
             // 3. Play Sound (Optional)
+            // (If Audio is turned off in settings, playSFX will automatically block this inside the MusicEngine anyway!)
             if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('chat_sound');
             
-            
             console.log(`[CHAT] ${senderName}: ${messageText}`);
-          });
-
+            });
         socket.on('chat_clear_screen', () => {
             if (typeof chatLog !== 'undefined') {
                 chatLog = []; // Empty the array!
@@ -19769,8 +19784,12 @@ window.settingsChat = true;
                   }
                   // === NORMAL CHAT MESSAGE ===
                   else {
-                      // Just send the full, unchunked string directly to the server!
-                      if (typeof socket !== 'undefined') {
+                      // If chat is disabled, block the emit and warn the player locally
+                      if (!window.settingsChat) {
+                          chatLog.push({ sender: "[SYSTEM]", text: "Chat is disabled in Settings. Your message was not sent.", color: "gray" });
+                      } 
+                      // Otherwise, send the full string directly to the server!
+                      else if (typeof socket !== 'undefined') {
                           socket.emit('chat_message', msg); 
                       }
                   }
@@ -19999,12 +20018,14 @@ window.settingsChat = true;
                     // Clicked ON
                     if (gridPos.x >= 5 && gridPos.x <= 6.5) { 
                         window.settingsNarration = true; 
+                        if(typeof socket !== 'undefined') socket.emit('toggle_narration', true); // TELL SERVER
                         if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('click'); 
                         return; 
                     }
                     // Clicked OFF
                     if (gridPos.x > 6.5 && gridPos.x <= 8.0) { 
                         window.settingsNarration = false; 
+                        if(typeof socket !== 'undefined') socket.emit('toggle_narration', false); // TELL SERVER
                         if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('click'); 
                         return; 
                     }
@@ -20016,18 +20037,12 @@ window.settingsChat = true;
                     if (gridPos.x >= 5 && gridPos.x <= 6.5) { 
                         window.settingsChat = true; 
                         if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('click'); 
-                        
-                        // IF USING HTML CHAT INPUT, MAKE IT VISIBLE HERE
-                        if (typeof chatInput !== 'undefined' && chatInput) chatInput.style.display = 'block';
                         return; 
                     }
                     // Clicked OFF
                     if (gridPos.x > 6.5 && gridPos.x <= 8.0) { 
                         window.settingsChat = false; 
                         if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('click'); 
-                        
-                        // IF USING HTML CHAT INPUT, HIDE IT HERE
-                        if (typeof chatInput !== 'undefined' && chatInput) chatInput.style.display = 'none';
                         return; 
                     }
                 }
