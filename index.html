@@ -101,9 +101,7 @@
     var tX = 0; //table top-left x coordinate(0,0)
     var tY = 0; //table top-left x coordinate(0,0)
     var spriteCache = {};
-    window.settingsAudio = true;
-window.settingsNarration = true;
-window.settingsChat = true;
+   
   //GLOBAL CARD DIMENSIONS
     var cL = 2.25; //card length
     var cH = 3.5; //card height
@@ -142,6 +140,9 @@ window.settingsChat = true;
     const eSUBTYPE = {NONE:0, EFFECT:1, USE:2, EQUIP:3,TREASURE:4}
     var s = 0; //USED IN BUTTONS FOR SCALE
     window.gameViewMode = '3d'
+    window.settingsAudio = true;
+    window.settingsNarration = true;
+    window.settingsChat = true;
     const SPELL_REGISTRY = {
         // --- PROJECTILES (Attack) ---
         13: { type: 'projectile', name: 'Magic Missile', castStat: 2, defStat: 2, color: [0,0,0], glow: '#00ffff',  model3D: 'd4', isHoming: true }, 
@@ -3384,77 +3385,76 @@ window.settingsChat = true;
                     let allyCard = new Card(Math.floor(this.type), 0); 
                     let targetCard = new Card(Math.floor(currentPrey.type), 0);
 
-                    const getOverworldRoll = (card, statIndex, entity) => {
-                        let total = 0;
-                        let numRolls = entity.isBoss ? 3 : 1; 
-                        if (entity.alignment === 'foe_coward') {
-                            numRolls *= 1; 
-                        }
-                        for (let i = 0; i < numRolls; i++) {
-                            total += card.rollStat(statIndex);
-                        }
-                        
-                        // FIX: Add the active buff/debuff modifiers to the roll!
-                        if (entity.stat && entity.stat[statIndex]) {
-                            total += entity.stat[statIndex][2];
-                        }
-                        
-                        // ==========================================
-                        // NEW: COMMANDER BONUS (Player's Dice applied to Allies)
-                        // ==========================================
-                        // Check if it's an ally, and NOT an Intelligence (2) roll
-                        if (entity.alignment === 'ally' && statIndex !== 2) {
-                            // Grab the player's dice sides for this specific stat
-                            // dungeon.stat format: [amount, sides, modifier]
-                            let playerSides = dungeon.stat[statIndex][1]; 
-                            let commanderBonus = 0;
+                    const getOverworldRoll = (card, statIndex, entity, masteryLevel = 0) => {
+                      let total = 0;
+                      let numRolls = entity.isBoss ? 3 : 1; 
+                      if (entity.alignment === 'foe_coward') {
+                          numRolls *= 1; 
+                      }
+                      for (let i = 0; i < numRolls; i++) {
+                          total += card.rollStat(statIndex);
+                      }
+                      
+                      // 1. Add active buff/debuff modifiers
+                      if (entity.stat && entity.stat[statIndex]) {
+                          total += entity.stat[statIndex][2];
+                      }
+                      
+                      // 2. NEW: Add the specific Monster Mastery (+3 for your Wisp!)
+                      total += masteryLevel;
+                      
+                      // 3. COMMANDER BONUS (Player's Dice applied to Allies)
+                      if (entity.alignment === 'ally' && statIndex !== 2) {
+                          let playerSides = dungeon.stat[statIndex][1]; 
+                          let commanderBonus = 0;
 
-                            // Map the dice type to the bonus you requested
-                            if (playerSides === 6) commanderBonus = 1;
-                            else if (playerSides === 8) commanderBonus = 2;
-                            else if (playerSides === 10) commanderBonus = 3;
-                            else if (playerSides === 12) commanderBonus = 4;
-                            else if (playerSides === 20) commanderBonus = 5;
+                          if (playerSides === 6) commanderBonus = 1;
+                          else if (playerSides === 8) commanderBonus = 2;
+                          else if (playerSides === 10) commanderBonus = 3;
+                          else if (playerSides === 12) commanderBonus = 4;
+                          else if (playerSides === 20) commanderBonus = 5;
 
-                            total += commanderBonus;
-                        }
-                        // ==========================================
+                          total += commanderBonus;
+                      }
+                      return total;
+                  };
 
-                        return total;
-                    };
+                    let allyMastery = (dungeon.mastery && dungeon.mastery[Math.floor(this.type)]) ? dungeon.mastery[Math.floor(this.type)].level : 0;
 
                     let firstAttacker, firstDefender;
                     let firstCard, secondCard;
+                    let attackerMastery, defenderMastery; // Track who gets the mastery bonus
 
                     let agiTie = true;
                     let tieBreakerFailsafe = 0; 
-                    
+
                     while (agiTie && tieBreakerFailsafe < 10) {
                         tieBreakerFailsafe++;
-                        let allyAgi = getOverworldRoll(allyCard, 3, this);
-                        let targetAgi = getOverworldRoll(targetCard, 3, currentPrey);
+                        // Pass the allyMastery to your ally, and 0 to the enemy
+                        let allyAgi = getOverworldRoll(allyCard, 3, this, allyMastery);
+                        let targetAgi = getOverworldRoll(targetCard, 3, currentPrey, 0);
 
                         if (allyAgi > targetAgi) {
-                            firstAttacker = this; firstCard = allyCard;
-                            firstDefender = currentPrey; secondCard = targetCard;
+                            firstAttacker = this; firstCard = allyCard; attackerMastery = allyMastery;
+                            firstDefender = currentPrey; secondCard = targetCard; defenderMastery = 0;
                             agiTie = false;
                         } else if (targetAgi > allyAgi) {
-                            firstAttacker = currentPrey; firstCard = targetCard;
-                            firstDefender = this; secondCard = allyCard;
+                            firstAttacker = currentPrey; firstCard = targetCard; attackerMastery = 0;
+                            firstDefender = this; secondCard = allyCard; defenderMastery = allyMastery;
                             agiTie = false;
                         }
                     }
-                    
+
                     if (agiTie) {
-                        firstAttacker = this; firstCard = allyCard;
-                        firstDefender = currentPrey; secondCard = targetCard;
+                        firstAttacker = this; firstCard = allyCard; attackerMastery = allyMastery;
+                        firstDefender = currentPrey; secondCard = targetCard; defenderMastery = 0;
                     }
 
                     if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('slash');
 
                     // Round 1: First Attacker STR vs First Defender CON
-                    let atkStr = getOverworldRoll(firstCard, 0, firstAttacker);
-                    let defCon = getOverworldRoll(secondCard, 1, firstDefender);
+                    let atkStr = getOverworldRoll(firstCard, 0, firstAttacker, attackerMastery);
+                    let defCon = getOverworldRoll(secondCard, 1, firstDefender, defenderMastery);
 
                     let someoneDied = false;
 
@@ -3462,7 +3462,7 @@ window.settingsChat = true;
                         let ward = firstDefender.activeBuffs ? firstDefender.activeBuffs.find(b => b.type === 'ward') : null;
                         
                         if (ward) {
-                            ward.hits--; // Armor absorbs the blow!
+                            ward.hits--; 
                             if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('cancel'); 
                         } else {
                             dungeon.killNPC(firstDefender, false, 'npc_infighting');
@@ -3470,9 +3470,9 @@ window.settingsChat = true;
                             someoneDied = true;
                         }
                     } else {
-                        // Round 2: Defender survives! Counterattack: Defender STR vs Attacker CON
-                        let defStr = getOverworldRoll(secondCard, 0, firstDefender);
-                        let atkCon = getOverworldRoll(firstCard, 1, firstAttacker);
+                        // Round 2: Counterattack
+                        let defStr = getOverworldRoll(secondCard, 0, firstDefender, defenderMastery);
+                        let atkCon = getOverworldRoll(firstCard, 1, firstAttacker, attackerMastery);
 
                         if (defStr > atkCon) {
                             let ward = firstAttacker.activeBuffs ? firstAttacker.activeBuffs.find(b => b.type === 'ward') : null;
@@ -5938,7 +5938,16 @@ window.settingsChat = true;
     //Map rendering
       render(dt) {
         // --- INITIALIZATION SYNC ---
-       
+       for (let i = globalParticles.length - 1; i >= 0; i--) {
+            globalParticles[i].update(dt);
+            // Remove dead particles
+            if (globalParticles[i].life <= 0) {
+                globalParticles.splice(i, 1);
+            }
+        }
+
+        // Emergency performance cap
+        if (globalParticles.length > 800) globalParticles.splice(0, 100);
         // --- SUNCAT'S BORROWED EYES (RADAR PING) ---
         // Find Suncat in the multiplayer list
         let suncat = null;
@@ -5993,8 +6002,42 @@ window.settingsChat = true;
           }
           this.updateAllyFormations(dt);
         // Now update the NPCs...
-        this.npcs.forEach(npc => npc.update(this.maze, this.x, this.y, this, dt));
-        // -------------------------------------------
+        // Inside render(dt) loop:
+        this.npcs.forEach(npc => {
+            npc.update(this.maze, this.x, this.y, this, dt);
+
+            // --- PARTICLE EMITTER ---
+          if (!npc.isDead && npc.visible && npc.activeBuffs && npc.activeBuffs.length > 0) {
+              if (this.frame % 3 === 0) { 
+                  npc.activeBuffs.forEach(buff => {
+                      // 1. Determine Particle Type based on Registry Visuals
+                      let pType = 'sparkle'; // Default
+                      if (buff.visual === 'shield') pType = 'bubble';
+                      if (buff.visual === 'aura' || buff.visual === 'chains' || buff.type === 'debuff') pType = 'smoke';
+
+                      // 2. Get the specific color from the registry
+                      let pColor = buff.auraColor || buff.glow || '#ffffff';
+
+                      // 3. Spawn the particle
+                      globalParticles.push(new Particle(
+                          npc.x + (Math.random() - 0.5) * 0.4, // Spread them out slightly
+                          npc.y + (Math.random() - 0.5) * 0.4, 
+                          pColor, 
+                          pType // Pass the mapped type into the constructor!
+                      ));
+                  });
+              }
+          }
+        });
+
+        // Update and Clean up the global array
+        for (let i = globalParticles.length - 1; i >= 0; i--) {
+            globalParticles[i].update(dt);
+            if (globalParticles[i].life <= 0) globalParticles.splice(i, 1);
+        }
+
+        // Cap particles to prevent runaway lag
+        if (globalParticles.length > 500) globalParticles.splice(0, 100); // -------------------------------------------
         if (window.gameViewMode === '2d') {
               this.renderTopDown(dt);
               return; // Stop the 3D raycaster from running
@@ -6270,7 +6313,42 @@ window.settingsChat = true;
         // 1. UPDATE LOGIC (Same as 3D mode)
         this.frame++;
         this.updateAllyFormations(dt);
-        this.npcs.forEach(npc => npc.update(this.maze, this.x, this.y, this, dt));
+        // Inside render(dt) loop:
+        this.npcs.forEach(npc => {
+            npc.update(this.maze, this.x, this.y, this, dt);
+
+            // --- PARTICLE EMITTER ---
+        if (!npc.isDead && npc.visible && npc.activeBuffs && npc.activeBuffs.length > 0) {
+            if (this.frame % 3 === 0) { 
+                npc.activeBuffs.forEach(buff => {
+                    // 1. Determine Particle Type based on Registry Visuals
+                    let pType = 'sparkle'; // Default
+                    if (buff.visual === 'shield') pType = 'bubble';
+                    if (buff.visual === 'aura' || buff.visual === 'chains' || buff.type === 'debuff') pType = 'smoke';
+
+                    // 2. Get the specific color from the registry
+                    let pColor = buff.auraColor || buff.glow || '#ffffff';
+
+                    // 3. Spawn the particle
+                    globalParticles.push(new Particle(
+                        npc.x + (Math.random() - 0.5) * 0.4, // Spread them out slightly
+                        npc.y + (Math.random() - 0.5) * 0.4, 
+                        pColor, 
+                        pType // Pass the mapped type into the constructor!
+                    ));
+                });
+            }
+        }
+        });
+
+        // Update and Clean up the global array
+        for (let i = globalParticles.length - 1; i >= 0; i--) {
+            globalParticles[i].update(dt);
+            if (globalParticles[i].life <= 0) globalParticles.splice(i, 1);
+        }
+
+        // Cap particles to prevent runaway lag
+        if (globalParticles.length > 500) globalParticles.splice(0, 100);
         this.weather.resize(tL, tL); 
         this.weather.update(dt);
         this.projectiles.forEach(p => p.update(this, dt));
@@ -6428,46 +6506,7 @@ window.settingsChat = true;
                                   ctx.imageSmoothingEnabled = true; // <--- TURN ON
                                   drawPortrait(imageToDraw, 0, 0, 1);
                                   ctx.imageSmoothingEnabled = false; // <--- TURN OFF
-                                  // --- NEW: DRAW BUFF VISUALS IN 2D ---
-                                  if (npc.activeBuffs && npc.activeBuffs.length > 0) {
-                                      npc.activeBuffs.forEach(buff => {
-                                          let showVisual = true;
-                                          if (buff.type === 'buff' && buff.duration < 180) {
-                                              let blinkRate = buff.duration < 60 ? 5 : 10;
-                                              showVisual = (Math.floor(buff.duration) % blinkRate < (blinkRate / 2));
-                                          }
-
-                                          if (showVisual) {
-                                              ctx.beginPath();
-                                              ctx.strokeStyle = buff.auraColor;
-                                              
-                                              // Absolute canvas coordinates for the 2D grid
-                                              let centerX = pxX + (pixelSpriteSize / 2);
-                                              let centerY = pxY + (pixelSpriteSize / 2);
-                                              
-                                              if (buff.visual === 'arc') {
-                                                  
-                                                  ctx.arc(centerX, centerY, pixelSpriteSize * 0.6, Math.PI, 0);
-                                                  ctx.stroke();
-                                              } 
-                                              else if (buff.visual === 'shield') {
-                                                  let gap = Math.PI / buff.hits;
-                                                  ctx.setLineDash([20, 10]);
-                                                  ctx.arc(centerX, centerY, pixelSpriteSize * 0.5, 0, Math.PI * 2);
-                                                  ctx.stroke();
-                                                  ctx.setLineDash([]);
-                                                  
-                                              }
-                                              else if (buff.visual === 'chains' || buff.visual === 'aura') {
-                                                  // Catch-all for debuffs
-                                                  ctx.arc(centerX, centerY, pixelSpriteSize * 0.5, 0, Math.PI * 2);
-                                                  ctx.stroke();
-                                                  
-                                              }
-                                          }
-                                      });
-                                  }
-                                  // --- END BUFF DRAWING ---
+                                  
                                   // Draw Name Tag underneath them
                                   if (npc.name && npc.name !== "undefined") {
                                       tX = oldTX; tY = oldTY; tL = oldTL; tH = oldTH;
@@ -6606,7 +6645,48 @@ window.settingsChat = true;
           tX = oldTX; tY = oldTY; tL = oldTL; tH = oldTH;
 
           
+        // --- DRAW 2D PARTICLES ---
+        globalParticles.forEach(p => {
+            const diffX = p.x - this.x;
+            const diffY = p.y - this.y;
 
+            // Only draw if on screen
+            if (Math.abs(diffX) <= range + 1 && Math.abs(diffY) <= range + 1) {
+                let tx = centerScreenX + (diffX * cellSize) - (fractionalX * cellSize) - (cellSize / 2);
+                let ty = centerScreenY + (diffY * cellSize) - (fractionalY * cellSize) - (cellSize / 2);
+                
+                let pScreenX = tX + (tL / 10) * tx + ((tL / 10) * cellSize) / 2;
+                
+                // --- FIX 1: APPLY Z-AXIS DRIFT ---
+                // We multiply p.z by the tile height to make the particles actually float UP!
+                let zOffset = p.z * (tH / 10) * 1.5; 
+                let pScreenY = tY + (tH / 10) * ty + ((tH / 10) * cellSize) / 2 - zOffset;
+                
+                let baseSize = (tL / 10) * cellSize * 0.15; 
+
+                // --- FIX 2: SOFTER OPACITY ---
+                // Multiply p.life by 0.5 so the particles never exceed 50% opacity
+                ctx.globalAlpha = Math.max(0, p.life * 0.5);
+
+                // DRAW THE DIFFERENT SHAPES
+                if (p.type === 'bubble') {
+                    ctx.strokeStyle = p.color;
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.arc(pScreenX, pScreenY, baseSize, 0, Math.PI * 2);
+                    ctx.stroke();
+                } else if (p.type === 'smoke') {
+                    ctx.fillStyle = p.color;
+                    ctx.beginPath();
+                    ctx.arc(pScreenX, pScreenY, baseSize * 1.5, 0, Math.PI * 2);
+                    ctx.fill();
+                } else {
+                    ctx.fillStyle = p.color;
+                    ctx.fillRect(pScreenX - baseSize/2, pScreenY - baseSize/2, baseSize, baseSize);
+                }
+            }
+        });
+        ctx.globalAlpha = 1.0; // Reset alpha!
         // 7. OVERLAYS (Weather & Networking)
         // Pass tX and tY so weather draws perfectly inside the square
         this.weather.draw(ctx, tX, tY);
@@ -7526,7 +7606,7 @@ window.settingsChat = true;
                 continue; 
             }
             // --- TRULY 3D SCALING & ANCHORING LOGIC ---
-            let scale = 0.8; // Default height: 80% of a wall block (Humans, Player, etc)
+            let scale = 0.75; // Default height: 80% of a wall block (Humans, Player, etc)
             let hover = 0.0; // Default height off the floor: 0 (feet touching the ground)
             if (sprite.isPlayer) {
                 scale = 0.5; // Drops the player to about waist-height on the screen!
@@ -7724,47 +7804,60 @@ window.settingsChat = true;
                 drawPortrait(imageToDraw, 0, 0, 1);
                 ctx.imageSmoothingEnabled = false; 
                 
-                // --- DRAW BUFF VISUALS ---
-                if (sprite.activeBuffs && sprite.activeBuffs.length > 0) {
-                    sprite.activeBuffs.forEach(buff => {
+    
+              if (sprite.name && sprite.name !== "undefined") {
+                  drawText(3.75, 0, 2.5, .69, ''+sprite.name, 'green', 1, 'center')
+                  } 
+            }
+            }
+
+              // --- DRAW 3D PARTICLES ---
+            globalParticles.forEach(p => {
+                const pX = p.x - camX;
+                const pY = p.y - camY;
+                const invDet = 1.0 / (planeX * dirY - dirX * planeY);
+                const transformX = invDet * (dirY * pX - dirX * pY);
+                const transformY = invDet * (-planeY * pX + planeX * pY); 
+
+                // Z-Clipping Check
+                if (transformY > 0.1 && transformY < 15) {
+                    const pScreenX = Math.floor((viewW / 2) * (1 + transformX / transformY));
+                    
+                    // Z-Buffer Check (Don't draw behind walls)
+                    if (pScreenX >= 0 && pScreenX < viewW && transformY < this.zBuffer[pScreenX]) {
+                        const horizon = (viewH / 2) + this.pitch;
+                        const pScreenY = Math.floor(horizon + ((viewH * this.zScale) / transformY) * (this.camZ - p.z)) + viewY;
+                        const pSize = Math.max(1, (viewH / transformY) * 0.05);
                         
-                        let showVisual = true;
-                        if (buff.type === 'buff' && buff.duration < 180) { 
-                            let blinkRate = buff.duration < 60 ? 5 : 10;
-                            showVisual = (Math.floor(buff.duration) % blinkRate < (blinkRate / 2));
-                        }
-
-                        if (showVisual) {
+                        ctx.globalAlpha = Math.max(0, p.life);
+                        
+                        // DRAW THE DIFFERENT SHAPES
+                        if (p.type === 'bubble') {
+                            ctx.strokeStyle = p.color;
+                            ctx.lineWidth = Math.max(1, pSize * 0.2);
                             ctx.beginPath();
-                            ctx.strokeStyle = buff.auraColor;
-                            
-                            if (buff.visual === 'arc') {
-                                ctx.arc(drawStartX + spriteSize/2, drawStartY, spriteSize * 0.6, Math.PI, 0);
-                                ctx.stroke();
-                            } 
-                            else if (buff.visual === 'shield') {
-                                let gap = Math.PI / buff.hits; 
-                                ctx.setLineDash([20, 10]); 
-                                ctx.arc(drawStartX + spriteSize/2, drawStartY + spriteSize/2, spriteSize * 0.5, 0, Math.PI * 2);
-                                ctx.stroke();
-                                ctx.setLineDash([]); 
-                            }
+                            ctx.arc(viewX + pScreenX, pScreenY, pSize, 0, Math.PI * 2);
+                            ctx.stroke();
+                        } else if (p.type === 'smoke') {
+                            ctx.fillStyle = p.color;
+                            ctx.beginPath();
+                            ctx.arc(viewX + pScreenX, pScreenY, pSize * 1.5, 0, Math.PI * 2);
+                            ctx.fill();
+                        } else {
+                            ctx.fillStyle = p.color;
+                            ctx.fillRect(viewX + pScreenX - pSize/2, pScreenY - pSize/2, pSize, pSize);
                         }
-                    });
+                    }
                 }
-
-          if (sprite.name && sprite.name !== "undefined") {
-              drawText(3.75, 0, 2.5, .69, ''+sprite.name, 'green', 1, 'center')
-              } 
-        }
-        }
-
-          // Restore Globals
-          tX = oldTX; tY = oldTY; tL = oldTL; tH = oldTH;
-          ctx.restore(); 
-      
-          this.clickInput = null;
-        }
+            });
+            ctx.globalAlpha = 1.0; // Reset alpha!
+            
+            // Restore Globals
+            tX = oldTX; tY = oldTY; tL = oldTL; tH = oldTH;
+            ctx.restore();
+          
+              this.clickInput = null;
+            }
       }
       parseColor(str) {
         // 1. Handle Hex Codes (e.g. #8b4513)
@@ -8225,6 +8318,15 @@ window.settingsChat = true;
               false,         
               'ally'         
           );
+          myAlly.activeBuffs = []; 
+        
+        // Let's wipe its base stats too, just in case the template was dirty!
+        myAlly.stat = [
+            [0, 0, 0], // STR
+            [0, 0, 0], // CON
+            [0, 0, 0], // INT
+            [0, 0, 0]  // AGI
+        ];
           let allyname = new Card(myAlly.type, 0);
           myAlly.name = playerName + "'s " + allyname.name; 
           this.npcs.push(myAlly);
@@ -10965,6 +11067,29 @@ window.settingsChat = true;
       }
     }
     }
+  let globalParticles = [];
+
+class Particle {
+    constructor(x, y, color, type) {
+        this.x = x;
+        this.y = y;
+        this.z = Math.random() * 0.5; // Starting height
+        this.vx = (Math.random() - 0.25) * 0.001;
+        this.vy = (Math.random() - 0.25) * 0.001;
+        this.vz = 0.005 + Math.random() * 0.001;
+        this.color = color;
+        this.life = 1.0;
+        this.decay = 0.01 + Math.random() * 0.01;
+        this.type = type; // 'sparkle', 'bubble', 'smoke'
+    }
+
+    update(dt) {
+        this.x += this.vx;
+        this.y += this.vy;
+        this.z += this.vz;
+        this.life -= this.decay;
+    }
+}
   class btn{
     constructor(x,y,l,h,z,text,frameColor,textColor,index=0,visible = 0){
       this.wobbleTimer = 0;
