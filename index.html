@@ -101,7 +101,9 @@
     var tX = 0; //table top-left x coordinate(0,0)
     var tY = 0; //table top-left x coordinate(0,0)
     var spriteCache = {};
-    
+    window.settingsAudio = true;
+window.settingsNarration = true;
+window.settingsChat = true;
   //GLOBAL CARD DIMENSIONS
     var cL = 2.25; //card length
     var cH = 3.5; //card height
@@ -6530,9 +6532,10 @@
                 status: this.status, type: playerSprite, name: playerName 
             });
         }
-        btnDeck.show(9, 9, 1, 1, 1, 'Deck', 'jrpg_btn', 1, 0);
+          btnDeck.show(9, 9, 1, 1, 1, 'Deck', 'jrpg_btn', 1, 0);
           btnJournal.show(0, 9, 1, 1, 1, 'Journal', 'jrpg_btn', 1, 0);
-                      btn2D3D.show(8.5, .5, 1, 1, 1, '3D', 'jrpg_btn', 1, 0);
+          btn2D3D.show(8.5, .5, 1, 1, 1, '3D', 'jrpg_btn', 1, 0);
+          btnMove.show(5, 3, 5, 1, 1, '', 'd_pad', 1, 0);
 
           // Draw the Spell Slots
           if (btnSpell1.assignedCard) btnSpell1.show(4.5,9, 1, 1, 1, btnSpell1.text, 'jrpg_btn', 1, 'spell');
@@ -7411,8 +7414,8 @@
                 scale = 0.3; 
                 hover = 0.4; // Make them float in the air
             }
-            // 2. Short ground creatures (Imps, Goblins, Gnomes, Snakes)
-            else if (sprite.type === 56 || sprite.type === 75 || sprite.type === 75.1 || sprite.type === 89) {
+            // 2. Short ground creatures (Imps,  Gnomes, Snakes)
+            else if (sprite.type === 56 ||sprite.type === 56.1 ||sprite.type === 79 || sprite.type === 75 || sprite.type === 75.1 || sprite.type === 89) {
                 scale = 0.5; // Half a block tall
                 hover = -.25; // On the ground
             }
@@ -7431,11 +7434,11 @@
                 hover = 0.0;
             }
             else if ((sprite.type <= -29&&sprite.type >= -35)) {
-                scale = 1; // Taller than the walls!
+                scale = .9;
                 hover = 0.0;
             }
             if ((sprite.alignment == 'ally'&& !sprite.isPlayer)) {
-                scale = .75; // Taller than the walls!
+                scale = .75; 
                 hover = -.15;
             }
             // Calculate Base Screen Dimensions
@@ -19914,7 +19917,7 @@
 
           // 1. CHECK TAB CLICKS (Adjusted for 6 tabs)
           if (gridPos.y >= 0 && gridPos.y <= 1) {
-              const tabs = [ 'record', 'suncat',' quest ' , ' story ','  map  ',];
+              const tabs = [ 'record', 'suncat',' quest ' , ' story ','settings',];
               const tabWidth = 10 / tabs.length;
               
               for (let i = 0; i < tabs.length; i++) {
@@ -19964,9 +19967,73 @@
                   return;
               }
           }
-          
+          // ----------------------------------------------------
+            // NEW SETTINGS CLICK LOGIC
+            // ----------------------------------------------------
+          if (journalTab === 'settings') {
+                
+                // AUDIO TOGGLES
+                if (gridPos.y >= 3.0 && gridPos.y <= 3.8) {
+                    // Clicked ON
+                    if (gridPos.x >= 5 && gridPos.x <= 6.5) { 
+                        window.settingsAudio = true; 
+                        if(typeof MusicEngine !== 'undefined') {
+                            MusicEngine.playSFX('click');
+                            // Restart the music for the current area!
+                            if (MusicEngine.style) MusicEngine.play(MusicEngine.style);
+                        }
+                        return; 
+                    }
+                    // Clicked OFF
+                    if (gridPos.x > 6.5 && gridPos.x <= 8.0) { 
+                        window.settingsAudio = false; 
+                        if(typeof MusicEngine !== 'undefined') {
+                            MusicEngine.stop(); // Instantly kill the background music
+                        }
+                        return; 
+                    }
+                }
 
-          // 3. CHECK EXIT BUTTON (Bottom Center)
+                // NARRATION TOGGLES
+                if (gridPos.y >= 4.0 && gridPos.y <= 4.8) {
+                    // Clicked ON
+                    if (gridPos.x >= 5 && gridPos.x <= 6.5) { 
+                        window.settingsNarration = true; 
+                        if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('click'); 
+                        return; 
+                    }
+                    // Clicked OFF
+                    if (gridPos.x > 6.5 && gridPos.x <= 8.0) { 
+                        window.settingsNarration = false; 
+                        if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('click'); 
+                        return; 
+                    }
+                }
+
+                // CHAT TOGGLES
+                if (gridPos.y >= 5.0 && gridPos.y <= 5.8) {
+                    // Clicked ON
+                    if (gridPos.x >= 5 && gridPos.x <= 6.5) { 
+                        window.settingsChat = true; 
+                        if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('click'); 
+                        
+                        // IF USING HTML CHAT INPUT, MAKE IT VISIBLE HERE
+                        if (typeof chatInput !== 'undefined' && chatInput) chatInput.style.display = 'block';
+                        return; 
+                    }
+                    // Clicked OFF
+                    if (gridPos.x > 6.5 && gridPos.x <= 8.0) { 
+                        window.settingsChat = false; 
+                        if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('click'); 
+                        
+                        // IF USING HTML CHAT INPUT, HIDE IT HERE
+                        if (typeof chatInput !== 'undefined' && chatInput) chatInput.style.display = 'none';
+                        return; 
+                    }
+                }
+              }
+        
+                  // 3. CHECK EXIT BUTTON (Bottom Center)
           if (gridPos.x > 8 && gridPos.x < 10 && gridPos.y > 9 && gridPos.y < 10) {
               if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('cancel');
               startGame = preGame === 'explore' ? 'explore' : 'options';
@@ -33142,8 +33209,8 @@
       let btnY = tY + (tH/10) * 0.1; // Changed from 9.39 to 0.1
       let btnS = (tH/10) * 0.5;
 
-      ctx.fillStyle = "rgba(0,0,0,0.5)";
-      ctx.fillRect(btnX, btnY, btnS * 15.6, btnS);
+      //ctx.fillStyle = "rgba(0,0,0,0.5)";
+      //ctx.fillRect(btnX, btnY, btnS * 15.6, btnS);
       
 
       // 2. Logic: If chat is empty/closed, stop here
@@ -33168,7 +33235,7 @@
       // 3. Draw the Chat Box
       ctx.globalAlpha = alpha;
       
-      let chatX = 0;        
+      let chatX = .01369;        
       let chatY =0; // Changed from 6.3 to 0.6 (anchors the box to the top)
       let chatW = 7.8;       
       let rowHeight = 0.25; 
@@ -33331,6 +33398,7 @@
     },
       
     playSFX(type) {
+      if (!window.settingsAudio) return;
       if (!this.ctx) return;
       if (this.ctx.state === 'suspended') { this.ctx.resume(); }
       const t = this.ctx.currentTime;
@@ -33854,6 +33922,7 @@
     },
     
     sing(text, startTime, notesArray = [0], rootFreq = 110, targetDuration = 0.25, resonance = 1.0, breathiness = 0.1) {      if (!this.ctx) return;
+          if (!window.settingsAudio) return;
           if (this.ctx.state === 'suspended') { this.ctx.resume(); }
 
 
@@ -34618,6 +34687,7 @@
       };
     },
     play(style) {
+      if (!window.settingsAudio) return;
       if (!this.ctx) { console.warn("Call MusicEngine.init() first!"); return; }
       if (this.ctx.state === 'suspended') this.ctx.resume();
       
@@ -34981,6 +35051,7 @@
       });
     },
     play3DSFX(type, sourceX, sourceY, playerX, playerY, playerDirIdx) {
+      if (!window.settingsAudio) return;
       if (!this.ctx) return;
       if (this.ctx.state === 'suspended') this.ctx.resume();
 
@@ -53392,7 +53463,7 @@
         drawShape('rec', 0, 0, 1, 0, 0, 10, 10, 0, 0, 0, 0, 'rgba(0, 0, 0, 0.95)', 1);
 
         // 2. DRAW THE TOP TABS (Now 6 tabs: stats, story, journal, quests, suncat, map)
-        const tabs = ['record', 'suncat',' quest ',' story ', '  map  ' ];
+        const tabs = ['record', 'suncat',' quest ',' story ', 'settings' ];
         const tabWidth = 10 / tabs.length; // 1.66 grid spaces each
 
         for (let i = 0; i < tabs.length; i++) {
@@ -53505,122 +53576,50 @@
             }
           }
           // ----------------------------------------------------
-        else if (journalTab === '  map  ') {
-            drawText(1, 1.5, 8, 0.8, "- CARTOGRAPHY -", '#d4af37', 1, 'center');
+        else if (journalTab === 'settings') {
+            drawText(1, 1.5, 8, 0.8, "- SYSTEM SETTINGS -", '#d4af37', 1, 'center');
             
-            if (typeof Dungeon !== 'undefined' && Dungeon.maze) {
-                // Setup the Minimap Grid Math (Scaling it to fit perfectly in your UI)
-                let startX = 2; // Start at Grid X 2
-                let startY = 2.5; // Start at Grid Y 2.5
-                let mapSize = 6; // Make it 6x6 grid units wide/tall!
-                let range = 7; // Show 15x15 tiles (7 in each direction)
-                let cellSize = mapSize / 15; // Size of each tile in Grid Units (0.4)
-                
-                // Draw the Map Background & Border
-                drawShape('rec', startX, startY, 1, 0, 0, mapSize, mapSize, 0,0,0,0, 'rgba(0,0,0,0.8)', 1);
-                drawShape('rec', startX - 0.05, startY - 0.05, 1, 0, 0, mapSize + 0.1, mapSize + 0.1, 0,0,0,0, '#d4af37', 0); 
+            // Define colors for active/inactive states
+            let colorOnActive = window.settingsAudio ? 'lightgray' : '#444444';
+            let colorOffActive = !window.settingsAudio ? 'lightgray' : '#444444';
+            
+            let colorNarrationOn = window.settingsNarration ? 'lightgray' : '#444444';
+            let colorNarrationOff = !window.settingsNarration ? 'lightgray' : '#444444';
 
-                // 1. DRAW TILES
-                for (let y = -range; y <= range; y++) {
-                    for (let x = -range; x <= range; x++) {
-                        const mapX = Math.floor(Dungeon.x) + x;
-                        const mapY = Math.floor(Dungeon.y) + y;
-                        
-                        if (mapX >= 0 && mapX < Dungeon.maze[0].length && mapY >= 0 && mapY < Dungeon.maze.length) {
-                            const dist = Math.sqrt(x*x + y*y);
-                            
-                            // Check visibility!
-                            let isVisible = (Dungeon.dSense > 0 && dist <= Dungeon.dSense) || Dungeon.checkLineOfSight(mapX + 0.5, mapY + 0.5);
-                            
-                            if (isVisible) {
-                                // Calculate screen position for this tile
-                                let tx = startX + (mapSize / 2) + (x * cellSize) - (cellSize / 2);
-                                let ty = startY + (mapSize / 2) + (y * cellSize) - (cellSize / 2);
-                                
-                                let tileID = Dungeon.maze[mapY][mapX];
-                                if (Dungeon.isWall(mapX, mapY)) {
-                                    // Use your wall color or default brown
-                                    let wColor = Dungeon.wallColors ? (Dungeon.wallColors[tileID] || '#8b4513') : '#8b4513';
-                                    drawShape('rec', tx, ty, 1, 0, 0, cellSize, cellSize, 0,0,0,0, wColor, 1);
-                                } else {
-                                    // Floor tile
-                                    drawShape('rec', tx, ty, 1, 0, 0, cellSize, cellSize, 0,0,0,0, 'rgba(200,200,200,0.3)', 1);
-                                }
-                            }
-                        }
-                    }
-                }
-                
-                // 2. DRAW NPCs
-                Dungeon.npcs.forEach(npc => {
-                    if (!npc.visible || npc.isDead) return;
-                    const diffX = npc.x - Dungeon.x;
-                    const diffY = npc.y - Dungeon.y;
-                    const dist = Math.sqrt(diffX*diffX + diffY*diffY);
-                    
-                    if (Math.abs(diffX) <= range && Math.abs(diffY) <= range) {
-                        let canSeeNPC = (Dungeon.dSense > 0 && dist <= Dungeon.dSense) || Dungeon.checkLineOfSight(npc.x, npc.y);
-                        
-                        if (canSeeNPC) {
-                            // Added (cellSize / 2) to perfectly center the dot inside the tile
-                            let tx = startX + (mapSize / 2) + (diffX * cellSize) + (cellSize / 2);
-                            let ty = startY + (mapSize / 2) + (diffY * cellSize) + (cellSize / 2);
-                            
-                            let drawColor = '#aaaaaa';
-                            let identifyRadius = Math.max(0, Dungeon.dSense - 15);
-                            
-                            if (dist <= identifyRadius || Dungeon.dSense >= 50) {
-                                if (Dungeon.mapID === 999) {
-                                    switch(npc.role) {
-                                        case 'battle': drawColor = '#ff0000'; break;
-                                        case 'quest_giver': drawColor = '#ffd700'; break;
-                                        case 'reward': drawColor = '#00ff00'; break;
-                                        case 'dialogue': drawColor = '#00ffff'; break;
-                                        default: drawColor = npc.color || '#ff0000';
-                                    }
-                                } else {
-                                    drawColor = npc.color || '#ff0000';
-                                }
-                            }
-                            
-                            // FIXED PARAMETERS: 'arc', x, y, scale, x1, y1, radius, startAng, endAng, y3, x4, y4, color, fill
-                            drawShape('arc', tx-.2, ty-.2, 1, 0, 0, cellSize / 3, 0, 2, 0, 0, 0, drawColor, 1);
-                        }
-                    }
-                });
-                
-                // 3. DRAW ONLINE PLAYERS (The Radar)
-                if (window.remotePlayers) {
-                    for (let id in window.remotePlayers) {
-                        let p = window.remotePlayers[id];
-                        if (p.mapID === Dungeon.mapID && p.x !== undefined && p.y !== undefined) {
-                            const diffX = p.x - Dungeon.x;
-                            const diffY = p.y - Dungeon.y;
-                            const dist = Math.sqrt(diffX*diffX + diffY*diffY);
-                            
-                            if (Math.abs(diffX) <= range && Math.abs(diffY) <= range) {
-                                let canSee = (Dungeon.dSense > 0 && dist <= Dungeon.dSense) || Dungeon.checkLineOfSight(p.x, p.y);
-                                if (canSee) {
-                                    let tx = startX + (mapSize / 2) + (diffX * cellSize) + (cellSize / 2);
-                                    let ty = startY + (mapSize / 2) + (diffY * cellSize) + (cellSize / 2);
-                                    
-                                    // Make Suncat Orange, other players Cyan
-                                    let pColor = (p.name && p.name.toLowerCase().includes('suncat')) ? '#ff6600' : '#00ffff';
-                                    drawShape('arc', tx-.2, ty-.2, 1, 0, 0, cellSize / 2.5, 0, 2, 0, 0, 0, pColor, 1);
-                                }
-                            }
-                        }
-                    }
-                }
+            let colorChatOn = window.settingsChat ? 'lightgray' : '#444444';
+            let colorChatOff = !window.settingsChat ? 'lightgray' : '#444444';
 
-                // 4. DRAW THE PLAYER (Bright White Dot in the absolute center)
-                let playerTx = startX-.21 + (mapSize / 2) + (cellSize / 2);
-                let playerTy = startY-.21 + (mapSize / 2) + (cellSize / 2);
-                drawShape('arc', playerTx, playerTy, 1, 0, 0, cellSize / 2.0, 0, 2, 0, 0, 0, '#ffffff', 1);
-            } else {
-                drawText(1, 4, 8, 0.5, "You must be exploring a Dungeon to view the cartography.", 'gray', 1, 'center');
-            }
-          }
+            // Row 1: AUDIO
+            drawText(2, 3.0, 3, 0.5, "AUDIO:", 'white', 1, 'left');
+            drawText(5, 3.0, 1.5, 0.5, "ON", colorOnActive, 1, 'center');
+            drawText(6.5, 3.0, 1.5, 0.5, "OFF", colorOffActive, 1, 'center');
+
+            // Row 2: AI NARRATION
+            drawText(2, 4.0, 3, 0.5, "AI NARRATION:", 'white', 1, 'left');
+            drawText(5, 4.0, 1.5, 0.5, "ON", colorNarrationOn, 1, 'center');
+            drawText(6.5, 4.0, 1.5, 0.5, "OFF", colorNarrationOff, 1, 'center');
+
+            // Row 3: CHAT
+            drawText(2, 5.0, 3, 0.5, "CHAT:", 'white', 1, 'left');
+            drawText(5, 5.0, 1.5, 0.5, "ON", colorChatOn, 1, 'center');
+            drawText(6.5, 5.0, 1.5, 0.5, "OFF", colorChatOff, 1, 'center');
+
+            // Row 4: ACTION BUTTONS (Using boxes to make them look clickable)
+            // SAVE BUTTON
+            drawShape('rec', 3, 6.2, 1, 0, 0, 4, 0.8, 0,0,0,0, '#222222', 1);
+            drawShape('rec', 3, 6.2, 1, 0, 0, 4, 0.8, 0,0,0,0, '#d4af37', 0); // Border
+            drawText(3, 6.35, 4, 0.5, "SAVE GAME", 'white', 1, 'center');
+
+            // EXIT BUTTON
+            drawShape('rec', 3, 7.3, 1, 0, 0, 4, 0.8, 0,0,0,0, '#222222', 1);
+            drawShape('rec', 3, 7.3, 1, 0, 0, 4, 0.8, 0,0,0,0, '#d4af37', 0); // Border
+            drawText(3, 7.45, 4, 0.5, "EXIT TO MAIN MENU", 'white', 1, 'center');
+
+            // DELETE BUTTON
+            drawShape('rec', 3, 8.4, 1, 0, 0, 4, 0.8, 0,0,0,0, '#4a0000', 1); // Dark red background
+            drawShape('rec', 3, 8.4, 1, 0, 0, 4, 0.8, 0,0,0,0, '#ff0000', 0); // Red border
+            drawText(3, 8.55, 4, 0.5, "DELETE CURRENT SESSION", '#ffaaaa', 1, 'center');
+        }
 
         // 4. DRAW THE EXIT BUTTON (Bottom Center: x=4 to 6, y=8.5 to 9.5)
           drawShape('rec', 8, 9, 1, 0, 0, 2, 1, 0,0,0,0, '#880000', 1);
