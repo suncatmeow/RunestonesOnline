@@ -4934,6 +4934,7 @@
         }
     async function processCognitiveLoad(socketId, forceDigest = false) {
         const player = players[socketId];
+        if (!player || player.narrationEnabled === false) return;
         let bucket = playerAITokens[socketId];
         
         if (!player || !player.undigestedInfo || player.undigestedInfo.length === 0 || player.isDigesting) return;
@@ -6599,7 +6600,7 @@ io.on("connection", (socket) => {
         socket.on("suncat_spectate", async (actionDescription) => {
             const sender = players[socket.id];
             if (!sender) return;
-
+            if (sender.narrationEnabled === false) return;
             if (!sender.activityLog) sender.activityLog = [];
             sender.activityLog.push(actionDescription);
             
@@ -6671,9 +6672,9 @@ io.on("connection", (socket) => {
 
     //ADMIN & GAME MASTER TOOLS
         socket.on("admin_refresh_npcs", () => {
-        console.log("Admin: Refreshing all NPCs.");
-        deadNPCs = {}; 
-        io.emit("force_npc_reset"); 
+            console.log("Admin: Refreshing all NPCs.");
+            deadNPCs = {}; 
+            io.emit("force_npc_reset"); 
             });
         socket.on("admin_action", (data) => {
             const target = io.sockets.sockets.get(data.targetId);
@@ -6836,6 +6837,7 @@ io.on("connection", (socket) => {
             socket.on("force_ai_action", async (instruction) => {
             const player = players[socket.id];
             if (!player) return;
+            if (player.narrationEnabled === false) return;
             if(player.name!="Unknown"){
             console.log(`[Force AI Action] Triggered by client for ${player.name}: ${instruction}`);
             }
