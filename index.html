@@ -3874,17 +3874,17 @@
         this.isChallenger = false; // <--- ADD THIS LINE
       ////////
       // Add these inside constructor()
-    this.camDist = 2.5;   // How many tiles to pull the camera back
-    this.camZ = .5;      // Camera height (0.5 is normal eye level, 1.2 is above the walls)
-    this.pitch = 0;     // Horizon shift (positive numbers = looking down)
+      this.camDist = 2.5;   // How many tiles to pull the camera back
+      this.camZ = .5;      // Camera height (0.5 is normal eye level, 1.2 is above the walls)
+      this.pitch = 0;     // Horizon shift (positive numbers = looking down)
      this.cameraMode = 'first_person'; // Can be 'hybrid' or 'first_person'
-    //tutorial w high priestess stuff
-        this.card= [];
-        this.card[0] = new Card(2, 0);//hp
-        this.card[1] = new Card(0, 0);//fool
-        this.card[2] = new Card(6, 0);//lovers
-        this.card[3] = new Card(8, 0)//str
-        this.card[4] = new Card(13, 0)//death
+      //tutorial w high priestess stuff
+          this.card= [];
+          this.card[0] = new Card(2, 0);//hp
+          this.card[1] = new Card(0, 0);//fool
+          this.card[2] = new Card(6, 0);//lovers
+          this.card[3] = new Card(8, 0)//str
+          this.card[4] = new Card(13, 0)//death
       //PLAYER STATS
         this.level = 0;
         this.power = 100;
@@ -5989,10 +5989,7 @@
             
             // Trigger A: Facing a wall too closely
             // FIXED: Changed 1.5 to 0.8 so it only triggers on the immediate next block
-            let checkFrontX = Math.floor(this.x + dirX * 0.8);
-            let checkFrontY = Math.floor(this.y + dirY * 0.8);
-            if (this.isWall(checkFrontX, checkFrontY)) targetPOVDist = 0;
-
+            
             // Trigger B: Sprite in front of me (Blocking view)
             if (targetPOVDist > 0) {
                 for (let npc of this.npcs) {
@@ -6027,12 +6024,23 @@
             this.isFirstPerson = true;
             this.camZ = 0.5;   // Eye level
             this.pitch = 0;    // Level horizon
+            this.zScale = 1.0; // Normal wall height
         } else {
-            // --- YOUR THIRD PERSON SETTINGS ---
+            // --- THIRD PERSON SETTINGS ---
             this.isFirstPerson = false;
-            // FIXED: Changed from 1.5 to 1.0 to eliminate the hollow roof bleed
-            this.camZ = 1.0;   // Flush with the ceiling
-            this.pitch = -100; // Looking down
+            
+            // 1. MUST be 1.0. This makes the camera sit perfectly flush 
+            // with the top of the walls, hiding the hollow inside!
+            this.camZ = 1.0;   
+            
+            // 2. DYNAMIC PITCH: Instead of a hardcoded number, we subtract 
+            // a fraction of the screen height. This guarantees the horizon 
+            // is always pushed to the top 15% of your phone screen!
+            this.pitch = -(viewH / 3); 
+            
+            // 3. Modest Stretch: 1.5 gives them a nice tall "pillar" look 
+            // without warping the floor grid into a funhouse mirror.
+            this.zScale = 1.5; 
         }
 
         // 5. Finalize Coordinates
@@ -6751,13 +6759,16 @@
         // --- 1. THE FIX: SAFE DISTANCE CALCULATION ---
         let perpWallDist;
         
-        // If we hit a boundary or a math error, just draw a fake wall far away
-        if (isNaN(mapX) || isNaN(mapY) || isNaN(rayDirX) || isNaN(rayDirY) || rayDirX === 0 || rayDirY === 0) {
+        // Only trigger the hard-reset if the numbers are literally broken (NaN)
+        if (isNaN(mapX) || isNaN(mapY) || isNaN(rayDirX) || isNaN(rayDirY)) {
             perpWallDist = 100; // Force a far distance so it just renders black fog
         } else {
-            // Normal calculation
-            if (side === 0) perpWallDist = (mapX - camX + (1 - stepX) / 2) / rayDirX;
-            else            perpWallDist = (mapY - camY + (1 - stepY) / 2) / rayDirY;
+            // Normal calculation. We only check for 0 on the specific axis we hit!
+            if (side === 0) {
+                perpWallDist = (rayDirX === 0) ? 100 : (mapX - camX + (1 - stepX) / 2) / rayDirX;
+            } else {
+                perpWallDist = (rayDirY === 0) ? 100 : (mapY - camY + (1 - stepY) / 2) / rayDirY;
+            }
         }
         
         // Safety check: if the distance somehow still becomes negative or NaN, force it positive
@@ -6769,7 +6780,9 @@
           this.zBuffer[stripX] = perpWallDist;
 
           // --- THE MAGIC 3RD PERSON MATH ---
-          const lineHeight = viewH / perpWallDist;
+          // --- THE MAGIC 3RD PERSON MATH ---
+          // Multiply by zScale to stretch the walls vertically!
+          const lineHeight = (viewH * this.zScale) / perpWallDist;
           const horizon = (viewH / 2) + this.pitch;
           
           // Shift walls down based on camera height and distance
@@ -7106,51 +7119,56 @@
         // 2. --- NEW: FLOOR CASTING ---// We only draw the floor if there is space below the wall
         if (drawEnd < viewH) {
             
-        // Calculate the coordinates of the wall's base on the map
-        let floorXWall, floorYWall;
-        if (side === 0 && rayDirX > 0) { floorXWall = mapX;       floorYWall = mapY + wallHitX; }
-        else if (side === 0 && rayDirX < 0) { floorXWall = mapX + 1.0; floorYWall = mapY + wallHitX; }
-        else if (side === 1 && rayDirY > 0) { floorXWall = mapX + wallHitX; floorYWall = mapY; }
-        else                                { floorXWall = mapX + wallHitX; floorYWall = mapY + 1.0; }
+            // Calculate the coordinates of the wall's base on the map
+            let floorXWall, floorYWall;
+            if (side === 0 && rayDirX > 0) { floorXWall = mapX;       floorYWall = mapY + wallHitX; }
+            else if (side === 0 && rayDirX < 0) { floorXWall = mapX + 1.0; floorYWall = mapY + wallHitX; }
+            else if (side === 1 && rayDirY > 0) { floorXWall = mapX + wallHitX; floorYWall = mapY; }
+            else                                { floorXWall = mapX + wallHitX; floorYWall = mapY + 1.0; }
 
-        let distWall = perpWallDist;
-        let distPlayer = 0.0;
+            let distWall = perpWallDist;
+            let distPlayer = 0.0;
 
-        // Iterate pixels from bottom of wall to bottom of screen
-        for (let y = drawEnd; y < viewH; y++) {
-            // Calculate distance to this specific floor pixel
-            let currentDist = viewH / (2.0 * y - viewH); 
+            // SAFTEY: Ensure we only draw floors BELOW the horizon line!
+            // If y is above the horizon, the distance math becomes negative and breaks.
+            let startFloorY = Math.max(drawEnd, Math.floor(horizon) + 1);
 
-            let weight = (currentDist - distPlayer) / (distWall - distPlayer);
+            // Iterate pixels from bottom of wall to bottom of screen
+            for (let y = startFloorY; y < viewH; y++) {
+                
+                // --- THE MATH FIX IS HERE ---
+                // We replaced the hardcoded 1st-person math with Pitch and Height (camZ) awareness!
+                // Calculate distance to this specific floor pixel (now accounting for zScale!)
+            let currentDist = (viewH * this.zScale * this.camZ) / (y - horizon);
 
-            let currentFloorX = weight * floorXWall + (1.0 - weight) * camX;
-            let currentFloorY = weight * floorYWall + (1.0 - weight) * camY;
-            // Get the tile at this floor position
-            // Get the tile at this floor position
-            let floorMapX = Math.floor(currentFloorX);
-            let floorMapY = Math.floor(currentFloorY);
+                let weight = (currentDist - distPlayer) / (distWall - distPlayer);
 
-            // 1. Boundary Check (UPGRADED WITH ISNAN)
-            if (isNaN(floorMapX) || isNaN(floorMapY) || floorMapX < 0 || floorMapX >= this.maze[0].length || floorMapY < 0 || floorMapY >= this.maze.length) {
-                continue; // Skip boundaries safely!
-            }
+                let currentFloorX = weight * floorXWall + (1.0 - weight) * camX;
+                let currentFloorY = weight * floorYWall + (1.0 - weight) * camY;
+                
+                // Get the tile at this floor position
+                let floorMapX = Math.floor(currentFloorX);
+                let floorMapY = Math.floor(currentFloorY);
 
-            let tile = this.maze[floorMapY][floorMapX];
+                // 1. Boundary Check
+                if (isNaN(floorMapX) || isNaN(floorMapY) || floorMapX < 0 || floorMapX >= this.maze[0].length || floorMapY < 0 || floorMapY >= this.maze.length) {
+                    continue; // Skip boundaries safely!
+                }
 
-            // 2. THE GOLDEN RULE: 
-            // If it's a standard floor (0), DON'T DRAW ANYTHING!
-            // Let the background gradient show through.
-            if (tile === 0) continue; 
+                let tile = this.maze[floorMapY][floorMapX];
 
-            // 3. Only if it is special (like -1), do we pay the cost to draw it
-            let color = this.floorColors[tile];
-            
-            if (color) {
-                ctx.fillStyle = color;
-              ctx.fillRect(viewX + stripX, viewY + y, width + 0.5, 1);        
+                // 2. THE GOLDEN RULE: 
+                if (tile === 0) continue; 
+
+                // 3. Draw it!
+                let color = this.floorColors[tile];
+                if (color) {
+                    ctx.fillStyle = color;
+                    // (Ensure viewY is included here so it doesn't break on mobile screens!)
+                    ctx.fillRect(viewX + stripX, viewY + y, width + 0.5, 1);        
+                }
             }
         }
-        }  
       } 
       drawMinimap(ctx, viewX, viewY, viewW, viewH) {
         if (!this.maze || this.maze.length === 0 || !this.maze[0]) return;
@@ -7393,9 +7411,13 @@
                 hover = 0.4; // Make them float in the air
             }
             // 2. Short ground creatures (Imps, Goblins, Gnomes, Snakes)
-            else if (sprite.type === 56 || sprite.type === 54 || sprite.type === 75 || sprite.type === 75.1 || sprite.type === 89) {
+            else if (sprite.type === 56 || sprite.type === 75 || sprite.type === 75.1 || sprite.type === 89) {
                 scale = 0.5; // Half a block tall
                 hover = -.25; // On the ground
+            }
+            else if (sprite.type === 41|| sprite.type === 54 ) {
+                scale = 0.65; // Half a block tall
+                hover = -.15; // On the ground
             }
             // 3. Floating medium creatures (Shade, Sylph)
             else if (sprite.type === 42 || sprite.type === 86 || sprite.type === 61.1) {
@@ -7411,19 +7433,19 @@
                 scale = 1; // Taller than the walls!
                 hover = 0.0;
             }
+            if ((sprite.alignment == 'ally'&& !sprite.isPlayer)) {
+                scale = .75; // Taller than the walls!
+                hover = -.15;
+            }
             // Calculate Base Screen Dimensions
             const spriteScreenX = Math.floor((viewW / 2) * (1 + transformX / transformY));
-            const spriteSize = Math.abs(Math.floor((viewH / transformY) * scale)); 
+        // Multiply viewH by this.zScale in all 3 places!
+            const spriteSize = Math.abs(Math.floor(((viewH * this.zScale) / transformY) * scale)); 
             
             // --- THE MAGIC 3RD PERSON Y-SHIFT (ANCHORED TO FLOOR) ---
             const horizon = (viewH / 2) + this.pitch;
-            
-            // This calculates exactly where the 3D floor is at this specific distance
-            const floorY = horizon + (viewH / transformY) * this.camZ;
-            
-            // This calculates how high off the floor the sprite should be floating
-            const hoverOffset = (viewH / transformY) * (hover + (sprite.zHeight || 0));
-            
+            const floorY = horizon + ((viewH * this.zScale) / transformY) * this.camZ;
+            const hoverOffset = ((viewH * this.zScale) / transformY) * (hover + (sprite.zHeight || 0));
             // Subtracting spriteSize draws it from the bottom up, anchoring feet to the floor!
             // --- THE FIX: ADD + viewY TO ACCOUNT FOR MOBILE SCREEN PADDING ---
             const drawStartY = Math.floor(floorY - spriteSize - hoverOffset) + viewY;
