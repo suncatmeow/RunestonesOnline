@@ -3140,28 +3140,40 @@
             }
         });
 
-        // 4. DRAW THE GOLDEN ROADS (The Web Network)
-        // We drill these AFTER the zones are built so the techniques don't trap the player!
-        const drawCorridor = (x1, y1, x2, y2) => {
-            let cx = x1, cy = y1;
-            while (cx !== x2 || cy !== y2) {
-                if (Math.random() > 0.5 && cx !== x2) cx += (x2 > cx) ? 1 : -1;
-                else if (cy !== y2) cy += (y2 > cy) ? 1 : -1;
-                
-                // Carve a 2-tile wide safe path
-                for(let w = 0; w <= 1; w++) {
-                    for(let h = 0; h <= 1; h++) {
-                        if(grid[cy+h] && grid[cy+h][cx+w] !== undefined) grid[cy+h][cx+w] = 0;
+       // 4. DRAW THE ORGANIC ROADS (The Drunkard's Walk)
+        const drawOrganicCorridor = (zoneA, zoneB) => {
+            let cx = zoneA.x;
+            let cy = zoneA.y;
+            
+            while (getDist(cx, cy, zoneB.x, zoneB.y) > zoneB.r + 1) {
+                if (Math.random() > 0.3) {
+                    if (Math.abs(zoneB.x - cx) > Math.abs(zoneB.y - cy)) {
+                        cx += (zoneB.x > cx) ? 1 : -1;
+                    } else {
+                        cy += (zoneB.y > cy) ? 1 : -1;
                     }
+                } else {
+                    Math.random() > 0.5 ? (cx += Math.random() > 0.5 ? 1 : -1) : (cy += Math.random() > 0.5 ? 1 : -1);
+                }
+
+                cx = Math.max(2, Math.min(maxC - 3, cx));
+                cy = Math.max(2, Math.min(maxR - 3, cy));
+
+                if (getDist(cx, cy, zoneA.x, zoneA.y) > zoneA.r + 1) {
+                    grid[cy][cx] = 0;
+                    if(grid[cy][cx+1] !== undefined) grid[cy][cx+1] = 0;
+                    if(grid[cy+1] && grid[cy+1][cx] !== undefined) grid[cy+1][cx] = 0;
+                    if(grid[cy+1] && grid[cy+1][cx+1] !== undefined) grid[cy+1][cx+1] = 0;
                 }
             }
         };
-        
-        // Connect Bastion -> Ruins -> Arena -> Lair -> Bastion (A complete circuit!)
-        drawCorridor(zones[0].x, zones[0].y, zones[3].x, zones[3].y); 
-        drawCorridor(zones[3].x, zones[3].y, zones[2].x, zones[2].y); 
-        drawCorridor(zones[2].x, zones[2].y, zones[1].x, zones[1].y); 
-        drawCorridor(zones[1].x, zones[1].y, zones[0].x, zones[0].y); 
+
+        // Main Path: Bastion(0) -> Arena(2) -> Lair(1)
+        drawOrganicCorridor(bastion, arena); 
+        drawOrganicCorridor(arena, lair); 
+
+        // Side Quest: Bastion(0) -> Ruins(3) (Dead End)
+        drawOrganicCorridor(bastion, ruins); 
 
         // 5. CARVE THE WILDS (Cellular Automata on the mortar)
         for(let r = 2; r < 97; r++) {
@@ -3234,119 +3246,119 @@
         };
         }
     function generateTintagelHub() {
-    let maxR = 99, maxC = 99; 
-    let grid = Array(maxR).fill().map(() => Array(maxC).fill(0));
-    
-    let safeTiles = [];
-    let startX = 50, startY = 50; 
+        let maxR = 99, maxC = 99; 
+        let grid = Array(maxR).fill().map(() => Array(maxC).fill(0));
+        
+        let safeTiles = [];
+        let startX = 50, startY = 50; 
 
-    // Wall Types from BIOME_DB
-    const WALL_TREE = 23;    // Forest green/brown
-    const WALL_STONE = 25;   // Gray
-    const WALL_WOOD = 1;     // Brown
-    const WALL_DIRT = 3;     // Light brown
+        // Wall Types from BIOME_DB
+        const WALL_TREE = 23;    // Forest green/brown
+        const WALL_STONE = 25;   // Gray
+        const WALL_WOOD = 1;     // Brown
+        const WALL_DIRT = 3;     // Light brown
 
-    // 1. THE NORTH: Forest Labyrinth (Rows 0 to 29)
-    for (let r = 1; r < 29; r++) {
-        for (let c = 1; c < 98; c++) {
-            if (Math.random() < 0.45) grid[r][c] = WALL_TREE;
-        }
-    }
-    let pathC = 50;
-    for (let r = 29; r >= 1; r--) {
-        for (let w = -2; w <= 2; w++) {
-            if (grid[r] && grid[r][pathC + w] !== undefined) grid[r][pathC + w] = 0; 
-        }
-        pathC += Math.floor(Math.random() * 5) - 2;
-        pathC = Math.max(10, Math.min(88, pathC));
-    }
-
-    // 2. THE SOUTH: Goblin Refugee Camp (Rows 70 to 98)
-    for (let r = 72; r < 98; r++) {
-        for (let c = 10; c < 90; c++) {
-            if (Math.random() < 0.15) {
-                grid[r][c] = WALL_WOOD;
-                if (grid[r][c+1] !== undefined) grid[r][c+1] = WALL_WOOD;
-                if (grid[r+1] && grid[r+1][c] !== undefined) grid[r+1][c] = WALL_WOOD;
+        // 1. THE NORTH: Forest Labyrinth (Rows 0 to 29)
+        for (let r = 1; r < 29; r++) {
+            for (let c = 1; c < 98; c++) {
+                if (Math.random() < 0.45) grid[r][c] = WALL_TREE;
             }
         }
-    }
-
-    // 3. THE EAST: Hermit's Rocky Ridge (Cols 70 to 98, Rows 30 to 69)
-    for (let r = 30; r < 70; r++) {
-        for (let c = 72; c < 98; c++) {
-            if (Math.random() < 0.3) grid[r][c] = WALL_DIRT;
-            if (Math.random() < 0.1) grid[r][c] = WALL_STONE;
+        let pathC = 50;
+        for (let r = 29; r >= 1; r--) {
+            for (let w = -2; w <= 2; w++) {
+                if (grid[r] && grid[r][pathC + w] !== undefined) grid[r][pathC + w] = 0; 
+            }
+            pathC += Math.floor(Math.random() * 5) - 2;
+            pathC = Math.max(10, Math.min(88, pathC));
         }
-    }
 
-    // 4. THE WEST: Peaceful Village (Cols 1 to 29, Rows 40 to 60)
-    const buildHouse = (hr, hc) => {
-        for(let r=hr; r<hr+3; r++) {
-            for(let c=hc; c<hc+3; c++) {
-                if (r===hr || r===hr+2 || c===hc || c===hc+2) {
-                    grid[r][c] = Math.random() > 0.5 ? WALL_WOOD : WALL_DIRT; 
+        // 2. THE SOUTH: Goblin Refugee Camp (Rows 70 to 98)
+        for (let r = 72; r < 98; r++) {
+            for (let c = 10; c < 90; c++) {
+                if (Math.random() < 0.15) {
+                    grid[r][c] = WALL_WOOD;
+                    if (grid[r][c+1] !== undefined) grid[r][c+1] = WALL_WOOD;
+                    if (grid[r+1] && grid[r+1][c] !== undefined) grid[r+1][c] = WALL_WOOD;
+                }
+            }
+        }
+
+        // 3. THE EAST: Hermit's Rocky Ridge (Cols 70 to 98, Rows 30 to 69)
+        for (let r = 30; r < 70; r++) {
+            for (let c = 72; c < 98; c++) {
+                if (Math.random() < 0.3) grid[r][c] = WALL_DIRT;
+                if (Math.random() < 0.1) grid[r][c] = WALL_STONE;
+            }
+        }
+
+        // 4. THE WEST: Peaceful Village (Cols 1 to 29, Rows 40 to 60)
+        const buildHouse = (hr, hc) => {
+            for(let r=hr; r<hr+3; r++) {
+                for(let c=hc; c<hc+3; c++) {
+                    if (r===hr || r===hr+2 || c===hc || c===hc+2) {
+                        grid[r][c] = Math.random() > 0.5 ? WALL_WOOD : WALL_DIRT; 
+                    } else {
+                        safeTiles.push({x: c, y: r}); 
+                    }
+                }
+            }
+            grid[hr+2][hc+1] = 0; 
+        };
+
+        let vHouses = [[42, 10], [42, 20], [50, 5], [50, 15], [58, 10], [58, 20]];
+        vHouses.forEach(h => buildHouse(h[0], h[1]));
+
+        // 5. THE CENTER: Tintagel City Walls (39x39 Box)
+        let cityTop = 30, cityBottom = 69, cityLeft = 30, cityRight = 69;
+        for (let r = cityTop; r <= cityBottom; r++) {
+            for (let c = cityLeft; c <= cityRight; c++) {
+                if (r === cityTop || r === cityBottom || c === cityLeft || c === cityRight) {
+                    grid[r][c] = WALL_STONE; 
+                }
+            }
+        }
+
+        for (let w = -1; w <= 1; w++) {
+            grid[cityTop][50 + w] = 0;    
+            grid[cityBottom][50 + w] = 0; 
+            grid[50 + w][cityRight] = 0;  
+        }
+
+        for (let c = cityLeft + 2; c < cityRight - 2; c+=5) { if (c !== 50) buildHouse(cityTop + 1, c); }
+        for (let c = cityLeft + 2; c < cityRight - 2; c+=5) { if (c !== 50) buildHouse(cityBottom - 3, c); }
+
+        // 6. THE CENTER: The Castle 
+        let castTop = 43, castBottom = 56, castLeft = 43, castRight = 56;
+        for (let r = castTop; r <= castBottom; r++) {
+            for (let c = castLeft; c <= castRight; c++) {
+                if (r === castTop || r === castBottom || c === castLeft || c === castRight) {
+                    grid[r][c] = WALL_STONE; 
                 } else {
                     safeTiles.push({x: c, y: r}); 
                 }
             }
         }
-        grid[hr+2][hc+1] = 0; 
-    };
 
-    let vHouses = [[42, 10], [42, 20], [50, 5], [50, 15], [58, 10], [58, 20]];
-    vHouses.forEach(h => buildHouse(h[0], h[1]));
+        for (let r = castTop + 4; r <= castBottom; r++) { grid[r][48] = WALL_STONE; grid[r][52] = WALL_STONE; } 
+        for (let c = castLeft; c <= castRight; c++) { grid[47][c] = WALL_STONE; } 
 
-    // 5. THE CENTER: Tintagel City Walls (39x39 Box)
-    let cityTop = 30, cityBottom = 69, cityLeft = 30, cityRight = 69;
-    for (let r = cityTop; r <= cityBottom; r++) {
-        for (let c = cityLeft; c <= cityRight; c++) {
-            if (r === cityTop || r === cityBottom || c === cityLeft || c === cityRight) {
-                grid[r][c] = WALL_STONE; 
+        grid[castBottom][50] = 0; 
+        grid[47][50] = 0;         
+        grid[52][48] = 0; grid[52][52] = 0; 
+
+        startX = 50;
+        startY = 45;
+        // --- MAP ALL VALID FLOORS ONCE ---
+        let floorTiles = [];
+        for (let r = 1; r < maxR - 1; r++) {
+            for (let c = 1; c < maxC - 1; c++) {
+                if (grid[r][c] === 0) floorTiles.push({ x: c, y: r });
             }
         }
-    }
-
-    for (let w = -1; w <= 1; w++) {
-        grid[cityTop][50 + w] = 0;    
-        grid[cityBottom][50 + w] = 0; 
-        grid[50 + w][cityRight] = 0;  
-    }
-
-    for (let c = cityLeft + 2; c < cityRight - 2; c+=5) { if (c !== 50) buildHouse(cityTop + 1, c); }
-    for (let c = cityLeft + 2; c < cityRight - 2; c+=5) { if (c !== 50) buildHouse(cityBottom - 3, c); }
-
-    // 6. THE CENTER: The Castle 
-    let castTop = 43, castBottom = 56, castLeft = 43, castRight = 56;
-    for (let r = castTop; r <= castBottom; r++) {
-        for (let c = castLeft; c <= castRight; c++) {
-            if (r === castTop || r === castBottom || c === castLeft || c === castRight) {
-                grid[r][c] = WALL_STONE; 
-            } else {
-                safeTiles.push({x: c, y: r}); 
-            }
-        }
-    }
-
-    for (let r = castTop + 4; r <= castBottom; r++) { grid[r][48] = WALL_STONE; grid[r][52] = WALL_STONE; } 
-    for (let c = castLeft; c <= castRight; c++) { grid[47][c] = WALL_STONE; } 
-
-    grid[castBottom][50] = 0; 
-    grid[47][50] = 0;         
-    grid[52][48] = 0; grid[52][52] = 0; 
-
-    startX = 50;
-    startY = 45;
-    // --- MAP ALL VALID FLOORS ONCE ---
-    let floorTiles = [];
-    for (let r = 1; r < maxR - 1; r++) {
-        for (let c = 1; c < maxC - 1; c++) {
-            if (grid[r][c] === 0) floorTiles.push({ x: c, y: r });
-        }
-    }
 
 
-    return { grid, startX, startY, bossX: 90, bossY: 50, safeTiles,floorTiles }; 
+        return { grid, startX, startY, bossX: 90, bossY: 50, safeTiles,floorTiles }; 
     }
     function buildServerHubs() {
             let tData = generateTintagelHub();
