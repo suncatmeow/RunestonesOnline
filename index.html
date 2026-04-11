@@ -7331,470 +7331,384 @@
           }
       }
       castWallRay(rayDirX, rayDirY, stripX, viewX, viewY, viewW, viewH, width = 1, camX, camY) {
-          let mapX = Math.floor(camX);
-          let mapY = Math.floor(camY);
-              const deltaDistX = (rayDirX === 0) ? 1e30 : Math.abs(1 / rayDirX);
+        let mapX = Math.floor(camX);
+        let mapY = Math.floor(camY);
+        const deltaDistX = (rayDirX === 0) ? 1e30 : Math.abs(1 / rayDirX);
         const deltaDistY = (rayDirY === 0) ? 1e30 : Math.abs(1 / rayDirY);
-              let stepX, stepY, sideDistX, sideDistY;
-          if (rayDirX < 0) { stepX = -1; sideDistX = (camX - mapX) * deltaDistX; }
-          else { stepX = 1; sideDistX = (mapX + 1 - camX) * deltaDistX; }
-          if (rayDirY < 0) { stepY = -1; sideDistY = (camY - mapY) * deltaDistY; }
-          else { stepY = 1; sideDistY = (mapY + 1 - camY) * deltaDistY; }
-              let hit = 0, side;
-              let wallID = 1;
+        let stepX, stepY, sideDistX, sideDistY;
 
-        while (!hit) {
-        if (sideDistX < sideDistY) { sideDistX += deltaDistX; mapX += stepX; side = 0; }
-        else { sideDistY += deltaDistY; mapY += stepY; side = 1; }
-        
-        // Add the isNaN checks here!
-        if (isNaN(mapY) || isNaN(mapX) || mapY < 0 || mapY >= this.maze.length || mapX < 0 || mapX >= this.maze[0].length) {
-            hit = 1;
-            wallID = 19; 
-            break; 
-        } // If the ray goes out of bounds, pretend it hit a solid wall and stop.
-          
-          if (this.explored[mapY] && this.explored[mapY][mapX] !== undefined) {
-              this.explored[mapY][mapX] = 1;
-          }
-          const tileID = this.maze[mapY][mapX];
-          if (tileID > 0) { 
-            hit = 1;
-            wallID = tileID;
-          }
-          
-          if (this.explored[mapY] && this.explored[mapY][mapX] !== undefined) {
-              this.explored[mapY][mapX] = 1;
-          }
-          
-        }
+        if (rayDirX < 0) { stepX = -1; sideDistX = (camX - mapX) * deltaDistX; }
+        else { stepX = 1; sideDistX = (mapX + 1 - camX) * deltaDistX; }
+        if (rayDirY < 0) { stepY = -1; sideDistY = (camY - mapY) * deltaDistY; }
+        else { stepY = 1; sideDistY = (mapY + 1 - camY) * deltaDistY; }
 
-        // --- 1. THE FIX: SAFE DISTANCE CALCULATION ---
-        let perpWallDist;
+        ctx.globalAlpha = 1.0; 
+        const horizon = (viewH / 2) + this.pitch; // Calculate horizon globally
         
-        // Only trigger the hard-reset if the numbers are literally broken (NaN)
-        if (isNaN(mapX) || isNaN(mapY) || isNaN(rayDirX) || isNaN(rayDirY)) {
-            perpWallDist = 100; // Force a far distance so it just renders black fog
-        } else {
-            // Normal calculation. We only check for 0 on the specific axis we hit!
-            if (side === 0) {
-                perpWallDist = (rayDirX === 0) ? 100 : (mapX - camX + (1 - stepX) / 2) / rayDirX;
-            } else {
-                perpWallDist = (rayDirY === 0) ? 100 : (mapY - camY + (1 - stepY) / 2) / rayDirY;
+        // ==========================================
+        // 1. MULTI-HIT DDA RAYCASTING
+        // ==========================================
+        let hitBlocks = [];
+        const toweringWalls = [2, 3, 13, 15, 19, 22, 23, 27, 41, 42, 43, 62, 63]; 
+        let currentShortWall = null; 
+
+        while (true) {
+            let side;
+            if (sideDistX < sideDistY) { sideDistX += deltaDistX; mapX += stepX; side = 0; }
+            else { sideDistY += deltaDistY; mapY += stepY; side = 1; }
+
+            if (isNaN(mapY) || isNaN(mapX) || mapY < 0 || mapY >= this.maze.length || mapX < 0 || mapX >= this.maze[0].length) {
+                let perpWallDist = (side === 0) ? (rayDirX === 0 ? 100 : (mapX - camX + (1 - stepX) / 2) / rayDirX) 
+                                                : (rayDirY === 0 ? 100 : (mapY - camY + (1 - stepY) / 2) / rayDirY);
+                if (currentShortWall) currentShortWall.exitDist = perpWallDist;
+                hitBlocks.push({ wallID: 19, side: side, mapX: mapX, mapY: mapY, perpWallDist: perpWallDist, exitDist: perpWallDist + 1 });
+                break; 
             }
-        }
-        
-        // Safety check: if the distance somehow still becomes negative or NaN, force it positive
-        if (isNaN(perpWallDist) || perpWallDist <= 0) {
-            perpWallDist = 0.1;
-        }
 
-          this.zBuffer[stripX] = perpWallDist;
+            if (this.explored[mapY] && this.explored[mapY][mapX] !== undefined) {
+                this.explored[mapY][mapX] = 1;
+            }
 
-          // --- THE MAGIC 3RD PERSON MATH ---
-          // Multiply by zScale to stretch the walls vertically!
-          const lineHeight = (viewH * this.zScale) / perpWallDist;
-          const horizon = (viewH / 2) + this.pitch;
-          
-          // Shift walls down based on camera height and distance
-          const zShift = lineHeight * (this.camZ - 0.5); 
-
-        const trueDrawStart = -lineHeight / 2 + horizon + zShift;
-        let drawStart = Math.max(0, trueDrawStart);      
-
-        // List of wall IDs that should act like towering pillars (Wood, Bark, and Leaves)
-        // Add any other IDs here that you want to touch the sky!
-        const toweringWalls = [2, 3,13]; 
-        
-        if (toweringWalls.includes(wallID)) {
-            drawStart = 0; // Stretches ONLY these specific walls to the top of the screen
-        }
-
-        const drawEnd = Math.min(viewH, lineHeight / 2 + horizon + zShift); // --- COLOR & TEXTURE LOGIC ---
-        let colorStr = this.wallColors[wallID] || '#8b4513';
-        let { r: baseR, g: baseG, b: baseB } = this.parseColor(colorStr);
-
-        // 1. CALCULATE WHERE WE HIT THE WALL (0.0 to 1.0)
-        // This tells us if we hit the left edge, right edge, or center of the block.
-        let wallHitX; 
-        if (side == 0) wallHitX = this.y + perpWallDist * rayDirY;
-        else           wallHitX = this.x + perpWallDist * rayDirX;
-        wallHitX -= Math.floor(wallHitX); // Keep only decimal part
-
-        // 2. EFFECT: BRICK BORDER
-        // If we hit the very edge of the block (< 0.02 or > 0.98), make it dark.
-        // This draws a "border" around every wall tile.
-        //let isEdge = 0;//(wallHitX < 0.02 || wallHitX > 0.96);
-
-        // 3. EFFECT: NOISE / GRIT
-          let intensity = this.noiseLevels[wallID] !== undefined ? this.noiseLevels[wallID] : 20;
-          let noise = (Math.random() - 0.5) * intensity; 
-
-          // Only fade noise out if it's NOT our bright map
-          if (this.mapID !== -1) {
-              if (perpWallDist > 5) noise = 0; 
-          }// 4. APPLY LIGHTING (Your Hybrid Math)
-          let shade;
-          if (this.mapID === -1) {
-              // Map 50 is ALWAYS full bright
-              shade = 255; 
-          } else {
-              // Standard distance-based shading
-              shade = 150 / (perpWallDist + 0.5);
-              if (shade > 255) shade = 255;
-              // We still keep the 'side' darkening so the 3D corners look good!
-              if (side === 1) shade *= 0.7; 
-          }
-
-          // 5. COMBINE EFFECTS
-          let brightness = shade / 255;
-        
-        // Base color with lighting and noise applied
-        let r = baseR * brightness + noise;
-        let g = baseG * brightness + noise;
-        let b = baseB * brightness + noise;
-
-       
-        // --- 3D PROCEDURAL TEXTURES ---
-        let drawFullStrip = true; 
-
-        // A. WOOD GRAIN / REAL BARK (Tiles 2, 27)
-        if ([2,3,15].includes(wallID)) {
-            if ([].includes(this.mapID)) {//SCRATCHES ON WALL
-           // 1. Draw the standard flat wall first 
-            // (It already has your distance distance shading applied!)
-            ctx.fillStyle = `rgb(${Math.floor(r)},${Math.floor(g)},${Math.floor(b)})`;
-            ctx.fillRect(viewX + stripX, viewY + drawStart, width + 0.5, drawEnd - drawStart);
-            drawFullStrip = false; // Tell the engine we handled the drawing
-
-            // 2. THE CRACKS (Overlaying small dark spots)
-            ctx.fillStyle = `rgba(15, 10, 10, 0.9)`; // Deep dark crevice color
-
-            // CRACK 1: Wavy upper fissure
-            // The Y-position of the crack waves up and down based on where we hit the wall
-            let crack1Y = 0.3 + 0.15 * Math.sin(wallHitX * 12 + mapX * 4); 
+            const tileID = this.maze[mapY][mapX];
             
-            // We use another wave to "break" the line so it isn't continuous
-            if (Math.sin(wallHitX * 35 + mapY) > 0.2) {
-                let yPos = viewY + trueDrawStart + (lineHeight * crack1Y);
-                
-                // Only draw if the crack is actually visible on screen
-                if (yPos >= viewY + drawStart && yPos <= viewY + drawEnd) {
-                    // Randomize the thickness of the crack (1 to 4 pixels)
-                    let crackThick = 1 + Math.abs(Math.cos(wallHitX * 20)) * 3;
-                    ctx.fillRect(viewX + stripX, yPos, width + 0.5, crackThick);
-                }
-            }
+            if (tileID > 0) { 
+                let perpWallDist = (side === 0) ? (rayDirX === 0 ? 100 : (mapX - camX + (1 - stepX) / 2) / rayDirX) 
+                                                : (rayDirY === 0 ? 100 : (mapY - camY + (1 - stepY) / 2) / rayDirY);
 
-            // CRACK 2: Jagged lower diagonal fissure
-            let crack2Y = 0.7 - 0.2 * Math.cos(wallHitX * 7 - mapX * 2);
-            
-            if (Math.cos(wallHitX * 28 + mapX) > 0.0) {
-                let yPos = viewY + trueDrawStart + (lineHeight * crack2Y);
-                if (yPos >= viewY + drawStart && yPos <= viewY + drawEnd) {
-                    let crackThick = 1 + Math.abs(Math.sin(wallHitX * 15)) * 4;
-                    ctx.fillRect(viewX + stripX, yPos, width + 0.5, crackThick);
-                }
-            }
-            // CRACK 3: A sharp, branching middle fracture
-            let crack3Y = 0.5 + 0.1 * Math.sin(wallHitX * 22 - mapY * 3);
-            
-            // We use a higher frequency sine wave (45) so it looks like a dotted/broken line
-            if (Math.sin(wallHitX * 45 + mapX) > 0.5) {
-                 let yPos = viewY + trueDrawStart + (lineHeight * crack3Y);
-                 if (yPos >= viewY + drawStart && yPos <= viewY + drawEnd) {
-                     ctx.fillRect(viewX + stripX, yPos, width + 0.5, 2);
-                 }
-            }
+                if (isNaN(perpWallDist) || perpWallDist <= 0) perpWallDist = 0.1;
+                let exitDist = Math.min(sideDistX, sideDistY);
 
-           
-            } else {
-
-                // REAL TREE BARK (Layered Noise)
-                // Combine high-frequency and low-frequency waves for irregular grooves
-                let wave1 = Math.sin(wallHitX * Math.PI * 14); 
-                let wave2 = Math.sin(wallHitX * Math.PI * 5);  
-                let bark = (wave1 * 0.6) + (wave2 * 0.4);
-
-                if (bark > 0.4) {
-                    r *= 0.3; g *= 0.3; b *= 0.3; // Deep shadowed fissures
-                } else if (bark < -0.4) {
-                    r *= 1.1; g *= 1.1; b *= 1.1; // Peeling outer bark highlights
+                if (toweringWalls.includes(tileID)) {
+                    if (currentShortWall) currentShortWall.exitDist = perpWallDist;
+                    hitBlocks.push({ wallID: tileID, side: side, mapX: mapX, mapY: mapY, perpWallDist: perpWallDist, exitDist: exitDist });
+                    break;
                 } else {
-                    r *= 0.8; g *= 0.8; b *= 0.8; // Mid-tone rough wood
+                    if (!currentShortWall) {
+                        currentShortWall = { wallID: tileID, side: side, mapX: mapX, mapY: mapY, perpWallDist: perpWallDist, exitDist: exitDist };
+                        hitBlocks.push(currentShortWall);
+                    } else {
+                        currentShortWall.exitDist = exitDist;
+                    }
                 }
+            } else {
+                currentShortWall = null;
+            }
+        }
 
-                // Draw the base bark strip
+        this.zBuffer[stripX] = hitBlocks.length > 0 ? hitBlocks[0].perpWallDist : 100;
+
+        // ==========================================
+        // 2. TRUE 3D FLOOR CASTING (Decoupled!)
+        // ==========================================
+        // We now draw the entire floor BEFORE the walls using pure math. 
+        // This completely fills all gaps behind short blocks!
+        let startFloorY = Math.max(0, Math.floor(horizon) + 1);
+        let currentFloorColor = null;
+        let colorStartY = startFloorY;
+
+        for (let y = startFloorY; y < viewH; y += 1) {
+            let currentDist = (viewH * this.zScale * this.camZ) / (y - horizon);
+            
+            // Pure mathematical ray projection
+            let currentFloorX = camX + rayDirX * currentDist;
+            let currentFloorY = camY + rayDirY * currentDist;
+            
+            let floorMapX = Math.floor(currentFloorX);
+            let floorMapY = Math.floor(currentFloorY);
+
+            let color = null;
+            if (!isNaN(floorMapX) && !isNaN(floorMapY) && floorMapX >= 0 && floorMapX < this.maze[0].length && floorMapY >= 0 && floorMapY < this.maze.length) {
+                let tile = this.maze[floorMapY][floorMapX];
+                if (tile !== 0) color = this.floorColors[tile];
+            }
+
+            if (color !== currentFloorColor) {
+                if (currentFloorColor !== null) {
+                    ctx.fillStyle = currentFloorColor;
+                    ctx.fillRect(viewX + stripX, viewY + colorStartY, width + 0.5, (y - colorStartY) + 1);
+                }
+                currentFloorColor = color;
+                colorStartY = y;
+            }
+        }
+        
+        if (currentFloorColor !== null) {
+            ctx.fillStyle = currentFloorColor;
+            ctx.fillRect(viewX + stripX, viewY + colorStartY, width + 0.5, (viewH - colorStartY) + 1);
+        }
+
+        // ==========================================
+        // 3. BACK-TO-FRONT WALL RENDERING
+        // ==========================================
+        // Now we paint the walls over the solid floor, eliminating any triangle gaps.
+        for (let i = hitBlocks.length - 1; i >= 0; i--) {
+            let hit = hitBlocks[i];
+            let wallID = hit.wallID;
+            let side = hit.side;
+            let mapX = hit.mapX;
+            let mapY = hit.mapY;
+            let perpWallDist = hit.perpWallDist;
+
+            const lineHeight = (viewH * this.zScale) / perpWallDist;
+            const zShift = lineHeight * (this.camZ - 0.5); 
+
+            const trueDrawStart = -lineHeight / 2 + horizon + zShift;
+            let drawStart = Math.floor(Math.max(0, trueDrawStart));      
+
+            if (toweringWalls.includes(wallID)) drawStart = 0; 
+            const drawEnd = Math.ceil(Math.min(viewH, lineHeight / 2 + horizon + zShift)) + 1; 
+
+            let colorStr = this.wallColors[wallID] || '#8b4513';
+            let { r: baseR, g: baseG, b: baseB } = this.parseColor(colorStr);
+            if (isNaN(baseR) || isNaN(baseG) || isNaN(baseB)) {
+                baseR = 139; baseG = 69; baseB = 19; 
+            }
+
+            // --- DRAW THE ROOF ---
+            if (!toweringWalls.includes(wallID) && this.camZ > 0.5) {
+                let exitLineHeight = (viewH * this.zScale) / hit.exitDist;
+                let exitZShift = exitLineHeight * (this.camZ - 0.5);
+                let roofBackY = -exitLineHeight / 2 + horizon + exitZShift;
+                
+                let roofStartY = Math.floor(Math.max(0, roofBackY));
+                let roofEndY = drawStart + 1; 
+                
+                if (roofEndY > roofStartY) {
+                    let roofR = Math.max(0, Math.min(255, baseR * 0.4));
+                    let roofG = Math.max(0, Math.min(255, baseG * 0.4));
+                    let roofB = Math.max(0, Math.min(255, baseB * 0.4));
+                    
+                    ctx.fillStyle = `rgb(${Math.floor(roofR)},${Math.floor(roofG)},${Math.floor(roofB)})`;
+                    ctx.fillRect(viewX + stripX, viewY + roofStartY, width + 0.5, roofEndY - roofStartY);
+                }
+            }
+
+            let wallHitX; 
+            if (side == 0) wallHitX = camY + perpWallDist * rayDirY;
+            else           wallHitX = camX + perpWallDist * rayDirX;
+            wallHitX -= Math.floor(wallHitX);
+
+            let intensity = this.noiseLevels[wallID] !== undefined ? this.noiseLevels[wallID] : 20;
+            let noise = (Math.random() - 0.5) * intensity; 
+
+            if (this.mapID !== -1) {
+                if (perpWallDist > 5) noise = 0; 
+            }
+
+            let shade;
+            if (this.mapID === -1) {
+                shade = 255; 
+            } else {
+                shade = 150 / (perpWallDist + 0.5);
+                if (shade > 255) shade = 255;
+                if (side === 1) shade *= 0.7; 
+            }
+
+            let brightness = shade / 255;
+            let r = baseR * brightness + noise;
+            let g = baseG * brightness + noise;
+            let b = baseB * brightness + noise;
+
+            let drawFullStrip = true; 
+
+            // A. WOOD GRAIN / REAL BARK
+            if ([2,3,15].includes(wallID)) {
+                if ([].includes(this.mapID)) { 
+                    ctx.fillStyle = `rgb(${Math.floor(r)},${Math.floor(g)},${Math.floor(b)})`;
+                    ctx.fillRect(viewX + stripX, viewY + drawStart, width + 0.5, drawEnd - drawStart);
+                    drawFullStrip = false; 
+
+                    ctx.fillStyle = `rgba(15, 10, 10, 0.9)`; 
+
+                    let crack1Y = 0.3 + 0.15 * Math.sin(wallHitX * 12 + mapX * 4); 
+                    if (Math.sin(wallHitX * 35 + mapY) > 0.2) {
+                        let yPos = viewY + trueDrawStart + (lineHeight * crack1Y);
+                        if (yPos >= viewY + drawStart && yPos <= viewY + drawEnd) {
+                            let crackThick = 1 + Math.abs(Math.cos(wallHitX * 20)) * 3;
+                            ctx.fillRect(viewX + stripX, yPos, width + 0.5, crackThick);
+                        }
+                    }
+
+                    let crack2Y = 0.7 - 0.2 * Math.cos(wallHitX * 7 - mapX * 2);
+                    if (Math.cos(wallHitX * 28 + mapX) > 0.0) {
+                        let yPos = viewY + trueDrawStart + (lineHeight * crack2Y);
+                        if (yPos >= viewY + drawStart && yPos <= viewY + drawEnd) {
+                            let crackThick = 1 + Math.abs(Math.sin(wallHitX * 15)) * 4;
+                            ctx.fillRect(viewX + stripX, yPos, width + 0.5, crackThick);
+                        }
+                    }
+
+                    let crack3Y = 0.5 + 0.1 * Math.sin(wallHitX * 22 - mapY * 3);
+                    if (Math.sin(wallHitX * 45 + mapX) > 0.5) {
+                         let yPos = viewY + trueDrawStart + (lineHeight * crack3Y);
+                         if (yPos >= viewY + drawStart && yPos <= viewY + drawEnd) {
+                             ctx.fillRect(viewX + stripX, yPos, width + 0.5, 2);
+                         }
+                    }
+                } else {
+                    let wave1 = Math.sin(wallHitX * Math.PI * 14); 
+                    let wave2 = Math.sin(wallHitX * Math.PI * 5);  
+                    let bark = (wave1 * 0.6) + (wave2 * 0.4);
+
+                    if (bark > 0.4) { r *= 0.3; g *= 0.3; b *= 0.3; } 
+                    else if (bark < -0.4) { r *= 1.1; g *= 1.1; b *= 1.1; } 
+                    else { r *= 0.8; g *= 0.8; b *= 0.8; }
+
+                    r = Math.max(0, Math.min(255, r)); g = Math.max(0, Math.min(255, g)); b = Math.max(0, Math.min(255, b));
+                    ctx.fillStyle = `rgb(${Math.floor(r)},${Math.floor(g)},${Math.floor(b)})`;
+                    ctx.fillRect(viewX + stripX, viewY + drawStart, width + 0.5, drawEnd - drawStart);
+                    drawFullStrip = false;
+                }
+            }
+            // B. BRICK MASONRY
+            else if ([1,33,35,11,73,75].includes(wallID)) {
                 r = Math.max(0, Math.min(255, r)); g = Math.max(0, Math.min(255, g)); b = Math.max(0, Math.min(255, b));
                 ctx.fillStyle = `rgb(${Math.floor(r)},${Math.floor(g)},${Math.floor(b)})`;
                 ctx.fillRect(viewX + stripX, viewY + drawStart, width + 0.5, drawEnd - drawStart);
                 drawFullStrip = false;
 
-              
-            }
-        }
-        // B. BRICK MASONRY (Running Bond Pattern)
-        else if ([1,33,35,11,73,75].includes(wallID)) {
-            // Draw the base solid brick color first
-            r = Math.max(0, Math.min(255, r)); g = Math.max(0, Math.min(255, g)); b = Math.max(0, Math.min(255, b));
-            ctx.fillStyle = `rgb(${Math.floor(r)},${Math.floor(g)},${Math.floor(b)})`;
-            ctx.fillRect(viewX + stripX, viewY + drawStart, width + 0.5, drawEnd - drawStart);
-            drawFullStrip = false;
+                const rows = 5; 
+                const rowHeight = lineHeight / rows;
+                ctx.fillStyle = `rgba(0,0,0,0.7)`; 
 
-            // Masonry Setup
-            const rows = 5; // How many bricks high the wall is
-            const rowHeight = lineHeight / rows;
-            ctx.fillStyle = `rgba(0,0,0,0.7)`; // Mortar color
+                for (let i = 0; i < rows; i++) {
+                    let yOffset = viewY + trueDrawStart + (i * rowHeight);
+                    ctx.fillRect(viewX + stripX, yOffset, width + 0.5, 3);
 
-            for (let i = 0; i < rows; i++) {
-                let yOffset = viewY + trueDrawStart + (i * rowHeight);
-
-                // 1. Draw horizontal mortar line for every row
-                ctx.fillRect(viewX + stripX, yOffset, width + 0.5, 3);
-
-                // 2. Draw vertical mortar staggered by row (even vs odd)
-                let isEvenRow = (i % 2 === 0);
-                let drawVertMortar = false;
-
-                if (isEvenRow && (wallHitX < 0.05 || wallHitX > 0.95)) drawVertMortar = true; // Edges
-                if (!isEvenRow && (wallHitX > 0.45 && wallHitX < 0.55)) drawVertMortar = true; // Center
-
-                if (drawVertMortar) {
-                    // Draw mortar down to the next row
-                    ctx.fillRect(viewX + stripX, yOffset, width + 0.5, rowHeight);
-                }
-            }
-        }//C.THICK STEEL PLATES
-        else if ([5,45].includes(wallID)) {
-            // Vertical mortar (darken the left and right edges of the block)
-            let isVertMortar = (wallHitX < 0.05 || wallHitX > 0.95);
-            if (isVertMortar) { r *= 0.3; g *= 0.3; b *= 0.3; }
-
-            // Clamp colors for the main strip
-            r = Math.max(0, Math.min(255, r)); g = Math.max(0, Math.min(255, g)); b = Math.max(0, Math.min(255, b));
-            
-            // Draw the main vertical strip
-            ctx.fillStyle = `rgb(${Math.floor(r)},${Math.floor(g)},${Math.floor(b)})`;
-            ctx.fillRect(viewX + stripX, viewY + drawStart, width + 0.5, drawEnd - drawStart);
-            drawFullStrip = false; // We handled the drawing!
-
-            // Add Horizontal Mortar lines by drawing tiny dark rectangles over the strip we just drew
-            ctx.fillStyle = `rgba(0,0,0,0.6)`; // Dark grout shadow
-            let h33 = lineHeight * 0.33; // 1/3 down the wall
-            let h66 = lineHeight * 0.66; // 2/3 down the wall
-            
-            // Only draw horizontal lines if we aren't already drawing a vertical mortar line
-            if (!isVertMortar) {
-                ctx.fillRect(viewX + stripX, viewY + trueDrawStart + h33, width + 0.5, 3);
-                ctx.fillRect(viewX + stripX, viewY + trueDrawStart + h66, width + 0.5, 3);
-            }
-        }
-        // --- NEW TEXTURES BELOW ---
-        // D. HORIZONTAL WOOD PLANKS / CABIN WALL (e.g., Tile 42)
-        else if ([7].includes(wallID)) {
-            drawFullStrip = false; // We are drawing this row by row
-
-            const numPlanks = 8; // How many horizontal boards make up the wall
-            const plankHeight = lineHeight / numPlanks;
-
-            for (let i = 0; i < numPlanks; i++) {
-                // Calculate the true starting Y for this specific plank
-                let yOffset = viewY + trueDrawStart + (i * plankHeight);
-                
-                // Only draw the parts of the plank that are actually on-screen
-                let plankStart = Math.max(viewY + drawStart, yOffset);
-                let plankEnd = Math.min(viewY + drawEnd, yOffset + plankHeight);
-                let actualDrawHeight = plankEnd - plankStart;
-
-                if (actualDrawHeight > 0) {
-                    // 1. VERTICAL CUTS (Stagger the boards like hardwood flooring)
                     let isEvenRow = (i % 2 === 0);
-                    let isVerticalGap = false;
-                    
-                    if (isEvenRow && wallHitX > 0.48 && wallHitX < 0.52) isVerticalGap = true; // Cut in the middle
-                    if (!isEvenRow && (wallHitX < 0.02 || wallHitX > 0.98)) isVerticalGap = true; // Cut at the edges
+                    let drawVertMortar = false;
 
-                    if (isVerticalGap) {
-                        // Draw a deep dark shadow for the gap between boards end-to-end
-                        ctx.fillStyle = `rgba(10, 5, 0, 0.9)`;
+                    if (isEvenRow && (wallHitX < 0.05 || wallHitX > 0.95)) drawVertMortar = true; 
+                    if (!isEvenRow && (wallHitX > 0.45 && wallHitX < 0.55)) drawVertMortar = true; 
+
+                    if (drawVertMortar) {
+                        ctx.fillRect(viewX + stripX, yOffset, width + 0.5, rowHeight);
+                    }
+                }
+            }
+            // C. THICK STEEL PLATES
+            else if ([5,45].includes(wallID)) {
+                let isVertMortar = (wallHitX < 0.05 || wallHitX > 0.95);
+                if (isVertMortar) { r *= 0.3; g *= 0.3; b *= 0.3; }
+
+                r = Math.max(0, Math.min(255, r)); g = Math.max(0, Math.min(255, g)); b = Math.max(0, Math.min(255, b));
+                
+                ctx.fillStyle = `rgb(${Math.floor(r)},${Math.floor(g)},${Math.floor(b)})`;
+                ctx.fillRect(viewX + stripX, viewY + drawStart, width + 0.5, drawEnd - drawStart);
+                drawFullStrip = false; 
+
+                ctx.fillStyle = `rgba(0,0,0,0.6)`; 
+                let h33 = lineHeight * 0.33; 
+                let h66 = lineHeight * 0.66; 
+                
+                if (!isVertMortar) {
+                    ctx.fillRect(viewX + stripX, viewY + trueDrawStart + h33, width + 0.5, 3);
+                    ctx.fillRect(viewX + stripX, viewY + trueDrawStart + h66, width + 0.5, 3);
+                }
+            }
+            // D. HORIZONTAL WOOD PLANKS
+            else if ([7].includes(wallID)) {
+                ctx.fillStyle = `rgb(${Math.floor(r * 0.2)}, ${Math.floor(g * 0.2)}, ${Math.floor(b * 0.2)})`;
+                ctx.fillRect(viewX + stripX, viewY + drawStart, width + 0.5, drawEnd - drawStart);
+                drawFullStrip = false; 
+
+                const numPlanks = 8; 
+                const plankHeight = lineHeight / numPlanks;
+
+                for (let i = 0; i < numPlanks; i++) {
+                    let yOffset = viewY + trueDrawStart + (i * plankHeight);
+                    let plankStart = Math.max(viewY + drawStart, yOffset);
+                    let plankEnd = Math.min(viewY + drawEnd, yOffset + plankHeight);
+                    let actualDrawHeight = plankEnd - plankStart;
+
+                    if (actualDrawHeight > 0) {
+                        let isEvenRow = (i % 2 === 0);
+                        let isVerticalGap = false;
+                        
+                        if (isEvenRow && wallHitX > 0.48 && wallHitX < 0.52) isVerticalGap = true; 
+                        if (!isEvenRow && (wallHitX < 0.02 || wallHitX > 0.98)) isVerticalGap = true; 
+
+                        if (isVerticalGap) {
+                            ctx.fillStyle = `rgba(10, 5, 0, 0.9)`;
+                            ctx.fillRect(viewX + stripX, plankStart, width + 0.5, actualDrawHeight);
+                            continue; 
+                        }
+
+                        let plankSeed = Math.abs(Math.sin(mapX * 3.1 + mapY * 7.2 + i * 2.8));
+                        let plankR = r * (0.8 + plankSeed * 0.4); 
+                        let plankG = g * (0.8 + plankSeed * 0.4);
+                        let plankB = b * (0.8 + plankSeed * 0.4);
+
+                        let grain = Math.sin(wallHitX * Math.PI * (12 + plankSeed * 6) + i);
+                        if (grain > 0.6) {
+                            plankR *= 0.7; plankG *= 0.7; plankB *= 0.7; 
+                        }
+
+                        if (isEvenRow && (wallHitX > 0.45 && wallHitX < 0.47 || wallHitX > 0.53 && wallHitX < 0.55)) {
+                            plankR *= 0.3; plankG *= 0.3; plankB *= 0.3;
+                        }
+                        if (!isEvenRow && (wallHitX > 0.04 && wallHitX < 0.06 || wallHitX > 0.94 && wallHitX < 0.96)) {
+                            plankR *= 0.3; plankG *= 0.3; plankB *= 0.3;
+                        }
+
+                        plankR = Math.max(0, Math.min(255, plankR));
+                        plankG = Math.max(0, Math.min(255, plankG));
+                        plankB = Math.max(0, Math.min(255, plankB));
+
+                        ctx.fillStyle = `rgb(${Math.floor(plankR)},${Math.floor(plankG)},${Math.floor(plankB)})`;
                         ctx.fillRect(viewX + stripX, plankStart, width + 0.5, actualDrawHeight);
-                        continue; // Move to the next plank, we don't draw wood here!
-                    }
 
-                    // 2. PLANK COLOR VARIATION
-                    // Use the row index (i) and map coordinates to generate a unique "seed" for this board
-                    let plankSeed = Math.abs(Math.sin(mapX * 3.1 + mapY * 7.2 + i * 2.8));
-                    
-                    // Slightly randomize the base color for each board so they don't blend together
-                    let plankR = r * (0.8 + plankSeed * 0.4); 
-                    let plankG = g * (0.8 + plankSeed * 0.4);
-                    let plankB = b * (0.8 + plankSeed * 0.4);
-
-                    // 3. HORIZONTAL WOOD GRAIN
-                    // Stretch the sine wave horizontally using wallHitX. 
-                    // Add 'i' so the grain pattern doesn't perfectly match the board above it.
-                    let grain = Math.sin(wallHitX * Math.PI * (12 + plankSeed * 6) + i);
-                    if (grain > 0.6) {
-                        plankR *= 0.7; plankG *= 0.7; plankB *= 0.7; // Darken for grain lines
-                    }
-
-                    // 4. NAILS (Optional detail)
-                    // Put two little dark dots at the ends of the boards
-                    if (isEvenRow && (wallHitX > 0.45 && wallHitX < 0.47 || wallHitX > 0.53 && wallHitX < 0.55)) {
-                        plankR *= 0.3; plankG *= 0.3; plankB *= 0.3;
-                    }
-                    if (!isEvenRow && (wallHitX > 0.04 && wallHitX < 0.06 || wallHitX > 0.94 && wallHitX < 0.96)) {
-                        plankR *= 0.3; plankG *= 0.3; plankB *= 0.3;
-                    }
-
-                    // Clamp RGB
-                    plankR = Math.max(0, Math.min(255, plankR));
-                    plankG = Math.max(0, Math.min(255, plankG));
-                    plankB = Math.max(0, Math.min(255, plankB));
-
-                    // DRAW THE WOOD
-                    ctx.fillStyle = `rgb(${Math.floor(plankR)},${Math.floor(plankG)},${Math.floor(plankB)})`;
-                    ctx.fillRect(viewX + stripX, plankStart, width + 0.5, actualDrawHeight);
-
-                    // 5. HORIZONTAL GAP (The shadow underneath each plank)
-                    if (plankEnd < viewY + drawEnd) {
-                        ctx.fillStyle = `rgba(10, 5, 0, 0.8)`;
-                        ctx.fillRect(viewX + stripX, plankEnd - 2, width + 0.5, 2); // 2px thick gap
+                        if (plankEnd < viewY + drawEnd) {
+                            ctx.fillStyle = `rgba(10, 5, 0, 0.8)`;
+                            ctx.fillRect(viewX + stripX, plankEnd - 2, width + 0.5, 2); 
+                        }
                     }
                 }
             }
-        }
-        // E. CORRUGATED METAL / SHIPPING CONTAINERS (e.g., Tile 40)
-        else if ([].includes(wallID)) {
-            // Tight, sharp sine wave for ridges
-            let ridge = Math.sin(wallHitX * Math.PI * 20);
-            
-            if (ridge > 0.7) { 
-                r *= 1.5; g *= 1.5; b *= 1.5; // High specular reflection on peak
-            } else if (ridge < -0.2) {
-                r *= 0.5; g *= 0.5; b *= 0.5; // Deep shadow in the groove
-            }
+            // F. SCI-FI TERMINAL 
+            else if ([59].includes(wallID)) {
+                r *= 0.3; g *= 0.3; b *= 0.3;
+                if (wallHitX < 0.05 || wallHitX > 0.95) { r *= 2; g *= 2; b *= 2; }
 
-           
-        }
+                r = Math.max(0, Math.min(255, r)); g = Math.max(0, Math.min(255, g)); b = Math.max(0, Math.min(255, b));
+                ctx.fillStyle = `rgb(${Math.floor(r)},${Math.floor(g)},${Math.floor(b)})`;
+                ctx.fillRect(viewX + stripX, viewY + drawStart, width + 0.5, drawEnd - drawStart);
+                drawFullStrip = false;
 
-        // F. SCI-FI TERMINAL / POWER NODE (e.g., Tile 41)
-        else if ([59].includes(wallID)) {
-            // Darken base panel
-            r *= 0.3; g *= 0.3; b *= 0.3;
-            
-            // Bright glowing edges
-            if (wallHitX < 0.05 || wallHitX > 0.95) { r *= 2; g *= 2; b *= 2; }
+                ctx.fillStyle = `rgba(0, ${Math.random()*255}, 0, 0.9)`; 
+                let glowY = viewY + trueDrawStart + (lineHeight * 0.5);
+                ctx.fillRect(viewX + stripX, glowY, width + 0.5, 4);
 
-            // Draw the base panel strip
-            r = Math.max(0, Math.min(255, r)); g = Math.max(0, Math.min(255, g)); b = Math.max(0, Math.min(255, b));
-            ctx.fillStyle = `rgb(${Math.floor(r)},${Math.floor(g)},${Math.floor(b)})`;
-            ctx.fillRect(viewX + stripX, viewY + drawStart, width + 0.5, drawEnd - drawStart);
-            drawFullStrip = false;
-
-            // Add a glowing horizontal scanner/power line across the middle
-            ctx.fillStyle = `rgba(0, ${Math.random()*255}, 0, 0.9)`; // Neon Cyan
-            let glowY = viewY + trueDrawStart + (lineHeight * 0.5);
-            ctx.fillRect(viewX + stripX, glowY, width + 0.5, 4);
-
-            // Add a vertical glowing node in the direct center
-            if (wallHitX > 0.45 && wallHitX < 0.55) {
-                let nodeStartY = viewY + trueDrawStart + (lineHeight * 0.3);
-                ctx.fillRect(viewX + stripX, nodeStartY, width + 0.5, lineHeight * 0.4);
-            }
-        }
-        // G. STRIPED PATTERN TREE?
-        else if ([13,23].includes(wallID)) {
-            // Sharp, bright vertical specular highlights
-            if (wallHitX > 0.35 && wallHitX < 0.4) { r *= 1.6; g *= 1.6; b *= 1.6; }
-            if (wallHitX > 0.75 && wallHitX < 0.85) { r *= 1.4; g *= 1.4; b *= 1.4; }
-            
-            // Darken the edges to make it look faceted
-            if (wallHitX < 0.1 || wallHitX > 0.9) { r *= 0.7; g *= 0.7; b *= 0.7; }
-        }
-        // H. SMOOTH with SHADOWED EDGES//MAGIC
-        else if ([9,21,31,25].includes(wallID)) {
-            // Smooth gradient sheen (bright in the middle, dark at edges)
-            let sheen = Math.sin(wallHitX * Math.PI); 
-            r *= (0.7 + sheen * 0.5);
-            g *= (0.7 + sheen * 0.5);
-            b *= (0.7 + sheen * 0.5);
-        }
-        // I. Striped Pattern
-        else if ([].includes(wallID)) {
-            // High contrast dappling
-            let dapple = Math.cos(wallHitX * Math.PI * 18);
-            if (dapple > 0.3) { r *= 0.4; g *= 0.4; b *= 0.4; } // Deep leaf shadows
-        }
-        // J. JAGGED CAVE ROCK / BEDROCK (e.g., Tile 10)
-        else if ([].includes(wallID)) {
-            
-        }
-        // Clamp final values (ensure 0-255)
-        r = Math.max(0, Math.min(255, r));
-        g = Math.max(0, Math.min(255, g));
-        b = Math.max(0, Math.min(255, b));
-        
-        // 1. DRAW THE WALL
-        if (drawFullStrip) {
-            ctx.fillStyle = `rgb(${Math.floor(r)},${Math.floor(g)},${Math.floor(b)})`;
-            ctx.fillRect(viewX + stripX, viewY + drawStart, width + 0.5, drawEnd - drawStart);
-        }
-        
-        // 2. --- NEW: FLOOR CASTING ---// We only draw the floor if there is space below the wall
-        if (drawEnd < viewH) {
-            
-            // Calculate the coordinates of the wall's base on the map
-            let floorXWall, floorYWall;
-            if (side === 0 && rayDirX > 0) { floorXWall = mapX;       floorYWall = mapY + wallHitX; }
-            else if (side === 0 && rayDirX < 0) { floorXWall = mapX + 1.0; floorYWall = mapY + wallHitX; }
-            else if (side === 1 && rayDirY > 0) { floorXWall = mapX + wallHitX; floorYWall = mapY; }
-            else                                { floorXWall = mapX + wallHitX; floorYWall = mapY + 1.0; }
-
-            let distWall = perpWallDist;
-            let distPlayer = 0.0;
-
-            // SAFTEY: Ensure we only draw floors BELOW the horizon line!
-            // If y is above the horizon, the distance math becomes negative and breaks.
-            let startFloorY = Math.max(drawEnd, Math.floor(horizon) + 1);
-
-            // Iterate pixels from bottom of wall to bottom of screen
-            for (let y = startFloorY; y < viewH; y++) {
-                
-                // --- THE MATH FIX IS HERE ---
-                // We replaced the hardcoded 1st-person math with Pitch and Height (camZ) awareness!
-                // Calculate distance to this specific floor pixel (now accounting for zScale!)
-            let currentDist = (viewH * this.zScale * this.camZ) / (y - horizon);
-
-                let weight = (currentDist - distPlayer) / (distWall - distPlayer);
-
-                let currentFloorX = weight * floorXWall + (1.0 - weight) * camX;
-                let currentFloorY = weight * floorYWall + (1.0 - weight) * camY;
-                
-                // Get the tile at this floor position
-                let floorMapX = Math.floor(currentFloorX);
-                let floorMapY = Math.floor(currentFloorY);
-
-                // 1. Boundary Check
-                if (isNaN(floorMapX) || isNaN(floorMapY) || floorMapX < 0 || floorMapX >= this.maze[0].length || floorMapY < 0 || floorMapY >= this.maze.length) {
-                    continue; // Skip boundaries safely!
-                }
-
-                let tile = this.maze[floorMapY][floorMapX];
-
-                // 2. THE GOLDEN RULE: 
-                if (tile === 0) continue; 
-
-                // 3. Draw it!
-                let color = this.floorColors[tile];
-                if (color) {
-                    ctx.fillStyle = color;
-                    // (Ensure viewY is included here so it doesn't break on mobile screens!)
-                    ctx.fillRect(viewX + stripX, viewY + y, width + 0.5, 1);        
+                if (wallHitX > 0.45 && wallHitX < 0.55) {
+                    let nodeStartY = viewY + trueDrawStart + (lineHeight * 0.3);
+                    ctx.fillRect(viewX + stripX, nodeStartY, width + 0.5, lineHeight * 0.4);
                 }
             }
-        }
-      } 
+            // G. STRIPED PATTERN TREE
+            else if ([13,23].includes(wallID)) {
+                if (wallHitX > 0.35 && wallHitX < 0.4) { r *= 1.6; g *= 1.6; b *= 1.6; }
+                if (wallHitX > 0.75 && wallHitX < 0.85) { r *= 1.4; g *= 1.4; b *= 1.4; }
+                if (wallHitX < 0.1 || wallHitX > 0.9) { r *= 0.7; g *= 0.7; b *= 0.7; }
+            }
+            // H. SMOOTH MAGIC
+            else if ([9,21,31,25].includes(wallID)) {
+                let sheen = Math.sin(wallHitX * Math.PI); 
+                r *= (0.7 + sheen * 0.5);
+                g *= (0.7 + sheen * 0.5);
+                b *= (0.7 + sheen * 0.5);
+            }
+
+            r = Math.max(0, Math.min(255, r));
+            g = Math.max(0, Math.min(255, g));
+            b = Math.max(0, Math.min(255, b));
+            
+            // DRAW THE BASE STRIP
+            if (drawFullStrip) {
+                ctx.fillStyle = `rgb(${Math.floor(r)},${Math.floor(g)},${Math.floor(b)})`;
+                ctx.fillRect(viewX + stripX, viewY + drawStart, width + 0.5, drawEnd - drawStart);
+            }
+        } 
+    }
       drawMinimap(ctx, viewX, viewY, viewW, viewH) {
         if (!this.maze || this.maze.length === 0 || !this.maze[0]) return;
         const size = viewW * 0.2; 
@@ -8010,13 +7924,15 @@
             const sprite = spriteList[i]; 
             
             // CHANGED: Position relative to CAMERA, not Player
-            const spriteX = sprite.x - camX;
-            const spriteY = sprite.y - camY;
+            let spriteX = sprite.x - camX;
+            let spriteY = sprite.y - camY;
 
-            const invDet = 1.0 / (planeX * dirY - dirX * planeY);
-            const transformX = invDet * (dirY * spriteX - dirX * spriteY);
-            const transformY = invDet * (-planeY * spriteX + planeX * spriteY); // Depth
+            let invDet = 1.0 / (planeX * dirY - dirX * planeY);
+            let transformX = invDet * (dirY * spriteX - dirX * spriteY);
+            let transformY = invDet * (-planeY * spriteX + planeX * spriteY);
 
+            // --- ADD THIS 1-LINE FIX HERE ---
+            if (Math.abs(transformX) < 0.001) transformX = 0;
             // --- FIX 1: NEAR PLANE CLIPPING ---
             if (transformY <= .5) continue; 
             if (transformY > 24) continue; // Fog clipping
@@ -20386,115 +20302,114 @@
             }
         }, { passive: false }); // Disable the right-click menu so it doesn't interrupt gameplay
 
-  let activePointers = {};
-let initialPinchDist = null;
-let initialPinchCenterX = null; // NEW: Tracks 2-finger horizontal panning
-let isFreeLooking = false;
+    let activePointers = {};
+    let isFreeLooking = false;
 
-// Prevent the right-click menu from popping up
-window.addEventListener('contextmenu', e => e.preventDefault());
+    // NEW: This object stores the exact state of the screen and camera the moment fingers touch!
+    let touchStart = {
+        pinchDist: null,
+        panX: null,
+        camDist: null,
+        lookPan: null
+    };
 
-window.addEventListener('pointerdown', (e) => {
-    // Do NOT interfere if the player is trying to tap the Chat Box!
-    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    // Prevent the right-click menu from popping up
+    window.addEventListener('contextmenu', e => e.preventDefault());
 
-    activePointers[e.pointerId] = e;
-    let pointerKeys = Object.keys(activePointers);
+    window.addEventListener('pointerdown', (e) => {
+        // Do NOT interfere if the player is trying to tap the Chat Box!
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
 
-    // 2 FINGERS: Prepare to Zoom AND Pan
-    if (pointerKeys.length === 2) {
-        let p1 = activePointers[pointerKeys[0]];
-        let p2 = activePointers[pointerKeys[1]];
-        
-        // Base distance for zooming
-        let dx = p1.clientX - p2.clientX;
-        let dy = p1.clientY - p2.clientY;
-        initialPinchDist = Math.sqrt(dx*dx + dy*dy);
-        
-        // Base center-point for panning
-        initialPinchCenterX = (p1.clientX + p2.clientX) / 2;
-        return; 
-    }
+        activePointers[e.pointerId] = e;
+        let pointerKeys = Object.keys(activePointers);
 
-    // PC right-click: start free-look and stop movement
-    if (e.pointerType === 'mouse' && e.button === 2) {
-        if (typeof startGame !== 'undefined' && startGame === 'explore') {
-            isFreeLooking = true;
-        }
-        return; 
-    }
-
-    // Normal tap/click -> Walk/Interact
-    if (pointerKeys.length === 1 && typeof handleInput === 'function') {
-        handleInput(e);
-    }
-}, { passive: false });
-
-window.addEventListener('pointermove', (e) => {
-    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-
-    if (activePointers[e.pointerId]) activePointers[e.pointerId] = e;
-    let pointerKeys = Object.keys(activePointers);
-
-    // Mobile: 2-Finger Camera Controls
-    if (pointerKeys.length === 2 && initialPinchDist !== null && typeof Dungeon !== 'undefined') {
-        let p1 = activePointers[pointerKeys[0]];
-        let p2 = activePointers[pointerKeys[1]];
-        
-        // --- 1. ZOOM LOGIC (Pinch) ---
-        let dx = p1.clientX - p2.clientX;
-        let dy = p1.clientY - p2.clientY;
-        let currentPinchDist = Math.sqrt(dx*dx + dy*dy);
-        
-        if (!isNaN(currentPinchDist) && currentPinchDist > 0) {
-            let pinchDelta = initialPinchDist - currentPinchDist; 
-            Dungeon.camDist += pinchDelta * 0.05; 
-            if (Dungeon.camDist > 8) Dungeon.camDist = 8; 
-            if (Dungeon.camDist < 0) Dungeon.camDist = 0; 
-            initialPinchDist = currentPinchDist;
-        }
-
-        // --- 2. PAN LOGIC (Swipe) ---
-        if (initialPinchCenterX !== null) {
-            let currentCenterX = (p1.clientX + p2.clientX) / 2;
-            let panDelta = currentCenterX - initialPinchCenterX;
+        // 2 FINGERS: Lock in the starting anchors!
+        if (pointerKeys.length === 2 && typeof Dungeon !== 'undefined') {
+            let p1 = activePointers[pointerKeys[0]];
+            let p2 = activePointers[pointerKeys[1]];
             
-            // Adjust the 0.005 multiplier if you want the mobile pan to be faster/slower
-            Dungeon.lookPan -= panDelta * 0.005; 
-            initialPinchCenterX = currentCenterX;
+            let dx = p1.clientX - p2.clientX;
+            let dy = p1.clientY - p2.clientY;
+            
+            // Anchor the math to the exact moment the fingers hit the glass
+            touchStart.pinchDist = Math.sqrt(dx*dx + dy*dy);
+            touchStart.panX = (p1.clientX + p2.clientX) / 2;
+            touchStart.camDist = Dungeon.camDist;
+            touchStart.lookPan = Dungeon.lookPan;
+            return; 
         }
-        return;
-    }
 
-    // PC Free-look pan
-    if (isFreeLooking && typeof Dungeon !== 'undefined') {
-        Dungeon.lookPan -= e.movementX * 0.005; 
-    }
-});
+        // PC right-click: start free-look and stop movement
+        if (e.pointerType === 'mouse' && e.button === 2) {
+            if (typeof startGame !== 'undefined' && startGame === 'explore') isFreeLooking = true;
+            return; 
+        }
 
-const endPointer = (e) => {
-    delete activePointers[e.pointerId];
-    
-    // Clean up Mobile pinch/pan tracking when fingers lift
-    if (Object.keys(activePointers).length < 2) {
-        initialPinchDist = null;
+        // Normal tap/click -> Walk/Interact
+        if (pointerKeys.length === 1 && typeof handleInput === 'function') handleInput(e);
+    }, { passive: false });
+
+    window.addEventListener('pointermove', (e) => {
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+        if (activePointers[e.pointerId]) activePointers[e.pointerId] = e;
+        let pointerKeys = Object.keys(activePointers);
+
+        // Mobile: 2-Finger Absolute Tracking
+        if (pointerKeys.length === 2 && touchStart.pinchDist !== null && typeof Dungeon !== 'undefined') {
+            let p1 = activePointers[pointerKeys[0]];
+            let p2 = activePointers[pointerKeys[1]];
+            
+            // --- 1. ZOOM (Absolute Math) ---
+            let dx = p1.clientX - p2.clientX;
+            let dy = p1.clientY - p2.clientY;
+            let currentPinchDist = Math.sqrt(dx*dx + dy*dy);
+            
+            if (!isNaN(currentPinchDist) && currentPinchDist > 0) {
+                // Calculate distance from START, not frame-to-frame. 100% smooth!
+                let zoomOffset = (touchStart.pinchDist - currentPinchDist) * 0.02; 
+                Dungeon.camDist = touchStart.camDist + zoomOffset; 
+                
+                if (Dungeon.camDist > 8) Dungeon.camDist = 8; 
+                if (Dungeon.camDist < 0) Dungeon.camDist = 0; 
+            }
+
+            // --- 2. PAN (Absolute Math) ---
+            let currentPanX = (p1.clientX + p2.clientX) / 2;
+            let panOffset = currentPanX - touchStart.panX;
+            
+            // Apply offset directly to the starting camera angle
+            Dungeon.lookPan = touchStart.lookPan - (panOffset * 0.005); 
+            return;
+        }
+
+        // PC Free-look pan (Mice hardware handles deltas perfectly via movementX)
+        if (isFreeLooking && typeof Dungeon !== 'undefined') {
+            Dungeon.lookPan -= e.movementX * 0.005; 
+        }
+    });
+
+    const endPointer = (e) => {
+        delete activePointers[e.pointerId];
         
-        // Snap camera back to center when you let go of the 2-finger swipe
-        if (initialPinchCenterX !== null) {
-            initialPinchCenterX = null;
+        // Clean up Mobile tracking when fingers lift
+        if (Object.keys(activePointers).length < 2) {
+            touchStart.pinchDist = null;
+            touchStart.panX = null;
+            
+            // Snap camera back to center
             if (typeof Dungeon !== 'undefined') Dungeon.lookPan = 0;
         }
-    }
-    
-    // Clean up PC right-click tracking
-    if (e.pointerType === 'mouse' && e.button === 2) {
-        isFreeLooking = false;
-        if (typeof Dungeon !== 'undefined') Dungeon.lookPan = 0; 
-    }
-};
+        
+        // Clean up PC tracking
+        if (e.pointerType === 'mouse' && e.button === 2) {
+            isFreeLooking = false;
+            if (typeof Dungeon !== 'undefined') Dungeon.lookPan = 0; 
+        }
+    };
 
-window.addEventListener('pointerup', endPointer);
-window.addEventListener('pointercancel', endPointer);
+    window.addEventListener('pointerup', endPointer);
+    window.addEventListener('pointercancel', endPointer);
         //CHAT
     chatInput.addEventListener('input', function(e) {
       chatDraft = chatInput.value;
@@ -24332,8 +24247,8 @@ window.addEventListener('pointercancel', endPointer);
         tH = tY;
 
         //find table top-left(0,0) with table centered and equal padding on all sides
-        tX = dX/2;
-        tY = dY/2;
+        tX = Math.floor(dX / 2);
+        tY = Math.floor(dY / 2);
 
         //set x,y, width, height,length for all frames[to do]
       /////////ONLINE
