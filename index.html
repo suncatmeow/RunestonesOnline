@@ -160,19 +160,19 @@
           29: { type: 'buff', name: 'Haste',    castStat: 2, buffStat: 3, amount: 2, duration: 1800, visual: 'arc', auraColor: 'rgba(0, 0, 255, 0.6)' },
 
         // --- HIT-BASED WARDS (Armor) ---
-          66: { type: 'ward', name: 'Armor',    castStat: 2, hits: 3, visual: 'shield', auraColor: 'rgba(200, 200, 200, 0.8)' },
+          66: { type: 'ward', name: 'Armor',    castStat: 2, hits: 3, visual: 'shield', auraColor: 'rgba(0, 32, 0, 0.8)' },
 
         // --- DEBUFFS (Fired as Projectiles!) ---
           15: { type: 'debuff', name: 'Curse', castStat: 2, defStat: 0, debuffStat: 0, duration: 600, visual: 'aura', auraColor: 'rgba(128, 0, 128, 0.7)', color: [1,0,1], glow: '#800080', model3D: 'd4', isHoming: true },
           12: { type: 'debuff', name: 'Bind',  castStat: 2, defStat: 3, bind: true, duration: 450, visual: 'chains', auraColor: 'rgba(100, 100, 100, 0.8)', color: [1,1,1], glow: '#888888', model3D: 'd4', isHoming: true },
         // --- CONSUMABLE ITEMS (Static Buffs & Wards) ---
-          50: { type: 'item_buff', name: 'Sword',       buffStat: 0, amount: 1, duration: 1800, visual: 'arc', auraColor: 'rgba(255, 50, 50, 0.6)' },
-          64: { type: 'item_buff', name: 'Shield',      buffStat: 1, amount: 1, duration: 1800, visual: 'arc', auraColor: 'rgba(50, 255, 50, 0.6)' },
-          36: { type: 'item_buff', name: 'Hourglass',   buffStat: 3, amount: 1, duration: 1800, visual: 'arc', auraColor: 'rgba(255, 255, 50, 0.6)' },
-          22: { type: 'item_buff', name: 'Wand',        buffStat: 2, amount: 1, duration: 1800, visual: 'arc', auraColor: 'rgba(50, 255, 255, 0.6)' },
-          72: { type: 'item_buff', name: 'Magic Ring',  buffStat: 'all', amount: 2, duration: 1800, visual: 'arc', auraColor: 'rgba(255, 100, 255, 0.6)' },
+          50: { type: 'item_buff', name: 'Sword',       buffStat: 0, amount: 1, duration: 1800, visual: 'arc', auraColor: 'rgba(255, 255, 0, 0.6)' },
+          64: { type: 'item_buff', name: 'Shield',      buffStat: 1, amount: 1, duration: 1800, visual: 'arc', auraColor: 'rgba(0, 255, 0, 0.6)' },
+          36: { type: 'item_buff', name: 'Hourglass',   buffStat: 3, amount: 1, duration: 1800, visual: 'arc', auraColor: 'rgba(0, 0, 255, 0.6)' },
+          22: { type: 'item_buff', name: 'Wand',        buffStat: 2, amount: 1, duration: 1800, visual: 'arc', auraColor: 'rgba(255, 0, 0, 0.6)' },
+          72: { type: 'item_buff', name: 'Magic Ring',  buffStat: 'all', amount: 2, duration: 1800, visual: 'arc', auraColor: 'rgba(255, 255, 255, 0.6)' },
           
-          30: { type: 'item_ward', name: 'Protect Orb', hits: 3, visual: 'shield', auraColor: 'rgba(100, 150, 255, 0.8)' },
+          30: { type: 'item_ward', name: 'Protect Orb', hits: 3, visual: 'shield', auraColor: 'rgba(255, 0, 0, 0.8)' },
         //utility
           43: { type: 'item_teleport', name: 'Teleportation Crystal' },
     };//
@@ -1949,7 +1949,7 @@
             this.model.rs = 99; 
             this.state = 'wandering';
         }
-        if (this.type === 99) {
+        if (this.type === 9999) {
             this.model = new Dice('d4');
             this.model.setColor(0, 1, 1); // Cyan color
             this.model.setGlow('#00ffff'); // Cyan glow
@@ -3366,7 +3366,7 @@
                         }
                     }
                 } else {
-                    if (distToActualPlayer < 4 && dotProd > -0.2 && hasLOS && startGame === 'explore') {
+                    if (distToActualPlayer < 7 && hasLOS && startGame === 'explore') {
                         this.state = 'chasing';
                         this.speed = 1.5;
                         this.lastSeenX = playerX; 
@@ -6765,34 +6765,71 @@
         btnJournal.show(0, 9, 1, 1, 1, 'Journal', 'jrpg_btn', 1, 0);
         btnPOV.show(9.45, 2.275, .5, 1, 1, 'POV', 'jrpg_btn', 1, 0);
           
-        let intSides = this.stat[2][1];
-        let maxSlots = 2; 
-        if (intSides >= 6) maxSlots = 3;
-        if (intSides >= 8) maxSlots = 4;
-        if (intSides >= 10) maxSlots = 5;
-        if (intSides >= 12) maxSlots = 6;
+       // --- DYNAMIC SPELL SLOTS LAYOUT ---
+        const getDiceTier = (sides) => {
+            if (sides >= 20) return 5;
+            if (sides >= 12) return 4;
+            if (sides >= 10) return 3;
+            if (sides >= 8) return 2;
+            if (sides >= 6) return 1;
+            return 0;
+        };
 
-        let btnWidth = 1;
+        let monsterCap = 1 + getDiceTier(this.stat[0][1]);
+        let itemCap = 0 + getDiceTier(this.stat[1][1]);
+        let spellCap = 1 + getDiceTier(this.stat[2][1]);
+        let anyCap = 0 + getDiceTier(this.stat[3][1]);
+        
+        let maxSlots = Math.min(7, monsterCap + itemCap + spellCap + anyCap);
+
         let btnGap = 0.05;
-        let totalW = (maxSlots * btnWidth) + ((maxSlots - 1) * btnGap);
-        let startX = 5 - (totalW / 2); 
+        let btnWidth = 1.0;
 
-        let uiButtons = [
-            typeof btnSpell1 !== 'undefined' ? btnSpell1 : null,
-            typeof btnSpell2 !== 'undefined' ? btnSpell2 : null,
-            typeof btnSpell3 !== 'undefined' ? btnSpell3 : null,
-            typeof btnSpell4 !== 'undefined' ? btnSpell4 : null,
-            typeof btnSpell5 !== 'undefined' ? btnSpell5 : null,
-            typeof btnSpell6 !== 'undefined' ? btnSpell6 : null
-        ];
+        if (typeof window.uiSpellButtons !== 'undefined') {
+            let activeBtns = [];
+            
+            // 1. Gather all active cards in order (Slot 0, Slot 1, Slot 2...)
+            for (let i = 0; i < maxSlots; i++) {
+                let btn = window.uiSpellButtons[i];
+                if (btn && btn.assignedCard) {
+                    activeBtns.push(btn);
+                } else if (btn) {
+                    btn.visible = false;
+                }
+            }
+            
+            // Hide any leftover buttons beyond max slots
+            for (let i = maxSlots; i < window.uiSpellButtons.length; i++) {
+                if (window.uiSpellButtons[i]) window.uiSpellButtons[i].visible = false;
+            }
 
-        for (let i = 0; i < maxSlots; i++) {
-            let btn = uiButtons[i];
-            if (btn && btn.assignedCard) {
-                btn.show(startX + (i * (btnWidth + btnGap)), 9, btnWidth, 1, 1, btn.text, 'jrpg_btn', 1, 'spell');
+            // 2. THE EXPANSION MAGIC: Build from the center outwards
+            let visualOrder = [];
+            for (let i = 0; i < activeBtns.length; i++) {
+                if (i === 0 || i === 1) {
+                    // Slots 0 & 1 go in the middle
+                    visualOrder.push(activeBtns[i]);
+                } else if (i % 2 === 0) {
+                    // Even slots (2, 4, 6, 8) append to the RIGHT
+                    visualOrder.push(activeBtns[i]); 
+                } else {
+                    // Odd slots (3, 5, 7) prepend to the LEFT
+                    visualOrder.unshift(activeBtns[i]); 
+                }
+            }
+
+            // 3. Perfectly center the newly arranged group
+            let visibleCount = visualOrder.length;
+            let totalW = (visibleCount * btnWidth) + (Math.max(0, visibleCount - 1) * btnGap);
+            let startX = 5 - (totalW / 2);
+
+            // 4. Draw them left-to-right across the screen
+            for (let v = 0; v < visibleCount; v++) {
+                let btn = visualOrder[v];
+                btn.show(startX + (v * (btnWidth + btnGap)), 9, 1, btnWidth, 1, btn.text, 'jrpg_btn', 1, 'spell');
             }
         }
-
+        // ----------------------------------
         let currentTime = Date.now();
         if (currentTime - this.lastSpellShuffleTime > this.spellShuffleCooldown) {
             this.shuffleSpells();
@@ -6806,7 +6843,7 @@
             }
             lastsfxtime = Date.now();
         }
-    }
+        }
       renderTopDown(dt) {
         // --- INITIALIZATION SYNC ---
         // Force the hotbar to sync with the loaded save data on the very first frame
@@ -7220,35 +7257,71 @@
           btn2D3D.show(8.5, .5, 1, 1, 1, '3D', 'jrpg_btn', 1, 0);
           btnMove.show(5, 3, 5, 1, 1, '', 'd_pad', 1, 0);
 
-          // --- DYNAMIC SPELL SLOTS LAYOUT ---
-          let intSides = this.stat[2][1];
-          let maxSlots = 2; // <--- CHANGED: Default 1d4 now gives 2 slots
-          if (intSides >= 6) maxSlots = 3;
-          if (intSides >= 8) maxSlots = 4;
-          if (intSides >= 10) maxSlots = 5;
-          if (intSides >= 12) maxSlots = 6;
+         // --- DYNAMIC SPELL SLOTS LAYOUT ---
+        const getDiceTier = (sides) => {
+            if (sides >= 20) return 5;
+            if (sides >= 12) return 4;
+            if (sides >= 10) return 3;
+            if (sides >= 8) return 2;
+            if (sides >= 6) return 1;
+            return 0;
+        };
 
-          let btnWidth = 1;
-          let btnGap = 0.05;
-          let totalW = (maxSlots * btnWidth) + ((maxSlots - 1) * btnGap);
-          let startX = 5 - (totalW / 2); // Perfectly centers the hotbar on the screen!
+        let monsterCap = 1 + getDiceTier(this.stat[0][1]);
+        let itemCap = 0 + getDiceTier(this.stat[1][1]);
+        let spellCap = 1 + getDiceTier(this.stat[2][1]);
+        let anyCap = 0 + getDiceTier(this.stat[3][1]);
+        
+        let maxSlots = Math.min(7, monsterCap + itemCap + spellCap + anyCap);
 
-          let uiButtons = [
-              typeof btnSpell1 !== 'undefined' ? btnSpell1 : null,
-              typeof btnSpell2 !== 'undefined' ? btnSpell2 : null,
-              typeof btnSpell3 !== 'undefined' ? btnSpell3 : null,
-              typeof btnSpell4 !== 'undefined' ? btnSpell4 : null,
-              typeof btnSpell5 !== 'undefined' ? btnSpell5 : null,
-              typeof btnSpell6 !== 'undefined' ? btnSpell6 : null
-          ];
+        let btnGap = 0.05;
+        let btnWidth = 1.0;
 
-          for (let i = 0; i < maxSlots; i++) {
-              let btn = uiButtons[i];
-              if (btn && btn.assignedCard) {
-                  btn.show(startX + (i * (btnWidth + btnGap)), 9, btnWidth, 1, 1, btn.text, 'jrpg_btn', 1, 'spell');
-              }
-          }
-          // ----------------------------------
+        if (typeof window.uiSpellButtons !== 'undefined') {
+            let activeBtns = [];
+            
+            // 1. Gather all active cards in order (Slot 0, Slot 1, Slot 2...)
+            for (let i = 0; i < maxSlots; i++) {
+                let btn = window.uiSpellButtons[i];
+                if (btn && btn.assignedCard) {
+                    activeBtns.push(btn);
+                } else if (btn) {
+                    btn.visible = false;
+                }
+            }
+            
+            // Hide any leftover buttons beyond max slots
+            for (let i = maxSlots; i < window.uiSpellButtons.length; i++) {
+                if (window.uiSpellButtons[i]) window.uiSpellButtons[i].visible = false;
+            }
+
+            // 2. THE EXPANSION MAGIC: Build from the center outwards
+            let visualOrder = [];
+            for (let i = 0; i < activeBtns.length; i++) {
+                if (i === 0 || i === 1) {
+                    // Slots 0 & 1 go in the middle
+                    visualOrder.push(activeBtns[i]);
+                } else if (i % 2 === 0) {
+                    // Even slots (2, 4, 6, 8) append to the RIGHT
+                    visualOrder.push(activeBtns[i]); 
+                } else {
+                    // Odd slots (3, 5, 7) prepend to the LEFT
+                    visualOrder.unshift(activeBtns[i]); 
+                }
+            }
+
+            // 3. Perfectly center the newly arranged group
+            let visibleCount = visualOrder.length;
+            let totalW = (visibleCount * btnWidth) + (Math.max(0, visibleCount - 1) * btnGap);
+            let startX = 5 - (totalW / 2);
+
+            // 4. Draw them left-to-right across the screen
+            for (let v = 0; v < visibleCount; v++) {
+                let btn = visualOrder[v];
+                btn.show(startX + (v * (btnWidth + btnGap)), 9, 1, btnWidth, 1, btn.text, 'jrpg_btn', 1, 'spell');
+            }
+        }
+        // ----------------------------------
           // --- NEW: THE SPELL TIMER ---
           let currentTime = Date.now();
           if (currentTime - this.lastSpellShuffleTime > this.spellShuffleCooldown) {
@@ -7806,7 +7879,7 @@
                 ctx.fillRect(viewX + stripX, viewY + drawStart, width + 0.5, drawEnd - drawStart);
             }
         } 
-    }
+        }
       drawMinimap(ctx, viewX, viewY, viewW, viewH) {
         if (!this.maze || this.maze.length === 0 || !this.maze[0]) return;
         const size = viewW * 0.2; 
@@ -8045,7 +8118,7 @@
                 hover = 0;  // Keeps feet perfectly on the ground
             }
             // 1. Tiny / Flying things (Cards, Pixies, Wisps)
-            if (sprite.type === -27 || sprite.type === 60.1 || sprite.type === 60 || sprite.type === 23) {
+            if (sprite.type === -27 || sprite.type === 60.1 || sprite.type === 60 || sprite.type === 23|| sprite.type === 99) {
                 scale = 0.3; 
                 hover = 0.4; // Make them float in the air
             }
@@ -8667,15 +8740,12 @@
                           foundInHand = true;
                           console.log(`Ally died! Card permanently destroyed from Hand.`);
 
-                          // Instantly wipe the UI buttons
-                          if (i === 0 && typeof btnSpell1 !== 'undefined') btnSpell1.assignedCard = null;
-                          if (i === 1 && typeof btnSpell2 !== 'undefined') btnSpell2.assignedCard = null;
-                          if (i === 2 && typeof btnSpell3 !== 'undefined') btnSpell3.assignedCard = null;
-                          if (i === 3 && typeof btnSpell4 !== 'undefined') btnSpell4.assignedCard = null;
-                          if (i === 4 && typeof btnSpell5 !== 'undefined') btnSpell5.assignedCard = null;
-                          if (i === 5 && typeof btnSpell6 !== 'undefined') btnSpell6.assignedCard = null;
-                      }
-                  }
+                          // Instantly wipe the dynamic UI button
+                            if (typeof window.uiSpellButtons !== 'undefined' && window.uiSpellButtons[i]) {
+                                window.uiSpellButtons[i].assignedCard = null;
+                            }
+                        }
+                     }
 
                           // Fallback just in case it somehow got pushed back to extra
                           if (!foundInHand) {
@@ -10732,15 +10802,25 @@
         this.saveGame();
       }
       shuffleSpells() {
-            // 1. CALCULATE MAX SLOTS BASED ON INT (Index 2)
-            let intSides = this.stat[2][1];
-            let maxSlots = 2; // Baseline: 1d4 gives 2 slots (1 Monster, 1 Spell/Item)
-            if (intSides >= 6) maxSlots = 3;
-            if (intSides >= 8) maxSlots = 4;
-            if (intSides >= 10) maxSlots = 5;
-            if (intSides >= 12) maxSlots = 6;
+            // 1. CALCULATE TIER HELPER
+            const getDiceTier = (sides) => {
+                if (sides >= 20) return 5;
+                if (sides >= 12) return 4;
+                if (sides >= 10) return 3;
+                if (sides >= 8) return 2;
+                if (sides >= 6) return 1;
+                return 0; // Baseline 1d4
+            };
 
-            // 2. RESIZE HAND DYNAMICALLY
+            // 2. CALCULATE QUOTAS BASED ON DICE TIERS
+            let monsterCap = 1 + getDiceTier(this.stat[0][1]); // STR: 1 Base + Upgrades
+            let itemCap = 0 + getDiceTier(this.stat[1][1]);    // CON: 0 Base + Upgrades
+            let spellCap = 1 + getDiceTier(this.stat[2][1]);   // INT: 1 Base + Upgrades
+            let anyCap = 0 + getDiceTier(this.stat[3][1]);     // AGI: 0 Base + Upgrades
+
+            // Total theoretical slots (Capped at 20 to prevent array out-of-bounds)
+            let maxSlots = Math.min(7, monsterCap + itemCap + spellCap + anyCap);
+            // 3. RESIZE HAND DYNAMICALLY
             while (this.hand.length > maxSlots) {
                 let dropped = this.hand.pop();
                 if (dropped) this.extra.push(dropped);
@@ -10749,57 +10829,45 @@
                 this.hand.push(null);
             }
 
-            // 3. Identify UIDs of actively summoned allies to lock them
+            // 4. IDENTIFY LOCKED ALLIES
             let activeUIDs = [];
             if (this.activeSummons) {
                 activeUIDs = this.activeSummons.map(s => typeof s === 'object' ? s.uid : null).filter(id => id !== null);
             }
 
-            let uiButtons = [
-                typeof btnSpell1 !== 'undefined' ? btnSpell1 : null,
-                typeof btnSpell2 !== 'undefined' ? btnSpell2 : null,
-                typeof btnSpell3 !== 'undefined' ? btnSpell3 : null,
-                typeof btnSpell4 !== 'undefined' ? btnSpell4 : null,
-                typeof btnSpell5 !== 'undefined' ? btnSpell5 : null,
-                typeof btnSpell6 !== 'undefined' ? btnSpell6 : null
-            ];
-
-            // 4. Return unused hand cards back to the extra pile
+            // Return unused, unlocked hand cards back to the extra pile
             for (let i = 0; i < maxSlots; i++) {
                 let currentCard = this.hand[i];
-                if (currentCard) {
-                    if (!activeUIDs.includes(currentCard.uid)) {
-                        this.extra.push(currentCard);
-                        this.hand[i] = null;
-                    }
+                if (currentCard && !activeUIDs.includes(currentCard.uid)) {
+                    this.extra.push(currentCard);
+                    this.hand[i] = null;
                 }
             }
-               
-            // 5. CATEGORIZE AVAILABLE CARDS IN EXTRA
-            // Add IDs to these arrays as you finish coding their logic!
-            const activeSpellIDs = [26, 13, 93, 28, 8, 29, 66, 15, 12,52]; 
-            const activeItemIDs = [43,22,36,50,64,66]; // Currently empty! No items will be drawn.
-            
+
+            // 5. CATEGORIZE AVAILABLE CARDS
+            const activeSpellIDs = [26, 13, 93, 28, 8, 29, 66, 15, 12, 52]; 
+            const activeItemIDs = [43, 22, 36, 50, 64, 66]; 
+
             let availableMonsters = [];
-            let availableSpellsItems = [];
-            
+            let availableSpells = [];
+            let availableItems = [];
+            let unusableExtra = []; // Cards that don't match any active list
+
+            // Sort the extra pile using object references, NOT indices (much safer)
             for (let i = 0; i < this.extra.length; i++) {
                 let card = this.extra[i];
                 if (!card.uid) card.uid = 'uid_' + Math.random().toString(36).substr(2, 9);
                 
-                // ONLY allow the card if its index is explicitly in our "active" arrays
                 let isSpell = card.type === 2 && activeSpellIDs.includes(card.index);
                 let isItem = card.type === 1 && activeItemIDs.includes(card.index); 
                 let isMonster = card.type === 0;
                 
-                if (isMonster) {
-                    availableMonsters.push(i);
-                } else if (isSpell || isItem) {
-                    availableSpellsItems.push(i);
-                }
+                if (isMonster) availableMonsters.push(card);
+                else if (isSpell) availableSpells.push(card);
+                else if (isItem) availableItems.push(card);
+                else unusableExtra.push(card);
             }
 
-            // Shuffle Arrays Helper
             const shuffleArray = (arr) => {
                 for (let i = arr.length - 1; i > 0; i--) {
                     let j = Math.floor(Math.random() * (i + 1));
@@ -10808,42 +10876,56 @@
             };
 
             shuffleArray(availableMonsters);
-            shuffleArray(availableSpellsItems);
+            shuffleArray(availableSpells);
+            shuffleArray(availableItems);
 
-            // 6. DEAL CARDS BASED ON STRICT SLOT RULES
-            // Slot 1 (Index 0): Monster Only
-            if (this.hand[0] === null && availableMonsters.length > 0) {
-                let targetIndex = availableMonsters.pop();
-                this.hand[0] = this.extra[targetIndex];
-                this.extra[targetIndex] = null; // Mark for deletion
-            }
+            // 6. COUNT WHAT IS ALREADY IN THE HAND (Locked Cards)
+            let monstersInHand = this.hand.filter(c => c && c.type === 0).length;
+            let spellsInHand = this.hand.filter(c => c && c.type === 2).length;
+            let itemsInHand = this.hand.filter(c => c && c.type === 1).length;
 
-            // Slot 2 (Index 1): Spell or Item Only
-            if (this.hand[1] === null && availableSpellsItems.length > 0) {
-                let targetIndex = availableSpellsItems.pop();
-                this.hand[1] = this.extra[targetIndex];
-                this.extra[targetIndex] = null; // Mark for deletion
-            }
+            let neededMonsters = Math.max(0, monsterCap - monstersInHand);
+            let neededSpells = Math.max(0, spellCap - spellsInHand);
+            let neededItems = Math.max(0, itemCap - itemsInHand);
 
-            // Slots 3+ (Indices 2 to maxSlots): Any Card
-            let remainingCards = [...availableMonsters, ...availableSpellsItems];
-            shuffleArray(remainingCards);
-
-            for (let i = 2; i < maxSlots; i++) {
-                if (this.hand[i] === null && remainingCards.length > 0) {
-                    let targetIndex = remainingCards.pop();
-                    this.hand[i] = this.extra[targetIndex];
-                    this.extra[targetIndex] = null; // Mark for deletion
+            // 7. DEAL CARDS BASED ON QUOTAS
+            for (let i = 0; i < maxSlots; i++) {
+                if (this.hand[i] === null) {
+                    // Fill strict slots first
+                    if (neededMonsters > 0 && availableMonsters.length > 0) {
+                        this.hand[i] = availableMonsters.pop();
+                        neededMonsters--;
+                    } else if (neededSpells > 0 && availableSpells.length > 0) {
+                        this.hand[i] = availableSpells.pop();
+                        neededSpells--;
+                    } else if (neededItems > 0 && availableItems.length > 0) {
+                        this.hand[i] = availableItems.pop();
+                        neededItems--;
+                    } else {
+                        // Fill "Any" slots from whatever is left
+                        let anyPool = [...availableMonsters, ...availableSpells, ...availableItems];
+                        if (anyPool.length > 0) {
+                            shuffleArray(anyPool);
+                            let drawn = anyPool.pop();
+                            this.hand[i] = drawn;
+                            
+                            // Remove drawn card from its native array so it isn't returned to extra
+                            if (drawn.type === 0) availableMonsters = availableMonsters.filter(c => c.uid !== drawn.uid);
+                            else if (drawn.type === 2) availableSpells = availableSpells.filter(c => c.uid !== drawn.uid);
+                            else if (drawn.type === 1) availableItems = availableItems.filter(c => c.uid !== drawn.uid);
+                        }
+                    }
                 }
             }
 
-            // Clean up the extra array by removing the nulls we just spliced out
-            this.extra = this.extra.filter(c => c !== null);
+            // 8. REBUILD EXTRA PILE SAFELY
+            this.extra = [...unusableExtra, ...availableMonsters, ...availableSpells, ...availableItems];
 
-            // 7. Sync UI buttons
-            for (let i = 0; i < 6; i++) {
-                let btn = uiButtons[i];
-                if (btn) {
+            // 9. SYNC UI BUTTONS
+            let uiButtons = window.uiSpellButtons;
+            if (uiButtons) {
+                for (let i = 0; i < uiButtons.length; i++) {
+                    let btn = uiButtons[i];
                     if (i < maxSlots) {
                         btn.assignedCard = this.hand[i];
                         btn.visible = this.hand[i] !== null;
@@ -20184,13 +20266,20 @@
   var cRune = new stone(7.625,4.625,1,eSTAT.C);
   var iRune = new stone(3.545,4.49,1,eSTAT.I);
   var aRune = new stone(5.545,4.53,1,eSTAT.A);
-  var btnSpell1 = new btn(0, 0, 1, 1, 1, '', 'red', 'white', 'spell_slot', 0);    
-  var btnSpell2 = new btn(0, 0, 1, 1, 1, '', 'red', 'white', 'spell_slot', 0);    
-  var btnSpell3 = new btn(0, 0, 1, 1, 1, '', 'red', 'white', 'spell_slot', 0);
-  var btnSpell4 = new btn(0, 0, 1, 1, 1, '', 'red', 'white', 'spell_slot', 0);
-  var btnSpell5 = new btn(0, 0, 1, 1, 1, '', 'red', 'white', 'spell_slot', 0);
-  var btnSpell6 = new btn(0, 0, 1, 1, 1, '', 'red', 'white', 'spell_slot', 0);
-  var Player = [
+ // Pre-allocate up to 20 dynamic spell slots for the hotbar
+    window.uiSpellButtons = [];
+    for (let i = 0; i < 7; i++) {
+        window.uiSpellButtons.push(new btn(0, 0, 1, 1, 1, '', 'red', 'white', 'spell_slot', 0));
+    }
+
+    // Keep the aliases for backwards compatibility in case other scripts reference them directly
+    var btnSpell1 = window.uiSpellButtons[0];
+    var btnSpell2 = window.uiSpellButtons[1];
+    var btnSpell3 = window.uiSpellButtons[2];
+    var btnSpell4 = window.uiSpellButtons[3];
+    var btnSpell5 = window.uiSpellButtons[4];
+    var btnSpell6 = window.uiSpellButtons[5];
+    var Player = [
       new Field(0),
       new Field(1, 1)
   ];
@@ -21333,257 +21422,257 @@
                     else{
                     startGame = '0';}
                     return;
-                }
-                // --- 1. Cycle Buttons (Left/Right) ---
-                // RIGHT ARROW (Next Card)
-                if (pos.x >= (tL/10)*8 && pos.x <= (tL/10)*9.5 && 
-                    pos.y > (tH/10)*8.25 && pos.y < (tH/10)*10) {
-                    playlistIndex++;
-                    if (playlistIndex >= activePlaylist.length) { playlistIndex = 0; }
-                    return;
-                }
-                
-                // LEFT ARROW (Prev Card)
-                if (pos.x >= (tL/10)*.5 && pos.x <= (tL/10)*2 && 
-                    pos.y > (tH/10)*8.25 && pos.y < (tH/10)*10) {
-                    playlistIndex--;
-                    if (playlistIndex < 0) { playlistIndex = activePlaylist.length - 1; }
-                    return;
-                }
-
-                // --- 2. Filter Buttons ---
-
-                // "ALL" Text Button 
-                if (pos.x >= (tL/10)*0.25 && pos.x <= (tL/10)*1.25 && 
-                    pos.y >= (tH/10)*4.2 && pos.y <= (tH/10)*5.0) {
-                    rankFilterIndex = 0; 
-                    filterGrimoire('ALL', 'All'); // <--- UPDATED
-                    return;
-                }
-
-                // Major Arcana Icon
-                if (pos.x >= (tL/10)*1.5 && pos.x <= (tL/10)*2.5 && 
-                    pos.y >= (tH/10)*3.9 && pos.y <= (tH/10)*4.9) {
-                    rankFilterIndex = 0; 
-                    filterGrimoire('SUIT', 'Major'); // <--- UPDATED
-                    return;
-                }
-
-                // Wands Icon
-                if (pos.x >= (tL/10)*0.25 && pos.x <= (tL/10)*1.25 && 
-                    pos.y >= (tH/10)*5.3 && pos.y <= (tH/10)*6.3) {
-                    rankFilterIndex = 0; 
-                    filterGrimoire('SUIT', 'Wands'); // <--- UPDATED
-                    return;
-                }
-
-                // Cups Icon
-                if (pos.x >= (tL/10)*1.5 && pos.x <= (tL/10)*2.5 && 
-                    pos.y >= (tH/10)*5.3 && pos.y <= (tH/10)*6.3) {
-                    rankFilterIndex = 0; 
-                    filterGrimoire('SUIT', 'Cups'); // <--- UPDATED
-                    return;
-                }
-
-                // Swords Icon
-                if (pos.x >= (tL/10)*1.5 && pos.x <= (tL/10)*2.5 && 
-                    pos.y >= (tH/10)*6.9 && pos.y <= (tH/10)*7.9) {
-                    rankFilterIndex = 0; 
-                    filterGrimoire('SUIT', 'Swords'); // <--- UPDATED
-                    return;
-                }
-
-                // Pentacles Icon
-                if (pos.x >= (tL/10)*0.25 && pos.x <= (tL/10)*1.25 && 
-                    pos.y >= (tH/10)*6.9 && pos.y <= (tH/10)*7.9) {
-                    rankFilterIndex = 0; 
-                    filterGrimoire('SUIT', 'Pentacles'); // <--- UPDATED
-                    return;
-                }
-
-                // --- 3. RANK CYCLE BUTTON ---
-                // Updated Hitbox to match your visual Arrow (8, 4.2) better
-                if(pos.x >= (tL/10)*7.5 && pos.x <= (tL/10)*9 && 
-                    pos.y > (tH/10)*3.5 && pos.y < (tH/10)*5.0){
-                    
-                    rankFilterIndex++;
-                    
-                    // Loop back to 0 (All)
-                    if (rankFilterIndex >= rankList.length) {
-                        rankFilterIndex = 0;
-                    }
-                    
-                    var newTarget = rankList[rankFilterIndex];
-                    
-                    if (rankFilterIndex === 0) {
-                        filterGrimoire('ALL');
-                    } else {
-                        filterGrimoire('RANK', newTarget);
-                    }
-                    return;
-                }
-                if (gridPos.x > 7.75 && gridPos.x < 9.5 && gridPos.y > 6 && gridPos.y < 7) {
-                        if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('cancel');
+                        }
+                        // --- 1. Cycle Buttons (Left/Right) ---
+                        // RIGHT ARROW (Next Card)
+                        if (pos.x >= (tL/10)*8 && pos.x <= (tL/10)*9.5 && 
+                            pos.y > (tH/10)*8.25 && pos.y < (tH/10)*10) {
+                            playlistIndex++;
+                            if (playlistIndex >= activePlaylist.length) { playlistIndex = 0; }
+                            return;
+                        }
                         
-                        
-                        // Send them back to explore or options depending on where they came from
-                        Dungeon.saveGame();
-                        startGame = preGame === 'explore' ? 'explore' : 'options';
-                        return;
-                    }
-                }
-                // 2. DECK BUILDER TAB INTERACTS
+                        // LEFT ARROW (Prev Card)
+                        if (pos.x >= (tL/10)*.5 && pos.x <= (tL/10)*2 && 
+                            pos.y > (tH/10)*8.25 && pos.y < (tH/10)*10) {
+                            playlistIndex--;
+                            if (playlistIndex < 0) { playlistIndex = activePlaylist.length - 1; }
+                            return;
+                        }
+
+                        // --- 2. Filter Buttons ---
+
+                        // "ALL" Text Button 
+                        if (pos.x >= (tL/10)*0.25 && pos.x <= (tL/10)*1.25 && 
+                            pos.y >= (tH/10)*4.2 && pos.y <= (tH/10)*5.0) {
+                            rankFilterIndex = 0; 
+                            filterGrimoire('ALL', 'All'); // <--- UPDATED
+                            return;
+                        }
+
+                        // Major Arcana Icon
+                        if (pos.x >= (tL/10)*1.5 && pos.x <= (tL/10)*2.5 && 
+                            pos.y >= (tH/10)*3.9 && pos.y <= (tH/10)*4.9) {
+                            rankFilterIndex = 0; 
+                            filterGrimoire('SUIT', 'Major'); // <--- UPDATED
+                            return;
+                        }
+
+                        // Wands Icon
+                        if (pos.x >= (tL/10)*0.25 && pos.x <= (tL/10)*1.25 && 
+                            pos.y >= (tH/10)*5.3 && pos.y <= (tH/10)*6.3) {
+                            rankFilterIndex = 0; 
+                            filterGrimoire('SUIT', 'Wands'); // <--- UPDATED
+                            return;
+                        }
+
+                        // Cups Icon
+                        if (pos.x >= (tL/10)*1.5 && pos.x <= (tL/10)*2.5 && 
+                            pos.y >= (tH/10)*5.3 && pos.y <= (tH/10)*6.3) {
+                            rankFilterIndex = 0; 
+                            filterGrimoire('SUIT', 'Cups'); // <--- UPDATED
+                            return;
+                        }
+
+                        // Swords Icon
+                        if (pos.x >= (tL/10)*1.5 && pos.x <= (tL/10)*2.5 && 
+                            pos.y >= (tH/10)*6.9 && pos.y <= (tH/10)*7.9) {
+                            rankFilterIndex = 0; 
+                            filterGrimoire('SUIT', 'Swords'); // <--- UPDATED
+                            return;
+                        }
+
+                        // Pentacles Icon
+                        if (pos.x >= (tL/10)*0.25 && pos.x <= (tL/10)*1.25 && 
+                            pos.y >= (tH/10)*6.9 && pos.y <= (tH/10)*7.9) {
+                            rankFilterIndex = 0; 
+                            filterGrimoire('SUIT', 'Pentacles'); // <--- UPDATED
+                            return;
+                        }
+
+                        // --- 3. RANK CYCLE BUTTON ---
+                        // Updated Hitbox to match your visual Arrow (8, 4.2) better
+                        if(pos.x >= (tL/10)*7.5 && pos.x <= (tL/10)*9 && 
+                            pos.y > (tH/10)*3.5 && pos.y < (tH/10)*5.0){
+                            
+                            rankFilterIndex++;
+                            
+                            // Loop back to 0 (All)
+                            if (rankFilterIndex >= rankList.length) {
+                                rankFilterIndex = 0;
+                            }
+                            
+                            var newTarget = rankList[rankFilterIndex];
+                            
+                            if (rankFilterIndex === 0) {
+                                filterGrimoire('ALL');
+                            } else {
+                                filterGrimoire('RANK', newTarget);
+                            }
+                            return;
+                        }
+                        if (gridPos.x > 7.75 && gridPos.x < 9.5 && gridPos.y > 6 && gridPos.y < 7) {
+                                if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('cancel');
+                                
+                                
+                                // Send them back to explore or options depending on where they came from
+                                Dungeon.saveGame();
+                                startGame = preGame === 'explore' ? 'explore' : 'options';
+                                return;
+                            }
+                        }
+                        // 2. DECK BUILDER TAB INTERACTS
                 if (activeDeckTab === 'deck') {
-                    
-                    // --- LEFT SIDE: ACTIVE DECK SCROLLING ---
-                        // UP ARROW: x = 2.3 to 3.7, y = 2.0 to 2.5
-                        if (gridPos.x >= 1.5 && gridPos.x <= 3 && gridPos.y >= 2.0 && gridPos.y <= 2.5) {
-                            if (deckScrollIndex > 0) {
-                                deckScrollIndex--;
-                                if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('click');
-                            }
-                            return;
-                        }
-                        // DOWN ARROW: x = 2.3 to 3.7, y = 7.8 to 8.3
-                        if (gridPos.x >= 1.5&& gridPos.x <= 3 && gridPos.y >=8.75 && gridPos.y <= 9.25) {
-                            if (groupedDeckCards && deckScrollIndex < groupedDeckCards.length - 1) {
-                                deckScrollIndex++;
-                                if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('click');
-                            }
-                            return;
-                        }
-
-                    // --- RIGHT SIDE: EXTRA CARDS SCROLLING ---
-                        // UP ARROW: x = 6.3 to 7.7, y = 2.0 to 2.5
-                        if (gridPos.x >= 7 && gridPos.x <= 8.5 && gridPos.y >= 2.0 && gridPos.y <= 2.5) {
-                            if (extraScrollIndex > 0) {
-                                extraScrollIndex--;
-                                if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('click');
-                            }
-                            return;
-                        }
-                        // DOWN ARROW: x = 6.3 to 7.7, y = 7.8 to 8.3
-                        if (gridPos.x >=7 && gridPos.x <= 8.5 && gridPos.y >= 8.75 && gridPos.y <= 9.25) {
-                            if (groupedExtraCards && extraScrollIndex < groupedExtraCards.length - 1) {
-                                extraScrollIndex++;
-                                if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('click');
-                            }
-                            return;
-                        }
-
-                    // --- TRANSFER ARROWS ---
-                        // "->" ARROW (Remove from Deck, Move to Trunk/Extras)
-                    // Hitbox: x = 4.3 to 5.7, y = 4.0 to 4.8
-                    if (gridPos.x >= 4.3 && gridPos.x <= 5.7 && gridPos.y >= 4.0 && gridPos.y <= 4.8) {
-                        if (groupedDeckCards && groupedDeckCards.length > 0) {
-                            let activeGroup = groupedDeckCards[deckScrollIndex];
-                            let cardToRemove = activeGroup.viewCard;
                             
-                            // --- NEW: LAST MONSTER CHECK ---
-                            // Only run this check if the card they are trying to remove is a Monster
-                            if (cardToRemove.type === 0) { 
-                                let monsterCount = 0;
-                                
-                                // Count every individual monster card currently in the raw deck array
-                                for (let i = 0; i < Dungeon.deck.length; i++) {
-                                    if (Dungeon.deck[i].type === 0) {
-                                        monsterCount++;
+                            // --- LEFT SIDE: ACTIVE DECK SCROLLING ---
+                                // UP ARROW: x = 2.3 to 3.7, y = 2.0 to 2.5
+                                if (gridPos.x >= 1.5 && gridPos.x <= 3 && gridPos.y >= 2.0 && gridPos.y <= 2.5) {
+                                    if (deckScrollIndex > 0) {
+                                        deckScrollIndex--;
+                                        if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('click');
+                                    }
+                                    return;
+                                }
+                                // DOWN ARROW: x = 2.3 to 3.7, y = 7.8 to 8.3
+                                if (gridPos.x >= 1.5&& gridPos.x <= 3 && gridPos.y >=8.75 && gridPos.y <= 9.25) {
+                                    if (groupedDeckCards && deckScrollIndex < groupedDeckCards.length - 1) {
+                                        deckScrollIndex++;
+                                        if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('click');
+                                    }
+                                    return;
+                                }
+
+                            // --- RIGHT SIDE: EXTRA CARDS SCROLLING ---
+                                // UP ARROW: x = 6.3 to 7.7, y = 2.0 to 2.5
+                                if (gridPos.x >= 7 && gridPos.x <= 8.5 && gridPos.y >= 2.0 && gridPos.y <= 2.5) {
+                                    if (extraScrollIndex > 0) {
+                                        extraScrollIndex--;
+                                        if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('click');
+                                    }
+                                    return;
+                                }
+                                // DOWN ARROW: x = 6.3 to 7.7, y = 7.8 to 8.3
+                                if (gridPos.x >=7 && gridPos.x <= 8.5 && gridPos.y >= 8.75 && gridPos.y <= 9.25) {
+                                    if (groupedExtraCards && extraScrollIndex < groupedExtraCards.length - 1) {
+                                        extraScrollIndex++;
+                                        if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('click');
+                                    }
+                                    return;
+                                }
+
+                            // --- TRANSFER ARROWS ---
+                                // "->" ARROW (Remove from Deck, Move to Trunk/Extras)
+                            // Hitbox: x = 4.3 to 5.7, y = 4.0 to 4.8
+                            if (gridPos.x >= 4.3 && gridPos.x <= 5.7 && gridPos.y >= 4.0 && gridPos.y <= 4.8) {
+                                if (groupedDeckCards && groupedDeckCards.length > 0) {
+                                    let activeGroup = groupedDeckCards[deckScrollIndex];
+                                    let cardToRemove = activeGroup.viewCard;
+                                    
+                                    // --- NEW: LAST MONSTER CHECK ---
+                                    // Only run this check if the card they are trying to remove is a Monster
+                                    if (cardToRemove.type === 0) { 
+                                        let monsterCount = 0;
+                                        
+                                        // Count every individual monster card currently in the raw deck array
+                                        for (let i = 0; i < Dungeon.deck.length; i++) {
+                                            if (Dungeon.deck[i].type === 0) {
+                                                monsterCount++;
+                                            }
+                                        }
+                                        
+                                        // If this is the absolute last monster card, block the transfer!
+                                        if (monsterCount <= 1) {
+                                            if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('cancel');
+                                            console.log("Deck must contain at least one monster!");
+                                            
+                                            // Optional: Flash a message to the player so they know why it failed
+                                            // MessageBox.show(0.5, 8, 1, 9, 2, 'Must have at least 1 Monster!', 'dialogue', 1, 0);
+                                            
+                                            return; // Stop the transfer cold
+                                        }
+                                    }
+                                    // -------------------------------
+                                    
+                                    let cardIdToMove = cardToRemove.index;
+                                    
+                                    // Find it in the active deck
+                                    let foundIndex = Dungeon.deck.findIndex(c => c.index === cardIdToMove);
+                                    if (foundIndex !== -1) {
+                                        // Splice it out of the deck, push it to extra cards (trunk)
+                                        let card = Dungeon.deck.splice(foundIndex, 1)[0];
+                                        Dungeon.extra = Dungeon.extra || []; // Fallback safeguard
+                                        Dungeon.extra.push(card);
+                                        
+                                        // Re-run your grouping helper so the visual text updates
+                                        groupedDeckCards = groupCards(Dungeon.deck);
+                                        groupedExtraCards = groupCards(Dungeon.extra);
+                                        
+                                        // Prevent index out of bounds if they just removed the last card of a stack
+                                        if (deckScrollIndex >= groupedDeckCards.length) {
+                                            deckScrollIndex = Math.max(0, groupedDeckCards.length - 1);
+                                        }
+                                        if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('cancel'); // Sound for un-equipping
                                     }
                                 }
-                                
-                                // If this is the absolute last monster card, block the transfer!
-                                if (monsterCount <= 1) {
-                                    if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('cancel');
-                                    console.log("Deck must contain at least one monster!");
-                                    
-                                    // Optional: Flash a message to the player so they know why it failed
-                                    // MessageBox.show(0.5, 8, 1, 9, 2, 'Must have at least 1 Monster!', 'dialogue', 1, 0);
-                                    
-                                    return; // Stop the transfer cold
-                                }
+                                return;
                             }
-                            // -------------------------------
-                            
-                            let cardIdToMove = cardToRemove.index;
-                            
-                            // Find it in the active deck
-                            let foundIndex = Dungeon.deck.findIndex(c => c.index === cardIdToMove);
-                            if (foundIndex !== -1) {
-                                // Splice it out of the deck, push it to extra cards (trunk)
-                                let card = Dungeon.deck.splice(foundIndex, 1)[0];
-                                Dungeon.extra = Dungeon.extra || []; // Fallback safeguard
-                                Dungeon.extra.push(card);
-                                
-                                // Re-run your grouping helper so the visual text updates
-                                groupedDeckCards = groupCards(Dungeon.deck);
-                                groupedExtraCards = groupCards(Dungeon.extra);
-                                
-                                // Prevent index out of bounds if they just removed the last card of a stack
-                                if (deckScrollIndex >= groupedDeckCards.length) {
-                                    deckScrollIndex = Math.max(0, groupedDeckCards.length - 1);
-                                }
-                                if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('cancel'); // Sound for un-equipping
-                            }
-                        }
-                        return;
-                    }
 
-                        // "<-" ARROW (Add to Deck, Remove from Extras)
-                        // Hitbox: x = 4.3 to 5.7, y = 5.2 to 6.0
-                        if (gridPos.x >= 4.3 && gridPos.x <= 5.7 && gridPos.y >= 5.2 && gridPos.y <= 6.0) {
-                            if (groupedExtraCards && groupedExtraCards.length > 0) {
-                                
-                                
+                                // "<-" ARROW (Add to Deck, Remove from Extras)
+                                // Hitbox: x = 4.3 to 5.7, y = 5.2 to 6.0
+                                if (gridPos.x >= 4.3 && gridPos.x <= 5.7 && gridPos.y >= 5.2 && gridPos.y <= 6.0) {
+                                    if (groupedExtraCards && groupedExtraCards.length > 0) {
+                                        
+                                        
 
-                                // --- NEW: POWER CAP CHECK ---
-                                let extraGroup = groupedExtraCards[extraScrollIndex];
-                                let cardToAdd = extraGroup.viewCard;
-                                
-                                // A. Calculate Current Total Deck Power
-                                let currentDeckPower = 0;
-                                for (let i = 0; i < Dungeon.deck.length; i++) {
-                                    let checkCard = Dungeon.deck[i];
-                                    // FORCE NUMBER: Prevent "130" + "20" = "13020" string bugs!
-                                    let pVal = (checkCard.type === 0) ? getPower(checkCard) : (checkCard.power || 0);
-                                    currentDeckPower += Number(pVal) || 0;
-                                }
+                                        // --- NEW: POWER CAP CHECK ---
+                                        let extraGroup = groupedExtraCards[extraScrollIndex];
+                                        let cardToAdd = extraGroup.viewCard;
+                                        
+                                        // A. Calculate Current Total Deck Power
+                                        let currentDeckPower = 0;
+                                        for (let i = 0; i < Dungeon.deck.length; i++) {
+                                            let checkCard = Dungeon.deck[i];
+                                            // FORCE NUMBER: Prevent "130" + "20" = "13020" string bugs!
+                                            let pVal = (checkCard.type === 0) ? getPower(checkCard) : (checkCard.power || 0);
+                                            currentDeckPower += Number(pVal) || 0;
+                                        }
 
-                                // B. Get Power of the Card trying to be added
-                                let rawNewPower = (cardToAdd.type === 0) ? getPower(cardToAdd) : (cardToAdd.power || 0);
-                                let newCardPower = Number(rawNewPower) || 0;
+                                        // B. Get Power of the Card trying to be added
+                                        let rawNewPower = (cardToAdd.type === 0) ? getPower(cardToAdd) : (cardToAdd.power || 0);
+                                        let newCardPower = Number(rawNewPower) || 0;
 
-                                // C. Define Max Power (Force it to be a Number too!)
-                                let maxDeckCapacity = Number(Dungeon.power) || 100; 
+                                        // C. Define Max Power (Force it to be a Number too!)
+                                        let maxDeckCapacity = Number(Dungeon.power) || 100; 
 
-                                // D. The Rejection Logic
-                                if (currentDeckPower + newCardPower > maxDeckCapacity) {
-                                    if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('cancel');
-                                    console.log(`Failed: Deck Power (${currentDeckPower} + ${newCardPower}) exceeds Max (${maxDeckCapacity})`);
-                                    return; 
-                                }
-                                // ----------------------------
+                                        // D. The Rejection Logic
+                                        if (currentDeckPower + newCardPower > maxDeckCapacity) {
+                                            if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('cancel');
+                                            console.log(`Failed: Deck Power (${currentDeckPower} + ${newCardPower}) exceeds Max (${maxDeckCapacity})`);
+                                            return; 
+                                        }
+                                        // ----------------------------
 
-                                // 2. The Transfer Logic (If it passed the checks above)
-                                let cardIdToMove = cardToAdd.index;
-                                let foundIndex = Dungeon.extra.findIndex(c => c.index === cardIdToMove);
-                                
-                                if (foundIndex !== -1) {
-                                    let card = Dungeon.extra.splice(foundIndex, 1)[0];
-                                    Dungeon.deck.push(card);
-                                    
-                                    // Re-run grouping helper
-                                    groupedDeckCards = groupCards(Dungeon.deck);
-                                    groupedExtraCards = groupCards(Dungeon.extra);
-                                    
-                                    if (extraScrollIndex >= groupedExtraCards.length) {
-                                        extraScrollIndex = Math.max(0, groupedExtraCards.length - 1);
+                                        // 2. The Transfer Logic (If it passed the checks above)
+                                        let cardIdToMove = cardToAdd.index;
+                                        let foundIndex = Dungeon.extra.findIndex(c => c.index === cardIdToMove);
+                                        
+                                        if (foundIndex !== -1) {
+                                            let card = Dungeon.extra.splice(foundIndex, 1)[0];
+                                            Dungeon.deck.push(card);
+                                            
+                                            // Re-run grouping helper
+                                            groupedDeckCards = groupCards(Dungeon.deck);
+                                            groupedExtraCards = groupCards(Dungeon.extra);
+                                            
+                                            if (extraScrollIndex >= groupedExtraCards.length) {
+                                                extraScrollIndex = Math.max(0, groupedExtraCards.length - 1);
+                                            }
+                                            if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('heal'); // Success sound!
+                                        }
                                     }
-                                    if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('heal'); // Success sound!
+                                    return;
                                 }
                             }
-                            return;
-                        }
-                    }
 
                 if (activeDeckTab === 'player') {
                     let pts = Dungeon.statPoints || 0;
@@ -22565,35 +22654,16 @@
                     return; 
                 }
                 Dungeon.registerClick(e.clientX, e.clientY);
-                if (btnSpell1.isTouched(gridPos.x, gridPos.y) && btnSpell1.visible == true&&btnSpell1.type != 'jrpg') {
-                    // Just call press(). The Btn class handles the sound, animation, and logic.
-                    btnSpell1.press(); 
-                    console.log(`Spell button pressed`);
-                    return; 
-                }
-                if (btnSpell2.isTouched(gridPos.x, gridPos.y) && btnSpell2.visible == true&&btnSpell2.type != 'jrpg') {
-                    // Just call press(). The Btn class handles the sound, animation, and logic.
-                    btnSpell2.press(); 
-                    console.log(`Spell button pressed`);
-                    return; 
-                }
-                if (btnSpell3.isTouched(gridPos.x, gridPos.y) && btnSpell3.visible == true&&btnSpell3.type != 'jrpg') {
-                    // Just call press(). The Btn class handles the sound, animation, and logic.
-                    btnSpell3.press(); 
-                    console.log(`Spell button pressed`);
-                    return; 
-                }
-                if (btnSpell4 && btnSpell4.isTouched(gridPos.x, gridPos.y) && btnSpell4.visible == true && btnSpell4.type != 'jrpg') {
-                    btnSpell4.press(); 
-                    return; 
-                }
-                if (btnSpell5 && btnSpell5.isTouched(gridPos.x, gridPos.y) && btnSpell5.visible == true && btnSpell5.type != 'jrpg') {
-                    btnSpell5.press(); 
-                    return; 
-                }
-                if (btnSpell6 && btnSpell6.isTouched(gridPos.x, gridPos.y) && btnSpell6.visible == true && btnSpell6.type != 'jrpg') {
-                    btnSpell6.press(); 
-                    return; 
+                // DYNAMIC SPELL BUTTON CLICK CHECK
+                if (typeof window.uiSpellButtons !== 'undefined') {
+                    for (let i = 0; i < window.uiSpellButtons.length; i++) {
+                        let btn = window.uiSpellButtons[i];
+                        if (btn && btn.visible === true && btn.type !== 'jrpg' && btn.isTouched(gridPos.x, gridPos.y)) {
+                            btn.press(); 
+                            console.log(`Spell slot ${i + 1} pressed!`);
+                            return; // Return immediately so we don't accidentally click anything behind it
+                        }
+                    }
                 }
                 if (btnPOV.isTouched(gridPos.x, gridPos.y) && btnPOV.visible == true&&btnPOV.type != 'jrpg') {
                     // Just call press(). The Btn class handles the sound, animation, and logic.
@@ -27790,6 +27860,19 @@
           
           break;
             
+        case 99:
+    aniDice.setColor(0, 1, 1);
+    aniDice.setGlow('#00ffff');
+    let angle = typeof window.cacheAngle !== 'undefined' ? window.cacheAngle : (Date.now() / 400);
+
+    let bobOffset = Math.sin(angle) * 0.4 * z; 
+    let rockSpeed = Math.cos(angle) * 0.6; 
+
+    // 1. Draw the model normally
+    aniDice.animate(x + 5*z, y + 5*z + bobOffset*4, 7*z, rockSpeed*99, globalDt);            
+    
+    
+    break;
       ////MAJOR ARCANA
         case 0://Fool monster 
             drawShape('qua',x,y,z, 6.5,8.5, .75,9.5, 6,4, 6.5,7.5,'cyan',1);//Cape Back
@@ -34153,7 +34236,7 @@
       37,42,45,46,46.1,47,47.1,48.1,48,49,
       53,55,59,60,60.1,61,61.1,61.2,62,62.1,63,63.1,
       65,66,67,68,70,70.1,71,72,73,74,74.1,75,76,76.1,77,
-      78,82,84,85,86,92,93,98,999]; 
+      78,82,84,85,86,92,93,98,99,999]; 
     
     const cacheSize = 512; 
     const totalFrames = 8; 
@@ -34198,14 +34281,50 @@
         for (let i = 0; i < totalFrames; i++) {
             const frameCanvas = document.createElement('canvas');
             frameCanvas.width = cacheSize; frameCanvas.height = cacheSize;
-            ctx = frameCanvas.getContext('2d');
+            
+            // We need a separate context for the cleanup operations
+            const cleanupCtx = frameCanvas.getContext('2d');
+            
+            ctx = cleanupCtx; // Temporarily point the global ctx to this one
             tX = 0; tY = 0; tL = cacheSize; tH = cacheSize;
             
             portraitani = i % 2; 
             dragY = i % 2;
-            drawPortraitPaths(index, 0, 0, 1); 
-            spriteCache[index].push(frameCanvas);
+            window.cacheAngle = (i / totalFrames) * (Math.PI * 2);
 
+            // 1. Render the portal/model as usual
+            drawPortraitPaths(index, 0, 0, 1); 
+
+            // ==========================================
+            // ---> THE FIX: Clean the Background <---
+            // ==========================================
+            // This mask trims away any darkened pixels from the shadow bug.
+            
+            // a. Save the current blend mode
+            let currentBlend = cleanupCtx.globalCompositeOperation;
+
+            // b. Use 'destination-in', which keeps only the existing pixels that fall inside our mask
+            cleanupCtx.globalCompositeOperation = 'destination-in';
+
+            // c. Create and draw a massive radial gradient that fades from opaque white at the 
+            //    center to pure, clean transparent white at the edges.
+            const gradientMask = cleanupCtx.createRadialGradient(
+                cacheSize / 2, cacheSize / 2, 0, 
+                cacheSize / 2, cacheSize / 2, cacheSize / 2
+            );
+            gradientMask.addColorStop(0, 'rgba(255, 255, 255, 1)'); // Opaque core
+            gradientMask.addColorStop(0.69, 'rgba(255, 255, 255, 1)');
+            gradientMask.addColorStop(1, 'rgba(255, 255, 255, 0)'); // Transparent edge
+            
+            cleanupCtx.fillStyle = gradientMask;
+            cleanupCtx.fillRect(0, 0, cacheSize, cacheSize); // Draw the mask
+
+            // d. Restore normal blending for subsequent operations
+            cleanupCtx.globalCompositeOperation = currentBlend;
+            // ==========================================
+            
+            spriteCache[index].push(frameCanvas);
+            window.cacheAngle = (i / totalFrames) * (Math.PI * 2);
             // PROGRESS UPDATE
             currentDraws++;
             if (currentDraws % 10 === 0 && updateProgressCallback) {
@@ -34221,35 +34340,45 @@
     // Restore Globals
     ctx = originalCtx;
     tX = oldTX; tY = oldTY; tL = oldTL; tH = oldTH;
+    delete window.cacheAngle;
     }
   function drawPortrait(index, x, y, z, card = 0) {
-      if (index === -27 || !spriteCache[index]) {
-          drawPortraitPaths(index, x, y, z, card);
-          return;
-      }
-
-      let drawX = tX + (tL / 10) * x;
-      let drawY = tY + (tH / 10) * y;
-      let drawW = tL * z;
-      let drawH = tH * z;
-
-      // 1. Turn smoothing ON just for shrinking this giant 512px cache
-      ctx.imageSmoothingEnabled = true; 
-
-      if (Array.isArray(spriteCache[index])) {
-          let animationSpeed = 100; 
-          if(index == 46.1||index == 63.1||index == 74.1||index == 82){animationSpeed = 300}
-          const currentFrame = Math.floor(Date.now() / animationSpeed) % spriteCache[index].length;
-          ctx.drawImage(spriteCache[index][currentFrame], drawX, drawY, drawW, drawH);
-      } else {
-          ctx.drawImage(spriteCache[index], drawX, drawY, drawW, drawH);
-      }
-
-      // 2. Turn smoothing OFF so the rest of your game stays crisp
-      ctx.imageSmoothingEnabled = false; 
+    if (index === -27 || !spriteCache[index]) {
+        drawPortraitPaths(index, x, y, z, card);
+        return;
     }
+
+    let drawX = tX + (tL / 10) * x;
+    let drawY = tY + (tH / 10) * y;
+    let drawW = tL * z;
+    let drawH = tH * z;
+
+    // 1. Turn smoothing ON just for shrinking this giant 512px cache
+    ctx.imageSmoothingEnabled = true; 
+    
+    // ---> THE FIX: Save the current blend mode <---
+    let previousBlend = ctx.globalCompositeOperation;
+
+    // If it is the portal (99) or any other glowing 3D object, use additive blending!
+    if (index === 99) {
+        ctx.globalCompositeOperation = 'lighter';
+    }
+
+    if (Array.isArray(spriteCache[index])) {
+        let animationSpeed = 100; 
+        if(index == 46.1||index == 63.1||index == 74.1||index == 82){animationSpeed = 300}
+        const currentFrame = Math.floor(Date.now() / animationSpeed) % spriteCache[index].length;
+        ctx.drawImage(spriteCache[index][currentFrame], drawX, drawY, drawW, drawH);
+    } else {
+        ctx.drawImage(spriteCache[index], drawX, drawY, drawW, drawH);
+    }
+
+    // ---> RESTORE NORMAL BLENDING so the rest of the game doesn't turn neon <---
+    ctx.globalCompositeOperation = previousBlend;
+    ctx.imageSmoothingEnabled = false; 
+}
   debug = 0;
-  let portrait =98;
+  let portrait =99;
   function executeDungeonMove(moveX, moveY, movingForward) {
         if (moveX === 0 && moveY === 0) return;
 
