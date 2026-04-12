@@ -3142,6 +3142,9 @@
 
        // 4. DRAW THE ORGANIC ROADS (The Drunkard's Walk)
         const drawOrganicCorridor = (zoneA, zoneB) => {
+            // Safety check: if the grid was too crowded and a zone failed to spawn, skip the road
+            if (!zoneA || !zoneB) return; 
+
             let cx = zoneA.x;
             let cy = zoneA.y;
             
@@ -3168,12 +3171,18 @@
             }
         };
 
+        // ✅ FIX: Define the specific zones HERE before using them
+        let bastion = zones.find(z => z.role === 'bastion');
+        let lair = zones.find(z => z.role === 'lair');
+        let arena = zones.find(z => z.role === 'arena');
+        let ruins = zones.find(z => z.role === 'ruins');
+
         // Main Path: Bastion(0) -> Arena(2) -> Lair(1)
         drawOrganicCorridor(bastion, arena); 
         drawOrganicCorridor(arena, lair); 
 
         // Side Quest: Bastion(0) -> Ruins(3) (Dead End)
-        drawOrganicCorridor(bastion, ruins); 
+        drawOrganicCorridor(bastion, ruins);
 
         // 5. CARVE THE WILDS (Cellular Automata on the mortar)
         for(let r = 2; r < 97; r++) {
@@ -3223,11 +3232,7 @@
             }
         }
 
-        // Find the specific zones so we can return their centroids
-        let bastion = zones.find(z => z.role === 'bastion');
-        let lair = zones.find(z => z.role === 'lair');
-        let arena = zones.find(z => z.role === 'arena');
-        let ruins = zones.find(z => z.role === 'ruins');
+       
 
         let floorTiles = [...bastion.tiles, ...lair.tiles, ...arena.tiles, ...ruins.tiles, ...wildsTiles];
         
