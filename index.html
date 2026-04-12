@@ -21745,7 +21745,24 @@
                     startGame = preGame === 'explore' ? 'explore' : 'options';
                     return;
                 }
-
+                //vvvCHATvvv/////
+            if (gridPos.x >= 0 && gridPos.x <= 7.7 && gridPos.y >= 0 && gridPos.y <= 2.25) {
+                if (Player[1].isCPU === 0&&!Player[0].battleOpponentId&&startGame > 3){return}
+                if (!(startGame>3 &&(gridPos.x >= 3&&gridPos.x <= 7)&&(gridPos.y <= 3.5))){
+                e.preventDefault();
+                //setTimeout(function() {}, 500);
+                    isChatActive = true;
+                    chatInput.focus();
+                return;
+                }
+            }
+            
+            // --- 3. CLOSER CHECK: If we clicked anywhere else, Close Chat ---
+            if (isChatActive) {
+                chatInput.blur();
+                isChatActive = false;
+                return;
+            }
                 // Stop movement/clicks under the menu
                 return; 
             }
@@ -22231,17 +22248,16 @@
                     startGame = preGame === 'explore' ? 'explore' : 'options';
                     return;
                 }
-
-                return; 
-            }
-        //vvvCHATvvv/////
+                //vvvCHATvvv/////
             if (gridPos.x >= 0 && gridPos.x <= 7.7 && gridPos.y >= 0 && gridPos.y <= 2.25) {
                 if (Player[1].isCPU === 0&&!Player[0].battleOpponentId&&startGame > 3){return}
+                if (!(startGame>3 &&(gridPos.x >= 3&&gridPos.x <= 7)&&(gridPos.y <= 3.5))){
                 e.preventDefault();
                 //setTimeout(function() {}, 500);
                     isChatActive = true;
                     chatInput.focus();
-                return; 
+                return;
+                }
             }
             
             // --- 3. CLOSER CHECK: If we clicked anywhere else, Close Chat ---
@@ -22250,6 +22266,9 @@
                 isChatActive = false;
                 return;
             }
+                return; 
+            }
+        
         
         //vvvBATTLE END SCREENvvv/////
             if (Player[0].option ===10 ) { 
@@ -22691,6 +22710,24 @@
                     console.log(`journal button pressed`);
                     return; 
                 }
+                //vvvCHATvvv/////
+                if (gridPos.x >= 0 && gridPos.x <= 7.7 && gridPos.y >= 0 && gridPos.y <= 2.25) {
+                    if (Player[1].isCPU === 0&&!Player[0].battleOpponentId&&startGame > 3){return}
+                    if (!(startGame>3 &&(gridPos.x >= 3&&gridPos.x <= 7)&&(gridPos.y <= 3.5))){
+                    e.preventDefault();
+                    //setTimeout(function() {}, 500);
+                        isChatActive = true;
+                        chatInput.focus();
+                    return;
+                    }
+                }
+                
+                // --- 3. CLOSER CHECK: If we clicked anywhere else, Close Chat ---
+                if (isChatActive) {
+                    chatInput.blur();
+                    isChatActive = false;
+                    return;
+                }
                 
                 // --- 1. Determine Movement Intention ---
                 let moveX = 0;
@@ -22807,6 +22844,7 @@
                 }
             }
             if (startGame == 'grimoire') {
+            
                 if (pos.x >= (tL/10)*8 && pos.x <= (tL/10)*9 && 
                     pos.y > (tH/10)*6 && pos.y < (tH/10)*7.5) {
                     MusicEngine.playSFX('cancel');
@@ -22994,6 +23032,23 @@
                     spread = 0;
                     return;
                     }
+                    //vvvCHATvvv/////
+                    if (gridPos.x >= 0 && gridPos.x <= 7.7 && gridPos.y >= 0 && gridPos.y <= 2.25) {
+                        if (Player[1].isCPU === 0&&!Player[0].battleOpponentId&&startGame > 3){return}
+                        e.preventDefault();
+                        //setTimeout(function() {}, 500);
+                            isChatActive = true;
+                            chatInput.focus();
+                        return;
+                        
+                    }
+                    
+                    // --- 3. CLOSER CHECK: If we clicked anywhere else, Close Chat ---
+                    if (isChatActive) {
+                        chatInput.blur();
+                        isChatActive = false;
+                        return;
+                    }
                 }
                 }
             if (startGame == 3){
@@ -23131,6 +23186,7 @@
                 }
             }
 
+        //
         //vvvBATTLEvvv/////
             //vvvPLAYERvvv/////
                 //CARD MENU
@@ -24342,6 +24398,23 @@
                 btnAdd.press();
                 return;
                 }
+            //vvvCHATvvv/////
+            if (gridPos.x >= 0 && gridPos.x <= 7.7 && gridPos.y >= 0 && gridPos.y <= 2.25) {
+                if (Player[1].isCPU === 0&&!Player[0].battleOpponentId&&startGame > 3){return}
+                e.preventDefault();
+                //setTimeout(function() {}, 500);
+                    isChatActive = true;
+                    chatInput.focus();
+                return;
+                
+            }
+            
+            // --- 3. CLOSER CHECK: If we clicked anywhere else, Close Chat ---
+            if (isChatActive) {
+                chatInput.blur();
+                isChatActive = false;
+                return;
+            }
             // 1. Grid Logic & "The Flip"
                 let gx = (e.clientX - (wX - tL) / 2) / (tL / 10);
                 let gy = (e.clientY - (wY - tH) / 2) / (tH / 10);
