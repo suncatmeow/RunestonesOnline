@@ -2940,18 +2940,19 @@
         // If the leader is somehow invalid, return standard generic grunts
         if (!leaderCard) return [54, 56, 42, 23]; // Goblin, Imp, Shade, Wisp
         
-        // Find monsters of the same suit or tribe, excluding the leader and other Royalty
         let minions = Object.keys(CARD_MANIFEST_DB).map(Number).filter(id => {
             let card = CARD_MANIFEST_DB[id];
-            if (card.type !== "monster" || id === leaderID) return false;
-            if (card.suit === "Major Arcana" || card.rank === "King" || card.rank === "Queen") return false;
             
+            // Exclude items/spells and the leader themselves
+            if (card.type !== "monster" || id === leaderID) return false;
+            
+            // Match by Suit OR Tribe (No rank restrictions!)
             return (card.suit === leaderCard.suit) || (card.tribe && leaderCard.tribe && card.tribe === leaderCard.tribe);
         });
         
         // If the pool is empty, return fallbacks so the map doesn't crash
         return minions.length > 0 ? minions : [54, 56, 42, 23];
-        }
+    }
     function buildSynergisticDeck(monsterID, maxTotalPower = 50) {
         let baseID = Math.floor(parseFloat(monsterID));
         let deck = [baseID]; 
@@ -3084,28 +3085,44 @@
 
             for(let r = top; r <= bottom; r++) {
                 for(let c = left; c <= right; c++) {
-                    if (r < 1 || r >= 98 || c < 1 || c >= 98) continue; 
+                    if (r < 1 || r >= maxR-1 || c < 1 || c >= maxC-1) continue; 
                     
                     let dist = getDist(c, r, zone.x, zone.y);
                     if (dist <= zone.r) {
                         
+                        // --- UPDATED TECHNIQUE: THE CITY ---
+                        // Walled perimeter, "+" cross-streets, and hollow corner buildings
+                        if (zone.technique === 'city') {
+                            grid[r][c] = 0; 
+                            if (dist > zone.r - 1) grid[r][c] = zone.wall; // Perimeter wall
+                            else if (dist < zone.r - 2) {
+                                let localR = Math.abs(r - zone.y);
+                                let localC = Math.abs(c - zone.x);
+                                
+                                // Carve a 3-tile wide cross street
+                                if (localR < 2 || localC < 2) {
+                                    grid[r][c] = 0; 
+                                } else {
+                                    // Build hollow structures in the quadrants
+                                    if (localR === 2 || localC === 2 || dist >= zone.r - 3.5) {
+                                        grid[r][c] = zone.wall; // Building walls
+                                        // Punch doors facing the streets
+                                        if ((localR === 2 && localC === 3) || (localC === 2 && localR === 3)) {
+                                            grid[r][c] = 0; 
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        
                         // --- TECHNIQUE A: THE CAMP ---
                         // Wide open circle with a hard border
-                        if (zone.technique === 'camp') {
+                        else if (zone.technique === 'camp') {
                             if (dist > zone.r - 1.5) grid[r][c] = zone.wall;
                             else grid[r][c] = 0;
                         }
                         
-                        // --- TECHNIQUE B: THE CITY ---
-                        // Grid-like blocks
-                        else if (zone.technique === 'city') {
-                            grid[r][c] = 0; 
-                            if (dist > zone.r - 1) grid[r][c] = zone.wall; 
-                            // Draw blocks of 3x3 walls separated by 2-tile streets
-                            else if (r % 5 < 3 && c % 5 < 3 && dist < zone.r - 2) {
-                                grid[r][c] = zone.wall;
-                            }
-                        }
+                    
                         
                         // --- TECHNIQUE C: THE CAVERN ---
                         // Noise-based organic chunks
@@ -3140,48 +3157,35 @@
             }
         });
 
-       // 4. DRAW THE ORGANIC ROADS (The Drunkard's Walk)
+       // 4. DRAW THE ORGANIC ROADS (The Drill-Bit Fix)
         const drawOrganicCorridor = (zoneA, zoneB) => {
-            // Safety check: if the grid was too crowded and a zone failed to spawn, skip the road
-            if (!zoneA || !zoneB) return; 
-
-            let cx = zoneA.x;
-            let cy = zoneA.y;
+            if (!zoneA || !zoneB) return;
+            let cx = zoneA.x; let cy = zoneA.y;
             
-            while (getDist(cx, cy, zoneB.x, zoneB.y) > zoneB.r + 1) {
+            // FIX: Carve all the way to a distance of 2 from the center to punch through walls!
+            while (getDist(cx, cy, zoneB.x, zoneB.y) > 2) { 
                 if (Math.random() > 0.3) {
-                    if (Math.abs(zoneB.x - cx) > Math.abs(zoneB.y - cy)) {
-                        cx += (zoneB.x > cx) ? 1 : -1;
-                    } else {
-                        cy += (zoneB.y > cy) ? 1 : -1;
-                    }
+                    Math.abs(zoneB.x - cx) > Math.abs(zoneB.y - cy) ? cx += (zoneB.x > cx ? 1 : -1) : cy += (zoneB.y > cy ? 1 : -1);
                 } else {
                     Math.random() > 0.5 ? (cx += Math.random() > 0.5 ? 1 : -1) : (cy += Math.random() > 0.5 ? 1 : -1);
                 }
+                cx = Math.max(2, Math.min(maxC - 3, cx)); cy = Math.max(2, Math.min(maxR - 3, cy));
 
-                cx = Math.max(2, Math.min(maxC - 3, cx));
-                cy = Math.max(2, Math.min(maxR - 3, cy));
-
-                if (getDist(cx, cy, zoneA.x, zoneA.y) > zoneA.r + 1) {
-                    grid[cy][cx] = 0;
-                    if(grid[cy][cx+1] !== undefined) grid[cy][cx+1] = 0;
-                    if(grid[cy+1] && grid[cy+1][cx] !== undefined) grid[cy+1][cx] = 0;
-                    if(grid[cy+1] && grid[cy+1][cx+1] !== undefined) grid[cy+1][cx+1] = 0;
-                }
+                // Carve a 2-tile wide path
+                grid[cy][cx] = 0;
+                grid[cy][cx+1] = 0;
+                grid[cy+1][cx] = 0;
+                grid[cy+1][cx+1] = 0;
             }
         };
 
-        // ✅ FIX: Define the specific zones HERE before using them
         let bastion = zones.find(z => z.role === 'bastion');
         let lair = zones.find(z => z.role === 'lair');
         let arena = zones.find(z => z.role === 'arena');
         let ruins = zones.find(z => z.role === 'ruins');
 
-        // Main Path: Bastion(0) -> Arena(2) -> Lair(1)
         drawOrganicCorridor(bastion, arena); 
         drawOrganicCorridor(arena, lair); 
-
-        // Side Quest: Bastion(0) -> Ruins(3) (Dead End)
         drawOrganicCorridor(bastion, ruins);
 
         // 5. CARVE THE WILDS (Cellular Automata on the mortar)
@@ -3214,7 +3218,30 @@
             }
             grid = tempGrid;
         }
-
+        // Starts at the Bastion. Any floor tile it can't reach gets turned into a solid wall.
+        let accessible = Array(maxR).fill().map(()=>Array(maxC).fill(false));
+        let q = [{r: bastion.y, c: bastion.x}];
+        accessible[bastion.y][bastion.x] = true;
+        
+        while(q.length > 0) {
+            let {r,c} = q.shift();
+            [[0,1],[1,0],[0,-1],[-1,0]].forEach(([dr,dc]) => {
+                let nr = r+dr, nc = c+dc;
+                if(nr>0 && nr<maxR-1 && nc>0 && nc<maxC-1 && !accessible[nr][nc] && grid[nr][nc] === 0) {
+                    accessible[nr][nc] = true;
+                    q.push({r:nr, c:nc});
+                }
+            });
+        }
+        
+        // Delete the trapped pockets
+        for(let r=1; r<maxR-1; r++){
+            for(let c=1; c<maxC-1; c++){
+                if(grid[r][c] === 0 && !accessible[r][c]) {
+                    grid[r][c] = mainWildsWallType; 
+                }
+            }
+        }
         // 6. CATALOG THE TILES FOR SPAWNING
         let wildsTiles = [];
         for (let r = 1; r < maxR - 1; r++) {
@@ -3492,25 +3519,59 @@
         let currentVibe = "An unknown wanderer with no established habits.";
         let shadowVibe = "The mysteries of the realm.";
 
-        // --- VECTOR RAG: Find the Core and the Shadow ---
         if (targetPlayer && targetPlayer.searchableMemories && targetPlayer.searchableMemories.length > 0) {
-            // Calculate what the player is doing MOST consistently right now
             let playerCentroid = calculateCentroid(targetPlayer.searchableMemories);
-
-            // Sort all compressed memories by similarity to the centroid (Ascending: lowest score first)
             let scoredMemories = targetPlayer.searchableMemories.map(mem => {
                 let score = mem.vector ? cosineSimilarity(playerCentroid, mem.vector) : 0;
                 return { text: mem.text, score: score };
             }).sort((a, b) => a.score - b.score);
 
-            // Highest score = Who they are right now (Core Habits)
             currentVibe = scoredMemories[scoredMemories.length - 1].text;
-            
-            // Lowest score = The Shadow Context (Neglected/Opposing themes)
             shadowVibe = scoredMemories[0].text;
         }
 
-        const prompt = `[ROOT DIRECTIVE]: You are the Dungeon Master and Narrative Designer for the dark fantasy RPG "Runestones".
+        // --- 1. INJECT CHAOS VECTORS TO PREVENT REPETITIVE TROPES ---
+        const themes = [
+            "Horror (sanity-draining, incomprehensible motives, unspeakable evil)",
+            "Tragic Romance (a lover lost, a desperate resurrection attempt,lovers on opposite sides)",
+            "Political Betrayal (mutinies, traitors, usurpers)",
+            "Corruption (the land itself is sick, mind-control, invasive species)",
+            "Crusade (blind faith, purging the 'unclean',reclaiming the holy land)",
+            "Forgotten Pact (a broken ancient promise coming due, prophecy of doom not averted)",
+            "Starvation (cannibalism, desperate survival, dying magic, being hunted til endangered)"
+        ];
+        const twists = [
+            // --- THE CLASSICS (Your Originals) ---
+            "The Boss is actually terrified of the 3rd Tribe in the Ruins.",
+            "The Boss and the Quest Giver are secretly working together.",
+            "The Bastion is infected with a plague they are hiding from the player.",
+            "The Arena fighters are actually volunteers trying to appease a dark god.",
+            "The Wilds are completely artificial, an illusion maintained by the Boss.",
+
+            // --- FALSE FLAGS & POLITICAL BETRAYAL (Tactics Ogre / FF Tactics) ---
+            "The Bastion slaughtered their own villagers and blamed it on the Boss to justify a holy war.",
+            "The 3rd Tribe in the Ruins are the true, rightful heirs to the land, driven out by the Bastion's ancestors.",
+            "The war is a sham; the Bastion's nobles and the Boss are secretly trading resources while the lower classes die fighting.",
+            "The prisoners in the Lair aren't hostages at all—they fled the Bastion willingly to escape an oppressive regime.",
+            "The 'rebellion' in the Arena is funded by the Bastion to keep the Boss distracted from the real invasion.",
+
+            // --- INSTITUTIONAL CORRUPTION (FF Tactics) ---
+            "The Bastion's 'holy' religion is actually a front for a demonic cult, and the Boss is a disgraced knight trying to stop them.",
+            "The blood spilled in the Arena isn't for sport; it is secretly being funneled underground to resurrect an ancient evil.",
+            "The monsters in the Wilds are actually Bastion soldiers, mutated by a secret 'blessing' given by their own priests.",
+            "The Quest Giver is intentionally sending heroes to their deaths to harvest their souls and achieve immortality.",
+
+            // --- LINEAGE & EXISTENTIAL DREAD (Baldur's Gate 1 & 2) ---
+            "The Boss is the previous hero who took this exact quest, realized the Bastion was evil, and went rogue to stop them.",
+            "The Boss is completely unaware of the war; they are trapped in a magical coma, and the enemy army is just their nightmares manifesting physically.",
+            "The 3rd Tribe in the Ruins are actually time-displaced survivors from the future, trying to prevent the player from completing their quest.",
+            "The Boss isn't conquering for power; they are desperately building an army to fight a cosmic threat that the Bastion refuses to acknowledge."
+        ];
+        
+        let randomTheme = themes[Math.floor(Math.random() * themes.length)];
+        let randomTwist = twists[Math.floor(Math.random() * twists.length)];
+
+        const prompt = `[ROOT DIRECTIVE]: You are the Dungeon Master for the dark fantasy RPG "Runestones".
             
             [PLAYER PSYCHOLOGY]: 
             Current Habits: ${currentVibe}
@@ -3518,33 +3579,34 @@
 
             [WORLD BLUEPRINT - The map generated for this session]:
             - BIOME: ${biomeName}
-            - ZONE 1 (The Bastion): A fortified settlement. Contains mundane Villagers and a local Merchant.
-            - ZONE 2 (The Lair): The main dungeon. The boss is [${bossName}]. They have 4 Elite Guards at the gate, and a captured prisoner locked deep inside.
-            - ZONE 3 (The Arena): A bloody colosseum. Gladiators fight here relentlessly, either for the Boss's amusement or as rebels.
-            - ZONE 4 (The Ruins): Ancient, crumbling architecture held by a mysterious 3rd Tribe. 
-            - ZONE 5 (The Wilds): The contested wilderness connecting all the zones. Contains enemy Grunt camps and defecting cowards fleeing the war.
+            - SCENARIO TYPE: ${scenarioType}
+            - ZONE 1 (The Bastion): Fortified settlement. 
+            - ZONE 2 (The Lair): The main dungeon. Boss is [${bossName}]. 
+            - ZONE 3 (The Arena): A bloody colosseum. 
+            - ZONE 4 (The Ruins): Crumbling architecture held by a mysterious 3rd Tribe. 
+            - ZONE 5 (The Wilds): Contested wilderness connecting all zones.
 
             [NARRATIVE TASK]: 
-            Invent a deeply compelling, morally gray scenario tying this blueprint together. 
-            1. Define the Boss's motivation. Are they truly evil, or driven by tragedy?
-            2. Define the Bastion's sentiment. Are the allies innocent, or are they prejudiced and hoarding resources from the Wilds?
-            3. What is happening in this land besides the bastion/lair conflict? Add sub-Lore for the other zones such as the wilds, the arena, and the ruins, making the backstory of these zones relevant to the main plot of the scenario. Detail how the [3rd Tribe] in the Ruins got to be there, who they are, and why theyre hostile. Detail the arena specifics. Who are the combatants there and why do they fight? What do they desire? 
-
-            4. The Orthogonal Challenge: Force the player to confront their [Neglected Themes].
+            Invent a deeply compelling scenario using this specific THEME and TWIST:
+            - THEME: ${randomTheme}
+            - PLOT TWIST: ${randomTwist}
             
-            [DIALOGUE GENERATION]:
-            Write the dialogue arrays matching the lore you just invented. Keep all lines under 12 words. Ensure the tone is dark fantasy.
+            Force the player to confront their [Neglected Themes] through the dialogue.
             
-            1. mapLore: 2 sentences of deep history tying the Boss's motives to this region.
-            2. questObjective: A clear 1-sentence objective (e.g., "${bossName}[the Boss's motives for being the antagonist in this region from mapLore]. Slay them before they [whatever the boss is trying to do]")
-            3. bossTaunt: 1 menacing sentence revealing their true motive and attacking the player's psychology.
-            4. hostileTaunts: Array of 30 distinct battle cries from the grunts/guards.
-            5. traitorBegs: 15 lines from fleeing enemies. At least 5 of these MUST mention how terrifying the 3rd Tribe in the Ruins is.
-            6. friendlyLore: Array of 6 lines from Bastion villagers. They MUST give rumors about the Arena, the Ruins, and the Lair.
+            [DIALOGUE GENERATION & DATA MAPPING]:
+            Write the dialogue arrays matching the lore you invented. Keep all lines under 12 words. Ensure the tone is dark fantasy.
+            
+            1. mapLore: 2 sentences of deep history establishing the Theme and Twist.
+            2. questObjective: A clear 1-sentence objective.
+            3. bossTaunt: 1 menacing sentence attacking the player's psychology.
+            4. hostileTaunts: Array of 30 DISTINCT battle cries. Do not repeat variations of "Die!". Base them on the Theme.
+            5. traitorBegs: 15 lines from fleeing enemies. At least 5 MUST detail how terrifying the 3rd Tribe in the Ruins is.
+            6. friendlyLore: Array of 6 lines. This is where you MUST inject your sub-lore about the Arena, Ruins, and Wilds. Let the villagers explain what is going on out there.
             7. friendlyLife: Array of 4 lines of mundane, atmospheric chatter.
             8. friendlyProfound: Array of 4 philosophical statements bridging the player's habits to the scenario.
             9. recruitPlea: Array of 3 compelling lines to join the party.
-            10. prisonerLines: Array of 6 lines from the trapped NPC in the lair. They MUST reveal a secret weakness about the Boss that involves the Wilds or the Ruins.`;
+            10. prisonerLines: Array of 6 lines from the trapped NPC. They MUST reveal the Plot Twist.`;
+
             const schema = {
                 type: SchemaType.OBJECT,
                 properties: {
@@ -3563,10 +3625,11 @@
             };
 
             try {
+                // Flash 3.1 is great, but ensure you handle the output safely!
                 const scriptModel = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite-preview" });
                 const result = await scriptModel.generateContent({
                     contents: [{ role: "user", parts: [{ text: prompt }] }],
-                    generationConfig: { responseMimeType: "application/json", responseSchema: schema }
+                    generationConfig: { responseMimeType: "application/json", responseSchema: schema, temperature: 0.8 } // Bumped temp slightly for narrative variety
                 });
                 
                 let rawText = result.response.text().trim();
@@ -3576,7 +3639,7 @@
                 console.error("Script Generation Failed:", e);
                 return null; 
             }
-        }
+}
     function cacheScriptLines(biomeName, script) {
         if (!GLOBAL_LORE_CACHE[biomeName]) {
             GLOBAL_LORE_CACHE[biomeName] = {
@@ -3767,40 +3830,59 @@
                     
                     // E. CREATE CUSTOM MAP (The Server-Driven Engine)
                     else if (call.name === "createCustomMap") {
-                        try {
-                            
-                            // 1. SERVER ROLLS THE SCENARIO AND ZONING
+                            try {
+                                // 1. BIOME & SCENARIO SETUP
                                 const bEnum = Math.floor(Math.random() * Object.keys(BIOME_DB).length);
                                 const biome = BIOME_DB[bEnum] || BIOME_DB[0];
 
-                                // --- FORCE SERVER-SIDE RANDOM SCENARIO ---
-                                const validScenarios = ['Invasion', 'Rescue/Fetch', 'Arena Madness','Raid'];
+                                const validScenarios = ['Invasion', 'Rescue/Fetch', 'Arena Madness', 'Raid'];
                                 let scenarioType = validScenarios[Math.floor(Math.random() * validScenarios.length)];
+                                
                                 // Settlement Logic (0 = Wilderness, 1 = Village, 2 = City)
                                 const settlementType = scenarioType === 'Arena Madness' ? 0 : Math.floor(Math.random() * 2) + 1; 
 
-                                // Pick Actors
+                                // --- PICK ACTORS (Unrestricted) ---
                                 const monsterIDs = Object.keys(CARD_MANIFEST_DB).filter(id => CARD_MANIFEST_DB[id].type === "monster" && CARD_MANIFEST_DB[id].rank !== "0");
 
-                                // ---> 1. DEFINE HEAVY SPRITES HERE FIRST! <---
-                                const HEAVY_SPRITES = [0,1,2,3,4,5,9,33, 34, 35, 47,48, 49, 62, 63, 76, 77, 85, 86, 87, 94,99]; 
-                                let heavySpawnCount = {}; 
-
-                                // ---> 2. FORCE THE BOSS TO BE HEAVY <---
-                                const bossPool = monsterIDs.filter(id => HEAVY_SPRITES.includes(parseInt(id)));
-                                let antagID = parseInt(bossPool[Math.floor(Math.random() * bossPool.length)] || 63); // Fallback to Dragon
-
-                                // ---> 3. PICK THE ALLY (Ensure it's not the boss) <---
+                                // Any monster can be the Boss
+                                let antagID = parseInt(monsterIDs[Math.floor(Math.random() * monsterIDs.length)]);
+                                
+                                // Any monster can be the Ally
                                 let protagID = parseInt(monsterIDs[Math.floor(Math.random() * monsterIDs.length)]);
-                                while (protagID === antagID) protagID = parseInt(monsterIDs[Math.floor(Math.random() * monsterIDs.length)]);
+                                while (protagID === antagID) {
+                                    protagID = parseInt(monsterIDs[Math.floor(Math.random() * monsterIDs.length)]);
+                                }
 
-                            // 2. FETCH THE SCRIPT & REDUNDANCY CHECKER
+                                // --- FACTION POOLS ---
+                                // Faction 1: The Bastion (Allies)
+                                let friendlyMinions = getMinions(protagID);
+                                let safeAllyID = friendlyMinions.length > 0 ? friendlyMinions[0] : 54;
+                                let allySprite = CARD_MANIFEST_DB[safeAllyID].sprite || safeAllyID;
+
+                                // Faction 2: The Lair & Wilds (Enemies)
+                                let hostileMinions = getMinions(antagID).filter(id => !friendlyMinions.includes(id));
+                                if (hostileMinions.length === 0) hostileMinions = biome.mobs || [54, 56, 42]; // Fallback to Biome natives
+
+                                // Faction 3: The Ruins (3rd Tribe)
+                                const thirdTribePool = monsterIDs.filter(id => id != antagID && id != protagID);
+                                let thirdTribeID = parseInt(thirdTribePool[Math.floor(Math.random() * thirdTribePool.length)] || 54);
+                                let thirdTribeMinions = getMinions(thirdTribeID);
+
+                                // O(1) Local Spawn Helper
+                                const pickTile = (zoneArray) => {
+                                    if (!zoneArray || zoneArray.length === 0) return {x: 50.5, y: 50.5}; // Fallback center
+                                    let idx = Math.floor(Math.random() * zoneArray.length);
+                                    let t = zoneArray.splice(idx, 1)[0]; 
+                                    return {x: t.x + 0.5, y: t.y + 0.5};
+                                };
+
+                                // 2. FETCH THE SCRIPT & REDUNDANCY CHECKER
                                 let script = null;
                                 let attempts = 0;
                                 const targetPlayer = players[findSocketID(call.args.targetName)];
 
                                 while (attempts < 2) {
-                                    script = await generateScenarioScript(biome.name, scenarioType, CARD_MANIFEST_DB[antagID].name, CARD_MANIFEST_DB[protagID].name,targetPlayer);
+                                    script = await generateScenarioScript(biome.name, scenarioType, CARD_MANIFEST_DB[antagID].name, CARD_MANIFEST_DB[protagID].name, targetPlayer);
                                     
                                     if (!script || !script.questObjective) {
                                         attempts++;
@@ -3848,6 +3930,11 @@
                                     };
                                 }
 
+                                const getDialogue = (category, fallback) => {
+                                    if (script && script[category] && script[category].length > 0) return script[category].pop();
+                                    return getMadLibLine(biome.name, category, fallback);
+                                };
+
                                 // SHUFFLE THE ARRAYS
                                 if (script.friendlyLore) shuffleArray(script.friendlyLore);
                                 if (script.friendlyLife) shuffleArray(script.friendlyLife);
@@ -3857,296 +3944,247 @@
                                 if (script.traitorBegs) shuffleArray(script.traitorBegs);
                                 if (script.prisonerLines) shuffleArray(script.prisonerLines);
 
-                            // 3. GENERATE THE MEGA-MAP
+                                // 3. GENERATE THE MEGA-MAP
                                 let mapData = generateProceduralGrid(biome.walls[0]); 
                                 let gridData = mapData.grid;
-                                let floorTiles = mapData.floorTiles || [];
 
                                 // 4. POPULATE THE WORLD (Component-Based Spawning)
                                 let mapNPCs = [];
-                                const friendlyMinions = getMinions(protagID);
-                                let hostileMinions = getMinions(antagID).filter(id => !friendlyMinions.includes(id));
-                                if (hostileMinions.length === 0) hostileMinions = [54, 56, 42, 23,60,78,88,82,83];
-                                
-                                // ---> SAFE ALLY SPRITE SELECTOR <---
-                                const safeFriendlyMinions = friendlyMinions.filter(id => !HEAVY_SPRITES.includes(parseInt(id)));
-                                let safeAllyID = safeFriendlyMinions.length > 0 ? safeFriendlyMinions[0] : 54; 
-                                let allySprite = CARD_MANIFEST_DB[safeAllyID].sprite || safeAllyID;
 
-                                // ---> HEAVY SPRITE LIMITER HELPER <---
-                                const getSafeMinion = (pool) => {
-                                    for (let tries = 0; tries < 5; tries++) {
-                                        let id = pool[Math.floor(Math.random() * pool.length)];
-                                        if (HEAVY_SPRITES.includes(id)) {
-                                            if ((heavySpawnCount[id] || 0) < 1) { 
-                                                heavySpawnCount[id] = 1; 
-                                                return id;
+                                // ==========================================
+                                // ZONE 1: THE BASTION (Safe Zone)
+                                // ==========================================
+                                // Shopkeeper is FRIENDLY
+                                mapNPCs.push({
+                                    type: allySprite, x: mapData.startX + 0.5, y: mapData.startY + 0.5, 
+                                    state: 'stationary', role: 'shop', alignment: 'friendly', 
+                                    deck: buildShopInventory(50, 100), color: '#00ffff', 
+                                    dialogue: [getDialogue('friendlyLife', "Welcome to the market!")]
+                                });
+
+                                // City Dwellers (Villagers)
+                                for(let i = 0; i < 6; i++) {
+                                    let mID = friendlyMinions[Math.floor(Math.random() * friendlyMinions.length)];
+                                    let vTile = pickTile(mapData.bastionTiles);
+                                    mapNPCs.push({
+                                        type: CARD_MANIFEST_DB[mID].sprite || mID, x: vTile.x, y: vTile.y, 
+                                        state: 'wandering', role: 'dialogue', alignment: 'friendly', 
+                                        dialogue: [getDialogue('friendlyLore', "Stay within the walls.")]
+                                    });
+                                }
+
+                                // Bastion Guards (Defenders)
+                                for(let i = 0; i < 4; i++) {
+                                    let mID = friendlyMinions[Math.floor(Math.random() * friendlyMinions.length)];
+                                    let vTile = pickTile(mapData.bastionTiles);
+                                    mapNPCs.push({
+                                        type: CARD_MANIFEST_DB[mID].sprite || mID, x: vTile.x, y: vTile.y, 
+                                        state: 'stationary', role: 'battle', alignment: 'defender', 
+                                        deck: buildSynergisticDeck(mID, 100), 
+                                        dialogue: [getDialogue('hostileTaunts', "Halt! State your business.")]
+                                    });
+                                }
+
+                                // ==========================================
+                                // ZONE 2: THE LAIR (Main Boss)
+                                // ==========================================
+                                mapNPCs.push({
+                                    type: CARD_MANIFEST_DB[antagID].sprite || antagID,
+                                    x: mapData.bossX + 0.5, y: mapData.bossY + 0.5, 
+                                    state: 'stationary', role: 'battle', isBoss: true, alignment: 'foe',
+                                    mastery: 3, deck: buildSynergisticDeck(antagID, 300), color: '#ff00ff', 
+                                    dialogue: [script.bossTaunt || getMadLibLine(biome.name, 'bossTaunts', "You dare approach my domain?")]
+                                });
+
+                                // Elite Guards
+                                for (let i = 0; i < 10; i++) {
+                                    let mID = hostileMinions[Math.floor(Math.random() * hostileMinions.length)];
+                                    let guardTile = pickTile(mapData.lairTiles); 
+                                    mapNPCs.push({
+                                        type: CARD_MANIFEST_DB[mID].sprite || mID, x: guardTile.x, y: guardTile.y, 
+                                        state: 'wandering', role: 'battle', alignment: 'foe', mastery: 2, 
+                                        deck: buildSynergisticDeck(mID, 100), color: '#ff8800', 
+                                        dialogue: [getDialogue('hostileTaunts', "None shall pass!")]
+                                    });
+                                }
+
+                                // ==========================================
+                                // ZONE 3: THE ARENA (Gladiators)
+                                // ==========================================
+                                for(let i=0; i<3; i++) {
+                                    let mID = hostileMinions[Math.floor(Math.random() * hostileMinions.length)];
+                                    let spawnSpot = pickTile(mapData.arenaTiles);
+                                    mapNPCs.push({
+                                        type: CARD_MANIFEST_DB[mID].sprite || mID, x: spawnSpot.x, y: spawnSpot.y,
+                                        state: 'stationary', role: 'battle', alignment: 'foe_gladiator', subRole:'gladiator',
+                                        dialogue: [script.hostileTaunts[i % script.hostileTaunts.length] || "For glory!"],
+                                        deck: buildSynergisticDeck(mID, 120)
+                                    });
+                                }
+
+                                // ==========================================
+                                // ZONE 4: THE RUINS (3rd Tribe / Mini-Boss)
+                                // ==========================================
+                                mapNPCs.push({
+                                    type: CARD_MANIFEST_DB[thirdTribeID].sprite || thirdTribeID,
+                                    x: mapData.miniX + 0.5, y: mapData.miniY + 0.5,
+                                    state: 'stationary', role: 'battle', alignment: 'foe_miniBoss',
+                                    mastery: 2, deck: buildSynergisticDeck(thirdTribeID, 150), color: '#ffaa00',
+                                    dialogue: [script.bossTaunt || getMadLibLine(biome.name, 'bossTaunts', "You dare?")]
+                                });
+
+                                for(let i=0; i<9; i++) {
+                                    let mID = thirdTribeMinions[Math.floor(Math.random() * thirdTribeMinions.length)];
+                                    let spawnSpot = pickTile(mapData.ruinsTiles); 
+                                    mapNPCs.push({
+                                        type: CARD_MANIFEST_DB[mID].sprite || mID, x: spawnSpot.x, y: spawnSpot.y,
+                                        state: 'chasing', role: 'battle', alignment: 'foe_miniBoss',
+                                        dialogue:  [script.hostileTaunts[i % script.hostileTaunts.length]||"Leave our ruins!"], 
+                                        deck: buildSynergisticDeck(mID, 50)
+                                    });
+                                }
+
+                                // ==========================================
+                                // ZONE 5: THE WILDS (The Connective Tissue)
+                                // ==========================================
+                                for (let camp = 0; camp < 13; camp++) {
+                                    let campCenter = pickTile(mapData.wildsTiles);
+                                    let campPower = 30; 
+                                    for (let g = 0; g < 3; g++) {
+                                        let mID = hostileMinions[Math.floor(Math.random() * hostileMinions.length)];
+                                        let gTile = {x: campCenter.x + (Math.random() * 2 - 1), y: campCenter.y + (Math.random() * 2 - 1)};
+                                        
+                                        mapNPCs.push({
+                                            type: CARD_MANIFEST_DB[mID].sprite || mID, x: gTile.x, y: gTile.y, 
+                                            state: 'chasing', role: 'battle', alignment: 'foe',
+                                            mastery: Math.random() > 0.5 ? 1 : 0, 
+                                            deck: buildSynergisticDeck(mID, campPower), 
+                                            dialogue: [getDialogue('hostileTaunts', "Intruder!")]
+                                        });
+                                    }
+                                }
+
+                                mapNPCs.forEach((npc, idx) => { npc.index = 10000 + idx; });
+
+                                // 5. CACHE AND TELEPORT
+                                const customMapData = {
+                                    id: 999, maze: gridData, 
+                                    skyColor: biome.skies[0], floorColor: biome.floors[0], 
+                                    name: `Realm of the ${script.questObjective.split(' ')[0] || "Mystery"}`, 
+                                    npcs: mapNPCs, weather: biome.weather[0],
+                                    spawnX: mapData.startX + 0.5, 
+                                    spawnY: mapData.startY + 0.5,
+                                    bossX: mapData.bossX + 0.5,
+                                    bossY: mapData.bossY + 0.5,
+                                    arenaX: mapData.arenaX + 0.5,
+                                    arenaY: mapData.arenaY + 0.5,
+                                    miniX: mapData.miniX + 0.5,
+                                    miniY: mapData.miniY + 0.5,
+                                    biome: biome.name
+                                };
+
+                                activeCustomMap = customMapData;
+
+                                let requesterID = socket ? socket.id : findSocketID(call.args.targetName);
+                                let targets = [];
+
+                                for (let id in players) {
+                                    if (id !== SUNCAT_ID && players[id].mapID !== 999) {
+                                        targets.push(id);
+                                    }
+                                }
+
+                                if (requesterID && !targets.includes(requesterID)) {
+                                    targets.push(requesterID);
+                                }
+
+                                if (targets.length > 0) {
+                                    targets.forEach(tid => {
+                                        const targetPlayer = players[tid];
+                                        if (!targetPlayer) return;
+                                        
+                                        targetPlayer.prevMapID = targetPlayer.mapID; 
+                                        targetPlayer.mapFriendlyTribe = protagID;
+                                        targetPlayer.mapHostileTribe = antagID;
+                                        targetPlayer.mapScenario = scenarioType; 
+                                        targetPlayer.currentMapLore = script.mapLore;
+                                        targetPlayer.scenarioLog = []; 
+                                        targetPlayer.mapBossID = antagID;
+                                        targetPlayer.mapMiniBossID = thirdTribeID; 
+                                        targetPlayer.sideQuestComplete = false;    
+                                        targetPlayer.activeQuest = script.questObjective;
+
+                                        let impX = targetPlayer.x;
+                                        let impY = targetPlayer.y;
+
+                                        const isSafeTile = (grid, mX, mY) => {
+                                            if (!grid || !grid[mY] || grid[mY][mX] === undefined) return false;
+                                            let tile = grid[mY][mX];
+                                            if (tile > 0 && tile % 2 !== 0) return false; 
+                                            if (tile < 0 && Math.abs(tile) % 2 === 1) return false; 
+                                            return true; 
+                                        };
+
+                                        let currentGrid = null;
+                                        if (targetPlayer.mapID === 999 && customMapData) currentGrid = customMapData.maze;
+                                        else if (targetPlayer.mapID === 100 && tintagelHubMap) currentGrid = tintagelHubMap.maze;
+
+                                        if (currentGrid) {
+                                            let foundSafe = false;
+                                            for(let i = 0; i < 15; i++) {
+                                                let angle = Math.random() * Math.PI * 2;
+                                                let dist = 1 + Math.random(); 
+                                                let testX = Math.floor(targetPlayer.x + Math.cos(angle) * dist);
+                                                let testY = Math.floor(targetPlayer.y + Math.sin(angle) * dist);
+                                                
+                                                if (isSafeTile(currentGrid, testX, testY)) {
+                                                    impX = testX + 0.5;
+                                                    impY = testY + 0.5;
+                                                    foundSafe = true;
+                                                    break;
+                                                }
+                                            }
+                                            if (!foundSafe) {
+                                                impX = targetPlayer.x + (Math.random() * 0.4 - 0.2); 
+                                                impY = targetPlayer.y + (Math.random() * 0.4 - 0.2);
                                             }
                                         } else {
-                                            return id; 
+                                            impX = targetPlayer.x + (Math.random() > 0.5 ? 0.3 : -0.3);
+                                            impY = targetPlayer.y + (Math.random() > 0.5 ? 0.3 : -0.3);
                                         }
-                                    }
-                                    return 54; 
-                                };    
-                                // O(1) Local Spawn Helper
-                                const pickTile = (zoneArray) => {
-                                    if (!zoneArray || zoneArray.length === 0) return {x: mapData.startX+0.5, y: mapData.startY+0.5};
-                                    let idx = Math.floor(Math.random() * zoneArray.length);
-                                    let t = zoneArray.splice(idx, 1)[0]; 
-                                    return {x: t.x + 0.5, y: t.y + 0.5};
-                                };
 
-                                const getDialogue = (category, fallback) => {
-                                    if (script && script[category] && script[category].length > 0) return script[category].pop();
-                                    return getMadLibLine(biome.name, category, fallback);
-                                };
-
-                            
-                            // ==========================================
-                            // ZONE 1: THE BASTION (Safe Zone)
-                            // ==========================================
-                            // Shopkeeper is FRIENDLY (Pacifist)
-                            mapNPCs.push({
-                                type: allySprite, x: mapData.startX + 0.5, y: mapData.startY + 0.5, 
-                                state: 'wandering', role: 'shop', alignment: 'friendly', // <--- FIXED
-                                deck: buildShopInventory(50, 100), color: '#00ffff', 
-                                dialogue: [getDialogue('friendlyLife', "Rest by the fire, traveler.")]
-                            });
-
-                            // Bastion Guards are DEFENDERS
-                            for(let i = 0; i < 9; i++) {
-                                let vTile = pickTile(mapData.bastionTiles);
-                                mapNPCs.push({
-                                    type: allySprite, x: vTile.x, y: vTile.y, 
-                                    state: 'wandering', role: 'dialogue', alignment: 'defender', 
-                                    deck: buildSynergisticDeck(allySprite, 100), 
-                                    dialogue: [getDialogue('friendlyLore', "We protect our own.")]
-                                });
-                            }
-
-                            // ==========================================
-                            // ZONE 2: THE LAIR (Main Boss)
-                            // ==========================================
-                            // Place the Main Boss exactly at the Lair's Anchor Point
-                            mapNPCs.push({
-                                type: CARD_MANIFEST_DB[antagID].sprite || antagID,
-                                x: mapData.bossX + 0.5, y: mapData.bossY + 0.5, 
-                                state: 'stationary', role: 'battle', isBoss: true, alignment: 'foe',
-                                mastery: 3, deck: buildSynergisticDeck(antagID, 300), color: '#ff00ff', 
-                                dialogue: [script.bossTaunt || getMadLibLine(biome.name, 'bossTaunts', "You dare approach my domain?")]
-                            });
-
-                            // Elite Guards
-                            for (let i = 0; i < 10; i++) {
-                                let mID = getSafeMinion(hostileMinions)
-                                let guardTile = pickTile(mapData.lairTiles); 
-                                mapNPCs.push({
-                                    type: CARD_MANIFEST_DB[mID].sprite || mID, x: guardTile.x, y: guardTile.y, 
-                                    state: 'wandering', role: 'battle', alignment: 'foe', mastery: 2, 
-                                    deck: buildSynergisticDeck(mID, 100), color: '#ff8800', 
-                                    dialogue: [getDialogue('hostileTaunts', "None shall pass!")]
-                                });
-                            }
-
-                            // ==========================================
-                            // ZONE 3: THE ARENA (Gladiators)
-                            // ==========================================
-                            for(let i=0; i<3; i++) {
-                                let mID = getSafeMinion(hostileMinions);
-                                let spawnSpot = pickTile(mapData.arenaTiles);
-                                mapNPCs.push({
-                                    type: CARD_MANIFEST_DB[mID].sprite || mID, x: spawnSpot.x, y: spawnSpot.y,
-                                    state: 'stationary', role: 'battle', alignment: 'foe_gladiator', subRole:'gladiator',
-                                    dialogue: [script.hostileTaunts[i % script.hostileTaunts.length] || "For glory!"],
-                                    deck: buildSynergisticDeck(mID, 120)
-                                });
-                            }
-
-                            // ==========================================
-                            // ZONE 4: THE RUINS (3rd Tribe / Mini-Boss)
-                            // ==========================================
-                            // Find a monster type that ISN'T the main boss or the ally
-                            const thirdTribePool = Object.keys(CARD_MANIFEST_DB).filter(id => CARD_MANIFEST_DB[id].type === "monster" && id != antagID && id != protagID && CARD_MANIFEST_DB[id].rank !== "0");
-                            let thirdTribeID = parseInt(thirdTribePool[Math.floor(Math.random() * thirdTribePool.length)] || 54);
-                            
-                            // Spawn the Mini-Boss at the Ruins Anchor
-                            mapNPCs.push({
-                                type: CARD_MANIFEST_DB[thirdTribeID].sprite || thirdTribeID,
-                                x: mapData.miniX + 0.5, y: mapData.miniY + 0.5,
-                                state: 'stationary', role: 'battle', alignment: 'foe_miniBoss',
-                                mastery: 2, deck: buildSynergisticDeck(thirdTribeID, 150), color: '#ffaa00',
-                                dialogue: [script.bossTaunt || getMadLibLine(biome.name, 'bossTaunts', "You dare?")]
-                            });
-
-                            // Spawn 3rd Tribe Grunts in the Ruins
-                            let thirdTribeMinions = getMinions(thirdTribeID);
-                            for(let i=0; i<9; i++) {
-                                // ---> Use the safe helper here too! <---
-                                let mID = getSafeMinion(thirdTribeMinions) || thirdTribeID; 
-                                let spawnSpot = pickTile(mapData.ruinsTiles); mapNPCs.push({
-                                    type: CARD_MANIFEST_DB[mID].sprite || mID, x: spawnSpot.x, y: spawnSpot.y,
-                                    state: 'chasing', role: 'battle', alignment: 'foe_miniBoss',
-                                    dialogue:  [script.hostileTaunts[i % script.hostileTaunts.length]||"Leave our ruins!"], 
-                                    deck: buildSynergisticDeck(mID, 50)
-                                });
-                            }
-
-                            // ==========================================
-                            // ZONE 5: THE WILDS (The Connective Tissue)
-                            // ==========================================
-                            for (let camp = 0; camp < 13; camp++) {
-                                let campCenter = pickTile(mapData.wildsTiles);
-                                let campPower = 30; 
-                                for (let g = 0; g < 3; g++) {
-                                    let mID = getSafeMinion(hostileMinions)
-                                    // Spawn clustered around the camp center
-                                    let gTile = {x: campCenter.x + (Math.random() * 2 - 1), y: campCenter.y + (Math.random() * 2 - 1)};
-                                    
-                                    mapNPCs.push({
-                                        type: CARD_MANIFEST_DB[mID].sprite || mID, x: gTile.x, y: gTile.y, 
-                                        state: 'chasing', role: 'battle', alignment: 'foe',
-                                        mastery: Math.random() > 0.5 ? 1 : 0, 
-                                        deck: buildSynergisticDeck(mID, campPower), 
-                                        dialogue: [getDialogue('hostileTaunts', "Intruder!")]
+                                        // SPAWN THE MESSENGER IMP
+                                        io.to(tid).emit("remote_spawn_npc", {
+                                            mapID: targetPlayer.mapID, 
+                                            index: Math.floor(Math.random() * 100000) + 1000,
+                                            x: impX,
+                                            y: impY,
+                                            type: 56, // Imp Sprite
+                                            state: 'chasing',
+                                            isBoss: true,
+                                            role: 'portal_invite', 
+                                            color: '#ff8800',
+                                            deck: [], 
+                                            dialogue: [`My master Suncat sent me to bring you to the adventure realm to partake in the ${scenarioType}. Shall we go?`],
+                                            options: ['Yes', 'No'],
+                                            alignment:'friendly'
+                                        });
                                     });
-                                }
-                            }
 
-                            mapNPCs.forEach((npc, idx) => { npc.index = 10000 + idx; });
-                            // 5. CACHE AND TELEPORT
-                            const customMapData = {
-                                id: 999, maze: gridData, 
-                                skyColor: biome.skies[0], floorColor: biome.floors[0], 
-                                name: `Realm of the ${script.questObjective.split(' ')[0] || "Mystery"}`, 
-                                npcs: mapNPCs, weather: biome.weather[0],
-                                
-                                // UPDATED TO USE DYNAMIC ANCHORS
-                                spawnX: mapData.startX + 0.5, 
-                                spawnY: mapData.startY + 0.5,
-                                bossX: mapData.bossX + 0.5,
-                                bossY: mapData.bossY + 0.5,
-                                arenaX: mapData.arenaX + 0.5,
-                                arenaY: mapData.arenaY + 0.5,
-                                miniX: mapData.miniX + 0.5,
-                                miniY: mapData.miniY + 0.5,
-
-                                biome: biome.name
-                            };
-
-                            // ---> THE CRITICAL LINE THAT GOT DELETED! <---
-                            activeCustomMap = customMapData;
-
-                            // 1. Identify who asked for the map using their unique socket connection
-                            // This prevents the duplicate name bug!
-                            let requesterID = socket ? socket.id : findSocketID(call.args.targetName);
-
-                            let targets = [];
-
-                            // 2. Gather EVERYONE in the game who is NOT currently in Map 999 (and isn't Suncat)
-                            for (let id in players) {
-                                if (id !== SUNCAT_ID && players[id].mapID !== 999) {
-                                    targets.push(id);
-                                }
-                            }
-
-                            // Ensure the requester is always included in the target array
-                            if (requesterID && !targets.includes(requesterID)) {
-                                targets.push(requesterID);
-                            }
-
-                            // We DO NOT globally emit the map! We target players individually.
-                            //io.emit("force_npc_reset"); 
-
-                           if (targets.length > 0) {
-                                targets.forEach(tid => {
-                                    const targetPlayer = players[tid];
-                                    if (!targetPlayer) return;
+                                    players[SUNCAT_ID].mapID = 999;
+                                    players[SUNCAT_ID].x = customMapData.spawnX + 1.5; 
+                                    players[SUNCAT_ID].y = customMapData.spawnY + 0.5;
+                                    io.emit("updatePlayers", players);
                                     
-                                    // Quietly set up destination variables in the background
-                                    targetPlayer.prevMapID = targetPlayer.mapID; 
-                                    targetPlayer.mapFriendlyTribe = protagID;
-                                    targetPlayer.mapHostileTribe = antagID;
-                                    targetPlayer.mapScenario = scenarioType; 
-                                    targetPlayer.currentMapLore = script.mapLore;
-                                    targetPlayer.scenarioLog = []; 
-                                    targetPlayer.mapBossID = antagID;
-                                    targetPlayer.mapMiniBossID = thirdTribeID; 
-                                    targetPlayer.sideQuestComplete = false;    
-                                    targetPlayer.activeQuest = script.questObjective;
-
-                                    // --- EVERYONE GETS THE IMP INVITE (No forced teleports!) ---
-                                    let impX = targetPlayer.x;
-                                    let impY = targetPlayer.y;
-
-                                    const isSafeTile = (grid, mX, mY) => {
-                                        if (!grid || !grid[mY] || grid[mY][mX] === undefined) return false;
-                                        let tile = grid[mY][mX];
-                                        if (tile > 0 && tile % 2 !== 0) return false; 
-                                        if (tile < 0 && Math.abs(tile) % 2 === 1) return false; 
-                                        return true; 
-                                    };
-
-                                    let currentGrid = null;
-                                    if (targetPlayer.mapID === 999 && customMapData) currentGrid = customMapData.maze;
-                                    else if (targetPlayer.mapID === 100 && tintagelHubMap) currentGrid = tintagelHubMap.maze;
-
-                                    if (currentGrid) {
-                                        let foundSafe = false;
-                                        for(let i = 0; i < 15; i++) {
-                                            let angle = Math.random() * Math.PI * 2;
-                                            let dist = 1 + Math.random(); 
-                                            let testX = Math.floor(targetPlayer.x + Math.cos(angle) * dist);
-                                            let testY = Math.floor(targetPlayer.y + Math.sin(angle) * dist);
-                                            
-                                            if (isSafeTile(currentGrid, testX, testY)) {
-                                                impX = testX + 0.5;
-                                                impY = testY + 0.5;
-                                                foundSafe = true;
-                                                break;
-                                            }
-                                        }
-                                        if (!foundSafe) {
-                                            impX = targetPlayer.x + (Math.random() * 0.4 - 0.2); 
-                                            impY = targetPlayer.y + (Math.random() * 0.4 - 0.2);
-                                        }
-                                    } else {
-                                        impX = targetPlayer.x + (Math.random() > 0.5 ? 0.3 : -0.3);
-                                        impY = targetPlayer.y + (Math.random() > 0.5 ? 0.3 : -0.3);
-                                    }
-
-                                    // SPAWN THE MESSENGER IMP
-                                    io.to(tid).emit("remote_spawn_npc", {
-                                        mapID: targetPlayer.mapID, // Spawn it on their CURRENT map!
-                                        index: Math.floor(Math.random() * 100000) + 1000,
-                                        x: impX,
-                                        y: impY,
-                                        type: 56, // Imp Sprite
-                                        state: 'chasing',
-                                        isBoss: true,
-                                        role: 'portal_invite', 
-                                        color: '#ff8800',
-                                        deck: [], // <--- EMPTY DECK PREVENTS AUTO-BATTLE!
-                                        dialogue: [`My master Suncat sent me to bring you to the adventure realm to partake in the ${scenarioType}. Shall we go?`],
-                                        options: ['Yes', 'No'],
-                                        alignment:'friendly'
-                                    });
-                                });
-
-                                // Move Suncat to the new map (He waits there for players to accept the invite)
-                                players[SUNCAT_ID].mapID = 999;
-                                players[SUNCAT_ID].x = customMapData.spawnX + 1.5; 
-                                players[SUNCAT_ID].y = customMapData.spawnY + 0.5;
-                                io.emit("updatePlayers", players);
-                                
-                                functionResult = { result: `Success. Generated the scenario map and dispatched messenger imps to invite players.` };
-                            } else {
-                                functionResult = { result: `Failed: No players found to invite.` };
+                                    functionResult = { result: `Success. Generated the scenario map and dispatched messenger imps to invite players.` };
+                                } else {
+                                    functionResult = { result: `Failed: No players found to invite.` };
+                                }
+                            } catch (err) {
+                                console.error("Map Generation Error:", err);
+                                functionResult = { result: "Critical Error building map." };
                             }
-                        } catch (err) {
-                            console.error("Map Generation Error:", err);
-                            functionResult = { result: "Critical Error building map." };
                         }
-                    }
 
                     // F. TELEPORT SPECIFIC PLAYER
                     else if (call.name === "teleportPlayer") {
