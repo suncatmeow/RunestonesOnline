@@ -3262,7 +3262,10 @@
        
 
         let floorTiles = [...bastion.tiles, ...lair.tiles, ...arena.tiles, ...ruins.tiles, ...wildsTiles];
-        
+        grid[bastion.y][bastion.x] = 0;
+        grid[lair.y][lair.x] = 0;
+        grid[arena.y][arena.x] = 0;
+        grid[ruins.y][ruins.x] = 0;
         return { 
             grid, 
             startX: bastion.x, startY: bastion.y, 
@@ -3591,16 +3594,15 @@
             - THEME: ${randomTheme}
             - PLOT TWIST: ${randomTwist}
             
-            Force the player to confront their [Neglected Themes] through the dialogue.
+            [PHILOSOPHICAL FRICTION]: You MUST aggressively challenge the player's [Neglected Themes] in the dialogue. If their shadow shows they are peaceful, the enemies must mock peace as cowardice ("What will you sacrifice for your stillness?"). If they are greedy, the allies must question the value of gold. Make every line strike a nerve.
             
             [DIALOGUE GENERATION & DATA MAPPING]:
-            Write the dialogue arrays matching the lore you invented. Keep all lines under 12 words. Ensure the tone is dark fantasy.
+            Write the dialogue arrays matching the lore you invented. Keep all lines under 15 words. Ensure the tone is dark fantasy.
             
             1. mapLore: 2 sentences of deep history establishing the Theme and Twist.
             2. questObjective: A clear 1-sentence objective.
-            3. bossTaunt: 1 menacing sentence attacking the player's psychology.
-            4. hostileTaunts: Array of 30 DISTINCT battle cries. Do not repeat variations of "Die!". Base them on the Theme.
-            5. traitorBegs: 15 lines from fleeing enemies. At least 5 MUST detail how terrifying the 3rd Tribe in the Ruins is.
+            3. bossTaunt: 1 menacing sentence DIRECTLY attacking the player's [Neglected Themes].
+            4. hostileTaunts: Array of 30 DISTINCT battle cries that challenge the player's philosophy.5. traitorBegs: 15 lines from fleeing enemies. At least 5 MUST detail how terrifying the 3rd Tribe in the Ruins is.
             6. friendlyLore: Array of 6 lines. This is where you MUST inject your sub-lore about the Arena, Ruins, and Wilds. Let the villagers explain what is going on out there.
             7. friendlyLife: Array of 4 lines of mundane, atmospheric chatter.
             8. friendlyProfound: Array of 4 philosophical statements bridging the player's habits to the scenario.
@@ -4145,12 +4147,12 @@
                                                 }
                                             }
                                             if (!foundSafe) {
-                                                impX = targetPlayer.x + (Math.random() * 0.4 - 0.2); 
-                                                impY = targetPlayer.y + (Math.random() * 0.4 - 0.2);
+                                                impX = targetPlayer.x; 
+                                                impY = targetPlayer.y;
                                             }
                                         } else {
-                                            impX = targetPlayer.x + (Math.random() > 0.5 ? 0.3 : -0.3);
-                                            impY = targetPlayer.y + (Math.random() > 0.5 ? 0.3 : -0.3);
+                                            impX = targetPlayer.x;
+                                            impY = targetPlayer.y;
                                         }
 
                                         // SPAWN THE MESSENGER IMP
