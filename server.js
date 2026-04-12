@@ -4160,14 +4160,14 @@
                                             x: impX,
                                             y: impY,
                                             type: 56, // Imp Sprite
-                                            state: 'chasing',
+                                            state: 'stationary',
                                             isBoss: true,
                                             role: 'portal_invite', 
                                             color: '#ff8800',
                                             deck: [], 
                                             dialogue: [`My master Suncat sent me to bring you to the adventure realm to partake in the ${scenarioType}. Shall we go?`],
                                             options: ['Yes', 'No'],
-                                            alignment:'friendly'
+                                            alignment:'friendly_messenger'
                                         });
                                     });
 
