@@ -130,7 +130,7 @@
     var preGame = 0;
     let debug = 0;
     let Dbug = 0;
-    let songcount = 47;
+    let songcount = 48;
     var resize = 0;
     const eIMG = {BLANK:0,LOGO:1,HEART:2,CHEST:3,TOME:4,SWORD:5,SHIELD:6,STAFF:7,WBOOT:8,GOBLIN:9}
     const eLOOK = {F:0,D:1,M:2,H:3,A:4,R:5,S:6,STAT:7,INDEX:8}//field,deck,monster,hand,action,roll,stone
@@ -51449,7 +51449,7 @@
         osc.onended = () => { osc.disconnect(); g.disconnect(); };
       }
     }
-    // MODULE 43: The World
+    // MODULE 44: The World
     class TheWorldModule {
         constructor(ctx, masterGain) {
             this.ctx = ctx;
@@ -52902,18 +52902,18 @@
             this.sectionData = {
                 // I. WATER (AGI)(CUPS)(BLUE)
                 AGI_SOURCE:    {bars: 2, tempo: 110 },
-                AGI_RIVER:     {bars: 2, tempo: 120 },
-                AGI_CASCADE:   {bars: 2, tempo: 90 },
+                AGI_RIVER:     {bars: 2, tempo: 220 },
+                AGI_CASCADE:   {bars: 2, tempo: 60 },
                 AGI_OCEAN:     {bars: 2, tempo: 95 },
-                AGI_MIST:      {bars: 2, tempo: 100 },  // NEW: Floating and out-of-phase
+                AGI_MIST:      {bars: 1, tempo: 30 },  // NEW: Floating and out-of-phase
                 AGI_TRENCH:    {bars: 2, tempo: 85 },
                 AGI_MAELSTROM: {bars: 2, tempo: 140 },
-                AGI_ICE:       {bars: 2, tempo: 130 },  // NEW: Brittle and precise
+                AGI_ICE:       {bars: 2, tempo: 60 },  // NEW: Brittle and precise
 
                 // II. EARTH (CON)(PENTACLES)(GREEN/BLACK)
                 CON_TREMOR:    {bars: 2, tempo: 90 },
                 CON_MOUNTAIN:  {bars: 4, tempo: 95 },
-                CON_AVALANCHE: {bars: 2, tempo: 115 },
+                CON_AVALANCHE: {bars: 2, tempo: 140 },
                 CON_CORE:      {bars: 2, tempo: 75 },
                 CON_MONOLITH:  {bars: 2, tempo: 70 },   // NEW: Unmoving pedal point
                 CON_CRYSTAL:   {bars: 2, tempo: 100 },
@@ -52925,10 +52925,11 @@
                 INT_INFERNO:   {bars: 4, tempo: 180 },
                 INT_EMBER:     {bars: 2, tempo: 130 },
                 INT_WILDFIRE:  {bars: 2, tempo: 120 },
-                INT_ASH:       {bars: 2, tempo: 90 },   // NEW: Fading, dying heat
+                INT_ASH:       {bars: 1.5, tempo: 90 },   // NEW: Fading, dying heat
                 INT_PLASMA:    {bars: 2, tempo: 150 },
                 INT_ECLIPSE:   {bars: 2, tempo: 110 },  // NEW: Dense, dissonant clusters
                 INT_COMBUSTION:{bars: 2, tempo: 220 },
+                INT_COMBUSTION2:{bars: 2, tempo: 220 },
 
                 // IV. AIR (STR)(SWORDS)(YELLOW/SILVER)
                 STR_CHARGE:    {bars: 2, tempo: 150 },
@@ -52939,31 +52940,36 @@
                 STR_GEARS:     {bars: 2, tempo: 130 },
                 STR_VACUUM:    {bars: 2, tempo: 80 },   // NEW: Sudden silence
                 STR_QUENCH:    {bars: 2, tempo: 110 },
+                STR_TENSION:    {bars: 4.5, tempo: 75 },
+                STR_STEALTH:    {bars: 6, tempo: 70 },
+                STR_APEX:    {bars: 7, tempo: 150 },
 
                 // V. AETHER (LUK)(MAJOR ARCANA)(UV/IR)
                 LUK_FATE:      {bars: 2, tempo: 80 },
                 LUK_VOID:      {bars: 2, tempo: 70 },
                 LUK_CHRONOS:   {bars: 2, tempo: 90 },
-                LUK_AKASHA:    {bars: 2, tempo: 95 },   // NEW: Cosmic fugue weaving
+                LUK_AKASHA:    {bars: 2, tempo: 60 },   // NEW: Cosmic fugue weaving
                 LUK_NOVA:      {bars: 2, tempo: 100 },
-                LUK_FRACTAL:   {bars: 2, tempo: 85 },
-                LUK_TAO:       {bars: 2, tempo: 80 }    // NEW: The effortless acoustic finale
+                LUK_FRACTAL:   {bars: 4, tempo: 30 },
+                LUK_TAO:       {bars: .5, tempo: 60 }    // NEW: The effortless acoustic finale
             };
 
-          /* this.sequence = [
-                // Water Evolution
-                'AGI_SOURCE', 'AGI_RIVER', 'AGI_OCEAN', 'AGI_MIST', 'AGI_TRENCH', 'AGI_MAELSTROM', 'AGI_ICE',
-                // Earth Evolution
-                 'CON_CORE', 'CON_MONOLITH', 'CON_CRYSTAL', 'CON_SANDSTORM', 'CON_RUPTURE',
-                // Fire Evolution
-                 'INT_EMBER', 'INT_WILDFIRE', 'INT_ASH', 'INT_PLASMA', 'INT_ECLIPSE', 'INT_COMBUSTION',
-                // AIR Evolution
-                  'STR_FORGE', 'STR_BULWARK', 'STR_WHIRLWIND', 'STR_GEARS', 'STR_VACUUM', 'STR_QUENCH',
-                // Aether Evolution
-                'LUK_FATE', 'LUK_VOID', 'LUK_CHRONOS', 'LUK_NOVA', 'LUK_TAO'
-            ];*/
+          
             this.sequence = [
-           'INT_COMBUSTION', 'CON_TREMOR','CON_MOUNTAIN','INT_INFERNO','STR_TRIUMPH','STR_CHARGE','STR_TRIUMPH','INT_WILDFIRE','LUK_AKASHA','LUK_FRACTAL','AGI_CASCADE','INT_SPARK', 'CON_AVALANCHE',  
+           'INT_COMBUSTION', 
+           'CON_TREMOR','CON_MOUNTAIN', 'CON_TREMOR','CON_MOUNTAIN',
+           'INT_INFERNO',
+           'STR_TRIUMPH','STR_CHARGE','STR_TRIUMPH',
+           'INT_WILDFIRE',
+           'STR_APEX','STR_TENSION',
+           'STR_TRIUMPH','STR_CHARGE','STR_TRIUMPH',
+           'AGI_OCEAN', 
+           'INT_ASH',
+           'LUK_FRACTAL',
+           'LUK_AKASHA',
+           'LUK_TAO',
+            'AGI_MIST'
+            
           ]
             // --- 2. THE ALCHEMY (Scale Shifts) ---
             this.movements = [
@@ -53106,7 +53112,8 @@
                     else if (sectionName === 'INT_PLASMA') { this.playIntPlasma(t, localBar, step); console.log('plasma')}
                     else if (sectionName === 'INT_ECLIPSE') { this.playIntEclipse(t, localBar, step); console.log('eclipse')}
                     else if (sectionName === 'INT_COMBUSTION') { this.playIntCombustion(t, localBar, step); console.log('combustion')}
-                    
+                    else if (sectionName === 'INT_COMBUSTION2') { this.playIntCombustion2(t, localBar, step); console.log('combustion')}
+
                     // AIR
                     else if (sectionName === 'STR_CHARGE') { this.currentMovementIndex = 3; this.playStrCharge(t, localBar, step);console.log('charge') }
                     else if (sectionName === 'STR_TRIUMPH') { this.playStrTriumph(t, localBar, step); console.log('triumph')}
@@ -53116,6 +53123,9 @@
                     else if (sectionName === 'STR_GEARS') { this.playStrGears(t, localBar, step); console.log('gears')}
                     else if (sectionName === 'STR_VACUUM') { this.playStrVacuum(t, localBar, step); console.log('vacuum')}
                     else if (sectionName === 'STR_QUENCH') { this.playStrQuench(t, localBar, step); console.log('quench')}
+                    else if (sectionName === 'STR_TENSION') { this.playStrTension(t, localBar, step); console.log('quench')}
+                    else if (sectionName === 'STR_STEALTH') { this.playStrStealth(t, localBar, step); console.log('quench')}
+                    else if (sectionName === 'STR_APEX') { this.playStrApex(t, localBar, step); console.log('quench')}
                     
                     // AETHER
                     else if (sectionName === 'LUK_FATE') { this.currentMovementIndex = 4; this.playLukFate(t, localBar, step);console.log('fate') }
@@ -53134,474 +53144,577 @@
         // ==========================================
         // --- I. WATER (AGI)(CUPS)(BLUE) | Lydian | 110-120 BPM
         // ==========================================
-        playAgiSource(t, bar, step) {
-            if (step === 0 && bar === 0) this.playCrash(t); 
-            if (step === 0) this.playBass(t, 0, 0.4); 
+            playAgiSource(t, bar, step) {
+                if (step === 0 && bar === 0) this.playCrash(t); 
+                if (step === 0) this.playBass(t, 0, 0.4); 
 
-            const mysticArp = [0, 4, 6, 7]; 
-            if (step % 4 === 0) {
-                this.playHarp(t, mysticArp[(step / 4) % 4], 0, 0.6);
-                this.playHarp(t + 0.15, mysticArp[(step / 4) % 4] + 12, 0, 0.3);
+                const mysticArp = [0, 4, 6, 7]; 
+                if (step % 4 === 0) {
+                    this.playHarp(t, mysticArp[(step / 4) % 4], 0, 0.6);
+                    this.playHarp(t + 0.15, mysticArp[(step / 4) % 4] + 12, 0, 0.3);
+                }
             }
-        }
 
-        playAgiRiver(t, bar, step) {
+            playAgiRiver(t, bar, step) {
+                if (step % 2 === 0) {
+                    const riverArp = [0, 2, 4, 6, 7, 9, 11, 12];
+                    this.playHarp(t, riverArp[(step / 2) % 8], 0, 0.5);
+                }
+                if (step === 0 || step === 8) {
+                    const stringNote = (bar % 2 === 0) ? 0 : 4;
+                    this.playHighStrings(t, stringNote, 0.35, 'legato');
+                }
+            }
+            // Fast, cascading 16th notes
+            playAgiCascade(t, bar, step) {
+                const cascadeArp = [11, 9, 7, 6, 4, 2, 0, -1];
+                this.playHarp(t, cascadeArp[step % 8], 1, 0.4);
+                
+                if (step % 8 === 0) {
+                    this.playPad(t, cascadeArp[step % 8], 2.0, 0.3);
+                }
+            }
+
+            // Deep, rolling oceanic chords
+            playAgiOcean(t, bar, step) {
+                if (step === 0) {
+                    const chordRoot = (bar % 2 === 0) ? 0 : 4;
+                    this.playPad(t, chordRoot, 4.0, 0.6);
+                    this.playPad(t, chordRoot + 4, 4.0, 0.5);
+                    this.playBass(t, chordRoot, 0.5);
+                    this.playCrash(t); // Simulates wave crashing
+                }
+                if (step === 8) {
+                    this.playHarp(t, 7, 0, 0.5); // Sunlight glinting on water
+                }
+            }
+            // A crushing, deep-sea pressure. Sparse, bioluminescent, and heavy.
+            playAgiTrench(t, bar, step) {
+                if (step === 0) {
+                    // Extreme sub-bass mimicking deep ocean pressure
+                    this.playBass(t, -12, 1.0);
+                    this.playBass(t, -24, 0.8); 
+                }
+                // Bioluminescent pings occurring on prime number steps (unpredictable feel)
+                const primes = [2, 3, 5, 7, 11, 13];
+                if (primes.includes(step) && Math.random() > 0.5) {
+                    this.playCrystalBell(t, 12 + (step % 5), 0.4); // Distant, echoing light
+                }
+            }
+
+            // A violent, polyrhythmic whirlpool where 3/4 and 4/4 time collide.
+            playAgiMaelstrom(t, bar, step) {
+                if (step % 3 === 0) this.playHarp(t, step, 0, 0.6); // 3-step swirling current
+                if (step % 4 === 0) this.playHighStrings(t, 7 - step, 0.5, 'spiccato'); // 4-step crashing waves
+                if (step === 0 && bar % 2 === 0) this.playCrash(t);
+                if (step === 15) this.playSnare(t, 0.5); // Unexpected updraft
+            }
+            // AGI_MIST: Water diffused into air. Ethereal, floating, out-of-phase.
+            playAgiMist(t, bar, step) {
+            // Shimmering, scattered droplets that ignore the strong beats
+            const mistDrops = { 1: 11, 5: 12, 11: 14, 14: 16 };
+            if (mistDrops[step]) {
+            this.playWindChime(t, mistDrops[step], 0.6);
+            this.playWindChime(t + 0.33, mistDrops[step] + 4, 0.3); // Echo
+            }
+            if (step === 0 && bar % 2 === 0) {
+            this.playChoirSwell(t, 4, 4.0, 0.4); // The fog rolling in
+            }
+            }
+
+            // AGI_ICE: Water frozen in time. Brittle, precise, fragile.
+            playAgiIce(t, bar, step) {
             if (step % 2 === 0) {
-                const riverArp = [0, 2, 4, 6, 7, 9, 11, 12];
-                this.playHarp(t, riverArp[(step / 2) % 8], 0, 0.5);
+            // Staccato, glassy plucks
+            const frostBite = [12, 14, 11, 12, 9, 11, 7, 9];
+            this.playCrystalBell(t, frostBite[(step / 2) % 8], 0.8);
             }
-            if (step === 0 || step === 8) {
-                const stringNote = (bar % 2 === 0) ? 0 : 4;
-                this.playHighStrings(t, stringNote, 0.35, 'legato');
+            if (step === 15) this.playSnare(t, 0.2); // The ice cracking
             }
-        }
-        // Fast, cascading 16th notes
-        playAgiCascade(t, bar, step) {
-            const cascadeArp = [11, 9, 7, 6, 4, 2, 0, -1];
-            this.playHarp(t, cascadeArp[step % 8], 1, 0.4);
-            
-            if (step % 8 === 0) {
-                this.playPad(t, cascadeArp[step % 8], 2.0, 0.3);
-            }
-        }
-
-        // Deep, rolling oceanic chords
-        playAgiOcean(t, bar, step) {
-            if (step === 0) {
-                const chordRoot = (bar % 2 === 0) ? 0 : 4;
-                this.playPad(t, chordRoot, 4.0, 0.6);
-                this.playPad(t, chordRoot + 4, 4.0, 0.5);
-                this.playBass(t, chordRoot, 0.5);
-                this.playCrash(t); // Simulates wave crashing
-            }
-            if (step === 8) {
-                this.playHarp(t, 7, 0, 0.5); // Sunlight glinting on water
-            }
-        }
-        // A crushing, deep-sea pressure. Sparse, bioluminescent, and heavy.
-        playAgiTrench(t, bar, step) {
-            if (step === 0) {
-                // Extreme sub-bass mimicking deep ocean pressure
-                this.playBass(t, -12, 1.0);
-                this.playBass(t, -24, 0.8); 
-            }
-            // Bioluminescent pings occurring on prime number steps (unpredictable feel)
-            const primes = [2, 3, 5, 7, 11, 13];
-            if (primes.includes(step) && Math.random() > 0.5) {
-                this.playCrystalBell(t, 12 + (step % 5), 0.4); // Distant, echoing light
-            }
-        }
-
-        // A violent, polyrhythmic whirlpool where 3/4 and 4/4 time collide.
-        playAgiMaelstrom(t, bar, step) {
-            if (step % 3 === 0) this.playHarp(t, step, 0, 0.6); // 3-step swirling current
-            if (step % 4 === 0) this.playHighStrings(t, 7 - step, 0.5, 'spiccato'); // 4-step crashing waves
-            if (step === 0 && bar % 2 === 0) this.playCrash(t);
-            if (step === 15) this.playSnare(t, 0.5); // Unexpected updraft
-        }
-        // AGI_MIST: Water diffused into air. Ethereal, floating, out-of-phase.
-        playAgiMist(t, bar, step) {
-          // Shimmering, scattered droplets that ignore the strong beats
-          const mistDrops = { 1: 11, 5: 12, 11: 14, 14: 16 };
-          if (mistDrops[step]) {
-          this.playWindChime(t, mistDrops[step], 0.6);
-          this.playWindChime(t + 0.33, mistDrops[step] + 4, 0.3); // Echo
-          }
-          if (step === 0 && bar % 2 === 0) {
-          this.playChoirSwell(t, 4, 4.0, 0.4); // The fog rolling in
-          }
-        }
-
-        // AGI_ICE: Water frozen in time. Brittle, precise, fragile.
-        playAgiIce(t, bar, step) {
-          if (step % 2 === 0) {
-          // Staccato, glassy plucks
-          const frostBite = [12, 14, 11, 12, 9, 11, 7, 9];
-          this.playCrystalBell(t, frostBite[(step / 2) % 8], 0.8);
-          }
-          if (step === 15) this.playSnare(t, 0.2); // The ice cracking
-        }
         // ==========================================
         // --- II. EARTH (CON)(PENTACLES)(GREEN/BLACK) | Harmonic Minor | 90-95 BPM
         // ==========================================
-        playConTremor(t, bar, step) {
+            playConTremor(t, bar, step) {
+                if (step === 0) {
+                    this.playTimpani(t, -12, 1.0); 
+                    this.playBass(t, -12, 0.8);    
+                }
+                if (step === 8) this.playSnare(t, 0.2);
+                if (step === 12 || step === 14) this.playSnare(t, 0.1);
+            }
+
+            playConMountain(t, bar, step) {
+                const earthChords = [0, 5, 4, 0]; 
+                const currentRoot = earthChords[bar % 4];
+
+                if (step === 0) {
+                    this.playBrass(t, currentRoot, 4.0, 0.7);
+                    this.playBrass(t, currentRoot + 7, 4.0, 0.6); 
+                    this.playBass(t, currentRoot - 12, 0.9);
+                    this.playCrash(t);
+                    this.playTimpani(t, currentRoot - 12, 0.9);
+                }
+                if (step === 8) this.playTimpani(t, currentRoot - 12, 0.6);
+                if (step % 4 === 0) this.playKick(t);
+            }
+            // Brutal, heavy, descending momentum
+            playConAvalanche(t, bar, step) {
+                const rumblePitches = [0, -1, -3, -5, -7, -8, -10, -12];
+                if (step % 2 === 0) {
+                    this.playBass(t, rumblePitches[(step / 2) % 8], 0.9);
+                    this.playTimpani(t, rumblePitches[(step / 2) % 8], 0.8);
+                }
+                if (step % 4 === 0) this.playSnare(t, 0.4);
+                if (step === 14) this.playCrash(t);
+            }
+
+            // Sparse, incredibly deep and immovable
+            playConCore(t, bar, step) {
+                if (step === 0) {
+                    this.playBass(t, -12, 1.0);
+                    this.playBrass(t, 0, 4.0, 0.6);
+                    this.playTimpani(t, -12, 1.0);
+                }
+                if (step === 12 && bar % 2 === 1) {
+                    this.playTimpani(t, -5, 0.8); // Distant tectonic shift
+                }
+            }
+            // The pristine, mathematical geometry of underground crystals.
+            playConCrystal(t, bar, step) {
+                // Highly structured, interlocking delays
+                const crystalChord = [0, 3, 7, 10];
+                if (step % 4 === 0) {
+                    this.playCrystalBell(t, crystalChord[bar % 4], 0.7);
+                    this.playCrystalBell(t + 0.15, crystalChord[(bar + 1) % 4] + 12, 0.4);
+                    this.playCrystalBell(t + 0.3, crystalChord[(bar + 2) % 4] + 24, 0.2);
+                }
+            }
+
+            // A violent tectonic snap. Chaotic, jagged, and unpredictable.
+            playConRupture(t, bar, step) {
+                // Violent syncopation avoiding traditional downbeats
+                const faultLines = { 0: 0.9, 3: 0.7, 7: 1.0, 10: 0.8, 14: 0.9 };
+                if (faultLines[step]) {
+                    this.playTimpani(t, -5, faultLines[step]);
+                    this.playBrass(t, -12, 0.2, faultLines[step]);
+                    if (step === 7) this.playCrash(t); // The crust breaking
+                }
+            }
+            // CON_MONOLITH: The unmoving ancestors. Deep, ponderous pedal points.
+            playConMonolith(t, bar, step) {
             if (step === 0) {
-                this.playTimpani(t, -12, 1.0); 
-                this.playBass(t, -12, 0.8);    
+            this.playBass(t, -24, 1.0); // Subterranean anchor
+            this.playChoirSwell(t, 0, 4.0, 0.7);
+            this.playChoirSwell(t, -5, 4.0, 0.6);
+            this.playTimpani(t, -12, 1.0);
             }
-            if (step === 8) this.playSnare(t, 0.2);
-            if (step === 12 || step === 14) this.playSnare(t, 0.1);
-        }
+            // A slow, inevitable march
+            if (step === 8) this.playBrass(t, -12, 2.0, 0.8);
+            }
 
-        playConMountain(t, bar, step) {
-            const earthChords = [0, 5, 4, 0]; 
-            const currentRoot = earthChords[bar % 4];
-
-            if (step === 0) {
-                this.playBrass(t, currentRoot, 4.0, 0.7);
-                this.playBrass(t, currentRoot + 7, 4.0, 0.6); 
-                this.playBass(t, currentRoot - 12, 0.9);
-                this.playCrash(t);
-                this.playTimpani(t, currentRoot - 12, 0.9);
+            // CON_SANDSTORM: The thousand grinding teeth of time. Abrasive and chaotic.
+            playConSandstorm(t, bar, step) {
+            if (step === 0 || step === 8) {
+            this.playNoiseSweep(t, 2.0, 0.5); // The howling grit
             }
-            if (step === 8) this.playTimpani(t, currentRoot - 12, 0.6);
-            if (step % 4 === 0) this.playKick(t);
-        }
-        // Brutal, heavy, descending momentum
-        playConAvalanche(t, bar, step) {
-            const rumblePitches = [0, -1, -3, -5, -7, -8, -10, -12];
-            if (step % 2 === 0) {
-                this.playBass(t, rumblePitches[(step / 2) % 8], 0.9);
-                this.playTimpani(t, rumblePitches[(step / 2) % 8], 0.8);
+            // Rapid, blinding syncopation
+            if (Math.random() > 0.4) {
+            this.playHighStrings(t, (step % 4) * 2, 0.3, 'spiccato');
             }
-            if (step % 4 === 0) this.playSnare(t, 0.4);
-            if (step === 14) this.playCrash(t);
-        }
-
-        // Sparse, incredibly deep and immovable
-        playConCore(t, bar, step) {
-            if (step === 0) {
-                this.playBass(t, -12, 1.0);
-                this.playBrass(t, 0, 4.0, 0.6);
-                this.playTimpani(t, -12, 1.0);
+            if (step % 3 === 0) this.playSnare(t, 0.4);
             }
-            if (step === 12 && bar % 2 === 1) {
-                this.playTimpani(t, -5, 0.8); // Distant tectonic shift
-            }
-        }
-        // The pristine, mathematical geometry of underground crystals.
-        playConCrystal(t, bar, step) {
-            // Highly structured, interlocking delays
-            const crystalChord = [0, 3, 7, 10];
-            if (step % 4 === 0) {
-                this.playCrystalBell(t, crystalChord[bar % 4], 0.7);
-                this.playCrystalBell(t + 0.15, crystalChord[(bar + 1) % 4] + 12, 0.4);
-                this.playCrystalBell(t + 0.3, crystalChord[(bar + 2) % 4] + 24, 0.2);
-            }
-        }
-
-        // A violent tectonic snap. Chaotic, jagged, and unpredictable.
-        playConRupture(t, bar, step) {
-            // Violent syncopation avoiding traditional downbeats
-            const faultLines = { 0: 0.9, 3: 0.7, 7: 1.0, 10: 0.8, 14: 0.9 };
-            if (faultLines[step]) {
-                this.playTimpani(t, -5, faultLines[step]);
-                this.playBrass(t, -12, 0.2, faultLines[step]);
-                if (step === 7) this.playCrash(t); // The crust breaking
-            }
-        }
-        // CON_MONOLITH: The unmoving ancestors. Deep, ponderous pedal points.
-        playConMonolith(t, bar, step) {
-          if (step === 0) {
-          this.playBass(t, -24, 1.0); // Subterranean anchor
-          this.playChoirSwell(t, 0, 4.0, 0.7);
-          this.playChoirSwell(t, -5, 4.0, 0.6);
-          this.playTimpani(t, -12, 1.0);
-          }
-          // A slow, inevitable march
-          if (step === 8) this.playBrass(t, -12, 2.0, 0.8);
-        }
-
-        // CON_SANDSTORM: The thousand grinding teeth of time. Abrasive and chaotic.
-        playConSandstorm(t, bar, step) {
-          if (step === 0 || step === 8) {
-          this.playNoiseSweep(t, 2.0, 0.5); // The howling grit
-          }
-          // Rapid, blinding syncopation
-          if (Math.random() > 0.4) {
-          this.playHighStrings(t, (step % 4) * 2, 0.3, 'spiccato');
-          }
-          if (step % 3 === 0) this.playSnare(t, 0.4);
-        }
         // ==========================================
         // --- III. FIRE (INT)(WANDS)(RED) | Phrygian Dominant | 160-180 BPM
         // ==========================================
-        playIntSpark(t, bar, step) {
-            this.playSnare(t, 0.1 + (step / 16) * 0.6);
-            this.playHighStrings(t, step % 8, 0.3, 'spiccato');
-            if (step === 15) this.playTimpani(t, -5, 1.0); 
-        }
-
-        playIntInferno(t, bar, step) {
-            const syncopation = [1, 0, 0, 1, 0, 0, 1, 0,  1, 0, 0, 1, 0, 0, 1, 0];
-            
-            if (syncopation[step]) {
-                this.playKick(t);
-                this.playSnare(t, 0.6);
-                this.playBrass(t, 0, 0.25, 0.8);
-                this.playBrass(t, 7, 0.25, 0.7); 
-                this.playBass(t, 0, 0.9);
-            } else {
-                const flames = [0, 1, 4, 5, 7, 8, 10, 12];
-                this.playHighStrings(t, flames[(step + bar) % flames.length], 0.4, 'spiccato');
+            playIntSpark(t, bar, step) {
+                this.playSnare(t, 0.1 + (step / 16) * 0.6);
+                this.playHighStrings(t, step % 8, 0.3, 'spiccato');
+                if (step === 15) this.playTimpani(t, -5, 1.0); 
             }
 
-            if (step === 0 && bar % 2 === 0) this.playCrash(t);
-        }
-        // Quiet, unpredictable, popping
-        playIntEmber(t, bar, step) {
-            // Highly syncopated, scattered rhythm
-            const embers = { 2: 7, 5: 10, 9: 12, 14: 13 };
-            if (embers[step]) {
-                this.playHighStrings(t, embers[step], 0.3, 'spiccato');
-                this.playSnare(t, 0.1); 
-            }
-            if (step === 0 && bar % 2 === 0) this.playTimpani(t, 0, 0.4);
-        }
+            playIntInferno(t, bar, step) {
+                const syncopation = [1, 0, 0, 1, 0, 0, 1, 0,  1, 0, 0, 1, 0, 0, 1, 0];
+                
+                if (syncopation[step]) {
+                    this.playKick(t);
+                    this.playSnare(t, 0.6);
+                    this.playBrass(t, 0, 0.25, 0.8);
+                    this.playBrass(t, 7, 0.25, 0.7); 
+                    this.playBass(t, 0, 0.9);
+                } else {
+                    const flames = [0, 1, 4, 5, 7, 8, 10, 12];
+                    this.playHighStrings(t, flames[(step + bar) % flames.length], 0.4, 'spiccato');
+                }
 
-        // Overwhelming, relentless math-metal speed
-        playIntWildfire(t, bar, step) {
-            this.playHighStrings(t, step, 0.5, 'spiccato'); // Constant climbing/falling
-            if (step % 4 === 0) this.playKick(t); // Four on the floor
-            if (step === 4 || step === 12) this.playSnare(t, 0.7);
-            
+                if (step === 0 && bar % 2 === 0) this.playCrash(t);
+            }
+            // Quiet, unpredictable, popping
+            playIntEmber(t, bar, step) {
+                // Highly syncopated, scattered rhythm
+                const embers = { 2: 7, 5: 10, 9: 12, 14: 13 };
+                if (embers[step]) {
+                    this.playHighStrings(t, embers[step], 0.3, 'spiccato');
+                    this.playSnare(t, 0.1); 
+                }
+                if (step === 0 && bar % 2 === 0) this.playTimpani(t, 0, 0.4);
+            }
+
+            // Overwhelming, relentless math-metal speed
+            playIntWildfire(t, bar, step) {
+                this.playHighStrings(t, step, 0.5, 'spiccato'); // Constant climbing/falling
+                if (step % 4 === 0) this.playKick(t); // Four on the floor
+                if (step === 4 || step === 12) this.playSnare(t, 0.7);
+                
+                if (step === 0) {
+                    this.playBrass(t, [0, 1, 4, 5][bar % 4], 1.0, 0.8);
+                }
+            }
+            // The core of a star. A continuous, tearing drone of nuclear fusion.
+            playIntPlasma(t, bar, step) {
+                // A tearing, LFO-modulated drone that lasts the whole bar
+                if (step === 0) {
+                    this.playLfoDrone(t, 0, 4.0, 0.7);
+                    this.playBass(t, -12, 0.9);
+                }
+                // Searing solar flares
+                if (step === 8 || step === 14) {
+                    this.playBladeQuench(t, 0.4);
+                }
+            }
+
+            // A supernova explosion. Rapid build-up into deafening release.
+            playIntCombustion(t, bar, step) {
+                // Snare roll that accelerates and gets louder
+                let rollVol = (step / 15) * 0.8; 
+                this.playSnare(t, rollVol);
+                
+                if (step % 2 === 0) this.playHighStrings(t, step, rollVol, 'spiccato');
+
+                // The absolute climax
+                if (bar === 3 && step === 15) {
+                    this.playTimpani(t, -12, 1.0);
+                    this.playCrash(t);
+                    this.playCrash(t + 0.1); // Double hit
+                }
+            }
+            // A supernova explosion. Rapid build-up into deafening release.
+            playIntCombustion2(t, bar, step) {
+                // Snare roll that accelerates and gets louder
+                let rollVol = (step / 15) * 0.8; 
+                this.playSnare(t, rollVol);
+                
+                if (step % 2 === 0) this.playHighStrings(t, step, rollVol, 'spiccato');
+
+                // NEW: Intense, syncopated choir stabs building up
+                const stabRhythm = [0, 6, 10]; // Aggressive, uneven spacing
+                if (stabRhythm.includes(step)) {
+                    // Pitch rises a minor third (3 semitones) every bar to build panic
+                    const root = -12 + (bar * 3); 
+                    // Volume scales up as the bars and steps progress
+                    const choirVol = 0.4 + (bar * 0.15) + (step * 0.01);
+                    
+                    // Stabbing a diminished triad for maximum cinematic tension
+                    this.playBrass(t, root, 0.25, choirVol, 'staccato');
+                    this.playBrass(t, root + 3, 0.25, choirVol, 'staccato'); // Minor third
+                    this.playBrass(t, root + 6, 0.25, choirVol, 'staccato'); // Tritone
+                }
+
+                // The absolute climax
+                if (bar === 3 && step === 15) {
+                    this.playTimpani(t, -12, 1.0);
+                    this.playCrash(t);
+                    this.playCrash(t + 0.1); // Double hit
+                    
+                    // NEW: The choir shifts from stabs to a massive, tragic sustained chord
+                    this.playBrass(t, -24, 4.0, 1.0, 'legato'); // Deep root
+                    this.playBrass(t, -17, 4.0, 1.0, 'legato'); // Fifth
+                    this.playBrass(t, -9,  4.0, 1.0, 'legato'); // High minor third for weight
+                }
+            }
+            // INT_ASH: The Yin within the Yang. Fading heat, drifting and sparse.
+            playIntAsh(t, bar, step) {
+            if (step === 0 && bar % 2 === 0) {
+            this.playPad(t, 0, 8.0, 0.3); // The dying glow
+            }
+            const driftingFlames = { 4: 12, 9: 13, 14: 10 };
+            if (driftingFlames[step]) {
+            // Sizzling, airy plucks
+            this.playWindChime(t, driftingFlames[step], 0.5); 
+            }
+            }
+
+            // INT_ECLIPSE: The black sun. Dense, dissonant clusters and violent outbursts.
+            playIntEclipse(t, bar, step) {
             if (step === 0) {
-                this.playBrass(t, [0, 1, 4, 5][bar % 4], 1.0, 0.8);
+            this.playLfoDrone(t, -5, 4.0, 0.8); // Growling undertone
             }
-        }
-        // The core of a star. A continuous, tearing drone of nuclear fusion.
-        playIntPlasma(t, bar, step) {
-            // A tearing, LFO-modulated drone that lasts the whole bar
-            if (step === 0) {
-                this.playLfoDrone(t, 0, 4.0, 0.7);
-                this.playBass(t, -12, 0.9);
+            // Unpredictable, explosive stabs of dark energy
+            if ((bar === 1 && step === 7) || (bar === 3 && step === 12)) {
+            this.playBrass(t, 0, 0.5, 1.0);
+            this.playBrass(t, 1, 0.5, 1.0); // Crushing minor second
+            this.playCrash(t);
             }
-            // Searing solar flares
-            if (step === 8 || step === 14) {
-                this.playBladeQuench(t, 0.4);
             }
-        }
-
-        // A supernova explosion. Rapid build-up into deafening release.
-        playIntCombustion(t, bar, step) {
-            // Snare roll that accelerates and gets louder
-            let rollVol = (step / 15) * 0.8; 
-            this.playSnare(t, rollVol);
-            
-            if (step % 2 === 0) this.playHighStrings(t, step, rollVol, 'spiccato');
-
-            // The absolute climax
-            if (bar === 3 && step === 15) {
-                this.playTimpani(t, -12, 1.0);
-                this.playCrash(t);
-                this.playCrash(t + 0.1); // Double hit
-            }
-        }
-        // INT_ASH: The Yin within the Yang. Fading heat, drifting and sparse.
-        playIntAsh(t, bar, step) {
-          if (step === 0 && bar % 2 === 0) {
-          this.playPad(t, 0, 8.0, 0.3); // The dying glow
-          }
-          const driftingFlames = { 4: 12, 9: 13, 14: 10 };
-          if (driftingFlames[step]) {
-          // Sizzling, airy plucks
-          this.playWindChime(t, driftingFlames[step], 0.5); 
-          }
-        }
-
-        // INT_ECLIPSE: The black sun. Dense, dissonant clusters and violent outbursts.
-        playIntEclipse(t, bar, step) {
-          if (step === 0) {
-          this.playLfoDrone(t, -5, 4.0, 0.8); // Growling undertone
-          }
-          // Unpredictable, explosive stabs of dark energy
-          if ((bar === 1 && step === 7) || (bar === 3 && step === 12)) {
-          this.playBrass(t, 0, 0.5, 1.0);
-          this.playBrass(t, 1, 0.5, 1.0); // Crushing minor second
-          this.playCrash(t);
-          }
-        }
         // ==========================================
         // --- IV. AIR (STR) (SWORDS)(YELLOW/SILVER) | Major | 150-155 BPM
         // ==========================================
-        playStrCharge(t, bar, step) {
-            if (step % 2 === 0) this.playSnare(t, 0.3);
-            if (step === 4 || step === 12) this.playSnare(t, 0.6);
-            if (step === 0 && bar === 0) this.playCrash(t);
+            playStrTension(t, bar, step) {
+                // Heartbeat kick on the 1 and the 'and' of 2
+                if (step === 0 || step === 10) this.playKick(t, 0.6);
+                
+                // Ticking snare/rimshot that gets slightly louder every step
+                if (step % 2 === 0) {
+                    const swell = 0.1 + ((step % 16) / 32);
+                    this.playSnare(t, swell); 
+                }
 
-            const gallop = [1, 1, 1, 0, 1, 1, 1, 0];
-            if (gallop[step % 8]) this.playBass(t, 0, 0.7);
+                // Ominous pedal point bass (stays deep on the root, pulsing)
+                if (step % 4 === 0) this.playBass(t, -12, 0.7);
 
-            if (step % 4 === 0) {
-                this.playBrass(t, (step / 4) * 2, 0.5, 0.6);
+                // Dissonant, creepy string tremolo alternating half-steps
+                const tensionNotes = [12, 13, 12, 13, 14, 15, 14, 15];
+                this.playHighStrings(t, tensionNotes[step % 8], 0.25, 'tremolo');
+
+                // Brass swells in ominously only on the later bars of a phrase
+                if (bar % 4 >= 2 && step === 0) {
+                    this.playBrass(t, -2 + (bar % 2), 2.0, 0.6); // Long, rising drone
+                }
             }
-        }
+            playStrStealth(t, bar, step) {
+                // Sparse, syncopated kick
+                if (step === 0 || step === 7) this.playKick(t, 0.4);
 
-        playStrTriumph(t, bar, step) {
-            if (step % 4 === 0) this.playKick(t);
-            if (step === 4 || step === 12) this.playSnare(t, 0.5);
-            if (step === 0) this.playCrash(t);
+                // Quiet snare on an unusual beat to throw off the groove
+                if (step === 12) this.playSnare(t, 0.3);
+
+                // Syncopated minor/diminished bassline
+                const stealthBass = { 0: -12, 3: -9, 8: -10, 11: -6 };
+                if (stealthBass[step] !== undefined) {
+                    this.playBass(t, stealthBass[step], 0.5);
+                }
+
+                // Eerie, isolated brass stabs answering the bass
+                if (bar % 2 === 1 && step === 8) {
+                    this.playBrass(t, 6, 0.2, 0.4); 
+                }
+                
+                // Fast, scattered high string pizzicato clicks
+                if (step % 3 === 0) {
+                    this.playHighStrings(t, 24, 0.1, 'pizzicato');
+                }
+            }
+            playStrApex(t, bar, step) {
+                // Driving four-on-the-floor kick
+                if (step % 4 === 0) this.playKick(t, 0.9);
+                // Heavy backbeat
+                if (step === 4 || step === 12) this.playSnare(t, 0.8);
+                // Frequent crashes to emphasize the downbeat
+                if (step === 0 && bar % 2 === 0) this.playCrash(t);
+
+                // Driving 16th note ostinato bass (root, root, octave, root)
+                const ostinato = [0, 0, 12, 0, 3, 0, 5, 0];
+                this.playBass(t, ostinato[step % 8], 0.8);
+
+                // Epic dramatic progression: i - VI - III - VII
+                const brassProg = [0, -4, 3, -2]; 
+                // Brass hits on the 1 and syncopated on the 'and' of 2 (step 8)
+                if (step === 0 || step === 8) {
+                    this.playBrass(t, brassProg[bar % 4], 1.5, 0.9);
+                }
+
+                // Sweeping heroic string arpeggios that adapt to the brass root note
+                const arp = [12, 16, 19, 24, 19, 16];
+                // Uses % 6 to create a polyrhythm against the 4/4 beat
+                this.playHighStrings(t, arp[step % 6] + brassProg[bar % 4], 0.25, 'legato');
+            }
+            playStrCharge(t, bar, step) {
+                if (step % 2 === 0) this.playSnare(t, 0.3);
+                if (step === 4 || step === 12) this.playSnare(t, 0.6);
+                if (step === 0 && bar === 0) this.playCrash(t);
+
+                const gallop = [1, 1, 1, 0, 1, 1, 1, 0];
+                if (gallop[step % 8]) this.playBass(t, 0, 0.7);
+
+                if (step % 4 === 0) {
+                    this.playBrass(t, (step / 4) * 2, 0.5, 0.6);
+                }
+            }
+
+            playStrTriumph(t, bar, step) {
+                if (step % 4 === 0) this.playKick(t);
+                if (step === 4 || step === 12) this.playSnare(t, 0.5);
+                if (step === 0) this.playCrash(t);
+                
+                this.playBass(t, [0, -3, -5, -7][bar % 4], 0.8);
+
+                const melody = { 
+                    0: { n: 0, d: 1.5 }, 6: { n: 2, d: 0.5 }, 
+                    8: { n: 4, d: 1.5 }, 14: { n: 7, d: 0.5 } 
+                };
+                if (melody[step]) {
+                    this.playBrass(t, melody[step].n, melody[step].d, 0.8);
+                }
+
+                const counterpointRuns = [12, 14, 16, 19, 21, 19, 16, 14];
+                this.playHighStrings(t, counterpointRuns[step % 8], 0.25, 'spiccato');
+            }
             
-            this.playBass(t, [0, -3, -5, -7][bar % 4], 0.8);
-
-            const melody = { 
-                0: { n: 0, d: 1.5 }, 6: { n: 2, d: 0.5 }, 
-                8: { n: 4, d: 1.5 }, 14: { n: 7, d: 0.5 } 
-            };
-            if (melody[step]) {
-                this.playBrass(t, melody[step].n, melody[step].d, 0.8);
+            playStrForge(t, bar, step) {
+                if (step % 4 === 0) this.playKick(t);
+                if (step === 4 || step === 12) {
+                    this.playAnvil(t, 0.8); // Striking the metal
+                }
+                if (step % 2 === 0) this.playBass(t, 0, 0.6); // Pumping bellows
+                
+                if (step === 14) this.playCrash(t); // Sparks flying
             }
 
-            const counterpointRuns = [12, 14, 16, 19, 21, 19, 16, 14];
-            this.playHighStrings(t, counterpointRuns[step % 8], 0.25, 'spiccato');
-        }
-        
-        playStrForge(t, bar, step) {
-            if (step % 4 === 0) this.playKick(t);
-            if (step === 4 || step === 12) {
-                this.playAnvil(t, 0.8); // Striking the metal
-            }
-            if (step % 2 === 0) this.playBass(t, 0, 0.6); // Pumping bellows
             
-            if (step === 14) this.playCrash(t); // Sparks flying
-        }
-
-        
-        playStrBulwark(t, bar, step) {
-            if (step === 0 || step === 8) {
-                const root = (step === 0) ? 0 : 5;
-                this.playBrass(t, root, 2.0, 0.9);
-                this.playBrass(t, root + 4, 2.0, 0.8); // Major third
-                this.playBass(t, root - 12, 1.0);
-                this.playTimpani(t, root - 12, 0.9);
+            playStrBulwark(t, bar, step) {
+                if (step === 0 || step === 8) {
+                    const root = (step === 0) ? 0 : 5;
+                    this.playBrass(t, root, 2.0, 0.9);
+                    this.playBrass(t, root + 4, 2.0, 0.8); // Major third
+                    this.playBass(t, root - 12, 1.0);
+                    this.playTimpani(t, root - 12, 0.9);
+                }
+                if (step === 4 || step === 12) {
+                    this.playSnare(t, 0.6);
+                }
             }
-            if (step === 4 || step === 12) {
-                this.playSnare(t, 0.6);
+            
+            playStrGears(t, bar, step) {
+                if (step % 2 === 0) this.playAnvil(t, 0.4); // The escapement wheel
+                if (step % 3 === 0) this.playSnare(t, 0.3); // The secondary cogs
+                if (step % 4 === 0) this.playBass(t, 0, 0.6); // The mainspring
+                if (step % 5 === 0) this.playCrystalBell(t, 12, 0.5); // The chime
             }
-        }
-        
-        playStrGears(t, bar, step) {
-            if (step % 2 === 0) this.playAnvil(t, 0.4); // The escapement wheel
-            if (step % 3 === 0) this.playSnare(t, 0.3); // The secondary cogs
-            if (step % 4 === 0) this.playBass(t, 0, 0.6); // The mainspring
-            if (step % 5 === 0) this.playCrystalBell(t, 12, 0.5); // The chime
-        }
 
-        playStrQuench(t, bar, step) {
+            playStrQuench(t, bar, step) {
+                if (step === 0) {
+                    this.playAnvil(t, 1.0); // The final hammer strike
+                    this.playBladeQuench(t, 0.8); // The steam and screaming steel
+                    this.playBrass(t, 0, 4.0, 0.9); // The heroic birth of the weapon
+                }
+                if (step === 8) this.playKick(t);
+            }
+            // STR_WHIRLWIND: The rising funnel. Rapid ascending arpeggios overlapping.
+            playStrWhirlwind(t, bar, step) {
+            const vortexRun = [0, 2, 4, 7, 9, 12, 14, 16];
+            this.playHarp(t, vortexRun[step % 8], 1, 0.4);
+            this.playHarp(t, vortexRun[(step + 2) % 8], 0, 0.3); // Trailing harmony
+
+            if (step % 2 === 0) this.playHighStrings(t, step, 0.2, 'spiccato');
+            if (step % 4 === 0) this.playSnare(t, 0.4);
+            }
+
+            // STR_VACUUM: The breath taken away. Sudden silence and pressure drops.
+            playStrVacuum(t, bar, step) {
             if (step === 0) {
-                this.playAnvil(t, 1.0); // The final hammer strike
-                this.playBladeQuench(t, 0.8); // The steam and screaming steel
-                this.playBrass(t, 0, 4.0, 0.9); // The heroic birth of the weapon
+            this.playReverseSwell(t, 0, 2.0, 0.8); // Sucking the air out
             }
-            if (step === 8) this.playKick(t);
-        }
-        // STR_WHIRLWIND: The rising funnel. Rapid ascending arpeggios overlapping.
-        playStrWhirlwind(t, bar, step) {
-          const vortexRun = [0, 2, 4, 7, 9, 12, 14, 16];
-          this.playHarp(t, vortexRun[step % 8], 1, 0.4);
-          this.playHarp(t, vortexRun[(step + 2) % 8], 0, 0.3); // Trailing harmony
-
-          if (step % 2 === 0) this.playHighStrings(t, step, 0.2, 'spiccato');
-          if (step % 4 === 0) this.playSnare(t, 0.4);
-        }
-
-        // STR_VACUUM: The breath taken away. Sudden silence and pressure drops.
-        playStrVacuum(t, bar, step) {
-          if (step === 0) {
-          this.playReverseSwell(t, 0, 2.0, 0.8); // Sucking the air out
-          }
-          if (step === 8) {
-          // Absolute starkness. One piercing note in the void.
-          this.playCrystalBell(t, 14, 0.9); 
-          }
-          if (step === 12) this.playKick(t); // A distant heartbeat
-        }
+            if (step === 8) {
+            // Absolute starkness. One piercing note in the void.
+            this.playCrystalBell(t, 14, 0.9); 
+            }
+            if (step === 12) this.playKick(t); // A distant heartbeat
+            }
         // ==========================================
         // --- V. AETHER/VOID (LUK)(MAJOR ARCANA)(UV/IR) | Dorian | 80 BPM
         // ==========================================
-          playLukFate(t, bar, step) {
-            if (bar === 0) {
-                const fateMelody = { 0: 7, 4: 9, 8: 10, 12: 12 }; 
-                if (fateMelody[step]) {
-                    this.playHarp(t, fateMelody[step], 0, 0.8);
+            playLukFate(t, bar, step) {
+                if (bar === 0) {
+                    const fateMelody = { 0: 7, 4: 9, 8: 10, 12: 12 }; 
+                    if (fateMelody[step]) {
+                        this.playHarp(t, fateMelody[step], 0, 0.8);
+                    }
+                }
+                if (bar === 1 && step === 0) {
+                    this.playHarp(t, 0, 0, 0.7); 
+                    this.playHarp(t, 3, 0, 0.6); 
+                    this.playHarp(t, 7, 0, 0.6); 
+                    this.playHarp(t, 10, 0, 0.5); 
                 }
             }
-            if (bar === 1 && step === 0) {
-                this.playHarp(t, 0, 0, 0.7); 
-                this.playHarp(t, 3, 0, 0.6); 
-                this.playHarp(t, 7, 0, 0.6); 
-                this.playHarp(t, 10, 0, 0.5); 
+            // Empty, echoing, floating
+            playLukVoid(t, bar, step) {
+                if (step === 0) {
+                    const voidNotes = [0, 5, 7, 10];
+                    this.playPad(t, voidNotes[bar % 4], 4.0, 0.5);
+                    this.playHarp(t, voidNotes[bar % 4] + 12, 1, 0.6);
+                }
+                if (step === 8 && bar % 2 === 1) {
+                    this.playHarp(t, 12, 2, 0.3); // High, distant twinkle
+                }
             }
-        }
-        // Empty, echoing, floating
-        playLukVoid(t, bar, step) {
-            if (step === 0) {
-                const voidNotes = [0, 5, 7, 10];
-                this.playPad(t, voidNotes[bar % 4], 4.0, 0.5);
-                this.playHarp(t, voidNotes[bar % 4] + 12, 1, 0.6);
-            }
-            if (step === 8 && bar % 2 === 1) {
-                this.playHarp(t, 12, 2, 0.3); // High, distant twinkle
-            }
-        }
 
-        // The grand culmination of destiny
-        playLukNova(t, bar, step) {
-            if (step === 0 && bar === 0) this.playCrash(t);
-            
-            if (step % 4 === 0) this.playKick(t);
-            if (step === 4 || step === 12) this.playSnare(t, 0.5);
-            
-            // All instruments unite
-            if (step === 0 || step === 8) {
-                this.playBrass(t, 0, 1.5, 0.8);
-                this.playPad(t, 0, 2.0, 0.6);
-                this.playBass(t, -12, 0.9);
+            // The grand culmination of destiny
+            playLukNova(t, bar, step) {
+                if (step === 0 && bar === 0) this.playCrash(t);
+                
+                if (step % 4 === 0) this.playKick(t);
+                if (step === 4 || step === 12) this.playSnare(t, 0.5);
+                
+                // All instruments unite
+                if (step === 0 || step === 8) {
+                    this.playBrass(t, 0, 1.5, 0.8);
+                    this.playPad(t, 0, 2.0, 0.6);
+                    this.playBass(t, -12, 0.9);
+                }
+                
+                // Fast, soaring string melody
+                const novaMelody = [12, 14, 15, 17, 19, 17, 15, 14];
+                this.playHighStrings(t, novaMelody[step % 8], 0.4, 'spiccato');
             }
-            
-            // Fast, soaring string melody
-            const novaMelody = [12, 14, 15, 17, 19, 17, 15, 14];
-            this.playHighStrings(t, novaMelody[step % 8], 0.4, 'spiccato');
-        }
-        // Time flows backward. Envelopes swell instead of decaying.
-        playLukChronos(t, bar, step) {
-            if (step % 4 === 0) {
-                // Swelling notes that abruptly cut off (simulating reversed audio)
-                this.playReverseSwell(t, [0, 4, 7, 11][(step / 4) % 4], 1.0, 0.7);
+            // Time flows backward. Envelopes swell instead of decaying.
+            playLukChronos(t, bar, step) {
+                if (step % 4 === 0) {
+                    // Swelling notes that abruptly cut off (simulating reversed audio)
+                    this.playReverseSwell(t, [0, 4, 7, 11][(step / 4) % 4], 1.0, 0.7);
+                }
+                if (step === 15) this.playCrystalBell(t, 24, 0.3); // A tiny "tick" of the clock
             }
-            if (step === 15) this.playCrystalBell(t, 24, 0.3); // A tiny "tick" of the clock
-        }
 
-        // The ultimate ascension. A sprawling, generative multiverse of sound.
-        playLukFractal(t, bar, step) {
-            // True generative melody: never repeats the same way twice
-            if (Math.random() > 0.3) {
-                const randomDegree = Math.floor(Math.random() * 7);
-                const randomOctave = Math.floor(Math.random() * 3); // Spans 3 octaves
-                this.playHarp(t, randomDegree, randomOctave, 0.5);
+            // The ultimate ascension. A sprawling, generative multiverse of sound.
+            playLukFractal(t, bar, step) {
+                // True generative melody: never repeats the same way twice
+                if (Math.random() > 0.3) {
+                    const randomDegree = Math.floor(Math.random() * 7);
+                    const randomOctave = Math.floor(Math.random() * 3); // Spans 3 octaves
+                    this.playHarp(t, randomDegree, randomOctave, 0.5);
+                }
+                
+                if (step === 0) {
+                    this.playPad(t, [0, 2, 5, 7][bar % 4], 4.0, 0.6); // Shifting, ambiguous harmony
+                }
             }
-            
-            if (step === 0) {
-                this.playPad(t, [0, 2, 5, 7][bar % 4], 4.0, 0.6); // Shifting, ambiguous harmony
-            }
-        }
-        // LUK_AKASHA: The cosmic record. Strict, Bach-like contrapuntal fugue weaving.
-        playLukAkasha(t, bar, step) {
-          // Subject (Right Hand)
-          const fugueSubject = { 0: 7, 2: 9, 4: 10, 6: 7, 8: 14, 12: 12 };
-          // Counter-Subject (Left Hand) - Inverse motion
-          const counterSubject = { 0: 0, 4: -2, 8: -5, 12: -7 };
+            // LUK_AKASHA: The cosmic record. Strict, Bach-like contrapuntal fugue weaving.
+            playLukAkasha(t, bar, step) {
+            // Subject (Right Hand)
+            const fugueSubject = { 0: 7, 2: 9, 4: 10, 6: 7, 8: 14, 12: 12 };
+            // Counter-Subject (Left Hand) - Inverse motion
+            const counterSubject = { 0: 0, 4: -2, 8: -5, 12: -7 };
 
-          if (fugueSubject[step]) {
-          this.playHarp(t, fugueSubject[step], 0, 0.7);
-          }
-          if (counterSubject[step]) {
-          this.playBass(t, counterSubject[step], 0.6);
-          }
-        }
+            if (fugueSubject[step]) {
+            this.playHarp(t, fugueSubject[step], 0, 0.7);
+            }
+            if (counterSubject[step]) {
+            this.playBass(t, counterSubject[step], 0.6);
+            }
+            }
 
-        // LUK_TAO: Effortless action. A singular, breathing acoustic string. The center.
-        playLukTao(t, bar, step) {
-            if (step === 0 && bar % 2 === 0) {
-            // The profound simplicity of a single strummed chord
-            this.playAcousticPluck(t, 0, -1, 0.8);
-            this.playAcousticPluck(t + 0.05, 3, 0, 0.7);
-            this.playAcousticPluck(t + 0.1, 7, 0, 0.6);
+            // LUK_TAO: Effortless action. A singular, breathing acoustic string. The center.
+            playLukTao(t, bar, step) {
+                if (step === 0 && bar % 2 === 0) {
+                // The profound simplicity of a single strummed chord
+                this.playAcousticPluck(t, 0, -1, 0.8);
+                this.playAcousticPluck(t + 0.05, 3, 0, 0.7);
+                this.playAcousticPluck(t + 0.1, 7, 0, 0.6);
+                }
+                if (step === 8) {
+                this.playAcousticPluck(t, 12, 0, 0.5); // The harmonic overtone
+                }
             }
-            if (step === 8) {
-            this.playAcousticPluck(t, 12, 0, 0.5); // The harmonic overtone
-            }
-        }
         // ==========================================
         // --- THE UNIFIED ORCHESTRA ---
         // ==========================================
