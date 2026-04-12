@@ -150,7 +150,7 @@
           93: { type: 'projectile', name: 'Lightning', castStat: 2, defStat: 3, color: [1,1,0], glow: '#ffff00', model3D: 'd4', isHoming: true, chains: 3 },
           94: { type: 'projectile', name: 'Ice Shard',     castStat: 2, defStat: 1, color: [0,0,1], glow: '#0000ff', model3D: 'd4', isHoming: false,  },
         // --- INSTANT FRONTAL AoE (Cone) ---
-          59: { type: 'cone', name: 'Critical Strike', castStat: 0, defStat: 3, range: 1.5, angle: 0.5, knockback: 0.5 },
+          59: { type: 'projectile', name: 'Critical Strike',     castStat: 0, defStat: 3, color: [1,0,0], glow: '#0000ff', model3D: 'd4', isHoming: true,  },
           65: { type: 'cone', name: 'Shield Bash', castStat: 1, defStat: 0, range: 1.2, angle: 0.4, knockback: 2.0 },
         // --- INSTANT TELEPORT STRIKES ---
           52: { type: 'assassination', name: 'Backstab', castStat: 3, defStat: 3, range: 6 },
@@ -10845,7 +10845,7 @@
             }
 
             // 5. CATEGORIZE AVAILABLE CARDS
-            const activeSpellIDs = [26, 13, 93, 28, 8, 29, 66, 15, 12, 52]; 
+            const activeSpellIDs = [26, 13, 93, 28, 8, 29,59, 66, 15, 12, 52]; 
             const activeItemIDs = [43, 22, 36, 50, 64, 66]; 
 
             let availableMonsters = [];
@@ -22655,16 +22655,18 @@
                 }
                 Dungeon.registerClick(e.clientX, e.clientY);
                 // DYNAMIC SPELL BUTTON CLICK CHECK
-                if (typeof window.uiSpellButtons !== 'undefined') {
-                    for (let i = 0; i < window.uiSpellButtons.length; i++) {
-                        let btn = window.uiSpellButtons[i];
-                        if (btn && btn.visible === true && btn.type !== 'jrpg' && btn.isTouched(gridPos.x, gridPos.y)) {
-                            btn.press(); 
-                            console.log(`Spell slot ${i + 1} pressed!`);
-                            return; // Return immediately so we don't accidentally click anything behind it
-                        }
+            if (typeof window.uiSpellButtons !== 'undefined') {
+                for (let i = 0; i < window.uiSpellButtons.length; i++) {
+                    let btn = window.uiSpellButtons[i];
+                    
+                    // THE FIX: Use loose equality (==) or just check if it's truthy (> 0)
+                    if (btn && btn.visible && btn.type !== 'jrpg' && btn.isTouched(gridPos.x, gridPos.y)) {
+                        btn.press(); 
+                        console.log(`Spell slot ${i + 1} pressed!`);
+                        return; // Return immediately so we don't accidentally click anything behind it
                     }
                 }
+            }
                 if (btnPOV.isTouched(gridPos.x, gridPos.y) && btnPOV.visible == true&&btnPOV.type != 'jrpg') {
                     // Just call press(). The Btn class handles the sound, animation, and logic.
                     btnPOV.press(); 
