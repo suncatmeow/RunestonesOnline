@@ -8000,13 +8000,15 @@
             }
 
             let shade;
-            if (this.mapID === -1) {
-                shade = 255; 
-            } else {
-                shade = 150 / (perpWallDist + 0.5);
+           
+                // --- THE VISIBILITY FIX ---
+                // Old math: shade = 150 / (perpWallDist + 0.5); (Faded to black after 4 tiles)
+                // New math: Adds a base ambient light (+70) and pushes the light falloff much further into the distance
+                shade = (163 / (perpWallDist + 1)) + 20; 
+                if (this.mapID === -1){ shade = 193}
                 if (shade > 255) shade = 255;
-                if (side === 1) shade *= 0.7; 
-            }
+                if (side === 1) shade *= 0.75; // Softer side shadows so corners don't get completely crushed
+            
 
             let brightness = shade / 255;
             let r = baseR * brightness + noise;
@@ -23755,12 +23757,12 @@
                     console.log(`journal button pressed`);
                     return; 
                 }
-                if (btnMove2.isTouched(gridPos.x, gridPos.y) && btnMove2.visible == true && btnMove2.type != 'jrpg') {
+                if (btnMove2.isTouched(gridPos.x, gridPos.y) && btnMove2.visible == true && btnMove2.type != 'jrpg'&&window.gameViewMode ==='3d') {
                     btnMove2.press(); 
                     console.log(`move2 button pressed`);
                     return; 
                 }
-                if (btnLook.isTouched(gridPos.x, gridPos.y) && btnLook.visible == true && btnLook.type != 'jrpg') {
+                if (btnLook.isTouched(gridPos.x, gridPos.y) && btnLook.visible == true && btnLook.type != 'jrpg'&&window.gameViewMode ==='3d') {
                     btnLook.press(); 
                     console.log(`move2 button pressed`);
                     return; 
