@@ -2098,6 +2098,10 @@
     triggerInteraction(dungeon,index = 0) {
       cardIDO = 0;
       cardIDI = 0;
+      if (this.role === 'escort_giver') {
+        this.startDialogue(dungeon);
+        return;
+      }
      // ==========================================
       // --- NEW: RUNESTONE STAT UPGRADES ---
       // ==========================================
@@ -2214,6 +2218,7 @@
           
           return; 
       }
+      
       Dungeon.constructing = false;
         //MAP -1: teleport room
         if (dungeon.mapID === -1) {
@@ -4958,6 +4963,8 @@
             this.dir = data.dir;
             
             this.loadMap(data.mapID); 
+            this.x = data.x;
+            this.y = data.y;
 
             // 6. Update Server
             if (typeof socket !== 'undefined') {
@@ -6245,10 +6252,36 @@
             }
         }
         // -------------------------
+        // -------------------------
         // --- RESTORE ESCORT STATE ---
-        // If we have an active quest, find the giver and force them back into follow mode!
+        // -------------------------
         if (this.activeEscortQuest) {
+            // Check if they naturally spawn on this map
             let escort = this.npcs.find(n => n.index === this.activeEscortQuest.giverIndex);
+            
+            // 1. CROSS-MAP SUMMON: Rebuild them from our saved visual data!
+            if (!escort) {
+                if (this.activeEscortQuest.npcType !== undefined) {
+                    escort = new NPC(
+                        this.activeEscortQuest.giverIndex, 
+                        this.x, this.y, // Snap to player!
+                        this.activeEscortQuest.npcType, 
+                        'following', 
+                        this.activeEscortQuest.npcColor || '#66ccff', 
+                        this.activeEscortQuest.npcDeck || [], 
+                        'dialogue', 
+                        false, 
+                        'escort'
+                    );
+                    this.npcs.push(escort);
+                }
+            } else {
+                // 2. SAME-MAP SNAP: Teleport them to the player so they don't have to run from their home spawn
+                escort.x = this.x;
+                escort.y = this.y;
+            }
+
+            // 3. APPLY OVERRIDES
             if (escort) {
                 escort.alignment = 'escort';
                 escort.role = 'dialogue';
@@ -6734,76 +6767,76 @@
             }
 
             // Check if the Look Joystick is currently being dragged
-        let isJoystickActive = (typeof btnLook !== 'undefined' && btnLook.isPressed);
+            let isJoystickActive = (typeof btnLook !== 'undefined' && btnLook.isPressed);
 
-        // Only apply snap/decay if we are NOT using free-look AND NOT dragging the joystick
-        if (typeof isFreeLooking !== 'undefined' && !isFreeLooking && !isJoystickActive && Object.keys(activePointers || {}).length < 2) {
-            let turns = Math.round((this.lookPan || 0) / (Math.PI / 2));
-            if (turns !== 0) {
-                this.dir = (this.dir + turns) % 4; 
-                if (this.dir < 0) this.dir += 4;
-                let angleShift = turns * (Math.PI / 2);
-                this.lookPan -= angleShift;
-                this.currentAngle += angleShift; 
-            }
-            this.lookPan *= 0.85;   
-            this.lookPitch *= 0.85; 
-            if (Math.abs(this.lookPan) < 0.001) this.lookPan = 0;
-            if (Math.abs(this.lookPitch) < 0.001) this.lookPitch = 0;
-        }
-
-            let targetPitch = 0;
-            let targetCamZ = 0.5; 
-            let targetZScale = 1.0;
-
-            if (targetPOVDist > 0.01) {
-                let zoomPercent = Math.min(targetPOVDist / 8, 1.0); 
-                targetPitch = -(viewH * 0.35) * zoomPercent; 
-                targetCamZ = 0.5 + (2.0 * zoomPercent); 
-                targetZScale = 1.0 + (0.2 * zoomPercent); 
+            // Only apply snap/decay if we are NOT using free-look AND NOT dragging the joystick
+            if (typeof isFreeLooking !== 'undefined' && !isFreeLooking && !isJoystickActive && Object.keys(activePointers || {}).length < 2) {
+                let turns = Math.round((this.lookPan || 0) / (Math.PI / 2));
+                if (turns !== 0) {
+                    this.dir = (this.dir + turns) % 4; 
+                    if (this.dir < 0) this.dir += 4;
+                    let angleShift = turns * (Math.PI / 2);
+                    this.lookPan -= angleShift;
+                    this.currentAngle += angleShift; 
+                }
+                this.lookPan *= 0.85;   
+                this.lookPitch *= 0.85; 
+                if (Math.abs(this.lookPan) < 0.001) this.lookPan = 0;
+                if (Math.abs(this.lookPitch) < 0.001) this.lookPitch = 0;
             }
 
-            let maxPitchClamp = viewH * 0.6; 
-            targetPitch += Math.max(-maxPitchClamp, Math.min(maxPitchClamp, this.lookPitch || 0));
+                let targetPitch = 0;
+                let targetCamZ = 0.5; 
+                let targetZScale = 1.0;
 
-            if (this.currentCamDist === undefined) {
-                this.currentCamDist = targetPOVDist;
-                this.currentPitch = targetPitch;
-                this.currentCamZ = targetCamZ;
-                this.currentZScale = targetZScale;
-                this.currentAngle = this.dir * (Math.PI / 2);
-                this.lookPan = 0; 
-            }
+                if (targetPOVDist > 0.01) {
+                    let zoomPercent = Math.min(targetPOVDist / 8, 1.0); 
+                    targetPitch = -(viewH * 0.35) * zoomPercent; 
+                    targetCamZ = 0.5 + (2.0 * zoomPercent); 
+                    targetZScale = 1.0 + (0.2 * zoomPercent); 
+                }
 
-            let lerpSpeed = 20.0; 
-            let lerpFactor = Math.min(lerpSpeed * dt, 1.0); 
+                let maxPitchClamp = viewH * 0.6; 
+                targetPitch += Math.max(-maxPitchClamp, Math.min(maxPitchClamp, this.lookPitch || 0));
 
-            this.currentCamDist += (targetPOVDist - this.currentCamDist) * lerpFactor;
-            this.currentPitch += (targetPitch - this.currentPitch) * lerpFactor;
-            this.currentCamZ += (targetCamZ - this.currentCamZ) * lerpFactor;
-            this.currentZScale += (targetZScale - this.currentZScale) * lerpFactor;
-            if (Math.abs(this.currentCamDist - targetPOVDist) < 0.01) this.currentCamDist = targetPOVDist;
+                if (this.currentCamDist === undefined) {
+                    this.currentCamDist = targetPOVDist;
+                    this.currentPitch = targetPitch;
+                    this.currentCamZ = targetCamZ;
+                    this.currentZScale = targetZScale;
+                    this.currentAngle = this.dir * (Math.PI / 2);
+                    this.lookPan = 0; 
+                }
 
-            let targetAngle = this.dir * (Math.PI / 2);
-            let angleDiff = targetAngle - this.currentAngle;
-            while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
-            while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
-            this.currentAngle += angleDiff * lerpFactor;
+                let lerpSpeed = 20.0; 
+                let lerpFactor = Math.min(lerpSpeed * dt, 1.0); 
 
-            const finalAngle = this.currentAngle + this.lookPan;
-            const dirX = Math.sin(finalAngle);
-            const dirY = -Math.cos(finalAngle);
-            const planeX = -dirY * 0.66;
-            const planeY = dirX * 0.66;
+                this.currentCamDist += (targetPOVDist - this.currentCamDist) * lerpFactor;
+                this.currentPitch += (targetPitch - this.currentPitch) * lerpFactor;
+                this.currentCamZ += (targetCamZ - this.currentCamZ) * lerpFactor;
+                this.currentZScale += (targetZScale - this.currentZScale) * lerpFactor;
+                if (Math.abs(this.currentCamDist - targetPOVDist) < 0.01) this.currentCamDist = targetPOVDist;
 
-            let actualCamDist = this.currentCamDist;
-            this.pitch = this.currentPitch;
-            this.camZ = this.currentCamZ;
-            this.zScale = this.currentZScale;
+                let targetAngle = this.dir * (Math.PI / 2);
+                let angleDiff = targetAngle - this.currentAngle;
+                while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+                while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+                this.currentAngle += angleDiff * lerpFactor;
 
-            let camX = this.x - dirX * actualCamDist;
-            let camY = this.y - dirY * actualCamDist;
-            this.isFirstPerson = (targetPOVDist <= 0.01);
+                const finalAngle = this.currentAngle + this.lookPan;
+                const dirX = Math.sin(finalAngle);
+                const dirY = -Math.cos(finalAngle);
+                const planeX = -dirY * 0.66;
+                const planeY = dirX * 0.66;
+
+                let actualCamDist = this.currentCamDist;
+                this.pitch = this.currentPitch;
+                this.camZ = this.currentCamZ;
+                this.zScale = this.currentZScale;
+
+                let camX = this.x - dirX * actualCamDist;
+                let camY = this.y - dirY * actualCamDist;
+                this.isFirstPerson = (targetPOVDist <= 0.01);
 
         // ==========================================
         // 2. TRUE HORIZON (Calculated AFTER Camera updates!)
@@ -6838,7 +6871,7 @@
             }
 
         // ==========================================
-        // 3. PROCEDURAL SKYBOX OR INDOOR CEILING
+        // 4. PROCEDURAL SKYBOX OR INDOOR CEILING
         // ==========================================
             const outdoorMaps = [2,4, 9,10, 14, 22]; 
 
@@ -7078,104 +7111,109 @@
         // ==========================================
         // 5. CAST RAYS FOR WALLS
         // ==========================================
-        for (let x = 0; x < viewW; x += resStep) {
-            const cameraX = 2 * x / viewW - 1;
-            const rayDirX = dirX + planeX * cameraX;
-            const rayDirY = dirY + planeY * cameraX;
-            this.castWallRay(rayDirX, rayDirY, x, viewX, viewY, viewW, viewH, resStep, camX, camY);          
-        } 
+            for (let x = 0; x < viewW; x += resStep) {
+                const cameraX = 2 * x / viewW - 1;
+                const rayDirX = dirX + planeX * cameraX;
+                const rayDirY = dirY + planeY * cameraX;
+                this.castWallRay(rayDirX, rayDirY, x, viewX, viewY, viewW, viewH, resStep, camX, camY);          
+            } 
 
-        this.weather.resize(tL, tL);
-        this.weather.update(dt);
-        this.weather.draw(ctx, tX, tY);
+            this.weather.resize(tL, tL);
+            this.weather.update(dt);
+            this.weather.draw(ctx, tX, tY);
 
-        if (this.frame % 3 === 0) { 
-            socket.emit("move", { x: this.x, y: this.y, dir: this.dir, mapID: this.mapID, status: this.status, type: playerSprite, name: playerName });
-        }
-
-        let renderList = this.npcs.filter(npc => npc.visible && !npc.isDead);
-        this.projectiles.forEach(p => { if (p.active) renderList.push(p); });
-        
-        if (window.remotePlayers) {
-            for (let id in window.remotePlayers) {
-                let p = window.remotePlayers[id];
-                let isOpponent = (this.currentSpeaker && this.currentSpeaker.socketId === id);
-                if (p.mapID === this.mapID && p.x !== undefined) {
-                    if (p.status === 'dueling' && !isOpponent) continue; 
-                    p.visible = true; 
-                    renderList.push(p);
-                }
+            if (this.frame % 3 === 0) { 
+                socket.emit("move", { x: this.x, y: this.y, dir: this.dir, mapID: this.mapID, status: this.status, type: playerSprite, name: playerName });
             }
-        }
-
-        if (!this.isFirstPerson) {
-            renderList.push({ x: this.x, y: this.y, type: playerSprite, visible: true, isDead: false, alignment: 'ally', isPlayer: true });
-        }
-
-        this.drawCombinedSprites(ctx, viewX, viewY, viewW, viewH, dirX, dirY, planeX, planeY, renderList, camX, camY);
-        this.drawMinimap(ctx, viewX, viewY, viewW, viewH);
-        btnDeck.show(0, 9, 1, 1, 1, 'Deck', 'jrpg_btn', 1, 0);
-        btnJournal.show(7.875, 2.275, .5, 1, 1, 'Journal', 'jrpg_btn', 1, 0);
-        btnPOV.show(9.3, 2.275, .5, 1, 1, 'POV', 'jrpg_btn', 1, 0);
-        btnMove2.show(6.3,7.5, 4, .9, .6, '', 'b_pad', 1, 0);
-        btnLook.show(7.4, 5.7, 1.5, 1, 1, '', 'joystick', 1, 0); // Added to right side
-       // --- DYNAMIC SPELL SLOTS LAYOUT ---
-        let btnGap = 0.05;
-        let btnWidth = 1.0;
-        let btnHeight = 1.0; 
-
-        if (typeof window.uiSpellButtons !== 'undefined') {
-            let activeBtns = [];
-            
-            // 1. Gather all active cards in order
-            for (let i = 0; i < window.uiSpellButtons.length; i++) {
-                let btn = window.uiSpellButtons[i];
-                if (btn && btn.assignedCard) {
-                    activeBtns.push(btn);
-                } else if (btn) {
-                    btn.visible = false; // Hide empty slots immediately
-                }
-            }
-
-            // 2. Draw them in an alternating L-Bracket shape
-            let evenCount = 0;
-            let oddCount = 0;
-
-            for (let v = 0; v < activeBtns.length; v++) {
-                let btn = activeBtns[v];
+        // ==========================================
+        // 6. Draw everything
+        // ==========================================
+            //Sprites
+                let renderList = this.npcs.filter(npc => npc.visible && !npc.isDead);
+                this.projectiles.forEach(p => { if (p.active) renderList.push(p); });
                 
-                if (v % 2 === 0) {
-                    // EVEN SLOTS: Stack upwards along the left edge
-                    let startX = 0;
-                    let startY = 7.95;
-                    let calcY = startY - (evenCount * (btnHeight + btnGap));
+                if (window.remotePlayers) {
+                    for (let id in window.remotePlayers) {
+                        let p = window.remotePlayers[id];
+                        let isOpponent = (this.currentSpeaker && this.currentSpeaker.socketId === id);
+                        if (p.mapID === this.mapID && p.x !== undefined) {
+                            if (p.status === 'dueling' && !isOpponent) continue; 
+                            p.visible = true; 
+                            renderList.push(p);
+                        }
+                    }
+                }
+
+                if (!this.isFirstPerson) {
+                    renderList.push({ x: this.x, y: this.y, type: playerSprite, visible: true, isDead: false, alignment: 'ally', isPlayer: true });
+                }
+
+                this.drawCombinedSprites(ctx, viewX, viewY, viewW, viewH, dirX, dirY, planeX, planeY, renderList, camX, camY);
+            //UI
+                this.drawMinimap(ctx, viewX, viewY, viewW, viewH);
+                btnDeck.show(0, 9, 1, 1, 1, 'Deck', 'jrpg_btn', 1, 0);
+                btnJournal.show(7.875, 2.275, .5, 1, 1, 'Journal', 'jrpg_btn', 1, 0);
+                btnPOV.show(9.3, 2.275, .5, 1, 1, 'POV', 'jrpg_btn', 1, 0);
+                btnMove2.show(6.3,7.5, 4, .9, .6, '', 'b_pad', 1, 0);
+                btnLook.show(7.4, 5.7, 1.5, 1, 1, '', 'joystick', 1, 0); // Added to right side
+            // --- DYNAMIC SPELL SLOTS LAYOUT ---
+            let btnGap = 0.05;
+            let btnWidth = 1.0;
+            let btnHeight = 1.0; 
+
+            if (typeof window.uiSpellButtons !== 'undefined') {
+                let activeBtns = [];
+                
+                // 1. Gather all active cards in order
+                for (let i = 0; i < window.uiSpellButtons.length; i++) {
+                    let btn = window.uiSpellButtons[i];
+                    if (btn && btn.assignedCard) {
+                        activeBtns.push(btn);
+                    } else if (btn) {
+                        btn.visible = false; // Hide empty slots immediately
+                    }
+                }
+
+                // 2. Draw them in an alternating L-Bracket shape
+                let evenCount = 0;
+                let oddCount = 0;
+
+                for (let v = 0; v < activeBtns.length; v++) {
+                    let btn = activeBtns[v];
                     
-                    btn.show(startX, calcY, 1, btnWidth, btnHeight, btn.text, 'jrpg_btn', 1, 'spell');
-                    evenCount++;
-                } else {
-                    // ODD SLOTS: Shift rightwards along the bottom edge
-                    let startX = 1 + btnGap; // Start just past the first button
-                    let startY = 9;
-                    let calcX = startX + (oddCount * (btnWidth + btnGap));
-                    
-                    btn.show(calcX, startY, 1, btnWidth, btnHeight, btn.text, 'jrpg_btn', 1, 'spell');
-                    oddCount++;
+                    if (v % 2 === 0) {
+                        // EVEN SLOTS: Stack upwards along the left edge
+                        let startX = 0;
+                        let startY = 7.95;
+                        let calcY = startY - (evenCount * (btnHeight + btnGap));
+                        
+                        btn.show(startX, calcY, 1, btnWidth, btnHeight, btn.text, 'jrpg_btn', 1, 'spell');
+                        evenCount++;
+                    } else {
+                        // ODD SLOTS: Shift rightwards along the bottom edge
+                        let startX = 1 + btnGap; // Start just past the first button
+                        let startY = 9;
+                        let calcX = startX + (oddCount * (btnWidth + btnGap));
+                        
+                        btn.show(calcX, startY, 1, btnWidth, btnHeight, btn.text, 'jrpg_btn', 1, 'spell');
+                        oddCount++;
+                    }
                 }
             }
-        }
-        let currentTime = Date.now();
-        if (currentTime - this.lastSpellShuffleTime > this.spellShuffleCooldown) {
-            this.shuffleSpells();
-            this.lastSpellShuffleTime = currentTime;
-        }
-
-        let sfxtimer = Date.now();
-        if (sfxtimer - lastsfxtime > 550){
-            if (this.weather.mode == 'storm' || this.weather.mode == 'lightning' || this.weather.mode == 'apocalypse'){
-                if (Math.random() > 0.25) MusicEngine.playSFX('lightning');
+        //7. Timers
+            let currentTime = Date.now();
+            if (currentTime - this.lastSpellShuffleTime > this.spellShuffleCooldown) {
+                this.shuffleSpells();
+                this.lastSpellShuffleTime = currentTime;
             }
-            lastsfxtime = Date.now();
-        }
+
+            let sfxtimer = Date.now();
+            if (sfxtimer - lastsfxtime > 550){
+                if (this.weather.mode == 'storm' || this.weather.mode == 'lightning' || this.weather.mode == 'apocalypse'){
+                    if (Math.random() > 0.25) MusicEngine.playSFX('lightning');
+                }
+                lastsfxtime = Date.now();
+            }
         }
       renderTopDown(dt) {
         // --- INITIALIZATION SYNC ---
@@ -9244,7 +9282,7 @@
         let baseAlignment = npc.alignment.split('_')[0];
         this.xp = this.xp + npc.xp;
         
-        // --- 2. LEVEL UP CHECK (SCALING) ---
+        //1. LEVEL UP
             // This creates an exponential curve: 4, 8, 16, 32, 64...
             let xpNeeded = Math.floor(100 * Math.pow(this.level + 1, 1.8));
             let leveledUp = false;
@@ -9267,139 +9305,140 @@
             // if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('teleport');MusicEngine.play(8);
                 // Optional: You could trigger a MessageBox here to tell the player!
             }
-        npc.isDead = true;
-        npc.visible = false;
+        //2. REMOVE NPCS
+            npc.isDead = true;
+            npc.visible = false;
 
-        // --- CASCADING MINION DEATH ---
-            // If the NPC that just died summoned anything, kill its minions too!
-            this.npcs.forEach(minion => {
-                if (!minion.isDead && minion.summonerId === npc.index) {
-                    minion.isDead = true;
-                    minion.visible = false;
-                    minion.x = -999; // Move off map
-                    
-                    // Visual pop so they don't just vanish into thin air
-                    for(let p = 0; p < 10; p++) {
-                        if (typeof globalParticles !== 'undefined') {
-                            globalParticles.push(new Particle(minion.x, minion.y, '#aa00ff', 'smoke'));
+            // --- CASCADING MINION DEATH ---
+                // If the NPC that just died summoned anything, kill its minions too!
+                this.npcs.forEach(minion => {
+                    if (!minion.isDead && minion.summonerId === npc.index) {
+                        minion.isDead = true;
+                        minion.visible = false;
+                        minion.x = -999; // Move off map
+                        
+                        // Visual pop so they don't just vanish into thin air
+                        for(let p = 0; p < 10; p++) {
+                            if (typeof globalParticles !== 'undefined') {
+                                globalParticles.push(new Particle(minion.x, minion.y, '#aa00ff', 'smoke'));
+                            }
                         }
                     }
-                }
-            });
-        // --- NEW: ALLY DEATH CLEANUP ---
-            if (npc.alignment === 'ally') {
-                // 1. Find exactly which active summon object this was using its unique map index
-                let summonIndex = -1;
-                if (this.activeSummons) {
-                    summonIndex = this.activeSummons.findIndex(s => s.npcId === npc.index);
-                }
-                
-                if (summonIndex !== -1) {
-                    let deadUID = this.activeSummons[summonIndex].uid;
-                    let deadCardID = this.activeSummons[summonIndex].cardId;
-                    // 2. Remove them from the active squad
-                    this.activeSummons.splice(summonIndex, 1);
+                });
+            // --- NEW: ALLY DEATH CLEANUP ---
+                if (npc.alignment === 'ally') {
+                    // 1. Find exactly which active summon object this was using its unique map index
+                    let summonIndex = -1;
+                    if (this.activeSummons) {
+                        summonIndex = this.activeSummons.findIndex(s => s.npcId === npc.index);
+                    }
                     
-                    // 3. THE PENALTY: DESTROY THE SPECIFIC CARD FROM THE HAND
-                    let foundInHand = false;
-                    for (let i = 0; i < this.hand.length; i++) {
-                        if (this.hand[i] && this.hand[i].uid === deadUID) {
-                            this.hand[i] = null; // Card is permanently destroyed
-                            foundInHand = true;
-                            console.log(`Ally died! Card permanently destroyed from Hand.`);
+                    if (summonIndex !== -1) {
+                        let deadUID = this.activeSummons[summonIndex].uid;
+                        let deadCardID = this.activeSummons[summonIndex].cardId;
+                        // 2. Remove them from the active squad
+                        this.activeSummons.splice(summonIndex, 1);
+                        
+                        // 3. THE PENALTY: DESTROY THE SPECIFIC CARD FROM THE HAND
+                        let foundInHand = false;
+                        for (let i = 0; i < this.hand.length; i++) {
+                            if (this.hand[i] && this.hand[i].uid === deadUID) {
+                                this.hand[i] = null; // Card is permanently destroyed
+                                foundInHand = true;
+                                console.log(`Ally died! Card permanently destroyed from Hand.`);
 
-                            // Instantly wipe the dynamic UI button
-                                if (typeof window.uiSpellButtons !== 'undefined' && window.uiSpellButtons[i]) {
-                                    window.uiSpellButtons[i].assignedCard = null;
+                                // Instantly wipe the dynamic UI button
+                                    if (typeof window.uiSpellButtons !== 'undefined' && window.uiSpellButtons[i]) {
+                                        window.uiSpellButtons[i].assignedCard = null;
+                                    }
                                 }
                             }
-                        }
 
-                            // Fallback just in case it somehow got pushed back to extra
-                            if (!foundInHand) {
-                                let extraIndex = this.extra.findIndex(c => c.uid === deadUID);
-                                if (extraIndex !== -1) {
-                                    this.extra.splice(extraIndex, 1); 
+                                // Fallback just in case it somehow got pushed back to extra
+                                if (!foundInHand) {
+                                    let extraIndex = this.extra.findIndex(c => c.uid === deadUID);
+                                    if (extraIndex !== -1) {
+                                        this.extra.splice(extraIndex, 1); 
+                                    }
                                 }
-                            }
-                            // 2. --- THE LOOT DROP ---
-                    // Spawn a temporary card on the ground exactly where they died
-                    let dropIndex = Math.floor(Math.random() * 100000) + 800000; // Unique temporary ID
-                    let droppedCard = new NPC(
-                        dropIndex, 
-                        npc.x, npc.y, 
-                        -27,           // The Card Sprite
-                        'stationary', 
-                        '#ffff00',     // Yellow minimap dot
-                        [deadCardID],  // The card they can recover
-                        'dropped_card',// NEW ROLE: Identifies it as expiring loot
-                        false, 
-                        'friendly'
-                        
-                    );
-                    droppedCard.lifespan = 600;
-                    this.npcs.push(droppedCard);
-                }
-                
-                // Force the hotbar to shuffle in a new card
-                if (typeof this.shuffleSpells === 'function') this.shuffleSpells();
-
-                this.saveGame();
-            }
-            // -------------------------------
-                // -------------------------------
-                // --- OVERWORLD LOOT DROP ---
-                // Only drop a physical card if they die in the overworld (not a tactical duel)
-                // and ensure the dying NPC is actually an enemy!
-                if (typeof startGame !== 'undefined' && startGame === 'explore' && npc.alignment === 'foe') {
-                    
-                    // Set your drop rate! (e.g., 0.5 = 50% chance. Set to 1.0 for guaranteed drops while testing)
-                    if (Math.random() < 1) { 
-                    let loot = 0;
-                        if (Math.random() < .99) {
-                        loot = rnd(1,npc.deck.length-1)
-                        }else{ loot = 0}
-                        
-                        // Keep the exact droppedCardID (decimals included!)
-                        let droppedCardID = (npc.deck && npc.deck.length > 0) ? npc.deck[loot] : npc.type;
-
-                        // Safety check: If the deck holds Card objects instead of raw numbers, extract the index
-                        if (typeof droppedCardID === 'object' && droppedCardID !== null) {
-                            droppedCardID = droppedCardID.index || droppedCardID.id;
-                        }
-                        
-                        // NEW SAFETY CHECK: Ensure the droppedCardID has a valid portrait mapping.
-                        // If it's undefined (somehow) or 0 (and not the fool), default to something safe.
-                        if (droppedCardID === undefined) droppedCardID = Math.floor(npc.type);
-
-                        // Give the loot a random high index so it doesn't clash with existing map NPCs
-                        let lootIndex = Math.floor(Math.random() * 100000) + 700000;
-
-                        // Spawn the loot sprite exactly where the monster died
-                        let lootSprite = new NPC(
-                            lootIndex, 
-                            npc.x, 
-                            npc.y, 
-                            -27,           // The loot bag / card sprite
+                                // 2. --- THE LOOT DROP ---
+                        // Spawn a temporary card on the ground exactly where they died
+                        let dropIndex = Math.floor(Math.random() * 100000) + 800000; // Unique temporary ID
+                        let droppedCard = new NPC(
+                            dropIndex, 
+                            npc.x, npc.y, 
+                            -27,           // The Card Sprite
                             'stationary', 
-                            '#ffff00',     // Yellow minimap dot for treasure!
-                            [droppedCardID], 
-                            'dialogue', 
-                            null, 
-                        'friendly'
-                    );
+                            '#ffff00',     // Yellow minimap dot
+                            [deadCardID],  // The card they can recover
+                            'dropped_card',// NEW ROLE: Identifies it as expiring loot
+                            false, 
+                            'friendly'
+                            
+                        );
+                        droppedCard.lifespan = 600;
+                        this.npcs.push(droppedCard);
+                    }
                     
-                    // Push it to the map so the player can walk over it!
-                    this.npcs.push(lootSprite);
+                    // Force the hotbar to shuffle in a new card
+                    if (typeof this.shuffleSpells === 'function') this.shuffleSpells();
+
+                    this.saveGame();
                 }
-            }
-            if (npc.role === 'dropped_card') {
-                npc.isDead = true;
-                npc.visible = false;
-                npc.x = -999;
-                return; // Do not record this to the save file memory!
-            }
-        // Only save Hostiles and Neutrals to the respawn memory!
+                // -------------------------------
+                    // -------------------------------
+                    // --- OVERWORLD LOOT DROP ---
+                    // Only drop a physical card if they die in the overworld (not a tactical duel)
+                    // and ensure the dying NPC is actually an enemy!
+                    if (typeof startGame !== 'undefined' && startGame === 'explore' && npc.alignment === 'foe') {
+                        
+                        // Set your drop rate! (e.g., 0.5 = 50% chance. Set to 1.0 for guaranteed drops while testing)
+                        if (Math.random() < 1) { 
+                        let loot = 0;
+                            if (Math.random() < .99) {
+                            loot = rnd(1,npc.deck.length-1)
+                            }else{ loot = 0}
+                            
+                            // Keep the exact droppedCardID (decimals included!)
+                            let droppedCardID = (npc.deck && npc.deck.length > 0) ? npc.deck[loot] : npc.type;
+
+                            // Safety check: If the deck holds Card objects instead of raw numbers, extract the index
+                            if (typeof droppedCardID === 'object' && droppedCardID !== null) {
+                                droppedCardID = droppedCardID.index || droppedCardID.id;
+                            }
+                            
+                            // NEW SAFETY CHECK: Ensure the droppedCardID has a valid portrait mapping.
+                            // If it's undefined (somehow) or 0 (and not the fool), default to something safe.
+                            if (droppedCardID === undefined) droppedCardID = Math.floor(npc.type);
+
+                            // Give the loot a random high index so it doesn't clash with existing map NPCs
+                            let lootIndex = Math.floor(Math.random() * 100000) + 700000;
+
+                            // Spawn the loot sprite exactly where the monster died
+                            let lootSprite = new NPC(
+                                lootIndex, 
+                                npc.x, 
+                                npc.y, 
+                                -27,           // The loot bag / card sprite
+                                'stationary', 
+                                '#ffff00',     // Yellow minimap dot for treasure!
+                                [droppedCardID], 
+                                'dialogue', 
+                                null, 
+                            'friendly'
+                        );
+                        
+                        // Push it to the map so the player can walk over it!
+                        this.npcs.push(lootSprite);
+                    }
+                }
+                if (npc.role === 'dropped_card') {
+                    npc.isDead = true;
+                    npc.visible = false;
+                    npc.x = -999;
+                    return; // Do not record this to the save file memory!
+                }
+            // Only save Hostiles and Neutrals to the respawn memory!
           if (npc.alignment !== 'ally'||npc.type!==-27) {
               let uniqueID = this.mapID + "_" + npc.index;
               if (permanent) {
@@ -9421,7 +9460,7 @@
                     lastFoe = n; 
                 }
             });
-        // 1. WORLD CHANGING EVENTS (Moved from Battle End Screen)
+        //3. WORLD-ALTERING EVENTS
             if (Dungeon.mapID != 999) {
                 if (npc.type == 35.1 && Dungeon.mapID == 5) { Dungeon.mapSong[5] = 11; }
                 if (npc.type == 35.1 && Dungeon.mapID == 17) { Dungeon.spawnPersistentNPC(17, 1, 2.5, 1.5, 99, 'stationary', '#00ff00', [43], null, null, 'dialogue', null, null, 'friendly'); }
@@ -9447,8 +9486,7 @@
                     Dungeon.spawnPersistentNPC(14, 15, Dungeon.x - .5, Dungeon.y - .5, 77.1, 'wandering', '#00ff00', [77,64,65,66,67,68,69,70,71,72,73,74,75,76], null, null, 'dialogue', null, null, 'friendly_messenger');
                 }
             }
-
-           // 2. TACTICAL BATTLE LOOT DROP (UI Popup)
+        //4. LOOT DROP
             let lootTriggered = false;
 
             // ONLY do the UI popup if we are currently inside a tactical battle screen
@@ -9481,150 +9519,152 @@
             }
 
             
-        const recruitPleas = [
-            // The Classic Frantic Minion
-            [
-                "Eek! Don't hurt me! I surrender!",
-                "Spare me! I'll fight whoever you want!"
-            ],
-            [
-            "Wait! Please don't kill me!",
-                  "I yield! If you spare me, I'll lend you my strength!"],
-            // Out of Breath
-            [
-                "Wait! *huff* Wait! *puff* I can't run anymore!",
-                "I give up! Let me live and I'll fight for your side!"
-            ],
-            // Changing Management
-            [
-                "Yikes! Okay, okay, you win!",
-                "Don't hurt me! I'll fight for you, I swear!"
-            ],
-            // The Loot Panic
-            [
-                "Gah! Please don't turn me into loot!",
-                "Let me live and I'll smash your enemies for you!"
-            ],
-            // The Absolute Groveler
-            [
-                "No! I yield!",
-                "I'm at your service! I'll lend you all my strength!"
-            ],
-            
-            // The "Please Don't Look At My Stats" 
-            [
-                "Mercy! I don't want to die!",
-                "Take me with you! I'll fight for you instead!"
-            ]
-        ];
-        // --- ESCORT QUEST COMPLETION ---
-        if (this.activeEscortQuest && this.activeEscortQuest.targetIndex === npc.index) {
-            
-            let escortNPC = this.npcs.find(n => n.index === this.activeEscortQuest.giverIndex);
-            
-            if (escortNPC) {
-                let questType = this.activeEscortQuest.questType;
-                
-                // Did we trigger the rare "I want to fight for you" outcome? (20% chance)
-                let joinsFight = Math.random() > 0.8;
-
-                if (joinsFight) {
-                    escortNPC.customDialogue = [
-                        "You are incredibly strong...",
-                        "Please, let me follow you and fight by your side!"
-                    ];
-                    escortNPC.role = 'become_ally'; 
-                } else {
-                    if (questType === 'kill') escortNPC.customDialogue = ["Justice is served! Thank you!", "Please, take this."];
-                    else if (questType === 'retrieve') escortNPC.customDialogue = ["You found my lost item! Thank you!", "Please, take this."];
-                    else escortNPC.customDialogue = ["My friend is safe! Thank you!", "Please, take this."];
-                    
-                    // Give the designated reward
-                    escortNPC.rewardCard = this.activeEscortQuest.rewardType;
-                    escortNPC.role = 'reward'; // They will drop the card and vanish
-                }
-
-                // Force the escort's victory dialogue to pop open instantly!
-                setTimeout(() => {
-                    if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('heal');
-                    escortNPC.startDialogue(this);
-                }, 500); // 500ms delay lets the target's death animation play out first
-            }
-            
-            // Wipe the quest tracker
-            this.activeEscortQuest = null; 
-            this.saveGame();
-        }
-        // --- THE COWARD TRIGGER ---
-        // If only 1 enemy is left, and it's not a boss, make it panic!
-        if (aliveHostiles === 1 && lastFoe && !lastFoe.isBoss) {
-            lastFoe.state = 'fleeing';
-            lastFoe.speed = 2.5; // Make them run fast!
-            lastFoe.role = 'dialogue'; // Make them clickable for dialogue instead of auto-battling
-            lastFoe.alignment = 'friendly'; 
-            
-            // Randomly pick one of the 2-part dialogues from our pool!
-            const randomPlea = recruitPleas[Math.floor(Math.random() * recruitPleas.length)];
-            
-            // Set up the Mercy dialogue
-            lastFoe.customDialogue = randomPlea;
-            
-            lastFoe.rewardCard = Math.floor(lastFoe.type);
-            lastFoe.options = ['Spare', 'Finish It'];
-            //lastFoe.isBegging = true; 
-        }
-
-        // --- 3. CUSTOM MAP / BOSS TELEPORT LOGIC ---
-        if ((npc.isBoss || aliveHostiles === 0) && this.mapID === 999) {
-            if (npc.isBoss) {
-                let bossDeadText = 'You have defeated the boss of this scenario. ';
-                let hostilesText = 'Monsters still roam however... ';
-                let endText = 'Teleporting you back in 10 seconds...';
-                
-                if (aliveHostiles === 0) { 
-                    hostilesText = 'All foes have been vanquished! '; 
-                }
-                
-                currentQuest = bossDeadText + hostilesText + endText;
-                if (typeof MusicEngine !== 'undefined') MusicEngine.play(8); 
-
-                // The 10-Second Teleport Timer
-                setTimeout(() => {
-                    // Check if they are STILL on map 999 (just in case they already left manually)
-                    if (this.mapID === 999) {
-                        console.log(`Teleporting back to map ${this.prevMap}...`);
-                        
-                        // Set the map ID back to where they came from
-                        this.mapID = this.prevMap;
-                        
-                        // Load the map (assuming loadMap handles clearing NPCs and drawing the new room)
-                        this.loadMap(this.prevMap); 
-                        
-                        // Force a save so they don't get stuck in limbo
-                        this.saveGame();
-                    }
-                }, 10000); 
-            }
-        }
-        if (npc.role == 'dialogue'&&npc.isBoss == true){
-          npc.isBoss = false
-        }
-        // 2. ALWAYS SYNC DEATH WITH SERVER (Moved outside the if block!)
-        if (typeof socket !== 'undefined') {
-            socket.emit("npc_died", { 
-                mapID: this.mapID, 
-                index: npc.index,
-                type: npc.type, // <--- CRITICAL: Tells Suncat exactly who died!
-                reason: reason,   
-                isBoss:npc.isBoss,
-                prevMap:this.prevMap,
-                role: npc.role,
-                alignment:baseAlignment
-            });
-        }
-       return lootTriggered;
         
-      }
+        //5. ESCORT QUEST COMPLETE
+            if (this.activeEscortQuest && this.activeEscortQuest.targetIndex === npc.index) {
+                
+                let escortNPC = this.npcs.find(n => n.index === this.activeEscortQuest.giverIndex);
+                
+                if (escortNPC) {
+                    let questType = this.activeEscortQuest.questType;
+                    
+                    // Did we trigger the rare "I want to fight for you" outcome? (20% chance)
+                    let joinsFight = Math.random() > 0.8;
+
+                    if (joinsFight) {
+                        escortNPC.customDialogue = [
+                            "You are incredibly strong...",
+                            "Please, let me follow you and fight by your side!"
+                        ];
+                        escortNPC.role = 'become_ally'; 
+                    } else {
+                        if (questType === 'kill') escortNPC.customDialogue = ["Justice is served! Thank you!", "Please, take this."];
+                        else if (questType === 'retrieve') escortNPC.customDialogue = ["You found my lost item! Thank you!", "Please, take this."];
+                        else escortNPC.customDialogue = ["My friend is safe! Thank you!", "Please, take this."];
+                        
+                        // Give the designated reward
+                        escortNPC.rewardCard = this.activeEscortQuest.rewardType;
+                        escortNPC.role = 'reward'; // They will drop the card and vanish
+                    }
+
+                    // Force the escort's victory dialogue to pop open instantly!
+                    setTimeout(() => {
+                        if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('heal');
+                        escortNPC.startDialogue(this);
+                    }, 500); // 500ms delay lets the target's death animation play out first
+                }
+                
+                // Wipe the quest tracker
+                this.activeEscortQuest = null; 
+                this.saveGame();
+            }
+        //6. MERCY EVENT
+            const recruitPleas = [
+                // The Classic Frantic Minion
+                [
+                    "Eek! Don't hurt me! I surrender!",
+                    "Spare me! I'll fight whoever you want!"
+                ],
+                [
+                "Wait! Please don't kill me!",
+                    "I yield! If you spare me, I'll lend you my strength!"],
+                // Out of Breath
+                [
+                    "Wait! *huff* Wait! *puff* I can't run anymore!",
+                    "I give up! Let me live and I'll fight for your side!"
+                ],
+                // Changing Management
+                [
+                    "Yikes! Okay, okay, you win!",
+                    "Don't hurt me! I'll fight for you, I swear!"
+                ],
+                // The Loot Panic
+                [
+                    "Gah! Please don't turn me into loot!",
+                    "Let me live and I'll smash your enemies for you!"
+                ],
+                // The Absolute Groveler
+                [
+                    "No! I yield!",
+                    "I'm at your service! I'll lend you all my strength!"
+                ],
+                
+                // The "Please Don't Look At My Stats" 
+                [
+                    "Mercy! I don't want to die!",
+                    "Take me with you! I'll fight for you instead!"
+                ]
+            ];
+            // --- THE COWARD TRIGGER ---
+            // If only 1 enemy is left, and it's not a boss, make it panic!
+            if (aliveHostiles === 1 && lastFoe && !lastFoe.isBoss) {
+                lastFoe.state = 'fleeing';
+                lastFoe.speed = 2.5; // Make them run fast!
+                lastFoe.role = 'dialogue'; // Make them clickable for dialogue instead of auto-battling
+                lastFoe.alignment = 'friendly'; 
+                
+                // Randomly pick one of the 2-part dialogues from our pool!
+                const randomPlea = recruitPleas[Math.floor(Math.random() * recruitPleas.length)];
+                
+                // Set up the Mercy dialogue
+                lastFoe.customDialogue = randomPlea;
+                
+                lastFoe.rewardCard = Math.floor(lastFoe.type);
+                lastFoe.options = ['Spare', 'Finish It'];
+                //lastFoe.isBegging = true; 
+            }
+
+        //7. CUSTOM MAP BOSS SLAIN
+            if ((npc.isBoss || aliveHostiles === 0) && this.mapID === 999) {
+                if (npc.isBoss) {
+                    let bossDeadText = 'You have defeated the boss of this scenario. ';
+                    let hostilesText = 'Monsters still roam however... ';
+                    let endText = 'Teleporting you back in 10 seconds...';
+                    
+                    if (aliveHostiles === 0) { 
+                        hostilesText = 'All foes have been vanquished! '; 
+                    }
+                    
+                    currentQuest = bossDeadText + hostilesText + endText;
+                    if (typeof MusicEngine !== 'undefined') MusicEngine.play(8); 
+
+                    // The 10-Second Teleport Timer
+                    setTimeout(() => {
+                        // Check if they are STILL on map 999 (just in case they already left manually)
+                        if (this.mapID === 999) {
+                            console.log(`Teleporting back to map ${this.prevMap}...`);
+                            
+                            // Set the map ID back to where they came from
+                            this.mapID = this.prevMap;
+                            
+                            // Load the map (assuming loadMap handles clearing NPCs and drawing the new room)
+                            this.loadMap(this.prevMap); 
+                            
+                            // Force a save so they don't get stuck in limbo
+                            this.saveGame();
+                        }
+                    }, 10000); 
+                }
+            }
+            if (npc.role == 'dialogue'&&npc.isBoss == true){
+            npc.isBoss = false
+            }
+            // 2. ALWAYS SYNC DEATH WITH SERVER (Moved outside the if block!)
+            if (typeof socket !== 'undefined') {
+                socket.emit("npc_died", { 
+                    mapID: this.mapID, 
+                    index: npc.index,
+                    type: npc.type, // <--- CRITICAL: Tells Suncat exactly who died!
+                    reason: reason,   
+                    isBoss:npc.isBoss,
+                    prevMap:this.prevMap,
+                    role: npc.role,
+                    alignment:baseAlignment
+                });
+            }
+        return lootTriggered;
+            
+        }
       reviveNPC(index) {
         // 1. Construct the unique ID for this map and npc index
         // Note: Use the index number (e.g., 5, 56, etc.)
@@ -11662,8 +11702,10 @@
             }
         }
       updateAllyFormations(dt) {
-          if (!this.activeSummons || this.activeSummons.length === 0) return;
+          let allies = this.npcs.filter(n => (n.alignment === 'ally' || n.alignment === 'escort') && !n.isDead && n.state !== 'chasing'); 
 
+            // 3. Only return if there are absolutely no allies OR escorts on the map
+            if (allies.length === 0) return;
           // 1. Define Directional Vectors based on player's current facing direction
           const vectors = {
               0: { f: {x: 0, y:-1}, b: {x: 0, y: 1}, l: {x:-1, y: 0}, r: {x: 1, y: 0} },
@@ -11692,8 +11734,7 @@
               { x: 0, y: 0 } // 11. Fail-safe (Stack on Player)
           ];
 
-        let allies = this.npcs.filter(n => (n.alignment === 'ally' || n.alignment === 'escort') && !n.isDead && n.state !== 'chasing');          let occupiedTiles = [];          
-
+          let occupiedTiles = []; // <--- THIS WAS MISSING!
           // 3. Assign and Move
           allies.forEach((ally) => {
               for (let offset of priorityOffsets) {
@@ -13087,46 +13128,53 @@
               let pullDist = 0;
               
               if (this.isPressed && this.joyX !== undefined && this.joyY !== undefined) {
-                  knobX += (this.joyX * j_rad * 0.4); 
-                  knobY += (this.joyY * j_rad * 0.4);
-                  // Calculate how close the thumbstick is to the edge (0.0 to 1.0)
                   pullDist = Math.sqrt(this.joyX * this.joyX + this.joyY * this.joyY);
+                  
+                  // Visual Clamp: Keep the physical knob inside the circle even if the math goes to 1.5
+                  let visDist = pullDist > 1.0 ? 1.0 : pullDist;
+                  let visX = pullDist > 0 ? (this.joyX / pullDist) * visDist : 0;
+                  let visY = pullDist > 0 ? (this.joyY / pullDist) * visDist : 0;
+                  
+                  knobX += (visX * j_rad * 0.4); 
+                  knobY += (visY * j_rad * 0.4);
               }
 
               // 3. DRAW INNER THUMBSTICK (Dynamic Visual Feedback)
-              let isHardLook = (pullDist > 0.85); // The threshold for spinning/zooming
+              let isHardLook = (pullDist > 0.95); // Triggers right at the button edge
               let knobCol = 'rgba(200, 200, 200, 0.5)';
               
               if (this.isPressed) {
-                  // Make the knob solid white when hitting the "Hard Look" outer rim
                   knobCol = isHardLook ? 'rgba(255, 255, 255, 1.0)' : 'rgba(255, 255, 255, 0.7)';
               }
               drawShape('arc', this.x, this.y, this.z, knobX, knobY, j_rad * 0.35, 0, 2, 0, 0, 0, knobCol, 1);
 
               // ====================================================
-              // 4. DUAL-ZONE CAMERA MOVEMENT
+              // 4. DUAL-ZONE CAMERA MOVEMENT (Fixed X & Speed Scaling)
               // ====================================================
               if (this.isPressed && startGame === 'explore' && typeof Dungeon !== 'undefined' && this.joyX !== undefined && this.joyY !== undefined) {
                   
                   if (!isHardLook) {
                       // --- ZONE 1: SOFT LOOK (Peeking) ---
-                      // Maps the joystick directly to an angle, simulating leaning your head.
-                      // Max pan peek: ~40 degrees (0.7 radians). Max pitch peek: 100 pixels.
-                      let targetPan = -(this.joyX * 0.7); 
+                      // FIX: Removed the negative sign. Pushing right pans right.
+                      let targetPan = (this.joyX * 0.7); 
                       let targetPitch = -(this.joyY * 100); 
                       
-                      // Smoothly interpolate towards the peek angle
                       Dungeon.lookPan += (targetPan - Dungeon.lookPan) * 0.15;
                       Dungeon.lookPitch += (targetPitch - Dungeon.lookPitch) * 0.15;
                       
                   } else {
                       // --- ZONE 2: HARD LOOK (Spinning & Zooming) ---
-                      let panSensitivity = 0.05;   
-                      let pitchSensitivity = 12.0; 
-                      let zoomSensitivity = 0.1;   
+                      // Speed Multiplier: 1.0 at the edge, up to 2.0 at 150% distance (+10% per 5%)
+                      let overPull = Math.max(0, pullDist - 0.95); 
+                      let speedMult = 1.0 + (overPull * 2.0); 
+
+                      let panSensitivity = 0.05 * speedMult;   
+                      let pitchSensitivity = 12.0 * speedMult; 
+                      let zoomSensitivity = 0.1 * speedMult;   
 
                       // A. PANNING (Continuous 360 turning)
-                      Dungeon.lookPan -= (this.joyX * panSensitivity);
+                      // FIX: Changed -= to += so pushing right spins right
+                      Dungeon.lookPan += (this.joyX * panSensitivity);
 
                       // B. PITCHING & ZOOM
                       if (Dungeon.cameraMode !== 'first_person') {
@@ -13134,23 +13182,20 @@
                           
                           let maxPitch = 250; 
                           
-                          // Looking UP past the boundary -> Zoom IN
                           if (Dungeon.lookPitch > maxPitch) {
                               Dungeon.lookPitch = maxPitch;
                               Dungeon.camDist += (this.joyY * zoomSensitivity); 
                           }
-                          // Looking DOWN past the boundary -> Zoom OUT
                           else if (Dungeon.lookPitch < -maxPitch) {
                               Dungeon.lookPitch = -maxPitch;
                               Dungeon.camDist += (this.joyY * zoomSensitivity); 
                           }
                           
-                          // Clamp Zoom distance (0 = 1st person, 8 = max sky view)
                           if (Dungeon.camDist < 0) Dungeon.camDist = 0;
                           if (Dungeon.camDist > 8) Dungeon.camDist = 8;
                           
                       } else {
-                          // C. FIRST PERSON LOCK (Look only, no zooming)
+                          // C. FIRST PERSON LOCK 
                           Dungeon.lookPitch -= (this.joyY * pitchSensitivity);
                           let maxPitch = 250;
                           if (Dungeon.lookPitch > maxPitch) Dungeon.lookPitch = maxPitch;
@@ -13229,11 +13274,11 @@
         this.joyX = (relX - 0.5) * 2; 
         this.joyY = (relY - 0.5) * 2;
         
-        // Clamp to a perfect circle so the knob doesn't leave the base
+        // NEW: Clamp to 1.5 (150%) to allow "over-pulling" for speed scaling
         let dist = Math.sqrt(this.joyX * this.joyX + this.joyY * this.joyY);
-        if (dist > 1.0) {
-            this.joyX /= dist;
-            this.joyY /= dist;
+        if (dist > 1.5) {
+            this.joyX = (this.joyX / dist) * 1.5;
+            this.joyY = (this.joyY / dist) * 1.5;
         }
     }
     press(count = 0) {
@@ -13435,112 +13480,9 @@
               if (Dungeon.dir === 2) moveX = -1;
               if (Dungeon.dir === 3) moveY = -1;
           }
-           // --- 2. Predict Target Tile & Check Collisions ---
-          if (allowMove && (moveX !== 0 || moveY !== 0)) {
-              let currentTileX = Math.floor(Dungeon.x);
-              let currentTileY = Math.floor(Dungeon.y);
-              let targetX = currentTileX + moveX;
-              let targetY = currentTileY + moveY;
-              let hitObstacle = false; // Replaces your 'return' statements
-
-              // A. WALL CHECK
-              if (Dungeon.isWall(targetX, targetY) && !Dungeon.ghost) {
-                  hitObstacle = true;
-                  if (typeof MusicEngine !== 'undefined') {
-                      MusicEngine.playSFX('cancel');
-                      if (typeof socket !== 'undefined') {
-                          socket.emit('suncat_spectate', `player has crashed into a wall.`);
-                      }
-                  }
-              }
-
-              // B. NPC CHECK
-              if (!hitObstacle) {
-                  let hitNPC = null;
-                  for (let npc of Dungeon.npcs) {
-                      if (!npc.visible || npc.isDead||npc.alignment == 'ally') continue;
-                      if (Math.floor(npc.x) === targetX && Math.floor(npc.y) === targetY) {
-                          hitNPC = npc;
-                          break;
-                      }
-                  }
-
-                  if (hitNPC) {
-                      hitObstacle = true; 
-                      if (movingForward) {
-                          Dungeon.saveGame();
-                          hitNPC.triggerInteraction(Dungeon);
-                          
-                          // Aggro Dash Sync
-                          if (hitNPC.alignment === 'foe' || hitNPC.role === 'battle') {
-                              if (typeof socket !== 'undefined') {
-                                  socket.emit("engage_npc", { npcIndex: hitNPC.index, x: hitNPC.x, y: hitNPC.y });
-                              }
-                          }
-                      }
-                      // Allow moving backward into stationary map entities
-                      if(hitNPC.state == 'stationary' && Dungeon.mapID == 999){ hitObstacle = false; }
-                  }
-              }
-
-              // C. ONLINE / REMOTE PLAYER CHECK
-              if (!hitObstacle && window.remotePlayers) {
-                  for (let id in window.remotePlayers) {
-                      let p = window.remotePlayers[id];
-                      if (p.mapID !== Dungeon.mapID) continue;
-                      
-                      if (Math.floor(p.x) === targetX && Math.floor(p.y) === targetY) {
-                          hitObstacle = false;
-                          if (movingForward) {
-                              if (p.status === 'dueling') {
-                                  console.log("Target is already in a battle.");
-                                  MessageBox.show(0.5, 8, 1, 9, 2, 'That player is busy fighting!', 'dialogue', 1, 0);
-                              } else {
-                                  console.log(">> SENDING CHALLENGE...");
-                                  let mySimpleDeck = Dungeon.deck.map(c => c.index);
-                                  if(typeof socket !== 'undefined') {
-                                    socket.emit("challenge_request", { targetId: p.socketId, deck: mySimpleDeck });
-                                  }
-                                  Dungeon.currentSpeaker = p;
-                                  Dungeon.dCounter = 0;
-                                  Dungeon.status = 'dueling';
-                                  Dungeon.isChallenger = true;
-                                  startGame = 'dialogue';
-                                  MessageBox.show(0.5, 8, 1, 9, 2, 'Challenge sent!', 'dialogue', 1, 0);
-                              }
-                              if (p.socketId === "NPC_SUNCAT") {
-                                  Dungeon.currentSpeaker = p;
-                                  startGame = 'dialogue';
-                                  Dungeon.status = 'dueling';
-                                  Dungeon.isChallenger = true;
-                                  Dungeon.dCounter = 0;
-                                  if(typeof socket !== 'undefined') {
-                                      socket.emit('suncat_spectate', `${typeof playerName !== 'undefined' ? playerName : 'A player'} has challenged you to a game of Stones. Do YOU have the stones to play?`);
-                                  }
-                              }
-                          }
-                      }
-                  }
-              }
-
-              // --- 3. Execute Safe Movement ---
-              if (!hitObstacle) {
-                  Dungeon.x = targetX + 0.5;
-                  Dungeon.y = targetY + 0.5;
-                  Dungeon.checkFloorTriggers();
-
-                  if (typeof socket !== 'undefined') {
-                      socket.emit("move", {
-                          x: Dungeon.x,
-                          y: Dungeon.y,
-                          dir: Dungeon.dir,
-                          mapID: Dungeon.mapID || 0,
-                          status: Dungeon.status,
-                          portrait: typeof playerSprite !== 'undefined' ? playerSprite : 0 
-                      });
-                  }
-              }
-          }}
+          executeDungeonMove(moveX, moveY, movingForward)
+          
+          }
           // --- 2. Predict Target Tile & Check Collisions ---
           // (Keep the rest of your collision and execution code exactly the same below this!)
       // ==========================================
@@ -13567,14 +13509,6 @@
       ///////////////////////////////
       //BUTTON INDEX
         switch(this.index){
-          // ==========================================
-        // --- NEW DYNAMIC SPELL SLOT LOGIC ---
-        // ==========================================
-        case 'POV':
-            
-              break;
-        
-        
         case 'spell_slot':
               // 1. Failsafe: Do nothing if the button is empty
               if (!this.assignedCard) {
@@ -13810,99 +13744,92 @@
               //
               } 
               // CUSTOM NPCS
-                else if(this.foe == 'ai_yes') {
-                    let hasReward = Dungeon.currentSpeaker.rewardCard !== undefined && Dungeon.currentSpeaker.rewardCard !== null;
-                    
-                    if (hasReward) {
-                        let maxLines = Dungeon.currentSpeaker.customDialogue.length;
-                        Dungeon.dCounter = maxLines; 
-                        if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('heal');
-                    } 
-                    // ---> NEW: ACCEPT ESCORT QUEST <---
-                    else if (Dungeon.currentSpeaker.role === 'escort_giver') {
-                        // 1. LIMIT TO 1 ESCORT
-                        if (Dungeon.activeEscortQuest) {
-                            MessageBox.show(0.5, 8, 1, 9, 2, "You are already escorting someone!", 'dialogue', 1, 0);
-                            if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('cancel');
-                            return;
-                        }
+                else if (Dungeon.currentSpeaker.role === 'escort_giver') {
+                    // 1. LIMIT TO 1 ESCORT
+                    if (Dungeon.activeEscortQuest) {
+                        MessageBox.show(0.5, 8, 1, 9, 2, "You are already escorting someone!", 'dialogue', 1, 0);
+                        if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('cancel');
+                        return;
+                    }
 
-                        // 2. FIND FURTHEST VALID SPAWN POINT
-                        let bestDist = 0;
-                        let spawnX = Dungeon.x;
-                        let spawnY = Dungeon.y;
+                    // 2. FIND FURTHEST VALID SPAWN POINT
+                    let bestDist = 0;
+                    let spawnX = Dungeon.x;
+                    let spawnY = Dungeon.y;
+                    
+                    for(let i = 0; i < 100; i++) { // Check 100 random spots
+                        let rx = Math.floor(Math.random() * Dungeon.maze[0].length);
+                        let ry = Math.floor(Math.random() * Dungeon.maze.length);
                         
-                        for(let i = 0; i < 100; i++) { // Check 100 random spots
-                            let rx = Math.floor(Math.random() * Dungeon.maze[0].length);
-                            let ry = Math.floor(Math.random() * Dungeon.maze.length);
-                            
-                            if (!Dungeon.isWall(rx, ry)) {
-                                let dist = Math.sqrt(Math.pow(rx - Dungeon.x, 2) + Math.pow(ry - Dungeon.y, 2));
-                                if (dist > bestDist) {
-                                    bestDist = dist;
-                                    spawnX = rx + 0.5; // Center on tile
-                                    spawnY = ry + 0.5;
-                                }
+                        if (!Dungeon.isWall(rx, ry)) {
+                            let dist = Math.sqrt(Math.pow(rx - Dungeon.x, 2) + Math.pow(ry - Dungeon.y, 2));
+                            if (dist > bestDist) {
+                                bestDist = dist;
+                                spawnX = rx + 0.5; // Center on tile
+                                spawnY = ry + 0.5;
                             }
                         }
+                    }
 
-                        // 3. READ QUEST CONFIGURATION
-                        let objectiveType = Dungeon.currentSpeaker.deck[0] || 56; 
-                        let rewardType = Dungeon.currentSpeaker.deck[1] || 0;
-                        let questType = Dungeon.currentSpeaker.deck[2] || 'kill'; // 'kill', 'retrieve', or 'rescue'
-                        
-                        let targetIndex = Math.floor(Math.random() * 100000) + 500000;
-                        
-                        let objRole = 'battle';
-                        let objAlign = 'foe';
-                        let objDialog = ["You will never take me alive!"];
-                        let objColor = '#ff0000'; // Red for enemy
+                    // 3. READ QUEST CONFIGURATION
+                    let objectiveType = Dungeon.currentSpeaker.deck[0] || 56; 
+                    let rewardType = Dungeon.currentSpeaker.deck[1] || 0;
+                    let questType = Dungeon.currentSpeaker.deck[2] || 'kill'; // 'kill', 'retrieve', or 'rescue'
+                    
+                    let targetIndex = Math.floor(Math.random() * 100000) + 500000;
+                    
+                    let objRole = 'battle';
+                    let objAlign = 'foe';
+                    let objDialog = ["You will never take me alive!"];
+                    let objColor = '#ff0000'; // Red for enemy
 
-                        if (questType === 'retrieve') {
-                            objectiveType = -27; // Force it to be a card pickup
-                            objRole = 'dialogue';
-                            objAlign = 'friendly';
-                            objDialog = null; // Uses native pickup UI
-                            objColor = '#ffff00'; // Yellow for loot
-                        } 
-                        else if (questType === 'rescue') {
-                            objRole = 'dialogue';
-                            objAlign = 'friendly';
-                            objDialog = ["Oh thank goodness you found me!"];
-                            objColor = '#00ff00'; // Green for friendly
-                        }
+                    if (questType === 'retrieve') {
+                        objectiveType = -27; // Force it to be a card pickup
+                        objRole = 'dialogue';
+                        objAlign = 'friendly';
+                        objDialog = null; // Uses native pickup UI
+                        objColor = '#ffff00'; // Yellow for loot
+                    } 
+                    else if (questType === 'rescue') {
+                        objRole = 'dialogue';
+                        objAlign = 'friendly';
+                        objDialog = ["Oh thank goodness you found me!"];
+                        objColor = '#00ff00'; // Green for friendly
+                    }
 
-                        // 4. SPAWN THE TARGET (isBoss = true puts the star on the minimap!)
-                        // MapID, Index, X, Y, Type, State, Color, Deck, Dialogue, Reward, Role, Options, isBoss, Alignment
-                        Dungeon.spawnPersistentNPC(
-                            Dungeon.mapID, targetIndex, spawnX, spawnY, objectiveType, 
-                            'stationary', objColor, [Dungeon.currentSpeaker.deck[0]], objDialog, null, 
-                            objRole, null, true, objAlign
-                        );
+                    // 4. SPAWN THE TARGET (isBoss = true puts the star on the minimap!)
+                    // MapID, Index, X, Y, Type, State, Color, Deck, Dialogue, Reward, Role, Options, isBoss, Alignment
+                    Dungeon.spawnPersistentNPC(
+                        Dungeon.mapID, targetIndex, spawnX, spawnY, objectiveType, 
+                        'stationary', objColor, [Dungeon.currentSpeaker.deck[0]], objDialog, null, 
+                        objRole, null, true, objAlign
+                    );
 
-                        // 5. CONVERT THE GIVER TO AN ESCORT
-                        Dungeon.currentSpeaker.alignment = 'escort';
-                        Dungeon.currentSpeaker.role = 'dialogue';
-                        Dungeon.currentSpeaker.state = 'following';
-                        Dungeon.currentSpeaker.customDialogue = ["We must hurry! The target is on your minimap."];
-                        Dungeon.currentSpeaker.options = null; 
+                    // 5. CONVERT THE GIVER TO AN ESCORT
+                    Dungeon.currentSpeaker.alignment = 'escort';
+                    Dungeon.currentSpeaker.role = 'dialogue';
+                    Dungeon.currentSpeaker.state = 'following';
+                    Dungeon.currentSpeaker.customDialogue = ["We must hurry! The target is on your minimap."];
+                    Dungeon.currentSpeaker.options = null; 
 
+                    // --- THE FIX: SAVE THE ACTUAL NPC DATA ---
                         Dungeon.activeEscortQuest = {
                             giverIndex: Dungeon.currentSpeaker.index,
                             targetIndex: targetIndex,
                             questType: questType,
-                            rewardType: rewardType
+                            rewardType: rewardType,
+                            npcType: Dungeon.currentSpeaker.type,
+                            npcColor: Dungeon.currentSpeaker.color,
+                            npcDeck: Dungeon.currentSpeaker.deck
                         };
 
-                        startGame = 'explore';
-                        Dungeon.dCounter = 0;
-                        Dungeon.status = 'normal';
-                        Dungeon.currentSpeaker = null;
-                        if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('heal');
-                        Dungeon.saveGame();
-                        return;
-                    }
-                    // ... [Keep your other portal_invite accept code here] ...
+                    startGame = 'explore';
+                    Dungeon.dCounter = 0;
+                    Dungeon.status = 'normal';
+                    Dungeon.currentSpeaker = null;
+                    if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('heal');
+                    Dungeon.saveGame();
+                    return;
                 }
               else {
                 
@@ -14019,6 +13946,13 @@
 
                   // 3. Close the dialogue safely
                   Dungeon.dCounter = Dungeon.currentSpeaker.customDialogue ? Dungeon.currentSpeaker.customDialogue.length + 1 : 99;
+                  startGame = 'explore';
+                  Dungeon.status = 'normal';
+              }
+              if (firstOption.includes('help')){
+                   // 3. Close the dialogue safely
+                  Dungeon.dCounter = 0;
+                  Dungeon.currentSpeaker.state = 'fleeing';
                   startGame = 'explore';
                   Dungeon.status = 'normal';
               }
@@ -23727,18 +23661,18 @@
                 }
                 Dungeon.registerClick(e.clientX, e.clientY);
                 // DYNAMIC SPELL BUTTON CLICK CHECK
-            if (typeof window.uiSpellButtons !== 'undefined') {
-                for (let i = 0; i < window.uiSpellButtons.length; i++) {
-                    let btn = window.uiSpellButtons[i];
-                    
-                    // THE FIX: Use loose equality (==) or just check if it's truthy (> 0)
-                    if (btn && btn.visible && btn.type !== 'jrpg' && btn.isTouched(gridPos.x, gridPos.y)) {
-                        btn.press(); 
-                        console.log(`Spell slot ${i + 1} pressed!`);
-                        return; // Return immediately so we don't accidentally click anything behind it
+                if (typeof window.uiSpellButtons !== 'undefined') {
+                    for (let i = 0; i < window.uiSpellButtons.length; i++) {
+                        let btn = window.uiSpellButtons[i];
+                        
+                        // THE FIX: Use loose equality (==) or just check if it's truthy (> 0)
+                        if (btn && btn.visible && btn.type !== 'jrpg' && btn.isTouched(gridPos.x, gridPos.y)) {
+                            btn.press(); 
+                            console.log(`Spell slot ${i + 1} pressed!`);
+                            return; // Return immediately so we don't accidentally click anything behind it
+                        }
                     }
                 }
-            }
                 if (btnPOV.isTouched(gridPos.x, gridPos.y) && btnPOV.visible == true&&btnPOV.type != 'jrpg') {
                     // Just call press(). The Btn class handles the sound, animation, and logic.
                     btnPOV.press(); 
@@ -35558,7 +35492,7 @@
                     }
                 }
             }
-            if (hitNPC.state == 'stationary' && Dungeon.mapID == 999) {} else { return; }
+            if ((hitNPC.state == 'stationary' && Dungeon.mapID == 999)||hitNPC.state == 'following') {} else { return; }
         }
 
         // C. ONLINE PLAYER CHECK
