@@ -6618,459 +6618,458 @@
     //Map rendering
       render(dt) {
         // --- INITIALIZATION SYNC ---
-        for (let i = globalParticles.length - 1; i >= 0; i--) {
-            globalParticles[i].update(dt);
-            if (globalParticles[i].life <= 0) globalParticles.splice(i, 1);
-        }
-        if (globalParticles.length > 800) globalParticles.splice(0, 100);
+            for (let i = globalParticles.length - 1; i >= 0; i--) {
+                globalParticles[i].update(dt);
+                if (globalParticles[i].life <= 0) globalParticles.splice(i, 1);
+            }
+            if (globalParticles.length > 800) globalParticles.splice(0, 100);
 
-        let suncat = null;
-        if (window.remotePlayers) suncat = Object.values(window.remotePlayers).find(p => p.name === 'Suncat');
-        
-        if (suncat && suncat.state === 'protecting' && this.frame % 15 === 0) {
-            let closestEnemy = null;
-            let closestDistSq = Infinity;
-            for (let other of this.npcs) {
-                if (other.isDead || !other.visible || other.type === 99 || other.type === -27 || other.role === 'dialogue' || other.role === 'shop') continue;
-                let dSq = Math.pow(other.x - this.x, 2) + Math.pow(other.y - this.y, 2);
-                if (dSq < 100 && dSq < closestDistSq) { 
-                    closestDistSq = dSq;
-                    closestEnemy = other;
+            let suncat = null;
+            if (window.remotePlayers) suncat = Object.values(window.remotePlayers).find(p => p.name === 'Suncat');
+            
+            if (suncat && suncat.state === 'protecting' && this.frame % 15 === 0) {
+                let closestEnemy = null;
+                let closestDistSq = Infinity;
+                for (let other of this.npcs) {
+                    if (other.isDead || !other.visible || other.type === 99 || other.type === -27 || other.role === 'dialogue' || other.role === 'shop') continue;
+                    let dSq = Math.pow(other.x - this.x, 2) + Math.pow(other.y - this.y, 2);
+                    if (dSq < 100 && dSq < closestDistSq) { 
+                        closestDistSq = dSq;
+                        closestEnemy = other;
+                    }
+                }
+                if (closestEnemy && typeof socket !== 'undefined') {
+                    socket.emit("suncat_radar_ping", { targetX: closestEnemy.x, targetY: closestEnemy.y, playerX: this.x, playerY: this.y, mapID: this.mapID });
                 }
             }
-            if (closestEnemy && typeof socket !== 'undefined') {
-                socket.emit("suncat_radar_ping", { targetX: closestEnemy.x, targetY: closestEnemy.y, playerX: this.x, playerY: this.y, mapID: this.mapID });
+
+            if (this.frame % 15 === 0) this.generateFlowField(this.x, this.y);
+
+            this.spatialGrid = {}; 
+            for (let npc of this.npcs) {
+                if (npc.isDead || !npc.visible || npc.type === -27) continue;
+                let key = `${Math.floor(npc.x)},${Math.floor(npc.y)}`;
+                if (!this.spatialGrid[key]) this.spatialGrid[key] = [];
+                this.spatialGrid[key].push(npc);
             }
-        }
+            
+            this.updateAllyFormations(dt);
 
-        if (this.frame % 15 === 0) this.generateFlowField(this.x, this.y);
-
-        this.spatialGrid = {}; 
-        for (let npc of this.npcs) {
-            if (npc.isDead || !npc.visible || npc.type === -27) continue;
-            let key = `${Math.floor(npc.x)},${Math.floor(npc.y)}`;
-            if (!this.spatialGrid[key]) this.spatialGrid[key] = [];
-            this.spatialGrid[key].push(npc);
-        }
-        
-        this.updateAllyFormations(dt);
-
-        this.npcs.forEach(npc => {
-            npc.update(this.maze, this.x, this.y, this, dt);
-            if (!npc.isDead && npc.visible && npc.activeBuffs && npc.activeBuffs.length > 0) {
-                if (this.frame % 3 === 0) { 
-                    npc.activeBuffs.forEach(buff => {
-                        let pType = 'sparkle'; 
-                        if (buff.visual === 'shield') pType = 'bubble';
-                        if (buff.visual === 'aura' || buff.visual === 'chains' || buff.type === 'debuff') pType = 'smoke';
-                        let pColor = buff.auraColor || buff.glow || '#ffffff';
-                        globalParticles.push(new Particle(npc.x + (Math.random() - 0.5) * 0.4, npc.y + (Math.random() - 0.5) * 0.4, pColor, pType));
-                    });
+            this.npcs.forEach(npc => {
+                npc.update(this.maze, this.x, this.y, this, dt);
+                if (!npc.isDead && npc.visible && npc.activeBuffs && npc.activeBuffs.length > 0) {
+                    if (this.frame % 3 === 0) { 
+                        npc.activeBuffs.forEach(buff => {
+                            let pType = 'sparkle'; 
+                            if (buff.visual === 'shield') pType = 'bubble';
+                            if (buff.visual === 'aura' || buff.visual === 'chains' || buff.type === 'debuff') pType = 'smoke';
+                            let pColor = buff.auraColor || buff.glow || '#ffffff';
+                            globalParticles.push(new Particle(npc.x + (Math.random() - 0.5) * 0.4, npc.y + (Math.random() - 0.5) * 0.4, pColor, pType));
+                        });
+                    }
                 }
+            });
+
+            for (let i = globalParticles.length - 1; i >= 0; i--) {
+                globalParticles[i].update(dt);
+                if (globalParticles[i].life <= 0) globalParticles.splice(i, 1);
             }
-        });
+            if (globalParticles.length > 500) globalParticles.splice(0, 100); 
 
-        for (let i = globalParticles.length - 1; i >= 0; i--) {
-            globalParticles[i].update(dt);
-            if (globalParticles[i].life <= 0) globalParticles.splice(i, 1);
-        }
-        if (globalParticles.length > 500) globalParticles.splice(0, 100); 
+            if (window.gameViewMode === '2d') {
+                this.renderTopDown(dt);
+                return; 
+            }
+            
+            const resStep = 1; 
+            this.frame++;
 
-        if (window.gameViewMode === '2d') {
-            this.renderTopDown(dt);
-            return; 
-        }
-        
-        const resStep = 1; 
-        this.frame++;
+            this.projectiles.forEach(p => p.update(this, dt));
+            this.projectiles = this.projectiles.filter(p => p.active);
+            
+            const viewW = (tL > 0) ? tL : 400;
+            const viewH = (tH > 0) ? tH : 400;
+            const viewX = tX; 
+            const viewY = tY; 
 
-        this.projectiles.forEach(p => p.update(this, dt));
-        this.projectiles = this.projectiles.filter(p => p.active);
-        
-        const viewW = (tL > 0) ? tL : 400;
-        const viewH = (tH > 0) ? tH : 400;
-        const viewX = tX; 
-        const viewY = tY; 
-
-        this.zBuffer = new Array(viewW).fill(0);
+            this.zBuffer = new Array(viewW).fill(0);
 
         // ==========================================
         // 1. CAMERA MATH (Moved to top to fix Desync!)
         // ==========================================
-        let targetPOVDist = this.camDist; 
-        let isForestMap = [2, 14, 22].includes(this.mapID) || this.biome === 'Sylvan';
-        
-        let collisionAngle = isForestMap ? this.dir * (Math.PI / 2) : (this.dir * (Math.PI / 2)) + (this.lookPan || 0);
-        let camDirX = Math.sin(collisionAngle);
-        let camDirY = -Math.cos(collisionAngle);
+            let targetPOVDist = this.camDist; 
+            let isForestMap = [2, 14, 22].includes(this.mapID) || this.biome === 'Sylvan';
+            
+            let collisionAngle = isForestMap ? this.dir * (Math.PI / 2) : (this.dir * (Math.PI / 2)) + (this.lookPan || 0);
+            let camDirX = Math.sin(collisionAngle);
+            let camDirY = -Math.cos(collisionAngle);
 
-        if (this.cameraMode === 'first_person') {
-            targetPOVDist = 0; 
-        } else {
-            if (targetPOVDist > 0) {
-                for (let npc of this.npcs) {
-                    if (npc.isDead || !npc.visible || npc.type === -27 || npc.alignment === 'ally' || npc.role === 'shop') continue;
-                    let dx = npc.x - this.x; let dy = npc.y - this.y;
-                    let distSq = dx*dx + dy*dy;
-                    if (distSq < 2.25) { 
-                        if ((dx * camDirX + dy * camDirY) / Math.sqrt(distSq) > 0.8) { targetPOVDist = 0; break; }
+            if (this.cameraMode === 'first_person') {
+                targetPOVDist = 0; 
+            } else {
+                if (targetPOVDist > 0) {
+                    for (let npc of this.npcs) {
+                        if (npc.isDead || !npc.visible || npc.type === -27 || npc.alignment === 'ally' || npc.role === 'shop') continue;
+                        let dx = npc.x - this.x; let dy = npc.y - this.y;
+                        let distSq = dx*dx + dy*dy;
+                        if (distSq < 2.25) { 
+                            if ((dx * camDirX + dy * camDirY) / Math.sqrt(distSq) > 0.8) { targetPOVDist = 0; break; }
+                        }
                     }
                 }
             }
-        }
 
-        let maxSafeDist = 0;
-        if (targetPOVDist > 0) {
-            let step = 0.1;
-            while (maxSafeDist < targetPOVDist) {
-                let checkX = Math.floor(this.x - camDirX * (maxSafeDist + step + 0.2)); 
-                let checkY = Math.floor(this.y - camDirY * (maxSafeDist + step + 0.2));
-                if (checkY < 0 || checkY >= this.maze.length || checkX < 0 || checkX >= this.maze[0].length) break;
-                if (this.maze[checkY][checkX] > 0) break;
-                maxSafeDist += step;
+            let maxSafeDist = 0;
+            if (targetPOVDist > 0) {
+                let step = 0.1;
+                while (maxSafeDist < targetPOVDist) {
+                    let checkX = Math.floor(this.x - camDirX * (maxSafeDist + step + 0.2)); 
+                    let checkY = Math.floor(this.y - camDirY * (maxSafeDist + step + 0.2));
+                    if (checkY < 0 || checkY >= this.maze.length || checkX < 0 || checkX >= this.maze[0].length) break;
+                    if (this.maze[checkY][checkX] > 0) break;
+                    maxSafeDist += step;
+                }
+                if (maxSafeDist < 1.0) maxSafeDist = 0; 
+                targetPOVDist = maxSafeDist; 
             }
-            if (maxSafeDist < 1.0) maxSafeDist = 0; 
-            targetPOVDist = maxSafeDist; 
-        }
 
-        if (typeof isFreeLooking !== 'undefined' && !isFreeLooking && Object.keys(activePointers || {}).length < 2) {
-            let turns = Math.round((this.lookPan || 0) / (Math.PI / 2));
-            if (turns !== 0) {
-                this.dir = (this.dir + turns) % 4; 
-                if (this.dir < 0) this.dir += 4;
-                let angleShift = turns * (Math.PI / 2);
-                this.lookPan -= angleShift;
-                this.currentAngle += angleShift; 
+            if (typeof isFreeLooking !== 'undefined' && !isFreeLooking && Object.keys(activePointers || {}).length < 2) {
+                let turns = Math.round((this.lookPan || 0) / (Math.PI / 2));
+                if (turns !== 0) {
+                    this.dir = (this.dir + turns) % 4; 
+                    if (this.dir < 0) this.dir += 4;
+                    let angleShift = turns * (Math.PI / 2);
+                    this.lookPan -= angleShift;
+                    this.currentAngle += angleShift; 
+                }
+                this.lookPan *= 0.85;   
+                this.lookPitch *= 0.85; 
+                if (Math.abs(this.lookPan) < 0.001) this.lookPan = 0;
+                if (Math.abs(this.lookPitch) < 0.001) this.lookPitch = 0;
             }
-            this.lookPan *= 0.85;   
-            this.lookPitch *= 0.85; 
-            if (Math.abs(this.lookPan) < 0.001) this.lookPan = 0;
-            if (Math.abs(this.lookPitch) < 0.001) this.lookPitch = 0;
-        }
 
-        let targetPitch = 0;
-        let targetCamZ = 0.5; 
-        let targetZScale = 1.0;
+            let targetPitch = 0;
+            let targetCamZ = 0.5; 
+            let targetZScale = 1.0;
 
-        if (targetPOVDist > 0.01) {
-            let zoomPercent = Math.min(targetPOVDist / 8, 1.0); 
-            targetPitch = -(viewH * 0.35) * zoomPercent; 
-            targetCamZ = 0.5 + (2.0 * zoomPercent); 
-            targetZScale = 1.0 + (0.2 * zoomPercent); 
-        }
+            if (targetPOVDist > 0.01) {
+                let zoomPercent = Math.min(targetPOVDist / 8, 1.0); 
+                targetPitch = -(viewH * 0.35) * zoomPercent; 
+                targetCamZ = 0.5 + (2.0 * zoomPercent); 
+                targetZScale = 1.0 + (0.2 * zoomPercent); 
+            }
 
-        let maxPitchClamp = viewH * 0.6; 
-        targetPitch += Math.max(-maxPitchClamp, Math.min(maxPitchClamp, this.lookPitch || 0));
+            let maxPitchClamp = viewH * 0.6; 
+            targetPitch += Math.max(-maxPitchClamp, Math.min(maxPitchClamp, this.lookPitch || 0));
 
-        if (this.currentCamDist === undefined) {
-            this.currentCamDist = targetPOVDist;
-            this.currentPitch = targetPitch;
-            this.currentCamZ = targetCamZ;
-            this.currentZScale = targetZScale;
-            this.currentAngle = this.dir * (Math.PI / 2);
-            this.lookPan = 0; 
-        }
+            if (this.currentCamDist === undefined) {
+                this.currentCamDist = targetPOVDist;
+                this.currentPitch = targetPitch;
+                this.currentCamZ = targetCamZ;
+                this.currentZScale = targetZScale;
+                this.currentAngle = this.dir * (Math.PI / 2);
+                this.lookPan = 0; 
+            }
 
-        let lerpSpeed = 20.0; 
-        let lerpFactor = Math.min(lerpSpeed * dt, 1.0); 
+            let lerpSpeed = 20.0; 
+            let lerpFactor = Math.min(lerpSpeed * dt, 1.0); 
 
-        this.currentCamDist += (targetPOVDist - this.currentCamDist) * lerpFactor;
-        this.currentPitch += (targetPitch - this.currentPitch) * lerpFactor;
-        this.currentCamZ += (targetCamZ - this.currentCamZ) * lerpFactor;
-        this.currentZScale += (targetZScale - this.currentZScale) * lerpFactor;
-        if (Math.abs(this.currentCamDist - targetPOVDist) < 0.01) this.currentCamDist = targetPOVDist;
+            this.currentCamDist += (targetPOVDist - this.currentCamDist) * lerpFactor;
+            this.currentPitch += (targetPitch - this.currentPitch) * lerpFactor;
+            this.currentCamZ += (targetCamZ - this.currentCamZ) * lerpFactor;
+            this.currentZScale += (targetZScale - this.currentZScale) * lerpFactor;
+            if (Math.abs(this.currentCamDist - targetPOVDist) < 0.01) this.currentCamDist = targetPOVDist;
 
-        let targetAngle = this.dir * (Math.PI / 2);
-        let angleDiff = targetAngle - this.currentAngle;
-        while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
-        while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
-        this.currentAngle += angleDiff * lerpFactor;
+            let targetAngle = this.dir * (Math.PI / 2);
+            let angleDiff = targetAngle - this.currentAngle;
+            while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+            while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+            this.currentAngle += angleDiff * lerpFactor;
 
-        const finalAngle = this.currentAngle + this.lookPan;
-        const dirX = Math.sin(finalAngle);
-        const dirY = -Math.cos(finalAngle);
-        const planeX = -dirY * 0.66;
-        const planeY = dirX * 0.66;
+            const finalAngle = this.currentAngle + this.lookPan;
+            const dirX = Math.sin(finalAngle);
+            const dirY = -Math.cos(finalAngle);
+            const planeX = -dirY * 0.66;
+            const planeY = dirX * 0.66;
 
-        let actualCamDist = this.currentCamDist;
-        this.pitch = this.currentPitch;
-        this.camZ = this.currentCamZ;
-        this.zScale = this.currentZScale;
+            let actualCamDist = this.currentCamDist;
+            this.pitch = this.currentPitch;
+            this.camZ = this.currentCamZ;
+            this.zScale = this.currentZScale;
 
-        let camX = this.x - dirX * actualCamDist;
-        let camY = this.y - dirY * actualCamDist;
-        this.isFirstPerson = (targetPOVDist <= 0.01);
+            let camX = this.x - dirX * actualCamDist;
+            let camY = this.y - dirY * actualCamDist;
+            this.isFirstPerson = (targetPOVDist <= 0.01);
 
         // ==========================================
         // 2. TRUE HORIZON (Calculated AFTER Camera updates!)
         // ==========================================
-        const horizon = (viewH / 2) + this.pitch;
-        let safeHorizon = Math.max(0.1, horizon);
+            const horizon = (viewH / 2) + this.pitch;
+            let safeHorizon = Math.max(0.1, horizon);
 
         // ==========================================
         // 3. DRAW FLOOR GRADIENT
         // ==========================================
-        let renderFloorHeight = Math.max(0, viewH - horizon);
-        if (renderFloorHeight > 0) {
-            const floorGrad = ctx.createLinearGradient(0, viewY + horizon, 0, viewY + viewH);
-            if (this.mapID == -10) { 
-                floorGrad.addColorStop(0, this.floorColor); 
-                floorGrad.addColorStop(1, this.floorColor); 
-            } else if (this.mapID == 10) {
-                floorGrad.addColorStop(0, '#1a1838');       
-                floorGrad.addColorStop(0.2, '#0d1a0d');     
-                floorGrad.addColorStop(1, this.floorColor); 
-            } else if (this.mapID == 14 || this.mapID == 22) {
-                floorGrad.addColorStop(0, '#2e0f05');       
-                floorGrad.addColorStop(0.13, '#333300');
-                floorGrad.addColorStop(1, this.floorColor); 
-            } else {
-                floorGrad.addColorStop(0, '#000000');       
-                floorGrad.addColorStop(0.2, '#050505');     
-                floorGrad.addColorStop(1, this.floorColor); 
+            let renderFloorHeight = Math.max(0, viewH - horizon);
+            if (renderFloorHeight > 0) {
+                const floorGrad = ctx.createLinearGradient(0, viewY + horizon, 0, viewY + viewH);
+                if (this.mapID == -10) { 
+                    floorGrad.addColorStop(0, this.floorColor); 
+                    floorGrad.addColorStop(1, this.floorColor); 
+                } else if (this.mapID == 10) {
+                    floorGrad.addColorStop(0, '#1a1838');       
+                    floorGrad.addColorStop(0.2, '#0d1a0d');     
+                    floorGrad.addColorStop(1, this.floorColor); 
+                } else if (this.mapID == 14 || this.mapID == 22) {
+                    floorGrad.addColorStop(0, '#2e0f05');       
+                    floorGrad.addColorStop(0.13, '#333300');
+                    floorGrad.addColorStop(1, this.floorColor); 
+                } else {
+                    floorGrad.addColorStop(0, '#000000');       
+                    floorGrad.addColorStop(0.2, '#050505');     
+                    floorGrad.addColorStop(1, this.floorColor); 
+                }
+                ctx.fillStyle = floorGrad;
+                ctx.fillRect(viewX, viewY + horizon, viewW, renderFloorHeight);
             }
-            ctx.fillStyle = floorGrad;
-            ctx.fillRect(viewX, viewY + horizon, viewW, renderFloorHeight);
-        }
 
         // ==========================================
         // 3. PROCEDURAL SKYBOX OR INDOOR CEILING
         // ==========================================
-       // let safeHorizon = Math.max(0.1, horizon);
-        const outdoorMaps = [2,4, 9,10, 14, 22]; 
+            const outdoorMaps = [2,4, 9,10, 14, 22]; 
 
-        if (outdoorMaps.includes(this.mapID) || this.biome === 'Sylvan') {
-            
-            ctx.save();
-            ctx.beginPath();
-            ctx.rect(viewX, viewY, viewW, safeHorizon);
-            ctx.clip();
+            if (outdoorMaps.includes(this.mapID) || this.biome === 'Sylvan') {
+                
+                ctx.save();
+                ctx.beginPath();
+                ctx.rect(viewX, viewY, viewW, safeHorizon);
+                ctx.clip();
 
-            if (!this.skybox) {
-            this.skybox = {
-                time: 12, 
-                // --- TWINKLING STARS ---
-                stars: Array.from({length: 200}, () => ({
-                    angle: Math.random() * Math.PI * 2, 
-                    altitude: Math.random() * 2.0,      
-                    size: Math.random() * 1.2 + 0.3,
-                    alpha: Math.random() * 0.5 + 0.2,
-                    // Unique speed for each star's shimmer
-                    twinkleSpeed: Math.random() * 0.005 + 0.002 
-                })),
-                // --- TRUE MIST & WISPS ---
-                clouds: Array.from({length: 45}, () => ({
-                    angle: Math.random() * Math.PI * 2,
-                    altitude: Math.random() * 2.0, // Zenith Fix: allow clouds over head
-                    sizeX: Math.random() * 0.8 + 0.4,
-                    sizeY: Math.random() * 0.2 + 0.05,
-                    speed: (Math.random() * 0.0003 + 0.0001) * (Math.random() < 0.5 ? 1 : -1),
-                    phase: Math.random() * Math.PI * 2
-                })),
-                // --- PROCEDURAL CONSTELLATIONS ---
-                constellations: Array.from({length: 8}, () => {
-                    let rootAngle = Math.random() * Math.PI * 2;
-                    let rootAlt = Math.random() * 1.2 + 0.2;
-                    let points = [{ a: 0, alt: 0 }]; // The first star in the chain
-                    
-                    // Each constellation gets a random chain of 3 to 6 stars
-                    let numPoints = Math.floor(Math.random() * 4) + 3;
-                    let lastA = 0, lastAlt = 0;
-                    for(let i = 0; i < numPoints; i++) {
-                        // Offset each point slightly from the previous one to form a shape
-                        lastA += (Math.random() - 0.5) * 0.15;
-                        lastAlt += (Math.random() - 0.5) * 0.15;
-                        points.push({ a: lastA, alt: lastAlt });
-                    }
-                    return { angle: rootAngle, altitude: rootAlt, points: points };
-                })
-            };
-        }       
-
-            let safeDT = isNaN(dt) ? 16 : dt;
-            this.skybox.time = (this.skybox.time + (safeDT * .1)) % 24; 
-            
-            let t = this.skybox.time;
-            let topColor, bottomColor;
-            
-            if (t > 6 && t < 17) { topColor = '#1a4e8a'; bottomColor = '#6ba1e0'; } 
-            else if (t >= 17 && t <= 19) { topColor = '#2a1a4a'; bottomColor = '#e06b3a'; } 
-            else if (t > 19 || t < 5) { topColor = '#050510'; bottomColor = '#1a1838'; } 
-            else { topColor = '#1a2a4a'; bottomColor = '#e0a16b'; }
-            
-            let isOvercast = false; 
-            if (this.weather && this.weather.mode !== 'clear' && this.weather.mode !== 'leaves') {
-                if (['storm', 'rain', 'lightning'].includes(this.weather.mode)) {
-                    topColor = '#1c2331'; bottomColor = '#3a4454'; isOvercast = true;
-                } else if (this.weather.mode === 'snow') {
-                    topColor = '#6a7b8c'; bottomColor = '#a0b0c0'; isOvercast = true;
-                } else if (['apocalypse', 'inferno'].includes(this.weather.mode)) {
-                    topColor = '#2d0a0a'; bottomColor = '#8a2500'; isOvercast = true;
-                } else if (this.weather.mode === 'space') {
-                    topColor = '#02000a'; bottomColor = '#0a001a';
-                }
-            }
-
-            let skyGrad = ctx.createLinearGradient(0, viewY, 0, viewY + safeHorizon);
-            skyGrad.addColorStop(0, topColor);
-            skyGrad.addColorStop(1, bottomColor);
-            ctx.fillStyle = skyGrad;
-            ctx.fillRect(viewX, viewY, viewW, safeHorizon);
-
-            const fov = 0.66; 
-            const drawCelestial = (objAngle, objAltitude, drawFunction) => {
-                let angleDiff = objAngle - finalAngle; 
-                while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
-                while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
-
-                if (Math.abs(angleDiff) < fov * 2) {
-                    let screenX = viewX + (viewW / 2) * (1 + Math.tan(angleDiff) / fov);
-                    
-                    // THE FIX: Use a power function for altitude. 
-                    // This "bends" the sky so clouds don't fly off-screen instantly.
-                    // It simulates a dome rather than a flat ceiling.
-                    let yOffset = Math.pow(objAltitude, 0.8) * viewH * 1.5; 
-                    let screenY = viewY + horizon - yOffset;
-
-                    // Draw even if slightly above the canvas top so we see the "bottoms" of overhead clouds
-                    if (screenY < viewY + horizon) { 
-                        drawFunction(screenX, screenY);
-                    }
-                }
-            };
-
-            // Draw Stars & Constellations
-        if (!isOvercast && (t > 18 || t < 6 || this.weather.mode === 'space')) {
-            let starOpacity = (t > 18) ? Math.min(1, (t - 18) / 2) : Math.min(1, (6 - t) / 2);
-            let timeMs = Date.now();
-
-            // 1. Draw Background Stars with Twinkle
-            this.skybox.stars.forEach(star => {
-                drawCelestial(star.angle, star.altitude, (sx, sy) => {
-                    // Twinkle math using a sine wave
-                    let twinkle = 0.7 + Math.sin(timeMs * star.twinkleSpeed) * 0.3;
-                    ctx.fillStyle = `rgba(255, 255, 255, ${star.alpha * starOpacity * twinkle})`;
-                    ctx.fillRect(sx, sy, star.size, star.size);
-                });
-            });
-
-            // 2. Draw Constellations
-            ctx.setLineDash([2, 4]); // Make the lines "spectral" / dashed
-            ctx.lineWidth = 1;
-            
-            this.skybox.constellations.forEach(con => {
-                let lastX = null, lastY = null;
-
-                con.points.forEach((p, i) => {
-                    drawCelestial(con.angle + p.a, con.altitude + p.alt, (sx, sy) => {
-                        // Draw the "Hero Star" (Bigger and brighter)
-                        ctx.fillStyle = `rgba(200, 230, 255, ${0.8 * starOpacity})`;
-                        ctx.beginPath();
-                        ctx.arc(sx, sy, 2, 0, Math.PI * 2);
-                        ctx.fill();
-
-                        // Connect to the previous star in the constellation
-                        if (lastX !== null) {
-                            ctx.strokeStyle = `rgba(150, 180, 255, ${0.15 * starOpacity})`;
-                            ctx.beginPath();
-                            ctx.moveTo(lastX, lastY);
-                            ctx.lineTo(sx, sy);
-                            ctx.stroke();
+                if (!this.skybox) {
+                this.skybox = {
+                    time: 12, 
+                    // --- TWINKLING STARS ---
+                    stars: Array.from({length: 200}, () => ({
+                        angle: Math.random() * Math.PI * 2, 
+                        altitude: Math.random() * 2.0,      
+                        size: Math.random() * 1.2 + 0.3,
+                        alpha: Math.random() * 0.5 + 0.2,
+                        // Unique speed for each star's shimmer
+                        twinkleSpeed: Math.random() * 0.005 + 0.002 
+                    })),
+                    // --- TRUE MIST & WISPS ---
+                    clouds: Array.from({length: 45}, () => ({
+                        angle: Math.random() * Math.PI * 2,
+                        altitude: Math.random() * 2.0, // Zenith Fix: allow clouds over head
+                        sizeX: Math.random() * 0.8 + 0.4,
+                        sizeY: Math.random() * 0.2 + 0.05,
+                        speed: (Math.random() * 0.0003 + 0.0001) * (Math.random() < 0.5 ? 1 : -1),
+                        phase: Math.random() * Math.PI * 2
+                    })),
+                    // --- PROCEDURAL CONSTELLATIONS ---
+                    constellations: Array.from({length: 8}, () => {
+                        let rootAngle = Math.random() * Math.PI * 2;
+                        let rootAlt = Math.random() * 1.2 + 0.2;
+                        let points = [{ a: 0, alt: 0 }]; // The first star in the chain
+                        
+                        // Each constellation gets a random chain of 3 to 6 stars
+                        let numPoints = Math.floor(Math.random() * 4) + 3;
+                        let lastA = 0, lastAlt = 0;
+                        for(let i = 0; i < numPoints; i++) {
+                            // Offset each point slightly from the previous one to form a shape
+                            lastA += (Math.random() - 0.5) * 0.15;
+                            lastAlt += (Math.random() - 0.5) * 0.15;
+                            points.push({ a: lastA, alt: lastAlt });
                         }
-                        lastX = sx; lastY = sy;
+                        return { angle: rootAngle, altitude: rootAlt, points: points };
+                    })
+                };
+            }       
+
+                let safeDT = isNaN(dt) ? 16 : dt;
+                this.skybox.time = (this.skybox.time + (safeDT * .1)) % 24; 
+                
+                let t = this.skybox.time;
+                let topColor, bottomColor;
+                
+                if (t > 6 && t < 17) { topColor = '#1a4e8a'; bottomColor = '#6ba1e0'; } 
+                else if (t >= 17 && t <= 19) { topColor = '#2a1a4a'; bottomColor = '#e06b3a'; } 
+                else if (t > 19 || t < 5) { topColor = '#050510'; bottomColor = '#1a1838'; } 
+                else { topColor = '#1a2a4a'; bottomColor = '#e0a16b'; }
+                
+                let isOvercast = false; 
+                if (this.weather && this.weather.mode !== 'clear' && this.weather.mode !== 'leaves') {
+                    if (['storm', 'rain', 'lightning'].includes(this.weather.mode)) {
+                        topColor = '#1c2331'; bottomColor = '#3a4454'; isOvercast = true;
+                    } else if (this.weather.mode === 'snow') {
+                        topColor = '#6a7b8c'; bottomColor = '#a0b0c0'; isOvercast = true;
+                    } else if (['apocalypse', 'inferno'].includes(this.weather.mode)) {
+                        topColor = '#2d0a0a'; bottomColor = '#8a2500'; isOvercast = true;
+                    } else if (this.weather.mode === 'space') {
+                        topColor = '#02000a'; bottomColor = '#0a001a';
+                    }
+                }
+
+                let skyGrad = ctx.createLinearGradient(0, viewY, 0, viewY + safeHorizon);
+                skyGrad.addColorStop(0, topColor);
+                skyGrad.addColorStop(1, bottomColor);
+                ctx.fillStyle = skyGrad;
+                ctx.fillRect(viewX, viewY, viewW, safeHorizon);
+
+                const fov = 0.66; 
+                const drawCelestial = (objAngle, objAltitude, drawFunction) => {
+                    let angleDiff = objAngle - finalAngle; 
+                    while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+                    while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+
+                    if (Math.abs(angleDiff) < fov * 2) {
+                        let screenX = viewX + (viewW / 2) * (1 + Math.tan(angleDiff) / fov);
+                        
+                        // THE FIX: Use a power function for altitude. 
+                        // This "bends" the sky so clouds don't fly off-screen instantly.
+                        // It simulates a dome rather than a flat ceiling.
+                        let yOffset = Math.pow(objAltitude, 0.8) * viewH * 1.5; 
+                        let screenY = viewY + horizon - yOffset;
+
+                        // Draw even if slightly above the canvas top so we see the "bottoms" of overhead clouds
+                        if (screenY < viewY + horizon) { 
+                            drawFunction(screenX, screenY);
+                        }
+                    }
+                };
+
+                // Draw Stars & Constellations
+            if (!isOvercast && (t > 18 || t < 6 || this.weather.mode === 'space')) {
+                let starOpacity = (t > 18) ? Math.min(1, (t - 18) / 2) : Math.min(1, (6 - t) / 2);
+                let timeMs = Date.now();
+
+                // 1. Draw Background Stars with Twinkle
+                this.skybox.stars.forEach(star => {
+                    drawCelestial(star.angle, star.altitude, (sx, sy) => {
+                        // Twinkle math using a sine wave
+                        let twinkle = 0.7 + Math.sin(timeMs * star.twinkleSpeed) * 0.3;
+                        ctx.fillStyle = `rgba(255, 255, 255, ${star.alpha * starOpacity * twinkle})`;
+                        ctx.fillRect(sx, sy, star.size, star.size);
                     });
                 });
-            });
-            ctx.setLineDash([]); // Reset line style
-        }
 
-            // Sun
-            if (!isOvercast && t > 5 && t < 19) {
-                let sunProgress = (t - 5) / 14; 
-                let sunAngle = Math.PI * sunProgress; 
-                let sunAltitude = Math.sin(sunProgress * Math.PI) * 1.5; 
-                drawCelestial(sunAngle, sunAltitude, (sx, sy) => {
-                    ctx.beginPath(); ctx.arc(sx, sy, viewW * 0.05, 0, Math.PI * 2);
-                    ctx.fillStyle = '#ffeeaa'; ctx.fill();
-                    ctx.shadowBlur = 50; ctx.shadowColor = '#ffaa00'; ctx.fill(); ctx.shadowBlur = 0;
-                });
-            }
+                // 2. Draw Constellations
+                ctx.setLineDash([2, 4]); // Make the lines "spectral" / dashed
+                ctx.lineWidth = 1;
+                
+                this.skybox.constellations.forEach(con => {
+                    let lastX = null, lastY = null;
 
-            // Moon
-            if (!isOvercast && (t > 17 || t < 7) && this.mapID !== 10) {
-                let moonProgress = (t > 17) ? (t - 17) / 14 : (t + 7) / 14;
-                let moonAngle = Math.PI * moonProgress;
-                let moonAltitude = Math.sin(moonProgress * Math.PI) * 1.5;
-                drawCelestial(moonAngle, moonAltitude, (sx, sy) => {
-                    ctx.beginPath(); ctx.arc(sx, sy, viewW * 0.03, 0, Math.PI * 2);
-                    ctx.fillStyle = '#ddddee'; ctx.fill();
-                });
-            }
+                    con.points.forEach((p, i) => {
+                        drawCelestial(con.angle + p.a, con.altitude + p.alt, (sx, sy) => {
+                            // Draw the "Hero Star" (Bigger and brighter)
+                            ctx.fillStyle = `rgba(200, 230, 255, ${0.8 * starOpacity})`;
+                            ctx.beginPath();
+                            ctx.arc(sx, sy, 2, 0, Math.PI * 2);
+                            ctx.fill();
 
-            // --- THE DRIFTING MIST RENDERER ---
-            if (!isOvercast && this.mapID !== 1000) {
-                // Incredibly sheer opacity (3% during day, 1% at night)
-                let baseCloudAlpha = (t > 6 && t < 18) ? 0.03 : 0.01; 
-
-                this.skybox.clouds.forEach(wisp => {
-                    // 1. Continuous Celestial Drift
-                    // Wraps around the 360-degree sky permanently
-                    wisp.angle = (wisp.angle + wisp.speed * safeDT) % (Math.PI * 2);
-                    if (wisp.angle < 0) wisp.angle += Math.PI * 2;
-
-                    drawCelestial(wisp.angle, wisp.altitude, (sx, sy) => {
-                        // 2. Slow breathing/morphing
-                        wisp.phase += safeDT * 0.0005;
-                        let morph = 1 + Math.sin(wisp.phase) * 0.3;
-                        
-                        let rx = viewW * wisp.sizeX * morph;
-                        let ry = viewH * wisp.sizeY * morph;
-                        if (rx <= 0 || ry <= 0) return;
-
-                        // 3. SHADOW PASS (Creates the grainy, deep volume)
-                        // Drawn slightly lower with a bluish-grey tint
-                        let shadowColor = (t > 6 && t < 18) 
-                            ? `rgba(160, 180, 200, ${baseCloudAlpha * morph * 0.8})` 
-                            : `rgba(20, 25, 40, ${baseCloudAlpha * morph})`;
-
-                        ctx.save();
-                        ctx.translate(sx, sy + ry * 0.4); // Offset downward
-                        ctx.scale(1, ry / rx); // This scale trick makes a perfect soft ellipse!
-                        
-                        let gradShadow = ctx.createRadialGradient(0, 0, 0, 0, 0, rx);
-                        gradShadow.addColorStop(0, shadowColor);
-                        gradShadow.addColorStop(1, `rgba(255, 255, 255, 0)`);
-                        ctx.fillStyle = gradShadow;
-                        ctx.beginPath();
-                        ctx.arc(0, 0, rx, 0, Math.PI * 2);
-                        ctx.fill();
-                        ctx.restore();
-
-                        // 4. HIGHLIGHT PASS (The fluffy white tops)
-                        ctx.save();
-                        ctx.translate(sx, sy); 
-                        ctx.scale(1, ry / rx); 
-                        
-                        let gradLight = ctx.createRadialGradient(0, 0, 0, 0, 0, rx);
-                        gradLight.addColorStop(0, `rgba(255, 255, 255, ${baseCloudAlpha * morph})`);
-                        gradLight.addColorStop(0.4, `rgba(255, 255, 255, ${baseCloudAlpha * morph * 0.6})`);
-                        gradLight.addColorStop(1, `rgba(255, 255, 255, 0)`);
-                        
-                        ctx.fillStyle = gradLight;
-                        ctx.beginPath();
-                        ctx.arc(0, 0, rx, 0, Math.PI * 2);
-                        ctx.fill();
-                        ctx.restore();
+                            // Connect to the previous star in the constellation
+                            if (lastX !== null) {
+                                ctx.strokeStyle = `rgba(150, 180, 255, ${0.15 * starOpacity})`;
+                                ctx.beginPath();
+                                ctx.moveTo(lastX, lastY);
+                                ctx.lineTo(sx, sy);
+                                ctx.stroke();
+                            }
+                            lastX = sx; lastY = sy;
+                        });
                     });
                 });
+                ctx.setLineDash([]); // Reset line style
             }
-            
-            ctx.restore(); 
 
-        } else {
-            ctx.fillStyle = this.skyColor || '#0a0a0c'; 
-            ctx.fillRect(viewX, viewY, viewW, safeHorizon);
-        }
+                // Sun
+                if (!isOvercast && t > 5 && t < 19) {
+                    let sunProgress = (t - 5) / 14; 
+                    let sunAngle = Math.PI * sunProgress; 
+                    let sunAltitude = Math.sin(sunProgress * Math.PI) * 1.5; 
+                    drawCelestial(sunAngle, sunAltitude, (sx, sy) => {
+                        ctx.beginPath(); ctx.arc(sx, sy, viewW * 0.05, 0, Math.PI * 2);
+                        ctx.fillStyle = '#ffeeaa'; ctx.fill();
+                        ctx.shadowBlur = 50; ctx.shadowColor = '#ffaa00'; ctx.fill(); ctx.shadowBlur = 0;
+                    });
+                }
+
+                // Moon
+                if (!isOvercast && (t > 17 || t < 7) && this.mapID !== 10) {
+                    let moonProgress = (t > 17) ? (t - 17) / 14 : (t + 7) / 14;
+                    let moonAngle = Math.PI * moonProgress;
+                    let moonAltitude = Math.sin(moonProgress * Math.PI) * 1.5;
+                    drawCelestial(moonAngle, moonAltitude, (sx, sy) => {
+                        ctx.beginPath(); ctx.arc(sx, sy, viewW * 0.03, 0, Math.PI * 2);
+                        ctx.fillStyle = '#ddddee'; ctx.fill();
+                    });
+                }
+
+                // --- THE DRIFTING MIST RENDERER ---
+                if (!isOvercast && this.mapID !== 1000) {
+                    // Incredibly sheer opacity (3% during day, 1% at night)
+                    let baseCloudAlpha = (t > 6 && t < 18) ? 0.03 : 0.01; 
+
+                    this.skybox.clouds.forEach(wisp => {
+                        // 1. Continuous Celestial Drift
+                        // Wraps around the 360-degree sky permanently
+                        wisp.angle = (wisp.angle + wisp.speed * safeDT) % (Math.PI * 2);
+                        if (wisp.angle < 0) wisp.angle += Math.PI * 2;
+
+                        drawCelestial(wisp.angle, wisp.altitude, (sx, sy) => {
+                            // 2. Slow breathing/morphing
+                            wisp.phase += safeDT * 0.0005;
+                            let morph = 1 + Math.sin(wisp.phase) * 0.3;
+                            
+                            let rx = viewW * wisp.sizeX * morph;
+                            let ry = viewH * wisp.sizeY * morph;
+                            if (rx <= 0 || ry <= 0) return;
+
+                            // 3. SHADOW PASS (Creates the grainy, deep volume)
+                            // Drawn slightly lower with a bluish-grey tint
+                            let shadowColor = (t > 6 && t < 18) 
+                                ? `rgba(160, 180, 200, ${baseCloudAlpha * morph * 0.8})` 
+                                : `rgba(20, 25, 40, ${baseCloudAlpha * morph})`;
+
+                            ctx.save();
+                            ctx.translate(sx, sy + ry * 0.4); // Offset downward
+                            ctx.scale(1, ry / rx); // This scale trick makes a perfect soft ellipse!
+                            
+                            let gradShadow = ctx.createRadialGradient(0, 0, 0, 0, 0, rx);
+                            gradShadow.addColorStop(0, shadowColor);
+                            gradShadow.addColorStop(1, `rgba(255, 255, 255, 0)`);
+                            ctx.fillStyle = gradShadow;
+                            ctx.beginPath();
+                            ctx.arc(0, 0, rx, 0, Math.PI * 2);
+                            ctx.fill();
+                            ctx.restore();
+
+                            // 4. HIGHLIGHT PASS (The fluffy white tops)
+                            ctx.save();
+                            ctx.translate(sx, sy); 
+                            ctx.scale(1, ry / rx); 
+                            
+                            let gradLight = ctx.createRadialGradient(0, 0, 0, 0, 0, rx);
+                            gradLight.addColorStop(0, `rgba(255, 255, 255, ${baseCloudAlpha * morph})`);
+                            gradLight.addColorStop(0.4, `rgba(255, 255, 255, ${baseCloudAlpha * morph * 0.6})`);
+                            gradLight.addColorStop(1, `rgba(255, 255, 255, 0)`);
+                            
+                            ctx.fillStyle = gradLight;
+                            ctx.beginPath();
+                            ctx.arc(0, 0, rx, 0, Math.PI * 2);
+                            ctx.fill();
+                            ctx.restore();
+                        });
+                    });
+                }
+                
+                ctx.restore(); 
+
+            } else {
+                ctx.fillStyle = this.skyColor || '#0a0a0c'; 
+                ctx.fillRect(viewX, viewY, viewW, safeHorizon);
+            }
 
         // ==========================================
         // 5. CAST RAYS FOR WALLS
@@ -7114,7 +7113,8 @@
         btnDeck.show(9, 9, 1, 1, 1, 'Deck', 'jrpg_btn', 1, 0);
         btnJournal.show(0, 9, 1, 1, 1, 'Journal', 'jrpg_btn', 1, 0);
         btnPOV.show(9.45, 2.275, .5, 1, 1, 'POV', 'jrpg_btn', 1, 0);
-          
+        btnMove2.show(6.3,6.45, 4, .9, .6, '', 'b_pad', 1, 0);
+        btnLook.show(.35, 7, 1.5, 1, 1, '', 'joystick', 1, 0); // Added to right side
        // --- DYNAMIC SPELL SLOTS LAYOUT ---
         const getDiceTier = (sides) => {
             if (sides >= 20) return 5;
@@ -7196,70 +7196,70 @@
         }
       renderTopDown(dt) {
         // --- INITIALIZATION SYNC ---
-        // Force the hotbar to sync with the loaded save data on the very first frame
-        if (!this.hotbarSynced) {
-            if (typeof this.shuffleSpells === 'function') this.shuffleSpells();
-            this.hotbarSynced = true;
-        }
-        // 1. UPDATE LOGIC (Same as 3D mode)
-        this.frame++;
-        this.updateAllyFormations(dt);
-        // Inside render(dt) loop:
-        this.npcs.forEach(npc => {
-            npc.update(this.maze, this.x, this.y, this, dt);
-
-            // --- PARTICLE EMITTER ---
-        if (!npc.isDead && npc.visible && npc.activeBuffs && npc.activeBuffs.length > 0) {
-            if (this.frame % 3 === 0) { 
-                npc.activeBuffs.forEach(buff => {
-                    // 1. Determine Particle Type based on Registry Visuals
-                    let pType = 'sparkle'; // Default
-                    if (buff.visual === 'shield') pType = 'bubble';
-                    if (buff.visual === 'aura' || buff.visual === 'chains' || buff.type === 'debuff') pType = 'smoke';
-
-                    // 2. Get the specific color from the registry
-                    let pColor = buff.auraColor || buff.glow || '#ffffff';
-
-                    // 3. Spawn the particle
-                    globalParticles.push(new Particle(
-                        npc.x + (Math.random() - 0.5) * 0.4, // Spread them out slightly
-                        npc.y + (Math.random() - 0.5) * 0.4, 
-                        pColor, 
-                        pType // Pass the mapped type into the constructor!
-                    ));
-                });
+            // Force the hotbar to sync with the loaded save data on the very first frame
+            if (!this.hotbarSynced) {
+                if (typeof this.shuffleSpells === 'function') this.shuffleSpells();
+                this.hotbarSynced = true;
             }
-        }
-        });
+        // 1. UPDATE LOGIC (Same as 3D mode)
+            this.frame++;
+            this.updateAllyFormations(dt);
+            // Inside render(dt) loop:
+            this.npcs.forEach(npc => {
+                npc.update(this.maze, this.x, this.y, this, dt);
 
-        // Update and Clean up the global array
-        for (let i = globalParticles.length - 1; i >= 0; i--) {
-            globalParticles[i].update(dt);
-            if (globalParticles[i].life <= 0) globalParticles.splice(i, 1);
-        }
+        // --- PARTICLE EMITTER ---
+            if (!npc.isDead && npc.visible && npc.activeBuffs && npc.activeBuffs.length > 0) {
+                if (this.frame % 3 === 0) { 
+                    npc.activeBuffs.forEach(buff => {
+                        // 1. Determine Particle Type based on Registry Visuals
+                        let pType = 'sparkle'; // Default
+                        if (buff.visual === 'shield') pType = 'bubble';
+                        if (buff.visual === 'aura' || buff.visual === 'chains' || buff.type === 'debuff') pType = 'smoke';
 
-        // Cap particles to prevent runaway lag
-        if (globalParticles.length > 500) globalParticles.splice(0, 100);
-        this.weather.resize(tL, tL); 
-        this.weather.update(dt);
-        this.projectiles.forEach(p => p.update(this, dt));
-        this.projectiles = this.projectiles.filter(p => p.active);
-        // 2. SETUP THE 2D GRID
-        // Draw black background filling the whole 10x10 screen
-        drawShape('rec', 0, 0, 1, 0, 0, 10, 10, 0, 0, 0, 0, '#000000', 1);
+                        // 2. Get the specific color from the registry
+                        let pColor = buff.auraColor || buff.glow || '#ffffff';
 
-        // --- THE FIX ---
-        let range = 6; // Fetch 6 tiles in every direction (5 to reach the edge, +1 buffer for smooth scrolling)
-        let totalTiles = 10; // Hardcode to 10 to force exactly 10 tiles across the screen
-        let cellSize = 10 / totalTiles; // This makes cellSize exactly 1.0
-          
-        // The center of the 10x10 screen is exactly (5, 5)
-        let centerScreenX = 5;
-        let centerScreenY = 5;
+                        // 3. Spawn the particle
+                        globalParticles.push(new Particle(
+                            npc.x + (Math.random() - 0.5) * 0.4, // Spread them out slightly
+                            npc.y + (Math.random() - 0.5) * 0.4, 
+                            pColor, 
+                            pType // Pass the mapped type into the constructor!
+                        ));
+                    });
+                }
+            }
+            });
 
-        // Calculate smooth scrolling offsets (so the camera moves fluidly between tiles)
-        let fractionalX = this.x - Math.floor(this.x);
-        let fractionalY = this.y - Math.floor(this.y);
+            // Update and Clean up the global array
+            for (let i = globalParticles.length - 1; i >= 0; i--) {
+                globalParticles[i].update(dt);
+                if (globalParticles[i].life <= 0) globalParticles.splice(i, 1);
+            }
+
+            // Cap particles to prevent runaway lag
+            if (globalParticles.length > 500) globalParticles.splice(0, 100);
+            this.weather.resize(tL, tL); 
+            this.weather.update(dt);
+            this.projectiles.forEach(p => p.update(this, dt));
+            this.projectiles = this.projectiles.filter(p => p.active);
+            // 2. SETUP THE 2D GRID
+            // Draw black background filling the whole 10x10 screen
+            drawShape('rec', 0, 0, 1, 0, 0, 10, 10, 0, 0, 0, 0, '#000000', 1);
+
+            // --- THE FIX ---
+            let range = 6; // Fetch 6 tiles in every direction (5 to reach the edge, +1 buffer for smooth scrolling)
+            let totalTiles = 10; // Hardcode to 10 to force exactly 10 tiles across the screen
+            let cellSize = 10 / totalTiles; // This makes cellSize exactly 1.0
+            
+            // The center of the 10x10 screen is exactly (5, 5)
+            let centerScreenX = 5;
+            let centerScreenY = 5;
+
+            // Calculate smooth scrolling offsets (so the camera moves fluidly between tiles)
+            let fractionalX = this.x - Math.floor(this.x);
+            let fractionalY = this.y - Math.floor(this.y);
         // 3. DRAW TILES (TWO-PASS 2.5D SYSTEM)
 
           // --- PASS 1: DRAW FLOORS ONLY ---
@@ -7339,7 +7339,7 @@
                     }
                 }
             }
-        }
+            }
         // 4. DRAW NPCs & 3D MODELS
           this.npcs.forEach(npc => {
               if (!npc.visible || npc.isDead) return;
@@ -7457,51 +7457,51 @@
                 }
             }
         // --- DRAW 2D FIREBALLS ---
-        this.projectiles.forEach(p => {
-            const diffX = p.x - this.x;
-            const diffY = p.y - this.y;
-              
-            // If it's on screen
-            if (Math.abs(diffX) <= range + 1 && Math.abs(diffY) <= range + 1) {
-                let tx = centerScreenX + (diffX * cellSize) - (fractionalX * cellSize) - (cellSize / 2);
-                let ty = centerScreenY + (diffY * cellSize) - (fractionalY * cellSize) - (cellSize / 2);
-                  
-                // --- THE FIX: RENDER 3D DICE IN 2D MODE! ---
-                if (p.model) {
-                    // Convert grid coordinates to actual screen pixels for the Dice draw function
-                    let centerX = tX + (tL / 10) * tx + ((tL / 10) * cellSize) / 2;
-                    let centerY = tY + (tH / 10) * ty + ((tH / 10) * cellSize) / 2;
-                    let pixelSpriteSize = (tL / 10) * cellSize;
+            this.projectiles.forEach(p => {
+                const diffX = p.x - this.x;
+                const diffY = p.y - this.y;
+                
+                // If it's on screen
+                if (Math.abs(diffX) <= range + 1 && Math.abs(diffY) <= range + 1) {
+                    let tx = centerScreenX + (diffX * cellSize) - (fractionalX * cellSize) - (cellSize / 2);
+                    let ty = centerScreenY + (diffY * cellSize) - (fractionalY * cellSize) - (cellSize / 2);
                     
-                    // Draw the 3D spinning model
-                    p.model.draw(ctx, centerX, centerY, pixelSpriteSize * 0.5, 4);
-                    return; // STOP here so we don't draw the 2D sprite underneath it!
-                }
-
-                // --- FALLBACK: DRAW 2D SPRITE (If no model exists) ---
-                const oldTX = tX; const oldTY = tY; const oldTL = tL; const oldTH = tH;
-                  
-                let pxX = oldTX + (oldTL / 10) * tx;
-                let pxY = oldTY + (oldTH / 10) * ty;
-                let pixelSpriteSize = (oldTL / 10) * cellSize; 
-                  
-                tX = pxX; 
-                tY = pxY; 
-                tL = pixelSpriteSize; 
-                tH = pixelSpriteSize; 
-                  
-                if (typeof drawPortrait === 'function') {
-                    let projSprite = -37;
-                    if (p.spellId && typeof SPELL_REGISTRY !== 'undefined' && SPELL_REGISTRY[p.spellId]) {
-                        projSprite = SPELL_REGISTRY[p.spellId].sprite2D || -37;
+                    // --- THE FIX: RENDER 3D DICE IN 2D MODE! ---
+                    if (p.model) {
+                        // Convert grid coordinates to actual screen pixels for the Dice draw function
+                        let centerX = tX + (tL / 10) * tx + ((tL / 10) * cellSize) / 2;
+                        let centerY = tY + (tH / 10) * ty + ((tH / 10) * cellSize) / 2;
+                        let pixelSpriteSize = (tL / 10) * cellSize;
+                        
+                        // Draw the 3D spinning model
+                        p.model.draw(ctx, centerX, centerY, pixelSpriteSize * 0.5, 4);
+                        return; // STOP here so we don't draw the 2D sprite underneath it!
                     }
-                    drawPortrait(projSprite, 0, 0, 1); 
+
+                    // --- FALLBACK: DRAW 2D SPRITE (If no model exists) ---
+                    const oldTX = tX; const oldTY = tY; const oldTL = tL; const oldTH = tH;
+                    
+                    let pxX = oldTX + (oldTL / 10) * tx;
+                    let pxY = oldTY + (oldTH / 10) * ty;
+                    let pixelSpriteSize = (oldTL / 10) * cellSize; 
+                    
+                    tX = pxX; 
+                    tY = pxY; 
+                    tL = pixelSpriteSize; 
+                    tH = pixelSpriteSize; 
+                    
+                    if (typeof drawPortrait === 'function') {
+                        let projSprite = -37;
+                        if (p.spellId && typeof SPELL_REGISTRY !== 'undefined' && SPELL_REGISTRY[p.spellId]) {
+                            projSprite = SPELL_REGISTRY[p.spellId].sprite2D || -37;
+                        }
+                        drawPortrait(projSprite, 0, 0, 1); 
+                    }
+                    
+                    // Restore Globals so the rest of the map draws correctly
+                    tX = oldTX; tY = oldTY; tL = oldTL; tH = oldTH;
                 }
-                  
-                // Restore Globals so the rest of the map draws correctly
-                tX = oldTX; tY = oldTY; tL = oldTL; tH = oldTH;
-            }
-        });
+            });
         // 6. DRAW THE PLAYER (Always dead center!)
           
           // --- HIJACK GLOBALS ---
@@ -7537,64 +7537,64 @@
 
           
         // --- DRAW 2D PARTICLES ---
-        globalParticles.forEach(p => {
-            const diffX = p.x - this.x;
-            const diffY = p.y - this.y;
+            globalParticles.forEach(p => {
+                const diffX = p.x - this.x;
+                const diffY = p.y - this.y;
 
-            // Only draw if on screen
-            if (Math.abs(diffX) <= range + 1 && Math.abs(diffY) <= range + 1) {
-                let tx = centerScreenX + (diffX * cellSize) - (fractionalX * cellSize) - (cellSize / 2);
-                let ty = centerScreenY + (diffY * cellSize) - (fractionalY * cellSize) - (cellSize / 2);
-                
-                let pScreenX = tX + (tL / 10) * tx + ((tL / 10) * cellSize) / 2;
-                
-                // --- FIX 1: APPLY Z-AXIS DRIFT ---
-                // We multiply p.z by the tile height to make the particles actually float UP!
-                let zOffset = p.z * (tH / 10) * 1.5; 
-                let pScreenY = tY + (tH / 10) * ty + ((tH / 10) * cellSize) / 2 - zOffset;
-                
-                let baseSize = (tL / 10) * cellSize * 0.15; 
+                // Only draw if on screen
+                if (Math.abs(diffX) <= range + 1 && Math.abs(diffY) <= range + 1) {
+                    let tx = centerScreenX + (diffX * cellSize) - (fractionalX * cellSize) - (cellSize / 2);
+                    let ty = centerScreenY + (diffY * cellSize) - (fractionalY * cellSize) - (cellSize / 2);
+                    
+                    let pScreenX = tX + (tL / 10) * tx + ((tL / 10) * cellSize) / 2;
+                    
+                    // --- FIX 1: APPLY Z-AXIS DRIFT ---
+                    // We multiply p.z by the tile height to make the particles actually float UP!
+                    let zOffset = p.z * (tH / 10) * 1.5; 
+                    let pScreenY = tY + (tH / 10) * ty + ((tH / 10) * cellSize) / 2 - zOffset;
+                    
+                    let baseSize = (tL / 10) * cellSize * 0.15; 
 
-                // --- FIX 2: SOFTER OPACITY ---
-                // Multiply p.life by 0.5 so the particles never exceed 50% opacity
-                ctx.globalAlpha = Math.max(0, p.life * 0.5);
+                    // --- FIX 2: SOFTER OPACITY ---
+                    // Multiply p.life by 0.5 so the particles never exceed 50% opacity
+                    ctx.globalAlpha = Math.max(0, p.life * 0.5);
 
-                // DRAW THE DIFFERENT SHAPES
-                if (p.type === 'bubble') {
-                    ctx.strokeStyle = p.color;
-                    ctx.lineWidth = 2;
-                    ctx.beginPath();
-                    ctx.arc(pScreenX, pScreenY, baseSize, 0, Math.PI * 2);
-                    ctx.stroke();
-                } else if (p.type === 'smoke') {
-                    ctx.fillStyle = p.color;
-                    ctx.beginPath();
-                    ctx.arc(pScreenX, pScreenY, baseSize * 1.5, 0, Math.PI * 2);
-                    ctx.fill();
-                } else {
-                    ctx.fillStyle = p.color;
-                    ctx.fillRect(pScreenX - baseSize/2, pScreenY - baseSize/2, baseSize, baseSize);
+                    // DRAW THE DIFFERENT SHAPES
+                    if (p.type === 'bubble') {
+                        ctx.strokeStyle = p.color;
+                        ctx.lineWidth = 2;
+                        ctx.beginPath();
+                        ctx.arc(pScreenX, pScreenY, baseSize, 0, Math.PI * 2);
+                        ctx.stroke();
+                    } else if (p.type === 'smoke') {
+                        ctx.fillStyle = p.color;
+                        ctx.beginPath();
+                        ctx.arc(pScreenX, pScreenY, baseSize * 1.5, 0, Math.PI * 2);
+                        ctx.fill();
+                    } else {
+                        ctx.fillStyle = p.color;
+                        ctx.fillRect(pScreenX - baseSize/2, pScreenY - baseSize/2, baseSize, baseSize);
+                    }
                 }
-            }
-        });
-        ctx.globalAlpha = 1.0; // Reset alpha!
-        // 7. OVERLAYS (Weather & Networking)
-        // Pass tX and tY so weather draws perfectly inside the square
-        this.weather.draw(ctx, tX, tY);
+            });
+            ctx.globalAlpha = 1.0; // Reset alpha!
+            // 7. OVERLAYS (Weather & Networking)
+            // Pass tX and tY so weather draws perfectly inside the square
+            this.weather.draw(ctx, tX, tY);
           // ---------------------------------------------------------
         // --- 8. MASKING OUT-OF-BOUNDS RENDERING (THE FRAME) ---
         // ---------------------------------------------------------
-        // Top border (Covers everything above y = 0)
-        drawShape('rec', 0, 0, 1, -10, -10, 30, 10, 0,0,0,0, '#000000', 1);
-        
-        // Bottom border (Covers everything below y = 10)
-        drawShape('rec', 0, 0, 1, -10, 10, 30, 10, 0,0,0,0, '#000000', 1);
-        
-        // Left border (Covers everything to the left of x = 0)
-        drawShape('rec', 0, 0, 1, -10, 0, 10, 10, 0,0,0,0, '#000000', 1);
-        
-        // Right border (Covers everything to the right of x = 10)
-        drawShape('rec', 0, 0, 1, 10, 0, 10, 10, 0,0,0,0, '#000000', 1);
+            // Top border (Covers everything above y = 0)
+            drawShape('rec', 0, 0, 1, -10, -10, 30, 10, 0,0,0,0, '#000000', 1);
+            
+            // Bottom border (Covers everything below y = 10)
+            drawShape('rec', 0, 0, 1, -10, 10, 30, 10, 0,0,0,0, '#000000', 1);
+            
+            // Left border (Covers everything to the left of x = 0)
+            drawShape('rec', 0, 0, 1, -10, 0, 10, 10, 0,0,0,0, '#000000', 1);
+            
+            // Right border (Covers everything to the right of x = 10)
+            drawShape('rec', 0, 0, 1, 10, 0, 10, 10, 0,0,0,0, '#000000', 1);
         // ---------------------------------------------------------
         if (this.frame % 3 === 0) { 
             socket.emit("move", {
@@ -13040,6 +13040,83 @@
             drawShape('tri', this.x, this.y, this.z, cx + (w*0.35), cy, cx + (w*0.18), cy - (h*0.1), cx + (w*0.18), cy + (h*0.1), 0, 0, rightCol, 1); // Right
             break;
           
+          case 'b_pad':
+              let w2 = this.l;
+              let h2 = this.h;
+              let colW = (w2 / 3);
+              let rowH = h2 / 2;
+
+              // 1. Main Background (Semi-transparent black)
+              drawShape('rec', this.x, this.y, this.z, 0, 0, w2, h2, 0, 0, 0, 0, 'rgba(0, 0, 0, 0.25)', 1);
+              
+              // 2. Draw Borders/Separators (Thin white lines)
+              drawShape('rec', this.x + (colW)*this.z, this.y, this.z, 0, 0, 0.02, h2, 0, 0, 0, 0, 'rgba(255, 255, 255, 0.15)', 1);
+              drawShape('rec', this.x + (colW * 2)*this.z, this.y, this.z, 0, 0, 0.02, h2, 0, 0, 0, 0, 'rgba(255, 255, 255, 0.15)', 1);
+              drawShape('rec', this.x, this.y + (rowH)*this.z, this.z, 0, 0, w2, 0.02, 0, 0, 0, 0, 'rgba(255, 255, 255, 0.15)', 1);
+
+              // 3. Highlight Pressed Zone
+              if (this.isPressed && this.currentDir) {
+                  let hx = 0, hy = 0;
+                  if (this.currentDir === 't_left')  { hx = 0; hy = 0; }
+                  if (this.currentDir === 'up')      { hx = (colW)*this.z; hy = 0; }
+                  if (this.currentDir === 't_right') { hx = (colW * 2)*this.z; hy = 0; }
+                  if (this.currentDir === 's_left')  { hx = 0; hy = (rowH)*this.z; }
+                  if (this.currentDir === 'down')    { hx = (colW)*this.z; hy = (rowH)*this.z; }
+                  if (this.currentDir === 's_right') { hx = (colW * 2)*this.z; hy = (rowH)*this.z; }
+                  
+                  drawShape('rec', this.x + hx, this.y + hy, this.z, 0, 0, colW, rowH, 0, 0, 0, 0, 'rgba(255, 255, 255, 0.3)', 1);
+              }
+
+              // 4. Draw Icons (Using built-in Canvas Unicode support)
+              let iconCol = 'rgba(255, 255, 255, 0..25)';
+              drawText(this.x+.015*this.z, this.y+.05*this.z, colW, rowH, "↶", iconCol, this.z);             // Turn Left
+              drawText(this.x + ((this.l/3)*1.025)*this.z, this.y+.025*this.z, colW, rowH, "▲", iconCol, this.z);      // Forward
+              drawText(this.x + ((this.l/3)*2.2)*this.z, this.y+.05*this.z, colW, rowH, "↷", iconCol, this.z);  // Turn Right
+              
+              drawText(this.x, this.y + ((this.l/2)*.75)*this.z, colW, rowH, "◀", iconCol, this.z, 'center');      // Strafe Left
+              drawText(this.x + ((this.l/3)*1.025)*this.z, this.y + ((this.l/2)*.75)*this.z, colW, rowH, "▼", iconCol, this.z, 'center');      // Backward
+              drawText(this.x + ((this.l/3)*2.05)*this.z, this.y + ((this.l/2)*.75)*this.z, colW, rowH, "▶", iconCol, this.z, 'center');  // Strafe Right
+              
+              break;
+          case 'joystick':
+              let j_cx = this.l / 2;
+              let j_cy = this.h / 2;
+              let j_rad = Math.min(this.l, this.h) / 2;
+
+              // 1. DRAW OUTER BOUNDARY (Static)
+              // Semi-transparent black circle
+              drawShape('arc', this.x, this.y, this.z, j_cx, j_cy, j_rad * 0.85, 0, 2, 0, 0, 0, 'rgba(0, 0, 0, 0.4)', 1);
+              // Subtle white rim
+              drawShape('arc', this.x, this.y, this.z, j_cx, j_cy, j_rad * 0.85, 0, 2, 0, 0, 0, 'rgba(255, 255, 255, 0.2)', 0); 
+              // Center dead-zone dot
+              drawShape('arc', this.x, this.y, this.z, j_cx, j_cy, j_rad * 0.1, 0, 2, 0, 0, 0, 'rgba(255, 255, 255, 0.1)', 1);
+
+              // 2. CALCULATE THUMBSTICK POSITION
+              let knobX = j_cx;
+              let knobY = j_cy;
+              
+              // If pressed, offset the knob by the joyX/joyY values we calculated in isTouched
+              if (this.isPressed && this.joyX !== undefined && this.joyY !== undefined) {
+                  // Move the stick up to 40% of the radius away from center
+                  knobX += (this.joyX * j_rad * 0.4); 
+                  knobY += (this.joyY * j_rad * 0.4);
+              }
+
+              // 3. DRAW INNER THUMBSTICK (Dynamic)
+              let knobCol = this.isPressed ? 'rgba(255, 255, 255, 0.8)' : 'rgba(200, 200, 200, 0.5)';
+              drawShape('arc', this.x, this.y, this.z, knobX, knobY, j_rad * 0.35, 0, 2, 0, 0, 0, knobCol, 1);
+              if (this.isPressed && startGame === 'explore' && this.joyX !== undefined && this.joyY !== undefined) {
+                  let panSensitivity = 0.05;   // Left/Right turn speed
+                  let pitchSensitivity = 15.0; // Up/Down look speed
+
+                  Dungeon.lookPan -= (this.joyX * panSensitivity);
+                  Dungeon.lookPitch -= (this.joyY * pitchSensitivity);
+
+                  let maxPitch = 250; 
+                  if (Dungeon.lookPitch > maxPitch) Dungeon.lookPitch = maxPitch;
+                  if (Dungeon.lookPitch < -maxPitch) Dungeon.lookPitch = -maxPitch;
+              }
+              break;
         }
       }
       
@@ -13071,6 +13148,25 @@
                   this.currentDir = (relY > 0.5) ? 'down' : 'up';
               }
           }
+          // --- NEW: 6-WAY D-PAD DIRECTIONAL LOGIC ---
+          else if (this.type === 'b_pad') {
+              let relX = (tx - this.x) / (this.l * this.z * s);
+              let relY = (ty - this.y) / (this.h * this.z * s);
+              
+              if (relY < 0.5) { // Top Row
+                  if (relX < 0.33) this.currentDir = 't_left';
+                  else if (relX > 0.66) this.currentDir = 't_right';
+                  else this.currentDir = 'up';
+              } else { // Bottom Row
+                  if (relX < 0.33) this.currentDir = 's_left';
+                  else if (relX > 0.66) this.currentDir = 's_right';
+                  else this.currentDir = 'down';
+              }
+          }
+          // --- NEW: DYNAMIC LOOK JOYSTICK ---
+          else if (this.type === 'joystick') {
+              this.updateJoystick(tx, ty); // Call the new method!
+          }
           // --- OLD SEESAW LOGIC (Preserved) ---
           else {
               let midPoint = this.x + (this.l * this.z / 2);
@@ -13081,12 +13177,32 @@
       }
       return false;
     }
+    // Add this right below your isTouched() method
+    updateJoystick(tx, ty) {
+        let s = this.scale || 1.0; 
+        let relX = (tx - this.x) / (this.l * this.z * s);
+        let relY = (ty - this.y) / (this.h * this.z * s);
+        
+        // Shift to a -1.0 to 1.0 scale
+        this.joyX = (relX - 0.5) * 2; 
+        this.joyY = (relY - 0.5) * 2;
+        
+        // Clamp to a perfect circle so the knob doesn't leave the base
+        let dist = Math.sqrt(this.joyX * this.joyX + this.joyY * this.joyY);
+        if (dist > 1.0) {
+            this.joyX /= dist;
+            this.joyY /= dist;
+        }
+    }
     press(count = 0) {
       this.isPressed = true;
       if (this.type === 'd_pad') count = 1;
       this.wobbleMax = count;
       this.wobbleTimer = Date.now();
       if (this.type == 'arrow_left'||this.type == 'arrow_right'){count = .1||this.type == 'add_toHand'}
+      if (this.type === 'joystick') {
+          return; 
+      }
       // ==========================================
       // --- D-PAD MOVEMENT LOGIC INTEGRATION ---
       // ==========================================
@@ -13233,6 +13349,162 @@
               }
           }
       }
+      // ==========================================
+      // --- 6-WAY D-PAD MOVEMENT LOGIC ---
+      // ==========================================
+      if (this.type === 'b_pad' && startGame === 'explore' && this.currentDir) {
+          let moveX = 0;
+          let moveY = 0;
+          let movingForward = false;
+          let allowMove = true; 
+
+          // TURNING
+          if (this.currentDir === 't_left') {
+              Dungeon.dir = (Dungeon.dir + 3) % 4;
+              Dungeon.clickInput = null;
+              allowMove = false; 
+          } else if (this.currentDir === 't_right') {
+              Dungeon.dir = (Dungeon.dir + 1) % 4;
+              Dungeon.clickInput = null;
+              allowMove = false; 
+          } 
+          // FORWARD / BACKWARD
+          else if (this.currentDir === 'up') {
+              movingForward = true;
+              if (Dungeon.dir === 0) moveY = -1;
+              if (Dungeon.dir === 1) moveX = 1;
+              if (Dungeon.dir === 2) moveY = 1;
+              if (Dungeon.dir === 3) moveX = -1;
+          } else if (this.currentDir === 'down') {
+              if (Dungeon.dir === 0) moveY = 1;
+              if (Dungeon.dir === 1) moveX = -1;
+              if (Dungeon.dir === 2) moveY = -1;
+              if (Dungeon.dir === 3) moveX = 1;
+          } 
+          // STRAFING
+          else if (this.currentDir === 's_left') {
+              if (Dungeon.dir === 0) moveX = -1;
+              if (Dungeon.dir === 1) moveY = -1;
+              if (Dungeon.dir === 2) moveX = 1;
+              if (Dungeon.dir === 3) moveY = 1;
+          } else if (this.currentDir === 's_right') {
+              if (Dungeon.dir === 0) moveX = 1;
+              if (Dungeon.dir === 1) moveY = 1;
+              if (Dungeon.dir === 2) moveX = -1;
+              if (Dungeon.dir === 3) moveY = -1;
+          }
+           // --- 2. Predict Target Tile & Check Collisions ---
+          if (allowMove && (moveX !== 0 || moveY !== 0)) {
+              let currentTileX = Math.floor(Dungeon.x);
+              let currentTileY = Math.floor(Dungeon.y);
+              let targetX = currentTileX + moveX;
+              let targetY = currentTileY + moveY;
+              let hitObstacle = false; // Replaces your 'return' statements
+
+              // A. WALL CHECK
+              if (Dungeon.isWall(targetX, targetY) && !Dungeon.ghost) {
+                  hitObstacle = true;
+                  if (typeof MusicEngine !== 'undefined') {
+                      MusicEngine.playSFX('cancel');
+                      if (typeof socket !== 'undefined') {
+                          socket.emit('suncat_spectate', `player has crashed into a wall.`);
+                      }
+                  }
+              }
+
+              // B. NPC CHECK
+              if (!hitObstacle) {
+                  let hitNPC = null;
+                  for (let npc of Dungeon.npcs) {
+                      if (!npc.visible || npc.isDead||npc.alignment == 'ally') continue;
+                      if (Math.floor(npc.x) === targetX && Math.floor(npc.y) === targetY) {
+                          hitNPC = npc;
+                          break;
+                      }
+                  }
+
+                  if (hitNPC) {
+                      hitObstacle = true; 
+                      if (movingForward) {
+                          Dungeon.saveGame();
+                          hitNPC.triggerInteraction(Dungeon);
+                          
+                          // Aggro Dash Sync
+                          if (hitNPC.alignment === 'foe' || hitNPC.role === 'battle') {
+                              if (typeof socket !== 'undefined') {
+                                  socket.emit("engage_npc", { npcIndex: hitNPC.index, x: hitNPC.x, y: hitNPC.y });
+                              }
+                          }
+                      }
+                      // Allow moving backward into stationary map entities
+                      if(hitNPC.state == 'stationary' && Dungeon.mapID == 999){ hitObstacle = false; }
+                  }
+              }
+
+              // C. ONLINE / REMOTE PLAYER CHECK
+              if (!hitObstacle && window.remotePlayers) {
+                  for (let id in window.remotePlayers) {
+                      let p = window.remotePlayers[id];
+                      if (p.mapID !== Dungeon.mapID) continue;
+                      
+                      if (Math.floor(p.x) === targetX && Math.floor(p.y) === targetY) {
+                          hitObstacle = false;
+                          if (movingForward) {
+                              if (p.status === 'dueling') {
+                                  console.log("Target is already in a battle.");
+                                  MessageBox.show(0.5, 8, 1, 9, 2, 'That player is busy fighting!', 'dialogue', 1, 0);
+                              } else {
+                                  console.log(">> SENDING CHALLENGE...");
+                                  let mySimpleDeck = Dungeon.deck.map(c => c.index);
+                                  if(typeof socket !== 'undefined') {
+                                    socket.emit("challenge_request", { targetId: p.socketId, deck: mySimpleDeck });
+                                  }
+                                  Dungeon.currentSpeaker = p;
+                                  Dungeon.dCounter = 0;
+                                  Dungeon.status = 'dueling';
+                                  Dungeon.isChallenger = true;
+                                  startGame = 'dialogue';
+                                  MessageBox.show(0.5, 8, 1, 9, 2, 'Challenge sent!', 'dialogue', 1, 0);
+                              }
+                              if (p.socketId === "NPC_SUNCAT") {
+                                  Dungeon.currentSpeaker = p;
+                                  startGame = 'dialogue';
+                                  Dungeon.status = 'dueling';
+                                  Dungeon.isChallenger = true;
+                                  Dungeon.dCounter = 0;
+                                  if(typeof socket !== 'undefined') {
+                                      socket.emit('suncat_spectate', `${typeof playerName !== 'undefined' ? playerName : 'A player'} has challenged you to a game of Stones. Do YOU have the stones to play?`);
+                                  }
+                              }
+                          }
+                      }
+                  }
+              }
+
+              // --- 3. Execute Safe Movement ---
+              if (!hitObstacle) {
+                  Dungeon.x = targetX + 0.5;
+                  Dungeon.y = targetY + 0.5;
+                  Dungeon.checkFloorTriggers();
+
+                  if (typeof socket !== 'undefined') {
+                      socket.emit("move", {
+                          x: Dungeon.x,
+                          y: Dungeon.y,
+                          dir: Dungeon.dir,
+                          mapID: Dungeon.mapID || 0,
+                          status: Dungeon.status,
+                          portrait: typeof playerSprite !== 'undefined' ? playerSprite : 0 
+                      });
+                  }
+              }
+          }}
+          // --- 2. Predict Target Tile & Check Collisions ---
+          // (Keep the rest of your collision and execution code exactly the same below this!)
+      // ==========================================
+      // --- JOYSTICK LOOK LOGIC ---
+      // ==========================================
+      
       if(this.text ==='POV'){  
         if(Dungeon.cameraMode ==='hybrid'){
               Dungeon.cameraMode = 'first_person';
@@ -13248,6 +13520,8 @@
       setTimeout(() => { 
         this.isPressed = false; 
         this.currentDir = null; // Clear D-Pad flash
+        this.joyX = 0; 
+        this.joyY = 0;
       ///////////////////////////////
       //BUTTON INDEX
         switch(this.index){
@@ -21131,7 +21405,8 @@
   var btn2D3D = new btn(0, 0, 1, 1, 1, '2D', 'blue', 'white', '2D3D', 0);     
   var btnMove = new btn(0, 0, 1, 1, 1, '', 'blue', 'white', 'd_pad', 0);     
   var btnPOV = new btn(0, 0, 1, 1, 1, 'POV', 'red', 'white', 'POV', 0); 
-
+  var btnMove2 = new btn(0, 0, 1, 1, 1, '', 'blue', 'white', 'b_pad', 0);     
+  var btnLook = new btn(0, 0, 0, 0, 0, '', '', '');
   var aniDFire = new Dice('d4');
   var aniDice = new Dice('d8');
   var aniDice2 = new Dice('d6');
@@ -21368,7 +21643,19 @@
 
             if (activePointers[e.pointerId]) activePointers[e.pointerId] = e;
             let pointerKeys = Object.keys(activePointers);
+            // --- NEW: 1-FINGER JOYSTICK DRAGGING ---
+            if (pointerKeys.length === 1) {
+                // Calculate grid coordinates just like handleInput does
+                let pos = { x: e.clientX - (wX - tL) / 2, y: e.clientY - (wY - tH) / 2 };
+                let gridPos = { x: pos.x / (tL / 10), y: pos.y / (tH / 10) };
 
+                // Continuously update the Look Joystick if it's being held down
+                if (typeof btnLook !== 'undefined' && btnLook.isPressed) {
+                    btnLook.updateJoystick(gridPos.x, gridPos.y);
+                }
+                
+                
+            }
             if (pointerKeys.length === 2 && touchStart.pinchDist !== null && typeof Dungeon !== 'undefined') {
                 let p1 = activePointers[pointerKeys[0]];
                 let p2 = activePointers[pointerKeys[1]];
@@ -21407,7 +21694,11 @@
 
         const endPointer = (e) => {
             delete activePointers[e.pointerId];
-            
+            if (typeof btnLook !== 'undefined') {
+                btnLook.isPressed = false;
+                btnLook.joyX = 0;
+                btnLook.joyY = 0;
+            }
             if (Object.keys(activePointers).length < 2) {
                 touchStart.pinchDist = null;
                 touchStart.panX = null;
@@ -23424,10 +23715,20 @@
                     console.log(`journal button pressed`);
                     return; 
                 }
+                if (btnMove2.isTouched(gridPos.x, gridPos.y) && btnMove2.visible == true && btnMove2.type != 'jrpg') {
+                    btnMove2.press(); 
+                    console.log(`move2 button pressed`);
+                    return; 
+                }
+                if (btnLook.isTouched(gridPos.x, gridPos.y) && btnLook.visible == true && btnLook.type != 'jrpg') {
+                    btnLook.press(); 
+                    console.log(`move2 button pressed`);
+                    return; 
+                }
                 if (btnMove.isTouched(gridPos.x, gridPos.y) && btnMove.visible == true&&btnMove.type != 'jrpg'&&window.gameViewMode ==='2d') {
                     // Just call press(). The Btn class handles the sound, animation, and logic.
                     btnMove.press(); 
-                    console.log(`journal button pressed`);
+                    console.log(`move button pressed`);
                     return; 
                 }
                 //vvvCHATvvv/////
