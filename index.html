@@ -6733,20 +6733,24 @@
                 targetPOVDist = maxSafeDist; 
             }
 
-            if (typeof isFreeLooking !== 'undefined' && !isFreeLooking && Object.keys(activePointers || {}).length < 2) {
-                let turns = Math.round((this.lookPan || 0) / (Math.PI / 2));
-                if (turns !== 0) {
-                    this.dir = (this.dir + turns) % 4; 
-                    if (this.dir < 0) this.dir += 4;
-                    let angleShift = turns * (Math.PI / 2);
-                    this.lookPan -= angleShift;
-                    this.currentAngle += angleShift; 
-                }
-                this.lookPan *= 0.85;   
-                this.lookPitch *= 0.85; 
-                if (Math.abs(this.lookPan) < 0.001) this.lookPan = 0;
-                if (Math.abs(this.lookPitch) < 0.001) this.lookPitch = 0;
+            // Check if the Look Joystick is currently being dragged
+        let isJoystickActive = (typeof btnLook !== 'undefined' && btnLook.isPressed);
+
+        // Only apply snap/decay if we are NOT using free-look AND NOT dragging the joystick
+        if (typeof isFreeLooking !== 'undefined' && !isFreeLooking && !isJoystickActive && Object.keys(activePointers || {}).length < 2) {
+            let turns = Math.round((this.lookPan || 0) / (Math.PI / 2));
+            if (turns !== 0) {
+                this.dir = (this.dir + turns) % 4; 
+                if (this.dir < 0) this.dir += 4;
+                let angleShift = turns * (Math.PI / 2);
+                this.lookPan -= angleShift;
+                this.currentAngle += angleShift; 
             }
+            this.lookPan *= 0.85;   
+            this.lookPitch *= 0.85; 
+            if (Math.abs(this.lookPan) < 0.001) this.lookPan = 0;
+            if (Math.abs(this.lookPitch) < 0.001) this.lookPitch = 0;
+        }
 
             let targetPitch = 0;
             let targetCamZ = 0.5; 
@@ -7110,76 +7114,55 @@
 
         this.drawCombinedSprites(ctx, viewX, viewY, viewW, viewH, dirX, dirY, planeX, planeY, renderList, camX, camY);
         this.drawMinimap(ctx, viewX, viewY, viewW, viewH);
-        btnDeck.show(9, 9, 1, 1, 1, 'Deck', 'jrpg_btn', 1, 0);
-        btnJournal.show(0, 9, 1, 1, 1, 'Journal', 'jrpg_btn', 1, 0);
-        btnPOV.show(9.45, 2.275, .5, 1, 1, 'POV', 'jrpg_btn', 1, 0);
-        btnMove2.show(6.3,6.45, 4, .9, .6, '', 'b_pad', 1, 0);
-        btnLook.show(.35, 7, 1.5, 1, 1, '', 'joystick', 1, 0); // Added to right side
+        btnDeck.show(0, 9, 1, 1, 1, 'Deck', 'jrpg_btn', 1, 0);
+        btnJournal.show(7.875, 2.275, .5, 1, 1, 'Journal', 'jrpg_btn', 1, 0);
+        btnPOV.show(9.3, 2.275, .5, 1, 1, 'POV', 'jrpg_btn', 1, 0);
+        btnMove2.show(6.3,7.5, 4, .9, .6, '', 'b_pad', 1, 0);
+        btnLook.show(7.35, 5.75, 1.5, 1, 1, '', 'joystick', 1, 0); // Added to right side
        // --- DYNAMIC SPELL SLOTS LAYOUT ---
-        const getDiceTier = (sides) => {
-            if (sides >= 20) return 5;
-            if (sides >= 12) return 4;
-            if (sides >= 10) return 3;
-            if (sides >= 8) return 2;
-            if (sides >= 6) return 1;
-            return 0;
-        };
-
-        let monsterCap = 1 + getDiceTier(this.stat[0][1]);
-        let itemCap = 0 + getDiceTier(this.stat[1][1]);
-        let spellCap = 1 + getDiceTier(this.stat[2][1]);
-        let anyCap = 0 + getDiceTier(this.stat[3][1]);
-        
-        let maxSlots = Math.min(7, monsterCap + itemCap + spellCap + anyCap);
-
         let btnGap = 0.05;
         let btnWidth = 1.0;
+        let btnHeight = 1.0; 
 
         if (typeof window.uiSpellButtons !== 'undefined') {
             let activeBtns = [];
             
-            // 1. Gather all active cards in order (Slot 0, Slot 1, Slot 2...)
-            for (let i = 0; i < maxSlots; i++) {
+            // 1. Gather all active cards in order
+            for (let i = 0; i < window.uiSpellButtons.length; i++) {
                 let btn = window.uiSpellButtons[i];
                 if (btn && btn.assignedCard) {
                     activeBtns.push(btn);
                 } else if (btn) {
-                    btn.visible = false;
+                    btn.visible = false; // Hide empty slots immediately
                 }
             }
-            
-            // Hide any leftover buttons beyond max slots
-            for (let i = maxSlots; i < window.uiSpellButtons.length; i++) {
-                if (window.uiSpellButtons[i]) window.uiSpellButtons[i].visible = false;
-            }
 
-            // 2. THE EXPANSION MAGIC: Build from the center outwards
-            let visualOrder = [];
-            for (let i = 0; i < activeBtns.length; i++) {
-                if (i === 0 || i === 1) {
-                    // Slots 0 & 1 go in the middle
-                    visualOrder.push(activeBtns[i]);
-                } else if (i % 2 === 0) {
-                    // Even slots (2, 4, 6, 8) append to the RIGHT
-                    visualOrder.push(activeBtns[i]); 
+            // 2. Draw them in an alternating L-Bracket shape
+            let evenCount = 0;
+            let oddCount = 0;
+
+            for (let v = 0; v < activeBtns.length; v++) {
+                let btn = activeBtns[v];
+                
+                if (v % 2 === 0) {
+                    // EVEN SLOTS: Stack upwards along the left edge
+                    let startX = 0;
+                    let startY = 7.95;
+                    let calcY = startY - (evenCount * (btnHeight + btnGap));
+                    
+                    btn.show(startX, calcY, 1, btnWidth, btnHeight, btn.text, 'jrpg_btn', 1, 'spell');
+                    evenCount++;
                 } else {
-                    // Odd slots (3, 5, 7) prepend to the LEFT
-                    visualOrder.unshift(activeBtns[i]); 
+                    // ODD SLOTS: Shift rightwards along the bottom edge
+                    let startX = 1 + btnGap; // Start just past the first button
+                    let startY = 9;
+                    let calcX = startX + (oddCount * (btnWidth + btnGap));
+                    
+                    btn.show(calcX, startY, 1, btnWidth, btnHeight, btn.text, 'jrpg_btn', 1, 'spell');
+                    oddCount++;
                 }
-            }
-
-            // 3. Perfectly center the newly arranged group
-            let visibleCount = visualOrder.length;
-            let totalW = (visibleCount * btnWidth) + (Math.max(0, visibleCount - 1) * btnGap);
-            let startX = 5 - (totalW / 2);
-
-            // 4. Draw them left-to-right across the screen
-            for (let v = 0; v < visibleCount; v++) {
-                let btn = visualOrder[v];
-                btn.show(startX + (v * (btnWidth + btnGap)), 9, 1, btnWidth, 1, btn.text, 'jrpg_btn', 1, 'spell');
             }
         }
-        // ----------------------------------
         let currentTime = Date.now();
         if (currentTime - this.lastSpellShuffleTime > this.spellShuffleCooldown) {
             this.shuffleSpells();
@@ -11523,7 +11506,7 @@
         this.saveGame();
       }
       shuffleSpells() {
-            // 1. CALCULATE TIER HELPER
+            // 1. CALCULATE TIER HELPER (d4=0, d6=1, d8=2, d10=3, d12=4, d20=5)
             const getDiceTier = (sides) => {
                 if (sides >= 20) return 5;
                 if (sides >= 12) return 4;
@@ -11533,28 +11516,32 @@
                 return 0; // Baseline 1d4
             };
 
-            // 2. DEFINE SLOT PRIORITIES BASED ON STATS
-            let strSlots = 1 + getDiceTier(this.stat[0][1]); // STR: 1 Base + Upgrades
-            let conSlots = 0 + getDiceTier(this.stat[1][1]); // CON: 0 Base + Upgrades
-            let intSlots = 1 + getDiceTier(this.stat[2][1]); // INT: 1 Base + Upgrades
-            let agiSlots = 0 + getDiceTier(this.stat[3][1]); // AGI: 0 Base + Upgrades
+            let strTier = getDiceTier(this.stat[0][1]);
+            let conTier = getDiceTier(this.stat[1][1]);
+            let intTier = getDiceTier(this.stat[2][1]);
+            let agiTier = getDiceTier(this.stat[3][1]);
 
-            // Build the priority rules for each slot
+            // 2. DEFINE SLOT PRIORITIES STRICTLY BASED ON STATS
             let slotConfigs = [];
             
-            // Base Slots (Always Slot 0 and Slot 1)
-            slotConfigs.push(['monster', 'item', 'spell']); // Slot 0 (STR Base)
-            slotConfigs.push(['spell', 'item', 'monster']); // Slot 1 (INT Base)
+            // Base Slots
+            slotConfigs.push('monster'); // Slot 0 (Monster Only)
+            slotConfigs.push('magic');   // Slot 1 (Spell or Item equal chance)
 
-            // Add Upgraded Slots
-            for(let i = 0; i < strSlots - 1; i++) slotConfigs.push(['monster', 'item', 'spell']);
-            for(let i = 0; i < intSlots - 1; i++) slotConfigs.push(['spell', 'item', 'monster']);
-            for(let i = 0; i < conSlots; i++) slotConfigs.push(['item', 'monster', 'spell']);
-            for(let i = 0; i < agiSlots; i++) slotConfigs.push(['any']); // AGI is a wildcard
+            // Upgraded Slots
+            for(let i = 0; i < strTier; i++) slotConfigs.push('monster');
+            for(let i = 0; i < conTier; i++) slotConfigs.push('item');
+            for(let i = 0; i < intTier; i++) slotConfigs.push('spell');
+            for(let i = 0; i < agiTier; i++) slotConfigs.push('any');
 
-            // Cap at 7 slots max
-            slotConfigs = slotConfigs.slice(0, 7);
             let maxSlots = slotConfigs.length;
+
+            // Ensure uiSpellButtons exists and has enough physical buttons dynamically
+            if (typeof window.uiSpellButtons !== 'undefined') {
+                while(window.uiSpellButtons.length < maxSlots) {
+                    window.uiSpellButtons.push(new btn(0,0,0,0,0,'','',''));
+                }
+            }
 
             // 3. RESIZE HAND DYNAMICALLY
             while (this.hand.length > maxSlots) {
@@ -11581,7 +11568,7 @@
             }
 
             // 5. CATEGORIZE AVAILABLE CARDS
-            const activeSpellIDs = [26, 13, 93, 28, 8, 29, 59, 15, 12, 52, 68, 18, 58, 65, 51]; // ID 66 removed
+            const activeSpellIDs = [26, 13, 93, 28, 8, 29, 59, 15, 12, 52, 68, 18, 58, 65, 51]; 
             const activeItemIDs = [43, 22, 36, 50, 64, 66, 10, 67, 71, 24, 38, 41, 39, 20, 72, 31, 25, 30]; 
 
             let pools = {
@@ -11616,35 +11603,40 @@
             shuffleArray(pools['spell']);
             shuffleArray(pools['item']);
 
-            // 6. DEAL CARDS BASED ON SLOT PRIORITIES
+            // 6. DEAL CARDS BASED ON SLOT STRICT RULES
             for (let i = 0; i < maxSlots; i++) {
                 if (this.hand[i] === null) {
                     let config = slotConfigs[i];
                     let drawn = null;
 
-                    if (config[0] === 'any') {
-                        // AGI Wildcard Slot
+                    // The 'Any' Wildcard (AGI Upgrade)
+                    if (config === 'any') {
                         let anyPool = [...pools['monster'], ...pools['spell'], ...pools['item']];
                         if (anyPool.length > 0) {
                             shuffleArray(anyPool);
                             drawn = anyPool.pop();
-                            
-                            // Remove drawn card from its native pool
-                            if (drawn.type === 0) pools['monster'] = pools['monster'].filter(c => c.uid !== drawn.uid);
-                            else if (drawn.type === 2) pools['spell'] = pools['spell'].filter(c => c.uid !== drawn.uid);
-                            else if (drawn.type === 1) pools['item'] = pools['item'].filter(c => c.uid !== drawn.uid);
                         }
-                    } else {
-                        // Waterfall Priority (e.g. Monster -> Item -> Spell)
-                        for (let pref of config) {
-                            if (pools[pref].length > 0) {
-                                drawn = pools[pref].pop();
-                                break; // Stop looking once we find a card!
-                            }
+                    } 
+                    // The 'Magic' Base Slot 1 (Item or Spell equal chance)
+                    else if (config === 'magic') {
+                        let magicPool = [...pools['spell'], ...pools['item']];
+                        if (magicPool.length > 0) {
+                            shuffleArray(magicPool);
+                            drawn = magicPool.pop();
                         }
+                    } 
+                    // The Strict Slots (Monster, Item, Spell)
+                    else if (pools[config] && pools[config].length > 0) {
+                        drawn = pools[config].pop();
                     }
                     
-                    this.hand[i] = drawn || null; // If nothing was found, it stays null
+                    if (drawn) {
+                        // Remove drawn card from its native pool so it isn't drawn twice
+                        if (drawn.type === 0) pools['monster'] = pools['monster'].filter(c => c.uid !== drawn.uid);
+                        else if (drawn.type === 2) pools['spell'] = pools['spell'].filter(c => c.uid !== drawn.uid);
+                        else if (drawn.type === 1) pools['item'] = pools['item'].filter(c => c.uid !== drawn.uid);
+                    }
+                    this.hand[i] = drawn || null;
                 }
             }
 
@@ -11658,7 +11650,6 @@
                     let btn = uiButtons[i];
                     if (i < maxSlots) {
                         btn.assignedCard = this.hand[i];
-                        // THIS LINE is what hides the button if no cards were left in the deck to fill it
                         btn.visible = this.hand[i] !== null; 
                         btn.text = btn.assignedCard ? btn.assignedCard.name : '';
                     } else {
@@ -13084,40 +13075,89 @@
               let j_rad = Math.min(this.l, this.h) / 2;
 
               // 1. DRAW OUTER BOUNDARY (Static)
-              // Semi-transparent black circle
               drawShape('arc', this.x, this.y, this.z, j_cx, j_cy, j_rad * 0.85, 0, 2, 0, 0, 0, 'rgba(0, 0, 0, 0.4)', 1);
-              // Subtle white rim
               drawShape('arc', this.x, this.y, this.z, j_cx, j_cy, j_rad * 0.85, 0, 2, 0, 0, 0, 'rgba(255, 255, 255, 0.2)', 0); 
-              // Center dead-zone dot
               drawShape('arc', this.x, this.y, this.z, j_cx, j_cy, j_rad * 0.1, 0, 2, 0, 0, 0, 'rgba(255, 255, 255, 0.1)', 1);
 
-              // 2. CALCULATE THUMBSTICK POSITION
+              // 2. CALCULATE THUMBSTICK POSITION & PULL DISTANCE
               let knobX = j_cx;
               let knobY = j_cy;
+              let pullDist = 0;
               
-              // If pressed, offset the knob by the joyX/joyY values we calculated in isTouched
               if (this.isPressed && this.joyX !== undefined && this.joyY !== undefined) {
-                  // Move the stick up to 40% of the radius away from center
                   knobX += (this.joyX * j_rad * 0.4); 
                   knobY += (this.joyY * j_rad * 0.4);
+                  // Calculate how close the thumbstick is to the edge (0.0 to 1.0)
+                  pullDist = Math.sqrt(this.joyX * this.joyX + this.joyY * this.joyY);
               }
 
-              // 3. DRAW INNER THUMBSTICK (Dynamic)
-              let knobCol = this.isPressed ? 'rgba(255, 255, 255, 0.8)' : 'rgba(200, 200, 200, 0.5)';
+              // 3. DRAW INNER THUMBSTICK (Dynamic Visual Feedback)
+              let isHardLook = (pullDist > 0.85); // The threshold for spinning/zooming
+              let knobCol = 'rgba(200, 200, 200, 0.5)';
+              
+              if (this.isPressed) {
+                  // Make the knob solid white when hitting the "Hard Look" outer rim
+                  knobCol = isHardLook ? 'rgba(255, 255, 255, 1.0)' : 'rgba(255, 255, 255, 0.7)';
+              }
               drawShape('arc', this.x, this.y, this.z, knobX, knobY, j_rad * 0.35, 0, 2, 0, 0, 0, knobCol, 1);
-              if (this.isPressed && startGame === 'explore' && this.joyX !== undefined && this.joyY !== undefined) {
-                  let panSensitivity = 0.05;   // Left/Right turn speed
-                  let pitchSensitivity = 15.0; // Up/Down look speed
 
-                  Dungeon.lookPan -= (this.joyX * panSensitivity);
-                  Dungeon.lookPitch -= (this.joyY * pitchSensitivity);
+              // ====================================================
+              // 4. DUAL-ZONE CAMERA MOVEMENT
+              // ====================================================
+              if (this.isPressed && startGame === 'explore' && typeof Dungeon !== 'undefined' && this.joyX !== undefined && this.joyY !== undefined) {
+                  
+                  if (!isHardLook) {
+                      // --- ZONE 1: SOFT LOOK (Peeking) ---
+                      // Maps the joystick directly to an angle, simulating leaning your head.
+                      // Max pan peek: ~40 degrees (0.7 radians). Max pitch peek: 100 pixels.
+                      let targetPan = -(this.joyX * 0.7); 
+                      let targetPitch = -(this.joyY * 100); 
+                      
+                      // Smoothly interpolate towards the peek angle
+                      Dungeon.lookPan += (targetPan - Dungeon.lookPan) * 0.15;
+                      Dungeon.lookPitch += (targetPitch - Dungeon.lookPitch) * 0.15;
+                      
+                  } else {
+                      // --- ZONE 2: HARD LOOK (Spinning & Zooming) ---
+                      let panSensitivity = 0.05;   
+                      let pitchSensitivity = 12.0; 
+                      let zoomSensitivity = 0.1;   
 
-                  let maxPitch = 250; 
-                  if (Dungeon.lookPitch > maxPitch) Dungeon.lookPitch = maxPitch;
-                  if (Dungeon.lookPitch < -maxPitch) Dungeon.lookPitch = -maxPitch;
+                      // A. PANNING (Continuous 360 turning)
+                      Dungeon.lookPan -= (this.joyX * panSensitivity);
+
+                      // B. PITCHING & ZOOM
+                      if (Dungeon.cameraMode !== 'first_person') {
+                          Dungeon.lookPitch -= (this.joyY * pitchSensitivity);
+                          
+                          let maxPitch = 250; 
+                          
+                          // Looking UP past the boundary -> Zoom IN
+                          if (Dungeon.lookPitch > maxPitch) {
+                              Dungeon.lookPitch = maxPitch;
+                              Dungeon.camDist += (this.joyY * zoomSensitivity); 
+                          }
+                          // Looking DOWN past the boundary -> Zoom OUT
+                          else if (Dungeon.lookPitch < -maxPitch) {
+                              Dungeon.lookPitch = -maxPitch;
+                              Dungeon.camDist += (this.joyY * zoomSensitivity); 
+                          }
+                          
+                          // Clamp Zoom distance (0 = 1st person, 8 = max sky view)
+                          if (Dungeon.camDist < 0) Dungeon.camDist = 0;
+                          if (Dungeon.camDist > 8) Dungeon.camDist = 8;
+                          
+                      } else {
+                          // C. FIRST PERSON LOCK (Look only, no zooming)
+                          Dungeon.lookPitch -= (this.joyY * pitchSensitivity);
+                          let maxPitch = 250;
+                          if (Dungeon.lookPitch > maxPitch) Dungeon.lookPitch = maxPitch;
+                          if (Dungeon.lookPitch < -maxPitch) Dungeon.lookPitch = -maxPitch;
+                      }
+                  }
               }
               break;
-        }
+            }
       }
       
     }
