@@ -13122,7 +13122,7 @@
               }
 
               // 3. DRAW INNER THUMBSTICK (Dynamic Visual Feedback)
-              let isHardLook = (pullDist > 0.95); // Triggers right at the button edge
+              let isHardLook = (pullDist > 1.3); // Triggers right at the button edge
               let knobCol = 'rgba(200, 200, 200, 0.5)';
               
               if (this.isPressed) {
@@ -13131,62 +13131,67 @@
               drawShape('arc', this.x, this.y, this.z, knobX, knobY, j_rad * 0.35, 0, 2, 0, 0, 0, knobCol, 1);
 
               // ====================================================
-              // 4. DUAL-ZONE CAMERA MOVEMENT (Fixed X & Speed Scaling)
-              // ====================================================
-              if (this.isPressed && startGame === 'explore' && typeof Dungeon !== 'undefined' && this.joyX !== undefined && this.joyY !== undefined) {
-                  
-                  if (!isHardLook) {
-                      // --- ZONE 1: SOFT LOOK (Peeking) ---
-                      // FIX: Removed the negative sign. Pushing right pans right.
-                      let targetPan = (this.joyX * 0.7); 
-                      let targetPitch = -(this.joyY * 100); 
-                      
-                      Dungeon.lookPan += (targetPan - Dungeon.lookPan) * 0.15;
-                      Dungeon.lookPitch += (targetPitch - Dungeon.lookPitch) * 0.15;
-                      
-                  } else {
-                      // --- ZONE 2: HARD LOOK (Spinning & Zooming) ---
-                      // Speed Multiplier: 1.0 at the edge, up to 2.0 at 150% distance (+10% per 5%)
-                      let overPull = Math.max(0, pullDist - 0.95); 
-                      let speedMult = 1.0 + (overPull * 1.25); 
+// 4. DUAL-ZONE CAMERA MOVEMENT (Fixed X & Speed Scaling)
+// ====================================================
+if (this.isPressed && startGame === 'explore' && typeof Dungeon !== 'undefined' && this.joyX !== undefined && this.joyY !== undefined) {
+    
+    let maxPitch = 250; // Defined here so we can use it in both zones
 
-                      let panSensitivity = 0.025 * speedMult;   
-                      let pitchSensitivity = 12.0 * speedMult; 
-                      let zoomSensitivity = 0.025 * speedMult;   
+    if (!isHardLook) {
+        // --- ZONE 1: SOFT LOOK (Peeking) ---
+        let targetPan = (this.joyX * 0.7); 
+        
+        // FIX: Increased the multiplier from 100 to maxPitch (250). 
+        // This gives you the full range of motion to see the sky/feet on a soft pull.
+        let targetPitch = -(this.joyY * maxPitch); 
+        
+        Dungeon.lookPan += (targetPan - Dungeon.lookPan) * 0.15;
+        Dungeon.lookPitch += (targetPitch - Dungeon.lookPitch) * 0.15;
+        
+    } else {
+        // --- ZONE 2: HARD LOOK (Spinning & Zooming) ---
+        let overPull = Math.max(0, pullDist - 1.3); 
+        let speedMult = 1.0 + (overPull * 1.25); 
 
-                      // A. PANNING (Continuous 360 turning)
-                      // FIX: Changed -= to += so pushing right spins right
-                      Dungeon.lookPan += (this.joyX * panSensitivity);
+        let panSensitivity = 0.025 * speedMult;   
+        let pitchSensitivity = 12.0 * speedMult; 
+        let zoomSensitivity = 0.025 * speedMult;   
 
-                      // B. PITCHING & ZOOM
-                      if (Dungeon.cameraMode !== 'first_person') {
-                          Dungeon.lookPitch -= (this.joyY * pitchSensitivity);
-                          
-                          let maxPitch = 250; 
-                          
-                          if (Dungeon.lookPitch > maxPitch) {
-                              Dungeon.lookPitch = maxPitch;
-                              Dungeon.camDist += (this.joyY * zoomSensitivity); 
-                          }
-                          else if (Dungeon.lookPitch < -maxPitch) {
-                              Dungeon.lookPitch = -maxPitch;
-                              Dungeon.camDist += (this.joyY * zoomSensitivity); 
-                          }
-                          
-                          if (Dungeon.camDist < 0) Dungeon.camDist = 0;
-                          if (Dungeon.camDist > 8) Dungeon.camDist = 8;
-                          
-                      } else {
-                          // C. FIRST PERSON LOCK 
-                          Dungeon.lookPitch -= (this.joyY * pitchSensitivity);
-                          let maxPitch = 250;
-                          if (Dungeon.lookPitch > maxPitch) Dungeon.lookPitch = maxPitch;
-                          if (Dungeon.lookPitch < -maxPitch) Dungeon.lookPitch = -maxPitch;
-                      }
-                  }
-              }
+        // Determine dominant axis to prevent diagonal bleed
+        let isXDominant = Math.abs(this.joyX) > Math.abs(this.joyY);
+
+        if (isXDominant) {
+            // A. PANNING ONLY (Pushing hard Left/Right)
+            Dungeon.lookPan += (this.joyX * panSensitivity);
+            
+        } else {
+            // B. ZOOMING & CENTERING (Pushing hard Up/Down)
+            if (Dungeon.cameraMode !== 'first_person') {
+                
+                // 1. Control the Zoom
+                Dungeon.camDist += (this.joyY * zoomSensitivity); 
+                
+                if (Dungeon.camDist < 0) Dungeon.camDist = 0;
+                if (Dungeon.camDist > 8) Dungeon.camDist = 8;
+
+                // 2. Auto-Center the Pitch
+                // Uses the same smooth 0.15 lerp so the camera glides down 
+                // from the sky to the horizon as soon as you start zooming.
+                let centerTarget = 0; 
+                Dungeon.lookPitch += (centerTarget - Dungeon.lookPitch) * 0.15;
+                
+            } else {
+                // C. FIRST PERSON LOCK (Continuous Pitch, No Zoom)
+                Dungeon.lookPitch -= (this.joyY * pitchSensitivity);
+                if (Dungeon.lookPitch > maxPitch) Dungeon.lookPitch = maxPitch;
+                if (Dungeon.lookPitch < -maxPitch) Dungeon.lookPitch = -maxPitch;
+            }
+        }
+    }
+}
               break;
             }
+      //
       }
       
     }
