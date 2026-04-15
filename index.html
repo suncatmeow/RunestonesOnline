@@ -1429,7 +1429,7 @@
       },
       "prologue_2c": {
           title: "Prologue: A Soothing Melody",
-          text: "The Empress knelt beside the Emperor, her eyes filled with gentle kindness. She began to hum a sweet, familiar tune—Edmundo's melody. The old man's tense shoulders relaxed, and he let her coax him to his feet. The Hierophant bowed his head in a silent prayer of thanks.",
+          text: "The Empress knelt beside the Emperor, her eyes filled with gentle kindness. She began to hum a sweet, familiar tune—Suncat's melody. The old man's tense shoulders relaxed, and he let her coax him to his feet. The Hierophant bowed his head in a silent prayer of thanks.",
           system_events: [],
           hook: "Ask the player if music has ever helped them through a dark time.",
           next_beat: "prologue_3"
@@ -1705,7 +1705,7 @@
       },
       "ch5_3": {
           title: "Chapter 5: The Hoard",
-          text: "Armed with the blade, they marched into the cavernous Dragon's Lair. The grumpy, treasure-loving lizard sat atop a massive hoard. 'You speak with the arrogance of the Djinn,' the Dragon rumbled, smoke curling from his nostrils. 'Burn!'",
+          text: "Armed with the blade, they marched into the cavernous Dragon's Lair. The grumpy, treasure-loving lizard sat atop a massive hoard. 'Arrogant fools...,' the Dragon rumbled, smoke curling from his nostrils. 'You don't know the difference between heaven and earth!'",
           system_events: [],
           hook: "Ask the player how exactly one dodges a wall of dragon fire.",
           next_beat: "ch5_4"
@@ -7200,6 +7200,17 @@
                     }
                 }
             }
+           drawShape('rec', 0, 0, 1, -10, -10, 30, 10, 0,0,0,0, '#000000', 1);
+            
+            // Bottom border (Covers everything below y = 10)
+            drawShape('rec', 0, 0, 1, -10, 10, 30, 10, 0,0,0,0, '#000000', 1);
+            
+            // Left border (Covers everything to the left of x = 0)
+            drawShape('rec', 0, 0, 1, -10, 0, 10, 10, 0,0,0,0, '#000000', 1);
+            
+            // Right border (Covers everything to the right of x = 10)
+            drawShape('rec', 0, 0, 1, 10, 0, 10, 10, 0,0,0,0, '#000000', 1);
+       
         //7. Timers
             let currentTime = Date.now();
             if (currentTime - this.lastSpellShuffleTime > this.spellShuffleCooldown) {
@@ -9492,7 +9503,7 @@
             // ONLY do the UI popup if we are currently inside a tactical battle screen
             if (typeof startGame !== 'undefined' && startGame === 'battle') {
                 
-                if (npc.deck && npc.deck.length > 0 && npc.type !== 4) {
+                if (npc.deck && npc.deck.length > 0) {
                     let availableLootIDs = npc.deck.map(c => typeof c === 'object' ? c.index : c);
                     if (npc.hand) {
                         let handIDs = npc.hand.map(c => typeof c === 'object' ? c.index : c);
@@ -9555,7 +9566,7 @@
                 }
                 
                 // Wipe the quest tracker
-                this.activeEscortQuest = null; 
+                this.activeEscortQuest = true; 
                 this.saveGame();
             }
         //6. MERCY EVENT
@@ -10462,9 +10473,16 @@
                             uid: 'uid_' + Math.random().toString(36).substr(2, 9), 
                             npcId: this.currentSpeaker.index 
                         });
-                        
+                        if (this.activeEscortQuest && this.activeEscortQuest.giverIndex === this.currentSpeaker.index) {
+                            for (let i = -1; i <= 30; i++) {
+                                this.memory[i + "_" + this.currentSpeaker.index] = { permanent: true };
+                            }
+                            this.memory["999_" + this.currentSpeaker.index] = { permanent: true };
+                            this.activeEscortQuest = null; 
+                        }
                         if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('buff2');
                         this.currentSpeaker = null;
+                        this.saveGame();
                     }
                     // --- NEW: THE SHOPKEEPER TRANSITION ---
                     else if (npcRole === 'shop') {
@@ -10790,43 +10808,7 @@
                             socket.emit('suncat_spectate', `Player was ambushed by the Pixie outside of the hermitage refer to world lore..`);
                         }
                     }
-                //Apprentice
-                    if (this.currentSpeaker.type == 32){
-                        if(this.mapID == 3){
-                        if(this.dCounter <6){drawPortrait(this.currentSpeaker.type,  -.01, .013, 1);}
-                        if (this.dCounter == 0){MessageBox.show(.5,8,1,9,2,'Master! Forgive me...I was captured...','dialogue',1,0)}
-                            if (this.dCounter == 1){MessageBox.show(.5,8,1,9,2,'I refused to reveal your wherabouts so they held me hostage.','dialogue',1,0)}
-                            if (this.dCounter == 2){MessageBox.show(.5,8,1,9,2,'However, during the interrogation I tricked them into revealing their plans.','dialogue',1,0)}
-                            if (this.dCounter == 3){MessageBox.show(.5,8,1,9,2,'The Dark Emperor commands the Four Kings! They seek to topple the Empire completely...','dialogue',1,0)}
-                            if (this.dCounter == 4){MessageBox.show(.5,8,1,9,2,'Also, the Witch Queen is in peril! The King of Wands assaults her realm as we speak!','dialogue',1,0)}
-                            if (this.dCounter == 5){MessageBox.show(.5,8,1,9,2,'We must go to her aid. I will open the portal...','dialogue',1,0)}
-                            if (this.dCounter == 6){
-                                this.extra.push(new Card(32,0))
-                                this.dCounter =7;
-                                MusicEngine.playSFX('heal');
-                            }
-                            if (this.dCounter == 7){
-                                MessageBox.show(0.5, 8, 1, 9, 2, 'Apprentice joins your party!', 'dialogue', 1, -27);
-                                drawPortrait(-27, 2.5, 2.25, .5,32);
-                            }
-                        if (this.dCounter == 8){
-                            this.endDialogue(true)         
-                            socket.emit('suncat_spectate', `Player has rescued the apprentice from the imps and obtained the apprentice card.`);
-                        }
-
-                        }
-                        if(this.mapID == 4){
-                        if(this.dCounter <3){drawPortrait(this.currentSpeaker.type,  -.01, .013, 1);}
-                        if (this.dCounter == 0){MessageBox.show(.5,8,1,9,2,"The Witch Queen's castle lies up ahead.",'dialogue',1,0)}
-                        if (this.dCounter == 1){MessageBox.show(.5,8,1,9,2,"The forces of the King of Wands will attempt to stop us. We must not let them.",'dialogue',1,0)}
-                        if (this.dCounter == 2){MessageBox.show(.5,8,1,9,2,"Beware of mirages. They will lead us astray...",'dialogue',1,0)}
-
-                        if (this.dCounter == 3){
-                            this.endDialogue(true)         
-                            socket.emit('suncat_spectate', `player spoke to the apprentice in the Realm of the Witch Queen (desert map) who warned them of the King of wands forces and to watch out for mirages.`);
-                        }
-                        }
-                    }
+                
                     //Treasure Snake
                     if (this.currentSpeaker.type == 89){
                         // Draw portrait logic
@@ -13166,11 +13148,11 @@
                       // --- ZONE 2: HARD LOOK (Spinning & Zooming) ---
                       // Speed Multiplier: 1.0 at the edge, up to 2.0 at 150% distance (+10% per 5%)
                       let overPull = Math.max(0, pullDist - 0.95); 
-                      let speedMult = 1.0 + (overPull * 2.0); 
+                      let speedMult = 1.0 + (overPull * 1.25); 
 
-                      let panSensitivity = 0.05 * speedMult;   
+                      let panSensitivity = 0.025 * speedMult;   
                       let pitchSensitivity = 12.0 * speedMult; 
-                      let zoomSensitivity = 0.1 * speedMult;   
+                      let zoomSensitivity = 0.025 * speedMult;   
 
                       // A. PANNING (Continuous 360 turning)
                       // FIX: Changed -= to += so pushing right spins right
@@ -22340,14 +22322,75 @@
                     }
                 }
 
-                // 2. CHECK SCROLL ARROWS (Added 'story' to the scrollable tabs)
-                if (['record', 'suncat', ' story '].includes(journalTab)) {
+                // 2. CHECK SCROLL ARROWS AND QUEST CLICKS
+                if (['record', 'suncat', ' story ', ' quest '].includes(journalTab)) {
                     
+                    // --- FULLSCREEN QUEST NAVIGATION ---
+                    if (journalTab === ' quest ' && window.questFullscreenIndex >= 0) {
+                        // Clicked BACK (x: 4 to 6, y: 8.2 to 9.0)
+                        if (gridPos.x >= 4 && gridPos.x <= 6 && gridPos.y >= 8.2 && gridPos.y <= 9.0) {
+                            window.questFullscreenIndex = -1;
+                            if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('click');
+                            return;
+                        }
+                        // Clicked PREV (x: 1.5 to 3.0, y: 8.2 to 9.0)
+                        if (gridPos.x >= 1.5 && gridPos.x <= 3.0 && gridPos.y >= 8.2 && gridPos.y <= 9.0 && window.questFullscreenIndex > 0) {
+                            window.questFullscreenIndex--;
+                            if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('click');
+                            return;
+                        }
+                        // Clicked NEXT (x: 7.0 to 8.5, y: 8.2 to 9.0)
+                        if (gridPos.x >= 7.0 && gridPos.x <= 8.5 && gridPos.y >= 8.2 && gridPos.y <= 9.0) {
+                            // We don't have the array length here, so we just increment. 
+                            // The render loop will catch it if it goes out of bounds, but it's safe.
+                            window.questFullscreenIndex++; 
+                            if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('click');
+                            return;
+                        }
+                        return; // Block other clicks while in fullscreen quest mode
+                    }
+
+                    // --- QUEST LIST ITEM CLICKS ---
+                    if (journalTab === ' quest ' && window.questFullscreenIndex === -1) {
+                        // Check if they clicked one of the 3 visible quest boxes
+                        // Box 0: y=2.5 to 3.8
+                        // Box 1: y=4.1 to 5.4
+                        // Box 2: y=5.7 to 7.0
+                        if (gridPos.x >= 1 && gridPos.x <= 8.2) {
+                            if (gridPos.y >= 2.5 && gridPos.y <= 3.8) {
+                                window.questFullscreenIndex = journalScroll + 0;
+                                if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('click');
+                                return;
+                            }
+                            if (gridPos.y >= 4.1 && gridPos.y <= 5.4) {
+                                window.questFullscreenIndex = journalScroll + 1;
+                                if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('click');
+                                return;
+                            }
+                            if (gridPos.y >= 5.7 && gridPos.y <= 7.0) {
+                                window.questFullscreenIndex = journalScroll + 2;
+                                if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('click');
+                                return;
+                            }
+                        }
+                    }
+
+                    // --- STANDARD SCROLL ARROWS ---
                     // Define targetArray in this scope so the down arrow knows how far it can scroll
                     let targetArray = [];
-                    if (journalTab === 'record') targetArray = playerChronicle;
-                    else if (journalTab === 'suncat') targetArray = suncatChronicle;
-                    else if (journalTab === ' story ') targetArray = playerStoryBeats;
+                    let maxItems = 0;
+                    if (journalTab === 'record') { targetArray = playerChronicle; maxItems = targetArray.length; }
+                    else if (journalTab === 'suncat') { targetArray = suncatChronicle; maxItems = targetArray.length; }
+                    else if (journalTab === ' story ') { targetArray = playerStoryBeats; maxItems = targetArray.length; }
+                    else if (journalTab === ' quest ') { 
+                        // Estimate max quests. We can calculate it similarly to the render loop.
+                        let qCount = 0;
+                        if (typeof currentQuest !== 'undefined' && currentQuest !== "") qCount++;
+                        if (this.MainQuest !== undefined) qCount++;
+                        if (this.gd > 0) qCount++;
+                        if (this.activeEscortQuest) qCount++;
+                        maxItems = qCount;
+                    }
 
                     // UP ARROW
                     if (gridPos.x >= 8.5 && gridPos.x <= 9.5 && gridPos.y >= 2.5 && gridPos.y <= 3.5) {
@@ -22361,8 +22404,8 @@
                     // DOWN ARROW
                     if (gridPos.x >= 8.5 && gridPos.x <= 9.5 && gridPos.y >= 7.0 && gridPos.y <= 8.0) {
                         let canScroll = (journalTab === ' story ') ? 
-                            (journalScroll < playerStoryBeats.length - 1) : 
-                            (journalScroll + 3 < targetArray.length);
+                            (journalScroll < maxItems - 1) : 
+                            (journalScroll + 3 < maxItems);
                             
                         if (canScroll) {
                             journalScroll += (journalTab === ' story ' ? 1 : 3);
@@ -55821,24 +55864,179 @@
         else if (journalTab === ' quest ') {
             drawText(1, 1.5, 8, 0.8, "- QUEST LOG -", '#d4af37', 1, 'center');
             
-            // The Active Objective
-            drawText(1, 3.0, 8, 0.5, "CURRENT DIRECTIVE:", '#00ffff', 1);
-            drawText(1, 3.6, 8, 1.5, currentQuest, 'white', 1); // 1.5 height forces it to wrap text!
+           // 1. BUILD THE DYNAMIC QUEST LIST
+            let allQuests = [];
             
-            // Dynamic Counters (If you are in a Custom Map)
-            if (typeof Dungeon !== 'undefined' && Dungeon.mapID === 999) {
-                // Count how many hostiles are left
-                let enemiesLeft = Dungeon.npcs.filter(n => !n.isDead && n.role === 'battle' && !n.isBoss).length;
-                let bossLeft = Dungeon.npcs.filter(n => !n.isDead && n.isBoss).length;
-                
-                drawText(1, 5.5, 8, 0.5, "SCENARIO TRACKER:", '#ffd700', 1);
-                drawText(1, 6.2, 8, 0.5, `Minions Remaining: ${enemiesLeft}`, 'white', 1);
-                drawText(1, 6.8, 8, 0.5, `Bosses Remaining: ${bossLeft}`, bossLeft === 0 ? '#00ff00' : 'white', 1);
-            } else {
-                drawText(1, 5.5, 8, 0.5, "You are in a peaceful zone.", 'gray', 1);
+            // ==========================================
+            // A. SCENARIO / DYNAMIC QUESTS (Map 999)
+            // ==========================================
+            if (typeof currentQuest !== 'undefined' && currentQuest !== "") {
+                let isDone = currentQuest.includes("vanquished") || currentQuest.includes("defeated") || currentQuest.includes("Teleporting");
+                allQuests.push({
+                    title: "Scenario Directive",
+                    text: currentQuest,
+                    completed: isDone,
+                    updatedText: currentQuest // The scenario text updates itself naturally
+                });
             }
-          }
-          // ----------------------------------------------------
+
+            // ==========================================
+            // B. MAIN QUESTLINE (The Four Kings)
+            // ==========================================
+            
+            // Quest 1: The Basics (Triggered immediately on new game)
+            if (this.MainQuest >= 0) {
+                allQuests.push({ 
+                    title: "The Basics", 
+                    text: "The Emperor suggested I learn how to play. I should speak to the High Priestess.", 
+                    completed: this.MainQuest >= 1, 
+                    updatedText: "I completed the High Priestess' lesson and obtained her card." 
+                });
+            }
+
+            // Quest 2: The Missing Magician (Triggered ONLY after completing The Basics)
+            if (this.MainQuest >= 1) {
+                // Assuming you'll create a new variable like this.magicianFound = 0 or 1 later.
+                // For now, we'll just say it's active.
+                allQuests.push({ 
+                    title: "The Missing Magician", 
+                    text: "The High Priestess says the Magician went to the Outer Dungeon to confront our captors, but hasn't returned. I need to find him.", 
+                    completed: false // Change this to `this.magicianFound === 1` when you add that logic
+                });
+            }
+
+            // ==========================================
+            // C. SUB-QUESTS (Side Stories)
+            // ==========================================
+            
+            // Sub-Quest: Giant's Daughter (gd)
+            // Triggered ONLY when gd is 1 or higher (meaning you've met her)
+            if (this.gd > 0) {
+                let isGdDone = this.gd >= 5;
+                
+                // We can dynamically change the text based on exactly where the player is in the quest!
+                let gdActiveText = "I saved the Giant's Daughter from gargoyles. She asked me to speak to her father.";
+                if (this.gd == 2) gdActiveText = "The Giant is furious. I need to deal with him.";
+                if (this.gd == 3) gdActiveText = "I defeated the Giant. Now I have a choice to make regarding his daughter.";
+                
+                let gdResultText = "";
+                if (this.gd == 5) gdResultText = "I rejected the giant's daughter. He left peacefully, but her heart is broken.";
+                if (this.gd == 6) gdResultText = "I married the giant's daughter. Her father gave me his blessing and powerful artifacts.";
+                
+                allQuests.push({ 
+                    title: "A Giant Misunderstanding", 
+                    text: gdActiveText, 
+                    completed: isGdDone, 
+                    updatedText: gdResultText 
+                });
+            }
+
+            // ==========================================
+            // D. RADIANT / PROCEDURAL QUESTS
+            // ==========================================
+            
+            // Active Escort Quest
+            if (this.activeEscortQuest) {
+                // Dynamic text based on the type of radiant quest
+                let escortText = "Someone needs my help.";
+                if (this.activeEscortQuest.questType === 'rescue') escortText = "I need to rescue someone's friend.";
+                else if (this.activeEscortQuest.questType === 'retrieve') escortText = "I need to retrieve a lost item.";
+                else escortText = "I need to escort someone to safety.";
+
+                allQuests.push({ 
+                    title: "A Plea for Help", 
+                    text: escortText, 
+                    completed: this.activeEscortQuest.isCompleted || false,
+                    updatedText: "I completed the task. I should return to the quest giver for my reward."
+                });
+            }
+
+            // --- STATE MANAGEMENT ---
+            if (typeof window.questFullscreenIndex === 'undefined') window.questFullscreenIndex = -1;
+
+            // ----------------------------------------------------
+            // VIEW A: FULLSCREEN MODE
+            // ----------------------------------------------------
+            if (window.questFullscreenIndex >= 0 && window.questFullscreenIndex < allQuests.length) {
+                let q = allQuests[window.questFullscreenIndex];
+                
+                // Big Background Box
+                drawShape('rec', 1, 2.2, 1, 0, 0, 8, 5.5, 0,0,0,0, '#111122', 1);
+                drawShape('rec', 1, 2.2, 1, 0, 0, 8, 5.5, 0,0,0,0, q.completed ? '#555555' : '#00ffff', 0); // Border
+
+                // Quest Title & Status
+                drawText(1.5, 2.7, 7, 0.6, q.title.toUpperCase(), q.completed ? 'gray' : '#00ffff', 1, 'center');
+                if (q.completed) {
+                    drawText(1.5, 3.4, 7, 0.4, "[COMPLETED]", '#00ff00', 1, 'center');
+                }
+
+                // Quest Description
+                let displayText = (q.completed && q.updatedText) ? q.updatedText : q.text;
+                drawText(1.5, 4.0, 7, 3.0, displayText, q.completed ? '#aaaaaa' : 'white', 1);
+
+                // --- NAVIGATION BUTTONS ---
+                // BACK Button
+                drawShape('rec', 4, 8.2, 1, 0, 0, 2, 0.8, 0,0,0,0, '#333333', 1);
+                drawText(4, 8.4, 2, 0.4, "BACK", 'white', 1, 'center');
+
+                // PREV Button
+                if (window.questFullscreenIndex > 0) {
+                    drawShape('rec', 1.5, 8.2, 1, 0, 0, 1.5, 0.8, 0,0,0,0, '#222244', 1);
+                    drawText(1.5, 8.4, 1.5, 0.4, "< PREV", 'white', 1, 'center');
+                }
+
+                // NEXT Button
+                if (window.questFullscreenIndex < allQuests.length - 1) {
+                    drawShape('rec', 7.0, 8.2, 1, 0, 0, 1.5, 0.8, 0,0,0,0, '#222244', 1);
+                    drawText(7.0, 8.4, 1.5, 0.4, "NEXT >", 'white', 1, 'center');
+                }
+            } 
+            // ----------------------------------------------------
+            // VIEW B: SCROLLING LIST MODE
+            // ----------------------------------------------------
+            else {
+                if (allQuests.length === 0) {
+                    drawText(1, 4, 8, 0.5, "You have no active quests.", 'gray', 1, 'center');
+                } else {
+                    let maxDisplay = 3; 
+                    let yOffset = 2.5;
+
+                    let visibleQuests = allQuests.slice(journalScroll, journalScroll + maxDisplay);
+
+                    for (let i = 0; i < visibleQuests.length; i++) {
+                        let q = visibleQuests[i];
+                        let bgColor = q.completed ? '#1a1a1a' : '#222233';
+                        let titleColor = q.completed ? 'gray' : '#ffd700';
+                        let textColor = q.completed ? '#666666' : 'white';
+
+                        // Draw Clickable Box
+                        drawShape('rec', 1, yOffset, 1, 0, 0, 7.2, 1.3, 0,0,0,0, bgColor, 1);
+                        drawShape('rec', 1, yOffset, 1, 0, 0, 7.2, 1.3, 0,0,0,0, q.completed ? '#333333' : '#444488', 0); // Border
+
+                        // Title & Status
+                        drawText(1.2, yOffset + 0.3, 5, 0.4, q.title, titleColor, 1);
+                        if (q.completed) drawText(6.0, yOffset + 0.3, 2, 0.3, "[COMPLETE]", '#00aa00', 1);
+
+                        // Short Description Preview (truncate if too long)
+                        let previewText = q.text.length > 40 ? q.text.substring(0, 40) + "..." : q.text;
+                        if (q.completed && q.updatedText) previewText = q.updatedText.length > 40 ? q.updatedText.substring(0, 40) + "..." : q.updatedText;
+                        drawText(1.2, yOffset + 0.8, 6.8, 0.3, previewText, textColor, 1);
+
+                        yOffset += 1.6; 
+                    }
+
+                    // DRAW SCROLL ARROWS (Right Side)
+                    if (journalScroll > 0) {
+                        drawShape('rec', 8.5, 2.5, 1, 0, 0, 1, 1, 0,0,0,0, '#444444', 1);
+                        drawText(8.5, 2.7, 1, 0.6, "^", '#d4af37', 1, 'center'); 
+                    }
+                    if (journalScroll + maxDisplay < allQuests.length) {
+                        drawShape('rec', 8.5, 7.0, 1, 0, 0, 1, 1, 0,0,0,0, '#444444', 1);
+                        drawText(8.5, 7.2, 1, 0.6, "v", '#d4af37', 1, 'center');
+                    }
+                }
+            }
+        }
         else if (journalTab === 'settings') {
             drawText(1, 1.5, 8, 0.8, "- SYSTEM SETTINGS -", '#d4af37', 1, 'center');
             
