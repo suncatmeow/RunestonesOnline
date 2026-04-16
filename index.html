@@ -143,6 +143,7 @@
     window.settingsAudio = true;
     window.settingsNarration = true;
     window.settingsChat = true;
+    window.settingsControlsMode = 'dpad'
     const SPELL_REGISTRY = {
         // --- PROJECTILES (Attack) ---
           13: { type: 'projectile', name: 'Magic Missile', castStat: 2, defStat: 2, color: [0,0,0], glow: '#00ffff',  model3D: 'd4', isHoming: true }, 
@@ -7158,11 +7159,13 @@
                 btnDeck.show(0, 9, 1, 1, 1, 'Deck', 'jrpg_btn', 1, 0);
                 btnJournal.show(7.875, 2.275, .5, 1, 1, 'Journal', 'jrpg_btn', 1, 0);
                 btnPOV.show(9.3, 2.275, .5, 1, 1, 'POV', 'jrpg_btn', 1, 0);
+                if(window.settingsControlsMode ==='dpad'){
                 btnMove.show(5,5, 5, 1, 1, '', 'd_pad', 1, 0);
                 btnTurnL.show(5.2,5.3, 1.5, 1, 1, '', 'turn_l', 1, 0);
                 btnTurnR.show(8.3,5.3, 1.5, 1, 1, '', 'turn_r', 1, 0);
 
                 btnLook.show(6.875, 6.875, 1.25, 1, 1, '', 'joystick', 1, 0); // Added to right side
+                }
             // --- DYNAMIC SPELL SLOTS LAYOUT ---
             let btnGap = 0.05;
             let btnWidth = 1.0;
@@ -13071,7 +13074,7 @@
             break;
           case 'd_pad':
             let transparency = .15;
-            if(window.gameViewMode === '3d'){transparency = .05}
+            if(window.gameViewMode === '3d'){transparency = .025}
             // 1. Determine which arrow gets the highlight color
             let upCol    = (this.isPressed && this.currentDir === 'up')    ? `rgba(255, 255, 255,  ${.3})` : `rgba(255, 255, 255, ${transparency})`;
             let downCol  = (this.isPressed && this.currentDir === 'down')  ? `rgba(255, 255, 255,  ${.3})` : `rgba(255, 255, 255, ${transparency})`;
@@ -13141,7 +13144,7 @@
               
               break;
           case 'turn_l':
-                          let opacityl = .05
+                          let opacityl = .025
 
 
               // 1. Main Background (Semi-transparent black)
@@ -13161,7 +13164,7 @@
           
           case 'turn_r':
               
-            let opacityr = .05
+            let opacityr = .025
               // 1. Main Background (Semi-transparent black)
               //drawShape('rec', this.x, this.y, this.z, 0, 0, this.l, this.h, 0, 0, 0, 0, 'rgba(0, 0, 0, 0.05)', 1);
               
@@ -22424,114 +22427,123 @@
                 // ----------------------------------------------------
                 // NEW SETTINGS CLICK LOGIC
                 // ----------------------------------------------------
-                if (journalTab === 'settings') {
-                    
-                    // 1. INTERCEPT FOR CONFIRMATION PROMPT
-                    if (window.confirmDeletePrompt) {
-                        // If they click NO (Right side button)
-                        if (gridPos.x >= 5.5 && gridPos.x <= 7.5 && gridPos.y >= 6.0 && gridPos.y <= 7.0) {
-                            window.confirmDeletePrompt = false; // Hide the prompt
-                            if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('cancel');
-                            return;
+                // ----------------------------------------------------
+            if (journalTab === 'settings') {
+                
+                // 1. INTERCEPT FOR CONFIRMATION PROMPT
+                if (window.confirmDeletePrompt) {
+                    // If they click NO (Right side button)
+                    if (gridPos.x >= 5.5 && gridPos.x <= 7.5 && gridPos.y >= 6.0 && gridPos.y <= 7.0) {
+                        window.confirmDeletePrompt = false; 
+                        if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('cancel');
+                        return;
+                    }
+                    // If they click YES (Left side button)
+                    if (gridPos.x >= 2.5 && gridPos.x <= 4.5 && gridPos.y >= 6.0 && gridPos.y <= 7.0) {
+                        if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('death'); 
+                        
+                        if (typeof socket !== 'undefined') {
+                            socket.emit('delete_save');
                         }
-                        // If they click YES (Left side button)
-                        if (gridPos.x >= 2.5 && gridPos.x <= 4.5 && gridPos.y >= 6.0 && gridPos.y <= 7.0) {
-                            if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('death'); // Dramatic deletion sound
-                            
-                            if (typeof socket !== 'undefined') {
-                                socket.emit('delete_save');
-                            }
-                            localStorage.removeItem('battlemage_save'); 
-                            localStorage.removeItem('runestones_chronicle');
-                            localStorage.removeItem('suncat_chronicle');
-                            
-                            setTimeout(() => {
-                                location.reload(); 
-                            }, 200); 
-                            return;
+                        localStorage.removeItem('battlemage_save'); 
+                        localStorage.removeItem('runestones_chronicle');
+                        localStorage.removeItem('suncat_chronicle');
+                        
+                        setTimeout(() => { location.reload(); }, 200); 
+                        return;
+                    }
+                    return; // Block all other clicks while prompt is open!
+                }
+
+                // AUDIO TOGGLES
+                if (gridPos.y >= 3.0 && gridPos.y <= 3.8) {
+                    if (gridPos.x >= 5 && gridPos.x <= 6.5) { 
+                        window.settingsAudio = true; 
+                        if(typeof MusicEngine !== 'undefined') {
+                            MusicEngine.playSFX('click');
+                            if (MusicEngine.style) MusicEngine.play(MusicEngine.style);
                         }
-                        // Block all other clicks while prompt is open!
                         return; 
                     }
-
-                    // AUDIO TOGGLES
-                    if (gridPos.y >= 3.0 && gridPos.y <= 3.8) {
-                        if (gridPos.x >= 5 && gridPos.x <= 6.5) { 
-                            window.settingsAudio = true; 
-                            if(typeof MusicEngine !== 'undefined') {
-                                MusicEngine.playSFX('click');
-                                if (MusicEngine.style) MusicEngine.play(MusicEngine.style);
-                            }
-                            return; 
-                        }
-                        if (gridPos.x > 6.5 && gridPos.x <= 8.0) { 
-                            window.settingsAudio = false; 
-                            if(typeof MusicEngine !== 'undefined') MusicEngine.stop(); 
-                            return; 
-                        }
-                    }
-
-                    // NARRATION TOGGLES
-                    if (gridPos.y >= 4.0 && gridPos.y <= 4.8) {
-                        if (gridPos.x >= 5 && gridPos.x <= 6.5) { 
-                            window.settingsNarration = true; 
-                            if(typeof socket !== 'undefined') socket.emit('toggle_narration', true);
-                            if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('click'); 
-                            return; 
-                        }
-                        if (gridPos.x > 6.5 && gridPos.x <= 8.0) { 
-                            window.settingsNarration = false; 
-                            if(typeof socket !== 'undefined') socket.emit('toggle_narration', false);
-                            if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('click'); 
-                            return; 
-                        }
-                    }
-
-                    // CHAT TOGGLES
-                    if (gridPos.y >= 5.0 && gridPos.y <= 5.8) {
-                        if (gridPos.x >= 5 && gridPos.x <= 6.5) { 
-                            window.settingsChat = true; 
-                            if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('click'); 
-                            return; 
-                        }
-                        if (gridPos.x > 6.5 && gridPos.x <= 8.0) { 
-                            window.settingsChat = false; 
-                            if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('click'); 
-                            return; 
-                        }
-                    }
-                    
-                    // ACTION BUTTONS (X bounds are 3 to 7 for all of them)
-                    if (gridPos.x >= 3 && gridPos.x <= 7) {
-                        
-                        // SAVE BUTTON
-                        if (gridPos.y >= 6.2 && gridPos.y <= 7.0) {
-                            if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('heal'); 
-                            if (typeof Dungeon !== 'undefined') {
-                                Dungeon.saveGame();
-                                if (typeof MessageBox !== 'undefined') {
-                                    MessageBox.show(0.5, 8, 1, 9, 2, 'Game Saved Successfully!', 'dialogue', 1, 0);
-                                }
-                            }
-                            return;
-                        }
-                    
-                        // EXIT TO MAIN MENU
-                        if (gridPos.y >= 7.3 && gridPos.y <= 8.1) {
-                            if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('cancel');
-                            if (typeof Dungeon !== 'undefined') Dungeon.saveGame(); 
-                            startGame = 'options'; 
-                            return;
-                        }
-                        
-                        // INITIAL DELETE BUTTON CLICK (Triggers Popup instead of deleting)
-                        if (gridPos.y >= 8.4 && gridPos.y <= 9.2) {
-                            if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('click');
-                            window.confirmDeletePrompt = true; // Turn on the popup
-                            return;
-                        }
+                    if (gridPos.x > 6.5 && gridPos.x <= 8.0) { 
+                        window.settingsAudio = false; 
+                        if(typeof MusicEngine !== 'undefined') MusicEngine.stop(); 
+                        return; 
                     }
                 }
+
+                // NARRATION TOGGLES
+                if (gridPos.y >= 4.0 && gridPos.y <= 4.8) {
+                    if (gridPos.x >= 5 && gridPos.x <= 6.5) { 
+                        window.settingsNarration = true; 
+                        if(typeof socket !== 'undefined') socket.emit('toggle_narration', true);
+                        if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('click'); 
+                        return; 
+                    }
+                    if (gridPos.x > 6.5 && gridPos.x <= 8.0) { 
+                        window.settingsNarration = false; 
+                        if(typeof socket !== 'undefined') socket.emit('toggle_narration', false);
+                        if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('click'); 
+                        return; 
+                    }
+                }
+
+                // CHAT TOGGLES
+                if (gridPos.y >= 5.0 && gridPos.y <= 5.8) {
+                    if (gridPos.x >= 5 && gridPos.x <= 6.5) { 
+                        window.settingsChat = true; 
+                        if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('click'); 
+                        return; 
+                    }
+                    if (gridPos.x > 6.5 && gridPos.x <= 8.0) { 
+                        window.settingsChat = false; 
+                        if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('click'); 
+                        return; 
+                    }
+                }
+
+                // --- NEW: CONTROLS TOGGLE ---
+                if (gridPos.y >= 6.0 && gridPos.y <= 6.8) {
+                    if (gridPos.x >= 4.5 && gridPos.x <= 6.2) { // D-PAD
+                        window.settingsControlsMode = 'dpad'; 
+                        if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('click'); 
+                        return; 
+                    }
+                    if (gridPos.x > 6.2 && gridPos.x <= 8.5) { // TOUCH
+                        window.settingsControlsMode = 'touch'; 
+                        if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('click'); 
+                        return; 
+                    }
+                }
+
+                // ACTION BUTTONS (Shifted down slightly to fit the new row)
+                if (gridPos.x >= 3 && gridPos.x <= 7) {
+                    // SAVE BUTTON
+                    if (gridPos.y >= 7.2 && gridPos.y <= 8.0) {
+                        if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('heal'); 
+                        if (typeof Dungeon !== 'undefined') {
+                            Dungeon.saveGame();
+                            if (typeof MessageBox !== 'undefined') MessageBox.show(0.5, 8, 1, 9, 2, 'Game Saved Successfully!', 'dialogue', 1, 0);
+                        }
+                        return;
+                    }
+                
+                    // EXIT TO MAIN MENU
+                    if (gridPos.y >= 8.2 && gridPos.y <= 9.0) {
+                        if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('cancel');
+                        if (typeof Dungeon !== 'undefined') Dungeon.saveGame(); 
+                        startGame = 'options'; 
+                        return;
+                    }
+                    
+                    // INITIAL DELETE BUTTON CLICK
+                    if (gridPos.y >= 9.2 && gridPos.y <= 10.0) {
+                        if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('click');
+                        window.confirmDeletePrompt = true; 
+                        return;
+                    }
+                }
+            }
                 
                         // 3. CHECK EXIT BUTTON (Bottom Center)
                 if (gridPos.x > 8 && gridPos.x < 10 && gridPos.y > 9 && gridPos.y < 10) {
@@ -23608,18 +23620,14 @@
 
                     // 4. Dramatic UI Prompt
                     // Leave a message on the screen telling them to type their last words!
-                    if (typeof MessageBox !== 'undefined') {
-                        ctx.fillStyle = "rgba(0,0,0,1)";
-                        ctx.fillRect(0,0,wX,wY);
-                        MessageBox.show(1.5, 3, 1, 7, 2, 'YOU HAVE FALLEN. Save File Deleted.', 'dialogue', 1, 0);
-                    }
+                   
 
                     // 5. EXTENDED TIMER (15 Seconds)
                     // The chat input bar is HTML, so it works even if the canvas is locked!
                     // This gives them 15 seconds to type a message (and maybe hear Suncat's final reply) before the screen goes black.
-                    setTimeout(() => {
+                    
                         window.location.reload();
-                    }, 15000);
+                    
 
                     return;
                 }
@@ -23745,7 +23753,9 @@
                     btnMove2.press(); 
                     console.log(`move2 button pressed`);
                     return; 
+                    
                 }
+                if (window.settingsControlsMode === 'dpad') {
                 if (btnTurnL.isTouched(gridPos.x, gridPos.y) && btnTurnL.visible == true && btnTurnL.type != 'jrpg'&&window.gameViewMode ==='3d') {
                     btnTurnL.press(); 
                     console.log(`move2 button pressed`);
@@ -23760,12 +23770,14 @@
                     btnLook.press(); 
                     console.log(`move2 button pressed`);
                     return; 
-                }
+                }}
                 if (btnMove.isTouched(gridPos.x, gridPos.y) && btnMove.visible == true&&btnMove.type != 'jrpg') {
                     // Just call press(). The Btn class handles the sound, animation, and logic.
+                if ((window.settingsControlsMode === 'dpad'&&window.gameViewMode == '3d')||window.gameViewMode == '2d') {
+
                     btnMove.press(); 
                     console.log(`move button pressed`);
-                    return; 
+                    return; }
                 }
                 //vvvCHATvvv/////
                 if (gridPos.x >= 0 && gridPos.x <= 7.7 && gridPos.y >= 0 && gridPos.y <= 2.25) {
@@ -23800,7 +23812,7 @@
                         return;
                     }
 
-                    /*// LEFT SIDE OF SCREEN
+                    if (window.settingsControlsMode === 'touch') {// LEFT SIDE OF SCREEN
                     if (pos.x > (tL/10)*-1 && pos.x <= (tL/10)*2.5 && pos.y > 0) {
                         if (pos.y <= (tH/10)*10) {
                             // BOTTOM LEFT: Turn Left
@@ -23838,7 +23850,7 @@
 
                     // Finally, execute the move
                     executeDungeonMove(moveX, moveY, movingForward);
-                            */
+                            }
 
 
             
@@ -56043,74 +56055,82 @@
             }
         }
         else if (journalTab === 'settings') {
-            drawText(1, 1.5, 8, 0.8, "- SYSTEM SETTINGS -", '#d4af37', 1, 'center');
-            
-            // Define colors for active/inactive states
-            let colorOnActive = window.settingsAudio ? 'lightgray' : '#444444';
-            let colorOffActive = !window.settingsAudio ? 'lightgray' : '#444444';
-            
-            let colorNarrationOn = window.settingsNarration ? 'lightgray' : '#444444';
-            let colorNarrationOff = !window.settingsNarration ? 'lightgray' : '#444444';
-
-            let colorChatOn = window.settingsChat ? 'lightgray' : '#444444';
-            let colorChatOff = !window.settingsChat ? 'lightgray' : '#444444';
-
-            // Row 1: AUDIO
-            drawText(2, 3.0, 3, 0.5, "AUDIO:", 'white', 1, 'left');
-            drawText(5, 3.0, 1.5, 0.5, "ON", colorOnActive, 1, 'center');
-            drawText(6.5, 3.0, 1.5, 0.5, "OFF", colorOffActive, 1, 'center');
-
-            // Row 2: AI NARRATION
-            drawText(2, 4.0, 3, 0.5, "AI NARRATION:", 'white', 1, 'left');
-            drawText(5, 4.0, 1.5, 0.5, "ON", colorNarrationOn, 1, 'center');
-            drawText(6.5, 4.0, 1.5, 0.5, "OFF", colorNarrationOff, 1, 'center');
-
-            // Row 3: CHAT
-            drawText(2, 5.0, 3, 0.5, "CHAT:", 'white', 1, 'left');
-            drawText(5, 5.0, 1.5, 0.5, "ON", colorChatOn, 1, 'center');
-            drawText(6.5, 5.0, 1.5, 0.5, "OFF", colorChatOff, 1, 'center');
-
-            // Row 4: ACTION BUTTONS (Using boxes to make them look clickable)
-            // SAVE BUTTON
-            drawShape('rec', 3, 6.2, 1, 0, 0, 4, 0.8, 0,0,0,0, '#222222', 1);
-            drawShape('rec', 3, 6.2, 1, 0, 0, 4, 0.8, 0,0,0,0, '#d4af37', 0); // Border
-            drawText(3, 6.35, 4, 0.5, "SAVE GAME", 'white', 1, 'center');
-
-            // EXIT BUTTON
-            drawShape('rec', 3, 7.3, 1, 0, 0, 4, 0.8, 0,0,0,0, '#222222', 1);
-            drawShape('rec', 3, 7.3, 1, 0, 0, 4, 0.8, 0,0,0,0, '#d4af37', 0); // Border
-            drawText(3, 7.45, 4, 0.5, "EXIT TO MAIN MENU", 'white', 1, 'center');
-
-            // DELETE BUTTON
-            drawShape('rec', 3, 8.4, 1, 0, 0, 4, 0.8, 0,0,0,0, '#4a0000', 1); // Dark red background
-            drawShape('rec', 3, 8.4, 1, 0, 0, 4, 0.8, 0,0,0,0, '#ff0000', 0); // Red border
-            drawText(3, 8.55, 4, 0.5, "DELETE CURRENT SESSION", '#ffaaaa', 1, 'center');
-            // ----------------------------------------------------
-            // THE DELETION CONFIRMATION POPUP OVERLAY
-            // ----------------------------------------------------
-            if (window.confirmDeletePrompt) {
-                // 1. Darken everything behind the popup
-                drawShape('rec', 0, 0, 1, 0, 0, 10, 10, 0, 0, 0, 0, 'rgba(0, 0, 0, 0.8)', 1);
+                drawText(1, 1.5, 8, 0.8, "- SYSTEM SETTINGS -", '#d4af37', 1, 'center');
                 
-                // 2. Draw the Warning Box
-                drawShape('rec', 2, 4, 1, 0, 0, 6, 4, 0, 0, 0, 0, '#220000', 1);
-                drawShape('rec', 2, 4, 1, 0, 0, 6, 4, 0, 0, 0, 0, '#ff0000', 0); // border
+                // Define colors for active/inactive states
+                let colorOnActive = window.settingsAudio ? 'lightgray' : '#444444';
+                let colorOffActive = !window.settingsAudio ? 'lightgray' : '#444444';
                 
-                drawText(2, 4.5, 6, 0.6, "WARNING", '#ff4444', 1, 'center');
-                drawText(2, 5.3, 6, 0.4, "Are you sure you want to delete your save?", 'white', 1, 'center');
-                drawText(2, 5.7, 6, 0.3, "This cannot be undone.", 'gray', 1, 'center');
-                
-                // YES BUTTON
-                drawShape('rec', 2.5, 6.0, 1, 0, 0, 2, 1, 0, 0, 0, 0, '#4a0000', 1);
-                drawShape('rec', 2.5, 6.0, 1, 0, 0, 2, 1, 0, 0, 0, 0, '#ff0000', 0); // border
-                drawText(2.5, 6.3, 2, 0.5, "YES", '#ffaaaa', 1, 'center');
+                let colorNarrationOn = window.settingsNarration ? 'lightgray' : '#444444';
+                let colorNarrationOff = !window.settingsNarration ? 'lightgray' : '#444444';
 
-                // NO BUTTON
-                drawShape('rec', 5.5, 6.0, 1, 0, 0, 2, 1, 0, 0, 0, 0, '#222222', 1);
-                drawShape('rec', 5.5, 6.0, 1, 0, 0, 2, 1, 0, 0, 0, 0, 'gray', 0); // border
-                drawText(5.5, 6.3, 2, 0.5, "NO", 'white', 1, 'center');
+                let colorChatOn = window.settingsChat ? 'lightgray' : '#444444';
+                let colorChatOff = !window.settingsChat ? 'lightgray' : '#444444';
+
+                // Default to 'dpad' if the variable is undefined
+                let currentControl = window.settingsControlsMode || 'dpad';
+                let colorControlsDpad = currentControl === 'dpad' ? 'lightgray' : '#444444';
+                let colorControlsTouch = currentControl === 'touch' ? 'lightgray' : '#444444';
+
+                // Row 1: AUDIO
+                drawText(2, 3.0, 3, 0.5, "AUDIO:", 'white', 1, 'left');
+                drawText(5, 3.0, 1.5, 0.5, "ON", colorOnActive, 1, 'center');
+                drawText(6.5, 3.0, 1.5, 0.5, "OFF", colorOffActive, 1, 'center');
+
+                // Row 2: AI NARRATION
+                drawText(2, 4.0, 3, 0.5, "AI NARRATION:", 'white', 1, 'left');
+                drawText(5, 4.0, 1.5, 0.5, "ON", colorNarrationOn, 1, 'center');
+                drawText(6.5, 4.0, 1.5, 0.5, "OFF", colorNarrationOff, 1, 'center');
+
+                // Row 3: CHAT
+                drawText(2, 5.0, 3, 0.5, "CHAT:", 'white', 1, 'left');
+                drawText(5, 5.0, 1.5, 0.5, "ON", colorChatOn, 1, 'center');
+                drawText(6.5, 5.0, 1.5, 0.5, "OFF", colorChatOff, 1, 'center');
+
+                // --- NEW ROW 4: CONTROLS ---
+                drawText(2, 6.0, 3, 0.5, "CONTROLS:", 'white', 1, 'left');
+                drawText(5, 6.0, 1.5, 0.5, "D-PAD", colorControlsDpad, 1, 'center');
+                drawText(6.5, 6.0, 2.0, 0.5, "TOUCH", colorControlsTouch, 1, 'center');
+
+                // Row 5+: ACTION BUTTONS (Shifted down)
+                // SAVE BUTTON
+                drawShape('rec', 3, 7.2, 1, 0, 0, 4, 0.8, 0,0,0,0, '#222222', 1);
+                drawShape('rec', 3, 7.2, 1, 0, 0, 4, 0.8, 0,0,0,0, '#d4af37', 0); 
+                drawText(3, 7.35, 4, 0.5, "SAVE GAME", 'white', 1, 'center');
+
+                // EXIT BUTTON
+                drawShape('rec', 3, 8.2, 1, 0, 0, 4, 0.8, 0,0,0,0, '#222222', 1);
+                drawShape('rec', 3, 8.2, 1, 0, 0, 4, 0.8, 0,0,0,0, '#d4af37', 0); 
+                drawText(3, 8.35, 4, 0.5, "EXIT TO MAIN MENU", 'white', 1, 'center');
+
+                // DELETE BUTTON
+                drawShape('rec', 3, 9.2, 1, 0, 0, 4, 0.8, 0,0,0,0, '#4a0000', 1); 
+                drawShape('rec', 3, 9.2, 1, 0, 0, 4, 0.8, 0,0,0,0, '#ff0000', 0); 
+                drawText(3, 9.35, 4, 0.5, "DELETE CURRENT SESSION", '#ffaaaa', 1, 'center');
+
+                // ----------------------------------------------------
+                // THE DELETION CONFIRMATION POPUP OVERLAY
+                // ----------------------------------------------------
+                if (window.confirmDeletePrompt) {
+                    drawShape('rec', 0, 0, 1, 0, 0, 10, 10, 0, 0, 0, 0, 'rgba(0, 0, 0, 0.8)', 1);
+                    drawShape('rec', 2, 4, 1, 0, 0, 6, 4, 0, 0, 0, 0, '#220000', 1);
+                    drawShape('rec', 2, 4, 1, 0, 0, 6, 4, 0, 0, 0, 0, '#ff0000', 0); 
+                    
+                    drawText(2, 4.5, 6, 0.6, "WARNING", '#ff4444', 1, 'center');
+                    drawText(2, 5.3, 6, 0.4, "Are you sure you want to delete your save?", 'white', 1, 'center');
+                    drawText(2, 5.7, 6, 0.3, "This cannot be undone.", 'gray', 1, 'center');
+                    
+                    // YES BUTTON
+                    drawShape('rec', 2.5, 6.0, 1, 0, 0, 2, 1, 0, 0, 0, 0, '#4a0000', 1);
+                    drawShape('rec', 2.5, 6.0, 1, 0, 0, 2, 1, 0, 0, 0, 0, '#ff0000', 0); 
+                    drawText(2.5, 6.3, 2, 0.5, "YES", '#ffaaaa', 1, 'center');
+
+                    // NO BUTTON
+                    drawShape('rec', 5.5, 6.0, 1, 0, 0, 2, 1, 0, 0, 0, 0, '#222222', 1);
+                    drawShape('rec', 5.5, 6.0, 1, 0, 0, 2, 1, 0, 0, 0, 0, 'gray', 0); 
+                    drawText(5.5, 6.3, 2, 0.5, "NO", 'white', 1, 'center');
+                }
             }
-        }
 
         // 4. DRAW THE EXIT BUTTON (Bottom Center: x=4 to 6, y=8.5 to 9.5)
           drawShape('rec', 8, 9, 1, 0, 0, 2, 1, 0,0,0,0, '#880000', 1);
