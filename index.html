@@ -2339,11 +2339,15 @@
             MusicEngine.play(Dungeon.mapSong[Dungeon.mapID]); 
           }
           //Mirage
-          if (this.type ===88&&this.state != 'fleeing'){
+          if (this.type ===88){
             
-            if(Dbug == 0){
+            if(this.state != 'fleeing' && Dbug == 0){
               dungeon.loadMap(4);
               MusicEngine.playSFX('warp');
+            }
+            else if (this.state === 'fleeing'){
+                this.startDialogue(dungeon);
+                return;
             }
           }
                 
@@ -7154,8 +7158,11 @@
                 btnDeck.show(0, 9, 1, 1, 1, 'Deck', 'jrpg_btn', 1, 0);
                 btnJournal.show(7.875, 2.275, .5, 1, 1, 'Journal', 'jrpg_btn', 1, 0);
                 btnPOV.show(9.3, 2.275, .5, 1, 1, 'POV', 'jrpg_btn', 1, 0);
-                btnMove.show(6,6, 4, 1, 1, '', 'd_pad', 1, 0);
-                btnLook.show(7.375, 7.375, 1.25, 1, 1, '', 'joystick', 1, 0); // Added to right side
+                btnMove.show(5,5, 5, 1, 1, '', 'd_pad', 1, 0);
+                btnTurnL.show(5.2,5.3, 1.5, 1, 1, '', 'turn_l', 1, 0);
+                btnTurnR.show(8.3,5.3, 1.5, 1, 1, '', 'turn_r', 1, 0);
+
+                btnLook.show(6.875, 6.875, 1.25, 1, 1, '', 'joystick', 1, 0); // Added to right side
             // --- DYNAMIC SPELL SLOTS LAYOUT ---
             let btnGap = 0.05;
             let btnWidth = 1.0;
@@ -7200,16 +7207,17 @@
                     }
                 }
             }
-           drawShape('rec', 0, 0, 1, -10, -10, 30, 10, 0,0,0,0, '#000000', 1);
-            
-            // Bottom border (Covers everything below y = 10)
-            drawShape('rec', 0, 0, 1, -10, 10, 30, 10, 0,0,0,0, '#000000', 1);
-            
-            // Left border (Covers everything to the left of x = 0)
-            drawShape('rec', 0, 0, 1, -10, 0, 10, 10, 0,0,0,0, '#000000', 1);
-            
-            // Right border (Covers everything to the right of x = 10)
-            drawShape('rec', 0, 0, 1, 10, 0, 10, 10, 0,0,0,0, '#000000', 1);
+            //SCREEN BORDERS
+                drawShape('rec', 0, 0, 1, -10, -10, 30, 10, 0,0,0,0, '#000000', 1);
+                
+                // Bottom border (Covers everything below y = 10)
+                drawShape('rec', 0, 0, 1, -10, 10, 30, 10, 0,0,0,0, '#000000', 1);
+                
+                // Left border (Covers everything to the left of x = 0)
+                drawShape('rec', 0, 0, 1, -10, 0, 10, 10, 0,0,0,0, '#000000', 1);
+                
+                // Right border (Covers everything to the right of x = 10)
+                drawShape('rec', 0, 0, 1, 10, 0, 10, 10, 0,0,0,0, '#000000', 1);
        
         //7. Timers
             let currentTime = Date.now();
@@ -13062,11 +13070,13 @@
             isPressed = this.isPressed;
             break;
           case 'd_pad':
+            let transparency = .15;
+            if(window.gameViewMode === '3d'){transparency = .05}
             // 1. Determine which arrow gets the highlight color
-            let upCol    = (this.isPressed && this.currentDir === 'up')    ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.15)';
-            let downCol  = (this.isPressed && this.currentDir === 'down')  ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.15)';
-            let leftCol  = (this.isPressed && this.currentDir === 'left')  ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.15)';
-            let rightCol = (this.isPressed && this.currentDir === 'right') ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.15)';
+            let upCol    = (this.isPressed && this.currentDir === 'up')    ? `rgba(255, 255, 255,  ${.3})` : `rgba(255, 255, 255, ${transparency})`;
+            let downCol  = (this.isPressed && this.currentDir === 'down')  ? `rgba(255, 255, 255,  ${.3})` : `rgba(255, 255, 255, ${transparency})`;
+            let leftCol  = (this.isPressed && this.currentDir === 'left')  ? `rgba(255, 255, 255,  ${.3})` : `rgba(255, 255, 255, ${transparency})`;
+            let rightCol = (this.isPressed && this.currentDir === 'right') ? `rgba(255, 255, 255,  ${.3})` : `rgba(255, 255, 255, ${transparency})`;
 
             // Center points based on the actual bounding box of the button
             let cx = this.l / 2;
@@ -13074,16 +13084,16 @@
             let w = this.l;
             let h = this.h;
             let rad = Math.min(w, h);
-
+            
             // 2. Translucent Background Circle
-            drawShape('arc', this.x, this.y, this.z, cx, cy, rad * 0.48, 0, 2, 0, 0, 0, 'rgba(0, 0, 0, 0.15)', 1);
+            drawShape('arc', this.x, this.y, this.z, cx, cy, rad * 0.48, 0, 2, 0, 0, 0, `rgba(0, 0, 0,  ${transparency})`, 1);
 
             // 3. D-Pad Cross Base
-            drawShape('rec', this.x, this.y, this.z, cx - (w*0.15), cy - (h*0.4), w*0.3, h*0.8, 0, 0, 0, 0, 'rgba(255, 255, 255, 0.075)', 1); // Vertical
-            drawShape('rec', this.x, this.y, this.z, cx - (w*0.4), cy - (h*0.15), w*0.8, h*0.3, 0, 0, 0, 0, 'rgba(255, 255, 255, 0.075)', 1); // Horizontal
+            drawShape('rec', this.x, this.y, this.z, cx - (w*0.15), cy - (h*0.4), w*0.3, h*0.8, 0, 0, 0, 0, `rgba(255, 255, 255,  ${transparency/2})`, 1); // Vertical
+            drawShape('rec', this.x, this.y, this.z, cx - (w*0.4), cy - (h*0.15), w*0.8, h*0.3, 0, 0, 0, 0, `rgba(255, 255, 255, ${transparency/2})`, 1); // Horizontal
             
             // 4. Center thumb grip
-            drawShape('arc', this.x, this.y, this.z, cx, cy, rad * 0.12, 0, 2, 0, 0, 0, 'rgba(0, 0, 0, 0.125)', 1);
+            drawShape('arc', this.x, this.y, this.z, cx, cy, rad * 0.12, 0, 2, 0, 0, 0, `rgba(0, 0, 0,  ${transparency})`, 1);
 
             // 5. Directional Arrows (Dynamically placed)
             drawShape('tri', this.x, this.y, this.z, cx, cy - (h*0.35), cx - (w*0.1), cy - (h*0.18), cx + (w*0.1), cy - (h*0.18), 0, 0, upCol, 1);    // Up
@@ -13120,7 +13130,7 @@
               }
 
               // 4. Draw Icons (Using built-in Canvas Unicode support)
-              let iconCol = 'rgba(255, 255, 255, 0..25)';
+              let iconCol = 'rgba(255, 255, 255, 0.25)';
               drawText(this.x+.015*this.z, this.y+.05*this.z, colW, rowH, "↶", iconCol, this.z);             // Turn Left
               drawText(this.x + ((this.l/3)*1.025)*this.z, this.y+.05*this.z, colW, rowH, "^", iconCol, this.z,'center');      // Forward
               drawText(this.x + ((this.l/3)*2.2)*this.z, this.y+.05*this.z, colW, rowH, "↷", iconCol, this.z);  // Turn Right
@@ -13130,14 +13140,50 @@
               drawText(this.x + ((this.l/3)*2.05)*this.z, this.y + ((this.l/2)*.75)*this.z, colW, rowH, ">", iconCol, this.z, 'center');  // Strafe Right
               
               break;
+          case 'turn_l':
+                          let opacityl = .05
+
+
+              // 1. Main Background (Semi-transparent black)
+              //drawShape('rec', this.x, this.y, this.z, 0, 0, this.l, this.h, 0, 0, 0, 0, 'rgba(0, 0, 0, 0.05)', 1);
+              
+            
+              // 3. Highlight Pressed Zone
+              if (this.isPressed && this.currentDir) {
+                  
+                opacityl= .5              
+                }
+
+              // 4. Draw Icons (Using built-in Canvas Unicode support)
+              drawText(this.x+this.l*.19, this.y+this.h/3, this.l, this.h, "↶",  `rgba(255, 255, 255, ${opacityl})`, this.z,'center');             // Turn Left
+              
+              break;
+          
+          case 'turn_r':
+              
+            let opacityr = .05
+              // 1. Main Background (Semi-transparent black)
+              //drawShape('rec', this.x, this.y, this.z, 0, 0, this.l, this.h, 0, 0, 0, 0, 'rgba(0, 0, 0, 0.05)', 1);
+              
+              // 3. Highlight Pressed Zone
+              if (this.isPressed && this.currentDir) {
+                 opacityr = .5
+              }
+
+              // 4. Draw Icons (Using built-in Canvas Unicode support)
+              drawText(this.x-this.l*.19, this.y+this.h/3, this.l, this.h, "↷", `rgba(255, 255, 255, ${opacityr})`, this.z,'center');  // Turn Right
+              
+              break;
+          
+          
           case 'joystick':
               let j_cx = this.l / 2;
               let j_cy = this.h / 2;
               let j_rad = Math.min(this.l, this.h) / 2;
 
               // 1. DRAW OUTER BOUNDARY (Static)
-              drawShape('arc', this.x, this.y, this.z, j_cx, j_cy, j_rad * 0.85, 0, 2, 0, 0, 0, 'rgba(0, 0, 0, 0.4)', 1);
-              drawShape('arc', this.x, this.y, this.z, j_cx, j_cy, j_rad * 0.85, 0, 2, 0, 0, 0, 'rgba(255, 255, 255, 0.2)', 0); 
+              drawShape('arc', this.x, this.y, this.z, j_cx, j_cy, j_rad * 0.85, 0, 2, 0, 0, 0, 'rgba(0, 0, 0, 0.1)', 1);
+              drawShape('arc', this.x, this.y, this.z, j_cx, j_cy, j_rad * 0.85, 0, 2, 0, 0, 0, 'rgba(255, 255, 255, 0.1)', 0); 
               drawShape('arc', this.x, this.y, this.z, j_cx, j_cy, j_rad * 0.1, 0, 2, 0, 0, 0, 'rgba(255, 255, 255, 0.1)', 1);
 
               // 2. CALCULATE THUMBSTICK POSITION & PULL DISTANCE
@@ -13159,10 +13205,10 @@
 
               // 3. DRAW INNER THUMBSTICK (Dynamic Visual Feedback)
               let isHardLook = (pullDist > 1.3); // Triggers right at the button edge
-              let knobCol = 'rgba(200, 200, 200, 0.5)';
+              let knobCol = 'rgba(200, 200, 200, 0.1)';
               
               if (this.isPressed) {
-                  knobCol = isHardLook ? 'rgba(255, 255, 255, 1.0)' : 'rgba(255, 255, 255, 0.7)';
+                  knobCol = isHardLook ? 'rgba(255, 255, 255, .5)' : 'rgba(255, 255, 255, 0.1)';
               }
               drawShape('arc', this.x, this.y, this.z, knobX, knobY, j_rad * 0.35, 0, 2, 0, 0, 0, knobCol, 1);
 
@@ -13258,6 +13304,12 @@
                   this.currentDir = (relY > 0.5) ? 'down' : 'up';
               }
           }
+           if (this.type === 'turn_l') {
+           this.currentDir = 't_left'
+           }
+           if (this.type === 'turn_r') {
+           this.currentDir = 't_right'
+           }
           // --- NEW: 6-WAY D-PAD DIRECTIONAL LOGIC ---
           else if (this.type === 'b_pad') {
               let relX = (tx - this.x) / (this.l * this.z * s);
@@ -13358,112 +13410,8 @@
               
           
 
-          // --- 2. Predict Target Tile & Check Collisions ---
-          if (allowMove && (moveX !== 0 || moveY !== 0)) {
-              let currentTileX = Math.floor(Dungeon.x);
-              let currentTileY = Math.floor(Dungeon.y);
-              let targetX = currentTileX + moveX;
-              let targetY = currentTileY + moveY;
-              let hitObstacle = false; // Replaces your 'return' statements
+            executeDungeonMove(moveX, moveY, movingForward);
 
-              // A. WALL CHECK
-              if (Dungeon.isWall(targetX, targetY) && !Dungeon.ghost) {
-                  hitObstacle = true;
-                  if (typeof MusicEngine !== 'undefined') {
-                      MusicEngine.playSFX('cancel');
-                      if (typeof socket !== 'undefined') {
-                          socket.emit('suncat_spectate', `player has crashed into a wall.`);
-                      }
-                  }
-              }
-
-              // B. NPC CHECK
-              if (!hitObstacle) {
-                  let hitNPC = null;
-                  for (let npc of Dungeon.npcs) {
-                      if (!npc.visible || npc.isDead||npc.alignment == 'ally') continue;
-                      if (Math.floor(npc.x) === targetX && Math.floor(npc.y) === targetY) {
-                          hitNPC = npc;
-                          break;
-                      }
-                  }
-
-                  if (hitNPC) {
-                      hitObstacle = true; 
-                      if (movingForward) {
-                          Dungeon.saveGame();
-                          hitNPC.triggerInteraction(Dungeon);
-                          
-                          // Aggro Dash Sync
-                          if (hitNPC.alignment === 'foe' || hitNPC.role === 'battle') {
-                              if (typeof socket !== 'undefined') {
-                                  socket.emit("engage_npc", { npcIndex: hitNPC.index, x: hitNPC.x, y: hitNPC.y });
-                              }
-                          }
-                      }
-                      // Allow moving backward into stationary map entities
-                      if(hitNPC.state == 'stationary' && Dungeon.mapID == 999){ hitObstacle = false; }
-                  }
-              }
-
-              // C. ONLINE / REMOTE PLAYER CHECK
-              if (!hitObstacle && window.remotePlayers) {
-                  for (let id in window.remotePlayers) {
-                      let p = window.remotePlayers[id];
-                      if (p.mapID !== Dungeon.mapID) continue;
-                      
-                      if (Math.floor(p.x) === targetX && Math.floor(p.y) === targetY) {
-                          hitObstacle = false;
-                          if (movingForward) {
-                              if (p.status === 'dueling') {
-                                  console.log("Target is already in a battle.");
-                                  MessageBox.show(0.5, 8, 1, 9, 2, 'That player is busy fighting!', 'dialogue', 1, 0);
-                              } else {
-                                  console.log(">> SENDING CHALLENGE...");
-                                  let mySimpleDeck = Dungeon.deck.map(c => c.index);
-                                  if(typeof socket !== 'undefined') {
-                                    socket.emit("challenge_request", { targetId: p.socketId, deck: mySimpleDeck });
-                                  }
-                                  Dungeon.currentSpeaker = p;
-                                  Dungeon.dCounter = 0;
-                                  Dungeon.status = 'dueling';
-                                  Dungeon.isChallenger = true;
-                                  startGame = 'dialogue';
-                                  MessageBox.show(0.5, 8, 1, 9, 2, 'Challenge sent!', 'dialogue', 1, 0);
-                              }
-                              if (p.socketId === "NPC_SUNCAT") {
-                                  Dungeon.currentSpeaker = p;
-                                  startGame = 'dialogue';
-                                  Dungeon.status = 'dueling';
-                                  Dungeon.isChallenger = true;
-                                  Dungeon.dCounter = 0;
-                                  if(typeof socket !== 'undefined') {
-                                      socket.emit('suncat_spectate', `${typeof playerName !== 'undefined' ? playerName : 'A player'} has challenged you to a game of Stones. Do YOU have the stones to play?`);
-                                  }
-                              }
-                          }
-                      }
-                  }
-              }
-
-              // --- 3. Execute Safe Movement ---
-              if (!hitObstacle) {
-                  Dungeon.x = targetX + 0.5;
-                  Dungeon.y = targetY + 0.5;
-                  Dungeon.checkFloorTriggers();
-
-                  if (typeof socket !== 'undefined') {
-                      socket.emit("move", {
-                          x: Dungeon.x,
-                          y: Dungeon.y,
-                          dir: Dungeon.dir,
-                          mapID: Dungeon.mapID || 0,
-                          status: Dungeon.status,
-                          portrait: typeof playerSprite !== 'undefined' ? playerSprite : 0 
-                      });
-                  }
-              }
-          }
       }
       // ==========================================
       // --- 6-WAY D-PAD MOVEMENT LOGIC ---
@@ -13512,6 +13460,15 @@
           executeDungeonMove(moveX, moveY, movingForward)
           
           }
+      if ((this.type === 'turn_l'||this.type === 'turn_r' ) && startGame === 'explore' && this.currentDir) {
+            if (this.currentDir === 't_left') {
+                        Dungeon.dir = (Dungeon.dir + 3) % 4;
+                        Dungeon.clickInput = null;
+                    } else if (this.currentDir === 't_right') {
+                        Dungeon.dir = (Dungeon.dir + 1) % 4;
+                        Dungeon.clickInput = null;
+                    } 
+        }
           // --- 2. Predict Target Tile & Check Collisions ---
           // (Keep the rest of your collision and execution code exactly the same below this!)
       // ==========================================
@@ -21412,6 +21369,9 @@
   var btnPOV = new btn(0, 0, 1, 1, 1, 'POV', 'red', 'white', 'POV', 0); 
   var btnMove2 = new btn(0, 0, 1, 1, 1, '', 'blue', 'white', 'b_pad', 0);     
   var btnLook = new btn(0, 0, 0, 0, 0, '', '', '');
+  var btnTurnL = new btn(0, 0, 1, 1, 1, '', 'blue', 'white', 'turn_l', 0);     
+  var btnTurnR = new btn(0, 0, 1, 1, 1, '', 'blue', 'white', 'turn_r', 0);     
+  
   var aniDFire = new Dice('d4');
   var aniDice = new Dice('d8');
   var aniDice2 = new Dice('d6');
@@ -23786,6 +23746,16 @@
                     console.log(`move2 button pressed`);
                     return; 
                 }
+                if (btnTurnL.isTouched(gridPos.x, gridPos.y) && btnTurnL.visible == true && btnTurnL.type != 'jrpg'&&window.gameViewMode ==='3d') {
+                    btnTurnL.press(); 
+                    console.log(`move2 button pressed`);
+                    return; 
+                }
+                if (btnTurnR.isTouched(gridPos.x, gridPos.y) && btnTurnR.visible == true && btnTurnR.type != 'jrpg'&&window.gameViewMode ==='3d') {
+                    btnTurnR.press(); 
+                    console.log(`move2 button pressed`);
+                    return; 
+                }
                 if (btnLook.isTouched(gridPos.x, gridPos.y) && btnLook.visible == true && btnLook.type != 'jrpg'&&window.gameViewMode ==='3d') {
                     btnLook.press(); 
                     console.log(`move2 button pressed`);
@@ -23830,7 +23800,7 @@
                         return;
                     }
 
-                    // LEFT SIDE OF SCREEN
+                    /*// LEFT SIDE OF SCREEN
                     if (pos.x > (tL/10)*-1 && pos.x <= (tL/10)*2.5 && pos.y > 0) {
                         if (pos.y <= (tH/10)*10) {
                             // BOTTOM LEFT: Turn Left
@@ -23868,7 +23838,7 @@
 
                     // Finally, execute the move
                     executeDungeonMove(moveX, moveY, movingForward);
-                            
+                            */
 
 
             
@@ -35542,7 +35512,7 @@
         let targetY = currentTileY + moveY;
 
         // A. WALL CHECK
-        if (Dungeon.isWall(targetX, targetY) && (!Dungeon.ghost || Dbug === 1)) {
+        if (Dungeon.isWall(targetX, targetY) && (!Dungeon.ghost)) {
             if (typeof MusicEngine !== 'undefined') { 
                 MusicEngine.playSFX('cancel');
                 socket.emit('suncat_spectate', `player has crashed into a wall.`);
