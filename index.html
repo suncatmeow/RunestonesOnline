@@ -38785,10 +38785,17 @@
         }
     //MODULE 2: Simple Dungeon Music
     class SimpleModule {
-          constructor(ctx, dest) {
+        constructor(ctx, dest) {
             this.ctx = ctx;
             this.mainOut = dest;
-            this.timer = null;
+            this.intervalId = null;
+            this.isStopped = false; // Safety flag
+
+            // --- SCHEDULING STATE ---
+            this.nextNoteTime = 0.0;
+            this.scheduleAheadTime = 0.15; // 150ms buffer
+            this.lookahead = 25; // 25ms logic check
+
             this.tempo = 100;
 
             this.fxInput = ctx.createGain();
@@ -38820,9 +38827,9 @@
             };
 
             this.st = { tickCount: 0, activeVoices: [], scaleName: 'dorian', scaleIntervals: [], rootFreqs: {}, rootNoteIndex: 0 };
-          }
+        }
 
-          setupReverb() {
+        setupReverb() {
             const len = this.ctx.sampleRate * 2.0;
             const buf = this.ctx.createBuffer(2, len, this.ctx.sampleRate);
             for (let c = 0; c < 2; c++) {
@@ -38830,26 +38837,44 @@
               for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.5);
             }
             this.revNode.buffer = buf;
-          }
+        }
 
-          start() {
+        start() {
+            if (this.intervalId) return; // Prevent double starts
+            this.isStopped = false;
+            
             this.st.activeVoices = [];
             this.st.tickCount = 0;
             this.updateKey();
             this.addVoice('soprano');
-            const tickRate = (60 / this.tempo) * 250;
-            this.timer = setInterval(() => this.tick(), tickRate);
-          }
+            
+            // Start the first note slightly in the future
+            this.nextNoteTime = this.ctx.currentTime + 0.05;
 
-          stop() {
-            if (this.timer) clearInterval(this.timer);
+            const loop = () => {
+                if (this.isStopped) return;
+                
+                while (this.nextNoteTime < this.ctx.currentTime + this.scheduleAheadTime) {
+                    this.scheduleNote(this.nextNoteTime);
+                    this.advanceNote();
+                }
+            };
+
+            this.intervalId = setInterval(loop, this.lookahead);
+        }
+
+        stop() {
+            this.isStopped = true;
+            if (this.intervalId) {
+                clearInterval(this.intervalId);
+                this.intervalId = null;
+            }
             
             // Fade out the main input to prevent popping
             this.fxInput.gain.cancelScheduledValues(this.ctx.currentTime);
             this.fxInput.gain.linearRampToValueAtTime(0, this.ctx.currentTime + 0.3);
             
-            // Wait for the reverb tail to finish (reverb usually needs more than 400ms!)
-            // We'll give it 2 full seconds to ring out before cutting the wires.
+            // Wait for the reverb tail to finish
             setTimeout(() => { 
                 if (this.fxInput) this.fxInput.disconnect(); 
                 if (this.comp) this.comp.disconnect(); 
@@ -38858,9 +38883,26 @@
                 if (this.revGain) this.revGain.disconnect();
                 if (this.dryGain) this.dryGain.disconnect();
             }, 2000);
-          }
+        }
 
-          updateKey() {
+        advanceNote() {
+            // Note: The original tick rate was (60 / tempo) * 250 ms.
+            // 250ms is a 16th note at 60 BPM. So we're basically calculating 16th notes.
+            const secondsPerBeat = 60.0 / this.tempo;
+            const secondsPer16th = 0.25 * secondsPerBeat;
+            
+            this.nextNoteTime += secondsPer16th;
+            this.st.tickCount++;
+        }
+
+        scheduleNote(time) {
+            if (this.st.tickCount === 20) this.addVoice('alto');
+            if (this.st.tickCount % 64 === 0) this.updateKey();
+            
+            this.st.activeVoices.forEach(v => this.processVoice(v, time));
+        }
+
+        updateKey() {
             const scaleKeys = Object.keys(this.cfg.scales);
             this.st.scaleName = scaleKeys[Math.floor(Math.random() * scaleKeys.length)];
             this.st.scaleIntervals = this.cfg.scales[this.st.scaleName];
@@ -38871,95 +38913,92 @@
               const freq = 440 * Math.pow(2, (noteNum - 69) / 12);
               this.st.rootFreqs[i] = freq;
             }
-          }
+        }
 
-          addVoice(id) {
+        addVoice(id) {
             const def = this.cfg.voices[id];
             this.st.activeVoices.push({ id: id, ...def, momentum: 5, active: true });
-          }
+        }
 
-          tick() {
-            this.st.tickCount++;
-            if (this.st.tickCount === 20) this.addVoice('alto');
-            if (this.st.tickCount % 64 === 0) this.updateKey();
-            this.st.activeVoices.forEach(v => this.processVoice(v));
-          }
-
-          processVoice(v) {
+        processVoice(v, time) {
             let chance = v.p + (v.momentum * 0.1);
             if (v.role === 'upper') chance *= 1.1;
+            
             if (Math.random() < chance) {
-              this.playNote(v);
+              this.playNote(v, time);
               v.momentum = Math.max(-2, v.momentum - (2 + Math.random()));
             } else {
               v.momentum = Math.min(10, v.momentum + 1);
             }
-          }
+        }
 
-          playNote(v) {
+        playNote(v, t) {
             const scale = this.st.scaleIntervals;
             const scaleDegree = Math.floor(Math.random() * scale.length);
             const pitchClass = scale[scaleDegree];
             let octaveBase = v.role === 'upper' ? 12 : 0;
             const noteIndex = octaveBase + pitchClass;
             const freq = this.st.rootFreqs[noteIndex];
+            
             if (!freq) return;
 
             const r = Math.random();
             let dur = 0.5;
             if (r < 0.3) dur = 0.25; else if (r > 0.8) dur = 1.0;
 
-            const t = this.ctx.currentTime;
             const osc = this.ctx.createOscillator();
             const gn = this.ctx.createGain();
             osc.type = v.type;
             osc.frequency.setValueAtTime(freq, t);
+            
             const filter = this.ctx.createBiquadFilter();
             filter.type = 'lowpass';
             filter.frequency.setValueAtTime(600 + (Math.random() * 1000), t);
 
             osc.connect(filter); filter.connect(gn); gn.connect(this.fxInput);
+            
             gn.gain.setValueAtTime(0, t);
             gn.gain.linearRampToValueAtTime(0.2, t + 0.02);
             gn.gain.exponentialRampToValueAtTime(0.01, t + dur);
             gn.gain.linearRampToValueAtTime(0, t + dur + 0.1);
+            
             osc.start(t);
             osc.stop(t + dur + 0.2);
+            
             // Clean up the local nodes when the note finishes
             osc.onended = () => {
                 osc.disconnect();
                 filter.disconnect();
                 gn.disconnect();
             };
-          }
         }
-    // MODULE 3: Stop and Smell the Roses
+    }
+    // MODULE 3: Peace at Last
     class RoseModule {
-          constructor(ctx, dest) {
+        constructor(ctx, dest) {
             this.ctx = ctx;
             this.dest = dest;
-            this.timer = null;
+            this.intervalId = null;
+            this.isStopped = false;
+
+            // --- SCHEDULING STATE ---
+            this.nextNoteTime = 0.0;
+            this.scheduleAheadTime = 0.15; // 150ms buffer
+            this.lookahead = 25; // 25ms logic check
+            this.tickCount = 0;
 
             // --- EMOTIONAL STATS ---
             this.tempo = 60; // Very Slow (Adagio)
-            this.keyBase = 155.56; // Eb3 (Eb Major - The key of "Heroic Love")
-
-            // Eb Major Scale: Eb, F, G, Ab, Bb, C, D
-            this.scale = [0, 2, 4, 5, 7, 9, 11];
-
-            // --- STATE ---
-            this.tickCount = 0;
-            this.startTime = 0;
-
-            // Timeline: 'explosion' -> 'silence' -> 'piano_solo' -> 'tutti'
+            
+            // Start in Eb Major (The key of "Heroic Love")
+            this.keyBase = 155.56; // Eb3
+            this.scale = [0, 2, 4, 5, 7, 9, 11]; // Major Scale
             this.phase = 'explosion';
 
             // --- GLOBAL FX: THE "CATHEDRAL" REVERB ---
-            // We need a ConvolverNode to simulate a massive space
             this.reverb = ctx.createConvolver();
             this.reverb.buffer = this.createImpulseResponse(3.0, 2.0); // 3 seconds reverb
 
-            // Master Gain for Fade Out
             this.masterGain = ctx.createGain();
             this.masterGain.gain.value = 1.0;
 
@@ -38976,9 +39015,9 @@
             this.input = ctx.createGain();
             this.input.connect(this.reverb); // Wet
             this.input.connect(this.dryGain); // Dry
-          }
+        }
 
-          createImpulseResponse(duration, decay) {
+        createImpulseResponse(duration, decay) {
             const rate = this.ctx.sampleRate;
             const length = rate * duration;
             const impulse = this.ctx.createBuffer(2, length, rate);
@@ -38986,31 +39025,48 @@
             const right = impulse.getChannelData(1);
 
             for (let i = 0; i < length; i++) {
-              // Exponential decay noise
-              const n = i / length;
-              const env = Math.pow(1 - n, decay);
-              left[i] = (Math.random() * 2 - 1) * env;
-              right[i] = (Math.random() * 2 - 1) * env;
+                const n = i / length;
+                const env = Math.pow(1 - n, decay);
+                left[i] = (Math.random() * 2 - 1) * env;
+                right[i] = (Math.random() * 2 - 1) * env;
             }
             return impulse;
-          }
+        }
 
-          start() {
+        start() {
+            if (this.intervalId) return; // Prevent double starts
+            this.isStopped = false;
             this.tickCount = 0;
-            this.startTime = this.ctx.currentTime;
             this.phase = 'explosion';
 
+            // Set up initial timeline
+            this.nextNoteTime = this.ctx.currentTime + 0.05;
+
             // Trigger the blinding light immediately
-            this.playExplosion();
+            this.playExplosion(this.nextNoteTime);
 
-            // Start the loop
-            this.loop();
-          }
+            const loop = () => {
+                if (this.isStopped) return;
+                
+                while (this.nextNoteTime < this.ctx.currentTime + this.scheduleAheadTime) {
+                    this.scheduleNote(this.nextNoteTime);
+                    this.advanceNote();
+                }
+            };
 
-          stop() {
-            if (this.timer) clearTimeout(this.timer);
-            this.masterGain.gain.cancelScheduledValues(this.ctx.currentTime);
-            this.masterGain.gain.linearRampToValueAtTime(0, this.ctx.currentTime + 0.1);
+            this.intervalId = setInterval(loop, this.lookahead);
+        }
+
+        stop() {
+            this.isStopped = true;
+            if (this.intervalId) {
+                clearInterval(this.intervalId);
+                this.intervalId = null;
+            }
+
+            const t = this.ctx.currentTime;
+            this.masterGain.gain.cancelScheduledValues(t);
+            this.masterGain.gain.linearRampToValueAtTime(0, t + 0.1);
 
             // Wait for the massive 3-second Cathedral reverb to finish ringing out!
             setTimeout(() => {
@@ -39019,55 +39075,70 @@
                 if (this.dryGain) this.dryGain.disconnect();
                 if (this.masterGain) this.masterGain.disconnect();
             }, 3500); 
-          }
+        }
 
-          loop() {
-            const secondsPerBeat = 60 / this.tempo;
-            const interval = (secondsPerBeat / 4) * 1000; // 16th notes
+        modulateKey() {
+            // All 12 chromatic keys. C3 is ~130.81 Hz.
+            const keys = ['C', 'C#', 'D', 'Eb', 'E', 'F', 'F#', 'G', 'Ab', 'A', 'Bb', 'B'];
+            const randomShift = Math.floor(Math.random() * 12);
+            
+            // Calculate new base frequency relative to C3
+            this.keyBase = 130.81 * Math.pow(2, randomShift / 12);
+            console.log(`Modulating to key of ${keys[randomShift]}`);
+        }
 
-            this.timer = setTimeout(() => this.loop(), interval);
+        advanceNote() {
+            // 16th notes
+            const secondsPerBeat = 60.0 / this.tempo;
+            this.nextNoteTime += 0.25 * secondsPerBeat;
+            this.tickCount++;
+        }
 
-            const t = this.ctx.currentTime - this.startTime;
+        scheduleNote(t) {
+            // 1 bar = 16 ticks. 8 bars = 128 ticks.
+            // Modulate the key every 16 bars (after the initial cinematic intro finishes at tick 64)
+            if (this.tickCount > 63 && this.tickCount % 256 === 0) {
+                this.modulateKey();
+            }
+
             const step = this.tickCount % 32;
 
-            // --- CINEMATIC TIMELINE ---
-
-            // 0s - 4s: The Explosion (Handled in start(), we just wait)
-            if (t < 4.0) {
-              // Do nothing, let the noise fade
+            // --- CINEMATIC TIMELINE TRANSLATED TO TICKS ---
+            // Tempo is 60 BPM, so 1 tick = 0.25 seconds.
+            
+            // 0s - 4s (Ticks 0 - 15): The Explosion
+            if (this.tickCount < 16) {
+                // The explosion handles itself, we just let the noise fade
+                this.phase = 'explosion';
             }
-            // 4s - 12s: The "Glimpse" (Lonely Piano)
-            else if (t >= 4.0 && t < 16.0) {
-              this.phase = 'piano_solo';
-              if (step % 4 === 0) this.playPianoMelody(step);
-              if (step % 16 === 0) this.playBassPad(0); // Root
+            // 4s - 16s (Ticks 16 - 63): The "Glimpse" (Lonely Piano)
+            else if (this.tickCount >= 16 && this.tickCount < 64) {
+                this.phase = 'piano_solo';
+                if (step % 4 === 0) this.playPianoMelody(step, t);
+                if (step % 16 === 0) this.playBassPad(0, t); // Root
             }
-            // 16s+: The "Walk Away" (Strings + Sparkles)
+            // 16s+ (Ticks 64+): The "Walk Away" (Strings + Sparkles)
             else {
-              this.phase = 'tutti';
+                this.phase = 'tutti';
 
-              // Piano continues
-              if (step % 4 === 0) this.playPianoMelody(step);
+                // Piano continues
+                if (step % 4 === 0) this.playPianoMelody(step, t);
 
-              // Strings Swell (New chord every 2 bars)
-              if (step % 32 === 0) {
-                // Progression: I -> IV -> I -> V
-                const chord = (this.tickCount % 64 === 0) ? 0 : 5; // I or IV
-                this.playStringSection(chord);
-              }
+                // Strings Swell (New chord every 2 bars / 32 ticks)
+                if (step % 32 === 0) {
+                    // Progression: I -> IV -> I -> V
+                    const chord = (this.tickCount % 64 === 0) ? 0 : 5; // I or IV
+                    this.playStringSection(chord, t);
+                }
 
-              // The "Repair" Sparkles (Magic fixing the world)
-              if (step % 2 === 0) this.playSparkle(step);
+                // The "Repair" Sparkles (Magic fixing the world)
+                if (step % 2 === 0) this.playSparkle(step, t);
             }
+        }
 
-            this.tickCount++;
-          }
+        // --- INSTRUMENTS ---
 
-          // --- INSTRUMENTS ---
-
-          playExplosion() {
-            const t = this.ctx.currentTime;
-
+        playExplosion(t) {
             // 1. White Noise Burst (The "Flash")
             const buf = this.ctx.createBuffer(1, 44100 * 4, this.ctx.sampleRate);
             const data = buf.getChannelData(0);
@@ -39100,7 +39171,7 @@
 
             osc.connect(g2); g2.connect(this.input);
             osc.start(t);
-            // Force the noise buffer to stop so it can trigger onended
+            osc.stop(t + 4.0); 
             src.stop(t + 4.0); 
 
             src.onended = () => {
@@ -39113,15 +39184,11 @@
                 osc.disconnect();
                 g2.disconnect();
             };
-          }
+        }
 
-          playPianoMelody(step) {
+        playPianoMelody(step, t) {
             // Procedural "Hope" Melody
-            // Keeps it simple, mostly stepwise motion
-            const t = this.ctx.currentTime;
-
             // Random note from scale (Pentatonic-ish for safety)
-            // 0, 1, 2, 4, 5 (Eb, F, G, Bb, C)
             const safeNotes = [0, 2, 4, 7, 9, 11];
             const noteIndex = safeNotes[Math.floor(Math.random() * safeNotes.length)];
 
@@ -39130,7 +39197,7 @@
 
             // SOUND: Soft Piano (Sine + Triangle)
             const osc = this.ctx.createOscillator();
-            osc.type = 'triangle'; // Triangle has a nice hollow wood sound
+            osc.type = 'triangle'; 
             osc.frequency.value = freq;
 
             const g = this.ctx.createGain();
@@ -39144,26 +39211,25 @@
                 osc.disconnect();
                 g.disconnect();
             };
-          }
+        }
 
-          playStringSection(rootIndex) {
+        playStringSection(rootIndex, t) {
             // Lush Pad
-            const t = this.ctx.currentTime;
-            const chordOffsets = [0, 2, 4, 6]; // Major 7th Chord (Lush/Nostalgic)
+            const chordOffsets = [0, 2, 4, 6]; // Major 7th Chord
 
             chordOffsets.forEach((offset, i) => {
-              const idx = (rootIndex + offset) % 7;
-              const semitone = this.scale[idx];
-              const freq = this.keyBase * Math.pow(2, semitone / 12);
+                const idx = (rootIndex + offset) % 7;
+                const semitone = this.scale[idx];
+                const freq = this.keyBase * Math.pow(2, semitone / 12);
 
-              // Dual Oscillator for width
-              this.createPadVoice(t, freq);
-              // Add a lower octave for the root
-              if (i === 0) this.createPadVoice(t, freq / 2);
+                // Dual Oscillator for width
+                this.createPadVoice(t, freq);
+                // Add a lower octave for the root
+                if (i === 0) this.createPadVoice(t, freq / 2);
             });
-          }
+        }
 
-          createPadVoice(t, freq) {
+        createPadVoice(t, freq) {
             const osc = this.ctx.createOscillator();
             osc.type = 'sawtooth';
             osc.frequency.value = freq;
@@ -39185,13 +39251,9 @@
                 f.disconnect();
                 g.disconnect();
             };
-          }
+        }
 
-          playSparkle(step) {
-            // High pitched sine waves panning around
-            // Represents "light" or "magic"
-            const t = this.ctx.currentTime;
-
+        playSparkle(step, t) {
             // Ascending run
             const noteIndex = step % 7;
             const freq = (this.keyBase * 4) * Math.pow(2, this.scale[noteIndex] / 12);
@@ -39201,7 +39263,8 @@
             osc.frequency.value = freq;
 
             const panner = this.ctx.createStereoPanner();
-            panner.pan.value = Math.sin(t * 2); // Pan back and forth
+            // Utilizing the schedule time `t` to dynamically place the pan randomly across stereo space!
+            panner.pan.value = Math.sin(t * 2); 
 
             const g = this.ctx.createGain();
             g.gain.setValueAtTime(0, t);
@@ -39215,10 +39278,9 @@
                 g.disconnect();
                 panner.disconnect();
             };
-          }
+        }
 
-          playBassPad(rootIndex) {
-            const t = this.ctx.currentTime;
+        playBassPad(rootIndex, t) {
             const freq = (this.keyBase / 2) * Math.pow(2, this.scale[rootIndex] / 12);
 
             const osc = this.ctx.createOscillator();
@@ -39236,8 +39298,8 @@
                 osc.disconnect();
                 g.disconnect();
             };
-          }
         }
+    }
     //MODULE 4: Dungeon
     class DungeonM {
           constructor(ctx, dest) {
@@ -39464,8 +39526,13 @@
       constructor(ctx, dest) {
         this.ctx = ctx;
         this.dest = dest;
-        this.timer = null;
+        this.intervalId = null;
         this.isStopped = false; // SAFETY FLAG
+
+        // --- SCHEDULING STATE ---
+        this.nextNoteTime = 0.0;
+        this.scheduleAheadTime = 0.15; // 150ms audio buffer
+        this.lookahead = 25; // 25ms logic check
 
         // 1. GLOBAL FX
         this.master = ctx.createGain();
@@ -39532,20 +39599,41 @@
       }
 
       start() {
+        if (this.intervalId) return; // Prevent double-starts
         this.isStopped = false;
+        
         this.generateScale('harmonicMinor');
-        const noteDuration = (60 / this.tempo) / 4;
-        // Use setTimeout loop instead of setInterval for better stability
-        this.schedule();
+        this.tickCount = 0;
+        this.currentChordIndex = 0;
+        
+        // Start the first note slightly in the future
+        this.nextNoteTime = this.ctx.currentTime + 0.05;
+
+        const loop = () => {
+            if (this.isStopped) return;
+            
+            // Schedule notes ahead of time
+            while (this.nextNoteTime < this.ctx.currentTime + this.scheduleAheadTime) {
+                this.scheduleNote(this.tickCount, this.nextNoteTime);
+                this.advanceNote();
+            }
+        };
+
+        // Run the checker on a fast interval
+        this.intervalId = setInterval(loop, this.lookahead);
       }
 
       stop() {
         this.isStopped = true;
-        if (this.timer) clearTimeout(this.timer);
+        if (this.intervalId) {
+            clearInterval(this.intervalId);
+            this.intervalId = null;
+        }
         
         // Cancel any pending fades and start the fade out
-        this.master.gain.cancelScheduledValues(this.ctx.currentTime);
-        this.master.gain.linearRampToValueAtTime(0, this.ctx.currentTime + 0.2);
+        const t = this.ctx.currentTime;
+        this.master.gain.cancelScheduledValues(t);
+        this.master.gain.linearRampToValueAtTime(0, t + 0.2);
         
         // Wait for the 1.5s reverb tail to finish ringing out
         setTimeout(() => {
@@ -39558,44 +39646,42 @@
         }, 2000);
       }
 
-      schedule() {
-        if (this.isStopped) return;
-        const noteDuration = (60 / this.tempo) / 4;
-        this.timer = setTimeout(() => this.schedule(), noteDuration * 1000);
-        this.tick();
-      }
-
       generateScale(type) {
         const intervals = [0, 2, 3, 5, 7, 8, 11];
         this.currentScale = intervals.map(i => this.rootFreq * Math.pow(2, i / 12));
       }
 
-      tick() {
-        if (this.isStopped) return;
-        const t = this.ctx.currentTime;
-        const barStep = this.tickCount % 16;
+      advanceNote() {
+        // Calculate the duration of a 16th note based on tempo
+        const secondsPerBeat = 60.0 / this.tempo;
+        const secondsPer16th = 0.25 * secondsPerBeat;
+        
+        this.nextNoteTime += secondsPer16th;
+        this.tickCount++;
 
-        this.playDrums(t, barStep);
+        // Manage progression state here so it syncs with exact time
+        if (this.tickCount % 16 === 0) {
+          this.currentChordIndex = (this.currentChordIndex + 1) % this.progression.length;
+          this.momentum = Math.floor(Math.random() * 8) + 2;
+        }
+      }
+
+      scheduleNote(currentTick, time) {
+        const barStep = currentTick % 16;
+
+        this.playDrums(time, barStep);
 
         if (barStep % 2 === 0 || Math.random() > 0.3) {
-          this.playBass(t);
+          this.playBass(time);
         }
 
         if (barStep === 0 || (barStep === 6 && Math.random() > 0.5)) {
-          this.playHit(t);
+          this.playHit(time);
         }
 
         if (Math.random() < (this.momentum / 10)) {
-          this.playLead(t);
+          this.playLead(time);
         }
-
-        if (barStep === 15) {
-          this.currentChordIndex = (this.currentChordIndex + 1) % this.progression.length;
-          this.tickCount = -1;
-          this.momentum = Math.floor(Math.random() * 8) + 2;
-        }
-
-        this.tickCount++;
       }
 
       playDrums(t, step) {
@@ -39636,7 +39722,6 @@
       }
 
       playBass(t) {
-        if (this.isStopped) return;
         const degree = this.progression[this.currentChordIndex];
         const freq = this.currentScale[degree] / 2;
 
@@ -39665,7 +39750,6 @@
       }
 
       playHit(t) {
-        if (this.isStopped) return;
         const rootIdx = this.progression[this.currentChordIndex];
         const chord = [rootIdx, rootIdx + 2, rootIdx + 4];
 
@@ -39697,7 +39781,6 @@
       }
 
       playLead(t) {
-        if (this.isStopped) return;
         const scaleIdx = Math.floor(Math.random() * this.currentScale.length);
         const octave = Math.random() > 0.5 ? 2 : 4;
         const freq = this.currentScale[scaleIdx] * octave;
@@ -40012,222 +40095,262 @@
         }
     //MODULE 7: March
     class MarchModule {
-          constructor(ctx, dest) {
-            this.ctx = ctx;
-            this.dest = dest;
-            this.timer = null;
+      constructor(ctx, dest) {
+        this.ctx = ctx;
+        this.dest = dest;
+        this.intervalId = null;
+        this.isStopped = false; // Safety flag
 
-            // 1. DYNAMIC LAYERING (The Card Game Logic)
-            this.intensity = 1; // 1 = Setup, 2 = Mid, 3 = Lethal
+        // --- SCHEDULING STATE ---
+        this.nextNoteTime = 0.0;
+        this.scheduleAheadTime = 0.15; // 150ms buffer
+        this.lookahead = 25; // 25ms logic check
 
-            // 2. GLOBAL MIX
-            this.master = ctx.createGain();
-            this.master.gain.value = 0.5;
-            this.master.connect(this.dest);
+        // 1. DYNAMIC LAYERING (The Card Game Logic)
+        this.intensity = 1; // 1 = Setup, 2 = Mid, 3 = Lethal
 
-            // 3. STATE
-            this.tempo = 110; // March tempo
-            this.tickCount = 0;
-            this.keyBase = 146.83; // D3 (D Dorian - classic fantasy strategy key)
+        // 2. GLOBAL MIX
+        this.master = ctx.createGain();
+        this.master.gain.value = 0.5;
+        this.master.connect(this.dest);
 
-            // D Dorian Scale: D, E, F, G, A, B, C
-            this.scale = [0, 2, 3, 5, 7, 9, 10];
-            this.snareBuffer = this.createNoiseBuffer(0.1);
-            // Snare Pattern (1 = Hit, 0 = Rest, 2 = Accent)
-            // "Ratta-tat-tat" military cadence
-            this.snareGrid = [2, 0, 1, 0, 2, 1, 1, 0, 2, 0, 1, 0, 1, 1, 0, 1];
-          }
-          createNoiseBuffer(duration) {
-            const bufferSize = this.ctx.sampleRate * duration;
-            const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
-            const data = buffer.getChannelData(0);
-            for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
-            return buffer;
-          }
-          start() {
-            this.tickCount = 0;
-            // 16th note interval
-            const interval = (60 / this.tempo) / 4 * 1000;
-            this.timer = setInterval(() => this.tick(), interval);
-          }
+        // 3. STATE
+        this.tempo = 110; // March tempo
+        this.tickCount = 0;
+        this.keyBase = 146.83; // D3 (D Dorian - classic fantasy strategy key)
 
-          stop() {
-            if (this.timer) clearInterval(this.timer);
+        // D Dorian Scale: D, E, F, G, A, B, C
+        this.scale = [0, 2, 3, 5, 7, 9, 10];
+        this.snareBuffer = this.createNoiseBuffer(0.1);
+        // Snare Pattern (1 = Hit, 0 = Rest, 2 = Accent)
+        // "Ratta-tat-tat" military cadence
+        this.snareGrid = [2, 0, 1, 0, 2, 1, 1, 0, 2, 0, 1, 0, 1, 1, 0, 1];
+      }
+
+      createNoiseBuffer(duration) {
+        const bufferSize = this.ctx.sampleRate * duration;
+        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+        return buffer;
+      }
+
+      start() {
+        if (this.intervalId) return; // Prevent double starts
+        this.isStopped = false;
+        
+        this.tickCount = 0;
+        
+        // Reset gain in case it was faded out
+        this.master.gain.cancelScheduledValues(this.ctx.currentTime);
+        this.master.gain.setValueAtTime(0.5, this.ctx.currentTime);
+
+        this.nextNoteTime = this.ctx.currentTime + 0.05;
+
+        const loop = () => {
+            if (this.isStopped) return;
             
-            this.master.gain.cancelScheduledValues(this.ctx.currentTime);
-            this.master.gain.setTargetAtTime(0, this.ctx.currentTime, 0.1);
-            
-            // Wait just 500ms for the quick fade to finish
-            setTimeout(() => {
-                if (this.master) this.master.disconnect();
-            }, 500);
-          }
-
-          setIntensity(level) {
-            // Smooth transition between game phases
-            this.intensity = level;
-          }
-
-          // --- THE SEQUENCER ---
-          tick() {
-            const t = this.ctx.currentTime;
-            const step = this.tickCount % 16; // 1 bar loop
-            const bar = Math.floor(this.tickCount / 16) % 4; // 4 bar phrase
-
-            // LAYER 1: THE FOUNDATION (Always On)
-            // Military Snare
-            const snareType = this.snareGrid[step];
-            if (snareType > 0) this.playSnare(t, snareType === 2);
-
-            // Kick Drum (On beats 1 and 3)
-            if (step === 0 || step === 8) this.playKick(t);
-
-            // LAYER 2: THE INTELLECT (Intensity 2+)
-            // Staccato Strings (The "Clockwork" of strategy)
-            if (this.intensity >= 2) {
-              // Play on off-beats to create forward momentum
-              if (step % 2 === 0) {
-                // Arpeggiate current chord
-                this.playStrings(t, step, bar);
-              }
+            while (this.nextNoteTime < this.ctx.currentTime + this.scheduleAheadTime) {
+                this.scheduleNote(this.nextNoteTime);
+                this.advanceNote();
             }
+        };
 
-            // LAYER 3: THE RESOLVE (Intensity 3 Only)
-            // Low Brass / Horns (The "Army" has arrived)
-            if (this.intensity >= 3) {
-              // Long, swelling notes on the 1st beat of the bar
-              if (step === 0) {
-                this.playBrass(t, bar);
-              }
-            }
+        this.intervalId = setInterval(loop, this.lookahead);
+      }
 
-            this.tickCount++;
-          }
+      stop() {
+        this.isStopped = true;
+        if (this.intervalId) {
+            clearInterval(this.intervalId);
+            this.intervalId = null;
+        }
+        
+        const t = this.ctx.currentTime;
+        this.master.gain.cancelScheduledValues(t);
+        this.master.gain.setTargetAtTime(0, t, 0.1);
+        
+        // Wait just 500ms for the quick fade to finish
+        setTimeout(() => {
+            if (this.master) this.master.disconnect();
+        }, 500);
+      }
 
-          // --- INSTRUMENTS ---
+      setIntensity(level) {
+        // Smooth transition between game phases
+        this.intensity = level;
+      }
 
-          playSnare(t, accent) {
-            // USE PRE-GENERATED BUFFER
-            const noise = this.ctx.createBufferSource();
-            noise.buffer = this.snareBuffer; 
+      advanceNote() {
+        // 16th notes
+        const secondsPerBeat = 60.0 / this.tempo;
+        this.nextNoteTime += 0.25 * secondsPerBeat;
+        this.tickCount++;
+      }
 
-            // Filter: High pass to make it crisp
-            const filt = this.ctx.createBiquadFilter();
-            filt.type = 'highpass';
-            filt.frequency.value = 1000;
+      // --- THE SEQUENCER ---
+      scheduleNote(time) {
+        const step = this.tickCount % 16; // 1 bar loop
+        const bar = Math.floor(this.tickCount / 16) % 4; // 4 bar phrase
 
-            const gain = this.ctx.createGain();
-            // Envelope: Very sharp snap
-            const vol = accent ? 0.4 : 0.15; // Dynamics!
-            gain.gain.setValueAtTime(vol, t);
-            gain.gain.exponentialRampToValueAtTime(0.01, t + 0.08);
+        // LAYER 1: THE FOUNDATION (Always On)
+        // Military Snare
+        const snareType = this.snareGrid[step];
+        if (snareType > 0) this.playSnare(time, snareType === 2);
 
-            noise.connect(filt); filt.connect(gain); gain.connect(this.master);
-            
-            noise.start(t);
-            noise.stop(t + 0.1); // Explicitly stop the buffer
-            
-            noise.onended = () => {
-                noise.disconnect();
-                filt.disconnect();
-                gain.disconnect();
-            };
-          }
+        // Kick Drum (On beats 1 and 3)
+        if (step === 0 || step === 8) this.playKick(time);
 
-          playKick(t) {
-            // Orchestral Bass Drum (Deep and boom-y)
-            const osc = this.ctx.createOscillator();
-            const gain = this.ctx.createGain();
-
-            osc.frequency.setValueAtTime(100, t);
-            osc.frequency.exponentialRampToValueAtTime(30, t + 0.3); // Pitch dive
-
-            gain.gain.setValueAtTime(0.5, t);
-            gain.gain.exponentialRampToValueAtTime(0.01, t + 0.3);
-
-            osc.connect(gain); gain.connect(this.master);
-            osc.start(t); osc.stop(t + 0.3);
-            osc.onended = () => {
-                osc.disconnect();
-                gain.disconnect();
-            };
-          }
-
-          playStrings(t, step, bar) {
-            // Logic: Walk up and down the Dorian scale
-            // Bar 0: i (Dm), Bar 1: III (F), Bar 2: VII (C), Bar 3: V (Am)
-            const chordRoots = [0, 3, 6, 4];
-            const root = chordRoots[bar];
-
-            // Arpeggiator pattern: Root -> 3rd -> 5th -> 3rd
-            const arp = [0, 2, 4, 2];
-            const noteIndex = (root + arp[(step / 2) % 4]) % this.scale.length;
-
-            const freq = this.keyBase * Math.pow(2, this.scale[noteIndex] / 12);
-
-            // Sound: Sawtooth wave with Low Pass (Spiccato Strings)
-            const osc = this.ctx.createOscillator();
-            osc.type = 'sawtooth';
-            osc.frequency.value = freq * 2; // Octave up
-
-            const filter = this.ctx.createBiquadFilter();
-            filter.type = 'lowpass';
-            filter.frequency.value = 600;
-
-            const gain = this.ctx.createGain();
-            gain.gain.setValueAtTime(0, t);
-            gain.gain.linearRampToValueAtTime(0.15, t + 0.02);
-            gain.gain.linearRampToValueAtTime(0, t + 0.1); // Short "Pluck"
-
-            osc.connect(filter); filter.connect(gain); gain.connect(this.master);
-            osc.start(t); osc.stop(t + 0.2);
-            osc.onended = () => {
-                osc.disconnect();
-                filter.disconnect();
-                gain.disconnect();
-            };
-          }
-
-          playBrass(t, bar) {
-            // Logic: Play the Root note of the chord
-            const chordRoots = [0, 3, 6, 4];
-            const noteIndex = chordRoots[bar];
-            const freq = this.keyBase * Math.pow(2, this.scale[noteIndex] / 12);
-
-            // Sound: Detuned Sawtooth (French Horn swell)
-            const osc = this.ctx.createOscillator();
-            osc.type = 'sawtooth';
-            osc.frequency.value = freq / 2; // Octave down (Low mid)
-
-            const filter = this.ctx.createBiquadFilter();
-            filter.type = 'lowpass';
-
-            const gain = this.ctx.createGain();
-
-            // The "Swell" Envelope (Brass doesn't hit instantly, it grows)
-            gain.gain.setValueAtTime(0, t);
-            gain.gain.linearRampToValueAtTime(0.3, t + 1.0); // Slow attack
-            gain.gain.linearRampToValueAtTime(0, t + 3.0);   // Slow release
-
-            // The "Brighten" Envelope (As it gets louder, it gets brassier)
-            filter.frequency.setValueAtTime(200, t);
-            filter.frequency.linearRampToValueAtTime(1500, t + 1.0);
-
-            osc.connect(filter); filter.connect(gain); gain.connect(this.master);
-            osc.start(t); osc.stop(t + 3.5);
-            osc.onended = () => {
-                osc.disconnect();
-                filter.disconnect();
-                gain.disconnect();
-            };
+        // LAYER 2: THE INTELLECT (Intensity 2+)
+        // Staccato Strings (The "Clockwork" of strategy)
+        if (this.intensity >= 2) {
+          // Play on off-beats to create forward momentum
+          if (step % 2 === 0) {
+            // Arpeggiate current chord
+            this.playStrings(time, step, bar);
           }
         }
+
+        // LAYER 3: THE RESOLVE (Intensity 3 Only)
+        // Low Brass / Horns (The "Army" has arrived)
+        if (this.intensity >= 3) {
+          // Long, swelling notes on the 1st beat of the bar
+          if (step === 0) {
+            this.playBrass(time, bar);
+          }
+        }
+      }
+
+      // --- INSTRUMENTS ---
+
+      playSnare(t, accent) {
+        // USE PRE-GENERATED BUFFER
+        const noise = this.ctx.createBufferSource();
+        noise.buffer = this.snareBuffer; 
+
+        // Filter: High pass to make it crisp
+        const filt = this.ctx.createBiquadFilter();
+        filt.type = 'highpass';
+        filt.frequency.value = 1000;
+
+        const gain = this.ctx.createGain();
+        // Envelope: Very sharp snap
+        const vol = accent ? 0.4 : 0.15; // Dynamics!
+        gain.gain.setValueAtTime(vol, t);
+        gain.gain.exponentialRampToValueAtTime(0.01, t + 0.08);
+
+        noise.connect(filt); filt.connect(gain); gain.connect(this.master);
+        
+        noise.start(t);
+        noise.stop(t + 0.1); // Explicitly stop the buffer
+        
+        noise.onended = () => {
+            noise.disconnect();
+            filt.disconnect();
+            gain.disconnect();
+        };
+      }
+
+      playKick(t) {
+        // Orchestral Bass Drum (Deep and boom-y)
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        osc.frequency.setValueAtTime(100, t);
+        osc.frequency.exponentialRampToValueAtTime(30, t + 0.3); // Pitch dive
+
+        gain.gain.setValueAtTime(0.5, t);
+        gain.gain.exponentialRampToValueAtTime(0.01, t + 0.3);
+
+        osc.connect(gain); gain.connect(this.master);
+        osc.start(t); osc.stop(t + 0.3);
+        osc.onended = () => {
+            osc.disconnect();
+            gain.disconnect();
+        };
+      }
+
+      playStrings(t, step, bar) {
+        // Logic: Walk up and down the Dorian scale
+        // Bar 0: i (Dm), Bar 1: III (F), Bar 2: VII (C), Bar 3: V (Am)
+        const chordRoots = [0, 3, 6, 4];
+        const root = chordRoots[bar];
+
+        // Arpeggiator pattern: Root -> 3rd -> 5th -> 3rd
+        const arp = [0, 2, 4, 2];
+        const noteIndex = (root + arp[(step / 2) % 4]) % this.scale.length;
+
+        const freq = this.keyBase * Math.pow(2, this.scale[noteIndex] / 12);
+
+        // Sound: Sawtooth wave with Low Pass (Spiccato Strings)
+        const osc = this.ctx.createOscillator();
+        osc.type = 'sawtooth';
+        osc.frequency.value = freq * 2; // Octave up
+
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.value = 600;
+
+        const gain = this.ctx.createGain();
+        gain.gain.setValueAtTime(0, t);
+        gain.gain.linearRampToValueAtTime(0.15, t + 0.02);
+        gain.gain.linearRampToValueAtTime(0, t + 0.1); // Short "Pluck"
+
+        osc.connect(filter); filter.connect(gain); gain.connect(this.master);
+        osc.start(t); osc.stop(t + 0.2);
+        osc.onended = () => {
+            osc.disconnect();
+            filter.disconnect();
+            gain.disconnect();
+        };
+      }
+
+      playBrass(t, bar) {
+        // Logic: Play the Root note of the chord
+        const chordRoots = [0, 3, 6, 4];
+        const noteIndex = chordRoots[bar];
+        const freq = this.keyBase * Math.pow(2, this.scale[noteIndex] / 12);
+
+        // Sound: Detuned Sawtooth (French Horn swell)
+        const osc = this.ctx.createOscillator();
+        osc.type = 'sawtooth';
+        osc.frequency.value = freq / 2; // Octave down (Low mid)
+
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'lowpass';
+
+        const gain = this.ctx.createGain();
+
+        // The "Swell" Envelope (Brass doesn't hit instantly, it grows)
+        gain.gain.setValueAtTime(0, t);
+        gain.gain.linearRampToValueAtTime(0.3, t + 1.0); // Slow attack
+        gain.gain.linearRampToValueAtTime(0, t + 3.0);   // Slow release
+
+        // The "Brighten" Envelope (As it gets louder, it gets brassier)
+        filter.frequency.setValueAtTime(200, t);
+        filter.frequency.linearRampToValueAtTime(1500, t + 1.0);
+
+        osc.connect(filter); filter.connect(gain); gain.connect(this.master);
+        osc.start(t); osc.stop(t + 3.5);
+        osc.onended = () => {
+            osc.disconnect();
+            filter.disconnect();
+            gain.disconnect();
+        };
+      }
+    }
     //MODULE 8: Triumph
     class TriumphModule {
-          constructor(ctx, dest) {
+        constructor(ctx, dest) {
             this.ctx = ctx;
             this.dest = dest;
-            this.timer = null;
+            this.intervalId = null;
+            this.isStopped = false; // Safety flag
+
+            // --- SCHEDULING STATE ---
+            this.nextNoteTime = 0.0;
+            this.scheduleAheadTime = 0.15; // 150ms buffer
+            this.lookahead = 25; // 25ms logic check
 
             // 1. MIXER
             this.master = ctx.createGain();
@@ -40236,7 +40359,8 @@
             // Large Reverb is essential for that "City Gate" feel
             this.revNode = ctx.createConvolver();
             this.setupReverb();
-            this.revGain = ctx.createGain(); this.revGain.gain.value = 0.4;
+            this.revGain = ctx.createGain(); 
+            this.revGain.gain.value = 0.4;
 
             this.master.connect(this.dest);
             this.master.connect(this.revNode);
@@ -40256,41 +40380,64 @@
             this.currentChordIndex = 0;
             this.chordProgression = [0, 5, 3, 4]; // I - bVII - IV - V
             this.melodyNote = null; // Track current note to slide from
+            
             // Pre-generate the noise to save memory!
             this.snareBuffer = this.createNoiseBuffer(0.1);
             this.cymbalBuffer = this.createNoiseBuffer(2.0);
-          }
-          createNoiseBuffer(duration) {
+        }
+
+        createNoiseBuffer(duration) {
             const bufferSize = this.ctx.sampleRate * duration;
             const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
             const data = buffer.getChannelData(0);
             for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
             return buffer;
-          }
-          setupReverb() {
+        }
+
+        setupReverb() {
             // 2.5 second tail
             const len = this.ctx.sampleRate * 2.5;
             const buf = this.ctx.createBuffer(2, len, this.ctx.sampleRate);
             for (let c = 0; c < 2; c++) {
-              const d = buf.getChannelData(c);
-              for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2);
+                const d = buf.getChannelData(c);
+                for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2);
             }
             this.revNode.buffer = buf;
-          }
+        }
 
-          start() {
+        start() {
+            if (this.intervalId) return; // Prevent double starts
+            this.isStopped = false;
+            
             this.tickCount = 0;
-            // 16th notes
-            const interval = (60 / this.tempo) / 4 * 1000;
-            this.timer = setInterval(() => this.tick(), interval);
-          }
+            this.melodyNote = null; // Reset portamento
+            
+            // Start slightly in the future
+            this.nextNoteTime = this.ctx.currentTime + 0.05;
 
-          stop() {
-            if (this.timer) clearInterval(this.timer);
+            const loop = () => {
+                if (this.isStopped) return;
+                
+                while (this.nextNoteTime < this.ctx.currentTime + this.scheduleAheadTime) {
+                    this.scheduleNote(this.nextNoteTime);
+                    this.advanceNote();
+                }
+            };
+
+            this.intervalId = setInterval(loop, this.lookahead);
+        }
+
+        stop() {
+            this.isStopped = true;
+            if (this.intervalId) {
+                clearInterval(this.intervalId);
+                this.intervalId = null;
+            }
             
             // Fade out the master volume
-            this.master.gain.cancelScheduledValues(this.ctx.currentTime);
-            this.master.gain.linearRampToValueAtTime(0, this.ctx.currentTime + 1);
+            const t = this.ctx.currentTime;
+            this.master.gain.cancelScheduledValues(t);
+            this.master.gain.linearRampToValueAtTime(0, t + 1);
             
             // Wait 3 seconds to let the 2.5s reverb tail finish beautifully
             setTimeout(() => {
@@ -40298,11 +40445,17 @@
                 if (this.revNode) this.revNode.disconnect();
                 if (this.revGain) this.revGain.disconnect();
             }, 3000);
-          }
+        }
 
-          // --- SEQUENCER ---
-          tick() {
-            const t = this.ctx.currentTime;
+        advanceNote() {
+            // 16th notes
+            const secondsPerBeat = 60.0 / this.tempo;
+            this.nextNoteTime += 0.25 * secondsPerBeat;
+            this.tickCount++;
+        }
+
+        // --- SEQUENCER ---
+        scheduleNote(t) {
             const step = this.tickCount % 16;
             const bar = Math.floor(this.tickCount / 16) % 4;
 
@@ -40310,20 +40463,20 @@
             // A standard march pattern: ONE-e-and-a TWO...
             const marchPattern = [1, 0.3, 0.5, 0.3, 1, 0, 0.5, 0, 1, 0.3, 0.5, 0.3, 1, 0, 1, 0];
             if (marchPattern[step] > 0) {
-              this.playSnare(t, marchPattern[step]);
+                this.playSnare(t, marchPattern[step]);
             }
 
             // 2. ORCHESTRAL CRASH (Transitions)
             // Hit a crash cymbal at the start of every 4-bar cycle
             if (bar === 0 && step === 0) {
-              this.playCymbal(t);
+                this.playCymbal(t);
             }
 
             // 3. THE STRING BED (Pad)
             // Change chords every Bar (16 ticks)
             if (step === 0) {
-              this.currentChordIndex = bar; // Sync chord to bar
-              this.playStringPad(t, bar);
+                this.currentChordIndex = bar; // Sync chord to bar
+                this.playStringPad(t, bar);
             }
 
             // 4. THE HEROIC HORN (Melody)
@@ -40331,26 +40484,24 @@
             // It plays slow, long notes. We check every Quarter Note (step % 4 === 0)
             // But we only play if the 'dice roll' says so, to leave gaps.
             if (step % 4 === 0) {
-              // High chance to play on beat 1 (step 0), lower on others
-              const chance = step === 0 ? 0.9 : 0.6;
+                // High chance to play on beat 1 (step 0), lower on others
+                const chance = step === 0 ? 0.9 : 0.6;
 
-              if (Math.random() < chance) {
-                // Determine duration: 1 beat, 2 beats, or 4 beats (Long!)
-                const r = Math.random();
-                let beats = 1;
-                if (r > 0.6) beats = 2;
-                if (r > 0.9 && step === 0) beats = 4; // Heroic long note
+                if (Math.random() < chance) {
+                    // Determine duration: 1 beat, 2 beats, or 4 beats (Long!)
+                    const r = Math.random();
+                    let beats = 1;
+                    if (r > 0.6) beats = 2;
+                    if (r > 0.9 && step === 0) beats = 4; // Heroic long note
 
-                this.playFrenchHorn(t, beats);
-              }
+                    this.playFrenchHorn(t, beats);
+                }
             }
+        }
 
-            this.tickCount++;
-          }
+        // --- INSTRUMENTS ---
 
-          // --- INSTRUMENTS ---
-
-          playSnare(t, velocity) {
+        playSnare(t, velocity) {
             const noise = this.ctx.createBufferSource();
             noise.buffer = this.snareBuffer; // USE PRE-GENERATED BUFFER
 
@@ -40372,9 +40523,9 @@
                 filter.disconnect();
                 gain.disconnect();
             };
-          }
+        }
 
-          playStringPad(t, chordIdx) {
+        playStringPad(t, chordIdx) {
             // Play a triad (Root + 3rd + 5th)
             // C Mixolydian Chords
             const roots = [0, 10, 5, 7]; // I (C), bVII (Bb), IV (F), V (G)
@@ -40384,35 +40535,35 @@
             const chord = [rootNote, rootNote + 2, rootNote + 4];
 
             chord.forEach((note, i) => {
-              const osc = this.ctx.createOscillator();
-              const g = this.ctx.createGain();
+                const osc = this.ctx.createOscillator();
+                const g = this.ctx.createGain();
 
-              // Sawtooth + Lowpass = Strings
-              osc.type = 'sawtooth';
-              const freq = this.rootFreq * Math.pow(2, (this.scale[note % 7] + (note >= 7 ? 12 : 0)) / 12);
-              osc.frequency.value = freq / 2; // Lower octave for body
+                // Sawtooth + Lowpass = Strings
+                osc.type = 'sawtooth';
+                const freq = this.rootFreq * Math.pow(2, (this.scale[note % 7] + (note >= 7 ? 12 : 0)) / 12);
+                osc.frequency.value = freq / 2; // Lower octave for body
 
-              const filter = this.ctx.createBiquadFilter();
-              filter.type = 'lowpass';
-              filter.frequency.value = 400 + (i * 100); // Spread filters
+                const filter = this.ctx.createBiquadFilter();
+                filter.type = 'lowpass';
+                filter.frequency.value = 400 + (i * 100); // Spread filters
 
-              // ADSR: Slow Attack (The "Swell")
-              g.gain.setValueAtTime(0, t);
-              g.gain.linearRampToValueAtTime(0.1, t + 0.5); // 0.5s fade in
-              g.gain.setValueAtTime(0.1, t + 2.0); // Sustain
-              g.gain.linearRampToValueAtTime(0, t + 2.5); // Fade out
+                // ADSR: Slow Attack (The "Swell")
+                g.gain.setValueAtTime(0, t);
+                g.gain.linearRampToValueAtTime(0.1, t + 0.5); // 0.5s fade in
+                g.gain.setValueAtTime(0.1, t + 2.0); // Sustain
+                g.gain.linearRampToValueAtTime(0, t + 2.5); // Fade out
 
-              osc.connect(filter); filter.connect(g); g.connect(this.master);
-              osc.start(t); osc.stop(t + 2.6);
-              osc.onended = () => {
-                  osc.disconnect();
-                  filter.disconnect();
-                  g.disconnect();
-              };
+                osc.connect(filter); filter.connect(g); g.connect(this.master);
+                osc.start(t); osc.stop(t + 2.6);
+                osc.onended = () => {
+                    osc.disconnect();
+                    filter.disconnect();
+                    g.disconnect();
+                };
             });
-          }
+        }
 
-          playFrenchHorn(t, durationInBeats) {
+        playFrenchHorn(t, durationInBeats) {
             const beatSec = 60 / this.tempo;
             const duration = beatSec * durationInBeats;
 
@@ -40435,8 +40586,8 @@
 
             // Slide from previous note (Legato)
             if (this.melodyNote) {
-              osc.frequency.setValueAtTime(this.melodyNote, t);
-              osc.frequency.exponentialRampToValueAtTime(freq, t + 0.1);
+                osc.frequency.setValueAtTime(this.melodyNote, t);
+                osc.frequency.exponentialRampToValueAtTime(freq, t + 0.1);
             }
             this.melodyNote = freq;
 
@@ -40465,9 +40616,9 @@
                 filter.disconnect();
                 g.disconnect();
             };
-          }
+        }
 
-          playCymbal(t) {
+        playCymbal(t) {
             const noise = this.ctx.createBufferSource();
             noise.buffer = this.cymbalBuffer; // USE PRE-GENERATED BUFFER
 
@@ -40489,14 +40640,20 @@
                 filter.disconnect();
                 g.disconnect();
             };
-          }
         }
+    }
     //MODULE 9: Start Game
     class StartGameModule {
-          constructor(ctx, dest) {
+        constructor(ctx, dest) {
             this.ctx = ctx;
             this.dest = dest;
-            this.timer = null;
+            this.intervalId = null;
+            this.isStopped = false; // Safety flag
+
+            // --- SCHEDULING STATE ---
+            this.nextNoteTime = 0.0;
+            this.scheduleAheadTime = 0.15; // 150ms buffer
+            this.lookahead = 25; // 25ms logic check
 
             // 1. MASTER GAIN (Volume Control)
             this.master = ctx.createGain();
@@ -40515,90 +40672,121 @@
 
             // Game Boy "Noise" Buffer (Static for drums)
             this.noiseBuffer = this.createNoiseBuffer();
-          }
+        }
 
-          createNoiseBuffer() {
+        createNoiseBuffer() {
             const bufSize = this.ctx.sampleRate * 1;
             const buffer = this.ctx.createBuffer(1, bufSize, this.ctx.sampleRate);
             const data = buffer.getChannelData(0);
             for (let i = 0; i < bufSize; i++) {
-              // Math.random() is too clean. We need digital static.
-              // This threshold creates a "crackle" rather than "hiss"
-              data[i] = Math.random() > 0.5 ? 1 : -1;
+                // Math.random() is too clean. We need digital static.
+                // This threshold creates a "crackle" rather than "hiss"
+                data[i] = Math.random() > 0.5 ? 1 : -1;
             }
             return buffer;
-          }
+        }
 
-          start() {
+        start() {
+            if (this.intervalId) return; // Prevent double starts
+            this.isStopped = false;
+            
             this.tickCount = 0;
             this.state = 'INTRO';
-            // 16th note interval
-            const interval = (60 / this.tempo) / 4 * 1000;
-            this.timer = setInterval(() => this.tick(), interval);
-          }
+            
+            // Un-mute just in case it was faded out
+            this.master.gain.cancelScheduledValues(this.ctx.currentTime);
+            this.master.gain.setValueAtTime(0.4, this.ctx.currentTime);
 
-          stop() {
-            if (this.timer) clearInterval(this.timer);
-            this.master.gain.setTargetAtTime(0, this.ctx.currentTime, 0.1);
+            // Start slightly in the future to give the audio thread time to catch up
+            this.nextNoteTime = this.ctx.currentTime + 0.05;
+
+            const loop = () => {
+                if (this.isStopped) return;
+                
+                // While the next note falls within our schedule window...
+                while (this.nextNoteTime < this.ctx.currentTime + this.scheduleAheadTime) {
+                    this.scheduleNote(this.nextNoteTime);
+                    this.advanceNote();
+                }
+            };
+
+            // Run the lookahead loop fast enough to catch upcoming notes
+            this.intervalId = setInterval(loop, this.lookahead);
+        }
+
+        stop() {
+            this.isStopped = true;
+            if (this.intervalId) {
+                clearInterval(this.intervalId);
+                this.intervalId = null;
+            }
+            
+            const t = this.ctx.currentTime;
+            this.master.gain.cancelScheduledValues(t);
+            this.master.gain.setValueAtTime(this.master.gain.value, t);
+            this.master.gain.linearRampToValueAtTime(0, t + 0.1);
             
             // Wait just 200ms for the quick 0.1 fade to finish
             setTimeout(() => {
                 if (this.master) this.master.disconnect();
             }, 200);
-          }
+        }
 
-          // --- THE SEQUENCER ---
-          tick() {
-            const t = this.ctx.currentTime;
-
-            if (this.state === 'INTRO') {
-              this.playIntro(t);
-            } else {
-              this.playLoop(t);
-            }
-
+        advanceNote() {
+            // 16th notes
+            const secondsPerBeat = 60.0 / this.tempo;
+            this.nextNoteTime += 0.25 * secondsPerBeat;
             this.tickCount++;
-          }
+        }
 
-          playIntro(t) {
+        // --- THE SEQUENCER ---
+        scheduleNote(time) {
+            if (this.state === 'INTRO') {
+                this.playIntro(time);
+            } else {
+                this.playLoop(time);
+            }
+        }
+
+        playIntro(t) {
             // The Classic "Encounter" Sound: Rapid ascending chromatic scale
             // Intro lasts 32 ticks (2 bars)
             const step = this.tickCount;
 
             // 1. The "Screech" (High pitch slide)
             if (step === 0) {
-              this.playPulse(t, 880, 0.5, 0.1, 'lead'); // High A
-              this.playNoise(t, 'open'); // Crash
+                this.playPulse(t, 880, 0.5, 0.1, 'lead'); // High A
+                this.playNoise(t, 'open'); // Crash
             }
 
             // 2. The "Tension" (Rapid triplets)
             if (step < 28) {
-              // Play chromatically rising notes every 2 ticks
-              if (step % 2 === 0) {
-                const freq = 220 + (step * 20);
-                this.playPulse(t, freq, 0.05, 0.05, 'arp');
-                this.playNoise(t, 'closed');
-              }
+                // Play chromatically rising notes every 2 ticks
+                if (step % 2 === 0) {
+                    const freq = 220 + (step * 20);
+                    this.playPulse(t, freq, 0.05, 0.05, 'arp');
+                    this.playNoise(t, 'closed');
+                }
             }
             // 3. The Drop (Silence before loop)
             else if (step === 30) {
-              // Silence...
+                // Silence...
             }
             // 4. Switch to Loop
             else if (step === 32) {
-              this.state = 'LOOP';
-              this.tickCount = 0; // Reset for loop
+                this.state = 'LOOP';
+                this.tickCount = 0; // Reset for loop
             }
-          }
+        }
 
-          playLoop(t) {
+        playLoop(t) {
             const step = this.tickCount % 16;
             const bar = Math.floor(this.tickCount / 16) % 8; // 8 bar phrases
 
             // CHANNEL 3: WAVE (Bass)
             // Driving eighth notes (0, 2, 4, 6...)
             if (step % 2 === 0) {
-              this.playBass(t, bar);
+                this.playBass(t, bar);
             }
 
             // CHANNEL 4: NOISE (Percussion)
@@ -40610,17 +40798,17 @@
             // CHANNEL 1: PULSE 1 (Lead Melody)
             // Complex logic to simulate "Pokemon" phrasing
             if (step % 2 === 0) { // Play mainly on 8th notes
-              this.playMelody(t, step, bar);
+                this.playMelody(t, step, bar);
             }
 
             // CHANNEL 2: PULSE 2 (Arpeggios/Support)
             // Fast 16th note runs
             this.playArp(t, step, bar);
-          }
+        }
 
-          // --- INSTRUMENTS ---
+        // --- INSTRUMENTS ---
 
-          playBass(t, bar) {
+        playBass(t, bar) {
             // Chord Progression: i - VI - V - i (Gm - Eb - D - Gm)
             const progression = [0, 0, 5, 5, 4, 4, 0, 0]; // Root scale degrees
             const degree = progression[bar];
@@ -40640,9 +40828,9 @@
                 osc.disconnect();
                 g.disconnect();
             };
-          }
+        }
 
-          playMelody(t, step, bar) {
+        playMelody(t, step, bar) {
             // "Lead" usually plays distinct phrases
             // Phrase A: Bars 0-3 (Intense)
             // Phrase B: Bars 4-7 (Resolve)
@@ -40652,19 +40840,19 @@
             const isNote = (seed * 9301 + 49297) % 233280 > 100000; // 50% density
 
             if (isNote) {
-              const progression = [0, 0, 5, 5, 4, 4, 0, 0];
-              const root = progression[bar];
+                const progression = [0, 0, 5, 5, 4, 4, 0, 0];
+                const root = progression[bar];
 
-              // Pick a note from the scale (High octave)
-              const scaleIndex = Math.floor(Math.random() * 5); // Bottom 5 notes of scale
-              const note = root + this.scale[scaleIndex];
-              const freq = this.baseFreq * Math.pow(2, (note + 12) / 12); // Up 1 octave
+                // Pick a note from the scale (High octave)
+                const scaleIndex = Math.floor(Math.random() * 5); // Bottom 5 notes of scale
+                const note = root + this.scale[scaleIndex];
+                const freq = this.baseFreq * Math.pow(2, (note + 12) / 12); // Up 1 octave
 
-              this.playPulse(t, freq, 0.15, 0.2, 'lead');
+                this.playPulse(t, freq, 0.15, 0.2, 'lead');
             }
-          }
+        }
 
-          playArp(t, step, bar) {
+        playArp(t, step, bar) {
             // "Arpeggios" are the secret sauce of 8-bit music.
             // They fill the silence and create urgency.
 
@@ -40682,9 +40870,9 @@
 
             // Arps are quieter
             this.playPulse(t, freq, 0.05, 0.08, 'arp');
-          }
+        }
 
-          playPulse(t, freq, vol, dur, type) {
+        playPulse(t, freq, vol, dur, type) {
             const osc = this.ctx.createOscillator();
             osc.type = 'square';
             osc.frequency.setValueAtTime(freq, t);
@@ -40696,12 +40884,12 @@
             let f = null; // Declare the filter here so the cleanup can see it!
 
             if (type === 'lead') {
-              f = this.ctx.createBiquadFilter();
-              f.type = 'highpass';
-              f.frequency.value = 800; 
-              osc.connect(f); f.connect(g);
+                f = this.ctx.createBiquadFilter();
+                f.type = 'highpass';
+                f.frequency.value = 800; 
+                osc.connect(f); f.connect(g);
             } else {
-              osc.connect(g);
+                osc.connect(g);
             }
 
             g.connect(this.master);
@@ -40712,9 +40900,9 @@
                 g.disconnect();
                 if (f) f.disconnect(); // Only disconnect if it was actually created
             };
-          }
+        }
 
-          playNoise(t, type) {
+        playNoise(t, type) {
             const src = this.ctx.createBufferSource();
             src.buffer = this.noiseBuffer;
 
@@ -40723,26 +40911,26 @@
             let dur = 0.15; // Set a default maximum duration for the cleanup
 
             if (type === 'kick') {
-              filter.type = 'lowpass';
-              filter.frequency.value = 200; 
-              g.gain.setValueAtTime(0.8, t);
-              g.gain.exponentialRampToValueAtTime(0.01, t + 0.1);
-              src.playbackRate.value = 0.5; 
-              dur = 0.1;
+                filter.type = 'lowpass';
+                filter.frequency.value = 200; 
+                g.gain.setValueAtTime(0.8, t);
+                g.gain.exponentialRampToValueAtTime(0.01, t + 0.1);
+                src.playbackRate.value = 0.5; 
+                dur = 0.1;
             }
             else if (type === 'snare') {
-              filter.type = 'bandpass'; 
-              filter.frequency.value = 1000;
-              g.gain.setValueAtTime(0.6, t);
-              g.gain.exponentialRampToValueAtTime(0.01, t + 0.15);
-              dur = 0.15;
+                filter.type = 'bandpass'; 
+                filter.frequency.value = 1000;
+                g.gain.setValueAtTime(0.6, t);
+                g.gain.exponentialRampToValueAtTime(0.01, t + 0.15);
+                dur = 0.15;
             }
             else { 
-              filter.type = 'highpass'; 
-              filter.frequency.value = 3000;
-              g.gain.setValueAtTime(0.3, t);
-              g.gain.exponentialRampToValueAtTime(0.01, t + 0.05);
-              dur = 0.05;
+                filter.type = 'highpass'; 
+                filter.frequency.value = 3000;
+                g.gain.setValueAtTime(0.3, t);
+                g.gain.exponentialRampToValueAtTime(0.01, t + 0.05);
+                dur = 0.05;
             }
 
             src.connect(filter); filter.connect(g); g.connect(this.master);
@@ -40754,18 +40942,22 @@
                 filter.disconnect();
                 g.disconnect();
             };
-          }
         }
+    }
     // MODULE 10: Moonlight Lullaby
     class LullabyModule {
         constructor(ctx, dest) {
             this.ctx = ctx;
             this.dest = dest;
-            this.timer = null;
+            this.intervalId = null;
+            this.isStopped = false;
+
+            // --- SCHEDULING STATE ---
+            this.nextNoteTime = 0.0;
+            this.scheduleAheadTime = 0.15; // 150ms buffer
+            this.lookahead = 25; // 25ms logic check
 
             // --- 1. AUDIO GRAPH (The "Anti-Pop" Chain) ---
-            // Chain: Voices -> Master -> Compressor -> Reverb -> Dest
-            
             this.master = ctx.createGain();
             this.master.gain.value = 0.6;
 
@@ -40791,25 +40983,13 @@
             this.revGain.connect(this.dest);             // Wet signal
 
             // --- State ---
-            // We use C# Minor (The actual Moonlight Sonata key) for that deep mood
-            // But we stick to the softer intervals.
             this.rootFreq = 277.18; // C#4
             this.scale = [0, 2, 3, 5, 7, 8, 10, 12]; // Minor Scale
-
             this.tempo = 50; // Very slow, Adagio
-            this.isPlaying = false;
-            
-            // The "Moonlight" Texture: Rolling Triplets
-            // We count in 12s (4 beats * 3 triplets)
             this.tick = 0; 
-            
-            // Mode: 'adagio' (Slow rolling) or 'flow' (Faster arpeggios)
             this.mode = 'adagio'; 
             this.barCount = 0;
-        
-        // ... existing code ...
-        this.keyShift = 0; // Starts at 0 (C# Minor)
-
+            this.keyShift = 0; // Starts at 0 (C# Minor)
         }
 
         setupReverb() {
@@ -40819,7 +40999,6 @@
             for (let c = 0; c < 2; c++) {
                 const d = buf.getChannelData(c);
                 for (let i = 0; i < len; i++) {
-                    // Exponential decay prevents the "noise" sound at the end
                     d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 4);
                 }
             }
@@ -40827,15 +41006,40 @@
         }
 
         start() {
-            this.isPlaying = true;
-            this.master.gain.setValueAtTime(0.6, this.ctx.currentTime);
+            if (this.intervalId) return; // Prevent double-starts
+            this.isStopped = false;
+            
             this.tick = 0;
-            this.loop();
+            this.barCount = 0;
+            this.mode = 'adagio';
+            this.tempo = 50;
+            this.keyShift = 0;
+
+            this.master.gain.cancelScheduledValues(this.ctx.currentTime);
+            this.master.gain.setValueAtTime(0.6, this.ctx.currentTime);
+            
+            // Start the first note slightly in the future
+            this.nextNoteTime = this.ctx.currentTime + 0.05;
+
+            const loop = () => {
+                if (this.isStopped) return;
+
+                // Schedule notes ahead of time
+                while (this.nextNoteTime < this.ctx.currentTime + this.scheduleAheadTime) {
+                    this.scheduleNote(this.nextNoteTime);
+                    this.advanceNote();
+                }
+            };
+
+            this.intervalId = setInterval(loop, this.lookahead);
         }
 
         stop() {
-            this.isPlaying = false;
-            if (this.timer) clearTimeout(this.timer);
+            this.isStopped = true;
+            if (this.intervalId) {
+                clearInterval(this.intervalId);
+                this.intervalId = null;
+            }
             
             // Smooth fade out to prevent the final "Pop"
             const t = this.ctx.currentTime;
@@ -40852,19 +41056,18 @@
             }, 4500);
         }
 
-        loop() {
-            if (!this.isPlaying) return;
-
-            // Calculate timing
-            // In Adagio, we tick triplets. In Flow, we tick 16ths (faster).
+        advanceNote() {
+            // Calculate timing based on mode
             let subdivision = this.mode === 'adagio' ? 3 : 4; 
-            const beatsPerSec = this.tempo / 60;
-            const tickInterval = ((1 / beatsPerSec) / subdivision) * 1000;
-
-            // Logic
-            this.playTick();
-
+            const beatsPerSec = this.tempo / 60.0;
+            const stepDurationSeconds = (1.0 / beatsPerSec) / subdivision;
+            
+            // Slight humanization (Rubato - up to 15ms)
+            const rubatoSeconds = Math.random() * 0.015;
+            
+            this.nextNoteTime += stepDurationSeconds + rubatoSeconds;
             this.tick++;
+
             // Cycle change logic
             if (this.tick >= (4 * subdivision)) {
                 this.tick = 0;
@@ -40875,143 +41078,101 @@
                     this.mode = this.mode === 'adagio' ? 'flow' : 'adagio';
                     // Slight tempo adjustment for the "Fast" part
                     this.tempo = this.mode === 'flow' ? 55 : 50; 
-                    // == NEW: MODULATION LOGIC ==
-            // If we are going back to "Adagio" (Slow), change the key to keep it fresh.
-            if (this.mode === 'adagio') {
-                // Move up a Perfect 5th (+7 semitones) or down a 4th (-5)
-                // This is the most common, pleasant key change in history.
-                this.keyShift += 7; 
-                
-                // Safety: If we get too high, drop an octave (-12)
-                if (this.keyShift > 12) this.keyShift -= 12;
-            }
+
+                    // MODULATION LOGIC
+                    // If going back to "Adagio" (Slow), change the key to keep it fresh.
+                    if (this.mode === 'adagio') {
+                        // Move up a Perfect 5th (+7 semitones)
+                        this.keyShift += 7; 
+                        if (this.keyShift > 12) this.keyShift -= 12;
+                    }
                 }
             }
-
-            // Slight humanization (Rubato)
-            const rubato = Math.random() * 15;
-            this.timer = setTimeout(() => this.loop(), tickInterval + rubato);
         }
 
-        playTick() {
-            const t = this.ctx.currentTime;
-
+        scheduleNote(time) {
             // 1. BASS (The Foundation)
-            // Plays only on Beat 1 (Tick 0)
             if (this.tick === 0) {
-                // Play a low Octave C# or A or E
                 const bassNote = this.getProgressionRoot(this.barCount);
-                this.playSound(bassNote - 24, t, 3.0, 'bass'); // Deep bass
-                this.playSound(bassNote - 12, t + 0.05, 3.0, 'bass'); // Octave up slightly delayed
+                this.playSound(bassNote - 24, time, 3.0, 'bass'); 
+                this.playSound(bassNote - 12, time + 0.05, 3.0, 'bass'); 
             }
 
             // 2. THE TRIPLET ARPEGGIO (The "Moonlight" texture)
-            // Plays constantly
             let arpNote = this.getArpeggioNote(this.barCount, this.tick);
-            // Randomly skip some notes in Adagio mode for "breath"
             if (this.mode === 'flow' || Math.random() > 0.2) {
-                // Velocity (volume) waves up and down slightly
                 let vel = 0.1 + (Math.sin(this.tick) * 0.05);
-                this.playSound(arpNote, t, 1.5, 'piano', vel);
+                this.playSound(arpNote, time, 1.5, 'piano', vel);
             }
 
             // 3. MELODY (High and Sparse)
-            // Only plays occasionally, mostly on strong beats
             if (this.tick % 3 === 0 && Math.random() > 0.6) {
                 const melNote = this.getScaleNote(this.barCount);
-                // Play high melody
-                this.playSound(melNote + 12, t, 2.5, 'bell', 0.15);
+                this.playSound(melNote + 12, time, 2.5, 'bell', 0.15);
             }
         }
 
         // --- Theory Helpers ---
-      getProgressionRoot(bar) {
-          // Standard progression
-          const seq = [0, -2, -4, -5]; 
-          
-          // Return the base note + the current Key Shift
-          return seq[bar % 4] + this.keyShift;
-      }
+        getProgressionRoot(bar) {
+            const seq = [0, -2, -4, -5]; 
+            return seq[bar % 4] + this.keyShift;
+        }
 
         getArpeggioNote(bar, tick) {
             const root = this.getProgressionRoot(bar);
-            // Create a chord shape (Root, Minor 3rd, 5th)
             const chord = [root, root + 3, root + 7, root + 12, root + 15, root + 19];
-            
-            // Oscillate through the chord based on the tick
-            // This creates that "up and down" wave motion
             const index = tick % 6; 
-            // 0-1-2-3-4-5 pattern
             return chord[index]; 
         }
 
         getScaleNote(bar) {
             const root = this.getProgressionRoot(bar);
-            // Pick a random valid note from the scale relative to the root
-            const intervals = [0, 3, 7, 12]; // Chord tones sound safest
+            const intervals = [0, 3, 7, 12]; 
             const interval = intervals[Math.floor(Math.random() * intervals.length)];
             return root + interval;
         }
 
         // --- Audio Synthesis (The "Soft" Upgrade) ---
-
         playSound(noteIndex, time, duration, type, vol = 0.2) {
-            // Convert scale index to frequency
-            // Base is middle C# (MIDI 61) approx 277.18Hz
             const semitone = Math.pow(2, 1/12);
             const freq = this.rootFreq * Math.pow(semitone, noteIndex);
 
-            // -- FM SYNTHESIS SETUP --
-            // This creates a "Tine" / Electric Piano sound (Glassy, not harsh)
-            
             const osc = this.ctx.createOscillator();
             const modulator = this.ctx.createOscillator();
             const modGain = this.ctx.createGain();
             const mainGain = this.ctx.createGain();
 
-            // 1. Carrier (The main tone)
-            osc.type = 'sine'; // Sine is the smoothest waveform
+            // 1. Carrier
+            osc.type = 'sine'; 
             osc.frequency.setValueAtTime(freq, time);
 
-            // 2. Modulator (Adds the "bell" character)
+            // 2. Modulator
             modulator.type = 'sine';
-            // Ratio 2:1 gives a hollow, woody sound. Ratio 14:1 gives a bell.
-            // We blend them based on instrument type.
             const ratio = type === 'bass' ? 0.5 : (type === 'bell' ? 3.5 : 2.0);
             modulator.frequency.setValueAtTime(freq * ratio, time);
 
-            // FM Depth (How "bright" the sound is)
             const modulationIndex = type === 'bass' ? 100 : 300; 
             
-            // Envelope for FM amount (Brightness fades over time)
             modGain.gain.setValueAtTime(modulationIndex, time);
             modGain.gain.exponentialRampToValueAtTime(0.1, time + 0.5);
 
-            // Wiring FM
             modulator.connect(modGain);
             modGain.connect(osc.frequency);
 
-            // 3. Amplitude Envelope (Volume shape)
-            // Prevent clicking by starting at 0
+            // 3. Amplitude Envelope
             mainGain.gain.setValueAtTime(0, time);
-            // Quick attack
             mainGain.gain.linearRampToValueAtTime(vol, time + 0.05);
-            // Exponential decay (Natural fade)
             mainGain.gain.exponentialRampToValueAtTime(0.001, time + duration);
 
-            // Connect to Master
             osc.connect(mainGain);
             mainGain.connect(this.master);
 
-            // Start/Stop logic
             osc.start(time);
             modulator.start(time);
             
-            // Stop oscillators slightly after the volume hits near-zero
-            // to ensure we don't clip the audio engine
             osc.stop(time + duration + 0.1);
             modulator.stop(time + duration + 0.1);
-            // Clean up the FM synthesis nodes when the note finishes
+            
             osc.onended = () => {
                 osc.disconnect();
                 modulator.disconnect();
@@ -41020,7 +41181,7 @@
             };
         }
     }
-        // MODULE 11: Castle
+    // MODULE 11: Castle
     class CastleModule {
           constructor(ctx, dest) {
             this.ctx = ctx;
@@ -41991,27 +42152,33 @@
     } 
     // MODULE 15: Battle 2
     class Battle2Module {
-          constructor(ctx, dest) {
+        constructor(ctx, dest) {
             this.ctx = ctx;
             this.dest = dest;
-            this.timer = null;
+            this.intervalId = null;
+            this.isStopped = false; // Safety flag
+
+            // --- SCHEDULING STATE ---
+            this.nextNoteTime = 0.0;
+            this.scheduleAheadTime = 0.15; // 150ms buffer
+            this.lookahead = 25; // 25ms logic check
 
             // --- BATTLE SETTINGS ---
-            this.tempo = 160;
+            this.tempo = 150;
 
             // KEY POOL (Dark/Epic Keys)
             this.keys = {
-              'D': 293.66, 'Eb': 311.13, 'E': 329.63,
-              'F': 349.23, 'G': 392.00, 'A': 440.00, 'Bb': 466.16
+                'D': 293.66, 'Eb': 311.13, 'E': 329.63,
+                'F': 349.23, 'G': 392.00, 'A': 440.00, 'Bb': 466.16
             };
             this.currentKey = 'D';
             this.keyBase = this.keys['D'];
 
             // MODE POOL (Musical Flavors)
             this.modes = {
-              'Harmonic Minor': [0, 2, 3, 5, 7, 8, 11], // The "Dracula" sound
-              'Phrygian': [0, 1, 3, 5, 7, 8, 10],       // The "Dark Tension" sound
-              'Natural Minor': [0, 2, 3, 5, 7, 8, 10]   // The "Sad/Tragic" sound
+                'Harmonic Minor': [0, 2, 3, 5, 7, 8, 11], // The "Dracula" sound
+                'Phrygian': [0, 1, 3, 5, 7, 8, 10],       // The "Dark Tension" sound
+                'Natural Minor': [0, 2, 3, 5, 7, 8, 10]   // The "Sad/Tragic" sound
             };
             this.currentScaleName = 'Harmonic Minor';
             this.scale = this.modes['Harmonic Minor'];
@@ -42033,97 +42200,118 @@
             this.snareBuf = this.createNoiseBuffer(0.1);  // Approx 4410 samples
             this.hihatBuf = this.createNoiseBuffer(0.05); // Approx 2205 samples
             this.crashBuf = this.createNoiseBuffer(1.5);  // Approx 66150 samples
-          }
-          createNoiseBuffer(duration) {
+        }
+
+        createNoiseBuffer(duration) {
             const bufferSize = this.ctx.sampleRate * duration;
             const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
             const data = buffer.getChannelData(0);
             for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
             return buffer;
-          }
-          start() {
+        }
+
+        start() {
+            if (this.intervalId) return; // Prevent double starts
+            this.isStopped = false;
+            
             this.tickCount = 0;
             this.barCount = 0;
-            this.loop();
-          }
+            this.nextNoteTime = this.ctx.currentTime + 0.05;
 
-          stop() {
-            if (this.timer) clearTimeout(this.timer);
+            const loop = () => {
+                if (this.isStopped) return;
+                
+                while (this.nextNoteTime < this.ctx.currentTime + this.scheduleAheadTime) {
+                    this.scheduleNote(this.nextNoteTime);
+                    this.advanceNote();
+                }
+            };
+
+            this.intervalId = setInterval(loop, this.lookahead);
+        }
+
+        stop() {
+            this.isStopped = true;
+            if (this.intervalId) {
+                clearInterval(this.intervalId);
+                this.intervalId = null;
+            }
+            
             // You can't really fade out a compressor directly, so we just wait
             // a fraction of a second for the current notes to decay, then disconnect.
             setTimeout(() => {
                 if (this.masterBus) this.masterBus.disconnect();
             }, 300);
-          }
+        }
 
-          loop() {
-            const secondsPerBeat = 60 / this.tempo;
-            const interval = (secondsPerBeat / 4) * 1000; // 16th notes
+        advanceNote() {
+            // 16th notes
+            const secondsPerBeat = 60.0 / this.tempo;
+            this.nextNoteTime += 0.25 * secondsPerBeat;
+            this.tickCount++;
+        }
 
-            this.timer = setTimeout(() => this.loop(), interval);
-
+        scheduleNote(time) {
             const step = this.tickCount % 16;
 
             // --- 1. THE "DIRECTOR" (Macro Changes) ---
             if (step === 0) {
-              this.barCount++;
+                this.barCount++;
 
-              // Every 8 bars: PHASE SHIFT (Key Change)
-              if (this.barCount % 8 === 0) {
-                this.modulateKey();
-              }
+                // Every 8 bars: PHASE SHIFT (Key Change)
+                if (this.barCount % 8 === 0) {
+                    this.modulateKey();
+                }
 
-              // Every 4 bars: CHANGE TACTICS (Bass/Scale)
-              if (this.barCount % 4 === 0) {
-                this.changeBassPattern();
-                // Randomly swap scales (e.g. Minor to Phrygian)
-                const modeNames = Object.keys(this.modes);
-                this.currentScaleName = modeNames[Math.floor(Math.random() * modeNames.length)];
-                this.scale = this.modes[this.currentScaleName];
-              }
+                // Every 4 bars: CHANGE TACTICS (Bass/Scale)
+                if (this.barCount % 4 === 0) {
+                    this.changeBassPattern();
+                    // Randomly swap scales (e.g. Minor to Phrygian)
+                    const modeNames = Object.keys(this.modes);
+                    this.currentScaleName = modeNames[Math.floor(Math.random() * modeNames.length)];
+                    this.scale = this.modes[this.currentScaleName];
+                }
             }
 
             // --- 2. THE "DRUMMER" (Fills & Beats) ---
             const isFillBar = (this.barCount % 4 === 3); // 4th bar is a fill
             if (isFillBar && step > 8) {
-              // Play Drum Fill (Snare rolls)
-              if (step % 2 === 0) this.playDrum('snare');
-              if (step === 15) this.playDrum('crash');
+                // Play Drum Fill (Snare rolls)
+                if (step % 2 === 0) this.playDrum('snare', time);
+                if (step === 15) this.playDrum('crash', time);
             } else {
-              // Standard Beat
-              this.playDrumSequencer(step);
+                // Standard Beat
+                this.playDrumSequencer(step, time);
             }
 
             // --- 3. THE "BASSIST" (Variations) ---
-            this.playBassline(step);
+            this.playBassline(step, time);
 
             // --- 4. THE "LEAD" (Procedural Walker) ---
-            this.playImprovisedSolo(step);
+            this.playImprovisedSolo(step, time);
+        }
 
-            this.tickCount++;
-          }
-
-          // --- DIRECTOR LOGIC ---
-          modulateKey() {
+        // --- DIRECTOR LOGIC ---
+        modulateKey() {
             const keyNames = Object.keys(this.keys);
             // Pick a new key that isn't the current one
             let newKey = this.currentKey;
             while (newKey === this.currentKey) {
-              newKey = keyNames[Math.floor(Math.random() * keyNames.length)];
+                newKey = keyNames[Math.floor(Math.random() * keyNames.length)];
             }
             this.currentKey = newKey;
             this.keyBase = this.keys[newKey];
             // Reset melody to root so it doesn't sound jarring
             this.lastMelodyNote = 0;
-          }
+        }
 
-          changeBassPattern() {
+        changeBassPattern() {
             const patterns = ['gallop', 'walk', 'octaves'];
             this.bassPattern = patterns[Math.floor(Math.random() * patterns.length)];
-          }
+        }
 
-          // --- IMPROVISER LOGIC ---
-          playImprovisedSolo(step) {
+        // --- IMPROVISER LOGIC ---
+        playImprovisedSolo(step, time) {
             // We use a "Random Walker" algorithm.
             // Instead of picking a random note, we step Up or Down from the previous note.
 
@@ -42148,38 +42336,36 @@
 
             // 3. Play Note
             // Play in High Octave (+1)
-            this.playNote(this.lastMelodyNote, 1, 'lead');
-          }
+            this.playNote(this.lastMelodyNote, 1, 'lead', time);
+        }
 
-          playBassline(step) {
+        playBassline(step, time) {
             let note = 0; // Root by default
 
             if (this.bassPattern === 'gallop') {
-              // Dun-dun-dun-dun (Classic)
-              if (step % 2 === 0) this.playNote(0, -2, 'bass');
+                // Dun-dun-dun-dun (Classic)
+                if (step % 2 === 0) this.playNote(0, -2, 'bass', time);
             }
             else if (this.bassPattern === 'octaves') {
-              // Low-High-Low-High
-              if (step % 2 === 0) {
-                const oct = (step % 4 === 0) ? -2 : -1;
-                this.playNote(0, oct, 'bass');
-              }
+                // Low-High-Low-High
+                if (step % 2 === 0) {
+                    const oct = (step % 4 === 0) ? -2 : -1;
+                    this.playNote(0, oct, 'bass', time);
+                }
             }
             else if (this.bassPattern === 'walk') {
-              // Moves around the scale: Root -> Flat 2 -> Flat 6 -> 5th
-              if (step === 0) note = 0;
-              else if (step === 4) note = 1; // Tension note
-              else if (step === 8) note = 5; // The 6th
-              else if (step === 12) note = 4; // The 5th
+                // Moves around the scale: Root -> Flat 2 -> Flat 6 -> 5th
+                if (step === 0) note = 0;
+                else if (step === 4) note = 1; // Tension note
+                else if (step === 8) note = 5; // The 6th
+                else if (step === 12) note = 4; // The 5th
 
-              if (step % 4 === 0) this.playNote(note, -2, 'bass');
+                if (step % 4 === 0) this.playNote(note, -2, 'bass', time);
             }
-          }
+        }
 
-          // --- SOUND ENGINE ---
-          playNote(scaleDegree, octaveShift, type) {
-            const t = this.ctx.currentTime;
-
+        // --- SOUND ENGINE ---
+        playNote(scaleDegree, octaveShift, type, t) {
             // Quantize
             let normDegree = scaleDegree;
             let octAdjust = 0;
@@ -42190,137 +42376,137 @@
             const freq = this.keyBase * Math.pow(2, (semitone + ((octaveShift + octAdjust) * 12)) / 12);
 
             if (type === 'lead') {
-              // BOSS LEAD: Square Wave with Slide
-              const osc = this.ctx.createOscillator();
-              osc.type = 'square';
-              osc.frequency.setValueAtTime(freq, t);
+                // BOSS LEAD: Square Wave with Slide
+                const osc = this.ctx.createOscillator();
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(freq, t);
 
-              // "Legato" Slide effect randomly
-              if (Math.random() > 0.7) {
-                osc.frequency.setValueAtTime(freq * 0.9, t);
-                osc.frequency.linearRampToValueAtTime(freq, t + 0.05);
-              }
+                // "Legato" Slide effect randomly
+                if (Math.random() > 0.7) {
+                    osc.frequency.setValueAtTime(freq * 0.9, t);
+                    osc.frequency.linearRampToValueAtTime(freq, t + 0.05);
+                }
 
-              const filter = this.ctx.createBiquadFilter();
-              filter.type = 'lowpass';
-              filter.frequency.value = 3000;
-              filter.Q.value = 2; // Resonant beep
+                const filter = this.ctx.createBiquadFilter();
+                filter.type = 'lowpass';
+                filter.frequency.value = 3000;
+                filter.Q.value = 2; // Resonant beep
 
-              const gain = this.ctx.createGain();
-              gain.gain.setValueAtTime(0.1, t);
-              gain.gain.exponentialRampToValueAtTime(0.01, t + 0.2);
+                const gain = this.ctx.createGain();
+                gain.gain.setValueAtTime(0.1, t);
+                gain.gain.exponentialRampToValueAtTime(0.01, t + 0.2);
 
-              osc.connect(filter); filter.connect(gain); gain.connect(this.masterBus);
-              osc.start(t); osc.stop(t + 0.2);
-              
-              osc.onended = () => {
-                  osc.disconnect();
-                  filter.disconnect();
-                  gain.disconnect();
-              };
+                osc.connect(filter); filter.connect(gain); gain.connect(this.masterBus);
+                osc.start(t); osc.stop(t + 0.2);
+                
+                osc.onended = () => {
+                    osc.disconnect();
+                    filter.disconnect();
+                    gain.disconnect();
+                };
             }
             else if (type === 'bass') {
-              // DRIVING BASS: Sawtooth
-              const osc = this.ctx.createOscillator();
-              osc.type = 'sawtooth';
-              osc.frequency.value = freq;
+                // DRIVING BASS: Sawtooth
+                const osc = this.ctx.createOscillator();
+                osc.type = 'sawtooth';
+                osc.frequency.value = freq;
 
-              const filter = this.ctx.createBiquadFilter();
-              filter.type = 'lowpass';
-              filter.frequency.setValueAtTime(800, t);
-              filter.frequency.exponentialRampToValueAtTime(100, t + 0.2); // Pluck envelope
+                const filter = this.ctx.createBiquadFilter();
+                filter.type = 'lowpass';
+                filter.frequency.setValueAtTime(800, t);
+                filter.frequency.exponentialRampToValueAtTime(100, t + 0.2); // Pluck envelope
 
-              const gain = this.ctx.createGain();
-              gain.gain.setValueAtTime(0.3, t);
-              gain.gain.exponentialRampToValueAtTime(0.01, t + 0.2);
+                const gain = this.ctx.createGain();
+                gain.gain.setValueAtTime(0.3, t);
+                gain.gain.exponentialRampToValueAtTime(0.01, t + 0.2);
 
-              osc.connect(filter); filter.connect(gain); gain.connect(this.masterBus);
-              osc.start(t); osc.stop(t + 0.2);
-              
-              osc.onended = () => {
-                  osc.disconnect();
-                  filter.disconnect();
-                  gain.disconnect();
-              };
+                osc.connect(filter); filter.connect(gain); gain.connect(this.masterBus);
+                osc.start(t); osc.stop(t + 0.2);
+                
+                osc.onended = () => {
+                    osc.disconnect();
+                    filter.disconnect();
+                    gain.disconnect();
+                };
             }
-          }
+        }
 
-          playDrumSequencer(step) {
-            if (step % 2 === 0) this.playDrum('hihat');
-            if (step === 4 || step === 12) this.playDrum('snare');
-            if (step === 0 || step === 10) this.playDrum('kick');
+        playDrumSequencer(step, time) {
+            if (step % 2 === 0) this.playDrum('hihat', time);
+            if (step === 4 || step === 12) this.playDrum('snare', time);
+            if (step === 0 || step === 10) this.playDrum('kick', time);
             // Occasional double kick
-            if (step === 2 && Math.random() > 0.5) this.playDrum('kick');
-          }
+            if (step === 2 && Math.random() > 0.5) this.playDrum('kick', time);
+        }
 
-          playDrum(type) {
-            const t = this.ctx.currentTime;
+        playDrum(type, t) {
             const gn = this.ctx.createGain();
             gn.connect(this.masterBus);
 
             if (type === 'kick') {
-              const osc = this.ctx.createOscillator();
-              osc.frequency.setValueAtTime(150, t);
-              osc.frequency.exponentialRampToValueAtTime(40, t + 0.1);
-              gn.gain.setValueAtTime(0.8, t);
-              gn.gain.exponentialRampToValueAtTime(0.01, t + 0.1);
-              osc.connect(gn); osc.start(t); osc.stop(t + 0.1);
-              
-              osc.onended = () => {
-                  osc.disconnect();
-                  gn.disconnect();
-              };
+                const osc = this.ctx.createOscillator();
+                osc.frequency.setValueAtTime(150, t);
+                osc.frequency.exponentialRampToValueAtTime(40, t + 0.1);
+                gn.gain.setValueAtTime(0.8, t);
+                gn.gain.exponentialRampToValueAtTime(0.01, t + 0.1);
+                
+                osc.connect(gn); osc.start(t); osc.stop(t + 0.1);
+                
+                osc.onended = () => {
+                    osc.disconnect();
+                    gn.disconnect();
+                };
             }
             else if (type === 'snare') {
-              const src = this.ctx.createBufferSource();
-              src.buffer = this.snareBuf; // USING CACHED BUFFER
-              const filt = this.ctx.createBiquadFilter();
-              filt.type = 'highpass'; filt.frequency.value = 1000;
-              gn.gain.setValueAtTime(0.4, t);
-              gn.gain.exponentialRampToValueAtTime(0.01, t + 0.1);
-              src.connect(filt); filt.connect(gn); 
-              src.start(t); src.stop(t + 0.1);
-              
-              src.onended = () => {
-                  src.disconnect();
-                  filt.disconnect();
-                  gn.disconnect();
-              };
+                const src = this.ctx.createBufferSource();
+                src.buffer = this.snareBuf; // USING CACHED BUFFER
+                const filt = this.ctx.createBiquadFilter();
+                filt.type = 'highpass'; filt.frequency.value = 1000;
+                gn.gain.setValueAtTime(0.4, t);
+                gn.gain.exponentialRampToValueAtTime(0.01, t + 0.1);
+                src.connect(filt); filt.connect(gn); 
+                src.start(t); src.stop(t + 0.1);
+                
+                src.onended = () => {
+                    src.disconnect();
+                    filt.disconnect();
+                    gn.disconnect();
+                };
             }
             else if (type === 'hihat') {
-              const src = this.ctx.createBufferSource();
-              src.buffer = this.hihatBuf; // USING CACHED BUFFER
-              const filt = this.ctx.createBiquadFilter();
-              filt.type = 'highpass'; filt.frequency.value = 8000;
-              gn.gain.setValueAtTime(0.1, t);
-              gn.gain.exponentialRampToValueAtTime(0.01, t + 0.05);
-              src.connect(filt); filt.connect(gn); 
-              src.start(t); src.stop(t + 0.05);
-              
-              src.onended = () => {
-                  src.disconnect();
-                  filt.disconnect();
-                  gn.disconnect();
-              };
+                const src = this.ctx.createBufferSource();
+                src.buffer = this.hihatBuf; // USING CACHED BUFFER
+                const filt = this.ctx.createBiquadFilter();
+                filt.type = 'highpass'; filt.frequency.value = 8000;
+                gn.gain.setValueAtTime(0.1, t);
+                gn.gain.exponentialRampToValueAtTime(0.01, t + 0.05);
+                src.connect(filt); filt.connect(gn); 
+                src.start(t); src.stop(t + 0.05);
+                
+                src.onended = () => {
+                    src.disconnect();
+                    filt.disconnect();
+                    gn.disconnect();
+                };
             }
             else if (type === 'crash') {
-              const src = this.ctx.createBufferSource();
-              src.buffer = this.crashBuf; // USING CACHED BUFFER
-              const filt = this.ctx.createBiquadFilter();
-              filt.type = 'highpass'; filt.frequency.value = 4000;
-              gn.gain.setValueAtTime(0.3, t);
-              gn.gain.exponentialRampToValueAtTime(0.01, t + 1.5);
-              src.connect(filt); filt.connect(gn); 
-              src.start(t); src.stop(t + 1.5);
-              
-              src.onended = () => {
-                  src.disconnect();
-                  filt.disconnect();
-                  gn.disconnect();
-              };
+                const src = this.ctx.createBufferSource();
+                src.buffer = this.crashBuf; // USING CACHED BUFFER
+                const filt = this.ctx.createBiquadFilter();
+                filt.type = 'highpass'; filt.frequency.value = 4000;
+                gn.gain.setValueAtTime(0.3, t);
+                gn.gain.exponentialRampToValueAtTime(0.01, t + 1.5);
+                src.connect(filt); filt.connect(gn); 
+                src.start(t); src.stop(t + 1.5);
+                
+                src.onended = () => {
+                    src.disconnect();
+                    filt.disconnect();
+                    gn.disconnect();
+                };
             }
-          }
         }
+    }
     // MODULE 16: A Worthy Foe
     class WorthyModule {
       constructor(ctx, dest) {
@@ -42995,13 +43181,23 @@
       constructor(ctx, dest) {
         this.ctx = ctx;
         this.dest = dest;
-        this.timer = null;
+        this.intervalId = null;
+        this.isPlaying = false;
+        this.isStopped = false; // Safety flag
+
+        // --- SCHEDULING STATE ---
+        this.nextNoteTime = 0.0;
+        this.scheduleAheadTime = 0.5; // 500ms buffer for longer phrase scheduling
+        this.lookahead = 25; // 25ms logic check
 
         // --- TUNING OF THE SPHERES ---
         // C Minor Pentatonic + Added 9th/Flat 6th (The "Tragic" Scale)
         // C, D, Eb, G, Ab, Bb
         this.baseFreq = 130.81; // C3 (Low C)
         this.scale = [0, 2, 3, 7, 8, 10, 12, 14, 15]; 
+
+        // Modulation
+        this.barCount = 0;
 
         // --- ACOUSTIC SPACE ---
         // The Underworld is a large, damp cave. We need massive reverb.
@@ -43022,16 +43218,61 @@
 
         // --- STATE ---
         this.mood = 'SORROW'; // 'SORROW' or 'HOPE'
-        this.nextNoteTime = 0;
+      }
+
+      createCaveImpulse(duration) {
+          const rate = this.ctx.sampleRate;
+          const length = rate * duration;
+          const impulse = this.ctx.createBuffer(2, length, rate);
+          const L = impulse.getChannelData(0);
+          const R = impulse.getChannelData(1);
+
+          for (let i = 0; i < length; i++) {
+              // Exponential decay function
+              const n = i / length;
+              // A bit of noise for texture
+              const noise = (Math.random() * 2 - 1);
+              // Darker decay (simulating stone walls absorbing high freq)
+              const decay = Math.pow(1 - n, 4); 
+              
+              L[i] = noise * decay;
+              R[i] = noise * decay;
+          }
+          return impulse;
       }
 
       start() {
-        this.nextNoteTime = this.ctx.currentTime;
-        this.playNextPhrase();
+        if (this.intervalId) return; // Prevent double starts
+        this.isStopped = false;
+        this.isPlaying = true;
+        
+        this.barCount = 0;
+
+        // Reset volume
+        this.master.gain.cancelScheduledValues(this.ctx.currentTime);
+        this.master.gain.setValueAtTime(0.6, this.ctx.currentTime);
+        
+        this.nextNoteTime = this.ctx.currentTime + 0.1;
+
+        const loop = () => {
+            if (this.isStopped) return;
+            
+            while (this.nextNoteTime < this.ctx.currentTime + this.scheduleAheadTime) {
+                this.playNextPhrase(this.nextNoteTime);
+            }
+        };
+
+        this.intervalId = setInterval(loop, this.lookahead);
       }
 
       stop() {
-        if (this.timer) clearTimeout(this.timer);
+        this.isStopped = true;
+        this.isPlaying = false;
+        
+        if (this.intervalId) {
+            clearInterval(this.intervalId);
+            this.intervalId = null;
+        }
         
         // 1. Smooth fade out on the master to prevent clipping
         const t = this.ctx.currentTime;
@@ -43047,25 +43288,38 @@
         }, 5500); 
       }
 
-      // --- THE IMPROVISER ---
-      playNextPhrase() {
-        const t = this.ctx.currentTime;
+      modulateKey() {
+        // All 12 chromatic keys. Base C3 is ~130.81 Hz.
+        const keys = ['C', 'C#', 'D', 'Eb', 'E', 'F', 'F#', 'G', 'Ab', 'A', 'Bb', 'B'];
+        const randomShift = Math.floor(Math.random() * 12);
         
+        this.baseFreq = 130.81 * Math.pow(2, randomShift / 12);
+        console.log(`Underworld: Modulating to key of ${keys[randomShift]}`);
+      }
+
+      // --- THE IMPROVISER ---
+      playNextPhrase(time) {
+        // Handle Modulation
+        this.barCount++;
+        if (this.barCount % 64 === 0) {
+            this.modulateKey();
+        }
+
         // DECISION TREE: What does Orpheus do?
         const r = Math.random();
 
         // 1. The Heavy Strum (The weight of grief) - 20% chance
         if (r < 0.2) {
-            this.strumChord(4); 
+            this.strumChord(4, time); 
             this.scheduleNext(1.5, 2.5); // Long pause after strum
         } 
         // 2. The Arpeggio (Looking back at Eurydice) - 40% chance
         else if (r < 0.6) {
-            this.playArpeggio();
+            this.playArpeggio(time);
         } 
         // 3. The Lonely Melody (Wandering) - 40% chance
         else {
-            this.playMelodyNote();
+            this.playMelodyNote(time);
             this.scheduleNext(0.3, 0.8); // Quicker notes
         }
       }
@@ -43073,12 +43327,13 @@
       scheduleNext(min, max) {
           // RUBATO: Random timing variation
           const duration = (Math.random() * (max - min)) + min;
-          this.timer = setTimeout(() => this.playNextPhrase(), duration * 1000);
+          // Advance the Web Audio Timeline
+          this.nextNoteTime += duration;
       }
 
       // --- TECHNIQUES ---
 
-      strumChord(density) {
+      strumChord(density, t) {
           // A strum is just multiple notes played quickly in sequence
           const rootIndex = Math.floor(Math.random() * 3); // Low notes
           let delay = 0;
@@ -43091,13 +43346,13 @@
                   // Strum speed: 40ms to 70ms between strings
                   const strumSpeed = 0.04 + (Math.random() * 0.03); 
                   
-                  this.playString(degree, -1, delay, 0.4);
+                  this.playString(degree, -1, t + delay, 0.4);
                   delay += strumSpeed;
               }
           }
       }
 
-      playArpeggio() {
+      playArpeggio(t) {
           // 3 or 4 rising notes
           const len = 3 + Math.floor(Math.random() * 2);
           const start = Math.floor(Math.random() * 4);
@@ -43107,41 +43362,37 @@
               const degree = this.scale[start + i];
               // Ebb and flow timing
               timeOffset += 0.2 + (Math.random() * 0.1);
-              this.playString(degree, 0, timeOffset, 0.3);
+              this.playString(degree, 0, t + timeOffset, 0.3);
           }
           this.scheduleNext(timeOffset + 1.0, timeOffset + 2.0);
       }
 
-      playMelodyNote() {
+      playMelodyNote(t) {
           // Pick a random note, biased towards the middle range
           const idx = Math.floor(Math.random() * (this.scale.length - 2)) + 2;
           const degree = this.scale[idx];
           
           // Occasional "Grace Note" (Hammer-on)
           if (Math.random() > 0.7) {
-              this.playString(degree - 1, 0, 0, 0.2); // Pre-note
-              this.playString(degree, 0, 0.1, 0.4);   // Main note
+              this.playString(degree - 1, 0, t, 0.2); // Pre-note
+              this.playString(degree, 0, t + 0.1, 0.4);   // Main note
           } else {
-              this.playString(degree, 0, 0, 0.4);
+              this.playString(degree, 0, t, 0.4);
           }
       }
 
       // --- SYNTHESIS (The Gut String) ---
-      playString(degree, octaveOffset, delay, vol) {
-          const t = this.ctx.currentTime + delay;
-          
+      playString(degree, octaveOffset, t, vol) {
           // Calculate Frequency
           const octave = Math.floor(degree / 7) + octaveOffset;
-          const noteInScale = degree % 7; // simplified for pentatonic array
+          
           // Re-map to our custom scale array
-          // (This is a bit hacky but works for procedural indexing)
           const semitone = this.scale[degree % this.scale.length] || 0;
           
           const freq = this.baseFreq * Math.pow(2, (semitone + (octave * 12)) / 12);
 
           // 1. The Oscillator (Source)
           const osc = this.ctx.createOscillator();
-          // Triangle is warmer, Sawtooth is brighter. Let's mix them.
           // Actually, a filtered Sawtooth sounds most like a plucked string.
           osc.type = 'sawtooth';
           osc.frequency.value = freq;
@@ -43176,28 +43427,6 @@
                 filter.disconnect();
                 g.disconnect();
             };
-      }
-
-      // --- IMPULSE RESPONSE (The Cave) ---
-      createCaveImpulse(duration) {
-          const rate = this.ctx.sampleRate;
-          const length = rate * duration;
-          const impulse = this.ctx.createBuffer(2, length, rate);
-          const L = impulse.getChannelData(0);
-          const R = impulse.getChannelData(1);
-
-          for (let i = 0; i < length; i++) {
-              // Exponential decay function
-              const n = i / length;
-              // A bit of noise for texture
-              const noise = (Math.random() * 2 - 1);
-              // Darker decay (simulating stone walls absorbing high freq)
-              const decay = Math.pow(1 - n, 4); 
-              
-              L[i] = noise * decay;
-              R[i] = noise * decay;
-          }
-          return impulse;
       }
     }
     //MODULE 19: Lament
@@ -45133,6 +45362,9 @@
             this.currentRoot = 0;
             // Pre-generate the 16-bit snare noise
             this.snareBuf = this.createNoiseBuffer(0.1);
+            this.nextNoteTime = 0.0;     // When the next note is due to play
+            this.scheduleAheadTime = 0.15; // How far ahead to schedule audio (150ms buffer)
+            this.lookahead = 25;
         }
         createNoiseBuffer(duration) {
             const bufSize = this.ctx.sampleRate * duration;
@@ -45321,51 +45553,63 @@
             this.isPlaying = true;
             this.tick = 0; 
             this.bar = 0;
+            
+            // Start the first note slightly in the future to give the system time
+            this.nextNoteTime = this.ctx.currentTime + 0.05; 
 
             const loop = () => {
                 if (!this.isPlaying) return;
                 
-                // Schedule slightly in future to prevent jitter
-                const t = this.ctx.currentTime + 0.05; 
-                
-                const chordIndex = Math.floor(this.tick / 16) % 4;
-                const currentRoot = this.progression[chordIndex];
-                
-                const beat16 = this.tick % 16;
-                const beat8  = this.tick % 8;
-                const beat4  = this.tick % 4;
-
-                // 1. DRUMS (Kick on 0, 10; Snare on 4, 12)
-                if (beat16 === 0 || beat16 === 10) this.playKick(t);
-                if (beat16 === 4 || beat16 === 12) this.playSnare(t);
-                if (beat16 % 2 === 0) this.playHiHat(t, beat16 % 4 === 2);
-
-                // 2. BASS (Running 8ths)
-                if (beat16 % 2 === 0) this.playBass(t, currentRoot);
-
-                // 3. OSTINATO (Arpeggio Background) - 16th notes
-                // Pattern: Root, 5th, Octave, 5th
-                const arp = [0, 7, 12, 7];
-                this.playOstinato(t, currentRoot + arp[beat16 % 4]);
-
-                // 4. LEAD GUITAR (Pentatonic Melody)
-                // Play mostly on strong beats, sometimes 8ths
-                // Only play 60% of the time to leave space
-                if (beat16 % 2 === 0 && Math.random() > 0.4) {
-                    const scaleNote = this.scaleIntervals[Math.floor(Math.random() * this.scaleIntervals.length)];
-                    this.playGuitar(t, currentRoot + scaleNote);
+                // While there are notes that will need to play before our next check,
+                // schedule them now and advance the time pointer.
+                while (this.nextNoteTime < this.ctx.currentTime + this.scheduleAheadTime) {
+                    this.scheduleNote(this.tick, this.nextNoteTime);
+                    this.nextNote();
                 }
-
-                // 5. ORCHESTRA HIT (Start of every 4th bar)
-                if (this.tick % 64 === 0) {
-                    this.playOrchHit(t, currentRoot);
-                }
-
-                this.tick++;
             };
 
-            const interval = (60 / this.tempo) / 4 * 1000;
-            this.intervalId = setInterval(loop, interval);
+            // Run the checker much faster than the music actually plays
+            this.intervalId = setInterval(loop, this.lookahead);
+        }
+
+        nextNote() {
+            // Calculate exactly how long a 16th note takes in seconds
+            const secondsPerBeat = 60.0 / this.tempo;
+            const secondsPer16th = 0.25 * secondsPerBeat;
+            
+            // Advance the exact Web Audio time pointer
+            this.nextNoteTime += secondsPer16th;
+            this.tick++;
+        }
+
+        scheduleNote(currentTick, time) {
+            const chordIndex = Math.floor(currentTick / 16) % 4;
+            const currentRoot = this.progression[chordIndex];
+            
+            const beat16 = currentTick % 16;
+
+            // 1. DRUMS
+            if (beat16 === 0 || beat16 === 10) this.playKick(time);
+            if (beat16 === 4 || beat16 === 12) this.playSnare(time);
+            if (beat16 % 2 === 0) this.playHiHat(time, beat16 % 4 === 2);
+
+            // 2. BASS 
+            if (beat16 % 2 === 0) this.playBass(time, currentRoot);
+
+            // 3. OSTINATO
+            const arp = [0, 7, 12, 7];
+            this.playOstinato(time, currentRoot + arp[beat16 % 4]);
+
+            // 4. LEAD GUITAR 
+            if (beat16 % 2 === 0 && Math.random() > 0.4) {
+                const scaleNote = this.scaleIntervals[Math.floor(Math.random() * this.scaleIntervals.length)];
+                this.playGuitar(time, currentRoot + scaleNote);
+            }
+
+            // 5. ORCHESTRA HIT 
+            if (currentTick % 64 === 0) {
+                this.playOrchHit(time, currentRoot);
+            }
         }
 
         stop() {
@@ -46975,6 +47219,10 @@
         this.ctx = ctx;
         this.dest = dest;
         this.timer = null;
+        // --- SCHEDULING STATE ---
+        this.nextNoteTime = 0.0;     
+        this.scheduleAheadTime = 0.15; 
+        this.lookahead = 25;
 
         // --- SETTINGS ---
         this.tempo = 140; // Bouncy and fast
@@ -47014,12 +47262,29 @@
       }
 
       start() {
+        if (this.intervalId) return; // Prevent double-starts
         this.tickCount = 0;
-        this.loop();
+        
+        // Start the first note slightly in the future
+        this.nextNoteTime = this.ctx.currentTime + 0.05;
+
+        const loop = () => {
+            // Schedule notes ahead of time
+            while (this.nextNoteTime < this.ctx.currentTime + this.scheduleAheadTime) {
+                this.scheduleNote(this.tickCount, this.nextNoteTime);
+                this.nextNote();
+            }
+        };
+
+        // Run the checker on a fast interval
+        this.intervalId = setInterval(loop, this.lookahead);
       }
 
       stop() {
-        if (this.timer) clearTimeout(this.timer);
+        if (this.intervalId) {
+            clearInterval(this.intervalId);
+            this.intervalId = null;
+        }
         
         const t = this.ctx.currentTime;
         this.master.gain.cancelScheduledValues(t);
@@ -47033,48 +47298,42 @@
         }, 400);
       }
 
-      loop() {
-        const secondsPerBeat = 60 / this.tempo;
-        const interval = (secondsPerBeat / 4) * 1000; // 16th notes
+      nextNote() {
+        // Calculate the duration of a 16th note based on tempo
+        const secondsPerBeat = 60.0 / this.tempo;
+        const secondsPer16th = 0.25 * secondsPerBeat;
+        
+        this.nextNoteTime += secondsPer16th;
+        this.tickCount++;
+      }
 
-        this.timer = setTimeout(() => this.loop(), interval);
-
-        const t = this.ctx.currentTime;
-        const step = this.tickCount % 16;
-        const bar = Math.floor(this.tickCount / 16);
+      scheduleNote(currentTick, time) {
+        const step = currentTick % 16;
+        const bar = Math.floor(currentTick / 16);
         
         // Change chord every 2 bars to let the weirdness settle in
         const chordIdx = Math.floor(bar / 2) % 4; 
         const rootFreq = this.chords[chordIdx].root;
 
         // --- 1. THE "BOING" GUITARS (Rhythm) ---
-        // Pattern: X-x-X-x (Constant down-up strumming feel)
-        // We vary the pitch bend amount to simulate human error
         if (step % 2 === 0) {
             const isAccent = (step % 4 === 0);
-            // Play Root and Fifth
-            this.playTwang(t, rootFreq, isAccent); 
-            this.playTwang(t, rootFreq * 1.5, isAccent); // The Fifth
+            this.playTwang(time, rootFreq, isAccent); 
+            this.playTwang(time, rootFreq * 1.5, isAccent); // The Fifth
         }
 
         // --- 2. THE "WAIL" (Voice/Lead) ---
-        // This mimics the "Honnnney Piiiiie" scream.
-        // It creates a layer of "voices" that slide around.
         if (step === 0 || step === 8) {
             if (Math.random() > 0.3) {
-                // Pick a target note (3rd or 7th of the chord)
-                const interval = (Math.random() > 0.5) ? 1.25 : 1.8; // Major 3rd or 7th approx
-                this.playWail(t, rootFreq * interval);
+                const interval = (Math.random() > 0.5) ? 1.25 : 1.8; 
+                this.playWail(time, rootFreq * interval);
             }
         }
 
         // --- 3. THE THUMP (Percussion) ---
-        // Very dead, dry kick
         if (step % 4 === 0) {
-            this.playThump(t);
+            this.playThump(time);
         }
-
-        this.tickCount++;
       }
 
       // --- SYNTHESIS ENGINES ---
@@ -47195,7 +47454,14 @@
       constructor(ctx, dest) {
         this.ctx = ctx;
         this.dest = dest;
-        this.timer = null;
+        this.intervalId = null;
+        this.isPlaying = false;
+
+        // --- SCHEDULING STATE ---
+        this.nextNoteTime = 0.0;
+        this.scheduleAheadTime = 0.15; // 150ms buffer
+        this.lookahead = 25; // 25ms logic check
+
         this.playHead = 0; 
 
         // --- MODULATION SETTINGS (Ported from Harp2) ---
@@ -47205,7 +47471,7 @@
         this.loopCount = 0; 
         this.loopsPerModulation = 2; // How many times to play composition before changing key
         
-        // THE COMPOSITION (Unchanged)
+        // THE COMPOSITION
         this.composition = [
             // Phrase 1: The Question
             { offset: 0,  dur: 0.5 },
@@ -47255,21 +47521,44 @@
       }
 
       start() {
+        if (this.isPlaying) return;
+        this.isPlaying = true;
+
         // RESET STATE
         this.playHead = 0;
         this.loopCount = 0;
         this.keyIndex = 0;
         this.baseFreq = this.keySequence[0];
         
-        this.playStep();
+        // Reset volume in case it was faded out previously
+        const t = this.ctx.currentTime;
+        this.master.gain.cancelScheduledValues(t);
+        this.master.gain.setValueAtTime(0.5, t);
+
+        this.nextNoteTime = t + 0.05;
+
+        const loop = () => {
+            if (!this.isPlaying) return;
+            while (this.nextNoteTime < this.ctx.currentTime + this.scheduleAheadTime) {
+                this.scheduleNote(this.nextNoteTime);
+                this.advanceNote();
+            }
+        };
+
+        this.intervalId = setInterval(loop, this.lookahead);
       }
 
       stop() {
-        if (this.timer) clearTimeout(this.timer);
-        this.killPad(); // Keep your pad kill switch!
+        this.isPlaying = false;
+        if (this.intervalId) {
+            clearInterval(this.intervalId);
+            this.intervalId = null;
+        }
+
+        const t = this.ctx.currentTime;
+        this.killPad(t); 
 
         // Fade out the master volume
-        const t = this.ctx.currentTime;
         this.master.gain.cancelScheduledValues(t);
         this.master.gain.setValueAtTime(this.master.gain.value, t);
         this.master.gain.linearRampToValueAtTime(0, t + 0.5);
@@ -47283,22 +47572,29 @@
         }, 4000);
       }
 
-      playStep() {
+      scheduleNote(time) {
         const event = this.composition[this.playHead];
-        const t = this.ctx.currentTime;
 
         // Play Melody
         if (event.offset !== null) {
             const velocity = 0.2 + (Math.random() * 0.1); 
-            this.playVoice(event.offset, t, velocity);
+            this.playVoice(event.offset, time, velocity);
         }
 
         // Play Chords
         if (event.chord) {
-            this.updatePad(event.chord);
+            this.updatePad(event.chord, time);
         }
+      }
 
-        // --- LOOP & MODULATION LOGIC ---
+      advanceNote() {
+        const event = this.composition[this.playHead];
+
+        // Rubato timing math applied to the schedule tracker
+        const humanize = 1.0 + ((Math.random() * 0.1) - 0.05); 
+        const stepDurationSeconds = event.dur * humanize; 
+        
+        this.nextNoteTime += stepDurationSeconds;
         this.playHead++;
         
         // Check if we reached the end of the composition
@@ -47308,31 +47604,23 @@
 
             // Check if it's time to modulate
             if (this.loopCount >= this.loopsPerModulation) {
-                this.loopCount = 0; // Reset loop counter
+                this.loopCount = 0; 
                 
                 // Move to next key
                 this.keyIndex++;
                 if (this.keyIndex >= this.keySequence.length) {
                     this.keyIndex = 0;
                 }
-                
-                // Apply new frequency
                 this.baseFreq = this.keySequence[this.keyIndex];
                 
-                // Optional: Kill previous pads so chords don't clash during transition
-                this.killPad(); 
+                // Kill previous pads so chords don't clash during transition
+                // Scheduled precisely for when the next note drops
+                this.killPad(this.nextNoteTime); 
             }
         }
-        
-        // Rubato
-        const humanize = 1.0 + ((Math.random() * 0.1) - 0.05); 
-        const nextTime = (event.dur * humanize) * 1000; 
-
-        this.timer = setTimeout(() => this.playStep(), nextTime);
       }
 
       playVoice(semitone, t, vol) {
-        // Calculates freq based on current baseFreq (which changes now!)
         const freq = this.baseFreq * Math.pow(2, semitone / 12);
 
         const carrier = this.ctx.createOscillator();
@@ -47364,7 +47652,7 @@
         modulator.start(t);
         carrier.stop(t + 3.1);
         modulator.stop(t + 3.1);
-        // Clean up the FM Harp pluck
+        
         carrier.onended = () => {
             carrier.disconnect();
             modulator.disconnect();
@@ -47373,10 +47661,8 @@
         };
       }
 
-      updatePad(chordOffsets) {
-          const t = this.ctx.currentTime;
-          
-          // Clean up old pad notes
+      updatePad(chordOffsets, t) {
+          // Clean up old pad notes precisely at time 't'
           this.activePadOscs.forEach(item => {
               if (item.g) item.g.gain.setTargetAtTime(0, t, 0.5);
               if (item.osc) item.osc.stop(t + 2.0);
@@ -47384,7 +47670,6 @@
           this.activePadOscs = [];
 
           chordOffsets.forEach(offset => {
-              // Calculates freq based on current baseFreq
               const freq = (this.baseFreq * 0.5) * Math.pow(2, offset / 12);
               
               const osc = this.ctx.createOscillator();
@@ -47400,7 +47685,7 @@
               osc.connect(g);
               g.connect(this.padGain);
               osc.start(t);
-              // Automatically disconnect when killPad or updatePad stops it
+              
               osc.onended = () => {
                   osc.disconnect();
                   g.disconnect();
@@ -47409,8 +47694,7 @@
           });
       }
 
-      killPad() {
-          const t = this.ctx.currentTime;
+      killPad(t = this.ctx.currentTime) {
           this.activePadOscs.forEach(item => {
               if (item.g) {
                 item.g.gain.cancelScheduledValues(t);
@@ -47443,8 +47727,13 @@
       constructor(ctx, dest) {
         this.ctx = ctx;
         this.dest = dest;
-        this.timer = null;
+        this.intervalId = null;
         this.isStopped = false; // <--- 1. SAFETY FLAG
+
+        // --- SCHEDULING STATE ---
+        this.nextNoteTime = 0.0;
+        this.scheduleAheadTime = 0.15; // 150ms audio buffer
+        this.lookahead = 25; // 25ms logic check
 
         // --- 1. SETTINGS ---
         this.tempo = 72; 
@@ -47464,7 +47753,7 @@
         this.reverb = ctx.createConvolver();
         try {
             this.reverb.buffer = this.createImpulse(3.0);
-        } catch(e) { console.log("Reverb buffer error", e); } // Safety catch
+        } catch(e) { console.log("Reverb buffer error", e); } 
 
         this.reverbGain = ctx.createGain();
         this.reverbGain.gain.value = 0.45; 
@@ -47497,7 +47786,9 @@
       }
 
       start() {
-        this.isStopped = false; // Reset flag
+        if (this.intervalId) return; // Prevent double-starts
+        this.isStopped = false; 
+        
         this.tick = 0;
         this.phraseBar = 0;
         this.section = 'THEME';
@@ -47509,15 +47800,29 @@
         this.master.gain.cancelScheduledValues(this.ctx.currentTime);
         this.master.gain.setValueAtTime(0.6, this.ctx.currentTime);
         
-        this.schedule();
+        // Start the first note slightly in the future
+        this.nextNoteTime = this.ctx.currentTime + 0.05;
+
+        const loop = () => {
+            if (this.isStopped) return;
+            
+            // Schedule notes ahead of time
+            while (this.nextNoteTime < this.ctx.currentTime + this.scheduleAheadTime) {
+                this.scheduleNote(this.tick, this.nextNoteTime);
+                this.advanceNote();
+            }
+        };
+
+        // Run the checker on a fast interval
+        this.intervalId = setInterval(loop, this.lookahead);
       }
 
       stop() {
-        this.isStopped = true; // <--- 2. ACTIVATE KILL SWITCH
+        this.isStopped = true; 
         
-        if (this.timer) {
-            clearTimeout(this.timer);
-            this.timer = null;
+        if (this.intervalId) {
+            clearInterval(this.intervalId);
+            this.intervalId = null;
         }
 
         // Fade out to avoid clicking
@@ -47528,27 +47833,23 @@
 
         // Hard disconnect after fade
         setTimeout(() => { 
-            this.master.disconnect(); 
-            this.reverbGain.disconnect(); 
+            if (this.master) this.master.disconnect(); 
+            if (this.reverbGain) this.reverbGain.disconnect(); 
         }, 600);
       }
 
-      schedule() {
-        // <--- 3. CHECK KILL SWITCH IMMEDIATELY
-        // If stop() was called, abort this function instantly.
-        if (this.isStopped) return; 
-
-        const secondsPerBeat = 60 / this.tempo;
-        const stepTime = secondsPerBeat / 4; 
+      advanceNote() {
+        const secondsPerBeat = 60.0 / this.tempo;
+        const secondsPer16th = 0.25 * secondsPerBeat;
         
-        // Recursive loop
-        this.timer = setTimeout(() => this.schedule(), stepTime * 1000);
+        this.nextNoteTime += secondsPer16th;
+        this.tick++;
+      }
 
-        const step = this.tick % 16;
-        const t = this.ctx.currentTime;
-
+      scheduleNote(currentTick, time) {
+        const step = currentTick % 16;
         const cycleLength = 80; 
-        const cyclePos = this.tick % cycleLength;
+        const cyclePos = currentTick % cycleLength;
 
         if (cyclePos === 64) {
             this.section = 'CHORDS';
@@ -47559,11 +47860,11 @@
             this.phraseBar = 0;
 
             // --- KEY CHANGE LOGIC ---
-            if (this.tick > 0) {
-              this.cycleCount++; // <--- Added missing increment
+            if (currentTick > 0) {
+              this.cycleCount++; 
               
-              if (this.cycleCount >= 3) { // Changed == to >= for safety
-                this.cycleCount = 0; // <--- FIXED: Added 'this.'
+              if (this.cycleCount >= 3) { 
+                this.cycleCount = 0; 
                 
                 this.keyIndex++;
                 if (this.keyIndex >= this.keySequence.length) {
@@ -47576,28 +47877,22 @@
         }
 
         // --- BACKGROUND STRINGS ---
-        // Safety check: Only play if not stopped
         if (!this.isStopped) {
             if (step === 0) {
-                this.playStringPad(t, this.section === 'THEME' ? 0 : 5); 
+                this.playStringPad(time, this.section === 'THEME' ? 0 : 5); 
             }
 
             if (this.section === 'THEME') {
-                this.playThemeSection(t, step);
+                this.playThemeSection(time, step);
             } else {
-                this.playChordSection(t, step);
+                this.playChordSection(time, step);
             }
         }
-
-        this.tick++;
       }
 
-      // ... rest of your methods (playThemeSection, playChordSection, etc) remain the same ...
-      // Be sure to include the helper methods below:
-
-      playThemeSection(t, step) {
-        if (step % 4 === 0) this.playHarp(t, 0, 0.25, 'backing'); 
-        if (step % 4 === 2) this.playHarp(t, 4, 0.15, 'backing'); 
+      playThemeSection(time, step) {
+        if (step % 4 === 0) this.playHarp(time, 0, 0.25, 'backing'); 
+        if (step % 4 === 2) this.playHarp(time, 4, 0.15, 'backing'); 
 
         if (step === 0) {
             this.phraseBar++;
@@ -47612,25 +47907,27 @@
             if (this.melodyNoteIndex > 14) this.melodyNoteIndex -= 7;
             if (this.melodyNoteIndex < 0) this.melodyNoteIndex += 7;
 
-            this.playHarp(t, this.melodyNoteIndex + 7, 0.3, 'lead'); 
+            this.playHarp(time, this.melodyNoteIndex + 7, 0.3, 'lead'); 
         } 
         else {
             if (step === 0 || step === 8) {
                 if (Math.random() > 0.8) {
-                    this.playHarp(t, this.melodyNoteIndex + 7, 0.3, 'lead');
-                    this.playHarp(t + 0.12, this.melodyNoteIndex + 8, 0.2, 'lead');
-                    this.playHarp(t + 0.24, this.melodyNoteIndex + 7, 0.3, 'lead');
+                    this.playHarp(time, this.melodyNoteIndex + 7, 0.3, 'lead');
+                    
+                    // Notice how we use relative timing based on the precise scheduled 'time'
+                    this.playHarp(time + 0.12, this.melodyNoteIndex + 8, 0.2, 'lead');
+                    this.playHarp(time + 0.24, this.melodyNoteIndex + 7, 0.3, 'lead');
                 } else {
-                    this.playHarp(t, this.melodyNoteIndex + 7, 0.4, 'lead');
+                    this.playHarp(time, this.melodyNoteIndex + 7, 0.4, 'lead');
                 }
             }
         }
       }
 
-      playChordSection(t, step) {
+      playChordSection(time, step) {
         const arpPattern = [0, 2, 4, 7, 9, 7, 4, 2]; 
         const idx = arpPattern[step % 8];
-        this.playHarp(t, idx + 7, 0.2, 'lead');
+        this.playHarp(time, idx + 7, 0.2, 'lead');
       }
 
       getFreq(index) {
@@ -47644,7 +47941,7 @@
       }
 
       playHarp(t, index, vol, type) {
-        if (this.isStopped) return; // Extra audio safety
+        if (this.isStopped) return;
 
         const freq = this.getFreq(index); 
         
@@ -47670,6 +47967,11 @@
         
         osc.start(t);
         osc.stop(t + decay + 0.1);
+        osc.onended = () => {
+            osc.disconnect();
+            filter.disconnect();
+            g.disconnect();
+        };
       }
 
       playStringPad(t, rootIndex) {
@@ -47701,9 +48003,15 @@
             
             osc.start(t);
             osc.stop(t + 4.0);
+            osc.onended = () => {
+                osc.disconnect();
+                filter.disconnect();
+                g.disconnect();
+            };
         });
       }
-    }// MODULE 33: 
+    }
+    // MODULE 33: 
     //Module 33: hero
     class HeroLyreModule {
       constructor(ctx, dest) {
@@ -49675,8 +49983,14 @@
       constructor(ctx, dest) {
         this.ctx = ctx;
         this.dest = dest;
+        this.intervalId = null;
         this.isPlaying = false;
-        this.timer = null;
+        this.isStopped = false;
+
+        // --- SCHEDULING STATE ---
+        this.nextBarTime = 0.0;
+        this.scheduleAheadTime = 0.5; // 500ms buffer for full-bar scheduling
+        this.lookahead = 25; // 25ms logic check
 
         // --- 1. SETTINGS ---
         this.tempo = 40; 
@@ -49684,12 +49998,11 @@
             
         // --- SCALE LIBRARY ---
         this.scales = {
-          // Your Requests (Octatonic / Diminished Symmetrical):
             MAJOR:          [0, 2, 3, 5, 7, 9, 11],       // Serene, Open
             HARMONIC_MINOR: [0, 2, 3, 5, 7, 8, 11],       // Sorrowful, Classical
-          LYDIAN:         [0, 2, 4, 6, 7, 9, 11],       // Dreamy, Floating
+            LYDIAN:         [0, 2, 4, 6, 7, 9, 11],       // Dreamy, Floating
             
-          OCTATONIC_1:    [0, 1, 3, 4, 6, 7, 9, 10],    // Tension, Mystery (Half-Whole)
+            OCTATONIC_1:    [0, 1, 3, 4, 6, 7, 9, 10],    // Tension, Mystery (Half-Whole)
             OCTATONIC_2:    [0, 2, 3, 5, 6, 8, 9, 11]     // Magic, Unstable (Whole-Half)
         };
         
@@ -49698,7 +50011,6 @@
         this.scaleIntervals = this.scales.OCTATONIC_1;
 
         // STATE
-        this.tick = 0;
         this.barIndex = 0;
         this.currentPhrase = [];
 
@@ -49737,23 +50049,43 @@
       }
 
       start() {
-        if (this.isPlaying) return;
+        if (this.intervalId) return; // Prevent double starts
         
         if (this.ctx.state === 'suspended') {
             this.ctx.resume();
         }
 
         this.isPlaying = true;
+        this.isStopped = false;
         this.barIndex = 0;
-        this.tick = 0;
         
+        // Reset volume in case it was faded out
+        this.master.gain.cancelScheduledValues(this.ctx.currentTime);
+        this.master.gain.setValueAtTime(0.5, this.ctx.currentTime);
+
         this.currentPhrase = this.composePhrase();
-        this.playNextBar();
+        this.nextBarTime = this.ctx.currentTime + 0.1;
+
+        const loop = () => {
+            if (this.isStopped) return;
+            
+            while (this.nextBarTime < this.ctx.currentTime + this.scheduleAheadTime) {
+                this.scheduleBar(this.nextBarTime);
+                this.advanceBar();
+            }
+        };
+
+        this.intervalId = setInterval(loop, this.lookahead);
       }
 
       stop() {
         this.isPlaying = false;
-        if (this.timer) clearTimeout(this.timer);
+        this.isStopped = true;
+
+        if (this.intervalId) {
+            clearInterval(this.intervalId);
+            this.intervalId = null;
+        }
         
         const t = this.ctx.currentTime;
         this.master.gain.cancelScheduledValues(t);
@@ -49774,8 +50106,6 @@
       composePhrase() {
         // 4-Bar Phrase Generator
         // We use indices 0 (I), 3 (IV), 4 (V) relative to scale length
-        // This works for 7-note scales perfectly. 
-        // For 8-note scales, it picks interesting "alien" chords automatically.
         const prog = [0, 3, 4, 0];
         
         const textureType = Math.random() > 0.5 ? 'STRUM_AND_MELODY' : 'ARPEGGIO_FLOW';
@@ -49788,32 +50118,40 @@
 
       // --- THE ORPHEUS HANDS ---
 
-      playNextBar() {
+      scheduleBar(time) {
         if (!this.isPlaying) return;
 
         const barData = this.currentPhrase[this.barIndex];
-        const t = this.ctx.currentTime;
         const beatDur = 60 / this.tempo;
         
         // IMPORTANT: Get current scale length for modulo math
         const scaleLen = this.scaleIntervals.length;
 
         // --- HAND 1: THUMB ---
-        this.scheduleThumb(t, barData, beatDur, scaleLen);
+        this.scheduleThumb(time, barData, beatDur, scaleLen);
 
         // --- HAND 2: FINGERS ---
         if (barData.texture === 'STRUM_AND_MELODY') {
-            this.scheduleStrumTexture(t, barData, beatDur, scaleLen);
+            this.scheduleStrumTexture(time, barData, beatDur, scaleLen);
         } else {
-            this.scheduleArpeggioTexture(t, barData, beatDur, scaleLen);
+            this.scheduleArpeggioTexture(time, barData, beatDur, scaleLen);
         }
+      }
 
-        // Schedule next bar
+      advanceBar() {
+        const beatDur = 60 / this.tempo;
         const barDuration = beatDur * 4; 
-        this.timer = setTimeout(() => {
-            this.advanceBar();
-            this.playNextBar();
-        }, barDuration * 1000);
+
+        // Advance Web Audio timeline
+        this.nextBarTime += barDuration;
+        
+        this.barIndex++;
+        if (this.barIndex >= 4) {
+            this.barIndex = 0;
+            // 30% Chance to modulate Key AND Scale
+            if (Math.random() < 0.3) this.modulateKeyAndScale();
+            this.currentPhrase = this.composePhrase();
+        }
       }
 
       scheduleThumb(t, barData, beatDur, scaleLen) {
@@ -49871,16 +50209,6 @@
             const vol = (i % 4 === 0) ? 0.4 : 0.25;
 
             this.playHarpString(time + swing, note.d, note.o, 1.0, vol);
-        }
-      }
-
-      advanceBar() {
-        this.barIndex++;
-        if (this.barIndex >= 4) {
-            this.barIndex = 0;
-            // 30% Chance to modulate Key AND Scale
-            if (Math.random() < 0.3) this.modulateKeyAndScale();
-            this.currentPhrase = this.composePhrase();
         }
       }
 
