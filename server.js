@@ -3430,17 +3430,16 @@
             [DIALOGUE GENERATION & DATA MAPPING]:
             Write the dialogue arrays matching the lore you invented. Keep all lines under 15 words. Ensure the tone is rich dark fantasy.
             
-            1. bossName: Invent a unique, evocative, and menacing title for the Boss (e.g., "Vael, the Starving Hand" or "Kaelen the Betrayed" instead of just "${bossCardName}").
-            2. mapLore: 2-3 sentences of deep, novelistic history establishing the Theme, Twist, and Villain's true motivation.
-            3. questObjective: A clear 1-sentence objective.
-            4. bossTaunt: 1-2 sentences. Reveal the boss's tragic or logical motivation, reference the Plot Twist, and attack the player's psychology to make the player feel like they might be the villain.
-            5. hostileTaunts: Array of 30 DISTINCT battle cries. These MUST tie directly to the scenario lore, the faction's dreams, or their desperation (e.g., "We only wanted to survive!", "The Queen lied to you!", "More... we need more!"). Make the world feel alive.
-            6. traitorBegs: 15 lines from fleeing enemies. At least 5 MUST detail how terrifying the 3rd Tribe in the Ruins is.
-            7. friendlyLore: Array of 6 lines. Let the allied forces of ${questGiverName} explain the tragedy of the war and hint at the twist.
-            8. friendlyLife: Array of 4 lines of mundane, atmospheric chatter revealing their daily struggles.
-            9. friendlyProfound: Array of 4 philosophical statements bridging the player's habits to the scenario's theme.
-            10. recruitPlea: Array of 3 compelling lines to join the party.
-            11. prisonerLines: Array of 6 lines from trapped NPCs. They MUST reveal the Plot Twist.`;
+            1. mapLore: 2-3 sentences of deep, novelistic history establishing the Theme, Twist, and Villain's true motivation.
+            2. questObjective: A clear 1-sentence objective.
+            3. bossTaunt: 1-2 sentences. Reveal the boss's tragic or logical motivation, reference the Plot Twist, and attack the player's psychology to make the player feel like they might be the villain.
+            4. hostileTaunts: Array of 30 DISTINCT battle cries. These MUST tie directly to the scenario lore, the faction's dreams, or their desperation (e.g., "We only wanted to survive!", "The Queen lied to you!", "More... we need more!"). Make the world feel alive.
+            5. traitorBegs: 15 lines from fleeing enemies. At least 5 MUST detail how terrifying the 3rd Tribe in the Ruins is.
+            6. friendlyLore: Array of 6 lines. Let the allied forces of ${questGiverName} explain the tragedy of the war and hint at the twist.
+            7. friendlyLife: Array of 4 lines of mundane, atmospheric chatter revealing their daily struggles.
+            8. friendlyProfound: Array of 4 philosophical statements bridging the player's habits to the scenario's theme.
+            9. recruitPlea: Array of 3 compelling lines to join the party.
+            10. prisonerLines: Array of 6 lines from trapped NPCs. They MUST reveal the Plot Twist.`;
 
         const schema = {
             type: SchemaType.OBJECT,
