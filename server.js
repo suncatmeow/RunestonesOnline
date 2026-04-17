@@ -3718,7 +3718,7 @@
                                         dialogue: [script.bossTaunt || "You dare approach my domain?"]
                                     });
 
-                                    // Helper: Get a safe tile away from the portal
+                                    // FIX: Make getDistantTile more forgiving so hostages actually spawn
                                     const getDistantTile = (minDist) => {
                                         let tile = mapData.validFloors[Math.floor(Math.random() * mapData.validFloors.length)];
                                         let attempts = 0;
@@ -3731,18 +3731,24 @@
 
                                     // --- SCENARIO A: RESCUE / FETCH ---
                                     if (scenarioType === 'Rescue/Fetch') {
-                                        // Spawn 3 Hostages (From the Ally Faction)
+                                        // Spawn 3 Hostages (Utilizing your Escort Quest Engine!)
                                         for (let i = 0; i < 3; i++) {
-                                            let hTile = getDistantTile(10); 
-                                            let allyID = friendlyMinions[Math.floor(Math.random() * friendlyMinions.length)];
+                                            let hTile = getDistantTile(8); 
+                                            let allyID = friendlyMinions[i % friendlyMinions.length] || 32;
+                                            
+                                            // Determine a random reward for the quest (Card IDs 10 to 50)
+                                            let randomReward = Math.floor(Math.random() * 40) + 10;
+
                                             mapNPCs.push({
                                                 type: CARD_MANIFEST_DB[allyID].sprite || allyID, 
                                                 x: hTile.x + 0.5, y: hTile.y + 0.5,
                                                 state: 'stationary', 
-                                                role: 'become_ally', // They offer to join your squad!
+                                                role: 'escort_giver', 
                                                 alignment: 'friendly',
-                                                color: '#00ff00', deck: [allyID], 
-                                                dialogue: [script.prisonerLines ? script.prisonerLines[i] : "Thank the gods! Let me fight by your side!"],
+                                                color: '#00ff00', 
+                                                // DECK FORMAT: [Target to Spawn, Reward Card, Quest Type]
+                                                deck: [antagID, randomReward, 'rescue'], 
+                                                dialogue: [script.prisonerLines ? script.prisonerLines[i] : "Thank the gods! Get me out of here!"],
                                                 options: ['Rescue', 'Leave']
                                             });
                                         }
@@ -3754,6 +3760,7 @@
                                                 type: CARD_MANIFEST_DB[mID].sprite || mID, x: gTile.x + 0.5, y: gTile.y + 0.5, 
                                                 state: 'wandering', role: 'battle', alignment: 'foe', 
                                                 deck: buildSynergisticDeck(mID, 100), color: '#ff0000', 
+                                                // Inject the AI's written philosophical taunts here!
                                                 dialogue: [script.hostileTaunts ? script.hostileTaunts[i % script.hostileTaunts.length] : "Intruder!"]
                                             });
                                         }
@@ -3761,16 +3768,20 @@
                                     
                                     // --- SCENARIO B: RAID (Fetch Sub-Quest) ---
                                     else if (scenarioType === 'Raid') {
-                                        // Spawn Wounded Explorer (From the Ally Faction)
+                                        // Spawn Wounded Explorer (Using Escort 'Retrieve' Mode)
                                         let fetchTile = getDistantTile(10);
-                                        let allyID = friendlyMinions[Math.floor(Math.random() * friendlyMinions.length)];
+                                        let allyID = friendlyMinions[0] || 9;
                                         mapNPCs.push({
                                             type: CARD_MANIFEST_DB[allyID].sprite || allyID,
                                             x: fetchTile.x + 0.5, y: fetchTile.y + 0.5,
-                                            state: 'stationary', role: 'reward', alignment: 'friendly',
-                                            rewardCard: 10, // Gives them a Treasure Chest card
-                                            color: '#ffff00', deck: [],
-                                            dialogue: ["I am too wounded to carry this. Take it and slay the beast!"]
+                                            state: 'stationary', 
+                                            role: 'escort_giver', 
+                                            alignment: 'friendly',
+                                            color: '#00ff00', 
+                                            // DECK: [-27 = Card Sprite, Reward, 'retrieve']
+                                            deck: [-27, 10, 'retrieve'], 
+                                            dialogue: [script.friendlyLore ? script.friendlyLore[0] : "I dropped a relic deeper in the dungeon. Please find it!"],
+                                            options: ['Help', 'Leave']
                                         });
 
                                         for (let i = 0; i < 18; i++) {
@@ -3787,18 +3798,19 @@
 
                                     // --- SCENARIO C: INVASION (Siege) ---
                                     else if (scenarioType === 'Invasion') {
-                                        // Spawn Defenders around the Portal (From the Ally Faction)
+                                        // Spawn Defenders around the Portal
                                         for (let i = 0; i < 5; i++) {
-                                            let defID = friendlyMinions[Math.floor(Math.random() * friendlyMinions.length)];
+                                            let defID = friendlyMinions[i % friendlyMinions.length] || 64;
                                             mapNPCs.push({
                                                 type: CARD_MANIFEST_DB[defID].sprite || defID, 
                                                 x: portalSpawn.x + (Math.random()*4 - 2), y: portalSpawn.y + (Math.random()*4 - 2),
                                                 state: 'stationary', 
-                                                role: 'become_ally', // They offer to join your squad!
-                                                alignment: 'defender', 
+                                                role: 'dialogue', // FIX: Dialogue prevents them from opening the battle UI!
+                                                alignment: 'defender', // FIX: Defender makes them auto-attack red dots!
                                                 deck: buildSynergisticDeck(defID, 150), 
-                                                color: '#00ff00', 
-                                                dialogue: ["Hold the line! We will fight with you!"]
+                                                color: '#00ff00', // FIX: Green Minimap Dot!
+                                                // Inject the AI's lore text so the guards tell the story
+                                                dialogue: [script.recruitPlea ? script.recruitPlea[i % script.recruitPlea.length] : "Hold the line!"]
                                             });
                                         }
 
@@ -3829,7 +3841,9 @@
                                         }
                                     }
 
-                                    mapNPCs.forEach((npc, idx) => { npc.index = 10000 + idx; });// 4. CACHE THE INSTANCE
+                                    mapNPCs.forEach((npc, idx) => { npc.index = 10000 + idx; });
+
+                                // 4. CACHE THE INSTANCE
                                     const customMapData = {
                                         id: 999, maze: mapData.grid, 
                                         skyColor: biome.skies[0], floorColor: biome.floors[0], 
@@ -3844,7 +3858,7 @@
 
                                     activeCustomMap = customMapData;
 
-                                // 5. SPAWN THE IMP IN THE OVERWORLD
+                                // 5. SPAWN THE IMP IN THE OVERWORLD (UNTOUCHED!)
                                     let requesterID = socket ? socket.id : findSocketID(call.args.targetName);
                                     if (requesterID && players[requesterID]) {
                                         const tp = players[requesterID];
