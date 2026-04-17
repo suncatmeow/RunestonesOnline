@@ -3689,6 +3689,10 @@
                                     let hostileMinions = getMinions(antagID);
                                     if (hostileMinions.length === 0) hostileMinions = biome.mobs || [54, 56, 42];
 
+                                    // --- THE FIX: GRAB THE ALLY FACTION ---
+                                    let friendlyMinions = getMinions(protagID);
+                                    if (friendlyMinions.length === 0) friendlyMinions = [32, 75, 60]; // Apprentice, Gnome, Pixie fallbacks
+
                                 // 2. THE ASYNC FORK: Run Map Math and LLM at the same time
                                     const targetPlayer = players[findSocketID(call.args.targetName)];
                                     const scriptPromise = generateScenarioScript(biome.name, scenarioType, CARD_MANIFEST_DB[antagID].name, CARD_MANIFEST_DB[protagID].name, targetPlayer);
@@ -3697,132 +3701,135 @@
                                 // ==========================================
                                 // 3. MAP THE ACTORS SAFELY (SCENARIO ROUTING)
                                 // ==========================================
-                                const portalSpawn = mapData.validFloors[Math.floor(Math.random() * mapData.validFloors.length)];
-                                const bossSpawn = getFurthestPoint(portalSpawn, mapData.validFloors);
-                                
-                                let script = await scriptPromise;
-                                if (!script) throw new Error("LLM failed to return a scenario.");
+                                    const portalSpawn = mapData.validFloors[Math.floor(Math.random() * mapData.validFloors.length)];
+                                    const bossSpawn = getFurthestPoint(portalSpawn, mapData.validFloors);
+                                    
+                                    let script = await scriptPromise;
+                                    if (!script) throw new Error("LLM failed to return a scenario.");
 
-                                let mapNPCs = [];
-                                
-                                // Boss
-                                mapNPCs.push({
-                                    type: CARD_MANIFEST_DB[antagID].sprite || antagID,
-                                    x: bossSpawn.x + 0.5, y: bossSpawn.y + 0.5, 
-                                    state: 'stationary', role: 'battle', isBoss: true, alignment: 'foe',
-                                    mastery: 3, deck: buildSynergisticDeck(antagID, 300), color: '#ff00ff', 
-                                    dialogue: [script.bossTaunt || "You dare approach my domain?"]
-                                });
-
-                                // FIX: Make getDistantTile more forgiving so hostages don't spawn on the portal
-                                const getDistantTile = (minDist) => {
-                                    let tile = mapData.validFloors[Math.floor(Math.random() * mapData.validFloors.length)];
-                                    let attempts = 0;
-                                    while (Math.sqrt(Math.pow(tile.x - portalSpawn.x, 2) + Math.pow(tile.y - portalSpawn.y, 2)) < minDist && attempts < 50) {
-                                        tile = mapData.validFloors[Math.floor(Math.random() * mapData.validFloors.length)];
-                                        attempts++;
-                                    }
-                                    return tile;
-                                };
-
-                                // --- SCENARIO A: RESCUE / FETCH ---
-                                if (scenarioType === 'Rescue/Fetch') {
-                                    // Spawn 3 Hostages
-                                    for (let i = 0; i < 3; i++) {
-                                        let hTile = getDistantTile(10); // Reduced required distance
-                                        mapNPCs.push({
-                                            type: 32, // Apprentice/Villager sprite
-                                            x: hTile.x + 0.5, y: hTile.y + 0.5,
-                                            state: 'stationary', 
-                                            role: 'become_ally', // FIX: Now they offer to join your squad!
-                                            alignment: 'friendly',
-                                            color: '#00ff00', deck: [56], 
-                                            dialogue: [script.prisonerLines ? script.prisonerLines[i] : "Thank the gods! Let me fight by your side!"],
-                                            options: ['Rescue', 'Leave']
-                                        });
-                                    }
-                                    // Spawn Patrols
-                                    for (let i = 0; i < 10; i++) {
-                                        let mID = hostileMinions[Math.floor(Math.random() * hostileMinions.length)];
-                                        let gTile = getDistantTile(5);
-                                        mapNPCs.push({
-                                            type: CARD_MANIFEST_DB[mID].sprite || mID, x: gTile.x + 0.5, y: gTile.y + 0.5, 
-                                            state: 'wandering', role: 'battle', alignment: 'foe', 
-                                            deck: buildSynergisticDeck(mID, 100), color: '#ff0000', 
-                                            dialogue: [script.hostileTaunts ? script.hostileTaunts[i % script.hostileTaunts.length] : "Intruder!"]
-                                        });
-                                    }
-                                } 
-                                
-                                // --- SCENARIO B: RAID (Fetch Sub-Quest) ---
-                                else if (scenarioType === 'Raid') {
-                                    let fetchTile = getDistantTile(10);
+                                    let mapNPCs = [];
+                                    
+                                    // Every scenario needs its Boss
                                     mapNPCs.push({
-                                        type: 9, // Hermit
-                                        x: fetchTile.x + 0.5, y: fetchTile.y + 0.5,
-                                        state: 'stationary', role: 'reward', alignment: 'friendly',
-                                        rewardCard: 10, // Gives them a Treasure Chest card
-                                        color: '#ffff00', deck: [],
-                                        dialogue: ["I am too wounded to carry this. Take it and slay the beast!"]
+                                        type: CARD_MANIFEST_DB[antagID].sprite || antagID,
+                                        x: bossSpawn.x + 0.5, y: bossSpawn.y + 0.5, 
+                                        state: 'stationary', role: 'battle', isBoss: true, alignment: 'foe',
+                                        mastery: 3, deck: buildSynergisticDeck(antagID, 300), color: '#ff00ff', 
+                                        dialogue: [script.bossTaunt || "You dare approach my domain?"]
                                     });
 
-                                    for (let i = 0; i < 18; i++) {
-                                        let mID = hostileMinions[Math.floor(Math.random() * hostileMinions.length)];
-                                        let gTile = getDistantTile(8);
-                                        mapNPCs.push({
-                                            type: CARD_MANIFEST_DB[mID].sprite || mID, x: gTile.x + 0.5, y: gTile.y + 0.5, 
-                                            state: 'stationary', role: 'battle', alignment: 'foe', 
-                                            deck: buildSynergisticDeck(mID, 120), color: '#ff0000', 
-                                            dialogue: [script.hostileTaunts ? script.hostileTaunts[i % script.hostileTaunts.length] : "None shall pass!"]
-                                        });
-                                    }
-                                }
+                                    // Helper: Get a safe tile away from the portal
+                                    const getDistantTile = (minDist) => {
+                                        let tile = mapData.validFloors[Math.floor(Math.random() * mapData.validFloors.length)];
+                                        let attempts = 0;
+                                        while (Math.sqrt(Math.pow(tile.x - portalSpawn.x, 2) + Math.pow(tile.y - portalSpawn.y, 2)) < minDist && attempts < 50) {
+                                            tile = mapData.validFloors[Math.floor(Math.random() * mapData.validFloors.length)];
+                                            attempts++;
+                                        }
+                                        return tile;
+                                    };
 
-                                // --- SCENARIO C: INVASION (Siege) ---
-                                else if (scenarioType === 'Invasion') {
-                                    // Spawn Bastion Defenders around the Portal
-                                    for (let i = 0; i < 5; i++) {
+                                    // --- SCENARIO A: RESCUE / FETCH ---
+                                    if (scenarioType === 'Rescue/Fetch') {
+                                        // Spawn 3 Hostages (From the Ally Faction)
+                                        for (let i = 0; i < 3; i++) {
+                                            let hTile = getDistantTile(10); 
+                                            let allyID = friendlyMinions[Math.floor(Math.random() * friendlyMinions.length)];
+                                            mapNPCs.push({
+                                                type: CARD_MANIFEST_DB[allyID].sprite || allyID, 
+                                                x: hTile.x + 0.5, y: hTile.y + 0.5,
+                                                state: 'stationary', 
+                                                role: 'become_ally', // They offer to join your squad!
+                                                alignment: 'friendly',
+                                                color: '#00ff00', deck: [allyID], 
+                                                dialogue: [script.prisonerLines ? script.prisonerLines[i] : "Thank the gods! Let me fight by your side!"],
+                                                options: ['Rescue', 'Leave']
+                                            });
+                                        }
+                                        // Spawn Patrols
+                                        for (let i = 0; i < 10; i++) {
+                                            let mID = hostileMinions[Math.floor(Math.random() * hostileMinions.length)];
+                                            let gTile = getDistantTile(5);
+                                            mapNPCs.push({
+                                                type: CARD_MANIFEST_DB[mID].sprite || mID, x: gTile.x + 0.5, y: gTile.y + 0.5, 
+                                                state: 'wandering', role: 'battle', alignment: 'foe', 
+                                                deck: buildSynergisticDeck(mID, 100), color: '#ff0000', 
+                                                dialogue: [script.hostileTaunts ? script.hostileTaunts[i % script.hostileTaunts.length] : "Intruder!"]
+                                            });
+                                        }
+                                    } 
+                                    
+                                    // --- SCENARIO B: RAID (Fetch Sub-Quest) ---
+                                    else if (scenarioType === 'Raid') {
+                                        // Spawn Wounded Explorer (From the Ally Faction)
+                                        let fetchTile = getDistantTile(10);
+                                        let allyID = friendlyMinions[Math.floor(Math.random() * friendlyMinions.length)];
                                         mapNPCs.push({
-                                            type: 64, // Shield/Guard
-                                            x: portalSpawn.x + (Math.random()*4 - 2), y: portalSpawn.y + (Math.random()*4 - 2),
-                                            state: 'stationary', 
-                                            role: 'become_ally', // FIX: Now they offer to join your squad!
-                                            alignment: 'defender', 
-                                            deck: buildSynergisticDeck(64, 150), 
-                                            color: '#00ff00', // FIX: Green dot, not Red!
-                                            dialogue: ["Hold the line! We will fight with you!"]
+                                            type: CARD_MANIFEST_DB[allyID].sprite || allyID,
+                                            x: fetchTile.x + 0.5, y: fetchTile.y + 0.5,
+                                            state: 'stationary', role: 'reward', alignment: 'friendly',
+                                            rewardCard: 10, // Gives them a Treasure Chest card
+                                            color: '#ffff00', deck: [],
+                                            dialogue: ["I am too wounded to carry this. Take it and slay the beast!"]
                                         });
+
+                                        for (let i = 0; i < 18; i++) {
+                                            let mID = hostileMinions[Math.floor(Math.random() * hostileMinions.length)];
+                                            let gTile = getDistantTile(8);
+                                            mapNPCs.push({
+                                                type: CARD_MANIFEST_DB[mID].sprite || mID, x: gTile.x + 0.5, y: gTile.y + 0.5, 
+                                                state: 'stationary', role: 'battle', alignment: 'foe', 
+                                                deck: buildSynergisticDeck(mID, 120), color: '#ff0000', 
+                                                dialogue: [script.hostileTaunts ? script.hostileTaunts[i % script.hostileTaunts.length] : "None shall pass!"]
+                                            });
+                                        }
                                     }
 
-                                    // Spawn the Horde far away
-                                    for (let i = 0; i < 15; i++) {
-                                        let mID = hostileMinions[Math.floor(Math.random() * hostileMinions.length)];
-                                        let gTile = getDistantTile(15); 
-                                        mapNPCs.push({
-                                            type: CARD_MANIFEST_DB[mID].sprite || mID, x: gTile.x + 0.5, y: gTile.y + 0.5, 
-                                            state: 'chasing', role: 'battle', alignment: 'foe', 
-                                            deck: buildSynergisticDeck(mID, 80), color: '#ff0000', 
-                                            dialogue: [script.hostileTaunts ? script.hostileTaunts[i % script.hostileTaunts.length] : "Blood!"]
-                                        });
-                                    }
-                                }
+                                    // --- SCENARIO C: INVASION (Siege) ---
+                                    else if (scenarioType === 'Invasion') {
+                                        // Spawn Defenders around the Portal (From the Ally Faction)
+                                        for (let i = 0; i < 5; i++) {
+                                            let defID = friendlyMinions[Math.floor(Math.random() * friendlyMinions.length)];
+                                            mapNPCs.push({
+                                                type: CARD_MANIFEST_DB[defID].sprite || defID, 
+                                                x: portalSpawn.x + (Math.random()*4 - 2), y: portalSpawn.y + (Math.random()*4 - 2),
+                                                state: 'stationary', 
+                                                role: 'become_ally', // They offer to join your squad!
+                                                alignment: 'defender', 
+                                                deck: buildSynergisticDeck(defID, 150), 
+                                                color: '#00ff00', 
+                                                dialogue: ["Hold the line! We will fight with you!"]
+                                            });
+                                        }
 
-                                // --- SCENARIO D: ARENA MADNESS ---
-                                else {
-                                    for (let i = 0; i < 8; i++) {
-                                        let mID = hostileMinions[Math.floor(Math.random() * hostileMinions.length)];
-                                        let gTile = getDistantTile(4);
-                                        mapNPCs.push({
-                                            type: CARD_MANIFEST_DB[mID].sprite || mID, x: gTile.x + 0.5, y: gTile.y + 0.5, 
-                                            state: 'chasing', role: 'battle', alignment: 'foe_gladiator', subRole: 'gladiator',
-                                            deck: buildSynergisticDeck(mID, 100), color: '#ff4400', 
-                                            dialogue: ["For glory!"]
-                                        });
+                                        // Spawn the Horde far away
+                                        for (let i = 0; i < 15; i++) {
+                                            let mID = hostileMinions[Math.floor(Math.random() * hostileMinions.length)];
+                                            let gTile = getDistantTile(15); 
+                                            mapNPCs.push({
+                                                type: CARD_MANIFEST_DB[mID].sprite || mID, x: gTile.x + 0.5, y: gTile.y + 0.5, 
+                                                state: 'chasing', role: 'battle', alignment: 'foe', 
+                                                deck: buildSynergisticDeck(mID, 80), color: '#ff0000', 
+                                                dialogue: [script.hostileTaunts ? script.hostileTaunts[i % script.hostileTaunts.length] : "Blood!"]
+                                            });
+                                        }
                                     }
-                                }
 
-                                mapNPCs.forEach((npc, idx) => { npc.index = 10000 + idx; });
-                                // 4. CACHE THE INSTANCE
+                                    // --- SCENARIO D: ARENA MADNESS ---
+                                    else {
+                                        for (let i = 0; i < 8; i++) {
+                                            let mID = hostileMinions[Math.floor(Math.random() * hostileMinions.length)];
+                                            let gTile = getDistantTile(4);
+                                            mapNPCs.push({
+                                                type: CARD_MANIFEST_DB[mID].sprite || mID, x: gTile.x + 0.5, y: gTile.y + 0.5, 
+                                                state: 'chasing', role: 'battle', alignment: 'foe_gladiator', subRole: 'gladiator',
+                                                deck: buildSynergisticDeck(mID, 100), color: '#ff4400', 
+                                                dialogue: ["For glory!"]
+                                            });
+                                        }
+                                    }
+
+                                    mapNPCs.forEach((npc, idx) => { npc.index = 10000 + idx; });// 4. CACHE THE INSTANCE
                                     const customMapData = {
                                         id: 999, maze: mapData.grid, 
                                         skyColor: biome.skies[0], floorColor: biome.floors[0], 
@@ -3850,12 +3857,12 @@
                                         io.to(requesterID).emit("remote_spawn_npc", {
                                             mapID: tp.mapID, 
                                             index: Math.floor(Math.random() * 100000) + 1000,
-                                            x: tp.x + (Math.random() > 0.5 ? 2 : -2),
-                                            y: tp.y + (Math.random() > 0.5 ? 2 : -2),
+                                            x: tp.x,
+                                            y: tp.y,
                                             type: 56, // Imp Sprite
-                                            state: 'stationary', isBoss: true, role: 'portal_invite', 
+                                            state: 'chasing', isBoss: true, role: 'portal_invite', 
                                             color: '#ff8800', deck: [], 
-                                            dialogue: [`My master sent me. Will you partake in the ${scenarioType}?`],
+                                            dialogue: [`My master Suncat sent me to bring you to the adventure realm to partake in the ${scenarioType}. Shall we go?`],
                                             options: ['Yes', 'No'], alignment: 'friendly_messenger'
                                         });
                                     }
