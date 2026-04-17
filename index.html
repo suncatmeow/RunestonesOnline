@@ -9637,63 +9637,70 @@
             }
 
         // 7. CUSTOM MAP SCENARIO COMPLETE (Auto-Extraction)
-        if (this.mapID === 999 && !this.scenarioEnding) {
-            let scenarioWon = false;
-            let endMessage = "";
+            if (this.mapID === 999 && !this.scenarioEnding) {
+                let scenarioWon = false;
+                let endMessage = "";
 
-            // Condition A: Raid (The Boss is slain)
-            if (npc.isBoss) {
-                scenarioWon = true;
-                endMessage = 'The Boss has been slain! The instance is collapsing...';
-            }
-            
-            // Condition B: Invasion / Arena (All Hostiles Dead)
-            // 'aliveHostiles' is calculated right above this in your existing code!
-            else if (aliveHostiles === 0 && typeof npc.alignment === 'string' && npc.alignment.startsWith('foe')) {
-                scenarioWon = true;
-                endMessage = 'All foes have been vanquished! The realm is safe...';
-            }
+                // 1. Calculate remaining objectives & bosses
+                // We ensure we don't count the NPC that is currently dying!
+                let aliveBosses = this.npcs.filter(n => n.isBoss && !n.isDead && n.index !== npc.index && n.x !== -999).length;
+                let objectivesLeft = this.npcs.filter(n => (n.role === 'escort_giver' || n.role === 'reward') && !n.isDead && n.index !== npc.index && n.x !== -999).length;
 
-            // Condition C: Rescue / Fetch (All Objectives Cleared)
-            else if (npc.role === 'escort_giver' || npc.role === 'reward') {
-                // Check if there are any hostages or fetch items left on the map
-                let objectivesLeft = this.npcs.filter(n => 
-                    !n.isDead && (n.role === 'escort_giver' || n.role === 'reward')
-                ).length;
-                
-                if (objectivesLeft === 0) {
-                    scenarioWon = true;
-                    endMessage = 'All objectives secured! Returning to the Overworld...';
-                }
-            }
-
-            // --- TRIGGER THE 10 SECOND EXTRACTION ---
-            if (scenarioWon) {
-                this.scenarioEnding = true; // Lock it so it doesn't trigger multiple times
-                currentQuest = endMessage + ' Teleporting in 10 seconds...';
-                
-                if (typeof MusicEngine !== 'undefined') {
-                    MusicEngine.stop();
-                    MusicEngine.play(8); // Play the Victory Fanfare
-                }
-
-                setTimeout(() => {
-                    // Make sure they haven't manually left already
-                    if (this.mapID === 999) {
-                        console.log(`Extraction Complete. Teleporting back to map ${this.prevMap}...`);
-                        
-                        this.mapID = this.prevMap;
-                        this.scenarioEnding = false;
-                        
-                        // Wipe active summons so dungeon hostages don't follow you back to the city forever
-                        this.activeSummons = [];
-                        
-                        this.loadMap(this.prevMap); 
-                        this.saveGame();
+                // 2. Check Win Conditions based on Scenario Type
+                if (this.mapScenario === 'Raid') {
+                    if (aliveBosses === 0) {
+                        scenarioWon = true;
+                        endMessage = 'The Boss has been slain! The instance is collapsing...';
                     }
-                }, 10000); 
+                } 
+                else if (this.mapScenario === 'Invasion' || this.mapScenario === 'Arena Madness') {
+                    if (aliveHostiles === 0 && aliveBosses === 0) {
+                        scenarioWon = true;
+                        endMessage = 'All foes have been vanquished! The realm is safe...';
+                    }
+                } 
+                else if (this.mapScenario === 'Rescue/Fetch') {
+                    // Win if all hostages/rewards are collected AND all bosses (main boss + quest targets) are dead!
+                    if (objectivesLeft === 0 && aliveBosses === 0) {
+                        scenarioWon = true;
+                        endMessage = 'All objectives secured and all threats eliminated! Returning to the Overworld...';
+                    }
+                } 
+                else {
+                    // Fallback Failsafe
+                    if (aliveBosses === 0 && npc.isBoss) {
+                        scenarioWon = true;
+                        endMessage = 'The realm has been cleared! The instance is collapsing...';
+                    }
+                }
+
+                // --- TRIGGER THE 10 SECOND EXTRACTION ---
+                if (scenarioWon) {
+                    this.scenarioEnding = true; // Lock it so it doesn't trigger multiple times
+                    currentQuest = endMessage + ' Teleporting in 10 seconds...';
+                    
+                    if (typeof MusicEngine !== 'undefined') {
+                        MusicEngine.stop();
+                        MusicEngine.play(8); // Play the Victory Fanfare
+                    }
+
+                    setTimeout(() => {
+                        // Make sure they haven't manually left already
+                        if (this.mapID === 999) {
+                            console.log(`Extraction Complete. Teleporting back to map ${this.prevMap}...`);
+                            
+                            this.mapID = this.prevMap;
+                            this.scenarioEnding = false;
+                            
+                            // Wipe active summons so dungeon hostages don't follow you back to the city forever
+                            this.activeSummons = [];
+                            
+                            this.loadMap(this.prevMap); 
+                            this.saveGame();
+                        }
+                    }, 10000); 
+                }
             }
-        }
         return lootTriggered;
             
         }
@@ -13736,9 +13743,25 @@
               }
             //DYNAMIC DIALOGUE NPCS
             else if(this.foe == 'ai_yes'){
+                let firstOpt = (Dungeon.currentSpeaker.options && Dungeon.currentSpeaker.options[0]) 
+                                    ? Dungeon.currentSpeaker.options[0].toLowerCase() 
+                                    : "";
+                let hasReward = Dungeon.currentSpeaker.rewardCard !== undefined && Dungeon.currentSpeaker.rewardCard !== null;
+
+                    //FOE MERCY
+                        if (firstOpt.includes('spare')){
+                            // 1. Strip the reward and revert to hostile
+                            Dungeon.summonAlly(Math.floor(Dungeon.currentSpeaker.type))
+                            Dungeon.killNPC(Dungeon.currentSpeaker, true, 'dialogue'); 
+                            Dungeon.currentSpeaker = null;
+
+                            // 3. Close the dialogue safely
+                            Dungeon.dCounter = 0;
+                            startGame = 'explore';
+                            Dungeon.status = 'normal';
+                        }
                 //CARD GIVER
-                    let hasReward = Dungeon.currentSpeaker.rewardCard !== undefined && Dungeon.currentSpeaker.rewardCard !== null;
-                    if ( hasReward) {
+                    else if ( hasReward) {
                         let maxLines = Dungeon.currentSpeaker.customDialogue.length;
                         Dungeon.dCounter = maxLines; 
                         if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('heal');
