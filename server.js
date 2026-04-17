@@ -3737,12 +3737,12 @@
                                                 x: hTile.x + 0.5, y: hTile.y + 0.5,
                                                 state: 'stationary', 
                                                 role: 'escort_giver', 
-                                                alignment: 'friendly',
+                                                alignment: 'friendly_messenger',
                                                 color: '#00ff00', 
                                                 // DECK FORMAT: [Target to Spawn, Reward Card, Quest Type]
                                                 deck: [antagID, randomReward, 'rescue'], 
                                                 dialogue: [script.prisonerLines ? script.prisonerLines[i] : "Thank the gods! Get me out of here!"],
-                                                options: ['Rescue', 'Leave']
+                                                options: ['Help', 'Leave']
                                             });
                                         }
                                         // Spawn Patrols
