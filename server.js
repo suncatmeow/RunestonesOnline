@@ -3358,7 +3358,7 @@
 
         return profileTraits.join(", ");
         }
-    async function generateScenarioScript(biomeName, scenarioType, bossName, questGiverName, targetPlayer) {
+    async function generateScenarioScript(biomeName, scenarioType, bossCardName, questGiverName, targetPlayer) {
         let currentVibe = "An unknown wanderer with no established habits.";
         let shadowVibe = "The mysteries of the realm.";
 
@@ -3383,28 +3383,22 @@
             "Forgotten Pact (a broken ancient promise coming due, prophecy of doom not averted)",
             "Starvation (cannibalism, desperate survival, dying magic, being hunted til endangered)"
         ];
+        
         const twists = [
-            // --- THE CLASSICS (Your Originals) ---
             "The Boss is actually terrified of the 3rd Tribe in the Ruins.",
             "The Boss and the Quest Giver are secretly working together.",
             "The Bastion is infected with a plague they are hiding from the player.",
             "The Arena fighters are actually volunteers trying to appease a dark god.",
             "The Wilds are completely artificial, an illusion maintained by the Boss.",
-
-            // --- FALSE FLAGS & POLITICAL BETRAYAL (Tactics Ogre / FF Tactics) ---
             "The Bastion slaughtered their own villagers and blamed it on the Boss to justify a holy war.",
             "The 3rd Tribe in the Ruins are the true, rightful heirs to the land, driven out by the Bastion's ancestors.",
             "The war is a sham; the Bastion's nobles and the Boss are secretly trading resources while the lower classes die fighting.",
             "The prisoners in the Lair aren't hostages at all—they fled the Bastion willingly to escape an oppressive regime.",
             "The 'rebellion' in the Arena is funded by the Bastion to keep the Boss distracted from the real invasion.",
-
-            // --- INSTITUTIONAL CORRUPTION (FF Tactics) ---
             "The Bastion's 'holy' religion is actually a front for a demonic cult, and the Boss is a disgraced knight trying to stop them.",
             "The blood spilled in the Arena isn't for sport; it is secretly being funneled underground to resurrect an ancient evil.",
             "The monsters in the Wilds are actually Bastion soldiers, mutated by a secret 'blessing' given by their own priests.",
             "The Quest Giver is intentionally sending heroes to their deaths to harvest their souls and achieve immortality.",
-
-            // --- LINEAGE & EXISTENTIAL DREAD (Baldur's Gate 1 & 2) ---
             "The Boss is the previous hero who took this exact quest, realized the Bastion was evil, and went rogue to stop them.",
             "The Boss is completely unaware of the war; they are trapped in a magical coma, and the enemy army is just their nightmares manifesting physically.",
             "The 3rd Tribe in the Ruins are actually time-displaced survivors from the future, trying to prevent the player from completing their quest.",
@@ -3414,7 +3408,7 @@
         let randomTheme = themes[Math.floor(Math.random() * themes.length)];
         let randomTwist = twists[Math.floor(Math.random() * twists.length)];
 
-        const prompt = `[ROOT DIRECTIVE]: You are the Dungeon Master for the dark fantasy RPG "Runestones".
+        const prompt = `[ROOT DIRECTIVE]: You are the Lead Narrative Designer and Writer for the dark fantasy MMORPG "Runestones".
             
             [PLAYER PSYCHOLOGY]: 
             Current Habits: ${currentVibe}
@@ -3423,64 +3417,63 @@
             [WORLD BLUEPRINT - The map generated for this session]:
             - BIOME: ${biomeName}
             - SCENARIO TYPE: ${scenarioType}
-            - ZONE 1 (The Bastion): Fortified settlement. 
-            - ZONE 2 (The Lair): The main dungeon. Boss is [${bossName}]. 
-            - ZONE 3 (The Arena): A bloody colosseum. 
-            - ZONE 4 (The Ruins): Crumbling architecture held by a mysterious 3rd Tribe. 
-            - ZONE 5 (The Wilds): Contested wilderness connecting all zones.
+            - THE VILLAIN FACTION: ${bossCardName}
+            - THE ALLY FACTION: ${questGiverName}
 
             [NARRATIVE TASK]: 
-            Invent a deeply compelling scenario using this specific THEME and TWIST:
+            Write a deeply compelling, morally ambiguous scenario. Do not just make the villain "evil for the sake of evil." Give them a tragic, logical, or deeply ideological motivation for their actions based on the Theme. Make the player question if *they* are actually the bad guy. Think like a novelist—what are the secret dreams, desires, and histories of these factions?
             - THEME: ${randomTheme}
             - PLOT TWIST: ${randomTwist}
             
-            [PHILOSOPHICAL FRICTION]: You MUST aggressively challenge the player's [Neglected Themes] in the dialogue. If their shadow shows they are peaceful, the enemies must mock peace as cowardice ("What will you sacrifice for your stillness?"). If they are greedy, the allies must question the value of gold. Make every line strike a nerve.
+            [PHILOSOPHICAL FRICTION]: Aggressively challenge the player's [Neglected Themes] in the dialogue, but do so THROUGH the lens of the scenario's lore. If their shadow shows they are peaceful, the enemies must mock peace as a luxury of the privileged ("You judge our hunger from behind your safe walls!"). 
             
             [DIALOGUE GENERATION & DATA MAPPING]:
-            Write the dialogue arrays matching the lore you invented. Keep all lines under 15 words. Ensure the tone is dark fantasy.
+            Write the dialogue arrays matching the lore you invented. Keep all lines under 15 words. Ensure the tone is rich dark fantasy.
             
-            1. mapLore: 2 sentences of deep history establishing the Theme and Twist.
-            2. questObjective: A clear 1-sentence objective.
-            3. bossTaunt: 1 menacing sentence DIRECTLY attacking the player's [Neglected Themes].
-            4. hostileTaunts: Array of 30 DISTINCT battle cries that challenge the player's philosophy.5. traitorBegs: 15 lines from fleeing enemies. At least 5 MUST detail how terrifying the 3rd Tribe in the Ruins is.
-            6. friendlyLore: Array of 6 lines. This is where you MUST inject your sub-lore about the Arena, Ruins, and Wilds. Let the villagers explain what is going on out there.
-            7. friendlyLife: Array of 4 lines of mundane, atmospheric chatter.
-            8. friendlyProfound: Array of 4 philosophical statements bridging the player's habits to the scenario.
-            9. recruitPlea: Array of 3 compelling lines to join the party.
-            10. prisonerLines: Array of 6 lines from the trapped NPC. They MUST reveal the Plot Twist.`;
+            1. bossName: Invent a unique, evocative, and menacing title for the Boss (e.g., "Vael, the Starving Hand" or "Kaelen the Betrayed" instead of just "${bossCardName}").
+            2. mapLore: 2-3 sentences of deep, novelistic history establishing the Theme, Twist, and Villain's true motivation.
+            3. questObjective: A clear 1-sentence objective.
+            4. bossTaunt: 1-2 sentences. Reveal the boss's tragic or logical motivation, reference the Plot Twist, and attack the player's psychology to make the player feel like they might be the villain.
+            5. hostileTaunts: Array of 30 DISTINCT battle cries. These MUST tie directly to the scenario lore, the faction's dreams, or their desperation (e.g., "We only wanted to survive!", "The Queen lied to you!", "More... we need more!"). Make the world feel alive.
+            6. traitorBegs: 15 lines from fleeing enemies. At least 5 MUST detail how terrifying the 3rd Tribe in the Ruins is.
+            7. friendlyLore: Array of 6 lines. Let the allied forces of ${questGiverName} explain the tragedy of the war and hint at the twist.
+            8. friendlyLife: Array of 4 lines of mundane, atmospheric chatter revealing their daily struggles.
+            9. friendlyProfound: Array of 4 philosophical statements bridging the player's habits to the scenario's theme.
+            10. recruitPlea: Array of 3 compelling lines to join the party.
+            11. prisonerLines: Array of 6 lines from trapped NPCs. They MUST reveal the Plot Twist.`;
 
-            const schema = {
-                type: SchemaType.OBJECT,
-                properties: {
-                    mapLore: { type: SchemaType.STRING },
-                    questObjective: { type: SchemaType.STRING },
-                    bossTaunt: { type: SchemaType.STRING },
-                    hostileTaunts: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
-                    traitorBegs: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
-                    friendlyLore: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
-                    friendlyLife: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
-                    friendlyProfound: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
-                    recruitPlea: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
-                    prisonerLines: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } }
-                },
-                required: ["mapLore", "questObjective", "bossTaunt", "hostileTaunts", "traitorBegs", "friendlyLore", "friendlyLife", "friendlyProfound", "recruitPlea", "prisonerLines"]
-            };
+        const schema = {
+            type: SchemaType.OBJECT,
+            properties: {
+                bossName: { type: SchemaType.STRING },
+                mapLore: { type: SchemaType.STRING },
+                questObjective: { type: SchemaType.STRING },
+                bossTaunt: { type: SchemaType.STRING },
+                hostileTaunts: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
+                traitorBegs: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
+                friendlyLore: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
+                friendlyLife: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
+                friendlyProfound: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
+                recruitPlea: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
+                prisonerLines: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } }
+            },
+            required: ["bossName", "mapLore", "questObjective", "bossTaunt", "hostileTaunts", "traitorBegs", "friendlyLore", "friendlyLife", "friendlyProfound", "recruitPlea", "prisonerLines"]
+        };
 
-            try {
-                // Flash 3.1 is great, but ensure you handle the output safely!
-                const scriptModel = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite-preview" });
-                const result = await scriptModel.generateContent({
-                    contents: [{ role: "user", parts: [{ text: prompt }] }],
-                    generationConfig: { responseMimeType: "application/json", responseSchema: schema, temperature: 0.8 } // Bumped temp slightly for narrative variety
-                });
-                
-                let rawText = result.response.text().trim();
-                if (rawText.startsWith("```")) rawText = rawText.replace(/^```(json)?|```$/g, "").trim();
-                return JSON.parse(rawText);
-            } catch (e) {
-                console.error("Script Generation Failed:", e);
-                return null; 
-            }
+        try {
+            const scriptModel = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite-preview" });
+            const result = await scriptModel.generateContent({
+                contents: [{ role: "user", parts: [{ text: prompt }] }],
+                generationConfig: { responseMimeType: "application/json", responseSchema: schema, temperature: 0.85 } 
+            });
+            
+            let rawText = result.response.text().trim();
+            if (rawText.startsWith("```")) rawText = rawText.replace(/^```(json)?|```$/g, "").trim();
+            return JSON.parse(rawText);
+        } catch (e) {
+            console.error("Script Generation Failed:", e);
+            return null; 
+        }
 }
     function cacheScriptLines(biomeName, script) {
         if (!GLOBAL_LORE_CACHE[biomeName]) {
@@ -3836,8 +3829,7 @@
                                                 type: CARD_MANIFEST_DB[mID].sprite || mID, x: gTile.x + 0.5, y: gTile.y + 0.5, 
                                                 state: 'chasing', role: 'battle', alignment: 'foe_gladiator', subRole: 'gladiator',
                                                 deck: buildSynergisticDeck(mID, 100), color: '#ff4400', 
-                                                dialogue: ["For glory!"]
-                                            });
+                                                dialogue: [script.hostileTaunts ? script.hostileTaunts[i % script.hostileTaunts.length] : "For glory!"]                                            });
                                         }
                                     }
 
