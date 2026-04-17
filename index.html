@@ -9636,54 +9636,64 @@
                 //lastFoe.isBegging = true; 
             }
 
-        //7. CUSTOM MAP BOSS SLAIN
-            if ((npc.isBoss || aliveHostiles === 0) && this.mapID === 999) {
-                if (npc.isBoss) {
-                    let bossDeadText = 'You have defeated the boss of this scenario. ';
-                    let hostilesText = 'Monsters still roam however... ';
-                    let endText = 'Teleporting you back in 10 seconds...';
-                    
-                    if (aliveHostiles === 0) { 
-                        hostilesText = 'All foes have been vanquished! '; 
-                    }
-                    
-                    currentQuest = bossDeadText + hostilesText + endText;
-                    if (typeof MusicEngine !== 'undefined') MusicEngine.play(8); 
+        // 7. CUSTOM MAP SCENARIO COMPLETE (Auto-Extraction)
+        if (this.mapID === 999 && !this.scenarioEnding) {
+            let scenarioWon = false;
+            let endMessage = "";
 
-                    // The 10-Second Teleport Timer
-                    setTimeout(() => {
-                        // Check if they are STILL on map 999 (just in case they already left manually)
-                        if (this.mapID === 999) {
-                            console.log(`Teleporting back to map ${this.prevMap}...`);
-                            
-                            // Set the map ID back to where they came from
-                            this.mapID = this.prevMap;
-                            
-                            // Load the map (assuming loadMap handles clearing NPCs and drawing the new room)
-                            this.loadMap(this.prevMap); 
-                            
-                            // Force a save so they don't get stuck in limbo
-                            this.saveGame();
-                        }
-                    }, 10000); 
+            // Condition A: Raid (The Boss is slain)
+            if (npc.isBoss) {
+                scenarioWon = true;
+                endMessage = 'The Boss has been slain! The instance is collapsing...';
+            }
+            
+            // Condition B: Invasion / Arena (All Hostiles Dead)
+            // 'aliveHostiles' is calculated right above this in your existing code!
+            else if (aliveHostiles === 0 && typeof npc.alignment === 'string' && npc.alignment.startsWith('foe')) {
+                scenarioWon = true;
+                endMessage = 'All foes have been vanquished! The realm is safe...';
+            }
+
+            // Condition C: Rescue / Fetch (All Objectives Cleared)
+            else if (npc.role === 'escort_giver' || npc.role === 'reward') {
+                // Check if there are any hostages or fetch items left on the map
+                let objectivesLeft = this.npcs.filter(n => 
+                    !n.isDead && (n.role === 'escort_giver' || n.role === 'reward')
+                ).length;
+                
+                if (objectivesLeft === 0) {
+                    scenarioWon = true;
+                    endMessage = 'All objectives secured! Returning to the Overworld...';
                 }
             }
-            if (npc.role == 'dialogue'&&npc.isBoss == true){
-            npc.isBoss = false
+
+            // --- TRIGGER THE 10 SECOND EXTRACTION ---
+            if (scenarioWon) {
+                this.scenarioEnding = true; // Lock it so it doesn't trigger multiple times
+                currentQuest = endMessage + ' Teleporting in 10 seconds...';
+                
+                if (typeof MusicEngine !== 'undefined') {
+                    MusicEngine.stop();
+                    MusicEngine.play(8); // Play the Victory Fanfare
+                }
+
+                setTimeout(() => {
+                    // Make sure they haven't manually left already
+                    if (this.mapID === 999) {
+                        console.log(`Extraction Complete. Teleporting back to map ${this.prevMap}...`);
+                        
+                        this.mapID = this.prevMap;
+                        this.scenarioEnding = false;
+                        
+                        // Wipe active summons so dungeon hostages don't follow you back to the city forever
+                        this.activeSummons = [];
+                        
+                        this.loadMap(this.prevMap); 
+                        this.saveGame();
+                    }
+                }, 10000); 
             }
-            // 2. ALWAYS SYNC DEATH WITH SERVER (Moved outside the if block!)
-            if (typeof socket !== 'undefined') {
-                socket.emit("npc_died", { 
-                    mapID: this.mapID, 
-                    index: npc.index,
-                    type: npc.type, // <--- CRITICAL: Tells Suncat exactly who died!
-                    reason: reason,   
-                    isBoss:npc.isBoss,
-                    prevMap:this.prevMap,
-                    role: npc.role,
-                    alignment:baseAlignment
-                });
-            }
+        }
         return lootTriggered;
             
         }
@@ -13634,8 +13644,7 @@
 
           break;
         case 1://btnYes
-            //Dungeon.x = 1.5;Dungeon.y = 1.5;
-            //Emperor YES
+            //EMPEROR
             if (this.foe == 'emperor'){
            
               Dungeon.saveGame();
@@ -13712,133 +13721,132 @@
                 MusicEngine.playSFX('heal');
                 MusicEngine.play(4);
               }
-            else if (this.foe == 'high priestess'){//High Priestess YES
+            //HIGH PRIESTESS
+            else if (this.foe == 'high priestess'){
               startGame = 'tutorial';
               MusicEngine.stop();
               MusicEngine.playSFX('heal')
               MusicEngine.play(21);
               Dungeon.dCounter = 0;
               }
+            //MARRY GIANT'S DAUGHTER
             else if (this.foe == 'giant'){
                 Dungeon.gd = 3;
                 Dungeon.dCounter = 0;
               }
-            //CUSTOM NPCS
+            //DYNAMIC DIALOGUE NPCS
             else if(this.foe == 'ai_yes'){
-              let hasReward = Dungeon.currentSpeaker.rewardCard !== undefined && Dungeon.currentSpeaker.rewardCard !== null;
-              if ( hasReward) {
-              let maxLines = Dungeon.currentSpeaker.customDialogue.length;
-                Dungeon.dCounter = maxLines; 
-                if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('heal');
-              //
-              } 
-              // CUSTOM NPCS
-                else if (Dungeon.currentSpeaker.role === 'escort_giver') {
-                    // 1. LIMIT TO 1 ESCORT
-                    if (Dungeon.activeEscortQuest) {
-                        MessageBox.show(0.5, 8, 1, 9, 2, "You are already escorting someone!", 'dialogue', 1, 0);
-                        if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('cancel');
-                        return;
-                    }
+                //CARD GIVER
+                    let hasReward = Dungeon.currentSpeaker.rewardCard !== undefined && Dungeon.currentSpeaker.rewardCard !== null;
+                    if ( hasReward) {
+                        let maxLines = Dungeon.currentSpeaker.customDialogue.length;
+                        Dungeon.dCounter = maxLines; 
+                        if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('heal');
+                
+                    } 
+                //ESCORT QUEST
+                    else if (Dungeon.currentSpeaker.role === 'escort_giver') {
+                        // 1. LIMIT TO 1 ESCORT
+                        if (Dungeon.activeEscortQuest) {
+                            MessageBox.show(0.5, 8, 1, 9, 2, "You are already escorting someone!", 'dialogue', 1, 0);
+                            if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('cancel');
+                            return;
+                        }
 
-                    // 2. FIND FURTHEST VALID SPAWN POINT
-                    let bestDist = 0;
-                    let spawnX = Dungeon.x;
-                    let spawnY = Dungeon.y;
-                    
-                    for(let i = 0; i < 100; i++) { // Check 100 random spots
-                        let rx = Math.floor(Math.random() * Dungeon.maze[0].length);
-                        let ry = Math.floor(Math.random() * Dungeon.maze.length);
+                        // 2. FIND FURTHEST VALID SPAWN POINT
+                        let bestDist = 0;
+                        let spawnX = Dungeon.x;
+                        let spawnY = Dungeon.y;
                         
-                        if (!Dungeon.isWall(rx, ry)) {
-                            let dist = Math.sqrt(Math.pow(rx - Dungeon.x, 2) + Math.pow(ry - Dungeon.y, 2));
-                            if (dist > bestDist) {
-                                bestDist = dist;
-                                spawnX = rx + 0.5; // Center on tile
-                                spawnY = ry + 0.5;
+                        for(let i = 0; i < 100; i++) { // Check 100 random spots
+                            let rx = Math.floor(Math.random() * Dungeon.maze[0].length);
+                            let ry = Math.floor(Math.random() * Dungeon.maze.length);
+                            
+                            if (!Dungeon.isWall(rx, ry)) {
+                                let dist = Math.sqrt(Math.pow(rx - Dungeon.x, 2) + Math.pow(ry - Dungeon.y, 2));
+                                if (dist > bestDist) {
+                                    bestDist = dist;
+                                    spawnX = rx + 0.5; // Center on tile
+                                    spawnY = ry + 0.5;
+                                }
                             }
                         }
+
+                        // 3. READ QUEST CONFIGURATION
+                        let objectiveType = Dungeon.currentSpeaker.deck[0] || 56; 
+                        let rewardType = Dungeon.currentSpeaker.deck[1] || 0;
+                        let questType = Dungeon.currentSpeaker.deck[2] || 'kill'; // 'kill', 'retrieve', or 'rescue'
+                        
+                        let targetIndex = Math.floor(Math.random() * 100000) + 500000;
+                        
+                        let objRole = 'battle';
+                        let objAlign = 'foe';
+                        let objDialog = ["You will never take me alive!"];
+                        let objColor = '#ff0000'; // Red for enemy
+
+                        if (questType === 'retrieve') {
+                            objectiveType = -27; // Force it to be a card pickup
+                            objRole = 'dialogue';
+                            objAlign = 'friendly';
+                            objDialog = null; // Uses native pickup UI
+                            objColor = '#ffff00'; // Yellow for loot
+                        } 
+                        else if (questType === 'rescue') {
+                            objRole = 'dialogue';
+                            objAlign = 'friendly';
+                            objDialog = ["Oh thank goodness you found me!"];
+                            objColor = '#00ff00'; // Green for friendly
+                        }
+
+                        // 4. SPAWN THE TARGET (isBoss = true puts the star on the minimap!)
+                        // MapID, Index, X, Y, Type, State, Color, Deck, Dialogue, Reward, Role, Options, isBoss, Alignment
+                        Dungeon.spawnPersistentNPC(
+                            Dungeon.mapID, targetIndex, spawnX, spawnY, objectiveType, 
+                            'stationary', objColor, [Dungeon.currentSpeaker.deck[0]], objDialog, null, 
+                            objRole, null, true, objAlign
+                        );
+
+                        // 5. CONVERT THE GIVER TO AN ESCORT
+                        Dungeon.currentSpeaker.alignment = 'escort';
+                        Dungeon.currentSpeaker.role = 'dialogue';
+                        Dungeon.currentSpeaker.state = 'following';
+                        Dungeon.currentSpeaker.customDialogue = ["We must hurry! The target is on your minimap."];
+                        Dungeon.currentSpeaker.options = null; 
+
+                        // --- THE FIX: SAVE THE ACTUAL NPC DATA ---
+                            Dungeon.activeEscortQuest = {
+                                giverIndex: Dungeon.currentSpeaker.index,
+                                targetIndex: targetIndex,
+                                questType: questType,
+                                rewardType: rewardType,
+                                npcType: Dungeon.currentSpeaker.type,
+                                npcColor: Dungeon.currentSpeaker.color,
+                                npcDeck: Dungeon.currentSpeaker.deck
+                            };
+
+                        startGame = 'explore';
+                        Dungeon.dCounter = 0;
+                        Dungeon.status = 'normal';
+                        Dungeon.currentSpeaker = null;
+                        if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('heal');
+                        Dungeon.saveGame();
+                    return;
                     }
+                //CUSTOM MAP INVITE IMP
+                    else if (Dungeon.currentSpeaker.role === 'portal_invite') {
+                            if (typeof socket !== 'undefined') socket.emit("accept_teleport_invite");
+                        // if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('');
 
-                    // 3. READ QUEST CONFIGURATION
-                    let objectiveType = Dungeon.currentSpeaker.deck[0] || 56; 
-                    let rewardType = Dungeon.currentSpeaker.deck[1] || 0;
-                    let questType = Dungeon.currentSpeaker.deck[2] || 'kill'; // 'kill', 'retrieve', or 'rescue'
-                    
-                    let targetIndex = Math.floor(Math.random() * 100000) + 500000;
-                    
-                    let objRole = 'battle';
-                    let objAlign = 'foe';
-                    let objDialog = ["You will never take me alive!"];
-                    let objColor = '#ff0000'; // Red for enemy
-
-                    if (questType === 'retrieve') {
-                        objectiveType = -27; // Force it to be a card pickup
-                        objRole = 'dialogue';
-                        objAlign = 'friendly';
-                        objDialog = null; // Uses native pickup UI
-                        objColor = '#ffff00'; // Yellow for loot
-                    } 
-                    else if (questType === 'rescue') {
-                        objRole = 'dialogue';
-                        objAlign = 'friendly';
-                        objDialog = ["Oh thank goodness you found me!"];
-                        objColor = '#00ff00'; // Green for friendly
-                    }
-
-                    // 4. SPAWN THE TARGET (isBoss = true puts the star on the minimap!)
-                    // MapID, Index, X, Y, Type, State, Color, Deck, Dialogue, Reward, Role, Options, isBoss, Alignment
-                    Dungeon.spawnPersistentNPC(
-                        Dungeon.mapID, targetIndex, spawnX, spawnY, objectiveType, 
-                        'stationary', objColor, [Dungeon.currentSpeaker.deck[0]], objDialog, null, 
-                        objRole, null, true, objAlign
-                    );
-
-                    // 5. CONVERT THE GIVER TO AN ESCORT
-                    Dungeon.currentSpeaker.alignment = 'escort';
-                    Dungeon.currentSpeaker.role = 'dialogue';
-                    Dungeon.currentSpeaker.state = 'following';
-                    Dungeon.currentSpeaker.customDialogue = ["We must hurry! The target is on your minimap."];
-                    Dungeon.currentSpeaker.options = null; 
-
-                    // --- THE FIX: SAVE THE ACTUAL NPC DATA ---
-                        Dungeon.activeEscortQuest = {
-                            giverIndex: Dungeon.currentSpeaker.index,
-                            targetIndex: targetIndex,
-                            questType: questType,
-                            rewardType: rewardType,
-                            npcType: Dungeon.currentSpeaker.type,
-                            npcColor: Dungeon.currentSpeaker.color,
-                            npcDeck: Dungeon.currentSpeaker.deck
-                        };
-
+                        }
+                //CLEAN UP DD NPC
                     startGame = 'explore';
                     Dungeon.dCounter = 0;
                     Dungeon.status = 'normal';
+                    // Kill them with 'dialogue' so NO card drops
+                    Dungeon.killNPC(Dungeon.currentSpeaker, true, 'dialogue'); 
                     Dungeon.currentSpeaker = null;
-                    if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('heal');
-                    Dungeon.saveGame();
-                    return;
-                }
-              else {
-                
-                // ---> NEW: ACCEPT THE INVITATION <---
-                if (Dungeon.currentSpeaker.role === 'portal_invite') {
-                    if (typeof socket !== 'undefined') socket.emit("accept_teleport_invite");
-                   // if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('');
-
-                }
-
-                startGame = 'explore';
-                Dungeon.dCounter = 0;
-                Dungeon.status = 'normal';
-                // Kill them with 'dialogue' so NO card drops
-                Dungeon.killNPC(Dungeon.currentSpeaker, true, 'dialogue'); 
-                Dungeon.currentSpeaker = null;
-              }  
             }
-            //ONLINE
-            // Inside btn class (pvp_accept)
+            //PVP ACCEPT CHALLENGE
             else if (this.foe == 'pvp_accept'){
                 let opponentId = Dungeon.currentSpeaker?.socketId;
                 if (opponentId) {
@@ -13864,111 +13872,92 @@
                 
                 
             }
-              if (Dungeon.savedViewMode) {
+            //CLEAN UP BUTTONS
+                if (Dungeon.savedViewMode) {
                     window.gameViewMode = Dungeon.savedViewMode;
                 }
                 if (Dungeon.savedCameraMode) {
                     Dungeon.cameraMode = Dungeon.savedCameraMode;
                 }
-            btnYes.visible = false;
-            btnNo.visible = false;
+                btnYes.visible = false;
+                btnNo.visible = false;
             
             break;
         case 2://btnNo
-                //Emperor and High Priestess No
-              if (this.foe == 'emperor' || this.foe == 'high priestess'){
-                if (Dungeon.currentSpeaker.socketId != 'NPC_SUNCAT'){
-                  if (this.foe == 'emperor'){Dungeon.y = Dungeon.y-1;}
-                  else{Dungeon.y = Dungeon.y+1;Dungeon.MainQuest = 1;}
+            //EMPEROR OR HIGH PRIESTESS
+                if (this.foe == 'emperor' || this.foe == 'high priestess'){
+                    if (Dungeon.currentSpeaker.socketId != 'NPC_SUNCAT'){
+                    if (this.foe == 'emperor'){Dungeon.y = Dungeon.y-1;}
+                    else{Dungeon.y = Dungeon.y+1;Dungeon.MainQuest = 1;}
+                    }
+                    startGame = 'explore'
+                    Dungeon.dCounter = 0;
+                    btnYes.visible = false;
+                    btnNo.visible = false;
+                    Dungeon.status = 'normal';
+                    MusicEngine.stop();
+                    MusicEngine.playSFX('cancel')
+                    MusicEngine.play(4);
                 }
-                if (Dungeon.savedViewMode) {
-                    window.gameViewMode = Dungeon.savedViewMode;
+            //MARRY GIANT'S DAUGHTER
+                else if (this.foe == 'giant'){
+                    Dungeon.gd = 4;
+                    Dungeon.dCounter = 0;
+                    MusicEngine.playSFX('cancel')
                 }
-                if (Dungeon.savedCameraMode) {
-                    Dungeon.cameraMode = Dungeon.savedCameraMode;
-                }
-                startGame = 'explore'
-                Dungeon.dCounter = 0;
-                btnYes.visible = false;
-                btnNo.visible = false;
-                Dungeon.status = 'normal';
-                MusicEngine.stop();
-                MusicEngine.playSFX('cancel')
-                MusicEngine.play(4);
-              }
-              else if (this.foe == 'giant'){
-                Dungeon.gd = 4;
-                Dungeon.dCounter = 0;
-                MusicEngine.playSFX('cancel')
-                if (Dungeon.savedViewMode) {
-                    window.gameViewMode = Dungeon.savedViewMode;
-                }
-                if (Dungeon.savedCameraMode) {
-                    Dungeon.cameraMode = Dungeon.savedCameraMode;
-                }
-              }
-              //CUSTOM NPCS
-              else if(this.foe == 'ai_no'){
-             // REJECTED! (Or chose an option with no reward)
-              
-              // Safely get option[0] in lowercase to avoid exact-string errors
-              let firstOption = (Dungeon.currentSpeaker.options && Dungeon.currentSpeaker.options[0]) 
-                                  ? Dungeon.currentSpeaker.options[0].toLowerCase() 
-                                  : "";
+            //DYNAMIC DIALOGUE NPCS
+                else if(this.foe == 'ai_no'){
+                    let firstOption = (Dungeon.currentSpeaker.options && Dungeon.currentSpeaker.options[0]) 
+                                    ? Dungeon.currentSpeaker.options[0].toLowerCase() 
+                                    : "";
+                    //FOE MERCY
+                        if (firstOption.includes('spare')){
+                            // 1. Strip the reward and revert to hostile
+                            Dungeon.currentSpeaker.rewardCard = null;
+                            Dungeon.currentSpeaker.role = 'battle';
+                            Dungeon.currentSpeaker.alignment = 'foe';
+                            Dungeon.currentSpeaker.state = 'chasing'; // Make them aggressive
 
-              // REJECTED COWARD! (Catches "Spare", "Spare Them", "spare me", etc.)
-              if (firstOption.includes('spare')){
-                  // 1. Strip the reward and revert to hostile
-                  Dungeon.currentSpeaker.rewardCard = null;
-                  Dungeon.currentSpeaker.role = 'battle';
-                  Dungeon.currentSpeaker.alignment = 'foe';
-                  Dungeon.currentSpeaker.state = 'chasing'; // Make them aggressive
+                            // 2. FORCE BATTLE IMMEDIATELY
+                            if (typeof socket !== 'undefined' && socket) {
+                                socket.emit("engage_npc", { 
+                                    npcIndex: Dungeon.currentSpeaker.index, 
+                                    x: Dungeon.currentSpeaker.x, 
+                                    y: Dungeon.currentSpeaker.y 
+                                });
+                            }
 
-                  // 2. FORCE BATTLE IMMEDIATELY
-                  if (typeof socket !== 'undefined' && socket) {
-                      socket.emit("engage_npc", { 
-                          npcIndex: Dungeon.currentSpeaker.index, 
-                          x: Dungeon.currentSpeaker.x, 
-                          y: Dungeon.currentSpeaker.y 
-                      });
-                  }
+                            // 3. Close the dialogue safely
+                            Dungeon.dCounter = Dungeon.currentSpeaker.customDialogue ? Dungeon.currentSpeaker.customDialogue.length + 1 : 99;
+                            startGame = 'explore';
+                            Dungeon.status = 'normal';
+                        }
+                    //ESCORT QUEST
+                        else if (firstOption.includes('help')){
+                            // 3. Close the dialogue safely
+                            Dungeon.dCounter = 0;
+                            Dungeon.currentSpeaker.state = 'fleeing';
+                            startGame = 'explore';
+                            Dungeon.status = 'normal';
+                        }
+                    //CUSTOM MAP IMP INVITE
+                    else if (Dungeon.currentSpeaker.role === 'portal_invite') {
+                    startGame = 'explore';
+                    Dungeon.dCounter = 0;
+                    Dungeon.status = 'normal';
+                    Dungeon.killNPC(Dungeon.currentSpeaker, true, 'dialogue'); 
+                    Dungeon.currentSpeaker = null;
+                    }
+                    else {
+                    Dungeon.currentSpeaker.role = 'dialogue';
+                    Dungeon.dCounter = Dungeon.currentSpeaker.customDialogue.length+1;
+                    }
 
-                  // 3. Close the dialogue safely
-                  Dungeon.dCounter = Dungeon.currentSpeaker.customDialogue ? Dungeon.currentSpeaker.customDialogue.length + 1 : 99;
-                  startGame = 'explore';
-                  Dungeon.status = 'normal';
-              }
-              if (firstOption.includes('help')){
-                   // 3. Close the dialogue safely
-                  Dungeon.dCounter = 0;
-                  Dungeon.currentSpeaker.state = 'fleeing';
-                  startGame = 'explore';
-                  Dungeon.status = 'normal';
-              }
-                // ---> NEW: DECLINE THE INVITATION <---
-                else if (Dungeon.currentSpeaker.role === 'portal_invite') {
-                  startGame = 'explore';
-                  Dungeon.dCounter = 0;
-                  Dungeon.status = 'normal';
-                  Dungeon.killNPC(Dungeon.currentSpeaker, true, 'dialogue'); 
-                  Dungeon.currentSpeaker = null;
+                    if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('death');
+                    
+                
                 }
-                else {
-                  Dungeon.currentSpeaker.role = 'dialogue';
-                  Dungeon.dCounter = Dungeon.currentSpeaker.customDialogue.length+1;
-                }
-
-                if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('death');
-                btnYes.visible = false;
-                btnNo.visible = false;
-            if (Dungeon.savedViewMode) {
-                    window.gameViewMode = Dungeon.savedViewMode;
-                }
-                if (Dungeon.savedCameraMode) {
-                    Dungeon.cameraMode = Dungeon.savedCameraMode;
-                }
-            }
-            //ONLINE//////////////////////////////
+            //PVP CANCEL CHALLENGE
               else if (this.foe == 'pvp_cancel') {
                 // 1. Reset My View
                 Dungeon.status = 'normal';
@@ -13983,30 +13972,37 @@
                     payload: {} 
                 });
               }
-              
-            else if (this.foe == 'pvp_deny') {
-              // 1. Reset Me (The Receiver)
-              Dungeon.status = 'normal';
-              startGame = 'explore';
-              
-              // Hide buttons
-              this.visible = false; 
-              if (typeof btnYes !== 'undefined') btnYes.visible = false;
-                socket.emit('suncat_spectate', `player has rejected a PVP challenge. mock them for their cowardice.`);
-              // 2. Get the Challenger's ID (We saved this when we got the invite)
-              let challengerId = Dungeon.currentSpeaker?.socketId;
-              console.log("Rejecting Challenger ID:", challengerId); // <--- Add this
-              if (challengerId) {
-                // 3. SEND THE REJECTION SIGNAL
-                socket.emit("battle_action", {
-                  targetId: challengerId,
-                  actionType: "CHALLENGE_REJECTED",
-                  payload: {} 
-                });
-              }
-            }
-              
-            ///////////////////////////////////////////////
+            //PVP DENY BATTLE REQUEST
+                else if (this.foe == 'pvp_deny') {
+                // 1. Reset Me (The Receiver)
+                Dungeon.status = 'normal';
+                startGame = 'explore';
+                
+                // Hide buttons
+                this.visible = false; 
+                if (typeof btnYes !== 'undefined') btnYes.visible = false;
+                    socket.emit('suncat_spectate', `player has rejected a PVP challenge. mock them for their cowardice.`);
+                // 2. Get the Challenger's ID (We saved this when we got the invite)
+                let challengerId = Dungeon.currentSpeaker?.socketId;
+                console.log("Rejecting Challenger ID:", challengerId); // <--- Add this
+                if (challengerId) {
+                    // 3. SEND THE REJECTION SIGNAL
+                    socket.emit("battle_action", {
+                    targetId: challengerId,
+                    actionType: "CHALLENGE_REJECTED",
+                    payload: {} 
+                    });
+                }
+                }
+            //CLEAN UP BUTTONS
+                if (Dungeon.savedViewMode) {
+                    window.gameViewMode = Dungeon.savedViewMode;
+                }
+                if (Dungeon.savedCameraMode) {
+                    Dungeon.cameraMode = Dungeon.savedCameraMode;
+                }
+                btnYes.visible = false;
+                btnNo.visible = false;
             break;
           case 3://btnAction, btnAction2
             if (this.type == 'arrow_left'){
@@ -55401,7 +55397,7 @@
       }
       //page text
       drawText(0, .25, 10, .5, "Welcome to Runestones!", `rgba(${Math.floor(Math.random()*255)},${Math.floor(Math.random()*255)},${Math.floor(Math.random()*255)})`, 1,'center');
-      drawText(.5, 1, 9, 1.75, "Feel free to reach out via Instagram DM (@suncat.meow) or email (suncat.data@gmail.com) with any questions, comments, or concerns. - Suncat", `rgba(${Math.floor(Math.random()*255)},${Math.floor(Math.random()*255)},${Math.floor(Math.random()*255)})`, 1,'center');
+      drawText(.5, 1, 9, 1.75, "This game is still in development, but I invite you to check it out! You can find the Online Game World by clicking Tutorial in the main menu. Feel free to reach out via Instagram DM (@suncat.meow) or email (suncat.data@gmail.com) with any questions, comments, or concerns. - Suncat", `rgba(${Math.floor(Math.random()*255)},${Math.floor(Math.random()*255)},${Math.floor(Math.random()*255)})`, 1,'center');
       drawText(0, 8.5, 10, 0.8, "Tap to continue", `rgba(60,60,60,${0.6 + 0.4 * Math.sin(Date.now() / 400)})`, 1,'center');
     }
     else if (startGame == 1){//suncat studios 
