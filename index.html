@@ -5640,11 +5640,11 @@
                 //sea serpent
                 new NPC(6,19.5, 6.5, 46.1, 'wandering', '#660066',[52,52,40,29,46]),
                 new NPC(7,6.5, 3.5, 46.1, 'wandering', '#660066',[52,52,40,29,46]),
-                new NPC(8,1.5, 6.5, 99, 'stationary','#66ccff',[43],'dialogue',null,'friendly'),
-                new NPC(9,1.5, 7.5, 99, 'stationary','#66ccff',[43],'dialogue',null,'friendly'),
-                new NPC(10,1.5, 8.5, 99, 'stationary','#66ccff',[43],'dialogue',null,'friendly'),
+                new NPC(88,1.5, 6.5, 99, 'stationary','#66ccff',[43],'dialogue',null,'friendly'),
+                new NPC(89,1.5, 7.5, 99, 'stationary','#66ccff',[43],'dialogue',null,'friendly'),
+                new NPC(90,1.5, 8.5, 99, 'stationary','#66ccff',[43],'dialogue',null,'friendly'),
                 //undine
-                //new NPC(8,26.5, 13.5, 47.1, 'wandering', '#660066',[52,59,58,28,29,6,47]),
+                new NPC(13,26.5, 13.5, 47.1, 'wandering', '#660066',[52,59,58,28,29,6,47]),
 
                 //sailboat
               // new NPC(2,5.5, 1.5, -27, 'stationary', '#ffff00',[55]),
@@ -9494,15 +9494,11 @@
                 }
             });
         //3. WORLD-ALTERING EVENTS
-            if (Dungeon.mapID != 999) {
+            if (Dungeon.mapID != 999&&(reason === 'combat'||reason === 'npc_infighting')) {
+                //Djinn   
                 if (npc.type == 35.1 && Dungeon.mapID == 5) { Dungeon.mapSong[5] = 11; }
                 if (npc.type == 35.1 && Dungeon.mapID == 17) { Dungeon.spawnPersistentNPC(17, 1, 2.5, 1.5, 99, 'stationary', '#00ff00', [43], null, null, 'dialogue', null, null, 'friendly'); }
-                if (npc.type == 49.1 && Dungeon.mapID == 18) { Dungeon.spawnPersistentNPC(18, 1, 2.5, 1.5, 99, 'stationary', '#00ff00', [43], null, null, 'dialogue', null, null, 'friendly'); }
-                if (npc.type == 63.1 && Dungeon.mapID == 19) { Dungeon.spawnPersistentNPC(19, 1, 2.5, 1.5, 99, 'stationary', '#00ff00', [43], null, null, 'dialogue', null, null, 'friendly'); }
-                if (npc.type == 0 && Dungeon.mapID == 21) {
-                    Dungeon.spawnPersistentNPC(21, 2, 2.5, 6.5, 99, 'stationary', '#00ff00', [43], null, null, 'dialogue', null, null, 'friendly');
-                    if (Dungeon.weather) Dungeon.weather.setMode('apocalypse');
-                }
+                ////Kraken
                 if (npc.type == 49.1 && Dungeon.mapID == 9) {
                     Dungeon.mapSong[9] = 3;
                     if (Dungeon.weather) Dungeon.weather.setMode('clear');
@@ -9512,12 +9508,24 @@
                     // Recursively kill all leftover tentacles 
                     Dungeon.npcs.forEach(n => { if (!n.isDead && n.type == 83) Dungeon.killNPC(n, true); });
                 }
+                if (npc.type == 49.1 && Dungeon.mapID == 18) { Dungeon.spawnPersistentNPC(18, 1, 2.5, 1.5, 99, 'stationary', '#00ff00', [43], null, null, 'dialogue', null, null, 'friendly'); }
+                ////Dragon
+                if (npc.type == 63.1 && Dungeon.mapID == 19) { Dungeon.spawnPersistentNPC(19, 1, 2.5, 1.5, 99, 'stationary', '#00ff00', [43], null, null, 'dialogue', null, null, 'friendly'); }
+                //Dark Emperor(Fool)
+                if (npc.type == 0 && Dungeon.mapID == 21) {
+                    Dungeon.spawnPersistentNPC(21, 2, 2.5, 6.5, 99, 'stationary', '#00ff00', [43], null, null, 'dialogue', null, null, 'friendly');
+                    if (Dungeon.weather) Dungeon.weather.setMode('apocalypse');
+                }
+                //Arthur
                 if (npc.type == 85) {
                     Dungeon.npcs.push(new NPC(4, Dungeon.x, Dungeon.y - 1, 85, 'stationary', '#00ff00', [85,84,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21], 'dialogue', null, 'friendly_messenger'));
                 }
+                //Giant
                 if (npc.type == 77.1 && Dungeon.mapID != 20) {
-                    Dungeon.spawnPersistentNPC(14, 15, Dungeon.x - .5, Dungeon.y - .5, 77.1, 'wandering', '#00ff00', [77,64,65,66,67,68,69,70,71,72,73,74,75,76], null, null, 'dialogue', null, null, 'friendly_messenger');
+                    Dungeon.spawnPersistentNPC(14, 15, Dungeon.x - 3, Dungeon.y - 3, 77.1, 'chasing', '#00ff00', [77,64,65,66,67,68,69,70,71,72,73,74,75,76], null, null, 'dialogue', null, null, 'friendly_messenger');
                 }
+                
+                if (npc.type == 74.1&&npc.index == 7){this.npcs[6].alignment ='friendly_messenger';this.npcs[6].speed =4; }
             }
         //4. LOOT DROP
             let lootTriggered = false;
@@ -11235,7 +11243,7 @@
 
                         if (this.dCounter == 7){
                             this.spawnPersistentNPC(13, 3, this.x, this.y-1, 85, 'chasing', '#00ff00',[50,64,59,51,8,28,85],null,null,'battle',null,true,'friendly_messenger');    
-                            socket.emit('suncat_spectate', `player has awoken sleeping king in his tomb and asked for aid and must not prove their worth.`);
+                            socket.emit('suncat_spectate', `player has awoken sleeping king in his tomb and asked for aid and must now prove their worth.`);
                             this.endDialogue(true)         
                         }
                         }
