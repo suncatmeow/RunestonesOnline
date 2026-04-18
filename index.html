@@ -9559,6 +9559,37 @@
                 let escortNPC = this.npcs.find(n => n.index === this.activeEscortQuest.giverIndex);
                 
                 if (escortNPC) {
+                    // --- NEW: MULTI-STAGE QUEST CHECK ---
+                    // --- NEW: MULTI-STAGE QUEST CHECK ---
+                    if (this.activeEscortQuest.nextPhase) {
+                        // Load the next part of the quest into their deck
+                        escortNPC.deck = this.activeEscortQuest.nextPhase;
+                        
+                        // GRAB THE LORE FOR PHASE 2 (Index 6)
+                        let nextPhaseLore = this.activeEscortQuest.nextPhase[6] || ["But the job isn't finished yet... are you ready for the next part?"];
+                        
+                        // Reset them back to a quest giver
+                        escortNPC.role = 'escort_giver'; 
+                        escortNPC.alignment = 'friendly';
+                        escortNPC.state = 'stationary';
+                        
+                        // COMBINE the victory cheer with the new quest lore!
+                        escortNPC.customDialogue = ["Incredible! You actually did it!"].concat(nextPhaseLore);
+                        escortNPC.options = ['Continue', 'Later'];
+                        
+                        // Clear the active quest so they can accept the new one
+                        this.activeEscortQuest = null; 
+                        
+                        setTimeout(() => {
+                            if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('chime');
+                            escortNPC.startDialogue(this);
+                        }, 500);
+                        
+                        this.saveGame();
+                        return; // Stop here! Don't give the final reward yet!
+                    }
+
+                    // --- RESTORED: FINAL QUEST COMPLETION & REWARDS ---
                     let questType = this.activeEscortQuest.questType;
                     
                     // Did we trigger the rare "I want to fight for you" outcome? (20% chance)
@@ -9588,7 +9619,7 @@
                 }
                 
                 // Wipe the quest tracker
-                this.activeEscortQuest = true; 
+                this.activeEscortQuest = null; 
                 this.saveGame();
             }
         //6. MERCY EVENT
@@ -10423,7 +10454,9 @@
             // ==========================================
             if (this.currentSpeaker.customDialogue && this.currentSpeaker.customDialogue.length > 0) {
                 let maxLines = this.currentSpeaker.customDialogue.length;
-                
+                if (this.dCounter >= maxLines && this.currentSpeaker.options && this.currentSpeaker.options.length > 0) {
+                    this.dCounter = maxLines - 1; 
+                }
                 // 1. Play through all dialogue lines
                 if (this.dCounter < maxLines) {
                     drawPortrait(this.currentSpeaker.type, -.01, .013, 1);
@@ -10460,7 +10493,7 @@
                                     : 'dialogue';
                     // --- ESCORT RESCUE CHECK ---
                     // If this is the missing person we are looking for, talking to them completes the quest!
-                    if (Dungeon.activeEscortQuest && Dungeon.activeEscortQuest.targetIndex === this.index && Dungeon.activeEscortQuest.questType === 'rescue') {
+                    if (Dungeon.activeEscortQuest && Dungeon.activeEscortQuest.targetIndex === Dungeon.currentSpeaker.index && Dungeon.activeEscortQuest.questType === 'rescue') {
                         killReason = 'rescue_complete';
                         npcRole = 'reward'; // Force them to trigger the vanish logic below
                     }
@@ -10470,6 +10503,7 @@
                     }
                     if (npcRole === 'battle') {
                         // START COMBAT SAFELY
+                        this.dCounter = 0;
                         this.currentSpeaker.customDialogue = null; // Clear text so it doesn't loop
                         let enemyToFight = this.currentSpeaker; 
                         this.currentSpeaker = null; // Clear speaker so handleInput doesn't crash!
@@ -10481,6 +10515,7 @@
                         // GIVE QUEST & VANISH
                         startGame = 'explore';  
                         this.currentSpeaker.role = 'dialogue'; 
+                        this.dCounter = 0;
                         // Change what they say the next time you bump into them!
                         this.currentSpeaker.customDialogue = ["I'm counting on you to finish the task!"];
                         //socket.emit('suncat_spectate', `[QUEST EVENT] Player received a quest from custom NPC (Type ${npcType}). It said: "${spokenText}". ASSIGN A QUEST TO THE PLAYER NOW.`);
@@ -10488,7 +10523,7 @@
                     else if (npcRole === 'reward' || killReason.startsWith('pickup_')) {
                         // GAVE CARD & VANISH
                         startGame = 'explore';  
-                        
+                        this.dCounter = 0;
                         // ---> THE FIX: ACTUALLY ADD THE CARD TO THE INVENTORY! <---
                         if (this.currentSpeaker.rewardCard !== undefined && this.currentSpeaker.rewardCard !== null) {
                             this.extra.push(new Card(this.currentSpeaker.rewardCard));
@@ -10499,27 +10534,20 @@
                         //socket.emit('suncat_spectate', `[QUEST EVENT] Player obtained a card from NPC (Type ${npcType}). They vanished. It said: "${spokenText}"`);
                     }
                     else if (npcRole === 'become_ally') {
-                        // 1. Fully convert them to a combat pet
                         startGame = 'explore';  
-                        this.currentSpeaker.alignment = 'ally';
-                        this.currentSpeaker.role = 'battle'; 
-                        this.currentSpeaker.customDialogue = ["I will protect you!"];
+                        this.dCounter = 0;
+                        // 1. Summon a fresh ally using the proven function
+                        this.summonAlly(Math.floor(this.currentSpeaker.type));
                         
-                        // 2. Inject them into the activeSummons array so they save/load properly!
-                        if (!this.activeSummons) this.activeSummons = [];
-                        this.activeSummons.push({ 
-                            cardId: Math.floor(this.currentSpeaker.type), 
-                            uid: 'uid_' + Math.random().toString(36).substr(2, 9), 
-                            npcId: this.currentSpeaker.index 
-                        });
+                        // 2. Clean up the quest tracker memory
                         if (this.activeEscortQuest && this.activeEscortQuest.giverIndex === this.currentSpeaker.index) {
-                            for (let i = -1; i <= 30; i++) {
-                                this.memory[i + "_" + this.currentSpeaker.index] = { permanent: true };
-                            }
-                            this.memory["999_" + this.currentSpeaker.index] = { permanent: true };
                             this.activeEscortQuest = null; 
                         }
-                        if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('buff2');
+                        
+                        // 3. Kill the original quest giver so they vanish cleanly
+                        this.killNPC(this.currentSpeaker, true, 'dialogue');
+                        
+                        if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('buff2');
                         this.currentSpeaker = null;
                         this.saveGame();
                     }
@@ -13104,10 +13132,10 @@
             let transparency = .15;
             if(window.gameViewMode === '3d'){transparency = .025}
             // 1. Determine which arrow gets the highlight color
-            let upCol    = (this.isPressed && this.currentDir === 'up')    ? `rgba(255, 255, 255,  ${.3})` : `rgba(255, 255, 255, ${transparency})`;
-            let downCol  = (this.isPressed && this.currentDir === 'down')  ? `rgba(255, 255, 255,  ${.3})` : `rgba(255, 255, 255, ${transparency})`;
-            let leftCol  = (this.isPressed && this.currentDir === 'left')  ? `rgba(255, 255, 255,  ${.3})` : `rgba(255, 255, 255, ${transparency})`;
-            let rightCol = (this.isPressed && this.currentDir === 'right') ? `rgba(255, 255, 255,  ${.3})` : `rgba(255, 255, 255, ${transparency})`;
+            let upCol    = (this.isPressed && this.currentDir === 'up')    ? `rgba(255, 255, 255,  ${.3})` : `rgba(255, 255, 255, ${transparency*4})`;
+            let downCol  = (this.isPressed && this.currentDir === 'down')  ? `rgba(255, 255, 255,  ${.3})` : `rgba(255, 255, 255, ${transparency*4})`;
+            let leftCol  = (this.isPressed && this.currentDir === 'left')  ? `rgba(255, 255, 255,  ${.3})` : `rgba(255, 255, 255, ${transparency*4})`;
+            let rightCol = (this.isPressed && this.currentDir === 'right') ? `rgba(255, 255, 255,  ${.3})` : `rgba(255, 255, 255, ${transparency*4})`;
 
             // Center points based on the actual bounding box of the button
             let cx = this.l / 2;
@@ -13172,7 +13200,7 @@
               
               break;
           case 'turn_l':
-                          let opacityl = .025
+                          let opacityl = .1
 
 
               // 1. Main Background (Semi-transparent black)
@@ -13192,7 +13220,7 @@
           
           case 'turn_r':
               
-            let opacityr = .025
+            let opacityr = .1
               // 1. Main Background (Semi-transparent black)
               //drawShape('rec', this.x, this.y, this.z, 0, 0, this.l, this.h, 0, 0, 0, 0, 'rgba(0, 0, 0, 0.05)', 1);
               
@@ -13266,7 +13294,7 @@
                 let overPull = Math.max(0, pullDist - 1.3); 
                 let speedMult = 1.0 + (overPull * 1.25); 
 
-                let panSensitivity = 0.025 * speedMult;   
+                let panSensitivity = 0.05 * speedMult;   
                 let pitchSensitivity = 12.0 * speedMult; 
                 let zoomSensitivity = 0.025 * speedMult;   
 
@@ -13759,7 +13787,7 @@
                                     : "";
                 let hasReward = Dungeon.currentSpeaker.rewardCard !== undefined && Dungeon.currentSpeaker.rewardCard !== null;
 
-                    //FOE MERCY
+                //FOE MERCY
                         if (firstOpt.includes('spare')){
                             // 1. Summon the new ally to your active party
                             Dungeon.summonAlly(Math.floor(Dungeon.currentSpeaker.type));
@@ -13794,84 +13822,128 @@
                         }
 
                         // 2. FIND FURTHEST VALID SPAWN POINT
-                        let bestDist = 0;
-                        let spawnX = Dungeon.x;
-                        let spawnY = Dungeon.y;
-                        
-                        for(let i = 0; i < 100; i++) { // Check 100 random spots
-                            let rx = Math.floor(Math.random() * Dungeon.maze[0].length);
-                            let ry = Math.floor(Math.random() * Dungeon.maze.length);
+                            let bestDist = 0;
+                            let spawnX = Dungeon.x;
+                            let spawnY = Dungeon.y;
                             
-                            if (!Dungeon.isWall(rx, ry)) {
-                                let dist = Math.sqrt(Math.pow(rx - Dungeon.x, 2) + Math.pow(ry - Dungeon.y, 2));
-                                if (dist > bestDist) {
-                                    bestDist = dist;
-                                    spawnX = rx + 0.5; // Center on tile
-                                    spawnY = ry + 0.5;
+                            for(let i = 0; i < 100; i++) { // Check 100 random spots
+                                let rx = Math.floor(Math.random() * Dungeon.maze[0].length);
+                                let ry = Math.floor(Math.random() * Dungeon.maze.length);
+                                
+                                if (!Dungeon.isWall(rx, ry)) {
+                                    let dist = Math.sqrt(Math.pow(rx - Dungeon.x, 2) + Math.pow(ry - Dungeon.y, 2));
+                                    if (dist > bestDist) {
+                                        bestDist = dist;
+                                        spawnX = rx + 0.5; // Center on tile
+                                        spawnY = ry + 0.5;
+                                    }
                                 }
                             }
+
+                        // 3. READ QUEST CONFIGURATION (Expanded for Multi-Map)
+                            let objectiveType = Dungeon.currentSpeaker.deck[0] || 56; 
+                            let rewardType = Dungeon.currentSpeaker.deck[1] || 0;
+                            let questType = Dungeon.currentSpeaker.deck[2] || 'kill';
+
+                            // NEW: Cross-Map Routing
+                            let targetMapID = Dungeon.currentSpeaker.deck[3]; 
+                            if (targetMapID === undefined || targetMapID === null) targetMapID = Dungeon.mapID;
+
+                            let obstacles = Dungeon.currentSpeaker.deck[4] || []; 
+                            let nextPhase = Dungeon.currentSpeaker.deck[5] || null; 
+
+                            let targetIndex = Math.floor(Math.random() * 100000) + 500000;
+
+                            // --- NEW: COORD OVERRIDE FOR OFFLINE MAPS ---
+                            // If the target is on a different map, we can't use our while-loop to check for walls.
+                            // We default to a safe center coordinate (like 8.5, 8.5). Your collision physics 
+                            // will naturally pop them out of the wall if they happen to spawn inside one!
+                            if (targetMapID !== Dungeon.mapID) {
+                                spawnX = 8.5;
+                                spawnY = 8.5;
+                            }
+
+                            let objRole = 'battle';
+                            let objAlign = 'foe';
+                            let objDialog = ["You will never take me alive!"];
+                            let objColor = '#ff0000'; 
+
+                            if (questType === 'retrieve') {
+                                objectiveType = -27; 
+                                objRole = 'dialogue';
+                                objAlign = 'friendly';
+                                objDialog = null; 
+                                objColor = '#ffff00'; 
+                            } 
+                            else if (questType === 'rescue') {
+                                objRole = 'dialogue';
+                                objAlign = 'friendly';
+                                objDialog = ["Oh thank goodness you found me!"];
+                                objColor = '#00ff00'; 
+                            }
+
+                            // 4. SPAWN THE TARGET (Using the dynamic targetMapID!)
+                            Dungeon.spawnPersistentNPC(
+                                targetMapID, targetIndex, spawnX, spawnY, objectiveType, 
+                                'stationary', objColor, [Dungeon.currentSpeaker.deck[0]], objDialog, null, 
+                                objRole, null, true, objAlign
+                            );
+
+                            // 5. SPAWN THE OBSTACLES (Also on the targetMapID)
+                                if (obstacles.length > 0) {
+                                    obstacles.forEach(obsID => {
+                                        let obsX = spawnX + (Math.random() * 4 - 2);
+                                        let obsY = spawnY + (Math.random() * 4 - 2);
+                                        let obsIndex = Math.floor(Math.random() * 100000) + 600000;
+                                        
+                                        Dungeon.spawnPersistentNPC(
+                                            targetMapID, obsIndex, obsX, obsY, obsID, 
+                                            'wandering', '#ff0000', [obsID], ["You won't reach them!"], null, 
+                                            'battle', null, false, 'foe'
+                                        );
+                                    });
+                                }
+
+                            // 6. CONVERT THE GIVER TO AN ESCORT
+                                Dungeon.currentSpeaker.alignment = 'escort';
+                                Dungeon.currentSpeaker.role = 'dialogue';
+                                Dungeon.currentSpeaker.state = 'following';
+
+                                // --- NEW: DYNAMIC REMINDER TEXT ---
+                                let actionWord = "hunt down our target";
+                                if (questType === 'retrieve') actionWord = "recover the item";
+                                if (questType === 'rescue') actionWord = "rescue my friend";
+
+                                if (targetMapID === Dungeon.mapID) {
+                                    Dungeon.currentSpeaker.customDialogue = [`We must hurry! We need to ${actionWord} here on this map.`];
+                                } else {
+                                    Dungeon.currentSpeaker.customDialogue = [`We have a long journey ahead. We must travel to Map ${targetMapID} to ${actionWord}! Let's go!`];
+                                }
+                                // ----------------------------------
+
+                                Dungeon.currentSpeaker.options = null;
+
+                            // 7. SAVE THE QUEST STATE
+                                Dungeon.activeEscortQuest = {
+                                    giverIndex: Dungeon.currentSpeaker.index,
+                                    targetIndex: targetIndex,
+                                    targetMapID: targetMapID, // <--- Crucial to store this
+                                    questType: questType,
+                                    rewardType: rewardType,
+                                    nextPhase: nextPhase,
+                                    npcType: Dungeon.currentSpeaker.type,
+                                    npcColor: Dungeon.currentSpeaker.color,
+                                    npcDeck: Dungeon.currentSpeaker.deck
+                                };
+
+                                startGame = 'explore';
+                                Dungeon.dCounter = 0;
+                                Dungeon.status = 'normal';
+                                Dungeon.currentSpeaker = null;
+                                if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('heal');
+                                Dungeon.saveGame();
+                                return;
                         }
-
-                        // 3. READ QUEST CONFIGURATION
-                        let objectiveType = Dungeon.currentSpeaker.deck[0] || 56; 
-                        let rewardType = Dungeon.currentSpeaker.deck[1] || 0;
-                        let questType = Dungeon.currentSpeaker.deck[2] || 'kill'; // 'kill', 'retrieve', or 'rescue'
-                        
-                        let targetIndex = Math.floor(Math.random() * 100000) + 500000;
-                        
-                        let objRole = 'battle';
-                        let objAlign = 'foe';
-                        let objDialog = ["You will never take me alive!"];
-                        let objColor = '#ff0000'; // Red for enemy
-
-                        if (questType === 'retrieve') {
-                            objectiveType = -27; // Force it to be a card pickup
-                            objRole = 'dialogue';
-                            objAlign = 'friendly';
-                            objDialog = null; // Uses native pickup UI
-                            objColor = '#ffff00'; // Yellow for loot
-                        } 
-                        else if (questType === 'rescue') {
-                            objRole = 'dialogue';
-                            objAlign = 'friendly';
-                            objDialog = ["Oh thank goodness you found me!"];
-                            objColor = '#00ff00'; // Green for friendly
-                        }
-
-                        // 4. SPAWN THE TARGET (isBoss = true puts the star on the minimap!)
-                        // MapID, Index, X, Y, Type, State, Color, Deck, Dialogue, Reward, Role, Options, isBoss, Alignment
-                        Dungeon.spawnPersistentNPC(
-                            Dungeon.mapID, targetIndex, spawnX, spawnY, objectiveType, 
-                            'stationary', objColor, [Dungeon.currentSpeaker.deck[0]], objDialog, null, 
-                            objRole, null, true, objAlign
-                        );
-
-                        // 5. CONVERT THE GIVER TO AN ESCORT
-                        Dungeon.currentSpeaker.alignment = 'escort';
-                        Dungeon.currentSpeaker.role = 'dialogue';
-                        Dungeon.currentSpeaker.state = 'following';
-                        Dungeon.currentSpeaker.customDialogue = ["We must hurry! The target is on your minimap."];
-                        Dungeon.currentSpeaker.options = null; 
-
-                        // --- THE FIX: SAVE THE ACTUAL NPC DATA ---
-                            Dungeon.activeEscortQuest = {
-                                giverIndex: Dungeon.currentSpeaker.index,
-                                targetIndex: targetIndex,
-                                questType: questType,
-                                rewardType: rewardType,
-                                npcType: Dungeon.currentSpeaker.type,
-                                npcColor: Dungeon.currentSpeaker.color,
-                                npcDeck: Dungeon.currentSpeaker.deck
-                            };
-
-                        startGame = 'explore';
-                        Dungeon.dCounter = 0;
-                        Dungeon.status = 'normal';
-                        Dungeon.currentSpeaker = null;
-                        if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('heal');
-                        Dungeon.saveGame();
-                    return;
-                    }
                 //CUSTOM MAP INVITE IMP
                     else if (Dungeon.currentSpeaker.role === 'portal_invite') {
                             if (typeof socket !== 'undefined') {
@@ -13983,7 +14055,7 @@
                             Dungeon.status = 'normal';
                         }
                     //ESCORT QUEST
-                        else if (firstOption.includes('help')){
+                        else if (Dungeon.currentSpeaker.role === 'escort_giver'){
                             // 3. Close the dialogue safely
                             Dungeon.dCounter = 0;
                             Dungeon.currentSpeaker.state = 'fleeing';
