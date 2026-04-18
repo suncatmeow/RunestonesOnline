@@ -7176,6 +7176,13 @@
                 btnTurnR.show(8.3,5.3, 1.5, 1, 1, '', 'turn_r', 1, 0);
 
                 btnLook.show(6.875, 6.875, 1.25, 1, 1, '', 'joystick', 1, 0); // Added to right side
+                } else {
+                    // --- THE FIX: EXPLICITLY KILL THE HITBOXES ---
+                    // This guarantees they cannot steal clicks during dialogue
+                    btnMove.visible = 0;
+                    btnTurnL.visible = 0;
+                    btnTurnR.visible = 0;
+                    btnLook.visible = 0;
                 }
             // --- DYNAMIC SPELL SLOTS LAYOUT ---
             let btnGap = 0.05;
@@ -14060,6 +14067,8 @@
                             
                             // 4. TRIGGER THE COMBAT SEQUENCE LOCALLY!
                             enemyToFight.triggerInteraction(Dungeon);
+                            btnYes.visible = false;
+                            btnNo.visible = false;
                             return;
                         }
                     //ESCORT QUEST
@@ -22349,9 +22358,31 @@
                 }
             }
         //vvvDIALOGUE/TUTORIALvvv/////
+            //vvvDIALOGUE/TUTORIALvvv/////
             if (startGame == 'dialogue'||startGame == 'tutorial'){
-                if (btnYes.visible && btnYes.isTouched(gridPos.x, gridPos.y)) { btnYes.press(); return; }
-                if (btnNo.visible && btnNo.isTouched(gridPos.x, gridPos.y)) { btnNo.press(); return; }
+                
+                // --- THE FIX: SAFETY LOCK FOR GHOST BUTTONS ---
+                let optionsAreActive = false;
+                
+                // 1. Check if we are on the final line of an NPC dialogue
+                if (Dungeon.currentSpeaker && Dungeon.currentSpeaker.customDialogue) {
+                    if (Dungeon.dCounter === Dungeon.currentSpeaker.customDialogue.length - 1) {
+                        if (Dungeon.currentSpeaker.options && Dungeon.currentSpeaker.options.length > 0) {
+                            optionsAreActive = true;
+                        }
+                    }
+                }
+                // 2. Check if we are in a PvP or Tutorial menu that requires buttons
+                if (Dungeon.status === 'dueling' || startGame === 'tutorial' || preGame === 'emperor battle') {
+                    optionsAreActive = true; 
+                }
+
+                // 3. Only intercept clicks if the buttons are meant to be active!
+                if (optionsAreActive) {
+                    if (btnYes.visible && btnYes.isTouched(gridPos.x, gridPos.y)) { btnYes.press(); return; }
+                    if (btnNo.visible && btnNo.isTouched(gridPos.x, gridPos.y)) { btnNo.press(); return; }
+                }
+                // ----------------------------------------------
                 //CUSTOM DIALOGUE CLICK HANDLER
                 if(Dungeon.currentSpeaker){
                 if(Dungeon.currentSpeaker.customDialogue){
