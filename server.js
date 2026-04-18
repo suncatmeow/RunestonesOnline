@@ -3729,19 +3729,16 @@
                                             let allyID = friendlyMinions[i % friendlyMinions.length] || 32;
                                             
                                             // Determine a random reward for the quest (Card IDs 10 to 50)
-                                            let randomReward = Math.floor(Math.random() * 40) + 10;
 
                                             mapNPCs.push({
                                                 type: CARD_MANIFEST_DB[allyID].sprite || allyID, 
                                                 x: hTile.x + 0.5, y: hTile.y + 0.5,
                                                 state: 'stationary', 
-                                                role: 'escort_giver', 
+                                                role: 'become_ally', 
                                                 alignment: 'friendly_messenger',
                                                 color: '#00ff00', 
-                                                // DECK FORMAT: [Target to Spawn, Reward Card, Quest Type]
-                                                deck: [antagID, randomReward, 'rescue'], 
                                                 dialogue: [script.prisonerLines ? script.prisonerLines[i] : "Thank the gods! Get me out of here!"],
-                                                options: ['Help', 'Leave']
+                                                
                                             });
                                         }
                                         // Spawn Patrols
@@ -3761,6 +3758,7 @@
                                     // --- SCENARIO B: RAID (Fetch Sub-Quest) ---
                                     else if (scenarioType === 'Raid') {
                                         // Spawn Wounded Explorer (Using Escort 'Retrieve' Mode)
+                                        let randomRelic = Math.floor(Math.random() * 78);
                                         let fetchTile = getDistantTile(10);
                                         let allyID = friendlyMinions[0] || 9;
                                         mapNPCs.push({
@@ -3771,8 +3769,8 @@
                                             alignment: 'friendly',
                                             color: '#00ff00', 
                                             // DECK: [-27 = Card Sprite, Reward, 'retrieve']
-                                            deck: [-27, 10, 'retrieve'], 
-                                            dialogue: [script.friendlyLore ? script.friendlyLore[0] : "I dropped a relic deeper in the dungeon. Please find it!"],
+                                            deck: [randomRelic, allyID, 'retrieve'], 
+                                            dialogue: [script.friendlyLore ? script.friendlyLore[0] : "I dropped a relic deeper in the dungeon. Please help me find it!"],
                                             options: ['Help', 'Leave']
                                         });
 
@@ -3805,7 +3803,21 @@
                                                 dialogue: [script.recruitPlea ? script.recruitPlea[i % script.recruitPlea.length] : "Hold the line!"]
                                             });
                                         }
+                                        for (let i = 0; i < 3; i++) {
+                                            let hTile2 = getDistantTile(8); 
+                                            let allyID2 = friendlyMinions[i % friendlyMinions.length] || 32;
+                                            
+                                            // Determine a random reward for the quest (Card IDs 10 to 50)
 
+                                            mapNPCs.push({
+                                                type: CARD_MANIFEST_DB[allyID2].sprite || allyID2, 
+                                                x: hTile2.x + 0.5, y: hTile2.y + 0.5,
+                                                state: 'wandering', 
+                                                role: 'become_ally', 
+                                                alignment: 'friendly_messenger',
+                                                color: '#00ff00', 
+                                                dialogue: [script.recruitPlea ? script.recruitPlea[i % script.recruitPlea.length] : "I will fight with  you!"]                                                
+                                            });}
                                         // Spawn the Horde far away
                                         for (let i = 0; i < 15; i++) {
                                             let mID = hostileMinions[Math.floor(Math.random() * hostileMinions.length)];
@@ -3830,6 +3842,21 @@
                                                 deck: buildSynergisticDeck(mID, 100), color: '#ff4400', 
                                                 dialogue: [script.hostileTaunts ? script.hostileTaunts[i % script.hostileTaunts.length] : "For glory!"]                                            });
                                         }
+                                        for (let i = 0; i < 3; i++) {
+                                            let hTile3 = getDistantTile(8); 
+                                            let allyID3 = hostileMinions[i % hostileMinions.length] || 32;
+                                            
+                                            // Determine a random reward for the quest (Card IDs 10 to 50)
+
+                                            mapNPCs.push({
+                                                type: CARD_MANIFEST_DB[allyID3].sprite || allyID3, 
+                                                x: hTile3.x + 0.5, y: hTile3.y + 0.5,
+                                                state: 'chasing', 
+                                                role: 'become_ally', 
+                                                alignment: 'friendly_messenger',
+                                                color: '#00ff00', 
+                                                dialogue: [script.recruitPlea ? script.recruitPlea[i % script.recruitPlea.length] : "I will fight with you!"]                                                
+                                            });}
                                     }
 
                                     mapNPCs.forEach((npc, idx) => { npc.index = 10000 + idx; });
