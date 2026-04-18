@@ -14029,14 +14029,17 @@
                                     ? Dungeon.currentSpeaker.options[0].toLowerCase() 
                                     : "";
                     //FOE MERCY
+                        //FOE MERCY (Rejection / Finish It)
                         if (firstOption.includes('spare')){
                             // 1. Strip the reward and revert to hostile
+                            Dungeon.currentSpeaker.customDialogue = null; // Break the dialogue loop
+                            Dungeon.currentSpeaker.options = null;        // Break the UI loop
                             Dungeon.currentSpeaker.rewardCard = null;
                             Dungeon.currentSpeaker.role = 'battle';
                             Dungeon.currentSpeaker.alignment = 'foe';
                             Dungeon.currentSpeaker.state = 'chasing'; // Make them aggressive
 
-                            // 2. FORCE BATTLE IMMEDIATELY
+                            // 2. TELL THE SERVER
                             if (typeof socket !== 'undefined' && socket) {
                                 socket.emit("engage_npc", { 
                                     npcIndex: Dungeon.currentSpeaker.index, 
@@ -14045,10 +14048,15 @@
                                 });
                             }
 
-                            // 3. Close the dialogue safely
+                            // 3. Queue up the fight and clear the speaker so the engine doesn't crash
+                            let enemyToFight = Dungeon.currentSpeaker;
+                            Dungeon.currentSpeaker = null;
                             Dungeon.dCounter = 0;
-                            startGame = 'explore';
-                            Dungeon.status = 'normal';
+                            
+                            if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('slash');
+                            
+                            // 4. TRIGGER THE COMBAT SEQUENCE LOCALLY!
+                            enemyToFight.triggerInteraction(Dungeon);
                             return;
                         }
                     //ESCORT QUEST
@@ -35648,13 +35656,35 @@
         }
 
         // B. NPC CHECK
-        let hitNPC = null;
+        let npcsOnTile = [];
         for (let npc of Dungeon.npcs) {
             if (!npc.visible || npc.isDead || npc.alignment === 'ally') continue;
             if (Math.floor(npc.x) === targetX && Math.floor(npc.y) === targetY) {
-                hitNPC = npc;
-                break;
+                npcsOnTile.push(npc);
             }
+        }
+
+        let hitNPC = null;
+        if (npcsOnTile.length > 0) {
+            // Sort to prioritize Loot/Cards over Portals
+            npcsOnTile.sort((a, b) => {
+                // Priority 1: Dropped cards / Loot (-27)
+                if (a.type === -27 && b.type !== -27) return -1;
+                if (a.type !== -27 && b.type === -27) return 1;
+                
+                // Priority 2: Push Portals (99 or <= -29) to the back
+                let isPortalA = (a.type === 99 || a.type <= -29);
+                let isPortalB = (b.type === 99 || b.type <= -29);
+                
+                if (isPortalA && !isPortalB) return 1;
+                if (!isPortalA && isPortalB) return -1;
+                
+                // Priority 3: Keep original order for everything else
+                return 0; 
+            });
+            
+            // Grab the highest priority entity!
+            hitNPC = npcsOnTile[0]; 
         }
 
         if (hitNPC) {
