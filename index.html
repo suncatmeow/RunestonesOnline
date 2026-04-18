@@ -13439,11 +13439,13 @@
               // 3D FIRST-PERSON MODE
               // STRAFING
           if (this.currentDir === 'left') {
+            movingForward = true;
               if (Dungeon.dir === 0) moveX = -1;
               if (Dungeon.dir === 1) moveY = -1;
               if (Dungeon.dir === 2) moveX = 1;
               if (Dungeon.dir === 3) moveY = 1;
           } else if (this.currentDir === 'right') {
+            movingForward = true;
               if (Dungeon.dir === 0) moveX = 1;
               if (Dungeon.dir === 1) moveY = 1;
               if (Dungeon.dir === 2) moveX = -1;
@@ -13456,6 +13458,7 @@
                   if (Dungeon.dir === 2) moveY = 1;
                   if (Dungeon.dir === 3) moveX = -1;
               } else if (this.currentDir === 'down') {
+                movingForward = true;
                   if (Dungeon.dir === 0) moveY = 1;
                   if (Dungeon.dir === 1) moveX = -1;
                   if (Dungeon.dir === 2) moveY = -1;
