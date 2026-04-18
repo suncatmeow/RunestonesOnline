@@ -7170,7 +7170,7 @@
                 btnDeck.show(0, 9, 1, 1, 1, 'Deck', 'jrpg_btn', 1, 0);
                 btnJournal.show(7.875, 2.275, .5, 1, 1, 'Journal', 'jrpg_btn', 1, 0);
                 btnPOV.show(9.3, 2.275, .5, 1, 1, 'POV', 'jrpg_btn', 1, 0);
-                if(window.settingsControlsMode ==='dpad'){
+                if(window.settingsControlsMode ==='dpad'&&startGame!= 'dialogue'){
                 btnMove.show(5,5, 5, 1, 1, '', 'd_pad', 1, 0);
                 btnTurnL.show(5.2,5.3, 1.5, 1, 1, '', 'turn_l', 1, 0);
                 btnTurnR.show(8.3,5.3, 1.5, 1, 1, '', 'turn_r', 1, 0);
@@ -10917,83 +10917,79 @@
                         // Draw portrait logic
                         if(this.dCounter < 3){drawPortrait(this.currentSpeaker.type,  -.01, .013, 1);}
                         if (this.mapID == 3){
-                        if (this.dCounter == 0){
-                            MessageBox.show(.5,8,1,9,2,'The goblinsss... they used to bring me offeringssss...did something happen?','dialogue',1,0)
-                        }
-                        if (this.dCounter == 1){
-                            MessageBox.show(.5,8,1,9,2,'Dead ones you say? Vanquish them and I will give you...ssssomething...','dialogue',1,0)
-                        }
-
-                        // --- CHECK 1: Initial Conversation ---
-                        if (this.dCounter == 2){
-                        let alldead = 0; // Reset count locally to be safe
-                        this.npcs.forEach(npc => {
-                            // Check for Imp(56), Shade(42), Wisp(23)
-                            // EXCLUDE Index 4 (The Quest Giver Imp) to prevent bugs
-                            if ((npc.type == 56 || npc.type == 42 || npc.type == 23)&&npc.alignment!='ally'){
-                            if (!npc.isDead && npc.x!= -999){ 
-                                alldead++; 
+                            if (this.dCounter == 0){
+                                MessageBox.show(.5,8,1,9,2,'The goblinsss... they used to bring me offeringssss...did something happen?','dialogue',1,0)
                             }
+                            if (this.dCounter == 1){
+                                MessageBox.show(.5,8,1,9,2,'Dead ones you say? Vanquish them and I will give you...ssssomething...','dialogue',1,0)
                             }
-                        });
-                        
-                        if (alldead == 0){
-                            MessageBox.show(.5,8,1,9,2,'You sssslayed them all? Take this....','dialogue',1,0)
-                        }
-                        else{
-                            MessageBox.show(.5,8,1,9,2,'Ssssstuck here you say? I will ssssend you up...','dialogue',1,0)
-                        }   
-                        }
 
-                        // --- CHECK 2: Reward or Teleport ---
-                        if(this.dCounter == 3){
-                        let alldead = 0; // Reset count locally to be safe
-                        console.log("--- DEBUG: CHECKING ENEMIES ---");
-                        
-                        this.npcs.forEach(npc => {
-                            if (npc.type == 56 || npc.type == 42 || npc.type == 23){
-                            // EXCLUDE Index 4 again
-                            if (!npc.isDead && npc.x!= -999){
-                                alldead++;
-                                // This will tell you exactly who is still alive in the console
-                                console.log(`Alive Enemy Found! Type: ${npc.type}, Index: ${npc.index} at (${npc.x}, ${npc.y})`);
+                            // --- CHECK 1: Initial Conversation ---
+                            if (this.dCounter == 2){
+                                let alldead = 0; // Reset count locally to be safe
+                                this.npcs.forEach(npc => {
+                                    // CRITICAL FIX: Properly exclude allies AND index 4
+                                    if ((npc.type == 56 || npc.type == 42 || npc.type == 23) && npc.alignment !== 'ally' && npc.index !== 4){
+                                        if (!npc.isDead && npc.x != -999){ 
+                                            alldead++; 
+                                        }
+                                    }
+                                });
+                                
+                                if (alldead == 0){
+                                    MessageBox.show(.5,8,1,9,2,'You sssslayed them all? Take this....','dialogue',1,0)
+                                }
+                                else{
+                                    MessageBox.show(.5,8,1,9,2,'Ssssstuck here you say? I will ssssend you up...','dialogue',1,0)
+                                }   
                             }
+
+                            // --- CHECK 2: Reward or Teleport ---
+                            if(this.dCounter == 3){
+                                let alldead = 0; // Reset count locally to be safe
+                                
+                                this.npcs.forEach(npc => {
+                                    // CRITICAL FIX: Properly exclude allies AND index 4 here too!
+                                    if ((npc.type == 56 || npc.type == 42 || npc.type == 23) && npc.alignment !== 'ally' && npc.index !== 4){
+                                        if (!npc.isDead && npc.x != -999){
+                                            alldead++;
+                                        }
+                                    }
+                                });
+
+                                if (alldead == 0){
+                                    // SUCCESS: Give Reward
+                                    this.extra.push(new Card(38,0))
+                                    this.dCounter = 4;
+                                    if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('heal');
+                                }
+                                else{
+                                    // FAILURE: Teleport
+                                    this.dCounter = 0;
+                                    startGame = 'explore';
+                                    if (typeof socket !== 'undefined') socket.emit('suncat_spectate', `Player spoke to the treasure snake in the goblin caverns. Ask if they found the shade behind the illusory wall in the northeast room.`);
+                                    this.loadMap(3); 
+                                    if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('warp');
+                                }  
                             }
-                        });
 
-                        if (alldead == 0){
-                            // SUCCESS: Give Reward
-                            this.extra.push(new Card(38,0))
-                            this.dCounter = 4;
-                            if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('heal');
+                            if (this.dCounter == 4){
+                                MessageBox.show(0.5, 8, 1, 9, 2, 'You obtained a new Card!', 'dialogue', 1, -27);
+                                drawPortrait(-27, 2.5, 2.25, .5, 38);
+                            }
+                            if (this.dCounter == 5){
+                                startGame = 'explore';  
+                                this.dCounter = 0; 
+                                this.killNPC(this.currentSpeaker, true); // Kill Snake
+                                if (typeof socket !== 'undefined') socket.emit('suncat_spectate', `player has finished the Treasure snakes request in the goblin caverns to avenge the goblins and received the "quest reward" card.`);
+                                
+                                // Spawn the Portal to Map 4
+                                this.spawnPersistentNPC(3, 3, 3.5, 2.5, 99, 'stationary', '#66ccff',[43],null,null,'dialogue',null,null,'friendly');                   
+                                this.npcs.forEach(npc => {
+                                    if (!npc.isDead) npc.visible = true;
+                                });
+                            }
                         }
-                        else{
-                            // FAILURE: Teleport
-                            this.dCounter = 0;
-                            startGame = 'explore';
-                            socket.emit('suncat_spectate', `Player spoke to the treasure snake in the goblin caverns. Ask if they found the shade behind the illusory wall in the northeast room.`);
-                            // Optional: Comment out loadMap if you want to hunt the missing enemy instead of restarting
-                            this.loadMap(3); 
-                            if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('warp');
-                        }  
-                        }
-
-                        if (this.dCounter == 4){
-                            MessageBox.show(0.5, 8, 1, 9, 2, 'You obtained a new Card!', 'dialogue', 1, -27);
-                            drawPortrait(-27, 2.5, 2.25, .5, 38);
-                        }
-                        if (this.dCounter == 5){
-                            startGame = 'explore';  
-                            this.dCounter = 0; 
-                            this.killNPC(this.currentSpeaker, true); // Kill Snake
-                            socket.emit('suncat_spectate', `player has finished the Treasure snakes request in the goblin caverns to avenge the goblins and received the "quest reward" card.`);
-                            // Spawn the Portal to Map 4
-                            this.spawnPersistentNPC(3, 3, 3.5, 2.5, 99, 'stationary', '#66ccff',[43],null,null,'dialogue',null,null,'friendly');                   
-                            this.npcs.forEach(npc => {
-                            if (!npc.isDead) npc.visible = true;
-                            });
-                        }
-                    }
                     else if(this.mapID == 15){
                         if (this.dCounter == 0){
                         drawPortrait(this.currentSpeaker.type, -.01, .013, 1);
@@ -14050,9 +14046,10 @@
                             }
 
                             // 3. Close the dialogue safely
-                            Dungeon.dCounter = Dungeon.currentSpeaker.customDialogue ? Dungeon.currentSpeaker.customDialogue.length + 1 : 99;
+                            Dungeon.dCounter = 0;
                             startGame = 'explore';
                             Dungeon.status = 'normal';
+                            return;
                         }
                     //ESCORT QUEST
                         else if (Dungeon.currentSpeaker.role === 'escort_giver'){
