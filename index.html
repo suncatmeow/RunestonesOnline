@@ -1932,17 +1932,17 @@
         this.cards = deck.map(c => typeof c === 'number' ? new Card(c, 0) : c);
         this.color = minimapColor; 
         this.visible = true; 
-      if (role) {
-          this.role = role;
-      } else if (this.type === -27 || this.type === 99 || this.type < 0||this.role === 'dialogue') {
-          this.role = 'dialogue'; // Loot and Portals never fight
-          this.alignment = 'friendly';
-      } else {
-          this.role = 'battle'; // Default monsters to fight
-      }
-      if (isBoss){
-      this.isBoss = isBoss
-      }
+        if (role) {
+            this.role = role;
+        } else if (this.type === -27 || this.type === 99 || this.type < 0||this.role === 'dialogue') {
+            this.role = 'dialogue'; // Loot and Portals never fight
+            this.alignment = 'friendly';
+        } else {
+            this.role = 'battle'; // Default monsters to fight
+        }
+        if (isBoss){
+        this.isBoss = isBoss
+        }
       // AUDIO TIMERS ---
         this.stepTimer = 0;     // Tracks footstep rhythm
         this.gruntTimer = Math.random() * 500; // Random start for grunts
@@ -1991,7 +1991,7 @@
         this.preState = state;
         this.state = state; 
       //RANGED COMBAT STATS ---
-        const rangedTypes = [1, 2, 5, 9, 9.1, 23,32, 32.1, 33, 33.1, 34, 34.1, 35, 35.1,37,37.1,42, 48,57,57.1, 62, 63,63.1,76,78,79,999]; 
+        const rangedTypes = [0, 1, 2, 5, 9, 9.1, 23,32, 32.1, 33, 33.1, 34, 34.1, 35, 35.1,37,37.1,42, 48,57,57.1, 62, 63,63.1,76,78,79,83,999]; 
         this.isRanged = rangedTypes.includes(Math.floor(this.type)) || rangedTypes.includes(this.type);
         this.rangedCooldown = Math.random() * 60;
         
@@ -2012,11 +2012,14 @@
               case 0: // Fool
                   this.innateSpells = [52, 59]; // Primary: Curse, Secondary: Ice Shard
                   break;
+                  case 83: // Tentacle
+                  this.innateSpells = [52, 59]; // Primary: Curse, Secondary: Ice Shard
+                  break;
               case 37: // Siren
                   this.innateSpells = [15, 94]; // Primary: Curse, Secondary: Ice Shard
                   break;
               case 42: // Shade
-                  this.innateSpells = [28, 26,88]; // Primary: Defense, Secondary: Magic Missile
+                  this.innateSpells = [28, 93,88]; // Primary: Defense, Secondary: Magic Missile
                   break;
               case 5://heirophant
                   this.innateSpells = [12, 26,66,92]; // Primary: Bind, Secondary: Fireball
@@ -2040,7 +2043,7 @@
                 break;
 
               case 35:case 9: // Djinn
-                  this.innateSpells = [28,8,13,15,66,12]; // Just Magic Missile
+                  this.innateSpells = [28,8,13,15,66,12,93]; // Just Magic Missile
                   break;
           }
       }
@@ -2175,6 +2178,7 @@
 
         }
            this.startDialogue(dungeon) 
+           return;
       }
       //Portals in order: 4D, cave brown, castle red, castle blue, cave gray,
       if (this.type === 99||this.type ===-29||this.type==-30||(this.type == 88&&dungeon.mapID != 999)||this.type == -31||this.type == -32||this.type == -33||this.type == -34||this.type == -35) {
@@ -6413,6 +6417,13 @@
               if (song999 === 1){song999 = 19}
               if (song999 === 2){song999 = 44}
             }
+          }
+          if (this.activeSummons && this.activeSummons.length > 0) {
+              for (let i = 0; i < this.activeSummons.length; i++) {
+                  let cardData = this.activeSummons[i];
+                  // Re-summon them seamlessly without duplicating save data
+                  this.summonAlly(cardData, true); 
+              }
           }
           MusicEngine.stop();
           MusicEngine.play(song999);
@@ -13750,15 +13761,21 @@
 
                     //FOE MERCY
                         if (firstOpt.includes('spare')){
-                            // 1. Strip the reward and revert to hostile
-                            Dungeon.summonAlly(Math.floor(Dungeon.currentSpeaker.type))
-                            Dungeon.killNPC(Dungeon.currentSpeaker, true, 'dialogue'); 
-                            Dungeon.currentSpeaker = null;
-
-                            // 3. Close the dialogue safely
-                            Dungeon.dCounter = 0;
+                            // 1. Summon the new ally to your active party
+                            Dungeon.summonAlly(Math.floor(Dungeon.currentSpeaker.type));
+                            
+                            // 2. Clean up the dialogue UI
                             startGame = 'explore';
+                            Dungeon.dCounter = 0;
                             Dungeon.status = 'normal';
+                            
+                            // 3. Kill the original enemy so they don't drop cards or duplicate
+                            Dungeon.killNPC(Dungeon.currentSpeaker, true, 'dialogue');
+                            Dungeon.currentSpeaker = null;
+                            
+                            // 4. CRITICAL FIX: Lock in the save state and exit
+                            Dungeon.saveGame();
+                            return; 
                         }
                 //CARD GIVER
                     else if ( hasReward) {
@@ -13857,9 +13874,19 @@
                     }
                 //CUSTOM MAP INVITE IMP
                     else if (Dungeon.currentSpeaker.role === 'portal_invite') {
-                            if (typeof socket !== 'undefined') socket.emit("accept_teleport_invite");
-                        // if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('');
-
+                            if (typeof socket !== 'undefined') {
+                                // Tell the server we are ready
+                                socket.emit("accept_teleport_invite");
+                            }
+                            
+                            // Clean up the dialogue UI and kill the messenger imp
+                            startGame = 'explore';
+                            Dungeon.dCounter = 0;
+                            Dungeon.status = 'normal';
+                            Dungeon.killNPC(Dungeon.currentSpeaker, true, 'dialogue'); 
+                            Dungeon.currentSpeaker = null;
+                            Dungeon.saveGame(); // Lock in the save state so activeSummons are preserved
+                            return; // Stop execution
                         }
                 //CLEAN UP DD NPC
                     startGame = 'explore';
@@ -13965,15 +13992,15 @@
                         }
                     //CUSTOM MAP IMP INVITE
                     else if (Dungeon.currentSpeaker.role === 'portal_invite') {
-                    startGame = 'explore';
-                    Dungeon.dCounter = 0;
-                    Dungeon.status = 'normal';
-                    Dungeon.killNPC(Dungeon.currentSpeaker, true, 'dialogue'); 
-                    Dungeon.currentSpeaker = null;
+                        startGame = 'explore';
+                        Dungeon.dCounter = 0;
+                        Dungeon.status = 'normal';
+                        Dungeon.killNPC(Dungeon.currentSpeaker, true, 'dialogue'); 
+                        Dungeon.currentSpeaker = null;
                     }
                     else {
-                    Dungeon.currentSpeaker.role = 'dialogue';
-                    Dungeon.dCounter = Dungeon.currentSpeaker.customDialogue.length+1;
+                        Dungeon.currentSpeaker.role = 'dialogue';
+                        Dungeon.dCounter = Dungeon.currentSpeaker.customDialogue.length+1;
                     }
 
                     if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('death');
