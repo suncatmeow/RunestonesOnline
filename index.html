@@ -13809,6 +13809,8 @@
                             
                             // 4. CRITICAL FIX: Lock in the save state and exit
                             Dungeon.saveGame();
+                             btnYes.visible = false;
+                            btnNo.visible = false;
                             return; 
                         }
                 //CARD GIVER
@@ -13823,6 +13825,8 @@
                         // 1. LIMIT TO 1 ESCORT
                         if (Dungeon.activeEscortQuest) {
                             MessageBox.show(0.5, 8, 1, 9, 2, "You are already escorting someone!", 'dialogue', 1, 0);
+                             btnYes.visible = false;
+                            btnNo.visible = false;
                             if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('cancel');
                             return;
                         }
@@ -13964,6 +13968,8 @@
                             Dungeon.killNPC(Dungeon.currentSpeaker, true, 'dialogue'); 
                             Dungeon.currentSpeaker = null;
                             Dungeon.saveGame(); // Lock in the save state so activeSummons are preserved
+                             btnYes.visible = false;
+                            btnNo.visible = false;
                             return; // Stop execution
                         }
                 //CLEAN UP DD NPC
