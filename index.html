@@ -5039,6 +5039,65 @@
           else this.weather.setMode('clear');
         }
         //MAPDATA
+            if (id === -2) {
+                this.skyColor = 'rgba(0,0,0,1)';   // Dark Blue Sky
+                    this.floorColor = 'rgba(90,90,90,1)'; // Blue Floor
+                    this.mapname = 'Inner Dungeon'
+                this.maze = this.maze = [
+                // 0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16
+                [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],//0
+                [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1],//1
+                [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],//2
+                [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],//3
+                [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],//4
+                [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],//5
+                [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],//6
+                [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],//7
+                [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],//8
+                [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],//9
+                [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],//10
+                [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],//11
+                [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],//12
+                [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],//13
+                [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],//14
+                [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],//15
+                [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],//16
+                [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],//17
+                [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],//18
+                [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],//19
+                [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],//20
+                [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],//21
+                [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],//22
+                [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1] //23
+                ];
+                Dungeon.spawnPersistentNPC(
+                    Dungeon.mapID, 
+                    9001, 
+                    Dungeon.x + 1, 
+                    Dungeon.y, 
+                    75.1,           // Gnome Sprite
+                    'stationary', 
+                    '#00ffff',      // Cyan minimap dot for quest givers
+                    // --- DECK ---
+                    [
+                        56,         // Target: Imp
+                        50,         // Reward: Sword
+                        'kill',     // Type: Kill
+                        [],         // Obstacles: None
+                        null        // Next Phase: None
+                    ], 
+                    // ------------
+                    [
+                        "An imp stole my lunch!", 
+                        "Can you get rid of it for me?"
+                    ], 
+                    null, 
+                    'escort_giver', 
+                    ['Help', 'Ignore']
+                );
+                    this.x = 5.5; 
+                    this.y = 5.5;
+                }
           //Teleport map
           if (id === -1) {
             this.skyColor = 'rgba(0,0,0,1)';   // Dark Blue Sky
@@ -10488,7 +10547,12 @@
               // 4. End Dialogue and clean up
                 else {
                     this.dCounter = 0; 
-                    
+                    if (Dungeon.savedViewMode) {
+                        window.gameViewMode = Dungeon.savedViewMode;
+                    }
+                    if (Dungeon.savedCameraMode) {
+                        Dungeon.cameraMode = Dungeon.savedCameraMode;
+                    }
                     // Capture context before deleting the speaker
                     let spokenText = this.currentSpeaker.customDialogue.join(" ");
                     let npcType = this.currentSpeaker.type;
@@ -10685,7 +10749,7 @@
 
                         // --- MAP CHANGES AFTER PICKING UP SPECIFIC CARDS ---
                         // (Checking the very LAST card pulled in the pack to see if it triggers an event)
-                        if (cardID == 55 && this.mapID === 8) {
+                        if (cardID == 55 && this.mapID === 8&&this.currentSpeaker.index === 2) {
                             this.spawnPersistentNPC(8, 6, 5.5, 1.5, 99, 'stationary', '#66ccff',[],null,null,'dialogue',null,null,'friendly');
                             this.loadMap(9);
                             if (typeof MusicEngine !== 'undefined') {
@@ -10694,8 +10758,10 @@
                                 MusicEngine.play(36);
                             }
                         }
-                        if (cardID == 67) {
-                            this.npcs.push(new NPC(13, this.x, this.y+1, 62, 'chasing', '#00ff00', [], 'dialogue', null, 'friendly_messenger')); 
+                        if (cardID == 67&&this.mapID === 12&&this.currentSpeaker.index === 2) {
+                            this.npcs.push(new NPC(13, this.x, this.y+.01, 62, 'chasing', '#00ff00', [], 'dialogue', null, 'friendly_messenger')); 
+                            //this.currentSpeaker = 62;
+                            //this.dCounter = 0;
                             if (typeof MusicEngine !== 'undefined') {
                                 MusicEngine.stop();
                                 MusicEngine.play(24);
@@ -11136,7 +11202,7 @@
                 //Fairy Queen
                     if (this.currentSpeaker.type == 62){
                         if(this.mapID == 11&& this.currentSpeaker.index == 1){
-                        if(this.dCounter <10){drawPortrait(this.currentSpeaker.type, -.01, .013, 1);}
+                            if(this.dCounter <10){drawPortrait(this.currentSpeaker.type, -.01, .013, 1);}
 
                             //HOW TO CHECK FOR DEATH ON OTHER MAPS if (this.memory['12_1'] && this.memory['12_1'].permanent === true && this.dCounter == 0) {
                     
@@ -13547,6 +13613,8 @@
              }else{
               Dungeon.cameraMode = 'hybrid';
              }
+             Dungeon.savedViewMode = window.gameViewMode ;
+             Dungeon.savedCameraMode  = Dungeon.cameraMode; 
             }
       // ==========================================
       // --- END D-PAD MOVEMENT LOGIC ---
@@ -13644,6 +13712,9 @@
             else{
             window.gameViewMode = '2d'
             }
+            Dungeon.savedViewMode = window.gameViewMode;
+             Dungeon.savedCameraMode = Dungeon.cameraMode; 
+                        
             break;
         case 'deck_view':
                 console.log("Opening Deck View via Button...");
@@ -13781,11 +13852,23 @@
               MusicEngine.playSFX('heal')
               MusicEngine.play(21);
               Dungeon.dCounter = 0;
+              if (Dungeon.savedViewMode) {
+                        window.gameViewMode = Dungeon.savedViewMode;
+                    }
+                    if (Dungeon.savedCameraMode) {
+                        Dungeon.cameraMode = Dungeon.savedCameraMode;
+                    }
               }
             //MARRY GIANT'S DAUGHTER
             else if (this.foe == 'giant'){
                 Dungeon.gd = 3;
                 Dungeon.dCounter = 0;
+                if (Dungeon.savedViewMode) {
+                        window.gameViewMode = Dungeon.savedViewMode;
+                    }
+                    if (Dungeon.savedCameraMode) {
+                        Dungeon.cameraMode = Dungeon.savedCameraMode;
+                    }
               }
             //DYNAMIC DIALOGUE NPCS
             else if(this.foe == 'ai_yes'){
@@ -13807,7 +13890,12 @@
                             // 3. Kill the original enemy so they don't drop cards or duplicate
                             Dungeon.killNPC(Dungeon.currentSpeaker, true, 'dialogue');
                             Dungeon.currentSpeaker = null;
-                            
+                            if (Dungeon.savedViewMode) {
+                                window.gameViewMode = Dungeon.savedViewMode;
+                            }
+                            if (Dungeon.savedCameraMode) {
+                                Dungeon.cameraMode = Dungeon.savedCameraMode;
+                            }
                             // 4. CRITICAL FIX: Lock in the save state and exit
                             Dungeon.saveGame();
                             btnYes.visible = false;
@@ -13819,7 +13907,12 @@
                         let maxLines = Dungeon.currentSpeaker.customDialogue.length;
                         Dungeon.dCounter = maxLines; 
                         if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('heal');
-                
+                        if (Dungeon.savedViewMode) {
+                        window.gameViewMode = Dungeon.savedViewMode;
+                        }
+                        if (Dungeon.savedCameraMode) {
+                            Dungeon.cameraMode = Dungeon.savedCameraMode;
+                        }
                     } 
                 //ESCORT QUEST
                     else if (Dungeon.currentSpeaker.role === 'escort_giver') {
@@ -13946,7 +14039,12 @@
                                     npcColor: Dungeon.currentSpeaker.color,
                                     npcDeck: Dungeon.currentSpeaker.deck
                                 };
-
+                                if (Dungeon.savedViewMode) {
+                                    window.gameViewMode = Dungeon.savedViewMode;
+                                }
+                                if (Dungeon.savedCameraMode) {
+                                    Dungeon.cameraMode = Dungeon.savedCameraMode;
+                                }
                                 startGame = 'explore';
                                 Dungeon.dCounter = 0;
                                 Dungeon.status = 'normal';
@@ -13961,7 +14059,12 @@
                                 // Tell the server we are ready
                                 socket.emit("accept_teleport_invite");
                             }
-                            
+                            if (Dungeon.savedViewMode) {
+                                window.gameViewMode = Dungeon.savedViewMode;
+                            }
+                            if (Dungeon.savedCameraMode) {
+                                Dungeon.cameraMode = Dungeon.savedCameraMode;
+                            }
                             // Clean up the dialogue UI and kill the messenger imp
                             startGame = 'explore';
                             Dungeon.dCounter = 0;
@@ -13974,6 +14077,12 @@
                             return; // Stop execution
                         }
                 //CLEAN UP DD NPC
+                        if (Dungeon.savedViewMode) {
+                        window.gameViewMode = Dungeon.savedViewMode;
+                    }
+                    if (Dungeon.savedCameraMode) {
+                        Dungeon.cameraMode = Dungeon.savedCameraMode;
+                    }
                     startGame = 'explore';
                     Dungeon.dCounter = 0;
                     Dungeon.status = 'normal';
@@ -14076,6 +14185,12 @@
                             enemyToFight.triggerInteraction(Dungeon);
                             btnYes.visible = false;
                             btnNo.visible = false;
+                            if (Dungeon.savedViewMode) {
+                                window.gameViewMode = Dungeon.savedViewMode;
+                            }
+                            if (Dungeon.savedCameraMode) {
+                                Dungeon.cameraMode = Dungeon.savedCameraMode;
+                            }
                             return;
                         }
                     //ESCORT QUEST
@@ -14085,6 +14200,12 @@
                             Dungeon.currentSpeaker.state = 'fleeing';
                             startGame = 'explore';
                             Dungeon.status = 'normal';
+                            if (Dungeon.savedViewMode) {
+                                window.gameViewMode = Dungeon.savedViewMode;
+                            }
+                            if (Dungeon.savedCameraMode) {
+                                Dungeon.cameraMode = Dungeon.savedCameraMode;
+                            }
                         }
                     //CUSTOM MAP IMP INVITE
                     else if (Dungeon.currentSpeaker.role === 'portal_invite') {
@@ -14093,10 +14214,22 @@
                         Dungeon.status = 'normal';
                         Dungeon.killNPC(Dungeon.currentSpeaker, true, 'dialogue'); 
                         Dungeon.currentSpeaker = null;
+                        if (Dungeon.savedViewMode) {
+                        window.gameViewMode = Dungeon.savedViewMode;
+                        }
+                        if (Dungeon.savedCameraMode) {
+                            Dungeon.cameraMode = Dungeon.savedCameraMode;
+                        }
                     }
                     else {
                         Dungeon.currentSpeaker.role = 'dialogue';
                         Dungeon.dCounter = Dungeon.currentSpeaker.customDialogue.length+1;
+                        if (Dungeon.savedViewMode) {
+                        window.gameViewMode = Dungeon.savedViewMode;
+                        }
+                        if (Dungeon.savedCameraMode) {
+                            Dungeon.cameraMode = Dungeon.savedCameraMode;
+                        }
                     }
 
                     if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('death');
@@ -14117,6 +14250,12 @@
                     actionType: "CHALLENGE_CANCEL",
                     payload: {} 
                 });
+                if (Dungeon.savedViewMode) {
+                        window.gameViewMode = Dungeon.savedViewMode;
+                    }
+                    if (Dungeon.savedCameraMode) {
+                        Dungeon.cameraMode = Dungeon.savedCameraMode;
+                    }
               }
             //PVP DENY BATTLE REQUEST
                 else if (this.foe == 'pvp_deny') {
@@ -14139,6 +14278,12 @@
                     payload: {} 
                     });
                 }
+                if (Dungeon.savedViewMode) {
+                        window.gameViewMode = Dungeon.savedViewMode;
+                    }
+                    if (Dungeon.savedCameraMode) {
+                        Dungeon.cameraMode = Dungeon.savedCameraMode;
+                    }
                 }
             //CLEAN UP BUTTONS
                 if (Dungeon.savedViewMode) {
@@ -23591,6 +23736,8 @@
                         startGame = 'explore'; 
                         Dungeon.status = 'normal';
                         socket.emit('force_ai_action', `Player has defeated you in battle! Act embarassed or mad. Pout like a spoiled child. Alternatively you may congratulate them.`);
+                        window.gameViewMode = Dungeon.savedViewMode;
+                        Dungeon.cameraMode = Dungeon.savedCameraMode; 
                         Dungeon.saveGame();
                         return;
                         }
@@ -23624,6 +23771,12 @@
                     MusicEngine.stop();
                     MusicEngine.play(22);
                     resize = 0;
+                    if (Dungeon.savedViewMode) {
+                        window.gameViewMode = Dungeon.savedViewMode;
+                    }
+                    if (Dungeon.savedCameraMode) {
+                        Dungeon.cameraMode = Dungeon.savedCameraMode;
+                    }
                     Dungeon.saveGame();
                     return;
                     }//emperor battle loss
@@ -23647,6 +23800,12 @@
 
                         return;
                         }
+                        if (Dungeon.savedViewMode) {
+                        window.gameViewMode = Dungeon.savedViewMode;
+                        }
+                        if (Dungeon.savedCameraMode) {
+                            Dungeon.cameraMode = Dungeon.savedCameraMode;
+                        } 
                         Dungeon.saveGame();
                         // Force the "You obtained a card" dialogue for the Emperor
                         Dungeon.currentSpeaker = {
@@ -23679,105 +23838,111 @@
                         return;
                     }
                 //standard dungeon battles
-                //standard dungeon battles
-                else if (Player[1].option === 10.1 && startGame == 'battle') {
-                    Dungeon.dSense = Dungeon.dSense + 1;
-                    let lootDropped = false;
+                    //TRIUMPH
+                        else if (Player[1].option === 10.1 && startGame == 'battle') {
+                            Dungeon.dSense = Dungeon.dSense + 1;
+                            let lootDropped = false;
 
-                    // 1 & 2. (MOVED TO killNPC: Map Mods and Loot Logic are handled dynamically now)
+                            // 1 & 2. (MOVED TO killNPC: Map Mods and Loot Logic are handled dynamically now)
 
-                    // 3. HANDLE ENEMY DEATH
-                    if (Dungeon.currentEnemy) {
-                        // Calling killNPC now handles the map events AND the loot drop automatically.
-                        // It returns true if a card was dropped so we don't accidentally close the UI.
-                        lootDropped = Dungeon.killNPC(Dungeon.currentEnemy, true);
-                        Dungeon.currentEnemy = null;
-                    }
+                            // 3. HANDLE ENEMY DEATH
+                            if (Dungeon.currentEnemy) {
+                                // Calling killNPC now handles the map events AND the loot drop automatically.
+                                // It returns true if a card was dropped so we don't accidentally close the UI.
+                                lootDropped = Dungeon.killNPC(Dungeon.currentEnemy, true);
+                                Dungeon.currentEnemy = null;
+                            }
 
-                    // 4. MUSIC RESET (Keep your exact same music code here)
-                    if (typeof MusicEngine !== 'undefined') {
-                        let song999 = 44;
-                        if (Dungeon.biome){
-                            if (Dungeon.biome === "Sylvan"){ song999 = rnd(0,1); if (song999 === 0){song999 = 10} if (song999 === 1){song999 = 2} }
-                            if (Dungeon.biome === "Ruins"){ song999 = rnd(0,2); if (song999 === 0){song999 = 28} if (song999 === 1){song999 = 6} if (song999 === 2){song999 = 44} }
-                            if (Dungeon.biome === "Desert"){ song999 = rnd(0,2); if (song999 === 0){song999 = 32} if (song999 === 1){song999 = 38} if (song999 === 2){song999 = 44} }
-                            if (Dungeon.biome === "Snow"){ song999 = rnd(0,1); if (song999 === 0){song999 = 31} if (song999 === 1){song999 = 20} }
-                            if (Dungeon.biome === "Void"){ song999 = rnd(0,4); if (song999 === 0){song999 = 23} if (song999 === 1){song999 = 29} if (song999 === 2){song999 = 27} if (song999 === 3){song999 = 28} if (song999 === 4){song999 = 46} }
-                            if (Dungeon.biome === "Sea"){ song999 = rnd(0,1); if (song999 === 0){song999 = 36} if (song999 === 1){song999 = 44} }
-                            if (Dungeon.biome === "Castle"){ song999 = rnd(0,1); if (song999 === 0){song999 = 11} if (song999 === 1){song999 = 34} }
-                            if (Dungeon.biome === "Otherworld"){ song999 = rnd(0,3); if (song999 === 0){song999 = 37} if (song999 === 1){song999 = 18} if (song999 === 2){song999 = 44} if (song999 === 3){song999 = 46} }
-                            if (Dungeon.biome === "Tomb"){ song999 = rnd(0,2); if (song999 === 0){song999 = 39} if (song999 === 1){song999 = 19} if (song999 === 2){song999 = 44} }
-                        }
-                        MusicEngine.stop(); 
-                        if (Dungeon.mapID < 3) { MusicEngine.play(24); }
-                        else if (Dungeon.mapID != 999) { MusicEngine.play(Dungeon.mapSong[Dungeon.mapID]); }
-                        else { MusicEngine.play(song999); }
-                    }
+                            // 4. MUSIC RESET (Keep your exact same music code here)
+                            if (typeof MusicEngine !== 'undefined') {
+                                let song999 = 44;
+                                if (Dungeon.biome){
+                                    if (Dungeon.biome === "Sylvan"){ song999 = rnd(0,1); if (song999 === 0){song999 = 10} if (song999 === 1){song999 = 2} }
+                                    if (Dungeon.biome === "Ruins"){ song999 = rnd(0,2); if (song999 === 0){song999 = 28} if (song999 === 1){song999 = 6} if (song999 === 2){song999 = 44} }
+                                    if (Dungeon.biome === "Desert"){ song999 = rnd(0,2); if (song999 === 0){song999 = 32} if (song999 === 1){song999 = 38} if (song999 === 2){song999 = 44} }
+                                    if (Dungeon.biome === "Snow"){ song999 = rnd(0,1); if (song999 === 0){song999 = 31} if (song999 === 1){song999 = 20} }
+                                    if (Dungeon.biome === "Void"){ song999 = rnd(0,4); if (song999 === 0){song999 = 23} if (song999 === 1){song999 = 29} if (song999 === 2){song999 = 27} if (song999 === 3){song999 = 28} if (song999 === 4){song999 = 46} }
+                                    if (Dungeon.biome === "Sea"){ song999 = rnd(0,1); if (song999 === 0){song999 = 36} if (song999 === 1){song999 = 44} }
+                                    if (Dungeon.biome === "Castle"){ song999 = rnd(0,1); if (song999 === 0){song999 = 11} if (song999 === 1){song999 = 34} }
+                                    if (Dungeon.biome === "Otherworld"){ song999 = rnd(0,3); if (song999 === 0){song999 = 37} if (song999 === 1){song999 = 18} if (song999 === 2){song999 = 44} if (song999 === 3){song999 = 46} }
+                                    if (Dungeon.biome === "Tomb"){ song999 = rnd(0,2); if (song999 === 0){song999 = 39} if (song999 === 1){song999 = 19} if (song999 === 2){song999 = 44} }
+                                }
+                                MusicEngine.stop(); 
+                                if (Dungeon.mapID < 3) { MusicEngine.play(24); }
+                                else if (Dungeon.mapID != 999) { MusicEngine.play(Dungeon.mapSong[Dungeon.mapID]); }
+                                else { MusicEngine.play(song999); }
+                            }
 
-                    // 5. TRANSITION BACK 
-                        Player[0].option = 0; 
-                        Player[1].option = 0;
-                        Player[1].at = 0; Player[1].ay = 0; Player[0].at = 0; Player[0].ay = 0; Player[0].ax = 0; Player[1].ax = 0;
-                        sRune = new stone(1.545,4.545,1,eSTAT.S);
-                        cRune = new stone(7.625,4.625,1,eSTAT.C);
-                        iRune = new stone(3.545,4.49,1,eSTAT.I);
-                        aRune = new stone(5.545,4.53,1,eSTAT.A);
+                            // 5. TRANSITION BACK 
+                                Player[0].option = 0; 
+                                Player[1].option = 0;
+                                Player[1].at = 0; Player[1].ay = 0; Player[0].at = 0; Player[0].ay = 0; Player[0].ax = 0; Player[1].ax = 0;
+                                sRune = new stone(1.545,4.545,1,eSTAT.S);
+                                cRune = new stone(7.625,4.625,1,eSTAT.C);
+                                iRune = new stone(3.545,4.49,1,eSTAT.I);
+                                aRune = new stone(5.545,4.53,1,eSTAT.A);
+                                
+                                resize = 0;
+                                if (Dungeon.savedViewMode) {
+                                    window.gameViewMode = Dungeon.savedViewMode;
+                                }
+                                if (Dungeon.savedCameraMode) {
+                                    Dungeon.cameraMode = Dungeon.savedCameraMode;
+                                }
+                                // Check if killNPC told us a loot drop happened, OR if the speaker is safely the loot UI.
+                                if (lootDropped || (Dungeon.currentSpeaker && Dungeon.currentSpeaker.type === -27)) {
+                                    startGame = 'dialogue'; // Keep the UI locked onto the loot prompt
+                                    Dungeon.saveGame();
+                                    return; 
+                                } else {
+                                    startGame = 'explore';
+                                    Dungeon.saveGame();
+                                    return;
+                                }
+                            }
+                    //DEFEAT
+                        else if (Player[1].option === 10.2 && startGame == 'battle') {
+                            
+                            // 1. CLICK SPAM PREVENTER (The Death Lock)
+                                if (window.isDead) return; // If already dead, ignore all future clicks!
+                                window.isDead = true; 
+                                
+                                // Lock out all normal game interactions so the screen freezes
+                                startGame = 'gameover'; 
+
+                                // 2. Tell the server to announce the death
+                                //let killerID = Dungeon.currentEnemy ? Dungeon.currentEnemy.type : "an unknown entity";
+                                //let deathString = `was brutally struck down in battle! Their soul was shattered and their save file was permanently deleted! React to their permanent death!`;
+                                
+                                //socket.emit('force_ai_action', deathString);
+
+                                // 3. Wipe the save file instantly
+                                //Dungeon.refreshNPCs();
+                                //Dungeon.deleteGame();
+                            
+                                if(typeof MusicEngine !== 'undefined') {
+                                    MusicEngine.stop();
+                                    MusicEngine.playSFX('cancel'); 
+                                }
+
+                            // 4. Dramatic UI Prompt
+                            // Leave a message on the screen telling them to type their last words!
                         
-                        resize = 0;
-                    
-                        // Check if killNPC told us a loot drop happened, OR if the speaker is safely the loot UI.
-                        if (lootDropped || (Dungeon.currentSpeaker && Dungeon.currentSpeaker.type === -27)) {
-                            startGame = 'dialogue'; // Keep the UI locked onto the loot prompt
-                            Dungeon.saveGame();
-                            return; 
-                        } else {
-                            startGame = 'explore';
-                            Dungeon.saveGame();
+
+                            // 5. EXTENDED TIMER (15 Seconds)
+                            // The chat input bar is HTML, so it works even if the canvas is locked!
+                            // This gives them 15 seconds to type a message (and maybe hear Suncat's final reply) before the screen goes black.
+                            
+                                window.location.reload();
+                            
+
                             return;
                         }
-                    }
-                else if (Player[1].option === 10.2 && startGame == 'battle') {
-                    
-                    // 1. CLICK SPAM PREVENTER (The Death Lock)
-                        if (window.isDead) return; // If already dead, ignore all future clicks!
-                        window.isDead = true; 
-                        
-                        // Lock out all normal game interactions so the screen freezes
-                        startGame = 'gameover'; 
-
-                        // 2. Tell the server to announce the death
-                        //let killerID = Dungeon.currentEnemy ? Dungeon.currentEnemy.type : "an unknown entity";
-                        //let deathString = `was brutally struck down in battle! Their soul was shattered and their save file was permanently deleted! React to their permanent death!`;
-                        
-                        //socket.emit('force_ai_action', deathString);
-
-                        // 3. Wipe the save file instantly
-                        Dungeon.refreshNPCs();
-                        //Dungeon.deleteGame();
-                    
-                        if(typeof MusicEngine !== 'undefined') {
-                            MusicEngine.stop();
-                            MusicEngine.playSFX('cancel'); 
-                        }
-
-                    // 4. Dramatic UI Prompt
-                    // Leave a message on the screen telling them to type their last words!
-                   
-
-                    // 5. EXTENDED TIMER (15 Seconds)
-                    // The chat input bar is HTML, so it works even if the canvas is locked!
-                    // This gives them 15 seconds to type a message (and maybe hear Suncat's final reply) before the screen goes black.
-                    
-                        window.location.reload();
-                    
-
-                    return;
-                }
                 
                 }else{
-                //vsCPU and vsLOCAL battles
-                window.location.reload();
-                return;
+                    //vsCPU and vsLOCAL battles
+                    window.location.reload();
+                    return;
                 }
             }
         //vvvSTART MENUvvv/////
@@ -23951,6 +24116,8 @@
                     // ==========================================
                     if (pos.x > (tL/10)*7.5 && pos.x <= (tL/10)*15 && pos.y > (tH/10)*-5 && pos.y < (tH/10)*2) {
                         window.gameViewMode = '2d';
+                        Dungeon.savedViewMode = window.gameViewMode;
+                        Dungeon.savedCameraMode = Dungeon.cameraMode; 
                         return;
                     }
 
