@@ -2371,11 +2371,39 @@
                         targetName: { type: "STRING" },
                         npcType: { type: "NUMBER", description: "The ID of the entity to spawn (e.g., 63 for Dragon)." },
                         state: { type: "STRING", description: "'chasing', 'wandering', or 'stationary'." },
-                        role: { type: "STRING", description: "'battle' (fights), 'dialogue' (talks/vanishes), 'quest_giver' (gives quest), 'reward' (gives card),'shop' (opens store)." },
+                        role: { 
+                            type: "STRING", 
+                            description: "'battle' (fights), 'dialogue' (talks/vanishes), 'reward' (gives card), 'shop' (opens generic store), 'bounty_merchant' (Creates a dynamic fetch/kill bounty board!), OR 'quest_giver' (Assigns a complex native Rescue, Escort, or Fetch quest with ambushers!)" 
+                        },
                         color: { type: "STRING" },
-                        dialogue: { type: "ARRAY", items: { type: "STRING" } }
+                        dialogue: { type: "ARRAY", items: { type: "STRING" }, description: "Array of text strings the NPC will say." },
+                        options: { type: "ARRAY", items: { type: "STRING" }, description: "Optional: Array of 2 buttons for the player to click, e.g. ['Yes', 'No']" },
+                        yesActions: { 
+                            type: "ARRAY", 
+                            items: { type: "ARRAY" }, 
+                            description: "CRITICAL SCRIPTING ENGINE: Array of action arrays executed if 'Yes' is clicked. AVAILABLE COMMANDS: ['give_card', ID], ['remove_card', ID], ['become_ally', spriteID], ['load_map', mapID], ['play_song', songID], ['play_sfx', 'chime'|'warp'|'slash'|'heal'], ['notify', 'Text message!'], ['disappear', null]. EXAMPLE: [['play_sfx', 'chime'], ['give_card', 21], ['notify', 'You received gold!'], ['disappear', null]]" 
+                        },
+                        noActions: { 
+                            type: "ARRAY", 
+                            items: { type: "ARRAY" }, 
+                            description: "Array of action arrays executed if 'No' is clicked. Uses the same commands as yesActions. EXAMPLE: [['play_sfx', 'cancel'], ['notify', 'The entity fades away...'], ['disappear', null]]" 
+                        },
+                        endActions: {
+                            type: "ARRAY",
+                            items: { type: "ARRAY" },
+                            description: "Actions executed automatically when dialogue ends."
+                        },
+                        deathActions: {
+                            type: "ARRAY",
+                            items: { type: "ARRAY" },
+                            description: "Actions executed when this NPC is killed in combat."
+                        },
+                        isCinematic: {
+                            type: "BOOLEAN",
+                            description: "True if this NPC is part of a cutscene."
+                        }
                     },
-                    required: ["targetName", "npcType", "state"]
+                    required: ["targetName", "npcType", "state", "role"]
                 }
             },
             //create custom card
@@ -3029,7 +3057,7 @@
         }
     // --- MAP VALIDATION & SINGLE-ZONE GENERATION ---
 
-    function findValidMainland(maze) {
+    function findValidMainland(maze, floorType = 0) {
         let visited = new Set();
         let largestRegion = [];
         let rows = maze.length;
@@ -3037,7 +3065,7 @@
 
         for (let y = 0; y < rows; y++) {
             for (let x = 0; x < cols; x++) {
-                if (maze[y][x] === 0 && !visited.has(`${x},${y}`)) {
+                if (maze[y][x] === floorType && !visited.has(`${x},${y}`)) {
                     let region = [];
                     let queue = [{ x, y }];
                     visited.add(`${x},${y}`);
@@ -3048,7 +3076,7 @@
                         const dirs = [[0, 1], [1, 0], [0, -1], [-1, 0]];
                         for (let [dx, dy] of dirs) {
                             let nx = curr.x + dx, ny = curr.y + dy;
-                            if (nx >= 0 && nx < cols && ny >= 0 && ny < rows && maze[ny][nx] === 0 && !visited.has(`${nx},${ny}`)) {
+                            if (nx >= 0 && nx < cols && ny >= 0 && ny < rows && maze[ny][nx] === floorType && !visited.has(`${nx},${ny}`)) {
                                 visited.add(`${nx},${ny}`);
                                 queue.push({ x: nx, y: ny });
                             }
@@ -3074,51 +3102,288 @@
         return furthest;
     }
 
-    function generateInstanceGrid(layoutType, wallType) {
-        let size = 60; // Tighter, single-zone map
-        let grid = Array(size).fill().map(() => Array(size).fill(wallType));
+    function generateInstanceGrid(algo, size, wallType, floorType = 0) {
+        // Helper to generate a specific algorithm
+        const buildGrid = (type, s) => {
+            let grid = Array.from({length: s}, () => Array(s).fill(wallType));
+            
+            if (type === 'BLANK') {
+                for(let y = 1; y < s - 1; y++) for(let x = 1; x < s - 1; x++) grid[y][x] = floorType;
+            } 
+            else if (type === 'CAVE') {
+                grid = Array.from({length: s}, () => Array.from({length: s}, () => Math.random() < 0.45 ? wallType : floorType));
+                for (let i = 0; i < 4; i++) {
+                    let temp = JSON.parse(JSON.stringify(grid));
+                    for(let y = 1; y < s - 1; y++) {
+                        for(let x = 1; x < s - 1; x++) {
+                            let n = 0;
+                            for(let dy = -1; dy <= 1; dy++) for(let dx = -1; dx <= 1; dx++) if (grid[y+dy][x+dx] === wallType) n++;
+                            temp[y][x] = n > 4 ? wallType : floorType;
+                        }
+                    }
+                    grid = temp;
+                }
+            } 
+            else if (type === 'CITY') {
+                for(let y = 1; y < s - 1; y++) for(let x = 1; x < s - 1; x++) grid[y][x] = floorType;
 
-        if (layoutType === 'organic') {
-            // Cellular Automata (Forests/Caves)
-            for(let r = 2; r < size-2; r++) {
-                for(let c = 2; c < size-2; c++) grid[r][c] = Math.random() > 0.45 ? wallType : 0;
+                let buildings = [];
+                let attempts = s * s; 
+                let minSize = 5;
+                let maxSize = 9;
+
+                for (let i = 0; i < attempts; i++) {
+                    let bw = Math.floor(Math.random() * (maxSize - minSize + 1)) + minSize;
+                    let bh = Math.floor(Math.random() * (maxSize - minSize + 1)) + minSize;
+                    let bx = Math.floor(Math.random() * (s - bw - 2)) + 1;
+                    let by = Math.floor(Math.random() * (s - bh - 2)) + 1;
+
+                    let overlap = false;
+                    for (let b of buildings) {
+                        if (bx <= b.x + b.w && bx + bw >= b.x - 1 && by <= b.y + b.h && by + bh >= b.y - 1) {
+                            overlap = true; break;
+                        }
+                    }
+
+                    if (!overlap) {
+                        buildings.push({x: bx, y: by, w: bw, h: bh});
+                        for (let wy = by; wy < by + bh; wy++) {
+                            for (let wx = bx; wx < bx + bw; wx++) {
+                                if (wy === by || wy === by + bh - 1 || wx === bx || wx === bx + bw - 1) grid[wy][wx] = wallType;
+                            }
+                        }
+
+                        if (bw >= 7 && bh >= 7) {
+                            let splitVert = Math.random() > 0.5;
+                            if (splitVert) {
+                                let splitX = bx + Math.floor(bw / 2);
+                                for (let wy = by + 1; wy < by + bh - 1; wy++) grid[wy][splitX] = wallType;
+                                grid[by + Math.floor(bh / 2)][splitX] = floorType; 
+                            } else {
+                                let splitY = by + Math.floor(bh / 2);
+                                for (let wx = bx + 1; wx < bx + bw - 1; wx++) grid[splitY][wx] = wallType;
+                                grid[splitY][bx + Math.floor(bw / 2)] = floorType; 
+                            }
+                        }
+
+                        let numDoors = Math.random() > 0.7 ? 2 : 1;
+                        let sides = [0, 1, 2, 3];
+                        for (let j = sides.length - 1; j > 0; j--) {
+                            const k = Math.floor(Math.random() * (j + 1));
+                            [sides[j], sides[k]] = [sides[k], sides[j]];
+                        }
+                        for (let d = 0; d < numDoors; d++) {
+                            let side = sides[d];
+                            if (side === 0) grid[by][bx + Math.floor(bw/2)] = floorType; 
+                            else if (side === 1) grid[by + bh - 1][bx + Math.floor(bw/2)] = floorType; 
+                            else if (side === 2) grid[by + Math.floor(bh/2)][bx] = floorType; 
+                            else if (side === 3) grid[by + Math.floor(bh/2)][bx + bw - 1] = floorType; 
+                        }
+                    }
+                }
             }
-            for(let i=0; i<4; i++) { // Smooth 4 times
-                let temp = grid.map(row => [...row]);
-                for(let r = 2; r < size-2; r++) {
-                    for(let c = 2; c < size-2; c++) {
-                        let walls = 0;
-                        for(let y=-1; y<=1; y++) for(let x=-1; x<=1; x++) if(grid[r+y][c+x] !== 0) walls++;
-                        temp[r][c] = walls >= 5 ? wallType : 0;
+            else if (type === 'FOREST') {
+                for(let y = 1; y < s - 1; y++) for(let x = 1; x < s - 1; x++) grid[y][x] = Math.random() < 0.3 ? wallType : floorType;
+                let temp = JSON.parse(JSON.stringify(grid));
+                for(let y = 1; y < s - 1; y++) {
+                    for(let x = 1; x < s - 1; x++) {
+                        let n = 0;
+                        for(let dy = -1; dy <= 1; dy++) for(let dx = -1; dx <= 1; dx++) if (grid[y+dy][x+dx] === wallType) n++;
+                        temp[y][x] = n >= 5 ? wallType : floorType;
                     }
                 }
                 grid = temp;
+            } 
+            else if (type === 'ISLANDS') {
+                for(let y = 1; y < s - 1; y++) for(let x = 1; x < s - 1; x++) grid[y][x] = wallType;
+                let numIslands = Math.floor(s / 6) + 2; 
+                let islands = [];
+
+                for (let i = 0; i < numIslands * 3; i++) {
+                    let cx = Math.floor(Math.random() * (s - 8)) + 4;
+                    let cy = Math.floor(Math.random() * (s - 8)) + 4;
+                    let tooClose = false;
+                    for (let isl of islands) {
+                        if (Math.hypot(cx - isl.x, cy - isl.y) < Math.max(6, s / 6)) { tooClose = true; break; }
+                    }
+                    if (!tooClose) islands.push({x: cx, y: cy});
+                    if (islands.length >= numIslands) break;
+                }
+                if (islands.length === 0) islands.push({x: Math.floor(s/2), y: Math.floor(s/2)});
+
+                for (let isl of islands) {
+                    let r = Math.floor(Math.random() * 2) + 2; 
+                    for(let dy = -r; dy <= r; dy++) {
+                        for(let dx = -r; dx <= r; dx++) {
+                            if (Math.abs(dx) + Math.abs(dy) <= r + 1) {
+                                if (isl.y+dy > 0 && isl.y+dy < s-1 && isl.x+dx > 0 && isl.x+dx < s-1) {
+                                    grid[isl.y+dy][isl.x+dx] = floorType;
+                                }
+                            }
+                        }
+                    }
+                }
+                for (let i = 1; i < islands.length; i++) {
+                    let p1 = islands[i];
+                    let nearest = islands[0];
+                    let minDist = Infinity;
+                    for(let j = 0; j < i; j++) {
+                        let d = Math.hypot(p1.x - islands[j].x, p1.y - islands[j].y);
+                        if (d < minDist) { minDist = d; nearest = islands[j]; }
+                    }
+                    let bx = p1.x; let by = p1.y;
+                    while(bx !== nearest.x) { grid[by][bx] = floorType; bx += Math.sign(nearest.x - bx); }
+                    while(by !== nearest.y) { grid[by][bx] = floorType; by += Math.sign(nearest.y - by); }
+                }
             }
+            else if (type === 'CASTLE') {
+                for(let y = 1; y < s - 1; y++) for(let x = 1; x < s - 1; x++) grid[y][x] = wallType;
+                let cx = Math.floor(s / 2);
+                let margin = Math.max(1, Math.floor(s / 10));
+                let kY1 = margin + 1, kY2 = s - margin - 2;
+                let kX1 = margin + 1, kX2 = s - margin - 2;
+
+                if (kX2 - kX1 > 5 && kY2 - kY1 > 5) {
+                    for(let y = kY1; y <= kY2; y++) { grid[y][cx] = floorType; grid[y][cx - 1] = floorType; }
+                    let tHeight = Math.floor((kY2 - kY1) * 0.3);
+                    for(let y = kY1; y < kY1 + tHeight; y++) {
+                        for(let x = kX1 + 2; x < kX2 - 1; x++) grid[y][x] = floorType;
+                    }
+                    let wingStart = kY1 + tHeight + 2;
+                    let wingH = Math.floor((kY2 - wingStart) / 2);
+                    
+                    if (wingH >= 2) {
+                        for(let y = wingStart; y < wingStart + wingH - 1; y++) {
+                            for(let x = kX1; x < cx - 1; x++) grid[y][x] = floorType; 
+                            for(let x = cx + 1; x < kX2; x++) grid[y][x] = floorType; 
+                        }
+                        grid[wingStart + Math.floor(wingH/2)][cx - 2] = floorType;
+                        grid[wingStart + Math.floor(wingH/2)][cx + 1] = floorType;
+
+                        for(let y = wingStart + wingH + 1; y < kY2; y++) {
+                            for(let x = kX1; x < cx - 1; x++) grid[y][x] = floorType; 
+                            for(let x = cx + 1; x < kX2; x++) grid[y][x] = floorType; 
+                        }
+                        grid[wingStart + wingH + 1 + Math.floor(wingH/2)][cx - 2] = floorType;
+                        grid[wingStart + wingH + 1 + Math.floor(wingH/2)][cx + 1] = floorType;
+                    }
+                } else {
+                    for(let y = 2; y < s-2; y++) for(let x = 2; x < s-2; x++) grid[y][x] = floorType;
+                }
+            }
+            else if (type === 'LABYRINTH') {
+                for(let y = 1; y < s - 1; y++) for(let x = 1; x < s - 1; x++) grid[y][x] = wallType;
+                let stack = [{x: 1, y: 1}];
+                grid[1][1] = floorType;
+                while(stack.length > 0) {
+                    let current = stack[stack.length - 1];
+                    let neighbors = [];
+                    let dirs = [{dx: 0, dy: -2}, {dx: 2, dy: 0}, {dx: 0, dy: 2}, {dx: -2, dy: 0}];
+                    for (let dir of dirs) {
+                        let nx = current.x + dir.dx, ny = current.y + dir.dy;
+                        if (nx > 0 && nx < s-1 && ny > 0 && ny < s-1 && grid[ny][nx] === wallType) {
+                            neighbors.push({nx, ny, dx: dir.dx, dy: dir.dy});
+                        }
+                    }
+                    if (neighbors.length > 0) {
+                        let next = neighbors[Math.floor(Math.random() * neighbors.length)];
+                        grid[current.y + next.dy/2][current.x + next.dx/2] = floorType; 
+                        grid[next.ny][next.nx] = floorType; 
+                        stack.push({x: next.nx, y: next.ny});
+                    } else {
+                        stack.pop();
+                    }
+                }
+            } 
+            else if (type === 'DUNGEON') {
+                for(let y = 1; y < s - 1; y++) for(let x = 1; x < s - 1; x++) grid[y][x] = floorType; 
+                
+                let numRooms = s === 10 ? 3 : (s === 20 ? 4 : (s === 30 ? 5 : (s === 50 ? 6 : 8)));
+                let rSizeW = Math.floor((s - 2) / numRooms);
+                let rSizeH = Math.floor((s - 2) / numRooms);
+
+                for(let r = 1; r < numRooms; r++) {
+                    for(let y = 1; y < s - 1; y++) grid[y][1 + r * rSizeW] = wallType; 
+                    for(let x = 1; x < s - 1; x++) grid[1 + r * rSizeH][x] = wallType; 
+                }
+
+                for(let rY = 0; rY < numRooms; rY++) {
+                    for(let rX = 0; rX < numRooms; rX++) {
+                        if (rX < numRooms - 1) {
+                            let doorX = 1 + (rX + 1) * rSizeW;
+                            let doorY = 1 + rY * rSizeH + Math.floor(rSizeH / 2);
+                            grid[doorY][doorX] = floorType;
+                        }
+                        if (rY < numRooms - 1) {
+                            let doorX = 1 + rX * rSizeW + Math.floor(rSizeW / 2);
+                            let doorY = 1 + (rY + 1) * rSizeH;
+                            grid[doorY][doorX] = floorType;
+                        }
+                    }
+                }
+            }
+
+            // Always Seal Borders
+            for(let y = 0; y < s; y++) { grid[y][0] = wallType; grid[y][s-1] = wallType; }
+            for(let x = 0; x < s; x++) { grid[0][x] = wallType; grid[s-1][x] = wallType; }
+            return grid;
+        };
+
+        let finalGrid;
+
+        // --- EXECUTION ---
+        if (algo !== 'MIX') {
+            finalGrid = buildGrid(algo, size);
         } else {
-            // BSP-Lite (Cities/Dungeons) - Intersecting corridors and rooms
-            for(let i=5; i<size-5; i++) { grid[30][i] = 0; grid[i][30] = 0; } // Main cross
-            for(let i=0; i<15; i++) { // Random rooms attached to center
-                let w = 4 + Math.floor(Math.random()*6);
-                let h = 4 + Math.floor(Math.random()*6);
-                let x = 5 + Math.floor(Math.random()*(size-15));
-                let y = 5 + Math.floor(Math.random()*(size-15));
-                for(let r=y; r<y+h; r++) for(let c=x; c<x+w; c++) grid[r][c] = 0;
-                // Carve paths back to the cross
-                for(let r=Math.min(y, 30); r<=Math.max(y, 30); r++) grid[r][x] = 0;
-                for(let c=Math.min(x, 30); c<=Math.max(x, 30); c++) grid[y][c] = 0;
+            // MIX LOGIC: 4 Quadrants
+            finalGrid = Array.from({length: size}, () => Array(size).fill(wallType));
+            const subAlgos = ['CAVE', 'CITY', 'FOREST', 'ISLANDS', 'LABYRINTH', 'DUNGEON', 'CASTLE']; 
+            
+            let quadMaps = [
+                buildGrid(subAlgos[Math.floor(Math.random() * subAlgos.length)], size),
+                buildGrid(subAlgos[Math.floor(Math.random() * subAlgos.length)], size),
+                buildGrid(subAlgos[Math.floor(Math.random() * subAlgos.length)], size),
+                buildGrid(subAlgos[Math.floor(Math.random() * subAlgos.length)], size)
+            ];
+
+            let half = Math.floor(size / 2);
+            for(let y = 1; y < size - 1; y++) {
+                for(let x = 1; x < size - 1; x++) {
+                    if (x < half && y < half) finalGrid[y][x] = quadMaps[0][y][x];       
+                    else if (x >= half && y < half) finalGrid[y][x] = quadMaps[1][y][x];  
+                    else if (x < half && y >= half) finalGrid[y][x] = quadMaps[2][y][x];  
+                    else finalGrid[y][x] = quadMaps[3][y][x];                             
+                }
             }
+            
+            // Connect the seams
+            for(let i = 0; i < 4; i++) {
+                let rx = Math.floor(Math.random() * half);
+                let ry = Math.floor(Math.random() * half);
+                finalGrid[half][rx] = floorType; finalGrid[half][rx+half] = floorType; 
+                finalGrid[ry][half] = floorType; finalGrid[ry+half][half] = floorType; 
+            }
+            
+            // Re-seal Borders
+            for(let y = 0; y < size; y++) { finalGrid[y][0] = wallType; finalGrid[y][size-1] = wallType; }
+            for(let x = 0; x < size; x++) { finalGrid[0][x] = wallType; finalGrid[size-1][x] = wallType; }
         }
 
-        // Surveyor Pass: Erase disconnected caves
-        let validFloors = findValidMainland(grid);
+        // ==========================================
+        // SURVEYOR PASS: Guarantee Playability
+        // ==========================================
+        let validFloors = findValidMainland(finalGrid, floorType);
         let validSet = new Set(validFloors.map(f => `${f.x},${f.y}`));
         
         for(let r = 0; r < size; r++) {
             for(let c = 0; c < size; c++) {
-                if (grid[r][c] === 0 && !validSet.has(`${c},${r}`)) grid[r][c] = wallType;
+                if (finalGrid[r][c] === floorType && !validSet.has(`${c},${r}`)) {
+                    finalGrid[r][c] = wallType; // Fill in disconnected pockets
+                }
             }
         }
-        return { grid, validFloors };
+
+        return { grid: finalGrid, validFloors };
     }
     function generateTintagelHub() {
         let maxR = 99, maxC = 99; 
@@ -3444,7 +3709,6 @@
         const schema = {
             type: SchemaType.OBJECT,
             properties: {
-                bossName: { type: SchemaType.STRING },
                 mapLore: { type: SchemaType.STRING },
                 questObjective: { type: SchemaType.STRING },
                 bossTaunt: { type: SchemaType.STRING },
@@ -3456,7 +3720,7 @@
                 recruitPlea: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
                 prisonerLines: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } }
             },
-            required: ["bossName", "mapLore", "questObjective", "bossTaunt", "hostileTaunts", "traitorBegs", "friendlyLore", "friendlyLife", "friendlyProfound", "recruitPlea", "prisonerLines"]
+            required: ["mapLore", "questObjective", "bossTaunt", "hostileTaunts", "traitorBegs", "friendlyLore", "friendlyLife", "friendlyProfound", "recruitPlea", "prisonerLines"]
         };
 
         try {
@@ -3473,7 +3737,7 @@
             console.error("Script Generation Failed:", e);
             return null; 
         }
-}
+        }
     function cacheScriptLines(biomeName, script) {
         if (!GLOBAL_LORE_CACHE[biomeName]) {
             GLOBAL_LORE_CACHE[biomeName] = {
@@ -3670,8 +3934,14 @@
                                     const biome = BIOME_DB[bEnum] || BIOME_DB[0];
                                     const validScenarios = ['Invasion', 'Rescue/Fetch', 'Arena Madness', 'Raid'];
                                     let scenarioType = validScenarios[Math.floor(Math.random() * validScenarios.length)];
-                                    let layoutType = (biome.name === 'Sylvan' || biome.name === 'Cave') ? 'organic' : 'structured';
-
+                                    let validAlgos = ['MIX', 'CAVE', 'DUNGEON', 'LABYRINTH'];
+                                    if (biome.name === 'Sylvan' || biome.name === 'Otherworld') validAlgos = ['FOREST', 'ISLANDS', 'MIX'];
+                                    if (biome.name === 'Ruins' || biome.name === 'Tomb') validAlgos = ['LABYRINTH', 'DUNGEON', 'CAVE', 'CITY'];
+                                    if (biome.name === 'Castle') validAlgos = ['CASTLE', 'DUNGEON', 'CITY'];
+                                    if (biome.name === 'Desert') validAlgos = ['CAVE', 'ISLANDS', 'MIX'];
+                                    if (biome.name === 'Snow') validAlgos = ['CAVE', 'ISLANDS', 'MIX'];
+                                    
+                                    let selectedAlgo = validAlgos[Math.floor(Math.random() * validAlgos.length)];
                                     // Pick Actors
                                     const monsterIDs = Object.keys(CARD_MANIFEST_DB).filter(id => CARD_MANIFEST_DB[id].type === "monster" && CARD_MANIFEST_DB[id].rank !== "0");
                                     let antagID = parseInt(monsterIDs[Math.floor(Math.random() * monsterIDs.length)]);
@@ -3688,8 +3958,7 @@
                                 // 2. THE ASYNC FORK: Run Map Math and LLM at the same time
                                     const targetPlayer = players[findSocketID(call.args.targetName)];
                                     const scriptPromise = generateScenarioScript(biome.name, scenarioType, CARD_MANIFEST_DB[antagID].name, CARD_MANIFEST_DB[protagID].name, targetPlayer);
-                                    const mapData = generateInstanceGrid(layoutType, biome.walls[0]);
-
+                                    const mapData = generateInstanceGrid(selectedAlgo, 60, biome.walls[0], 0);
                                 // ==========================================
                                 // 3. MAP THE ACTORS SAFELY (SCENARIO ROUTING)
                                 // ==========================================
@@ -3876,7 +4145,7 @@
 
                                     activeCustomMap = customMapData;
 
-                                // 5. SPAWN THE IMP IN THE OVERWORLD (UNTOUCHED!)
+                                // 5. SPAWN THE IMP IN THE OVERWORLD
                                     let requesterID = socket ? socket.id : findSocketID(call.args.targetName);
                                     if (requesterID && players[requesterID]) {
                                         const tp = players[requesterID];
@@ -3892,10 +4161,24 @@
                                             x: tp.x,
                                             y: tp.y,
                                             type: 56, // Imp Sprite
-                                            state: 'chasing', isBoss: true, role: 'portal_invite', 
-                                            color: '#ff8800', deck: [], 
+                                            state: 'chasing', 
+                                            isBoss: true, // Don't make the messenger a boss!
+                                            role: 'dialogue', // <--- FIX 1: Must be 'dialogue' so he talks when bumped
+                                            color: '#ff8800', 
+                                            deck: [], 
                                             dialogue: [`My master Suncat sent me to bring you to the adventure realm to partake in the ${scenarioType}. Shall we go?`],
-                                            options: ['Yes', 'No'], alignment: 'friendly_messenger'
+                                            options: ['Yes', 'No'], 
+                                            alignment: 'friendly_messenger',
+                                            // <--- FIX 2: Give him his instructions!
+                                            yesActions: [
+                                                ['load_map', 999],
+                                                ['play_sfx', 'warp'],
+                                                ['disappear', null]
+                                            ],
+                                            noActions: [
+                                                ['play_sfx', 'cancel'],
+                                                ['disappear', null]
+                                            ]
                                         });
                                     }
 
@@ -4004,7 +4287,12 @@
                             let alignment = 'foe'
                             const cardData = CARD_MANIFEST_DB[baseID];
                             let finalDeck, visualSprite;
-
+                            if (role === 'shop' || role === 'dialogue' || role === 'quest_giver' || role === 'bounty_merchant') {
+                                finalDeck = buildShopInventory(100, 300); // (Or an empty deck for quest givers)
+                                alignment = 'friendly';
+                            } else {
+                                finalDeck = buildSynergisticDeck(baseID);
+                            }
                             // --- THE IDIOT-PROOF INTERCEPTOR ---
                             if (cardData && (cardData.type === 'item' || cardData.type === 'spell')) {
                                 visualSprite = -27; 
@@ -4041,7 +4329,12 @@
                                 isBoss: false,
                                 rewardCard: safeRewardCard,
                                 options: call.args.options || null ,
-                                alignment: alignment
+                                alignment: alignment,
+                                yesActions: call.args.yesActions || null,
+                                noActions: call.args.noActions || null,
+                                endActions: call.args.endActions || null,
+                                deathActions: call.args.deathActions || null,
+                                isCinematic: call.args.isCinematic|| null
                             });
                             functionResult = { result: `Success: ${cardData ? cardData.name : 'Entity'} spawned.` };
                         }
