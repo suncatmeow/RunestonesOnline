@@ -6803,10 +6803,11 @@
                 }
             }
         //NARRATION: ENTER MAP
+            //NARRATION: ENTER MAP
             if(this.constructing == false){
                 this.constructing = true;
                 if (socket) {
-                    socket.emit('force_ai_action', `player entered map ${id}:${this.mapname}. TASK: Narrate the natural surroundings and backstory as it relates to the player.(1 sentence MAX)`);
+                    socket.emit('force_ai_action', `player entered map ${id}:${this.mapname}...`);
                 }
             }
         
