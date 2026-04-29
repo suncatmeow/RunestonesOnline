@@ -2380,22 +2380,34 @@
                         options: { type: "ARRAY", items: { type: "STRING" }, description: "Optional: Array of 2 buttons for the player to click, e.g. ['Yes', 'No']" },
                         yesActions: { 
                             type: "ARRAY", 
-                            items: { type: "ARRAY" }, 
-                            description: "CRITICAL SCRIPTING ENGINE: Array of action arrays executed if 'Yes' is clicked. AVAILABLE COMMANDS: ['give_card', ID], ['remove_card', ID], ['become_ally', spriteID], ['load_map', mapID], ['play_song', songID], ['play_sfx', 'chime'|'warp'|'slash'|'heal'], ['notify', 'Text message!'], ['disappear', null]. EXAMPLE: [['play_sfx', 'chime'], ['give_card', 21], ['notify', 'You received gold!'], ['disappear', null]]" 
+                            items: { 
+                                type: "ARRAY",
+                                items: { type: "STRING" } // Defines the innermost elements
+                            }, 
+                            description: "CRITICAL SCRIPTING ENGINE: Array of action arrays executed if 'Yes' is clicked..." 
                         },
                         noActions: { 
                             type: "ARRAY", 
-                            items: { type: "ARRAY" }, 
-                            description: "Array of action arrays executed if 'No' is clicked. Uses the same commands as yesActions. EXAMPLE: [['play_sfx', 'cancel'], ['notify', 'The entity fades away...'], ['disappear', null]]" 
+                            items: { 
+                                type: "ARRAY",
+                                items: { type: "STRING" }
+                            }, 
+                            description: "Array of action arrays executed if 'No' is clicked..." 
                         },
                         endActions: {
                             type: "ARRAY",
-                            items: { type: "ARRAY" },
+                            items: { 
+                                type: "ARRAY",
+                                items: { type: "STRING" }
+                            },
                             description: "Actions executed automatically when dialogue ends."
                         },
                         deathActions: {
                             type: "ARRAY",
-                            items: { type: "ARRAY" },
+                            items: { 
+                                type: "ARRAY",
+                                items: { type: "STRING" }
+                            },
                             description: "Actions executed when this NPC is killed in combat."
                         },
                         isCinematic: {
