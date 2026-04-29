@@ -211,7 +211,7 @@
         39: { type: 'aoe_knockback', name: 'Dragon Wing', range: 8 },
         20: { type: 'aoe_judgement', name: 'Horn of Judgement', range: 8 },
         // --- SUMMONING SPELLS ---
-        88: { type: 'summon', name: 'Raise Dead', summonType: 82, count: 2,maxMinions:4 }, // Spawns 2 Skeletons
+        88: { type: 'summon', name: 'Raise Dead', summonType: 82, count: 1,maxMinions:1 }, // Spawns 2 Skeletons
         92: { type: 'summon', name: 'Call Familiar', summonType: 23, count: 1,maxMinions:1 }, // Spawns 1 Wisp
         };//
     
@@ -6804,12 +6804,11 @@
             }
         //NARRATION: ENTER MAP
             //NARRATION: ENTER MAP
-            if(this.constructing == false){
-                this.constructing = true;
+            
                 if (socket) {
                     socket.emit('force_ai_action', `player entered map ${id}:${this.mapname}...`);
                 }
-            }
+            
         
         //LOAD PERSISTENT NPCS
             const memoryKey = 'spawned_' + id;
@@ -8224,7 +8223,6 @@
 
                 // 2. Draw Constellations
                 ctx.setLineDash([2, 4]); // Make the lines "spectral" / dashed
-                ctx.lineWidth = 1;
                 
                 this.skybox.constellations.forEach(con => {
                     let lastX = null, lastY = null;
@@ -8832,7 +8830,6 @@
                     // DRAW THE DIFFERENT SHAPES
                     if (p.type === 'bubble') {
                         ctx.strokeStyle = p.color;
-                        ctx.lineWidth = 2;
                         ctx.beginPath();
                         ctx.arc(pScreenX, pScreenY, baseSize, 0, Math.PI * 2);
                         ctx.stroke();
@@ -9705,7 +9702,6 @@
           ctx.fillStyle = color;
           ctx.fill();
           ctx.strokeStyle = 'white';
-          ctx.lineWidth = 1;
           ctx.stroke();
         }
       drawCombinedSprites(ctx, viewX, viewY, viewW, viewH, dirX, dirY, planeX, planeY, spriteList, camX, camY) {        
@@ -9781,6 +9777,10 @@
             if ((sprite.alignment == 'ally'&& !sprite.isPlayer)) {
                 scale = .65; 
                 hover = -.15;
+            }
+            if ((sprite.role == 'summoned_minion')) {
+                scale = .30; 
+                hover = -.3;
             }
             
             // Calculate Base Screen Dimensions
@@ -9968,7 +9968,6 @@
                         // DRAW THE DIFFERENT SHAPES
                         if (p.type === 'bubble') {
                             ctx.strokeStyle = p.color;
-                            ctx.lineWidth = Math.max(1, pSize * 0.2);
                             ctx.beginPath();
                             ctx.arc(viewX + pScreenX, pScreenY, pSize, 0, Math.PI * 2);
                             ctx.stroke();
@@ -13801,7 +13800,6 @@
       else if (this.mode === 'rain' || this.mode === 'storm') {
           ctx.beginPath();
           ctx.strokeStyle = "rgba(170, 190, 230, 0.6)";
-          ctx.lineWidth = 2;
           for (let p of this.particles) {
               if(p.type === 'rain') {
                   ctx.moveTo(p.x, p.y);
@@ -13908,7 +13906,6 @@
       for (let bolt of this.bolts) {
         let alpha = bolt.opacity * (bolt.life / 0.2);
         ctx.strokeStyle = `rgba(255, 255, 255, ${alpha})`;
-        ctx.lineWidth = bolt.width;
         ctx.shadowBlur = 15;
         ctx.shadowColor = "white"; 
         ctx.beginPath();
@@ -13916,7 +13913,6 @@
         for (let i = 1; i < bolt.segments.length; i++) ctx.lineTo(bolt.segments[i].x, bolt.segments[i].y);
         ctx.stroke();
         if (bolt.branches.length) {
-          ctx.lineWidth = bolt.width * 0.5;
           ctx.beginPath();
           ctx.moveTo(bolt.branches[0].x, bolt.branches[0].y);
           for (let i = 1; i < bolt.branches.length; i++) ctx.lineTo(bolt.branches[i].x, bolt.branches[i].y);
@@ -22150,7 +22146,6 @@
       }).sort((a, b) => b.depth - a.depth);
       
       ctx.save();
-      ctx.lineWidth = 1;
       // --- NEW GLOW LOGIC START ---
       if (this.glowColor) {
           // 1. Set the Glow Color
