@@ -4175,7 +4175,7 @@
                                             type: 56, // Imp Sprite
                                             state: 'chasing', 
                                             isBoss: true, // Don't make the messenger a boss!
-                                            role: 'dialogue', // <--- FIX 1: Must be 'dialogue' so he talks when bumped
+                                            role: 'portal_invite', // <--- FIX 1: Must be 'dialogue' so he talks when bumped
                                             color: '#ff8800', 
                                             deck: [], 
                                             dialogue: [`My master Suncat sent me to bring you to the adventure realm to partake in the ${scenarioType}. Shall we go?`],
