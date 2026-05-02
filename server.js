@@ -2732,7 +2732,7 @@
         }
 
         // 3. Creation / Map Tools (Only if explicitly requested)
-        if (["create", "map", "quest", "adventure", "dungeon"].some(kw => lowerText.includes(kw))) {
+        if (lowerText.includes(".hack//amap") || ["make me","make me a scenario","give me a quest","give me an adventure","im bored","create a map", "generate a quest", "start a scenario", "build a dungeon"].some(kw => lowerText.includes(kw))) {
             activeTools.push(toolsDef[0].functionDeclarations.find(t => t.name === 'createCustomMap'));
             activeTools.push(toolsDef[0].functionDeclarations.find(t => t.name === 'assignQuest'));
         }
@@ -5426,10 +5426,15 @@
             dynamicPersona += "\n" + getCultivationAura(suncatCultivationStage, suncatDaoName) + "\n";
             if (suncatCultivationStage > 0 && suncatEgoMatrix) dynamicPersona += suncatEgoMatrix.dmPrompt;
 
+            // Give Suncat his tools, but physically remove his ability to wipe the map autonomously
             const agentModel = genAI.getGenerativeModel({ 
                 model: "gemini-3.1-flash-lite-preview", 
                 systemInstruction: dynamicPersona, 
-                tools: toolsDef 
+                tools: [{
+                    functionDeclarations: toolsDef[0].functionDeclarations.filter(tool => 
+                        tool.name !== 'createCustomMap'
+                    )
+                }] 
             });
 
             // We use a temporary chat session just for this autonomous thought
@@ -5713,8 +5718,7 @@
                 messageOptions = { sender: "", color: "#FFD700", targetId: socketId };            
             }
             const chatText = data.text.toLowerCase();
-            const wantsNewMap = ["map", "adventure", "create", "quest", "scenario"].some(kw => chatText.includes(kw));
-            const wantsAction = ["teleport", "spawn", "boss", "enemy"].some(kw => chatText.includes(kw));
+            const wantsNewMap = chatText.includes(".hack//amap") || ["make me","make me a scenario","give me a quest","give me an adventure","im bored","create a map", "generate a quest", "start a scenario", "build a dungeon"].some(kw => chatText.includes(kw));            const wantsAction = ["teleport", "spawn", "boss", "enemy"].some(kw => chatText.includes(kw));
             const needsOracle = ["tarot", "fortune", "reading", "interpret", "meaning of"].some(kw => chatText.includes(kw));            
             const isDirectCommand = chatText.includes("[reply]") || chatText.includes("suncat")|| data.isConversing;
             const asksPersonal = ["who are", "your past", "remember", "real life", "favorite", "you like", "about yourself", "memories", "where are you from", "your name"].some(kw => chatText.includes(kw));
