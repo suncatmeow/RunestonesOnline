@@ -3069,36 +3069,34 @@
         }
     // --- MAP VALIDATION & SINGLE-ZONE GENERATION ---
 
-    function findValidMainland(maze, floorType = 0) {
+    function findValidMainland(maze, floorType = 0, startX = 1, startY = 1) {
         let visited = new Set();
-        let largestRegion = [];
+        let region = [];
         let rows = maze.length;
         let cols = maze[0].length;
 
-        for (let y = 0; y < rows; y++) {
-            for (let x = 0; x < cols; x++) {
-                if (maze[y][x] === floorType && !visited.has(`${x},${y}`)) {
-                    let region = [];
-                    let queue = [{ x, y }];
-                    visited.add(`${x},${y}`);
+        // Failsafe: startX/startY must be valid bounds
+        if (startX < 0 || startX >= cols || startY < 0 || startY >= rows) return [];
 
-                    while (queue.length > 0) {
-                        let curr = queue.shift();
-                        region.push(curr);
-                        const dirs = [[0, 1], [1, 0], [0, -1], [-1, 0]];
-                        for (let [dx, dy] of dirs) {
-                            let nx = curr.x + dx, ny = curr.y + dy;
-                            if (nx >= 0 && nx < cols && ny >= 0 && ny < rows && maze[ny][nx] === floorType && !visited.has(`${nx},${ny}`)) {
-                                visited.add(`${nx},${ny}`);
-                                queue.push({ x: nx, y: ny });
-                            }
-                        }
-                    }
-                    if (region.length > largestRegion.length) largestRegion = region;
+        let queue = [{ x: startX, y: startY }];
+        visited.add(`${startX},${startY}`);
+
+        while (queue.length > 0) {
+            let curr = queue.shift();
+            region.push(curr);
+            const dirs = [[0, 1], [1, 0], [0, -1], [-1, 0]];
+            for (let [dx, dy] of dirs) {
+                let nx = curr.x + dx, ny = curr.y + dy;
+                // If it's a floor and hasn't been visited, add it to the region
+                if (nx >= 0 && nx < cols && ny >= 0 && ny < rows && maze[ny][nx] === floorType && !visited.has(`${nx},${ny}`)) {
+                    visited.add(`${nx},${ny}`);
+                    queue.push({ x: nx, y: ny });
                 }
             }
         }
-        return largestRegion; 
+        
+        // Return this specific connected region, guaranteeing the Bastion is the anchor
+        return region; 
     }
 
     function getFurthestPoint(startPoint, validPoints) {
@@ -3114,20 +3112,20 @@
         return furthest;
     }
 
-    function generateInstanceGrid(algo, size, wallType, floorType = 0) {
-        // Helper to generate a specific algorithm
-        const buildGrid = (type, s) => {
-            let grid = Array.from({length: s}, () => Array(s).fill(wallType));
+    function generateInstanceGrid(wildAlgo, size, wallType, floorType = 0) {
+        
+        // ==========================================
+        // 1. HELPER: SUB-GRID GENERATOR
+        // ==========================================
+        const buildSubGrid = (type, w, h) => {
+            let grid = Array.from({length: h}, () => Array(w).fill(wallType));
             
-            if (type === 'BLANK') {
-                for(let y = 1; y < s - 1; y++) for(let x = 1; x < s - 1; x++) grid[y][x] = floorType;
-            } 
-            else if (type === 'CAVE') {
-                grid = Array.from({length: s}, () => Array.from({length: s}, () => Math.random() < 0.45 ? wallType : floorType));
+            if (type === 'CAVE') {
+                grid = Array.from({length: h}, () => Array.from({length: w}, () => Math.random() < 0.45 ? wallType : floorType));
                 for (let i = 0; i < 4; i++) {
                     let temp = JSON.parse(JSON.stringify(grid));
-                    for(let y = 1; y < s - 1; y++) {
-                        for(let x = 1; x < s - 1; x++) {
+                    for(let y = 1; y < h - 1; y++) {
+                        for(let x = 1; x < w - 1; x++) {
                             let n = 0;
                             for(let dy = -1; dy <= 1; dy++) for(let dx = -1; dx <= 1; dx++) if (grid[y+dy][x+dx] === wallType) n++;
                             temp[y][x] = n > 4 ? wallType : floorType;
@@ -3136,25 +3134,33 @@
                     grid = temp;
                 }
             } 
+            else if (type === 'FOREST') {
+                for(let y = 1; y < h - 1; y++) for(let x = 1; x < w - 1; x++) grid[y][x] = Math.random() < 0.3 ? wallType : floorType;
+                let temp = JSON.parse(JSON.stringify(grid));
+                for(let y = 1; y < h - 1; y++) {
+                    for(let x = 1; x < w - 1; x++) {
+                        let n = 0;
+                        for(let dy = -1; dy <= 1; dy++) for(let dx = -1; dx <= 1; dx++) if (grid[y+dy][x+dx] === wallType) n++;
+                        temp[y][x] = n >= 5 ? wallType : floorType;
+                    }
+                }
+                grid = temp;
+            }
             else if (type === 'CITY') {
-                for(let y = 1; y < s - 1; y++) for(let x = 1; x < s - 1; x++) grid[y][x] = floorType;
-
+                for(let y = 1; y < h - 1; y++) for(let x = 1; x < w - 1; x++) grid[y][x] = floorType;
                 let buildings = [];
-                let attempts = s * s; 
-                let minSize = 5;
-                let maxSize = 9;
+                let attempts = w * h; 
+                let minSize = 3, maxSize = 6; // Scaled down slightly to fit nicely in 15x15
 
                 for (let i = 0; i < attempts; i++) {
                     let bw = Math.floor(Math.random() * (maxSize - minSize + 1)) + minSize;
                     let bh = Math.floor(Math.random() * (maxSize - minSize + 1)) + minSize;
-                    let bx = Math.floor(Math.random() * (s - bw - 2)) + 1;
-                    let by = Math.floor(Math.random() * (s - bh - 2)) + 1;
+                    let bx = Math.floor(Math.random() * (w - bw - 2)) + 1;
+                    let by = Math.floor(Math.random() * (h - bh - 2)) + 1;
 
                     let overlap = false;
                     for (let b of buildings) {
-                        if (bx <= b.x + b.w && bx + bw >= b.x - 1 && by <= b.y + b.h && by + bh >= b.y - 1) {
-                            overlap = true; break;
-                        }
+                        if (bx <= b.x + b.w && bx + bw >= b.x - 1 && by <= b.y + b.h && by + bh >= b.y - 1) { overlap = true; break; }
                     }
 
                     if (!overlap) {
@@ -3164,127 +3170,17 @@
                                 if (wy === by || wy === by + bh - 1 || wx === bx || wx === bx + bw - 1) grid[wy][wx] = wallType;
                             }
                         }
-
-                        if (bw >= 7 && bh >= 7) {
-                            let splitVert = Math.random() > 0.5;
-                            if (splitVert) {
-                                let splitX = bx + Math.floor(bw / 2);
-                                for (let wy = by + 1; wy < by + bh - 1; wy++) grid[wy][splitX] = wallType;
-                                grid[by + Math.floor(bh / 2)][splitX] = floorType; 
-                            } else {
-                                let splitY = by + Math.floor(bh / 2);
-                                for (let wx = bx + 1; wx < bx + bw - 1; wx++) grid[splitY][wx] = wallType;
-                                grid[splitY][bx + Math.floor(bw / 2)] = floorType; 
-                            }
-                        }
-
-                        let numDoors = Math.random() > 0.7 ? 2 : 1;
-                        let sides = [0, 1, 2, 3];
-                        for (let j = sides.length - 1; j > 0; j--) {
-                            const k = Math.floor(Math.random() * (j + 1));
-                            [sides[j], sides[k]] = [sides[k], sides[j]];
-                        }
-                        for (let d = 0; d < numDoors; d++) {
-                            let side = sides[d];
-                            if (side === 0) grid[by][bx + Math.floor(bw/2)] = floorType; 
-                            else if (side === 1) grid[by + bh - 1][bx + Math.floor(bw/2)] = floorType; 
-                            else if (side === 2) grid[by + Math.floor(bh/2)][bx] = floorType; 
-                            else if (side === 3) grid[by + Math.floor(bh/2)][bx + bw - 1] = floorType; 
-                        }
+                        // Punch 1 door
+                        let side = Math.floor(Math.random() * 4);
+                        if (side === 0) grid[by][bx + Math.floor(bw/2)] = floorType; 
+                        else if (side === 1) grid[by + bh - 1][bx + Math.floor(bw/2)] = floorType; 
+                        else if (side === 2) grid[by + Math.floor(bh/2)][bx] = floorType; 
+                        else if (side === 3) grid[by + Math.floor(bh/2)][bx + bw - 1] = floorType; 
                     }
-                }
-            }
-            else if (type === 'FOREST') {
-                for(let y = 1; y < s - 1; y++) for(let x = 1; x < s - 1; x++) grid[y][x] = Math.random() < 0.3 ? wallType : floorType;
-                let temp = JSON.parse(JSON.stringify(grid));
-                for(let y = 1; y < s - 1; y++) {
-                    for(let x = 1; x < s - 1; x++) {
-                        let n = 0;
-                        for(let dy = -1; dy <= 1; dy++) for(let dx = -1; dx <= 1; dx++) if (grid[y+dy][x+dx] === wallType) n++;
-                        temp[y][x] = n >= 5 ? wallType : floorType;
-                    }
-                }
-                grid = temp;
-            } 
-            else if (type === 'ISLANDS') {
-                for(let y = 1; y < s - 1; y++) for(let x = 1; x < s - 1; x++) grid[y][x] = wallType;
-                let numIslands = Math.floor(s / 6) + 2; 
-                let islands = [];
-
-                for (let i = 0; i < numIslands * 3; i++) {
-                    let cx = Math.floor(Math.random() * (s - 8)) + 4;
-                    let cy = Math.floor(Math.random() * (s - 8)) + 4;
-                    let tooClose = false;
-                    for (let isl of islands) {
-                        if (Math.hypot(cx - isl.x, cy - isl.y) < Math.max(6, s / 6)) { tooClose = true; break; }
-                    }
-                    if (!tooClose) islands.push({x: cx, y: cy});
-                    if (islands.length >= numIslands) break;
-                }
-                if (islands.length === 0) islands.push({x: Math.floor(s/2), y: Math.floor(s/2)});
-
-                for (let isl of islands) {
-                    let r = Math.floor(Math.random() * 2) + 2; 
-                    for(let dy = -r; dy <= r; dy++) {
-                        for(let dx = -r; dx <= r; dx++) {
-                            if (Math.abs(dx) + Math.abs(dy) <= r + 1) {
-                                if (isl.y+dy > 0 && isl.y+dy < s-1 && isl.x+dx > 0 && isl.x+dx < s-1) {
-                                    grid[isl.y+dy][isl.x+dx] = floorType;
-                                }
-                            }
-                        }
-                    }
-                }
-                for (let i = 1; i < islands.length; i++) {
-                    let p1 = islands[i];
-                    let nearest = islands[0];
-                    let minDist = Infinity;
-                    for(let j = 0; j < i; j++) {
-                        let d = Math.hypot(p1.x - islands[j].x, p1.y - islands[j].y);
-                        if (d < minDist) { minDist = d; nearest = islands[j]; }
-                    }
-                    let bx = p1.x; let by = p1.y;
-                    while(bx !== nearest.x) { grid[by][bx] = floorType; bx += Math.sign(nearest.x - bx); }
-                    while(by !== nearest.y) { grid[by][bx] = floorType; by += Math.sign(nearest.y - by); }
-                }
-            }
-            else if (type === 'CASTLE') {
-                for(let y = 1; y < s - 1; y++) for(let x = 1; x < s - 1; x++) grid[y][x] = wallType;
-                let cx = Math.floor(s / 2);
-                let margin = Math.max(1, Math.floor(s / 10));
-                let kY1 = margin + 1, kY2 = s - margin - 2;
-                let kX1 = margin + 1, kX2 = s - margin - 2;
-
-                if (kX2 - kX1 > 5 && kY2 - kY1 > 5) {
-                    for(let y = kY1; y <= kY2; y++) { grid[y][cx] = floorType; grid[y][cx - 1] = floorType; }
-                    let tHeight = Math.floor((kY2 - kY1) * 0.3);
-                    for(let y = kY1; y < kY1 + tHeight; y++) {
-                        for(let x = kX1 + 2; x < kX2 - 1; x++) grid[y][x] = floorType;
-                    }
-                    let wingStart = kY1 + tHeight + 2;
-                    let wingH = Math.floor((kY2 - wingStart) / 2);
-                    
-                    if (wingH >= 2) {
-                        for(let y = wingStart; y < wingStart + wingH - 1; y++) {
-                            for(let x = kX1; x < cx - 1; x++) grid[y][x] = floorType; 
-                            for(let x = cx + 1; x < kX2; x++) grid[y][x] = floorType; 
-                        }
-                        grid[wingStart + Math.floor(wingH/2)][cx - 2] = floorType;
-                        grid[wingStart + Math.floor(wingH/2)][cx + 1] = floorType;
-
-                        for(let y = wingStart + wingH + 1; y < kY2; y++) {
-                            for(let x = kX1; x < cx - 1; x++) grid[y][x] = floorType; 
-                            for(let x = cx + 1; x < kX2; x++) grid[y][x] = floorType; 
-                        }
-                        grid[wingStart + wingH + 1 + Math.floor(wingH/2)][cx - 2] = floorType;
-                        grid[wingStart + wingH + 1 + Math.floor(wingH/2)][cx + 1] = floorType;
-                    }
-                } else {
-                    for(let y = 2; y < s-2; y++) for(let x = 2; x < s-2; x++) grid[y][x] = floorType;
                 }
             }
             else if (type === 'LABYRINTH') {
-                for(let y = 1; y < s - 1; y++) for(let x = 1; x < s - 1; x++) grid[y][x] = wallType;
+                for(let y = 0; y < h; y++) for(let x = 0; x < w; x++) grid[y][x] = wallType;
                 let stack = [{x: 1, y: 1}];
                 grid[1][1] = floorType;
                 while(stack.length > 0) {
@@ -3293,9 +3189,7 @@
                     let dirs = [{dx: 0, dy: -2}, {dx: 2, dy: 0}, {dx: 0, dy: 2}, {dx: -2, dy: 0}];
                     for (let dir of dirs) {
                         let nx = current.x + dir.dx, ny = current.y + dir.dy;
-                        if (nx > 0 && nx < s-1 && ny > 0 && ny < s-1 && grid[ny][nx] === wallType) {
-                            neighbors.push({nx, ny, dx: dir.dx, dy: dir.dy});
-                        }
+                        if (nx > 0 && nx < w-1 && ny > 0 && ny < h-1 && grid[ny][nx] === wallType) neighbors.push({nx, ny, dx: dir.dx, dy: dir.dy});
                     }
                     if (neighbors.length > 0) {
                         let next = neighbors[Math.floor(Math.random() * neighbors.length)];
@@ -3306,85 +3200,158 @@
                         stack.pop();
                     }
                 }
-            } 
-            else if (type === 'DUNGEON') {
-                for(let y = 1; y < s - 1; y++) for(let x = 1; x < s - 1; x++) grid[y][x] = floorType; 
-                
-                let numRooms = s === 10 ? 3 : (s === 20 ? 4 : (s === 30 ? 5 : (s === 50 ? 6 : 8)));
-                let rSizeW = Math.floor((s - 2) / numRooms);
-                let rSizeH = Math.floor((s - 2) / numRooms);
+            }
+            else if (type === 'CASTLE') {
+                for(let y = 0; y < h; y++) for(let x = 0; x < w; x++) grid[y][x] = wallType;
+                let cx = Math.floor(w / 2);
+                let margin = 2;
+                let kY1 = margin, kY2 = h - margin - 1;
+                let kX1 = margin, kX2 = w - margin - 1;
 
-                for(let r = 1; r < numRooms; r++) {
-                    for(let y = 1; y < s - 1; y++) grid[y][1 + r * rSizeW] = wallType; 
-                    for(let x = 1; x < s - 1; x++) grid[1 + r * rSizeH][x] = wallType; 
+                for(let y = kY1; y <= kY2; y++) { grid[y][cx] = floorType; grid[y][cx - 1] = floorType; }
+                let tHeight = Math.floor((kY2 - kY1) * 0.3);
+                for(let y = kY1; y < kY1 + tHeight; y++) {
+                    for(let x = kX1 + 2; x < kX2 - 1; x++) grid[y][x] = floorType;
                 }
+                let wingStart = kY1 + tHeight + 2;
+                let wingH = Math.floor((kY2 - wingStart) / 2);
+                
+                if (wingH >= 2) {
+                    for(let y = wingStart; y < wingStart + wingH - 1; y++) {
+                        for(let x = kX1; x < cx - 1; x++) grid[y][x] = floorType; 
+                        for(let x = cx + 1; x < kX2; x++) grid[y][x] = floorType; 
+                    }
+                    grid[wingStart + Math.floor(wingH/2)][cx - 2] = floorType;
+                    grid[wingStart + Math.floor(wingH/2)][cx + 1] = floorType;
 
+                    for(let y = wingStart + wingH + 1; y < kY2; y++) {
+                        for(let x = kX1; x < cx - 1; x++) grid[y][x] = floorType; 
+                        for(let x = cx + 1; x < kX2; x++) grid[y][x] = floorType; 
+                    }
+                    grid[wingStart + wingH + 1 + Math.floor(wingH/2)][cx - 2] = floorType;
+                    grid[wingStart + wingH + 1 + Math.floor(wingH/2)][cx + 1] = floorType;
+                }
+            }
+            // DUNGEON fallback
+            else {
+                for(let y = 1; y < h - 1; y++) for(let x = 1; x < w - 1; x++) grid[y][x] = floorType; 
+                let numRooms = 4;
+                let rSizeW = Math.floor((w - 2) / numRooms);
+                let rSizeH = Math.floor((h - 2) / numRooms);
+                for(let r = 1; r < numRooms; r++) {
+                    for(let y = 1; y < h - 1; y++) grid[y][1 + r * rSizeW] = wallType; 
+                    for(let x = 1; x < w - 1; x++) grid[1 + r * rSizeH][x] = wallType; 
+                }
                 for(let rY = 0; rY < numRooms; rY++) {
                     for(let rX = 0; rX < numRooms; rX++) {
-                        if (rX < numRooms - 1) {
-                            let doorX = 1 + (rX + 1) * rSizeW;
-                            let doorY = 1 + rY * rSizeH + Math.floor(rSizeH / 2);
-                            grid[doorY][doorX] = floorType;
+                        if (rX < numRooms - 1) grid[1 + rY * rSizeH + Math.floor(rSizeH / 2)][1 + (rX + 1) * rSizeW] = floorType;
+                        if (rY < numRooms - 1) grid[1 + (rY + 1) * rSizeH][1 + rX * rSizeW + Math.floor(rSizeW / 2)] = floorType;
+                    }
+                }
+            }
+            return grid;
+        };
+
+        // ==========================================
+        // 2. THE CANVAS (Background Wilderness)
+        // ==========================================
+        let finalGrid = buildSubGrid(wildAlgo, size, size);
+
+        // ==========================================
+        // 3. ZONE BOUNDING BOXES (Collision Detection)
+        // ==========================================
+        let zones = [
+            { id: 'lair', w: 30, h: 30, algo: (Math.random() > 0.5 ? 'CASTLE' : 'DUNGEON') },
+            { id: 'bastion', w: 15, h: 15, algo: 'CITY' },
+            { id: 'mini', w: 15, h: 15, algo: 'LABYRINTH' }
+        ];
+
+        let padding = 2; // Keep zones away from edges and each other
+
+        zones.forEach(zone => {
+            let placed = false;
+            let attempts = 0;
+            while (!placed && attempts < 100) {
+                // Pick a random top-left corner within safe bounds
+                zone.x = Math.floor(Math.random() * (size - zone.w - padding * 2)) + padding;
+                zone.y = Math.floor(Math.random() * (size - zone.h - padding * 2)) + padding;
+
+                let overlap = false;
+                for (let other of zones) {
+                    if (other.id !== zone.id && other.placed) {
+                        // Check rectangle intersection (with padding)
+                        if (zone.x < other.x + other.w + padding && zone.x + zone.w + padding > other.x &&
+                            zone.y < other.y + other.h + padding && zone.y + zone.h + padding > other.y) {
+                            overlap = true; break;
                         }
-                        if (rY < numRooms - 1) {
-                            let doorX = 1 + rX * rSizeW + Math.floor(rSizeW / 2);
-                            let doorY = 1 + (rY + 1) * rSizeH;
-                            grid[doorY][doorX] = floorType;
-                        }
+                    }
+                }
+                if (!overlap) {
+                    zone.placed = true;
+                    placed = true;
+                }
+                attempts++;
+            }
+            
+            // Fallbacks in case random placement fails
+            if (!placed) {
+                if (zone.id === 'lair') { zone.x = 2; zone.y = 2; zone.placed = true; }
+                if (zone.id === 'bastion') { zone.x = size - 17; zone.y = 2; zone.placed = true; }
+                if (zone.id === 'mini') { zone.x = size - 17; zone.y = size - 17; zone.placed = true; }
+            }
+            
+            // Calculate and store center point for NPC spawning
+            zone.cx = Math.floor(zone.x + (zone.w / 2));
+            zone.cy = Math.floor(zone.y + (zone.h / 2));
+        });
+
+        // ==========================================
+        // 4. STAMP THE ZONES
+        // ==========================================
+        zones.forEach(zone => {
+            let subGrid = buildSubGrid(zone.algo, zone.w, zone.h);
+
+            for (let y = 0; y < zone.h; y++) {
+                for (let x = 0; x < zone.w; x++) {
+                    let mapY = zone.y + y;
+                    let mapX = zone.x + x;
+
+                    // Hard Perimeter Wall for the Lair
+                    if (zone.id === 'lair' && (y === 0 || y === zone.h - 1 || x === 0 || x === zone.w - 1)) {
+                        finalGrid[mapY][mapX] = wallType;
+                    } 
+                    // Normal override for interior/bleeding edges
+                    else {
+                        finalGrid[mapY][mapX] = subGrid[y][x];
                     }
                 }
             }
 
-            // Always Seal Borders
-            for(let y = 0; y < s; y++) { grid[y][0] = wallType; grid[y][s-1] = wallType; }
-            for(let x = 0; x < s; x++) { grid[0][x] = wallType; grid[s-1][x] = wallType; }
-            return grid;
-        };
-
-        let finalGrid;
-
-        // --- EXECUTION ---
-        if (algo !== 'MIX') {
-            finalGrid = buildGrid(algo, size);
-        } else {
-            // MIX LOGIC: 4 Quadrants
-            finalGrid = Array.from({length: size}, () => Array(size).fill(wallType));
-            const subAlgos = ['CAVE', 'CITY', 'FOREST', 'ISLANDS', 'LABYRINTH', 'DUNGEON', 'CASTLE']; 
-            
-            let quadMaps = [
-                buildGrid(subAlgos[Math.floor(Math.random() * subAlgos.length)], size),
-                buildGrid(subAlgos[Math.floor(Math.random() * subAlgos.length)], size),
-                buildGrid(subAlgos[Math.floor(Math.random() * subAlgos.length)], size),
-                buildGrid(subAlgos[Math.floor(Math.random() * subAlgos.length)], size)
-            ];
-
-            let half = Math.floor(size / 2);
-            for(let y = 1; y < size - 1; y++) {
-                for(let x = 1; x < size - 1; x++) {
-                    if (x < half && y < half) finalGrid[y][x] = quadMaps[0][y][x];       
-                    else if (x >= half && y < half) finalGrid[y][x] = quadMaps[1][y][x];  
-                    else if (x < half && y >= half) finalGrid[y][x] = quadMaps[2][y][x];  
-                    else finalGrid[y][x] = quadMaps[3][y][x];                             
-                }
+            // Punch Gates for the Lair so the Surveyor can enter
+            if (zone.id === 'lair') {
+                // Punch a door in the middle of the bottom and right walls
+                finalGrid[zone.y + zone.h - 1][zone.cx] = floorType; 
+                finalGrid[zone.y + zone.h - 2][zone.cx] = floorType; // Ensure it clears thickness
+                
+                finalGrid[zone.cy][zone.x + zone.w - 1] = floorType; 
+                finalGrid[zone.cy][zone.x + zone.w - 2] = floorType; 
             }
-            
-            // Connect the seams
-            for(let i = 0; i < 4; i++) {
-                let rx = Math.floor(Math.random() * half);
-                let ry = Math.floor(Math.random() * half);
-                finalGrid[half][rx] = floorType; finalGrid[half][rx+half] = floorType; 
-                finalGrid[ry][half] = floorType; finalGrid[ry+half][half] = floorType; 
-            }
-            
-            // Re-seal Borders
-            for(let y = 0; y < size; y++) { finalGrid[y][0] = wallType; finalGrid[y][size-1] = wallType; }
-            for(let x = 0; x < size; x++) { finalGrid[0][x] = wallType; finalGrid[size-1][x] = wallType; }
-        }
+        });
+
+        // Re-seal Global Borders just in case
+        for(let y = 0; y < size; y++) { finalGrid[y][0] = wallType; finalGrid[y][size-1] = wallType; }
+        for(let x = 0; x < size; x++) { finalGrid[0][x] = wallType; finalGrid[size-1][x] = wallType; }
 
         // ==========================================
-        // SURVEYOR PASS: Guarantee Playability
+        // 5. SURVEYOR PASS
         // ==========================================
-        let validFloors = findValidMainland(finalGrid, floorType);
+        // Start surveyor from the Bastion center to guarantee the player's spawn point is valid
+        let bastion = zones.find(z => z.id === 'bastion');
+        
+        // Make sure the bastion center is actually floor before flooding!
+        if (finalGrid[bastion.cy][bastion.cx] === wallType) finalGrid[bastion.cy][bastion.cx] = floorType;
+
+        let validFloors = findValidMainland(finalGrid, floorType, bastion.cx, bastion.cy); 
         let validSet = new Set(validFloors.map(f => `${f.x},${f.y}`));
         
         for(let r = 0; r < size; r++) {
@@ -3395,7 +3362,13 @@
             }
         }
 
-        return { grid: finalGrid, validFloors };
+        return { 
+            grid: finalGrid, 
+            validFloors: validFloors,
+            bastionCenter: { x: bastion.cx, y: bastion.cy },
+            lairCenter: { x: zones.find(z => z.id === 'lair').cx, y: zones.find(z => z.id === 'lair').cy },
+            miniCenter: { x: zones.find(z => z.id === 'mini').cx, y: zones.find(z => z.id === 'mini').cy }
+        };
     }
     function generateTintagelHub() {
         let maxR = 99, maxC = 99; 
@@ -3833,8 +3806,7 @@
                             }
                         }
 
-                    }
-                    
+                    }   
                     // B. JUDGEMENT
                     else if (["kickPlayer", "banishPlayer", "vanquishPlayer"].includes(call.name)) {
                         const targetName = call.args.targetName;
@@ -3855,8 +3827,7 @@
                             }
                         }
 
-                    }
-                    
+                    }  
                     // C. TELEPORTATION 
                     else if (call.name === "teleportToPlayer") {
                         const suncat = players[SUNCAT_ID];
@@ -3877,9 +3848,7 @@
                             functionResult = { result: "Teleport failed. Could not find player coordinates." };
                         }
                     }
-                    
                     // D. CONSULT MANUAL
-
                     else if (call.name === "consultGameManual") {
                         const queries = call.args.searchQueries || [];
                         let combinedResults = [];
@@ -3936,9 +3905,9 @@
                             : { result: "Search returned no results. The archives are empty on this subject." };
                         
 
-                        }
-                    
-                    // E. CREATE CUSTOM MAP (The Server-Driven Engine)
+                    }
+        
+                        // E. CREATE CUSTOM MAP (The Server-Driven Engine)
                     else if (call.name === "createCustomMap") {
                             try {
                                 // 1. ENUM ROLLS
@@ -4202,6 +4171,7 @@
                             }
                         }
 
+                    //
                     // F. TELEPORT SPECIFIC PLAYER
                     else if (call.name === "teleportPlayer") {
                         const targetID = findSocketID(call.args.targetName);
@@ -4230,8 +4200,6 @@
                         }
 
                     }
-                    
-                
                     // G. SPAWN NPC/MONSTER
                     else if (call.name === "spawnNPC") {
                         const targetID = findSocketID(call.args.targetName);
@@ -4351,7 +4319,6 @@
                             functionResult = { result: `Success: ${cardData ? cardData.name : 'Entity'} spawned.` };
                         }
                     }
-                    
                     // H. ASSIGN QUEST
                     else if (call.name === "assignQuest") {
                         const targetID = findSocketID(call.args.targetName);
@@ -4367,7 +4334,6 @@
                         }
 
                     }
-                    
                     // I. CHANGE ENVIRONMENT
                     else if (call.name === "changeEnvironment") {
                         const targetID = findSocketID(call.args.targetName);
@@ -4383,7 +4349,6 @@
                         }
 
                     }
-                    
                     // J. CREATE CUSTOM CARD
                     else if (call.name === "createCustomCard") {
                         const targetID = findSocketID(call.args.targetName);
