@@ -11133,251 +11133,251 @@
         }
       //MAP MAKER
      createQuestNPC(config) {
-    let npc = new NPC(config.giverId, config.x, config.y, config.sprite, 'stationary', '#00ff00', [], 'dialogue', null, 'friendly');
+            let npc = new NPC(config.giverId, config.x, config.y, config.sprite, 'stationary', '#00ff00', [], 'dialogue', null, 'friendly');
 
-    npc.dialogueFactory = (dungeon) => {
-        let qState = dungeon.memory[config.questKey] ? dungeon.memory[config.questKey].state : 0;
-        let reqCount = (config.items ? config.items.length : 0) + (config.targets ? config.targets.length : 0) + (config.victims && config.type === 'rescue' ? config.victims.length : 0) || 1;
+            npc.dialogueFactory = (dungeon) => {
+                let qState = dungeon.memory[config.questKey] ? dungeon.memory[config.questKey].state : 0;
+                let reqCount = (config.items ? config.items.length : 0) + (config.targets ? config.targets.length : 0) + (config.victims && config.type === 'rescue' ? config.victims.length : 0) || 1;
 
-        const barkTarget = ["You'll never take me alive!", "I'll crush you!"];
-        const barkGuard = ["Halt!", "We've got an intruder!"];
-        const barkVictim = ["Help me!", "Please, somebody!"];
-        const itemPickups = ["The item hums with power.", "You secured the objective."];
+                const barkTarget = ["You'll never take me alive!", "I'll crush you!"];
+                const barkGuard = ["Halt!", "We've got an intruder!"];
+                const barkVictim = ["Help me!", "Please, somebody!"];
+                const itemPickups = ["The item hums with power.", "You secured the objective."];
 
-        let countPayload = {
-            key: config.questKey, max: reqCount,
-            progressMsg: config.progressMsg || `Objective secured! ({count}/{max})`,
-            completeMsg: config.readyToTurnInMsg || `All objectives complete! Return to the quest giver.`,
-            // THE FIX: Only pass escortId if they are actively following you home! This stops the auto-popup for fetch/slay quests.
-            escortId: (config.escortHome) ? config.giverId : null,
-            escortUpdateMsg: config.escortProgressMsg || "We're making good progress!",
-            textComplete: config.textComplete, rewardCard: config.rewardCard,
-            rescueVictimIds: (config.type === 'bounty' && config.victims) ? config.victims.map(v => v.id) : null,
-            victimThankMsg: config.victimThankMsg || ["Thank you so much! I'll leave first!"]
-        };
+                let countPayload = {
+                    key: config.questKey, max: reqCount,
+                    progressMsg: config.progressMsg || `Objective secured! ({count}/{max})`,
+                    completeMsg: config.readyToTurnInMsg || `All objectives complete! Return to the quest giver.`,
+                    // THE FIX: Only pass escortId if they are actively following you home! This stops the auto-popup for fetch/slay quests.
+                    escortId: (config.escortHome) ? config.giverId : null,
+                    escortUpdateMsg: config.escortProgressMsg || "We're making good progress!",
+                    textComplete: config.textComplete, rewardCard: config.rewardCard,
+                    rescueVictimIds: (config.type === 'bounty' && config.victims) ? config.victims.map(v => v.id) : null,
+                    victimThankMsg: config.victimThankMsg || ["Thank you so much! I'll leave first!"]
+                };
 
-        // --- PHASE 0: GIVE QUEST ---
-        if (qState === 0) {
-            let tMap = Array.isArray(config.targetMap) ? config.targetMap[Math.floor(Math.random() * config.targetMap.length)] : config.targetMap;
-            
-            let dynamicDialogue = [];
-            if (config.type === 'fetch') dynamicDialogue = [`I lost a precious heirloom in Map ${tMap}.`, `Please, go there and retrieve it for me! I'll reward you handsomely.`];
-            else if (config.type === 'rescue') dynamicDialogue = [`My companion was ambushed and captured in Map ${tMap}!`, `You have to go save them before it's too late!`];
-            else if (config.type === 'escort') dynamicDialogue = [`I need to travel to Map ${tMap}, but the roads are crawling with monsters.`, `Will you escort me there safely?`];
-            else if (config.type === 'bounty') dynamicDialogue = [`There is a dangerous fugitive hiding out in Map ${tMap}.`, `Hunt them down, and the bounty is yours.`];
-            else dynamicDialogue = [`I need your help with a task in Map ${tMap}. Please hurry!`];
-
-            let introText = (config.textIntro && config.textIntro.length > 0) ? config.textIntro : dynamicDialogue;
-
-            let questBlueprint = {
-                state: 1, count: 0, max: reqCount, type: config.type,
-                giverId: config.giverId, giverX: config.x, giverY: config.y, giverMap: dungeon.mapID, targetMap: tMap,
-                title: config.questTitle || `Operation: ${config.type.toUpperCase()}`,
-                desc: introText.join(" "), completeDesc: config.textComplete.join(" "),
-                failedDesc: config.textFailed ? config.textFailed.join(" ") : "The mission failed."
-            };
-
-            let acceptActions = [
-                ['set_flag', { key: 'memory', value: { ...dungeon.memory, [config.questKey]: questBlueprint } }],
-                ['play_sfx', 'chime']
-            ];
-
-            // --- THE COMPLICATION GENERATOR ---
-            // 30% chance for a complication to occur on objective completion
-            let generateComplication = () => {
-                let compActions = [];
-                let roll = Math.random();
-                if (roll < 0.15) {
-                    // Ambush!
-                    compActions.push(['notify', {text: ["It's an ambush! Defend yourself!"], sprite: -37}]);
-                    compActions.push(['start_wave', { current: 0, delay: 1, state: 'spawning', waves: [[{sprite: 42}, {sprite: 42}]] }]);
-                } else if (roll < 0.30) {
-                    // Hunted Trek Back
-                    compActions.push(['notify', {text: ["You've alerted the horde! Survive the trek back!"], sprite: -37}]);
-                    compActions.push(['play_sfx', 'horn']);
-                    compActions.push(['start_hunted', { waves: 2, interval: 30, mobs: [{sprite: 56}] }]);
-                }
-                return compActions;
-            };
-
-            if (config.guards) config.guards.forEach(g => acceptActions.push(['spawn_npc', [tMap, g.id, g.x, g.y, g.sprite, g.state || 'chasing', '#ff0000', g.deck || [g.sprite], g.dialogue || [barkGuard[Math.floor(Math.random() * barkGuard.length)]], null, 'battle', null, g.isBoss || false, 'foe', [], [], g.isCinematic || false]]));
-
-            if (config.type === 'bounty' && config.targets) {
-                config.targets.forEach(t => {
-                    let dActions = generateComplication();
-                    dActions.push(['update_quest_count', countPayload]); // Always update count last
+                // --- PHASE 0: GIVE QUEST ---
+                if (qState === 0) {
+                    let tMap = Array.isArray(config.targetMap) ? config.targetMap[Math.floor(Math.random() * config.targetMap.length)] : config.targetMap;
                     
-                    acceptActions.push(['spawn_npc', [tMap, t.id, t.x, t.y, t.sprite, t.state || 'stationary', '#ff0000', t.deck || [t.sprite], t.dialogue || [barkTarget[Math.floor(Math.random() * barkTarget.length)]], null, 'dialogue', null, t.isBoss !== false, 'friendly_messenger', [['transform_npc', { index: t.id, newAlignment: 'foe', newRole: 'battle', newState: 'chasing' }], ['start_battle', t.id]], dActions, t.isCinematic || false]]);
-                });
-            } 
-            
-            if (config.type === 'rescue' && config.victims) {
-                config.victims.forEach(v => {
-                    let rescueActions = [];
+                    let dynamicDialogue = [];
+                    if (config.type === 'fetch') dynamicDialogue = [`I lost a precious heirloom in Map ${tMap}.`, `Please, go there and retrieve it for me! I'll reward you handsomely.`];
+                    else if (config.type === 'rescue') dynamicDialogue = [`My companion was ambushed and captured in Map ${tMap}!`, `You have to go save them before it's too late!`];
+                    else if (config.type === 'escort') dynamicDialogue = [`I need to travel to Map ${tMap}, but the roads are crawling with monsters.`, `Will you escort me there safely?`];
+                    else if (config.type === 'bounty') dynamicDialogue = [`There is a dangerous fugitive hiding out in Map ${tMap}.`, `Hunt them down, and the bounty is yours.`];
+                    else dynamicDialogue = [`I need your help with a task in Map ${tMap}. Please hurry!`];
+
+                    let introText = (config.textIntro && config.textIntro.length > 0) ? config.textIntro : dynamicDialogue;
+
+                    let questBlueprint = {
+                        state: 1, count: 0, max: reqCount, type: config.type,
+                        giverId: config.giverId, giverX: config.x, giverY: config.y, giverMap: dungeon.mapID, targetMap: tMap,
+                        title: config.questTitle || `Operation: ${config.type.toUpperCase()}`,
+                        desc: introText.join(" "), completeDesc: config.textComplete.join(" "),
+                        failedDesc: config.textFailed ? config.textFailed.join(" ") : "The mission failed."
+                    };
+
+                    let acceptActions = [
+                        ['set_flag', { key: 'memory', value: { ...dungeon.memory, [config.questKey]: questBlueprint } }],
+                        ['play_sfx', 'chime']
+                    ];
+
+                    // --- THE COMPLICATION GENERATOR ---
+                    // 30% chance for a complication to occur on objective completion
+                    let generateComplication = () => {
+                        let compActions = [];
+                        let roll = Math.random();
+                        if (roll < 0.15) {
+                            // Ambush!
+                            compActions.push(['notify', {text: ["It's an ambush! Defend yourself!"], sprite: -37}]);
+                            compActions.push(['start_wave', { current: 0, delay: 1, state: 'spawning', waves: [[{sprite: 42}, {sprite: 42}]] }]);
+                        } else if (roll < 0.30) {
+                            // Hunted Trek Back
+                            compActions.push(['notify', {text: ["You've alerted the horde! Survive the trek back!"], sprite: -37}]);
+                            compActions.push(['play_sfx', 'horn']);
+                            compActions.push(['start_hunted', { waves: 2, interval: 30, mobs: [{sprite: 56}] }]);
+                        }
+                        return compActions;
+                    };
+
+                    if (config.guards) config.guards.forEach(g => acceptActions.push(['spawn_npc', [tMap, g.id, g.x, g.y, g.sprite, g.state || 'chasing', '#ff0000', g.deck || [g.sprite], g.dialogue || [barkGuard[Math.floor(Math.random() * barkGuard.length)]], null, 'battle', null, g.isBoss || false, 'foe', [], [], g.isCinematic || false]]));
+
+                    if (config.type === 'bounty' && config.targets) {
+                        config.targets.forEach(t => {
+                            let dActions = generateComplication();
+                            dActions.push(['update_quest_count', countPayload]); // Always update count last
+                            
+                            acceptActions.push(['spawn_npc', [tMap, t.id, t.x, t.y, t.sprite, t.state || 'stationary', '#ff0000', t.deck || [t.sprite], t.dialogue || [barkTarget[Math.floor(Math.random() * barkTarget.length)]], null, 'dialogue', null, t.isBoss !== false, 'friendly_messenger', [['transform_npc', { index: t.id, newAlignment: 'foe', newRole: 'battle', newState: 'chasing' }], ['start_battle', t.id]], dActions, t.isCinematic || false]]);
+                        });
+                    } 
                     
-                    // 1. Roll for complications (Ambush/Hunted)
-                    rescueActions.push(...generateComplication());
-                    
-                    // 2. Register the rescue
-                    rescueActions.push(['update_quest_count', countPayload]);
-                    
-                    // 3. Trigger their specific dialogue/escape
-                    rescueActions.push(['inject_dialogue', { index: v.id, text: v.rescuedText || ["Let's get out of here!"], endActions: [['close_dialogue', null]] }]);
-                    
-                    if (v.triggerWave) rescueActions.push(['start_wave', v.triggerWave]);
-                    if (config.escortHome) {
-                        rescueActions.push(['add_escort', { index: v.id, type: v.sprite, color: '#00ff00', deck: v.escortDeck || [] }]);
-                        let eAlign = v.isCombative ? 'escort_combat' : 'escort';
-                        let eRole = v.escortRole || 'dialogue'; 
-                        rescueActions.push(['transform_npc', { index: v.id, newAlignment: eAlign, newState: 'following', newRole: eRole, newDeck: v.escortDeck || [], clearDeathActions: true }]);
-                    } else {
-                        rescueActions.push(['disappear', v.id]);
+                    if (config.type === 'rescue' && config.victims) {
+                        config.victims.forEach(v => {
+                            let rescueActions = [];
+                            
+                            // 1. Roll for complications (Ambush/Hunted)
+                            rescueActions.push(...generateComplication());
+                            
+                            // 2. Register the rescue
+                            rescueActions.push(['update_quest_count', countPayload]);
+                            
+                            // 3. Trigger their specific dialogue/escape
+                            rescueActions.push(['inject_dialogue', { index: v.id, text: v.rescuedText || ["Let's get out of here!"], endActions: [['close_dialogue', null]] }]);
+                            
+                            if (v.triggerWave) rescueActions.push(['start_wave', v.triggerWave]);
+                            if (config.escortHome) {
+                                rescueActions.push(['add_escort', { index: v.id, type: v.sprite, color: '#00ff00', deck: v.escortDeck || [] }]);
+                                let eAlign = v.isCombative ? 'escort_combat' : 'escort';
+                                let eRole = v.escortRole || 'dialogue'; 
+                                rescueActions.push(['transform_npc', { index: v.id, newAlignment: eAlign, newState: 'following', newRole: eRole, newDeck: v.escortDeck || [], clearDeathActions: true }]);
+                            } else {
+                                rescueActions.push(['disappear', v.id]);
+                            }
+                            acceptActions.push(['spawn_npc', [tMap, v.id, v.x, v.y, v.sprite, v.state || 'stationary', '#00ff00', [v.sprite], v.dialogue || [barkVictim[Math.floor(Math.random() * barkVictim.length)]], null, 'dialogue', null, v.isBoss !== false, 'friendly', rescueActions, [], v.isCinematic || false]]);
+                        });
                     }
-                    acceptActions.push(['spawn_npc', [tMap, v.id, v.x, v.y, v.sprite, v.state || 'stationary', '#00ff00', [v.sprite], v.dialogue || [barkVictim[Math.floor(Math.random() * barkVictim.length)]], null, 'dialogue', null, v.isBoss !== false, 'friendly', rescueActions, [], v.isCinematic || false]]);
-                });
-            }
-            if ((config.type === 'fetch' || config.type === 'escort') && config.items) {
-                if (config.type === 'escort') {
-                    acceptActions.push(['add_escort', { index: config.giverId, type: config.sprite, color: '#00ff00', deck: config.escortDeck || [] }]);
-                    let eAlign = config.isCombative ? 'escort_combat' : 'escort';
-                    let eRole = config.escortRole || 'dialogue';
-                    acceptActions.push(['transform_npc', { index: config.giverId, newAlignment: eAlign, newState: 'following', newRole: eRole, newDeck: config.escortDeck || [] }]);
-                }
-                config.items.forEach((item) => {
-                    let itemPickupActions = [['notify', item.pickupMsg || itemPickups[Math.floor(Math.random() * itemPickups.length)]]];
-                    
-                    // Inject randomized complications into pickups
-                    itemPickupActions.push(...generateComplication());
+                    if ((config.type === 'fetch' || config.type === 'escort') && config.items) {
+                        if (config.type === 'escort') {
+                            acceptActions.push(['add_escort', { index: config.giverId, type: config.sprite, color: '#00ff00', deck: config.escortDeck || [] }]);
+                            let eAlign = config.isCombative ? 'escort_combat' : 'escort';
+                            let eRole = config.escortRole || 'dialogue';
+                            acceptActions.push(['transform_npc', { index: config.giverId, newAlignment: eAlign, newState: 'following', newRole: eRole, newDeck: config.escortDeck || [] }]);
+                        }
+                        config.items.forEach((item) => {
+                            let itemPickupActions = [['notify', item.pickupMsg || itemPickups[Math.floor(Math.random() * itemPickups.length)]]];
+                            
+                            // Inject randomized complications into pickups
+                            itemPickupActions.push(...generateComplication());
 
-                    if (item.triggerWave) itemPickupActions.push(['start_wave', item.triggerWave]);
-                    if (item.triggerHunted) itemPickupActions.push(['start_hunted', item.triggerHunted]);
-                    if (item.customPickupActions) item.customPickupActions.forEach(a => itemPickupActions.push(a));
-                    
-                    itemPickupActions.push(['update_quest_count', countPayload]); // Must be last!
-                    
-                    acceptActions.push(['spawn_npc', [tMap, item.id, item.x, item.y, -27, 'stationary', '#ffff00', [item.lootCard], null, null, 'dialogue', null, item.isBoss !== false, 'friendly', itemPickupActions, []]]);
-                });
-            }
-            acceptActions.push(['close_dialogue', null]);
-            return { text: introText, options: ['Accept', 'Decline'], yesActions: acceptActions, noActions: [['close_dialogue', null]] };
-        }
-
-        // ... (Phase 1, 2, and 4 logic from your original code remains exactly the same here) ...
-    };
-    return npc;
-}
-      //
-      createBountyMerchant(config) {
-    let npc = new NPC(config.giverId, config.x, config.y, config.sprite, 'stationary', '#00ff00', [], 'dialogue', null, 'friendly');
-
-    npc.dialogueFactory = (dungeon) => {
-        let repKey = 'rep_' + config.giverId;
-        let rep = dungeon.memory[repKey] || 0;
-        let questKey = 'q_bounty_merchant_' + config.giverId;
-        let qObj = dungeon.memory[questKey];
-        let qState = qObj ? qObj.state : 0;
-
-        const getShopInventory = () => { /* Your exact shop logic here */ return [50]; };
-
-        if (qState === 0) {
-            let shopDeck = getShopInventory();
-            let shopActions = [['set_dialogue', { text: ["Want to buy something?"], options: ['Yes', 'No'], yesActions: [['open_shop', shopDeck]], noActions: [['close_dialogue', null]] }]];
-
-            let validTargets = [
-                { map: dungeon.mapID, x: dungeon.x + 4.5, y: dungeon.y + 4.5, sprite: 54, name: "Goblin Scrapper", phaseTwo: 55 },
-                { map: dungeon.mapID, x: dungeon.x - 4.5, y: dungeon.y + 4.5, sprite: 56, name: "Cave Imp", phaseTwo: 79 }
-            ];
-            let target = validTargets[Math.floor(Math.random() * validTargets.length)];
-            let uniqueTargetId = config.giverId * 1000 + rep; 
-
-            let questBlueprint = {
-                state: 1, count: 0, max: 1, type: 'bounty',
-                giverId: config.giverId, giverX: config.x, giverY: config.y, giverMap: dungeon.mapID, targetMap: target.map,
-                title: `Bounty: ${target.name}`,
-                tName: target.name, tMap: target.map
-            };
-
-            // --- PHASE BOSS LOGIC ---
-            // 20% chance the bounty target mutates on death instead of instantly dying
-            let targetDeathActions = [];
-            let roll = Math.random();
-            
-            if (roll < 0.20 && target.phaseTwo) {
-                targetDeathActions = [
-                    ['notify', {text: ["The monster mutated! Phase 2!"], sprite: target.phaseTwo}],
-                    ['play_sfx', 'horn'],
-                    // Spawn the mutated version right where the first one died
-                    ['spawn_npc', [
-                        target.map, uniqueTargetId + 1, 'SPEAKER_X', 'SPEAKER_Y', target.phaseTwo, 'chasing', '#ff0000', [target.phaseTwo], 
-                        null, null, 'battle', null, true, 'foe', 
-                        [], // endActions
-                        [['update_quest_count', { key: questKey, max: 1 }]] // The REAL completion
-                    ]]
-                ];
-            } else {
-                // Normal Death
-                targetDeathActions = [['update_quest_count', { key: questKey, max: 1 }]];
-            }
-
-            let acceptActions = [
-                ['set_flag', { key: 'memory', value: { ...dungeon.memory, [questKey]: questBlueprint } }],
-                ['spawn_npc', [
-                    target.map, uniqueTargetId, target.x, target.y, target.sprite, 'stationary', '#ff0000', [target.sprite], 
-                    ["You'll never take me alive!"], null, 'dialogue', null, true, 'friendly_messenger', 
-                    [['transform_npc', { index: uniqueTargetId, newAlignment: 'foe', newRole: 'battle', newState: 'chasing' }], ['start_battle', uniqueTargetId]], 
-                    targetDeathActions, false
-                ]],
-                ['set_dialogue', {
-                    text: [`${target.name} is hiding nearby. Go slay them for me.`],
-                    endActions: [['close_dialogue', null]]
-                }]
-            ];
-
-            return {
-                text: ["I have a new bounty. Want the job?"],
-                options: ['Yes', 'No'],
-                yesActions: acceptActions,
-                noActions: shopActions
-            };
-        }
-
-        
-
-                // --- PHASE 1: QUEST IN PROGRESS ---
-                if (qState === 1) {
-                    let shopDeck = getShopInventory();
-                    return {
-                        text: ["Want to buy something?"],
-                        options: ['Yes', 'No'],
-                        yesActions: [['open_shop', shopDeck]],
-                        noActions: [['set_dialogue', {
-                            text: [`Go get that ${qObj.tName} in Map ${qObj.tMap}. I'm waiting!`],
-                            endActions: [['close_dialogue', null]]
-                        }]]
-                    };
+                            if (item.triggerWave) itemPickupActions.push(['start_wave', item.triggerWave]);
+                            if (item.triggerHunted) itemPickupActions.push(['start_hunted', item.triggerHunted]);
+                            if (item.customPickupActions) item.customPickupActions.forEach(a => itemPickupActions.push(a));
+                            
+                            itemPickupActions.push(['update_quest_count', countPayload]); // Must be last!
+                            
+                            acceptActions.push(['spawn_npc', [tMap, item.id, item.x, item.y, -27, 'stationary', '#ffff00', [item.lootCard], null, null, 'dialogue', null, item.isBoss !== false, 'friendly', itemPickupActions, []]]);
+                        });
+                    }
+                    acceptActions.push(['close_dialogue', null]);
+                    return { text: introText, options: ['Accept', 'Decline'], yesActions: acceptActions, noActions: [['close_dialogue', null]] };
                 }
 
-                // --- PHASE 2: TURN IN ---
-                if (qState === 2) {
-                    return {
-                        text: ["Excellent work! Here is your reward. Come back later for more work."],
-                        rewardCard: 21, // Gold Card
-                        actions: [
-                            // Increase their reputation by 1
-                            ['set_flag', { key: 'memory', value: { ...dungeon.memory, [repKey]: rep + 1 } }],
-                            // Completely wipe the quest state to 0 so they can immediately accept another one!
-                            ['update_quest_state', { key: questKey, state: 0 }], 
-                            ['play_sfx', 'chime'],
-                            ['close_dialogue', null]
-                        ]
-                    };
-                }
-
-                return { text: ["..."], actions: [['close_dialogue', null]] };
+                // ... (Phase 1, 2, and 4 logic from your original code remains exactly the same here) ...
             };
-
             return npc;
         }
+            //
+      createBountyMerchant(config) {
+            let npc = new NPC(config.giverId, config.x, config.y, config.sprite, 'stationary', '#00ff00', [], 'dialogue', null, 'friendly');
+
+            npc.dialogueFactory = (dungeon) => {
+                let repKey = 'rep_' + config.giverId;
+                let rep = dungeon.memory[repKey] || 0;
+                let questKey = 'q_bounty_merchant_' + config.giverId;
+                let qObj = dungeon.memory[questKey];
+                let qState = qObj ? qObj.state : 0;
+
+                const getShopInventory = () => { /* Your exact shop logic here */ return [50]; };
+
+                if (qState === 0) {
+                    let shopDeck = getShopInventory();
+                    let shopActions = [['set_dialogue', { text: ["Want to buy something?"], options: ['Yes', 'No'], yesActions: [['open_shop', shopDeck]], noActions: [['close_dialogue', null]] }]];
+
+                    let validTargets = [
+                        { map: dungeon.mapID, x: dungeon.x + 4.5, y: dungeon.y + 4.5, sprite: 54, name: "Goblin Scrapper", phaseTwo: 55 },
+                        { map: dungeon.mapID, x: dungeon.x - 4.5, y: dungeon.y + 4.5, sprite: 56, name: "Cave Imp", phaseTwo: 79 }
+                    ];
+                    let target = validTargets[Math.floor(Math.random() * validTargets.length)];
+                    let uniqueTargetId = config.giverId * 1000 + rep; 
+
+                    let questBlueprint = {
+                        state: 1, count: 0, max: 1, type: 'bounty',
+                        giverId: config.giverId, giverX: config.x, giverY: config.y, giverMap: dungeon.mapID, targetMap: target.map,
+                        title: `Bounty: ${target.name}`,
+                        tName: target.name, tMap: target.map
+                    };
+
+                    // --- PHASE BOSS LOGIC ---
+                    // 20% chance the bounty target mutates on death instead of instantly dying
+                    let targetDeathActions = [];
+                    let roll = Math.random();
+                    
+                    if (roll < 0.20 && target.phaseTwo) {
+                        targetDeathActions = [
+                            ['notify', {text: ["The monster mutated! Phase 2!"], sprite: target.phaseTwo}],
+                            ['play_sfx', 'horn'],
+                            // Spawn the mutated version right where the first one died
+                            ['spawn_npc', [
+                                target.map, uniqueTargetId + 1, 'SPEAKER_X', 'SPEAKER_Y', target.phaseTwo, 'chasing', '#ff0000', [target.phaseTwo], 
+                                null, null, 'battle', null, true, 'foe', 
+                                [], // endActions
+                                [['update_quest_count', { key: questKey, max: 1 }]] // The REAL completion
+                            ]]
+                        ];
+                    } else {
+                        // Normal Death
+                        targetDeathActions = [['update_quest_count', { key: questKey, max: 1 }]];
+                    }
+
+                    let acceptActions = [
+                        ['set_flag', { key: 'memory', value: { ...dungeon.memory, [questKey]: questBlueprint } }],
+                        ['spawn_npc', [
+                            target.map, uniqueTargetId, target.x, target.y, target.sprite, 'stationary', '#ff0000', [target.sprite], 
+                            ["You'll never take me alive!"], null, 'dialogue', null, true, 'friendly_messenger', 
+                            [['transform_npc', { index: uniqueTargetId, newAlignment: 'foe', newRole: 'battle', newState: 'chasing' }], ['start_battle', uniqueTargetId]], 
+                            targetDeathActions, false
+                        ]],
+                        ['set_dialogue', {
+                            text: [`${target.name} is hiding nearby. Go slay them for me.`],
+                            endActions: [['close_dialogue', null]]
+                        }]
+                    ];
+
+                    return {
+                        text: ["I have a new bounty. Want the job?"],
+                        options: ['Yes', 'No'],
+                        yesActions: acceptActions,
+                        noActions: shopActions
+                    };
+                }
+
+                
+
+                        // --- PHASE 1: QUEST IN PROGRESS ---
+                        if (qState === 1) {
+                            let shopDeck = getShopInventory();
+                            return {
+                                text: ["Want to buy something?"],
+                                options: ['Yes', 'No'],
+                                yesActions: [['open_shop', shopDeck]],
+                                noActions: [['set_dialogue', {
+                                    text: [`Go get that ${qObj.tName} in Map ${qObj.tMap}. I'm waiting!`],
+                                    endActions: [['close_dialogue', null]]
+                                }]]
+                            };
+                        }
+
+                        // --- PHASE 2: TURN IN ---
+                        if (qState === 2) {
+                            return {
+                                text: ["Excellent work! Here is your reward. Come back later for more work."],
+                                rewardCard: 21, // Gold Card
+                                actions: [
+                                    // Increase their reputation by 1
+                                    ['set_flag', { key: 'memory', value: { ...dungeon.memory, [repKey]: rep + 1 } }],
+                                    // Completely wipe the quest state to 0 so they can immediately accept another one!
+                                    ['update_quest_state', { key: questKey, state: 0 }], 
+                                    ['play_sfx', 'chime'],
+                                    ['close_dialogue', null]
+                                ]
+                            };
+                        }
+
+                        return { text: ["..."], actions: [['close_dialogue', null]] };
+                    };
+
+                    return npc;
+                }
     ///NPC Interaction rendering
       tutorial(dt) {
         let tick = 30 * dt;
@@ -25065,399 +25065,406 @@
                 let msg = chatDraft.trim(); 
 
                 if (msg !== "") {
-                    
-            // === COMMAND CHECK: TELEPORT ===
-                    // Usage: .//teleport 5
-                    if (msg.toLowerCase().startsWith('.hack//teleport')) {
-                        let parts = msg.split(" ");
-                        let targetID;
+                    const isCommand = msg.toLowerCase().startsWith('.hack//');
+                    if (isCommand) {
+                    // === COMMAND CHECK: TELEPORT ===
+                            // Usage: .//teleport 5
+                            if (msg.toLowerCase().startsWith('.hack//teleport')) {
+                                let parts = msg.split(" ");
+                                let targetID;
 
-                        // If they typed exactly ".hack//teleport" with no spaces/numbers
-                        if (parts.length === 1 || parts[1] === "") {
-                            // Default to prevMap. (Added a fallback to 22 just in case prevMap is undefined at login!)
-                            targetID = Dungeon.prevMap !== undefined ? Dungeon.prevMap : 22; 
-                        } else {
-                            // Otherwise, try to parse the string they typed
-                            targetID = parseInt(parts[1]);
-                        }
-
-                        if (!isNaN(targetID)) {
-                            Dungeon.constructing = false;
-                            Dungeon.loadMap(targetID); // Teleport!
-                            chatLog.push(`[SYSTEM]: Teleporting to Map ${targetID}...`);
-                            Dungeon.saveGame();
-                        } else {
-                            chatLog.push(`[SYSTEM]: Invalid Map ID.`);
-                        }
-                    }
-                    else if (msg.toLowerCase().startsWith('.hack//blink')) {
-                        // 1. Remove the command part and clean up extra spaces
-                        let coordStr = msg.substring('.hack//blink'.length).trim();
-                        
-                        // 2. Split by either a comma OR a space
-                        let parts = coordStr.split(/[ ,]+/); 
-
-                        if (parts.length >= 2) {
-                            let targetX = parseInt(parts[0]);
-                            let targetY = parseInt(parts[1]);
-
-                            if (!isNaN(targetX) && !isNaN(targetY)) {
-                                // 3. Snap to tile center (x.5, y.5) to prevent wall clipping
-                                Dungeon.x = targetX + 0.5;
-                                Dungeon.y = targetY + 0.5;
-                                
-                                chatLog.push(`[SYSTEM]: Blinked to X: ${targetX}, Y: ${targetY}.`);
-
-                                // 4. --- INSTANT SERVER SYNC ---
-                                // Force the server to acknowledge the teleport immediately!
-                                if (typeof socket !== 'undefined') {
-                                    socket.emit("move", {
-                                        x: Dungeon.x,
-                                        y: Dungeon.y,
-                                        dir: Dungeon.dir,
-                                        mapID: Dungeon.mapID,
-                                        status: Dungeon.status, 
-                                        type: playerSprite, 
-                                        name: playerName 
-                                    });
+                                // If they typed exactly ".hack//teleport" with no spaces/numbers
+                                if (parts.length === 1 || parts[1] === "") {
+                                    // Default to prevMap. (Added a fallback to 22 just in case prevMap is undefined at login!)
+                                    targetID = Dungeon.prevMap !== undefined ? Dungeon.prevMap : 22; 
+                                } else {
+                                    // Otherwise, try to parse the string they typed
+                                    targetID = parseInt(parts[1]);
                                 }
 
-                            } else {
-                                chatLog.push(`[SYSTEM]: Invalid coordinates. Use: .hack//blink X Y`);
+                                if (!isNaN(targetID)) {
+                                    Dungeon.constructing = false;
+                                    Dungeon.loadMap(targetID); // Teleport!
+                                    chatLog.push(`[SYSTEM]: Teleporting to Map ${targetID}...`);
+                                    Dungeon.saveGame();
+                                } else {
+                                    chatLog.push(`[SYSTEM]: Invalid Map ID.`);
+                                }
                             }
-                        } else {
-                            chatLog.push(`[SYSTEM]: Missing coordinates. Use: .hack//blink X Y`);
-                        }
-                    }
-                    else if (msg.toLowerCase() === '.hack//ghost') {
-                        if(Dungeon.ghost == false){
-                        
-                        Dungeon.ghost = true;
-                        
-                        }
-                        else{
-                        Dungeon.ghost = false;
-                        }
-                    }
-                    else if (msg.toLowerCase().startsWith('.hack//transform')) {
-                        let parts2 = msg.split(" ");
-                        let targetp = parseInt(parts2[1]);
+                            else if (msg.toLowerCase().startsWith('.hack//blink')) {
+                                // 1. Remove the command part and clean up extra spaces
+                                let coordStr = msg.substring('.hack//blink'.length).trim();
+                                
+                                // 2. Split by either a comma OR a space
+                                let parts = coordStr.split(/[ ,]+/); 
 
-                        if (!isNaN(targetp)) {
-                            switch(targetp){
-                        case 0:
-                            playerSprite = 0;
-                            break;
-                            case 1:
-                            playerSprite = 1;
-                            break;
-                            case 2:
-                            playerSprite = 2;
-                            break;
-                            case 3:
-                            playerSprite = 3;
-                            break;
-                            case 4:
-                            playerSprite = 4;
-                            break;
-                            case 5:
-                            playerSprite = 5;
-                            break;
-                            case 6:
-                            playerSprite = 8;
-                            break;
-                            case 7:
-                            playerSprite = 9.1;
-                            break;
-                            case 8:
-                            playerSprite = 10;
-                            break;
-                            case 9:
-                            playerSprite = 13;
-                            break;
-                            case 10:
-                            playerSprite = 23.1;
-                            break;
-                            case 11:
-                            playerSprite = 32.1;
-                            break;
-                            case 12:
-                            playerSprite = 33.1;
-                            break;
-                            case 13:
-                            playerSprite = 34.1;
-                            break;
-                            case 14:
-                            playerSprite = 35.1;
-                            break;
-                            case 15:
-                            playerSprite = 37.1;
-                            break;
-                            case 16:
-                            playerSprite = 46.1;
-                            break;
-                            case 17:
-                            playerSprite = 48.1;
-                            break;
-                            case 18:
-                            playerSprite = 54;
-                            break;
-                            case 19:
-                            playerSprite = 56.1;
-                            break;
-                            case 20:
-                            playerSprite = 57.1;
-                            break;
-                            case 21:
-                            playerSprite = 60.1;
-                            break;
-                            case 22:
-                            playerSprite = 61.1;
-                            break;
-                            case 23:
-                            playerSprite = 61.2;
-                            break;
-                            case 24:
-                            playerSprite = 50;
-                            break;
-                            case 25:
-                            playerSprite = 23;
-                            break;
-                            case 26:
-                            playerSprite = 77.1;
-                            break;
-                            case 27:
-                            playerSprite = 77.2;
-                            break;
-                            case 28:
-                            playerSprite = 75.1;
-                            break;
-                            case 29:
-                            playerSprite = 81;
-                            break;
-                            case 30:
-                            playerSprite = 82;
-                            break;
-                            case 31:
-                            playerSprite = 56;
-                            break;
-                            case 32:
-                            playerSprite = 28888;
-                            break;
-                            case 33:
-                            playerSprite = 61391;
-                            break
-                            case 34:
-                                playerSprite = .61391;
-                            break;
+                                if (parts.length >= 2) {
+                                    let targetX = parseInt(parts[0]);
+                                    let targetY = parseInt(parts[1]);
 
-                        }
-        
-                        } else {
-                            chatLog.push(`[SYSTEM]: Invalid Sprite Index`);
-                        }
-                    }
-                    else if (msg.toLowerCase() === '.hack//deleteall') {
-                        // 1. Tell the server to wipe Suncat's memory of us
-                        if (typeof socket !== 'undefined') {
-                            socket.emit('delete_save');
-                        }
-                        
-                        // 2. Wipe the Game Save AND the UI Journals
-                        localStorage.removeItem('battlemage_save'); 
-                        localStorage.removeItem('runestones_chronicle');
-                        localStorage.removeItem('suncat_chronicle');
-                        
-                        // 3. Give the server a tiny fraction of a second to process the delete before reloading
-                        setTimeout(() => {
-                            location.reload(); 
-                        }, 200); 
-                    }
-                    else if (msg.toLowerCase() === '.hack//delete') {
-                        // Clear the save data
-                        localStorage.removeItem('battlemage_save'); 
-                        localStorage.removeItem('runestones_chronicle');
-                        localStorage.removeItem('suncat_chronicle');
-                        // Optional: Clear everything if you have other keys
-                        // localStorage.clear(); 
-                        
-                        // Reload to force the "New Game" state
-                        location.reload(); 
-                    }
-                    else if (msg.toLowerCase() === '.hack//vanquish') {
-                        if(startGame == 'battle'){
-                        Player[1].option = 10.1;
-                        Player[0].option = 10;
-                        }
-                    }
-                    else if (msg.toLowerCase() === '.hack//sign') {
-                        if(Dbug == 0){
-                        Dbug = 1;
-                        Dungeon.dSense = 100;
-                        Dungeon.ghost = true;
-                        
-                        }
-                        else if(Dbug == 1){
-                        Dbug = 0;
-                        }
-                    }
-                    else if (msg.toLowerCase() === '.hack//respawn') {
-                        // A. Identify the prefix for this map (e.g., "1_" for Map 1)
-                        let prefix = Dungeon.mapID + "_";
-                        
-                        // B. Clear memory of dead NPCs ONLY on this map
-                        // (We don't want to reset bosses on other maps we already killed)
-                        for (let key in Dungeon.memory) {
-                            if (key.startsWith(prefix)) {
-                                delete Dungeon.memory[key];
+                                    if (!isNaN(targetX) && !isNaN(targetY)) {
+                                        // 3. Snap to tile center (x.5, y.5) to prevent wall clipping
+                                        Dungeon.x = targetX + 0.5;
+                                        Dungeon.y = targetY + 0.5;
+                                        
+                                        chatLog.push(`[SYSTEM]: Blinked to X: ${targetX}, Y: ${targetY}.`);
+
+                                        // 4. --- INSTANT SERVER SYNC ---
+                                        // Force the server to acknowledge the teleport immediately!
+                                        if (typeof socket !== 'undefined') {
+                                            socket.emit("move", {
+                                                x: Dungeon.x,
+                                                y: Dungeon.y,
+                                                dir: Dungeon.dir,
+                                                mapID: Dungeon.mapID,
+                                                status: Dungeon.status, 
+                                                type: playerSprite, 
+                                                name: playerName 
+                                            });
+                                        }
+
+                                    } else {
+                                        chatLog.push(`[SYSTEM]: Invalid coordinates. Use: .hack//blink X Y`);
+                                    }
+                                } else {
+                                    chatLog.push(`[SYSTEM]: Missing coordinates. Use: .hack//blink X Y`);
+                                }
                             }
-                        }
+                            else if (msg.toLowerCase() === '.hack//ghost') {
+                                if(Dungeon.ghost == false){
+                                
+                                Dungeon.ghost = true;
+                                
+                                }
+                                else{
+                                Dungeon.ghost = false;
+                                }
+                            }
+                            else if (msg.toLowerCase().startsWith('.hack//transform')) {
+                                let parts2 = msg.split(" ");
+                                let targetp = parseInt(parts2[1]);
 
-                            // C. Now reload the map (The game will see no memory of death, so they spawn)
-                            Dungeon.loadMap(Dungeon.mapID);
+                                if (!isNaN(targetp)) {
+                                    switch(targetp){
+                                case 0:
+                                    playerSprite = 0;
+                                    break;
+                                    case 1:
+                                    playerSprite = 1;
+                                    break;
+                                    case 2:
+                                    playerSprite = 2;
+                                    break;
+                                    case 3:
+                                    playerSprite = 3;
+                                    break;
+                                    case 4:
+                                    playerSprite = 4;
+                                    break;
+                                    case 5:
+                                    playerSprite = 5;
+                                    break;
+                                    case 6:
+                                    playerSprite = 8;
+                                    break;
+                                    case 7:
+                                    playerSprite = 9.1;
+                                    break;
+                                    case 8:
+                                    playerSprite = 10;
+                                    break;
+                                    case 9:
+                                    playerSprite = 13;
+                                    break;
+                                    case 10:
+                                    playerSprite = 23.1;
+                                    break;
+                                    case 11:
+                                    playerSprite = 32.1;
+                                    break;
+                                    case 12:
+                                    playerSprite = 33.1;
+                                    break;
+                                    case 13:
+                                    playerSprite = 34.1;
+                                    break;
+                                    case 14:
+                                    playerSprite = 35.1;
+                                    break;
+                                    case 15:
+                                    playerSprite = 37.1;
+                                    break;
+                                    case 16:
+                                    playerSprite = 46.1;
+                                    break;
+                                    case 17:
+                                    playerSprite = 48.1;
+                                    break;
+                                    case 18:
+                                    playerSprite = 54;
+                                    break;
+                                    case 19:
+                                    playerSprite = 56.1;
+                                    break;
+                                    case 20:
+                                    playerSprite = 57.1;
+                                    break;
+                                    case 21:
+                                    playerSprite = 60.1;
+                                    break;
+                                    case 22:
+                                    playerSprite = 61.1;
+                                    break;
+                                    case 23:
+                                    playerSprite = 61.2;
+                                    break;
+                                    case 24:
+                                    playerSprite = 50;
+                                    break;
+                                    case 25:
+                                    playerSprite = 23;
+                                    break;
+                                    case 26:
+                                    playerSprite = 77.1;
+                                    break;
+                                    case 27:
+                                    playerSprite = 77.2;
+                                    break;
+                                    case 28:
+                                    playerSprite = 75.1;
+                                    break;
+                                    case 29:
+                                    playerSprite = 81;
+                                    break;
+                                    case 30:
+                                    playerSprite = 82;
+                                    break;
+                                    case 31:
+                                    playerSprite = 56;
+                                    break;
+                                    case 32:
+                                    playerSprite = 28888;
+                                    break;
+                                    case 33:
+                                    playerSprite = 61391;
+                                    break
+                                    case 34:
+                                        playerSprite = .61391;
+                                    break;
+
+                                }
+                
+                                } else {
+                                    chatLog.push(`[SYSTEM]: Invalid Sprite Index`);
+                                }
+                            }
+                            else if (msg.toLowerCase() === '.hack//deleteall') {
+                                // 1. Tell the server to wipe Suncat's memory of us
+                                if (typeof socket !== 'undefined') {
+                                    socket.emit('delete_save');
+                                }
+                                
+                                // 2. Wipe the Game Save AND the UI Journals
+                                localStorage.removeItem('battlemage_save'); 
+                                localStorage.removeItem('runestones_chronicle');
+                                localStorage.removeItem('suncat_chronicle');
+                                
+                                // 3. Give the server a tiny fraction of a second to process the delete before reloading
+                                setTimeout(() => {
+                                    location.reload(); 
+                                }, 200); 
+                            }
+                            else if (msg.toLowerCase() === '.hack//delete') {
+                                // Clear the save data
+                                localStorage.removeItem('battlemage_save'); 
+                                localStorage.removeItem('runestones_chronicle');
+                                localStorage.removeItem('suncat_chronicle');
+                                // Optional: Clear everything if you have other keys
+                                // localStorage.clear(); 
+                                
+                                // Reload to force the "New Game" state
+                                location.reload(); 
+                            }
+                            else if (msg.toLowerCase() === '.hack//vanquish') {
+                                if(startGame == 'battle'){
+                                Player[1].option = 10.1;
+                                Player[0].option = 10;
+                                }
+                            }
+                            else if (msg.toLowerCase() === '.hack//sign') {
+                                if(Dbug == 0){
+                                Dbug = 1;
+                                Dungeon.dSense = 100;
+                                Dungeon.ghost = true;
+                                
+                                }
+                                else if(Dbug == 1){
+                                Dbug = 0;
+                                }
+                            }
+                            else if (msg.toLowerCase() === '.hack//respawn') {
+                                // A. Identify the prefix for this map (e.g., "1_" for Map 1)
+                                let prefix = Dungeon.mapID + "_";
+                                
+                                // B. Clear memory of dead NPCs ONLY on this map
+                                // (We don't want to reset bosses on other maps we already killed)
+                                for (let key in Dungeon.memory) {
+                                    if (key.startsWith(prefix)) {
+                                        delete Dungeon.memory[key];
+                                    }
+                                }
+
+                                    // C. Now reload the map (The game will see no memory of death, so they spawn)
+                                    Dungeon.loadMap(Dungeon.mapID);
+                                    
+                                    chatLog.push(`[SYSTEM]: Local NPCs respawned.`);
+                            }
+                            else if (msg.toLowerCase() === '.hack//reset') {
+                                Dungeon.refreshNPCs()
+                                // C. Now reload the map (The game will see no memory of death, so they spawn)
+                                Dungeon.loadMap(Dungeon.mapID);
+                                chatLog.push(`[SYSTEM]: Monsters roam the land...`);
+                            }
+                            else if (msg.toLowerCase().startsWith('.hack//card')){
+                                let parts3 = msg.split(" ");
+                                let targetID3 = parseInt(parts3[1]);
+
+                                if (!isNaN(targetID3)) {
+                                    Dungeon.spawnPersistentNPC(Dungeon.mapID, Dungeon.npcs.length, Dungeon.x, Dungeon.y-1, -27, 'stationary', '#ffff00',[targetID3],null,null,'dialogue',null,null,'friendly');    
+                                    chatLog.push(`[SYSTEM]: A card meterializes out of thin air...`);
+                                } else {
+                                    chatLog.push(`[SYSTEM]: The spell fizzles into smoke.`);
+                                }
+
+                            }
+                            else if (msg.toLowerCase().startsWith('.hack//song')) {
+                                let parts4 = msg.split(" ");
+                                let targetID4 = parseInt(parts4[1]);
+
+                                if (!isNaN(targetID4)) {
+                                    chatLog.push(`[SYSTEM]: A melody fills the air only I can hear...`);
+                                    MusicEngine.stop();
+                                    MusicEngine.play(targetID4)
+                                } else {
+                                    chatLog.push(`[SYSTEM]: Invalid Song (pick from tracks 0-42) .`);
+                                }
+                            }
+                            else if (msg.toLowerCase() === '.hack//ssong') {
+                                MusicEngine.stop();
+                                MusicEngine.play(rnd(0,songcount - 1))
+                            }
+                            else if (msg.toLowerCase().startsWith('.hack//sfx')) {
+                                let parts5 = msg.split(" ");
+                                let targetID5 = parseInt(parts5[1]);
+
+                                if (!isNaN(targetID5)) {
+                                    chatLog.push(`[SYSTEM]: A strange sound fills the air...`);
+                                    MusicEngine.play3DSFX(targetID5, Dungeon.x, Dungeon.y,Dungeon.x+1, Dungeon.y+1,Dungeon.dir)
+                                    socket.emit('playerAction_SFX', {
+                                    id: targetID5,
+                                    x: Dungeon.x,
+                                    y: Dungeon.y,
+                                    dir: Dungeon.dir
+                                    });
+                                }
+                                else {
+                                    chatLog.push(`[SYSTEM]: Invalid SFX (pick from 0-8) .`);
+                                }
+                            }
+                            // 1. GM SPAWN: .hack//spawn [cardIndex] [roleEnum]
+                            else if (msg.toLowerCase().startsWith('.hack//spawn')) {
+                                let parts = msg.split(" ");
+                                
+                                // We send this to the server so it syncs for everyone!
+                                if (typeof socket !== 'undefined') {
+                                    socket.emit("admin_spawn", {
+                                        cardIndex: parts[1], // Can be undefined
+                                        roleEnum: parts[2]   // 0=Battle, 1=Dialogue, 2=Reward, 3=Traitor
+                                    });
+                                }
+                                chatLog.push(`[SYSTEM]: Conjuring entity...`);
+                                
+                            }
+                            // 2. THE FIRESTORM: .hack//firestorm
+                            else if (msg.toLowerCase().startsWith('.hack//firestorm')) {
+                                chatLog.push(`${playerName} cast Firestorm!`);
+                                if (startGame === 'battle'){
+                                MusicEngine.play(Dungeon.mapSong[Dungeon.mapID])}
+                                // 1. Set local weather
+                                if (Dungeon.weather) Dungeon.weather.mode = 'apocalypse';
+                                
+                                // 2. Eradicate all hostiles
+                                Dungeon.npcs.forEach(npc => {
+                                    // Kill anything that fights, isn't already dead, and isn't a portal/card
+                                    if (!npc.isDead && !npc.isBoss && npc.role === 'battle' &&npc.alignment != 'ally'&& npc.type !== 99 && npc.type !== -27) {
+                                        // Because killNPC already emits to the server, everyone will see them die!
+                                        Dungeon.killNPC(npc, false, 'firestorm');
+                                    }
+                                });
+                                
+                            }
+                            else if (msg.toLowerCase().startsWith('.hack//fire')) {
+                                chatLog.push(`${playerName} cast Fire!`);
+                                Dungeon.castSpell(26);
+                                
+                            }
+                            else if (msg.toLowerCase().startsWith('.hack//mm')) {
+                                chatLog.push(`${playerName} cast Magic Missile!`);
+                                Dungeon.castSpell(13);
+                                
+                            }
+                            else if (msg.toLowerCase().startsWith('.hack//summon')) {
+                                let parts9 = msg.split(" ");
+                                let targetID9 = Number(parts9[1]);
+
+                                if (!isNaN(targetID9)) {
+                                    chatLog.push(`[SYSTEM]: A phantom ally appears...`);
+                                    MusicEngine.playSFX('warp');
+                                    Dungeon.summonAlly(targetID9)
+                                } else {
+                                    Dungeon.summonAlly(23.1)
+                                }
+                            }
+                            if (msg.toLowerCase().startsWith('.hack//sm')) {
+                                exportCurrentMap(); // Trigger the export engine
+                                chatLog.push(`[SYSTEM]: Exporting Map ${Dungeon.mapID} to file...`);
+                                isChatActive = false;
+                                chatInput.blur();
+                            }
                             
-                            chatLog.push(`[SYSTEM]: Local NPCs respawned.`);
-                    }
-                    else if (msg.toLowerCase() === '.hack//reset') {
-                        Dungeon.refreshNPCs()
-                        // C. Now reload the map (The game will see no memory of death, so they spawn)
-                        Dungeon.loadMap(Dungeon.mapID);
-                        chatLog.push(`[SYSTEM]: Monsters roam the land...`);
-                    }
-                    else if (msg.toLowerCase().startsWith('.hack//card')){
-                        let parts3 = msg.split(" ");
-                        let targetID3 = parseInt(parts3[1]);
-
-                        if (!isNaN(targetID3)) {
-                            Dungeon.spawnPersistentNPC(Dungeon.mapID, Dungeon.npcs.length, Dungeon.x, Dungeon.y-1, -27, 'stationary', '#ffff00',[targetID3],null,null,'dialogue',null,null,'friendly');    
-                            chatLog.push(`[SYSTEM]: A card meterializes out of thin air...`);
-                        } else {
-                            chatLog.push(`[SYSTEM]: The spell fizzles into smoke.`);
-                        }
-
-                    }
-                    else if (msg.toLowerCase().startsWith('.hack//song')) {
-                        let parts4 = msg.split(" ");
-                        let targetID4 = parseInt(parts4[1]);
-
-                        if (!isNaN(targetID4)) {
-                            chatLog.push(`[SYSTEM]: A melody fills the air only I can hear...`);
-                            MusicEngine.stop();
-                            MusicEngine.play(targetID4)
-                        } else {
-                            chatLog.push(`[SYSTEM]: Invalid Song (pick from tracks 0-42) .`);
-                        }
-                    }
-                    else if (msg.toLowerCase() === '.hack//ssong') {
-                        MusicEngine.stop();
-                        MusicEngine.play(rnd(0,songcount - 1))
-                    }
-                    else if (msg.toLowerCase().startsWith('.hack//sfx')) {
-                        let parts5 = msg.split(" ");
-                        let targetID5 = parseInt(parts5[1]);
-
-                        if (!isNaN(targetID5)) {
-                            chatLog.push(`[SYSTEM]: A strange sound fills the air...`);
-                            MusicEngine.play3DSFX(targetID5, Dungeon.x, Dungeon.y,Dungeon.x+1, Dungeon.y+1,Dungeon.dir)
-                            socket.emit('playerAction_SFX', {
-                            id: targetID5,
-                            x: Dungeon.x,
-                            y: Dungeon.y,
-                            dir: Dungeon.dir
-                            });
-                        }
-                        else {
-                            chatLog.push(`[SYSTEM]: Invalid SFX (pick from 0-8) .`);
-                        }
-                    }
-                    // 1. GM SPAWN: .hack//spawn [cardIndex] [roleEnum]
-                    else if (msg.toLowerCase().startsWith('.hack//spawn')) {
-                        let parts = msg.split(" ");
-                        
-                        // We send this to the server so it syncs for everyone!
-                        if (typeof socket !== 'undefined') {
-                            socket.emit("admin_spawn", {
-                                cardIndex: parts[1], // Can be undefined
-                                roleEnum: parts[2]   // 0=Battle, 1=Dialogue, 2=Reward, 3=Traitor
-                            });
-                        }
-                        chatLog.push(`[SYSTEM]: Conjuring entity...`);
-                        
-                    }
-                    // 2. THE FIRESTORM: .hack//firestorm
-                    else if (msg.toLowerCase().startsWith('.hack//firestorm')) {
-                        chatLog.push(`${playerName} cast Firestorm!`);
-                        if (startGame === 'battle'){
-                        MusicEngine.play(Dungeon.mapSong[Dungeon.mapID])}
-                        // 1. Set local weather
-                        if (Dungeon.weather) Dungeon.weather.mode = 'apocalypse';
-                        
-                        // 2. Eradicate all hostiles
-                        Dungeon.npcs.forEach(npc => {
-                            // Kill anything that fights, isn't already dead, and isn't a portal/card
-                            if (!npc.isDead && !npc.isBoss && npc.role === 'battle' &&npc.alignment != 'ally'&& npc.type !== 99 && npc.type !== -27) {
-                                // Because killNPC already emits to the server, everyone will see them die!
-                                Dungeon.killNPC(npc, false, 'firestorm');
+                            // If the user types .hack//pjournal
+                            else if (msg.toLowerCase() === '.hack//read') {
+                                preGame = startGame; // Save where we currently are
+                                startGame = 'journal'; // Switch to journal view
                             }
-                        });
-                        
-                    }
-                    else if (msg.toLowerCase().startsWith('.hack//fire')) {
-                        chatLog.push(`${playerName} cast Fire!`);
-                        Dungeon.castSpell(26);
-                        
-                    }
-                    else if (msg.toLowerCase().startsWith('.hack//mm')) {
-                        chatLog.push(`${playerName} cast Magic Missile!`);
-                        Dungeon.castSpell(13);
-                        
-                    }
-                    else if (msg.toLowerCase().startsWith('.hack//summon')) {
-                        let parts9 = msg.split(" ");
-                        let targetID9 = Number(parts9[1]);
-
-                        if (!isNaN(targetID9)) {
-                            chatLog.push(`[SYSTEM]: A phantom ally appears...`);
-                            MusicEngine.playSFX('warp');
-                            Dungeon.summonAlly(targetID9)
-                        } else {
-                            Dungeon.summonAlly(23.1)
-                        }
-                    }
-                    if (msg.toLowerCase().startsWith('.hack//sm')) {
-                        exportCurrentMap(); // Trigger the export engine
-                        chatLog.push(`[SYSTEM]: Exporting Map ${Dungeon.mapID} to file...`);
-                        isChatActive = false;
-                        chatInput.blur();
-                    }
-                    
-                    // If the user types .hack//pjournal
-                    else if (msg.toLowerCase() === '.hack//read') {
-                        preGame = startGame; // Save where we currently are
-                        startGame = 'journal'; // Switch to journal view
-                    }
-                    else if (msg.toLowerCase() === '.hack//shop') {
-                        if(startGame == 'shop'){startGame = preGame;}
-                        else{
-                            shopInventory.length = 0;
-                            let shoplength  = rnd(1,19);
-                            for (let i = 0;i<shoplength;i++){
-                            shopInventory.push(rnd(0,90))
+                            else if (msg.toLowerCase() === '.hack//shop') {
+                                if(startGame == 'shop'){startGame = preGame;}
+                                else{
+                                    shopInventory.length = 0;
+                                    let shoplength  = rnd(1,19);
+                                    for (let i = 0;i<shoplength;i++){
+                                    shopInventory.push(rnd(0,90))
+                                    }
+                                preGame = startGame; // Save where we currently are
+                                startGame = 'shop'; // Switch to journal view
+                                }
                             }
-                        preGame = startGame; // Save where we currently are
-                        startGame = 'shop'; // Switch to journal view
+                            else if (msg.toLowerCase() === '.hack//map'){
+                                if(startGame == 'mapmaker'){startGame = 'explore'}
+                                else{
+                                startGame = 'mapmaker';}
+                                
+                            }
+                            else if (msg.toLowerCase() === '.hack//tactics'){
+                                Dungeon.startEidolonMinigame(0, 56);
+                                
+                            }
+                            chatInput.value = "";
+                            chatDraft = "";
+                            isChatActive = false;
+                            chatInput.blur();
+                            return;
                         }
-                    }
-                    else if (msg.toLowerCase() === '.hack//map'){
-                        if(startGame == 'mapmaker'){startGame = 'explore'}
-                        else{
-                        startGame = 'mapmaker';}
-                        
-                    }
-                    else if (msg.toLowerCase() === '.hack//tactics'){
-                        Dungeon.startEidolonMinigame(0, 56);
-                        
-                    }
                     // === NORMAL CHAT MESSAGE ===
                     else {
                         // If chat is disabled, block the emit and warn the player locally
