@@ -3688,7 +3688,7 @@
             - THEME: ${randomTheme}
             - PLOT TWIST: ${randomTwist}
             
-            [PHILOSOPHICAL FRICTION]: Aggressively challenge the player's [Neglected Themes] in the dialogue, but do so THROUGH the lens of the scenario's lore. If their shadow shows they are peaceful, the enemies must mock peace as a luxury of the privileged ("You judge our hunger from behind your safe walls!"). 
+            [PHILOSOPHICAL FRICTION]: Aggressively challenge the player's [Neglected Themes] in the dialogue, but do so THROUGH the lens of the scenario lore, the biome, the motivation of the npcs, etc. 
             
             [DIALOGUE GENERATION & DATA MAPPING]:
             Write the dialogue arrays matching the lore you invented. Keep all lines under 15 words. Ensure the tone is rich dark fantasy.
