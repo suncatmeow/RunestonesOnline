@@ -3910,15 +3910,13 @@
                         // E. CREATE CUSTOM MAP (The Server-Driven Engine)
                     else if (call.name === "createCustomMap") {
     try {
-        // 1. ENUM ROLLS
+        // 1. ENUM ROLLS & FACTION SETUP
         const bEnum = Math.floor(Math.random() * Object.keys(BIOME_DB).length);
         const biome = BIOME_DB[bEnum] || BIOME_DB[0];
         
-        // Map the scenarios to match what your createQuestNPC factory expects!
         const validScenarios = ['rescue', 'fetch', 'escort', 'bounty'];
         let scenarioType = validScenarios[Math.floor(Math.random() * validScenarios.length)];
         
-        // Pick Actors
         const monsterIDs = Object.keys(CARD_MANIFEST_DB).filter(id => CARD_MANIFEST_DB[id].type === "monster" && CARD_MANIFEST_DB[id].rank !== "0");
         let antagID = parseInt(monsterIDs[Math.floor(Math.random() * monsterIDs.length)]);
         let protagID = parseInt(monsterIDs[Math.floor(Math.random() * monsterIDs.length)]);
@@ -3930,75 +3928,138 @@
         let friendlyMinions = getMinions(protagID);
         if (friendlyMinions.length === 0) friendlyMinions = [32, 75, 60]; 
 
-        // 2. THE ASYNC FORK: Run Map Math and LLM at the same time
+        // 2. THE ASYNC FORK (LLM & Grid Generation)
         const targetPlayer = players[findSocketID(call.args.targetName)];
         const scriptPromise = generateScenarioScript(biome.name, scenarioType, CARD_MANIFEST_DB[antagID].name, CARD_MANIFEST_DB[protagID].name, targetPlayer);
         
-        // Wilds Canvas: The background of the map is a Forest or Cave
         let validWilds = ['FOREST', 'CAVE'];
         let wildAlgo = validWilds[Math.floor(Math.random() * validWilds.length)];
+        // Ensure generateInstanceGrid returns { grid, validFloors, bastionCenter, lairCenter, miniCenter }
         const mapData = generateInstanceGrid(wildAlgo, 60, biome.walls[0], 0);
 
-        // ==========================================
-        // 3. MAP THE ACTORS (Zone Architect)
-        // ==========================================
         let script = await scriptPromise;
         if (!script) throw new Error("LLM failed to return a scenario.");
 
         let mapNPCs = [];
         
-        // --- ZONE 1: THE LAIR (Enemy Stronghold) ---
+        // ==========================================
+        // ZONE 1: THE LAIR (The Boss Skeleton)
+        // ==========================================
+        let bossID = 10000 + mapNPCs.length;
         mapNPCs.push({
+            index: bossID,
             type: CARD_MANIFEST_DB[antagID].sprite || antagID,
             x: mapData.lairCenter.x + 0.5, y: mapData.lairCenter.y + 0.5, 
             state: 'stationary', role: 'battle', isBoss: true, alignment: 'foe',
             mastery: 3, deck: buildSynergisticDeck(antagID, 300), color: '#ff00ff', 
-            dialogue: [script.bossTaunt || "You dare approach my domain?"]
+            dialogue: [script.bossTaunt || "You dare approach my domain?"],
+            // DEATH ACTION: Opens the escape portal and drops a high-tier card!
+            deathActions: [
+                ['play_sfx', 'chime'],
+                ['change_weather', 'clear'], 
+                ['give_card', {card: 21, text: "The boss dropped a Crown!"}], 
+                ['spawn_npc', [
+                    999, 99999, 'SPEAKER_X', 'SPEAKER_Y', 
+                    99, 'stationary', '#66ccff', 
+                    [mapData.bastionCenter.x + 0.5, mapData.bastionCenter.y + 0.5, 999, 2], 
+                    null, null, 'portal', null, false, 'friendly'
+                ]],
+                ['notify', "The realm is secure. An escape portal has opened!"]
+            ]
         });
 
-        // --- ZONE 2: THE BASTION (City Hub) ---
-        // 1. The Main Quest Giver (Ties to the LLM Script & Client Quest Factory!)
+        // ==========================================
+        // ZONE 2: THE BASTION (City Hub)
+        // ==========================================
         mapNPCs.push({
+            index: 10000 + mapNPCs.length,
             type: CARD_MANIFEST_DB[protagID].sprite || protagID,
             x: mapData.bastionCenter.x + 0.5, y: mapData.bastionCenter.y + 0.5,
-            state: 'stationary', role: 'quest_giver', alignment: 'friendly',
+            state: 'stationary', role: 'dialogue', alignment: 'friendly',
             deck: [], color: '#00ff00', 
-            dialogue: script.friendlyLore || ["We need your help!"],
-            options: [scenarioType] // Passes 'fetch', 'rescue', etc., to the client builder!
+            dialogue: script.friendlyLore || ["Please, you must help us!"]
         });
         
-        // 2. The Radiant Bounty Board
         mapNPCs.push({
-            type: 41, // Shopkeeper/Merchant Sprite
+            index: 10000 + mapNPCs.length,
+            type: 41, 
             x: mapData.bastionCenter.x + 2.5, y: mapData.bastionCenter.y + 0.5,
             state: 'stationary', role: 'bounty_merchant', alignment: 'friendly',
             deck: [], color: '#00ff00' 
         });
 
-        // --- ZONE 3: THE MINI-DUNGEON ---
-        // A trapped ally waiting deep in the labyrinth
-        let prisonerID = friendlyMinions[0] || 32;
-        mapNPCs.push({
-            type: CARD_MANIFEST_DB[prisonerID].sprite || prisonerID, 
-            x: mapData.miniCenter.x + 0.5, y: mapData.miniCenter.y + 0.5,
-            state: 'stationary', role: 'become_ally', alignment: 'friendly_messenger',
-            color: '#00ff00', deck: [prisonerID],
-            dialogue: script.prisonerLines || ["Thank the gods you found me!"]
-        });
+        // ==========================================
+        // ZONE 3: THE MINI-DUNGEON (Sub-Plot Skeletons)
+        // ==========================================
+        let miniTargetID = 10000 + mapNPCs.length;
 
-        // --- ZONE 4: THE ECOLOGY (Distance-Weighted Wanderers) ---
-        // Shuffle valid floors to scatter NPCs evenly
+        if (scenarioType === 'rescue' || scenarioType === 'escort') {
+            // THE ESCORT SKELETON
+            let allySprite = friendlyMinions[0] || 32;
+            mapNPCs.push({
+                index: miniTargetID,
+                type: CARD_MANIFEST_DB[allySprite].sprite || allySprite,
+                x: mapData.miniCenter.x + 0.5, y: mapData.miniCenter.y + 0.5,
+                state: 'fleeing', role: 'dialogue', alignment: 'defender', 
+                color: '#00ff00', deck: [allySprite],
+                dialogue: script.prisonerLines || ["Thank the gods you found me! Help me fight!"],
+                options: ['Recruit', 'Leave'],
+                yesActions: [
+                    ['play_sfx', 'buff2'],
+                    ['become_ally', allySprite],
+                    ['spectate', 'Player has rescued a prisoner from the dungeon.'],
+                    ['disappear', miniTargetID] 
+                ]
+            });
+        } 
+        else if (scenarioType === 'fetch') {
+            // THE TRAPPED LOOT (MIMIC) SKELETON
+            let trapSprite = hostileMinions[0];
+            mapNPCs.push({
+                index: miniTargetID,
+                type: -27, // Looks like a dropped card
+                x: mapData.miniCenter.x + 0.5, y: mapData.miniCenter.y + 0.5,
+                state: 'stationary', role: 'dialogue', alignment: 'friendly', 
+                color: '#ffff00', deck: [trapSprite], 
+                dialogue: ["You found a pristine treasure chest. Open it?"],
+                options: ['Open', 'Leave'],
+                yesActions: [
+                    ['play_sfx', 'cancel'],
+                    ['transform_npc', { index: miniTargetID, newType: trapSprite, newAlignment: 'foe', newRole: 'battle', newState: 'chasing', clearDialogue: true }],
+                    ['start_battle', miniTargetID]
+                ]
+            });
+        }
+        else {
+            // THE WAVE SPAWNER SKELETON
+            mapNPCs.push({
+                index: miniTargetID,
+                type: 16, // Ruin/Altar sprite
+                x: mapData.miniCenter.x + 0.5, y: mapData.miniCenter.y + 0.5,
+                state: 'stationary', role: 'dialogue', alignment: 'friendly',
+                color: '#00ff00', deck: [],
+                dialogue: ["The altar hums with dark magic. Disturbing it may awaken the horde. Purge it?"],
+                options: ['Purge', 'Leave'],
+                yesActions: [
+                    ['play_sfx', 'horn'],
+                    ['start_hunted', { waves: 3, interval: 300, mobs: [{sprite: hostileMinions[0]}] }],
+                    ['notify', "The horde has been alerted! Survive!"],
+                    ['disappear', miniTargetID] 
+                ]
+            });
+        }
+
+        // ==========================================
+        // ZONE 4: THE ECOLOGY (Distance-Weighted)
+        // ==========================================
         let shuffledFloors = [...mapData.validFloors].sort(() => 0.5 - Math.random());
-        
-        // Dense population: 1 NPC per 15 tiles
         let totalWanderers = Math.floor(shuffledFloors.length / 15);
 
         for (let i = 0; i < totalWanderers; i++) {
             let tile = shuffledFloors[i];
-            
-            // Do not spawn wandering mobs directly on our crucial centerpieces
             if (tile.x === mapData.bastionCenter.x && tile.y === mapData.bastionCenter.y) continue;
             if (tile.x === mapData.lairCenter.x && tile.y === mapData.lairCenter.y) continue;
+            if (tile.x === mapData.miniCenter.x && tile.y === mapData.miniCenter.y) continue;
 
             let distToLair = Math.hypot(tile.x - mapData.lairCenter.x, tile.y - mapData.lairCenter.y);
             let distToBastion = Math.hypot(tile.x - mapData.bastionCenter.x, tile.y - mapData.bastionCenter.y);
@@ -4006,18 +4067,18 @@
             let isHostile = false;
             let spawnID;
 
-            // WEIGHTED PROBABILITY based on geography
             if (distToLair < distToBastion * 0.6) {
-                isHostile = Math.random() < 0.9; // 90% Hostile near the Lair
+                isHostile = Math.random() < 0.9; 
             } else if (distToBastion < distToLair * 0.6) {
-                isHostile = Math.random() < 0.2; // 20% Hostile near the Bastion
+                isHostile = Math.random() < 0.2; 
             } else {
-                isHostile = Math.random() < 0.6; // 60% Hostile in the untamed borderlands
+                isHostile = Math.random() < 0.6; 
             }
 
             if (isHostile) {
                 spawnID = hostileMinions[Math.floor(Math.random() * hostileMinions.length)];
                 mapNPCs.push({
+                    index: 10000 + mapNPCs.length,
                     type: CARD_MANIFEST_DB[spawnID].sprite || spawnID, 
                     x: tile.x + 0.5, y: tile.y + 0.5, 
                     state: 'wandering', role: 'battle', alignment: 'foe', 
@@ -4026,9 +4087,10 @@
                 });
             } else {
                 spawnID = friendlyMinions[Math.floor(Math.random() * friendlyMinions.length)];
-                let isDefender = (distToBastion <= 7); // If they spawn inside/near the Bastion walls, they guard it!
+                let isDefender = (distToBastion <= 7); 
                 
                 mapNPCs.push({
+                    index: 10000 + mapNPCs.length,
                     type: CARD_MANIFEST_DB[spawnID].sprite || spawnID, 
                     x: tile.x + 0.5, y: tile.y + 0.5, 
                     state: 'wandering', role: 'dialogue', alignment: isDefender ? 'defender' : 'friendly', 
@@ -4038,15 +4100,15 @@
             }
         }
 
-        mapNPCs.forEach((npc, idx) => { npc.index = 10000 + idx; });
-
-        // 4. CACHE THE INSTANCE
+        // ==========================================
+        // 5. CACHE INSTANCE & DISPATCH MESSENGER
+        // ==========================================
         const customMapData = {
             id: 999, maze: mapData.grid, 
             skyColor: biome.skies[0], floorColor: biome.floors[0], 
             name: `Realm of the ${script.questObjective.split(' ')[0] || "Mystery"}`, 
             npcs: mapNPCs, weather: biome.weather[0],
-            spawnX: mapData.bastionCenter.x + 0.5, // Force spawn into the Bastion!
+            spawnX: mapData.bastionCenter.x + 0.5, 
             spawnY: mapData.bastionCenter.y + 0.5,
             bossX: mapData.lairCenter.x + 0.5,
             bossY: mapData.lairCenter.y + 0.5,
@@ -4055,11 +4117,9 @@
 
         activeCustomMap = customMapData;
 
-        // 5. SPAWN THE IMP IN THE OVERWORLD
         let requesterID = socket ? socket.id : findSocketID(call.args.targetName);
         if (requesterID && players[requesterID]) {
             const tp = players[requesterID];
-            
             tp.activeQuest = script.questObjective;
             tp.mapScenario = scenarioType; 
             tp.mapBossID = antagID;
@@ -4068,7 +4128,7 @@
                 mapID: tp.mapID, 
                 index: Math.floor(Math.random() * 100000) + 1000,
                 x: tp.x, y: tp.y, type: 56, state: 'chasing', isBoss: false, 
-                role: 'dialogue', color: '#ff8800', deck: [], 
+                role: 'portal_invite', color: '#ff8800', deck: [], 
                 dialogue: [`My master Suncat sent me to bring you to the adventure realm. A great ${scenarioType} awaits. Shall we go?`],
                 options: ['Yes', 'No'], alignment: 'friendly_messenger',
                 yesActions: [['load_map', 999], ['play_sfx', 'warp'], ['disappear', null]],
@@ -4076,14 +4136,14 @@
             });
         }
 
-        functionResult = { result: `Success. Generated the Multi-Zone scenario and dispatched messenger imp.` };
+        functionResult = { result: `Success. Generated Multi-Zone scenario and dispatched messenger imp.` };
 
     } catch (err) {
         console.error("Map Generation Error:", err);
         functionResult = { result: "Critical Error building multi-zone map." };
     }
 }
-
+                    
                     // F. TELEPORT SPECIFIC PLAYER
                     else if (call.name === "teleportPlayer") {
                         const targetID = findSocketID(call.args.targetName);
