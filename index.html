@@ -13087,275 +13087,277 @@
         }
         // Add to Explore class
     // Add to Explore class
-    startEidolonMinigame(playerCardID, enemyCardID) {
-            if (typeof preGame !== 'undefined') preGame = 'explore';
-            if (typeof startGame !== 'undefined') startGame = 'tactics';
-            
-            this.mapID = 888; 
-            this.mapname = "Eidolon Board";
-            
-            const themes = [
-                { floor: '#555566', wall: 25, sky: '#111122' }, // Classic Slate & Stone Grey
-                { floor: '#3a5f3a', wall: 3, sky: '#0a1a0a' }, // Forest Glade (Green leaves)
-                { floor: '#5a2222', wall: 5, sky: '#1a0a0a' }, // Witch Queen Red Brick
-                { floor: '#887755', wall: 11, sky: '#1a1810' }, // Desert/Dirt Pit
-                { floor: '#d0d0e0', wall: 13, sky: '#1a1a2e' }, // Frost Peaks (Snow wall)
-                { floor: '#2a1a3a', wall: 19, sky: '#0a0510' }, // Void/Purple Haze (Avalon)
-                { floor: '#1a2a4a', wall: 9, sky: '#050a1a' }  // Deep Blue Ice Cave
-            ];
-            let theme = themes[Math.floor(Math.random() * themes.length)];
+    startEidolonMinigame(playerTeam, enemyTeam) {
+        if (typeof preGame !== 'undefined') preGame = 'explore';
+        if (typeof startGame !== 'undefined') startGame = 'tactics';
 
-            this.skyColor = theme.sky; 
-            this.floorColor = theme.floor;
-            let wall = theme.wall;
-            // Setup generation parameters
-            let s = 10; // 10x10 gives algorithms like CASTLE and ISLANDS better breathing room
-            let floor = 0;
+        this.mapID = 888;
+        this.mapname = "Eidolon Board";
 
-            // Helper to generate a specific algorithm (Ported from Editor)
-            const generateGrid = (type, size) => {
-                let grid = Array.from({length: size}, () => Array(size).fill(wall));
-                
-                if (type === 'BLANK') {
-                    for(let y = 1; y < size - 1; y++) for(let x = 1; x < size - 1; x++) grid[y][x] = floor;
-                } 
-                else if (type === 'CAVE') {
-                    grid = Array.from({length: size}, () => Array.from({length: size}, () => Math.random() < 0.45 ? wall : floor));
-                    for (let i = 0; i < 4; i++) {
-                        let temp = JSON.parse(JSON.stringify(grid));
-                        for(let y = 1; y < size - 1; y++) {
-                            for(let x = 1; x < size - 1; x++) {
-                                let n = 0;
-                                for(let dy = -1; dy <= 1; dy++) for(let dx = -1; dx <= 1; dx++) if (grid[y+dy][x+dx] === wall) n++;
-                                temp[y][x] = n > 4 ? wall : floor;
-                            }
-                        }
-                        grid = temp;
-                    }
-                } 
-                else if (type === 'CITY') {
-                    for(let y = 1; y < size - 1; y++) for(let x = 1; x < size - 1; x++) grid[y][x] = floor;
-                    let buildings = [];
-                    let attempts = size * size; 
-                    let minSize = 3; // Scaled down slightly for 12x12
-                    let maxSize = 6;
+        // --- Normalize Inputs ---
+        // This ensures that if you pass a single ID, it gets treated as a team of 1
+        const pTeam = Array.isArray(playerTeam) ? playerTeam : [playerTeam];
+        const eTeam = Array.isArray(enemyTeam) ? enemyTeam : [enemyTeam];
 
-                    for (let i = 0; i < attempts; i++) {
-                        let bw = Math.floor(Math.random() * (maxSize - minSize + 1)) + minSize;
-                        let bh = Math.floor(Math.random() * (maxSize - minSize + 1)) + minSize;
-                        let bx = Math.floor(Math.random() * (size - bw - 2)) + 1;
-                        let by = Math.floor(Math.random() * (size - bh - 2)) + 1;
+        const themes = [
+            { floor: '#555566', wall: 25, sky: '#111122' },
+            { floor: '#3a5f3a', wall: 3, sky: '#0a1a0a' },
+            { floor: '#5a2222', wall: 5, sky: '#1a0a0a' },
+            { floor: '#887755', wall: 11, sky: '#1a1810' },
+            { floor: '#d0d0e0', wall: 13, sky: '#1a1a2e' },
+            { floor: '#2a1a3a', wall: 19, sky: '#0a0510' },
+            { floor: '#1a2a4a', wall: 9, sky: '#050a1a' }
+        ];
+        let theme = themes[Math.floor(Math.random() * themes.length)];
 
-                        let overlap = false;
-                        for (let b of buildings) {
-                            if (bx <= b.x + b.w && bx + bw >= b.x - 1 && by <= b.y + b.h && by + bh >= b.y - 1) {
-                                overlap = true; break;
-                            }
-                        }
+        this.skyColor = theme.sky;
+        this.floorColor = theme.floor;
+        let wall = theme.wall;
+        let s = 10; 
+        let floor = 0;
 
-                        if (!overlap) {
-                            buildings.push({x: bx, y: by, w: bw, h: bh});
-                            for (let wy = by; wy < by + bh; wy++) {
-                                for (let wx = bx; wx < bx + bw; wx++) {
-                                    if (wy === by || wy === by + bh - 1 || wx === bx || wx === bx + bw - 1) grid[wy][wx] = wall;
-                                }
-                            }
-                            let numDoors = Math.random() > 0.7 ? 2 : 1;
-                            let sides = [0, 1, 2, 3];
-                            for (let j = sides.length - 1; j > 0; j--) {
-                                const k = Math.floor(Math.random() * (j + 1));
-                                [sides[j], sides[k]] = [sides[k], sides[j]];
-                            }
-                            for (let d = 0; d < numDoors; d++) {
-                                let side = sides[d];
-                                if (side === 0) grid[by][bx + Math.floor(bw/2)] = floor; 
-                                else if (side === 1) grid[by + bh - 1][bx + Math.floor(bw/2)] = floor; 
-                                else if (side === 2) grid[by + Math.floor(bh/2)][bx] = floor; 
-                                else if (side === 3) grid[by + Math.floor(bh/2)][bx + bw - 1] = floor; 
-                            }
-                        }
-                    }
-                }
-                else if (type === 'FOREST') {
-                    for(let y = 1; y < size - 1; y++) for(let x = 1; x < size - 1; x++) grid[y][x] = Math.random() < 0.3 ? wall : floor;
+        const generateGrid = (type, size) => {
+            let grid = Array.from({length: size}, () => Array(size).fill(wall));
+            if (type === 'BLANK') {
+                for(let y = 1; y < size - 1; y++) for(let x = 1; x < size - 1; x++) grid[y][x] = floor;
+            } else if (type === 'CAVE') {
+                grid = Array.from({length: size}, () => Array.from({length: size}, () => Math.random() < 0.45 ? wall : floor));
+                for (let i = 0; i < 4; i++) {
                     let temp = JSON.parse(JSON.stringify(grid));
                     for(let y = 1; y < size - 1; y++) {
                         for(let x = 1; x < size - 1; x++) {
                             let n = 0;
                             for(let dy = -1; dy <= 1; dy++) for(let dx = -1; dx <= 1; dx++) if (grid[y+dy][x+dx] === wall) n++;
-                            temp[y][x] = n >= 5 ? wall : floor;
+                            temp[y][x] = n > 4 ? wall : floor;
                         }
                     }
                     grid = temp;
-                } 
-                else if (type === 'ISLANDS') {
-                    for(let y = 1; y < size - 1; y++) for(let x = 1; x < size - 1; x++) grid[y][x] = wall;
-                    let numIslands = Math.floor(size / 6) + 2; 
-                    let islands = [];
-                    for (let i = 0; i < numIslands * 3; i++) {
-                        let cx = Math.floor(Math.random() * (size - 6)) + 3;
-                        let cy = Math.floor(Math.random() * (size - 6)) + 3;
-                        let tooClose = false;
-                        for (let isl of islands) if (Math.hypot(cx - isl.x, cy - isl.y) < 4) { tooClose = true; break; }
-                        if (!tooClose) islands.push({x: cx, y: cy});
-                        if (islands.length >= numIslands) break;
+                }
+            } else if (type === 'CITY') {
+                for(let y = 1; y < size - 1; y++) for(let x = 1; x < size - 1; x++) grid[y][x] = floor;
+                let buildings = [];
+                let attempts = size * size;
+                let minSize = 3; 
+                let maxSize = 6;
+                for (let i = 0; i < attempts; i++) {
+                    let bw = Math.floor(Math.random() * (maxSize - minSize + 1)) + minSize;
+                    let bh = Math.floor(Math.random() * (maxSize - minSize + 1)) + minSize;
+                    let bx = Math.floor(Math.random() * (size - bw - 2)) + 1;
+                    let by = Math.floor(Math.random() * (size - bh - 2)) + 1;
+                    let overlap = false;
+                    for (let b of buildings) {
+                        if (bx <= b.x + b.w && bx + bw >= b.x - 1 && by <= b.y + b.h && by + bh >= b.y - 1) {
+                            overlap = true; break;
+                        }
                     }
-                    if (islands.length === 0) islands.push({x: Math.floor(size/2), y: Math.floor(size/2)});
-                    for (let isl of islands) {
-                        let r = Math.floor(Math.random() * 2) + 1; 
-                        for(let dy = -r; dy <= r; dy++) {
-                            for(let dx = -r; dx <= r; dx++) {
-                                if (Math.abs(dx) + Math.abs(dy) <= r + 1) {
-                                    if (isl.y+dy > 0 && isl.y+dy < size-1 && isl.x+dx > 0 && isl.x+dx < size-1) grid[isl.y+dy][isl.x+dx] = floor;
-                                }
+                    if (!overlap) {
+                        buildings.push({x: bx, y: by, w: bw, h: bh});
+                        for (let wy = by; wy < by + bh; wy++) {
+                            for (let wx = bx; wx < bx + bw; wx++) {
+                                if (wy === by || wy === by + bh - 1 || wx === bx || wx === bx + bw - 1) grid[wy][wx] = wall;
+                            }
+                        }
+                        let numDoors = Math.random() > 0.7 ? 2 : 1;
+                        let sides = [0, 1, 2, 3];
+                        for (let j = sides.length - 1; j > 0; j--) {
+                            const k = Math.floor(Math.random() * (j + 1));
+                            [sides[j], sides[k]] = [sides[k], sides[j]];
+                        }
+                        for (let d = 0; d < numDoors; d++) {
+                            let side = sides[d];
+                            if (side === 0) grid[by][bx + Math.floor(bw/2)] = floor; 
+                            else if (side === 1) grid[by + bh - 1][bx + Math.floor(bw/2)] = floor; 
+                            else if (side === 2) grid[by + Math.floor(bh/2)][bx] = floor; 
+                            else if (side === 3) grid[by + Math.floor(bh/2)][bx + bw - 1] = floor; 
+                        }
+                    }
+                }
+            } else if (type === 'FOREST') {
+                for(let y = 1; y < size - 1; y++) for(let x = 1; x < size - 1; x++) grid[y][x] = Math.random() < 0.3 ? wall : floor;
+                let temp = JSON.parse(JSON.stringify(grid));
+                for(let y = 1; y < size - 1; y++) {
+                    for(let x = 1; x < size - 1; x++) {
+                        let n = 0;
+                        for(let dy = -1; dy <= 1; dy++) for(let dx = -1; dx <= 1; dx++) if (grid[y+dy][x+dx] === wall) n++;
+                        temp[y][x] = n >= 5 ? wall : floor;
+                    }
+                }
+                grid = temp;
+            } else if (type === 'ISLANDS') {
+                for(let y = 1; y < size - 1; y++) for(let x = 1; x < size - 1; x++) grid[y][x] = wall;
+                let numIslands = Math.floor(size / 6) + 2;
+                let islands = [];
+                for (let i = 0; i < numIslands * 3; i++) {
+                    let cx = Math.floor(Math.random() * (size - 6)) + 3;
+                    let cy = Math.floor(Math.random() * (size - 6)) + 3;
+                    let tooClose = false;
+                    for (let isl of islands) if (Math.hypot(cx - isl.x, cy - isl.y) < 4) { tooClose = true; break; }
+                    if (!tooClose) islands.push({x: cx, y: cy});
+                    if (islands.length >= numIslands) break;
+                }
+                if (islands.length === 0) islands.push({x: Math.floor(size/2), y: Math.floor(size/2)});
+                for (let isl of islands) {
+                    let r = Math.floor(Math.random() * 2) + 1;
+                    for(let dy = -r; dy <= r; dy++) {
+                        for(let dx = -r; dx <= r; dx++) {
+                            if (Math.abs(dx) + Math.abs(dy) <= r + 1) {
+                                if (isl.y+dy > 0 && isl.y+dy < size-1 && isl.x+dx > 0 && isl.x+dx < size-1) grid[isl.y+dy][isl.x+dx] = floor;
                             }
                         }
                     }
-                    for (let i = 1; i < islands.length; i++) {
-                        let p1 = islands[i], nearest = islands[0], minDist = Infinity;
-                        for(let j = 0; j < i; j++) {
-                            let d = Math.hypot(p1.x - islands[j].x, p1.y - islands[j].y);
-                            if (d < minDist) { minDist = d; nearest = islands[j]; }
-                        }
-                        let bx = p1.x; let by = p1.y;
-                        while(bx !== nearest.x) { grid[by][bx] = floor; bx += Math.sign(nearest.x - bx); }
-                        while(by !== nearest.y) { grid[by][bx] = floor; by += Math.sign(nearest.y - by); }
+                }
+                for (let i = 1; i < islands.length; i++) {
+                    let p1 = islands[i], nearest = islands[0], minDist = Infinity;
+                    for(let j = 0; j < i; j++) {
+                        let d = Math.hypot(p1.x - islands[j].x, p1.y - islands[j].y);
+                        if (d < minDist) { minDist = d; nearest = islands[j]; }
+                    }
+                    let bx = p1.x; let by = p1.y;
+                    while(bx !== nearest.x) { grid[by][bx] = floor; bx += Math.sign(nearest.x - bx); }
+                    while(by !== nearest.y) { grid[by][bx] = floor; by += Math.sign(nearest.y - by); }
+                }
+            } else if (type === 'CASTLE') {
+                for(let y = 1; y < size - 1; y++) for(let x = 1; x < size - 1; x++) grid[y][x] = wall;
+                let cx = Math.floor(size / 2), margin = 1;
+                let kY1 = margin + 1, kY2 = size - margin - 2, kX1 = margin + 1, kX2 = size - margin - 2;
+                for(let y = kY1; y <= kY2; y++) { grid[y][cx] = floor; grid[y][cx - 1] = floor; }
+                let tHeight = Math.max(1, Math.floor((kY2 - kY1) * 0.3));
+                for(let y = kY1; y < kY1 + tHeight; y++) for(let x = kX1 + 1; x < kX2; x++) grid[y][x] = floor;
+                let wingStart = kY1 + tHeight + 1, wingH = Math.floor((kY2 - wingStart) / 2);
+                if (wingH >= 2) {
+                    for(let y = wingStart; y < wingStart + wingH - 1; y++) {
+                        for(let x = kX1; x < cx - 1; x++) grid[y][x] = floor; 
+                        for(let x = cx + 1; x < kX2; x++) grid[y][x] = floor; 
+                    }
+                    grid[wingStart][cx - 2] = floor; grid[wingStart][cx + 1] = floor;
+                    for(let y = wingStart + wingH + 1; y < kY2; y++) {
+                        for(let x = kX1; x < cx - 1; x++) grid[y][x] = floor; 
+                        for(let x = cx + 1; x < kX2; x++) grid[y][x] = floor; 
+                    }
+                    grid[wingStart + wingH + 1][cx - 2] = floor; grid[wingStart + wingH + 1][cx + 1] = floor;
+                }
+            } else if (type === 'LABYRINTH') {
+                for(let y = 1; y < size - 1; y++) for(let x = 1; x < size - 1; x++) grid[y][x] = wall;
+                let stack = [{x: 1, y: 1}]; grid[1][1] = floor;
+                while(stack.length > 0) {
+                    let current = stack[stack.length - 1];
+                    let dirs = [{dx: 0, dy: -2}, {dx: 2, dy: 0}, {dx: 0, dy: 2}, {dx: -2, dy: 0}];
+                    let neighbors = dirs.map(d => ({nx: current.x + d.dx, ny: current.y + d.dy, dx: d.dx, dy: d.dy}))
+                                        .filter(n => n.nx > 0 && n.nx < size-1 && n.ny > 0 && n.ny < size-1 && grid[n.ny][n.nx] === wall);
+                    if (neighbors.length > 0) {
+                        let next = neighbors[Math.floor(Math.random() * neighbors.length)];
+                        grid[current.y + next.dy/2][current.x + next.dx/2] = floor; 
+                        grid[next.ny][next.nx] = floor; 
+                        stack.push({x: next.nx, y: next.ny});
+                    } else stack.pop();
+                }
+            } else if (type === 'DUNGEON') {
+                for(let y = 1; y < size - 1; y++) for(let x = 1; x < size - 1; x++) grid[y][x] = floor; 
+                let numRooms = 3; let rSize = Math.floor((size - 2) / numRooms);
+                for(let r = 1; r < numRooms; r++) {
+                    for(let y = 1; y < size - 1; y++) grid[y][1 + r * rSize] = wall; 
+                    for(let x = 1; x < size - 1; x++) grid[1 + r * rSize][x] = wall; 
+                }
+                for(let rY = 0; rY < numRooms; rY++) {
+                    for(let rX = 0; rX < numRooms; rX++) {
+                        if (rX < numRooms - 1) grid[1 + rY * rSize + Math.floor(rSize / 2)][1 + (rX + 1) * rSize] = floor;
+                        if (rY < numRooms - 1) grid[1 + (rY + 1) * rSize][1 + rX * rSize + Math.floor(rSize / 2)] = floor;
                     }
                 }
-                else if (type === 'CASTLE') {
-                    for(let y = 1; y < size - 1; y++) for(let x = 1; x < size - 1; x++) grid[y][x] = wall;
-                    let cx = Math.floor(size / 2), margin = 1;
-                    let kY1 = margin + 1, kY2 = size - margin - 2, kX1 = margin + 1, kX2 = size - margin - 2;
-                    for(let y = kY1; y <= kY2; y++) { grid[y][cx] = floor; grid[y][cx - 1] = floor; }
-                    let tHeight = Math.max(1, Math.floor((kY2 - kY1) * 0.3));
-                    for(let y = kY1; y < kY1 + tHeight; y++) for(let x = kX1 + 1; x < kX2; x++) grid[y][x] = floor;
-                    let wingStart = kY1 + tHeight + 1, wingH = Math.floor((kY2 - wingStart) / 2);
-                    if (wingH >= 2) {
-                        for(let y = wingStart; y < wingStart + wingH - 1; y++) {
-                            for(let x = kX1; x < cx - 1; x++) grid[y][x] = floor; 
-                            for(let x = cx + 1; x < kX2; x++) grid[y][x] = floor; 
-                        }
-                        grid[wingStart][cx - 2] = floor; grid[wingStart][cx + 1] = floor;
-                        for(let y = wingStart + wingH + 1; y < kY2; y++) {
-                            for(let x = kX1; x < cx - 1; x++) grid[y][x] = floor; 
-                            for(let x = cx + 1; x < kX2; x++) grid[y][x] = floor; 
-                        }
-                        grid[wingStart + wingH + 1][cx - 2] = floor; grid[wingStart + wingH + 1][cx + 1] = floor;
-                    }
-                }
-                else if (type === 'LABYRINTH') {
-                    for(let y = 1; y < size - 1; y++) for(let x = 1; x < size - 1; x++) grid[y][x] = wall;
-                    let stack = [{x: 1, y: 1}]; grid[1][1] = floor;
-                    while(stack.length > 0) {
-                        let current = stack[stack.length - 1];
-                        let dirs = [{dx: 0, dy: -2}, {dx: 2, dy: 0}, {dx: 0, dy: 2}, {dx: -2, dy: 0}];
-                        let neighbors = dirs.map(d => ({nx: current.x + d.dx, ny: current.y + d.dy, dx: d.dx, dy: d.dy}))
-                                            .filter(n => n.nx > 0 && n.nx < size-1 && n.ny > 0 && n.ny < size-1 && grid[n.ny][n.nx] === wall);
-                        if (neighbors.length > 0) {
-                            let next = neighbors[Math.floor(Math.random() * neighbors.length)];
-                            grid[current.y + next.dy/2][current.x + next.dx/2] = floor; 
-                            grid[next.ny][next.nx] = floor; 
-                            stack.push({x: next.nx, y: next.ny});
-                        } else stack.pop();
-                    }
-                } 
-                else if (type === 'DUNGEON') {
-                    for(let y = 1; y < size - 1; y++) for(let x = 1; x < size - 1; x++) grid[y][x] = floor; 
-                    let numRooms = 3; let rSize = Math.floor((size - 2) / numRooms);
-                    for(let r = 1; r < numRooms; r++) {
-                        for(let y = 1; y < size - 1; y++) grid[y][1 + r * rSize] = wall; 
-                        for(let x = 1; x < size - 1; x++) grid[1 + r * rSize][x] = wall; 
-                    }
-                    for(let rY = 0; rY < numRooms; rY++) {
-                        for(let rX = 0; rX < numRooms; rX++) {
-                            if (rX < numRooms - 1) grid[1 + rY * rSize + Math.floor(rSize / 2)][1 + (rX + 1) * rSize] = floor;
-                            if (rY < numRooms - 1) grid[1 + (rY + 1) * rSize][1 + rX * rSize + Math.floor(rSize / 2)] = floor;
-                        }
-                    }
-                }
-                return grid;
-            };
-
-            // Randomly select an algorithm for the Minigame (independent of Editor UI)
-            const algos = ['CAVE', 'CITY', 'FOREST', 'ISLANDS', 'LABYRINTH', 'DUNGEON', 'CASTLE'];
-            let chosenAlgo = algos[Math.floor(Math.random() * algos.length)];
-            
-            // 10% chance to generate a MIX map
-            if (Math.random() > 0.9) {
-                this.maze = Array.from({length: s}, () => Array(s).fill(wall));
-                let quadMaps = [
-                    generateGrid(algos[Math.floor(Math.random() * algos.length)], s),
-                    generateGrid(algos[Math.floor(Math.random() * algos.length)], s),
-                    generateGrid(algos[Math.floor(Math.random() * algos.length)], s),
-                    generateGrid(algos[Math.floor(Math.random() * algos.length)], s)
-                ];
-                let half = Math.floor(s / 2);
-                for(let y = 1; y < s - 1; y++) {
-                    for(let x = 1; x < s - 1; x++) {
-                        if (x < half && y < half) this.maze[y][x] = quadMaps[0][y][x];       
-                        else if (x >= half && y < half) this.maze[y][x] = quadMaps[1][y][x];  
-                        else if (x < half && y >= half) this.maze[y][x] = quadMaps[2][y][x];  
-                        else this.maze[y][x] = quadMaps[3][y][x];                             
-                    }
-                }
-                for(let i = 0; i < 4; i++) {
-                    let rx = Math.floor(Math.random() * half); let ry = Math.floor(Math.random() * half);
-                    this.maze[half][rx] = floor; this.maze[half][rx+half] = floor; 
-                    this.maze[ry][half] = floor; this.maze[ry+half][half] = floor; 
-                }
-            } else {
-                this.maze = generateGrid(chosenAlgo, s);
             }
+            return grid;
+        };
 
-            // --- ANTI-POCKET FIX: Guaranteed Pathing & Spawn Clearing ---
-            let pX = 2, pY = s - 3; // Player Start (Bottom Left)
-            let eX = s - 3, eY = 2; // Enemy Start (Top Right)
-            
-            // Carve a guaranteed L-shaped bridge between spawn coordinates
-            let carveX = pX; let carveY = pY;
-            while(carveX !== eX) { this.maze[carveY][carveX] = floor; carveX += Math.sign(eX - carveX); }
-            while(carveY !== eY) { this.maze[carveY][carveX] = floor; carveY += Math.sign(eY - carveY); }
-
-            // Clear a 3x3 footprint around the spawns so units have room to deploy
-            for(let dy=-1; dy<=1; dy++) for(let dx=-1; dx<=1; dx++) {
-                this.maze[pY+dy][pX+dx] = floor;
-                this.maze[eY+dy][eX+dx] = floor;
-            }
-
-            // Always re-seal borders
-            for(let y = 0; y < s; y++) { this.maze[y][0] = wall; this.maze[y][s-1] = wall; }
-            for(let x = 0; x < s; x++) { this.maze[0][x] = wall; this.maze[s-1][x] = wall; }
-
-            // --- CLEAR JUNK SPRITES FROM EXPLORE MODE ---
-            this.npcs = [];
-            this.projectiles = [];
-            this.activeSummons = [];
-
-            // THE FIX: ALWAYS create a brand new engine to wipe all state clean.
-            // Do not check if it's undefined. Just overwrite it.
-            window.TacticsEngine = new TacticsController();
-
-            window.TacticsEngine.units = [
-                { 
-                    id: 'player_unit', x: pX + 0.5, y: pY + 0.5, type: playerCardID, 
-                    alignment: 'ally', isDead: false, hasMoved: false, hasActed: false 
-                },
-                { 
-                    id: 'enemy_unit', x: eX + 0.5, y: eY + 0.5, type: enemyCardID, 
-                    alignment: 'foe', isDead: false, hasMoved: false, hasActed: false,
-                    innateSpells: window.TacticsEngine.getInnateSpellsForType(enemyCardID) 
-                }
+        const algos = ['CAVE', 'CITY', 'FOREST', 'ISLANDS', 'LABYRINTH', 'DUNGEON', 'CASTLE'];
+        let chosenAlgo = algos[Math.floor(Math.random() * algos.length)];
+        
+        if (Math.random() > 0.9) {
+            this.maze = Array.from({length: s}, () => Array(s).fill(wall));
+            let quadMaps = [
+                generateGrid(algos[Math.floor(Math.random() * algos.length)], s),
+                generateGrid(algos[Math.floor(Math.random() * algos.length)], s),
+                generateGrid(algos[Math.floor(Math.random() * algos.length)], s),
+                generateGrid(algos[Math.floor(Math.random() * algos.length)], s)
             ];
-
-            // The constructor already sets this to 'INIT', but it's good practice to be explicit.
-            window.TacticsEngine.turnQueue = [];
-            window.TacticsEngine.state = 'INIT';
-            
-            if (typeof MusicEngine !== 'undefined') {
-                MusicEngine.stop();
-                MusicEngine.play(15); 
+            let half = Math.floor(s / 2);
+            for(let y = 1; y < s - 1; y++) {
+                for(let x = 1; x < s - 1; x++) {
+                    if (x < half && y < half) this.maze[y][x] = quadMaps[0][y][x];       
+                    else if (x >= half && y < half) this.maze[y][x] = quadMaps[1][y][x];  
+                    else if (x < half && y >= half) this.maze[y][x] = quadMaps[2][y][x];  
+                    else this.maze[y][x] = quadMaps[3][y][x];                                              
+                }
             }
+            for(let i = 0; i < 4; i++) {
+                let rx = Math.floor(Math.random() * half); let ry = Math.floor(Math.random() * half);
+                this.maze[half][rx] = floor; this.maze[half][rx+half] = floor; 
+                this.maze[ry][half] = floor; this.maze[ry+half][half] = floor; 
+            }
+        } else {
+            this.maze = generateGrid(chosenAlgo, s);
         }
+
+        let pX = 2, pY = s - 3; 
+        let eX = s - 3, eY = 2; 
+        
+        let carveX = pX; let carveY = pY;
+        while(carveX !== eX) { this.maze[carveY][carveX] = floor; carveX += Math.sign(eX - carveX); }
+        while(carveY !== eY) { this.maze[carveY][carveX] = floor; carveY += Math.sign(eY - carveY); }
+
+        for(let dy=-1; dy<=1; dy++) for(let dx=-1; dx<=1; dx++) {
+            this.maze[pY+dy][pX+dx] = floor;
+            this.maze[eY+dy][eX+dx] = floor;
+        }
+
+        for(let y = 0; y < s; y++) { this.maze[y][0] = wall; this.maze[y][s-1] = wall; }
+        for(let x = 0; x < s; x++) { this.maze[0][x] = wall; this.maze[s-1][x] = wall; }
+
+        this.npcs = [];
+        this.projectiles = [];
+        this.activeSummons = [];
+
+        window.TacticsEngine = new TacticsController();
+        window.TacticsEngine.units = [];
+
+        // --- DEPLOY TEAMS ---
+        // Offsets to spread units out in the 3x3 spawn area
+        const spawnOffsets = [
+            {dx: 0, dy: 0}, {dx: 1, dy: 0}, {dx: -1, dy: 0},
+            {dx: 0, dy: 1}, {dx: 0, dy: -1}, {dx: 1, dy: 1},
+            {dx: -1, dy: -1}, {dx: 1, dy: -1}, {dx: -1, dy: 1}
+        ];
+
+        pTeam.forEach((cardID, i) => {
+            let offset = spawnOffsets[i % spawnOffsets.length];
+            window.TacticsEngine.units.push({
+                id: 'player_unit_' + i, 
+                x: pX + offset.dx + 0.5, 
+                y: pY + offset.dy + 0.5, 
+                type: cardID, 
+                alignment: 'ally', isDead: false, hasMoved: false, hasActed: false 
+            });
+        });
+
+        eTeam.forEach((cardID, i) => {
+            let offset = spawnOffsets[i % spawnOffsets.length];
+            window.TacticsEngine.units.push({
+                id: 'enemy_unit_' + i, 
+                x: eX + offset.dx + 0.5, 
+                y: eY + offset.dy + 0.5, 
+                type: cardID, 
+                alignment: 'foe', isDead: false, hasMoved: false, hasActed: false,
+                innateSpells: window.TacticsEngine.getInnateSpellsForType(cardID) 
+            });
+        });
+
+        window.TacticsEngine.turnQueue = [];
+        window.TacticsEngine.state = 'INIT';
+        
+        if (typeof MusicEngine !== 'undefined') {
+            MusicEngine.stop();
+            MusicEngine.play(15); 
+        }
+    }
         }
   class Projectile {
     constructor(x, y, dirX, dirY, speed, damage = 1, owner = null, isHoming = false, spellId = 26) {
@@ -25455,10 +25457,33 @@
                                 startGame = 'mapmaker';}
                                 
                             }
-                            else if (msg.toLowerCase() === '.hack//tactics'){
-                                Dungeon.startEidolonMinigame(0, 56);
-                                
+                            else if (msg.toLowerCase() === '.hack//tactics') {
+                                const monsterIndices = [
+                                    0, 1, 2, 3, 4, 5, 9, 23, 32, 33, 34, 35, 37, 42, 46, 47, 
+                                    48, 49, 54, 56, 57, 60, 61, 62, 63, 74, 75, 76, 77, 78, 
+                                    79, 80, 81, 82, 83, 85, 86, 87, 88, 89, 90, 91, 94, 98
+                                ];
+
+                                // Helper to get a random monster ID
+                                const getRandomMonsterId = () => {
+                                    return monsterIndices[Math.floor(Math.random() * monsterIndices.length)];
+                                };
+
+                                // 1. Determine random team sizes (1 to 6)
+                                const teamASize = Math.floor(Math.random() * 6) + 1;
+                                const teamBSize = Math.floor(Math.random() * 6) + 1;
+
+                                // 2. Build the arrays for each team
+                                const teamA = Array.from({ length: teamASize }, () => getRandomMonsterId());
+                                const teamB = Array.from({ length: teamBSize }, () => getRandomMonsterId());
+
+                                // 3. Trigger the minigame with the randomized teams
+                                Dungeon.startEidolonMinigame(teamA, teamB);
+
+                                console.log(`Tactics Match Started! Ally Team (${teamASize}) vs Enemy Team (${teamBSize})`);
+                                console.log(`Ally IDs: ${teamA.join(', ')} | Enemy IDs: ${teamB.join(', ')}`);
                             }
+                            
                             chatInput.value = "";
                             chatDraft = "";
                             isChatActive = false;
