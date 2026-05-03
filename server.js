@@ -3983,8 +3983,8 @@
                             // ==========================================
                             // ZONE 2: THE BASTION (City Hub)
                             // ==========================================
+                            // 1. The Main Quest Giver
                             mapNPCs.push({
-                                index: 10000 + mapNPCs.length,
                                 type: CARD_MANIFEST_DB[protagID].sprite || protagID,
                                 x: mapData.bastionCenter.x + 0.5, y: mapData.bastionCenter.y + 0.5,
                                 state: 'stationary', role: 'quest_giver', alignment: 'friendly',
@@ -3993,25 +3993,37 @@
                                 options: [scenarioType]
                             });
                             
+                            // 2. The Radiant Bounty Board
                             mapNPCs.push({
-                                index: 10000 + mapNPCs.length,
                                 type: 41, 
                                 x: mapData.bastionCenter.x + 2.5, y: mapData.bastionCenter.y + 0.5,
                                 state: 'stationary', role: 'bounty_merchant', alignment: 'friendly',
                                 deck: [], color: '#00ff00' 
                             });
                             
-                            // Bastion Guards (Changed to 'friendly' so dialogue works properly)
+                            // 3. Bastion Guards (Defenders - Will actively hunt invaders!)
                             for (let i = 0; i < 4; i++) {
                                 let defID = friendlyMinions[i % friendlyMinions.length] || 64; 
                                 mapNPCs.push({
-                                    index: 10000 + mapNPCs.length,
                                     type: CARD_MANIFEST_DB[defID].sprite || defID, 
-                                    x: mapData.bastionCenter.x + (Math.random() * 6 - 3), 
-                                    y: mapData.bastionCenter.y + (Math.random() * 6 - 3),
-                                    state: 'wandering', role: 'dialogue', alignment: 'friendly', 
+                                    x: mapData.bastionCenter.x + (Math.random() * 8 - 4), 
+                                    y: mapData.bastionCenter.y + (Math.random() * 8 - 4),
+                                    state: 'wandering', role: 'dialogue', alignment: 'defender', 
                                     deck: buildSynergisticDeck(defID, 150), color: '#00ff00', 
-                                    dialogue: [script.friendlyLife ? script.friendlyLife[i % script.friendlyLife.length] : "Stay safe out there."]
+                                    dialogue: [script.recruitPlea ? script.recruitPlea[i % script.recruitPlea.length] : "Stay safe out there."]
+                                });
+                            }
+
+                            // 4. Civilians (Friendlies - Will run or be killed if invaded!)
+                            for (let i = 0; i < 6; i++) {
+                                let civID = friendlyMinions[Math.floor(Math.random() * friendlyMinions.length)] || 32; 
+                                mapNPCs.push({
+                                    type: CARD_MANIFEST_DB[civID].sprite || civID, 
+                                    x: mapData.bastionCenter.x + (Math.random() * 10 - 5), 
+                                    y: mapData.bastionCenter.y + (Math.random() * 10 - 5),
+                                    state: 'wandering', role: 'dialogue', alignment: 'friendly', 
+                                    deck: buildSynergisticDeck(civID, 50), color: '#00ff00', 
+                                    dialogue: [script.friendlyLife ? script.friendlyLife[i % script.friendlyLife.length] : "I hope the guards can protect us..."]
                                 });
                             }
 
@@ -4073,11 +4085,15 @@
                                 });
                             }
 
+                          
+
                             // ==========================================
-                            // ZONE 4: THE ECOLOGY (Distance-Weighted)
+                            // ZONE 4: THE ECOLOGY (Distance-Weighted, 25% Density)
                             // ==========================================
                             let shuffledFloors = [...mapData.validFloors].sort(() => 0.5 - Math.random());
-                            let totalWanderers = Math.floor(shuffledFloors.length / 15);
+                            
+                            // Spawn 1 NPC per 75 tiles ( drastically thins out the horde! )
+                            let totalWanderers = Math.floor(shuffledFloors.length / 75);
 
                             for (let i = 0; i < totalWanderers; i++) {
                                 let tile = shuffledFloors[i];
@@ -4092,11 +4108,11 @@
                                 let spawnID;
 
                                 if (distToLair < distToBastion * 0.6) {
-                                    isHostile = Math.random() < 0.9; 
+                                    isHostile = Math.random() < 0.8; 
                                 } else if (distToBastion < distToLair * 0.6) {
                                     isHostile = Math.random() < 0.2; 
                                 } else {
-                                    isHostile = Math.random() < 0.6; 
+                                    isHostile = Math.random() < 0.5; 
                                 }
 
                                 if (isHostile) {
@@ -4111,19 +4127,29 @@
                                     });
                                 } else {
                                     spawnID = friendlyMinions[Math.floor(Math.random() * friendlyMinions.length)];
+                                    let isDefender = (distToBastion <= 7); 
                                     
-                                    // --- FIX: Ensure role is dialogue and alignment is friendly ---
+                                    // 15% chance for a friendly wanderer to be a recruitable ally!
+                                    let isRecruitable = !isDefender && Math.random() < 0.15;
+
                                     mapNPCs.push({
                                         index: 10000 + mapNPCs.length,
                                         type: CARD_MANIFEST_DB[spawnID].sprite || spawnID, 
                                         x: tile.x + 0.5, y: tile.y + 0.5, 
-                                        state: 'wandering', role: 'dialogue', alignment: 'friendly', 
-                                        deck: buildSynergisticDeck(spawnID, 80), color: '#00ff00', 
-                                        dialogue: [script.friendlyProfound ? script.friendlyProfound[i % script.friendlyProfound.length] : "The wilds are dangerous."]
+                                        state: 'wandering', 
+                                        role: isRecruitable ? 'become_ally' : 'dialogue', 
+                                        alignment: isDefender ? 'defender' : 'friendly', 
+                                        deck: isRecruitable ? [spawnID] : buildSynergisticDeck(spawnID, 80), 
+                                        color: '#00ff00', 
+                                        dialogue: [isDefender && script.friendlyLife ? script.friendlyLife[i % script.friendlyLife.length] : (script.friendlyProfound ? script.friendlyProfound[i % script.friendlyProfound.length] : "The wilds are dangerous.")],
+                                        options: isRecruitable ? ['Recruit', 'Leave'] : null,
+                                        yesActions: isRecruitable ? [['play_sfx', 'buff2'], ['become_ally', spawnID], ['disappear', 10000 + mapNPCs.length]] : null
                                     });
                                 }
                             }
 
+                            // Apply global indices to all array items
+                            mapNPCs.forEach((npc, idx) => { npc.index = 10000 + idx; });
                             // ==========================================
                             // 5. CACHE INSTANCE & DISPATCH MESSENGER
                             // ==========================================
