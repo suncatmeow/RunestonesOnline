@@ -3150,7 +3150,7 @@
                 for(let y = 1; y < h - 1; y++) for(let x = 1; x < w - 1; x++) grid[y][x] = floorType;
                 let buildings = [];
                 let attempts = w * h; 
-                let minSize = 3, maxSize = 6; // Scaled down slightly to fit nicely in 15x15
+                let minSize = 3, maxSize = 6; 
 
                 for (let i = 0; i < attempts; i++) {
                     let bw = Math.floor(Math.random() * (maxSize - minSize + 1)) + minSize;
@@ -3266,20 +3266,18 @@
             { id: 'mini', w: 15, h: 15, algo: 'LABYRINTH' }
         ];
 
-        let padding = 2; // Keep zones away from edges and each other
+        let padding = 3; // Keep zones away from edges and each other
 
         zones.forEach(zone => {
             let placed = false;
             let attempts = 0;
             while (!placed && attempts < 100) {
-                // Pick a random top-left corner within safe bounds
                 zone.x = Math.floor(Math.random() * (size - zone.w - padding * 2)) + padding;
                 zone.y = Math.floor(Math.random() * (size - zone.h - padding * 2)) + padding;
 
                 let overlap = false;
                 for (let other of zones) {
                     if (other.id !== zone.id && other.placed) {
-                        // Check rectangle intersection (with padding)
                         if (zone.x < other.x + other.w + padding && zone.x + zone.w + padding > other.x &&
                             zone.y < other.y + other.h + padding && zone.y + zone.h + padding > other.y) {
                             overlap = true; break;
@@ -3300,7 +3298,6 @@
                 if (zone.id === 'mini') { zone.x = size - 17; zone.y = size - 17; zone.placed = true; }
             }
             
-            // Calculate and store center point for NPC spawning
             zone.cx = Math.floor(zone.x + (zone.w / 2));
             zone.cy = Math.floor(zone.y + (zone.h / 2));
         });
@@ -3316,39 +3313,55 @@
                     let mapY = zone.y + y;
                     let mapX = zone.x + x;
 
-                    // Hard Perimeter Wall for the Lair
                     if (zone.id === 'lair' && (y === 0 || y === zone.h - 1 || x === 0 || x === zone.w - 1)) {
                         finalGrid[mapY][mapX] = wallType;
                     } 
-                    // Normal override for interior/bleeding edges
                     else {
                         finalGrid[mapY][mapX] = subGrid[y][x];
                     }
                 }
             }
 
-            // Punch Gates for the Lair so the Surveyor can enter
             if (zone.id === 'lair') {
-                // Punch a door in the middle of the bottom and right walls
                 finalGrid[zone.y + zone.h - 1][zone.cx] = floorType; 
-                finalGrid[zone.y + zone.h - 2][zone.cx] = floorType; // Ensure it clears thickness
-                
+                finalGrid[zone.y + zone.h - 2][zone.cx] = floorType; 
                 finalGrid[zone.cy][zone.x + zone.w - 1] = floorType; 
                 finalGrid[zone.cy][zone.x + zone.w - 2] = floorType; 
             }
         });
 
-        // Re-seal Global Borders just in case
+        // ==========================================
+        // 5. CARVE THE MAIN ROADS (Guarantees Connection)
+        // ==========================================
+        let bastion = zones.find(z => z.id === 'bastion');
+        let lair = zones.find(z => z.id === 'lair');
+        let mini = zones.find(z => z.id === 'mini');
+
+        const carvePath = (x1, y1, x2, y2) => {
+            let currX = x1; let currY = y1;
+            while(currX !== x2) { 
+                finalGrid[currY][currX] = floorType; 
+                if(currY+1 < size) finalGrid[currY+1][currX] = floorType; // 2-tiles wide
+                currX += Math.sign(x2 - currX); 
+            }
+            while(currY !== y2) { 
+                finalGrid[currY][currX] = floorType; 
+                if(currX+1 < size) finalGrid[currY][currX+1] = floorType; // 2-tiles wide
+                currY += Math.sign(y2 - currY); 
+            }
+        };
+
+        // Carve paths so the surveyor can never fail
+        carvePath(bastion.cx, bastion.cy, lair.cx, lair.cy);
+        carvePath(bastion.cx, bastion.cy, mini.cx, mini.cy);
+
+        // Re-seal Global Borders
         for(let y = 0; y < size; y++) { finalGrid[y][0] = wallType; finalGrid[y][size-1] = wallType; }
         for(let x = 0; x < size; x++) { finalGrid[0][x] = wallType; finalGrid[size-1][x] = wallType; }
 
         // ==========================================
-        // 5. SURVEYOR PASS
+        // 6. SURVEYOR PASS
         // ==========================================
-        // Start surveyor from the Bastion center to guarantee the player's spawn point is valid
-        let bastion = zones.find(z => z.id === 'bastion');
-        
-        // Make sure the bastion center is actually floor before flooding!
         if (finalGrid[bastion.cy][bastion.cx] === wallType) finalGrid[bastion.cy][bastion.cx] = floorType;
 
         let validFloors = findValidMainland(finalGrid, floorType, bastion.cx, bastion.cy); 
@@ -3357,7 +3370,7 @@
         for(let r = 0; r < size; r++) {
             for(let c = 0; c < size; c++) {
                 if (finalGrid[r][c] === floorType && !validSet.has(`${c},${r}`)) {
-                    finalGrid[r][c] = wallType; // Fill in disconnected pockets
+                    finalGrid[r][c] = wallType; 
                 }
             }
         }
@@ -3366,8 +3379,8 @@
             grid: finalGrid, 
             validFloors: validFloors,
             bastionCenter: { x: bastion.cx, y: bastion.cy },
-            lairCenter: { x: zones.find(z => z.id === 'lair').cx, y: zones.find(z => z.id === 'lair').cy },
-            miniCenter: { x: zones.find(z => z.id === 'mini').cx, y: zones.find(z => z.id === 'mini').cy }
+            lairCenter: { x: lair.cx, y: lair.cy },
+            miniCenter: { x: mini.cx, y: mini.cy }
         };
     }
     function generateTintagelHub() {
@@ -3906,243 +3919,254 @@
                         
 
                     }
-        
-                        // E. CREATE CUSTOM MAP (The Server-Driven Engine)
-                    else if (call.name === "createCustomMap") {
-    try {
-        // 1. ENUM ROLLS & FACTION SETUP
-        const bEnum = Math.floor(Math.random() * Object.keys(BIOME_DB).length);
-        const biome = BIOME_DB[bEnum] || BIOME_DB[0];
-        
-        const validScenarios = ['rescue', 'fetch', 'escort', 'bounty'];
-        let scenarioType = validScenarios[Math.floor(Math.random() * validScenarios.length)];
-        
-        const monsterIDs = Object.keys(CARD_MANIFEST_DB).filter(id => CARD_MANIFEST_DB[id].type === "monster" && CARD_MANIFEST_DB[id].rank !== "0");
-        let antagID = parseInt(monsterIDs[Math.floor(Math.random() * monsterIDs.length)]);
-        let protagID = parseInt(monsterIDs[Math.floor(Math.random() * monsterIDs.length)]);
-        while (protagID === antagID) protagID = parseInt(monsterIDs[Math.floor(Math.random() * monsterIDs.length)]);
-        
-        let hostileMinions = getMinions(antagID);
-        if (hostileMinions.length === 0) hostileMinions = biome.mobs || [54, 56, 42];
+                    // E. CREATE CUSTOM MAP
+                        else if (call.name === "createCustomMap") {
+                        try {
+                            // 1. ENUM ROLLS & FACTION SETUP
+                            const bEnum = Math.floor(Math.random() * Object.keys(BIOME_DB).length);
+                            const biome = BIOME_DB[bEnum] || BIOME_DB[0];
+                            
+                            const validScenarios = ['rescue', 'fetch', 'escort', 'bounty'];
+                            let scenarioType = validScenarios[Math.floor(Math.random() * validScenarios.length)];
+                            
+                            const monsterIDs = Object.keys(CARD_MANIFEST_DB).filter(id => CARD_MANIFEST_DB[id].type === "monster" && CARD_MANIFEST_DB[id].rank !== "0");
+                            let antagID = parseInt(monsterIDs[Math.floor(Math.random() * monsterIDs.length)]);
+                            let protagID = parseInt(monsterIDs[Math.floor(Math.random() * monsterIDs.length)]);
+                            while (protagID === antagID) protagID = parseInt(monsterIDs[Math.floor(Math.random() * monsterIDs.length)]);
+                            
+                            let hostileMinions = getMinions(antagID);
+                            if (hostileMinions.length === 0) hostileMinions = biome.mobs || [54, 56, 42];
 
-        let friendlyMinions = getMinions(protagID);
-        if (friendlyMinions.length === 0) friendlyMinions = [32, 75, 60]; 
+                            let friendlyMinions = getMinions(protagID);
+                            if (friendlyMinions.length === 0) friendlyMinions = [32, 75, 60]; 
 
-        // 2. THE ASYNC FORK (LLM & Grid Generation)
-        const targetPlayer = players[findSocketID(call.args.targetName)];
-        const scriptPromise = generateScenarioScript(biome.name, scenarioType, CARD_MANIFEST_DB[antagID].name, CARD_MANIFEST_DB[protagID].name, targetPlayer);
-        
-        let validWilds = ['FOREST', 'CAVE'];
-        let wildAlgo = validWilds[Math.floor(Math.random() * validWilds.length)];
-        // Ensure generateInstanceGrid returns { grid, validFloors, bastionCenter, lairCenter, miniCenter }
-        const mapData = generateInstanceGrid(wildAlgo, 60, biome.walls[0], 0);
+                            // 2. THE ASYNC FORK (LLM & Grid Generation)
+                            const targetPlayer = players[findSocketID(call.args.targetName)];
+                            const scriptPromise = generateScenarioScript(biome.name, scenarioType, CARD_MANIFEST_DB[antagID].name, CARD_MANIFEST_DB[protagID].name, targetPlayer);
+                            
+                            let validWilds = ['FOREST', 'CAVE'];
+                            let wildAlgo = validWilds[Math.floor(Math.random() * validWilds.length)];
+                            
+                            // --- FIX: Increased size to 100x100! ---
+                            const mapData = generateInstanceGrid(wildAlgo, 100, biome.walls[0], 0);
 
-        let script = await scriptPromise;
-        if (!script) throw new Error("LLM failed to return a scenario.");
+                            let script = await scriptPromise;
+                            if (!script) throw new Error("LLM failed to return a scenario.");
 
-        let mapNPCs = [];
-        
-        // ==========================================
-        // ZONE 1: THE LAIR (The Boss Skeleton)
-        // ==========================================
-        let bossID = 10000 + mapNPCs.length;
-        mapNPCs.push({
-            index: bossID,
-            type: CARD_MANIFEST_DB[antagID].sprite || antagID,
-            x: mapData.lairCenter.x + 0.5, y: mapData.lairCenter.y + 0.5, 
-            state: 'stationary', role: 'battle', isBoss: true, alignment: 'foe',
-            mastery: 3, deck: buildSynergisticDeck(antagID, 300), color: '#ff00ff', 
-            dialogue: [script.bossTaunt || "You dare approach my domain?"],
-            // DEATH ACTION: Opens the escape portal and drops a high-tier card!
-            deathActions: [
-                ['play_sfx', 'chime'],
-                ['change_weather', 'clear'], 
-                ['give_card', {card: 21, text: "The boss dropped a Crown!"}], 
-                ['spawn_npc', [
-                    999, 99999, 'SPEAKER_X', 'SPEAKER_Y', 
-                    99, 'stationary', '#66ccff', 
-                    [mapData.bastionCenter.x + 0.5, mapData.bastionCenter.y + 0.5, 999, 2], 
-                    null, null, 'portal', null, false, 'friendly'
-                ]],
-                ['notify', "The realm is secure. An escape portal has opened!"]
-            ]
-        });
+                            let mapNPCs = [];
+                            
+                            // ==========================================
+                            // ZONE 1: THE LAIR (The Boss Skeleton)
+                            // ==========================================
+                            let bossID = 10000 + mapNPCs.length;
+                            mapNPCs.push({
+                                index: bossID,
+                                type: CARD_MANIFEST_DB[antagID].sprite || antagID,
+                                x: mapData.lairCenter.x + 0.5, y: mapData.lairCenter.y + 0.5, 
+                                state: 'stationary', role: 'battle', isBoss: true, alignment: 'foe',
+                                mastery: 3, deck: buildSynergisticDeck(antagID, 300), color: '#ff00ff', 
+                                dialogue: [script.bossTaunt || "You dare approach my domain?"],
+                                deathActions: [
+                                    ['play_sfx', 'chime'],
+                                    ['change_weather', 'clear'], 
+                                    ['give_card', {card: 21, text: "The boss dropped a Crown!"}], 
+                                    ['spawn_npc', [
+                                        999, 99999, 'SPEAKER_X', 'SPEAKER_Y', 
+                                        99, 'stationary', '#66ccff', 
+                                        [mapData.bastionCenter.x + 0.5, mapData.bastionCenter.y + 0.5, 999, 2], 
+                                        null, null, 'portal', null, false, 'friendly'
+                                    ]],
+                                    ['notify', "The realm is secure. An escape portal has opened!"]
+                                ]
+                            });
 
-        // ==========================================
-        // ZONE 2: THE BASTION (City Hub)
-        // ==========================================
-        mapNPCs.push({
-            index: 10000 + mapNPCs.length,
-            type: CARD_MANIFEST_DB[protagID].sprite || protagID,
-            x: mapData.bastionCenter.x + 0.5, y: mapData.bastionCenter.y + 0.5,
-            state: 'stationary', role: 'dialogue', alignment: 'friendly',
-            deck: [], color: '#00ff00', 
-            dialogue: script.friendlyLore || ["Please, you must help us!"]
-        });
-        
-        mapNPCs.push({
-            index: 10000 + mapNPCs.length,
-            type: 41, 
-            x: mapData.bastionCenter.x + 2.5, y: mapData.bastionCenter.y + 0.5,
-            state: 'stationary', role: 'bounty_merchant', alignment: 'friendly',
-            deck: [], color: '#00ff00' 
-        });
+                            // ==========================================
+                            // ZONE 2: THE BASTION (City Hub)
+                            // ==========================================
+                            mapNPCs.push({
+                                index: 10000 + mapNPCs.length,
+                                type: CARD_MANIFEST_DB[protagID].sprite || protagID,
+                                x: mapData.bastionCenter.x + 0.5, y: mapData.bastionCenter.y + 0.5,
+                                state: 'stationary', role: 'quest_giver', alignment: 'friendly',
+                                deck: [], color: '#00ff00', 
+                                dialogue: script.friendlyLore || ["Please, you must help us!"],
+                                options: [scenarioType]
+                            });
+                            
+                            mapNPCs.push({
+                                index: 10000 + mapNPCs.length,
+                                type: 41, 
+                                x: mapData.bastionCenter.x + 2.5, y: mapData.bastionCenter.y + 0.5,
+                                state: 'stationary', role: 'bounty_merchant', alignment: 'friendly',
+                                deck: [], color: '#00ff00' 
+                            });
+                            
+                            // Bastion Guards (Changed to 'friendly' so dialogue works properly)
+                            for (let i = 0; i < 4; i++) {
+                                let defID = friendlyMinions[i % friendlyMinions.length] || 64; 
+                                mapNPCs.push({
+                                    index: 10000 + mapNPCs.length,
+                                    type: CARD_MANIFEST_DB[defID].sprite || defID, 
+                                    x: mapData.bastionCenter.x + (Math.random() * 6 - 3), 
+                                    y: mapData.bastionCenter.y + (Math.random() * 6 - 3),
+                                    state: 'wandering', role: 'dialogue', alignment: 'friendly', 
+                                    deck: buildSynergisticDeck(defID, 150), color: '#00ff00', 
+                                    dialogue: [script.friendlyLife ? script.friendlyLife[i % script.friendlyLife.length] : "Stay safe out there."]
+                                });
+                            }
 
-        // ==========================================
-        // ZONE 3: THE MINI-DUNGEON (Sub-Plot Skeletons)
-        // ==========================================
-        let miniTargetID = 10000 + mapNPCs.length;
+                            // ==========================================
+                            // ZONE 3: THE MINI-DUNGEON (Sub-Plot Skeletons)
+                            // ==========================================
+                            let miniTargetID = 10000 + mapNPCs.length;
 
-        if (scenarioType === 'rescue' || scenarioType === 'escort') {
-            // THE ESCORT SKELETON
-            let allySprite = friendlyMinions[0] || 32;
-            mapNPCs.push({
-                index: miniTargetID,
-                type: CARD_MANIFEST_DB[allySprite].sprite || allySprite,
-                x: mapData.miniCenter.x + 0.5, y: mapData.miniCenter.y + 0.5,
-                state: 'fleeing', role: 'dialogue', alignment: 'defender', 
-                color: '#00ff00', deck: [allySprite],
-                dialogue: script.prisonerLines || ["Thank the gods you found me! Help me fight!"],
-                options: ['Recruit', 'Leave'],
-                yesActions: [
-                    ['play_sfx', 'buff2'],
-                    ['become_ally', allySprite],
-                    ['spectate', 'Player has rescued a prisoner from the dungeon.'],
-                    ['disappear', miniTargetID] 
-                ]
-            });
-        } 
-        else if (scenarioType === 'fetch') {
-            // THE TRAPPED LOOT (MIMIC) SKELETON
-            let trapSprite = hostileMinions[0];
-            mapNPCs.push({
-                index: miniTargetID,
-                type: -27, // Looks like a dropped card
-                x: mapData.miniCenter.x + 0.5, y: mapData.miniCenter.y + 0.5,
-                state: 'stationary', role: 'dialogue', alignment: 'friendly', 
-                color: '#ffff00', deck: [trapSprite], 
-                dialogue: ["You found a pristine treasure chest. Open it?"],
-                options: ['Open', 'Leave'],
-                yesActions: [
-                    ['play_sfx', 'cancel'],
-                    ['transform_npc', { index: miniTargetID, newType: trapSprite, newAlignment: 'foe', newRole: 'battle', newState: 'chasing', clearDialogue: true }],
-                    ['start_battle', miniTargetID]
-                ]
-            });
-        }
-        else {
-            // THE WAVE SPAWNER SKELETON
-            mapNPCs.push({
-                index: miniTargetID,
-                type: 16, // Ruin/Altar sprite
-                x: mapData.miniCenter.x + 0.5, y: mapData.miniCenter.y + 0.5,
-                state: 'stationary', role: 'dialogue', alignment: 'friendly',
-                color: '#00ff00', deck: [],
-                dialogue: ["The altar hums with dark magic. Disturbing it may awaken the horde. Purge it?"],
-                options: ['Purge', 'Leave'],
-                yesActions: [
-                    ['play_sfx', 'horn'],
-                    ['start_hunted', { waves: 3, interval: 300, mobs: [{sprite: hostileMinions[0]}] }],
-                    ['notify', "The horde has been alerted! Survive!"],
-                    ['disappear', miniTargetID] 
-                ]
-            });
-        }
+                            if (scenarioType === 'rescue' || scenarioType === 'escort') {
+                                let allySprite = friendlyMinions[0] || 32;
+                                mapNPCs.push({
+                                    index: miniTargetID,
+                                    type: CARD_MANIFEST_DB[allySprite].sprite || allySprite,
+                                    x: mapData.miniCenter.x + 0.5, y: mapData.miniCenter.y + 0.5,
+                                    state: 'fleeing', role: 'dialogue', alignment: 'friendly', // Set to friendly
+                                    color: '#00ff00', deck: [allySprite],
+                                    dialogue: script.prisonerLines || ["Thank the gods you found me! Help me fight!"],
+                                    options: ['Recruit', 'Leave'],
+                                    yesActions: [
+                                        ['play_sfx', 'buff2'],
+                                        ['become_ally', allySprite],
+                                        ['spectate', 'Player has rescued a prisoner from the dungeon.'],
+                                        ['disappear', miniTargetID] 
+                                    ]
+                                });
+                            } 
+                            else if (scenarioType === 'fetch') {
+                                let trapSprite = hostileMinions[0];
+                                mapNPCs.push({
+                                    index: miniTargetID,
+                                    type: -27, 
+                                    x: mapData.miniCenter.x + 0.5, y: mapData.miniCenter.y + 0.5,
+                                    state: 'stationary', role: 'dialogue', alignment: 'friendly', 
+                                    color: '#ffff00', deck: [trapSprite], 
+                                    dialogue: ["You found a pristine treasure chest. Open it?"],
+                                    options: ['Open', 'Leave'],
+                                    yesActions: [
+                                        ['play_sfx', 'cancel'],
+                                        ['transform_npc', { index: miniTargetID, newType: trapSprite, newAlignment: 'foe', newRole: 'battle', newState: 'chasing', clearDialogue: true }],
+                                        ['start_battle', miniTargetID]
+                                    ]
+                                });
+                            }
+                            else {
+                                mapNPCs.push({
+                                    index: miniTargetID,
+                                    type: 16, 
+                                    x: mapData.miniCenter.x + 0.5, y: mapData.miniCenter.y + 0.5,
+                                    state: 'stationary', role: 'dialogue', alignment: 'friendly',
+                                    color: '#00ff00', deck: [],
+                                    dialogue: ["The altar hums with dark magic. Disturbing it may awaken the horde. Purge it?"],
+                                    options: ['Purge', 'Leave'],
+                                    yesActions: [
+                                        ['play_sfx', 'horn'],
+                                        ['start_hunted', { waves: 3, interval: 300, mobs: [{sprite: hostileMinions[0]}] }],
+                                        ['notify', "The horde has been alerted! Survive!"],
+                                        ['disappear', miniTargetID] 
+                                    ]
+                                });
+                            }
 
-        // ==========================================
-        // ZONE 4: THE ECOLOGY (Distance-Weighted)
-        // ==========================================
-        let shuffledFloors = [...mapData.validFloors].sort(() => 0.5 - Math.random());
-        let totalWanderers = Math.floor(shuffledFloors.length / 15);
+                            // ==========================================
+                            // ZONE 4: THE ECOLOGY (Distance-Weighted)
+                            // ==========================================
+                            let shuffledFloors = [...mapData.validFloors].sort(() => 0.5 - Math.random());
+                            let totalWanderers = Math.floor(shuffledFloors.length / 15);
 
-        for (let i = 0; i < totalWanderers; i++) {
-            let tile = shuffledFloors[i];
-            if (tile.x === mapData.bastionCenter.x && tile.y === mapData.bastionCenter.y) continue;
-            if (tile.x === mapData.lairCenter.x && tile.y === mapData.lairCenter.y) continue;
-            if (tile.x === mapData.miniCenter.x && tile.y === mapData.miniCenter.y) continue;
+                            for (let i = 0; i < totalWanderers; i++) {
+                                let tile = shuffledFloors[i];
+                                if (tile.x === mapData.bastionCenter.x && tile.y === mapData.bastionCenter.y) continue;
+                                if (tile.x === mapData.lairCenter.x && tile.y === mapData.lairCenter.y) continue;
+                                if (tile.x === mapData.miniCenter.x && tile.y === mapData.miniCenter.y) continue;
 
-            let distToLair = Math.hypot(tile.x - mapData.lairCenter.x, tile.y - mapData.lairCenter.y);
-            let distToBastion = Math.hypot(tile.x - mapData.bastionCenter.x, tile.y - mapData.bastionCenter.y);
-            
-            let isHostile = false;
-            let spawnID;
+                                let distToLair = Math.hypot(tile.x - mapData.lairCenter.x, tile.y - mapData.lairCenter.y);
+                                let distToBastion = Math.hypot(tile.x - mapData.bastionCenter.x, tile.y - mapData.bastionCenter.y);
+                                
+                                let isHostile = false;
+                                let spawnID;
 
-            if (distToLair < distToBastion * 0.6) {
-                isHostile = Math.random() < 0.9; 
-            } else if (distToBastion < distToLair * 0.6) {
-                isHostile = Math.random() < 0.2; 
-            } else {
-                isHostile = Math.random() < 0.6; 
-            }
+                                if (distToLair < distToBastion * 0.6) {
+                                    isHostile = Math.random() < 0.9; 
+                                } else if (distToBastion < distToLair * 0.6) {
+                                    isHostile = Math.random() < 0.2; 
+                                } else {
+                                    isHostile = Math.random() < 0.6; 
+                                }
 
-            if (isHostile) {
-                spawnID = hostileMinions[Math.floor(Math.random() * hostileMinions.length)];
-                mapNPCs.push({
-                    index: 10000 + mapNPCs.length,
-                    type: CARD_MANIFEST_DB[spawnID].sprite || spawnID, 
-                    x: tile.x + 0.5, y: tile.y + 0.5, 
-                    state: 'wandering', role: 'battle', alignment: 'foe', 
-                    deck: buildSynergisticDeck(spawnID, 80), color: '#ff0000', 
-                    dialogue: [script.hostileTaunts ? script.hostileTaunts[i % script.hostileTaunts.length] : "Blood!"]
-                });
-            } else {
-                spawnID = friendlyMinions[Math.floor(Math.random() * friendlyMinions.length)];
-                let isDefender = (distToBastion <= 7); 
-                
-                mapNPCs.push({
-                    index: 10000 + mapNPCs.length,
-                    type: CARD_MANIFEST_DB[spawnID].sprite || spawnID, 
-                    x: tile.x + 0.5, y: tile.y + 0.5, 
-                    state: 'wandering', role: 'dialogue', alignment: isDefender ? 'defender' : 'friendly', 
-                    deck: buildSynergisticDeck(spawnID, 80), color: '#00ff00', 
-                    dialogue: [isDefender && script.friendlyLife ? script.friendlyLife[i % script.friendlyLife.length] : (script.friendlyProfound ? script.friendlyProfound[i % script.friendlyProfound.length] : "The wilds are dangerous.")]
-                });
-            }
-        }
+                                if (isHostile) {
+                                    spawnID = hostileMinions[Math.floor(Math.random() * hostileMinions.length)];
+                                    mapNPCs.push({
+                                        index: 10000 + mapNPCs.length,
+                                        type: CARD_MANIFEST_DB[spawnID].sprite || spawnID, 
+                                        x: tile.x + 0.5, y: tile.y + 0.5, 
+                                        state: 'wandering', role: 'battle', alignment: 'foe', 
+                                        deck: buildSynergisticDeck(spawnID, 80), color: '#ff0000', 
+                                        dialogue: [script.hostileTaunts ? script.hostileTaunts[i % script.hostileTaunts.length] : "Blood!"]
+                                    });
+                                } else {
+                                    spawnID = friendlyMinions[Math.floor(Math.random() * friendlyMinions.length)];
+                                    
+                                    // --- FIX: Ensure role is dialogue and alignment is friendly ---
+                                    mapNPCs.push({
+                                        index: 10000 + mapNPCs.length,
+                                        type: CARD_MANIFEST_DB[spawnID].sprite || spawnID, 
+                                        x: tile.x + 0.5, y: tile.y + 0.5, 
+                                        state: 'wandering', role: 'dialogue', alignment: 'friendly', 
+                                        deck: buildSynergisticDeck(spawnID, 80), color: '#00ff00', 
+                                        dialogue: [script.friendlyProfound ? script.friendlyProfound[i % script.friendlyProfound.length] : "The wilds are dangerous."]
+                                    });
+                                }
+                            }
 
-        // ==========================================
-        // 5. CACHE INSTANCE & DISPATCH MESSENGER
-        // ==========================================
-        const customMapData = {
-            id: 999, maze: mapData.grid, 
-            skyColor: biome.skies[0], floorColor: biome.floors[0], 
-            name: `Realm of the ${script.questObjective.split(' ')[0] || "Mystery"}`, 
-            npcs: mapNPCs, weather: biome.weather[0],
-            spawnX: mapData.bastionCenter.x + 0.5, 
-            spawnY: mapData.bastionCenter.y + 0.5,
-            bossX: mapData.lairCenter.x + 0.5,
-            bossY: mapData.lairCenter.y + 0.5,
-            biome: biome.name
-        };
+                            // ==========================================
+                            // 5. CACHE INSTANCE & DISPATCH MESSENGER
+                            // ==========================================
+                            const customMapData = {
+                                id: 999, maze: mapData.grid, 
+                                skyColor: biome.skies[0], floorColor: biome.floors[0], 
+                                name: `Realm of the ${script.questObjective.split(' ')[0] || "Mystery"}`, 
+                                npcs: mapNPCs, weather: biome.weather[0],
+                                spawnX: mapData.bastionCenter.x + 0.5, 
+                                spawnY: mapData.bastionCenter.y + 0.5,
+                                bossX: mapData.lairCenter.x + 0.5,
+                                bossY: mapData.lairCenter.y + 0.5,
+                                biome: biome.name
+                            };
 
-        activeCustomMap = customMapData;
+                            activeCustomMap = customMapData;
 
-        let requesterID = socket ? socket.id : findSocketID(call.args.targetName);
-        if (requesterID && players[requesterID]) {
-            const tp = players[requesterID];
-            tp.activeQuest = script.questObjective;
-            tp.mapScenario = scenarioType; 
-            tp.mapBossID = antagID;
-            
-            io.to(requesterID).emit("remote_spawn_npc", {
-                mapID: tp.mapID, 
-                index: Math.floor(Math.random() * 100000) + 1000,
-                x: tp.x, y: tp.y, type: 56, state: 'chasing', isBoss: false, 
-                role: 'portal_invite', color: '#ff8800', deck: [], 
-                dialogue: [`My master Suncat sent me to bring you to the adventure realm. A great ${scenarioType} awaits. Shall we go?`],
-                options: ['Yes', 'No'], alignment: 'friendly_messenger',
-                yesActions: [['load_map', 999], ['play_sfx', 'warp'], ['disappear', null]],
-                noActions: [['play_sfx', 'cancel'], ['disappear', null]]
-            });
-        }
+                            let requesterID = socket ? socket.id : findSocketID(call.args.targetName);
+                            if (requesterID && players[requesterID]) {
+                                const tp = players[requesterID];
+                                tp.activeQuest = script.questObjective;
+                                tp.mapScenario = scenarioType; 
+                                tp.mapBossID = antagID;
+                                
+                                io.to(requesterID).emit("remote_spawn_npc", {
+                                    mapID: tp.mapID, 
+                                    index: Math.floor(Math.random() * 100000) + 1000,
+                                    x: tp.x, y: tp.y, type: 56, state: 'chasing', isBoss: false, 
+                                    role: 'portal_invite', color: '#ff8800', deck: [], 
+                                    dialogue: [`My master Suncat sent me to bring you to the adventure realm. A great ${scenarioType} awaits. Shall we go?`],
+                                    options: ['Yes', 'No'], alignment: 'friendly_messenger',
+                                    yesActions: [['load_map', 999], ['play_sfx', 'warp'], ['disappear', null]],
+                                    noActions: [['play_sfx', 'cancel'], ['disappear', null]]
+                                });
+                            }
 
-        functionResult = { result: `Success. Generated Multi-Zone scenario and dispatched messenger imp.` };
+                            functionResult = { result: `Success. Generated Multi-Zone scenario and dispatched messenger imp.` };
 
-    } catch (err) {
-        console.error("Map Generation Error:", err);
-        functionResult = { result: "Critical Error building multi-zone map." };
-    }
-}
+                        } catch (err) {
+                            console.error("Map Generation Error:", err);
+                            functionResult = { result: "Critical Error building multi-zone map." };
+                        }
+                    }
                     
                     // F. TELEPORT SPECIFIC PLAYER
                     else if (call.name === "teleportPlayer") {
