@@ -4038,7 +4038,7 @@
                                     index: miniTargetID,
                                     type: CARD_MANIFEST_DB[allySprite].sprite || allySprite,
                                     x: mapData.miniCenter.x + 0.5, y: mapData.miniCenter.y + 0.5,
-                                    state: 'fleeing', role: 'dialogue', alignment: 'friendly', // Set to friendly
+                                    state: 'fleeing', role: 'dialogue', alignment: 'friendly', 
                                     color: '#00ff00', deck: [allySprite],
                                     dialogue: script.prisonerLines || ["Thank the gods you found me! Help me fight!"],
                                     options: ['Recruit', 'Leave'],
@@ -4046,8 +4046,10 @@
                                         ['play_sfx', 'buff2'],
                                         ['become_ally', allySprite],
                                         ['spectate', 'Player has rescued a prisoner from the dungeon.'],
-                                        ['disappear', miniTargetID] 
-                                    ]
+                                        ['disappear', null],      // <--- FIX: Uses null to guarantee the speaker is deleted
+                                        ['close_dialogue', null]  // <--- FIX: Closes the UI
+                                    ],
+                                    noActions: [['close_dialogue', null]] // <--- FIX: Closes the UI if they say no
                                 });
                             } 
                             else if (scenarioType === 'fetch') {
@@ -4064,7 +4066,8 @@
                                         ['play_sfx', 'cancel'],
                                         ['transform_npc', { index: miniTargetID, newType: trapSprite, newAlignment: 'foe', newRole: 'battle', newState: 'chasing', clearDialogue: true }],
                                         ['start_battle', miniTargetID]
-                                    ]
+                                    ],
+                                    noActions: [['close_dialogue', null]]
                                 });
                             }
                             else {
@@ -4080,20 +4083,20 @@
                                         ['play_sfx', 'horn'],
                                         ['start_hunted', { waves: 3, interval: 300, mobs: [{sprite: hostileMinions[0]}] }],
                                         ['notify', "The horde has been alerted! Survive!"],
-                                        ['disappear', miniTargetID] 
-                                    ]
+                                        ['disappear', null], // Destroys the altar
+                                        ['close_dialogue', null]
+                                    ],
+                                    noActions: [['close_dialogue', null]]
                                 });
                             }
 
-                          
-
                             // ==========================================
-                            // ZONE 4: THE ECOLOGY (Distance-Weighted, 25% Density)
+                            // ZONE 4: THE ECOLOGY (Distance-Weighted)
                             // ==========================================
                             let shuffledFloors = [...mapData.validFloors].sort(() => 0.5 - Math.random());
                             
-                            // Spawn 1 NPC per 75 tiles ( drastically thins out the horde! )
-                            let totalWanderers = Math.floor(shuffledFloors.length / 75);
+                            // --- FIX: Halved the spawn rate! (1 NPC per 150 tiles) ---
+                            let totalWanderers = Math.floor(shuffledFloors.length / 150); 
 
                             for (let i = 0; i < totalWanderers; i++) {
                                 let tile = shuffledFloors[i];
@@ -4108,11 +4111,11 @@
                                 let spawnID;
 
                                 if (distToLair < distToBastion * 0.6) {
-                                    isHostile = Math.random() < 0.8; 
+                                    isHostile = Math.random() < 0.9; 
                                 } else if (distToBastion < distToLair * 0.6) {
                                     isHostile = Math.random() < 0.2; 
                                 } else {
-                                    isHostile = Math.random() < 0.5; 
+                                    isHostile = Math.random() < 0.6; 
                                 }
 
                                 if (isHostile) {
@@ -4127,23 +4130,28 @@
                                     });
                                 } else {
                                     spawnID = friendlyMinions[Math.floor(Math.random() * friendlyMinions.length)];
-                                    let isDefender = (distToBastion <= 7); 
                                     
-                                    // 15% chance for a friendly wanderer to be a recruitable ally!
-                                    let isRecruitable = !isDefender && Math.random() < 0.15;
-
+                                    // 15% chance to spawn a recruitable ally in the wild
+                                    let isRecruitable = Math.random() < 0.15;
+                                    
                                     mapNPCs.push({
                                         index: 10000 + mapNPCs.length,
                                         type: CARD_MANIFEST_DB[spawnID].sprite || spawnID, 
                                         x: tile.x + 0.5, y: tile.y + 0.5, 
                                         state: 'wandering', 
                                         role: isRecruitable ? 'become_ally' : 'dialogue', 
-                                        alignment: isDefender ? 'defender' : 'friendly', 
+                                        alignment: 'friendly', 
                                         deck: isRecruitable ? [spawnID] : buildSynergisticDeck(spawnID, 80), 
                                         color: '#00ff00', 
-                                        dialogue: [isDefender && script.friendlyLife ? script.friendlyLife[i % script.friendlyLife.length] : (script.friendlyProfound ? script.friendlyProfound[i % script.friendlyProfound.length] : "The wilds are dangerous.")],
+                                        dialogue: [script.friendlyProfound ? script.friendlyProfound[i % script.friendlyProfound.length] : "The wilds are dangerous."],
                                         options: isRecruitable ? ['Recruit', 'Leave'] : null,
-                                        yesActions: isRecruitable ? [['play_sfx', 'buff2'], ['become_ally', spawnID], ['disappear', 10000 + mapNPCs.length]] : null
+                                        yesActions: isRecruitable ? [
+                                            ['play_sfx', 'buff2'], 
+                                            ['become_ally', spawnID], 
+                                            ['disappear', null], // <--- Deletes the wild wanderer when recruited
+                                            ['close_dialogue', null] 
+                                        ] : null,
+                                        noActions: isRecruitable ? [['close_dialogue', null]] : null
                                     });
                                 }
                             }
