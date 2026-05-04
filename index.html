@@ -15615,29 +15615,29 @@
         // 1. Queue Management
         if (!this.turnQueue || this.turnQueue.length === 0) {
             let aliveUnits = this.units.filter(u => !u.isDead);
+            
+            // Count how many allies and foes are left
+            let allies = aliveUnits.filter(u => u.alignment === 'ally');
             let foes = aliveUnits.filter(u => u.alignment === 'foe');
-            
-            // --- THE FIX: Find the actual Player ---
-            let playerUnit = this.units.find(u => u.id === 'player_unit');
-            let playerIsDead = !playerUnit || playerUnit.isDead;
-            
-            // The game ends if all enemies are dead, OR if the main player dies!
-            if (playerIsDead || foes.length === 0) {
+
+            // --- NEW TEAM-BASED WIN CONDITION ---
+            // Game ends if one entire team is wiped out
+            if (allies.length === 0 || foes.length === 0) {
                 if (this.state !== 'GAME_OVER') {
                     this.state = 'GAME_OVER';
                     
-                    // You only win if all foes are dead AND the player survived
-                    this.playerWon = (foes.length === 0 && !playerIsDead); 
-                    
-                    this.endTimer = 0; // Initialize our animation clock
+                    // You win if foes are gone and at least one ally survived
+                    this.playerWon = (foes.length === 0 && allies.length > 0); 
+
+                    this.endTimer = 0; 
                     this.canDismissEndScreen = false; 
 
                     if (typeof MusicEngine !== 'undefined') {
                         MusicEngine.stop();
-                        MusicEngine.play(this.playerWon ? 20 : 18); // 20=Triumph, 18=Defeat
+                        MusicEngine.play(this.playerWon ? 20 : 18); 
                     }
                 }
-                return; // Halt turn processing!
+                return; 
             }
 
             this.turnQueue = this.calculateTurnOrder(aliveUnits);
@@ -25458,31 +25458,26 @@
                                 
                             }
                             else if (msg.toLowerCase() === '.hack//tactics') {
-                                const monsterIndices = [
-                                    0, 1, 2, 3, 4, 5, 9, 23, 32, 33, 34, 35, 37, 42, 46, 47, 
-                                    48, 49, 54, 56, 57, 60, 61, 62, 63, 74, 75, 76, 77, 78, 
-                                    79, 80, 81, 82, 83, 85, 86, 87, 88, 89, 90, 91, 94, 98
-                                ];
+                            const monsterIndices = [
+                                0, 1, 2, 3, 4, 5, 9, 23, 32, 33, 34, 35, 37, 42, 46, 47, 
+                                48, 49, 54, 56, 57, 60, 61, 62, 63, 74, 75, 76, 77, 78, 
+                                79, 80, 81, 82, 83, 85, 86, 87, 88, 89, 90, 91, 94, 98
+                            ];
 
-                                // Helper to get a random monster ID
-                                const getRandomMonsterId = () => {
-                                    return monsterIndices[Math.floor(Math.random() * monsterIndices.length)];
-                                };
+                            const getRandomMonsterId = () => monsterIndices[Math.floor(Math.random() * monsterIndices.length)];
 
-                                // 1. Determine random team sizes (1 to 6)
-                                const teamASize = Math.floor(Math.random() * 6) + 1;
-                                const teamBSize = Math.floor(Math.random() * 6) + 1;
+                            // Randomize team sizes between 1 and 6
+                            const allyCount = Math.floor(Math.random() * 6) + 1;
+                            const foeCount = Math.floor(Math.random() * 6) + 1;
 
-                                // 2. Build the arrays for each team
-                                const teamA = Array.from({ length: teamASize }, () => getRandomMonsterId());
-                                const teamB = Array.from({ length: teamBSize }, () => getRandomMonsterId());
+                            // Create the arrays
+                            const allyTeam = Array.from({ length: allyCount }, () => getRandomMonsterId());
+                            const foeTeam = Array.from({ length: foeCount }, () => getRandomMonsterId());
 
-                                // 3. Trigger the minigame with the randomized teams
-                                Dungeon.startEidolonMinigame(teamA, teamB);
-
-                                console.log(`Tactics Match Started! Ally Team (${teamASize}) vs Enemy Team (${teamBSize})`);
-                                console.log(`Ally IDs: ${teamA.join(', ')} | Enemy IDs: ${teamB.join(', ')}`);
-                            }
+                            Dungeon.startEidolonMinigame(allyTeam, foeTeam);
+                            
+                            console.log(`Tactics! ${allyCount} Allies vs ${foeCount} Foes.`);
+                        }
                             
                             chatInput.value = "";
                             chatDraft = "";
