@@ -3952,44 +3952,7 @@
                             if (!script) throw new Error("LLM failed to return a scenario.");
 
                             let mapNPCs = [];
-                            // ==========================================
-// ZONE 1: THE LAIR (The Enemy Capital)
-// ==========================================
-// 1. The King (Center)
-let bossID = 10000;
-mapNPCs.push({
-    index: bossID,
-    type: CARD_MANIFEST_DB[antagID].sprite || antagID,
-    x: mapData.lairCenter.x + 0.5, y: mapData.lairCenter.y + 0.5, 
-    state: 'stationary', role: 'battle', isBoss: true, alignment: 'foe',
-    dialogue: [script.bossTaunt],
-    deathActions: [['play_sfx', 'chime'], ['change_weather', 'clear'], ['give_card', {card: 21, text: "The King is dead! You claimed the Crown!"}], ['notify', "The realm is liberated!"]]
-});
-
-                            // 2. The Royal Guard (Surrounding the King)
-                            const royalOffsets = [{x: -2, y: -2}, {x: 2, y: -2}, {x: -2, y: 2}, {x: 2, y: 2}];
-                            for (let i = 0; i < 4; i++) {
-                                let guardID = hostileMinions[0]; // The strongest minion
-                                mapNPCs.push({
-                                    type: CARD_MANIFEST_DB[guardID].sprite || guardID,
-                                    x: mapData.lairCenter.x + royalOffsets[i].x + 0.5, 
-                                    y: mapData.lairCenter.y + royalOffsets[i].y + 0.5,
-                                    state: 'stationary', role: 'battle', alignment: 'foe',
-                                    dialogue: ["script.hostileTaunts ? script.hostileTaunts[i % script.hostileTaunts.length] :Die!"]
-                                });
-                            }
-
-                            // 3. Dark Civilians (Wandering the Lair perimeter)
-                            for (let i = 0; i < 5; i++) {
-                                let minionID = hostileMinions[Math.floor(Math.random() * hostileMinions.length)];
-                                mapNPCs.push({
-                                    type: CARD_MANIFEST_DB[minionID].sprite || minionID,
-                                    x: mapData.lairCenter.x + (Math.random() * 12 - 6), 
-                                    y: mapData.lairCenter.y + (Math.random() * 12 - 6),
-                                    state: 'wandering', role: 'battle', alignment: 'foe',
-                                    dialogue: ["script.hostileTaunts ? script.hostileTaunts[i % script.hostileTaunts.length] :You dare!?"]
-                                });
-                            }
+                            
                             // ==========================================
                             // ZONE 1: THE LAIR (The Boss Skeleton)
                             // ==========================================
@@ -4085,40 +4048,6 @@ mapNPCs.push({
                                     ],
                                     noActions: [['close_dialogue', null]] // <--- FIX: Closes the UI if they say no
                                 });
-                                // ==========================================
-                                // ZONE 3: THE MINI-DUNGEON (BG2 Gauntlet)
-                                // ==========================================
-                                let miniTargetID = 10000 + mapNPCs.length;
-                                let miniBossSprite = hostileMinions[1] || hostileMinions[0]; 
-
-                                // 1. The Mini-Boss (Warden)
-                                mapNPCs.push({
-                                    index: miniTargetID,
-                                    type: CARD_MANIFEST_DB[miniBossSprite].sprite || miniBossSprite,
-                                    x: mapData.miniCenter.x + 0.5, y: mapData.miniCenter.y + 0.5,
-                                    state: 'stationary', role: 'battle', alignment: 'foe', 
-                                    dialogue: ["You will not free them!"],
-                                    deathActions: [
-                                        ['notify', "The Warden is dead. The prisoner is free!"],
-                                        // Spawns the prisoner dynamically upon the Mini-Boss's death
-                                        ['spawn_npc', [
-                                            999, miniTargetID + 100, 'SPEAKER_X', 'SPEAKER_Y', 
-                                            friendlyMinions[0] || 32, 'stationary', '#00ff00', [friendlyMinions[0]], 
-                                            script.prisonerLines, null, 'dialogue', null, false, 'friendly'
-                                        ]]
-                                    ]
-                                });
-
-                                // 2. The Swarm (Weak enemies surrounding the Mini-Boss)
-                                for (let i = 0; i < 4; i++) {
-                                    let swarmSprite = hostileMinions[hostileMinions.length - 1]; // Weakest minion
-                                    mapNPCs.push({
-                                        type: CARD_MANIFEST_DB[swarmSprite].sprite || swarmSprite,
-                                        x: mapData.miniCenter.x + (Math.random() * 4 - 2), 
-                                        y: mapData.miniCenter.y + (Math.random() * 4 - 2),
-                                        state: 'chasing', role: 'battle', alignment: 'foe'
-                                    });
-                                }
                                 let trapSprite = hostileMinions[0];
                                 mapNPCs.push({
                                     index: miniTargetID,
