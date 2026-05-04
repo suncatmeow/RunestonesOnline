@@ -217,6 +217,29 @@
     
     const NPC_REGISTRY = {
              };
+    const ENUM_NPC = Object.freeze({
+        CINEMATIC_BOSS: 'cinematic_boss',
+        TRAITOR: 'traitor',
+        MERCIFUL_COWARD: 'merciful_coward',
+        WORLD_OBSERVER: 'world_observer',
+        MIMIC: 'mimic',
+        TURRET: 'turret',
+        ESCORT: 'escort',
+        CUTSCENE_TRIGGER: 'cutscene_trigger',
+        WAVE_COMMANDER: 'wave_commander',
+        BOOSTER_SHOP: 'booster_shop',
+        GUILD_CLERK: 'guild_clerk',
+        GUILD_DEFENDER: 'guild_defender',
+        GAMBLER_CASUAL: 'gambler_casual',
+        TACTICAL_RIVAL: 'tactical_rival',
+        GATHERER: 'gatherer',
+        UPGRADING_VENDOR: 'upgrading_vendor',
+        TOLL_GUARD: 'toll_guard',
+        RIDDLER: 'riddler',
+        TOLL_GUARD: 'toll_guard',
+        FACTION_RECRUITER: 'faction_recruiter',
+        RIDDLE_DOOR: 'riddle_door'
+    });
   //TIMER VARIABLES
     var globalDt = 0;
     var timer = 0;
@@ -4641,6 +4664,62 @@
                     [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],//22
                     [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1] //23
                     ];
+                    this.npcs = [];
+
+                    // 1. The Greedy Gargoyle (Toll Guard)
+                    this.spawnNPC(ENUM_NPC.TOLL_GUARD, 301, 10.5, 12.5, {
+                        sprite: 74.1, 
+                        tollItem: 50, 
+                        tollName: "Gold Coin",
+                        dialogue: ["Gargoyles love shiny gold! Give me a coin, or I crush your bones!"],
+                        successText: ["Shiny! You may pass, human."],
+                        battleDeck: [74, 74, 50, 51, 68] // If you fight, he's tough!
+                    });
+
+                    // 2. The Elven Elite (Faction Recruiter)
+                    this.spawnNPC(ENUM_NPC.FACTION_RECRUITER, 302, 5.5, 5.5, {
+                        sprite: 76, 
+                        factionKey: 'merit_points', // Reads your global Merit System
+                        reqRep: 150, 
+                        rewardCard: 76, // Gives the Elf Queen card
+                        successText: [
+                            "Your merit is undeniable.", 
+                            "The Elven Guard stands with you!"
+                        ],
+                        failText: [
+                            "You are but a novice.", 
+                            "Come back when the Guild recognizes your worth. (Requires 150 Merit)"
+                        ]
+                    });
+
+                    // 3. The Sphinx's Trial (Riddle Door)
+                    this.spawnNPC(ENUM_NPC.RIDDLE_DOOR, 303, 15.5, 8.5, {
+                        sprite: 34.1, // Witch sprite acts as the Sphinx
+                        riddleText: [
+                            "I speak without a mouth and hear without ears.", 
+                            "I have no body, but I come alive with wind. What am I?"
+                        ],
+                        optionsArr: ['A Shadow', 'An Echo'], // Option 0 and Option 1
+                        correctIndex: 1, // 'An Echo' is correct
+                        rewardCard: 72, // Ring of Wisdom
+                        trapActions: [
+                            ['play_sfx', 'cancel'],
+                            ['notify', "Fool! The sands consume you!"],
+                            // A brutal trap: Force a teleport backwards!
+                            ['load_map', 24] 
+                        ]
+                    });
+                    // Spawn a Guild Clerk. Override the required item to 45 and the reward to 99
+                    this.spawnNPC(ENUM_NPC.GUILD_CLERK, 201, 5.5, 5.5, { reqItem: 45, reward: 99 });
+                    
+                    // Spawn a Gambler with a specific deck
+                    this.spawnNPC(ENUM_NPC.GAMBLER_CASUAL, 202, 8.5, 6.5, { sprite: 4, deck: [5, 12, 18, 24, 30] });
+
+                    // Spawn a Traitor ambush
+                    this.spawnNPC(ENUM_NPC.TRAITOR, 203, 12.5, 12.5, { sprite: 85 });
+
+                    // Spawn a Mimic
+                    this.spawnNPC(ENUM_NPC.MIMIC, 204, 15.5, 2.5, { deck: [83, 52, 40, 59] });
                this.x = 5.5; 
                     this.y = 5.5;
                 }
@@ -4650,7 +4729,7 @@
                 this.floorColor = 'rgba(0,0,0,1)'; // Blue Floor
                 this.mapname = 'Portal Room'
                 this.maze = [
-                    // 0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17
+                    //0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17
                     [19,19, 3, 3, 3,59,59,59, 1, 1, 1, 3, 3, 3,11,11,11,19,19],//0
                     [19,19, 3, 0, 3,59, 0,59, 1, 0, 1, 3, 0, 3,11, 0,11,19,19],//1
                     [19,19, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,51,51],//2
@@ -4711,9 +4790,9 @@
                     new NPC(999,1.5, 3.5, 99, 'stationary','#66ccff',[43],'portal',null,'friendly'),
                     //suncat
                 ];
-                this.x = 8.5; 
-                this.y = 11.5;
-                this.dir = 0;
+                this.x = 6.5; 
+                this.y = 1.5;
+                this.dir = 2;
             }
           //MAP 0: Inner Dungeon(Tutorial Area)
           if (id === 0) {
@@ -6766,7 +6845,7 @@
               this.y = 2.5;
               this.dir = 2;
           }
-          else if (id === 999) {
+          else if (id === 999||id == 888) {
             this.skyColor = 'rgba(0,0,0,1)';   // Dark Blue Sky
             this.floorColor = 'rgba(0,0,0,1)'; // Blue Floor
             
@@ -6787,7 +6866,7 @@
             this.npcs = [];
               
               // Uses dynamic `prevMap`
-              this.npcs.push(new NPC(1, 9.5, 1.5, 99, 'stationary', '#66ccff', [5.5, 5.5, this.prevMap, 0], 'portal', null, 'friendly'));
+              this.npcs.push(new NPC(1, 9.5, 1.5, 99, 'stationary', '#66ccff', [6.5, 1.5, -1, 2], 'portal', null, 'friendly'));
               this.x = 5.5; 
               this.y = 5.5;
           }
@@ -6940,7 +7019,6 @@
           this.prevMap = data.prevMapID !== undefined ? data.prevMapID : 0;
           // Hardcoded escape portal back to Map 0
           
-          this.spawnPersistentNPC(this.mapID, 9999, 1.5, 1.5, 99, 'stationary', '#66ccff', [],null,null,'dialogue',null,null,'friendly');
 
           // Spawn AI-Generated NPCs exactly where the server told them to be
           if (data.npcs && data.npcs.length > 0) {
@@ -6965,7 +7043,7 @@
                     this.mapID, 
                     100 + index, 
                     npc.x, 
-                    npc.y, 
+                    npc.y-.5, 
                     safeType, 
                     safeState, 
                     safeColor, 
@@ -7628,6 +7706,7 @@
         }
         }
     //Map rendering
+    
       render(dt) {
         //if(this.currentSpeaker === null &&startGame === 'dialogue'){startGame = 'explore'}
             // ==========================================
@@ -10516,6 +10595,236 @@
             this.dCounter = 0;            
         }
     //NPC
+      spawnNPC(npcType, index, x, y, options = {}) {
+        let npc;
+        
+        // Default fallback values
+        let sprite = options.sprite || 32;
+        let deck = options.deck || [];
+        let color = options.color || '#00ff00';
+
+        switch(npcType) {
+            case ENUM_NPC.TOLL_GUARD:
+                npc = new NPC(index, x, y, sprite, 'stationary', color, deck, 'dialogue', false, 'friendly');
+                npc.dialogueFactory = (dungeon) => {
+                    let reqItem = options.tollItem || 50; // Default to Card 50 (Gold)
+                    let itemName = options.tollName || "Gold";
+                    
+                    // Check if player has the item in hand, extra, or deck
+                    let hasItem = dungeon.deck.some(c => c.index === reqItem) || 
+                                dungeon.extra.some(c => c.index === reqItem) || 
+                                dungeon.hand.some(c => c && c.index === reqItem);
+
+                    npc.options = [`Pay Toll (${itemName})`, 'Force Your Way'];
+                    
+                    // Dynamic Yes Actions based on inventory
+                    if (hasItem) {
+                        npc.yesActions = [
+                            ['remove_card', { card: reqItem, text: `You paid the ${itemName}.` }],
+                            ['play_sfx', 'chime'],
+                            ['notify', options.successText || ["You may pass."]],
+                            ['disappear', index] // Guard steps aside
+                        ];
+                    } else {
+                        npc.yesActions = [
+                            ['play_sfx', 'cancel'],
+                            ['notify', `You don't have the required ${itemName}!`]
+                        ];
+                    }
+
+                    // No Action always triggers a fight
+                    npc.noActions = [
+                        ['spectate', 'Player refused the toll and initiated combat!'],
+                        ['transform_npc', { 
+                            index: index, 
+                            newAlignment: 'foe', 
+                            newRole: 'battle', 
+                            newState: 'chasing',
+                            newDeck: options.battleDeck || deck 
+                        }],
+                        ['start_battle', index]
+                    ];
+
+                    return { text: options.dialogue || ["None pass without paying the toll!"] };
+                };
+                break;
+
+            // ==========================================
+            // THE FACTION RECRUITER: Checks global stats before joining
+            // Options used: factionKey, reqRep, rewardCard, successText, failText
+            // ==========================================
+            case ENUM_NPC.FACTION_RECRUITER:
+                npc = new NPC(index, x, y, sprite, 'stationary', color, deck, 'dialogue', false, 'friendly');
+                npc.dialogueFactory = (dungeon) => {
+                    let currentRep = dungeon[options.factionKey] || 0;
+                    let reqRep = options.reqRep || 100;
+
+                    if (currentRep >= reqRep) {
+                        return {
+                            text: options.successText || ["Your reputation precedes you. I am ready to join."],
+                            actions: [
+                                ['give_card', { card: options.rewardCard || sprite, text: "New Ally Joined!" }],
+                                ['become_ally', sprite],
+                                ['play_sfx', 'heal'],
+                                ['disappear', index]
+                            ]
+                        };
+                    } else {
+                        return {
+                            text: options.failText || [
+                                `I only follow the proven.`, 
+                                `(Requires ${reqRep} ${options.factionKey}. You have ${currentRep}.)`
+                            ],
+                            actions: []
+                        };
+                    }
+                };
+                break;
+
+            // ==========================================
+            // THE RIDDLE DOOR: Answers dictate passage or punishment
+            // Options used: riddleText, optionsArr, correctIndex, rewardCard, trapActions
+            // ==========================================
+            case ENUM_NPC.RIDDLE_DOOR:
+                npc = new NPC(index, x, y, sprite, 'stationary', color, deck, 'dialogue', false, 'friendly');
+                npc.dialogueFactory = (dungeon) => {
+                    let memKey = `riddle_${index}`;
+                    if (!dungeon.memory[memKey]) dungeon.memory[memKey] = { solved: false };
+
+                    if (dungeon.memory[memKey].solved) {
+                        return { text: ["The path is clear."], actions: [] };
+                    }
+
+                    // Feed the custom options directly into the UI
+                    npc.options = options.optionsArr || ['Option A', 'Option B'];
+                    let correctIndex = options.correctIndex || 0;
+
+                    // Map out the actions dynamically based on which button is the correct answer
+                    let successActions = [
+                        ['play_sfx', 'chime'],
+                        ['notify', "Correct. The way opens."],
+                        ['disappear', index]
+                    ];
+                    
+                    // Add a reward if specified
+                    if (options.rewardCard) successActions.unshift(['give_card', { card: options.rewardCard, text: "A secret compartment opens!" }]);
+                    
+                    // Inject the memory update so it saves immediately
+                    successActions.push(() => { dungeon.memory[memKey].solved = true; return ['spectate', 'Riddle solved.']; });
+
+                    let failActions = options.trapActions || [
+                        ['play_sfx', 'cancel'],
+                        ['notify', "Incorrect. A trap triggers!"]
+                    ];
+
+                    // Assign dynamically
+                    npc.yesActions = (correctIndex === 0) ? successActions : failActions;
+                    npc.noActions = (correctIndex === 1) ? successActions : failActions;
+
+                    return { text: options.riddleText || ["Answer my riddle to pass."] };
+                };
+                break;
+            // ==========================================
+            case ENUM_NPC.GUILD_CLERK:
+                npc = new NPC(index, x, y, sprite, 'stationary', color, deck, 'dialogue', false, 'friendly');
+                npc.dialogueFactory = (dungeon) => {
+                    if (dungeon.guild_rep === undefined) dungeon.guild_rep = 0; 
+                    if (!dungeon.memory['guild_bounty']) dungeon.memory['guild_bounty'] = { state: 0 }; 
+                    
+                    let requiredTrophy = options.reqItem || 50; 
+                    let hasTrophy = dungeon.deck.some(c => c.index === requiredTrophy) || 
+                                    dungeon.extra.some(c => c.index === requiredTrophy) || 
+                                    dungeon.hand.some(c => c && c.index === requiredTrophy);
+
+                    if (dungeon.memory['guild_bounty'].state === 0) {
+                        npc.options = ['Accept Bounty', 'Leave'];
+                        npc.yesActions = [
+                            ['update_quest_state', { key: 'guild_bounty', state: 1 }],
+                            ['notify', `Bounty Accepted! Bring back a Trophy (Card ${requiredTrophy}).`],
+                            ['play_sfx', 'click'],
+                            ['close_dialogue', null]
+                        ];
+                        npc.noActions = [['close_dialogue', null]];
+                        return {
+                            text: [`Welcome. (Rep: ${dungeon.guild_rep})`, "Would you like to register for a hunt?"]
+                        };
+                    } else if (dungeon.memory['guild_bounty'].state === 1) {
+                        if (hasTrophy) {
+                            npc.options = null; 
+                            return {
+                                text: ["Ah, you've secured the Trophy! Excellent work."],
+                                actions: [
+                                    ['remove_card', { card: requiredTrophy, text: "You handed over the Trophy." }],
+                                    ['give_card', { card: options.reward || 64, text: "Guild Payment Received!" }], 
+                                    ['update_quest_state', { key: 'guild_bounty', state: 0 }], 
+                                    ['set_flag', { key: 'guild_rep', value: dungeon.guild_rep + 10 }], 
+                                    ['play_sfx', 'heal']
+                                ]
+                            };
+                        } else {
+                            npc.options = null;
+                            return { text: ["Come back to any Counter when you have secured the target!"], actions: [] };
+                        }
+                    }
+                };
+                break;
+
+            // ==========================================
+            case ENUM_NPC.TRAITOR:
+                npc = new NPC(index, x, y, sprite, 'stationary', color, deck, 'dialogue', false, 'friendly');
+                npc.customDialogue = [
+                    "Oh, thank goodness you're here! I found this rare artifact.",
+                    "Come closer, let me show it to you...",
+                    "...My blade! Die, fool!"
+                ];
+                npc.endActions = [
+                    ['play_sfx', 'slash'],
+                    ['transform_npc', { index: index, newAlignment: 'foe', newRole: 'battle', newState: 'chasing' }],
+                    ['start_battle', index] 
+                ];
+                break;
+
+            // ==========================================
+            case ENUM_NPC.GAMBLER_CASUAL:
+                npc = new NPC(index, x, y, sprite, 'stationary', color, deck, 'dialogue', false, 'friendly');
+                npc.dialogueFactory = (dungeon) => {
+                    if (dungeon.memory['gambler_matches'] === undefined) dungeon.memory['gambler_matches'] = 0;
+
+                    npc.options = ['Play Eidolon', 'Not Right Now'];
+                    npc.yesActions = [
+                        ['spectate', 'Player sat down for a casual game of Eidolon.'],
+                        ['start_minigame', 'casual_duel'] 
+                    ];
+                    npc.yesActions.push(() => { dungeon.memory['gambler_matches'] += 1; return ['play_sfx', 'click']; });
+                    npc.noActions = [['play_sfx', 'cancel'], ['close_dialogue', null]];
+
+                    let introText = dungeon.memory['gambler_matches'] > 0 
+                        ? "Back for another round? I shuffled my deck just for you!" 
+                        : "Fancy a game?";
+
+                    return { text: [introText, "No gold on the line, just pride. What do you say?"] };
+                };
+                break;
+
+            // ==========================================
+            case ENUM_NPC.MIMIC:
+                // Force loot sprite and yellow minimap dot
+                npc = new NPC(index, x, y, -27, 'stationary', '#ffff00', deck, 'battle', false, 'foe');
+                npc.customDialogue = ["Kee hee! You fell for the bait!"];
+                break;
+
+            // ==========================================
+            default:
+                console.warn(`[spawnNPC] Warning: NPC Type '${npcType}' not recognized. Spawning default dummy.`);
+                npc = new NPC(index, x, y, sprite, 'stationary', color, deck, 'dialogue', false, 'friendly');
+                npc.customDialogue = ["I have nothing to say."];
+                break;
+        }
+
+        // Push the fully constructed NPC to the map
+        this.npcs.push(npc);
+        return npc; // Return it just in case you need to chain methods
+      }
       spawnPersistentNPC(targetMapID, index, x, y, type, state = 'stationary', color = '#ffffff', deck = [], dialogue = null, rewardCard = null, role = 'battle', options = null, isBoss = null, alignment = 'friendly', endActions = [], deathActions = [], isCinematic = false,yesActions = null, noActions = null) {    
             // --- NATIVE FACTORY INTERCEPTOR ---
             // If the server requests a bounty merchant, build the complex native object instead!
@@ -10758,7 +11067,7 @@
                     // --- OVERWORLD LOOT DROP ---
                     // Only drop a physical card if they die in the overworld (not a tactical duel)
                     // and ensure the dying NPC is actually an enemy!
-                    if (typeof startGame !== 'undefined' && startGame === 'explore' && npc.role !== 'dropped_card' && !npc.role.includes('portal')) {                        
+                    if (typeof startGame !== 'undefined' && startGame === 'explore' && (npc.alignment === 'foe'||npc.alignment === 'foe_coward')) {
                         // Set your drop rate! (e.g., 0.5 = 50% chance. Set to 1.0 for guaranteed drops while testing)
                         if (Math.random() < 1) { 
                         let loot = 0;
@@ -10853,33 +11162,41 @@
                 this.executeActions(npc.deathActions);
             }
         // 4. LOOT DROP
-            let lootTriggered = false;
+        let lootTriggered = false;
 
-            // ONLY do the UI popup if we are currently inside a tactical battle screen
-            if (typeof startGame !== 'undefined' && startGame === 'battle') {
+        // FIX 1: Check for 'tactics' mode, not just 'battle'
+        if (typeof startGame !== 'undefined' && (startGame === 'battle' || startGame === 'tactics')) {
+            
+            // Ensure we are only dropping loot for dead enemies, not allies or neutral props
+            if (npc.alignment === 'foe' || npc.alignment === 'foe_coward') {
                 
-                if (npc.deck && npc.deck.length > 0) {
-                    let availableLootIDs = npc.deck.map(c => typeof c === 'object' ? c.index : c);
-                    if (npc.hand) {
-                        let handIDs = npc.hand.map(c => typeof c === 'object' ? c.index : c);
-                        availableLootIDs = availableLootIDs.concat(handIDs);
-                    }
+                // FIX 2: Actually CALL the custom drop function you wrote!
+                if (typeof this.dropTacticsLoot === 'function') {
+                    this.dropTacticsLoot(npc.x, npc.y, npc.isBoss, npc.deck);
+                    lootTriggered = true;
+                } else {
+                    // Fallback to direct inventory insertion if the function is missing
+                    if (npc.deck && npc.deck.length > 0) {
+                        let availableLootIDs = npc.deck.map(c => typeof c === 'object' ? c.index : c);
+                        if (npc.hand) {
+                            let handIDs = npc.hand.map(c => typeof c === 'object' ? c.index : c);
+                            availableLootIDs = availableLootIDs.concat(handIDs);
+                        }
 
-                    let playerOwnedIDs = this.deck.map(c => typeof c === 'object' ? c.index : c);
-                    let uniqueLoot = availableLootIDs.filter(id => !playerOwnedIDs.includes(id));
+                        let playerOwnedIDs = this.deck.map(c => typeof c === 'object' ? c.index : c);
+                        let uniqueLoot = availableLootIDs.filter(id => !playerOwnedIDs.includes(id));
 
-                    if (uniqueLoot.length > 0) {
-                        let rndIndex = Math.floor(Math.random() * uniqueLoot.length);
-                        let cardID = uniqueLoot[rndIndex];
-                        
-                        // --- FIX 2: DELEGATE LOOT TO THE ACTION QUEUE ---
-                        // Instead of manually pushing to 'extra' and hardcoding a UI popup,
-                        // we let the 'give_card' action handle it seamlessly!
-                        this.executeActions([['give_card', cardID]]);
-                        lootTriggered = true;
+                        if (uniqueLoot.length > 0) {
+                            let rndIndex = Math.floor(Math.random() * uniqueLoot.length);
+                            let cardID = uniqueLoot[rndIndex];
+                            
+                            this.executeActions([['give_card', cardID]]);
+                            lootTriggered = true;
+                        }
                     }
                 }
             }
+        }
             
 
             
@@ -12340,14 +12657,17 @@
 
       processNextAction() {
           // If the queue is empty, shut down the processor and return to normal gameplay
-          if (this.actionQueue.length === 0) {
-              this.isProcessingActions = false;
-              if (startGame === 'dialogue' && !this.currentSpeaker) startGame = 'explore';
-              if (typeof this.saveGame === 'function') {
-                    this.saveGame();
-                }
-              return;
-          }
+        if (this.actionQueue.length === 0) {
+            this.isProcessingActions = false;
+            if (startGame === 'dialogue' && !this.currentSpeaker) {
+                // FIX: Check the map ID to safely return to the Tactics board!
+                startGame = (this.mapID === 888) ? 'tactics' : 'explore';
+            }
+            if (typeof this.saveGame === 'function') {
+                this.saveGame();
+            }
+            return;
+        }
 
           this.isProcessingActions = true;
           let currentAction = this.actionQueue.shift(); // Pull the first action off the queue
@@ -12651,6 +12971,53 @@
                       MusicEngine.play(15); 
                   }
                   break;
+                // --- COMBAT & EVENTS ---
+                case 'start_tactics':
+                    isBlocking = true; // PAUSES QUEUE
+                    this.dCounter = 0;
+                    this.status = 'normal';
+
+                    let tactEnemy = this.npcs.find(n => n.index === payload) || this.currentSpeaker;
+
+                    if (tactEnemy) {
+                        this.currentSpeaker = null;
+                        if (typeof btnYes !== 'undefined') btnYes.visible = false;
+                        if (typeof btnNo !== 'undefined') btnNo.visible = false;
+
+                        // 1. Build Player Team with Origin Tracking
+                        let pTeam = [];
+                        
+                        // Add the player themselves (First unit)
+                        if (this.deck && this.deck.length > 0) {
+                            pTeam.push({ id: this.deck[0].index, source: 'player', uid: this.deck[0].uid });
+                        }
+
+                        // Add any overworld active summons
+                        if (this.activeSummons && this.activeSummons.length > 0) {
+                            this.activeSummons.forEach(summon => {
+                                pTeam.push({ 
+                                    id: summon.cardId, 
+                                    source: 'summon', 
+                                    uid: summon.uid, 
+                                    npcId: summon.npcId // Remember their overworld body!
+                                });
+                            });
+                        }
+
+                        // 2. Build Enemy Team
+                        let eTeam = tactEnemy.deck.map(c => typeof c === 'object' ? (c.index || c.id) : c);
+                        let minions = this.npcs.filter(n => !n.isDead && n.summonerId === tactEnemy.index);
+                        eTeam.push(...minions.map(m => Math.floor(m.type)));
+
+                        tactEnemy.customDialogue = null;
+                        tactEnemy.dialogueFactory = null;
+
+                        // 3. Start the game with 'real' stakes, tracking the enemy boss
+                        this.startEidolonMinigame(pTeam, eTeam, { stakes: 'real', enemyNpcId: tactEnemy.index });
+                    } else {
+                        isBlocking = false;
+                    }
+                    break;
                 case 'start_tutorial':
                   isBlocking = true; // PAUSES QUEUE
                   this.currentSpeaker = null;
@@ -12749,6 +13116,7 @@
                   if (this.savedViewMode) window.gameViewMode = this.savedViewMode;
                   if (this.savedCameraMode) this.cameraMode = this.savedCameraMode;
                   this.saveGame();
+                  if (this.mapID === 888) startGame = 'tactics';
                   break;
 
                 case 'update_quest_state':
@@ -13118,18 +13486,14 @@
         }
         // Add to Explore class
     // Add to Explore class
-    startEidolonMinigame(playerTeam, enemyTeam) {
+    startEidolonMinigame(playerTeam, enemyTeam, config = { stakes: 'mock' }) {
         if (typeof preGame !== 'undefined') preGame = 'explore';
         if (typeof startGame !== 'undefined') startGame = 'tactics';
 
         this.mapID = 888;
         this.mapname = "Eidolon Board";
 
-        // --- Normalize Inputs ---
-        // This ensures that if you pass a single ID, it gets treated as a team of 1
-        const pTeam = Array.isArray(playerTeam) ? playerTeam : [playerTeam];
-        const eTeam = Array.isArray(enemyTeam) ? enemyTeam : [enemyTeam];
-
+        // --- MAP GENERATION ---
         const themes = [
             { floor: '#555566', wall: 25, sky: '#111122' },
             { floor: '#3a5f3a', wall: 3, sky: '#0a1a0a' },
@@ -13316,7 +13680,7 @@
                     if (x < half && y < half) this.maze[y][x] = quadMaps[0][y][x];       
                     else if (x >= half && y < half) this.maze[y][x] = quadMaps[1][y][x];  
                     else if (x < half && y >= half) this.maze[y][x] = quadMaps[2][y][x];  
-                    else this.maze[y][x] = quadMaps[3][y][x];                                              
+                    else this.maze[y][x] = quadMaps[3][y][x];                                             
                 }
             }
             for(let i = 0; i < 4; i++) {
@@ -13343,24 +13707,37 @@
         for(let y = 0; y < s; y++) { this.maze[y][0] = wall; this.maze[y][s-1] = wall; }
         for(let x = 0; x < s; x++) { this.maze[0][x] = wall; this.maze[s-1][x] = wall; }
 
+        // --- INIT ENGINE (DO THIS ONLY ONCE) ---
         this.npcs = [];
         this.projectiles = [];
         this.activeSummons = [];
 
         window.TacticsEngine = new TacticsController();
         window.TacticsEngine.units = [];
+        window.TacticsEngine.config = config;
 
-        // --- DEPLOY TEAMS ---
-        // Offsets to spread units out in the 3x3 spawn area
+        // --- NORMALIZE INPUTS ---
+        const pTeam = Array.isArray(playerTeam) ? playerTeam : [playerTeam];
+        const eTeam = Array.isArray(enemyTeam) ? enemyTeam : [enemyTeam];
+
         const spawnOffsets = [
             {dx: 0, dy: 0}, {dx: 1, dy: 0}, {dx: -1, dy: 0},
             {dx: 0, dy: 1}, {dx: 0, dy: -1}, {dx: 1, dy: 1},
             {dx: -1, dy: -1}, {dx: 1, dy: -1}, {dx: -1, dy: 1}
         ];
 
-        pTeam.forEach((cardID, i) => {
+        // --- DEPLOY ALLY TEAM ---
+        pTeam.forEach((unitData, i) => {
             let offset = spawnOffsets[i % spawnOffsets.length];
+            
+            let isObj = typeof unitData === 'object' && unitData !== null;
+            let cardID = isObj ? (unitData.index || unitData.id || unitData.cardId || 0) : unitData;
+            
+            // Ensure index 0 is always marked as the player if they came from the source
             let isMainPlayer = (i === 0);
+            let source = isObj ? (unitData.source || 'player') : (isMainPlayer ? 'player' : 'unknown');
+            let uid = isObj ? unitData.uid : null;
+            let npcId = isObj ? unitData.npcId : null;
 
             window.TacticsEngine.units.push({
                 id: 'player_unit_' + i, 
@@ -13371,16 +13748,21 @@
                 isDead: false, 
                 hasMoved: false, 
                 hasActed: false,
-                
-                // --- NEW LOGIC: SEPARATE PLAYER FROM AI ---
                 role: isMainPlayer ? 'player' : 'summoned_minion',
                 summonerId: isMainPlayer ? null : 'player_unit_0',
+                innateSpells: isMainPlayer ? [] : window.TacticsEngine.getInnateSpellsForType(cardID),
                 
-                // Give AI allies their innate spells so they can use magic instead of just punching
-                innateSpells: isMainPlayer ? [] : window.TacticsEngine.getInnateSpellsForType(cardID)
+                // --- TRACKING DATA ---
+                sourceType: source,
+                sourceUid: uid,
+                sourceNpcId: npcId,
+                
+                // If the object passed has specific stats/menus from dungeon.extrsa, map them here:
+                playerData: isObj ? unitData : null 
             });
         });
 
+        // --- DEPLOY ENEMY TEAM ---
         eTeam.forEach((cardID, i) => {
             let offset = spawnOffsets[i % spawnOffsets.length];
             window.TacticsEngine.units.push({
@@ -13388,7 +13770,10 @@
                 x: eX + offset.dx + 0.5, 
                 y: eY + offset.dy + 0.5, 
                 type: cardID, 
-                alignment: 'foe', isDead: false, hasMoved: false, hasActed: false,
+                alignment: 'foe', 
+                isDead: false, 
+                hasMoved: false, 
+                hasActed: false,
                 innateSpells: window.TacticsEngine.getInnateSpellsForType(cardID) 
             });
         });
@@ -13400,6 +13785,41 @@
             MusicEngine.stop();
             MusicEngine.play(15); 
         }
+    }
+    dropTacticsLoot(x, y, isBoss, bossDeck) {
+        let dropIndex = Math.floor(Math.random() * 100000) + 700000;
+        
+        // If it's a boss, drop their actual deck. 
+        // If it's a minion, drop a Booster Pack (Replace '94' with your actual Booster Pack item ID)
+        let deckToDrop = isBoss ? bossDeck : [94]; 
+        // FIX: If we are in the Tactics minigame, auto-loot it directly to the UI queue!
+        if (typeof startGame !== 'undefined' && startGame === 'tactics') {
+            deckToDrop.forEach(cardID => {
+                this.executeActions([['give_card', cardID]]);
+            });
+            
+            if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('chime');
+            return; // Stop here so it doesn't drop a physical map NPC
+        }
+        
+        let droppedCard = new NPC(
+            dropIndex, 
+            Math.floor(x) + 0.5, 
+            Math.floor(y) + 0.5, 
+            -27,           // The Card Sprite
+            'stationary', 
+            '#ffff00',     // Yellow minimap dot
+            deckToDrop,    // The card they can recover
+            'dropped_card',// Role
+            false, 
+            'friendly'
+        );
+        
+        // Make it permanent for the duration of the tactics match
+        droppedCard.lifespan = Infinity; 
+        this.npcs.push(droppedCard);
+        
+        if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('chime');
     }
         }
   class Projectile {
@@ -15657,8 +16077,7 @@
 
         // 1. Queue Management
         if (!this.turnQueue || this.turnQueue.length === 0) {
-            let aliveUnits = this.units.filter(u => !u.isDead);
-            
+            let aliveUnits = this.units.filter(u => !u.isDead && u.role !== 'dropped_card');            
             // Count how many allies and foes are left
             let allies = aliveUnits.filter(u => u.alignment === 'ally');
             let foes = aliveUnits.filter(u => u.alignment === 'foe');
@@ -15754,28 +16173,34 @@
                     } else {
                         // Movement is done!
                         activeUnit.hasMoved = true;
-                        // --- NEW: PICK UP LOOT ---
-                        if (activeUnit.alignment === 'ally') {
-                            // Did they land on a dropped card?
-                            let steppedOn = this.units.find(u => u.role === 'dropped_card' && !u.isDead && Math.floor(u.x) === Math.floor(activeUnit.x) && Math.floor(u.y) === Math.floor(activeUnit.y));
+                        
+                        // --- NEW: UNIVERSAL LOOT COLLISION ---
+                        // Find if ANY unit stepped on a dropped card
+                        let steppedOn = this.units.find(u => u.role === 'dropped_card' && !u.isDead && Math.floor(u.x) === Math.floor(activeUnit.x) && Math.floor(u.y) === Math.floor(activeUnit.y));
+                        
+                        if (steppedOn) {
+                            // The card is consumed regardless of who stepped on it
+                            steppedOn.isDead = true; 
+                            steppedOn.visible = false;
+                            steppedOn.x = -999;
                             
-                            if (steppedOn) {
-                                steppedOn.isDead = true; // "Kill" the loot to remove it
-                                steppedOn.visible = false;
-                                steppedOn.x = -999;
-                                
-                                // Send the booster pack to the player's overworld inventory!
-                                if (typeof Dungeon !== 'undefined' && Dungeon.extra) {
-                                    // type 1 denotes an item
-                                    Dungeon.extra.push({ index: steppedOn.cardId, type: 1 }); 
-                                }
-                                
-                                if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('chime');
+                            if (activeUnit.alignment === 'ally') {
+                                // 1. An Ally (or the Player) picked it up! Open the UI.
+                                this.openTacticsBooster(steppedOn.cardId);
                                 
                                 // Golden visual pop!
                                 if (typeof globalParticles !== 'undefined') {
                                     for(let i = 0; i < 10; i++) globalParticles.push(new Particle(activeUnit.x, activeUnit.y, '#FFD700', 'smoke'));
                                 }
+                                // (MusicEngine.playSFX('chime') is already handled inside openTacticsBooster)
+                                
+                            } else {
+                                // 2. A Foe stepped on it! The loot is stolen/destroyed.
+                                if (typeof globalParticles !== 'undefined') {
+                                    // Evil red/purple visual pop to show the player they lost it
+                                    for(let i = 0; i < 10; i++) globalParticles.push(new Particle(activeUnit.x, activeUnit.y, '#ff0044', 'smoke'));
+                                }
+                                if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('debuff_sound'); // Plays a negative sound so you know they took it!
                             }
                         }
                         // -------------------------
@@ -15805,8 +16230,9 @@
                     if (this.animResult === 'killed') {
                         this.animDefender.isDead = true;
                         this.animDefender.visible = false;
-                        this.animDefender.x = -999;
                         this.dropTacticsLoot(this.animDefender);
+                        this.animDefender.x = -999;
+                        
                         if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('death');
                     } else {
                         if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('block');
@@ -15954,8 +16380,9 @@
                                         } else {
                                             target.isDead = true;
                                             target.visible = false;
-                                            target.x = -999;
                                             this.dropTacticsLoot(target);
+                                            
+                                            target.x = -999;
                                             if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('death');
                                         }
                                     }
@@ -16064,8 +16491,9 @@
                             } else {
                                 target.isDead = true;
                                 target.visible = false;
+                                this.dropTacticsLoot(target);                                
                                 target.x = -999;
-                                this.dropTacticsLoot(target);
+                                
                                 if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('death');
                             }
                         } else {
@@ -16220,7 +16648,7 @@
                 if (pData && pData.sprite2D !== undefined && typeof drawPortrait === 'function') {
                     drawPortrait(pData.sprite2D, 0, 0, 1); // 0.5 scales it down nicely
                 } else {
-                    drawShape('arc', 0.5, 0.5, 1, 0.5, 0.5, 0.2, 0, 2, 0, 0, 0, pData ? pData.glow : 'magenta', 1);
+                    drawShape('arc', 0.5, 0.5, 10, 0.5, 0.5, 0.2, 0, 2, 0, 0, 0, pData ? pData.glow : 'magenta', 1);
                 }
 
                 tX = oldTX; tY = oldTY; tL = oldTL; tH = oldTH;
@@ -16634,8 +17062,8 @@
             if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('wind');
     }  
     getUnitAt(x, y) {
-        // Scans our local array instead of Dungeon.npcs
-        return this.units.find(u => !u.isDead && Math.floor(u.x) === x && Math.floor(u.y) === y);
+        // FIX: Scans local array but ignores loot so it doesn't block movement or get targeted!
+        return this.units.find(u => !u.isDead && u.role !== 'dropped_card' && Math.floor(u.x) === x && Math.floor(u.y) === y);
     }
     calculateTurnOrder(aliveUnits) {
         let finalQueue = [];
@@ -16690,9 +17118,8 @@
         this.turnQueue = newQueue;
     }
     processAITurn(activeUnit) {
-        let enemies = this.units.filter(u => !u.isDead && u.alignment !== activeUnit.alignment);
-        let allies = this.units.filter(u => !u.isDead && u.alignment === activeUnit.alignment);
-        
+        let enemies = this.units.filter(u => !u.isDead && u.role !== 'dropped_card' && u.alignment !== activeUnit.alignment);
+        let allies = this.units.filter(u => !u.isDead && u.role !== 'dropped_card' && u.alignment === activeUnit.alignment);
         if (enemies.length === 0) {
             this.turnQueue.shift();
             this.state = 'INIT';
@@ -17709,18 +18136,30 @@
     executeTacticalAssassination(attacker, targetUnit, dashX, dashY, spellId) {
         let spellData = SPELL_REGISTRY[spellId];
 
-        // 1. Set up the Dash 
-        attacker.targetX = dashX + 0.5; // Center on grid
-        attacker.targetY = dashY + 0.5;
-        
-        // Temporarily store who we are hitting and with what spell
         attacker.dashTargetUnit = targetUnit;
         attacker.dashSpellId = spellId;
-        
         attacker.hasMoved = true;
         attacker.hasActed = true;
 
-        this.state = 'ANIMATING_DASH'; // New unique state
+        // 1. Generate an A* Path to the target coordinate
+        let path = Dungeon.findPath(attacker.x, attacker.y, dashX + 0.5, dashY + 0.5);
+        
+        if (path && path.length > 0) {
+            attacker.path = path.map(node => ({
+                x: Math.floor(node.x) + 0.5,
+                y: Math.floor(node.y) + 0.5
+            }));
+            let nextWaypoint = attacker.path.shift();
+            attacker.targetX = nextWaypoint.x;
+            attacker.targetY = nextWaypoint.y;
+        } else {
+            // Fallback snap if pathing fails but the tile is valid
+            attacker.targetX = dashX + 0.5;
+            attacker.targetY = dashY + 0.5;
+            attacker.path = [];
+        }
+
+        this.state = 'ANIMATING_DASH'; 
         if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('wind');
     }
     dropTacticsLoot(deadUnit) {
@@ -25752,26 +26191,40 @@
                                 
                             }
                             else if (msg.toLowerCase() === '.hack//tactics') {
-                            const monsterIndices = [
-                                0, 1, 2, 3, 4, 5, 9, 23, 32, 33, 34, 35, 37, 42, 46, 47, 
-                                48, 49, 54, 56, 57, 60, 61, 62, 63, 74, 75, 76, 77, 78, 
-                                79, 80, 81, 82, 83, 85, 86, 87, 88, 89, 90, 91, 94, 98
-                            ];
+                                const monsterIndices = [
+                                    0, 1, 2, 3, 4, 5, 9, 23, 32, 33, 34, 35, 37, 42, 46, 47, 
+                                    48, 49, 54, 56, 57, 60, 61, 62, 63, 74, 75, 76, 77, 78, 
+                                    79, 80, 81, 82, 83, 85, 86, 87, 88, 89, 90, 91, 94, 98
+                                ];
 
-                            const getRandomMonsterId = () => monsterIndices[Math.floor(Math.random() * monsterIndices.length)];
+                                const getRandomMonsterId = () => monsterIndices[Math.floor(Math.random() * monsterIndices.length)];
 
-                            // Randomize team sizes between 1 and 6
-                            const allyCount = Math.floor(Math.random() * 6) + 1;
-                            const foeCount = Math.floor(Math.random() * 6) + 1;
+                                // Randomize extra team sizes
+                                // allyCount is extra allies (so 0 to 5, plus the main player = 1 to 6 total)
+                                const allyCount = Math.floor(Math.random() * 6);
+                                const foeCount = Math.floor(Math.random() * 6) + 1;
 
-                            // Create the arrays
-                            const allyTeam = Array.from({ length: allyCount }, () => getRandomMonsterId());
-                            const foeTeam = Array.from({ length: foeCount }, () => getRandomMonsterId());
+                                // --- INJECT PLAYER CONTEXT ---
+                                // Make sure we pass an object so the engine detects it and keeps tracking info for the menus
+                                const playerUnitData = {
+                                    source: 'player',
+                                    index: getRandomMonsterId(), // Fallback if sprite isn't found
+                                    dungeonContext: (typeof dungeon !== 'undefined') ? dungeon.extra : null
+                                };
 
-                            Dungeon.startEidolonMinigame(allyTeam, foeTeam);
-                            
-                            console.log(`Tactics! ${allyCount} Allies vs ${foeCount} Foes.`);
-                        }
+                                const allyTeam = [playerUnitData]; // Push the player object at index 0
+
+                                // Fill the rest with random monsters
+                                for (let i = 0; i < allyCount; i++) {
+                                    allyTeam.push(getRandomMonsterId());
+                                }
+                                
+                                const foeTeam = Array.from({ length: foeCount }, () => getRandomMonsterId());
+
+                                Dungeon.startEidolonMinigame(allyTeam, foeTeam);
+                                
+                                console.log(`Tactics! Player + ${allyCount} Allies vs ${foeCount} Foes.`);
+                            }
                             
                             chatInput.value = "";
                             chatDraft = "";
@@ -25996,6 +26449,25 @@
                         else if (slot === 5 || slot === 6) {
                             activeUnit.hasMoved = true;
                             activeUnit.hasActed = true;
+                            
+                            // --- NEW: TACTICS LOOT PICKUP CHECK ---
+                            if (activeUnit.alignment === 'ally') {
+                                // MUST check TacticsEngine.units, not Dungeon.npcs
+                                let lootIndex = window.TacticsEngine.units.findIndex(n => 
+                                    n.role === 'dropped_card' && !n.isDead &&
+                                    Math.floor(n.x) === Math.floor(activeUnit.x) && 
+                                    Math.floor(n.y) === Math.floor(activeUnit.y)
+                                );
+                                
+                                if (lootIndex !== -1) {
+                                    let lootNPC = window.TacticsEngine.units[lootIndex];
+                                    lootNPC.isDead = true;
+                                    lootNPC.visible = false;
+                                    lootNPC.x = -999;
+                                    window.TacticsEngine.openTacticsBooster(lootNPC.cardId);
+                                }
+                            }
+
                             window.TacticsEngine.turnQueue.shift(); 
                             window.TacticsEngine.state = 'INIT'; 
                             if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('cancel');
@@ -26029,30 +26501,67 @@
                         window.TacticsEngine.registerGridClick(clickX, clickY);
                         return;
                     }
-                // 4.END SCREEN PHASE
+                // 4. END SCREEN PHASE
                     else if (window.TacticsEngine.state === 'GAME_OVER') {
                         if (window.TacticsEngine.canDismissEndScreen) {
                             if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('click');
                             
-                            // --- NEW: RETURN SURVIVING CARDS TO DECK ---
-                            window.TacticsEngine.units.forEach(u => {
-                                // If it is an ally, it is NOT dead, and it has a sourceCard attached
-                                if (u.alignment === 'ally' && !u.isDead && u.sourceCard) {
-                                    // Put the card safely back into the player's pocket
-                                    Dungeon.extra.push(u.sourceCard);
+                            let stakes = window.TacticsEngine.config.stakes;
+
+                            // --- GATHER UNCLAIMED LOOT ---
+                            let unclaimedLoot = Dungeon.npcs.filter(n => n.role === 'dropped_card' && n.x !== -999);
+
+                            // --- PROCESS CASUALTIES ---
+                            if ((stakes === 'real' || stakes === 'scenario') && typeof Dungeon !== 'undefined') {
+                                window.TacticsEngine.units.forEach(u => {
+                                    if (u.alignment === 'ally') {
+                                        if (u.isDead) {
+                                            if (u.sourceType === 'player') {
+                                                window.isDead = true;
+                                                startGame = 'gameover';
+                                                if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('cancel'); 
+                                            } else if (u.sourceType === 'summon' && u.sourceNpcId) {
+                                                let overworldAlly = Dungeon.npcs.find(n => n.index === u.sourceNpcId);
+                                                if (overworldAlly) Dungeon.killNPC(overworldAlly, true, 'tactics_death');
+                                            }
+                                        } else if (u.sourceCard && u.type !== 91) {
+                                            // Refund surviving cards
+                                            Dungeon.extra.push(u.sourceCard);
+                                        }
+                                    }
+                                });
+
+                                // If player survived, kill the Overworld Boss
+                                let playerUnit = window.TacticsEngine.units.find(u => u.sourceType === 'player');
+                                if (playerUnit && !playerUnit.isDead && window.TacticsEngine.config.enemyNpcId) {
+                                    let bossNPC = Dungeon.npcs.find(n => n.index === window.TacticsEngine.config.enemyNpcId);
+                                    if (bossNPC) Dungeon.killNPC(bossNPC, false, 'tactics_victory');
                                 }
-                            });
+                            }
 
                             // Clean up engine
                             window.TacticsEngine = new TacticsController(); 
+                            if (typeof startGame !== 'undefined' && startGame !== 'gameover') startGame = 'explore';
                             
-                            // Exit back to the world
-                            if (typeof startGame !== 'undefined') startGame = 'explore';
+                            // Resume the Action Queue
+                            if ((stakes === 'real' || stakes === 'scenario') && typeof Dungeon !== 'undefined' && startGame !== 'gameover') {
+                                Dungeon.isProcessingActions = false;
+                                Dungeon.processNextAction();
+                            }
                             
-                            // Specific arena fallback
-                            if (Dungeon.mapID === 888) {
-                                setTimeout(() => {
-                                    Dungeon.loadMap(Dungeon.prevMap);
+                            // Return to Overworld & Scatter Unclaimed Loot
+                            if (Dungeon.mapID === 888 && startGame !== 'gameover') {
+                                setTimeout(() => { 
+                                    Dungeon.loadMap(Dungeon.prevMap); 
+                                    
+                                    // Scatter the loot around the player!
+                                    unclaimedLoot.forEach(loot => {
+                                        // Randomly place 1 tile away
+                                        loot.x = Dungeon.x + (Math.random() > 0.5 ? 1 : -1);
+                                        loot.y = Dungeon.y + (Math.random() > 0.5 ? 1 : -1);
+                                        loot.lifespan = 600; // Add the blinking expiration timer!
+                                        Dungeon.npcs.push(loot);
+                                    });
                                 }, 50);
                             }
                         }
