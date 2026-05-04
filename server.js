@@ -4000,7 +4000,7 @@
                             });
                             
                             // 3. Bastion Guards (Defenders - Will actively hunt invaders!)
-                            for (let i = 0; i < 2; i++) {
+                            for (let i = 0; i < 1; i++) {
                                 let defID = friendlyMinions[i % friendlyMinions.length] || 64; 
                                 mapNPCs.push({
                                     type: CARD_MANIFEST_DB[defID].sprite || defID, 
@@ -4013,7 +4013,7 @@
                             }
 
                             // 4. Civilians (Friendlies - Will run or be killed if invaded!)
-                            for (let i = 0; i < 3; i++) {
+                            for (let i = 0; i < 1; i++) {
                                 let civID = friendlyMinions[Math.floor(Math.random() * friendlyMinions.length)] || 32; 
                                 mapNPCs.push({
                                     type: CARD_MANIFEST_DB[civID].sprite || civID, 
@@ -4089,7 +4089,7 @@
                             let shuffledFloors = [...mapData.validFloors].sort(() => 0.5 - Math.random());
                             
                             // --- FIX: Halved the spawn rate! (1 NPC per 150 tiles) ---
-                            let totalWanderers = Math.floor(shuffledFloors.length / 150); 
+                            let totalWanderers = Math.floor(shuffledFloors.length / 10); 
 
                             for (let i = 0; i < totalWanderers; i++) {
                                 let tile = shuffledFloors[i];
