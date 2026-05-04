@@ -4038,7 +4038,7 @@
                                     state: 'fleeing', role: 'dialogue', alignment: 'friendly', 
                                     color: '#00ff00', deck: [allySprite],
                                     dialogue: script.prisonerLines || ["Thank the gods you found me! Help me fight!"],
-                                    options: ['Recruit', 'Leave'],
+                                    options: ['Yes', 'Leave'],
                                     yesActions: [
                                         ['play_sfx', 'buff2'],
                                         ['become_ally', allySprite],
@@ -4056,7 +4056,7 @@
                                     state: 'stationary', role: 'dialogue', alignment: 'friendly', 
                                     color: '#ffff00', deck: [trapSprite], 
                                     dialogue: ["You found a pristine treasure chest. Open it?"],
-                                    options: ['Open', 'Leave'],
+                                    options: ['Yes', 'Leave'],
                                     yesActions: [
                                         ['play_sfx', 'cancel'],
                                         ['transform_npc', { index: miniTargetID, newType: trapSprite, newAlignment: 'foe', newRole: 'battle', newState: 'chasing', clearDialogue: true }],
@@ -4072,7 +4072,7 @@
                                     state: 'stationary', role: 'dialogue', alignment: 'friendly',
                                     color: '#00ff00', deck: [],
                                     dialogue: ["The altar hums with dark magic. Disturbing it may awaken the horde. Purge it?"],
-                                    options: ['Purge', 'Leave'],
+                                    options: ['Yes', 'Leave'],
                                     yesActions: [
                                         ['play_sfx', 'horn'],
                                         ['start_hunted', { waves: 3, interval: 300, mobs: [{sprite: hostileMinions[0]}] }],
@@ -4089,7 +4089,7 @@
                             let shuffledFloors = [...mapData.validFloors].sort(() => 0.5 - Math.random());
                             
                             // --- FIX: Halved the spawn rate! (1 NPC per 150 tiles) ---
-                            let totalWanderers = Math.floor(shuffledFloors.length / 369); 
+                            let totalWanderers = Math.floor(shuffledFloors.length / 150); 
 
                             for (let i = 0; i < totalWanderers; i++) {
                                 let tile = shuffledFloors[i];
