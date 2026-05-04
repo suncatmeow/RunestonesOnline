@@ -3679,7 +3679,6 @@
 
             [WORLD BLUEPRINT - The map generated for this session]:
             - BIOME: ${biomeName}
-            - SCENARIO TYPE: ${scenarioType}
             - THE VILLAIN FACTION: ${bossCardName}
             - THE ALLY FACTION: ${questGiverName}
 
@@ -3688,7 +3687,6 @@
             - THEME: ${randomTheme}
             - PLOT TWIST: ${randomTwist}
             
-            [PHILOSOPHICAL FRICTION]: Aggressively challenge the player's [Neglected Themes] in the dialogue, but do so THROUGH the lens of the scenario lore, the biome, the motivation of the npcs, etc. 
             
             [DIALOGUE GENERATION & DATA MAPPING]:
             Write the dialogue arrays matching the lore you invented. Keep all lines under 15 words. Ensure the tone is rich dark fantasy.
@@ -4002,7 +4000,7 @@
                             });
                             
                             // 3. Bastion Guards (Defenders - Will actively hunt invaders!)
-                            for (let i = 0; i < 4; i++) {
+                            for (let i = 0; i < 2; i++) {
                                 let defID = friendlyMinions[i % friendlyMinions.length] || 64; 
                                 mapNPCs.push({
                                     type: CARD_MANIFEST_DB[defID].sprite || defID, 
@@ -4015,7 +4013,7 @@
                             }
 
                             // 4. Civilians (Friendlies - Will run or be killed if invaded!)
-                            for (let i = 0; i < 6; i++) {
+                            for (let i = 0; i < 3; i++) {
                                 let civID = friendlyMinions[Math.floor(Math.random() * friendlyMinions.length)] || 32; 
                                 mapNPCs.push({
                                     type: CARD_MANIFEST_DB[civID].sprite || civID, 
@@ -4032,7 +4030,6 @@
                             // ==========================================
                             let miniTargetID = 10000 + mapNPCs.length;
 
-                            if (scenarioType === 'rescue' || scenarioType === 'escort') {
                                 let allySprite = friendlyMinions[0] || 32;
                                 mapNPCs.push({
                                     index: miniTargetID,
@@ -4051,8 +4048,6 @@
                                     ],
                                     noActions: [['close_dialogue', null]] // <--- FIX: Closes the UI if they say no
                                 });
-                            } 
-                            else if (scenarioType === 'fetch') {
                                 let trapSprite = hostileMinions[0];
                                 mapNPCs.push({
                                     index: miniTargetID,
@@ -4069,8 +4064,7 @@
                                     ],
                                     noActions: [['close_dialogue', null]]
                                 });
-                            }
-                            else {
+                            
                                 mapNPCs.push({
                                     index: miniTargetID,
                                     type: 16, 
@@ -4088,7 +4082,6 @@
                                     ],
                                     noActions: [['close_dialogue', null]]
                                 });
-                            }
 
                             // ==========================================
                             // ZONE 4: THE ECOLOGY (Distance-Weighted)
@@ -4096,7 +4089,7 @@
                             let shuffledFloors = [...mapData.validFloors].sort(() => 0.5 - Math.random());
                             
                             // --- FIX: Halved the spawn rate! (1 NPC per 150 tiles) ---
-                            let totalWanderers = Math.floor(shuffledFloors.length / 150); 
+                            let totalWanderers = Math.floor(shuffledFloors.length / 369); 
 
                             for (let i = 0; i < totalWanderers; i++) {
                                 let tile = shuffledFloors[i];
@@ -4132,7 +4125,7 @@
                                     spawnID = friendlyMinions[Math.floor(Math.random() * friendlyMinions.length)];
                                     
                                     // 15% chance to spawn a recruitable ally in the wild
-                                    let isRecruitable = Math.random() < 0.15;
+                                    let isRecruitable = Math.random() < 0.05;
                                     
                                     mapNPCs.push({
                                         index: 10000 + mapNPCs.length,
