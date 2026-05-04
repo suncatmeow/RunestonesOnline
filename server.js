@@ -3991,7 +3991,7 @@
                             });
                             let shop = []
                             for (let i = 0;i<=13;i++){
-                                shop[i] = Math.floor(Math.random*90)
+                                shop[i] = Math.floor(Math.random()*90)
                             }
                             // 2. The Radiant Bounty Board
                             mapNPCs.push({
