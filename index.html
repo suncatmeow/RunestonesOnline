@@ -6915,7 +6915,7 @@
                 this.saveGame();
             }
         }
-      loadCustomMap(data) {
+    loadCustomMap(data) {
           this.mapID = data.id; 
           this.maze = data.maze;
           this.skyColor = data.skyColor;
@@ -7054,6 +7054,7 @@
           //socket.emit('suncat_spectate', `player entered map ${this.mapID}`);
           console.log(`Loaded Custom AI Map: ${data.name}`);
         }
+     
       registerClick(x, y) {
         this.clickInput = { x: x, y: y };
         // --- CHECK BUTTON PRESS ---
@@ -10621,6 +10622,7 @@
             
             this.saveGame();
         }
+     
       killNPC(npc, respawnInput = false, reason = 'combat',alignment = null) {
         if (!npc) return false; // Safety check
         let alignStr = npc.alignment || 'neutral';
@@ -11132,7 +11134,7 @@
           }
         }
       //MAP MAKER
-     createQuestNPC(config) {
+        createQuestNPC(config) {
             let npc = new NPC(config.giverId, config.x, config.y, config.sprite, 'stationary', '#00ff00', [], 'dialogue', null, 'friendly');
 
             npc.dialogueFactory = (dungeon) => {
@@ -11261,13 +11263,41 @@
                     acceptActions.push(['close_dialogue', null]);
                     return { text: introText, options: ['Accept', 'Decline'], yesActions: acceptActions, noActions: [['close_dialogue', null]] };
                 }
+                // --- FIX: RESTORED PHASES ---
+            // --- PHASE 1: QUEST IN PROGRESS ---
+            if (qState === 1) {
+                return {
+                    text: config.textWait || ["Have you finished the task yet? Please hurry!"],
+                    actions: [['close_dialogue', null]]
+                };
+            }
 
-                // ... (Phase 1, 2, and 4 logic from your original code remains exactly the same here) ...
+            // --- PHASE 2: TURN IN (REWARD) ---
+            if (qState === 2) {
+                return {
+                    text: config.textComplete || ["You did it! Thank you so much. Here is your reward."],
+                    rewardCard: config.rewardCard,
+                    endActions: [
+                        ['update_quest_state', { key: config.questKey, state: 3 }], 
+                        ['play_sfx', 'chime'],
+                        ['close_dialogue', null]
+                    ]
+                };
+            }
+
+            // --- PHASE 3: COMPLETED ---
+            if (qState >= 3) {
+                return {
+                    text: ["Thanks again for your help!"],
+                    actions: [['close_dialogue', null]]
+                };
+            }
+            return { text: ["..."], actions: [['close_dialogue', null]] };
             };
             return npc;
         }
             //
-      createBountyMerchant(config) {
+        createBountyMerchant(config) {
             let npc = new NPC(config.giverId, config.x, config.y, config.sprite, 'stationary', '#00ff00', [], 'dialogue', null, 'friendly');
 
             npc.dialogueFactory = (dungeon) => {
@@ -11324,7 +11354,7 @@
                         ['spawn_npc', [
                             target.map, uniqueTargetId, target.x, target.y, target.sprite, 'stationary', '#ff0000', [target.sprite], 
                             ["You'll never take me alive!"], null, 'dialogue', null, true, 'friendly_messenger', 
-                            [['transform_npc', { index: uniqueTargetId, newAlignment: 'foe', newRole: 'battle', newState: 'chasing' }], ['start_battle', uniqueTargetId]], 
+                            [['transform_npc', { index: uniqueTargetId, newAlignment: 'foe', newRole: 'battle', newState: 'chasing',newDeathActions:targetDeathActions }], ['start_battle', uniqueTargetId]], 
                             targetDeathActions, false
                         ]],
                         ['set_dialogue', {
@@ -11362,7 +11392,7 @@
                             return {
                                 text: ["Excellent work! Here is your reward. Come back later for more work."],
                                 rewardCard: 21, // Gold Card
-                                actions: [
+                                endActions: [
                                     // Increase their reputation by 1
                                     ['set_flag', { key: 'memory', value: { ...dungeon.memory, [repKey]: rep + 1 } }],
                                     // Completely wipe the quest state to 0 so they can immediately accept another one!
@@ -12493,6 +12523,7 @@
                             targetNPC.customDialogue = null; targetNPC.options = null;    
                             targetNPC.yesActions = null; targetNPC.noActions = null;  
                         }
+                        if (payload.newDeathActions) targetNPC.deathActions = payload.newDeathActions;
                     }
                     break;
                 case 'mass_transform':
@@ -13329,12 +13360,24 @@
 
         pTeam.forEach((cardID, i) => {
             let offset = spawnOffsets[i % spawnOffsets.length];
+            let isMainPlayer = (i === 0);
+
             window.TacticsEngine.units.push({
                 id: 'player_unit_' + i, 
                 x: pX + offset.dx + 0.5, 
                 y: pY + offset.dy + 0.5, 
                 type: cardID, 
-                alignment: 'ally', isDead: false, hasMoved: false, hasActed: false 
+                alignment: 'ally', 
+                isDead: false, 
+                hasMoved: false, 
+                hasActed: false,
+                
+                // --- NEW LOGIC: SEPARATE PLAYER FROM AI ---
+                role: isMainPlayer ? 'player' : 'summoned_minion',
+                summonerId: isMainPlayer ? null : 'player_unit_0',
+                
+                // Give AI allies their innate spells so they can use magic instead of just punching
+                innateSpells: isMainPlayer ? [] : window.TacticsEngine.getInnateSpellsForType(cardID)
             });
         });
 
@@ -16433,7 +16476,6 @@
         // 2. Thunderbolt Split (Appears at 30ms / 0.03s)
         if (t > 0.03) {
             ctx.strokeStyle = "white";
-            ctx.lineWidth = 3;
             ctx.beginPath();
             let midX = tX + (tL / 2);
             
@@ -16513,7 +16555,6 @@
             if (isDeadAndStamped) {
                 ctx.globalAlpha = 1.0;
                 ctx.strokeStyle = 'rgba(255, 0, 0, 0.9)';
-                ctx.lineWidth = 4;
                 ctx.beginPath();
                 ctx.moveTo(tX, tY);
                 ctx.lineTo(tX + tL, tY + tH);
@@ -17440,20 +17481,23 @@
         // ==========================================
         else if (sData.type === 'item_booster' || sData.type === 'item_teleport') {
             if (sData.type === 'item_teleport') {
-                // Instantly end the battle and count as a survival/win
                 this.state = 'GAME_OVER';
                 this.playerWon = true; 
                 this.endTimer = 0;
                 if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('warp');
-                return; // Hard stop
+                return; 
             } else if (sData.type === 'item_booster') {
-                // Grant a random card directly into the player's pocket
-                let randomPool = Dungeon.extra.filter(c => c.type !== 91);
-                if (randomPool.length > 0) {
-                    let pulled = randomPool[Math.floor(Math.random() * randomPool.length)];
-                    Dungeon.extra.push(JSON.parse(JSON.stringify(pulled)));
+                
+                // --- THE FIX: Route this to our new Dialogue Handoff! ---
+                this.openTacticsBooster(spellId); 
+                
+                if (caster.hasMoved && caster.hasActed) { 
+                    this.turnQueue.shift(); 
+                    this.state = 'INIT'; 
+                } else { 
+                    this.state = caster.id === 'player_unit_0' ? 'PLAYER_TURN' : 'INIT'; 
                 }
-                if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('chime');
+                return;
             }
         }
         // ==========================================
@@ -17684,7 +17728,7 @@
         if (deadUnit.alignment !== 'foe' || deadUnit.role === 'summoned_minion') return;
 
         // E.g., 50% chance to drop loot
-        if (Math.random() < 0.5) { 
+        if (Math.random() < 1) { 
             // Give a 20% chance for a Treasure Chest (10), otherwise standard Loot (41)
             let boosterId = Math.random() < 0.2 ? 10 : 41; 
 
@@ -17703,6 +17747,72 @@
 
             this.units.push(lootUnit);
         }
+    }
+    openTacticsBooster(spellId) {
+        let spellData = SPELL_REGISTRY[spellId];
+        let pulledCardIDs = [];
+
+        // --- DJINN LAMP INTERCEPT ---
+        if (spellId === 44) {
+            if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('buff2');
+            if (typeof startGame !== 'undefined') startGame = 'djinn_lamp'; 
+            window.djinnPage = 0; 
+            if (typeof preGame !== 'undefined') preGame = 'tactics'; // Ensure it comes back to battle!
+            return; 
+        }
+
+        // 1. Dynamically sort ALL cards into pools
+        let allMonsters = []; let allItems = []; let allSpells = [];
+        for (let i = 0; i <= 94; i++) {
+            if (i === 91) continue; 
+            let tempCard = new Card(i, 0); 
+            if (tempCard.type === 0) allMonsters.push(i);
+            else if (tempCard.type === 1) allItems.push(i);
+            else if (tempCard.type === 2) allSpells.push(i);
+        }
+
+        // 2. Set the base pool based on the registry
+        let basePool = [...allMonsters, ...allItems, ...allSpells]; 
+        if (spellData.lootPool === 'item') basePool = allItems;
+        else if (spellData.lootPool === 'spell') basePool = allSpells;
+        else if (spellData.lootPool === 'magic') basePool = [...allItems, ...allSpells];
+        else if (spellData.lootPool === 'monster') basePool = allMonsters;
+
+        // 3. Roll the cards
+        if (spellData.drawUntil === 'monster') {
+            let foundMonster = false;
+            while (!foundMonster) {
+                let randomCardId = (Math.random() < 0.000001) ? 999 : basePool[Math.floor(Math.random() * basePool.length)];
+                pulledCardIDs.push(randomCardId);
+                let checkCard = new Card(randomCardId, 0);
+                if (checkCard.type === 0) foundMonster = true; 
+            }
+        } else {
+            let amount = spellData.boosterSize || 1;
+            for (let i = 0; i < amount; i++) {
+                let randomCardId = (Math.random() < 0.000001) ? 999 : basePool[Math.floor(Math.random() * basePool.length)];
+                pulledCardIDs.push(randomCardId);
+            }
+        }
+
+        // 4. Trigger Global Loot UI
+        // We inject this directly into the global Dungeon speaker so the dialogue loop catches it
+        if (typeof Dungeon !== 'undefined') {
+            Dungeon.currentSpeaker = {
+                type: -27,               
+                index: 99999,            
+                deck: pulledCardIDs,     
+                visible: true,
+                xp: 0,                   
+                role: 'dropped_card'     
+            };
+        }
+
+        if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('chime');
+        
+        // 5. Shift state to Dialogue! (It will return to Tactics automatically when closed)
+        if (typeof startGame !== 'undefined') startGame = 'dialogue'; 
+        if (typeof preGame !== 'undefined') preGame = 'tactics';
     }
 }
 //////////////////////////[BATTLE ENGINE]/////////////////////////////
