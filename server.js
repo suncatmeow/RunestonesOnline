@@ -3989,6 +3989,7 @@
                                 deck: [], color: '#00ff00', 
                                 dialogue: script.friendlyLore || ["Please, you must help us!"],
                             });
+                            
                             let shop = []
                             for (let i = 0;i<=13;i++){
                                 shop[i] = Math.floor(Math.random()*90)
@@ -4002,7 +4003,7 @@
                             });
                             
                             // 3. Bastion Guards (Defenders - Will actively hunt invaders!)
-                            for (let i = 0; i < 3; i++) {
+                            for (let i = 0; i < 2; i++) {
                                 let defID = friendlyMinions[i % friendlyMinions.length] || 64; 
                                 mapNPCs.push({
                                     type: CARD_MANIFEST_DB[defID].sprite || defID, 
@@ -4015,14 +4016,14 @@
                             }
 
                             // 4. Civilians (Friendlies - Will run or be killed if invaded!)
-                            for (let i = 0; i < 6; i++) {
+                            for (let i = 0; i < 3; i++) {
                                 let civID = friendlyMinions[Math.floor(Math.random() * friendlyMinions.length)] || 32; 
                                 mapNPCs.push({
                                     type: CARD_MANIFEST_DB[civID].sprite || civID, 
                                     x: mapData.bastionCenter.x + (Math.random() * 10 - 5), 
                                     y: mapData.bastionCenter.y + (Math.random() * 10 - 5),
                                     state: 'wandering', role: 'dialogue', alignment: 'friendly', 
-                                    deck: buildSynergisticDeck(civID, 50), color: '#00ff00', 
+                                    deck: buildSynergisticDeck(civID, 200), color: '#00ff00', 
                                     dialogue: [script.friendlyLife ? script.friendlyLife[i % script.friendlyLife.length] : "I hope the guards can protect us..."]
                                 });
                             }
@@ -4091,7 +4092,7 @@
                             let shuffledFloors = [...mapData.validFloors].sort(() => 0.5 - Math.random());
                             
                             // --- FIX: Halved the spawn rate! (1 NPC per 150 tiles) ---
-                            let totalWanderers = Math.floor(shuffledFloors.length / 75); 
+                            let totalWanderers = Math.floor(shuffledFloors.length / 100); 
 
                             for (let i = 0; i < totalWanderers; i++) {
                                 let tile = shuffledFloors[i];
@@ -4105,7 +4106,7 @@
                                 let isHostile = false;
                                 let spawnID;
 
-                                if (distToLair < distToBastion * 0.6) {
+                                if (distToLair < distToBastion * 0.9) {
                                     isHostile = Math.random() < 0.9;} 
                                 else {
                                     isHostile = Math.random() < 0.9; 
@@ -4124,8 +4125,8 @@
                                 } else {
                                     spawnID = friendlyMinions[Math.floor(Math.random() * friendlyMinions.length)];
                                     
-                                    // 15% chance to spawn a recruitable ally in the wild
-                                    let isRecruitable = Math.random() < 0.05;
+                                    // 90% chance to spawn a recruitable ally in the wild
+                                    let isRecruitable = Math.random() < .9;
                                     
                                     mapNPCs.push({
                                         index: 10000 + mapNPCs.length,
