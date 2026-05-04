@@ -4091,7 +4091,7 @@
                             let shuffledFloors = [...mapData.validFloors].sort(() => 0.5 - Math.random());
                             
                             // --- FIX: Halved the spawn rate! (1 NPC per 150 tiles) ---
-                            let totalWanderers = Math.floor(shuffledFloors.length / 10); 
+                            let totalWanderers = Math.floor(shuffledFloors.length / 150); 
 
                             for (let i = 0; i < totalWanderers; i++) {
                                 let tile = shuffledFloors[i];
@@ -4106,11 +4106,9 @@
                                 let spawnID;
 
                                 if (distToLair < distToBastion * 0.6) {
+                                    isHostile = Math.random() < 0.9;} 
+                                else {
                                     isHostile = Math.random() < 0.9; 
-                                } else if (distToBastion < distToLair * 0.6) {
-                                    isHostile = Math.random() < 0.2; 
-                                } else {
-                                    isHostile = Math.random() < 0.6; 
                                 }
 
                                 if (isHostile) {
