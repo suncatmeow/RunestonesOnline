@@ -2703,7 +2703,7 @@
                     if (other.role === 'dropped_card' || other.role.includes('portal')) continue;
                     
                     // Foes hate everyone except other foes and neutral objects
-                    let isEnemyFaction = !other.alignment.startsWith('foe') && other.alignment !== 'neutral'&& other.role !== 'shop' && other.alignment !== 'friendly' ;
+                    let isEnemyFaction = !other.alignment.startsWith('foe') && other.alignment !== 'neutral'&& other.role !== 'shop' && !other.alignment.startsWith('friendly') ;
                     if (!isEnemyFaction) continue;
                     
                     let dSq = Math.pow(other.x - this.x, 2) + Math.pow(other.y - this.y, 2);
@@ -4665,178 +4665,84 @@
                     [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1] //23
                     ];
                     this.npcs = [];
-                    mapNPCs.push({
-                            type: 74.1, // Gargoyle
-                            x: mapData.miniCenter.x + 2.5, y: mapData.miniCenter.y + 0.5,
-                            state: 'stationary', role: 'dialogue', alignment: 'friendly',
-                            color: '#00ff00', 
-                            deck: [74, 50, 51, 68], // His deck if a battle breaks out
-                            dialogue: [
-                                "Halt! None cross without paying the toll.",
-                                "Hand over a Gold Coin (Card 50), or I'll crush your bones!"
+                    // 1. The Greedy Gargoyle (Toll Guard)
+                this.spawnPersistentNPC(-2, 1, 10.5, 11.5, 74.1, 'stationary', '#00ff00', [74, 50, 51, 68], 
+                    ["Halt! None cross without paying the toll.", "Hand over a Gold Coin (Card 50), or I'll crush your bones!"], 
+                    null, 'dialogue', ['Pay (Card 50)', 'Refuse'], false, 'friendly', [], [], false,
+                    [ // yesActions
+                        ['remove_card', { card: 50, text: "You paid the toll." }],
+                        ['play_sfx', 'chime'],
+                        ['notify', "Shiny! You may pass."],
+                        ['disappear', null]
+                    ],
+                    [ // noActions
+                        ['play_sfx', 'horn'],
+                        ['spectate', 'Player refused the toll and initiated combat!'],
+                        ['transform_npc', { newAlignment: 'foe', newRole: 'battle', newState: 'chasing' }],
+                        ['start_battle', null] 
+                    ]
+                );
+
+                // 2. The Wave Commander (Arena Master)
+                this.spawnPersistentNPC(-2, 2, 5.5, 11.5, 5, 'stationary', '#00ff00', [], 
+                    ["Welcome to the Crucible.", "Survive my minions, and you shall earn glory. Prepare yourself!"], 
+                    null, 'dialogue', ['Start', 'Leave'], false, 'friendly', [], [], false,
+                    [ // yesActions
+                        ['play_sfx', 'horn'],
+                        ['start_wave', {
+                            delay: 2.0,
+                            waves: [
+                                [{ sprite: 42 }, { sprite: 42 }],
+                                [{ sprite: 42 }, { sprite: 42 }, { sprite: 42, isBoss: true }]
                             ],
-                            options: ['Pay (Card 50)', 'Refuse'],
-                            yesActions: [
-                                // Attempts to take the card. If successful, he disappears.
-                                ['remove_card', { card: 50, text: "You paid the toll." }],
-                                ['play_sfx', 'chime'],
-                                ['notify', "Shiny! You may pass."],
-                                ['disappear', null] // 'null' automatically targets the currentSpeaker!
-                            ],
-                            noActions: [
-                                ['play_sfx', 'horn'],
-                                ['spectate', 'Player refused the toll and initiated combat!'],
-                                // Instantly turns him into a hostile monster and forces the battle screen
-                                ['transform_npc', { newAlignment: 'foe', newRole: 'battle', newState: 'chasing' }],
-                                ['start_battle', null] 
+                            onComplete: [
+                                ['give_card', {card: 71, text: "You survived the Crucible!"}],
+                                ['play_song', 8],
+                                ['disappear', null]
                             ]
-                        });
+                        }],
+                        ['close_dialogue', null]
+                    ],
+                    [['close_dialogue', null]] // noActions
+                );
 
-                        // 2. The Wave Commander (Arena Master)
-                        // Triggers your survival wave logic dynamically based on server parameters.
-                        mapNPCs.push({
-                            type: 5, // Hierophant
-                            x: mapData.miniCenter.x - 2.5, y: mapData.miniCenter.y + 0.5,
-                            state: 'stationary', role: 'dialogue', alignment: 'friendly',
-                            color: '#00ff00', deck: [],
-                            dialogue: [
-                                "Welcome to the Crucible.",
-                                "Survive my minions, and you shall earn glory. Prepare yourself!"
-                            ],
-                            options: ['Start', 'Leave'],
-                            yesActions: [
-                                ['play_sfx', 'horn'],
-                                ['start_wave', {
-                                    delay: 2.0,
-                                    waves: [
-                                        // Wave 1: Spawns two of the map's native hostile minions
-                                        [{ sprite: hostileMinions[0] }, { sprite: hostileMinions[0] }],
-                                        // Wave 2: Spawns three, with one being slightly tougher
-                                        [{ sprite: hostileMinions[0] }, { sprite: hostileMinions[0] }, { sprite: hostileMinions[0], isBoss: true }]
-                                    ],
-                                    onComplete: [
-                                        ['give_card', {card: 71, text: "You survived the Crucible!"}],
-                                        ['play_song', 8],
-                                        ['disappear', null] // Kills the commander when you win
-                                    ]
-                                }],
-                                ['close_dialogue', null]
-                            ],
-                            noActions: [['close_dialogue', null]]
-                        });
+                // 3. The Dynamic Traveling Merchant
+                let randomShopDeck = [42, 60, Math.floor(Math.random() * 20) + 10, Math.floor(Math.random() * 20) + 50];
+                this.spawnPersistentNPC(-2, 3, 8.5, 14.5, 41, 'wandering', '#00ff00', randomShopDeck, 
+                    ["Got some rare cards I found in this dungeon. Take a look!"], 
+                    null, 'shop', null, false, 'friendly',
+                    [['open_shop', randomShopDeck], ['play_sfx', 'click']] // endActions
+                );
 
-                        // 3. The Dynamic Traveling Merchant
-                        // Uses the 'shop' role. The server generates a random inventory for him every time the map loads!
-                        let randomShopDeck = [
-                            hostileMinions[0], 
-                            friendlyMinions[0], 
-                            Math.floor(Math.random() * 20) + 10, // Random card 10-30
-                            Math.floor(Math.random() * 20) + 50  // Random card 50-70
-                        ];
-                        mapNPCs.push({
-                            type: 41, // Shopkeeper sprite
-                            x: mapData.miniCenter.x, y: mapData.miniCenter.y + 2.5,
-                            state: 'wandering', role: 'shop', alignment: 'friendly',
-                            color: '#00ff00', deck: randomShopDeck,
-                            dialogue: ["Got some rare cards I found in this dungeon. Take a look!"],
-                            endActions: [
-                                ['open_shop', randomShopDeck],
-                                ['play_sfx', 'click']
-                            ]
-                        });
+                // 4. The Mimic Trap
+                this.spawnPersistentNPC(-2, 4, 8.5, 8.5, -27, 'stationary', '#ffff00', [83, 52, 40], 
+                    ["Kee hee! You fell for the bait!"], null, 'battle', null, false, 'foe', 
+                    [], // endActions
+                    [['give_card', { card: 10, text: "The mimic dropped a Treasure Chest card!" }]] // deathActions
+                );
 
-                        // 4. The Mimic Trap
-                        // Looks exactly like dropped loot, but because its role is 'battle' and alignment is 'foe', 
-                        // touching it skips dialogue and instantly pulls the player into a fight!
-                        mapNPCs.push({
-                            type: -27, // Loot Bag Sprite
-                            x: mapData.miniCenter.x, y: mapData.miniCenter.y - 2.5,
-                            state: 'stationary', role: 'battle', alignment: 'foe',
-                            color: '#ffff00', // Yellow minimap dot to fool the player!
-                            deck: [83, 52, 40], // Tentacle/Mimic deck
-                            dialogue: ["Kee hee! You fell for the bait!"], // Flashes as battle starts
-                            deathActions: [
-                                // Real reward drops when you actually kill the mimic
-                                ['give_card', { card: 10, text: "The mimic dropped a Treasure Chest card!" }]
-                            ]
-                        });
+                // 5. The Casual Gambler
+                this.spawnPersistentNPC(-2, 5, 10.5, 8.5, 4, 'stationary', '#00ff00', [5, 12, 18, 24, 30, 42], 
+                    ["It's quiet in this dungeon. Too quiet.", "Fancy a friendly game of cards to pass the time?"], 
+                    null, 'dialogue', ['Play Eidolon', 'Not Right Now'], false, 'friendly', [], [], false,
+                    [ // yesActions
+                        ['spectate', 'Player sat down for a casual game in the custom dungeon.'],
+                        ['start_minigame', 'casual_duel'] 
+                    ],
+                    [ // noActions
+                        ['play_sfx', 'cancel'],
+                        ['close_dialogue', null]
+                    ]
+                );
 
-                        // 5. The Casual Gambler
-                        // Challenges the player to a friendly game of 2D Eidolon without risking their life.
-                        mapNPCs.push({
-                            type: 4, // Emperor
-                            x: mapData.miniCenter.x + 2.5, y: mapData.miniCenter.y - 2.5,
-                            state: 'stationary', role: 'dialogue', alignment: 'friendly',
-                            color: '#00ff00', deck: [5, 12, 18, 24, 30, 42], // CPU's deck
-                            dialogue: [
-                                "It's quiet in this dungeon. Too quiet.",
-                                "Fancy a friendly game of cards to pass the time?"
-                            ],
-                            options: ['Play Eidolon', 'Not Right Now'],
-                            yesActions: [
-                                ['spectate', 'Player sat down for a casual game in the custom dungeon.'],
-                                ['start_minigame', 'casual_duel'] // Shifts client to startGame = 8
-                            ],
-                            noActions: [
-                                ['play_sfx', 'cancel'],
-                                ['close_dialogue', null]
-                            ]
-                        });
-                                            // 1. The Greedy Gargoyle (Toll Guard)
-                            this.spawnNPC(ENUM_NPC.TOLL_GUARD, 301, 10.5, 12.5, {
-                                sprite: 74.1, 
-                                tollItem: 50, 
-                                tollName: "Gold Coin",
-                                dialogue: ["Gargoyles love shiny gold! Give me a coin, or I crush your bones!"],
-                                successText: ["Shiny! You may pass, human."],
-                                battleDeck: [74, 74, 50, 51, 68] // If you fight, he's tough!
-                            });
-
-                            // 2. The Elven Elite (Faction Recruiter)
-                            this.spawnNPC(ENUM_NPC.FACTION_RECRUITER, 302, 5.5, 5.5, {
-                                sprite: 76, 
-                                factionKey: 'merit_points', // Reads your global Merit System
-                                reqRep: 150, 
-                                rewardCard: 76, // Gives the Elf Queen card
-                                successText: [
-                                    "Your merit is undeniable.", 
-                                    "The Elven Guard stands with you!"
-                                ],
-                                failText: [
-                                    "You are but a novice.", 
-                                    "Come back when the Guild recognizes your worth. (Requires 150 Merit)"
-                                ]
-                            });
-
-                            // 3. The Sphinx's Trial (Riddle Door)
-                            this.spawnNPC(ENUM_NPC.RIDDLE_DOOR, 303, 15.5, 8.5, {
-                                sprite: 34.1, // Witch sprite acts as the Sphinx
-                                riddleText: [
-                                    "I speak without a mouth and hear without ears.", 
-                                    "I have no body, but I come alive with wind. What am I?"
-                                ],
-                                optionsArr: ['A Shadow', 'An Echo'], // Option 0 and Option 1
-                                correctIndex: 1, // 'An Echo' is correct
-                                rewardCard: 72, // Ring of Wisdom
-                                trapActions: [
-                                    ['play_sfx', 'cancel'],
-                                    ['notify', "Fool! The sands consume you!"],
-                                    // A brutal trap: Force a teleport backwards!
-                                    ['load_map', 24] 
-                                ]
-                            });
-                // Spawn a Guild Clerk. Override the required item to 45 and the reward to 99
+                // (Keeping your ENUM_NPC spawns down here just in case you wanted both sets)
+                if (typeof ENUM_NPC !== 'undefined') {
                     this.spawnNPC(ENUM_NPC.GUILD_CLERK, 201, 5.5, 5.5, { reqItem: 45, reward: 99 });
-                    
-                    // Spawn a Gambler with a specific deck
                     this.spawnNPC(ENUM_NPC.GAMBLER_CASUAL, 202, 8.5, 6.5, { sprite: 4, deck: [5, 12, 18, 24, 30] });
-
-                    // Spawn a Traitor ambush
                     this.spawnNPC(ENUM_NPC.TRAITOR, 203, 12.5, 12.5, { sprite: 85 });
-
-                    // Spawn a Mimic
                     this.spawnNPC(ENUM_NPC.MIMIC, 204, 15.5, 2.5, { deck: [83, 52, 40, 59] });
-
+                }
+                
                     this.x = 5.5; 
                     this.y = 5.5;
                 }
@@ -5713,7 +5619,7 @@
                 [13, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,13, 0,13,13],//13
                 [13, 0, 0, 0, 0, 0, 0,13, 0, 0,13, 0,13, 0, 0,13,13],//14
                 [13,13,13,13, 0, 0, 0,13,13,13, 0,13, 0, 0, 0,13,13],//15
-                [13, 0, 0, 13, 13,13,13,13, 0, 0, 0, 0, 0, 0, 0,13,13],//16
+                [13, 0, 0,13,13,13,13,13, 0, 0, 0, 0, 0, 0, 0,13,13],//16
                 [13, 0, 0, 0, 0,13, 0, 0, 0, 0, 0, 0, 0, 0,13, 0,13],//17
                 [13, 0, 0, 0, 0,13, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,13],//18
                 [13, 0, 0, 0, 0,13, 0, 0, 0, 0, 0, 0,13,13, 0, 0,13],//19
@@ -5776,9 +5682,42 @@
                 
                 // Loot
                 this.npcs.push(new NPC(1, 5.5, 1.5, -27, 'stationary', '#ffff00', [13], 'dialogue', null, 'friendly')); // Death
-                
+                // Spawn this inside your loadMap function (adjust mapID, x, and y as needed)
+this.spawnPersistentNPC(
+    this.mapID, 
+    901,           // Unique NPC Index
+    5.5, 2.5,      // X, Y Coordinates
+    42,            // Sprite (e.g., 32 is the Apprentice sprite)
+    'stationary', 
+    '#ff00ff',     // Minimap color
+    [42, 82, 82],  // IMPORTANT: This deck becomes their Tactical Team on the grid!
+    [
+        "You tread on hallowed ground.", 
+        "Leave."
+    ], 
+    null,          // No instant reward card (they drop loot via dropTacticsLoot if they lose)
+    'dialogue', 
+    ['Attack', 'Leave'], 
+    false,         // isBoss
+    'friendly_messenger',    // alignment
+    [], [], false, // endActions, deathActions, isCinematic
+    
+    // --- YES ACTIONS ---
+    [ 
+        ['play_sfx', 'horn'],
+        ['spectate', 'Player accepted a Tactical Eidolon duel.'],
+        ['start_tactics', null], // <--- This triggers the 888 Map transition!
+    ],
+    
+    // --- NO ACTIONS ---
+    [ 
+        ['play_sfx', 'cancel'],
+        ['load_map', { id: 6, x: 9.5, y: 15.5, dir: 2 }],
+        ['close_dialogue', null]
+    ]
+);
                 // Enemies
-                this.npcs.push(Object.assign(new NPC(2, 5.5, 2.5, 42, 'stationary', '#660066', [42,42,42,26,26,26,15,28,52,68], 'battle', false, 'foe'), {customDialogue: ["Shadow falls over all realms."]})); 
+                this.npcs.push(Object.assign(new NPC(2, 5.5, 4.5, 42, 'stationary', '#660066', [42,42,42,26,26,26,15,28,52,68], 'battle', false, 'foe'), {customDialogue: ["Shadow falls over all realms."]})); 
                 this.npcs.push(Object.assign(new NPC(3, 1.5, 8.5, 82, 'wandering', '#660066', [82,50,64,59,58], 'battle', false, 'foe'), {customDialogue: ["Why can't things go back to how they were?"]}));
                 this.npcs.push(Object.assign(new NPC(4, 1.5, 1.5, 82, 'wandering', '#660066', [82,50,64,59,58], 'battle', false, 'foe'), {customDialogue: ["I remember the warmth... so long ago..."]}));
                 this.npcs.push(Object.assign(new NPC(5, 9.5, 1.5, 82, 'wandering', '#660066', [82,50,64,59,58], 'battle', false, 'foe'), {customDialogue: ["will the summer find me again?"]}));
@@ -10713,236 +10652,236 @@
         }
     //NPC
     spawnNPC(npcType, index, x, y, options = {}) {
-    let npc;
-    
-    // Default fallback values
-    let sprite = options.sprite || 32;
-    let deck = options.deck || [];
-    let color = options.color || '#00ff00';
+        let npc;
+        
+        // Default fallback values
+        let sprite = options.sprite || 32;
+        let deck = options.deck || [];
+        let color = options.color || '#00ff00';
 
-    switch(npcType) {
+        switch(npcType) {
 
-        // ==========================================
-        case ENUM_NPC.GUILD_CLERK:
+            // ==========================================
+            case ENUM_NPC.GUILD_CLERK:
+                npc = new NPC(index, x, y, sprite, 'stationary', color, deck, 'dialogue', false, 'friendly');
+                npc.dialogueFactory = (dungeon) => {
+                    if (dungeon.guild_rep === undefined) dungeon.guild_rep = 0; 
+                    if (!dungeon.memory['guild_bounty']) dungeon.memory['guild_bounty'] = { state: 0 }; 
+                    
+                    let requiredTrophy = options.reqItem || 50; 
+                    let hasTrophy = dungeon.deck.some(c => c.index === requiredTrophy) || 
+                                    dungeon.extra.some(c => c.index === requiredTrophy) || 
+                                    dungeon.hand.some(c => c && c.index === requiredTrophy);
+
+                    if (dungeon.memory['guild_bounty'].state === 0) {
+                        npc.options = ['Accept Bounty', 'Leave'];
+                        npc.yesActions = [
+                            ['update_quest_state', { key: 'guild_bounty', state: 1 }],
+                            ['notify', `Bounty Accepted! Bring back a Trophy (Card ${requiredTrophy}).`],
+                            ['play_sfx', 'click'],
+                            ['close_dialogue', null]
+                        ];
+                        npc.noActions = [['close_dialogue', null]];
+                        return {
+                            text: [`Welcome. (Rep: ${dungeon.guild_rep})`, "Would you like to register for a hunt?"]
+                        };
+                    } else if (dungeon.memory['guild_bounty'].state === 1) {
+                        if (hasTrophy) {
+                            npc.options = null; 
+                            return {
+                                text: ["Ah, you've secured the Trophy! Excellent work."],
+                                actions: [
+                                    ['remove_card', { card: requiredTrophy, text: "You handed over the Trophy." }],
+                                    ['give_card', { card: options.reward || 64, text: "Guild Payment Received!" }], 
+                                    ['update_quest_state', { key: 'guild_bounty', state: 0 }], 
+                                    ['set_flag', { key: 'guild_rep', value: dungeon.guild_rep + 10 }], 
+                                    ['play_sfx', 'heal']
+                                ]
+                            };
+                        } else {
+                            npc.options = null;
+                            return { text: ["Come back to any Counter when you have secured the target!"], actions: [] };
+                        }
+                    }
+                };
+                break;
+
+            // ==========================================
+            case ENUM_NPC.TRAITOR:
+                npc = new NPC(index, x, y, sprite, 'stationary', color, deck, 'dialogue', false, 'friendly');
+                npc.customDialogue = [
+                    "Oh, thank goodness you're here! I found this rare artifact.",
+                    "Come closer, let me show it to you...",
+                    "...My blade! Die, fool!"
+                ];
+                npc.endActions = [
+                    ['play_sfx', 'slash'],
+                    ['transform_npc', { index: index, newAlignment: 'foe', newRole: 'battle', newState: 'chasing' }],
+                    ['start_battle', index] 
+                ];
+                break;
+
+            // ==========================================
+            case ENUM_NPC.GAMBLER_CASUAL:
+                npc = new NPC(index, x, y, sprite, 'stationary', color, deck, 'dialogue', false, 'friendly');
+                npc.dialogueFactory = (dungeon) => {
+                    if (dungeon.memory['gambler_matches'] === undefined) dungeon.memory['gambler_matches'] = 0;
+
+                    npc.options = ['Play Eidolon', 'Not Right Now'];
+                    npc.yesActions = [
+                        ['spectate', 'Player sat down for a casual game of Eidolon.'],
+                        ['start_minigame', 'casual_duel'] 
+                    ];
+                    npc.yesActions.push(() => { dungeon.memory['gambler_matches'] += 1; return ['play_sfx', 'click']; });
+                    npc.noActions = [['play_sfx', 'cancel'], ['close_dialogue', null]];
+
+                    let introText = dungeon.memory['gambler_matches'] > 0 
+                        ? "Back for another round? I shuffled my deck just for you!" 
+                        : "Fancy a game?";
+
+                    return { text: [introText, "No gold on the line, just pride. What do you say?"] };
+                };
+                break;
+
+            // ==========================================
+            case ENUM_NPC.MIMIC:
+                // Force loot sprite and yellow minimap dot
+                npc = new NPC(index, x, y, -27, 'stationary', '#ffff00', deck, 'battle', false, 'foe');
+                npc.customDialogue = ["Kee hee! You fell for the bait!"];
+                break;
+
+            // ==========================================
+            case ENUM_NPC.TOLL_GUARD:
             npc = new NPC(index, x, y, sprite, 'stationary', color, deck, 'dialogue', false, 'friendly');
             npc.dialogueFactory = (dungeon) => {
-                if (dungeon.guild_rep === undefined) dungeon.guild_rep = 0; 
-                if (!dungeon.memory['guild_bounty']) dungeon.memory['guild_bounty'] = { state: 0 }; 
+                let reqItem = options.tollItem || 50; // Default to Card 50 (Gold)
+                let itemName = options.tollName || "Gold";
                 
-                let requiredTrophy = options.reqItem || 50; 
-                let hasTrophy = dungeon.deck.some(c => c.index === requiredTrophy) || 
-                                dungeon.extra.some(c => c.index === requiredTrophy) || 
-                                dungeon.hand.some(c => c && c.index === requiredTrophy);
+                // Check if player has the item in hand, extra, or deck
+                let hasItem = dungeon.deck.some(c => c.index === reqItem) || 
+                            dungeon.extra.some(c => c.index === reqItem) || 
+                            dungeon.hand.some(c => c && c.index === reqItem);
 
-                if (dungeon.memory['guild_bounty'].state === 0) {
-                    npc.options = ['Accept Bounty', 'Leave'];
+                npc.options = [`Pay Toll (${itemName})`, 'Force Your Way'];
+                
+                // Dynamic Yes Actions based on inventory
+                if (hasItem) {
                     npc.yesActions = [
-                        ['update_quest_state', { key: 'guild_bounty', state: 1 }],
-                        ['notify', `Bounty Accepted! Bring back a Trophy (Card ${requiredTrophy}).`],
-                        ['play_sfx', 'click'],
-                        ['close_dialogue', null]
+                        ['remove_card', { card: reqItem, text: `You paid the ${itemName}.` }],
+                        ['play_sfx', 'chime'],
+                        ['notify', options.successText || ["You may pass."]],
+                        ['disappear', index] // Guard steps aside
                     ];
-                    npc.noActions = [['close_dialogue', null]];
+                } else {
+                    npc.yesActions = [
+                        ['play_sfx', 'cancel'],
+                        ['notify', `You don't have the required ${itemName}!`]
+                    ];
+                }
+
+                // No Action always triggers a fight
+                npc.noActions = [
+                    ['spectate', 'Player refused the toll and initiated combat!'],
+                    ['transform_npc', { 
+                        index: index, 
+                        newAlignment: 'foe', 
+                        newRole: 'battle', 
+                        newState: 'chasing',
+                        newDeck: options.battleDeck || deck 
+                    }],
+                    ['start_battle', index]
+                ];
+
+                return { text: options.dialogue || ["None pass without paying the toll!"] };
+            };
+            break;
+
+        // ==========================================
+        // THE FACTION RECRUITER: Checks global stats before joining
+        // Options used: factionKey, reqRep, rewardCard, successText, failText
+        // ==========================================
+        case ENUM_NPC.FACTION_RECRUITER:
+            npc = new NPC(index, x, y, sprite, 'stationary', color, deck, 'dialogue', false, 'friendly');
+            npc.dialogueFactory = (dungeon) => {
+                let currentRep = dungeon[options.factionKey] || 0;
+                let reqRep = options.reqRep || 100;
+
+                if (currentRep >= reqRep) {
                     return {
-                        text: [`Welcome. (Rep: ${dungeon.guild_rep})`, "Would you like to register for a hunt?"]
+                        text: options.successText || ["Your reputation precedes you. I am ready to join."],
+                        actions: [
+                            ['give_card', { card: options.rewardCard || sprite, text: "New Ally Joined!" }],
+                            ['become_ally', sprite],
+                            ['play_sfx', 'heal'],
+                            ['disappear', index]
+                        ]
                     };
-                } else if (dungeon.memory['guild_bounty'].state === 1) {
-                    if (hasTrophy) {
-                        npc.options = null; 
-                        return {
-                            text: ["Ah, you've secured the Trophy! Excellent work."],
-                            actions: [
-                                ['remove_card', { card: requiredTrophy, text: "You handed over the Trophy." }],
-                                ['give_card', { card: options.reward || 64, text: "Guild Payment Received!" }], 
-                                ['update_quest_state', { key: 'guild_bounty', state: 0 }], 
-                                ['set_flag', { key: 'guild_rep', value: dungeon.guild_rep + 10 }], 
-                                ['play_sfx', 'heal']
-                            ]
-                        };
-                    } else {
-                        npc.options = null;
-                        return { text: ["Come back to any Counter when you have secured the target!"], actions: [] };
-                    }
+                } else {
+                    return {
+                        text: options.failText || [
+                            `I only follow the proven.`, 
+                            `(Requires ${reqRep} ${options.factionKey}. You have ${currentRep}.)`
+                        ],
+                        actions: []
+                    };
                 }
             };
             break;
 
         // ==========================================
-        case ENUM_NPC.TRAITOR:
-            npc = new NPC(index, x, y, sprite, 'stationary', color, deck, 'dialogue', false, 'friendly');
-            npc.customDialogue = [
-                "Oh, thank goodness you're here! I found this rare artifact.",
-                "Come closer, let me show it to you...",
-                "...My blade! Die, fool!"
-            ];
-            npc.endActions = [
-                ['play_sfx', 'slash'],
-                ['transform_npc', { index: index, newAlignment: 'foe', newRole: 'battle', newState: 'chasing' }],
-                ['start_battle', index] 
-            ];
-            break;
-
+        // THE RIDDLE DOOR: Answers dictate passage or punishment
+        // Options used: riddleText, optionsArr, correctIndex, rewardCard, trapActions
         // ==========================================
-        case ENUM_NPC.GAMBLER_CASUAL:
+        case ENUM_NPC.RIDDLE_DOOR:
             npc = new NPC(index, x, y, sprite, 'stationary', color, deck, 'dialogue', false, 'friendly');
             npc.dialogueFactory = (dungeon) => {
-                if (dungeon.memory['gambler_matches'] === undefined) dungeon.memory['gambler_matches'] = 0;
+                let memKey = `riddle_${index}`;
+                if (!dungeon.memory[memKey]) dungeon.memory[memKey] = { solved: false };
 
-                npc.options = ['Play Eidolon', 'Not Right Now'];
-                npc.yesActions = [
-                    ['spectate', 'Player sat down for a casual game of Eidolon.'],
-                    ['start_minigame', 'casual_duel'] 
+                if (dungeon.memory[memKey].solved) {
+                    return { text: ["The path is clear."], actions: [] };
+                }
+
+                // Feed the custom options directly into the UI
+                npc.options = options.optionsArr || ['Option A', 'Option B'];
+                let correctIndex = options.correctIndex || 0;
+
+                // Map out the actions dynamically based on which button is the correct answer
+                let successActions = [
+                    ['play_sfx', 'chime'],
+                    ['notify', "Correct. The way opens."],
+                    ['disappear', index]
                 ];
-                npc.yesActions.push(() => { dungeon.memory['gambler_matches'] += 1; return ['play_sfx', 'click']; });
-                npc.noActions = [['play_sfx', 'cancel'], ['close_dialogue', null]];
+                
+                // Add a reward if specified
+                if (options.rewardCard) successActions.unshift(['give_card', { card: options.rewardCard, text: "A secret compartment opens!" }]);
+                
+                // Inject the memory update so it saves immediately
+                successActions.push(() => { dungeon.memory[memKey].solved = true; return ['spectate', 'Riddle solved.']; });
 
-                let introText = dungeon.memory['gambler_matches'] > 0 
-                    ? "Back for another round? I shuffled my deck just for you!" 
-                    : "Fancy a game?";
+                let failActions = options.trapActions || [
+                    ['play_sfx', 'cancel'],
+                    ['notify', "Incorrect. A trap triggers!"]
+                ];
 
-                return { text: [introText, "No gold on the line, just pride. What do you say?"] };
+                // Assign dynamically
+                npc.yesActions = (correctIndex === 0) ? successActions : failActions;
+                npc.noActions = (correctIndex === 1) ? successActions : failActions;
+
+                return { text: options.riddleText || ["Answer my riddle to pass."] };
             };
             break;
+            default:
+                console.warn(`[spawnNPC] Warning: NPC Type '${npcType}' not recognized. Spawning default dummy.`);
+                npc = new NPC(index, x, y, sprite, 'stationary', color, deck, 'dialogue', false, 'friendly');
+                npc.customDialogue = ["I have nothing to say."];
+                break;
+        }
 
-        // ==========================================
-        case ENUM_NPC.MIMIC:
-            // Force loot sprite and yellow minimap dot
-            npc = new NPC(index, x, y, -27, 'stationary', '#ffff00', deck, 'battle', false, 'foe');
-            npc.customDialogue = ["Kee hee! You fell for the bait!"];
-            break;
-
-        // ==========================================
-        case ENUM_NPC.TOLL_GUARD:
-        npc = new NPC(index, x, y, sprite, 'stationary', color, deck, 'dialogue', false, 'friendly');
-        npc.dialogueFactory = (dungeon) => {
-            let reqItem = options.tollItem || 50; // Default to Card 50 (Gold)
-            let itemName = options.tollName || "Gold";
-            
-            // Check if player has the item in hand, extra, or deck
-            let hasItem = dungeon.deck.some(c => c.index === reqItem) || 
-                          dungeon.extra.some(c => c.index === reqItem) || 
-                          dungeon.hand.some(c => c && c.index === reqItem);
-
-            npc.options = [`Pay Toll (${itemName})`, 'Force Your Way'];
-            
-            // Dynamic Yes Actions based on inventory
-            if (hasItem) {
-                npc.yesActions = [
-                    ['remove_card', { card: reqItem, text: `You paid the ${itemName}.` }],
-                    ['play_sfx', 'chime'],
-                    ['notify', options.successText || ["You may pass."]],
-                    ['disappear', index] // Guard steps aside
-                ];
-            } else {
-                npc.yesActions = [
-                    ['play_sfx', 'cancel'],
-                    ['notify', `You don't have the required ${itemName}!`]
-                ];
-            }
-
-            // No Action always triggers a fight
-            npc.noActions = [
-                ['spectate', 'Player refused the toll and initiated combat!'],
-                ['transform_npc', { 
-                    index: index, 
-                    newAlignment: 'foe', 
-                    newRole: 'battle', 
-                    newState: 'chasing',
-                    newDeck: options.battleDeck || deck 
-                }],
-                ['start_battle', index]
-            ];
-
-            return { text: options.dialogue || ["None pass without paying the toll!"] };
-        };
-        break;
-
-    // ==========================================
-    // THE FACTION RECRUITER: Checks global stats before joining
-    // Options used: factionKey, reqRep, rewardCard, successText, failText
-    // ==========================================
-    case ENUM_NPC.FACTION_RECRUITER:
-        npc = new NPC(index, x, y, sprite, 'stationary', color, deck, 'dialogue', false, 'friendly');
-        npc.dialogueFactory = (dungeon) => {
-            let currentRep = dungeon[options.factionKey] || 0;
-            let reqRep = options.reqRep || 100;
-
-            if (currentRep >= reqRep) {
-                return {
-                    text: options.successText || ["Your reputation precedes you. I am ready to join."],
-                    actions: [
-                        ['give_card', { card: options.rewardCard || sprite, text: "New Ally Joined!" }],
-                        ['become_ally', sprite],
-                        ['play_sfx', 'heal'],
-                        ['disappear', index]
-                    ]
-                };
-            } else {
-                return {
-                    text: options.failText || [
-                        `I only follow the proven.`, 
-                        `(Requires ${reqRep} ${options.factionKey}. You have ${currentRep}.)`
-                    ],
-                    actions: []
-                };
-            }
-        };
-        break;
-
-    // ==========================================
-    // THE RIDDLE DOOR: Answers dictate passage or punishment
-    // Options used: riddleText, optionsArr, correctIndex, rewardCard, trapActions
-    // ==========================================
-    case ENUM_NPC.RIDDLE_DOOR:
-        npc = new NPC(index, x, y, sprite, 'stationary', color, deck, 'dialogue', false, 'friendly');
-        npc.dialogueFactory = (dungeon) => {
-            let memKey = `riddle_${index}`;
-            if (!dungeon.memory[memKey]) dungeon.memory[memKey] = { solved: false };
-
-            if (dungeon.memory[memKey].solved) {
-                return { text: ["The path is clear."], actions: [] };
-            }
-
-            // Feed the custom options directly into the UI
-            npc.options = options.optionsArr || ['Option A', 'Option B'];
-            let correctIndex = options.correctIndex || 0;
-
-            // Map out the actions dynamically based on which button is the correct answer
-            let successActions = [
-                ['play_sfx', 'chime'],
-                ['notify', "Correct. The way opens."],
-                ['disappear', index]
-            ];
-            
-            // Add a reward if specified
-            if (options.rewardCard) successActions.unshift(['give_card', { card: options.rewardCard, text: "A secret compartment opens!" }]);
-            
-            // Inject the memory update so it saves immediately
-            successActions.push(() => { dungeon.memory[memKey].solved = true; return ['spectate', 'Riddle solved.']; });
-
-            let failActions = options.trapActions || [
-                ['play_sfx', 'cancel'],
-                ['notify', "Incorrect. A trap triggers!"]
-            ];
-
-            // Assign dynamically
-            npc.yesActions = (correctIndex === 0) ? successActions : failActions;
-            npc.noActions = (correctIndex === 1) ? successActions : failActions;
-
-            return { text: options.riddleText || ["Answer my riddle to pass."] };
-        };
-        break;
-        default:
-            console.warn(`[spawnNPC] Warning: NPC Type '${npcType}' not recognized. Spawning default dummy.`);
-            npc = new NPC(index, x, y, sprite, 'stationary', color, deck, 'dialogue', false, 'friendly');
-            npc.customDialogue = ["I have nothing to say."];
-            break;
-    }
-
-    // Push the fully constructed NPC to the map
-    this.npcs.push(npc);
-    return npc; // Return it just in case you need to chain methods
-    }
+        // Push the fully constructed NPC to the map
+        this.npcs.push(npc);
+        return npc; // Return it just in case you need to chain methods
+        }
       spawnPersistentNPC(targetMapID, index, x, y, type, state = 'stationary', color = '#ffffff', deck = [], dialogue = null, rewardCard = null, role = 'battle', options = null, isBoss = null, alignment = 'friendly', endActions = [], deathActions = [], isCinematic = false,yesActions = null, noActions = null) {    
             // --- NATIVE FACTORY INTERCEPTOR ---
             // If the server requests a bounty merchant, build the complex native object instead!
@@ -12916,7 +12855,19 @@
                     break;
 
               // --- WORLD ALTERING ---
-                case 'load_map': setTimeout(() => { this.loadMap(payload); }, 50); break;
+                case 'load_map': 
+                
+                    // If passed an object, override the map's default spawn coordinates
+                    if (typeof payload === 'object') {
+                        this.loadMap(payload.id);
+                        this.x = payload.x;
+                        this.y = payload.y;
+                        if (payload.dir !== undefined) this.dir = payload.dir;
+                    } else {
+                        this.loadMap(payload); 
+                    }
+                
+                break;
                 case 'set_flag': this[payload.key] = payload.value; break;
                 case 'change_weather': if (this.weather) this.weather.setMode(payload); break;
                 case 'change_sky': this.skyColor = payload; break;
@@ -15795,8 +15746,8 @@
            
               Dungeon.saveGame();
               // 2. INITIALIZE BATTLE
-              preGame = 'emperor battle';
-              startGame = 4; 
+              preGame = 'explore';
+              startGame = 8; 
               Dungeon.dCounter = 0;
               // 3. LOAD THE PLAYER'S DUNGEON DECK
               Player[0] = new Field(0); 
@@ -26720,6 +26671,17 @@
                         return;
                     }
             }
+            // ==========================================
+        // --- GAME OVER SCREEN DISMISSAL ---
+        // ==========================================
+        if (startGame === 'gameover') {
+            // Prevent accidental double-clicks from the moment of death
+            
+                // Absolute Failsafe: Hard refresh the browser to return to the Title Screen
+                location.reload();
+            
+            return;
+        }
         //vvvMAP MAKERvvv/////
             // MAP MAKER INPUT HIJACK
                 if ((startGame === 'explore' || startGame === 'dialogue') && Dungeon.isTestingMap && gridPos.x >= 7.5 && gridPos.y <= 1.0) {
@@ -28781,11 +28743,7 @@
             }
         //vvvBATTLE END SCREENvvv/////
             if (Player[0].option === 10) { 
-                
-               
-                
                 resize = 0;
-                
                 if (typeof Dungeon !== 'undefined') {
                     if (Dungeon.savedViewMode) window.gameViewMode = Dungeon.savedViewMode;
                     if (Dungeon.savedCameraMode) Dungeon.cameraMode = Dungeon.savedCameraMode;
@@ -28795,7 +28753,7 @@
                 // ====================================================
                 // 2. MINIGAMES (Emperor / Suncat friendly duels)
                 // ====================================================
-                if (preGame === 'emperor battle' || startGame === 8|| (typeof Dungeon !== 'undefined' && Dungeon.status === 'dueling')) {
+                if (startGame === 8|| (Dungeon.status === 'dueling')) {
                     
                     // --- WIN MINIGAME ---
                     if (Player[1].option === 10.1) {  
@@ -28824,7 +28782,8 @@
                             Dungeon.processNextAction();
                             Dungeon.saveGame();
                             return;
-                        } else {
+                        } 
+                        else {
                             // EMPEROR WIN
                             let emperor = Dungeon.npcs.find(npc => npc.type === 4);
                             let empX = emperor ? emperor.x : Dungeon.x;
@@ -28948,13 +28907,14 @@
                             }
                             return;
                         }
+                        return;
                     }
                 }
 
                 // ====================================================
                 // 3. STANDARD DUNGEON BATTLES 
                 // ====================================================
-                else if (startGame === 'battle' || startGame > 3) {
+                else if (startGame === 'battle' || (startGame === 4)) {
                     
                     // --- BATTLE WIN ---
                     if (Player[1].option === 10.1) {
