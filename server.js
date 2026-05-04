@@ -3952,7 +3952,44 @@
                             if (!script) throw new Error("LLM failed to return a scenario.");
 
                             let mapNPCs = [];
-                            
+                            // ==========================================
+// ZONE 1: THE LAIR (The Enemy Capital)
+// ==========================================
+// 1. The King (Center)
+let bossID = 10000;
+mapNPCs.push({
+    index: bossID,
+    type: CARD_MANIFEST_DB[antagID].sprite || antagID,
+    x: mapData.lairCenter.x + 0.5, y: mapData.lairCenter.y + 0.5, 
+    state: 'stationary', role: 'battle', isBoss: true, alignment: 'foe',
+    dialogue: [script.bossTaunt],
+    deathActions: [['play_sfx', 'chime'], ['change_weather', 'clear'], ['give_card', {card: 21, text: "The King is dead! You claimed the Crown!"}], ['notify', "The realm is liberated!"]]
+});
+
+                            // 2. The Royal Guard (Surrounding the King)
+                            const royalOffsets = [{x: -2, y: -2}, {x: 2, y: -2}, {x: -2, y: 2}, {x: 2, y: 2}];
+                            for (let i = 0; i < 4; i++) {
+                                let guardID = hostileMinions[0]; // The strongest minion
+                                mapNPCs.push({
+                                    type: CARD_MANIFEST_DB[guardID].sprite || guardID,
+                                    x: mapData.lairCenter.x + royalOffsets[i].x + 0.5, 
+                                    y: mapData.lairCenter.y + royalOffsets[i].y + 0.5,
+                                    state: 'stationary', role: 'battle', alignment: 'foe',
+                                    dialogue: ["script.hostileTaunts ? script.hostileTaunts[i % script.hostileTaunts.length] :Die!"]
+                                });
+                            }
+
+                            // 3. Dark Civilians (Wandering the Lair perimeter)
+                            for (let i = 0; i < 5; i++) {
+                                let minionID = hostileMinions[Math.floor(Math.random() * hostileMinions.length)];
+                                mapNPCs.push({
+                                    type: CARD_MANIFEST_DB[minionID].sprite || minionID,
+                                    x: mapData.lairCenter.x + (Math.random() * 12 - 6), 
+                                    y: mapData.lairCenter.y + (Math.random() * 12 - 6),
+                                    state: 'wandering', role: 'battle', alignment: 'foe',
+                                    dialogue: ["script.hostileTaunts ? script.hostileTaunts[i % script.hostileTaunts.length] :You dare!?"]
+                                });
+                            }
                             // ==========================================
                             // ZONE 1: THE LAIR (The Boss Skeleton)
                             // ==========================================
