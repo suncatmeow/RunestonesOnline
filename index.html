@@ -15711,7 +15711,31 @@
                     } else {
                         // Movement is done!
                         activeUnit.hasMoved = true;
-                        
+                        // --- NEW: PICK UP LOOT ---
+                        if (activeUnit.alignment === 'ally') {
+                            // Did they land on a dropped card?
+                            let steppedOn = this.units.find(u => u.role === 'dropped_card' && !u.isDead && Math.floor(u.x) === Math.floor(activeUnit.x) && Math.floor(u.y) === Math.floor(activeUnit.y));
+                            
+                            if (steppedOn) {
+                                steppedOn.isDead = true; // "Kill" the loot to remove it
+                                steppedOn.visible = false;
+                                steppedOn.x = -999;
+                                
+                                // Send the booster pack to the player's overworld inventory!
+                                if (typeof Dungeon !== 'undefined' && Dungeon.extra) {
+                                    // type 1 denotes an item
+                                    Dungeon.extra.push({ index: steppedOn.cardId, type: 1 }); 
+                                }
+                                
+                                if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('chime');
+                                
+                                // Golden visual pop!
+                                if (typeof globalParticles !== 'undefined') {
+                                    for(let i = 0; i < 10; i++) globalParticles.push(new Particle(activeUnit.x, activeUnit.y, '#FFD700', 'smoke'));
+                                }
+                            }
+                        }
+                        // -------------------------
                         // Check if the AI is acting
                         if (this.state === 'ANIMATING_MOVE' && (activeUnit.alignment !== 'ally' || activeUnit.role === 'summoned_minion')) {
                             // LOOP BACK TO THE BRAIN!
@@ -15739,6 +15763,7 @@
                         this.animDefender.isDead = true;
                         this.animDefender.visible = false;
                         this.animDefender.x = -999;
+                        this.dropTacticsLoot(this.animDefender);
                         if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('death');
                     } else {
                         if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('block');
@@ -15773,7 +15798,39 @@
             case 'ANIMATING_PROJECTILE':
                 let p = this.activeProjectile;
                 if (!p) { this.state = 'INIT'; break; }
+                // --- NEW: DESTRUCTIBLE WALL CHECK ---
+                let currentGridX = Math.floor(p.x);
+                let currentGridY = Math.floor(p.y);
 
+                // Ensure it's a wall (tileID > 0) AND it's not the indestructible outer boundary (x/y = 0 or 9)
+                if (currentGridY > 0 && currentGridY < 9 && currentGridX > 0 && currentGridX < 9) {
+                    if (Dungeon.maze[currentGridY][currentGridX] > 0) {
+                        
+                        // 1. Destroy the wall! (Turn it into a floor)
+                        Dungeon.maze[currentGridY][currentGridX] = 0;
+                        
+                        // 2. Visual and Audio Feedback
+                        if (typeof globalParticles !== 'undefined') {
+                            for (let i = 0; i < 15; i++) {
+                                globalParticles.push(new Particle(currentGridX + 0.5, currentGridY + 0.5, '#aaaaaa', 'smoke'));
+                            }
+                        }
+                        if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('block'); // or 'shatter'
+                        
+                        // 3. Clean up the projectile and end the turn
+                        this.activeProjectile = null;
+                        p.attacker.hasActed = true;
+                        
+                        if (p.attacker.hasMoved && p.attacker.hasActed) {
+                            this.turnQueue.shift();
+                            this.state = 'INIT';
+                        } else {
+                            this.state = p.attacker.alignment === 'ally' && !p.attacker.summonerId ? 'PLAYER_TURN' : 'INIT';
+                        }
+                        break; // Stop processing this frame's projectile logic
+                    }
+                }
+                // -------------------------------------
                 let dx = p.targetX - p.x;
                 let dy = p.targetY - p.y;
                 let dist = Math.sqrt(dx * dx + dy * dy);
@@ -15855,6 +15912,7 @@
                                             target.isDead = true;
                                             target.visible = false;
                                             target.x = -999;
+                                            this.dropTacticsLoot(target);
                                             if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('death');
                                         }
                                     }
@@ -15964,6 +16022,7 @@
                                 target.isDead = true;
                                 target.visible = false;
                                 target.x = -999;
+                                this.dropTacticsLoot(target);
                                 if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('death');
                             }
                         } else {
@@ -15991,32 +16050,43 @@
             ctx.fillRect(0, 0, wX, wY);
             drawShape('rec', 0, 0, 1, 0, 0, 10, 10, 0, 0, 0, 0, 'rgba(0,0,0,0.95)', 1);
         // 2. Draw 10x10 Board
-            let cellSize = 1; 
-            let pixelCellSize = (tL / 10) * cellSize;
+        let cellSize = 1; 
+        let pixelCellSize = (tL / 10) * cellSize;
 
-            for (let y = 0; y < 10; y++) {
-                for (let x = 0; x < 10; x++) {
-                    let tileID = Dungeon.maze[y][x];
+        for (let y = 0; y < 10; y++) {
+            for (let x = 0; x < 10; x++) {
+                let tileID = Dungeon.maze[y][x];
 
-                    // 1. Draw Base Colors using your existing drawShape function
+                // 1. Draw Base Colors (FIXED FALLBACK LOGIC)
                     if (tileID > 0) {
-                        let wColor = Dungeon.wallColors[tileID] || '#444';
+                        let wColor = (Dungeon.wallColors && Dungeon.wallColors[tileID]) || '#444';
                         drawShape('rec', x, y, 1, 0, 0, cellSize, cellSize, 0, 0, 0, 0, wColor, 1);
                     } else {
-                        let fColor = Dungeon.floorColors[tileID] || Dungeon.floorColor || '#555566';
+                        let fColor = (Dungeon.floorColors && Dungeon.floorColors[tileID]) || Dungeon.floorColor || '#555566';
                         drawShape('rec', x, y, 1, 0, 0, cellSize, cellSize, 0, 0, 0, 0, fColor, 1);
                     }
 
-                    // 2. Overlay the Native Textures!
-                    Dungeon.drawTileTexture(tileID, x, y, cellSize);
+                // 2. Overlay the Native Textures!
+                    if (typeof Dungeon.drawTileTexture === 'function') {
+                        Dungeon.drawTileTexture(tileID, x, y, cellSize);
+                    }
 
-                    // 3. Keep the Grid Borders (Calculated in pixels for strokeRect)
+                // 3. Pseudo-3D Front Face / Lip
+                    if (tileID > 0) {
+                        let tileBelow = (y < 9) ? Dungeon.maze[y + 1][x] : 0;
+                        
+                        if (tileBelow === 0) {
+                            drawShape('rec', x, y + 0.7, 1, 0, 0, cellSize, 0.3, 0, 0, 0, 0, 'rgba(0, 0, 0, 0.65)', 1);
+                        }
+                    }
+
+                // 4. Keep the Grid Borders (Calculated in pixels for strokeRect)
                     let screenX = tX + (tL / 10) * x;
                     let screenY = tY + (tH / 10) * y;
                     ctx.strokeStyle = 'rgba(0,0,0,0.3)';
                     ctx.strokeRect(screenX, screenY, pixelCellSize, pixelCellSize);
                 }
-            }
+        }
 
         // 3. Update & Draw Tactics Units
             let tacticsUnits = this.units.filter(u => !u.isDead);
@@ -16030,11 +16100,16 @@
                 tX = screenX; tY = screenY; tL = pixelCellSize; tH = pixelCellSize;
 
                 if (typeof drawPortrait === 'function') {
-                    drawPortrait(unit.type, 0, 0, 1);
+                    // Pass the cardId if it's loot, otherwise pass 0
+                    let cardParam = unit.role === 'dropped_card' ? unit.cardId : 0;
+                    drawPortrait(unit.type, 0, 0, 1, cardParam);
                     
-                    let color = unit.alignment === 'ally' ? '#00ff00' : '#ff0000';
-                    drawShape('rec', 0, 0.9, 1, 0, 0, 1, 0.1, 0, 0, 0, 0, 'rgba(0,0,0,0.5)', 1);
-                    drawShape('rec', 0, 0.9, 1, 0, 0, 1, 0.1, 0, 0, 0, 0, color, 0);
+                    // Hide HP bars for loot on the ground!
+                    if (unit.role !== 'dropped_card') {
+                        let color = unit.alignment === 'ally' ? '#00ff00' : '#ff0000';
+                        drawShape('rec', 0, 0.9, 1, 0, 0, 1, 0.1, 0, 0, 0, 0, 'rgba(0,0,0,0.5)', 1);
+                        drawShape('rec', 0, 0.9, 1, 0, 0, 1, 0.1, 0, 0, 0, 0, color, 0);
+                    }
                 }
                 // --- NEW: DRAW PULSING BUFF AURAS ---
                 if (unit.activeBuffs && unit.activeBuffs.length > 0) {
@@ -16048,7 +16123,40 @@
 
                 tX = oldTX; tY = oldTY; tL = oldTL; tH = oldTH;
             });
+            // --- NEW: ACTIVE UNIT INDICATOR ---
+            // Drawn after all units so it always stays perfectly on top!
+                let activeRenderUnit = this.turnQueue[0];
+                if (activeRenderUnit && !activeRenderUnit.isDead) {
+                    // Find the active unit's exact screen position
+                    let screenX = tX + (tL / 10) * activeRenderUnit.x - (pixelCellSize / 2);
+                    let screenY = tY + (tH / 10) * activeRenderUnit.y - (pixelCellSize / 2);
 
+                    const oldTX = tX, oldTY = tY, oldTL = tL, oldTH = tH;
+                    tX = screenX; tY = screenY; tL = pixelCellSize; tH = pixelCellSize;
+
+                    // arrowBounce using your exact math snippet
+                    let arrowBounce = Math.sin(Date.now() / 150) * 0.05;
+                    
+                    // x: 0.35 horizontally centers the 0.3-width triangle in the 1.0-width tile
+                    // y: -0.3 floats the arrow just above the character portrait
+                    drawShape('tri', 3.5, -3 + arrowBounce, 10, 
+                            0, 0, 
+                            0.3, 0, 
+                            0.15, 0.2, 
+                            0, 0, 'gold', 100);
+                            drawShape('tri', 3.5, -3 + arrowBounce, 10, 
+                            0, 0, 
+                            0.3, 0, 
+                            0.15, 0.2, 
+                            0, 0, 'rgba(0,0,0,.25)', 100);
+                            drawShape('tri', 3.5, -3 + arrowBounce, 10, 
+                            0.15, 0, 
+                            0.3, 0, 
+                            0.15, 0.2, 
+                            0, 0, 'yellow', 100);
+
+                    tX = oldTX; tY = oldTY; tL = oldTL; tH = oldTH;
+                }
         // 4. Overlays
             this.renderOverlays(ctx);
 
@@ -16067,7 +16175,7 @@
                 tX = pX; tY = pY; tL = pixelCellSize; tH = pixelCellSize;
 
                 if (pData && pData.sprite2D !== undefined && typeof drawPortrait === 'function') {
-                    drawPortrait(pData.sprite2D, 0, 0, 0.5); // 0.5 scales it down nicely
+                    drawPortrait(pData.sprite2D, 0, 0, 1); // 0.5 scales it down nicely
                 } else {
                     drawShape('arc', 0.5, 0.5, 1, 0.5, 0.5, 0.2, 0, 2, 0, 0, 0, pData ? pData.glow : 'magenta', 1);
                 }
@@ -16924,8 +17032,13 @@
                             break;
                         }
                     }
-                    if (clear && !Dungeon.isWall(x, y)) {
-                        validTiles.push({ x: x, y: y });
+                    
+                    // THE FIX: This is now safely inside the scope where 'clear' exists!
+                    if (clear) {
+                        // Only allow it if it's a floor, OR if it's an inner wall (x: 1-8, y: 1-8).
+                        if (!Dungeon.isWall(x, y) || (x > 0 && x < 9 && y > 0 && y < 9)) {
+                            validTiles.push({ x: x, y: y });
+                        }
                     }
                 }
             }
@@ -17047,7 +17160,11 @@
                     isValidTarget = false;
                 }
             }
-            
+            else if (sData.type === 'assassination') {
+                if (!targetUnit || targetUnit.alignment === activeUnit.alignment) {
+                    isValidTarget = false; // Buzzer plays, card is saved!
+                }
+            }
             // C. EXECUTION
             if (isValidTarget) {
                 // Remove card from hand and extra deck
@@ -17300,7 +17417,7 @@
                         let defRoll = this.rollTacticalStat(target, sData.defStat || 1);
 
                         if (atkRoll > defRoll) {
-                            target.isDead = true; target.visible = false; target.x = -999;
+                            target.isDead = true; this.dropTacticsLoot(target);target.visible = false; target.x = -999;
                             if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('death');
                         } else {
                             // Tactical Knockback
@@ -17339,7 +17456,49 @@
                 if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('chime');
             }
         }
+        // ==========================================
+        // 6. ASSASSINATION / DASH STRIKES (Backstab, Overpower)
+        // ==========================================
+        else if (sData.type === 'assassination') {
+            let targetUnit = this.getUnitAt(Math.floor(targetX), Math.floor(targetY));
+            
+            // 1. Calculate ideal dash tile (behind the enemy)
+            let dashX = Math.floor(targetUnit.x);
+            let dashY = Math.floor(targetUnit.y);
+            
+            if (Math.abs(targetUnit.x - caster.x) > Math.abs(targetUnit.y - caster.y)) {
+                dashX += targetUnit.x > caster.x ? 1 : -1;
+            } else {
+                dashY += targetUnit.y > caster.y ? 1 : -1;
+            }
 
+            // 2. If the ideal spot is blocked (wall or another unit), find ANY open adjacent tile
+            if (dashX < 0 || dashX > 9 || dashY < 0 || dashY > 9 || Dungeon.isWall(dashX, dashY) || this.isTileOccupied(dashX, dashY)) {
+                let dirs = [{x: 1, y: 0}, {x: -1, y: 0}, {x: 0, y: 1}, {x: 0, y: -1}];
+                let foundFallback = false;
+                for (let d of dirs) {
+                    let nx = Math.floor(targetUnit.x) + d.x;
+                    let ny = Math.floor(targetUnit.y) + d.y;
+                    if (nx >= 0 && nx <= 9 && ny >= 0 && ny <= 9 && !Dungeon.isWall(nx, ny) && !this.isTileOccupied(nx, ny)) {
+                        dashX = nx;
+                        dashY = ny;
+                        foundFallback = true;
+                        break;
+                    }
+                }
+                
+                if (!foundFallback) {
+                    // Enemy is perfectly surrounded by walls/units! Cannot dash to them.
+                    this.state = 'PLAYER_TURN';
+                    if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('cancel');
+                    return;
+                }
+            }
+
+            // 3. Execute the dash! (This triggers the ANIMATING_DASH state)
+            this.executeTacticalAssassination(caster, targetUnit, dashX, dashY, spellId);
+            return;
+        }
        // ==========================================
         // 6. PROJECTILES & DEBUFFS (Default Fallback)
         // ==========================================
@@ -17519,6 +17678,31 @@
 
         this.state = 'ANIMATING_DASH'; // New unique state
         if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('wind');
+    }
+    dropTacticsLoot(deadUnit) {
+        // Only drop from actual foes, not summons or allies
+        if (deadUnit.alignment !== 'foe' || deadUnit.role === 'summoned_minion') return;
+
+        // E.g., 50% chance to drop loot
+        if (Math.random() < 0.5) { 
+            // Give a 20% chance for a Treasure Chest (10), otherwise standard Loot (41)
+            let boosterId = Math.random() < 0.2 ? 10 : 41; 
+
+            let lootUnit = {
+                id: 'loot_' + Math.floor(Math.random() * 1000000),
+                x: deadUnit.x,
+                y: deadUnit.y,
+                type: -27,               // The Card Sprite
+                cardId: boosterId,       // The payload! (What gets drawn on the card)
+                alignment: 'neutral',
+                role: 'dropped_card',
+                isDead: false,
+                hasMoved: true,          // Can't move
+                hasActed: true           // Can't act
+            };
+
+            this.units.push(lootUnit);
+        }
     }
 }
 //////////////////////////[BATTLE ENGINE]/////////////////////////////
@@ -25652,61 +25836,63 @@
                     if (isDrag) return;
 
                     // --- 3. STANDARD BUTTON CLICKS ---
-                    if (gridPos.x >= menuX && gridPos.x <= menuX + 2.5) {
+                    // Fix 1: Restrict the bounding box to the actual menu area. 
+                    // We add 0.2 to the bottom (menuY + 6.2) so "Wait" is much easier to click!
+                    if (gridPos.x >= menuX && gridPos.x <= menuX + 2.5 && gridPos.y >= menuY && gridPos.y <= menuY + 6.2) {
                         
-                        // 1. Move (y: 0 to 1 relative to menuY)
-                        if (gridPos.y >= menuY && gridPos.y <= menuY + 1 && !activeUnit.hasMoved) {
+                        // Fix 2: Calculate exactly which slot (0 to 5) was clicked
+                        let slot = Math.floor(gridPos.y - menuY); 
+                        
+                        // 1. Move
+                        if (slot === 0 && !activeUnit.hasMoved) {
                             window.TacticsEngine.validMoves = window.TacticsEngine.getValidMoves(activeUnit.x, activeUnit.y, activeUnit.movePoints); 
                             window.TacticsEngine.state = 'SELECT_MOVE';
                             if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('click');
                         }
-                        // 2. Attack (y: 1 to 2)
-                        else if (gridPos.y >= menuY + 1 && gridPos.y <= menuY + 2 && !activeUnit.hasActed) {
+                        // 2. Attack
+                        else if (slot === 1 && !activeUnit.hasActed) {
                             window.TacticsEngine.validAttacks = window.TacticsEngine.getValidAttacks(activeUnit.x, activeUnit.y);
                             window.TacticsEngine.state = 'SELECT_ATTACK';
                             if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('click');
                         }
-                        // 3. Item (y: 2 to 3)
-                        else if (gridPos.y >= menuY + 2 && gridPos.y <= menuY + 3 && !activeUnit.hasActed && activeUnit.tacticsHand.item) {
+                        // 3. Item
+                        else if (slot === 2 && !activeUnit.hasActed && activeUnit.tacticsHand.item) {
                             let iData = SPELL_REGISTRY[activeUnit.tacticsHand.item];
-                            // Items (potions, armor) usually target self/adjacent, so range is 1
                             window.TacticsEngine.validItems = window.TacticsEngine.getValidSupportTargets(activeUnit.x, activeUnit.y, 1); 
                             window.TacticsEngine.state = 'PREVIEW_CARD';
                             window.TacticsEngine.previewType = 'item';
                             if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('click');
                         }
-                        // 4. Spell (y: 3 to 4)
-                        else if (gridPos.y >= menuY + 3 && gridPos.y <= menuY + 4 && !activeUnit.hasActed && activeUnit.tacticsHand.spell) {
+                        // 4. Spell
+                        else if (slot === 3 && !activeUnit.hasActed && activeUnit.tacticsHand.spell) {
                             let sData = SPELL_REGISTRY[activeUnit.tacticsHand.spell];
-                            
-                            // THE FIX: Route buffs to the new Support Targeting method!
                             if (sData.type === 'buff' || sData.type === 'ward') {
                                 window.TacticsEngine.validSpells = window.TacticsEngine.getValidSupportTargets(activeUnit.x, activeUnit.y, sData.range || 3);
                             } else {
-                                // Offensive spells still need line of sight
                                 window.TacticsEngine.validSpells = window.TacticsEngine.getLineOfSightTargets(activeUnit.x, activeUnit.y, sData.range || 6);
                             }
-                            
                             window.TacticsEngine.state = 'PREVIEW_CARD';
                             window.TacticsEngine.previewType = 'spell';
                             if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('click');
                         }
-                        // 5. Call (y: 4 to 5)
-                        else if (gridPos.y >= menuY + 4 && gridPos.y <= menuY + 5 && !activeUnit.hasActed && activeUnit.tacticsHand.call) {
+                        // 5. Call
+                        else if (slot === 4 && !activeUnit.hasActed && activeUnit.tacticsHand.call) {
                             window.TacticsEngine.validCalls = window.TacticsEngine.getValidSummonTiles(activeUnit.x, activeUnit.y, 2); 
                             window.TacticsEngine.state = 'PREVIEW_CARD';
                             window.TacticsEngine.previewType = 'call';
                             if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('click');
                         }
-                        // 6. Wait (y: 5 to 6)
-                        else if (gridPos.y >= menuY + 5 && gridPos.y <= menuY + 6) {
+                        // 6. Wait (Accounts for slot 5, or slot 6 if they clicked the forgiving bottom padding)
+                        else if (slot === 5 || slot === 6) {
                             activeUnit.hasMoved = true;
                             activeUnit.hasActed = true;
                             window.TacticsEngine.turnQueue.shift(); 
                             window.TacticsEngine.state = 'INIT'; 
                             if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('cancel');
                         }
-                        return
+                        
+                        // Because the Y-bounds are checked above, this safely only fires if they clicked INSIDE the menu!
+                        return; 
                     }
                         let clickedUnit = window.TacticsEngine.getUnitAt(clickX, clickY);
                         if (clickedUnit) {
