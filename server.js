@@ -4031,60 +4031,184 @@
                             // ==========================================
                             // ZONE 3: THE MINI-DUNGEON (Sub-Plot Skeletons)
                             // ==========================================
-                            let miniTargetID = 10000 + mapNPCs.length;
-
-                                let allySprite = friendlyMinions[0] || 32;
-                                mapNPCs.push({
-                                    index: miniTargetID,
-                                    type: CARD_MANIFEST_DB[allySprite].sprite || allySprite,
-                                    x: mapData.miniCenter.x + 0.5, y: mapData.miniCenter.y + 0.5,
-                                    state: 'fleeing', role: 'dialogue', alignment: 'friendly', 
-                                    color: '#00ff00', deck: [allySprite],
-                                    dialogue: script.prisonerLines || ["Thank the gods you found me! Help me fight!"],
-                                    options: ['Yes', 'Leave'],
-                                    yesActions: [
-                                        ['play_sfx', 'buff2'],
-                                        ['become_ally', allySprite],
-                                        ['spectate', 'Player has rescued a prisoner from the dungeon.'],
-                                        ['disappear', null],      // <--- FIX: Uses null to guarantee the speaker is deleted
-                                        ['close_dialogue', null]  // <--- FIX: Closes the UI
-                                    ],
-                                    noActions: [['close_dialogue', null]] // <--- FIX: Closes the UI if they say no
-                                });
-                                let trapSprite = hostileMinions[0];
-                                mapNPCs.push({
-                                    index: miniTargetID,
-                                    type: -27, 
-                                    x: mapData.miniCenter.x + 0.5, y: mapData.miniCenter.y + 0.5,
-                                    state: 'stationary', role: 'dialogue', alignment: 'friendly', 
-                                    color: '#ffff00', deck: [trapSprite], 
-                                    dialogue: ["You found a pristine treasure chest. Open it?"],
-                                    options: ['Yes', 'Leave'],
-                                    yesActions: [
-                                        ['play_sfx', 'cancel'],
-                                        ['transform_npc', { index: miniTargetID, newType: trapSprite, newAlignment: 'foe', newRole: 'battle', newState: 'chasing', clearDialogue: true }],
-                                        ['start_battle', miniTargetID]
-                                    ],
-                                    noActions: [['close_dialogue', null]]
-                                });
+                            // ==========================================
+                            // ZONE 3: THE MINI-DUNGEON (Sub-Plot Skeletons)
+                            // ==========================================
                             
-                                mapNPCs.push({
-                                    index: miniTargetID,
-                                    type: 16, 
-                                    x: mapData.miniCenter.x + 0.5, y: mapData.miniCenter.y + 0.5,
-                                    state: 'stationary', role: 'dialogue', alignment: 'friendly',
-                                    color: '#00ff00', deck: [],
-                                    dialogue: ["The altar hums with dark magic. Disturbing it may awaken the horde. Purge it?"],
-                                    options: ['Yes', 'Leave'],
-                                    yesActions: [
-                                        ['play_sfx', 'horn'],
-                                        ['start_hunted', { waves: 3, interval: 300, mobs: [{sprite: hostileMinions[0]}] }],
-                                        ['notify', "The horde has been alerted! Survive!"],
-                                        ['disappear', null], // Destroys the altar
-                                        ['close_dialogue', null]
+                            // 1. The Prisoner (Ally)
+                            let allySprite = friendlyMinions[0] || 32;
+                            mapNPCs.push({
+                                type: CARD_MANIFEST_DB[allySprite].sprite || allySprite,
+                                x: mapData.miniCenter.x + 0.5, y: mapData.miniCenter.y + 0.5,
+                                state: 'fleeing', role: 'dialogue', alignment: 'friendly', 
+                                color: '#00ff00', deck: [allySprite],
+                                dialogue: script.prisonerLines || ["Thank the gods you found me! Help me fight!"],
+                                options: ['Yes', 'Leave'],
+                                yesActions: [
+                                    ['play_sfx', 'buff2'],
+                                    ['become_ally', allySprite],
+                                    ['spectate', 'Player has rescued a prisoner from the dungeon.'],
+                                    ['disappear', null],      
+                                    ['close_dialogue', null]  
+                                ],
+                                noActions: [['close_dialogue', null]] 
+                            });
+                            mapNPCs.push({
+                            type: 74.1, // Gargoyle
+                            x: mapData.miniCenter.x + 2.5, y: mapData.miniCenter.y + 0.5,
+                            state: 'stationary', role: 'dialogue', alignment: 'friendly',
+                            color: '#00ff00', 
+                            deck: [74, 50, 51, 68], // His deck if a battle breaks out
+                            dialogue: [
+                                "Halt! None cross without paying the toll.",
+                                "Hand over a Gold Coin (Card 50), or I'll crush your bones!"
+                            ],
+                            options: ['Pay (Card 50)', 'Refuse'],
+                            yesActions: [
+                                // Attempts to take the card. If successful, he disappears.
+                                ['remove_card', { card: 50, text: "You paid the toll." }],
+                                ['play_sfx', 'chime'],
+                                ['notify', "Shiny! You may pass."],
+                                ['disappear', null] // 'null' automatically targets the currentSpeaker!
+                            ],
+                            noActions: [
+                                ['play_sfx', 'horn'],
+                                ['spectate', 'Player refused the toll and initiated combat!'],
+                                // Instantly turns him into a hostile monster and forces the battle screen
+                                ['transform_npc', { newAlignment: 'foe', newRole: 'battle', newState: 'chasing' }],
+                                ['start_battle', null] 
+                            ]
+                        });
+
+                        // 2. The Wave Commander (Arena Master)
+                        // Triggers your survival wave logic dynamically based on server parameters.
+                        mapNPCs.push({
+                            type: 5, // Hierophant
+                            x: mapData.miniCenter.x - 2.5, y: mapData.miniCenter.y + 0.5,
+                            state: 'stationary', role: 'dialogue', alignment: 'friendly',
+                            color: '#00ff00', deck: [],
+                            dialogue: [
+                                "Welcome to the Crucible.",
+                                "Survive my minions, and you shall earn glory. Prepare yourself!"
+                            ],
+                            options: ['Start', 'Leave'],
+                            yesActions: [
+                                ['play_sfx', 'horn'],
+                                ['start_wave', {
+                                    delay: 2.0,
+                                    waves: [
+                                        // Wave 1: Spawns two of the map's native hostile minions
+                                        [{ sprite: hostileMinions[0] }, { sprite: hostileMinions[0] }],
+                                        // Wave 2: Spawns three, with one being slightly tougher
+                                        [{ sprite: hostileMinions[0] }, { sprite: hostileMinions[0] }, { sprite: hostileMinions[0], isBoss: true }]
                                     ],
-                                    noActions: [['close_dialogue', null]]
-                                });
+                                    onComplete: [
+                                        ['give_card', {card: 71, text: "You survived the Crucible!"}],
+                                        ['play_song', 8],
+                                        ['disappear', null] // Kills the commander when you win
+                                    ]
+                                }],
+                                ['close_dialogue', null]
+                            ],
+                            noActions: [['close_dialogue', null]]
+                        });
+
+                        // 3. The Dynamic Traveling Merchant
+                        // Uses the 'shop' role. The server generates a random inventory for him every time the map loads!
+                        let randomShopDeck = [
+                            hostileMinions[0], 
+                            friendlyMinions[0], 
+                            Math.floor(Math.random() * 20) + 10, // Random card 10-30
+                            Math.floor(Math.random() * 20) + 50  // Random card 50-70
+                        ];
+                        mapNPCs.push({
+                            type: 41, // Shopkeeper sprite
+                            x: mapData.miniCenter.x, y: mapData.miniCenter.y + 2.5,
+                            state: 'wandering', role: 'shop', alignment: 'friendly',
+                            color: '#00ff00', deck: randomShopDeck,
+                            dialogue: ["Got some rare cards I found in this dungeon. Take a look!"],
+                            endActions: [
+                                ['open_shop', randomShopDeck],
+                                ['play_sfx', 'click']
+                            ]
+                        });
+
+                        // 4. The Mimic Trap
+                        // Looks exactly like dropped loot, but because its role is 'battle' and alignment is 'foe', 
+                        // touching it skips dialogue and instantly pulls the player into a fight!
+                        mapNPCs.push({
+                            type: -27, // Loot Bag Sprite
+                            x: mapData.miniCenter.x, y: mapData.miniCenter.y - 2.5,
+                            state: 'stationary', role: 'battle', alignment: 'foe',
+                            color: '#ffff00', // Yellow minimap dot to fool the player!
+                            deck: [83, 52, 40], // Tentacle/Mimic deck
+                            dialogue: ["Kee hee! You fell for the bait!"], // Flashes as battle starts
+                            deathActions: [
+                                // Real reward drops when you actually kill the mimic
+                                ['give_card', { card: 10, text: "The mimic dropped a Treasure Chest card!" }]
+                            ]
+                        });
+
+                        // 5. The Casual Gambler
+                        // Challenges the player to a friendly game of 2D Eidolon without risking their life.
+                        mapNPCs.push({
+                            type: 4, // Emperor
+                            x: mapData.miniCenter.x + 2.5, y: mapData.miniCenter.y - 2.5,
+                            state: 'stationary', role: 'dialogue', alignment: 'friendly',
+                            color: '#00ff00', deck: [5, 12, 18, 24, 30, 42], // CPU's deck
+                            dialogue: [
+                                "It's quiet in this dungeon. Too quiet.",
+                                "Fancy a friendly game of cards to pass the time?"
+                            ],
+                            options: ['Play Eidolon', 'Not Right Now'],
+                            yesActions: [
+                                ['spectate', 'Player sat down for a casual game in the custom dungeon.'],
+                                ['start_minigame', 'casual_duel'] // Shifts client to startGame = 8
+                            ],
+                            noActions: [
+                                ['play_sfx', 'cancel'],
+                                ['close_dialogue', null]
+                            ]
+                        });
+                            // 2. The Trap Chest
+                            let trapSprite = hostileMinions[0];
+                            // Calculate the EXACT index the forEach loop will assign this chest
+                            let chestIndex = 10000 + mapNPCs.length; 
+                            
+                            mapNPCs.push({
+                                type: -27, 
+                                x: mapData.miniCenter.x + 0.5, y: mapData.miniCenter.y + 0.5,
+                                state: 'stationary', role: 'dialogue', alignment: 'friendly', 
+                                color: '#ffff00', deck: [trapSprite], 
+                                dialogue: ["You found a pristine treasure chest. Open it?"],
+                                options: ['Yes', 'Leave'],
+                                yesActions: [
+                                    ['play_sfx', 'cancel'],
+                                    // Target the precise chestIndex calculated above
+                                    ['transform_npc', { index: chestIndex, newType: trapSprite, newAlignment: 'foe', newRole: 'battle', newState: 'chasing', clearDialogue: true }],
+                                    ['start_battle', chestIndex],
+                                    ['close_dialogue', null] // <--- FIX: Added the missing close command
+                                ],
+                                noActions: [['close_dialogue', null]]
+                            });
+                            
+                            // 3. The Altar
+                            mapNPCs.push({
+                                type: 16, 
+                                x: mapData.miniCenter.x + 0.5, y: mapData.miniCenter.y + 0.5,
+                                state: 'stationary', role: 'dialogue', alignment: 'friendly',
+                                color: '#00ff00', deck: [],
+                                dialogue: ["The altar hums with dark magic. Disturbing it may awaken the horde. Purge it?"],
+                                options: ['Yes', 'Leave'],
+                                yesActions: [
+                                    ['play_sfx', 'horn'],
+                                    ['start_hunted', { waves: 3, interval: 300, mobs: [{sprite: hostileMinions[0]}] }],
+                                    ['notify', "The horde has been alerted! Survive!"],
+                                    ['disappear', null], 
+                                    ['close_dialogue', null]
+                                ],
+                                noActions: [['close_dialogue', null]]
+                            });
 
                             // ==========================================
                             // ZONE 4: THE ECOLOGY (Distance-Weighted)
