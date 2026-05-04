@@ -3985,18 +3985,20 @@
                             mapNPCs.push({
                                 type: CARD_MANIFEST_DB[protagID].sprite || protagID,
                                 x: mapData.bastionCenter.x + 0.5, y: mapData.bastionCenter.y + 0.5,
-                                state: 'stationary', role: 'quest_giver', alignment: 'friendly',
+                                state: 'stationary', role: 'dialogue', alignment: 'friendly',
                                 deck: [], color: '#00ff00', 
                                 dialogue: script.friendlyLore || ["Please, you must help us!"],
-                                options: [scenarioType]
                             });
-                            
+                            let shop = []
+                            for (let i = 0;i<=13;i++){
+                                shop[i] = Math.floor(Math.random*90)
+                            }
                             // 2. The Radiant Bounty Board
                             mapNPCs.push({
                                 type: 41, 
                                 x: mapData.bastionCenter.x + 2.5, y: mapData.bastionCenter.y + 0.5,
-                                state: 'stationary', role: 'bounty_merchant', alignment: 'friendly',
-                                deck: [], color: '#00ff00' 
+                                state: 'stationary', role: 'shop', alignment: 'friendly',
+                                deck: shop, color: '#00ff00', dialogue:"Buy something will ya?"
                             });
                             
                             // 3. Bastion Guards (Defenders - Will actively hunt invaders!)
