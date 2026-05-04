@@ -4085,6 +4085,40 @@ mapNPCs.push({
                                     ],
                                     noActions: [['close_dialogue', null]] // <--- FIX: Closes the UI if they say no
                                 });
+                                // ==========================================
+                                // ZONE 3: THE MINI-DUNGEON (BG2 Gauntlet)
+                                // ==========================================
+                                let miniTargetID = 10000 + mapNPCs.length;
+                                let miniBossSprite = hostileMinions[1] || hostileMinions[0]; 
+
+                                // 1. The Mini-Boss (Warden)
+                                mapNPCs.push({
+                                    index: miniTargetID,
+                                    type: CARD_MANIFEST_DB[miniBossSprite].sprite || miniBossSprite,
+                                    x: mapData.miniCenter.x + 0.5, y: mapData.miniCenter.y + 0.5,
+                                    state: 'stationary', role: 'battle', alignment: 'foe', 
+                                    dialogue: ["You will not free them!"],
+                                    deathActions: [
+                                        ['notify', "The Warden is dead. The prisoner is free!"],
+                                        // Spawns the prisoner dynamically upon the Mini-Boss's death
+                                        ['spawn_npc', [
+                                            999, miniTargetID + 100, 'SPEAKER_X', 'SPEAKER_Y', 
+                                            friendlyMinions[0] || 32, 'stationary', '#00ff00', [friendlyMinions[0]], 
+                                            script.prisonerLines, null, 'dialogue', null, false, 'friendly'
+                                        ]]
+                                    ]
+                                });
+
+                                // 2. The Swarm (Weak enemies surrounding the Mini-Boss)
+                                for (let i = 0; i < 4; i++) {
+                                    let swarmSprite = hostileMinions[hostileMinions.length - 1]; // Weakest minion
+                                    mapNPCs.push({
+                                        type: CARD_MANIFEST_DB[swarmSprite].sprite || swarmSprite,
+                                        x: mapData.miniCenter.x + (Math.random() * 4 - 2), 
+                                        y: mapData.miniCenter.y + (Math.random() * 4 - 2),
+                                        state: 'chasing', role: 'battle', alignment: 'foe'
+                                    });
+                                }
                                 let trapSprite = hostileMinions[0];
                                 mapNPCs.push({
                                     index: miniTargetID,
