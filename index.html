@@ -4666,28 +4666,28 @@
                     ];
                     this.npcs = [];
                     // 1. The Greedy Gargoyle (Toll Guard)
-                this.spawnPersistentNPC(-2, 1, 10.5, 11.5, 74.1, 'stationary', '#00ff00', [74, 50, 51, 68], 
-                    ["Halt! None cross without paying the toll.", "Hand over a Gold Coin (Card 50), or I'll crush your bones!"], 
-                    null, 'dialogue', ['Pay (Card 50)', 'Refuse'], false, 'friendly', [], [], false,
-                    [ // yesActions
+                this.npcs.push(Object.assign(new NPC(1, 10.5, 11.5, 74.1, 'stationary', '#00ff00', [74, 50, 51, 68], 'dialogue', false, 'friendly'), {
+                    customDialogue: ["Halt! None cross without paying the toll.", "Hand over a Gold Coin (Card 50), or I'll crush your bones!"],
+                    options: ['Pay (Card 50)', 'Refuse'],
+                    yesActions: [
                         ['remove_card', { card: 50, text: "You paid the toll." }],
                         ['play_sfx', 'chime'],
                         ['notify', "Shiny! You may pass."],
                         ['disappear', null]
                     ],
-                    [ // noActions
+                    noActions: [
                         ['play_sfx', 'horn'],
                         ['spectate', 'Player refused the toll and initiated combat!'],
                         ['transform_npc', { newAlignment: 'foe', newRole: 'battle', newState: 'chasing' }],
                         ['start_battle', null] 
                     ]
-                );
+                }));
 
                 // 2. The Wave Commander (Arena Master)
-                this.spawnPersistentNPC(-2, 2, 5.5, 11.5, 5, 'stationary', '#00ff00', [], 
-                    ["Welcome to the Crucible.", "Survive my minions, and you shall earn glory. Prepare yourself!"], 
-                    null, 'dialogue', ['Start', 'Leave'], false, 'friendly', [], [], false,
-                    [ // yesActions
+                this.npcs.push(Object.assign(new NPC(2, 5.5, 11.5, 5, 'stationary', '#00ff00', [], 'dialogue', false, 'friendly'), {
+                    customDialogue: ["Welcome to the Crucible.", "Survive my minions, and you shall earn glory. Prepare yourself!"],
+                    options: ['Start', 'Leave'],
+                    yesActions: [
                         ['play_sfx', 'horn'],
                         ['start_wave', {
                             delay: 2.0,
@@ -4703,45 +4703,40 @@
                         }],
                         ['close_dialogue', null]
                     ],
-                    [['close_dialogue', null]] // noActions
-                );
+                    noActions: [['close_dialogue', null]]
+                }));
 
                 // 3. The Dynamic Traveling Merchant
                 let randomShopDeck = [42, 60, Math.floor(Math.random() * 20) + 10, Math.floor(Math.random() * 20) + 50];
-                this.spawnPersistentNPC(-2, 3, 8.5, 14.5, 41, 'wandering', '#00ff00', randomShopDeck, 
-                    ["Got some rare cards I found in this dungeon. Take a look!"], 
-                    null, 'shop', null, false, 'friendly',
-                    [['open_shop', randomShopDeck], ['play_sfx', 'click']] // endActions
-                );
+                this.npcs.push(Object.assign(new NPC(3, 8.5, 14.5, 41, 'wandering', '#00ff00', randomShopDeck, 'shop', false, 'friendly'), {
+                    customDialogue: ["Got some rare cards I found in this dungeon. Take a look!"],
+                    endActions: [['open_shop', randomShopDeck], ['play_sfx', 'click']]
+                }));
 
                 // 4. The Mimic Trap
-                this.spawnPersistentNPC(-2, 4, 8.5, 8.5, -27, 'stationary', '#ffff00', [83, 52, 40], 
-                    ["Kee hee! You fell for the bait!"], null, 'battle', null, false, 'foe', 
-                    [], // endActions
-                    [['give_card', { card: 10, text: "The mimic dropped a Treasure Chest card!" }]] // deathActions
-                );
+                this.npcs.push(Object.assign(new NPC(4, 8.5, 8.5, -27, 'stationary', '#ffff00', [83, 52, 40], 'dialogue', false, 'friendly'), {
+                    customDialogue: ["Kee hee! You fell for the bait!"],
+                    endActions: [
+                        ['transform_npc', { index: 4, newAlignment: 'foe', newRole: 'battle', newState: 'chasing' }],
+                        ['start_battle', 4] 
+                    ],
+                    deathActions: [['give_card', { card: 10, text: "The mimic dropped a Treasure Chest card!" }]]
+                }));
 
                 // 5. The Casual Gambler
-                this.spawnPersistentNPC(-2, 5, 10.5, 8.5, 4, 'stationary', '#00ff00', [5, 12, 18, 24, 30, 42], 
-                    ["It's quiet in this dungeon. Too quiet.", "Fancy a friendly game of cards to pass the time?"], 
-                    null, 'dialogue', ['Play Eidolon', 'Not Right Now'], false, 'friendly', [], [], false,
-                    [ // yesActions
+                this.npcs.push(Object.assign(new NPC(5, 10.5, 8.5, 4, 'stationary', '#00ff00', [5, 12, 18, 24, 30, 42], 'dialogue', false, 'friendly'), {
+                    customDialogue: ["It's quiet in this dungeon. Too quiet.", "Fancy a friendly game of cards to pass the time?"],
+                    options: ['Play Eidolon', 'Not Right Now'],
+                    yesActions: [
                         ['spectate', 'Player sat down for a casual game in the custom dungeon.'],
                         ['start_minigame', 'casual_duel'] 
                     ],
-                    [ // noActions
+                    noActions: [
                         ['play_sfx', 'cancel'],
                         ['close_dialogue', null]
                     ]
-                );
-
-                // (Keeping your ENUM_NPC spawns down here just in case you wanted both sets)
-                if (typeof ENUM_NPC !== 'undefined') {
-                    this.spawnNPC(ENUM_NPC.GUILD_CLERK, 201, 5.5, 5.5, { reqItem: 45, reward: 99 });
-                    this.spawnNPC(ENUM_NPC.GAMBLER_CASUAL, 202, 8.5, 6.5, { sprite: 4, deck: [5, 12, 18, 24, 30] });
-                    this.spawnNPC(ENUM_NPC.TRAITOR, 203, 12.5, 12.5, { sprite: 85 });
-                    this.spawnNPC(ENUM_NPC.MIMIC, 204, 15.5, 2.5, { deck: [83, 52, 40, 59] });
-                }
+                }));
+                
                 
                     this.x = 5.5; 
                     this.y = 5.5;
@@ -4771,47 +4766,143 @@
                     [19,19,31,31,31,33,33,33,21,21,21,23,23,23,57,57,57,19,19],//15
                     
                     ];
-                this.npcs = [
-                    
+               this.npcs = [
                     // Located at (1.5, 7.5), near the NE wall
-                    //suncat forest
-                    new NPC(22,3.5, 1.5, 99, 'stationary','#66ccff',[43],'portal',null,'friendly'),
-                    //tutorial dungeon
-                    new NPC(0,9.5, 1.5, 99, 'stationary','#66ccff',[43],'portal',null,'friendly'),
-                    //tintagel forest
-                    new NPC(2,12.5, 1.5, 99, 'stationary','#66ccff',[43],'portal',null,'friendly'),
-                    //goblin caverns
-                    new NPC(3,15.5, 1.5, 99, 'stationary','#66ccff',[43],'portal',null,'friendly'),
+                    // Suncat Forest
+                    Object.assign(new NPC(22, 3.5, 1.5, 99, 'stationary', '#66ccff', [], 'dialogue', null, 'friendly'), {
+                        customDialogue: ["Teleport to Suncat Forest?"],
+                        options: ['Yes', 'No'],
+                        yesActions: [['play_sfx', 'warp'], ['load_map', 22], ['close_dialogue', null]],
+                        noActions: [['close_dialogue', null]]
+                    }),
 
-                    //desert***NOT APPEARING?
-                    new NPC(4,17.5, 3.5, 99, 'stationary','#66ccff',[43],'portal',null,'friendly'),
-                    //witch queen's castle
-                    new NPC(5,17.5, 6.5, 99, 'stationary','#66ccff',[43],'portal',null,'friendly'),
-                    //snowy map
-                    new NPC(6,17.5, 9.5, 99, 'stationary','#66ccff',[43],'portal',null,'friendly'),
-                    //ice queens castle***NOT APPEARING
-                    new NPC(8,17.5, 12.5, 99, 'stationary','#66ccff',[43],'portal',null,'friendly'),
+                    // Tutorial Dungeon
+                    Object.assign(new NPC(0, 9.5, 1.5, 99, 'stationary', '#66ccff', [], 'dialogue', null, 'friendly'), {
+                        customDialogue: ["Teleport to the Inner Dungeon?"],
+                        options: ['Yes', 'No'],
+                        yesActions: [['play_sfx', 'warp'], ['load_map', 0], ['close_dialogue', null]],
+                        noActions: [['close_dialogue', null]]
+                    }),
 
-                    //kraken sea
-                    new NPC(9,15.5, 14.5, 99, 'stationary','#66ccff',[43],'portal',null,'friendly'),
-                    //otherworld
-                    new NPC(10,12.5, 14.5, 99, 'stationary','#66ccff',[43],'portal',null,'friendly'),
-                    //fairy queens castle
-                    new NPC(11,9.5, 14.5, 99, 'stationary','#66ccff',[43],'portal',null,'friendly'),
-                    //dragon's lair
-                    new NPC(12,6.5, 14.5, 99, 'stationary','#66ccff',[43],'portal',null,'friendly'),
-                    //elf queen forest
-                    new NPC(14,3.5, 14.5, 99, 'stationary','#66ccff',[43],'portal',null,'friendly'),
+                    // Tintagel Forest
+                    Object.assign(new NPC(2, 12.5, 1.5, 99, 'stationary', '#66ccff', [], 'dialogue', null, 'friendly'), {
+                        customDialogue: ["Teleport to Tintagel Forest?"],
+                        options: ['Yes', 'No'],
+                        yesActions: [['play_sfx', 'warp'], ['load_map', 2], ['close_dialogue', null]],
+                        noActions: [['close_dialogue', null]]
+                    }),
 
-                    //dark bridge 
-                    new NPC(15,1.5, 12.5, 99, 'stationary','#66ccff',[43],'portal',null,'friendly'),
-                    //dark tower
-                    new NPC(16,1.5, 9.5, 99, 'stationary','#66ccff',[43],'portal',null,'friendly'),
-                    //dark tower roof
-                    new NPC(21,1.5, 6.5, 99, 'stationary','#66ccff',[43],'portal',null,'friendly'),
-                    //map 999
-                    new NPC(999,1.5, 3.5, 99, 'stationary','#66ccff',[43],'portal',null,'friendly'),
-                    //suncat
+                    // Goblin Caverns
+                    Object.assign(new NPC(3, 15.5, 1.5, 99, 'stationary', '#66ccff', [], 'dialogue', null, 'friendly'), {
+                        customDialogue: ["Teleport to Goblin Caverns?"],
+                        options: ['Yes', 'No'],
+                        yesActions: [['play_sfx', 'warp'], ['load_map', 3], ['close_dialogue', null]],
+                        noActions: [['close_dialogue', null]]
+                    }),
+
+                    // Desert
+                    Object.assign(new NPC(4, 17.5, 3.5, 99, 'stationary', '#66ccff', [], 'dialogue', null, 'friendly'), {
+                        customDialogue: ["Teleport to the Desert?"],
+                        options: ['Yes', 'No'],
+                        yesActions: [['play_sfx', 'warp'], ['load_map', 4], ['close_dialogue', null]],
+                        noActions: [['close_dialogue', null]]
+                    }),
+
+                    // Witch Queen's Castle
+                    Object.assign(new NPC(5, 17.5, 6.5, 99, 'stationary', '#66ccff', [], 'dialogue', null, 'friendly'), {
+                        customDialogue: ["Teleport to the Witch Queen's Castle?"],
+                        options: ['Yes', 'No'],
+                        yesActions: [['play_sfx', 'warp'], ['load_map', 5], ['close_dialogue', null]],
+                        noActions: [['close_dialogue', null]]
+                    }),
+
+                    // Snowy Map (Cairn Gorm)
+                    Object.assign(new NPC(6, 17.5, 9.5, 99, 'stationary', '#66ccff', [], 'dialogue', null, 'friendly'), {
+                        customDialogue: ["Teleport to Cairn Gorm?"],
+                        options: ['Yes', 'No'],
+                        yesActions: [['play_sfx', 'warp'], ['load_map', 6], ['close_dialogue', null]],
+                        noActions: [['close_dialogue', null]]
+                    }),
+
+                    // Ice Queen's Castle
+                    Object.assign(new NPC(8, 17.5, 12.5, 99, 'stationary', '#66ccff', [], 'dialogue', null, 'friendly'), {
+                        customDialogue: ["Teleport to the Ice Queen's Castle?"],
+                        options: ['Yes', 'No'],
+                        yesActions: [['play_sfx', 'warp'], ['load_map', 8], ['close_dialogue', null]],
+                        noActions: [['close_dialogue', null]]
+                    }),
+
+                    // Kraken Sea (Boreal Sea)
+                    Object.assign(new NPC(9, 15.5, 14.5, 99, 'stationary', '#66ccff', [], 'dialogue', null, 'friendly'), {
+                        customDialogue: ["Teleport to the Boreal Sea?"],
+                        options: ['Yes', 'No'],
+                        yesActions: [['play_sfx', 'warp'], ['load_map', 9], ['close_dialogue', null]],
+                        noActions: [['close_dialogue', null]]
+                    }),
+
+                    // Otherworld (Avalon)
+                    Object.assign(new NPC(10, 12.5, 14.5, 99, 'stationary', '#66ccff', [], 'dialogue', null, 'friendly'), {
+                        customDialogue: ["Teleport to Avalon?"],
+                        options: ['Yes', 'No'],
+                        yesActions: [['play_sfx', 'warp'], ['load_map', 10], ['close_dialogue', null]],
+                        noActions: [['close_dialogue', null]]
+                    }),
+
+                    // Fairy Queen's Castle
+                    Object.assign(new NPC(11, 9.5, 14.5, 99, 'stationary', '#66ccff', [], 'dialogue', null, 'friendly'), {
+                        customDialogue: ["Teleport to the Fairy Queen's Castle?"],
+                        options: ['Yes', 'No'],
+                        yesActions: [['play_sfx', 'warp'], ['load_map', 11], ['close_dialogue', null]],
+                        noActions: [['close_dialogue', null]]
+                    }),
+
+                    // Dragon's Lair
+                    Object.assign(new NPC(12, 6.5, 14.5, 99, 'stationary', '#66ccff', [], 'dialogue', null, 'friendly'), {
+                        customDialogue: ["Teleport to the Dragon's Lair?"],
+                        options: ['Yes', 'No'],
+                        yesActions: [['play_sfx', 'warp'], ['load_map', 12], ['close_dialogue', null]],
+                        noActions: [['close_dialogue', null]]
+                    }),
+
+                    // Elf Queen Forest
+                    Object.assign(new NPC(14, 3.5, 14.5, 99, 'stationary', '#66ccff', [], 'dialogue', null, 'friendly'), {
+                        customDialogue: ["Teleport to the Elf Queen Forest?"],
+                        options: ['Yes', 'No'],
+                        yesActions: [['play_sfx', 'warp'], ['load_map', 14], ['close_dialogue', null]],
+                        noActions: [['close_dialogue', null]]
+                    }),
+
+                    // Dark Bridge
+                    Object.assign(new NPC(15, 1.5, 12.5, 99, 'stationary', '#66ccff', [], 'dialogue', null, 'friendly'), {
+                        customDialogue: ["Teleport to the Dark Bridge?"],
+                        options: ['Yes', 'No'],
+                        yesActions: [['play_sfx', 'warp'], ['load_map', 15], ['close_dialogue', null]],
+                        noActions: [['close_dialogue', null]]
+                    }),
+
+                    // Dark Tower
+                    Object.assign(new NPC(16, 1.5, 9.5, 99, 'stationary', '#66ccff', [], 'dialogue', null, 'friendly'), {
+                        customDialogue: ["Teleport to Dark Tower 1F?"],
+                        options: ['Yes', 'No'],
+                        yesActions: [['play_sfx', 'warp'], ['load_map', 16], ['close_dialogue', null]],
+                        noActions: [['close_dialogue', null]]
+                    }),
+
+                    // Dark Tower Roof
+                    Object.assign(new NPC(21, 1.5, 6.5, 99, 'stationary', '#66ccff', [], 'dialogue', null, 'friendly'), {
+                        customDialogue: ["Teleport to the Dark Tower Roof?"],
+                        options: ['Yes', 'No'],
+                        yesActions: [['play_sfx', 'warp'], ['load_map', 21], ['close_dialogue', null]],
+                        noActions: [['close_dialogue', null]]
+                    }),
+
+                    // Custom Map 999
+                    Object.assign(new NPC(999, 1.5, 3.5, 99, 'stationary', '#66ccff', [], 'dialogue', null, 'friendly'), {
+                        customDialogue: ["Teleport to the Custom Map?"],
+                        options: ['Yes', 'No'],
+                        yesActions: [['play_sfx', 'warp'], ['load_map', 999], ['close_dialogue', null]],
+                        noActions: [['close_dialogue', null]]
+                    })
                 ];
                 this.x = 6.5; 
                 this.y = 1.5;
@@ -5683,39 +5774,25 @@
                 // Loot
                 this.npcs.push(new NPC(1, 5.5, 1.5, -27, 'stationary', '#ffff00', [13], 'dialogue', null, 'friendly')); // Death
                 // Spawn this inside your loadMap function (adjust mapID, x, and y as needed)
-                this.spawnPersistentNPC(
-                    this.mapID, 
-                    901,           // Unique NPC Index
-                    5.5, 2.5,      // X, Y Coordinates
-                    42,            // Sprite (e.g., 32 is the Apprentice sprite)
-                    'stationary', 
-                    '#ff00ff',     // Minimap color
-                    [42, 82, 82],  // IMPORTANT: This deck becomes their Tactical Team on the grid!
-                    [
+                // Tactical Shade Enemy
+                this.npcs.push(Object.assign(new NPC(901, 5.5, 2.5, 42, 'stationary', '#ff00ff', [42, 82, 82], 'dialogue', false, 'friendly_messenger'), {
+                    customDialogue: [
                         "You tread on hallowed ground.", 
                         "Leave."
-                    ], 
-                    null,          // No instant reward card (they drop loot via dropTacticsLoot if they lose)
-                    'dialogue', 
-                    ['Attack', 'Leave'], 
-                    false,         // isBoss
-                    'friendly_messenger',    // alignment
-                    [], [], false, // endActions, deathActions, isCinematic
-                    
-                    // --- YES ACTIONS ---
-                    [ 
+                    ],
+                    options: ['Attack', 'Leave'],
+                    yesActions: [
                         ['play_sfx', 'horn'],
                         ['spectate', 'Player accepted a Tactical Eidolon duel.'],
-                        ['start_tactics', null], // <--- This triggers the 888 Map transition!
+                        ['start_tactics', 901], // Triggers the transition to Map 888
+                        ['disappear', 901]      // Fires the second you return victorious!
                     ],
-                    
-                    // --- NO ACTIONS ---
-                    [ 
+                    noActions: [
                         ['play_sfx', 'cancel'],
                         ['load_map', { id: 6, x: 9.5, y: 15.5, dir: 2 }],
                         ['close_dialogue', null]
                     ]
-                );
+                }));
                 // Enemies
                 this.npcs.push(Object.assign(new NPC(2, 5.5, 4.5, 42, 'stationary', '#660066', [42,42,42,26,26,26,15,28,52,68], 'battle', false, 'foe'), {customDialogue: ["Shadow falls over all realms."]})); 
                 this.npcs.push(Object.assign(new NPC(3, 1.5, 8.5, 82, 'wandering', '#660066', [82,50,64,59,58], 'battle', false, 'foe'), {customDialogue: ["Why can't things go back to how they were?"]}));
@@ -13041,6 +13118,9 @@
                     let tactEnemy = this.npcs.find(n => n.index === payload) || this.currentSpeaker;
 
                     if (tactEnemy) {
+                        this.returnX = this.x;
+                        this.returnY = this.y;
+                        this.returnDir = this.dir;
                         this.currentSpeaker = null;
                         if (typeof btnYes !== 'undefined') btnYes.visible = false;
                         if (typeof btnNo !== 'undefined') btnNo.visible = false;
@@ -13247,6 +13327,11 @@
                       }
                   }
                   break;
+                case 'open_booster':
+                    isBlocking = true;
+                    // This natively shifts the game to 'dialogue' state and rolls the RNG
+                    this.openBoosterPack(payload); 
+                    break;
               // --- AUDIO & COMMS ---
                 case 'play_song':
                     if (typeof MusicEngine !== 'undefined') { MusicEngine.stop(); MusicEngine.play(payload); }
@@ -16471,6 +16556,7 @@
                             // Find nearest alive enemy not yet hit, within 8 tiles Manhattan distance
                             let nextTarget = this.units.find(u => 
                                 !u.isDead && 
+                                u.role !== 'dropped_card' && // <--- STOP ZAPPING THE LOOT!
                                 u.alignment !== p.attacker.alignment && 
                                 !p.hitTargets.has(u) &&
                                 (Math.abs(u.x - p.x) + Math.abs(u.y - p.y)) <= 8 
@@ -17875,8 +17961,8 @@
             if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX(isJudgement ? 'horn' : 'wind');
 
             this.units.forEach(target => {
-                if (target.isDead || target.alignment === caster.alignment) return;
-                
+                if (target.isDead || target.alignment === caster.alignment || target.role === 'dropped_card') return;
+
                 let dx = target.x - caster.x;
                 let dy = target.y - caster.y;
                 let dist = Math.sqrt(dx*dx + dy*dy);
@@ -17937,8 +18023,8 @@
             if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('slash');
 
             this.units.forEach(target => {
-                if (target.isDead || target.alignment === caster.alignment) return;
-                
+                if (target.isDead || target.alignment === caster.alignment || target.role === 'dropped_card') return;
+
                 let tDx = target.x - caster.x;
                 let tDy = target.y - caster.y;
                 let tDist = Math.sqrt(tDx*tDx + tDy*tDy);
@@ -26589,8 +26675,19 @@
                             //let unclaimedLoot = window.TacticsEngine.units.filter(n => n.role === 'dropped_card' && n.x !== -999);
 
                             // --- PROCESS CASUALTIES ---
+                            let playerSurvived = false;
+                            let tacticsBossId = null;
+                            let gatheredLootIds = []; // <--- NEW: Array to hold battlefield loot
+
                             if ((stakes === 'real' || stakes === 'scenario') && typeof Dungeon !== 'undefined') {
                                 window.TacticsEngine.units.forEach(u => {
+                                    
+                                    // --- 1. HOOVER UP UNCLAIMED BATTLEFIELD LOOT ---
+                                    if (u.role === 'dropped_card' && !u.isDead && u.x !== -999) {
+                                        gatheredLootIds.push(u.cardId);
+                                    }
+
+                                    // 2. Process Allies
                                     if (u.alignment === 'ally') {
                                         if (u.isDead) {
                                             if (u.sourceType === 'player') {
@@ -26608,11 +26705,11 @@
                                     }
                                 });
 
-                                // If player survived, kill the Overworld Boss
+                                // CACHE SURVIVAL STATE BEFORE WIPING THE ENGINE!
                                 let playerUnit = window.TacticsEngine.units.find(u => u.sourceType === 'player');
                                 if (playerUnit && !playerUnit.isDead && window.TacticsEngine.config.enemyNpcId) {
-                                    let bossNPC = Dungeon.npcs.find(n => n.index === window.TacticsEngine.config.enemyNpcId);
-                                    if (bossNPC) Dungeon.killNPC(bossNPC, false, 'tactics_victory');
+                                    playerSurvived = true;
+                                    tacticsBossId = window.TacticsEngine.config.enemyNpcId;
                                 }
                             }
 
@@ -26620,16 +26717,69 @@
                             window.TacticsEngine = new TacticsController(); 
                             if (typeof startGame !== 'undefined' && startGame !== 'gameover') startGame = 'explore';
                             
-                            // Resume the Action Queue
-                            if ((stakes === 'real' || stakes === 'scenario') && typeof Dungeon !== 'undefined' && startGame !== 'gameover') {
-                                Dungeon.isProcessingActions = false;
-                                Dungeon.processNextAction();
-                            }
-                            
-                            // Return to Overworld & Scatter Unclaimed Loot
+                            // Return to Overworld & Process Post-Battle Queue
                             if (Dungeon.mapID === 888 && startGame !== 'gameover') {
                                 setTimeout(() => { 
+                                    // 1. Load the Overworld Map first
                                     Dungeon.loadMap(Dungeon.prevMap); 
+                                    
+                                    // 2. Restore Coordinates
+                                    if (Dungeon.returnX !== undefined) {
+                                        Dungeon.x = Dungeon.returnX;
+                                        Dungeon.y = Dungeon.returnY;
+                                        Dungeon.dir = Dungeon.returnDir;
+                                    }
+
+                                    // --- THE STREAMLINED AUTO-LOOT SYSTEM ---
+                                    if (playerSurvived) {
+                                        let allPulledCards = [];
+
+                                        // A. Gather Boss Loot
+                                        if (tacticsBossId) {
+                                            let bossNPC = Dungeon.npcs.find(n => n.index === tacticsBossId);
+                                            if (bossNPC) {
+                                                if (bossNPC.deck && bossNPC.deck.length > 0) {
+                                                    let availableLootIDs = bossNPC.deck.map(c => typeof c === 'object' ? (c.index || c.id) : c);
+                                                    let playerOwnedIDs = Dungeon.deck.map(c => c.index).concat(Dungeon.extra.map(c => c.index));
+                                                    let uniqueLoot = availableLootIDs.filter(id => !playerOwnedIDs.includes(id));
+
+                                                    if (uniqueLoot.length > 0) {
+                                                        allPulledCards.push(uniqueLoot[Math.floor(Math.random() * uniqueLoot.length)]);
+                                                    } else {
+                                                        allPulledCards.push(availableLootIDs[Math.floor(Math.random() * availableLootIDs.length)]);
+                                                    }
+                                                }
+                                                bossNPC.deck = []; // Empty pockets
+                                                Dungeon.killNPC(bossNPC, true, 'tactics_victory'); 
+                                            }
+                                        }
+
+                                        // B. Gather the Unopened Booster Packs!
+                                        gatheredLootIds.forEach(lootId => {
+                                            allPulledCards.push(lootId); // Just give them the pack directly!
+                                        });
+
+                                        // C. Queue all the shiny UI popups!
+                                        // We reverse the array so they pop up in a nice sequence
+                                        allPulledCards.reverse().forEach(cardID => {
+                                            Dungeon.actionQueue.unshift(['give_card', {
+                                                card: cardID,
+                                                text: "Spoils of War! You recovered loot."
+                                            }]);
+                                        });
+                                    }
+
+                                    // 3. Resume the Action Queue
+                                    if (stakes === 'real' || stakes === 'scenario') {
+                                        Dungeon.isProcessingActions = false;
+                                        Dungeon.processNextAction();
+                                    }
+                                }, 50);
+                            }else{startGame = 'options'}
+                            // Return to Overworld & Scatter Unclaimed Loot
+                           // if (Dungeon.mapID === 888 && startGame !== 'gameover') {
+                              //  setTimeout(() => { 
+                                   // Dungeon.loadMap(Dungeon.prevMap); 
                                     
                                     // Scatter the loot around the player!
                                     //unclaimedLoot.forEach(loot => {
@@ -26639,8 +26789,8 @@
                                      //   loot.lifespan = 600; // Add the blinking expiration timer!
                                      //   Dungeon.npcs.push(loot);
                                     //});
-                                }, 50);
-                            }
+                                //}, 50);
+                            //}
                         }
                         return;
                     }
@@ -40977,7 +41127,7 @@
                     hitNPC.triggerInteraction(Dungeon);
                     
                     // Use startsWith to catch 'foe', 'foe_wave', etc.
-                    if ((hitNPC.alignment.startsWith('foe') && hitNPC.alignment !== 'foe_coward') || hitNPC.role === 'battle' ) {
+                    if ((hitNPC.alignment.startsWith('foe') && hitNPC.alignment !== 'foe_coward'&&hitNPC.role !=='summoned_minion') || hitNPC.role === 'battle' ) {
                         if (typeof socket !== 'undefined') {
                             socket.emit("engage_npc", { npcIndex: hitNPC.index, x: hitNPC.x, y: hitNPC.y });
                         }
@@ -40993,6 +41143,7 @@
                 
                 // --- THE FIX: PASS-THROUGH WHITELIST ---
                 let canPassThrough = (
+                    hitNPC.role === 'summoned_minion'||
                     hitNPC.state === 'fleeing' ||           // 1. Fleeing cowards and panicking Neophytes
                     hitNPC.isSliding ||                     // 2. Monsters flying backward from knockback
                     hitNPC.state === 'following' ||         // 3. Your allies/escorts
