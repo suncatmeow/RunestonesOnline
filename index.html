@@ -17377,12 +17377,13 @@
 
         // 3. Scan the global Dungeon.extra array
         if (typeof Dungeon !== 'undefined' && Dungeon.extra) {
-            // Filter cards by their native types
+            // --- NEW: Filter by type AND verify they exist in the registry! ---
+            // (Note: Type 0 are Monster Calls, which bypass the registry by default)
             let availableCalls = Dungeon.extra.filter(c => c.type === 0);
-            let availableItems = Dungeon.extra.filter(c => c.type === 1);
-            let availableSpells = Dungeon.extra.filter(c => c.type === 2);
+            let availableItems = Dungeon.extra.filter(c => c.type === 1 && SPELL_REGISTRY[c.index]);
+            let availableSpells = Dungeon.extra.filter(c => c.type === 2 && SPELL_REGISTRY[c.index]);
 
-            // 4. Randomly pick one of each (if they have any!)
+            // 4. Randomly pick one of each (if they have any valid ones!)
             if (availableCalls.length > 0) {
                 let randomCall = availableCalls[Math.floor(Math.random() * availableCalls.length)];
                 unit.tacticsHand.call = randomCall.index; // Cache the Card ID
@@ -26494,17 +26495,26 @@
                             if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('click');
                         }
                         // 4. Spell
-                        else if (slot === 3 && !activeUnit.hasActed && activeUnit.tacticsHand.spell) {
-                            let sData = SPELL_REGISTRY[activeUnit.tacticsHand.spell];
-                            if (sData.type === 'buff' || sData.type === 'ward') {
-                                window.TacticsEngine.validSpells = window.TacticsEngine.getValidSupportTargets(activeUnit.x, activeUnit.y, sData.range || 3);
-                            } else {
-                                window.TacticsEngine.validSpells = window.TacticsEngine.getLineOfSightTargets(activeUnit.x, activeUnit.y, sData.range || 6);
+                            else if (slot === 3 && !activeUnit.hasActed && activeUnit.tacticsHand.spell) {
+                                let sData = SPELL_REGISTRY[activeUnit.tacticsHand.spell];
+                                
+                                // --- NEW: Failsafe check to prevent the crash! ---
+                                if (!sData) {
+                                    console.error("Missing Spell Data! ID: " + activeUnit.tacticsHand.spell);
+                                    if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('cancel');
+                                    return; 
+                                }
+                                // -------------------------------------------------
+
+                                if (sData.type === 'buff' || sData.type === 'ward') {
+                                    window.TacticsEngine.validSpells = window.TacticsEngine.getValidSupportTargets(activeUnit.x, activeUnit.y, sData.range || 3);
+                                } else {
+                                    window.TacticsEngine.validSpells = window.TacticsEngine.getLineOfSightTargets(activeUnit.x, activeUnit.y, sData.range || 6);
+                                }
+                                window.TacticsEngine.state = 'PREVIEW_CARD';
+                                window.TacticsEngine.previewType = 'spell';
+                                if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('click');
                             }
-                            window.TacticsEngine.state = 'PREVIEW_CARD';
-                            window.TacticsEngine.previewType = 'spell';
-                            if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('click');
-                        }
                         // 5. Call
                         else if (slot === 4 && !activeUnit.hasActed && activeUnit.tacticsHand.call) {
                             window.TacticsEngine.validCalls = window.TacticsEngine.getValidSummonTiles(activeUnit.x, activeUnit.y, 2); 
@@ -26576,7 +26586,7 @@
                             let stakes = window.TacticsEngine.config.stakes;
 
                             // --- GATHER UNCLAIMED LOOT ---
-                            let unclaimedLoot = window.TacticsEngine.units.filter(n => n.role === 'dropped_card' && n.x !== -999);
+                            //let unclaimedLoot = window.TacticsEngine.units.filter(n => n.role === 'dropped_card' && n.x !== -999);
 
                             // --- PROCESS CASUALTIES ---
                             if ((stakes === 'real' || stakes === 'scenario') && typeof Dungeon !== 'undefined') {
@@ -26622,13 +26632,13 @@
                                     Dungeon.loadMap(Dungeon.prevMap); 
                                     
                                     // Scatter the loot around the player!
-                                    unclaimedLoot.forEach(loot => {
+                                    //unclaimedLoot.forEach(loot => {
                                         // Randomly place 1 tile away
-                                        loot.x = Dungeon.x + (Math.random() > 0.5 ? 1 : -1);
-                                        loot.y = Dungeon.y + (Math.random() > 0.5 ? 1 : -1);
-                                        loot.lifespan = 600; // Add the blinking expiration timer!
-                                        Dungeon.npcs.push(loot);
-                                    });
+                                    //    loot.x = Dungeon.x + (Math.random() > 0.5 ? 1 : -1);
+                                    //    loot.y = Dungeon.y + (Math.random() > 0.5 ? 1 : -1);
+                                     //   loot.lifespan = 600; // Add the blinking expiration timer!
+                                     //   Dungeon.npcs.push(loot);
+                                    //});
                                 }, 50);
                             }
                         }
