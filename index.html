@@ -13842,10 +13842,15 @@
         window.TacticsEngine.turnQueue = [];
         window.TacticsEngine.state = 'INIT';
         
-        if (typeof MusicEngine !== 'undefined') {
-            MusicEngine.stop();
-            MusicEngine.play(15); 
-        }
+        let battleSong = rnd(0, 10);
+                    
+
+                    // Play selected battle song
+                    if (typeof MusicEngine !== 'undefined') {
+                        MusicEngine.stop();
+                        const songMap = { 0: 15, 1: 15, 2: 16, 3: 25, 4: 26, 5: 43, 6: 45, 7: 27, 8: 35, 9: 40, 10: 42 };
+                        MusicEngine.play(songMap[battleSong] || 45);
+                    }
     }
     dropTacticsLoot(x, y, isBoss, bossDeck) {
         let dropIndex = Math.floor(Math.random() * 100000) + 700000;
@@ -26571,7 +26576,7 @@
                             let stakes = window.TacticsEngine.config.stakes;
 
                             // --- GATHER UNCLAIMED LOOT ---
-                            let unclaimedLoot = Dungeon.npcs.filter(n => n.role === 'dropped_card' && n.x !== -999);
+                            let unclaimedLoot = window.TacticsEngine.units.filter(n => n.role === 'dropped_card' && n.x !== -999);
 
                             // --- PROCESS CASUALTIES ---
                             if ((stakes === 'real' || stakes === 'scenario') && typeof Dungeon !== 'undefined') {
@@ -27769,7 +27774,7 @@
                     if (gridPos.y >= 8.2 && gridPos.y <= 9.0) {
                         if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('cancel');
                         if (typeof Dungeon !== 'undefined') Dungeon.saveGame(); 
-                        startGame = 'options'; 
+                        startGame = 3; 
                         return;
                     }
                     
@@ -27785,7 +27790,7 @@
                         // 3. CHECK EXIT BUTTON (Bottom Center)
                 if (gridPos.x > 8 && gridPos.x < 10 && gridPos.y > 9 && gridPos.y < 10) {
                     if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('cancel');
-                    startGame = preGame === 'explore' ? 'explore' : 'options';
+                    startGame = preGame === 'explore' ? 'explore' : 'options2';
                     return;
                 }
                 
@@ -29177,6 +29182,82 @@
             if (startGame == 'options'){
                 if (pos.x > (tL/10)*1 && pos.x <= (tL/10)*4  && //Jukebox
                     pos.y > (tH/10)*6 && pos.y < (tH/10)*8 ){
+                        
+                        const monsterIndices = [
+                            0, 1, 2, 3, 4, 5, 9, 23, 32, 33, 34, 35, 37, 42, 46, 47, 
+                            48, 49, 54, 56, 57, 60, 61, 62, 63, 74, 75, 76, 77, 78, 
+                            79, 80, 81, 82, 83, 85, 86, 87, 88, 89, 90, 91, 94, 98
+                        ];
+
+                        const getRandomMonsterId = () => monsterIndices[Math.floor(Math.random() * monsterIndices.length)];
+
+                        // Randomize extra team sizes
+                        const allyCount = Math.floor(Math.random() * 6);
+                        const foeCount = Math.floor(Math.random() * 6) + 1;
+
+                        // --- INJECT PLAYER CONTEXT ---
+                        let deck = [];
+                        for (let i = 0; i < 78; i++) {
+                            // Instantiate proper Card objects so the engine can read their .type and .index
+                            deck.push(new Card(i, 0)); 
+                        }
+
+                        // The TacticsController pulls directly from Dungeon.extra, so we must set it here for the test
+                        if (typeof Dungeon !== 'undefined') {
+                           // Dungeon.extra = deck;
+                        }
+
+                        const playerUnitData = {
+                            source: 'player',
+                            index: getRandomMonsterId(), // Fallback if sprite isn't found
+                            dungeonContext: deck
+                        };
+
+                        const allyTeam = [playerUnitData]; // Push the player object at index 0
+
+                        // Fill the rest with random monsters
+                        for (let i = 0; i < allyCount; i++) {
+                            allyTeam.push(getRandomMonsterId());
+                        }
+                        
+                        const foeTeam = Array.from({ length: foeCount }, () => getRandomMonsterId());
+
+                        Dungeon.startEidolonMinigame(allyTeam, foeTeam);
+                        
+                        console.log(`Tactics! Player + ${allyCount} Allies vs ${foeCount} Foes.`);
+                        MusicEngine.playSFX('heal');
+                        return;
+                    }
+                else if (pos.x > (tL/10)*6 && pos.x <= (tL/10)*9.5  && //grimoire
+                pos.y > (tH/10)*6 && pos.y < (tH/10)*8 ){
+                MusicEngine.stop();
+                cursong = rnd(0,songcount - 1)
+                MusicEngine.play(cursong);
+        
+                startGame = 'tarot';
+                return;
+                }
+                else if (pos.x > (tL/10)*0 && pos.x <= (tL/10)*3  && 
+                    pos.y > (tH/10)*8.25 && pos.y < (tH/10)*10 ){
+                
+                startGame = 3;
+                MusicEngine.playSFX('cancel');
+                return;
+                }
+                else if (pos.x > (tL/10)*6&& pos.x <= (tL/10)*10  && //tarot
+                pos.y > (tH/10)*8.5 && pos.y < (tH/10)*10 ){
+                // Player[1].isCPU = 0;
+                //MusicEngine.stop();
+                MusicEngine.playSFX('heal');
+
+                startGame = 'options2';
+                return;
+                //return;
+                }
+            }
+            if (startGame == 'options2'){
+                if (pos.x > (tL/10)*1 && pos.x <= (tL/10)*4  && //Jukebox
+                    pos.y > (tH/10)*6 && pos.y < (tH/10)*8 ){
                 Player[1].isCPU = 1;
                 MusicEngine.stop();
                 startGame = 'jukebox';
@@ -29199,11 +29280,8 @@
                 }
                 else if (pos.x > (tL/10)*0 && pos.x <= (tL/10)*3  && 
                     pos.y > (tH/10)*8.25 && pos.y < (tH/10)*10 ){
-                //Player[1].isCPU = 0;
-                //MusicEngine.stop();
-                //MusicEngine.play(4);
-                //startGame = 'rulebook';
-                startGame = 3;
+                
+                startGame = 'options';
                 MusicEngine.playSFX('cancel');
                 return;
                 }
@@ -29212,7 +29290,8 @@
                 // Player[1].isCPU = 0;
                 //MusicEngine.stop();
                 
-                startGame = 'tarot';
+                startGame = 'journal';
+                journalTab = 'settings';
                 return;
                 // MusicEngine.playSFX('heal');
                 //return;
@@ -61154,9 +61233,34 @@
       //page text
       drawText(0,3.5,10,2,"Runestones TCG",`rgba(${Math.floor(Math.random()*255)},${Math.floor(Math.random()*255)},${Math.floor(Math.random()*255)})`,1,'center');
       drawText(0, 5.5, 10, 0.6, "DIGITAL DEMO", "rgba(100,100,100,1)", 1,'center');
+      drawText(0,7,5,.8,"Tactics",`rgba(60,60,60,${0.6 + 0.4 * Math.sin(Date.now() / 400)})`,1,'center');
+      drawText(5,7,5,.8,"Tarot",`rgba(60,60,60,${0.6 + 0.4 * Math.sin(Date.now() / 400)})`,1,'center');
+      drawText(8,8.75,2,.8,"Next>>",`rgba(60,60,60,${0.6 + 0.4 * Math.sin(Date.now() / 400)})`,1,'center');
+
+      drawText(0,8.75,2,.8,"<<Back",`rgba(60,60,60,${0.6 + 0.4 * Math.sin(Date.now() / 400)})`,1,'center');
+      //drawText(5.75,8.75,8,.8,"Adventure",`rgba(60,60,60,${0.6 + 0.4 * Math.sin(Date.now() / 400)})`,1);
+
+    }
+    else if (startGame == 'options2'){
+      ctx.fillStyle = "rgba(0,6,13,1)";
+      ctx.fillRect(0,0,wX,wY);
+      //music timer
+      if (now - lastSongTime > 90000) {
+        MusicEngine.stop();
+        MusicEngine.play(rnd(0,songcount - 1))
+        lastSongTime = now;
+      }  
+      //4 suit symbols
+      drawPortrait(-4,1,1.25,.15)//sword
+      drawPortrait(-5,3,1.25,.15)//wand
+      drawPortrait(-6,5.45,1.25,.15)////shield
+      drawPortrait(-7,7.63,1.25,.15)////hourglass
+      //page text
+      drawText(0,3.5,10,2,"Runestones TCG",`rgba(${Math.floor(Math.random()*255)},${Math.floor(Math.random()*255)},${Math.floor(Math.random()*255)})`,1,'center');
+      drawText(0, 5.5, 10, 0.6, "DIGITAL DEMO", "rgba(100,100,100,1)", 1,'center');
       drawText(0,7,5,.8,"Jukebox",`rgba(60,60,60,${0.6 + 0.4 * Math.sin(Date.now() / 400)})`,1,'center');
       drawText(5,7,5,.8,"Card Gallery",`rgba(60,60,60,${0.6 + 0.4 * Math.sin(Date.now() / 400)})`,1,'center');
-      drawText(5,8.75,5,.8,"Tarot",`rgba(60,60,60,${0.6 + 0.4 * Math.sin(Date.now() / 400)})`,1,'center');
+      drawText(5,8.75,5,.8,"Settings",`rgba(60,60,60,${0.6 + 0.4 * Math.sin(Date.now() / 400)})`,1,'center');
 
       drawText(0,8.75,2,.8,"<<Back",`rgba(60,60,60,${0.6 + 0.4 * Math.sin(Date.now() / 400)})`,1,'center');
       //drawText(5.75,8.75,8,.8,"Adventure",`rgba(60,60,60,${0.6 + 0.4 * Math.sin(Date.now() / 400)})`,1);
