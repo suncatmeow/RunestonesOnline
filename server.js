@@ -3119,7 +3119,7 @@
         // ==========================================
         const buildSubGrid = (type, w, h) => {
             let grid = Array.from({length: h}, () => Array(w).fill(wallType));
-            
+            let buildings = [];
             if (type === 'CAVE') {
                 grid = Array.from({length: h}, () => Array.from({length: w}, () => Math.random() < 0.45 ? wallType : floorType));
                 for (let i = 0; i < 4; i++) {
@@ -3164,6 +3164,11 @@
                     }
 
                     if (!overlap) {
+                        buildings.push({
+                            x: bx, y: by, w: bw, h: bh, 
+                            cx: bx + Math.floor(bw/2), 
+                            cy: by + Math.floor(bh/2)
+                        });
                         buildings.push({x: bx, y: by, w: bw, h: bh});
                         for (let wy = by; wy < by + bh; wy++) {
                             for (let wx = bx; wx < bx + bw; wx++) {
@@ -3378,6 +3383,7 @@
         return { 
             grid: finalGrid, 
             validFloors: validFloors,
+            zones: zones, // <--- NEW: Export the zones so we can access the buildings!
             bastionCenter: { x: bastion.cx, y: bastion.cy },
             lairCenter: { x: lair.cx, y: lair.cy },
             miniCenter: { x: mini.cx, y: mini.cy }
@@ -3515,7 +3521,7 @@
             };
             console.log("[World Engine] Map 100 (Tintagel Hub) generated and cached.");
         }
-//AI & NARRATIVE GENERATORS
+//AI & NARRATIVE GENERATORS/TOOLS
     async function initConceptVectors() {
         console.log("[System] Initializing Philosophical Compass...");
         
@@ -3622,8 +3628,8 @@
         return profileTraits.join(", ");
         }
     async function generateScenarioScript(biomeName, scenarioType, bossCardName, questGiverName, targetPlayer) {
-        let currentVibe = "An unknown wanderer with no established habits.";
-        let shadowVibe = "The mysteries of the realm.";
+        let currentVibe = "Peace.";
+        let shadowVibe = "Chaos.";
 
         if (targetPlayer && targetPlayer.searchableMemories && targetPlayer.searchableMemories.length > 0) {
             let playerCentroid = calculateCentroid(targetPlayer.searchableMemories);
@@ -3650,7 +3656,7 @@
         const twists = [
             "The Boss is actually terrified of the 3rd Tribe in the Ruins.",
             "The Boss and the Quest Giver are secretly working together.",
-            "The Bastion is infected with a plague they are hiding from the player.",
+            "The Camp is infected with a plague they are hiding from the player.",
             "The Arena fighters are actually volunteers trying to appease a dark god.",
             "The Wilds are completely artificial, an illusion maintained by the Boss.",
             "The Bastion slaughtered their own villagers and blamed it on the Boss to justify a holy war.",
@@ -3660,7 +3666,7 @@
             "The 'rebellion' in the Arena is funded by the Bastion to keep the Boss distracted from the real invasion.",
             "The Bastion's 'holy' religion is actually a front for a demonic cult, and the Boss is a disgraced knight trying to stop them.",
             "The blood spilled in the Arena isn't for sport; it is secretly being funneled underground to resurrect an ancient evil.",
-            "The monsters in the Wilds are actually Bastion soldiers, mutated by a secret 'blessing' given by their own priests.",
+            "The monsters in the Wilds are actually villagers, mutated by a secret 'blessing' given by their own priests.",
             "The Quest Giver is intentionally sending heroes to their deaths to harvest their souls and achieve immortality.",
             "The Boss is the previous hero who took this exact quest, realized the Bastion was evil, and went rogue to stop them.",
             "The Boss is completely unaware of the war; they are trapped in a magical coma, and the enemy army is just their nightmares manifesting physically.",
@@ -3674,50 +3680,54 @@
         const prompt = `[ROOT DIRECTIVE]: You are the Lead Narrative Designer and Writer for the dark fantasy MMORPG "Runestones".
             
             [PLAYER PSYCHOLOGY]: 
-            Current Habits: ${currentVibe}
-            Neglected Themes/Weaknesses: ${shadowVibe}
+            Current Conciousness: ${currentVibe}
+            Opposing Themes/Weaknesses: ${shadowVibe}
 
             [WORLD BLUEPRINT - The map generated for this session]:
             - BIOME: ${biomeName}
-            - THE VILLAIN FACTION: ${bossCardName}
-            - THE ALLY FACTION: ${questGiverName}
+            - THE VILLAIN FACTION: ${bossCardName} (Occupies the Castle/Dungeon)
+            - THE ALLY FACTION: ${questGiverName} (Occupies the Village/Camp)
+            - THE THIRD TRIBE: ${thirdFactionName} (Occupies the Ruins/Wilderness. They are native monsters hostile to BOTH factions.)
 
             [NARRATIVE TASK]: 
-            Write a deeply compelling, morally ambiguous scenario. Do not just make the villain "evil for the sake of evil." Give them a tragic, logical, or deeply ideological motivation for their actions based on the Theme. Make the player question if *they* are actually the bad guy. Think like a novelist—what are the secret dreams, desires, and histories of these factions?
+            Write a deeply compelling, morally ambiguous scenario. 
             - THEME: ${randomTheme}
             - PLOT TWIST: ${randomTwist}
-            
-            
+
             [DIALOGUE GENERATION & DATA MAPPING]:
             Write the dialogue arrays matching the lore you invented. Keep all lines under 15 words. Ensure the tone is rich dark fantasy.
-            
-            1. mapLore: 2-3 sentences of deep, novelistic history establishing the Theme, Twist, and Villain's true motivation.
-            2. questObjective: A clear 1-sentence objective.
-            3. bossTaunt: 1-2 sentences. Reveal the boss's tragic or logical motivation, reference the Plot Twist, and attack the player's psychology to make the player feel like they might be the villain.
-            4. hostileTaunts: Array of 30 DISTINCT battle cries. These MUST tie directly to the scenario lore, the faction's dreams, or their desperation (e.g., "We only wanted to survive!", "The Queen lied to you!", "More... we need more!"). Make the world feel alive.
-            5. traitorBegs: 15 lines from fleeing enemies. At least 5 MUST detail how terrifying the 3rd Tribe in the Ruins is.
-            6. friendlyLore: Array of 6 lines. Let the allied forces of ${questGiverName} explain the tragedy of the war and hint at the twist.
-            7. friendlyLife: Array of 4 lines of mundane, atmospheric chatter revealing their daily struggles.
-            8. friendlyProfound: Array of 4 philosophical statements bridging the player's habits to the scenario's theme.
-            9. recruitPlea: Array of 3 compelling lines to join the party.
-            10. prisonerLines: Array of 6 lines from trapped NPCs. They MUST reveal the Plot Twist.`;
 
-        const schema = {
-            type: SchemaType.OBJECT,
-            properties: {
-                mapLore: { type: SchemaType.STRING },
-                questObjective: { type: SchemaType.STRING },
-                bossTaunt: { type: SchemaType.STRING },
-                hostileTaunts: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
-                traitorBegs: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
-                friendlyLore: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
-                friendlyLife: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
-                friendlyProfound: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
-                recruitPlea: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
-                prisonerLines: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } }
-            },
-            required: ["mapLore", "questObjective", "bossTaunt", "hostileTaunts", "traitorBegs", "friendlyLore", "friendlyLife", "friendlyProfound", "recruitPlea", "prisonerLines"]
-        };
+            1. mapLore: 2-3 sentences of deep history establishing the Theme, Twist, and Villain's true motivation.
+            2. questObjective: A clear 1-sentence objective.
+            3. bossTaunt: 1-2 sentences. Reveal the boss's tragic or logical motivation.
+            4. hostileTaunts: Array of 15 DISTINCT battle cries for ${bossCardName}'s forces.
+            5. traitorBegs: 10 lines from fleeing enemies.
+            6. friendlyLore: Array of 6 lines explaining the tragedy of the war.
+            7. friendlyLife: Array of 4 lines of mundane chatter.
+            8. friendlyProfound: Array of 4 philosophical statements bridging the player's habits to the theme.
+            9. recruitPlea: Array of 3 compelling lines to join the party.
+            10. prisonerLines: Array of 6 lines from trapped NPCs.
+            11. thirdTribeRumors: Array of 8 lines. Humorous, annoyed, or terrified rumors from the Ally OR Villain factions about ${thirdFactionName} (e.g., "Me uncle lost a leg to a ${thirdFactionName} in the ruins!", "I thought the war was bad, then the ${thirdFactionName} showed up.").
+            12. thirdTribeTaunts: Array of 5 feral, monstrous, or alien battle cries for the ${thirdFactionName}.`;
+
+            const schema = {
+                type: SchemaType.OBJECT,
+                properties: {
+                    mapLore: { type: SchemaType.STRING },
+                    questObjective: { type: SchemaType.STRING },
+                    bossTaunt: { type: SchemaType.STRING },
+                    hostileTaunts: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
+                    traitorBegs: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
+                    friendlyLore: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
+                    friendlyLife: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
+                    friendlyProfound: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
+                    recruitPlea: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
+                    prisonerLines: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
+                    thirdTribeRumors: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } }, // <-- NEW
+                    thirdTribeTaunts: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } }  // <-- NEW
+                },
+                required: ["mapLore", "questObjective", "bossTaunt", "hostileTaunts", "traitorBegs", "friendlyLore", "friendlyLife", "friendlyProfound", "recruitPlea", "prisonerLines", "thirdTribeRumors", "thirdTribeTaunts"]
+            };
 
         try {
             const scriptModel = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite-preview" });
@@ -3921,403 +3931,354 @@
                         else if (call.name === "createCustomMap") {
                         try {
                             // 1. ENUM ROLLS & FACTION SETUP
-                            const bEnum = Math.floor(Math.random() * Object.keys(BIOME_DB).length);
-                            const biome = BIOME_DB[bEnum] || BIOME_DB[0];
-                            
-                            const validScenarios = ['rescue', 'fetch', 'escort', 'bounty'];
-                            let scenarioType = validScenarios[Math.floor(Math.random() * validScenarios.length)];
-                            
-                            const monsterIDs = Object.keys(CARD_MANIFEST_DB).filter(id => CARD_MANIFEST_DB[id].type === "monster" && CARD_MANIFEST_DB[id].rank !== "0");
-                            let antagID = parseInt(monsterIDs[Math.floor(Math.random() * monsterIDs.length)]);
-                            let protagID = parseInt(monsterIDs[Math.floor(Math.random() * monsterIDs.length)]);
-                            while (protagID === antagID) protagID = parseInt(monsterIDs[Math.floor(Math.random() * monsterIDs.length)]);
-                            
-                            let hostileMinions = getMinions(antagID);
-                            if (hostileMinions.length === 0) hostileMinions = biome.mobs || [54, 56, 42];
-
-                            let friendlyMinions = getMinions(protagID);
-                            if (friendlyMinions.length === 0) friendlyMinions = [32, 75, 60]; 
-
-                            // 2. THE ASYNC FORK (LLM & Grid Generation)
-                            const targetPlayer = players[findSocketID(call.args.targetName)];
-                            const scriptPromise = generateScenarioScript(biome.name, scenarioType, CARD_MANIFEST_DB[antagID].name, CARD_MANIFEST_DB[protagID].name, targetPlayer);
-                            
-                            let validWilds = ['FOREST', 'CAVE'];
-                            let wildAlgo = validWilds[Math.floor(Math.random() * validWilds.length)];
-                            
-                            // --- FIX: Increased size to 100x100! ---
-                            const mapData = generateInstanceGrid(wildAlgo, 100, biome.walls[0], 0);
-
-                            let script = await scriptPromise;
-                            if (!script) throw new Error("LLM failed to return a scenario.");
-
-                            let mapNPCs = [];
-                            
-                            // ==========================================
-                            // ZONE 1: THE LAIR (The Boss Skeleton)
-                            // ==========================================
-                            let bossID = 10000 + mapNPCs.length;
-                            mapNPCs.push({
-                                index: bossID,
-                                type: CARD_MANIFEST_DB[antagID].sprite || antagID,
-                                x: mapData.lairCenter.x + 0.5, y: mapData.lairCenter.y + 0.5, 
-                                state: 'stationary', role: 'battle', isBoss: true, alignment: 'foe',
-                                mastery: 3, deck: buildSynergisticDeck(antagID, 300), color: '#ff00ff', 
-                                dialogue: [script.bossTaunt || "You dare approach my domain?"],
-                                deathActions: [
-                                    ['play_sfx', 'chime'],
-                                    ['change_weather', 'clear'], 
-                                    ['give_card', {card: 21, text: "The boss dropped a Crown!"}], 
-                                    ['spawn_npc', [
-                                        999, 99999, 'SPEAKER_X', 'SPEAKER_Y', 
-                                        99, 'stationary', '#66ccff', 
-                                        [mapData.bastionCenter.x + 0.5, mapData.bastionCenter.y + 0.5, 999, 2], 
-                                        null, null, 'portal', null, false, 'friendly'
-                                    ]],
-                                    ['notify', "The realm is secure. An escape portal has opened!"]
-                                ]
-                            });
-
-                            // ==========================================
-                            // ZONE 2: THE BASTION (City Hub)
-                            // ==========================================
-                            // 1. The Main Quest Giver
-                            mapNPCs.push({
-                                type: CARD_MANIFEST_DB[protagID].sprite || protagID,
-                                x: mapData.bastionCenter.x + 0.5, y: mapData.bastionCenter.y + 0.5,
-                                state: 'stationary', role: 'dialogue', alignment: 'friendly',
-                                deck: [], color: '#00ff00', 
-                                dialogue: script.friendlyLore || ["Please, you must help us!"],
-                            });
-                            
-                            let shop = []
-                            for (let i = 0;i<=13;i++){
-                                shop[i] = Math.floor(Math.random()*90)
-                            }
-                            // 2. The Radiant Bounty Board
-                            mapNPCs.push({
-                                type: 41, 
-                                x: mapData.bastionCenter.x + 2.5, y: mapData.bastionCenter.y + 0.5,
-                                state: 'stationary', role: 'shop', alignment: 'friendly',
-                                deck: shop, color: '#00ff00', dialogue:"Buy something will ya?"
-                            });
-                            
-                            // 3. Bastion Guards (Defenders - Will actively hunt invaders!)
-                            for (let i = 0; i < 2; i++) {
-                                let defID = friendlyMinions[i % friendlyMinions.length] || 64; 
-                                mapNPCs.push({
-                                    type: CARD_MANIFEST_DB[defID].sprite || defID, 
-                                    x: mapData.bastionCenter.x + (Math.random() * 8 - 4), 
-                                    y: mapData.bastionCenter.y + (Math.random() * 8 - 4),
-                                    state: 'wandering', role: 'dialogue', alignment: 'defender', 
-                                    deck: buildSynergisticDeck(defID, 150), color: '#00ff00', 
-                                    dialogue: [script.recruitPlea ? script.recruitPlea[i % script.recruitPlea.length] : "Stay safe out there."]
-                                });
-                            }
-
-                            // 4. Civilians (Friendlies - Will run or be killed if invaded!)
-                            for (let i = 0; i < 3; i++) {
-                                let civID = friendlyMinions[Math.floor(Math.random() * friendlyMinions.length)] || 32; 
-                                mapNPCs.push({
-                                    type: CARD_MANIFEST_DB[civID].sprite || civID, 
-                                    x: mapData.bastionCenter.x + (Math.random() * 10 - 5), 
-                                    y: mapData.bastionCenter.y + (Math.random() * 10 - 5),
-                                    state: 'wandering', role: 'dialogue', alignment: 'friendly', 
-                                    deck: buildSynergisticDeck(civID, 200), color: '#00ff00', 
-                                    dialogue: [script.friendlyLife ? script.friendlyLife[i % script.friendlyLife.length] : "I hope the guards can protect us..."]
-                                });
-                            }
-
-                            // ==========================================
-                            // ZONE 3: THE MINI-DUNGEON (Sub-Plot Skeletons)
-                            // ==========================================
-                            // ==========================================
-                            // ZONE 3: THE MINI-DUNGEON (Sub-Plot Skeletons)
-                            // ==========================================
-                            
-                            // 1. The Prisoner (Ally)
-                            let allySprite = friendlyMinions[0] || 32;
-                            mapNPCs.push({
-                                type: CARD_MANIFEST_DB[allySprite].sprite || allySprite,
-                                x: mapData.miniCenter.x + 0.5, y: mapData.miniCenter.y + 0.5,
-                                state: 'fleeing', role: 'dialogue', alignment: 'friendly', 
-                                color: '#00ff00', deck: [allySprite],
-                                dialogue: script.prisonerLines || ["Thank the gods you found me! Help me fight!"],
-                                options: ['Yes', 'Leave'],
-                                yesActions: [
-                                    ['play_sfx', 'buff2'],
-                                    ['become_ally', allySprite],
-                                    ['spectate', 'Player has rescued a prisoner from the dungeon.'],
-                                    ['disappear', null],      
-                                    ['close_dialogue', null]  
-                                ],
-                                noActions: [['close_dialogue', null]] 
-                            });
-                            mapNPCs.push({
-                            type: 74.1, // Gargoyle
-                            x: mapData.miniCenter.x + 2.5, y: mapData.miniCenter.y + 0.5,
-                            state: 'stationary', role: 'dialogue', alignment: 'friendly',
-                            color: '#00ff00', 
-                            deck: [74, 50, 51, 68], // His deck if a battle breaks out
-                            dialogue: [
-                                "Halt! None cross without paying the toll.",
-                                "Hand over a Gold Coin (Card 50), or I'll crush your bones!"
-                            ],
-                            options: ['Pay (Card 50)', 'Refuse'],
-                            yesActions: [
-                                // Attempts to take the card. If successful, he disappears.
-                                ['remove_card', { card: 50, text: "You paid the toll." }],
-                                ['play_sfx', 'chime'],
-                                ['notify', "Shiny! You may pass."],
-                                ['disappear', null] // 'null' automatically targets the currentSpeaker!
-                            ],
-                            noActions: [
-                                ['play_sfx', 'horn'],
-                                ['spectate', 'Player refused the toll and initiated combat!'],
-                                // Instantly turns him into a hostile monster and forces the battle screen
-                                ['transform_npc', { newAlignment: 'foe', newRole: 'battle', newState: 'chasing' }],
-                                ['start_battle', null] 
-                            ]
-                        });
-
-                        // 2. The Wave Commander (Arena Master)
-                        // Triggers your survival wave logic dynamically based on server parameters.
-                        mapNPCs.push({
-                            type: 5, // Hierophant
-                            x: mapData.miniCenter.x - 2.5, y: mapData.miniCenter.y + 0.5,
-                            state: 'stationary', role: 'dialogue', alignment: 'friendly',
-                            color: '#00ff00', deck: [],
-                            dialogue: [
-                                "Welcome to the Crucible.",
-                                "Survive my minions, and you shall earn glory. Prepare yourself!"
-                            ],
-                            options: ['Start', 'Leave'],
-                            yesActions: [
-                                ['play_sfx', 'horn'],
-                                ['start_wave', {
-                                    delay: 2.0,
-                                    waves: [
-                                        // Wave 1: Spawns two of the map's native hostile minions
-                                        [{ sprite: hostileMinions[0] }, { sprite: hostileMinions[0] }],
-                                        // Wave 2: Spawns three, with one being slightly tougher
-                                        [{ sprite: hostileMinions[0] }, { sprite: hostileMinions[0] }, { sprite: hostileMinions[0], isBoss: true }]
-                                    ],
-                                    onComplete: [
-                                        ['give_card', {card: 71, text: "You survived the Crucible!"}],
-                                        ['play_song', 8],
-                                        ['disappear', null] // Kills the commander when you win
-                                    ]
-                                }],
-                                ['close_dialogue', null]
-                            ],
-                            noActions: [['close_dialogue', null]]
-                        });
-
-                        // 3. The Dynamic Traveling Merchant
-                        // Uses the 'shop' role. The server generates a random inventory for him every time the map loads!
-                        let randomShopDeck = [
-                            hostileMinions[0], 
-                            friendlyMinions[0], 
-                            Math.floor(Math.random() * 20) + 10, // Random card 10-30
-                            Math.floor(Math.random() * 20) + 50  // Random card 50-70
-                        ];
-                        mapNPCs.push({
-                            type: 41, // Shopkeeper sprite
-                            x: mapData.miniCenter.x, y: mapData.miniCenter.y + 2.5,
-                            state: 'wandering', role: 'shop', alignment: 'friendly',
-                            color: '#00ff00', deck: randomShopDeck,
-                            dialogue: ["Got some rare cards I found in this dungeon. Take a look!"],
-                            endActions: [
-                                ['open_shop', randomShopDeck],
-                                ['play_sfx', 'click']
-                            ]
-                        });
-
-                        // 4. The Mimic Trap
-                        // Looks exactly like dropped loot, but because its role is 'battle' and alignment is 'foe', 
-                        // touching it skips dialogue and instantly pulls the player into a fight!
-                        mapNPCs.push({
-                            type: -27, // Loot Bag Sprite
-                            x: mapData.miniCenter.x, y: mapData.miniCenter.y - 2.5,
-                            state: 'stationary', role: 'battle', alignment: 'foe',
-                            color: '#ffff00', // Yellow minimap dot to fool the player!
-                            deck: [83, 52, 40], // Tentacle/Mimic deck
-                            dialogue: ["Kee hee! You fell for the bait!"], // Flashes as battle starts
-                            deathActions: [
-                                // Real reward drops when you actually kill the mimic
-                                ['give_card', { card: 10, text: "The mimic dropped a Treasure Chest card!" }]
-                            ]
-                        });
-
-                        // 5. The Casual Gambler
-                        // Challenges the player to a friendly game of 2D Eidolon without risking their life.
-                        mapNPCs.push({
-                            type: 4, // Emperor
-                            x: mapData.miniCenter.x + 2.5, y: mapData.miniCenter.y - 2.5,
-                            state: 'stationary', role: 'dialogue', alignment: 'friendly',
-                            color: '#00ff00', deck: [5, 12, 18, 24, 30, 42], // CPU's deck
-                            dialogue: [
-                                "It's quiet in this dungeon. Too quiet.",
-                                "Fancy a friendly game of cards to pass the time?"
-                            ],
-                            options: ['Play Eidolon', 'Not Right Now'],
-                            yesActions: [
-                                ['spectate', 'Player sat down for a casual game in the custom dungeon.'],
-                                ['start_minigame', 'casual_duel'] // Shifts client to startGame = 8
-                            ],
-                            noActions: [
-                                ['play_sfx', 'cancel'],
-                                ['close_dialogue', null]
-                            ]
-                        });
-                            // 2. The Trap Chest
-                            let trapSprite = hostileMinions[0];
-                            // Calculate the EXACT index the forEach loop will assign this chest
-                            let chestIndex = 10000 + mapNPCs.length; 
-                            
-                            mapNPCs.push({
-                                type: -27, 
-                                x: mapData.miniCenter.x + 0.5, y: mapData.miniCenter.y + 0.5,
-                                state: 'stationary', role: 'dialogue', alignment: 'friendly', 
-                                color: '#ffff00', deck: [trapSprite], 
-                                dialogue: ["You found a pristine treasure chest. Open it?"],
-                                options: ['Yes', 'Leave'],
-                                yesActions: [
-                                    ['play_sfx', 'cancel'],
-                                    // Target the precise chestIndex calculated above
-                                    ['transform_npc', { index: chestIndex, newType: trapSprite, newAlignment: 'foe', newRole: 'battle', newState: 'chasing', clearDialogue: true }],
-                                    ['start_battle', chestIndex],
-                                    ['close_dialogue', null] // <--- FIX: Added the missing close command
-                                ],
-                                noActions: [['close_dialogue', null]]
-                            });
-                            
-                            // 3. The Altar
-                            mapNPCs.push({
-                                type: 16, 
-                                x: mapData.miniCenter.x + 0.5, y: mapData.miniCenter.y + 0.5,
-                                state: 'stationary', role: 'dialogue', alignment: 'friendly',
-                                color: '#00ff00', deck: [],
-                                dialogue: ["The altar hums with dark magic. Disturbing it may awaken the horde. Purge it?"],
-                                options: ['Yes', 'Leave'],
-                                yesActions: [
-                                    ['play_sfx', 'horn'],
-                                    ['start_hunted', { waves: 3, interval: 300, mobs: [{sprite: hostileMinions[0]}] }],
-                                    ['notify', "The horde has been alerted! Survive!"],
-                                    ['disappear', null], 
-                                    ['close_dialogue', null]
-                                ],
-                                noActions: [['close_dialogue', null]]
-                            });
-
-                            // ==========================================
-                            // ZONE 4: THE ECOLOGY (Distance-Weighted)
-                            // ==========================================
-                            let shuffledFloors = [...mapData.validFloors].sort(() => 0.5 - Math.random());
-                            
-                            // --- FIX: Halved the spawn rate! (1 NPC per 150 tiles) ---
-                            let totalWanderers = Math.floor(shuffledFloors.length / 100); 
-
-                            for (let i = 0; i < totalWanderers; i++) {
-                                let tile = shuffledFloors[i];
-                                if (tile.x === mapData.bastionCenter.x && tile.y === mapData.bastionCenter.y) continue;
-                                if (tile.x === mapData.lairCenter.x && tile.y === mapData.lairCenter.y) continue;
-                                if (tile.x === mapData.miniCenter.x && tile.y === mapData.miniCenter.y) continue;
-
-                                let distToLair = Math.hypot(tile.x - mapData.lairCenter.x, tile.y - mapData.lairCenter.y);
-                                let distToBastion = Math.hypot(tile.x - mapData.bastionCenter.x, tile.y - mapData.bastionCenter.y);
+                                const bEnum = Math.floor(Math.random() * Object.keys(BIOME_DB).length);
+                                const biome = BIOME_DB[bEnum] || BIOME_DB[0];
                                 
-                                let isHostile = false;
-                                let spawnID;
+                                const validScenarios = ['rescue', 'fetch', 'escort', 'bounty'];
+                                let scenarioType = validScenarios[Math.floor(Math.random() * validScenarios.length)];
+                                
+                                const monsterIDs = Object.keys(CARD_MANIFEST_DB).filter(id => CARD_MANIFEST_DB[id].type === "monster" && CARD_MANIFEST_DB[id].rank !== "0");
+                                let antagID = parseInt(monsterIDs[Math.floor(Math.random() * monsterIDs.length)]);
+                                let protagID = parseInt(monsterIDs[Math.floor(Math.random() * monsterIDs.length)]);
+                                while (protagID === antagID) protagID = parseInt(monsterIDs[Math.floor(Math.random() * monsterIDs.length)]);
+                                const wildFactions = [94 /*Dragon*/, 91 /*Demon*/, 77 /*Slime*/, 63 /*Beast*/, 35 /*Lich*/, 83 /*Mimic*/, 10 /*Chest?*/];
+                                let thirdFactionID = wildFactions[Math.floor(Math.random() * wildFactions.length)];
+                                let thirdFactionName = CARD_MANIFEST_DB[thirdFactionID] ? CARD_MANIFEST_DB[thirdFactionID].name : "Unknown Horrors";
+                                let hostileMinions = getMinions(antagID);
+                                if (hostileMinions.length === 0) hostileMinions = biome.mobs || [54, 56, 42];
 
-                                if (distToLair < distToBastion * 0.9) {
-                                    isHostile = Math.random() < 0.9;} 
-                                else {
-                                    isHostile = Math.random() < 0.9; 
+                                let friendlyMinions = getMinions(protagID);
+                                if (friendlyMinions.length === 0) friendlyMinions = [32, 75, 60]; 
+
+                                // 2. THE ASYNC FORK (LLM & Grid Generation)
+                                const targetPlayer = players[findSocketID(call.args.targetName)];
+                                // Add thirdFactionName to the arguments!
+                                const scriptPromise = generateScenarioScript(
+                                    biome.name, 
+                                    scenarioType, 
+                                    CARD_MANIFEST_DB[antagID].name, 
+                                    CARD_MANIFEST_DB[protagID].name, 
+                                    thirdFactionName, 
+                                    targetPlayer
+                                );
+                                
+                                let validWilds = ['FOREST', 'CAVE'];
+                                let wildAlgo = validWilds[Math.floor(Math.random() * validWilds.length)];
+                                
+                                // --- FIX: Increased size to 100x100! ---
+                                const mapData = generateInstanceGrid(wildAlgo, 100, biome.walls[0], 0);
+
+                                let script = await scriptPromise;
+                                if (!script) throw new Error("LLM failed to return a scenario.");
+
+                                let mapNPCs = [];
+                            
+                            // ==========================================
+                            // ZONE 1: THE LAIR (Villain Faction)
+                            // ==========================================
+                                let lairZone = mapData.zones.find(z => z.id === 'lair');
+
+                                // 1. The Main Boss (Commander)
+                                mapNPCs.push({
+                                    type: CARD_MANIFEST_DB[antagID].sprite || antagID,
+                                    x: lairZone.cx + 0.5, y: lairZone.cy + 0.5, 
+                                    state: 'stationary', role: 'battle', isBoss: true, alignment: 'foe',
+                                    mastery: 3, deck: buildSynergisticDeck(antagID, 300), color: '#ff00ff', 
+                                    dialogue: [script.bossTaunt || "You dare approach my domain?"],
+                                    classification: 'villain_boss',
+                                    deathActions: [
+                                        ['play_sfx', 'chime'],
+                                        ['change_weather', 'clear'], 
+                                        ['give_card', {card: 21, text: "The boss dropped a Crown!"}], 
+                                        ['notify', "The realm is secure. The enemy commander has fallen!"]
+                                    ]
+                                });
+
+                                // 2. Elite Guards (Stationary at the boss's side)
+                                for (let i = 0; i < 4; i++) {
+                                    let guardID = hostileMinions[i % hostileMinions.length];
+                                    mapNPCs.push({
+                                        type: CARD_MANIFEST_DB[guardID].sprite || guardID,
+                                        x: lairZone.cx + (i < 2 ? -2 : 2) + 0.5, 
+                                        y: lairZone.cy + (i % 2 === 0 ? -2 : 2) + 0.5, 
+                                        state: 'stationary', role: 'battle', alignment: 'foe',
+                                        deck: buildSynergisticDeck(guardID, 150), color: '#ff0000',
+                                        dialogue: [script.hostileTaunts[i] || "For the Master!"],
+                                        classification: 'villain_elite'
+                                    });
                                 }
 
-                                if (isHostile) {
-                                    spawnID = hostileMinions[Math.floor(Math.random() * hostileMinions.length)];
+                                // 3. Patrollers (Wandering the Lair)
+                                for (let i = 0; i < 6; i++) {
+                                    let patrolID = hostileMinions[Math.floor(Math.random() * hostileMinions.length)];
+                                    // Give patrollers a 30% chance to complain about the Third Tribe!
+                                    let taunt = Math.random() < 0.3 
+                                        ? (script.thirdTribeRumors[i % script.thirdTribeRumors.length])
+                                        : (script.hostileTaunts[i + 4] || "Intruder!");
+
                                     mapNPCs.push({
-                                        index: 10000 + mapNPCs.length,
-                                        type: CARD_MANIFEST_DB[spawnID].sprite || spawnID, 
-                                        x: tile.x + 0.5, y: tile.y + 0.5, 
-                                        state: 'wandering', role: 'battle', alignment: 'foe', 
-                                        deck: buildSynergisticDeck(spawnID, 80), color: '#ff0000', 
-                                        dialogue: [script.hostileTaunts ? script.hostileTaunts[i % script.hostileTaunts.length] : "Blood!"]
-                                    });
-                                } else {
-                                    spawnID = friendlyMinions[Math.floor(Math.random() * friendlyMinions.length)];
-                                    
-                                    // 90% chance to spawn a recruitable ally in the wild
-                                    let isRecruitable = Math.random() < .9;
-                                    
-                                    mapNPCs.push({
-                                        index: 10000 + mapNPCs.length,
-                                        type: CARD_MANIFEST_DB[spawnID].sprite || spawnID, 
-                                        x: tile.x + 0.5, y: tile.y + 0.5, 
-                                        state: 'wandering', 
-                                        role: isRecruitable ? 'become_ally' : 'dialogue', 
-                                        alignment: 'friendly', 
-                                        deck: isRecruitable ? [spawnID] : buildSynergisticDeck(spawnID, 80), 
-                                        color: '#00ff00', 
-                                        dialogue: [script.friendlyProfound ? script.friendlyProfound[i % script.friendlyProfound.length] : "The wilds are dangerous."],
-                                        options: isRecruitable ? ['Recruit', 'Leave'] : null,
-                                        yesActions: isRecruitable ? [
-                                            ['play_sfx', 'buff2'], 
-                                            ['become_ally', spawnID], 
-                                            ['disappear', null], // <--- Deletes the wild wanderer when recruited
-                                            ['close_dialogue', null] 
-                                        ] : null,
-                                        noActions: isRecruitable ? [['close_dialogue', null]] : null
+                                        type: CARD_MANIFEST_DB[patrolID].sprite || patrolID,
+                                        x: lairZone.x + Math.floor(Math.random() * lairZone.w) + 0.5, 
+                                        y: lairZone.y + Math.floor(Math.random() * lairZone.h) + 0.5, 
+                                        state: 'wandering', role: 'battle', alignment: 'foe',
+                                        deck: buildSynergisticDeck(patrolID, 100), color: '#ff0000',
+                                        dialogue: [taunt],
+                                        classification: 'villain_patrol'
                                     });
                                 }
-                            }
+
+                                // 4. Prisoners (Hostages inside the lair)
+                                for (let i = 0; i < 2; i++) {
+                                    let prisonerID = friendlyMinions[Math.floor(Math.random() * friendlyMinions.length)];
+                                    mapNPCs.push({
+                                        type: CARD_MANIFEST_DB[prisonerID].sprite || prisonerID,
+                                        x: lairZone.x + 2.5, y: lairZone.y + 2.5 + (i * 2), // Stuck in a corner
+                                        state: 'fleeing', role: 'dialogue', alignment: 'friendly',
+                                        color: '#00ff00', deck: [prisonerID],
+                                        dialogue: [script.prisonerLines[i] || "Help me!"],
+                                        classification: 'prisoner',
+                                        options: ['Rescue', 'Leave'],
+                                        yesActions: [['play_sfx', 'buff2'], ['become_ally', prisonerID], ['disappear', null], ['close_dialogue', null]],
+                                        noActions: [['close_dialogue', null]]
+                                    });
+                                }
+
+                            // ==========================================
+                            // ZONE 2: THE BASTION (City Hub & Classified Roles)
+                            // ==========================================
+                                // Retrieve the Bastion's building data generated by the CITY algorithm
+                                let bastionZone = mapData.zones.find(z => z.id === 'bastion');
+                                let cityBuildings = bastionZone.buildings || [];
+                                let availableBuildings = [...cityBuildings]; // Clone to pop them off as we fill them
+
+                                // 1. THE LORE MAIN (Quest Giver / Faction Leader)
+                                // Put them in the first building (HQ), or the center plaza if no buildings spawned.
+                                let hq = availableBuildings.shift();
+                                let hqX = hq ? hq.cx + 0.5 : mapData.bastionCenter.x + 0.5;
+                                let hqY = hq ? hq.cy + 0.5 : mapData.bastionCenter.y + 0.5;
+
+                                mapNPCs.push({
+                                    type: CARD_MANIFEST_DB[protagID].sprite || protagID,
+                                    x: hqX, y: hqY,
+                                    state: 'stationary', role: 'dialogue', alignment: 'friendly',
+                                    deck: [], color: '#00ff00', 
+                                    dialogue: script.friendlyLore || ["Please, you must help us!"],
+                                    classification: 'lore_main' // Server-side tag for your reference
+                                });
+
+                                // 2. THE SHOP (Merchant)
+                                // Give them their own building/stall if available
+                                let shopBuilding = availableBuildings.shift();
+                                let shopX = shopBuilding ? shopBuilding.cx + 0.5 : mapData.bastionCenter.x + 2.5;
+                                let shopY = shopBuilding ? shopBuilding.cy + 0.5 : mapData.bastionCenter.y + 0.5;
+
+                                let shopInv = [];
+                                for (let i = 0; i <= 13; i++) { shopInv[i] = Math.floor(Math.random() * 90); }
+
+                                mapNPCs.push({
+                                    type: 41, 
+                                    x: shopX, y: shopY,
+                                    state: 'stationary', role: 'shop', alignment: 'friendly',
+                                    deck: shopInv, color: '#00ff00', dialogue: ["Buy something will ya?"],
+                                    classification: 'shop'
+                                });
+
+                                // 3. GUILD CLERK (Optional - Radiants)
+                                // Place near the shop or in a building
+                                let clerkBuilding = availableBuildings.shift();
+                                let clerkX = clerkBuilding ? clerkBuilding.cx + 0.5 : mapData.bastionCenter.x - 2.5;
+                                let clerkY = clerkBuilding ? clerkBuilding.cy + 0.5 : mapData.bastionCenter.y + 2.5;
+
+                                mapNPCs.push({
+                                    type: 42, // Guild Clerk Sprite
+                                    x: clerkX, y: clerkY,
+                                    state: 'stationary', role: 'dialogue', alignment: 'friendly',
+                                    deck: [], color: '#00ff00',
+                                    dialogue: ["The Guild is monitoring the situation here. Stay safe."],
+                                    classification: 'guild_clerk'
+                                });
+
+                                // 4. LORE CITIZENS (Dwellers)
+                                // Fill the remaining buildings with citizens who provide deep, profound lore.
+                                availableBuildings.forEach((bldg, index) => {
+                                    let civID = friendlyMinions[Math.floor(Math.random() * friendlyMinions.length)] || 32; 
+                                    mapNPCs.push({
+                                        type: CARD_MANIFEST_DB[civID].sprite || civID, 
+                                        x: bldg.cx + 0.5, y: bldg.cy + 0.5, // Spawned exactly in the center of their 3x3 house
+                                        state: 'stationary', role: 'dialogue', alignment: 'friendly', 
+                                        deck: buildSynergisticDeck(civID, 100), color: '#00ff00', 
+                                        dialogue: [script.friendlyProfound ? script.friendlyProfound[index % script.friendlyProfound.length] : "These walls protect us, but for how long?"],
+                                        classification: 'lore_citizen'
+                                    });
+                                });
+
+                                // 5. OBLIVIOUS CIVILIANS (Wanderers)
+                                // Spawns in the streets outside the buildings, talking about mundane life.
+                                for (let i = 0; i < 3; i++) {
+                                    let civID = friendlyMinions[Math.floor(Math.random() * friendlyMinions.length)] || 32; 
+                                    mapNPCs.push({
+                                        type: CARD_MANIFEST_DB[civID].sprite || civID, 
+                                        x: mapData.bastionCenter.x + (Math.random() * 10 - 5), 
+                                        y: mapData.bastionCenter.y + (Math.random() * 10 - 5),
+                                        state: 'wandering', role: 'dialogue', alignment: 'friendly', 
+                                        deck: buildSynergisticDeck(civID, 200), color: '#00ff00', 
+                                        dialogue: [script.friendlyLife ? script.friendlyLife[i % script.friendlyLife.length] : "I hope the guards can protect us..."],
+                                        classification: 'oblivious'
+                                    });
+                                }
+
+                                // 6. BASTION GUARDS (Defenders)
+                                // Actively hunt invaders, stationed around the city limits.
+                                for (let i = 0; i < 3; i++) {
+                                    let defID = friendlyMinions[i % friendlyMinions.length] || 64; 
+                                    mapNPCs.push({
+                                        type: CARD_MANIFEST_DB[defID].sprite || defID, 
+                                        x: mapData.bastionCenter.x + (Math.random() * 12 - 6), 
+                                        y: mapData.bastionCenter.y + (Math.random() * 12 - 6),
+                                        state: 'wandering', role: 'dialogue', alignment: 'defender', 
+                                        deck: buildSynergisticDeck(defID, 150), color: '#00ff00', 
+                                        dialogue: [script.recruitPlea ? script.recruitPlea[i % script.recruitPlea.length] : "Stay safe out there."],
+                                        classification: 'guard'
+                                    });
+                                }
+
+                            // ==========================================
+                            // ZONE 3: THE RUINS (Third Faction / Ecology)
+                            // ==========================================
+                                let ruinsZone = mapData.zones.find(z => z.id === 'mini');
+                                let thirdTribeMinions = getMinions(thirdFactionID);
+
+                                // 1. The Apex Predator / Ancient Threat (Mini-Boss)
+                                mapNPCs.push({
+                                    type: CARD_MANIFEST_DB[thirdFactionID].sprite || thirdFactionID,
+                                    x: ruinsZone.cx + 0.5, y: ruinsZone.cy + 0.5,
+                                    state: 'stationary', role: 'battle', alignment: 'foe', isBoss: true,
+                                    deck: buildSynergisticDeck(thirdFactionID, 200), color: '#ff8800', // Orange on minimap!
+                                    dialogue: [script.thirdTribeTaunts[0] || "*An unnatural roar echoes from the ruins...*"],
+                                    classification: 'third_tribe_boss'
+                                });
+
+                                // 2. The Brood / Swarm (Wandering the ruins)
+                                for (let i = 0; i < 6; i++) {
+                                    let mobID = thirdTribeMinions[Math.floor(Math.random() * thirdTribeMinions.length)];
+                                    mapNPCs.push({
+                                        type: CARD_MANIFEST_DB[mobID].sprite || mobID,
+                                        x: ruinsZone.x + Math.floor(Math.random() * ruinsZone.w) + 0.5, 
+                                        y: ruinsZone.y + Math.floor(Math.random() * ruinsZone.h) + 0.5, 
+                                        state: 'wandering', role: 'battle', alignment: 'foe',
+                                        deck: buildSynergisticDeck(mobID, 80), color: '#ff8800',
+                                        dialogue: [script.thirdTribeTaunts[1 + (i % 4)] || "*Hissing sounds*"],
+                                        classification: 'third_tribe_mob'
+                                    });
+                                }
+
+                            // ==========================================
+                            // ZONE 4: THE WILDS (Ecology & Skirmishes)
+                            // ==========================================
+                                let shuffledFloors = [...mapData.validFloors].sort(() => 0.5 - Math.random());
+                                let totalWanderers = Math.floor(shuffledFloors.length / 120); // Adjust density as needed
+
+                                let placedWanderers = 0;
+                                for (let i = 0; i < shuffledFloors.length && placedWanderers < totalWanderers; i++) {
+                                    let tile = shuffledFloors[i];
+                                    
+                                    // Ensure they don't spawn inside our defined zones
+                                    let inBastion = (tile.x >= mapData.bastionCenter.x - 7 && tile.x <= mapData.bastionCenter.x + 7 && tile.y >= mapData.bastionCenter.y - 7 && tile.y <= mapData.bastionCenter.y + 7);
+                                    let inLair = (tile.x >= lairZone.x && tile.x <= lairZone.x + lairZone.w && tile.y >= lairZone.y && tile.y <= lairZone.y + lairZone.h);
+                                    let inRuins = (tile.x >= ruinsZone.x && tile.x <= ruinsZone.x + ruinsZone.w && tile.y >= ruinsZone.y && tile.y <= ruinsZone.y + ruinsZone.h);
+                                    
+                                    if (inBastion || inLair || inRuins) continue;
+
+                                    let r = Math.random();
+                                    
+                                    // 50% Chance: Villain Faction Scouting Party
+                                    if (r < 0.5) {
+                                        let spawnID = hostileMinions[Math.floor(Math.random() * hostileMinions.length)];
+                                        mapNPCs.push({
+                                            type: CARD_MANIFEST_DB[spawnID].sprite || spawnID, 
+                                            x: tile.x + 0.5, y: tile.y + 0.5, 
+                                            state: 'wandering', role: 'battle', alignment: 'foe', 
+                                            deck: buildSynergisticDeck(spawnID, 80), color: '#ff0000', 
+                                            dialogue: [script.hostileTaunts[8 + (placedWanderers % 6)] || "Found you!"],
+                                            classification: 'wild_scout'
+                                        });
+                                    } 
+                                    // 30% Chance: Third Tribe Predators Hunting
+                                    else if (r < 0.8) {
+                                        let spawnID = thirdTribeMinions[Math.floor(Math.random() * thirdTribeMinions.length)];
+                                        mapNPCs.push({
+                                            type: CARD_MANIFEST_DB[spawnID].sprite || spawnID, 
+                                            x: tile.x + 0.5, y: tile.y + 0.5, 
+                                            state: 'chasing', role: 'battle', alignment: 'foe', 
+                                            deck: buildSynergisticDeck(spawnID, 80), color: '#ff8800', 
+                                            dialogue: [script.thirdTribeTaunts[Math.floor(Math.random() * 5)] || "*Screeching*"],
+                                            classification: 'wild_predator'
+                                        });
+                                    }
+                                    // 20% Chance: Lost Friendly Travelers / Merchants
+                                    else {
+                                        let spawnID = friendlyMinions[Math.floor(Math.random() * friendlyMinions.length)];
+                                        // 50/50 whether they complain about the war or the local monsters
+                                        let dialogueLine = Math.random() > 0.5 
+                                            ? (script.friendlyLife[placedWanderers % script.friendlyLife.length])
+                                            : (script.thirdTribeRumors[5 + (placedWanderers % 3)]);
+
+                                        mapNPCs.push({
+                                            type: CARD_MANIFEST_DB[spawnID].sprite || spawnID, 
+                                            x: tile.x + 0.5, y: tile.y + 0.5, 
+                                            state: 'wandering', role: 'dialogue', alignment: 'friendly', 
+                                            deck: buildSynergisticDeck(spawnID, 80), color: '#00ff00', 
+                                            dialogue: [dialogueLine || "I shouldn't have left the Bastion..."],
+                                            classification: 'wild_traveler'
+                                        });
+                                    }
+                                    placedWanderers++;
+                                    }
 
                             // Apply global indices to all array items
                             mapNPCs.forEach((npc, idx) => { npc.index = 10000 + idx; });
                             // ==========================================
                             // 5. CACHE INSTANCE & DISPATCH MESSENGER
                             // ==========================================
-                            const customMapData = {
-                                id: 999, maze: mapData.grid, 
-                                skyColor: biome.skies[0], floorColor: biome.floors[0], 
-                                name: `Realm of the ${script.questObjective.split(' ')[0] || "Mystery"}`, 
-                                npcs: mapNPCs, weather: biome.weather[0],
-                                spawnX: mapData.bastionCenter.x + 0.5, 
-                                spawnY: mapData.bastionCenter.y + 0.5,
-                                bossX: mapData.lairCenter.x + 0.5,
-                                bossY: mapData.lairCenter.y + 0.5,
-                                biome: biome.name
-                            };
+                                const customMapData = {
+                                    id: 999, maze: mapData.grid, 
+                                    skyColor: biome.skies[0], floorColor: biome.floors[0], 
+                                    name: `Realm of the ${script.questObjective.split(' ')[0] || "Mystery"}`, 
+                                    npcs: mapNPCs, weather: biome.weather[0],
+                                    spawnX: mapData.bastionCenter.x + 0.5, 
+                                    spawnY: mapData.bastionCenter.y + 0.5,
+                                    bossX: mapData.lairCenter.x + 0.5,
+                                    bossY: mapData.lairCenter.y + 0.5,
+                                    biome: biome.name
+                                };
 
-                            activeCustomMap = customMapData;
+                                activeCustomMap = customMapData;
 
-                            let requesterID = socket ? socket.id : findSocketID(call.args.targetName);
-                            if (requesterID && players[requesterID]) {
-                                const tp = players[requesterID];
-                                tp.activeQuest = script.questObjective;
-                                tp.mapScenario = scenarioType; 
-                                tp.mapBossID = antagID;
-                                
-                                io.to(requesterID).emit("remote_spawn_npc", {
-                                    mapID: tp.mapID, 
-                                    index: Math.floor(Math.random() * 100000) + 1000,
-                                    x: tp.x, y: tp.y, type: 56, state: 'chasing', isBoss: false, 
-                                    role: 'portal_invite', color: '#ff8800', deck: [], 
-                                    dialogue: [`My master Suncat sent me to bring you to the adventure realm. A great ${scenarioType} awaits. Shall we go?`],
-                                    options: ['Yes', 'No'], alignment: 'friendly_messenger',
-                                    yesActions: [['load_map', 999], ['play_sfx', 'warp'], ['disappear', null]],
-                                    noActions: [['play_sfx', 'cancel'], ['disappear', null]]
-                                });
+                                let requesterID = socket ? socket.id : findSocketID(call.args.targetName);
+                                if (requesterID && players[requesterID]) {
+                                    const tp = players[requesterID];
+                                    tp.activeQuest = script.questObjective;
+                                    tp.mapScenario = scenarioType; 
+                                    tp.mapBossID = antagID;
+                                    
+                                    io.to(requesterID).emit("remote_spawn_npc", {
+                                        mapID: tp.mapID, 
+                                        index: Math.floor(Math.random() * 100000) + 1000,
+                                        x: tp.x, y: tp.y, type: 56, state: 'chasing', isBoss: false, 
+                                        role: 'portal_invite', color: '#ff8800', deck: [], 
+                                        dialogue: [`My master Suncat sent me to bring you to the adventure realm. A great ${scenarioType} awaits. Shall we go?`],
+                                        options: ['Yes', 'No'], alignment: 'friendly_messenger',
+                                        yesActions: [['load_map', 999], ['play_sfx', 'warp'], ['disappear', null]],
+                                        noActions: [['play_sfx', 'cancel'], ['disappear', null]]
+                                    });
+                                }
+
+                                functionResult = { result: `Success. Generated Multi-Zone scenario and dispatched messenger imp.` };
+
+                            } catch (err) {
+                                console.error("Map Generation Error:", err);
+                                functionResult = { result: "Critical Error building multi-zone map." };
                             }
-
-                            functionResult = { result: `Success. Generated Multi-Zone scenario and dispatched messenger imp.` };
-
-                        } catch (err) {
-                            console.error("Map Generation Error:", err);
-                            functionResult = { result: "Critical Error building multi-zone map." };
-                        }
                     }
                     
                     // F. TELEPORT SPECIFIC PLAYER
