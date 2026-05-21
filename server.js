@@ -3260,7 +3260,8 @@
         // ==========================================
         // 2. THE CANVAS (Background Wilderness)
         // ==========================================
-        let finalGrid = buildSubGrid(wildAlgo, size, size);
+        let finalGrid = buildSubGrid(wildAlgo, size, size).grid;
+
 
         // ==========================================
         // 3. ZONE BOUNDING BOXES (Collision Detection)
