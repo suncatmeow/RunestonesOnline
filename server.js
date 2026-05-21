@@ -3254,7 +3254,7 @@
                     }
                 }
             }
-            return grid;
+            return { grid, buildings };
         };
 
         // ==========================================
@@ -3311,7 +3311,19 @@
         // 4. STAMP THE ZONES
         // ==========================================
         zones.forEach(zone => {
-            let subGrid = buildSubGrid(zone.algo, zone.w, zone.h);
+            let subResult = buildSubGrid(zone.algo, zone.w, zone.h);
+            let subGrid = subResult.grid;
+
+            // NEW: Translate local building coordinates to global map coordinates
+            if (subResult.buildings && subResult.buildings.length > 0) {
+                zone.buildings = subResult.buildings.map(b => ({
+                    ...b,
+                    x: zone.x + b.x,
+                    y: zone.y + b.y,
+                    cx: zone.x + b.cx,
+                    cy: zone.y + b.cy
+                }));
+            }
 
             for (let y = 0; y < zone.h; y++) {
                 for (let x = 0; x < zone.w; x++) {
@@ -3627,8 +3639,7 @@
 
         return profileTraits.join(", ");
         }
-    async function generateScenarioScript(biomeName, scenarioType, bossCardName, questGiverName, targetPlayer) {
-        let currentVibe = "Peace.";
+    async function generateScenarioScript(biomeName, scenarioType, bossCardName, questGiverName, thirdFactionName, targetPlayer) {        let currentVibe = "Peace.";
         let shadowVibe = "Chaos.";
 
         if (targetPlayer && targetPlayer.searchableMemories && targetPlayer.searchableMemories.length > 0) {
