@@ -3260,9 +3260,7 @@
         // ==========================================
         // 2. THE CANVAS (Background Wilderness)
         // ==========================================
-        let finalGrid = buildSubGrid(wildAlgo, size, size).grid;
-
-
+            let finalGrid = buildSubGrid(wildAlgo, size, size).grid;
         // ==========================================
         // 3. ZONE BOUNDING BOXES (Collision Detection)
         // ==========================================
@@ -3992,7 +3990,7 @@
 
                                 // 1. The Main Boss (Commander)
                                 mapNPCs.push({
-                                    type: CARD_MANIFEST_DB[antagID].sprite || antagID,
+                                    type: CARD_MANIFEST_DB[antagID]?.sprite || antagID,
                                     x: lairZone.cx + 0.5, y: lairZone.cy + 0.5, 
                                     state: 'stationary', role: 'battle', isBoss: true, alignment: 'foe',
                                     mastery: 3, deck: buildSynergisticDeck(antagID, 300), color: '#ff00ff', 
@@ -4010,7 +4008,7 @@
                                 for (let i = 0; i < 4; i++) {
                                     let guardID = hostileMinions[i % hostileMinions.length];
                                     mapNPCs.push({
-                                        type: CARD_MANIFEST_DB[guardID].sprite || guardID,
+                                        type: CARD_MANIFEST_DB[guardID]?.sprite || guardID,
                                         x: lairZone.cx + (i < 2 ? -2 : 2) + 0.5, 
                                         y: lairZone.cy + (i % 2 === 0 ? -2 : 2) + 0.5, 
                                         state: 'stationary', role: 'battle', alignment: 'foe',
@@ -4029,7 +4027,7 @@
                                         : (script.hostileTaunts[i + 4] || "Intruder!");
 
                                     mapNPCs.push({
-                                        type: CARD_MANIFEST_DB[patrolID].sprite || patrolID,
+                                        type: CARD_MANIFEST_DB[patrolID]?.sprite || patrolID,
                                         x: lairZone.x + Math.floor(Math.random() * lairZone.w) + 0.5, 
                                         y: lairZone.y + Math.floor(Math.random() * lairZone.h) + 0.5, 
                                         state: 'wandering', role: 'battle', alignment: 'foe',
@@ -4043,7 +4041,7 @@
                                 for (let i = 0; i < 2; i++) {
                                     let prisonerID = friendlyMinions[Math.floor(Math.random() * friendlyMinions.length)];
                                     mapNPCs.push({
-                                        type: CARD_MANIFEST_DB[prisonerID].sprite || prisonerID,
+                                        type: CARD_MANIFEST_DB[prisonerID]?.sprite || prisonerID,
                                         x: lairZone.x + 2.5, y: lairZone.y + 2.5 + (i * 2), // Stuck in a corner
                                         state: 'fleeing', role: 'dialogue', alignment: 'friendly',
                                         color: '#00ff00', deck: [prisonerID],
@@ -4070,7 +4068,7 @@
                                 let hqY = hq ? hq.cy + 0.5 : mapData.bastionCenter.y + 0.5;
 
                                 mapNPCs.push({
-                                    type: CARD_MANIFEST_DB[protagID].sprite || protagID,
+                                    type: CARD_MANIFEST_DB[protagID]?.sprite || protagID,
                                     x: hqX, y: hqY,
                                     state: 'stationary', role: 'dialogue', alignment: 'friendly',
                                     deck: [], color: '#00ff00', 
@@ -4115,7 +4113,7 @@
                                 availableBuildings.forEach((bldg, index) => {
                                     let civID = friendlyMinions[Math.floor(Math.random() * friendlyMinions.length)] || 32; 
                                     mapNPCs.push({
-                                        type: CARD_MANIFEST_DB[civID].sprite || civID, 
+                                        type: CARD_MANIFEST_DB[civID]?.sprite || civID, 
                                         x: bldg.cx + 0.5, y: bldg.cy + 0.5, // Spawned exactly in the center of their 3x3 house
                                         state: 'stationary', role: 'dialogue', alignment: 'friendly', 
                                         deck: buildSynergisticDeck(civID, 100), color: '#00ff00', 
@@ -4129,7 +4127,7 @@
                                 for (let i = 0; i < 3; i++) {
                                     let civID = friendlyMinions[Math.floor(Math.random() * friendlyMinions.length)] || 32; 
                                     mapNPCs.push({
-                                        type: CARD_MANIFEST_DB[civID].sprite || civID, 
+                                        type: CARD_MANIFEST_DB[civID]?.sprite || civID, 
                                         x: mapData.bastionCenter.x + (Math.random() * 10 - 5), 
                                         y: mapData.bastionCenter.y + (Math.random() * 10 - 5),
                                         state: 'wandering', role: 'dialogue', alignment: 'friendly', 
@@ -4144,7 +4142,7 @@
                                 for (let i = 0; i < 3; i++) {
                                     let defID = friendlyMinions[i % friendlyMinions.length] || 64; 
                                     mapNPCs.push({
-                                        type: CARD_MANIFEST_DB[defID].sprite || defID, 
+                                        type: CARD_MANIFEST_DB[defID]?.sprite || defID, 
                                         x: mapData.bastionCenter.x + (Math.random() * 12 - 6), 
                                         y: mapData.bastionCenter.y + (Math.random() * 12 - 6),
                                         state: 'wandering', role: 'dialogue', alignment: 'defender', 
@@ -4162,7 +4160,7 @@
 
                                 // 1. The Apex Predator / Ancient Threat (Mini-Boss)
                                 mapNPCs.push({
-                                    type: CARD_MANIFEST_DB[thirdFactionID].sprite || thirdFactionID,
+                                    type: CARD_MANIFEST_DB[thirdFactionID]?.sprite || thirdFactionID,
                                     x: ruinsZone.cx + 0.5, y: ruinsZone.cy + 0.5,
                                     state: 'stationary', role: 'battle', alignment: 'foe', isBoss: true,
                                     deck: buildSynergisticDeck(thirdFactionID, 200), color: '#ff8800', // Orange on minimap!
@@ -4174,7 +4172,7 @@
                                 for (let i = 0; i < 6; i++) {
                                     let mobID = thirdTribeMinions[Math.floor(Math.random() * thirdTribeMinions.length)];
                                     mapNPCs.push({
-                                        type: CARD_MANIFEST_DB[mobID].sprite || mobID,
+                                        type: CARD_MANIFEST_DB[mobID]?.sprite || mobID,
                                         x: ruinsZone.x + Math.floor(Math.random() * ruinsZone.w) + 0.5, 
                                         y: ruinsZone.y + Math.floor(Math.random() * ruinsZone.h) + 0.5, 
                                         state: 'wandering', role: 'battle', alignment: 'foe',
@@ -4207,7 +4205,7 @@
                                     if (r < 0.5) {
                                         let spawnID = hostileMinions[Math.floor(Math.random() * hostileMinions.length)];
                                         mapNPCs.push({
-                                            type: CARD_MANIFEST_DB[spawnID].sprite || spawnID, 
+                                            type: CARD_MANIFEST_DB[spawnID]?.sprite || spawnID, 
                                             x: tile.x + 0.5, y: tile.y + 0.5, 
                                             state: 'wandering', role: 'battle', alignment: 'foe', 
                                             deck: buildSynergisticDeck(spawnID, 80), color: '#ff0000', 
@@ -4219,7 +4217,7 @@
                                     else if (r < 0.8) {
                                         let spawnID = thirdTribeMinions[Math.floor(Math.random() * thirdTribeMinions.length)];
                                         mapNPCs.push({
-                                            type: CARD_MANIFEST_DB[spawnID].sprite || spawnID, 
+                                            type: CARD_MANIFEST_DB[spawnID]?.sprite || spawnID, 
                                             x: tile.x + 0.5, y: tile.y + 0.5, 
                                             state: 'chasing', role: 'battle', alignment: 'foe', 
                                             deck: buildSynergisticDeck(spawnID, 80), color: '#ff8800', 
@@ -4236,7 +4234,7 @@
                                             : (script.thirdTribeRumors[5 + (placedWanderers % 3)]);
 
                                         mapNPCs.push({
-                                            type: CARD_MANIFEST_DB[spawnID].sprite || spawnID, 
+                                            type: CARD_MANIFEST_DB[spawnID]?.sprite || spawnID, 
                                             x: tile.x + 0.5, y: tile.y + 0.5, 
                                             state: 'wandering', role: 'dialogue', alignment: 'friendly', 
                                             deck: buildSynergisticDeck(spawnID, 80), color: '#00ff00', 
