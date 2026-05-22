@@ -4102,54 +4102,208 @@
                                 let availableBuildings = [...cityBuildings]; // Clone to pop them off as we fill them
 
                                 // 1. THE LORE MAIN (Quest Giver / Faction Leader)
-                                // Put them in the first building (HQ), or the center plaza if no buildings spawned.
-                                let hq = availableBuildings.shift();
-                                let hqX = hq ? hq.cx + 0.5 : mapData.bastionCenter.x + 0.5;
-                                let hqY = hq ? hq.cy + 0.5 : mapData.bastionCenter.y + 0.5;
+                                    // Put them in the first building (HQ), or the center plaza if no buildings spawned.
+                                    let hq = availableBuildings.shift();
+                                    let hqX = hq ? hq.cx + 0.5 : mapData.bastionCenter.x + 0.5;
+                                    let hqY = hq ? hq.cy + 0.5 : mapData.bastionCenter.y + 0.5;
 
-                                mapNPCs.push({
-                                    type: CARD_MANIFEST_DB[protagID]?.sprite || protagID,
-                                    x: hqX, y: hqY,
-                                    state: 'stationary', role: 'dialogue', alignment: 'defender',
-                                    deck: [], color: '#00ff00', 
-                                    dialogue: script.friendlyLore || ["Please, you must help us!"],
-                                    classification: 'lore_main' // Server-side tag for your reference
-                                });
+                                    mapNPCs.push({
+                                        type: CARD_MANIFEST_DB[protagID]?.sprite || protagID,
+                                        x: hqX, y: hqY,
+                                        state: 'stationary', role: 'dialogue', alignment: 'defender',
+                                        deck: [], color: '#00ff00', 
+                                        dialogue: script.friendlyLore || ["Please, you must help us!"],
+                                        classification: 'lore_main' // Server-side tag for your reference
+                                    });
 
                                 // 2. THE SHOP (Merchant)
-                                // Give them their own building/stall if available
-                                let shopBuilding = availableBuildings.shift();
-                                let shopX = shopBuilding ? shopBuilding.cx + 0.5 : mapData.bastionCenter.x + 2.5;
-                                let shopY = shopBuilding ? shopBuilding.cy + 0.5 : mapData.bastionCenter.y + 0.5;
+                                    // Give them their own building/stall if available
+                                    let shopBuilding = availableBuildings.shift();
+                                    let shopX = shopBuilding ? shopBuilding.cx + 0.5 : mapData.bastionCenter.x + 2.5;
+                                    let shopY = shopBuilding ? shopBuilding.cy + 0.5 : mapData.bastionCenter.y + 0.5;
 
-                                let shopInv = [];
-                                for (let i = 0; i <= 13; i++) { shopInv[i] = Math.floor(Math.random() * 90); }
+                                    let shopInv = [];
+                                    for (let i = 0; i <= 13; i++) { shopInv[i] = Math.floor(Math.random() * 90); }
 
-                                mapNPCs.push({
-                                    type: 41, 
-                                    x: shopX, y: shopY,
-                                    state: 'stationary', role: 'shop', alignment: 'friendly',
-                                    deck: shopInv, color: '#00ff00', dialogue: ["Buy something will ya?"],
-                                    classification: 'shop'
-                                });
+                                    mapNPCs.push({
+                                        type: 41, 
+                                        x: shopX, y: shopY,
+                                        state: 'stationary', role: 'shop', alignment: 'friendly',
+                                        deck: shopInv, color: '#00ff00', dialogue: ["Buy something will ya?"],
+                                        classification: 'shop'
+                                    });
 
                                 // 3. GUILD CLERK (Dynamic Ranked Quests)
                                     let clerkBuilding = availableBuildings.shift();
                                     let clerkX = clerkBuilding ? clerkBuilding.cx + 0.5 : mapData.bastionCenter.x - 2.5;
                                     let clerkY = clerkBuilding ? clerkBuilding.cy + 0.5 : mapData.bastionCenter.y + 2.5;
 
-                                    // Pick a random rank for this town's clerk (201 = F, 202 = E, etc., up to 207 = S)
-                                    let randomClerkIndex = 201 + Math.floor(Math.random() * 7);
+                                    let guildClerk = new NPC(201, 31.5, 75.5, 42, 'stationary', '#00ff00', [], 'dialogue', false, 'friendly');
+                
+                                    guildClerk.dialogueFactory = (dungeon) => {
+                                        
 
-                                    mapNPCs.push({
-                                        index: randomClerkIndex, // <--- Explicitly assign your client-side ID!
-                                        type: 42, // Guild Clerk Sprite
-                                        x: clerkX, y: clerkY,
-                                        state: 'stationary', role: 'dialogue', alignment: 'friendly',
-                                        deck: [], color: '#00ff00',
-                                        dialogue: ["..."], // Your client-side dialogueFactory will instantly overwrite this!
-                                        classification: 'guild_clerk'
-                                    });
+                                      let qState =0;
+
+                                        // --- PHASE 0: ASSIGN A NEW QUEST OR PROMOTE ---
+                                        if (qState === 0) {
+                                            let promotionThreshold = 3; 
+                                            //PROMOTION EXAM    
+                                                if (rank === 'F' && rep >= promotionThreshold) {
+                                                    let examBossIndex = 201999;
+                                                    let examWinActions = [
+                                                        ['set_memory', { key: 'guild_rank', value: 'E' }], 
+                                                        ['give_card', { card: 71, text: "You earned your E-Rank License!" }],
+                                                        ['play_sfx', 'chime'],
+                                                        ['notify', "Congratulations! You are now an E-Rank Adventurer!"]
+                                                    ];
+
+                                                    return {
+                                                        text: [`Your reputation precedes you. (Rank: ${rank} | Rep: ${rep})`, "You qualify for the E-Rank Promotion Exam. Take the Tactical Duel?"],
+                                                        options: ['Take Exam', 'Not Yet'],
+                                                        yesActions: [
+                                                            ['play_sfx', 'horn'],
+                                                            ['spawn_ephemeral_npc', { index: examBossIndex, x: dungeon.x, y: dungeon.y, sprite: 5, state: 'stationary', role: 'battle', alignment: 'foe', color: '#ff0000', deck: [5, 54, 56, 42], isBoss: true, deathActions: examWinActions }],
+                                                            ['start_tactics', { id: examBossIndex, stakes: 'exam' }],
+                                                            ['close_dialogue', null]
+                                                        ],
+                                                        noActions: [['close_dialogue', null]]
+                                                    };
+                                                }
+                                            let safePOS= this.getSafeSpawn(centerX, centerY, maxRadius);
+                                            let randomX = safePOS.x;
+                                            let randomY = safePOS.y;
+                                            let uniqueTargetId = 201000 + rep + Math.floor(Math.random() * 100); 
+                                            //BOUNTY
+                                            let isBounty = Math.random() < 0.5;
+
+                                            if (isBounty) {
+                                                let validTargets = [{ sprite: 54, name: "Goblin Scrapper" }, { sprite: 56, name: "Cave Imp" }];
+                                                let target = validTargets[Math.floor(Math.random() * validTargets.length)];
+                                                
+                                                // The death action flips the quest state to 2!
+                                                let targetDeathActions = [
+                                                    ['update_quest_state', { key: 'guild_quest', state: 2 }],
+                                                    ['play_sfx', 'chime'],
+                                                    ['notify', "Target eliminated! Return to the Guild."]
+                                                ];
+
+                                                // THE BLUEPRINT SPAWNER
+                                                let spawnAction = ['spawn_ephemeral_npc', {
+                                                    index: uniqueTargetId, x: randomX, y: randomY, sprite: target.sprite,
+                                                    state: 'stationary', role: 'dialogue', alignment: 'friendly_messenger', color: '#ff0000',isBoss:true,
+                                                    customDialogue: ["You'll never take me alive!"],
+                                                    endActions: [['transform_npc', { index: uniqueTargetId, newAlignment: 'foe', newRole: 'battle', newState: 'chasing', clearDialogue: true, newDeathActions: targetDeathActions }], ['start_battle', uniqueTargetId]],
+                                                    deathActions: targetDeathActions
+                                                }];
+
+                                                let questBlueprint = { state: 1, type: 'bounty', tName: target.name, qRank: 'F', targetMap: 999, spawnActions: [spawnAction] };
+
+                                                return {
+                                                    text: [`Welcome. (Rank: ${rank} | Rep: ${rep})`, "I have an F-Rank Bounty available. Interested?"],
+                                                    options: ['Accept Bounty', 'Leave'],
+                                                    yesActions: [
+                                                        ['set_memory', { key: 'guild_quest', value: questBlueprint }],
+                                                        spawnAction, // Spawn it right now!
+                                                        ['play_sfx', 'click'],
+                                                        ['notify', `${target.name} is hiding nearby. Slay them and report back.`]
+                                                    ],
+                                                    noActions: [['close_dialogue', null]]
+                                                };
+                                            //FETCH
+                                            } else {
+                                                let spawnAction = ['spawn_ephemeral_npc', {
+                                                    index: uniqueTargetId, x: randomX, y: randomY, sprite: 10,
+                                                    state: 'stationary', role: 'dialogue', alignment: 'friendly', color: '#ffff00',isBoss:true,
+                                                    customDialogue: ["You found the lost guild shipment! Take it?"],
+                                                    options: ['Take', 'Leave'],
+                                                    yesActions: [
+                                                        ['update_quest_state', { key: 'guild_quest', state: 2 }],
+                                                        ['play_sfx', 'horn'], 
+                                                        ['disappear', null], 
+                                                        ['start_wave', { delay: 1.0, waves: [[{sprite: 56}, {sprite: 54}], [{sprite: 55, isBoss: true}]], onComplete: [['notify', "Ambush defeated!"]]}], 
+                                                        ['start_hunted', { waves: 2, interval: 400, mobs: [{sprite: 56}] }], 
+                                                        ['notify', "You recovered the shipment... but triggered an ambush!"]
+                                                    ],
+                                                    noActions: [['close_dialogue', null]]
+                                                }];
+
+                                                let questBlueprint = { state: 1, type: 'fetch', tName: 'Lost Shipment', qRank: 'F', targetMap: 999, spawnActions: [spawnAction] };
+
+                                                return {
+                                                    text: [`Welcome. (Rank: ${rank} | Rep: ${rep})`, "An F-Rank guild shipment was lost nearby. We need it recovered."],
+                                                    options: ['Accept Fetch Quest', 'Leave'],
+                                                    yesActions: [
+                                                        ['set_memory', { key: 'guild_quest', value: questBlueprint }],
+                                                        spawnAction, // Spawn it right now!
+                                                        ['play_sfx', 'click'],
+                                                        ['notify', "The shipment is near your location. Beware of local scavengers!"]
+                                                    ],
+                                                    noActions: [['close_dialogue', null]]
+                                                };
+                                            }
+                                        }
+
+                                        // --- PHASE 1 & 2: UNIVERSAL TURN-IN OR ABANDON ---
+                                        if (qState === 1 || qState === 2) {
+                                            let targetName = qData.tName;
+                                            let questRank = qData.qRank || 'F';
+                                            let repPenalty = questRank === 'E' ? 2 : (questRank === 'D' ? 3 : 1);
+                                            let repReward = questRank === 'E' ? 2 : (questRank === 'D' ? 3 : 1);
+
+                                            if (qState === 2) {
+                                                let successText = ["Ah! You completed the task! Excellent work. Here is your reward."];
+                                                
+                                                let turnInActions = [
+                                                    ['close_dialogue', null],
+                                                    ['set_memory', { key: 'guild_quest', value: { state: 0 } }],
+                                                    ['set_memory', { key: 'guild_rep', value: rep + repReward }],
+                                                    ['play_sfx', 'heal']
+                                                ];
+
+                                                let numRewards = 1; 
+                                                if (questRank === 'E') numRewards = 2;
+                                                if (questRank === 'D') numRewards = 3;
+
+                                                for (let i = 0; i < numRewards; i++) {
+                                                    turnInActions.push(['give_card', { card: 38, text: `Quest Reward Received! (${i+1}/${numRewards})` }]);
+                                                }
+
+                                                if (questRank === 'E' || questRank === 'D') {
+                                                    if (qData.wasBetrayal) {
+                                                        successText = ["Oh my... They betrayed you? I am so sorry that happened.", "Take this extra hazard pay!"];
+                                                        turnInActions.push(['give_card', { card: 65, text: "Bonus Hazard Gem Received!" }]);
+                                                    } else {
+                                                        successText = [`Ah! You completed the ${questRank}-Rank task flawlessly. Excellent work.`];
+                                                    }
+                                                }
+
+                                                return {
+                                                    text: successText,
+                                                    options: ['Turn In', 'Leave'],
+                                                    yesActions: turnInActions,
+                                                    noActions: [['close_dialogue', null]]
+                                                };
+                                            } else {
+                                                return {
+                                                    text: [`You are currently assigned to the ${questRank}-Rank ${targetName} quest.`, `Return to a clerk when the task is complete!`],
+                                                    options: [`Abandon Quest (-${repPenalty} Rep)`, 'Leave'],
+                                                    yesActions: [
+                                                        ['play_sfx', 'cancel'],
+                                                        ['stop_hunted', null], 
+                                                        ['set_memory', { key: 'guild_quest', value: { state: 0 } }], 
+                                                        ['set_memory', { key: 'guild_rep', value: Math.max(0, rep - repPenalty) }], 
+                                                        ['notify', "Quest abandoned. Your reputation has decreased."]
+                                                    ],
+                                                    noActions: [['close_dialogue', null]]
+                                                };
+                                            }
+                                        }
+
+                                        return { text: ["If you'd like a bounty as speak to me again"], endActions: [['set_memory', { key: 'guild_quest', value: { state: 0 } }],['set_memory', { key: 'guild_rep', value: rep }],['close_dialogue', null]] };
+                                    };
+                                    
+                                    this.npcs.push(guildClerk);
 
                                 // 4. LORE CITIZENS (Dwellers)
                                 // Fill the remaining buildings with citizens who provide deep, profound lore.
@@ -4415,7 +4569,7 @@
                                         });
                                     }
                                     // 50% Chance: Villain Faction Scouting Party
-                                    else if (r < 0.5) {
+                                    else if (r < 0.69) {
                                         let spawnID = hostileMinions[Math.floor(Math.random() * hostileMinions.length)];
                                         mapNPCs.push({
                                             type: CARD_MANIFEST_DB[spawnID]?.sprite || spawnID, 
@@ -4427,7 +4581,7 @@
                                         });
                                     } 
                                     // 30% Chance: Third Tribe Predators Hunting
-                                    else if (r < 0.8) {
+                                    else if (r < 0.9) {
                                         let spawnID = thirdTribeMinions[Math.floor(Math.random() * thirdTribeMinions.length)];
                                         mapNPCs.push({
                                             type: CARD_MANIFEST_DB[spawnID]?.sprite || spawnID, 
