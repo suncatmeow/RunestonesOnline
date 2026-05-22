@@ -4101,7 +4101,7 @@
                                             if (dungeon.memory['map999_knows_password']) {
                                                 return {
                                                     text: ["*A heavy iron chest sits hidden in the brush. A magical mouth demands a password.*"],
-                                                    options: ['Whisper "Shattered Moon"', 'Leave'],
+                                                    options: ['Whisper "Shattered Moon"', 'Whisper "Scattered Star"'],
                                                     yesActions: openCacheActions,
                                                     noActions: [['close_dialogue', null]]
                                                 };
