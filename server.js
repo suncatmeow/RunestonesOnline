@@ -4352,7 +4352,7 @@
                                         });
                                     }
                                     //tactics
-                                    else if (r < 0.9) {
+                                    else if (r < 0.09) {
                                         let tacticianId = 400000 + placedWanderers;
                                         let ambushBossId = 400000 + placedWanderers + 1;
                                         
