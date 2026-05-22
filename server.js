@@ -3148,7 +3148,7 @@
             }
             else if (type === 'CITY') {
                 for(let y = 1; y < h - 1; y++) for(let x = 1; x < w - 1; x++) grid[y][x] = floorType;
-                let buildings = [];
+                buildings = [];
                 let attempts = w * h; 
                 let minSize = 3, maxSize = 6; 
 
@@ -3958,8 +3958,7 @@
                                 if (hostileMinions.length === 0) hostileMinions = biome.mobs || [54, 56, 42];
 
                                 let friendlyMinions = getMinions(protagID);
-                                if (friendlyMinions.length === 0) friendlyMinions = [32, 75, 60]; 
-
+                                friendlyMinions = [...friendlyMinions, 32, 33, 34, 41, 42, 60, 75];
                                 // 2. THE ASYNC FORK (LLM & Grid Generation)
                                 const targetPlayer = players[findSocketID(call.args.targetName)];
                                 // Add thirdFactionName to the arguments!
@@ -4070,7 +4069,7 @@
                                 mapNPCs.push({
                                     type: CARD_MANIFEST_DB[protagID]?.sprite || protagID,
                                     x: hqX, y: hqY,
-                                    state: 'stationary', role: 'dialogue', alignment: 'friendly',
+                                    state: 'stationary', role: 'dialogue', alignment: 'defender',
                                     deck: [], color: '#00ff00', 
                                     dialogue: script.friendlyLore || ["Please, you must help us!"],
                                     classification: 'lore_main' // Server-side tag for your reference
@@ -4093,20 +4092,23 @@
                                     classification: 'shop'
                                 });
 
-                                // 3. GUILD CLERK (Optional - Radiants)
-                                // Place near the shop or in a building
-                                let clerkBuilding = availableBuildings.shift();
-                                let clerkX = clerkBuilding ? clerkBuilding.cx + 0.5 : mapData.bastionCenter.x - 2.5;
-                                let clerkY = clerkBuilding ? clerkBuilding.cy + 0.5 : mapData.bastionCenter.y + 2.5;
+                                // 3. GUILD CLERK (Dynamic Ranked Quests)
+                                    let clerkBuilding = availableBuildings.shift();
+                                    let clerkX = clerkBuilding ? clerkBuilding.cx + 0.5 : mapData.bastionCenter.x - 2.5;
+                                    let clerkY = clerkBuilding ? clerkBuilding.cy + 0.5 : mapData.bastionCenter.y + 2.5;
 
-                                mapNPCs.push({
-                                    type: 42, // Guild Clerk Sprite
-                                    x: clerkX, y: clerkY,
-                                    state: 'stationary', role: 'dialogue', alignment: 'friendly',
-                                    deck: [], color: '#00ff00',
-                                    dialogue: ["The Guild is monitoring the situation here. Stay safe."],
-                                    classification: 'guild_clerk'
-                                });
+                                    // Pick a random rank for this town's clerk (201 = F, 202 = E, etc., up to 207 = S)
+                                    let randomClerkIndex = 201 + Math.floor(Math.random() * 7);
+
+                                    mapNPCs.push({
+                                        index: randomClerkIndex, // <--- Explicitly assign your client-side ID!
+                                        type: 42, // Guild Clerk Sprite
+                                        x: clerkX, y: clerkY,
+                                        state: 'stationary', role: 'dialogue', alignment: 'friendly',
+                                        deck: [], color: '#00ff00',
+                                        dialogue: ["..."], // Your client-side dialogueFactory will instantly overwrite this!
+                                        classification: 'guild_clerk'
+                                    });
 
                                 // 4. LORE CITIZENS (Dwellers)
                                 // Fill the remaining buildings with citizens who provide deep, profound lore.
@@ -4115,7 +4117,7 @@
                                     mapNPCs.push({
                                         type: CARD_MANIFEST_DB[civID]?.sprite || civID, 
                                         x: bldg.cx + 0.5, y: bldg.cy + 0.5, // Spawned exactly in the center of their 3x3 house
-                                        state: 'stationary', role: 'dialogue', alignment: 'friendly', 
+                                        state: 'stationary', role: 'dialogue', alignment: 'defender', 
                                         deck: buildSynergisticDeck(civID, 100), color: '#00ff00', 
                                         dialogue: [script.friendlyProfound ? script.friendlyProfound[index % script.friendlyProfound.length] : "These walls protect us, but for how long?"],
                                         classification: 'lore_citizen'
@@ -4130,7 +4132,7 @@
                                         type: CARD_MANIFEST_DB[civID]?.sprite || civID, 
                                         x: mapData.bastionCenter.x + (Math.random() * 10 - 5), 
                                         y: mapData.bastionCenter.y + (Math.random() * 10 - 5),
-                                        state: 'wandering', role: 'dialogue', alignment: 'friendly', 
+                                        state: 'wandering', role: 'dialogue', alignment: 'defender', 
                                         deck: buildSynergisticDeck(civID, 200), color: '#00ff00', 
                                         dialogue: [script.friendlyLife ? script.friendlyLife[i % script.friendlyLife.length] : "I hope the guards can protect us..."],
                                         classification: 'oblivious'
@@ -4236,7 +4238,7 @@
                                         mapNPCs.push({
                                             type: CARD_MANIFEST_DB[spawnID]?.sprite || spawnID, 
                                             x: tile.x + 0.5, y: tile.y + 0.5, 
-                                            state: 'wandering', role: 'dialogue', alignment: 'friendly', 
+                                            state: 'wandering', role: 'dialogue', alignment: 'defender', 
                                             deck: buildSynergisticDeck(spawnID, 80), color: '#00ff00', 
                                             dialogue: [dialogueLine || "I shouldn't have left the Bastion..."],
                                             classification: 'wild_traveler'
@@ -4245,9 +4247,12 @@
                                     placedWanderers++;
                                     }
 
-                            // Apply global indices to all array items
-                            mapNPCs.forEach((npc, idx) => { npc.index = 10000 + idx; });
-                            // ==========================================
+                            // 4.5 Apply global indices to all array items
+                                mapNPCs.forEach((npc, idx) => { 
+                                                if (!npc.index) {
+                                                    npc.index = 10000 + idx; 
+                                                }
+                                            });                            // ==========================================
                             // 5. CACHE INSTANCE & DISPATCH MESSENGER
                             // ==========================================
                                 const customMapData = {
