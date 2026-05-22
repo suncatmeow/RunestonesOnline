@@ -2993,6 +2993,33 @@
         // If the pool is empty, return fallbacks so the map doesn't crash
         return minions.length > 0 ? minions : [54, 56, 42, 23];
     }
+    // Place this on your Node.js Server
+    function createServerNPC(config) {
+    return {
+        index: config.index || Math.floor(Math.random() * 100000) + 500000,
+        type: config.sprite || 0,
+        x: config.x || 0,
+        y: config.y || 0,
+        state: config.state || 'stationary',
+        role: config.role || 'dialogue',
+        alignment: config.alignment || 'friendly',
+        color: config.color || '#00ff00',
+        deck: config.deck || [config.sprite || 0],
+        isBoss: config.isBoss || false,
+        isCinematic: config.isCinematic || false,
+        
+        // --- THE NEW TAG FOR DYNAMIC LOGIC ---
+        factoryKey: config.factoryKey || null, 
+        
+        dialogue: config.dialogue || null,
+        options: config.options || null,
+        yesActions: config.yesActions || null,
+        noActions: config.noActions || null,
+        endActions: config.endActions || [],
+        deathActions: config.deathActions || [],
+        rewardCard: config.rewardCard || null
+    };
+}
     function buildSynergisticDeck(monsterID, maxTotalPower = 50) {
         let baseID = Math.floor(parseFloat(monsterID));
         let deck = [baseID]; 
@@ -4133,177 +4160,20 @@
                                         classification: 'shop'
                                     });
 
-                                // 3. GUILD CLERK (Dynamic Ranked Quests)
-                                    let clerkBuilding = availableBuildings.shift();
-                                    let clerkX = clerkBuilding ? clerkBuilding.cx + 0.5 : mapData.bastionCenter.x - 2.5;
-                                    let clerkY = clerkBuilding ? clerkBuilding.cy + 0.5 : mapData.bastionCenter.y + 2.5;
+                                let clerkBuilding = availableBuildings.shift();
+                                let clerkX = clerkBuilding ? clerkBuilding.cx + 0.5 : mapData.bastionCenter.x - 2.5;
+                                let clerkY = clerkBuilding ? clerkBuilding.cy + 0.5 : mapData.bastionCenter.y + 2.5;
 
-                                    let guildClerk = new NPC(201, 31.5, 75.5, 42, 'stationary', '#00ff00', [], 'dialogue', false, 'friendly');
-                
-                                    guildClerk.dialogueFactory = (dungeon) => {
-                                        
-
-                                      let qState =0;
-
-                                        // --- PHASE 0: ASSIGN A NEW QUEST OR PROMOTE ---
-                                        if (qState === 0) {
-                                            let promotionThreshold = 3; 
-                                            //PROMOTION EXAM    
-                                                if (rank === 'F' && rep >= promotionThreshold) {
-                                                    let examBossIndex = 201999;
-                                                    let examWinActions = [
-                                                        ['set_memory', { key: 'guild_rank', value: 'E' }], 
-                                                        ['give_card', { card: 71, text: "You earned your E-Rank License!" }],
-                                                        ['play_sfx', 'chime'],
-                                                        ['notify', "Congratulations! You are now an E-Rank Adventurer!"]
-                                                    ];
-
-                                                    return {
-                                                        text: [`Your reputation precedes you. (Rank: ${rank} | Rep: ${rep})`, "You qualify for the E-Rank Promotion Exam. Take the Tactical Duel?"],
-                                                        options: ['Take Exam', 'Not Yet'],
-                                                        yesActions: [
-                                                            ['play_sfx', 'horn'],
-                                                            ['spawn_ephemeral_npc', { index: examBossIndex, x: dungeon.x, y: dungeon.y, sprite: 5, state: 'stationary', role: 'battle', alignment: 'foe', color: '#ff0000', deck: [5, 54, 56, 42], isBoss: true, deathActions: examWinActions }],
-                                                            ['start_tactics', { id: examBossIndex, stakes: 'exam' }],
-                                                            ['close_dialogue', null]
-                                                        ],
-                                                        noActions: [['close_dialogue', null]]
-                                                    };
-                                                }
-                                            let safePOS= this.getSafeSpawn(centerX, centerY, maxRadius);
-                                            let randomX = safePOS.x;
-                                            let randomY = safePOS.y;
-                                            let uniqueTargetId = 201000 + rep + Math.floor(Math.random() * 100); 
-                                            //BOUNTY
-                                            let isBounty = Math.random() < 0.5;
-
-                                            if (isBounty) {
-                                                let validTargets = [{ sprite: 54, name: "Goblin Scrapper" }, { sprite: 56, name: "Cave Imp" }];
-                                                let target = validTargets[Math.floor(Math.random() * validTargets.length)];
-                                                
-                                                // The death action flips the quest state to 2!
-                                                let targetDeathActions = [
-                                                    ['update_quest_state', { key: 'guild_quest', state: 2 }],
-                                                    ['play_sfx', 'chime'],
-                                                    ['notify', "Target eliminated! Return to the Guild."]
-                                                ];
-
-                                                // THE BLUEPRINT SPAWNER
-                                                let spawnAction = ['spawn_ephemeral_npc', {
-                                                    index: uniqueTargetId, x: randomX, y: randomY, sprite: target.sprite,
-                                                    state: 'stationary', role: 'dialogue', alignment: 'friendly_messenger', color: '#ff0000',isBoss:true,
-                                                    customDialogue: ["You'll never take me alive!"],
-                                                    endActions: [['transform_npc', { index: uniqueTargetId, newAlignment: 'foe', newRole: 'battle', newState: 'chasing', clearDialogue: true, newDeathActions: targetDeathActions }], ['start_battle', uniqueTargetId]],
-                                                    deathActions: targetDeathActions
-                                                }];
-
-                                                let questBlueprint = { state: 1, type: 'bounty', tName: target.name, qRank: 'F', targetMap: 999, spawnActions: [spawnAction] };
-
-                                                return {
-                                                    text: [`Welcome. (Rank: ${rank} | Rep: ${rep})`, "I have an F-Rank Bounty available. Interested?"],
-                                                    options: ['Accept Bounty', 'Leave'],
-                                                    yesActions: [
-                                                        ['set_memory', { key: 'guild_quest', value: questBlueprint }],
-                                                        spawnAction, // Spawn it right now!
-                                                        ['play_sfx', 'click'],
-                                                        ['notify', `${target.name} is hiding nearby. Slay them and report back.`]
-                                                    ],
-                                                    noActions: [['close_dialogue', null]]
-                                                };
-                                            //FETCH
-                                            } else {
-                                                let spawnAction = ['spawn_ephemeral_npc', {
-                                                    index: uniqueTargetId, x: randomX, y: randomY, sprite: 10,
-                                                    state: 'stationary', role: 'dialogue', alignment: 'friendly', color: '#ffff00',isBoss:true,
-                                                    customDialogue: ["You found the lost guild shipment! Take it?"],
-                                                    options: ['Take', 'Leave'],
-                                                    yesActions: [
-                                                        ['update_quest_state', { key: 'guild_quest', state: 2 }],
-                                                        ['play_sfx', 'horn'], 
-                                                        ['disappear', null], 
-                                                        ['start_wave', { delay: 1.0, waves: [[{sprite: 56}, {sprite: 54}], [{sprite: 55, isBoss: true}]], onComplete: [['notify', "Ambush defeated!"]]}], 
-                                                        ['start_hunted', { waves: 2, interval: 400, mobs: [{sprite: 56}] }], 
-                                                        ['notify', "You recovered the shipment... but triggered an ambush!"]
-                                                    ],
-                                                    noActions: [['close_dialogue', null]]
-                                                }];
-
-                                                let questBlueprint = { state: 1, type: 'fetch', tName: 'Lost Shipment', qRank: 'F', targetMap: 999, spawnActions: [spawnAction] };
-
-                                                return {
-                                                    text: [`Welcome. (Rank: ${rank} | Rep: ${rep})`, "An F-Rank guild shipment was lost nearby. We need it recovered."],
-                                                    options: ['Accept Fetch Quest', 'Leave'],
-                                                    yesActions: [
-                                                        ['set_memory', { key: 'guild_quest', value: questBlueprint }],
-                                                        spawnAction, // Spawn it right now!
-                                                        ['play_sfx', 'click'],
-                                                        ['notify', "The shipment is near your location. Beware of local scavengers!"]
-                                                    ],
-                                                    noActions: [['close_dialogue', null]]
-                                                };
-                                            }
-                                        }
-
-                                        // --- PHASE 1 & 2: UNIVERSAL TURN-IN OR ABANDON ---
-                                        if (qState === 1 || qState === 2) {
-                                            let targetName = qData.tName;
-                                            let questRank = qData.qRank || 'F';
-                                            let repPenalty = questRank === 'E' ? 2 : (questRank === 'D' ? 3 : 1);
-                                            let repReward = questRank === 'E' ? 2 : (questRank === 'D' ? 3 : 1);
-
-                                            if (qState === 2) {
-                                                let successText = ["Ah! You completed the task! Excellent work. Here is your reward."];
-                                                
-                                                let turnInActions = [
-                                                    ['close_dialogue', null],
-                                                    ['set_memory', { key: 'guild_quest', value: { state: 0 } }],
-                                                    ['set_memory', { key: 'guild_rep', value: rep + repReward }],
-                                                    ['play_sfx', 'heal']
-                                                ];
-
-                                                let numRewards = 1; 
-                                                if (questRank === 'E') numRewards = 2;
-                                                if (questRank === 'D') numRewards = 3;
-
-                                                for (let i = 0; i < numRewards; i++) {
-                                                    turnInActions.push(['give_card', { card: 38, text: `Quest Reward Received! (${i+1}/${numRewards})` }]);
-                                                }
-
-                                                if (questRank === 'E' || questRank === 'D') {
-                                                    if (qData.wasBetrayal) {
-                                                        successText = ["Oh my... They betrayed you? I am so sorry that happened.", "Take this extra hazard pay!"];
-                                                        turnInActions.push(['give_card', { card: 65, text: "Bonus Hazard Gem Received!" }]);
-                                                    } else {
-                                                        successText = [`Ah! You completed the ${questRank}-Rank task flawlessly. Excellent work.`];
-                                                    }
-                                                }
-
-                                                return {
-                                                    text: successText,
-                                                    options: ['Turn In', 'Leave'],
-                                                    yesActions: turnInActions,
-                                                    noActions: [['close_dialogue', null]]
-                                                };
-                                            } else {
-                                                return {
-                                                    text: [`You are currently assigned to the ${questRank}-Rank ${targetName} quest.`, `Return to a clerk when the task is complete!`],
-                                                    options: [`Abandon Quest (-${repPenalty} Rep)`, 'Leave'],
-                                                    yesActions: [
-                                                        ['play_sfx', 'cancel'],
-                                                        ['stop_hunted', null], 
-                                                        ['set_memory', { key: 'guild_quest', value: { state: 0 } }], 
-                                                        ['set_memory', { key: 'guild_rep', value: Math.max(0, rep - repPenalty) }], 
-                                                        ['notify', "Quest abandoned. Your reputation has decreased."]
-                                                    ],
-                                                    noActions: [['close_dialogue', null]]
-                                                };
-                                            }
-                                        }
-
-                                        return { text: ["If you'd like a bounty as speak to me again"], endActions: [['set_memory', { key: 'guild_quest', value: { state: 0 } }],['set_memory', { key: 'guild_rep', value: rep }],['close_dialogue', null]] };
-                                    };
-                                    
-                                    this.npcs.push(guildClerk);
+                                mapNPCs.push(createServerNPC({
+                                    index: 201,
+                                    sprite: 42,
+                                    x: clerkX,
+                                    y: clerkY,
+                                    color: '#00ff00',
+                                    role: 'dialogue',
+                                    // THIS is the magic word that tells the client what to do
+                                    factoryKey: 'F_RANK_CLERK' 
+                                }));
 
                                 // 4. LORE CITIZENS (Dwellers)
                                 // Fill the remaining buildings with citizens who provide deep, profound lore.
