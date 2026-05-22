@@ -4051,6 +4051,47 @@
                                         noActions: [['close_dialogue', null]]
                                     });
                                 }
+                                // The Hidden Cache (Placed just outside the Lair's back wall)
+                                    let cacheId = 500099;
+                                    let cacheX = lairZone.x - 1.5; 
+                                    let cacheY = lairZone.y + Math.floor(lairZone.h / 2) + 0.5;
+
+                                    let openCacheActions = [
+                                        ['play_sfx', 'chime'],
+                                        ['give_card', { card: 71, text: "Found a Rare Relic!" }],
+                                        ['give_card', { card: 65, text: "Found a Hazard Gem!" }],
+                                        ['disappear', cacheId],
+                                        ['notify', { text: "The cache clicks open, revealing smuggled goods.", endActions: [['close_dialogue', null]] }]
+                                    ];
+
+                                    mapNPCs.push({
+                                        index: cacheId,
+                                        type: 10, // Chest Sprite
+                                        x: cacheX, y: cacheY,
+                                        state: 'stationary', role: 'dialogue', alignment: 'friendly', color: '#ffff00',
+                                        // The dialogueFactory lets us check the memory flag dynamically!
+                                        dialogueFactory: (dungeon) => {
+                                            if (dungeon.memory['map999_knows_password']) {
+                                                return {
+                                                    text: ["*A heavy iron chest sits hidden in the brush. A magical mouth demands a password.*"],
+                                                    options: ['Whisper "Shattered Moon"', 'Leave'],
+                                                    yesActions: openCacheActions,
+                                                    noActions: [['close_dialogue', null]]
+                                                };
+                                            } else {
+                                                return {
+                                                    text: ["*A heavy iron chest sits hidden in the brush. It is sealed with strong magic. You need a password.*"],
+                                                    options: ['Force it Open', 'Leave'],
+                                                    yesActions: [
+                                                        ['play_sfx', 'horn'],
+                                                        ['disappear', cacheId],
+                                                        ['notify', { text: "The magic violently rejects you! The chest crumbles to dust!", endActions: [['close_dialogue', null]] }]
+                                                    ],
+                                                    noActions: [['close_dialogue', null]]
+                                                };
+                                            }
+                                        }
+                                    });
 
                             // ==========================================
                             // ZONE 2: THE BASTION (City Hub & Classified Roles)
@@ -4161,29 +4202,110 @@
                                 let thirdTribeMinions = getMinions(thirdFactionID);
 
                                 // 1. The Apex Predator / Ancient Threat (Mini-Boss)
-                                mapNPCs.push({
-                                    type: CARD_MANIFEST_DB[thirdFactionID]?.sprite || thirdFactionID,
-                                    x: ruinsZone.cx + 0.5, y: ruinsZone.cy + 0.5,
-                                    state: 'stationary', role: 'battle', alignment: 'foe', isBoss: true,
-                                    deck: buildSynergisticDeck(thirdFactionID, 200), color: '#ff8800', // Orange on minimap!
-                                    dialogue: [script.thirdTribeTaunts[0] || "*An unnatural roar echoes from the ruins...*"],
-                                    classification: 'third_tribe_boss'
-                                });
+                                    mapNPCs.push({
+                                        type: CARD_MANIFEST_DB[thirdFactionID]?.sprite || thirdFactionID,
+                                        x: ruinsZone.cx + 0.5, y: ruinsZone.cy + 0.5,
+                                        state: 'stationary', role: 'battle', alignment: 'foe', isBoss: true,
+                                        deck: buildSynergisticDeck(thirdFactionID, 200), color: '#ff8800', // Orange on minimap!
+                                        dialogue: [script.thirdTribeTaunts[0] || "*An unnatural roar echoes from the ruins...*"],
+                                        classification: 'third_tribe_boss'
+                                    });
 
                                 // 2. The Brood / Swarm (Wandering the ruins)
-                                for (let i = 0; i < 6; i++) {
-                                    let mobID = thirdTribeMinions[Math.floor(Math.random() * thirdTribeMinions.length)];
+                                    for (let i = 0; i < 6; i++) {
+                                        let mobID = thirdTribeMinions[Math.floor(Math.random() * thirdTribeMinions.length)];
+                                        mapNPCs.push({
+                                            type: CARD_MANIFEST_DB[mobID]?.sprite || mobID,
+                                            x: ruinsZone.x + Math.floor(Math.random() * ruinsZone.w) + 0.5, 
+                                            y: ruinsZone.y + Math.floor(Math.random() * ruinsZone.h) + 0.5, 
+                                            state: 'wandering', role: 'battle', alignment: 'foe',
+                                            deck: buildSynergisticDeck(mobID, 80), color: '#ff8800',
+                                            dialogue: [script.thirdTribeTaunts[1 + (i % 4)] || "*Hissing sounds*"],
+                                            classification: 'third_tribe_mob'
+                                        });
+                                        }
+                                // 3. The Ancient Lore Altar
+                                    let altarId = 300001 + Math.floor(Math.random() * 1000);
                                     mapNPCs.push({
-                                        type: CARD_MANIFEST_DB[mobID]?.sprite || mobID,
-                                        x: ruinsZone.x + Math.floor(Math.random() * ruinsZone.w) + 0.5, 
-                                        y: ruinsZone.y + Math.floor(Math.random() * ruinsZone.h) + 0.5, 
-                                        state: 'wandering', role: 'battle', alignment: 'foe',
-                                        deck: buildSynergisticDeck(mobID, 80), color: '#ff8800',
-                                        dialogue: [script.thirdTribeTaunts[1 + (i % 4)] || "*Hissing sounds*"],
-                                        classification: 'third_tribe_mob'
+                                        index: altarId,
+                                        type: 19, // Stone Pillar Sprite
+                                        x: ruinsZone.cx - 2.5, y: ruinsZone.cy - 2.5,
+                                        state: 'stationary', role: 'dialogue', alignment: 'friendly', color: '#ffff00',
+                                        dialogue: [
+                                            "*The stone is cold, bearing a glowing inscription...*",
+                                            `"${script.mapLore}"`,
+                                            "*You feel a strange resonance as the knowledge settles into your mind.*"
+                                        ],
+                                        options: ['Touch the Stone', 'Leave'],
+                                        yesActions: [
+                                            ['play_sfx', 'buff2'],
+                                            ['give_card', { card: 71, text: "Ancient Knowledge Acquired!" }],
+                                            ['disappear', altarId],
+                                            ['close_dialogue', null]
+                                        ],
+                                        noActions: [['close_dialogue', null]]
                                     });
-                                }
+                                // 4. The Cursed Artifact Ambush
+                                    let curseId = 300002 + Math.floor(Math.random() * 1000);
+                                    let shadowBossId = thirdFactionID; // Pulls the ruin's native boss ID
 
+                                    mapNPCs.push({
+                                        index: curseId,
+                                        type: 16, // Idol/Artifact Sprite
+                                        x: ruinsZone.cx + 2.5, y: ruinsZone.cy + 2.5,
+                                        state: 'stationary', role: 'dialogue', alignment: 'friendly', color: '#8800ff',
+                                        dialogue: ["*A pulsing, dark mass rests on a pedestal. It whispers promises of power to your mind.*"],
+                                        options: ['Take It', 'Step Away'],
+                                        yesActions: [
+                                            ['play_sfx', 'horn'],
+                                            ['change_weather', 'space'], // Darkens the map
+                                            ['disappear', curseId],
+                                            ['start_wave', { 
+                                                delay: 1.0, 
+                                                waves: [
+                                                    [{sprite: 56}, {sprite: 56}], // Wave 1
+                                                    [{sprite: shadowBossId, isBoss: true}] // Wave 2
+                                                ], 
+                                                onComplete: [
+                                                    ['change_weather', 'clear'], 
+                                                    ['play_sfx', 'chime'],
+                                                    ['notify', "The curse is broken!"]
+                                                ]
+                                            }],
+                                            ['notify', { text: "You unleashed a dormant curse!", endActions: [['close_dialogue', null]] }]
+                                        ],
+                                        noActions: [['close_dialogue', null]]
+                                    });
+                                // 5. The Battlefield Scavenger
+                                    let scavId = 500200;
+                                    let scavInv = [21, 65, 50, 71]; // High value, rare items
+
+                                    mapNPCs.push({
+                                        index: scavId,
+                                        type: 42, // Rogue/Thief Sprite
+                                        x: ruinsZone.cx - 4.5, y: ruinsZone.cy + 4.5,
+                                        state: 'stationary', role: 'dialogue', alignment: 'friendly', color: '#ffff00',
+                                        dialogue: [
+                                            "*The rogue is prying a magic ring off a skeleton's finger.*",
+                                            "*Eh? You want something?*"
+                                        ],
+                                        options: ['Trade', 'Attack'],
+                                        yesActions: [
+                                            ['open_shop', scavInv] // Opens the store!
+                                        ],
+                                        noActions: [
+                                            ['play_sfx', 'horn'],
+                                            ['transform_npc', { 
+                                                index: scavId, 
+                                                newAlignment: 'foe', 
+                                                newRole: 'battle', 
+                                                newState: 'chasing', 
+                                                clearDialogue: true,
+                                                newDeathActions: [['play_sfx', 'chime'], ['notify', "The scavenger is dead. The dead rest easy."]]
+                                            }],
+                                            ['start_battle', scavId]
+                                        ]
+                                    });
                             // ==========================================
                             // ZONE 4: THE WILDS (Ecology & Skirmishes)
                             // ==========================================
@@ -4202,9 +4324,98 @@
                                     if (inBastion || inLair || inRuins) continue;
 
                                     let r = Math.random();
-                                    
+                                    // 5% Chance: The Bleeding Deserter (Wilds)
+                                    if (r < 0.06) {
+                                        let deserterId = 500000 + placedWanderers;
+                                        mapNPCs.push({
+                                            index: deserterId,
+                                            type: hostileMinions[0], // Uses the enemy faction's sprite
+                                            x: tile.x + 0.5, y: tile.y + 0.5,
+                                            state: 'stationary', role: 'dialogue', alignment: 'friendly', color: '#ffff00', // Yellow/Neutral
+                                            dialogue: [
+                                                "*The soldier is bleeding heavily, leaning against a tree.*", 
+                                                "Please... I deserted. I couldn't take the cruelty anymore.",
+                                                "If you're going to the Lair... there is a hidden supply cache outside the walls. The password is 'Shattered Moon'."
+                                            ],
+                                            options: ['Offer Potion (Mercy)', 'Execute Traitor'],
+                                            yesActions: [
+                                                ['play_sfx', 'heal'],
+                                                ['set_memory', { key: 'map999_knows_password', value: true }], // Saves the flag!
+                                                ['inject_dialogue', { index: deserterId, text: ["Thank you... May the gods favor your blade."], endActions: [['disappear', deserterId], ['close_dialogue', null]] }]
+                                            ],
+                                            noActions: [
+                                                ['play_sfx', 'slash'],
+                                                ['give_card', { card: 38, text: "Looted 1 Gold." }], // Paltry reward for violence
+                                                ['disappear', deserterId],
+                                                ['close_dialogue', null]
+                                            ]
+                                        });
+                                    }
+                                    //tactics
+                                    else if (r < 0.9) {
+                                        let tacticianId = 400000 + placedWanderers;
+                                        let ambushBossId = 400000 + placedWanderers + 1;
+                                        
+                                        let winTactics = [
+                                            ['play_sfx', 'chime'],
+                                            ['notify', {text: "We survived! Thank you, traveler. Take this.", endActions: [['close_dialogue', null]]}],
+                                            ['give_card', { card: 38, text: "Tactician's Reward Received!" }]
+                                        ];
+
+                                        mapNPCs.push({
+                                            index: tacticianId,
+                                            type: 42, // Guard/Ally Sprite
+                                            x: tile.x + 0.5, y: tile.y + 0.5,
+                                            state: 'wandering', role: 'dialogue', alignment: 'friendly', color: '#00ff00',
+                                            deck: [42], // They bring their own stats to the battle
+                                            dialogue: ["To arms, traveler! I'm being hunted by an elite squad!", "Form up with me, quickly!"],
+                                            options: ['Form Up! (Tactics)', 'Leave Them to Die'],
+                                            yesActions: [
+                                                ['play_sfx', 'horn'],
+                                                ['become_ally', 42], // Adds them to activeSummons so they join the Tactics board!
+                                                ['disappear', tacticianId], // Removes them from the overworld
+                                                ['spawn_ephemeral_npc', { 
+                                                    index: ambushBossId, x: tile.x, y: tile.y, sprite: 55, state: 'stationary', 
+                                                    role: 'battle', alignment: 'foe', color: '#ff0000', isBoss: true, 
+                                                    deck: [55, 54, 54, 56], deathActions: winTactics 
+                                                }],
+                                                ['start_tactics', ambushBossId],
+                                                ['close_dialogue', null]
+                                            ],
+                                            noActions: [['close_dialogue', null]]
+                                        });
+                                    }
+                                    // 5% Chance: The Mad Scholar
+                                    else if (r < 0.13) {
+                                        let scholarId = 500100 + placedWanderers;
+                                        mapNPCs.push({
+                                            index: scholarId,
+                                            type: 41, // Merchant/Scholar Sprite
+                                            x: tile.x + 0.5, y: tile.y + 0.5,
+                                            state: 'wandering', role: 'dialogue', alignment: 'friendly', color: '#00ff00',
+                                            dialogue: [
+                                                "Ah! A traveler! Have you been studying the history of this realm?",
+                                                `I have concluded that the local ruins belong to the ${thirdFactionName}.`,
+                                                "Do you agree with my assessment of their origins?"
+                                            ],
+                                            options: ['Agree (Lie)', 'Share Actual Lore'],
+                                            yesActions: [
+                                                ['inject_dialogue', { index: scholarId, text: ["I knew it! The academic community called me mad, but I am right!"], endActions: [['close_dialogue', null]] }]
+                                            ],
+                                            noActions: [
+                                                ['play_sfx', 'heal'],
+                                                ['give_card', { card: 50, text: "Scholar's Grant Received!" }],
+                                                ['inject_dialogue', { 
+                                                    index: scholarId, 
+                                                    // We actually echo the LLM's lore back to them!
+                                                    text: [`Fascinating... "${script.mapLore}"?`, "I must write this down immediately! Take this funding for your research!"], 
+                                                    endActions: [['disappear', scholarId], ['close_dialogue', null]] 
+                                                }]
+                                            ]
+                                        });
+                                    }
                                     // 50% Chance: Villain Faction Scouting Party
-                                    if (r < 0.5) {
+                                    else if (r < 0.5) {
                                         let spawnID = hostileMinions[Math.floor(Math.random() * hostileMinions.length)];
                                         mapNPCs.push({
                                             type: CARD_MANIFEST_DB[spawnID]?.sprite || spawnID, 
