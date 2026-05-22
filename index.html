@@ -2504,7 +2504,7 @@
           }
         }
         //Witch Queen
-        if(this.type == 34.1){
+        if(this.type == 34.1&&dungeon.mapID === 5){
           MusicEngine.stop();
           MusicEngine.play(12);
         }
@@ -29845,7 +29845,6 @@
                             if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('click');
                             return;
                         }
-                        return; // Block other clicks while in fullscreen quest mode
                     }
 
                     // --- QUEST LIST ITEM CLICKS ---
@@ -30969,7 +30968,7 @@
                 // ====================================================
                 // 2. MINIGAMES (Emperor / Suncat friendly duels)
                 // ====================================================
-                if (window.isEmperorDuel === true ||startGame === 8|| (Dungeon.status === 'dueling')) {
+                if (window.isEmperorDuel === true ||(Dungeon.status === 'dueling')) {
                     window.isEmperorDuel = false;
                     // --- WIN MINIGAME ---
                     if (Player[1].option === 10.1) {  
@@ -31350,7 +31349,7 @@
                     return; }
                 }
                 //vvvCHATvvv/////
-                if (gridPos.x >= 0 && gridPos.x <= 3.5 && gridPos.y >= 0 && gridPos.y <= 2.25) {
+                if (gridPos.x >= 0 && gridPos.x <= 7.5 && gridPos.y >= 0 && gridPos.y <= 2.25) {
                     if (Player[1].isCPU === 0&&!Player[0].battleOpponentId&&startGame > 3){return}
                     if (!(startGame>3 &&(gridPos.x >= 3&&gridPos.x <= 7)&&(gridPos.y <= 3.5))){
                     e.preventDefault();
@@ -31472,80 +31471,86 @@
                         
                         const foeTeam = Array.from({ length: foeCount }, () => getRandomMonsterId());
 
-                        Dungeon.startEidolonMinigame(allyTeam, foeTeam);
+                        Dungeon.startEidolonMinigame(allyTeam, foeTeam );
                         
                         console.log(`Tactics! Player + ${allyCount} Allies vs ${foeCount} Foes.`);
                         MusicEngine.playSFX('heal');
                         return;
                     }
                 else if (pos.x > (tL/10)*6 && pos.x <= (tL/10)*9.5  && //grimoire
-                pos.y > (tH/10)*6 && pos.y < (tH/10)*8 ){
-                MusicEngine.stop();
-                cursong = rnd(0,songcount - 1)
-                MusicEngine.play(cursong);
-        
-                startGame = 'tarot';
-                return;
-                }
-                else if (pos.x > (tL/10)*0 && pos.x <= (tL/10)*3  && 
-                    pos.y > (tH/10)*8.25 && pos.y < (tH/10)*10 ){
-                
-                startGame = 3;
-                MusicEngine.playSFX('cancel');
-                return;
-                }
+                    pos.y > (tH/10)*6 && pos.y < (tH/10)*8 ){
+                    MusicEngine.stop();
+                    cursong = rnd(0,songcount - 1)
+                    MusicEngine.play(cursong);
+                    preGame = 'options';
+                    startGame = 'tarot';
+                    return;
+                    }
+                    else if (pos.x > (tL/10)*0 && pos.x <= (tL/10)*3  && 
+                        pos.y > (tH/10)*8.25 && pos.y < (tH/10)*10 ){
+                    
+                    startGame = 3;
+                    MusicEngine.playSFX('cancel');
+                    return;
+                    }
                 else if (pos.x > (tL/10)*6&& pos.x <= (tL/10)*10  && //tarot
-                pos.y > (tH/10)*8.5 && pos.y < (tH/10)*10 ){
-                // Player[1].isCPU = 0;
-                //MusicEngine.stop();
-                MusicEngine.playSFX('heal');
+                    pos.y > (tH/10)*8.5 && pos.y < (tH/10)*10 ){
+                    // Player[1].isCPU = 0;
+                    //MusicEngine.stop();
+                    MusicEngine.playSFX('heal');
 
-                startGame = 'options2';
-                return;
-                //return;
-                }
+                    startGame = 'options2';
+                    return;
+                    //return;
+                    }
             }
             if (startGame == 'options2'){
-                if (pos.x > (tL/10)*1 && pos.x <= (tL/10)*4  && //Jukebox
-                    pos.y > (tH/10)*6 && pos.y < (tH/10)*8 ){
-                Player[1].isCPU = 1;
-                MusicEngine.stop();
-                startGame = 'jukebox';
-                MusicEngine.playSFX('heal');
-                return;
-                }
-                else if (pos.x > (tL/10)*6 && pos.x <= (tL/10)*9.5  && //grimoire
-                pos.y > (tH/10)*6 && pos.y < (tH/10)*8 ){
-                Player[1].isCPU = 0;
-                MusicEngine.stop();
-                cursong = rnd(0,songcount - 1)
+                //Jukebox
+                    if (pos.x > (tL/10)*1 && pos.x <= (tL/10)*4  && 
+                        pos.y > (tH/10)*6 && pos.y < (tH/10)*8 ){
+                            Player[1].isCPU = 1;
+                            MusicEngine.stop();
+                            preGame = 'options2';
+                            startGame = 'jukebox';
+                            MusicEngine.playSFX('heal');
+                            return;
+                        }
+                //grimoire
+                    else if (pos.x > (tL/10)*6 && pos.x <= (tL/10)*9.5  && 
+                        pos.y > (tH/10)*6 && pos.y < (tH/10)*8 ){
+                        Player[1].isCPU = 0;
+                        MusicEngine.stop();
+                        cursong = rnd(0,songcount - 1)
                         MusicEngine.play(cursong);
-                viewingFullDeck = true; 
-                // Initialize the playlist immediately with all cards
-                let fullLib = getFullLibrary();
-                activePlaylist = fullLib.map(c => c.index);
-                startGame = 'grimoire';
-                MusicEngine.playSFX('heal');
-                return;
-                }
-                else if (pos.x > (tL/10)*0 && pos.x <= (tL/10)*3  && 
-                    pos.y > (tH/10)*8.25 && pos.y < (tH/10)*10 ){
-                
-                startGame = 'options';
-                MusicEngine.playSFX('cancel');
-                return;
-                }
-                else if (pos.x > (tL/10)*6&& pos.x <= (tL/10)*9.5  && //tarot
-                pos.y > (tH/10)*8.5 && pos.y < (tH/10)*10 ){
-                // Player[1].isCPU = 0;
-                //MusicEngine.stop();
-                
-                startGame = 'journal';
-                journalTab = 'settings';
-                return;
-                // MusicEngine.playSFX('heal');
-                //return;
-                }
+                        viewingFullDeck = true; 
+                        // Initialize the playlist immediately with all cards
+                        let fullLib = getFullLibrary();
+                        activePlaylist = fullLib.map(c => c.index);
+                        startGame = 'grimoire';
+                        MusicEngine.playSFX('heal');
+                        return;
+                    }
+                //Back Button
+                    else if (pos.x > (tL/10)*0 && pos.x <= (tL/10)*3  && 
+                        pos.y > (tH/10)*8.25 && pos.y < (tH/10)*10 ){
+                        
+                        startGame = 'options';
+                        MusicEngine.playSFX('cancel');
+                        return;
+                        }
+                //tarot
+                    else if (pos.x > (tL/10)*6&& pos.x <= (tL/10)*9.5  && //tarot
+                        pos.y > (tH/10)*8.5 && pos.y < (tH/10)*10 ){
+                        // Player[1].isCPU = 0;
+                        //MusicEngine.stop();
+                        preGame = 'options2'
+                        startGame = 'journal';
+                        journalTab = 'settings';
+                        MusicEngine.playSFX('heal');
+                        return;
+                        
+                        //return;
+                        }
             }
             if (startGame == 'grimoire') {
             
@@ -31758,54 +31763,61 @@
             if (startGame == 3){
                 if (pos.x > (tL/10)*1 && pos.x <= (tL/10)*4  && //CPU
                     pos.y > (tH/10)*6 && pos.y < (tH/10)*8 ){
-                Player[1].isCPU = 1;
-                
-                startGame = 4;
-                MusicEngine.playSFX('heal');
-                return;
-                }
+                        var Player = [
+                            new Field(0),
+                            new Field(1, 1)
+                        ];
+                        Player[1].opponent = Player[0];
+                        Player[0].opponent = Player[1];
+                    Player[1].isCPU = 1;
+                    preGame = 3;
+                    startGame = 4;
+                    MusicEngine.playSFX('heal');
+                    return;
+                    }
                 else if (pos.x > (tL/10)*6 && pos.x <= (tL/10)*9.5  && //LOCAL
-                pos.y > (tH/10)*6 && pos.y < (tH/10)*8 ){
-                Player[1].isCPU = 0;
-                window.settingsNarration = false; 
-                window.settingsChat = false; 
-                if(typeof socket !== 'undefined') socket.emit('toggle_narration', false); // TELL SERVER
-                MusicEngine.stop();
-                MusicEngine.play(4);
-                startGame = 4;
-                MusicEngine.playSFX('heal');
-                return;
+                    pos.y > (tH/10)*6 && pos.y < (tH/10)*8 ){
+                    Player[1].isCPU = 0;
+                    window.settingsNarration = false; 
+                    window.settingsChat = false; 
+                    if(typeof socket !== 'undefined') socket.emit('toggle_narration', false); // TELL SERVER
+                    MusicEngine.stop();
+                    MusicEngine.play(4);
+                    preGame = 3;
+                    startGame = 4;
+                    MusicEngine.playSFX('heal');
+                    return;
                 }
                 else if (pos.x > (tL/10)*1 && pos.x <= (tL/10)*4  && //Tutorial
-                pos.y > (tH/10)*8.5 && pos.y < (tH/10)*10 ){
-                Player[1].isCPU = 0;
-                window.settingsNarration = true; 
-                window.settingsChat = true; 
-                if(typeof socket !== 'undefined') socket.emit('toggle_narration', true); // TELL SERVER
-                MusicEngine.stop();
-                MusicEngine.play(4);
-                if (Dungeon.loadGame()) {
-                    startGame = 'explore'; // Jump straight to game
-                    preGame = 'explore';
-                    if (Dungeon.mapID == 999){
-                    MusicEngine.play(rnd(0,47))
+                    pos.y > (tH/10)*8.5 && pos.y < (tH/10)*10 ){
+                    Player[1].isCPU = 0;
+                    window.settingsNarration = true; 
+                    window.settingsChat = true; 
+                    if(typeof socket !== 'undefined') socket.emit('toggle_narration', true); // TELL SERVER
+                    MusicEngine.stop();
+                    MusicEngine.play(4);
+                    if (Dungeon.loadGame()) {
+                        startGame = 'explore'; // Jump straight to game
+                        preGame = 'explore';
+                        if (Dungeon.mapID == 999){
+                        MusicEngine.play(rnd(0,47))
+                        }
+                        else{MusicEngine.play(Dungeon.mapSong[Dungeon.mapID]);} // Play correct music}
+                        
+                    } else {
+                    startGame = 'charSelect';
                     }
-                    else{MusicEngine.play(Dungeon.mapSong[Dungeon.mapID]);} // Play correct music}
-                    
-                } else {
-                startGame = 'charSelect';
-                }
-                MusicEngine.playSFX('heal');
-                return;
-                }
+                    MusicEngine.playSFX('heal');
+                    return;
+                    }
                 else if (pos.x > (tL/10)*6&& pos.x <= (tL/10)*9.5  && //options
-                pos.y > (tH/10)*8.5 && pos.y < (tH/10)*10 ){
-                Player[1].isCPU = 0;
-                
-                startGame = 'options';
-                MusicEngine.playSFX('click');
-                return;
-                }
+                    pos.y > (tH/10)*8.5 && pos.y < (tH/10)*10 ){
+                    Player[1].isCPU = 0;
+                    
+                    startGame = 'options';
+                    MusicEngine.playSFX('click');
+                    return;
+                    }
             }
             if (startGame == 2){
                 lastSongTime = Date.now();
