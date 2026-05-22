@@ -4160,20 +4160,7 @@
                                         classification: 'shop'
                                     });
 
-                                let clerkBuilding = availableBuildings.shift();
-                                let clerkX = clerkBuilding ? clerkBuilding.cx + 0.5 : mapData.bastionCenter.x - 2.5;
-                                let clerkY = clerkBuilding ? clerkBuilding.cy + 0.5 : mapData.bastionCenter.y + 2.5;
-
-                                mapNPCs.push(createServerNPC({
-                                    index: 201,
-                                    sprite: 42,
-                                    x: clerkX,
-                                    y: clerkY,
-                                    color: '#00ff00',
-                                    role: 'dialogue',
-                                    // THIS is the magic word that tells the client what to do
-                                    factoryKey: 'F_RANK_CLERK' 
-                                }));
+                               
 
                                 // 4. LORE CITIZENS (Dwellers)
                                 // Fill the remaining buildings with citizens who provide deep, profound lore.
