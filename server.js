@@ -4078,48 +4078,7 @@
                                         noActions: [['close_dialogue', null]]
                                     });
                                 }
-                                // The Hidden Cache (Placed just outside the Lair's back wall)
-                                    let cacheId = 500099;
-                                    let cacheX = lairZone.x - 1.5; 
-                                    let cacheY = lairZone.y + Math.floor(lairZone.h / 2) + 0.5;
-
-                                    let openCacheActions = [
-                                        ['play_sfx', 'chime'],
-                                        ['give_card', { card: 71, text: "Found a Rare Relic!" }],
-                                        ['give_card', { card: 65, text: "Found a Hazard Gem!" }],
-                                        ['disappear', cacheId],
-                                        ['notify', { text: "The cache clicks open, revealing smuggled goods.", endActions: [['close_dialogue', null]] }]
-                                    ];
-
-                                    mapNPCs.push({
-                                        index: cacheId,
-                                        type: 10, // Chest Sprite
-                                        x: cacheX, y: cacheY,
-                                        state: 'stationary', role: 'dialogue', alignment: 'friendly', color: '#ffff00',
-                                        // The dialogueFactory lets us check the memory flag dynamically!
-                                        dialogueFactory: (dungeon) => {
-                                            if (dungeon.memory['map999_knows_password']) {
-                                                return {
-                                                    text: ["*A heavy iron chest sits hidden in the brush. A magical mouth demands a password.*"],
-                                                    options: ['Whisper "Shattered Moon"', 'Whisper "Scattered Star"'],
-                                                    yesActions: openCacheActions,
-                                                    noActions: [['close_dialogue', null]]
-                                                };
-                                            } else {
-                                                return {
-                                                    text: ["*A heavy iron chest sits hidden in the brush. It is sealed with strong magic. You need a password.*"],
-                                                    options: ['Force it Open', 'Leave'],
-                                                    yesActions: [
-                                                        ['play_sfx', 'horn'],
-                                                        ['disappear', cacheId],
-                                                        ['notify', { text: "The magic violently rejects you! The chest crumbles to dust!", endActions: [['close_dialogue', null]] }]
-                                                    ],
-                                                    noActions: [['close_dialogue', null]]
-                                                };
-                                            }
-                                        }
-                                    });
-
+                               
                             // ==========================================
                             // ZONE 2: THE BASTION (City Hub & Classified Roles)
                             // ==========================================
@@ -4160,7 +4119,25 @@
                                         classification: 'shop'
                                     });
 
-                               
+                               mapNPCs.push({
+                            
+                                            type: 42, // Uses the enemy faction's sprite
+                                            x: mapData.bastionCenter.x + 1.5, y: mapData.bastionCenter.y - 1.5,
+                                            state: 'stationary', role: 'dialogue', alignment: 'friendly', color: '#ffff00', // Yellow/Neutral
+                                            dialogue: [
+                                                "The guild is conducting operations in this zone.", 
+                                                "If you'd like to take on a bounty speak to one of the clerks"
+                                            ],
+                                            
+                                             endActions: [                                                
+                                                ['spawn_preset_npc', { template: 'guild_clerk', rank: 'F', x: mapData.bastionCenter.x - 3.5, y: mapData.bastionCenter.y - 3.5, }],
+                                                ['spawn_preset_npc', { template: 'guild_clerk', rank: 'E', x: mapData.bastionCenter.x + 5.5, y: mapData.bastionCenter.y + 3.5, }],
+                                                ['spawn_preset_npc', { template: 'guild_clerk', rank: 'D',x: mapData.bastionCenter.x + 3.5, y: mapData.bastionCenter.y - 3.5, }],
+                                                ['close_dialogue', null],
+                                                ['disappear',null]
+                                            ]
+                                           
+                                        });
 
                                 // 4. LORE CITIZENS (Dwellers)
                                 // Fill the remaining buildings with citizens who provide deep, profound lore.
@@ -4340,26 +4317,21 @@
                                         let deserterId = 500000 + placedWanderers;
                                         mapNPCs.push({
                                             index: deserterId,
-                                            type: hostileMinions[0], // Uses the enemy faction's sprite
+                                            type: 42, // Uses the enemy faction's sprite
                                             x: tile.x + 0.5, y: tile.y + 0.5,
                                             state: 'stationary', role: 'dialogue', alignment: 'friendly', color: '#ffff00', // Yellow/Neutral
                                             dialogue: [
-                                                "*The soldier is bleeding heavily, leaning against a tree.*", 
-                                                "Please... I deserted. I couldn't take the cruelty anymore.",
-                                                "If you're going to the Lair... there is a hidden supply cache outside the walls. The password is 'Shattered Moon'."
+                                                "The guild is conducting operations in this zone.", 
+                                                "If you'd like to assist us speak to one of the clerks"
                                             ],
-                                            options: ['Offer Potion (Mercy)', 'Execute Traitor'],
-                                            yesActions: [
-                                                ['play_sfx', 'heal'],
-                                                ['set_memory', { key: 'map999_knows_password', value: true }], // Saves the flag!
-                                                ['inject_dialogue', { index: deserterId, text: ["Thank you... May the gods favor your blade."], endActions: [['disappear', deserterId], ['close_dialogue', null]] }]
-                                            ],
-                                            noActions: [
-                                                ['play_sfx', 'slash'],
-                                                ['give_card', { card: 38, text: "Looted 1 Gold." }], // Paltry reward for violence
-                                                ['disappear', deserterId],
+                                            
+                                             endActions: [                                                
+                                                ['spawn_preset_npc', { template: 'guild_clerk', rank: 'F', x: tile.x + 0.5, y:tile.y + 0.5 }],
+                                                ['spawn_preset_npc', { template: 'guild_clerk', rank: 'E', x: tile.x + 0.5, y:tile.y + 0.5 }],
+                                                ['spawn_preset_npc', { template: 'guild_clerk', rank: 'D', x: tile.x + 0.5, y:tile.y + 0.5 }],
                                                 ['close_dialogue', null]
                                             ]
+                                           
                                         });
                                     }
                                     //tactics
