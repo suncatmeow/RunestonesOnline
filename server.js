@@ -4321,29 +4321,9 @@
 
                                     let r = Math.random();
                                     // 5% Chance: The Bleeding Deserter (Wilds)
-                                    if (r < 0.06) {
-                                        let deserterId = 500000 + placedWanderers;
-                                        mapNPCs.push({
-                                            index: deserterId,
-                                            type: 42, // Uses the enemy faction's sprite
-                                            x: tile.x + 0.5, y: tile.y + 0.5,
-                                            state: 'stationary', role: 'dialogue', alignment: 'friendly', color: '#ffff00', // Yellow/Neutral
-                                            dialogue: [
-                                                "The guild is conducting operations in this zone.", 
-                                                "If you'd like to assist us speak to one of the clerks"
-                                            ],
-                                            
-                                             endActions: [                                                
-                                                ['spawn_preset_npc', { template: 'guild_clerk', rank: 'F', x: tile.x + 0.5, y:tile.y + 0.5 }],
-                                                ['spawn_preset_npc', { template: 'guild_clerk', rank: 'E', x: tile.x + 0.5, y:tile.y + 0.5 }],
-                                                ['spawn_preset_npc', { template: 'guild_clerk', rank: 'D', x: tile.x + 0.5, y:tile.y + 0.5 }],
-                                                ['close_dialogue', null]
-                                            ]
-                                           
-                                        });
-                                    }
+                                    
                                     //tactics
-                                    else if (r < 0.09) {
+                                    if (r < 0.03) {
                                         let tacticianId = 400000 + placedWanderers;
                                         let ambushBossId = 400000 + placedWanderers + 1;
                                         
@@ -4377,7 +4357,7 @@
                                         });
                                     }
                                     // 5% Chance: The Mad Scholar
-                                    else if (r < 0.13) {
+                                    else if (r < 0.09) {
                                         let scholarId = 500100 + placedWanderers;
                                         mapNPCs.push({
                                             index: scholarId,
@@ -4418,7 +4398,7 @@
                                         });
                                     } 
                                     // 30% Chance: Third Tribe Predators Hunting
-                                    else if (r < 0.9) {
+                                    else if (r < 0.95) {
                                         let spawnID = thirdTribeMinions[Math.floor(Math.random() * thirdTribeMinions.length)];
                                         mapNPCs.push({
                                             type: CARD_MANIFEST_DB[spawnID]?.sprite || spawnID, 
