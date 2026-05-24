@@ -3177,7 +3177,7 @@
                 for(let y = 1; y < h - 1; y++) for(let x = 1; x < w - 1; x++) grid[y][x] = floorType;
                 buildings = [];
                 let attempts = w * h; 
-                let minSize = 9, maxSize = 13; 
+                let minSize = 5, maxSize = 5; 
 
                 for (let i = 0; i < attempts; i++) {
                     let bw = Math.floor(Math.random() * (maxSize - minSize + 1)) + minSize;
