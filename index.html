@@ -6432,7 +6432,11 @@
                     options: ['Play Eidolon', 'Not Right Now'],
                     yesActions: [
                         ['spectate', 'Player sat down for a casual game in the custom dungeon.'],
-                        ['start_minigame', 'casual_duel'] 
+                        //['start_minigame', 'casual_duel'] 
+                        
+                        ['spawn_preset_npc', { template: 'guild_clerk', rank: 'F', x: 10.5, y: 8.5 }],
+                        ['disappear', null],
+                        ['close_dialogue', null]
                     ],
                     noActions: [
                         ['play_sfx', 'cancel'],
@@ -14729,14 +14733,682 @@
                         payload.deck || [payload.sprite], payload.role || 'battle', 
                         payload.isBoss || false, payload.alignment || 'foe'
                     );
-                    if (payload.customDialogue) eNpc.customDialogue = payload.customDialogue;
-                    if (payload.options) eNpc.options = payload.options;
-                    if (payload.yesActions) eNpc.yesActions = payload.yesActions;
-                    if (payload.noActions) eNpc.noActions = payload.noActions;
-                    if (payload.endActions) eNpc.endActions = payload.endActions;
-                    if (payload.deathActions) eNpc.deathActions = payload.deathActions;
+                    
+                    // Create a copy of the payload and strip out the constructor arguments
+                    let extraProps = { ...payload };
+                    delete extraProps.index; delete extraProps.x; delete extraProps.y; 
+                    delete extraProps.sprite; delete extraProps.state; delete extraProps.color; 
+                    delete extraProps.deck; delete extraProps.role; delete extraProps.isBoss; delete extraProps.alignment;
+
+                    // Dynamically assign ALL remaining properties (dialogueFactory, speed, rewardCard, etc.)
+                    Object.assign(eNpc, extraProps);
                     
                     this.npcs.push(eNpc);
+                    break;
+                }
+                case 'spawn_preset_npc': {
+                    // Usage: ['spawn_preset_npc', 'mimic'] OR ['spawn_preset_npc', { template: 'merchant', x: 5, y: 5 }]
+                    let template = typeof payload === 'string' ? payload : payload.template;
+                    
+                    // Assign a unique ID so multiple clones don't conflict with each other
+                    let pIndex = payload.index || (30000 + Math.floor(Math.random() * 10000));
+                    let pX = payload.x !== undefined ? payload.x : this.x;
+                    let pY = payload.y !== undefined ? payload.y : this.y;
+                    
+                    let newNpc = null;
+
+                    switch(template) {
+                        case 'footpad':
+                            newNpc = Object.assign(new NPC(pIndex, pX, pY, 74.1, 'stationary', '#00ff00', [74, 50, 51, 68], 'dialogue', false, 'friendly'), {
+                                customDialogue: ["Hand over a card, or I'll crush your bones!!"],
+                                options: ['Hand over a card', 'Refuse'],
+                                yesActions: [['rob_player', {
+                                    successActions: [['play_sfx', 'chime'], ['disappear', pIndex], ['notify', "Heh, pleasure doing business with you!"], ['close_dialogue', null]],
+                                    failActions: [['play_sfx', 'horn'], ['transform_npc', { index: pIndex, newAlignment: 'foe', newRole: 'battle', newState: 'chasing', clearDialogue: true }], ['start_battle', pIndex], ['close_dialogue', null]]
+                                }]],
+                                noActions: [['play_sfx', 'horn'], ['spectate', 'Player refused to be mugged and initiated combat!'], ['transform_npc', { index: pIndex, newAlignment: 'foe', newRole: 'battle', newState: 'chasing', clearDialogue: true }], ['start_battle', pIndex], ['close_dialogue', null]]
+                            });
+                            break;
+                            
+                        case 'arena_master':
+                            newNpc = Object.assign(new NPC(pIndex, pX, pY, 5, 'stationary', '#00ff00', [], 'dialogue', false, 'friendly'), {
+                                customDialogue: ["Welcome to the Crucible.", "Survive my minions, and you shall earn glory. Prepare yourself!"],
+                                options: ['Start', 'Leave'],
+                                yesActions: [
+                                    ['play_sfx', 'horn'],
+                                    ['start_wave', {
+                                        delay: 2.0,
+                                        waves: [[{ sprite: 42 }, { sprite: 42 }], [{ sprite: 42 }, { sprite: 42 }, { sprite: 42, isBoss: true }]],
+                                        onComplete: [['give_card', {card: 71, text: "You survived the Crucible!"}], ['play_song', 8], ['disappear', pIndex]]
+                                    }],
+                                    ['close_dialogue', null]
+                                ],
+                                noActions: [['close_dialogue', null]]
+                            });
+                            break;
+                            
+                        case 'merchant':
+                            let rDeck = [42, 60, Math.floor(Math.random() * 20) + 10, Math.floor(Math.random() * 20) + 50];
+                            newNpc = Object.assign(new NPC(pIndex, pX, pY, 41, 'wandering', '#00ff00', rDeck, 'shop', false, 'friendly'), {
+                                customDialogue: ["Got some rare cards I found in this dungeon. Take a look!"],
+                                endActions: [['open_shop', rDeck], ['play_sfx', 'click']]
+                            });
+                            break;
+                            
+                        case 'mimic':
+                            newNpc = Object.assign(new NPC(pIndex, pX, pY, -27, 'stationary', '#ffff00', [83, 52, 40], 'dialogue', false, 'friendly'), {
+                                customDialogue: ["Kee hee! You fell for the bait!"],
+                                endActions: [['transform_npc', { index: pIndex, newAlignment: 'foe', newRole: 'battle', newState: 'chasing' }], ['start_battle', pIndex]],
+                                deathActions: [['give_card', { card: 10, text: "The mimic dropped a Treasure Chest card!" }]]
+                            });
+                            break;
+                            
+                        case 'gambler':
+                            newNpc = Object.assign(new NPC(pIndex, pX, pY, 4, 'stationary', '#00ff00', [5, 12, 18, 24, 30, 42], 'dialogue', false, 'friendly'), {
+                                customDialogue: ["It's quiet in this dungeon. Too quiet.", "Fancy a friendly game of cards to pass the time?"],
+                                options: ['Play Eidolon', 'Not Right Now'],
+                                yesActions: [['spectate', 'Player sat down for a casual game in the custom dungeon.'], ['start_minigame', 'casual_duel']],
+                                noActions: [['play_sfx', 'cancel'], ['close_dialogue', null]]
+                            });
+                            break;
+                        case 'guild_clerk':
+                            // Usage: ['spawn_preset_npc', { template: 'guild_clerk', rank: 'F', x: 31.5, y: 75.5 }]
+                            let rank = payload.rank || 'F';
+                            
+                            // Map the sprites dynamically based on rank
+                            let spriteMap = { 'F': 42, 'E': 26, 'D': 76 };
+                            let cSprite = spriteMap[rank] || 42;
+
+                            newNpc = new NPC(pIndex, pX, pY, cSprite, 'stationary', '#00ff00', [], 'dialogue', false, 'friendly');
+
+                            newNpc.dialogueFactory = (dungeon) => {
+                                if (dungeon.memory['guild_rep'] === undefined) dungeon.memory['guild_rep'] = 0; 
+                                if (dungeon.memory['guild_rank'] === undefined) dungeon.memory['guild_rank'] = 'F'; 
+                                if (!dungeon.memory['guild_quest']) dungeon.memory['guild_quest'] = { state: 0 }; 
+
+                                let rep = dungeon.memory['guild_rep'];
+                                let playerRank = dungeon.memory['guild_rank'];
+                                let qData = dungeon.memory['guild_quest'];
+                                let qState = qData.state;
+
+                                // Safe spawn helper variables (Using dungeon context)
+                                let centerX = dungeon.maze && dungeon.maze[0] ? dungeon.maze[0].length / 2 : 10;
+                                let centerY = dungeon.maze ? dungeon.maze.length / 2 : 10;
+                                let maxRadius = dungeon.maze && dungeon.maze[0] ? Math.max(dungeon.maze.length, dungeon.maze[0].length) : 10;
+
+                                // ==========================================
+                                // --- THE F-RANK GUILD CLERK ---
+                                // ==========================================
+                                if (rank === 'F') {
+                                    if (qState === 0) {
+                                        let promotionThreshold = 3; 
+                                        if (playerRank === 'F' && rep >= promotionThreshold) {
+                                            let examBossIndex = pIndex + 1000; // Unique boss index based on clerk
+                                            let examWinActions = [
+                                                ['set_memory', { key: 'guild_rank', value: 'E' }], 
+                                                ['give_card', { card: 71, text: "You earned your E-Rank License!" }],
+                                                ['play_sfx', 'chime'],
+                                                ['notify', "Congratulations! You are now an E-Rank Adventurer!"]
+                                            ];
+
+                                            return {
+                                                text: [`Your reputation precedes you. (Rank: ${playerRank} | Rep: ${rep})`, "You qualify for the E-Rank Promotion Exam. Take the Tactical Duel?"],
+                                                options: ['Take Exam', 'Not Yet'],
+                                                yesActions: [
+                                                    ['play_sfx', 'horn'],
+                                                    ['spawn_ephemeral_npc', { index: examBossIndex, x: dungeon.x, y: dungeon.y, sprite: 5, state: 'stationary', role: 'battle', alignment: 'foe', color: '#ff0000', deck: [5, 54, 56, 42], isBoss: true, deathActions: examWinActions }],
+                                                    ['start_tactics', { id: examBossIndex, stakes: 'exam' }],
+                                                    ['close_dialogue', null]
+                                                ],
+                                                noActions: [['close_dialogue', null]]
+                                            };
+                                        }
+
+                                        let safePOS = dungeon.getSafeSpawn(centerX, centerY, maxRadius);
+                                        let randomX = safePOS.x;
+                                        let randomY = safePOS.y;
+                                        let uniqueTargetId = pIndex + 100 + Math.floor(Math.random() * 100); 
+
+                                        let isBounty = Math.random() < 0.5;
+                                        if (isBounty) {
+                                            let validTargets = [{ sprite: 54, name: "Goblin Scrapper" }, { sprite: 56, name: "Cave Imp" }];
+                                            let target = validTargets[Math.floor(Math.random() * validTargets.length)];
+                                            
+                                            let targetDeathActions = [
+                                                ['update_quest_state', { key: 'guild_quest', state: 2 }],
+                                                ['play_sfx', 'chime'],
+                                                ['notify', "Target eliminated! Return to the Guild."]
+                                            ];
+
+                                            let spawnAction = ['spawn_ephemeral_npc', {
+                                                index: uniqueTargetId, x: randomX, y: randomY, sprite: target.sprite,
+                                                state: 'stationary', role: 'dialogue', alignment: 'friendly_messenger', color: '#ff0000', isBoss: true,
+                                                customDialogue: ["You'll never take me alive!"],
+                                                endActions: [['transform_npc', { index: uniqueTargetId, newAlignment: 'foe', newRole: 'battle', newState: 'chasing', clearDialogue: true, newDeathActions: targetDeathActions }], ['start_battle', uniqueTargetId]],
+                                                deathActions: targetDeathActions
+                                            }];
+
+                                            let questBlueprint = { state: 1, type: 'bounty', tName: target.name, qRank: 'F', targetMap: dungeon.mapID, spawnActions: [spawnAction] };
+
+                                            return {
+                                                text: [`Welcome. (Rank: ${playerRank} | Rep: ${rep})`, "I have an F-Rank Bounty available. Interested?"],
+                                                options: ['Accept Bounty', 'Leave'],
+                                                yesActions: [
+                                                    ['set_memory', { key: 'guild_quest', value: questBlueprint }],
+                                                    spawnAction, 
+                                                    ['play_sfx', 'click'],
+                                                    ['notify', `${target.name} is hiding nearby. Slay them and report back.`]
+                                                ],
+                                                noActions: [['close_dialogue', null]]
+                                            };
+                                        } else {
+                                            let spawnAction = ['spawn_ephemeral_npc', {
+                                                index: uniqueTargetId, x: randomX, y: randomY, sprite: 10,
+                                                state: 'stationary', role: 'dialogue', alignment: 'friendly', color: '#ffff00', isBoss: true,
+                                                customDialogue: ["You found the lost guild shipment! Take it?"],
+                                                options: ['Take', 'Leave'],
+                                                yesActions: [
+                                                    ['update_quest_state', { key: 'guild_quest', state: 2 }],
+                                                    ['play_sfx', 'horn'], 
+                                                    ['disappear', null], 
+                                                    ['start_wave', { delay: 1.0, waves: [[{sprite: 56}, {sprite: 54}], [{sprite: 55, isBoss: true}]], onComplete: [['notify', "Ambush defeated!"]]}], 
+                                                    ['start_hunted', { waves: 2, interval: 400, mobs: [{sprite: 56}] }], 
+                                                    ['notify', "You recovered the shipment... but triggered an ambush!"]
+                                                ],
+                                                noActions: [['close_dialogue', null]]
+                                            }];
+
+                                            let questBlueprint = { state: 1, type: 'fetch', tName: 'Lost Shipment', qRank: 'F', targetMap: dungeon.mapID, spawnActions: [spawnAction] };
+
+                                            return {
+                                                text: [`Welcome. (Rank: ${playerRank} | Rep: ${rep})`, "An F-Rank guild shipment was lost nearby. We need it recovered."],
+                                                options: ['Accept Fetch Quest', 'Leave'],
+                                                yesActions: [
+                                                    ['set_memory', { key: 'guild_quest', value: questBlueprint }],
+                                                    spawnAction, 
+                                                    ['play_sfx', 'click'],
+                                                    ['notify', "The shipment is near your location. Beware of local scavengers!"]
+                                                ],
+                                                noActions: [['close_dialogue', null]]
+                                            };
+                                        }
+                                    }
+
+                                    if (qState === 1 || qState === 2) {
+                                        let targetName = qData.tName;
+                                        let questRank = qData.qRank || 'F';
+                                        let repPenalty = questRank === 'E' ? 2 : (questRank === 'D' ? 3 : 1);
+                                        let repReward = questRank === 'E' ? 2 : (questRank === 'D' ? 3 : 1);
+
+                                        if (qState === 2) {
+                                            let successText = ["Ah! You completed the task! Excellent work. Here is your reward."];
+                                            let turnInActions = [
+                                                ['close_dialogue', null],
+                                                ['set_memory', { key: 'guild_quest', value: { state: 0 } }],
+                                                ['set_memory', { key: 'guild_rep', value: rep + repReward }],
+                                                ['play_sfx', 'heal']
+                                            ];
+
+                                            let numRewards = 1; 
+                                            if (questRank === 'E') numRewards = 2;
+                                            if (questRank === 'D') numRewards = 3;
+
+                                            for (let i = 0; i < numRewards; i++) {
+                                                turnInActions.push(['give_card', { card: 38, text: `Quest Reward Received! (${i+1}/${numRewards})` }]);
+                                            }
+
+                                            if (questRank === 'E' || questRank === 'D') {
+                                                if (qData.wasBetrayal) {
+                                                    successText = ["Oh my... They betrayed you? I am so sorry that happened.", "Take this extra hazard pay!"];
+                                                    turnInActions.push(['give_card', { card: 65, text: "Bonus Hazard Gem Received!" }]);
+                                                } else {
+                                                    successText = [`Ah! You completed the ${questRank}-Rank task flawlessly. Excellent work.`];
+                                                }
+                                            }
+
+                                            return {
+                                                text: successText,
+                                                options: ['Turn In', 'Leave'],
+                                                yesActions: turnInActions,
+                                                noActions: [['close_dialogue', null]]
+                                            };
+                                        } else {
+                                            return {
+                                                text: [`You are currently assigned to the ${questRank}-Rank ${targetName} quest.`, `Return to a clerk when the task is complete!`],
+                                                options: [`Abandon Quest (-${repPenalty} Rep)`, 'Leave'],
+                                                yesActions: [
+                                                    ['play_sfx', 'cancel'],
+                                                    ['stop_hunted', null], 
+                                                    ['set_memory', { key: 'guild_quest', value: { state: 0 } }], 
+                                                    ['set_memory', { key: 'guild_rep', value: Math.max(0, rep - repPenalty) }], 
+                                                    ['notify', "Quest abandoned. Your reputation has decreased."]
+                                                ],
+                                                noActions: [['close_dialogue', null]]
+                                            };
+                                        }
+                                    }
+                                }
+
+                                // ==========================================
+                                // --- THE E-RANK GUILD CLERK ---
+                                // ==========================================
+                                else if (rank === 'E') {
+                                    if (playerRank === 'F') {
+                                        return {
+                                            text: ["You're just an F-Rank rookie. Don't waste my time.", "Come back when you've passed the promotion exam at the front desk."],
+                                            options: ['Leave'],
+                                            yesActions: [['close_dialogue', null]],
+                                            noActions: null
+                                        };
+                                    }
+
+                                    if (qState === 0) {
+                                        let promotionThreshold = 6; 
+                                        if (playerRank === 'E' && rep >= promotionThreshold) {
+                                            let examBossIndex = pIndex + 1000;
+                                            let examWinActions = [
+                                                ['set_memory', { key: 'guild_rank', value: 'D' }], 
+                                                ['give_card', { card: 71, text: "You earned your D-Rank License!" }],
+                                                ['play_sfx', 'chime'],
+                                                ['notify', "Congratulations! You are now a D-Rank Adventurer!"]
+                                            ];
+
+                                            return {
+                                                text: [`Your reputation precedes you. (Rank: ${playerRank} | Rep: ${rep})`, "You qualify for the D-Rank Promotion Exam. Take the Tactical Duel?"],
+                                                options: ['Take Exam', 'Not Yet'],
+                                                yesActions: [
+                                                    ['play_sfx', 'horn'],
+                                                    ['spawn_ephemeral_npc', { index: examBossIndex, x: dungeon.x, y: dungeon.y, sprite: 5, state: 'stationary', role: 'battle', alignment: 'foe', color: '#ff0000', deck: [5, 54, 56, 42, 42], isBoss: true, deathActions: examWinActions }],
+                                                    ['start_tactics', { id: examBossIndex, stakes: 'exam' }],
+                                                    ['close_dialogue', null]
+                                                ],
+                                                noActions: [['close_dialogue', null]]
+                                            };
+                                        }
+
+                                        let isEscort = Math.random() < 0.5;
+                                        let safePOS = dungeon.getSafeSpawn(centerX, centerY, maxRadius);
+                                        let randomX = safePOS.x;
+                                        let randomY = safePOS.y;
+
+                                        if (isEscort) {
+                                            let isBetrayal = Math.random() < 0.3; 
+                                            let escortId = pIndex + 100 + Math.floor(Math.random() * 100);
+                                            let supplierId = pIndex + 200 + Math.floor(Math.random() * 100);
+                                            let supplierYesActions = [];
+                                            
+                                            if (isBetrayal) {
+                                                let betrayDeathActions = [['update_quest_state', { key: 'guild_quest', state: 2 }], ['play_sfx', 'chime'], ['notify', "Traitor eliminated! Return to the Guild."]];
+                                                supplierYesActions = [
+                                                    ['stop_hunted', null], 
+                                                    ['play_sfx', 'horn'],
+                                                    ['transform_npc', { index: escortId, newAlignment: 'foe', newRole: 'battle', newState: 'chasing', clearDialogue: true, newDeathActions: betrayDeathActions }],
+                                                    ['transform_npc', { index: supplierId, newAlignment: 'foe', newRole: 'battle', newState: 'chasing', clearDialogue: true, newDeathActions: betrayDeathActions }],
+                                                    ['notify', "Fools! We lured you right into our trap!"]
+                                                ];
+                                            } else {
+                                                supplierYesActions = [
+                                                    ['stop_hunted', null], 
+                                                    ['play_sfx', 'chime'],
+                                                    ['disappear', escortId], 
+                                                    ['update_quest_state', { key: 'guild_quest', state: 2 }],
+                                                    ['notify', { text: ["Thank you for bringing them safely. Delivery complete!"], endActions: [['disappear', supplierId], ['close_dialogue', null]] }]
+                                                ];
+                                            }
+
+                                            let spawnEscort = ['spawn_ephemeral_npc', { index: escortId, x: dungeon.x, y: dungeon.y, sprite: 32, state: 'following', role: 'dialogue', alignment: 'ally', color: '#00ff00', customDialogue: ["I'm right behind you!"] }];
+                                            let spawnSupplier = ['spawn_ephemeral_npc', { index: supplierId, x: randomX, y: randomY, sprite: 5, state: 'stationary', role: 'dialogue', alignment: 'friendly', color: '#00ff00', customDialogue: ["Ah, the escort has arrived."], options: ['Deliver Client'], yesActions: supplierYesActions }];
+
+                                            let questBlueprint = { state: 1, type: 'escort', tName: 'VIP Escort', wasBetrayal: isBetrayal, qRank: 'E', targetMap: dungeon.mapID, spawnActions: [spawnEscort, spawnSupplier] };
+
+                                            return {
+                                                text: [`Welcome. (Rank: ${playerRank} | Rep: ${rep})`, "I have a high-risk Escort mission. Beware of assassins."],
+                                                options: ['Accept Escort', 'Leave'],
+                                                yesActions: [
+                                                    ['set_memory', { key: 'guild_quest', value: questBlueprint }],
+                                                    spawnEscort,
+                                                    spawnSupplier,
+                                                    ['start_hunted', { waves: 5, interval: 250, mobs: [{sprite: 42}, {sprite: 56}] }],
+                                                    ['play_sfx', 'click'],
+                                                    ['notify', "Escort joined! Move to the Supplier quickly, assassins are incoming!"]
+                                                ],
+                                                noActions: [['close_dialogue', null]]
+                                            };
+                                        } else {
+                                            let squadLeaderId = pIndex + 300 + Math.floor(Math.random() * 100);
+                                            let targetDeathActions = [['update_quest_state', { key: 'guild_quest', state: 2 }], ['play_sfx', 'chime'], ['notify', "Squad Leader eliminated! Return to the Guild."]];
+
+                                            let spawnLeader = ['spawn_ephemeral_npc', { index: squadLeaderId, x: randomX, y: randomY, sprite: 55, state: 'stationary', role: 'dialogue', alignment: 'friendly_messenger', color: '#ff0000', customDialogue: ["Get 'em, boys!"], endActions: [['transform_npc', { index: squadLeaderId, newAlignment: 'foe', newRole: 'battle', newState: 'chasing', clearDialogue: true, newDeathActions: targetDeathActions }], ['start_battle', squadLeaderId]], deathActions: targetDeathActions }];
+                                            let spawnMinion1 = ['spawn_ephemeral_npc', { index: squadLeaderId+1, x: randomX+1, y: randomY, sprite: 54, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000' }];
+                                            let spawnMinion2 = ['spawn_ephemeral_npc', { index: squadLeaderId+2, x: randomX-1, y: randomY, sprite: 54, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000' }];
+
+                                            let acceptActions = [
+                                                ['set_memory', { key: 'guild_quest', value: { state: 1, type: 'squad_bounty', tName: 'Bandit Squad', qRank: 'E', targetMap: dungeon.mapID, spawnActions: [spawnLeader, spawnMinion1, spawnMinion2] } }],
+                                                spawnLeader, spawnMinion1, spawnMinion2,
+                                                ['play_sfx', 'click'],
+                                                ['notify', "A dangerous squad has been spotted nearby. Eliminate the leader."]
+                                            ];
+
+                                            return {
+                                                text: [`Welcome. (Rank: ${playerRank} | Rep: ${rep})`, "A group of hostiles has banded together. Take out their leader."],
+                                                options: ['Accept Squad Bounty', 'Leave'],
+                                                yesActions: acceptActions,
+                                                noActions: [['close_dialogue', null]]
+                                            };
+                                        }
+                                    }
+
+                                    if (qState === 1 || qState === 2) {
+                                        let targetName = qData.tName;
+                                        let questRank = qData.qRank || 'F';
+                                        let repPenalty = questRank === 'E' ? 2 : (questRank === 'D' ? 3 : 1);
+                                        let repReward = questRank === 'E' ? 2 : (questRank === 'D' ? 3 : 1);
+
+                                        if (qState === 2) {
+                                            let successText = ["Ah! You completed the task! Excellent work. Here is your reward."];
+                                            let turnInActions = [
+                                                ['close_dialogue', null],
+                                                ['set_memory', { key: 'guild_quest', value: { state: 0 } }],
+                                                ['set_memory', { key: 'guild_rep', value: rep + repReward }],
+                                                ['play_sfx', 'heal']
+                                            ];
+
+                                            let numRewards = 1; 
+                                            if (questRank === 'E') numRewards = 2;
+                                            if (questRank === 'D') numRewards = 3;
+
+                                            for (let i = 0; i < numRewards; i++) {
+                                                turnInActions.push(['give_card', { card: 38, text: `Quest Reward Received! (${i+1}/${numRewards})` }]);
+                                            }
+
+                                            if (questRank === 'E' || questRank === 'D') {
+                                                if (qData.wasBetrayal) {
+                                                    successText = ["Oh my... They betrayed you? I am so sorry that happened.", "Take this extra hazard pay!"];
+                                                    turnInActions.push(['give_card', { card: 65, text: "Bonus Hazard Gem Received!" }]);
+                                                } else {
+                                                    successText = [`Ah! You completed the ${questRank}-Rank task flawlessly. Excellent work.`];
+                                                }
+                                            }
+
+                                            return {
+                                                text: successText,
+                                                options: ['Turn In', 'Leave'],
+                                                yesActions: turnInActions,
+                                                noActions: [['close_dialogue', null]]
+                                            };
+                                        } else {
+                                            return {
+                                                text: [`You are currently assigned to the ${questRank}-Rank ${targetName} quest.`, `Return to a clerk when the task is complete!`],
+                                                options: [`Abandon Quest (-${repPenalty} Rep)`, 'Leave'],
+                                                yesActions: [
+                                                    ['play_sfx', 'cancel'],
+                                                    ['stop_hunted', null], 
+                                                    ['set_memory', { key: 'guild_quest', value: { state: 0 } }], 
+                                                    ['set_memory', { key: 'guild_rep', value: Math.max(0, rep - repPenalty) }], 
+                                                    ['notify', "Quest abandoned. Your reputation has decreased."]
+                                                ],
+                                                noActions: [['close_dialogue', null]]
+                                            };
+                                        }
+                                    }
+                                }
+
+                                // ==========================================
+                                // --- THE D-RANK GUILD CLERK ---
+                                // ==========================================
+                                else if (rank === 'D') {
+                                    if (playerRank === 'F' || playerRank === 'E') {
+                                        return {
+                                            text: ["I exclusively handle D-Rank affairs.", "Return to me when you have earned your Journeyman promotion."],
+                                            options: ['Leave'],
+                                            yesActions: [['close_dialogue', null]],
+                                            noActions: null
+                                        };
+                                    }
+
+                                    if (qState === 1 && qData.qRank !== 'D') {
+                                        return {
+                                            text: [`That's an ${qData.qRank}-Rank quest. You need to handle that at the correct desk.`],
+                                            options: ['Leave'],
+                                            yesActions: [['close_dialogue', null]],
+                                            noActions: null
+                                        };
+                                    }
+
+                                    if (qState === 0) {
+                                        let promotionThreshold = 9; 
+                                        if (playerRank === 'D' && rep >= promotionThreshold) {
+                                            let examBossIndex = pIndex + 1000;
+                                            let examWinActions = [
+                                                ['set_memory', { key: 'guild_rank', value: 'C' }], 
+                                                ['give_card', { card: 71, text: "You earned your C-Rank License!" }],
+                                                ['play_sfx', 'chime'],
+                                                ['notify', "Congratulations! You are now a C-Rank Veteran!"]
+                                            ];
+
+                                            return {
+                                                text: [`Your reputation precedes you. (Rank: ${playerRank} | Rep: ${rep})`, "You qualify for the C-Rank Promotion Exam. This will test your ability to handle multiple elite targets.", "Are you ready?"],
+                                                options: ['Take Exam', 'Not Yet'],
+                                                yesActions: [
+                                                    ['play_sfx', 'horn'],
+                                                    ['spawn_ephemeral_npc', { index: examBossIndex, x: dungeon.x, y: dungeon.y, sprite: 42, state: 'stationary', role: 'battle', alignment: 'foe', color: '#ff0000', deck: [42, 55, 55, 56], isBoss: true, deathActions: examWinActions }],
+                                                    ['start_tactics', { id: examBossIndex, stakes: 'exam' }],
+                                                    ['close_dialogue', null]
+                                                ],
+                                                noActions: [['close_dialogue', null]]
+                                            };
+                                        }
+
+                                        let questType = Math.floor(Math.random() * 3); 
+                                        let safePOS = dungeon.getSafeSpawn(centerX, centerY, maxRadius);
+                                        let randomX = safePOS.x;
+                                        let randomY = safePOS.y;
+
+                                        if (questType === 0) {
+                                            let clientId = pIndex + 101 + Math.floor(Math.random() * 100);
+                                            let bossId = pIndex + 201 + Math.floor(Math.random() * 100);
+
+                                            let onCompleteActions = [
+                                                ['inject_dialogue', {
+                                                    index: clientId,
+                                                    text: ["It's over! Take this extra gold and don't tell the Guild I panicked!"],
+                                                    options: ['Accept Bribe', 'Refuse'],
+                                                    yesActions: [
+                                                        ['set_memory', { key: 'guild_quest', value: { state: 2, type: 'infestation', tName: 'Infestation', qRank: 'D', bribeTaken: true } }],
+                                                        ['give_card', { card: 50, text: "You accepted the bribe." }],
+                                                        ['disappear', clientId],
+                                                        ['close_dialogue', null]
+                                                    ],
+                                                    noActions: [
+                                                        ['set_memory', { key: 'guild_quest', value: { state: 2, type: 'infestation', tName: 'Infestation', qRank: 'D', bribeTaken: false } }],
+                                                        ['notify', { text: "You refused the bribe. The client respects your honor.", endActions: [['disappear', clientId], ['close_dialogue', null]] }]
+                                                    ]
+                                                }],
+                                                ['trigger_dialogue', clientId] 
+                                            ];
+
+                                            let killPayload = ['update_quest_count', { key: 'guild_quest', onComplete: onCompleteActions }];
+
+                                            let spawnClient = ['spawn_ephemeral_npc', {
+                                                index: clientId, x: randomX, y: randomY, sprite: 30, state: 'stationary', role: 'dialogue', alignment: 'friendly', color: '#00ff00',
+                                                customDialogue: ["Thank goodness you're here!", "The monsters are right behind me!"],
+                                                options: ['Help Them', 'Leave'],
+                                                yesActions: [
+                                                    ['spawn_ephemeral_npc', { index: bossId, x: randomX, y: randomY, sprite: 55, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', deathActions: [killPayload] }],
+                                                    ['spawn_ephemeral_npc', { index: bossId+1, x: randomX+1, y: randomY, sprite: 54, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', deathActions: [killPayload] }],
+                                                    ['spawn_ephemeral_npc', { index: bossId+2, x: randomX-1, y: randomY, sprite: 54, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', deathActions: [killPayload] }],
+                                                    ['spawn_ephemeral_npc', { index: bossId+3, x: randomX, y: randomY+1, sprite: 54, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', deathActions: [killPayload] }],
+                                                    ['play_sfx', 'horn'],
+                                                    ['inject_dialogue', { index: clientId, text: ["Please! Kill them all!"], endActions: [['close_dialogue', null]] }]
+                                                ],
+                                                noActions: [['close_dialogue', null]]
+                                            }];
+
+                                            let questBlueprint = { state: 1, type: 'infestation', tName: 'Infestation', qRank: 'D', count: 0, max: 4, bribeTaken: false, targetMap: dungeon.mapID, spawnActions: [spawnClient] };
+
+                                            return {
+                                                text: [`Greetings, ${playerRank}-Rank. A client reported a monster infestation.`, "Clear them out and report back to me."],
+                                                options: ['Accept Mission', 'Leave'],
+                                                yesActions: [
+                                                    ['set_memory', { key: 'guild_quest', value: questBlueprint }],
+                                                    spawnClient,
+                                                    ['play_sfx', 'click'],
+                                                    ['notify', { text: "Client's coordinates marked. Investigate the area.", endActions: [['close_dialogue', null]] }]
+                                                ],
+                                                noActions: [['close_dialogue', null]]
+                                            };
+
+                                        } else if (questType === 1) {
+                                            let leaderId = pIndex + 301 + Math.floor(Math.random() * 100);
+                                            let bossId = pIndex + 401 + Math.floor(Math.random() * 100);
+
+                                            let tacticalWinActions = [
+                                                ['update_quest_state', { key: 'guild_quest', state: 2 }],
+                                                ['cleanup_quest_npcs', null],
+                                                ['notify', { text: "Ambush cleared! The squad is safe. Return to the guild.", endActions: [['close_dialogue', null]] }]
+                                            ];
+
+                                            let spawnLeader = ['spawn_ephemeral_npc', {
+                                                index: leaderId, x: randomX, y: randomY, sprite: 42, state: 'stationary', role: 'dialogue', alignment: 'friendly', color: '#00ff00',
+                                                customDialogue: ["We're pinned down! Join our squad and help us break through!"],
+                                                options: ['Join Squad', 'Leave'],
+                                                yesActions: [
+                                                    ['become_ally', 42],
+                                                    ['disappear', leaderId], 
+                                                    ['spawn_ephemeral_npc', { index: bossId, x: dungeon.x, y: dungeon.y, sprite: 5, state: 'stationary', role: 'battle', alignment: 'foe', color: '#ff0000', isBoss: true, deck: [5, 56, 56, 56], deathActions: tacticalWinActions }],
+                                                    ['start_tactics', bossId],
+                                                    ['close_dialogue', null]
+                                                ],
+                                                noActions: [['close_dialogue', null]]
+                                            }];
+
+                                            let questBlueprint = { state: 1, type: 'reinforcement', tName: 'C-Rank Rescue', qRank: 'D', targetMap: dungeon.mapID, spawnActions: [spawnLeader] };
+
+                                            return {
+                                                text: [`Greetings, ${playerRank}-Rank. A C-Rank squad is pinned down in a dungeon.`, "They need immediate tactical reinforcement. Do not let them fall."],
+                                                options: ['Accept Reinforcement', 'Leave'],
+                                                yesActions: [
+                                                    ['set_memory', { key: 'guild_quest', value: questBlueprint }],
+                                                    spawnLeader,
+                                                    ['play_sfx', 'click'],
+                                                    ['notify', { text: "Rescue coordinates marked. Hurry!", endActions: [['close_dialogue', null]] }]
+                                                ],
+                                                noActions: [['close_dialogue', null]]
+                                            };
+
+                                        } else {
+                                            let clientId = pIndex + 501 + Math.floor(Math.random() * 100);
+                                            let clientAmbushActions = [
+                                                ['play_sfx', 'horn'],
+                                                ['transform_npc', { index: clientId, newType: 88, newAlignment: 'foe', newRole: 'battle', newState: 'chasing', clearDialogue: true, newDeathActions: [['update_quest_state', {key: 'guild_quest', state: 2}], ['notify', { text: "The imposter is dead! Return to the Guild.", endActions: [['close_dialogue', null]]}]] }],
+                                                ['spawn_ephemeral_npc', { index: clientId+1, x: randomX+1, y: randomY, sprite: 56, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000' }],
+                                                ['spawn_ephemeral_npc', { index: clientId+2, x: randomX-1, y: randomY, sprite: 56, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000' }],
+                                                ['spawn_ephemeral_npc', { index: clientId+3, x: randomX, y: randomY+1, sprite: 56, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000' }],
+                                                ['start_battle', clientId]
+                                            ];
+
+                                            let spawnImposter = ['spawn_ephemeral_npc', {
+                                                index: clientId, x: randomX, y: randomY, sprite: 12, state: 'stationary', role: 'dialogue', alignment: 'friendly', color: '#00ff00',
+                                                customDialogue: ["The guild sent such a puny adventurer?", "Not nearly enough to fill my belly!"],
+                                                endActions: clientAmbushActions
+                                            }];
+
+                                            let questBlueprint = { state: 1, type: 'mysterious_client', tName: 'Suspicious Client', qRank: 'D' };
+
+                                            return {
+                                                text: [`Greetings, ${playerRank}-Rank. An anonymous client requested monster extermination.`, "The details are vague. Proceed with caution."],
+                                                options: ['Accept Request', 'Leave'],
+                                                yesActions: [
+                                                    ['set_memory', { key: 'guild_quest', value: questBlueprint }],
+                                                    spawnImposter, 
+                                                    ['play_sfx', 'click'],
+                                                    ['notify', { text: "Client's coordinates marked.", endActions: [['close_dialogue', null]] }]
+                                                ],
+                                                noActions: [['close_dialogue', null]]
+                                            };
+                                        }
+                                    }
+
+                                    if (qState === 1 || qState === 2) {
+                                        let targetName = qData.tName;
+                                        let questRank = qData.qRank || 'D';
+                                        let repPenalty = 3; 
+                                        let repReward = 3;  
+
+                                        if (qState === 1 && qData.type === 'mysterious_client') {
+                                            return {
+                                                text: [`You were ambushed?!`, `Are they still out there?`],
+                                                options: ['Report Target Escaped (-3 Rep)', 'Leave'],
+                                                yesActions: [
+                                                    ['play_sfx', 'cancel'],
+                                                    ['give_card', { card: 50, text: "Hazard Pay Received!" }],
+                                                    ['set_memory', { key: 'guild_quest', value: { state: 0 } }],
+                                                    ['set_memory', { key: 'guild_rep', value: Math.max(0, rep - repPenalty) }],
+                                                    ['notify', { text: "You let them get away? *Sigh* What a headache. Here is compensation for the setup, but this is a Failure.", endActions: [['close_dialogue', null]] }]
+                                                ],
+                                                noActions: [['close_dialogue', null]]
+                                            };
+                                        }
+
+                                        if (qState === 2) {
+                                            let successText = "Ah! You completed the task! Excellent work. Here is your reward.";
+                                            let turnInActions = [
+                                                ['close_dialogue', null],
+                                                ['set_memory', { key: 'guild_quest', value: { state: 0 } }]
+                                            ];
+
+                                            for (let i = 0; i < 3; i++) {
+                                                turnInActions.push(['give_card', { card: 38, text: `Quest Reward Received! (${i+1}/3)` }]);
+                                            }
+
+                                            if (qData.type === 'infestation') {
+                                                if (qData.bribeTaken === false) {
+                                                    successText = "The client sent word of your outstanding character! Take this bonus. We are proud to have you.";
+                                                    repReward = 6; 
+                                                    turnInActions.push(['give_card', { card: 21, text: "Honor Bonus Received!" }]); 
+                                                } else {
+                                                    successText = "You cleared the infestation. Good work. Here is your standard payment.";
+                                                }
+                                            } else if (qData.type === 'reinforcement') {
+                                                successText = "The C-Rank team sang your praises. Well done.";
+                                            } else if (qData.type === 'mysterious_client') {
+                                                successText = "You survived the ambush! We are investigating how that monster submitted a request.";
+                                                turnInActions.push(['give_card', { card: 65, text: "Bonus Hazard Gem Received!" }]);
+                                            }
+
+                                            turnInActions.push(['set_memory', { key: 'guild_rep', value: rep + repReward }]);
+                                            turnInActions.push(['play_sfx', 'heal']);
+
+                                            return {
+                                                text: [successText],
+                                                options: ['Turn In', 'Leave'],
+                                                yesActions: turnInActions,
+                                                noActions: [['close_dialogue', null]]
+                                            };
+                                        } else {
+                                            return {
+                                                text: [`You are currently assigned to the ${questRank}-Rank ${targetName} quest.`, `Return to a clerk when the task is complete!`],
+                                                options: [`Abandon Quest (-${repPenalty} Rep)`, 'Leave'],
+                                                yesActions: [
+                                                    ['play_sfx', 'cancel'],
+                                                    ['set_memory', { key: 'guild_quest', value: { state: 0 } }], 
+                                                    ['set_memory', { key: 'guild_rep', value: Math.max(0, rep - repPenalty) }], 
+                                                    ['notify', { text: "Quest abandoned. Your reputation has decreased.", endActions: [['close_dialogue', null]] }]
+                                                ],
+                                                noActions: [['close_dialogue', null]]
+                                            };
+                                        }
+                                    }
+                                }
+
+                                return { text: ["..."], endActions: [['close_dialogue', null]] };
+                            };
+                        
+                        if (newNpc) this.npcs.push(newNpc);
+                        break;
+                    }
+
+                    if (newNpc) this.npcs.push(newNpc);
                     break;
                 }
                 case 'spawn_npc_from_registry':
