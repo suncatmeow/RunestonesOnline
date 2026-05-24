@@ -3394,14 +3394,22 @@
                 }
             };
 
-            // Carve paths so the surveyor can never fail
+            // --- NEW: Clear a 3x3 space at the Lair center to guarantee the path hits a dungeon room ---
+            for(let dy = -1; dy <= 1; dy++) {
+                for(let dx = -1; dx <= 1; dx++) {
+                    finalGrid[lair.cy + dy][lair.cx + dx] = floorType;
+                }
+            }
+
+            // Carve path to the Lair
             carvePath(bastion.cx, bastion.cy, lair.cx, lair.cy);
-            carvePath(bastion.cx, bastion.cy, mini.cx, mini.cy);
+
+            // --- NEW: Carve path to the Labyrinth's guaranteed opening (top-left) instead of the random center ---
+            carvePath(bastion.cx, bastion.cy, mini.x + 1, mini.y + 1);
 
             // Re-seal Global Borders
             for(let y = 0; y < size; y++) { finalGrid[y][0] = wallType; finalGrid[y][size-1] = wallType; }
             for(let x = 0; x < size; x++) { finalGrid[0][x] = wallType; finalGrid[size-1][x] = wallType; }
-
         // ==========================================
         // 6. SURVEYOR PASS
         // ==========================================
