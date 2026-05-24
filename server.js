@@ -3019,7 +3019,7 @@
         deathActions: config.deathActions || [],
         rewardCard: config.rewardCard || null
     };
-}
+    }
     function buildSynergisticDeck(monsterID, maxTotalPower = 50) {
         let baseID = Math.floor(parseFloat(monsterID));
         let deck = [baseID]; 
@@ -3177,7 +3177,7 @@
                 for(let y = 1; y < h - 1; y++) for(let x = 1; x < w - 1; x++) grid[y][x] = floorType;
                 buildings = [];
                 let attempts = w * h; 
-                let minSize = 3, maxSize = 6; 
+                let minSize = 9, maxSize = 13; 
 
                 for (let i = 0; i < attempts; i++) {
                     let bw = Math.floor(Math.random() * (maxSize - minSize + 1)) + minSize;
