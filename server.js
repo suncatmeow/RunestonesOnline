@@ -3196,7 +3196,7 @@
                             cx: bx + Math.floor(bw/2), 
                             cy: by + Math.floor(bh/2)
                         });
-                        buildings.push({x: bx, y: by, w: bw, h: bh});
+                       // buildings.push({x: bx, y: by, w: bw, h: bh});
                         for (let wy = by; wy < by + bh; wy++) {
                             for (let wx = bx; wx < bx + bw; wx++) {
                                 if (wy === by || wy === by + bh - 1 || wx === bx || wx === bx + bw - 1) grid[wy][wx] = wallType;
@@ -3291,141 +3291,141 @@
         // ==========================================
         // 3. ZONE BOUNDING BOXES (Collision Detection)
         // ==========================================
-        let zones = [
-            { id: 'lair', w: 30, h: 30, algo: (Math.random() > 0.5 ? 'CASTLE' : 'DUNGEON') },
-            { id: 'bastion', w: 15, h: 15, algo: 'CITY' },
-            { id: 'mini', w: 15, h: 15, algo: 'LABYRINTH' }
-        ];
+            let zones = [
+                { id: 'lair', w: 30, h: 30, algo: (Math.random() > 0.5 ? 'CASTLE' : 'DUNGEON') },
+                { id: 'bastion', w: 15, h: 15, algo: 'CITY' },
+                { id: 'mini', w: 15, h: 15, algo: 'LABYRINTH' }
+            ];
 
-        let padding = 3; // Keep zones away from edges and each other
+            let padding = 3; // Keep zones away from edges and each other
 
-        zones.forEach(zone => {
-            let placed = false;
-            let attempts = 0;
-            while (!placed && attempts < 100) {
-                zone.x = Math.floor(Math.random() * (size - zone.w - padding * 2)) + padding;
-                zone.y = Math.floor(Math.random() * (size - zone.h - padding * 2)) + padding;
+            zones.forEach(zone => {
+                let placed = false;
+                let attempts = 0;
+                while (!placed && attempts < 100) {
+                    zone.x = Math.floor(Math.random() * (size - zone.w - padding * 2)) + padding;
+                    zone.y = Math.floor(Math.random() * (size - zone.h - padding * 2)) + padding;
 
-                let overlap = false;
-                for (let other of zones) {
-                    if (other.id !== zone.id && other.placed) {
-                        if (zone.x < other.x + other.w + padding && zone.x + zone.w + padding > other.x &&
-                            zone.y < other.y + other.h + padding && zone.y + zone.h + padding > other.y) {
-                            overlap = true; break;
+                    let overlap = false;
+                    for (let other of zones) {
+                        if (other.id !== zone.id && other.placed) {
+                            if (zone.x < other.x + other.w + padding && zone.x + zone.w + padding > other.x &&
+                                zone.y < other.y + other.h + padding && zone.y + zone.h + padding > other.y) {
+                                overlap = true; break;
+                            }
                         }
                     }
+                    if (!overlap) {
+                        zone.placed = true;
+                        placed = true;
+                    }
+                    attempts++;
                 }
-                if (!overlap) {
-                    zone.placed = true;
-                    placed = true;
+                
+                // Fallbacks in case random placement fails
+                if (!placed) {
+                    if (zone.id === 'lair') { zone.x = 2; zone.y = 2; zone.placed = true; }
+                    if (zone.id === 'bastion') { zone.x = size - 17; zone.y = 2; zone.placed = true; }
+                    if (zone.id === 'mini') { zone.x = size - 17; zone.y = size - 17; zone.placed = true; }
                 }
-                attempts++;
-            }
-            
-            // Fallbacks in case random placement fails
-            if (!placed) {
-                if (zone.id === 'lair') { zone.x = 2; zone.y = 2; zone.placed = true; }
-                if (zone.id === 'bastion') { zone.x = size - 17; zone.y = 2; zone.placed = true; }
-                if (zone.id === 'mini') { zone.x = size - 17; zone.y = size - 17; zone.placed = true; }
-            }
-            
-            zone.cx = Math.floor(zone.x + (zone.w / 2));
-            zone.cy = Math.floor(zone.y + (zone.h / 2));
-        });
+                
+                zone.cx = Math.floor(zone.x + (zone.w / 2));
+                zone.cy = Math.floor(zone.y + (zone.h / 2));
+            });
 
         // ==========================================
         // 4. STAMP THE ZONES
         // ==========================================
-        zones.forEach(zone => {
-            let subResult = buildSubGrid(zone.algo, zone.w, zone.h);
-            let subGrid = subResult.grid;
+            zones.forEach(zone => {
+                let subResult = buildSubGrid(zone.algo, zone.w, zone.h);
+                let subGrid = subResult.grid;
 
-            // NEW: Translate local building coordinates to global map coordinates
-            if (subResult.buildings && subResult.buildings.length > 0) {
-                zone.buildings = subResult.buildings.map(b => ({
-                    ...b,
-                    x: zone.x + b.x,
-                    y: zone.y + b.y,
-                    cx: zone.x + b.cx,
-                    cy: zone.y + b.cy
-                }));
-            }
+                // NEW: Translate local building coordinates to global map coordinates
+                if (subResult.buildings && subResult.buildings.length > 0) {
+                    zone.buildings = subResult.buildings.map(b => ({
+                        ...b,
+                        x: zone.x + b.x,
+                        y: zone.y + b.y,
+                        cx: zone.x + (b.cx || (b.x + Math.floor(b.w/2))), // Failsafe
+                        cy: zone.y + (b.cy || (b.y + Math.floor(b.h/2)))  // Failsafe
+                    }));
+                }
 
-            for (let y = 0; y < zone.h; y++) {
-                for (let x = 0; x < zone.w; x++) {
-                    let mapY = zone.y + y;
-                    let mapX = zone.x + x;
+                for (let y = 0; y < zone.h; y++) {
+                    for (let x = 0; x < zone.w; x++) {
+                        let mapY = zone.y + y;
+                        let mapX = zone.x + x;
 
-                    if (zone.id === 'lair' && (y === 0 || y === zone.h - 1 || x === 0 || x === zone.w - 1)) {
-                        finalGrid[mapY][mapX] = wallType;
-                    } 
-                    else {
-                        finalGrid[mapY][mapX] = subGrid[y][x];
+                        if (zone.id === 'lair' && (y === 0 || y === zone.h - 1 || x === 0 || x === zone.w - 1)) {
+                            finalGrid[mapY][mapX] = wallType;
+                        } 
+                        else {
+                            finalGrid[mapY][mapX] = subGrid[y][x];
+                        }
                     }
                 }
-            }
 
-            if (zone.id === 'lair') {
-                finalGrid[zone.y + zone.h - 1][zone.cx] = floorType; 
-                finalGrid[zone.y + zone.h - 2][zone.cx] = floorType; 
-                finalGrid[zone.cy][zone.x + zone.w - 1] = floorType; 
-                finalGrid[zone.cy][zone.x + zone.w - 2] = floorType; 
-            }
-        });
+                if (zone.id === 'lair') {
+                    finalGrid[zone.y + zone.h - 1][zone.cx] = floorType; 
+                    finalGrid[zone.y + zone.h - 2][zone.cx] = floorType; 
+                    finalGrid[zone.cy][zone.x + zone.w - 1] = floorType; 
+                    finalGrid[zone.cy][zone.x + zone.w - 2] = floorType; 
+                }
+            });
 
         // ==========================================
         // 5. CARVE THE MAIN ROADS (Guarantees Connection)
         // ==========================================
-        let bastion = zones.find(z => z.id === 'bastion');
-        let lair = zones.find(z => z.id === 'lair');
-        let mini = zones.find(z => z.id === 'mini');
+            let bastion = zones.find(z => z.id === 'bastion');
+            let lair = zones.find(z => z.id === 'lair');
+            let mini = zones.find(z => z.id === 'mini');
 
-        const carvePath = (x1, y1, x2, y2) => {
-            let currX = x1; let currY = y1;
-            while(currX !== x2) { 
-                finalGrid[currY][currX] = floorType; 
-                if(currY+1 < size) finalGrid[currY+1][currX] = floorType; // 2-tiles wide
-                currX += Math.sign(x2 - currX); 
-            }
-            while(currY !== y2) { 
-                finalGrid[currY][currX] = floorType; 
-                if(currX+1 < size) finalGrid[currY][currX+1] = floorType; // 2-tiles wide
-                currY += Math.sign(y2 - currY); 
-            }
-        };
+            const carvePath = (x1, y1, x2, y2) => {
+                let currX = x1; let currY = y1;
+                while(currX !== x2) { 
+                    finalGrid[currY][currX] = floorType; 
+                    if(currY+1 < size) finalGrid[currY+1][currX] = floorType; // 2-tiles wide
+                    currX += Math.sign(x2 - currX); 
+                }
+                while(currY !== y2) { 
+                    finalGrid[currY][currX] = floorType; 
+                    if(currX+1 < size) finalGrid[currY][currX+1] = floorType; // 2-tiles wide
+                    currY += Math.sign(y2 - currY); 
+                }
+            };
 
-        // Carve paths so the surveyor can never fail
-        carvePath(bastion.cx, bastion.cy, lair.cx, lair.cy);
-        carvePath(bastion.cx, bastion.cy, mini.cx, mini.cy);
+            // Carve paths so the surveyor can never fail
+            carvePath(bastion.cx, bastion.cy, lair.cx, lair.cy);
+            carvePath(bastion.cx, bastion.cy, mini.cx, mini.cy);
 
-        // Re-seal Global Borders
-        for(let y = 0; y < size; y++) { finalGrid[y][0] = wallType; finalGrid[y][size-1] = wallType; }
-        for(let x = 0; x < size; x++) { finalGrid[0][x] = wallType; finalGrid[size-1][x] = wallType; }
+            // Re-seal Global Borders
+            for(let y = 0; y < size; y++) { finalGrid[y][0] = wallType; finalGrid[y][size-1] = wallType; }
+            for(let x = 0; x < size; x++) { finalGrid[0][x] = wallType; finalGrid[size-1][x] = wallType; }
 
         // ==========================================
         // 6. SURVEYOR PASS
         // ==========================================
-        if (finalGrid[bastion.cy][bastion.cx] === wallType) finalGrid[bastion.cy][bastion.cx] = floorType;
+            if (finalGrid[bastion.cy][bastion.cx] === wallType) finalGrid[bastion.cy][bastion.cx] = floorType;
 
-        let validFloors = findValidMainland(finalGrid, floorType, bastion.cx, bastion.cy); 
-        let validSet = new Set(validFloors.map(f => `${f.x},${f.y}`));
-        
-        for(let r = 0; r < size; r++) {
-            for(let c = 0; c < size; c++) {
-                if (finalGrid[r][c] === floorType && !validSet.has(`${c},${r}`)) {
-                    finalGrid[r][c] = wallType; 
+            let validFloors = findValidMainland(finalGrid, floorType, bastion.cx, bastion.cy); 
+            let validSet = new Set(validFloors.map(f => `${f.x},${f.y}`));
+            
+            for(let r = 0; r < size; r++) {
+                for(let c = 0; c < size; c++) {
+                    if (finalGrid[r][c] === floorType && !validSet.has(`${c},${r}`)) {
+                        finalGrid[r][c] = wallType; 
+                    }
                 }
             }
-        }
 
-        return { 
-            grid: finalGrid, 
-            validFloors: validFloors,
-            zones: zones, // <--- NEW: Export the zones so we can access the buildings!
-            bastionCenter: { x: bastion.cx, y: bastion.cy },
-            lairCenter: { x: lair.cx, y: lair.cy },
-            miniCenter: { x: mini.cx, y: mini.cy }
-        };
+            return { 
+                grid: finalGrid, 
+                validFloors: validFloors,
+                zones: zones, // <--- NEW: Export the zones so we can access the buildings!
+                bastionCenter: { x: bastion.cx, y: bastion.cy },
+                lairCenter: { x: lair.cx, y: lair.cy },
+                miniCenter: { x: mini.cx, y: mini.cy }
+            };
     }
     function generateTintagelHub() {
         let maxR = 99, maxC = 99; 
