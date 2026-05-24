@@ -4335,7 +4335,7 @@
 
                                         mapNPCs.push({
                                             index: tacticianId,
-                                            type: 42, // Guard/Ally Sprite
+                                            type: 0, // Guard/Ally Sprite
                                             x: tile.x + 0.5, y: tile.y + 0.5,
                                             state: 'wandering', role: 'dialogue', alignment: 'friendly', color: '#00ff00',
                                             deck: [42], // They bring their own stats to the battle
@@ -4343,12 +4343,12 @@
                                             options: ['Form Up! (Tactics)', 'Leave Them to Die'],
                                             yesActions: [
                                                 ['play_sfx', 'horn'],
-                                                ['become_ally', 42], // Adds them to activeSummons so they join the Tactics board!
+                                                ['become_ally', 0], // Adds them to activeSummons so they join the Tactics board!
                                                 ['disappear', tacticianId], // Removes them from the overworld
                                                 ['spawn_ephemeral_npc', { 
-                                                    index: ambushBossId, x: tile.x, y: tile.y, sprite: 55, state: 'stationary', 
+                                                    index: ambushBossId, x: tile.x, y: tile.y, sprite: 35, state: 'stationary', 
                                                     role: 'battle', alignment: 'foe', color: '#ff0000', isBoss: true, 
-                                                    deck: [55, 54, 54, 56], deathActions: winTactics 
+                                                    deck: [63, 77, 35, 49], deathActions: winTactics 
                                                 }],
                                                 ['start_tactics', ambushBossId],
                                                 ['close_dialogue', null]
