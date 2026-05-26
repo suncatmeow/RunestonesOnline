@@ -7342,7 +7342,7 @@
 
                     // The Djinn (Boss Spawner)
                     let djinnDeck = [35,35,35,16,18,26,26,26,26,15,28,44,19];
-                    let djinnDialogue = new NPC(0, 8.5, 2.5, 35.1, 'stationary', '#ff0000', djinnDeck, 'dialogue', null, 'friendly');
+                    let djinnDialogue = new NPC(0, 8.5, 2.5, 35.1, 'stationary', '#ff0000', djinnDeck, 'dialogue', true, 'friendly');
                     djinnDialogue.customDialogue = ["You Dare?", "You're courting death!"];
                     djinnDialogue.endActions = [
                         ['spawn_npc', [5, 11, 'SPEAKER_X', 'SPEAKER_Y', 35.1, 'chasing', '#ff0000', djinnDeck, null, null, 'battle', null, true, 'foe']],
@@ -8870,56 +8870,88 @@
 
           // Spawn AI-Generated NPCs exactly where the server told them to be
             if (data.npcs && data.npcs.length > 0) {
-                data.npcs.forEach((npc, index) => {
-                    let safeType = npc.type || 82; 
-                    let safeState = npc.state || 'chasing';
-                    let safeRole = npc.role || 'battle';
-                    let safeColor = npc.color || '#ff0000';
-                    let safeDeck;
+        
+        // Step A: Pool the incoming server data by behavior
+        let serverBosses   = data.npcs.filter(n => n.isBoss);
+        let serverFoes     = data.npcs.filter(n => n.alignment === 'foe' && !n.isBoss);
+        let serverFriends  = data.npcs.filter(n => n.alignment === 'friendly' || n.alignment === 'defender');
+        let serverShops    = data.npcs.filter(n => n.role === 'shop');
 
-                    if (safeRole === 'internal_portal') {
-                        safeDeck = npc.deck || [50.5, 50.5]; 
-                    } else {
-                        safeDeck = (npc.deck && npc.deck.length > 0) ? npc.deck : [Math.floor(safeType)];
-                    }
-                    
-                    let safeDialogue = typeof npc.dialogue === 'string' ? [npc.dialogue] : npc.dialogue;
-                    let spawnIndex = npc.index !== undefined ? npc.index : (100 + index);
+        // Step B: Inject Server Scripts into Static Client NPCs
+        this.npcs.forEach(clientNPC => {
+            let injectedData = null;
 
-                    // --- NEW: SAFE SPAWN CORRECTION ---
-                    // Pass the server's x/y as the center, and search within a 10-tile radius
-                    let safePos = this.getSafeSpawn(npc.x, npc.y, 6);
-                    let safeX = safePos.x;
-                    
-                    // Note: Your original code had `npc.y - 0.5`. 
-                    // getSafeSpawn already adds +0.5, so if your sprites float weirdly, 
-                    // you might need to leave the -0.5 here depending on your NPC constructor.
-                    let safeY = safePos.y - 0.5; 
-
-                    // --- THE FIX: CLEAN NATIVE PUSH ---
-                    this.npcs.push(Object.assign(new NPC(
-                        spawnIndex,              // Unique Map Index
-                        safeX,                   // X (Client-Corrected)
-                        safeY,                   // Y (Client-Corrected)
-                        safeType,                // Sprite Type
-                        safeState,               // Movement State
-                        safeColor,               // Minimap Color
-                        safeDeck,                // Deck/Payload
-                        safeRole,                // Role
-                        npc.isBoss || false,     // isBoss
-                        npc.alignment || 'foe'   // Alignment
-                    ), {
-                        customDialogue: safeDialogue,
-                        rewardCard: npc.rewardCard,
-                        options: npc.options || null,
-                        endActions: npc.endActions || [],
-                        deathActions: npc.deathActions || [],
-                        isCinematic: npc.isCinematic || false,
-                        yesActions: npc.yesActions || null,
-                        noActions: npc.noActions || null
-                    }));
-                });
+            // 1. Boss Injection (e.g., Arena Master ID: 2, Mimic ID: 4)
+            if (clientNPC.isBoss || clientNPC.id === 2 || clientNPC.id === 4) {
+                if (serverBosses.length > 0) injectedData = serverBosses.shift();
             }
+            // 2. Shop Injection (e.g., Traveling Merchant ID: 3)
+            else if (clientNPC.role === 'shop' || clientNPC.id === 3) {
+                if (serverShops.length > 0) injectedData = serverShops.shift();
+            }
+            // 3. Foe Injection (e.g., Highway Mugger ID: 1)
+            else if (clientNPC.alignment === 'foe' || clientNPC.id === 1) {
+                if (serverFoes.length > 0) injectedData = serverFoes.shift();
+            }
+            // 4. Friendly/Lore Injection (e.g., Gambler ID: 5, Guild Clerks > 200)
+            else if (clientNPC.alignment === 'friendly' || clientNPC.id >= 200) {
+                if (serverFriends.length > 0) injectedData = serverFriends.shift();
+            }
+
+            // Step C: Apply the Hijacked Data!
+            if (injectedData) {
+                // Overwrite Dialogue
+                if (injectedData.dialogue) {
+                    clientNPC.customDialogue = typeof injectedData.dialogue === 'string' 
+                        ? [injectedData.dialogue] 
+                        : injectedData.dialogue;
+                }
+
+                // Overwrite Deck & Sprite (So static enemies match the biome theme!)
+                if (injectedData.deck && injectedData.deck.length > 0 && clientNPC.role !== 'shop') {
+                    clientNPC.deck = injectedData.deck;
+                    clientNPC.type = injectedData.type; // Updates their look to match the server's monster type
+                }
+
+                // Overwrite Shop Inventory
+                if (clientNPC.role === 'shop' && injectedData.deck) {
+                    clientNPC.deck = injectedData.deck;
+                    clientNPC.endActions = [['open_shop', injectedData.deck], ['play_sfx', 'click']];
+                }
+            }
+        });
+
+        // ===================================================
+        // Step D: Spawn the Leftovers safely!
+        // (Any server NPCs that didn't get hijacked into a static NPC)
+        // ===================================================
+        let leftoverNPCs = [...serverBosses, ...serverFoes, ...serverFriends, ...serverShops];
+        
+        leftoverNPCs.forEach((npc, index) => {
+            let safeType = npc.type || 82; 
+            let safeState = npc.state || 'chasing';
+            let safeRole = npc.role || 'battle';
+            let safeColor = npc.color || '#ff0000';
+            let safeDeck = (npc.deck && npc.deck.length > 0) ? npc.deck : [Math.floor(safeType)];
+            let safeDialogue = typeof npc.dialogue === 'string' ? [npc.dialogue] : npc.dialogue;
+            let spawnIndex = npc.index !== undefined ? npc.index : (100 + index);
+
+            // Get safe spawn using server coordinates as a target!
+            let safePos = this.getSafeSpawn(npc.x, npc.y, 6);
+
+            this.npcs.push(Object.assign(new NPC(
+                spawnIndex, safePos.x, safePos.y - 0.5, safeType, safeState, safeColor, safeDeck, safeRole, 
+                npc.isBoss || false, npc.alignment || 'foe'
+            ), {
+                customDialogue: safeDialogue,
+                options: npc.options || null,
+                endActions: npc.endActions || [],
+                deathActions: npc.deathActions || [],
+                yesActions: npc.yesActions || null,
+                noActions: npc.noActions || null
+            }));
+        });
+        }
           
           let song999 = 44;
             if (data.biome){
@@ -11705,8 +11737,10 @@
               if (sprite.isPlayer && transformY < 0.35) {
                 continue; 
             }
+            let testcard = new Card(sprite.type,0);
+            
             // --- TRULY 3D SCALING & ANCHORING LOGIC ---
-            let scale = 0.75; // Default height: 80% of a wall block (Humans, Player, etc)
+            let scale = 0.69; // Default height: 80% of a wall block (Humans, Player, etc)
             let hover = 0.0; // Default height off the floor: 0 (feet touching the ground)
             if (sprite.isPlayer) {
                 scale = 0.5; // Drops the player to about waist-height on the screen!
@@ -11717,7 +11751,7 @@
                 hover = -.15;
             }
             // 1. Tiny / Flying things (Cards, Pixies, Wisps)
-            if (sprite.type === -27 || sprite.type === 60.1 || sprite.type === 60 || sprite.type === 23) {
+            if (sprite.type === -27 || sprite.type === 60.1 || sprite.type === 60 || sprite.type === 23||(testcard.type > 0&&(sprite.type !=10&&sprite.type !=41&&sprite.type !=55&&sprite.type !=53))) {
                 scale = 0.3; 
                 hover = 0.4; // Make them float in the air
             }
@@ -11727,22 +11761,29 @@
                 hover = 0.5+(Math.sin(angle) * 0.01); // Make them float in the air
             }
             // 2. Short ground creatures (Imps,  Gnomes, Snakes)
-            else if (sprite.type === 56 ||sprite.type === 56.1 ||sprite.type === 79 || sprite.type === 75 || sprite.type === 75.1 || sprite.type === 89) {
-                scale = 0.5; // Half a block tall
+            else if (sprite.type === 56 ||sprite.type === 56.1 ||sprite.type === 79 || sprite.type === 75 || sprite.type === 75.1 ) {
+                scale = 0.369; // Half a block tall
                 hover = -.25; // On the ground
             }
-            else if (sprite.type === 41|| sprite.type === 54 ) {
-                scale = 0.65; // Half a block tall
-                hover = -.15; // On the ground
+            else if (sprite.type === 41|| sprite.type === 54|| sprite.type === 10 ) {
+                scale = 0.613; // Half a block tall
+                hover = -.16; // On the ground
             }
             // 3. Floating medium creatures (Shade, Sylph)
             else if (sprite.type === 99 ||sprite.type === 42 || sprite.type === 86 || sprite.type === 61.1) {
-                scale = 0.8;
+                scale = 0.69;
                 hover = 0.2; // Hovering slightly
             }
             // 4. Massive creatures (Dragons, Kraken, Giants)
-            else if (sprite.type === 63.1 || sprite.type === 63 || sprite.type === 49.1 || sprite.type === 77.1 || sprite.type === 90) {
-                scale = 1.4; // Taller than the walls!
+            else if (sprite.type === 63.1 || sprite.type === 63 ||  sprite.type === 77.1|| sprite.type === 77 || sprite.type === 90|| sprite.type === 89) {
+                scale = 1.369; // Taller than the walls!
+                hover = 0;
+            }
+            else if (sprite.type === 35.1|| sprite.type === 35 || sprite.type === 81|| sprite.type === 53|| sprite.type === 55) {
+                scale = .9631; // Taller than the walls!
+                hover = 0.0;
+            }else if (sprite.type === 49.1|| sprite.type === 49) {
+                scale = 1.69; // Taller than the walls!
                 hover = 0.0;
             }
             else if ((sprite.type <= -29&&sprite.type >= -35)) {
@@ -11759,8 +11800,8 @@
                 hover = -.3;
             }
             if (sprite.isBoss) {
-                scale = 1.4; 
-                hover = 0;
+                scale = scale * 1.369; 
+                hover = -.369
             }
             
             // Calculate Base Screen Dimensions
