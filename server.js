@@ -3673,7 +3673,8 @@
 
         return profileTraits.join(", ");
         }
-    async function generateScenarioScript(biomeName, scenarioType, bossCardName, questGiverName, thirdFactionName, targetPlayer) {        let currentVibe = "Peace.";
+    async function generateScenarioScript(biomeName, scenarioType, bossCardName, questGiverName, thirdFactionName, targetPlayer) {        
+        let currentVibe = "Peace.";
         let shadowVibe = "Chaos.";
 
         if (targetPlayer && targetPlayer.searchableMemories && targetPlayer.searchableMemories.length > 0) {
@@ -4127,25 +4128,7 @@
                                         classification: 'shop'
                                     });
 
-                               mapNPCs.push({
-                            
-                                            type: 42, // Uses the enemy faction's sprite
-                                            x: mapData.bastionCenter.x + 1.5, y: mapData.bastionCenter.y - 1.5,
-                                            state: 'stationary', role: 'dialogue', alignment: 'friendly', color: '#ffff00', // Yellow/Neutral
-                                            dialogue: [
-                                                "The guild is conducting operations in this zone.", 
-                                                "If you'd like to take on a bounty speak to one of the clerks"
-                                            ],
-                                            
-                                             endActions: [                                                
-                                                ['spawn_preset_npc', { template: 'guild_clerk', rank: 'F', x: mapData.bastionCenter.x - 3.5, y: mapData.bastionCenter.y - 3.5, }],
-                                                ['spawn_preset_npc', { template: 'guild_clerk', rank: 'E', x: mapData.bastionCenter.x + 5.5, y: mapData.bastionCenter.y + 3.5, }],
-                                                ['spawn_preset_npc', { template: 'guild_clerk', rank: 'D',x: mapData.bastionCenter.x + 3.5, y: mapData.bastionCenter.y - 3.5, }],
-                                                ['close_dialogue', null],
-                                                ['disappear',null]
-                                            ]
-                                           
-                                        });
+                              
 
                                 // 4. LORE CITIZENS (Dwellers)
                                 // Fill the remaining buildings with citizens who provide deep, profound lore.
