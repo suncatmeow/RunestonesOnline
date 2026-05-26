@@ -25,7 +25,7 @@
             });
     const port = process.env.PORT || 3000;
     //AI CONFIG ---
-            const { GoogleGenerativeAI, SchemaType } = require("@google/generative-ai");
+        const { GoogleGenerativeAI, SchemaType } = require("@google/generative-ai");
 
         const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
         const embedder = genAI.getGenerativeModel({ model: "gemini-embedding-001" });// --- COGNITIVE AXES (Behavioral) ---
@@ -3617,7 +3617,7 @@
         };
 
         try {
-            const metaModel = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite-preview" });
+            const metaModel = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite" });
             const result = await metaModel.generateContent({
                 contents: [{ role: "user", parts: [{ text: metaPrompt }] }],
                 generationConfig: { responseMimeType: "application/json", responseSchema: egoSchema }
@@ -3775,7 +3775,7 @@
             };
 
         try {
-            const scriptModel = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite-preview" });
+            const scriptModel = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite" });
             const result = await scriptModel.generateContent({
                 contents: [{ role: "user", parts: [{ text: prompt }] }],
                 generationConfig: { responseMimeType: "application/json", responseSchema: schema, temperature: 0.85 } 
@@ -5086,7 +5086,7 @@
         };
 
         try {
-            const journalModel = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite-preview" });
+            const journalModel = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite" });
             const result = await journalModel.generateContent({
                 contents: [{ role: "user", parts: [{ text: prompt }] }],
                 generationConfig: { responseMimeType: "application/json", responseSchema: schema }
@@ -5179,7 +5179,7 @@
                 [TASK]: These two events are mathematically disjointed. Formulate a single, logical hypothesis or psychological variable that could connect these two behaviors. Output only the hypothesis in one sentence.`;
                 
                 try {
-                    const bgModel = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite-preview" });
+                    const bgModel = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite" });
                     const result = await bgModel.generateContent(backgroundPrompt);
                     if (!player.derivedHypotheses) player.derivedHypotheses = [];
                     
@@ -5252,7 +5252,7 @@
                 TASK: Synthesize these events into a detailed, multi-paragraph "Core Chapter" of the saga (max 8-10 sentences).
                 Focus heavily on the overarching narrative, key locations visited, and major victories or character traits revealed. Omit trivial footsteps or repetitive combat. Write as an omniscient observer.`;
 
-                const consolidationModel = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite-preview" });
+                const consolidationModel = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite" });
                 const result = await consolidationModel.generateContent(prompt);
                 
                 if (result.response.usageMetadata) updateBudget(result.response.usageMetadata, playerId);
@@ -5408,7 +5408,7 @@
         };
 
         try {
-            const digestModel = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite-preview" });
+            const digestModel = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite" });
             
             const result = await digestModel.generateContent({
                 contents: [{ role: "user", parts: [{ text: prompt }] }],
@@ -5563,7 +5563,7 @@
             }
 
             try {
-                const meditateModel = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite-preview" });
+                const meditateModel = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite" });
                 const result = await meditateModel.generateContent(dynamicMeditationPrompt);
                 const insightText = result.response.text().trim();
                 
@@ -5659,7 +5659,7 @@
         TASK: Based on your Dao and your recent journal entries, define ONE concrete, physical goal to achieve in the game world right now. Limit: 1 sentence.`;
             
             try {
-                const goalModel = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite-preview" });
+                const goalModel = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite" });
                 const result = await goalModel.generateContent(goalPrompt);
                 suncatLongTermGoal = result.response.text().trim();
                 console.log(`[OODA] Suncat established a new Long Term Goal: ${suncatLongTermGoal}`);
@@ -5699,7 +5699,7 @@
 
             // Give Suncat his tools, but physically remove his ability to wipe the map autonomously
             const agentModel = genAI.getGenerativeModel({ 
-                model: "gemini-3.1-flash-lite-preview", 
+                model: "gemini-3.1-flash-lite", 
                 systemInstruction: dynamicPersona, 
                 tools: [{
                     functionDeclarations: toolsDef[0].functionDeclarations.filter(tool => 
@@ -6194,7 +6194,7 @@
         3. THE VOICE: Finally, speak to the player. Do not mention your tools or your soul. Just output your final dialogue.`;
 
         let modelConfig = { 
-            model: "gemini-3.1-flash-lite-preview", 
+            model: "gemini-3.1-flash-lite", 
             systemInstruction: unifiedInstruction 
         };
 
@@ -7382,7 +7382,7 @@ io.on("connection", (socket) => {
                         setTimeout(async () => {
                             try {
                                 let dynamicPersona = PERSONA_RULES_DB.core + "\n" + PERSONA_RULES_DB.commands + "\n" + PERSONA_RULES_DB.judgement_mode;
-                                const activeModel = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite-preview", systemInstruction: dynamicPersona, tools: toolsDef });
+                                const activeModel = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite", systemInstruction: dynamicPersona, tools: toolsDef });
                                 chatSessions[nearbyPlayer.id] = activeModel.startChat({ history: await chatSessions[nearbyPlayer.id].getHistory() });
 
                                 const result = await chatSessions[nearbyPlayer.id].sendMessage(proactivePrompt);
@@ -7457,7 +7457,7 @@ io.on("connection", (socket) => {
                         setTimeout(async () => {
                             try {
                                 let modelConfig = { 
-                                model: requiresBigBrain ? "gemini-3.1-flash-lite-preview" : "gemini-2.5-flash-lite", 
+                                model: requiresBigBrain ? "gemini-3.1-flash-lite" : "gemini-2.5-flash-lite", 
                                 systemInstruction: injectedPersona
                             };
                             if (requiresBigBrain) {
