@@ -4308,6 +4308,9 @@
           "-10": '#1a0d00', // Lawn Green (Grass)- WALKABLE
           "-12": '#0000FF', // Blue (Water/Void) - UNWALKABLE
         };// Define Sky/Floor colors (Global defaults)
+        this.toweringWalls = [2, 3, 13, 22, 23, 27, 37, 41, 42, 43, 62, 63];
+        this.tileHeights = { 2: 1, 3: 1, 9: 0.01, 13: 1.5, 23: 2.5 }; 
+        this.randomTreeTiles = [2, 3, 13, 14, 22];
         this.skyColor = 'rgba(255,255,255,1)';   // Dark Night
         this.floorColor = 'rgba(255,255,255,1)'; // Dark Ground
         
@@ -9716,6 +9719,20 @@
         switch (tile) {
             case -2: // The "Void" or "Pit" tile
                 if (this.mapID == 3){
+                    // --- NEW: MOVEMENT & PHYSICS KILL SWITCH ---
+                // Forget sliding destinations so we don't rubberband across the new map!
+                this.targetMapX = undefined;
+                this.targetMapY = undefined;
+                this.isSlidingToTile = false;
+
+                // Force the player to stop and re-press keys
+                window.activeMoveKey = null;
+                window.activeCtrlKey = false;
+                if (typeof btnMove !== 'undefined') { btnMove.isPressed = false; btnMove.currentDir = null; }
+                if (typeof btnMove2 !== 'undefined') { btnMove2.isPressed = false; btnMove2.currentDir = null; }
+                if (typeof btnTurnL !== 'undefined') { btnTurnL.isPressed = false; btnTurnL.currentDir = null; }
+                if (typeof btnTurnR !== 'undefined') { btnTurnR.isPressed = false; btnTurnR.currentDir = null; }
+                // -------------------------------------------
                 MusicEngine.play3DSFX('musical2')
                 setTimeout(() => {
                   this.x = 3.5;this.y = 12.5;this.dir = 0;
@@ -11032,8 +11049,8 @@
 
                 // Use the smooth 'this.x' (which includes the fractional part) 
                 // instead of Math.floor(this.x)
-                const diffX = npc.x - this.x; 
-                const diffY = npc.y - this.y;
+                const diffX = npc.x - this.x-.5; 
+                const diffY = npc.y - this.y-.5;
                 
                 // We want the NPC's position relative to the camera's fractional center
                 // If you use Math.floor(this.x), you lose the smooth movement data!
@@ -11553,60 +11570,57 @@
         // ==========================================
         // 1. MULTI-HIT DDA RAYCASTING (Upgraded for distinct 3D blocks)
         // ==========================================
-        let hitBlocks = [];
-        const toweringWalls = [2, 3,9, 13, 22, 23, 27, 37, 41, 42, 43, 62, 63]; 
-        const tileHeights = { 13: 1.5, 23: 2.5, 3:1,2:1,13:1,9:.1 }; // Define these here so the ray knows what to pass through
-        const randomTreeTiles = [2, 3,9, 14, 22]; 
+            let hitBlocks = [];
 
-        const MAX_RENDER_DEPTH = 24; // Match your sprite fog clipping
+            const MAX_RENDER_DEPTH = 24; // Match your sprite fog clipping
 
-        while (true) {
-            let side;
-            // Track the current depth of the ray
-            let currentDepth;
-            
-            if (sideDistX < sideDistY) { 
-                sideDistX += deltaDistX; mapX += stepX; side = 0; 
-                currentDepth = sideDistX - deltaDistX; 
-            } else { 
-                sideDistY += deltaDistY; mapY += stepY; side = 1; 
-                currentDepth = sideDistY - deltaDistY; 
-            }
+            while (true) {
+                let side;
+                // Track the current depth of the ray
+                let currentDepth;
+                
+                if (sideDistX < sideDistY) { 
+                    sideDistX += deltaDistX; mapX += stepX; side = 0; 
+                    currentDepth = sideDistX - deltaDistX; 
+                } else { 
+                    sideDistY += deltaDistY; mapY += stepY; side = 1; 
+                    currentDepth = sideDistY - deltaDistY; 
+                }
 
-            // BREAK OUT IF WE HIT THE FOG WALL!
-            if (currentDepth > MAX_RENDER_DEPTH) {
-                break;
-            }
-
-            if (isNaN(mapY) || isNaN(mapX) || mapY < 0 || mapY >= this.maze.length || mapX < 0 || mapX >= this.maze[0].length) {
-                break; 
-            }
-
-            if (this.explored[mapY] && this.explored[mapY][mapX] !== undefined) {
-                this.explored[mapY][mapX] = 1;
-            }
-
-            const tileID = this.maze[mapY][mapX];
-            
-            if (tileID > 0) { 
-                let perpWallDist = (side === 0) ? (rayDirX === 0 ? 100 : (mapX - camX + (1 - stepX) / 2) / rayDirX) 
-                                                : (rayDirY === 0 ? 100 : (mapY - camY + (1 - stepY) / 2) / rayDirY);
-
-                if (isNaN(perpWallDist) || perpWallDist <= 0) perpWallDist = 0.1;
-                let exitDist = Math.min(sideDistX, sideDistY);
-
-                // THE FIX: Push EVERY grid cell as its own independent 3D volume. No more merging!
-                hitBlocks.push({ wallID: tileID, side: side, mapX: mapX, mapY: mapY, perpWallDist: perpWallDist, exitDist: exitDist });
-
-                // Only stop the ray dead in its tracks if it hits an INFINITELY tall wall
-                let isInfinite = toweringWalls.includes(tileID) && !tileHeights[tileID] && !randomTreeTiles.includes(tileID);
-                if (isInfinite) {
+                // BREAK OUT IF WE HIT THE FOG WALL!
+                if (currentDepth > MAX_RENDER_DEPTH) {
                     break;
                 }
-            }
-        }
 
-            this.zBuffer[stripX] = hitBlocks;
+                if (isNaN(mapY) || isNaN(mapX) || mapY < 0 || mapY >= this.maze.length || mapX < 0 || mapX >= this.maze[0].length) {
+                    break; 
+                }
+
+                if (this.explored[mapY] && this.explored[mapY][mapX] !== undefined) {
+                    this.explored[mapY][mapX] = 1;
+                }
+
+                const tileID = this.maze[mapY][mapX];
+                
+                if (tileID > 0) { 
+                    let perpWallDist = (side === 0) ? (rayDirX === 0 ? 100 : (mapX - camX + (1 - stepX) / 2) / rayDirX) 
+                                                    : (rayDirY === 0 ? 100 : (mapY - camY + (1 - stepY) / 2) / rayDirY);
+
+                    if (isNaN(perpWallDist) || perpWallDist <= 0) perpWallDist = 0.1;
+                    let exitDist = Math.min(sideDistX, sideDistY);
+
+                    // THE FIX: Push EVERY grid cell as its own independent 3D volume. No more merging!
+                    hitBlocks.push({ wallID: tileID, side: side, mapX: mapX, mapY: mapY, perpWallDist: perpWallDist, exitDist: exitDist });
+
+                    // Only stop the ray dead in its tracks if it hits an INFINITELY tall wall
+                    let isInfinite = this.toweringWalls.includes(tileID) && !this.tileHeights[tileID] && !this.randomTreeTiles.includes(tileID);
+                    if (isInfinite) {
+                        break;
+                    }
+                }
+            }
+
+                this.zBuffer[stripX] = hitBlocks;
         // ==========================================
         // 2. TRUE 3D FLOOR CASTING (Decoupled & FOGGED!)
         // ==========================================
@@ -11690,30 +11704,23 @@
             let mapY = hit.mapY;
             let perpWallDist = hit.perpWallDist;
 
-            // 1. Define custom heights
-            const tileHeights = { 2:1,3:1, 13: 1, 23: 2.5,9:.1 }; // Static height tiles
-            const randomTreeTiles = [2, 3, 13, 9,14, 22]; // Add your tree/forest tile IDs here
             
-            let heightMult = tileHeights[wallID] || 1.0;
+            let heightMult = this.tileHeights[wallID] || 1.0;
             
             // --- DETERMINISTIC RANDOM HEIGHTS ---
-            if (randomTreeTiles.includes(wallID)) {
-                // This formula spits out a float between 0.0 and 1.0 that is completely 
-                // unique to this mapX and mapY, but never changes for this specific tile!
+            if (this.randomTreeTiles.includes(wallID)) {
                 let pseudoRandom = Math.abs(Math.sin(mapX * 12.9898 + mapY * 78.233)) * 43758.5453 % 1;
-                
-                // Set your height range here! 
-                // Example: Base height 2.0 blocks + up to 2.0 extra = Heights between 2.0 and 4.0
                 heightMult = 2.0 + (pseudoRandom * 2.0); 
             }
             
             // If it's a towering wall but has no defined height, stretch it infinitely
-            if (toweringWalls.includes(wallID) && !tileHeights[wallID] && !randomTreeTiles.includes(wallID)) {
+            if (this.toweringWalls.includes(wallID) && !this.tileHeights[wallID] && !this.randomTreeTiles.includes(wallID)) {
                 heightMult = 15.0; 
             }
             
-            // If it's a towering wall but has no defined height, stretch it infinitely to keep old behavior
-            if (toweringWalls.includes(wallID) && !tileHeights[wallID]) heightMult = 15.0; 
+            // Fallback for older towering behavior
+            if (this.toweringWalls.includes(wallID) && !this.tileHeights[wallID]) heightMult = 15.0;
+            
 
             const lineHeight = (viewH * this.zScale) / perpWallDist;
             const zShift = lineHeight * (this.camZ - 0.5); 
@@ -11741,22 +11748,34 @@
                 }
             }
             // --- DRAW THE ROOF (FIXED FOR VARIABLE HEIGHTS) ---
-            // Draw a roof for anything that isn't stretched to infinity (15.0)
-            if (heightMult < 15.0 && this.camZ > 0.5) {
+            // Removed the "this.camZ > 0.5" hardcode so roofs draw based on actual block height
+            if (heightMult < 15.0) {
                 let exitLineHeight = (viewH * this.zScale) / hit.exitDist;
                 let exitZShift = exitLineHeight * (this.camZ - 0.5);
                 
-                // NEW MATH: Calculate where the back of the roof sits based on our custom heightMult!
+                // Calculate where the back of the roof sits based on our custom heightMult
                 let exitWallBottom = exitLineHeight / 2 + horizon + exitZShift;
                 let roofBackY = exitWallBottom - (exitLineHeight * heightMult);
                 
                 let roofStartY = Math.floor(Math.max(0, roofBackY));
                 let roofEndY = drawStart + 1; 
                 
+                // This naturally prevents drawing if the camera is below the roof!
                 if (roofEndY > roofStartY) {
-                    let roofR = Math.max(0, Math.min(255, baseR * 0.4));
-                    let roofG = Math.max(0, Math.min(255, baseG * 0.4));
-                    let roofB = Math.max(0, Math.min(255, baseB * 0.4));
+                    let roofR = baseR * 0.4;
+                    let roofG = baseG * 0.4;
+                    let roofB = baseB * 0.4;
+                    
+                    // --- BONUS: Apply distance mist to roofs/flat tiles ---
+                    let maxVis = Math.max(this.maze[0].length * 0.25, 10.0);
+                    let roofFog = Math.pow(Math.min(hit.exitDist / maxVis, 1.0), 1.5);
+                    let fR = this.fogColorRGB ? this.fogColorRGB.r : 10;
+                    let fG = this.fogColorRGB ? this.fogColorRGB.g : 10;
+                    let fB = this.fogColorRGB ? this.fogColorRGB.b : 12;
+
+                    roofR = (roofR * (1 - roofFog)) + (fR * roofFog);
+                    roofG = (roofG * (1 - roofFog)) + (fG * roofFog);
+                    roofB = (roofB * (1 - roofFog)) + (fB * roofFog);
                     
                     ctx.fillStyle = `rgb(${Math.floor(roofR)},${Math.floor(roofG)},${Math.floor(roofB)})`;
                     ctx.fillRect(viewX + stripX, viewY + roofStartY, width + 0.5, roofEndY - roofStartY);
