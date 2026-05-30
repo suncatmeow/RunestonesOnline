@@ -9721,8 +9721,8 @@
                 if (this.mapID == 3){
                     // --- NEW: MOVEMENT & PHYSICS KILL SWITCH ---
                 // Forget sliding destinations so we don't rubberband across the new map!
-                this.targetMapX = undefined;
-                this.targetMapY = undefined;
+                this.targetMapX = 3.5;
+                this.targetMapY = 12.5;
                 this.isSlidingToTile = false;
 
                 // Force the player to stop and re-press keys
@@ -9739,6 +9739,19 @@
                   MusicEngine.playSFX('cancel')}, 500);
                 }
                 else if(this.mapID == 15){
+                       // Forget sliding destinations so we don't rubberband across the new map!
+                this.targetMapX = 8.5;
+                this.targetMapY = 1.5;
+                this.isSlidingToTile = false;
+
+                // Force the player to stop and re-press keys
+                window.activeMoveKey = null;
+                window.activeCtrlKey = false;
+                if (typeof btnMove !== 'undefined') { btnMove.isPressed = false; btnMove.currentDir = null; }
+                if (typeof btnMove2 !== 'undefined') { btnMove2.isPressed = false; btnMove2.currentDir = null; }
+                if (typeof btnTurnL !== 'undefined') { btnTurnL.isPressed = false; btnTurnL.currentDir = null; }
+                if (typeof btnTurnR !== 'undefined') { btnTurnR.isPressed = false; btnTurnR.currentDir = null; }
+               
                   MusicEngine.play3DSFX('musical2')
                 setTimeout(() => {
                   this.x = 8.5;this.y = 1.5;this.dir = 2;
