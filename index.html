@@ -2026,6 +2026,7 @@
         this.pathTimer = 0;
         this.cachedPath = [];
         this.isCinematic = false; // Good practice to default this here too!
+        this.damageFlashTimer = 0;
         if (role) {
             this.role = role;
         } else if (this.type === -27 || this.type === 99 || this.type < 0||this.role === 'dialogue') {
@@ -2643,6 +2644,7 @@
             if (this.combatCooldown > 0) this.combatCooldown -= 1;
             if (this.rangedCooldown > 0) this.rangedCooldown -= 1;
             if (this.talkCooldown > 0 && typeof startGame !== 'undefined' && startGame === 'explore') this.talkCooldown -= 1;
+            if (this.damageFlashTimer > 0) this.damageFlashTimer -= 1;
         // =========================================================
         // 2. DYNAMIC TARGET SELECTION (The Universal Radar)
         // =========================================================
@@ -2864,7 +2866,7 @@
                 toTargetY = diffY / distToWaypoint;
                 
                 if (this.state === 'chasing' || this.state === 'following'|| this.alignment === 'friendly_messenger') {
-                    const turnSpeed = 30.0; 
+                    const turnSpeed = 13.0; 
                     this.dirX += (toTargetX - this.dirX) * turnSpeed * dt;
                     this.dirY += (toTargetY - this.dirY) * turnSpeed * dt;
                 }
@@ -2972,7 +2974,7 @@
             let distToTarget = Math.sqrt(Math.pow(targetX - this.x, 2) + Math.pow(targetY - this.y, 2));
 
             if (this.state === 'chasing' && distToTarget < 1.2) {
-                this.speed = 0.5; 
+                this.speed = .5; 
             }
 
             // SCENARIO A: NPC CAUGHT AN ENEMY NPC
@@ -2998,7 +3000,28 @@
 
                             this.clashCount++;
                             currentPrey.clashCount++;
-
+                            this.damageFlashTimer = 15; // Trigger the red flash for 15 frames
+                            currentPrey.damageFlashTimer = 15; // Trigger the red flash for 15 frames
+                            if (typeof globalParticles !== 'undefined') {
+                                    for (let p = 0; p < 8; p++) {
+                                        
+                                        // THE FIX: Initialize using your actual Particle class!
+                                        let blood = new Particle(
+                                            this.x + (Math.random() - 0.5) * 0.4,
+                                            this.y + (Math.random() - 0.5) * 0.4,
+                                            currentPrey.x + (Math.random() - 0.5) * 0.4,
+                                            currentPrey.y + (Math.random() - 0.5) * 0.4,
+                                            '#ff0000', // Blood Red
+                                            'smoke'    // Type
+                                        );
+                                        
+                                        // Add the extra properties we want for the combat effect
+                                        blood.z = 0.3 + (Math.random() * 0.4); // Float around chest/head height
+                                        blood.decay = 0.05; // Fade out slightly faster than normal smoke
+                                        
+                                        globalParticles.push(blood);
+                                    }
+                                }
                             this.combatCooldown = 30;
                             currentPrey.combatCooldown = 30;
                             return; 
@@ -3135,9 +3158,32 @@
                             let ward = firstDefender.activeBuffs ? firstDefender.activeBuffs.find(b => b.type === 'ward') : null;
                             
                             if (ward) {
+                                firstDefender.damageFlashTimer = 15; // Trigger the red flash for 15 frames
                                 ward.hits--; 
                                 if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('cancel'); 
                             } else {
+                                // --- ADD COMBAT VISUAL TRIGGERS HERE ---
+                                firstDefender.damageFlashTimer = 15; // Trigger the red flash for 15 frames
+                                
+                               // Spawn a burst of 3D Blood/Spark particles
+                                if (typeof globalParticles !== 'undefined') {
+                                    for (let p = 0; p < 8; p++) {
+                                        
+                                        // THE FIX: Initialize using your actual Particle class!
+                                        let blood = new Particle(
+                                            firstDefender.x + (Math.random() - 0.5) * 0.4,
+                                            firstDefender.y + (Math.random() - 0.5) * 0.4,
+                                            '#ff0000', // Blood Red
+                                            'smoke'    // Type
+                                        );
+                                        
+                                        // Add the extra properties we want for the combat effect
+                                        blood.z = 0.3 + (Math.random() * 0.4); // Float around chest/head height
+                                        blood.decay = 0.05; // Fade out slightly faster than normal smoke
+                                        
+                                        globalParticles.push(blood);
+                                    }
+                                }
                                 dungeon.killNPC(firstDefender, false, 'npc_infighting');
                                 this.combatCooldown = 60;
                                 someoneDied = true;
@@ -3151,9 +3197,28 @@
                                 let ward = firstAttacker.activeBuffs ? firstAttacker.activeBuffs.find(b => b.type === 'ward') : null;
                                 
                                 if (ward) {
+                                    firstAttacker.damageFlashTimer = 15; // Trigger the red flash for 15 frames
                                     ward.hits--; 
                                     if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('cancel'); 
                                 } else {
+                                    if (typeof globalParticles !== 'undefined') {
+                                        for (let p = 0; p < 8; p++) {
+                                            
+                                            // THE FIX: Initialize using your actual Particle class!
+                                            let blood = new Particle(
+                                                firstAttacker.x + (Math.random() - 0.5) * 0.4,
+                                                firstAttacker.y + (Math.random() - 0.5) * 0.4,
+                                                '#ff0000', // Blood Red
+                                                'smoke'    // Type
+                                            );
+                                            
+                                            // Add the extra properties we want for the combat effect
+                                            blood.z = 0.3 + (Math.random() * 0.4); // Float around chest/head height
+                                            blood.decay = 0.05; // Fade out slightly faster than normal smoke
+                                            
+                                            globalParticles.push(blood);
+                                        }
+                                    }
                                     dungeon.killNPC(firstAttacker, false, 'npc_infighting');
                                     currentPrey.combatCooldown = 60;
                                     someoneDied = true;
@@ -3482,20 +3547,28 @@
                         }
                     }
 
+                    // --- NEW PROGRESSIVE WALL REPULSION ---
                     let offsetX = this.x - (mapX + 0.5); 
                     let offsetY = this.y - (mapY + 0.5);
-                    let repulsion = 1.2; 
-                    let buffer = 0.15;   
+                    let buffer = 0.2; // Slightly wider "safe zone" in the center of the tile
 
-                    if (offsetX < -buffer && this.isWall(mapX - 1, mapY)) sepX += repulsion; 
-                    if (offsetX >  buffer && this.isWall(mapX + 1, mapY)) sepX -= repulsion; 
-                    if (offsetY < -buffer && this.isWall(mapX, mapY - 1)) sepY += repulsion; 
-                    if (offsetY >  buffer && this.isWall(mapX, mapY + 1)) sepY -= repulsion; 
+                    // Dynamic repulsion: Pushes gently near the center, strongly near the edge
+                    const getRepulsion = (offset) => {
+                        let over = Math.abs(offset) - buffer;
+                        // Multiplier of 4.0 scales the push so it maxes out around 1.2 at the absolute edge
+                        return over > 0 ? over * 4.0 : 0; 
+                    };
 
-                    if (offsetX < -buffer && offsetY < -buffer && this.isWall(mapX - 1, mapY - 1)) { sepX += repulsion; sepY += repulsion; }
-                    if (offsetX >  buffer && offsetY < -buffer && this.isWall(mapX + 1, mapY - 1)) { sepX -= repulsion; sepY += repulsion; }
-                    if (offsetX < -buffer && offsetY >  buffer && this.isWall(mapX - 1, mapY + 1)) { sepX += repulsion; sepY -= repulsion; }
-                    if (offsetX >  buffer && offsetY >  buffer && this.isWall(mapX + 1, mapY + 1)) { sepX -= repulsion; sepY -= repulsion; }
+                    if (offsetX < 0 && this.isWall(mapX - 1, mapY)) sepX += getRepulsion(offsetX);
+                    if (offsetX > 0 && this.isWall(mapX + 1, mapY)) sepX -= getRepulsion(offsetX);
+                    if (offsetY < 0 && this.isWall(mapX, mapY - 1)) sepY += getRepulsion(offsetY);
+                    if (offsetY > 0 && this.isWall(mapX, mapY + 1)) sepY -= getRepulsion(offsetY);
+
+                    // Diagonals
+                    if (offsetX < -buffer && offsetY < -buffer && this.isWall(mapX - 1, mapY - 1)) { sepX += getRepulsion(offsetX); sepY += getRepulsion(offsetY); }
+                    if (offsetX >  buffer && offsetY < -buffer && this.isWall(mapX + 1, mapY - 1)) { sepX -= getRepulsion(offsetX); sepY += getRepulsion(offsetY); }
+                    if (offsetX < -buffer && offsetY >  buffer && this.isWall(mapX - 1, mapY + 1)) { sepX += getRepulsion(offsetX); sepY -= getRepulsion(offsetY); }
+                    if (offsetX >  buffer && offsetY >  buffer && this.isWall(mapX + 1, mapY + 1)) { sepX -= getRepulsion(offsetX); sepY -= getRepulsion(offsetY); }
                 }
 
                 let finalDirX = this.dirX + sepX;
@@ -12611,15 +12684,13 @@
                 let scale = 0.69; 
                 let hover = 0.0; 
                 
-                if (sprite.isPlayer) {
-                    scale = 0.5; 
-                    hover = 0;  
-                } else if (sprite.alignment == 'ally' && !sprite.isPlayer) {
-                    scale = .65; 
-                    hover = -.15;
-                }
+                
 
-                if (sprite.type === -27 || sprite.type === 60.1 || sprite.type === 60 || sprite.type === 23 || (testcard.type > 0 && sprite.type != 10 && sprite.type != 41 && sprite.type != 55 && sprite.type != 53)) {
+                if (sprite.type === -27) {
+                    scale = 0.3; 
+                    hover = 0.4; 
+                }
+                if (sprite.type === 60.1 || sprite.type === 60 || sprite.type === 23) {
                     scale = 0.3; 
                     hover = 0.4; 
                 } else if (sprite.type <= -39 && sprite.type >= -42) {
@@ -12637,10 +12708,10 @@
                     hover = 0.2; 
                 } else if (sprite.type === 63.1 || sprite.type === 63 || sprite.type === 77.1 || sprite.type === 77 || sprite.type === 90 || sprite.type === 89) {
                     scale = 1.369; 
-                    hover = 0;
+                    hover = -.5;
                 } else if (sprite.type === 35.1 || sprite.type === 35 || sprite.type === 81 || sprite.type === 53 || sprite.type === 55) {
                     scale = .9631; 
-                    hover = 0.0;
+                    hover = -.25;
                 } else if (sprite.type === 49.1 || sprite.type === 49) {
                     scale = 1.69; 
                     hover = 0.0;
@@ -12657,11 +12728,17 @@
                     hover = -.3;
                 }
                 
-                if (sprite.isBoss) {
+                if (sprite.isBoss&&sprite.type != 60.1) {
                     scale = scale * 1.369; 
                     hover = -.369;
                 }
-                    
+                if (sprite.isPlayer) {
+                    scale = 0.5; 
+                    hover = 0;  
+                } else if (sprite.alignment == 'ally' && !sprite.isPlayer) {
+                    scale = scale * .65; 
+                    hover = -.15;
+                }
                 // Calculate Base Screen Dimensions
                 const spriteScreenX = Math.floor((viewW / 2) * (1 + transformX / transformY));
                 const spriteSize = Math.abs(Math.floor(((viewH * this.zScale) / transformY) * scale)); 
@@ -12850,7 +12927,12 @@
                     } else {
                         ctx.globalAlpha = 1.0 - spriteFogFactor; 
                     }
-
+                    if (sprite.damageFlashTimer > 0) {
+                        // This specific filter makes the sprite bright, saturated red
+                        ctx.filter = 'brightness(50%) sepia(100%) hue-rotate(-50deg) saturate(1000%) contrast(200%)';
+                    } else {
+                        ctx.filter = 'none'; // Ensure normal sprites aren't tinted
+                    }
                     if (sprite.type == -27) {
                         let cardID = sprite.deck[0];
                         ctx.imageSmoothingEnabled = true; 
@@ -12861,11 +12943,12 @@
                         ctx.imageSmoothingEnabled = true; 
                         drawPortrait(imageToDraw, 0, 0, 1);
                         ctx.imageSmoothingEnabled = false; 
-                    
                         if (sprite.name && sprite.name !== "undefined") {
                             drawText(3.75, 0, 2.5, .69, '' + sprite.name, 'green', 1, 'center');
                         } 
                     }
+                                            ctx.filter = 'none';
+
                 }
                 
                 tX = oldTX; tY = oldTY; tL = oldTL; tH = oldTH;
