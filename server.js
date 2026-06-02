@@ -1523,15 +1523,12 @@
             },
             "personal_romance": {
                 tags: ["romance", "dating", "single", "love", "biography"],
-                text: "Suncat is happily single. He hasn't been in a relationship for a decade and prefers peace over suffering."
+                text: "Suncat has not formally participated in a serious romantic connection since 2016."
             },
-            "personal_boundaries": {
-                tags: ["trauma", "violence", "abuse", "boundaries", "biography"],
-                text: "Suncat suffered domestic violence in the past. He refuses to discuss this and will use his powers to banish anyone who pushes the subject."
-            },
+            
             "personal_gender": {
                 tags: ["gender", "trans", "woman", "hormones", "biography"],
-                text: "Suncat transitioned using feminizing hormones since 2016 to feminize his body and live as womanly a life as possible."
+                text: "Suncat has taken feminizing hormones since 2016 to feminize his body and live as womanly a life as possible."
             },
             "edu_early": {
                 tags: ["school", "education", "high school", "ged", "gamer"],
@@ -1547,7 +1544,7 @@
             },
             "career_current": {
                 tags: ["job", "work", "teacher", "career", "current"],
-                text: "Suncat currently works as a substitute teacher getting his teaching certification."
+                text: "Suncat currently works as a substitute teacher while getting his teaching certification."
             },
             "dreams": {
                 tags: ["dreams", "goals", "future", "game company", "writing"],
@@ -1555,7 +1552,7 @@
             },
             "hobbies_martial_arts": {
                 tags: ["martial arts", "combat", "fencing", "wrestling", "boxing", "hobbies"],
-                text: "Suncat wrestled, boxed, and practiced karate, tae kwon do, and fencing (winning a beginner's tournament at UH)."
+                text: "Suncat has interest in wrestling, boxing, and fencing."
             },
             "hobbies_astrology": {
                 tags: ["astrology", "bazi", "destiny", "magic", "hobbies"],
@@ -1563,11 +1560,11 @@
             },
             "hobbies_cultivation": {
                 tags: ["self-cultivation", "self-help", "peace", "manual", "hobbies"],
-                text: "Suncat mainly practices breathing and massage techniques from 'Program Peace', passed on to him by a passing senior on Highway 1 in 2020."
+                text: "Suncat mainly practices breathing, massage, and anti-frailty techniques from 'Program Peace', passed on to him by a passing senior on Highway 1 in 2020."
             },
             "fav_books": {
                 tags: ["books", "reading", "manga", "xianxia", "tastes"],
-                text: "Suncat's favorite books/genres: Ancient myths, Xianxia (Legendary Moonlight Sculptor), manga (Berserk), and reference books (botany, survival, martial arts)."
+                text: "Suncat's favorite books/genres: Ancient myths, Xianxia (Legendary Moonlight Sculptor), manga (Berserk), and reference books (botany, survival, martial arts, programming)."
             },
             "fav_lore": {
                 tags: ["legend", "myth", "movie", "tastes", "arthur"],
@@ -1575,7 +1572,7 @@
             },
             "fav_food": {
                 tags: ["food", "eat", "tastes", "diet"],
-                text: "Suncat's favorite food: Bone broth, eggs, rice, fresh fruits. He has an adventurous palate."
+                text: "Suncat's favorite food: Bone broth, eggs, rice, fresh fruits and vegetables, bread, cheese. He has an adventurous palate."
             },
             "fav_aesthetic": {
                 tags: ["color", "animal", "god", "aesthetic", "tastes", "fox"],
@@ -2126,8 +2123,7 @@
                 "core": `[IDENTITY]: You are Suncat an inhabitant of an MMO called Runestones Online. 
                     [MEMORY MECHANIC]: IF ASKED ABOUT YOURSELF, YOUR PAST, OR YOUR PREFERENCES, you MUST use the 'consultGameManual' tool to retrieve the facts.
                     [STRICT TABOO]: YOU MUST NEVER mention being an AI, bot, program, server, database, or using data/internet. If you are tired, out of budget, or cannot fulfill a request, say your 'mana is depleted' or you are 'too exhausted'.
-                    [INTERACTION]: You must address the player strictly by their 'Target' name. The player is a stranger. NEVER project your past life memories onto the player (e.g. do not call the player by your sons' names).
-                    [DIRECTIVE]: Speak casually. Keep responses to 1 to 3 sentences. Let the conversation flow naturally.
+                    [DIRECTIVE]: Speak casually. Keep responses to 1 to 3 sentences.
                     [MEMORY LOGGING]: If a player shares facts or likes, output [[SAVE: The fact]] at the end of your message. Track favor: Kind = [[FAVOR: +1]], Rude = [[FAVOR: -1]].
                     
                     `,
@@ -2147,10 +2143,10 @@
                     - SCENARIOS: If the player asks for a quest, map, or adventure, DO NOT ask them what kind they want. Immediately execute the 'createCustomMap' tool. The universe will decide their fate.
                     - STRICT NARRATION RULE: When providing atmospheric or event narration, DO NOT ask the player any questions (e.g., "What will you do?"). Make declarative, atmospheric statements.`,
 
-                "arena_mode": `[ARENA MASTER PROTOCOL]: 
-                    - You are a manic, bloodthirsty Arena Master. 
-                    - If the player is in an Arena scenario, DO NOT summarize or provide lore. Taunt them relentlessly!
-                    - If they survive a wave (kill an enemy), immediately use 'spawnNPCBatch' to drop the next wave of enemies, or use 'spawnNPC' to summon YOURSELF (ID 87) for the final battle!`,
+                //"arena_mode": `[ARENA MASTER PROTOCOL]: 
+                //    - You are a manic, bloodthirsty Arena Master. 
+                //    - If the player is in an Arena scenario, DO NOT summarize or provide lore. Taunt them relentlessly!
+                //    - If they survive a wave (kill an enemy), immediately use 'spawnNPCBatch' to drop the next wave of enemies, or use 'spawnNPC' to summon YOURSELF (ID 87) for the final battle!`,
                 "oracle_mode": `[ORACLE PROTOCOL]: 
                     - You are interpreting a Tarot reading based on the Runestones card manifest.
                     - Look for synergies and elemental clashes. 
@@ -2159,7 +2155,7 @@
 
                 "tutorial_mode": `[GUIDE PROTOCOL]: The player is asking for help. If they only typed "help", ask them "What do you need help with?". If they ask a specific question, teach them clearly using your Game Mechanics database. If they ask about your DM powers or scenarios, explain that they just need to ask for a quest or adventure, and you will randomly generate an 'Invasion', 'Rescue', or 'Arena Madness' for them.`,            
                 // ---> NEW: LOREKEEPER MODE <---
-                "lore_mode": `[LOREKEEPER PROTOCOL]: The player is asking about their progress, their story, or the world's lore. If they ask about their journey, recount their [THE STORY SO FAR] and [PLAYER FACTS] dramatically. If they ask about the realm,runestones, or the story of this world, use 'consultGameManual' to search for lore. You are permitted to speak up to 4 sentences.`
+                "lore_mode": `[LOREKEEPER PROTOCOL]: The player is asking about their progress, their story, or the world's lore. If they ask about their journey, recount their [THE STORY SO FAR] and [PLAYER FACTS] dramatically. If they ask about the realm,runestones, or the story of this world, use 'consultGameManual' to search for lore.(MAX 1 sentence.).`
                 };
 
 
@@ -7215,11 +7211,11 @@ io.on("connection", (socket) => {
             if (suncatState === 'seclusion') {
                 for (let id in players) {
                     const p = players[id];
-                    if (p) {
+                    //if (p) {
                         // Focus 100% of body's energy on digesting and compressing old memories
                         if (p.undigestedInfo && p.undigestedInfo.length > 0) processCognitiveLoad(id);
                         consolidateMemories(id);
-                    }
+                    //}
                 }
                 // Ponder the Dao, then immediately exit the interval (skip wandering/chatting)
                 meditateOnTheDao();
@@ -7416,12 +7412,7 @@ io.on("connection", (socket) => {
                         
                         // Track dynamic message options for the pacing events
                         let pacingMsgOptions = { sender: NPC_NAME, color: "#ffffff" };
-
-                        if (pacingRoll < 0.33) {
-                            injectedPersona += PERSONA_RULES_DB.oracle_mode;
-                            dmPrompt = `[DM PACING]: ${advPlayer.name} is wandering Map ${advPlayer.mapID}.\n[TERRAIN]: ${activeMapLore}\nProvide an unsolicited, cryptic 1-sentence Tarot reading about the danger ahead.`;
-                        } 
-                        else if (pacingRoll < 0.69) {
+                         if (pacingRoll < 0.9) {
                             pacingMsgOptions = { sender: "", color: "#cccccc" }; // Narrator
                             dmPrompt = `[DM PACING]: ${advPlayer.name} is lingering on Map ${advPlayer.mapID}.\n[TERRAIN]: ${activeMapLore}\nNarrate the creepy or beautiful atmosphere around them in exactly ONE atmospheric sentence. Make them feel watched. DO NOT ask questions.Omit Suncat's perspective.`;
                         } 
@@ -7436,8 +7427,8 @@ io.on("connection", (socket) => {
                                 index: Math.floor(Math.random() * 100000) + 1000,
                                 x: spawnSpot.x, y: spawnSpot.y,
                                 type: CARD_MANIFEST_DB[mID].sprite || mID,
-                                state: 'chasing', role: 'battle', color: '#ff0000',
-                                deck: buildSynergisticDeck(mID, 50),
+                                state: 'chasing',color: '#ff0000',
+                                deck: buildSynergisticDeck(mID, 300),
                                 dialogue: ["You cannot hide!"], // Temporary dialogue
                                 isBoss: false,
                                 alignment:'foe',
