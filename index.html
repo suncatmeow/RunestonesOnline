@@ -9865,6 +9865,18 @@
                 
             case -12: // To Map 9 Stormy Sea from Map 10 Avalon
                 this.loadMap(9);
+                this.targetMapX = 1.5;
+                this.targetMapY = 7.5;
+                this.isSlidingToTile = false;
+
+                // Force the player to stop and re-press keys
+                window.activeMoveKey = null;
+                window.activeCtrlKey = false;
+                if (typeof btnMove !== 'undefined') { btnMove.isPressed = false; btnMove.currentDir = null; }
+                if (typeof btnMove2 !== 'undefined') { btnMove2.isPressed = false; btnMove2.currentDir = null; }
+                if (typeof btnTurnL !== 'undefined') { btnTurnL.isPressed = false; btnTurnL.currentDir = null; }
+                if (typeof btnTurnR !== 'undefined') { btnTurnR.isPressed = false; btnTurnR.currentDir = null; }
+               
                 this.dir = 1;
                 this.x = 1.5;
                 this.y = 7.5
@@ -11162,18 +11174,30 @@
                     const diffY = mapY - Math.floor(this.y);
                     const dist = Math.sqrt(diffX*diffX + diffY*diffY);
 
-                    let isVisible = (this.dSense > 0 && dist <= this.dSense) || this.checkLineOfSight(mapX + 0.5, mapY + 0.5);
+                    // 1. Check current active vision
+                    let isCurrentlySeen = (this.dSense > 0 && dist <= this.dSense) || this.checkLineOfSight(mapX + 0.5, mapY + 0.5);
 
-                    if (isVisible) {
+                    // 2. Mark as permanently explored
+                    if (isCurrentlySeen) {
+                        if (!this.explored[mapY]) this.explored[mapY] = [];
+                        this.explored[mapY][mapX] = 1; 
+                    }
+
+                    // 3. Render ONLY if we have explored it
+                    if (this.explored[mapY] && this.explored[mapY][mapX] === 1) {
                         let tx = centerScreenX + (x * cellSize) - (fractionalX * cellSize) - (cellSize / 2);
                         let ty = centerScreenY + (y * cellSize) - (fractionalY * cellSize) - (cellSize / 2);
                         let tileID = this.maze[mapY][mapX];
 
-                        // Only render if it is NOT a solid wall
                         if (tileID <= 0 || !this.isWall(mapX, mapY)) {
+                            // FOG OF WAR MEMORY FADE
+                            ctx.globalAlpha = isCurrentlySeen ? 1.0 : 0.35; 
+                            
                             let fColor = (this.floorColors && this.floorColors[tileID]) ? this.floorColors[tileID] : this.floorColor;
                             drawShape('rec', tx, ty, 1, 0, 0, cellSize + 0.05, cellSize + 0.05, 0,0,0,0, fColor, 1);
                             this.drawTileTexture(tileID, tx, ty, cellSize);
+                            
+                            ctx.globalAlpha = 1.0; // Reset
                         }
                     }
                 }
@@ -11191,39 +11215,33 @@
                     const diffY = mapY - Math.floor(this.y);
                     const dist = Math.sqrt(diffX*diffX + diffY*diffY);
 
-                    let isVisible = (this.dSense > 0 && dist <= this.dSense) || this.checkLineOfSight(mapX + 0.5, mapY + 0.5);
+                    let isCurrentlySeen = (this.dSense > 0 && dist <= this.dSense) || this.checkLineOfSight(mapX + 0.5, mapY + 0.5);
 
-                    if (isVisible) {
+                    if (this.explored[mapY] && this.explored[mapY][mapX] === 1) {
                         let tx = centerScreenX + (x * cellSize) - (fractionalX * cellSize) - (cellSize / 2);
                         let ty = centerScreenY + (y * cellSize) - (fractionalY * cellSize) - (cellSize / 2);
                         let tileID = this.maze[mapY][mapX];
 
-                        // Render ONLY Solid Walls
                         if (tileID > 0 && this.isWall(mapX, mapY)) {
-                            let wColor = this.wallColors ? (this.wallColors[tileID] || '#8b4513') : '#8b4513';
+                            // FOG OF WAR MEMORY FADE
+                            ctx.globalAlpha = isCurrentlySeen ? 1.0 : 0.35; 
                             
-                            // 1. Draw Top Face of the Wall
+                            let wColor = this.wallColors ? (this.wallColors[tileID] || '#8b4513') : '#8b4513';
                             drawShape('rec', tx, ty, 1, 0, 0, cellSize + 0.05, cellSize + 0.05, 0,0,0,0, wColor, 1);
                             this.drawTileTexture(tileID, tx, ty, cellSize);
                             
-                            // 2. Draw Top Edge Highlight
-                            //drawShape('rec', tx, ty, 1, 0, 0, cellSize + 0.05, cellSize * 0.05, 0,0,0,0, 'rgba(255,255,255,0.2)', 1);
-
-                            // 3. CHECK THE TILE BELOW IT
                             let tileBelow = (mapY + 1 < this.maze.length) ? this.maze[mapY + 1][mapX] : 1;
                             let isWallBelow = (tileBelow > 0 && this.isWall(mapX, mapY + 1));
 
-                            // 4. DRAW 2.5D DROP-FACE
-                            // If the tile below is a floor, we draw the ledge hanging down!
                             if (!isWallBelow) {
-                                let dropHeight = cellSize * 0.35; // Extends 35% into the tile below
-                                
-                                // Draw the physical extension using the wall base color
+                                let dropHeight = cellSize * 0.35; 
                                 drawShape('rec', tx, ty, 1, 0, cellSize, cellSize + 0.05, dropHeight + 0.05, 0,0,0,0, wColor, 1);
                                 
-                                // Darken the extension so it looks like a shaded vertical drop
-                                drawShape('rec', tx, ty, 1, 0, cellSize, cellSize + 0.05, dropHeight + 0.05, 0,0,0,0, 'rgba(0,0,0,0.5)', 1);
+                                // Increase shadow darkness slightly if it's in the fog so it doesn't get completely washed out
+                                let shadowAlpha = isCurrentlySeen ? 0.5 : 0.8;
+                                drawShape('rec', tx, ty, 1, 0, cellSize, cellSize + 0.05, dropHeight + 0.05, 0,0,0,0, `rgba(0,0,0,${shadowAlpha})`, 1);
                             }
+                            ctx.globalAlpha = 1.0; // Reset
                         }
                     }
                 }
@@ -11755,18 +11773,25 @@
         else { stepY = 1; sideDistY = (mapY + 1 - camY) * deltaDistY; }
 
         ctx.globalAlpha = 1.0; 
-        const horizon = (viewH / 2) + this.pitch; // Calculate horizon globally
+        const horizon = (viewH / 2) + this.pitch; 
         
         // ==========================================
-        // 1. MULTI-HIT DDA RAYCASTING (Upgraded for distinct 3D blocks)
+        // 1. RAM SAVER: DYNAMIC RENDER DEPTH
         // ==========================================
+            // dSense scales our vision range. 
+            // e.g., dSense 1 = 3 tiles. dSense 10 = 30 tiles.
+            // Drop this directly into your engine setup
+            let dynamicMaxVis = Math.max(2, Math.round(this.dSense / 3));
+            
+            // Hard-cap the ray loop at 32 so dSense 99 doesn't fry the CPU
+            const MAX_RENDER_DEPTH = Math.min(32, dynamicMaxVis + 1); 
+            
             let hitBlocks = [];
-
-            const MAX_RENDER_DEPTH = 24; // Match your sprite fog clipping
+            // Tracks the exact distance physical vision is broken by a wall
+            let losBlockedDepth = MAX_RENDER_DEPTH;
 
             while (true) {
                 let side;
-                // Track the current depth of the ray
                 let currentDepth;
                 
                 if (sideDistX < sideDistY) { 
@@ -11777,14 +11802,9 @@
                     currentDepth = sideDistY - deltaDistY; 
                 }
 
-                // BREAK OUT IF WE HIT THE FOG WALL!
-                if (currentDepth > MAX_RENDER_DEPTH) {
-                    break;
-                }
-
-                if (isNaN(mapY) || isNaN(mapX) || mapY < 0 || mapY >= this.maze.length || mapX < 0 || mapX >= this.maze[0].length) {
-                    break; 
-                }
+                // RAM SAVER: Stop computing if it's beyond our dynamic fog distance!
+                if (currentDepth > MAX_RENDER_DEPTH) break;
+                if (isNaN(mapY) || isNaN(mapX) || mapY < 0 || mapY >= this.maze.length || mapX < 0 || mapX >= this.maze[0].length) break; 
 
                 if (this.explored[mapY] && this.explored[mapY][mapX] !== undefined) {
                     this.explored[mapY][mapX] = 1;
@@ -11799,10 +11819,13 @@
                     if (isNaN(perpWallDist) || perpWallDist <= 0) perpWallDist = 0.1;
                     let exitDist = Math.min(sideDistX, sideDistY);
 
-                    // THE FIX: Push EVERY grid cell as its own independent 3D volume. No more merging!
                     hitBlocks.push({ wallID: tileID, side: side, mapX: mapX, mapY: mapY, perpWallDist: perpWallDist, exitDist: exitDist });
 
-                    // Only stop the ray dead in its tracks if it hits an INFINITELY tall wall
+                    // --- STRICT PHYSICAL LINE OF SIGHT ---
+                    if (losBlockedDepth === MAX_RENDER_DEPTH && this.isWall(mapX, mapY)) {
+                        losBlockedDepth = perpWallDist; // Vision stops dead right here
+                    }
+
                     let isInfinite = this.toweringWalls.includes(tileID) && !this.tileHeights[tileID] && !this.randomTreeTiles.includes(tileID);
                     if (isInfinite) {
                         break;
@@ -11810,14 +11833,15 @@
                 }
             }
 
-                this.zBuffer[stripX] = hitBlocks;
+            this.zBuffer[stripX] = hitBlocks;
+
         // ==========================================
-        // 2. TRUE 3D FLOOR CASTING (Decoupled & FOGGED!)
+        // 2. TRUE 3D FLOOR CASTING (Strict Fog Cutoff)
         // ==========================================
-            let minFloorY = horizon + (viewH * this.zScale * this.camZ) / MAX_RENDER_DEPTH;
-            let startFloorY = Math.max(minFloorY, Math.floor(horizon) + 1);
+            // THE FIX: Start drawing the floor exactly at the horizon line! 
+            // Do not use minFloorY, otherwise you get a cardboard gap.
+            let startFloorY = Math.floor(horizon) + 1;
             
-            // Fallback to dark shadow instead of bright mist if undefined
             let fR = this.fogColorRGB ? this.fogColorRGB.r : 10;
             let fG = this.fogColorRGB ? this.fogColorRGB.g : 10;
             let fB = this.fogColorRGB ? this.fogColorRGB.b : 12;
@@ -11840,18 +11864,27 @@
                     if (tile !== 0) colorStr = this.floorColors[tile];
                 }
 
-                // 1. Calculate floor fog exactly like the walls
-                let floorFogFactor = Math.pow(Math.min(currentDist / MAX_RENDER_DEPTH, 1.0), 1.5);
+                // --- ATMOSPHERIC FOG FOR FLOORS ---
+                // THE FIX: Must check against both LOS AND dynamicMaxVis!
+                let inVision = (currentDist <= losBlockedDepth) && (currentDist <= dynamicMaxVis);
+
+                let fogStart = dynamicMaxVis * 0.4; 
+                let floorFogFactor = 0;
+
+                if (currentDist > fogStart) {
+                    floorFogFactor = Math.pow(Math.min((currentDist - fogStart) / (dynamicMaxVis - fogStart), 1.0), 1.8);
+                }
+
+                // If it's outside our vision, force it to be 100% pure fog so it blends into the abyss
+                if (!inVision) {
+                    floorFogFactor = 1.0; 
+                }
                 
-                // 2. OPTIMIZATION: Snap fog to nearest 0.05 increments. 
-                // This allows the renderer to batch multiple Y pixels into a single fillRect!
                 floorFogFactor = Math.round(floorFogFactor * 20) / 20;
 
-                // Create a unique cache key combining the tile color and current fog level
                 let cacheKey = colorStr ? (colorStr + "_" + floorFogFactor) : null;
 
                 if (cacheKey !== currentFloorCacheKey) {
-                    // Draw the previous batched strip before switching colors
                     if (currentFloorCacheKey !== null && currentFillStyle !== null) {
                         ctx.fillStyle = currentFillStyle;
                         ctx.fillRect(viewX + stripX, viewY + colorStartY, width + 0.5, (y - colorStartY) + 1);
@@ -11862,21 +11895,19 @@
                     
                     if (colorStr) {
                         let { r: bR, g: bG, b: bB } = this.parseColor(colorStr);
-                        if (isNaN(bR)) { bR = 10; bG = 50; bB = 10; } // Fallback safe color
+                        if (isNaN(bR)) { bR = 10; bG = 50; bB = 10; } 
                         
-                        // 3. Blend the floor tile color with the mist
                         let finalR = (bR * (1 - floorFogFactor)) + (fR * floorFogFactor);
                         let finalG = (bG * (1 - floorFogFactor)) + (fG * floorFogFactor);
                         let finalB = (bB * (1 - floorFogFactor)) + (fB * floorFogFactor);
                         
                         currentFillStyle = `rgb(${Math.floor(finalR)},${Math.floor(finalG)},${Math.floor(finalB)})`;
                     } else {
-                        currentFillStyle = null; // No physical floor tile to draw here
+                        currentFillStyle = null; 
                     }
                 }
             }
             
-            // Draw the final leftover batch at the bottom of the screen
             if (currentFloorCacheKey !== null && currentFillStyle !== null) {
                 ctx.fillStyle = currentFillStyle;
                 ctx.fillRect(viewX + stripX, viewY + colorStartY, width + 0.5, (viewH - colorStartY) + 1);
@@ -11885,42 +11916,34 @@
         // ==========================================
         // 3. BACK-TO-FRONT WALL RENDERING
         // ==========================================
-            // Now we paint the walls over the solid floor, eliminating any triangle gaps.
-                for (let i = hitBlocks.length - 1; i >= 0; i--) {
-                    let hit = hitBlocks[i];
-                    let wallID = hit.wallID;
-                    let side = hit.side;
-                    let mapX = hit.mapX;
-                    let mapY = hit.mapY;
-                    let perpWallDist = hit.perpWallDist;
+            for (let i = hitBlocks.length - 1; i >= 0; i--) {
+                let hit = hitBlocks[i];
+                let wallID = hit.wallID;
+                let side = hit.side;
+                let mapX = hit.mapX;
+                let mapY = hit.mapY;
+                let perpWallDist = hit.perpWallDist;
 
-                    
-                    let heightMult = this.tileHeights[wallID] || 1.0;
-                    
-                    // --- DETERMINISTIC RANDOM HEIGHTS ---
-                    if (this.randomTreeTiles.includes(wallID)) {
-                        let pseudoRandom = Math.abs(Math.sin(mapX * 12.9898 + mapY * 78.233)) * 43758.5453 % 1;
-                        heightMult = 2.0 + (pseudoRandom * 2.0); 
-                    }
-                    
-                    // If it's a towering wall but has no defined height, stretch it infinitely
-                    if (this.toweringWalls.includes(wallID) && !this.tileHeights[wallID] && !this.randomTreeTiles.includes(wallID)) {
-                        heightMult = 13.0; 
-                    }
+                let heightMult = this.tileHeights[wallID] || 1.0;
                 
-                    // Fallback for older towering behavior
-                    if (this.toweringWalls.includes(wallID) && !this.tileHeights[wallID]) heightMult = 15.0;
-                    
+                if (this.randomTreeTiles.includes(wallID)) {
+                    let pseudoRandom = Math.abs(Math.sin(mapX * 12.9898 + mapY * 78.233)) * 43758.5453 % 1;
+                    heightMult = 2.0 + (pseudoRandom * 2.0); 
+                }
+                
+                if (this.toweringWalls.includes(wallID) && !this.tileHeights[wallID] && !this.randomTreeTiles.includes(wallID)) {
+                    heightMult = 13.0; 
+                }
+                if (this.toweringWalls.includes(wallID) && !this.tileHeights[wallID]) heightMult = 15.0;
+                
+                const lineHeight = (viewH * this.zScale) / perpWallDist;
+                const zShift = lineHeight * (this.camZ - 0.5); 
 
-                    const lineHeight = (viewH * this.zScale) / perpWallDist;
-                    const zShift = lineHeight * (this.camZ - 0.5); 
-
-            // 2. Mathematically anchor the wall to the floor and scale upwards
                 const wallBottom = lineHeight / 2 + horizon + zShift;
                 const trueDrawStart = wallBottom - (lineHeight * heightMult);
                 
                 let drawStart = Math.floor(Math.max(0, trueDrawStart));
-                hit.topY = Math.max(0, trueDrawStart); // SAVE THIS FOR SPRITE CLIPPING!
+                hit.topY = Math.max(0, trueDrawStart); 
 
                 const drawEnd = Math.ceil(Math.min(viewH, wallBottom)) + 1;
                 let colorStr = this.wallColors[wallID] || '#8b4513';
@@ -11928,41 +11951,40 @@
                 if (isNaN(baseR) || isNaN(baseG) || isNaN(baseB)) {
                     baseR = 139; baseG = 69; baseB = 19; 
                 }
-            // --- 3D RIM LIP SHADOW ---
-                // Adds a 3-pixel dark edge to the top of any wall that isn't infinite
+
                 if (heightMult < 15.0) {
-                    ctx.fillStyle = `rgba(0, 0, 0, 0.45)`; // Dark geometrical shadow rim
-                    let lipHeight = Math.min(3, drawEnd - drawStart); // Max 3 pixels thick
+                    ctx.fillStyle = `rgba(0, 0, 0, 0.45)`; 
+                    let lipHeight = Math.min(3, drawEnd - drawStart); 
                     if (lipHeight > 0) {
                         ctx.fillRect(viewX + stripX, viewY + drawStart, width + 0.5, lipHeight); 
                     }
                 }
-            // --- DRAW THE ROOF (FIXED FOR VARIABLE HEIGHTS) ---
-                // Removed the "this.camZ > 0.5" hardcode so roofs draw based on actual block height
+
                 if (heightMult < 15.0) {
                     let exitLineHeight = (viewH * this.zScale) / hit.exitDist;
                     let exitZShift = exitLineHeight * (this.camZ - 0.5);
-                    
-                    // Calculate where the back of the roof sits based on our custom heightMult
                     let exitWallBottom = exitLineHeight / 2 + horizon + exitZShift;
                     let roofBackY = exitWallBottom - (exitLineHeight * heightMult);
-                    
                     let roofStartY = Math.floor(Math.max(0, roofBackY));
                     let roofEndY = drawStart + 1; 
                     
-                    // This naturally prevents drawing if the camera is below the roof!
                     if (roofEndY > roofStartY) {
                         let roofR = baseR * 0.4;
                         let roofG = baseG * 0.4;
                         let roofB = baseB * 0.4;
                         
-                        // --- BONUS: Apply distance mist to roofs/flat tiles ---
-                        let maxVis = Math.max(this.maze[0].length * 0.25, 10.0);
-                        let roofFog = Math.pow(Math.min(hit.exitDist / maxVis, 1.0), 1.5);
-                        let fR = this.fogColorRGB ? this.fogColorRGB.r : 10;
-                        let fG = this.fogColorRGB ? this.fogColorRGB.g : 10;
-                        let fB = this.fogColorRGB ? this.fogColorRGB.b : 12;
+                        // --- ATMOSPHERIC FOG FOR ROOFS ---
+                        let roofInVision = (hit.exitDist <= losBlockedDepth);
 
+                        let fogStart = dynamicMaxVis * 0.4;
+                        let roofFog = 0;
+
+                        if (hit.exitDist > fogStart) {
+                            roofFog = Math.pow(Math.min((hit.exitDist - fogStart) / (dynamicMaxVis - fogStart), 1.0), 1.8);
+                        }
+
+                        if (!roofInVision) roofFog = 1.0;
+                        
                         roofR = (roofR * (1 - roofFog)) + (fR * roofFog);
                         roofG = (roofG * (1 - roofFog)) + (fG * roofFog);
                         roofB = (roofB * (1 - roofFog)) + (fB * roofFog);
@@ -11984,41 +12006,36 @@
                     if (perpWallDist > 5) noise = 0; 
                 }
 
-                let shade;
-           
-                // --- THE VISIBILITY FIX ---
-                shade = (163 / (perpWallDist + 1)) + 20; 
+                let shade = (163 / (perpWallDist + 1)) + 20; 
                 if (this.mapID === -1){ shade = 193}
                 if (shade > 255) shade = 255;
-                if (side === 1) shade *= 0.75; // Softer side shadows so corners don't get completely crushed
-            
+                if (side === 1) shade *= 0.75; 
 
-                // ---> ADD THESE 4 LINES BACK IN <---
                 let brightness = shade / 255;
                 let r = baseR * brightness + noise;
                 let g = baseG * brightness + noise;
                 let b = baseB * brightness + noise;
-                // -----------------------------------
                 
-            // --- ATMOSPHERIC MIST BLENDING ---
-                // Clamp visibility so tiny 10x10 maps still give you at least 6 tiles of vision
-                let maxVisibility = Math.max(this.maze[0].length * 0.25, 10.0);
-                let fogFactor = Math.pow(Math.min(perpWallDist / maxVisibility, 1.0), 1.5); 
-                
-                // Fallback to dark shadow instead of bright mist if undefined
-                let fR = this.fogColorRGB ? this.fogColorRGB.r : 10;
-                let fG = this.fogColorRGB ? this.fogColorRGB.g : 10;
-                let fB = this.fogColorRGB ? this.fogColorRGB.b : 12;
-                let rawR = r;
-                let rawG = g;
-                let rawB = b;
-                // Interpolate (Lerp) between the shaded wall color and the mist color
+                // --- ATMOSPHERIC FOG FOR WALLS ---
+                let wallInVision = (perpWallDist <= losBlockedDepth);
+
+                let fogStart = dynamicMaxVis * 0.4;
+                let fogFactor = 0;
+
+                if (perpWallDist > fogStart) {
+                    fogFactor = Math.pow(Math.min((perpWallDist - fogStart) / (dynamicMaxVis - fogStart), 1.0), 1.8);
+                }
+
+                if (!wallInVision) fogFactor = 1.0;
+
+                let rawR = r, rawG = g, rawB = b;
                 r = (r * (1 - fogFactor)) + (fR * fogFactor);
                 g = (g * (1 - fogFactor)) + (fG * fogFactor);
                 b = (b * (1 - fogFactor)) + (fB * fogFactor);
+                
                 let drawFullStrip = true; 
                 let fadeAlpha = Math.max(0, 1.0 - fogFactor);
-            // A. WOOD GRAIN / REAL BARK
+        // A. WOOD GRAIN / REAL BARK
             if ([2,3,15,23].includes(wallID)) {
                 if ([].includes(this.mapID)) { 
                     ctx.fillStyle = `rgb(${Math.floor(r)},${Math.floor(g)},${Math.floor(b)})`;
@@ -12491,7 +12508,7 @@
         if (!this.maze || this.maze.length === 0 || !this.maze[0]) return;
         const size = viewW * 0.2; 
         const padding = 10;
-        const cellSize = size / 15; // Reverted back to your original fixed zoom!
+        const cellSize = size / 15; 
         
         const startX = viewX + viewW - size - padding;
         const startY = viewY + padding;
@@ -12502,12 +12519,10 @@
 
         const range = 7; // Fixed 15x15 grid
         
-        // --- NEW: CALCULATE SMOOTH CAMERA OFFSET ---
-        // This calculates exactly how far between tiles the player currently is
         const fractionalX = this.x - Math.floor(this.x)-.5;
         const fractionalY = this.y - Math.floor(this.y)-.5;
         
-        // --- 1. DRAW TILES ---
+        // --- 1. DRAW TILES & UPDATE EXPLORATION ---
         for (let y = -range; y <= range; y++) {
           for (let x = -range; x <= range; x++) {
             const mapX = Math.floor(this.x) + x;
@@ -12516,36 +12531,38 @@
             // Boundary Check
             if (mapX >= 0 && mapX < this.maze[0].length && mapY >= 0 && mapY < this.maze.length) {
               
-              // --- VISIBILITY CHECK (LOS vs X-RAY) ---
-              let isVisible = false;
-              const dist = Math.sqrt(x*x + y*y);
+              // True distance for dSense
+              const realDist = Math.sqrt(Math.pow((mapX + 0.5) - this.x, 2) + Math.pow((mapY + 0.5) - this.y, 2));
+              let isCurrentlySeen = false;
               
-              // If the tile is within your dSense radius, you get X-Ray vision!
-              if (this.dSense > 0 && dist <= this.dSense) {
-                isVisible = true; 
-              } 
-              // Otherwise, rely on your standard directional Line of Sight
-              else {
-                isVisible = this.checkLineOfSight(mapX + 0.5, mapY + 0.5);
+              // DYNAMIC REVEAL: Check if tile is in active vision
+              if ((this.dSense > 0 && realDist <= this.dSense) || this.checkLineOfSight(mapX + 0.5, mapY + 0.5)) {
+                  isCurrentlySeen = true;
+                  if (!this.explored[mapY]) this.explored[mapY] = [];
+                  this.explored[mapY][mapX] = 1; // Mark permanently explored!
               }
 
-              if (!isVisible) continue;
+              // ONLY DRAW IF EXPLORED
+              if (this.explored[mapY] && this.explored[mapY][mapX] === 1) {
+                  const screenX = startX + size / 2 + (x - fractionalX) * cellSize;
+                  const screenY = startY + size / 2 + (y - fractionalY) * cellSize;
+                  
+                  if (screenX >= startX && screenX < startX + size && screenY >= startY && screenY < startY + size) {
+                    const tileID = this.maze[mapY][mapX];
 
-              // --- SMOOTH DRAWING ---
-              // Subtract the fractional offset from x and y so the map glides with the player
-              const screenX = startX + size / 2 + (x - fractionalX) * cellSize;
-              const screenY = startY + size / 2 + (y - fractionalY) * cellSize;
-              
-              if (screenX >= startX && screenX < startX + size && screenY >= startY && screenY < startY + size) {
-                const tileID = this.maze[mapY][mapX];
+                    // --- FOG OF WAR EFFECT ---
+                    // Bright if currently in LOS/dSense, dim if just a memory
+                    ctx.globalAlpha = isCurrentlySeen ? 1.0 : 0.4;
 
-                if (this.isWall(mapX, mapY)) {
-                    ctx.fillStyle = this.wallColors[tileID] || '#8b4513'; 
-                    ctx.fillRect(screenX, screenY, cellSize + 0.5, cellSize + 0.5); // Added +0.5 to prevent sub-pixel grid lines
-                } else {
-                    ctx.fillStyle = this.floorColor; 
-                    ctx.fillRect(screenX, screenY, cellSize + 0.5, cellSize + 0.5);
-                }
+                    if (this.isWall(mapX, mapY)) {
+                        ctx.fillStyle = this.wallColors[tileID] || '#8b4513'; 
+                        ctx.fillRect(screenX, screenY, cellSize + 0.5, cellSize + 0.5);
+                    } else {
+                        ctx.fillStyle = this.floorColor; 
+                        ctx.fillRect(screenX, screenY, cellSize + 0.5, cellSize + 0.5);
+                    }
+                    ctx.globalAlpha = 1.0; // Reset
+                  }
               }
             }
           }
@@ -12559,7 +12576,6 @@
           const diffY = npc.y - this.y;
           const dist = Math.sqrt(diffX*diffX + diffY*diffY);
 
-          // --- THE BOSS COMPASS ---
           if (npc.isBoss && this.dSense >= 20) {
               let drawDiffX = diffX;
               let drawDiffY = diffY;
@@ -12579,35 +12595,30 @@
               return; 
           }
 
-          // Standard NPC Drawing (Only draw if they are within the 15x15 minimap range)
           if(Math.abs(diffX) <= range && Math.abs(diffY) <= range) {
               let canSeeNPC = false;
               
               if (this.dSense > 0 && dist <= this.dSense) {
-                  canSeeNPC = true; // X-Ray
+                  canSeeNPC = true; 
               } else { 
-                  canSeeNPC = this.checkLineOfSight(npc.x, npc.y); // Normal vision
+                  canSeeNPC = this.checkLineOfSight(npc.x, npc.y); 
               }
 
               if (!canSeeNPC) return;
 
-              // --- THE SCALING IDENTITY RADAR ---
-              let drawColor = '#aaaaaa'; // Default: Unknown Entity (Grey)
-              
+              let drawColor = '#aaaaaa'; 
               let identifyRadius = Math.max(0, this.dSense - 15); 
               
               if (dist <= identifyRadius || this.dSense >= 50) {
-                  // NEW: Only apply dynamic Role colors if we are in Suncat's Custom Map!
                   if (this.mapID === 999) {
                       switch(npc.role) {
-                          case 'battle': drawColor = '#ff0000'; break;      // Red
-                          case 'quest_giver': drawColor = '#ffd700'; break; // Gold
-                          case 'reward': drawColor = '#00ff00'; break;      // Green
-                          case 'dialogue': drawColor = '#00ffff'; break;    // Cyan
+                          case 'battle': drawColor = '#ff0000'; break;     
+                          case 'quest_giver': drawColor = '#ffd700'; break; 
+                          case 'reward': drawColor = '#00ff00'; break;     
+                          case 'dialogue': drawColor = '#00ffff'; break;   
                           default: drawColor = npc.color || '#ff0000';
                       }
                   } else {
-                      // Offline Maps: Just use whatever color they were hardcoded with
                       drawColor = npc.color || '#ff0000'; 
                   }
               }
@@ -12622,7 +12633,7 @@
           }
         });
 
-        // --- 3. DRAW ONLINE PLAYERS (AND SUNCAT) ---
+        // --- 3. DRAW ONLINE PLAYERS ---
         if (window.remotePlayers) {
             for (let id in window.remotePlayers) {
                 let p = window.remotePlayers[id];
@@ -12669,7 +12680,6 @@
         ctx.fill();
         ctx.restore();
         }
-
       drawStar(ctx, cx, cy, spikes, outerRadius, innerRadius, color) {
           let rot = Math.PI / 2 * 3;
           let x = cx;
@@ -12697,26 +12707,40 @@
           ctx.stroke();
         }
       drawCombinedSprites(ctx, viewX, viewY, viewW, viewH, dirX, dirY, planeX, planeY, spriteList, camX, camY) {        
-            const MAX_DIST_SQ = 24 * 24; // Square the depth to avoid slow Math.sqrt() calls
+            // 1. Establish our nearsighted vision limit
+            let dynamicMaxVis = Math.max(2, Math.round(this.dSense / 3)); 
+            
+            // Add a tiny +1 buffer so sprites on the absolute edge can fade to 0 alpha before clipping
+            const MAX_DIST_SQ = Math.pow(dynamicMaxVis + 1, 2); 
+            
             let visibleSprites = [];
             const seeThroughWalls = [91];
+            
             for (let i = 0; i < spriteList.length; i++) {
                 let npc = spriteList[i];
                 npc.dist = ((camX - npc.x) * (camX - npc.x) + (camY - npc.y) * (camY - npc.y));
                 
-                // Only keep sprites that are actually inside our render distance!
                 if (npc.dist < MAX_DIST_SQ) {
                     visibleSprites.push(npc);
                 }
             }
             
-            // Now we only sort the handful of sprites we actually care about
             visibleSprites.sort((a, b) => b.dist - a.dist);
 
             for (let i = 0; i < visibleSprites.length; i++) {
                 const sprite = visibleSprites[i];
                 
-                // Position relative to CAMERA, not Player
+                // --- STRICT PHYSICAL LOS FOR NPCS ---
+                let realDist = Math.sqrt(sprite.dist);
+                
+                // 1. Is it inside our dSense fog range?
+                // 2. Is there a clear line of sight? (No X-Ray bypass!)
+                let inVision = (realDist <= dynamicMaxVis) && this.checkLineOfSight(sprite.x, sprite.y);
+                
+                if (!inVision && !sprite.isPlayer) {
+                    continue; // Skip rendering! It's lost in the physical fog.
+                }
+
                 let spriteX = sprite.x - camX;
                 let spriteY = sprite.y - camY;
 
@@ -12726,10 +12750,10 @@
 
                 if (Math.abs(transformX) < 0.001) transformX = 0;
                 
-                // --- NEAR PLANE CLIPPING & FOG ---
+                // --- NEAR PLANE CLIPPING & FOG CLIPPING ---
                 if (transformY <= .5) continue; 
-                if (transformY > 24) continue; // Fog clipping
-                if (sprite.isPlayer && transformY < 0.35) continue; 
+                if (transformY > dynamicMaxVis && !sprite.isPlayer) continue; // Snap clipping matches walls
+                if (sprite.isPlayer && transformY < 0.35) continue;
 
                 let testcard = new Card(sprite.type, 0);
                 
@@ -13032,7 +13056,12 @@
 
                     const cacheSize = srcImg.width || 512; 
 
-                    let spriteFogFactor = Math.pow(Math.min(transformY / 24, 1.0), 1.5);
+                    // --- ATMOSPHERIC FOG FOR CACHED SPRITES ---
+                    let fogStart = dynamicMaxVis * 0.4;
+                    let spriteFogFactor = 0;
+                    if (transformY > fogStart) {
+                        spriteFogFactor = Math.pow(Math.min((transformY - fogStart) / (dynamicMaxVis - fogStart), 1.0), 1.8);
+                    }
                     ctx.globalAlpha = sprite.isPlayer ? 0.7 * (1.0 - spriteFogFactor) : 1.0 - spriteFogFactor;
                     ctx.filter = (sprite.damageFlashTimer > 0) ? 'brightness(50%) sepia(100%) hue-rotate(-50deg) saturate(1000%) contrast(200%)' : 'none';
                     
@@ -13149,7 +13178,7 @@
                 const transformY = invDet * (-planeY * pX + planeX * pY); 
 
                 // Z-Clipping Check
-                if (transformY > 0.1 && transformY < 15) {
+                if (transformY > 0.1 && transformY <= dynamicMaxVis) {
                     const pScreenX = Math.floor((viewW / 2) * (1 + transformX / transformY));
                     
                     // Bounds check FIRST to prevent crashing on this.zBuffer
@@ -14135,7 +14164,6 @@
                 this.statPoints = (this.statPoints || 0) + 1;
                 // DIRECT FORMULA: Perfect linear scaling to hit ~1387 by level 99
                 this.power = 100 + (this.level * 13);     
-                
                 leveledUp = true;
                 xpNeeded = Math.floor(100 * Math.pow(this.level + 1, 1.8));
                 
@@ -14143,6 +14171,8 @@
 
             if (leveledUp) {
                 console.log(`Level Up! You are now Level ${this.level}. Max Deck Power increased to ${this.power}.`);
+                this.dSense = this.dSense + 3;
+
             // if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('teleport');MusicEngine.play(8);
                 // Optional: You could trigger a MessageBox here to tell the player!
             }
@@ -14259,7 +14289,7 @@
                             if (typeof droppedCardID === 'object' && droppedCardID !== null) {
                                 droppedCardID = droppedCardID.index || droppedCardID.id;
                             }
-                            
+                            this.dSense = this.dSense + 1;
                             // NEW SAFETY CHECK: Ensure the droppedCardID has a valid portrait mapping.
                             // If it's undefined (somehow) or 0 (and not the fool), default to something safe.
                             if (droppedCardID === undefined) droppedCardID = Math.floor(npc.type);
@@ -15441,7 +15471,7 @@
                   MusicEngine.playSFX('heal');
                   MusicEngine.play(4);
               }
-              
+              this.dSense = this.dSense + 1;
               //this.extra.push(new Card(45, 0));
               this.currentSpeaker = {
                     type: -27,          
@@ -31687,6 +31717,7 @@
                             // Use this.playerWon instead of playerSurvived
                             if (this.playerWon) {
                                 // Passed! Push the cached win actions directly to the queue
+                                Dungeon.dSense += 1;
                                 if (winActions.length > 0) {
                                     [...winActions].reverse().forEach(a => Dungeon.actionQueue.unshift(a));
                                 }
@@ -31711,7 +31742,7 @@
                         if (startGame !== 'gameover') {
                             if (preGame === 'tactics') preGame = 'explore';
                             startGame = preGame; // Always return to overworld for real/exam matches
-                            
+                            Dungeon.dSense += 1;
                             if (typeof Dungeon !== 'undefined' && Dungeon.mapID === 888) {
                                 setTimeout(() => { 
                                     Dungeon.mapID = Dungeon.prevMap;
@@ -31727,7 +31758,7 @@
                                     // Use this.playerWon instead of playerSurvived so you still get loot!
                                     if (this.playerWon && stakes !== 'exam') {
                                         let allPulledCards = [];
-
+                                        
                                         // A. Gather Boss Loot
                                         if (tacticsBossId && bossDeck && bossDeck.length > 0) {
                                             let availableLootIDs = bossDeck.map(c => typeof c === 'object' ? (c.index || c.id) : c);
@@ -33480,6 +33511,7 @@
                                 while (Dungeon.xp >= xpNeeded) {
                                     Dungeon.xp -= xpNeeded; 
                                     Dungeon.level++;
+                                    Dungeon.statPoints = (this.statPoints || 0) + 1;
                                     Dungeon.power = 100 + (Dungeon.level * 13); // Linear scaling we built!
                                     leveledUp = true;
                                     xpNeeded = Math.floor(100 * Math.pow(Dungeon.level + 1, 1.8)); 
@@ -33870,6 +33902,7 @@
                                 iRune = new stone(3.545,4.49,1,eSTAT.I);
                                 aRune = new stone(5.545,4.53,1,eSTAT.A);
                             }
+                            Dungeon.dSense += 1;
                             Dungeon.isProcessingActions = false;
                             Dungeon.processNextAction();
                             Dungeon.saveGame();
@@ -33881,7 +33914,7 @@
                             let empX = emperor ? emperor.x : Dungeon.x;
                             let empY = emperor ? emperor.y : Dungeon.y;
                             if (emperor) Dungeon.killNPC(emperor, true); // Remove old Emperor from map
-                            
+                            Dungeon.dSense += 1;
                             let winDialogue = [
                                 "Hehe... well done.", "But alright lad, enough play. Let's go to war."
                                 
