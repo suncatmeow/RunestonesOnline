@@ -4143,7 +4143,7 @@
         this.biome = '';
         this.mapname = '';
         this.prevMap = 0;
-        this.dSense = 0;
+        this.dSense = 13.6;
         this.MainQuest = 0;
         this.gd = 0;    //0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22
         this.mapSong = [  4, 0,18,30,32,34,31,21,20,36,37,11,38,39, 2,41, 1,32,36,39,34,41,10];
@@ -11190,12 +11190,12 @@
                         let tileID = this.maze[mapY][mapX];
 
                         if (tileID <= 0 || !this.isWall(mapX, mapY)) {
-                            // FOG OF WAR MEMORY FADE
+                            // THE MEMORY FADE: Bright if active vision, dim if just a memory!
                             ctx.globalAlpha = isCurrentlySeen ? 1.0 : 0.35; 
                             
                             let fColor = (this.floorColors && this.floorColors[tileID]) ? this.floorColors[tileID] : this.floorColor;
                             drawShape('rec', tx, ty, 1, 0, 0, cellSize + 0.05, cellSize + 0.05, 0,0,0,0, fColor, 1);
-                            this.drawTileTexture(tileID, tx, ty, cellSize);
+                            if (typeof this.drawTileTexture === 'function') this.drawTileTexture(tileID, tx, ty, cellSize);
                             
                             ctx.globalAlpha = 1.0; // Reset
                         }
@@ -11223,12 +11223,12 @@
                         let tileID = this.maze[mapY][mapX];
 
                         if (tileID > 0 && this.isWall(mapX, mapY)) {
-                            // FOG OF WAR MEMORY FADE
+                            // THE MEMORY FADE
                             ctx.globalAlpha = isCurrentlySeen ? 1.0 : 0.35; 
                             
                             let wColor = this.wallColors ? (this.wallColors[tileID] || '#8b4513') : '#8b4513';
                             drawShape('rec', tx, ty, 1, 0, 0, cellSize + 0.05, cellSize + 0.05, 0,0,0,0, wColor, 1);
-                            this.drawTileTexture(tileID, tx, ty, cellSize);
+                            if (typeof this.drawTileTexture === 'function') this.drawTileTexture(tileID, tx, ty, cellSize);
                             
                             let tileBelow = (mapY + 1 < this.maze.length) ? this.maze[mapY + 1][mapX] : 1;
                             let isWallBelow = (tileBelow > 0 && this.isWall(mapX, mapY + 1));
@@ -11237,7 +11237,7 @@
                                 let dropHeight = cellSize * 0.35; 
                                 drawShape('rec', tx, ty, 1, 0, cellSize, cellSize + 0.05, dropHeight + 0.05, 0,0,0,0, wColor, 1);
                                 
-                                // Increase shadow darkness slightly if it's in the fog so it doesn't get completely washed out
+                                // Increase shadow darkness slightly if it's in the memory fog
                                 let shadowAlpha = isCurrentlySeen ? 0.5 : 0.8;
                                 drawShape('rec', tx, ty, 1, 0, cellSize, cellSize + 0.05, dropHeight + 0.05, 0,0,0,0, `rgba(0,0,0,${shadowAlpha})`, 1);
                             }
@@ -11246,7 +11246,7 @@
                     }
                 }
             }
-            }
+          }
         // 4. DRAW NPCs & 3D MODELS
             this.npcs.forEach(npc => {
                 if (!npc.visible || npc.isDead) return;
@@ -11322,16 +11322,15 @@
                 for (let id in window.remotePlayers) {
                     let p = window.remotePlayers[id];
                     if (p.mapID === this.mapID && p.x !== undefined && p.y !== undefined) {
-                        const diffX = p.x - this.x;
-                        const diffY = p.y - this.y;
+                        const diffX = p.x - this.x-.5;
+                        const diffY = p.y - this.y-.5;
                         const dist = Math.sqrt(diffX*diffX + diffY*diffY);
 
                         if (Math.abs(diffX) <= range + 1 && Math.abs(diffY) <= range + 1) {
                             let canSee = (this.dSense > 0 && dist <= this.dSense) || this.checkLineOfSight(p.x, p.y);
                             if (canSee) {
-                                let tx = centerScreenX + (diffX * cellSize) - (fractionalX * cellSize) - (cellSize / 2);
-                                let ty = centerScreenY + (diffY * cellSize) - (fractionalY * cellSize) - (cellSize / 2);
-                                
+                                let tx = centerScreenX + (diffX * cellSize) - (cellSize / 2);
+                                let ty = centerScreenY + (diffY * cellSize) - (cellSize / 2);
                                 // --- HIJACK GLOBALS ---
                                 const oldTX = tX; const oldTY = tY; const oldTL = tL; const oldTH = tH;
                                 let pxX = oldTX + (oldTL / 10) * tx;
@@ -11838,13 +11837,11 @@
         // ==========================================
         // 2. TRUE 3D FLOOR CASTING (Strict Fog Cutoff)
         // ==========================================
-            // THE FIX: Start drawing the floor exactly at the horizon line! 
-            // Do not use minFloorY, otherwise you get a cardboard gap.
-            let startFloorY = Math.floor(horizon) + 1;
+            let startFloorY = Math.floor(horizon) + 1; // +1 prevents divide-by-zero errors at the exact horizon
             
-            let fR = this.fogColorRGB ? this.fogColorRGB.r : 10;
-            let fG = this.fogColorRGB ? this.fogColorRGB.g : 10;
-            let fB = this.fogColorRGB ? this.fogColorRGB.b : 12;
+            let fR = this.fogColorRGB ? this.fogColorRGB.r : 5;
+            let fG = this.fogColorRGB ? this.fogColorRGB.g : 5;
+            let fB = this.fogColorRGB ? this.fogColorRGB.b : 8;
 
             let currentFloorCacheKey = null;
             let colorStartY = startFloorY;
@@ -11858,31 +11855,37 @@
                 let floorMapX = Math.floor(currentFloorX);
                 let floorMapY = Math.floor(currentFloorY);
 
-                let colorStr = null;
+                // --- THE FIX: NEVER LET THE COLOR BE NULL ---
+                // If the tile is 0 (default floor) or out of bounds, we MUST use a base color.
+                // If it is null, the loop stops drawing and exposes the bright grey canvas!
+                let colorStr = this.floorColor || '#333333'; 
+                
                 if (!isNaN(floorMapX) && !isNaN(floorMapY) && floorMapX >= 0 && floorMapX < this.maze[0].length && floorMapY >= 0 && floorMapY < this.maze.length) {
                     let tile = this.maze[floorMapY][floorMapX];
-                    if (tile !== 0) colorStr = this.floorColors[tile];
+                    if (tile !== 0 && this.floorColors && this.floorColors[tile]) {
+                        colorStr = this.floorColors[tile];
+                    }
                 }
 
                 // --- ATMOSPHERIC FOG FOR FLOORS ---
-                // THE FIX: Must check against both LOS AND dynamicMaxVis!
                 let inVision = (currentDist <= losBlockedDepth) && (currentDist <= dynamicMaxVis);
 
-                let fogStart = dynamicMaxVis * 0.4; 
+                let fogStart = dynamicMaxVis * 0.13; 
                 let floorFogFactor = 0;
 
                 if (currentDist > fogStart) {
-                    floorFogFactor = Math.pow(Math.min((currentDist - fogStart) / (dynamicMaxVis - fogStart), 1.0), 1.8);
+                    // Changed exponent to 1.4 for a thicker, shadow-like gradient
+                    floorFogFactor = Math.pow(Math.min((currentDist - fogStart) / (dynamicMaxVis - fogStart), 1.0), 1.4);
                 }
 
-                // If it's outside our vision, force it to be 100% pure fog so it blends into the abyss
+                // If outside vision, force 100% fog (Pure Shadow Abyss)
                 if (!inVision) {
                     floorFogFactor = 1.0; 
                 }
                 
                 floorFogFactor = Math.round(floorFogFactor * 20) / 20;
 
-                let cacheKey = colorStr ? (colorStr + "_" + floorFogFactor) : null;
+                let cacheKey = colorStr + "_" + floorFogFactor;
 
                 if (cacheKey !== currentFloorCacheKey) {
                     if (currentFloorCacheKey !== null && currentFillStyle !== null) {
@@ -11893,18 +11896,14 @@
                     currentFloorCacheKey = cacheKey;
                     colorStartY = y;
                     
-                    if (colorStr) {
-                        let { r: bR, g: bG, b: bB } = this.parseColor(colorStr);
-                        if (isNaN(bR)) { bR = 10; bG = 50; bB = 10; } 
-                        
-                        let finalR = (bR * (1 - floorFogFactor)) + (fR * floorFogFactor);
-                        let finalG = (bG * (1 - floorFogFactor)) + (fG * floorFogFactor);
-                        let finalB = (bB * (1 - floorFogFactor)) + (fB * floorFogFactor);
-                        
-                        currentFillStyle = `rgb(${Math.floor(finalR)},${Math.floor(finalG)},${Math.floor(finalB)})`;
-                    } else {
-                        currentFillStyle = null; 
-                    }
+                    let { r: bR, g: bG, b: bB } = this.parseColor(colorStr);
+                    if (isNaN(bR)) { bR = 10; bG = 50; bB = 10; } 
+                    
+                    let finalR = (bR * (1 - floorFogFactor)) + (fR * floorFogFactor);
+                    let finalG = (bG * (1 - floorFogFactor)) + (fG * floorFogFactor);
+                    let finalB = (bB * (1 - floorFogFactor)) + (fB * floorFogFactor);
+                    
+                    currentFillStyle = `rgb(${Math.floor(finalR)},${Math.floor(finalG)},${Math.floor(finalB)})`;
                 }
             }
             
