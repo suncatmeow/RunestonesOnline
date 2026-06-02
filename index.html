@@ -156,9 +156,9 @@
         // --- INSTANT FRONTAL AoE (Cone) ---
         // --- INSTANT TELEPORT STRIKES ---
           52: { type: 'assassination', name: 'Backstab', castStat: 3, defStat: 3, range: 9 },
-          51: { type: 'cone', name: 'Overpower', castStat: 0, defStat: 0, range: 3 },
-          59: { type: 'cone', name: 'Critical Strike',castStat: 0, defStat: 3, range: 3},
-          65: { type: 'cone', name: 'Shield Bash', castStat: 1, defStat: 0, range: 3},
+          51: { type: 'assassination', name: 'Overpower', castStat: 0, defStat: 0, range: 3 },
+          59: { type: 'assassination', name: 'Critical Strike',castStat: 0, defStat: 3, range: 6},
+          65: { type: 'assassination', name: 'Shield Bash', castStat: 1, defStat: 0, range: 1},
 
        // --- TIMED BUFFS (AoE) ---
           28: { type: 'buff', name: 'Defense',  castStat: 2, buffStat: 1, amount: 2, duration: 1800, visual: 'arc', auraColor: 'rgba(0, 255, 0, 0.6)' },
@@ -479,7 +479,7 @@
         } else {
             console.log("No internet detected. Running Battle-Mage in offline mode.");
         }
-      // SOCKET LISTENERS
+    // SOCKET LISTENERS
         socket.on("suncat_changed_favor", (favorChangeAmount) => {
             console.log(`[Suncat Favor] Adjusted by: ${favorChangeAmount}`);
             updateFavor(favorChangeAmount); // Your existing function!
@@ -3262,19 +3262,34 @@
                     // 2. FOES (BATTLES)
                     else if (typeof this.alignment === 'string' && this.alignment.startsWith('foe')) {
                         if (startGame === 'explore' && !this.isDead) {
-                            this.triggerInteraction(dungeon); // Starts the battle!
+                            // --- NEW WARD INTERCEPTOR ---
+                            if (dungeon.absorbHit(this)) {
+                                // Ward absorbed it! Bounce the NPC away violently
+                                let dx = this.x - playerX;
+                                let dy = this.y - playerY;
+                                let dist = Math.sqrt(dx*dx + dy*dy) || 1;
+                                
+                                this.slideTargetX = this.x + (dx/dist) * 1.5; // Throw them 1.5 tiles back
+                                this.slideTargetY = this.y + (dy/dist) * 1.5;
+                                this.isSliding = true;
+                                this.state = 'chasing';
+                                this.combatCooldown = 45; // Briefly stun them so you can run away
+                            } 
+                            else {
+                                this.triggerInteraction(dungeon); // Starts the battle!
                             
-                            if (this.role === 'battle') {
-                                if (typeof socket !== 'undefined' && socket) {
-                                    socket.emit("engage_npc", {
-                                        npcIndex: this.index, 
-                                        x: this.x,
-                                        y: this.y
-                                    });
+                                if (this.role === 'battle') {
+                                    if (typeof socket !== 'undefined' && socket) {
+                                        socket.emit("engage_npc", {
+                                            npcIndex: this.index, 
+                                            x: this.x,
+                                            y: this.y
+                                        });
+                                    }
                                 }
-                            }
-                            else if (this.role === 'dialogue') {
-                                this.startDialogue(dungeon); // Force open the UI if a coward bumps you!
+                                else if (this.role === 'dialogue') {
+                                    this.startDialogue(dungeon); // Force open the UI if a coward bumps you!
+                                }
                             }
                         }
                     } 
@@ -4235,6 +4250,10 @@
             Player[0].deck.push(new Card(c.index, 0));
         }
         this.activeSummons = [];
+        this.maxWards = 3;
+        this.currentWards = 3;
+        this.wardRegenTimer = 0;
+        this.playerFlashTimer = 0;
         //this.deck = deck; // Store custom deck
       //TUTORIAL
         this.at = 0;
@@ -6927,6 +6946,7 @@
                             ['disappear', null]
                         ];
                         hpriestess.noActions = [
+                            ['set_memory', {key: 'mq_map0', value: true}], // <--- ADD THIS
                             ['set_flag', {key: 'tutorialFinished', value: 1}],
                             ['set_flag', {key: 'MainQuest', value: 1}],
                             ['play_sfx', 'cancel'],
@@ -6956,7 +6976,7 @@
                             ],
                             rewardCard: null, // Automatically handles UI popup and ['give_card', 2]
                             actions: [
-                                
+                                ['set_memory', {key: 'mq_map0', value: true}], // <--- ADD THIS
                                 ['give_card',{card:2,text:"High Priestess joins your party!"}],
                                 ['spectate', 'Player obtained the High Priestess card and she joined the party.'],
                                 ['restore_map_song'],
@@ -7087,6 +7107,7 @@
                     ];
                     magician.rewardCard = null; // Gives the card, triggers loot UI, and vanishes
                     magician.endActions = [
+                        ['set_memory', {key: 'mq_map1', value: true}], // <--- ADD THIS
                         ['restore_map_song'],
                         ['give_card',{card:1,text:"Magician joins your party!"}],
                         ['spectate', 'Player found the Magician and obtained the Magician card.'],
@@ -7232,43 +7253,7 @@
                 ];
                this.npcs = [];
               // MAP 2: Tintagel Forest
-            /*
-            // 1. The Bounty Hunter
-            this.npcs.push(this.createQuestNPC({
-                questKey: 'q_bounty_01',
-                type: 'bounty',
-                giverId: 500, x: 5.5, y: 5.5, sprite: 32,
-                targetMap: 5, targetX: 8.5, targetY: 13.5, targetSprite: 56, // Kill a Fire Imp on Map 5
-                rewardCard: 50,
-                textIntro: ["I have a bounty for a Fire Imp on Map 5.", "Will you hunt it down?"],
-                textWait: ["Check your minimap to find the target!"],
-                textComplete: ["Excellent work! Here is your bounty."]
-            }));
-
-            // 2. The Lost Knight (Escort)
-            this.npcs.push(this.createQuestNPC({
-                questKey: 'q_knight_01',
-                type: 'escort',
-                giverId: 501, x: 6.5, y: 6.5, sprite: 85,
-                targetMap: 9, targetX: 12.5, targetY: 5.5, targetLootCard: 64, // Fetch the Shield on Map 9
-                rewardCard: 28,
-                textIntro: ["I lost my shield in the Boreal Sea...", "Will you help me find it?"],
-                textWait: ["Lead the way! I am right behind you."],
-                textComplete: ["My shield! You actually found it!", "Take this as thanks. Farewell!"]
-            }));
-
-            // 3. The Traitor (Fetch with Trap)
-            this.npcs.push(this.createQuestNPC({
-                questKey: 'q_traitor_01',
-                type: 'fetch',
-                isTrap: true, // Turns the turn-in phase into an ambush!
-                giverId: 502, x: 7.5, y: 7.5, sprite: 32,
-                targetMap: 2, targetX: 12.5, targetY: 12.5, targetLootCard: 1, 
-                textIntro: ["Psst... I hid something valuable over there.", "Go get it. Deal?"],
-                textWait: ["What are you waiting for? Go get the item!"],
-                textComplete: ["You actually found it?", "Fools! I'm taking the loot AND your life!"]
-            }));
-            */
+            
             // ==========================================
             // 1. STANDARD MOBS & CARDS
             // ==========================================
@@ -7348,6 +7333,7 @@
                             ],
                             rewardCard: null, // Gives Hermit Card & vanishes
                             actions: [
+                                ['set_memory', {key: 'mq_map2', value: true}], // <--- ADD THIS
                                 ['give_card',{card:9, text:"Hermit joins your party!"}],
                                 ['spectate', 'Player has found the hermit and obtained the Hermit card.'],
                                 ['spawn_npc', dialoguePixieArgs],
@@ -7432,6 +7418,7 @@
                 ];
                 apprentice.rewardCard = null; 
                 apprentice.endActions = [
+                    ['set_memory', {key: 'mq_map3', value: true}], // <--- ADD THIS
                     ['restore_map_song'],
                     ['give_card',{card:32,text:"Apprentice joins your party!"}],
                     ['spectate', 'Player has rescued the apprentice from the imps and obtained the apprentice card.'],
@@ -7700,7 +7687,7 @@
                     let djinnDialogue = new NPC(0, 8.5, 2.5, 35.1, 'stationary', '#ff0000', djinnDeck, 'dialogue', true, 'friendly');
                     djinnDialogue.customDialogue = ["You Dare?", "You're courting death!"];
                     djinnDialogue.endActions = [
-                        ['spawn_npc', [5, 11, 'SPEAKER_X', 'SPEAKER_Y', 35.1, 'chasing', '#ff0000', djinnDeck, null, null, 'battle', null, true, 'foe']],
+                        ['spawn_npc', [5, 11, 'SPEAKER_X', 'SPEAKER_Y', 35.1, 'chasing', '#ff0000', djinnDeck, null, null, 'battle', null, true, 'foe', [], [['set_memory', {key: 'mq_map5', value: true}]]]],
                         ['spectate', "Player has confronted the Djinn in the witch queen's castle."],
                         ['disappear', null]
                     ];
@@ -7836,24 +7823,28 @@
                 this.npcs.push(new NPC(1, 5.5, 1.5, -27, 'stationary', '#ffff00', [13], 'dialogue', null, 'friendly')); // Death
                 // Spawn this inside your loadMap function (adjust mapID, x, and y as needed)
                 // Tactical Shade Enemy
-                this.npcs.push(Object.assign(new NPC(901, 5.5, 2.5, 94, 'stationary', '#ff00ff', [42, 82, 82], 'dialogue', false, 'friendly_messenger'), {
-                    customDialogue: [
-                        "You tread on hallowed ground.", 
-                        "Leave."
-                    ],
-                    options: ['Attack', 'Leave'],
-                    yesActions: [
-                        ['play_sfx', 'horn'],
-                        ['spectate', 'Player accepted a Tactical Eidolon duel.'],
-                        ['start_tactics', 901], // Triggers the transition to Map 888
-                        ['disappear', 901]      // Fires the second you return victorious!
-                    ],
-                    noActions: [
-                        ['play_sfx', 'cancel'],
-                        ['load_map', { id: 6, x: 9.5, y: 15.5, dir: 2 }],
-                        ['close_dialogue', null]
-                    ]
-                }));
+                let isShadeDefeated = this.memory["7_901"] && this.memory["7_901"].permanent;
+                
+                if (!isShadeDefeated) {
+                    this.npcs.push(Object.assign(new NPC(901, 5.5, 2.5, 94, 'stationary', '#ff00ff', [42, 82, 82], 'dialogue', false, 'friendly_messenger'), {
+                        customDialogue: [
+                            "You tread on hallowed ground.", 
+                            "Leave."
+                        ],
+                        options: ['Attack', 'Leave'],
+                        yesActions: [
+                            ['play_sfx', 'horn'],
+                            ['spectate', 'Player accepted a Tactical Eidolon duel.'],
+                            ['start_tactics', 901], // Triggers the transition to Map 888
+                            ['disappear', 901]      // Fires the second you return victorious!
+                        ],
+                        noActions: [
+                            ['play_sfx', 'cancel'],
+                            ['load_map', { id: 6, x: 9.5, y: 15.5, dir: 2 }],
+                            ['close_dialogue', null]
+                        ]
+                    }));
+                }
                 // Enemies
                 this.npcs.push(Object.assign(new NPC(2, 5.5, 4.5, 42, 'stationary', '#660066', [42,42,42,26,26,26,15,28,52,68], 'battle', false, 'foe'), {customDialogue: ["Shadow falls over all realms."]})); 
                 this.npcs.push(Object.assign(new NPC(3, 1.5, 8.5, 82, 'wandering', '#660066', [82,50,64,59,58], 'battle', false, 'foe'), {customDialogue: ["Why can't things go back to how they were?"]}));
@@ -8016,6 +8007,7 @@
 
                     // The World-Altering Death Sequence
                     kraken.deathActions = [
+                        ['set_memory', {key: 'mq_map9', value: true}], // <--- ADD THIS
                         ['spawn_npc', [9,88, 1.5, 6.5, 99, 'stationary', '#66ccff', [33.5, 17.5, 10, 3], null, null, 'portal', null, null, 'friendly']],
                         ['spawn_npc', [9, 89, 1.5, 7.5, 99, 'stationary', '#66ccff', [33.5, 17.5, 10, 3], null, null, 'portal', null, null, 'friendly']],
                         ['spawn_npc', [9, 90, 1.5, 8.5, 99, 'stationary', '#66ccff', [33.5, 17.5, 10, 3], null, null, 'portal', null, null, 'friendly']],
@@ -8261,6 +8253,7 @@
                 ];
 
                 hoard.endActions = [
+                    ['set_memory', {key: 'mq_map12', value: true}], // <--- ADD THIS
                     ['set_flag', {key: 'isDragonDead', value: true}],
                     ['play_song', 24],
                     ['spawn_npc', fqSpawnArgs]
@@ -8449,19 +8442,35 @@
               // 3. ELF QUEEN & GIANT'S DAUGHTER 
               // ==========================================
                 if (this.gd === 0) {
-                    // Setup to chase player, act as a messenger, and disappear
-                    let daughter = new NPC(6, 3.5, 16.5, 90, 'fleeing', '#66ccff', [76,77,74,74,74,75,66,71], 'none', false, 'defender');
+                    // 1. Check if the Gargoyle was already killed in a previous visit
+                    let isGargoyleDead = this.memory["14_7"] && this.memory["14_7"].permanent;
+
+                    // 2. Set her initial state based on whether the Gargoyle is dead
+                    let dState = isGargoyleDead ? 'chasing' : 'fleeing';
+                    let dAlign = isGargoyleDead ? 'friendly_messenger' : 'defender';
+                    let dRole  = isGargoyleDead ? 'dialogue' : 'none';
+
+                    let daughter = new NPC(6, 3.5, 16.5, 90, dState, '#66ccff', [76,77,74,74,74,75,66,71], dRole, false, dAlign);
+                    
+                    // FIX: Force her fallback state to be stationary!
+                    // If she transforms while you are > 4 tiles away, she will stand still and wait for you.
+                    daughter.preState = 'stationary'; 
+
                     daughter.customDialogue = [
                         "Thank thee for thy assistance <3", "I shall inform my father of thy bravery and selflessness.",
                         "...surely he must sorely grieve my absence... sigh, father...", "Good be with ye brave hero... <3..."
                     ];
+                    
                     daughter.endActions = [
                         ['set_flag', {key: 'gd', value: 1}], 
                         ['spectate', "player has 'saved' the giant's daughter from the gargoyles. Maybe if she didn't try to steal the armor from the elf queen's treasury..."],
                         ['disappear', null]
                     ];
                     this.npcs.push(daughter);
-                    let gargoyle = new NPC(7, 3.5, 17.5, 74.1, 'wandering', '#66ccff', [74], 'battle', true, 'foe');
+
+                    // 3. Only spawn the Gargoyle if he isn't already dead
+                    if (!isGargoyleDead) {
+                        let gargoyle = new NPC(7, 3.5, 17.5, 74.1, 'wandering', '#66ccff', [74], 'battle', true, 'foe');
                         gargoyle.customDialogue = ["Thief!!!"];
                         gargoyle.deathActions = [
                             ['transform_npc', { 
@@ -8470,11 +8479,10 @@
                                 newState: 'chasing', 
                                 newRole: 'dialogue' 
                             }],
-                            // Optional: Add a little narrative flair when the gargoyle dies
                             ['spectate', "Player defeated the Gargoyle! The Giant's Daughter approaches..."]
                         ];
-                        
                         this.npcs.push(gargoyle);
+                    }
                 }
 
               // --- NEW: THE POST-BATTLE GIANT DAD (Index 15) ---
@@ -8663,6 +8671,7 @@
                           ],
                           rewardCard: null, 
                           actions: [
+                            ['set_memory', {key: 'mq_map14', value: true}], // <--- ADD THIS
                               ['give_card',{card:76,text:"Elf Queen joins your party!"}],
                               ['spawn_npc', [14, 16, 17.5, 8.5, 99, 'stationary', '#66ccff', [5.5, 9.5, 15, 0], null, null, 'portal', null, null, 'friendly']],
                               ['set_flag', {key: 'gd', value: 6}],
@@ -8984,7 +8993,8 @@
                       21, 1, 'SPEAKER_X', 1.369, 0, 'chasing', '#ff0000', bossDeck, null, null, 'battle', null, true, 'foe',
                       [], // endActions
                       [ // deathActions (Triggers the final portal and apocalypse sky)
-                          ['change_weather', 'apocalypse'],
+                            ['set_memory', { key: 'mq_map21', value: true }], // <--- ADD THIS (Standardized naming)
+                           ['change_weather', 'apocalypse'],
                           ['spawn_npc', [21, 2, 2.5, 6.5, 99, 'stationary', '#00ff00', [16.5, 9.5, 22, 1], null, null, 'portal', null, null, 'friendly']]
                       ]
                   ]],
@@ -10009,7 +10019,29 @@
         
         // Fallback if the area is completely jammed
         return { x: centerX + 0.5, y: centerY + 0.5 };
-    }
+        }
+      absorbHit(attacker) {
+            if (this.currentWards > 0) {
+                this.currentWards--;
+                this.playerFlashTimer = 15; // Flash the screen cyan for 15 frames
+                
+                if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('cancel');
+                
+                // Spawn a burst of cyan magic sparks
+                if (typeof globalParticles !== 'undefined') {
+                    for (let p = 0; p < 12; p++) {
+                        globalParticles.push(new Particle(
+                            this.x + (Math.random() - 0.5) * 0.8,
+                            this.y + (Math.random() - 0.5) * 0.8,
+                            '#00ffff', // Cyan magic color
+                            'sparkle'
+                        ));
+                    }
+                }
+                return true; // The hit was successfully absorbed!
+            }
+            return false; // No wards left, the monster broke through!
+        }
     //Map rendering
     
       render(dt) {
@@ -10034,7 +10066,19 @@
                         }
                     } 
                 }
+        // --- 1. WARD REGENERATION ---
+            if (this.currentWards < this.maxWards) {
+                this.wardRegenTimer += dt;
+                if (this.wardRegenTimer >= 13.0) { // 1 ward every 3 seconds
+                    this.currentWards++;
+                    this.wardRegenTimer = 0;
+                    if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('heal'); // Optional quiet ding
+                }
+            } else {
+                this.wardRegenTimer = 0;
+            }
 
+            
         // ==========================================
         // --- PLAYER DASHING & SLIDING PHYSICS ---
         // ==========================================
@@ -10887,6 +10931,15 @@
 
                 btnLook.show(6.875, 6.875, 1.25, 1, 1, '', 'joystick', 1, 0); // Added to right side
                 }
+                // --- 2. WARD SCREEN FLASH ---
+            if (this.playerFlashTimer > 0) {
+                this.playerFlashTimer--;
+                ctx.save();
+                // Draws a cyan tint over the entire screen that fades out
+                ctx.fillStyle = `rgba(0, 255, 255, ${this.playerFlashTimer / 30})`;
+                ctx.fillRect(viewX, viewY, viewW, viewH);
+                ctx.restore();
+            }
             // --- DYNAMIC SPELL SLOTS LAYOUT ---
             const getDiceTier = (sides) => {
                 if (sides >= 20) return 5;
@@ -13399,6 +13452,20 @@
                         bestTarget.dirY *= -1;
                         //bestTarget.triggerInteraction(this); 
                     }
+                    // --- NEW: MOVEMENT & PHYSICS KILL SWITCH ---
+                    // Forget sliding destinations so we don't rubberband across the new map!
+                    this.targetMapX = behindX;;
+                    this.targetMapY = behindY;
+                    this.isSlidingToTile = false;
+
+                    // Force the player to stop and re-press keys
+                    window.activeMoveKey = null;
+                    window.activeCtrlKey = false;
+                    if (typeof btnMove !== 'undefined') { btnMove.isPressed = false; btnMove.currentDir = null; }
+                    if (typeof btnMove2 !== 'undefined') { btnMove2.isPressed = false; btnMove2.currentDir = null; }
+                    if (typeof btnTurnL !== 'undefined') { btnTurnL.isPressed = false; btnTurnL.currentDir = null; }
+                    if (typeof btnTurnR !== 'undefined') { btnTurnR.isPressed = false; btnTurnR.currentDir = null; }
+                    // -------------------------------------------
                 };
             }
         // ==========================================
@@ -16713,6 +16780,7 @@
                         tactEnemy.dialogueFactory = null;
 
                         this.startEidolonMinigame(pTeam, eTeam, customConfig);
+                        isBlocking = true; // <--- ADD THIS LINE!
                     } else {
                         isBlocking = false;
                     }
@@ -18496,7 +18564,9 @@
                     if (Math.sqrt(dx * dx + dy * dy) < this.radius + 0.3) {
                         this.triggerExplosion();
                         if (this.owner && typeof startGame !== 'undefined' && startGame === 'explore') {
-                            this.owner.triggerInteraction(exploreRef);
+                            if (!exploreRef.absorbHit(this.owner)) {
+                                this.owner.triggerInteraction(exploreRef);
+                            }
                         }
                         return;
                     }
@@ -19327,7 +19397,7 @@
               }
             }
               else if (this.assignedCard.type == 2){
-                frameCol = isPressed ? '#FF8AE2' : '#FF00D9'; 
+                frameCol = isPressed ? '#FF00FF' : '#FF00FF'; 
               }
             }
             // Draw an inset rectangle
@@ -31456,9 +31526,14 @@
                                 if (u.alignment === 'ally') {
                                     if (u.isDead) {
                                         if (u.role === 'player') {
-                                            window.isDead = true;
-                                            startGame = 'gameover'; // Real death triggers Game Over Screen
-                                            if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('cancel'); 
+                                            // THE NEW FIX: Only hard Game Over if the ENTIRE team lost
+                                            if (!this.playerWon) {
+                                                window.isDead = true;
+                                                startGame = 'gameover'; // Real death triggers Game Over Screen
+                                                if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('cancel'); 
+                                            } else {
+                                                console.log("Player knocked out, but allies clutched the win!");
+                                            }
                                         } else if (u.role === 'summoned_minion' && u.sourceNpcId) {
                                             let overworldAlly = Dungeon.npcs.find(n => n.index === u.sourceNpcId);
                                             if (overworldAlly) Dungeon.killNPC(overworldAlly, true, 'tactics_death');
@@ -31472,7 +31547,8 @@
 
                         // --- 2. HANDLE EXAM RESULTS ---
                         if (stakes === 'exam' && typeof Dungeon !== 'undefined') {
-                            if (playerSurvived) {
+                            // Use this.playerWon instead of playerSurvived
+                            if (this.playerWon) {
                                 // Passed! Push the cached win actions directly to the queue
                                 if (winActions.length > 0) {
                                     [...winActions].reverse().forEach(a => Dungeon.actionQueue.unshift(a));
@@ -31511,7 +31587,8 @@
                                     }
 
                                     // --- THE STREAMLINED AUTO-LOOT & STORY PROGRESSION ---
-                                    if (playerSurvived && stakes !== 'exam') {
+                                    // Use this.playerWon instead of playerSurvived so you still get loot!
+                                    if (this.playerWon && stakes !== 'exam') {
                                         let allPulledCards = [];
 
                                         // A. Gather Boss Loot
@@ -66719,9 +66796,73 @@
           // ----------------------------------------------------
         else if (journalTab === ' quest ') {
             drawText(1, 1.5, 8, 0.8, "- QUEST LOG -", '#d4af37', 1, 'center');
-            
-           // 1. BUILD THE DYNAMIC QUEST LIST
             let allQuests = [];
+            // --- NEW: A. MAIN QUEST PROGRESS TRACKER (Memory Key Verification) ---
+            // Grab the current map to determine where they are in the story
+            let currentMapId = typeof Dungeon !== 'undefined' ? Dungeon.mapID : 0;
+            let mem = typeof Dungeon !== 'undefined' ? Dungeon.memory : {};
+            
+            // Only show The Fool's Journey if they are in the main campaign maps (0-21)
+            if (currentMapId !== 999) {
+                let mqDesc = "";
+                let isObjCompleted = false;
+
+                // Determine the objective AND if it is completed by checking the exact memory key!
+                // (We check for backwards compatibility with old saves where applicable)
+                if (currentMapId === 0) {
+                    mqDesc = "Speak to the High Priestess to learn the basics, then find the portal.";
+                    isObjCompleted = mem['mq_map0'] || (Dungeon && Dungeon.MainQuest > 0);
+                }
+                else if (currentMapId === 1) {
+                    mqDesc = "Search the Outer Dungeon for the Magician and his artifacts.";
+                    isObjCompleted = mem['mq_map1'] === true; 
+                }
+                else if (currentMapId === 2) {
+                    mqDesc = "Navigate Tintagel Forest and seek out the Hermit's guidance.";
+                    isObjCompleted = mem['mq_map2'] === true; 
+                }
+                else if (currentMapId === 3) {
+                    mqDesc = "Brave the Goblin Caverns, defeat the Imp Ambush, and rescue the Apprentice.";
+                    isObjCompleted = mem['mq_map3'] === true; 
+                }
+                else if (currentMapId === 4 || currentMapId === 5) {
+                    mqDesc = "Cross the desert and defeat the King of Wands (Djinn) to save the Witch Queen.";
+                    isObjCompleted = mem['mq_map5'] || (mem["5_11"] && mem["5_11"].permanent); 
+                }
+                else if (currentMapId >= 6 && currentMapId <= 9) {
+                    mqDesc = "Reach the Ice Queen, borrow her ship, and slay the King of Cups (Kraken).";
+                    isObjCompleted = mem['mq_map9'] || (mem["9_1"] && mem["9_1"].permanent);
+                }
+                else if (currentMapId >= 10 && currentMapId <= 13) {
+                    mqDesc = "Convince the Fairy Queen to fight, then slay the King of Swords (Dragon) in his lair.";
+                    isObjCompleted = mem['mq_map12'] || (mem["12_12"] && mem["12_12"].permanent);
+                }
+                else if (currentMapId === 14) {
+                    mqDesc = "Rendezvous with the Elf Queen and deal with the King of Pentacles (Giant).";
+                    isObjCompleted = mem['mq_map14'] || (Dungeon && Dungeon.gd >= 6); 
+                }
+                else if (currentMapId === 15) {
+                    mqDesc = "Cross the Dark Bridge. There is no turning back now.";
+                    isObjCompleted = false; // Transition map
+                }
+                else if (currentMapId >= 16 && currentMapId <= 20) {
+                    mqDesc = `Ascend the Dark Tower (Floor ${currentMapId - 15} of 5). Defeat the phantoms of the past.`;
+                    isObjCompleted = false; // Active while ascending
+                }
+                else if (currentMapId >= 21) {
+                    mqDesc = "Confront the mastermind at the top of the tower!";
+                    isObjCompleted = mem['mq_map21'] || mem['fool_defeated']; 
+                }
+
+                allQuests.push({ 
+                    title: `- THE FOOL'S JOURNEY (CHAPTER ${currentMapId}) -`, 
+                    text: `Objective: ${mqDesc}`, 
+                    completed: isObjCompleted, 
+                    failed: false 
+                });
+            }
+           // 1. BUILD THE DYNAMIC QUEST LIST
+            
             
             // A. SCENARIO / DIRECTIVES (Map 999 overrides)
             if (typeof currentQuest !== 'undefined' && currentQuest !== "") {
