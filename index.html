@@ -4414,7 +4414,7 @@
         };// Define Sky/Floor colors (Global defaults)
         this.toweringWalls = [ 13, 22, 23, 27, 37, 41, 42, 43, 62, 63];
         this.tileHeights = {  9: 0.1, 13: 1.5, 23: 2.5 }; 
-        this.randomTreeTiles = [2,3,  9,11,13, 14, 22];
+        this.randomTreeTiles = [2,3,  9,3, 14, 22];
         this.skyColor = 'rgba(255,255,255,1)';   // Dark Night
         this.floorColor = 'rgba(255,255,255,1)'; // Dark Ground
         
@@ -7261,7 +7261,7 @@
                 this.npcs.push(Object.assign(new NPC(3, 13.5, 19.5, 54, 'wandering', '#660066', [58, 52, 54], 'battle', false, 'foe'), {customDialogue: ["This forest is ours! We claim it!"]})); 
                 this.npcs.push(Object.assign(new NPC(4, 4.5, 21.5, 54, 'stationary', '#660066', [40, 41, 54, 58, 52, 54, 51, 54], 'battle', true, 'foe'), {customDialogue: ["We lost our home! Now you want to kill us?"]}));
                 this.npcs.push(new NPC(5, 1.5, 3.5, 23, 'wandering', '#660066', [26, 26, 23, 15], 'battle', false, 'foe')); // Wisp
-                this.npcs.push(new NPC(15, 14.5, 21.5, 57.1, 'stationary', '#660066', [57, 12, 52, 59], 'battle', false, 'foe')); // Spider
+                this.npcs.push(new NPC(15, 14.5, 21.5, 57, 'stationary', '#660066', [57, 12, 52, 59], 'battle', false, 'foe')); // Spider
 
                 // Loot Cards
                 this.npcs.push(new NPC(8, 14.5, 4.5, -27, 'stationary', '#404040', [16], 'dialogue', null, 'friendly')); // Ruin
@@ -12736,7 +12736,7 @@
                 // --- TRULY 3D SCALING & ANCHORING LOGIC ---
                 let scale = 0.69; 
                 let hover = 0.0; 
-                
+                let angle = typeof window.cacheAngle !== 'undefined' ? window.cacheAngle : (Date.now() / 400);
                 
 
                 if (sprite.type === -27) {
@@ -12745,26 +12745,35 @@
                 }
                 if (sprite.type === 60.1 || sprite.type === 60 || sprite.type === 23) {
                     scale = 0.3; 
-                    hover = 0.4; 
+                    hover = 0.4 + (Math.sin(angle) * 0.01); 
                 } else if (sprite.type <= -39 && sprite.type >= -42) {
-                    let angle = typeof window.cacheAngle !== 'undefined' ? window.cacheAngle : (Date.now() / 400);
                     scale = 0.15; 
                     hover = 0.5 + (Math.sin(angle) * 0.01); 
                 } else if (sprite.type === 56 || sprite.type === 56.1 || sprite.type === 79 || sprite.type === 75 || sprite.type === 75.1) {
                     scale = 0.369; 
-                    hover = -.25; 
-                } else if (sprite.type === 41 || sprite.type === 54 || sprite.type === 10) {
+                    hover = -.31; 
+                } 
+                else if (sprite.type === 57 || sprite.type === 57.1) {
+                    scale = 0.369; 
+                    hover = 0 
+                } 
+                else if (sprite.type === 41 || sprite.type === 54 || sprite.type === 10||sprite.type === 42) {
                     scale = 0.613; 
                     hover = -.16; 
-                } else if (sprite.type === 99 || sprite.type === 42 || sprite.type === 86 || sprite.type === 61.1) {
+                } else if (sprite.type === 99 ||  sprite.type === 86 || sprite.type === 61.1) {
                     scale = 0.69;
-                    hover = 0.2; 
-                } else if (sprite.type === 63.1 || sprite.type === 63 || sprite.type === 77.1 || sprite.type === 77 || sprite.type === 90 || sprite.type === 89) {
+                    hover = 0.31; 
+                } else if (sprite.type === 77.1 || sprite.type === 77 || sprite.type === 90 || sprite.type === 89||sprite.type === 35.1 || sprite.type === 35) {
                     scale = 1.369; 
-                    hover = -.5;
-                } else if (sprite.type === 35.1 || sprite.type === 35 || sprite.type === 81 || sprite.type === 53 || sprite.type === 55) {
+                    hover = -.613;
+                } 
+                else if (sprite.type === 63.1 || sprite.type === 63 ) {
+                    scale = 1.369; 
+                    hover = 0.39 + (Math.sin(angle) * 0.01);
+                }
+                else if (sprite.type === 81 || sprite.type === 53 || sprite.type === 55) {
                     scale = .9631; 
-                    hover = -.25;
+                    hover = -.19;
                 } else if (sprite.type === 49.1 || sprite.type === 49) {
                     scale = 1.69; 
                     hover = 0.0;
@@ -12772,30 +12781,47 @@
                     scale = .9;
                     hover = 0.0;
                 } else if (sprite.name && sprite.socketId && sprite.name !== "Suncat") {
-                    scale = 0.69; 
-                    hover = -0.1; 
+                    scale = scale * 0.69; 
+                    hover = hover -0.1; 
                 }
                 
                 if (sprite.role == 'summoned_minion') {
                     scale = .30; 
-                    hover = -.3;
+                    hover = hover-.3;
                 }
                 
                 if (sprite.isBoss&&sprite.type != 60.1) {
                     scale = scale * 1.369; 
-                    hover = -.369;
+                    hover = hover -.369;
                 }
                 if (sprite.isPlayer) {
-                    scale = 0.5; 
+                    scale = 0.613; 
                     hover = 0;  
                 } else if (sprite.alignment == 'ally' && !sprite.isPlayer) {
-                    scale = scale * .65; 
-                    hover = -.15;
+                    scale = scale * .91; 
+                    hover = hover -.13;
                 }
-                // Calculate Base Screen Dimensions
+                // 1. Calculate Base Screen Dimensions FIRST
                 const spriteScreenX = Math.floor((viewW / 2) * (1 + transformX / transformY));
                 const spriteSize = Math.abs(Math.floor(((viewH * this.zScale) / transformY) * scale)); 
-                
+
+                // 2. CHECK IF THE MONSTER'S CORE IS IN LINE OF SIGHT
+                let isCenterVisible = false;
+                if (spriteScreenX >= 0 && spriteScreenX < viewW) {
+                    isCenterVisible = true; // Assume visible until proven otherwise
+                    let centerHits = this.zBuffer[spriteScreenX];
+                    
+                    if (centerHits && centerHits.length > 0) {
+                        for (let j = 0; j < centerHits.length; j++) {
+                            // Check true depth without any bias!
+                            if (centerHits[j].perpWallDist < transformY && !seeThroughWalls.includes(centerHits[j].wallID)) {
+                                isCenterVisible = false;
+                                break; // A solid wall is blocking the center!
+                            }
+                        }
+                    }
+                }
+
                 const horizon = (viewH / 2) + this.pitch;
                 const floorY = horizon + ((viewH * this.zScale) / transformY) * this.camZ;
                 const hoverOffset = ((viewH * this.zScale) / transformY) * (hover + (sprite.zHeight || 0));
@@ -12809,21 +12835,20 @@
                 if (sprite.model) {
                     if (spriteScreenX >= 0 && spriteScreenX < viewW) {
                         
-                        // THE FIX: Correctly parse the zBuffer array to check for walls!
                         let isBlocked = false;
                         let hits = this.zBuffer[spriteScreenX];
                         
                         if (hits && hits.length > 0) {
                             for (let j = 0; j < hits.length; j++) {
-                                // If a solid wall is closer than the projectile's distance
-                                if (hits[j].perpWallDist < transformY && !seeThroughWalls.includes(hits[j].wallID)) {
+                                if (hits[j].perpWallDist >= transformY) break; 
+
+                                if (!seeThroughWalls.includes(hits[j].wallID)) {
                                     isBlocked = true; 
                                     break;
                                 }
                             }
                         }
 
-                        // Only draw if there isn't a wall directly in front of the center pixel
                         if (!isBlocked) {
                             const centerX = drawStartX + spriteSize / 2;
                             const centerY = drawStartY + spriteSize / 2;
@@ -12899,113 +12924,218 @@
                     }
                 }
 
-                // --- Z-BUFFER PRE-SCAN ---
-                let visibleColumns = 0;
-                let hiddenColumns = 0;
-                let completelyHidden = true;
-
-                const spriteLeftLocal = Math.floor(-spriteSize / 2 + spriteScreenX);
-                const spriteRightLocal = spriteLeftLocal + spriteSize;
-                const loopStart = Math.max(0, spriteLeftLocal);
-                const loopEnd = Math.min(viewW, spriteRightLocal);
-
-                for (let col = loopStart; col < loopEnd; col++) {
-                    let isBlocked = false;
-                    let minClipY = viewH;
-                    let hits = this.zBuffer[col];
+                let imageIndex = (sprite.type !== undefined) ? sprite.type : 0;
+                let cachedSource = spriteCache[imageIndex];
+                
+                if (!cachedSource || imageIndex === -27) {
                     
-                    if (hits && hits.length > 0) {
-                        for (let j = 0; j < hits.length; j++) {
-                            if (hits[j].perpWallDist < transformY && !seeThroughWalls.includes(hits[j].wallID)) {
-                                isBlocked = true;
-                                if (hits[j].topY < minClipY) minClipY = hits[j].topY;
+                    // --- LEGACY CLIP METHOD (For Uncached Vector Paths) ---
+                    let hiddenColumns = 0;
+                    let completelyHidden = true;
+
+                    const spriteLeftLocal = Math.floor(-spriteSize / 2 + spriteScreenX);
+                    const loopStart = Math.max(0, spriteLeftLocal);
+                    const loopEnd = Math.min(viewW, spriteLeftLocal + spriteSize);
+
+                    for (let col = loopStart; col < loopEnd; col++) {
+                        let isBlocked = false;
+                        let minClipY = viewH;
+                        let hits = this.zBuffer[col];
+                        
+                        // --- THE V-SHAPE BIAS ---
+                        let distFromCenter = Math.abs(col - spriteScreenX) / (spriteSize / 2);
+                        let dynamicBias = (scale > 0.8) ? (isCenterVisible ? (scale * 2.0 * distFromCenter) : 0.15) : 0;
+
+                        if (hits && hits.length > 0) {
+                            for (let j = 0; j < hits.length; j++) {
+                               if (hits[j].perpWallDist >= (transformY - dynamicBias)) break; 
+                               if (!seeThroughWalls.includes(hits[j].wallID)) {
+                                    isBlocked = true;
+                                    if (hits[j].topY < minClipY) minClipY = hits[j].topY;
+                                }
                             }
+                        }
+
+                        if (!isBlocked) completelyHidden = false;
+                        else {
+                            hiddenColumns++;
+                            if (drawStartY < minClipY) completelyHidden = false;
                         }
                     }
 
-                    if (!isBlocked) {
-                        visibleColumns++;
-                        completelyHidden = false;
-                    } else {
-                        hiddenColumns++;
-                        if (drawStartY < minClipY) completelyHidden = false;
-                    }
-                }
+                    if (completelyHidden) continue; 
 
-                if (completelyHidden) continue; 
-
-                // --- DRAWING PORTRAITS ---
-                ctx.save();
-                
-                ctx.beginPath();
-                ctx.rect(viewX, viewY, viewW, viewH);
-                ctx.clip();
-
-                if (hiddenColumns > 0) {
+                    ctx.save();
                     ctx.beginPath();
+                    ctx.rect(viewX, viewY, viewW, viewH);
+                    ctx.clip();
+
+                    if (hiddenColumns > 0) {
+                        ctx.beginPath();
+                        for (let x = 0; x < spriteSize; x++) {
+                            const localCol = Math.floor(-spriteSize / 2 + spriteScreenX) + x;
+                            if (localCol >= 0 && localCol < viewW) {
+                                let isBlocked = false;
+                                let minClipY = viewH;
+                                let hits = this.zBuffer[localCol];
+                                
+                                let distFromCenter = Math.abs(x - (spriteSize / 2)) / (spriteSize / 2);
+                                let dynamicBias = (scale > 0.8) ? (isCenterVisible ? (scale * 2.0 * distFromCenter) : 0.15) : 0;
+
+                                if (hits && hits.length > 0) {
+                                    for (let j = 0; j < hits.length; j++) {
+                                        if (hits[j].perpWallDist >= (transformY - dynamicBias)) break; 
+                                        if (!seeThroughWalls.includes(hits[j].wallID)) {
+                                            isBlocked = true;
+                                            if (hits[j].topY < minClipY) minClipY = hits[j].topY;
+                                        }
+                                    }
+                                }
+
+                                if (!isBlocked) {
+                                    ctx.rect(viewX + localCol, drawStartY, 1, spriteSize);
+                                } else if (minClipY > drawStartY) {
+                                    ctx.rect(viewX + localCol, drawStartY, 1, minClipY - drawStartY);
+                                }
+                            }
+                        }
+                        ctx.clip();
+                    }
+
+                    const oldTX = tX; const oldTY = tY; const oldTL = tL; const oldTH = tH;
+                    tX = drawStartX; tY = drawStartY; tL = spriteSize; tH = spriteSize;
+
+                    let spriteFogFactor = Math.pow(Math.min(transformY / 24, 1.0), 1.5);
+                    ctx.globalAlpha = sprite.isPlayer ? 0.7 * (1.0 - spriteFogFactor) : 1.0 - spriteFogFactor;
+                    ctx.filter = (sprite.damageFlashTimer > 0) ? 'brightness(50%) sepia(100%) hue-rotate(-50deg) saturate(1000%) contrast(200%)' : 'none';
+
+                    let cardID = sprite.deck ? sprite.deck[0] : 0;
+                    ctx.imageSmoothingEnabled = true; 
+                    drawPortrait(-27, 0, 0, 1, cardID); 
+                    ctx.imageSmoothingEnabled = false;
+                    
+                    tX = oldTX; tY = oldTY; tL = oldTL; tH = oldTH;
+                    ctx.restore();
+
+                } else {
+                    
+                    // --- HIGH-PERFORMANCE VERTICAL SLICING (For Cached Sprites) ---
+                    let srcImg;
+                    if (Array.isArray(cachedSource)) {
+                        let animationSpeed = 100; 
+                        if (imageIndex === 46.1 || imageIndex === 63.1 || imageIndex === 74.1 || imageIndex === 82) animationSpeed = 300;
+                        const currentFrame = Math.floor(Date.now() / animationSpeed) % cachedSource.length;
+                        srcImg = cachedSource[currentFrame];
+                    } else {
+                        srcImg = cachedSource;
+                    }
+
+                    const cacheSize = srcImg.width || 512; 
+
+                    let spriteFogFactor = Math.pow(Math.min(transformY / 24, 1.0), 1.5);
+                    ctx.globalAlpha = sprite.isPlayer ? 0.7 * (1.0 - spriteFogFactor) : 1.0 - spriteFogFactor;
+                    ctx.filter = (sprite.damageFlashTimer > 0) ? 'brightness(50%) sepia(100%) hue-rotate(-50deg) saturate(1000%) contrast(200%)' : 'none';
+                    
+                    let previousBlend = ctx.globalCompositeOperation;
+                    if (imageIndex === 99) ctx.globalCompositeOperation = 'lighter';
+                    ctx.imageSmoothingEnabled = true;
+
+                    // The Vertical Slice Loop
+                    // --- HIGH-PERFORMANCE BATCHED SLICING ---
+                    let currentStreak = null;
+
+                    // Helper function to draw accumulated streaks of pixels in ONE call
+                    const flushStreak = () => {
+                        if (currentStreak && currentStreak.minClipY > drawStartY) {
+                            // Calculate where this chunk starts and how wide it is on the source image
+                            let srcX = (currentStreak.startX / spriteSize) * cacheSize;
+                            let srcW = (currentStreak.width / spriteSize) * cacheSize;
+                            
+                            if (srcW > 0) {
+                                if (!currentStreak.isBlocked) {
+                                    // Draw fully visible chunk
+                                    ctx.drawImage(srcImg, srcX, 0, srcW, cacheSize, viewX + currentStreak.destX, drawStartY, currentStreak.width, spriteSize);
+                                } else {
+                                    // Draw partially occluded chunk
+                                    let visibleHeightRatio = (currentStreak.minClipY - drawStartY) / spriteSize;
+                                    let srcHeight = cacheSize * visibleHeightRatio;
+                                    ctx.drawImage(srcImg, srcX, 0, srcW, srcHeight, viewX + currentStreak.destX, drawStartY, currentStreak.width, currentStreak.minClipY - drawStartY);
+                                }
+                            }
+                        }
+                    };
+
+                    // The Batched Loop
                     for (let x = 0; x < spriteSize; x++) {
                         const localCol = Math.floor(-spriteSize / 2 + spriteScreenX) + x;
+                        
                         if (localCol >= 0 && localCol < viewW) {
                             let isBlocked = false;
                             let minClipY = viewH;
                             let hits = this.zBuffer[localCol];
 
+                            let distFromCenter = Math.abs(x - (spriteSize / 2)) / (spriteSize / 2);
+                            let dynamicBias = 0;
+                            if (scale > 0.8) {
+                                dynamicBias = isCenterVisible ? (scale * 2.0 * distFromCenter) : 0.15;
+                            }
+
                             if (hits && hits.length > 0) {
                                 for (let j = 0; j < hits.length; j++) {
-                                    if (hits[j].perpWallDist < transformY && !seeThroughWalls.includes(hits[j].wallID)) {
+                                    if (hits[j].perpWallDist >= (transformY - dynamicBias)) break; 
+                                    
+                                    if (!seeThroughWalls.includes(hits[j].wallID)) {
                                         isBlocked = true;
                                         if (hits[j].topY < minClipY) minClipY = hits[j].topY;
                                     }
                                 }
                             }
 
-                            if (!isBlocked) {
-                                ctx.rect(viewX + localCol, drawStartY, 1, spriteSize);
-                            } else if (minClipY > drawStartY) {
-                                ctx.rect(viewX + localCol, drawStartY, 1, minClipY - drawStartY);
+                            // Force entirely hidden columns to snap to a uniform depth so they don't break streaks
+                            if (isBlocked && drawStartY >= minClipY) {
+                                minClipY = drawStartY; 
+                            }
+
+                            // --- BATCHING LOGIC ---
+                            if (currentStreak && currentStreak.isBlocked === isBlocked && currentStreak.minClipY === minClipY) {
+                                // This column perfectly matches the last one! Extend the streak!
+                                currentStreak.width++;
+                            } else {
+                                // Something changed (hit a wall edge). Draw the old streak, start a new one.
+                                if (currentStreak) flushStreak();
+                                
+                                currentStreak = {
+                                    startX: x,
+                                    destX: localCol,
+                                    width: 1,
+                                    isBlocked: isBlocked,
+                                    minClipY: minClipY
+                                };
+                            }
+                        } else {
+                            // Hit edge of screen, draw whatever we were holding
+                            if (currentStreak) {
+                                flushStreak();
+                                currentStreak = null;
                             }
                         }
                     }
-                    ctx.clip();
+                    
+                    // Don't forget to draw the final chunk when the loop ends!
+                    if (currentStreak) flushStreak();
+
+                    ctx.globalCompositeOperation = previousBlend;
+                    ctx.filter = 'none';
+                    ctx.globalAlpha = 1.0;
+                    ctx.imageSmoothingEnabled = false;
+
+                    if (sprite.name && sprite.name !== "undefined") {
+                        const oldTX = tX; const oldTY = tY; const oldTL = tL; const oldTH = tH;
+                        tX = drawStartX; tY = drawStartY; tL = spriteSize; tH = spriteSize;
+                        drawText(3.75, 0, 2.5, .69, '' + sprite.name, 'green', 1, 'center');
+                        tX = oldTX; tY = oldTY; tL = oldTL; tH = oldTH;
+                    }
                 }
-
-                const oldTX = tX; const oldTY = tY; const oldTL = tL; const oldTH = tH;
-                tX = drawStartX; tY = drawStartY; tL = spriteSize; tH = spriteSize;
-
-                if (typeof drawPortrait === 'function') {
-                    let spriteFogFactor = Math.pow(Math.min(transformY / 24, 1.0), 1.5);
-
-                    if (sprite.isPlayer) {
-                        ctx.globalAlpha = 0.7 * (1.0 - spriteFogFactor); 
-                    } else {
-                        ctx.globalAlpha = 1.0 - spriteFogFactor; 
-                    }
-                    if (sprite.damageFlashTimer > 0) {
-                        // This specific filter makes the sprite bright, saturated red
-                        ctx.filter = 'brightness(50%) sepia(100%) hue-rotate(-50deg) saturate(1000%) contrast(200%)';
-                    } else {
-                        ctx.filter = 'none'; // Ensure normal sprites aren't tinted
-                    }
-                    if (sprite.type == -27) {
-                        let cardID = sprite.deck[0];
-                        ctx.imageSmoothingEnabled = true; 
-                        drawPortrait(-27, 0, 0, 1, cardID); 
-                        ctx.imageSmoothingEnabled = false; 
-                    } else {
-                        let imageToDraw = (sprite.type !== undefined) ? sprite.type : 0;
-                        ctx.imageSmoothingEnabled = true; 
-                        drawPortrait(imageToDraw, 0, 0, 1);
-                        ctx.imageSmoothingEnabled = false; 
-                        if (sprite.name && sprite.name !== "undefined") {
-                            drawText(3.75, 0, 2.5, .69, '' + sprite.name, 'green', 1, 'center');
-                        } 
-                    }
-                                            ctx.filter = 'none';
-
-                }
-                
-                tX = oldTX; tY = oldTY; tL = oldTL; tH = oldTH;
-                ctx.restore();
             } // END OF VISIBLE SPRITES LOOP
 
             // --- DRAW 3D PARTICLES (MOVED OUTSIDE SPRITE LOOP) ---
@@ -13035,7 +13165,10 @@
                             let minClipY = viewH;
                             let isBlocked = false;
                             for (let j = 0; j < hits.length; j++) {
-                                if (hits[j].perpWallDist < transformY && !seeThroughWalls.includes(hits[j].wallID)) {
+                                // THE FIX: Early exit!
+                                if (hits[j].perpWallDist >= transformY) break;
+
+                                if (!seeThroughWalls.includes(hits[j].wallID)) {
                                     isBlocked = true;
                                     if (hits[j].topY < minClipY) minClipY = hits[j].topY;
                                 }
@@ -45767,7 +45900,7 @@
       0,1,1.1,2,3,4,5,6,7,8,9,9.1,,10,11,12,13,14,16,17,18,19,20,21,
       22,23,24,25,26,27,28,30,33.1,34,35,
       36,38,39,40,41,44,49.1,
-      50,51,52,54,56,57,58,
+      50,51,52,54,56,57,57.1,58,
       64,69,75.1,77.1,77.2,
       79,80,81,83,87,88,89,90,
       94,61391,.61391]; 
@@ -45780,7 +45913,7 @@
       65,66,67,68,70,70.1,71,72,73,74,74.1,75,76,76.1,77,
       78,82,84,85,86,92,93,98,99,999]; 
     
-    const cacheSize = 512; 
+    const cacheSize = 256; 
     const totalFrames = 8; 
 
     const originalCtx = ctx;
