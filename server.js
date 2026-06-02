@@ -6271,7 +6271,21 @@
             if (triggerType === 'chat') {
                 player.lastSuncatChat = now;
             }
-            
+            // RECORD DM NARRATIVES TO PLAYER JOURNAL
+            if (messageOptions.sender === "") {
+                const journalPayload = {
+                    playerChronicle: finalSpeech, 
+                    suncatThoughts: null
+                };
+                
+                // If it's targeted at a specific player (like force_ai_action), send it only to them.
+                if (messageOptions.targetId) {
+                    io.to(messageOptions.targetId).emit("journal_updated", journalPayload);
+                } else {
+                    // Otherwise, if it's a global DM event, push it to everyone's journal.
+                    io.emit("journal_updated", journalPayload);
+                }
+            }
             if (triggerType !== 'chat' && !useBigBrain) {
                 if (!player.dmNarrativeLog) player.dmNarrativeLog = [];
                 player.dmNarrativeLog.push(finalSpeech);
