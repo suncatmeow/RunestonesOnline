@@ -2043,6 +2043,9 @@
         this.cachedPath = [];
         this.isCinematic = false; // Good practice to default this here too!
         this.damageFlashTimer = 0;
+        this.pathTimer = Math.floor(Math.random() * 15);
+        this.cachedPath = [];
+        this.cachedPrey = null;
         if (role) {
             this.role = role;
         } else if (this.type === -27 || this.type === 99 || this.type < 0||this.role === 'dialogue') {
@@ -2664,12 +2667,17 @@
         // =========================================================
         // 2. DYNAMIC TARGET SELECTION (The Universal Radar)
         // =========================================================
-            let targetX = playerX;
-            let targetY = playerY;
-            let isChasingNPC = false; 
-            let currentPrey = null;
-            let distToActualPlayer = Math.sqrt(Math.pow(playerX - this.x, 2) + Math.pow(playerY - this.y, 2));        
-            
+        let targetX = playerX;
+        let targetY = playerY;
+        let isChasingNPC = false; 
+        let currentPrey = this.cachedPrey; // Default to our cached target
+        let distToActualPlayer = Math.sqrt(Math.pow(playerX - this.x, 2) + Math.pow(playerY - this.y, 2));        
+
+        // --- RADAR THROTTLE ---
+        // Only scan for targets every 15 frames. Staggered by NPC index so they don't all scan at once!
+        if (!dungeon.frame || dungeon.frame % 15 === (this.index % 15)) {
+            currentPrey = null; // Reset to find a new target
+
             // --- ALLY & ESCORT LOGIC ---
             if (this.alignment === 'ally' || this.alignment === 'escort' || this.alignment === 'escort_combat') {
                 let closestDistSq = Infinity;
@@ -2678,22 +2686,11 @@
                 if (this.alignment !== 'escort') {
                     for (let other of dungeon.npcs) {
                         if (other === this || other.isDead || !other.visible || !other.alignment.startsWith('foe')) continue;
-                        
                         let dSq = Math.pow(other.x - this.x, 2) + Math.pow(other.y - this.y, 2);
                         if (dSq < aggroRadiusSq && dSq < closestDistSq && this.hasLineOfSight(maze, other.x, other.y)) { 
                             closestDistSq = dSq; currentPrey = other;
                         }
                     }
-                }
-                
-                if (currentPrey && distToActualPlayer < 6.0) {
-                    targetX = currentPrey.x; targetY = currentPrey.y;
-                    isChasingNPC = true; this.state = 'chasing'; this.speed = 1.5; 
-                } else {
-                    targetX = playerX; targetY = playerY; isChasingNPC = false;
-                    this.state = 'following';
-                    if (distToActualPlayer > 1.5) this.speed = distToActualPlayer > 5 ? 4.0 : 2.0; 
-                    else this.speed = 0; 
                 }
             }
             
@@ -2701,32 +2698,11 @@
             else if (this.alignment.startsWith('defender')) {
                 let closestDistSq = Infinity;
                 for (let other of dungeon.npcs) {
-                    // Defenders ONLY hunt Foes. They ignore friendlies, loot, and portals.
                     if (other === this || other.isDead || !other.visible || !other.alignment.startsWith('foe')) continue;
-                    
                     let dSq = Math.pow(other.x - this.x, 2) + Math.pow(other.y - this.y, 2);
-                    
                     if (dSq < 64 && dSq < closestDistSq && this.hasLineOfSight(maze, other.x, other.y)) {  
                         closestDistSq = dSq; currentPrey = other;
                     }
-                }
-                if (currentPrey) {
-                    targetX = currentPrey.x; targetY = currentPrey.y;
-                    isChasingNPC = true; this.state = 'chasing'; this.speed = 2.5; 
-                } else {
-                    targetX = this.originx; targetY = this.originy; isChasingNPC = false;
-                    let distToHome = Math.sqrt(Math.pow(targetX - this.x, 2) + Math.pow(targetY - this.y, 2));
-                    if (distToHome > 2.0) { this.state = 'following'; this.speed = 1.5; } 
-                    else { this.state = 'wandering'; this.speed = 0.5; }
-                }
-            }
-            
-            // --- FRIENDLY LOGIC (Villagers & Merchants) ---
-            else if (typeof this.alignment === 'string' && this.alignment.startsWith('friendly')) {
-                if (this.alignment === 'friendly_messenger') {
-                    targetX = playerX; targetY = playerY; isChasingNPC = false; 
-                } else {
-                    targetX = this.originx || this.x; targetY = this.originy || this.y;
                 }
             }
             
@@ -2736,16 +2712,13 @@
                 let closestDistSq = distToPlayerSq; // Player is the default target
 
                 for (let other of dungeon.npcs) {
-                    // Ignore dead things, portals, and dropped loot
                     if (other === this || other.isDead || !other.visible) continue;
                     if (other.role === 'dropped_card' || other.role.includes('portal')) continue;
                     
-                    // Foes hate everyone except other foes and neutral objects
-                    let isEnemyFaction = !other.alignment.startsWith('foe') && other.alignment !== 'neutral'&& other.role !== 'shop' && !other.alignment.startsWith('friendly') ;
+                    let isEnemyFaction = !other.alignment.startsWith('foe') && other.alignment !== 'neutral'&& other.role !== 'shop' && !other.alignment.startsWith('friendly');
                     if (!isEnemyFaction) continue;
                     
                     let dSq = Math.pow(other.x - this.x, 2) + Math.pow(other.y - this.y, 2);
-                    
                     if (dSq < 36 && dSq < closestDistSq && this.hasLineOfSight(maze, other.x, other.y)) { 
                         closestDistSq = dSq; currentPrey = other;
                     }
@@ -2755,23 +2728,55 @@
                 if (hasLOS) { 
                     this.lastSeenX = playerX; this.lastSeenY = playerY;
                 }
-
-                if (currentPrey) {
-                    targetX = currentPrey.x; targetY = currentPrey.y; isChasingNPC = true;
-                } else {
-                    if (!hasLOS && this.lastSeenX !== null && this.state === 'chasing') {
-                        targetX = this.lastSeenX; targetY = this.lastSeenY;
-                    } else {
-                        targetX = playerX; targetY = playerY;
-                    }
-                    isChasingNPC = false; 
-                }
             }
-                    
-            this.chasing = isChasingNPC;
-            const diffPlayerX = targetX - this.x;
-            const diffPlayerY = targetY - this.y;
-            const distToPlayer = Math.sqrt((diffPlayerX * diffPlayerX) + (diffPlayerY * diffPlayerY));
+
+            // Save whoever we found to memory so we don't have to loop again next frame!
+            this.cachedPrey = currentPrey; 
+        }
+
+        // --- APPLY THE CACHED TARGET ---
+        if (currentPrey) {
+            if (this.alignment.startsWith('ally') || this.alignment.startsWith('defender')) {
+                if (distToActualPlayer < 6.0 || this.alignment.startsWith('defender')) {
+                    targetX = currentPrey.x; targetY = currentPrey.y;
+                    isChasingNPC = true; this.state = 'chasing'; 
+                    this.speed = this.alignment.startsWith('defender') ? 2.5 : 1.5; 
+                }
+            } else if (this.alignment.startsWith('foe')) {
+                targetX = currentPrey.x; targetY = currentPrey.y; isChasingNPC = true;
+            }
+        } else {
+            // Failsafes when no prey is found
+            if (this.alignment.startsWith('foe')) {
+                let hasLOS = this.hasLineOfSight(maze, playerX, playerY);
+                if (!hasLOS && this.lastSeenX !== null && this.state === 'chasing') {
+                    targetX = this.lastSeenX; targetY = this.lastSeenY;
+                } else {
+                    targetX = playerX; targetY = playerY;
+                }
+                isChasingNPC = false; 
+            } else if (this.alignment.startsWith('defender')) {
+                targetX = this.originx; targetY = this.originy; isChasingNPC = false;
+                let distToHome = Math.sqrt(Math.pow(targetX - this.x, 2) + Math.pow(targetY - this.y, 2));
+                if (distToHome > 2.0) { this.state = 'following'; this.speed = 1.5; } 
+                else { this.state = 'wandering'; this.speed = 0.5; }
+            } else if (this.alignment.startsWith('friendly')) {
+                targetX = (this.alignment === 'friendly_messenger') ? playerX : (this.originx || this.x); 
+                targetY = (this.alignment === 'friendly_messenger') ? playerY : (this.originy || this.y);
+                isChasingNPC = false;
+            } else {
+                // Default Ally Fallback
+                targetX = playerX; targetY = playerY; isChasingNPC = false;
+                this.state = 'following';
+                if (distToActualPlayer > 1.5) this.speed = distToActualPlayer > 5 ? 4.0 : 2.0; 
+                else this.speed = 0;
+            }
+        }
+
+        this.chasing = isChasingNPC;
+        const diffPlayerX = targetX - this.x;
+        const diffPlayerY = targetY - this.y;
+        const distToPlayer = Math.sqrt((diffPlayerX * diffPlayerX) + (diffPlayerY * diffPlayerY));
             
         // =========================================================
         // 3. READ THE FLOW FIELD / PATHFINDING
@@ -2792,7 +2797,15 @@
                 if (distToPlayer < 1.5) { 
                     moveTargetX = targetX; moveTargetY = targetY; 
                 } else {
-                    let path = dungeon.findPath(this.x, this.y, targetX, targetY);
+                    // --- PATH CACHING ---
+                    if (this.pathTimer <= 0) {
+                        this.cachedPath = dungeon.findPath(this.x, this.y, targetX, targetY);
+                        this.pathTimer = 15 + Math.floor(Math.random() * 5); // Wait ~15 frames before A* again
+                    } else {
+                        this.pathTimer--;
+                    }
+
+                    let path = this.cachedPath;
                     if (path && path.length > 0) {
                         let nextStep = path[0];
                         let distToNode = Math.sqrt(Math.pow(nextStep.x - this.x, 2) + Math.pow(nextStep.y - this.y, 2));
@@ -2808,7 +2821,6 @@
                 if (!isChasingNPC) {
                     let hasLOS = this.hasLineOfSight(dungeon.maze, playerX, playerY);
                     
-                    // REVERTED: Mobs ONLY use Flow Fields if they can actually see you.
                     if (hasLOS) {
                         let mapX = Math.floor(this.x); let mapY = Math.floor(this.y);
                         if (dungeon.flowField && dungeon.flowField[mapY] && dungeon.flowField[mapY][mapX]) {
@@ -2822,8 +2834,15 @@
                     } 
                     // NORMAL CHANNEL: If they are behind a wall, they MUST use A* to avoid jittering
                     else if (this.lastSeenX !== null && this.lastSeenY !== null) {
-                        let path = dungeon.findPath(this.x, this.y, this.lastSeenX, this.lastSeenY);
-                        
+                        // --- PATH CACHING ---
+                        if (this.pathTimer <= 0) {
+                            this.cachedPath = dungeon.findPath(this.x, this.y, this.lastSeenX, this.lastSeenY);
+                            this.pathTimer = 15 + Math.floor(Math.random() * 5);
+                        } else {
+                            this.pathTimer--;
+                        }
+
+                        let path = this.cachedPath;
                         if (path && path.length > 0) {
                             let nextStep = path[0];
                             let distToNode = Math.sqrt(Math.pow(nextStep.x - this.x, 2) + Math.pow(nextStep.y - this.y, 2));
@@ -9751,37 +9770,38 @@
         return false;
         }
       checkLineOfSight(targetX, targetY) {
-        // 1. Get integer coordinates
         let x0 = Math.floor(this.x);
         let y0 = Math.floor(this.y);
         let x1 = Math.floor(targetX);
         let y1 = Math.floor(targetY);
 
-        // If in the same tile, it's visible
         if (x0 === x1 && y0 === y1) return true;
 
-        // 2. Setup DDA (Digital Differential Analyzer) variables
         let dx = Math.abs(x1 - x0);
         let dy = Math.abs(y1 - y0);
         let sx = (x0 < x1) ? 1 : -1;
         let sy = (y0 < y1) ? 1 : -1;
         let err = dx - dy;
 
-        // 3. Walk the grid from Player to NPC
+        // --- NEW: Define walls that don't block vision ---
+        const seeThroughWalls = [91]; 
+
         while (true) {
-          // FIX: Check if we reached the target tile FIRST.
-          // This allows us to actually see the faces of the walls!
-          if (x0 === x1 && y0 === y1) return true;
+            if (x0 === x1 && y0 === y1) return true;
 
-          // THEN check if we hit a blocking wall
-          if (this.isWall(x0, y0)) return false;
+            // THE FIX: Check if it's a wall, AND make sure it's not a see-through wall!
+            if (this.isWall(x0, y0)) {
+                let tileID = this.maze[y0][x0];
+                if (!seeThroughWalls.includes(tileID)) {
+                    return false; // Vision blocked by a solid wall!
+                }
+            }
 
-          // Move to next tile
-          let e2 = 2 * err;
-          if (e2 > -dy) { err -= dy; x0 += sx; }
-          if (e2 < dx) { err += dx; y0 += sy; }
+            let e2 = 2 * err;
+            if (e2 > -dy) { err -= dy; x0 += sx; }
+            if (e2 < dx) { err += dx; y0 += sy; }
         }
-        }
+    }
       checkFloorTriggers() {
         // 1. Get the integer tile coordinates
         let tx = Math.floor(this.x);
@@ -9934,10 +9954,20 @@
         }
       generateFlowField(targetX, targetY) {
         // 1. Create an empty grid matching your maze dimensions
-        this.flowField = [];
-        for (let y = 0; y < this.maze.length; y++) {
-            this.flowField.push(new Array(this.maze[0].length).fill(null));
-        }
+        
+            if (!this.flowField || this.flowField.length !== this.maze.length) {
+                this.flowField = new Array(this.maze.length);
+                for (let i = 0; i < this.maze.length; i++) {
+                    this.flowField[i] = new Array(this.maze[0].length);
+                }
+            }
+
+            // Just wipe the data, keep the arrays alive
+            for (let y = 0; y < this.maze.length; y++) {
+                for (let x = 0; x < this.maze[0].length; x++) {
+                    this.flowField[y][x] = null;
+                }
+            }
 
         let startXInt = Math.floor(targetX);
         let startYInt = Math.floor(targetY);
@@ -10421,7 +10451,15 @@
                 const viewX = tX; 
                 const viewY = tY; 
 
-                this.zBuffer = new Array(viewW).fill(null);
+                // --- NEW Z-BUFFER MEMORY RECYCLING ---
+                // Only create a new array if the screen size changed (or on first load)
+                if (!this.zBuffer || this.zBuffer.length !== viewW) {
+                    this.zBuffer = new Array(viewW);
+                }
+                // Manually wipe the array clean without destroying the memory
+                for (let i = 0; i < viewW; i++) {
+                    this.zBuffer[i] = null;
+                }
 
         // ==========================================
         // 1. CAMERA MATH (Moved to top to fix Desync!)
@@ -11143,7 +11181,7 @@
                     const dist = Math.sqrt(diffX*diffX + diffY*diffY);
 
                     // 1. Check current active vision
-let isCurrentlySeen = (this.dSense > 0 && dist <= this.dSense) && this.checkLineOfSight(mapX + 0.5, mapY + 0.5);
+        let isCurrentlySeen = (this.dSense > 0 && dist <= this.dSense) && this.checkLineOfSight(mapX + 0.5, mapY + 0.5);
                     // 2. Mark as permanently explored
                     if (isCurrentlySeen) {
                         if (!this.explored[mapY]) this.explored[mapY] = [];
@@ -11784,38 +11822,54 @@ let isCurrentlySeen = (this.dSense > 0 && dist <= this.dSense) && this.checkLine
                     let exitDist = Math.min(sideDistX, sideDistY);
 
                     hitBlocks.push({ wallID: tileID, side: side, mapX: mapX, mapY: mapY, perpWallDist: perpWallDist, exitDist: exitDist });
-
+                    if (hitBlocks.length > 3) break;
                     let isTransparentWall = [91].includes(tileID);
+                    let isInfinite = this.toweringWalls.includes(tileID) && !this.tileHeights[tileID] && !this.randomTreeTiles.includes(tileID);
 
-                    if (losBlockedDepth === MAX_RENDER_DEPTH && this.isWall(mapX, mapY) && !isTransparentWall) {
-                        losBlockedDepth = perpWallDist; // Vision stops dead ONLY for solid walls
+                    // --- THE FIX ---
+                    // Only let TOWERING/INFINITE walls stop the line-of-sight depth!
+                    // Short walls allow you to see over them, so they shouldn't force 100% fog on the tall walls behind them.
+                    if (losBlockedDepth === MAX_RENDER_DEPTH && this.isWall(mapX, mapY) && !isTransparentWall && isInfinite) {
+                        losBlockedDepth = perpWallDist; 
                     }
 
-                    let isInfinite = this.toweringWalls.includes(tileID) && !this.tileHeights[tileID] && !this.randomTreeTiles.includes(tileID);
-                    
-                    // THE FIX: Do not let infinite transparent walls break the ray!
                     if (isInfinite && !isTransparentWall) {
                         break;
                     }
-                }
+                    }
             }
 
             this.zBuffer[stripX] = hitBlocks;
 
         // ==========================================
-        // 2. TRUE 3D FLOOR CASTING (Strict Fog Cutoff)
-        // ==========================================
-            let startFloorY = Math.floor(horizon) + 1; // +1 prevents divide-by-zero errors at the exact horizon
-            
+            // 2. TRUE 3D FLOOR CASTING (Strict Fog Cutoff)
+            // ==========================================
+            let startFloorY = Math.floor(horizon) + 1; 
+
             let fR = this.fogColorRGB ? this.fogColorRGB.r : 5;
             let fG = this.fogColorRGB ? this.fogColorRGB.g : 5;
             let fB = this.fogColorRGB ? this.fogColorRGB.b : 8;
 
+            // --- NEW: THE ABYSS SKIP ---
+            // Calculate exactly where the physical fog completely hides the floor
+            let maxDistToRender = Math.min(losBlockedDepth, dynamicMaxVis);
+            let abyssY = horizon + ((viewH * this.zScale * this.camZ) / maxDistToRender);
+
+            // Clamp it so it doesn't draw off-screen
+            abyssY = Math.max(startFloorY, Math.min(viewH, abyssY));
+
+            // Instantly fill the deep fog area with 1 solid rectangle (0 CPU math!)
+            if (abyssY > startFloorY) {
+                ctx.fillStyle = `rgb(${fR},${fG},${fB})`;
+                ctx.fillRect(viewX + stripX, viewY + startFloorY, width + 0.5, (abyssY - startFloorY) + 1);
+            }
+
+            // Start the math loop ONLY for the floor pixels we can actually see!
             let currentFloorCacheKey = null;
-            let colorStartY = startFloorY;
+            let colorStartY = Math.floor(abyssY);
             let currentFillStyle = null;
 
-            for (let y = startFloorY; y < viewH; y += 1) {
+            for (let y = Math.floor(abyssY); y < viewH; y += 1) {
                 let currentDist = (viewH * this.zScale * this.camZ) / (y - horizon);
                 let currentFloorX = camX + rayDirX * currentDist;
                 let currentFloorY = camY + rayDirY * currentDist;
@@ -12489,28 +12543,36 @@ let isCurrentlySeen = (this.dSense > 0 && dist <= this.dSense) && this.checkLine
         const fractionalX = this.x - Math.floor(this.x)-.5;
         const fractionalY = this.y - Math.floor(this.y)-.5;
         
-        // --- 1. DRAW TILES & UPDATE EXPLORATION ---
-        for (let y = -range; y <= range; y++) {
-          for (let x = -range; x <= range; x++) {
-            const mapX = Math.floor(this.x) + x;
-            const mapY = Math.floor(this.y) + y;
+        // NEW: Only run the heavy Line of Sight math every 5th frame
+            let updateFogOfWar = (this.frame % 5 === 0);
 
-            // Boundary Check
-            if (mapX >= 0 && mapX < this.maze[0].length && mapY >= 0 && mapY < this.maze.length) {
-              
-              // True distance for dSense
-              const realDist = Math.sqrt(Math.pow((mapX + 0.5) - this.x, 2) + Math.pow((mapY + 0.5) - this.y, 2));
-              let isCurrentlySeen = false;
-              
-              // DYNAMIC REVEAL: Check if tile is in active vision
-              if (this.dSense > 0 && realDist <= this.dSense && this.checkLineOfSight(mapX + 0.5, mapY + 0.5)) {
-                  isCurrentlySeen = true;
-                  if (!this.explored[mapY]) this.explored[mapY] = [];
-                  this.explored[mapY][mapX] = 1; // Mark permanently explored!
-              }
+            for (let y = -range; y <= range; y++) {
+                for (let x = -range; x <= range; x++) {
+                    const mapX = Math.floor(this.x) + x;
+                    const mapY = Math.floor(this.y) + y;
 
-              // ONLY DRAW IF EXPLORED
-              if (this.explored[mapY] && this.explored[mapY][mapX] === 1) {
+                    if (mapX >= 0 && mapX < this.maze[0].length && mapY >= 0 && mapY < this.maze.length) {
+                        
+                        const realDist = Math.sqrt(Math.pow((mapX + 0.5) - this.x, 2) + Math.pow((mapY + 0.5) - this.y, 2));
+                        let isCurrentlySeen = false;
+                        
+                        // DYNAMIC REVEAL
+                        if (this.explored[mapY] && this.explored[mapY][mapX] === 1) {
+                            // If we already explored it, don't run the heavy math! Just check if it's close.
+                            isCurrentlySeen = (realDist <= this.dSense);
+                        } 
+                        
+                        // If it's an update frame, and it's unexplored, cast the ray to see if we discover it
+                        if (updateFogOfWar && !isCurrentlySeen && this.dSense > 0 && realDist <= this.dSense) {
+                            if (this.checkLineOfSight(mapX + 0.5, mapY + 0.5)) {
+                                isCurrentlySeen = true;
+                                if (!this.explored[mapY]) this.explored[mapY] = [];
+                                this.explored[mapY][mapX] = 1; 
+                            }
+                        }
+
+            // ONLY DRAW IF EXPLORED
+            if (this.explored[mapY] && this.explored[mapY][mapX] === 1) {
                   const screenX = startX + size / 2 + (x - fractionalX) * cellSize;
                   const screenY = startY + size / 2 + (y - fractionalY) * cellSize;
                   
@@ -12786,7 +12848,7 @@ let isCurrentlySeen = (this.dSense > 0 && dist <= this.dSense) && this.checkLine
                     hover = hover -.13;
                 }
                 if (sprite.isPlayer) {
-                    scale = 0.613; 
+                    scale = 0.50; 
                     hover = 0;  
                 } else if (sprite.alignment == 'ally' && !sprite.isPlayer) {
                     scale = scale * .91; 
@@ -20093,372 +20155,332 @@ let isCurrentlySeen = (this.dSense > 0 && dist <= this.dSense) && this.checkLine
         }
     }
     press(count = 0) {
-      // --- NEW: INPUT COOLDOWN CHECK ---
-      let isMovementBtn = (this.type === 'd_pad' || this.type === 'b_pad' || this.type === 'turn_l' || this.type === 'turn_r');
-      if (isMovementBtn && typeof Dungeon !== 'undefined') {
-          // If they try to move/turn before the cooldown finishes, block it!
-          if (Dungeon.inputCooldown > 0) return; 
-          Dungeon.inputCooldown = 0.22; // 0.22 seconds = smooth, steady walking pace
-      }
+        let isMovementBtn = (this.type === 'd_pad' || this.type === 'b_pad' || this.type === 'turn_l' || this.type === 'turn_r');
 
-      this.isPressed = true;
-      if (this.type === 'd_pad') count = 1;
-      this.wobbleMax = count;
-      this.wobbleTimer = Date.now();
-      if (this.type == 'arrow_left' || this.type == 'arrow_right' || this.type == 'add_toHand') { count = .1; }
-      if (this.type === 'joystick') {
-          return; 
-      }
-      
-      // ==========================================
-      // --- D-PAD MOVEMENT LOGIC INTEGRATION ---
-      // ==========================================
-      if (this.type === 'd_pad' && (startGame === 'explore'||startGame === 'mapmaker') && this.currentDir) {
-          let moveX = 0;
-          let moveY = 0;
-          let movingForward = false;
-
-          // --- 1. 2D ABSOLUTE MOVEMENT ---
-          if (window.gameViewMode === '2d') {
-              if (this.currentDir === 'up')    { moveY = -1; Dungeon.dir = 0; movingForward = true; }
-              if (this.currentDir === 'down')  { moveY =  1; Dungeon.dir = 2; movingForward = true; }
-              if (this.currentDir === 'left')  { moveX = -1; Dungeon.dir = 3; movingForward = true; }
-              if (this.currentDir === 'right') { moveX =  1; Dungeon.dir = 1; movingForward = true; }
-          } 
-          // --- 2. 3D FIRST-PERSON RELATIVE MOVEMENT ---
-          else {
-              if (this.currentDir === 'up') {
-                  movingForward = true;
-                  if (Dungeon.dir === 0) moveY = -1;
-                  if (Dungeon.dir === 1) moveX = 1;
-                  if (Dungeon.dir === 2) moveY = 1;
-                  if (Dungeon.dir === 3) moveX = -1;
-              } else if (this.currentDir === 'down') {
-                  movingForward = true;
-                  if (Dungeon.dir === 0) moveY = 1;
-                  if (Dungeon.dir === 1) moveX = -1;
-                  if (Dungeon.dir === 2) moveY = -1;
-                  if (Dungeon.dir === 3) moveX = 1;
-              } else if (this.currentDir === 'left') { // STRAFE LEFT
-                  movingForward = true;
-                  if (Dungeon.dir === 0) moveX = -1;
-                  if (Dungeon.dir === 1) moveY = -1;
-                  if (Dungeon.dir === 2) moveX = 1;
-                  if (Dungeon.dir === 3) moveY = 1;
-              } else if (this.currentDir === 'right') { // STRAFE RIGHT
-                  movingForward = true;
-                  if (Dungeon.dir === 0) moveX = 1;
-                  if (Dungeon.dir === 1) moveY = 1;
-                  if (Dungeon.dir === 2) moveX = -1;
-                  if (Dungeon.dir === 3) moveY = -1;
-              }
-          }
-          
-          executeDungeonMove(moveX, moveY, movingForward);
-      }
-      
-      // ==========================================
-      // --- 6-WAY B-PAD MOVEMENT LOGIC ---
-      // ==========================================
-        if (this.type === 'b_pad' && (startGame === 'explore' || startGame === 'mapmaker') && this.currentDir) {
-              let moveX = 0;
-          let moveY = 0;
-          let movingForward = false;
-
-          // TURNING
-          if (this.currentDir === 't_left') {
-              Dungeon.dir = (Dungeon.dir + 3) % 4;
-              Dungeon.clickInput = null;
-          } else if (this.currentDir === 't_right') {
-              Dungeon.dir = (Dungeon.dir + 1) % 4;
-              Dungeon.clickInput = null;
-          } 
-          // FORWARD / BACKWARD
-          else if (this.currentDir === 'up') {
-              movingForward = true;
-              if (Dungeon.dir === 0) moveY = -1;
-              if (Dungeon.dir === 1) moveX = 1;
-              if (Dungeon.dir === 2) moveY = 1;
-              if (Dungeon.dir === 3) moveX = -1;
-          } else if (this.currentDir === 'down') {
-              movingForward = true;
-              if (Dungeon.dir === 0) moveY = 1;
-              if (Dungeon.dir === 1) moveX = -1;
-              if (Dungeon.dir === 2) moveY = -1;
-              if (Dungeon.dir === 3) moveX = 1;
-          } 
-          // STRAFING
-          else if (this.currentDir === 's_left') {
-              movingForward = true;
-              if (Dungeon.dir === 0) moveX = -1;
-              if (Dungeon.dir === 1) moveY = -1;
-              if (Dungeon.dir === 2) moveX = 1;
-              if (Dungeon.dir === 3) moveY = 1;
-          } else if (this.currentDir === 's_right') {
-              movingForward = true;
-              if (Dungeon.dir === 0) moveX = 1;
-              if (Dungeon.dir === 1) moveY = 1;
-              if (Dungeon.dir === 2) moveX = -1;
-              if (Dungeon.dir === 3) moveY = -1;
-          }
-          
-          if (movingForward) executeDungeonMove(moveX, moveY, movingForward);
-      }
-
-        if ((this.type === 'turn_l' || this.type === 'turn_r') && (startGame === 'explore' || startGame === 'mapmaker') && this.currentDir) {
-              if (this.currentDir === 't_left') {
-              Dungeon.dir = (Dungeon.dir + 3) % 4;
-              Dungeon.clickInput = null;
-          } else if (this.currentDir === 't_right') {
-              Dungeon.dir = (Dungeon.dir + 1) % 4;
-              Dungeon.clickInput = null;
-          } 
+        // 1. INPUT BUFFERING
+        if (!isMovementBtn && this.isPressed) {
+            this.queuedPress = true; 
+            return; 
         }
 
-      // ==========================================
-      // --- POV TOGGLE ---
-      // ==========================================
-      if (this.text === 'POV') {  
-          if(Dungeon.cameraMode === 'hybrid') {
-              Dungeon.cameraMode = 'first_person';
-          } else {
-              Dungeon.cameraMode = 'hybrid';
-          }
-          Dungeon.savedViewMode = window.gameViewMode;
-          Dungeon.savedCameraMode = Dungeon.cameraMode; 
-      }
-      
-      // ==========================================
-      // --- THE SPLIT: HOLD VS TAP ---
-      // ==========================================
-      if (isMovementBtn) {
-          // MOVEMENT: Do NOT clear isPressed here! 
-          // It stays true so you can hold it down.
-          if (this.index && typeof this.do === 'function') this.do(this.index);
-      } else {
-          // TAPS: Keep the "active" state alive for the duration of the wobble, then reset
-          setTimeout(() => { 
-              this.isPressed = false; 
-              this.currentDir = null; // Clear D-Pad flash
-              this.joyX = 0; 
-              this.joyY = 0;
-              
-              ///////////////////////////////
-              // BUTTON INDEX (Your giant logic block, completely untouched!)
-              switch(this.index){
-                case 'ATK':
-                       Dungeon.castSpell(9999);
-                 break;         
+        if (isMovementBtn && typeof Dungeon !== 'undefined') {
+            if (Dungeon.inputCooldown > 0) return; 
+            Dungeon.inputCooldown = 0.22; 
+        }
+
+        this.isPressed = true;
+        this.queuedPress = false; 
+        if (this.type === 'd_pad') count = 1;
+        this.wobbleMax = count;
+        this.wobbleTimer = Date.now();
+
+        if (this.type == 'arrow_left' || this.type == 'arrow_right' || this.type == 'add_toHand') { count = 0.1; }
+        if (this.type === 'joystick') return; 
+        
+        // ==========================================
+        // --- NEW: DYNAMIC AGI-BASED COMBAT SPEED ---
+        // ==========================================
+        if (this.index === 'ATK' || this.index === 'spell_slot') {
+            let speedMs = 350; // Base 350ms delay for a slow, clunky character
+            
+            if (typeof Dungeon !== 'undefined' && Dungeon.stat) {
+                // Safely grab Agility (Stat Index 3)
+                let baseAgi = (Dungeon.stat[3]) ? Dungeon.stat[3][0] : 1;
+                let modAgi = (Dungeon.stat[3]) ? (Dungeon.stat[3][2] || 0) : 0;
+                let playerAgi = baseAgi + modAgi;
                 
+                // Reduce the delay by 15ms for every point of Agility.
+                // Math.max ensures the delay never drops below 80ms (sanity cap to prevent crashing)
+                speedMs = Math.max(80, 350 - (playerAgi * 15)); 
+            }
+            
+            // Your setTimeout multiplies count by 200, so we divide our target MS by 200 here
+            count = speedMs / 200; 
+        }
+
+        // ==========================================
+        // --- D-PAD MOVEMENT LOGIC INTEGRATION ---
+        // ==========================================
+        if (this.type === 'd_pad' && (startGame === 'explore'||startGame === 'mapmaker') && this.currentDir) {
+            let moveX = 0;
+            let moveY = 0;
+            let movingForward = false;
+
+            if (window.gameViewMode === '2d') {
+                if (this.currentDir === 'up')    { moveY = -1; Dungeon.dir = 0; movingForward = true; }
+                if (this.currentDir === 'down')  { moveY =  1; Dungeon.dir = 2; movingForward = true; }
+                if (this.currentDir === 'left')  { moveX = -1; Dungeon.dir = 3; movingForward = true; }
+                if (this.currentDir === 'right') { moveX =  1; Dungeon.dir = 1; movingForward = true; }
+            } 
+            else {
+                if (this.currentDir === 'up') {
+                    movingForward = true;
+                    if (Dungeon.dir === 0) moveY = -1;
+                    if (Dungeon.dir === 1) moveX = 1;
+                    if (Dungeon.dir === 2) moveY = 1;
+                    if (Dungeon.dir === 3) moveX = -1;
+                } else if (this.currentDir === 'down') {
+                    movingForward = true;
+                    if (Dungeon.dir === 0) moveY = 1;
+                    if (Dungeon.dir === 1) moveX = -1;
+                    if (Dungeon.dir === 2) moveY = -1;
+                    if (Dungeon.dir === 3) moveX = 1;
+                } else if (this.currentDir === 'left') { 
+                    movingForward = true;
+                    if (Dungeon.dir === 0) moveX = -1;
+                    if (Dungeon.dir === 1) moveY = -1;
+                    if (Dungeon.dir === 2) moveX = 1;
+                    if (Dungeon.dir === 3) moveY = 1;
+                } else if (this.currentDir === 'right') { 
+                    movingForward = true;
+                    if (Dungeon.dir === 0) moveX = 1;
+                    if (Dungeon.dir === 1) moveY = 1;
+                    if (Dungeon.dir === 2) moveX = -1;
+                    if (Dungeon.dir === 3) moveY = -1;
+                }
+            }
+            executeDungeonMove(moveX, moveY, movingForward);
+        }
+        
+        // ==========================================
+        // --- 6-WAY B-PAD MOVEMENT LOGIC ---
+        // ==========================================
+        if (this.type === 'b_pad' && (startGame === 'explore' || startGame === 'mapmaker') && this.currentDir) {
+            let moveX = 0;
+            let moveY = 0;
+            let movingForward = false;
+
+            if (this.currentDir === 't_left') {
+                Dungeon.dir = (Dungeon.dir + 3) % 4;
+                Dungeon.clickInput = null;
+            } else if (this.currentDir === 't_right') {
+                Dungeon.dir = (Dungeon.dir + 1) % 4;
+                Dungeon.clickInput = null;
+            } 
+            else if (this.currentDir === 'up') {
+                movingForward = true;
+                if (Dungeon.dir === 0) moveY = -1;
+                if (Dungeon.dir === 1) moveX = 1;
+                if (Dungeon.dir === 2) moveY = 1;
+                if (Dungeon.dir === 3) moveX = -1;
+            } else if (this.currentDir === 'down') {
+                movingForward = true;
+                if (Dungeon.dir === 0) moveY = 1;
+                if (Dungeon.dir === 1) moveX = -1;
+                if (Dungeon.dir === 2) moveY = -1;
+                if (Dungeon.dir === 3) moveX = 1;
+            } 
+            else if (this.currentDir === 's_left') {
+                movingForward = true;
+                if (Dungeon.dir === 0) moveX = -1;
+                if (Dungeon.dir === 1) moveY = -1;
+                if (Dungeon.dir === 2) moveX = 1;
+                if (Dungeon.dir === 3) moveY = 1;
+            } else if (this.currentDir === 's_right') {
+                movingForward = true;
+                if (Dungeon.dir === 0) moveX = 1;
+                if (Dungeon.dir === 1) moveY = 1;
+                if (Dungeon.dir === 2) moveX = -1;
+                if (Dungeon.dir === 3) moveY = -1;
+            }
+            
+            if (movingForward) executeDungeonMove(moveX, moveY, movingForward);
+        }
+
+        if ((this.type === 'turn_l' || this.type === 'turn_r') && (startGame === 'explore' || startGame === 'mapmaker') && this.currentDir) {
+                if (this.currentDir === 't_left') {
+                Dungeon.dir = (Dungeon.dir + 3) % 4;
+                Dungeon.clickInput = null;
+            } else if (this.currentDir === 't_right') {
+                Dungeon.dir = (Dungeon.dir + 1) % 4;
+                Dungeon.clickInput = null;
+            } 
+        }
+
+        // ==========================================
+        // --- POV TOGGLE ---
+        // ==========================================
+        if (this.text === 'POV') {  
+            if(Dungeon.cameraMode === 'hybrid') {
+                Dungeon.cameraMode = 'first_person';
+            } else {
+                Dungeon.cameraMode = 'hybrid';
+            }
+            Dungeon.savedViewMode = window.gameViewMode;
+            Dungeon.savedCameraMode = Dungeon.cameraMode; 
+        }
+        
+        // ==========================================
+        // --- THE SPLIT: HOLD VS TAP ---
+        // ==========================================
+        if (isMovementBtn) {
+            if (this.index && typeof this.do === 'function') this.do(this.index);
+        } else {
+            
+            // --- IMMEDIATE EXECUTION ---
+            switch(this.index){
+                case 'ATK':
+                    Dungeon.castSpell(9999);
+                    break;         
                 
                 case 'spell_slot':
-                      // 1. Failsafe: Do nothing if the button is empty
-                      if (!this.assignedCard) {
-                          if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('cancel');
-                          return; 
-                      }
-                      
-                      let cardObj = this.assignedCard;
-                      let cardWasUsed = false;
+                    if (!this.assignedCard) {
+                        if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('cancel');
+                        return; 
+                    }
+                    
+                    let cardObj = this.assignedCard;
+                    let cardWasUsed = false;
 
-                      // 2. ROUTE THE ACTION BASED ON CARD TYPE
-                      if (cardObj.type === 0) { 
-                          // --- MONSTER TOGGLE LOGIC ---
-                          let summonData = null;
-                          if (Dungeon.activeSummons) {
-                              summonData = Dungeon.activeSummons.find(s => typeof s === 'object' && s.uid === cardObj.uid);
-                          }
-                          
-                          if (summonData) {
-                              // -> UN-SUMMON IT!
-                              // 1. Find the specific NPC walking around using the saved npcId
-                              let npcIndexToRemove = Dungeon.npcs.findIndex(n => n.index === summonData.npcId);
-                              if (npcIndexToRemove !== -1) {
-                                  Dungeon.npcs.splice(npcIndexToRemove, 1);
-                              }
-                              
-                              // 2. Remove ONLY this specific card from the active array
-                              Dungeon.activeSummons = Dungeon.activeSummons.filter(s => s.uid !== cardObj.uid);
-                              
-                              if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('cancel'); 
-                              if (typeof Dungeon.saveGame === 'function') Dungeon.saveGame();
-                              
-                              // Do not delete the card from extras, just leave it in the slot.
-                              // It will cycle away naturally on the next 5-second shuffle!
-                              cardWasUsed = false; 
-                          } else {
-                              // -> SUMMON IT!
-                              // Pass the whole card object so we can read its UID
-                              
-                              Dungeon.summonAlly(cardObj);
-                              cardWasUsed = false; 
-                          }
-                      }
-                      
-                      else if (cardObj.type === 2||cardObj.type === 1) {
+                    if (cardObj.type === 0) { 
+                        let summonData = null;
+                        if (Dungeon.activeSummons) {
+                            summonData = Dungeon.activeSummons.find(s => typeof s === 'object' && s.uid === cardObj.uid);
+                        }
+                        
+                        if (summonData) {
+                            let npcIndexToRemove = Dungeon.npcs.findIndex(n => n.index === summonData.npcId);
+                            if (npcIndexToRemove !== -1) {
+                                Dungeon.npcs.splice(npcIndexToRemove, 1);
+                            }
+                            
+                            Dungeon.activeSummons = Dungeon.activeSummons.filter(s => s.uid !== cardObj.uid);
+                            
+                            if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('cancel'); 
+                            if (typeof Dungeon.saveGame === 'function') Dungeon.saveGame();
+                            
+                            cardWasUsed = false; 
+                        } else {
+                            Dungeon.summonAlly(cardObj);
+                            cardWasUsed = false; 
+                        }
+                    }
+                    else if (cardObj.type === 2||cardObj.type === 1) {
                         Dungeon.castSpell(cardObj.index);
-                          cardWasUsed = true;
-                          if (cardObj.index === 26){
-                              if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('fire2');
-                          } else { 
-                              if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('arcane');
-                          }
-                          
-                          // ==========================================
-                          // --- NEW: TUTORIAL ATTACK HOOK ---
-                          // ==========================================
-                          if (typeof startGame !== 'undefined' && startGame === 'tutorial' && Dungeon.option === 3) {
-                              Dungeon.option = 4; // Advance to the dice roll phase!
-                              Dungeon.dCounter = 0;
-                          }
-                          
-                      }
+                        cardWasUsed = true;
+                        if (cardObj.index === 26){
+                            if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('fire2');
+                        } else { 
+                            if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('arcane');
+                        }
+                        
+                        if (typeof startGame !== 'undefined' && startGame === 'tutorial' && Dungeon.option === 3) {
+                            Dungeon.option = 4; 
+                            Dungeon.dCounter = 0;
+                        }
+                    }
 
-                      // 3. CLEANUP: If used, remove it from extras and immediately draw a new one
-                      // 3. CLEANUP: If used, remove THIS EXACT CARD from the hand
-                      if (cardWasUsed) {
-                          
-                          // Look for the exact card using its Unique ID (uid)
-                          let handIndex = Dungeon.hand.findIndex(c => c !== null && c.uid === cardObj.uid);
-                          
-                          if (handIndex !== -1) {
-                              Dungeon.hand[handIndex] = null; // Destroy only this specific card!
-                          }
-                          
-                          // Shuffle the remaining cards to immediately fill the empty slot
-                          Dungeon.shuffleSpells(); 
-                      }
-                      
-                      break;
+                    if (cardWasUsed) {
+                        let handIndex = Dungeon.hand.findIndex(c => c !== null && c.uid === cardObj.uid);
+                        if (handIndex !== -1) {
+                            Dungeon.hand[handIndex] = null; 
+                        }
+                        Dungeon.shuffleSpells(); 
+                    }
+                    break;
                 
                 case '2D3D':
-                  
                     if(window.gameViewMode == '2d'){
-                    window.gameViewMode = '3d'
-                    
-                    btn2D3D.visible = false;
-                    }
-                    else{
-                    window.gameViewMode = '2d'
+                        window.gameViewMode = '3d'
+                        btn2D3D.visible = false;
+                    } else {
+                        window.gameViewMode = '2d'
                     }
                     Dungeon.savedViewMode = window.gameViewMode;
-                     Dungeon.savedCameraMode = Dungeon.cameraMode; 
-                                
+                    Dungeon.savedCameraMode = Dungeon.cameraMode; 
                     break;
+                    
                 case 'deck_view':
-                        console.log("Opening Deck View via Button...");
-                        // 1. Set global state
-                        deckScrollIndex = 0;
-                        extraScrollIndex = 0;
-                        viewingFullDeck = false; // Flag disabled: Show only MY cards
-                        preGame = 'explore'
-                        startGame = 'deck_menu';
-                        groupedDeckCards = groupCards(Dungeon.deck); // or Player[0].deck
-                         groupedExtraCards = groupCards(Dungeon.extra); 
-                         socket.emit('request_stats_sync');
-                    // // wherever extras are stored
-                    // let deckScrollIndex = 0;
-                    // let extraScrollIndex = 0;
-                          // 2. Load Player Deck indices
-                          filterGrimoire('ALL');
-                          // 3. Reset view
-                          playlistIndex = 0;
-                          
-                          break;
-                    //
+                    console.log("Opening Deck View via Button...");
+                    deckScrollIndex = 0;
+                    extraScrollIndex = 0;
+                    viewingFullDeck = false; 
+                    preGame = 'explore';
+                    startGame = 'deck_menu';
+                    groupedDeckCards = groupCards(Dungeon.deck); 
+                    groupedExtraCards = groupCards(Dungeon.extra); 
+                    socket.emit('request_stats_sync');
+                    filterGrimoire('ALL');
+                    playlistIndex = 0;
+                    break;
+                    
                 case 'journal_view':
-                        console.log("Opening Deck View via Button...");
-                        // 1. Set global state
-                        preGame = 'explore'
-                        startGame = 'journal';
-                        MusicEngine.playSFX('heal'); // Or a 'page turn' sound
-                        // 2. Load Player Deck indices
-                        if (typeof socket !== 'undefined') socket.emit('request_stats_sync');
-                        break;
-                case 0://MessageBox
-                    //Jukebox Stop
+                    console.log("Opening Deck View via Button...");
+                    preGame = 'explore'
+                    startGame = 'journal';
+                    MusicEngine.playSFX('heal'); 
+                    if (typeof socket !== 'undefined') socket.emit('request_stats_sync');
+                    break;
+                    
+                case 0:
                     if (startGame == 'jukebox'){
-                      MusicEngine.stop();
-                      return;
+                        MusicEngine.stop();
+                        return;
                     }
-                    //exit scry 
                     if(Player[attacker].option == 6.4){
-                      for(let i=0;i<Player[attacker].deck.length;i++){  //place deck on right side of field
-                        Player[attacker].deck[i].location = 'deck'
-                      }
-                      Player[0].option = 7;
-                      Player[1].option = 7;
-                      Player[attacker].sendAction('SCRY_EXIT');
-                      
+                        for(let i=0;i<Player[attacker].deck.length;i++){ 
+                            Player[attacker].deck[i].location = 'deck';
+                        }
+                        Player[0].option = 7;
+                        Player[1].option = 7;
+                        Player[attacker].sendAction('SCRY_EXIT');
                     }
+                    break;
                     
-
-                    
-
-                  break;
-                case 1: // btnYes
+                case 1: 
                     if (this.foe == 'emperor'){
-                   
-                      Dungeon.saveGame();
-                      // 2. INITIALIZE BATTLE
-                      preGame = 'explore';
-                      startGame = 8; 
-                      Dungeon.dCounter = 0;
-                      window.isEmperorDuel = true;
-                      // 3. LOAD THE PLAYER'S DUNGEON DECK
-                      Player[0] = new Field(0); 
-                      Player[1] = new Field(1,1);
-                      
-                      Player[1].opponent = Player[0];
-                      Player[0].opponent = Player[1];
-                      sRune = new stone(1.545,4.545,1,eSTAT.S);
-                      cRune = new stone(7.625,4.625,1,eSTAT.C);
-                      iRune = new stone(3.545,4.49,1,eSTAT.I);
-                      aRune = new stone(5.545,4.53,1,eSTAT.A);
-                      
-                      if(typeof Dungeon !== 'undefined' && Dungeon.deck && Dungeon.deck.length > 0){
-                          Player[0].deck = []; // Wipe default/random deck
-                          Player[0].hand = []; 
-                          
-                          // Copy every card from Dungeon to Battle Field
-                          for(let i = 0; i < Dungeon.deck.length; i++){
-                              let dCard = Dungeon.deck[i];
-                              
-                              // --- NEW: GRAB MASTERY LEVEL ---
-                              let mLevel = (Dungeon.mastery && Dungeon.mastery[dCard.index]) ? Dungeon.mastery[dCard.index].level : 0;
-                              
-                              // Create new battle card instance with the Mastery safely injected
-                              let bCard = new Card(dCard.index, 0, { mastery: mLevel }); 
-                              bCard.location = 'deck';
-                              bCard.locIndex = i;
-                              Player[0].deck.push(bCard);
-                          }
-                      }
-                      let currentIndex4 = Player[0].deck.length; 
-                      let randomIndex4;
-                      while (currentIndex4 !== 0) {
-                        randomIndex4 = Math.floor(Math.random() * currentIndex4);
-                        currentIndex4--; 
-
-                        [Player[0].deck[currentIndex4], Player[0].deck[randomIndex4]] = [
-                        Player[0].deck[randomIndex4], Player[0].deck[currentIndex4]
-                      ];        
-                      }
-            
-                      
-                      Player[1].isCPU = 1; 
-                      
-                      if(Dbug == 1){
-                        Player[0].deck.length = 0;
-                        Player[0].deck.push(new Card(63,0))
-                        Player[0].deck[0].locIndex = 0; 
-                        Player[0].deck[0].locCount = 0;
-                        Player[0].deck[0].location = 'deck';
-                        Player[0].deck[0].stat[0][2] = 100;
-                        Player[0].deck[0].stat[1][2] = 100;
-                        Player[0].deck[0].stat[2][2] = 100;
-                        Player[0].deck[0].stat[3][2] = 100;
-                      }
+                        Dungeon.saveGame();
+                        preGame = 'explore';
+                        startGame = 8; 
+                        Dungeon.dCounter = 0;
+                        window.isEmperorDuel = true;
+                        
+                        Player[0] = new Field(0); 
+                        Player[1] = new Field(1,1);
+                        
+                        Player[1].opponent = Player[0];
+                        Player[0].opponent = Player[1];
+                        sRune = new stone(1.545,4.545,1,eSTAT.S);
+                        cRune = new stone(7.625,4.625,1,eSTAT.C);
+                        iRune = new stone(3.545,4.49,1,eSTAT.I);
+                        aRune = new stone(5.545,4.53,1,eSTAT.A);
+                        
+                        if(typeof Dungeon !== 'undefined' && Dungeon.deck && Dungeon.deck.length > 0){
+                            Player[0].deck = []; 
+                            Player[0].hand = []; 
+                            
+                            for(let i = 0; i < Dungeon.deck.length; i++){
+                                let dCard = Dungeon.deck[i];
+                                let mLevel = (Dungeon.mastery && Dungeon.mastery[dCard.index]) ? Dungeon.mastery[dCard.index].level : 0;
+                                let bCard = new Card(dCard.index, 0, { mastery: mLevel }); 
+                                bCard.location = 'deck';
+                                bCard.locIndex = i;
+                                Player[0].deck.push(bCard);
+                            }
+                        }
+                        let currentIndex4 = Player[0].deck.length; 
+                        let randomIndex4;
+                        while (currentIndex4 !== 0) {
+                            randomIndex4 = Math.floor(Math.random() * currentIndex4);
+                            currentIndex4--; 
+                            [Player[0].deck[currentIndex4], Player[0].deck[randomIndex4]] = [
+                                Player[0].deck[randomIndex4], Player[0].deck[currentIndex4]
+                            ];        
+                        }
+                        
+                        Player[1].isCPU = 1; 
+                        
+                        if(Dbug == 1){
+                            Player[0].deck.length = 0;
+                            Player[0].deck.push(new Card(63,0))
+                            Player[0].deck[0].locIndex = 0; 
+                            Player[0].deck[0].locCount = 0;
+                            Player[0].deck[0].location = 'deck';
+                            Player[0].deck[0].stat[0][2] = 100;
+                            Player[0].deck[0].stat[1][2] = 100;
+                            Player[0].deck[0].stat[2][2] = 100;
+                            Player[0].deck[0].stat[3][2] = 100;
+                        }
                         MusicEngine.stop();
                         MusicEngine.playSFX('heal');
                         MusicEngine.play(4);
@@ -20467,113 +20489,97 @@ let isCurrentlySeen = (this.dSense > 0 && dist <= this.dSense) && this.checkLine
                         return; 
                     }
                     
-                    // 1. PVP ACCEPT
-                        if (this.foe === 'pvp_accept') {
-                            let opponentId = Dungeon.currentSpeaker?.socketId;
-                            if (opponentId) {
-                                let myDeckIndices = Dungeon.deck ? Dungeon.deck.map(c => {
-                                    let mLevel = (Dungeon.mastery && Dungeon.mastery[c.index]) ? Dungeon.mastery[c.index].level : 0;
-                                    return { index: c.index, mastery: mLevel };
-                                }) : [];
-                                
-                                socket.emit("challenge_accepted", { targetId: opponentId, receiverDeck: myDeckIndices });
-                                
-                                // Hide buttons immediately so they can't double-click
-                                this.visible = false;
-                                if (typeof btnNo !== 'undefined') btnNo.visible = false;
-                                
-                                MessageBox.show(0.5, 8, 1, 9, 2, 'Waiting for Host setup...', 'dialogue', 1, 0);
-                                socket.emit('suncat_spectate', `player has accepted a PVP challenge.`);
+                    if (this.foe === 'pvp_accept') {
+                        let opponentId = Dungeon.currentSpeaker?.socketId;
+                        if (opponentId) {
+                            let myDeckIndices = Dungeon.deck ? Dungeon.deck.map(c => {
+                                let mLevel = (Dungeon.mastery && Dungeon.mastery[c.index]) ? Dungeon.mastery[c.index].level : 0;
+                                return { index: c.index, mastery: mLevel };
+                            }) : [];
+                            
+                            socket.emit("challenge_accepted", { targetId: opponentId, receiverDeck: myDeckIndices });
+                            this.visible = false;
+                            if (typeof btnNo !== 'undefined') btnNo.visible = false;
+                            
+                            MessageBox.show(0.5, 8, 1, 9, 2, 'Waiting for Host setup...', 'dialogue', 1, 0);
+                            socket.emit('suncat_spectate', `player has accepted a PVP challenge.`);
                             return;
-                            }
-                            break;
                         }
+                        break;
+                    }
                     
-                    // 2. CHECK FOR MERCY ACCEPTANCE ("Spare")
-                        if (Dungeon.currentSpeaker && Dungeon.currentSpeaker.options && Dungeon.currentSpeaker.options[0] === 'Spare') {
-                            // The player spared them! Add to active summons.
-                            Dungeon.summonAlly(Math.floor(Dungeon.currentSpeaker.type));
-                            
-                            // Kill the original enemy so they don't drop cards or duplicate
-                            Dungeon.killNPC(Dungeon.currentSpeaker, true, 'dialogue');
-                            
-                            Dungeon.currentSpeaker = null;
-                            startGame = 'explore';
-                            Dungeon.dCounter = 0;
-                            Dungeon.status = 'normal';
-                            
-                            if (Dungeon.savedViewMode) window.gameViewMode = Dungeon.savedViewMode;
-                            if (Dungeon.savedCameraMode) Dungeon.cameraMode = Dungeon.savedCameraMode;
-                            
-                            Dungeon.saveGame();
-                            btnYes.visible = false;
-                            btnNo.visible = false;
-                            return; 
-                        }
-                        if (Dungeon.currentSpeaker.role === 'portal_invite') {
-                                    if (typeof socket !== 'undefined') {
-                                        // Tell the server we are ready
-                                        socket.emit("accept_teleport_invite");
-                                    }
-                                    if (Dungeon.savedViewMode) {
-                                        window.gameViewMode = Dungeon.savedViewMode;
-                                    }
-                                    if (Dungeon.savedCameraMode) {
-                                        Dungeon.cameraMode = Dungeon.savedCameraMode;
-                                    }
-                                    // Clean up the dialogue UI and kill the messenger imp
-                                    startGame = 'explore';
-                                    Dungeon.dCounter = 0;
-                                    Dungeon.status = 'normal';
-                                    Dungeon.killNPC(Dungeon.currentSpeaker, true, 'dialogue'); 
-                                    Dungeon.currentSpeaker = null;
-                                    Dungeon.saveGame(); // Lock in the save state so activeSummons are preserved
-                                    btnYes.visible = false;
-                                    btnNo.visible = false;
-                                    return; // Stop execution
-                                }
-                    // 3. THE UNIVERSAL "YES" ACTION
-                        if (Dungeon.currentSpeaker && Dungeon.currentSpeaker.yesActions) {
-                            Dungeon.executeActions(Dungeon.currentSpeaker.yesActions);
-                            Dungeon.processNextAction();
-                        } else {
-                            Dungeon.executeActions([['close_dialogue', null]]);
-                            Dungeon.processNextAction();
-                        }
-                    break;
-                case 2: // btnNo
-                    // 1. PVP DENY
-                        if (this.foe === 'pvp_deny') {
-                            let targetId = Dungeon.currentSpeaker?.socketId; // Grab ID FIRST!
-                            
-                            if (targetId) {
-                                socket.emit("battle_action", { targetId: targetId, actionType: "CHALLENGE_REJECTED", payload: {} });
-                            }
-                            
-                            Dungeon.executeActions([['close_dialogue', null]]);
-                            socket.emit('suncat_spectate', `player has rejected a PVP challenge. mock them for their cowardice.`);
-                            Dungeon.processNextAction(); // Resume queue
-                            break;
-                        }
+                    if (Dungeon.currentSpeaker && Dungeon.currentSpeaker.options && Dungeon.currentSpeaker.options[0] === 'Spare') {
+                        Dungeon.summonAlly(Math.floor(Dungeon.currentSpeaker.type));
+                        Dungeon.killNPC(Dungeon.currentSpeaker, true, 'dialogue');
                         
-                    // 2. PVP CANCEL
-                        if (this.foe === 'pvp_cancel') {
-                            let targetId = Dungeon.currentSpeaker?.socketId; // Grab ID FIRST!
-                            
-                            if (targetId) {
-                                socket.emit("battle_action", { targetId: targetId, actionType: "CHALLENGE_CANCEL", payload: {} });
-                            }
-                            
-                            Dungeon.executeActions([['close_dialogue', null]]);
-                            Dungeon.isChallenger = false;
-                            socket.emit('suncat_spectate', `player has cancelled their PVP request.`);
-                            Dungeon.processNextAction(); // Resume queue
-                            break;
+                        Dungeon.currentSpeaker = null;
+                        startGame = 'explore';
+                        Dungeon.dCounter = 0;
+                        Dungeon.status = 'normal';
+                        
+                        if (Dungeon.savedViewMode) window.gameViewMode = Dungeon.savedViewMode;
+                        if (Dungeon.savedCameraMode) Dungeon.cameraMode = Dungeon.savedCameraMode;
+                        
+                        Dungeon.saveGame();
+                        btnYes.visible = false;
+                        btnNo.visible = false;
+                        return; 
+                    }
+                    if (Dungeon.currentSpeaker.role === 'portal_invite') {
+                        if (typeof socket !== 'undefined') {
+                            socket.emit("accept_teleport_invite");
                         }
+                        if (Dungeon.savedViewMode) {
+                            window.gameViewMode = Dungeon.savedViewMode;
+                        }
+                        if (Dungeon.savedCameraMode) {
+                            Dungeon.cameraMode = Dungeon.savedCameraMode;
+                        }
+                        startGame = 'explore';
+                        Dungeon.dCounter = 0;
+                        Dungeon.status = 'normal';
+                        Dungeon.killNPC(Dungeon.currentSpeaker, true, 'dialogue'); 
+                        Dungeon.currentSpeaker = null;
+                        Dungeon.saveGame(); 
+                        btnYes.visible = false;
+                        btnNo.visible = false;
+                        return; 
+                    }
+                    
+                    if (Dungeon.currentSpeaker && Dungeon.currentSpeaker.yesActions) {
+                        Dungeon.executeActions(Dungeon.currentSpeaker.yesActions);
+                        Dungeon.processNextAction();
+                    } else {
+                        Dungeon.executeActions([['close_dialogue', null]]);
+                        Dungeon.processNextAction();
+                    }
+                    break;
+                    
+                case 2: 
+                    if (this.foe === 'pvp_deny') {
+                        let targetId = Dungeon.currentSpeaker?.socketId; 
+                        if (targetId) {
+                            socket.emit("battle_action", { targetId: targetId, actionType: "CHALLENGE_REJECTED", payload: {} });
+                        }
+                        Dungeon.executeActions([['close_dialogue', null]]);
+                        socket.emit('suncat_spectate', `player has rejected a PVP challenge. mock them for their cowardice.`);
+                        Dungeon.processNextAction(); 
+                        break;
+                    }
+                    
+                    if (this.foe === 'pvp_cancel') {
+                        let targetId = Dungeon.currentSpeaker?.socketId; 
+                        if (targetId) {
+                            socket.emit("battle_action", { targetId: targetId, actionType: "CHALLENGE_CANCEL", payload: {} });
+                        }
+                        Dungeon.executeActions([['close_dialogue', null]]);
+                        Dungeon.isChallenger = false;
+                        socket.emit('suncat_spectate', `player has cancelled their PVP request.`);
+                        Dungeon.processNextAction(); 
+                        break;
+                    }
 
-                    // 2. CHECK FOR MERCY REJECTION ("Finish It")
                     if (Dungeon.currentSpeaker && Dungeon.currentSpeaker.options && Dungeon.currentSpeaker.options[1] === 'Finish It') {
-                        // The player chose no mercy! Revert them to a hostile and force combat.
                         Dungeon.currentSpeaker.customDialogue = null; 
                         Dungeon.currentSpeaker.options = null;        
                         Dungeon.currentSpeaker.rewardCard = null;
@@ -20604,21 +20610,21 @@ let isCurrentlySeen = (this.dSense > 0 && dist <= this.dSense) && this.checkLine
                         return;
                     }
                     else if (Dungeon.currentSpeaker.role === 'portal_invite') {
-                                startGame = 'explore';
-                                Dungeon.dCounter = 0;
-                                Dungeon.status = 'normal';
-                                Dungeon.killNPC(Dungeon.currentSpeaker, true, 'dialogue'); 
-                                Dungeon.currentSpeaker = null;
-                                if (Dungeon.savedViewMode) {
-                                window.gameViewMode = Dungeon.savedViewMode;
-                                }
-                                if (Dungeon.savedCameraMode) {
-                                    Dungeon.cameraMode = Dungeon.savedCameraMode;
-                                }
-                                btnYes.visible = false;
-                                btnNo.visible = false;
-                            }
-                    // 3. THE UNIVERSAL "NO" ACTION
+                        startGame = 'explore';
+                        Dungeon.dCounter = 0;
+                        Dungeon.status = 'normal';
+                        Dungeon.killNPC(Dungeon.currentSpeaker, true, 'dialogue'); 
+                        Dungeon.currentSpeaker = null;
+                        if (Dungeon.savedViewMode) {
+                            window.gameViewMode = Dungeon.savedViewMode;
+                        }
+                        if (Dungeon.savedCameraMode) {
+                            Dungeon.cameraMode = Dungeon.savedCameraMode;
+                        }
+                        btnYes.visible = false;
+                        btnNo.visible = false;
+                    }
+                    
                     if (Dungeon.currentSpeaker && Dungeon.currentSpeaker.noActions) {
                         Dungeon.executeActions(Dungeon.currentSpeaker.noActions);
                         Dungeon.processNextAction();
@@ -20631,90 +20637,91 @@ let isCurrentlySeen = (this.dSense > 0 && dist <= this.dSense) && this.checkLine
                     }
                     break;
                 
-                case 3://btnAction, btnAction2
+                case 3:
                     if (this.type == 'arrow_left'){
-                      if(this.text == 'deck'){
-                        
-                          if (Player[attacker].deck.length > 1) {
-                            if (Player[attacker].deck[Player[attacker].look[eLOOK.D]].location == 'scry') {
-                              if (Player[attacker].look[eLOOK.D] - 1 < 0) {
-                                Player[attacker].look[eLOOK.D] = Player[attacker].look[eLOOK.R] - 1; // Wrap to Scry Limit
-                              } else {
-                                Player[attacker].look[eLOOK.D] = Player[attacker].look[eLOOK.D] - 1;
-                              }
-                              Player[attacker].sendAction('SELECTION', { look: Player[attacker].look });
-                            } else { // Standard Deck Cycle
-                              if (Player[0].look[eLOOK.D] - 1 < 0) {
-                                Player[0].look[eLOOK.D] = Player[0].deck.length - 1; // Wrap to Deck End
-                              } else {
-                                Player[0].look[eLOOK.D] = Player[0].look[eLOOK.D] - 1;
-                              }
+                        if(this.text == 'deck'){
+                            if (Player[attacker].deck.length > 1) {
+                                if (Player[attacker].deck[Player[attacker].look[eLOOK.D]].location == 'scry') {
+                                    if (Player[attacker].look[eLOOK.D] - 1 < 0) {
+                                        Player[attacker].look[eLOOK.D] = Player[attacker].look[eLOOK.R] - 1; 
+                                    } else {
+                                        Player[attacker].look[eLOOK.D] = Player[attacker].look[eLOOK.D] - 1;
+                                    }
+                                    Player[attacker].sendAction('SELECTION', { look: Player[attacker].look });
+                                } else { 
+                                    if (Player[0].look[eLOOK.D] - 1 < 0) {
+                                        Player[0].look[eLOOK.D] = Player[0].deck.length - 1; 
+                                    } else {
+                                        Player[0].look[eLOOK.D] = Player[0].look[eLOOK.D] - 1;
+                                    }
+                                }
                             }
-                          }
-                        
-                        
-                      }
+                        }
                     }
-              
                     if (this.type == 'arrow_right'){
-                      if(this.text == 'deck'){
-                        
-                          if (Player[attacker].deck.length > 1) {
-                            // FIX: Added quotes around 'scry' and fixed the index lookup
-                            if (Player[attacker].deck[Player[attacker].look[eLOOK.D]].location == 'scry') {
-                              if (Player[attacker].look[eLOOK.D] + 1 > Player[attacker].look[eLOOK.R] - 1) {
-                                Player[attacker].look[eLOOK.D] = 0; // Wrap to Scry Start
-                              } else {
-                                Player[attacker].look[eLOOK.D] = Player[attacker].look[eLOOK.D] + 1;
-                              }
-                              Player[0].sendAction('SELECTION', { look: Player[0].look });
-                            } else { // Standard Deck Cycle
-                              if (Player[attacker].look[eLOOK.D] + 1 > Player[attacker].deck.length - 1) {
-                                Player[attacker].look[eLOOK.D] = 0; // Wrap to Deck Start
-                              } else {
-                                Player[attacker].look[eLOOK.D] = Player[attacker].look[eLOOK.D] + 1;
-                              }
+                        if(this.text == 'deck'){
+                            if (Player[attacker].deck.length > 1) {
+                                if (Player[attacker].deck[Player[attacker].look[eLOOK.D]].location == 'scry') {
+                                    if (Player[attacker].look[eLOOK.D] + 1 > Player[attacker].look[eLOOK.R] - 1) {
+                                        Player[attacker].look[eLOOK.D] = 0; 
+                                    } else {
+                                        Player[attacker].look[eLOOK.D] = Player[attacker].look[eLOOK.D] + 1;
+                                    }
+                                    Player[0].sendAction('SELECTION', { look: Player[0].look });
+                                } else { 
+                                    if (Player[attacker].look[eLOOK.D] + 1 > Player[attacker].deck.length - 1) {
+                                        Player[attacker].look[eLOOK.D] = 0; 
+                                    } else {
+                                        Player[attacker].look[eLOOK.D] = Player[attacker].look[eLOOK.D] + 1;
+                                    }
+                                }
                             }
-                          }
-                        
-                      }
+                        }
                     }
-                    
                     break;
-                case 4://btnAdd
+                    
+                case 4:
                     if (this.type == 'add_toHand'){
-                      if(this.text == 'deck'){
-                        let card = Player[attacker].deck.splice(Player[attacker].look[eLOOK.D], 1)[0];
-                        // 2. Set location and push the OBJECT (not the array) to hand
-                        if (card.type == 0){
-                          Player[attacker].unequip();
-                          Player[attacker].aMonster.length = 0;
-                          card.location = 'field';
-                          Player[attacker].aMonster.push(card);
+                        if(this.text == 'deck'){
+                            let card = Player[attacker].deck.splice(Player[attacker].look[eLOOK.D], 1)[0];
+                            if (card.type == 0){
+                                Player[attacker].unequip();
+                                Player[attacker].aMonster.length = 0;
+                                card.location = 'field';
+                                Player[attacker].aMonster.push(card);
+                            }
+                            else {
+                                card.location = 'hand';
+                                Player[attacker].hand.push(card);
+                            }
+                            Player[0].option = 7;
+                            Player[1].option = 7;
+                            for(let i=0;i<Player[attacker].deck.length;i++){    
+                                Player[attacker].deck[i].location = 'deck'
+                            }
+                            Player[attacker].sendAction('SCRY_ADD');
+                            
+                            if (typeof startGame !== 'undefined' && startGame === 'tutorial' && Dungeon.option === 7) {
+                                Dungeon.dCounter = 6; 
+                            }
                         }
-                        else{
-                          card.location = 'hand';
-                          Player[attacker].hand.push(card);
-                        }
-                        Player[0].option = 7;
-                        Player[1].option = 7;
-                        for(let i=0;i<Player[attacker].deck.length;i++){    //reassign deck location 
-                          Player[attacker].deck[i].location = 'deck'
-                        }
-                        Player[attacker].sendAction('SCRY_ADD');
-                        
-                        // ==========================================
-                        // --- NEW: TUTORIAL USE ITEM HOOK ---
-                        // ==========================================
-                        if (typeof startGame !== 'undefined' && startGame === 'tutorial' && Dungeon.option === 7) {
-                            Dungeon.dCounter = 6; // Signals tutorial() to move to Option 8!
-                        }
-                      }
                     }
-                  break;
-              }
-          }, count * 200);
-      }
+                    break;
+            }
+
+            // --- AUTO-FIRE QUEUED ACTION ---
+            setTimeout(() => { 
+                this.isPressed = false; 
+                this.currentDir = null; 
+                this.joyX = 0; 
+                this.joyY = 0;
+                
+                // If the player mashed the button while it was locked, fire it now!
+                if (this.queuedPress) {
+                    this.press();
+                }
+            }, count * 200);
+        }
     }
     do(index){//execute button click
       switch(index){
@@ -46034,7 +46041,7 @@ let isCurrentlySeen = (this.dSense > 0 && dist <= this.dSense) && this.checkLine
          
     // Finish up
     if (updateProgressCallback) updateProgressCallback(100);
-s
+
     // Restore Globals
     ctx = originalCtx;
     tX = oldTX; tY = oldTY; tL = oldTL; tH = oldTH;
