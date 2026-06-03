@@ -9769,11 +9769,12 @@
 
         // 3. Walk the grid from Player to NPC
         while (true) {
-          // If we hit a wall, LOS is blocked
-          if (this.isWall(x0, y0)) return false;
-
-          // If we reached the target tile, LOS is clear
+          // FIX: Check if we reached the target tile FIRST.
+          // This allows us to actually see the faces of the walls!
           if (x0 === x1 && y0 === y1) return true;
+
+          // THEN check if we hit a blocking wall
+          if (this.isWall(x0, y0)) return false;
 
           // Move to next tile
           let e2 = 2 * err;
@@ -11142,8 +11143,7 @@
                     const dist = Math.sqrt(diffX*diffX + diffY*diffY);
 
                     // 1. Check current active vision
-                    let isCurrentlySeen = (this.dSense > 0 && dist <= this.dSense) || this.checkLineOfSight(mapX + 0.5, mapY + 0.5);
-
+let isCurrentlySeen = (this.dSense > 0 && dist <= this.dSense) && this.checkLineOfSight(mapX + 0.5, mapY + 0.5);
                     // 2. Mark as permanently explored
                     if (isCurrentlySeen) {
                         if (!this.explored[mapY]) this.explored[mapY] = [];
@@ -11182,8 +11182,7 @@
                     const diffY = mapY - Math.floor(this.y);
                     const dist = Math.sqrt(diffX*diffX + diffY*diffY);
 
-                    let isCurrentlySeen = (this.dSense > 0 && dist <= this.dSense) || this.checkLineOfSight(mapX + 0.5, mapY + 0.5);
-
+                    let isCurrentlySeen = (this.dSense > 0 && dist <= this.dSense) && this.checkLineOfSight(mapX + 0.5, mapY + 0.5);
                     if (this.explored[mapY] && this.explored[mapY][mapX] === 1) {
                         let tx = centerScreenX + (x * cellSize) - (fractionalX * cellSize) - (cellSize / 2);
                         let ty = centerScreenY + (y * cellSize) - (fractionalY * cellSize) - (cellSize / 2);
@@ -11232,8 +11231,7 @@
                 const dist = Math.sqrt(diffX*diffX + diffY*diffY);
 
                 if (Math.abs(diffX) <= range + 1 && Math.abs(diffY) <= range + 1) {
-                    let canSeeNPC = (this.dSense > 0 && dist <= this.dSense) || this.checkLineOfSight(npc.x, npc.y);
-
+                    let canSeeNPC = (this.dSense > 0 && dist <= this.dSense) && this.checkLineOfSight(npc.x, npc.y);
                     if (canSeeNPC) {
                         // --- 3D MODEL CHECK ---
                         if (npc.model) {
@@ -11294,8 +11292,7 @@
                         const dist = Math.sqrt(diffX*diffX + diffY*diffY);
 
                         if (Math.abs(diffX) <= range + 1 && Math.abs(diffY) <= range + 1) {
-                            let canSee = (this.dSense > 0 && dist <= this.dSense) || this.checkLineOfSight(p.x, p.y);
-                            if (canSee) {
+                                let canSee = (this.dSense > 0 && dist <= this.dSense) && this.checkLineOfSight(p.x, p.y);                            if (canSee) {
                                 let tx = centerScreenX + (diffX * cellSize) - (cellSize / 2);
                                 let ty = centerScreenY + (diffY * cellSize) - (cellSize / 2);
                                 // --- HIJACK GLOBALS ---
@@ -12506,7 +12503,7 @@
               let isCurrentlySeen = false;
               
               // DYNAMIC REVEAL: Check if tile is in active vision
-              if ((this.dSense > 0 && realDist <= this.dSense) || this.checkLineOfSight(mapX + 0.5, mapY + 0.5)) {
+              if (this.dSense > 0 && realDist <= this.dSense && this.checkLineOfSight(mapX + 0.5, mapY + 0.5)) {
                   isCurrentlySeen = true;
                   if (!this.explored[mapY]) this.explored[mapY] = [];
                   this.explored[mapY][mapX] = 1; // Mark permanently explored!
