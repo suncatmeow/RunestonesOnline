@@ -2816,7 +2816,7 @@
                     }
                 }
             }
-            // REPLACE SECTION 3 FOE PATHFINDING WITH THIS:
+            // FOE PATHFINDING WITH THIS:
             else if (this.state === 'chasing' && typeof this.alignment === 'string' && this.alignment.startsWith('foe')) {
                 if (!isChasingNPC) {
                     let hasLOS = this.hasLineOfSight(dungeon.maze, playerX, playerY);
@@ -3522,7 +3522,7 @@
                     else if (agiSides === 12) speedBonus = 2.0;
                     else if (agiSides === 20) speedBonus = 3.0;
 
-                    currentSpeed += speedBonus;
+                    //currentSpeed += speedBonus;
                 }
                 // ==========================================
 
@@ -3631,9 +3631,11 @@
                 let fX = Math.floor(this.x);
                 let fY = Math.floor(this.y);
                 if (maze[fY] !== undefined && maze[fY][fX] !== undefined) {
-                    if (maze[fY][fX] !== 0) {
-                        this.x = fX + 0.5;
-                        this.y = fY + 0.5;
+                    // Check using your actual isWall logic, not just !== 0
+                    if (this.isWall(fX, fY)) { 
+                        // Snap them BACK to safety, not deeper into the wall
+                        this.x = prevX-.5;
+                        this.y = prevY-.5;
                     }
                 }
             
@@ -12877,6 +12879,10 @@
                 } else if (sprite.alignment == 'ally' && !sprite.isPlayer) {
                     scale = scale * .91; 
                     hover = hover -.13;
+                    if (sprite.type === 77.1 || sprite.type === 77 || sprite.type === 90 || sprite.type === 89||sprite.type === 35.1 || sprite.type === 35) {
+                    scale = .9631; 
+                    hover = -.369;
+                } 
                 }
                 // 1. Calculate Base Screen Dimensions FIRST
                 const spriteScreenX = Math.floor((viewW / 2) * (1 + transformX / transformY));
@@ -18151,20 +18157,24 @@
                   let dist = Math.sqrt(dx*dx + dy*dy);
                   
                   // The Leash (Anti-Stuck Fail-safe)
-                  if (dist > 4 || this.isWall(Math.floor(ally.x), Math.floor(ally.y))) {
+                  if (dist > 6 || this.isWall(Math.floor(ally.x), Math.floor(ally.y))) {
                       ally.x = this.x; 
                       ally.y = this.y;
                       continue; 
                   }
 
-                  // Collision-Aware Sliding with a Hitbox Radius
-                    if (dist > 0.05) {
+                  // --- COLLISION & ANTI-JITTER LOGIC ---
+
+                    // 1. Increased deadzone from 0.05 to 0.15 to catch them before they micro-adjust
+                    if (dist > 0.15) { 
                         let moveX = (dx / dist) * Math.min(speed, dist);
                         let moveY = (dy / dist) * Math.min(speed, dist);
                         
-                        // Add a 0.3 tile physical "bumper" to the wisp so it doesn't scrape the bricks
-                        let bufferX = moveX > 0 ? 0.3 : -0.3;
-                        let bufferY = moveY > 0 ? 0.3 : -0.3;
+                        // 2. Dynamic Bumpers: Shrink the physical bumper when they are settling into their tile
+                        // This stops the bumper from accidentally catching the adjacent wall while centering
+                        let activeBuffer = dist < 0.6 ? 0.1 : 0.3; 
+                        let bufferX = moveX > 0 ? activeBuffer : -activeBuffer;
+                        let bufferY = moveY > 0 ? activeBuffer : -activeBuffer;
                         
                         // Test X movement (including the bumper)
                         if (!this.isWall(Math.floor(ally.x + moveX + bufferX), Math.floor(ally.y))) {
@@ -36878,10 +36888,53 @@
             aniSword.animate(x+5,y+5,z*(4+Math.random()),300,globalDt);
          break;
       //DOORWAYS
-        case -27://card
-          let tempCard = new Card(card,0)
-          tempCard.place(x+1.9*z,y+.24*z,z*2.75);
-          break;
+        case -27: // --- DYNAMIC CARD CACHING ---
+            // 1. Initialize the global cache object if it doesn't exist
+            window.cardCache = window.cardCache || {};
+            
+            // 2. Check if we've already generated an image for this specific card ID
+            if (!window.cardCache[card]) {
+                
+                // Create a hidden canvas tailored to a card's aspect ratio (approx 2:3)
+                const offCanvas = document.createElement('canvas');
+                offCanvas.width = 256; 
+                offCanvas.height = 384; 
+                const offCtx = offCanvas.getContext('2d');
+
+                // Save the current global rendering states
+                const oldCtx = ctx, oldTX = tX, oldTY = tY, oldTL = tL, oldTH = tH;
+
+                // Hijack the globals to force your drawShape/drawText functions to draw offscreen
+                ctx = offCtx;
+                tX = 0; tY = 0; tL = 100; tH = 100;
+
+                // Generate the card EXACTLY ONCE at coordinates (0, 0) with a Z-scale of 10 to fill the canvas
+                let tempCard = new Card(card, 0);
+                tempCard.place(0.2, 0.2, 10); // Offset slightly to prevent borders from clipping off the canvas edge
+
+                // Restore the real global rendering states
+                ctx = oldCtx;
+                tX = oldTX; tY = oldTY; tL = oldTL; tH = oldTH;
+                
+                // Save the snapshot!
+                window.cardCache[card] = offCanvas;
+            }
+
+            // 3. Draw the cached image onto your actual game screen
+            // We apply your original math: x+1.9*z, y+.24*z, and z*2.75
+            let drawZ = z * 2.75;
+            let finalX = tX + (tL / 10) * (x + 1.9 * z);
+            let finalY = tY + (tH / 10) * (y + 0.24 * z);
+            
+            // Your Card class defines base width (l) as 2.25 and height (h) as 3.5. We scale those by your drawZ.
+            let finalW = (tL / 10) * (2.25 * drawZ);
+            let finalH = (tH / 10) * (3.5 * drawZ);
+
+            // Stamp the image!
+            ctx.imageSmoothingEnabled = true;
+            ctx.drawImage(window.cardCache[card], finalX, finalY, finalW, finalH);
+            ctx.imageSmoothingEnabled = false;
+            break;
         case -28://Card Grimoire icon
           //item
           sx = -1.25 *z;
