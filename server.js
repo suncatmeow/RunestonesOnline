@@ -2508,7 +2508,8 @@ Ensure the narrative flows logically from the "Previous Bar Context".
 
 OUTPUT RULES (CRITICAL):
 1. Keep the lyrics extremely short to fit a single musical measure (1 to 3 syllables MAX).
-2. YOU MUST USE THIS EXACT OUTPUT FORMAT. DO NOT DEVIATE OR ADD PROSE:
+2. If LORE MEMORY is provided, subtly weave a reference to it into the lyrics without breaking the poetic flow.
+3. YOU MUST USE THIS EXACT OUTPUT FORMAT. DO NOT DEVIATE OR ADD PROSE:
 
 [THOUGHT] A short explanation of your lyrical intent (max 13 words). [/THOUGHT]
 [LYRICS_UI] The exact 1 to 4 words you are singing. [/LYRICS_UI]
@@ -6945,7 +6946,7 @@ io.on("connection", (socket) => {
     console.log(`[Music AI] Suncat is writing the next lyric...`);
     try {
         const previousContext = data.currentState || "The song begins.";
-        /*
+
         // 1. EMBED THE RECENT LYRICS (What is the song about right now?)
         const currentVibeVector = await createMemoryVector(previousContext);
 
@@ -6972,8 +6973,7 @@ io.on("connection", (socket) => {
                 injectedLore = bestMatch.text;
                 console.log(`[Bard Memory] Triggered Lore: ${bestMatch.tags.join(', ')}`);
             }
-        }*/// LORE MEMORY TRIGGERED:
-           // ${injectedLore}
+        }
 
         // 3. BUILD THE FINAL PROMPT
         const prompt = `
@@ -6982,7 +6982,8 @@ io.on("connection", (socket) => {
             PREVIOUS BAR CONTEXT:
             ${previousContext}
 
-           
+            LORE MEMORY TRIGGERED:
+            ${injectedLore}
         `;
 
         // 4. CALL GEMINI
