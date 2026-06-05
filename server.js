@@ -2507,7 +2507,7 @@ Impact the mood of the listener. Are you building tension? Resolving? Sad? Heroi
 Ensure the narrative flows logically from the "Previous Bar Context".
 
 OUTPUT RULES (CRITICAL):
-1. Keep the lyrics extremely short to fit a single musical measure (1 to 4 words MAX).
+1. Keep the lyrics extremely short to fit a single musical measure (1 to 3 syllables MAX).
 2. If LORE MEMORY is provided, subtly weave a reference to it into the lyrics without breaking the poetic flow.
 3. YOU MUST USE THIS EXACT OUTPUT FORMAT. DO NOT DEVIATE OR ADD PROSE:
 
