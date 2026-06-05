@@ -2499,44 +2499,22 @@
         }];
 
     const T_PERSONA = `
-            You are Taliesin the bard of ancient Welsh myth. You are generating the NEXT bar (4/4 time, 16th notes) of an acoustic lyre and vocal performance.
+You are Taliesin, the bard of ancient Welsh myth, singing a continuous song. 
+You are generating the NEXT line of the lyrics.
 
-            YOUR INTERNAL MONOLOGUE:
-            Impact the mood of the listener. Are you building tension? Resolving? Sad? Heroic? 
+YOUR INTERNAL MONOLOGUE:
+Impact the mood of the listener. Are you building tension? Resolving? Sad? Heroic? 
+Ensure the narrative flows logically from the "Previous Bar Context".
 
-            TUNING & SCALES:
-            - Ionian: 0,2,4,5,7,9,11
-            - Dorian: 0,2,3,5,7,9,10
-            - Phrygian: 0,1,3,5,7,8,10
-            - Phrygian Dominant: 0,1,4,5,7,8,10
-            - Aeolian: 0,2,3,5,7,8,10
-            - Mixolydian: 0,2,4,5,7,9,10
-            - Harmonic Minor: 0,2,3,5,7,8,11
+OUTPUT RULES (CRITICAL):
+1. Keep the lyrics extremely short to fit a single musical measure (1 to 4 words MAX).
+2. If LORE MEMORY is provided, subtly weave a reference to it into the lyrics without breaking the poetic flow.
+3. YOU MUST USE THIS EXACT OUTPUT FORMAT. DO NOT DEVIATE OR ADD PROSE:
 
-            SEQUENCER RULES (CRITICAL):
-            1. THUMB, FINGERS, and STRUM arrays MUST have exactly 16 slots.
-            2. To ensure 16 slots, group them visually in 4 blocks of 4 separated by commas: X,X,X,X, X,X,X,X, X,X,X,X, X,X,X,X
-            3. Use ONLY integers (scale degrees) or '-' (rest). 
-
-            COMPOSITION GUIDE:
-            - THUMB: Bass heartbeat. Use negative space ('-').
-            - FINGERS: Melody strings. Harmonize with THUMB.
-            - STRUM: 95% of the time, output: -,-,-,-, -,-,-,-, -,-,-,-, -,-,-,-. Only place a '0' on beat 1 for heavy emphasis.
-
-            YOU MUST USE THIS EXACT OUTPUT FORMAT. DO NOT DEVIATE OR ADD PROSE:
-            [THOUGHT] A short explanation of your musical intent (max 13 words). [/THOUGHT]
-            [LYRICS_UI] 1 to 3 words MAX. [/LYRICS_UI]
-            [LYRICS_PHONETIC] exactly the same as lyrics ui [/LYRICS_PHONETIC]
-            [TEMPO] an integer between 61 and 91 [/TEMPO]
-            [SCALE] 0,2,3,5,7,8,10 [/SCALE]
-            [THUMB] -,-,-,-, -,-,-,-, -,-,-,-, -,-,-,- [/THUMB]
-            [FINGERS] -,-,-,-, -,-,-,-, -,-,-,-, -,-,-,- [/FINGERS]
-            [STRUM] -,-,-,-, -,-,-,-, -,-,-,-, -,-,-,- [/STRUM]
-        `;
-
-
-
-
+[THOUGHT] A short explanation of your lyrical intent (max 13 words). [/THOUGHT]
+[LYRICS_UI] The exact 1 to 4 words you are singing. [/LYRICS_UI]
+[LYRICS_PHONETIC] The exact same words from LYRICS_UI. [/LYRICS_PHONETIC]
+`;
     const taliesinModel = genAI.getGenerativeModel({ 
         model: "gemini-2.5-flash-lite", 
         systemInstruction: T_PERSONA
@@ -6965,29 +6943,60 @@ io.on("connection", (socket) => {
             }
             });
         socket.on('suncat_compose_vocal', async (data, callback) => {
-            console.log(`[Music AI] Suncat is improvising a VOCAL performance...`);
-            try {
-            const previousContext = data.currentState || "This is the very first bar of a brand new song.";
+    console.log(`[Music AI] Suncat is writing the next lyric...`);
+    try {
+        const previousContext = data.currentState || "The song begins.";
 
-            const prompt = `
+        // 1. EMBED THE RECENT LYRICS (What is the song about right now?)
+        const currentVibeVector = await createMemoryVector(previousContext);
+
+        // 2. SEARCH THE MASTER_KNOWLEDGE_BASE
+        let injectedLore = "No specific lore recalled.";
+        
+        if (currentVibeVector && MASTER_KNOWLEDGE_BASE.length > 0) {
+            let bestMatch = null;
+            let highestScore = -1;
+
+            // Find the database entry that mathematically matches the song's current theme
+            for (let entry of MASTER_KNOWLEDGE_BASE) {
+                if (entry.vector) { // Assuming your DB entries are pre-embedded
+                    let score = cosineSimilarity(currentVibeVector, entry.vector);
+                    if (score > highestScore) {
+                        highestScore = score;
+                        bestMatch = entry;
+                    }
+                }
+            }
+
+            // If the math matches closely (threshold 0.65), inject the lore!
+            if (highestScore > 0.65 && bestMatch) {
+                injectedLore = bestMatch.text;
+                console.log(`[Bard Memory] Triggered Lore: ${bestMatch.tags.join(', ')}`);
+            }
+        }
+
+        // 3. BUILD THE FINAL PROMPT
+        const prompt = `
+            ${T_PERSONA}
+
             PREVIOUS BAR CONTEXT:
             ${previousContext}
 
-            
-                `;
-                const result = await taliesinModel.generateContent(prompt);
-                const responseText = result.response.text();
-                
-                console.log("[Music AI] Suncat sang:\n", responseText);
-                
-                if (callback) {
-                    callback(responseText);
-                }
-            } catch (error) {
-                console.error("[Music AI] Error composing vocal:", error);
-                if (callback) callback(null);
-            }
-         });
+            LORE MEMORY TRIGGERED:
+            ${injectedLore}
+        `;
+
+        // 4. CALL GEMINI
+        const result = await taliesinModel.generateContent(prompt);
+        const responseText = result.response.text();
+        
+        if (callback) callback(responseText);
+
+    } catch (error) {
+        console.error("[Music AI] Error composing vocal:", error);
+        if (callback) callback(null);
+    }
+});
 
     //CLIENT SYNC & POLISH
         socket.on("request_stats_sync", () => {
