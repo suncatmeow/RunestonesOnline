@@ -3056,7 +3056,7 @@
                     
                     // Give the enemy a micro-cooldown so they don't get a free hit instantly, 
                     // but this ensures they apply their brakes immediately.
-                    if (currentPrey.combatCooldown <= 0) currentPrey.combatCooldown = 15; 
+                    if (currentPrey.combatCooldown <= 0) currentPrey.combatCooldown = 13; 
                 }
                     this.dirX = -toTargetX; 
                     this.dirY = -toTargetY;
@@ -3867,7 +3867,7 @@
                             target.slideTargetY = testY;
                             target.isSliding = true;
                             target.state = 'chasing';
-                            target.combatCooldown = 30;
+                            target.combatCooldown = 13;
                         }
                     }
                 }
@@ -3953,7 +3953,7 @@
                 // We briefly stagger the target so the ally gets the first strike on the next frame.
                 this.state = 'chasing';
                 bestTarget.state = 'chasing';
-                bestTarget.combatCooldown = 30; 
+                bestTarget.combatCooldown = 13; 
             }
         }
         // ==========================================
@@ -4068,7 +4068,7 @@
                             if (!dungeon.isWall(Math.floor(target.x), Math.floor(target.y + pushY))) target.y += pushY;
 
                             target.state = 'chasing';
-                            target.combatCooldown = 30; // Brief stun
+                            target.combatCooldown = 13; // Brief stun
                         }
                     }
                 }
@@ -13303,7 +13303,7 @@
 
                         // Apply Stun and Aggro
                         npc.state = 'chasing';
-                        npc.combatCooldown = 30; // Stunned while sliding!
+                        npc.combatCooldown = 13; // Stunned while sliding!
                     }
                 }
             });
@@ -13454,7 +13454,7 @@
 
                             // Aggro the surviving monster
                             npc.state = 'chasing';
-                            npc.combatCooldown = 30; // Stunned while sliding!
+                            npc.combatCooldown = 13; // Stunned while sliding!
                         }
                     }
                 }
@@ -18791,7 +18791,7 @@
                         npc.isSliding = true;
                         
                         npc.state = 'chasing';
-                        npc.combatCooldown = 30; // Stunned while sliding!
+                        npc.combatCooldown = 13; // Stunned while sliding!
                     }
                     // ==========================================
                     // NEW: CHAIN LIGHTNING LOGIC
