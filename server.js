@@ -6972,7 +6972,8 @@ io.on("connection", (socket) => {
                 injectedLore = bestMatch.text;
                 console.log(`[Bard Memory] Triggered Lore: ${bestMatch.tags.join(', ')}`);
             }
-        }*/
+        }*/// LORE MEMORY TRIGGERED:
+           // ${injectedLore}
 
         // 3. BUILD THE FINAL PROMPT
         const prompt = `
@@ -6981,8 +6982,7 @@ io.on("connection", (socket) => {
             PREVIOUS BAR CONTEXT:
             ${previousContext}
 
-           // LORE MEMORY TRIGGERED:
-           // ${injectedLore}
+           
         `;
 
         // 4. CALL GEMINI
