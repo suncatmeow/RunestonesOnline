@@ -12899,7 +12899,9 @@
                 
                 // Near Plane & Fog Clipping
                 if (sprite.isPlayer) {
-                    if (transformY < 0.35) continue; 
+                    // FIX: Dynamically drop the clipping plane if the camera is near or player is small
+                    let minimalNearPlane = Math.min(0.1, this.currentCamDist * 0.5);
+                    if (transformY < minimalNearPlane) continue; 
                 } else {
                     if (transformY <= 0.1 || transformY > dynamicMaxVis) continue; 
                 }
@@ -13012,8 +13014,8 @@
                             const localCol = Math.floor(-spriteSize / 2 + spriteScreenX) + x;
                             if (localCol >= 0 && localCol < viewW) {
                                 let distFromCenter = Math.abs(x - (spriteSize / 2)) / (spriteSize / 2);
-                                let dynamicBias = isCenterVisible ? (1.0 * distFromCenter) : 0.15;
-                                
+                                let dynamicBias = isCenterVisible ? 0.08 * (1.0 - distFromCenter) : 0.02;        
+
                                 let { isBlocked, minClipY } = checkOcclusion(localCol, transformY, dynamicBias, sprite);
 
                                 if (!isBlocked) {
@@ -13087,8 +13089,7 @@
                         
                         if (localCol >= 0 && localCol < viewW) {
                             let distFromCenter = Math.abs(x - (spriteSize / 2)) / (spriteSize / 2);
-                            let dynamicBias = (scale > 0.8 && isCenterVisible) ? (scale * 2.0 * distFromCenter) : 0.15;
-                            
+                            let dynamicBias = isCenterVisible ? 0.08 * (1.0 - distFromCenter) : 0.02;                            
                             let { isBlocked, minClipY } = checkOcclusion(localCol, transformY, dynamicBias, sprite);
 
                             // Force entirely hidden columns to snap to a uniform depth so they don't break streaks
@@ -30534,9 +30535,10 @@
 
         window.addEventListener('pointerdown', (e) => {
             if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-
+            
             activePointers[e.pointerId] = e;
             let pointerKeys = Object.keys(activePointers);
+            if ( typeof handleInput === 'function') handleInput(e);
 
             if (pointerKeys.length === 2 && typeof Dungeon !== 'undefined') {
                 let p1 = activePointers[pointerKeys[0]];
@@ -30560,7 +30562,6 @@
                 return; 
             }
 
-            if (pointerKeys.length === 1 && typeof handleInput === 'function') handleInput(e);
         }, { passive: false });
 
         window.addEventListener('pointermove', (e) => {
