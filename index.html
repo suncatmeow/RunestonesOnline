@@ -64997,67 +64997,83 @@
             };
 
             const thought = getTag('THOUGHT');
-            if (thought) console.log(`%c[Suncat's Mind] "${thought}"`, 'color: #ff9900; font-style: italic; background: #222; padding: 4px; border-radius: 4px;');
+            if (thought) console.log(`%c[Taliesin's Mind] "${thought}"`, 'color: #ff9900; font-style: italic; background: #222; padding: 4px; border-radius: 4px;');
 
-            const newTempo = getTag('TEMPO');
-            if (newTempo && !isNaN(parseFloat(newTempo))) this.targetTempo = parseFloat(newTempo);
-
-            const newScale = getTag('SCALE');
-            if (newScale) {
-                let parsedScale = newScale.split(',').map(Number).filter(n => !isNaN(n));
-                if (parsedScale.length > 0) this.scale = parsedScale;
-            }
-
-            // 1. Define the array parser FIRST
-            const parseShortArr = (tag) => {
-                const data = getTag(tag);
-                if (!data) return new Array(16).fill(null); 
-                
-                let parsedArray = data.split(',').map(v => {
-                    const val = v.trim();
-                    if (val === '-' || val === '') return null; 
-                    let num = parseInt(val);
-                    return isNaN(num) ? null : num; 
-                });
-
-                if (parsedArray.length > 16) parsedArray = parsedArray.slice(0, 16);
-                while (parsedArray.length < 16) parsedArray.push(null);
-                return parsedArray;
-            };
-
-            // 2. Parse the Lyre arrays
-            const thumbArr = parseShortArr('THUMB');
-            const fingersArr = parseShortArr('FINGERS');
-            
-            const strumArr = parseShortArr('STRUM').map((val, index) => {
-                if (val !== null && index % 8 !== 0) return null; 
-                return val;
-            });
-
-          // 3. NOW grab the TWO lyric tags and update memory
+            // 1. Grab the Lyrics from the LLM
             const lyricsUI = getTag('LYRICS_UI');
             const lyricsPhonetic = getTag('LYRICS_PHONETIC');
 
             const uiString = (lyricsUI && lyricsUI !== '-' && lyricsUI !== '') ? lyricsUI : "";
             const phoneticString = (lyricsPhonetic && lyricsPhonetic !== '-' && lyricsPhonetic !== '') ? lyricsPhonetic : "";
 
-            // The UI queue gets the clean English version for the screen
             this.lyricsQueue.push(uiString);
 
             if (uiString !== "") {
-                // Memory should store the readable English version so the LLM context stays smart
                 this.lyricMemory.push(uiString);
                 if (this.lyricMemory.length > 6) this.lyricMemory.shift();
             }
 
-            // 4. --- THE SYLLABLE MAPPER (Anti-Drop Upgrade) ---
+           // ---------------------------------------------------------
+            // 2. THE DYNAMIC COMPOSER (A/B Sections & Motif Library)
+            // ---------------------------------------------------------
+            let thumbArr = new Array(16).fill(null);
+            let fingersArr = new Array(16).fill(null);
+            let strumArr = new Array(16).fill(null);
+
+            // Create a persistent measure counter so the engine knows where it is in the song
+            this.measureCounter = (this.measureCounter || 0) + 1;
+
+            // --- THE MOTIF LIBRARY ---
+            // A collection of different arpeggio shapes to break the monotony
+            const arpeggios = [
+                [0, 2, 4, 7, 4, 2],       // 0: Classic Ascend & Descend
+                [0, 4, 7, 9, 7, 4],       // 1: Wide & Airy (Xianxia/Mystic feel)
+                [7, 4, 2, 0, 2, 4],       // 2: Falling Cascade
+                [0, 2, 0, 4, 0, 7],       // 3: Pedal Point (Bouncing off the root note)
+                [0, 7, 4, 7, 9, 7],       // 4: High Register Reach
+                [0, 2, 4, 5, 7, 4]        // 5: Tense/Building
+            ];
+
+            // Pick a motif. We divide by 2 so it holds a pattern for 2 measures before switching.
+            const motifIndex = Math.floor(this.measureCounter / 2) % arpeggios.length;
+            const currentArp = arpeggios[motifIndex];
+
+            for (let i = 0; i < 16; i++) {
+                // --- BASS (THUMB) ---
+                // Create a "B-Section" feel: Every 4th measure, the bass drives twice as fast.
+                if (this.measureCounter % 4 === 0) {
+                    if (i % 4 === 0) thumbArr[i] = 0; // Driving quarter notes
+                } else {
+                    if (i % 8 === 0) thumbArr[i] = 0; // Standard half notes (beats 1 & 3)
+                }
+
+                // --- MELODY (FINGERS) ---
+                // Play the selected arpeggio on eighth notes (even ticks)
+                // We occasionally drop the last note of the measure to let the phrase "breathe"
+                if (i % 2 === 0 && i !== 14) {
+                    fingersArr[i] = currentArp[(i / 2) % currentArp.length];
+                }
+
+                // --- ACCOMPANIMENT (STRUM) ---
+                // Heavy strum on beat 1. 
+                if (i === 0) strumArr[i] = 0;
+                
+                // Add a syncopated strum at the end of every 2nd measure to lead into the next bar
+                if (this.measureCounter % 2 === 0 && i === 10) {
+                    strumArr[i] = 4; // Strum the 5th interval for a subtle lift
+                }
+            }
+
+            // ---------------------------------------------------------
+            // 3. THE SYLLABLE MAPPER (Remains exactly the same!)
+            // ---------------------------------------------------------
             let vocalArr = new Array(16).fill(null);
             
             if (phoneticString !== "") {
                 let words = phoneticString.split(/[\s-]+/).filter(w => w.length > 0);
                 let wordIdx = 0;
                 
-                // Pass 1: Lock words strictly to the Lyre melody notes
+                // Pass 1: Lock words strictly to the procedurally generated Lyre melody notes
                 for (let i = 0; i < 16; i++) {
                     if (fingersArr[i] !== null && wordIdx < words.length) {
                         vocalArr[i] = words[wordIdx];
@@ -65065,17 +65081,14 @@
                     }
                 }
                 
-                // Pass 2: The Syllable Squeeze!
-                // If the AI wrote more words than notes, weave the leftovers into the gaps.
+                // Pass 2 & 3: The Syllable Squeeze (Your existing logic)
                 if (wordIdx < words.length) {
-                    // Try to place them on eighth-notes (even ticks) first for better rhythm
                     for (let i = 0; i < 16 && wordIdx < words.length; i++) {
                         if (vocalArr[i] === null && i % 2 === 0) {
                             vocalArr[i] = words[wordIdx];
                             wordIdx++;
                         }
                     }
-                    // Pass 3: If STILL not enough room, cram them into the remaining 16th-note gaps
                     for (let i = 0; i < 16 && wordIdx < words.length; i++) {
                         if (vocalArr[i] === null) {
                             vocalArr[i] = words[wordIdx];
@@ -65085,10 +65098,7 @@
                 }
             }
 
-            // 5. Push everything to the live performance queues!
-            // ... (Keep your existing queue pushes here) ...
-
-            // 5. Push everything to the live performance queues!
+            // 4. Push everything to the live performance queues
             this.vocalQueue.push(...vocalArr);
             this.thumbQueue.push(...thumbArr);
             this.fingersQueue.push(...fingersArr);
@@ -65151,7 +65161,7 @@
 
             // --- THE NEW AUTOMATIC MODULATION TRIGGER ---
             // 64 ticks = 4 bars. Change to 128 for 8 bars.
-            if (this.tick > 0 && this.tick % 256 === 0) {
+            if (this.tick > 0 && this.tick % 128 === 0) {
                 this.modulateRandomly();
             }
 
@@ -65160,75 +65170,142 @@
             }
         }
       scheduleNote(tick, t) {
-            const thumbNote = this.thumbQueue.length > 0 ? this.thumbQueue.shift() : null;
-            const fingerNote = this.fingersQueue.length > 0 ? this.fingersQueue.shift() : null;
-            const strumNote = this.strumQueue.length > 0 ? this.strumQueue.shift() : null; 
-            const vocalSyllable = this.vocalQueue.length > 0 ? this.vocalQueue.shift() : null;
+        const thumbNote = this.thumbQueue.length > 0 ? this.thumbQueue.shift() : null;
+        const fingerNote = this.fingersQueue.length > 0 ? this.fingersQueue.shift() : null;
+        const strumNote = this.strumQueue.length > 0 ? this.strumQueue.shift() : null; 
+        const vocalSyllable = this.vocalQueue.length > 0 ? this.vocalQueue.shift() : null;
 
-            // 1. PLAY THE LYRE MELODY FIRST (And save the pitch!)
-            if (fingerNote !== null && typeof fingerNote === 'number' && !isNaN(fingerNote)) {
-                this.lastMelodyDegree = fingerNote; // Suncat listens to this note
-                const oct = (fingerNote > 7) ? 1 : 0; 
-                const swing = (Math.random() * 0.02); 
-                this.playHarpString(t + swing, fingerNote, oct, 2.5, 0.4, 'soft'); 
-            }
+        // 1. PLAY THE LYRE MELODY
+        if (fingerNote !== null && typeof fingerNote === 'number' && !isNaN(fingerNote)) {
+            this.lastMelodyDegree = fingerNote; // Suncat listens to this note
+            const oct = (fingerNote > 7) ? 1 : 0; 
+            const swing = (Math.random() * 0.02); 
+            this.playHarpString(t + swing, fingerNote, oct, 2.5, 0.4, 'soft'); 
+        }
 
-            // 2. PLAY ACCOMPANIMENT
-            if (strumNote !== null && typeof strumNote === 'number' && !isNaN(strumNote)) {
-                this.strumChord(t, strumNote);
-            }
-            if (thumbNote !== null && typeof thumbNote === 'number' && !isNaN(thumbNote)) {
-                this.playHarpString(t, thumbNote, -1, 3.0, 0.6, 'soft'); 
-            }
+        // 2. PLAY ACCOMPANIMENT
+        if (strumNote !== null && typeof strumNote === 'number' && !isNaN(strumNote)) {
+            this.strumChord(t, strumNote);
+        }
+        if (thumbNote !== null && typeof thumbNote === 'number' && !isNaN(thumbNote)) {
+            this.playHarpString(t, thumbNote, -1, 3.0, 0.6, 'soft'); 
+        }
 
-            // 3. UI EVENT: Display the lyrics
-            if (tick % 16 === 0 && this.lyricsQueue.length > 0) {
-                const currentLyric = this.lyricsQueue.shift();
-                if (currentLyric !== "") {
-                    const cleanLyric = currentLyric.replace(/-/g, '');
-                    console.log(`%c[Suncat Sings] 🎵 "${cleanLyric}"`, 'color: #00e6e6; font-size: 16px; font-weight: bold;');
-                    document.dispatchEvent(new CustomEvent('suncat_lyrics', { detail: cleanLyric }));
-                }
-            }
-
-            // 4. AUDIO TRIGGER: Sing the Syllable!
-            if (vocalSyllable) {
-                // Use the LAST known melody note so she stays in key between plucks
-                let d = parseInt(this.lastMelodyDegree);
-                if (isNaN(d)) d = 0;
-                
-                let oct = 0;
-                const len = this.scale.length;
-                while (d < 0) { d += len; oct -= 1; }
-                while (d >= len) { d -= len; oct += 1; }
-                const semitone = this.scale[d] + (oct * 12);
-
-                const secondsPerBeat = 60.0 / this.tempo;
-                const tickDuration = secondsPerBeat * 0.25; 
-
-                // Calculate exactly how long to hold the note
-                let ticksUntilNext = 1;
-                for (let i = 0; i < this.vocalQueue.length; i++) {
-                    if (this.vocalQueue[i] !== null) {
-                        ticksUntilNext = i + 1;
-                        break;
-                    }
-                }
-                
-                // If there is no next syllable, default to 1 beat (4 ticks) instead of 8 to prevent endless holding
-                if (ticksUntilNext === 1 && this.vocalQueue[0] === null) {
-                    ticksUntilNext = 4; 
-                }
-
-                // Cap the maximum hold time at 1.5 beats (dotted quarter note) so she naturally "breathes"
-                const maxHoldTime = secondsPerBeat * 1.5; 
-                const targetDuration = Math.min(ticksUntilNext * tickDuration, maxHoldTime);
-
-                if (MusicEngine && typeof MusicEngine.sing === 'function') {
-                    MusicEngine.sing(vocalSyllable, t, [semitone], this.rootFreq, targetDuration, 1.2, 0.15);
-                }
+        // 3. UI EVENT: Display the lyrics
+        if (tick % 16 === 0 && this.lyricsQueue.length > 0) {
+            const currentLyric = this.lyricsQueue.shift();
+            if (currentLyric !== "") {
+                const cleanLyric = currentLyric.replace(/-/g, '');
+                console.log(`%c[Suncat Sings] 🎵 "${cleanLyric}"`, 'color: #00e6e6; font-size: 16px; font-weight: bold;');
+                document.dispatchEvent(new CustomEvent('suncat_lyrics', { detail: cleanLyric }));
             }
         }
+
+        // --- NEW: MACRO TIMING FOR VOCAL ARRANGEMENT ---
+        const measure = Math.floor(tick / 16);
+        const secondsPerBeat = 60.0 / this.tempo;
+        
+       
+
+        // --- 5. CALL AND RESPONSE (The 16-Bar Macro Arrangement) ---
+        if (vocalSyllable && typeof MusicEngine !== 'undefined' && typeof MusicEngine.sing === 'function') {
+            
+            // --- RANGE ENFORCERS ---
+            // A universal function to keep Suncat's voice in specific pockets
+            const constrainRange = (semi, minFreq, maxFreq) => {
+                let currentSemi = semi;
+                let currentFreq = this.rootFreq * Math.pow(2, currentSemi / 12);
+                while (currentFreq < minFreq) { currentSemi += 12; currentFreq = this.rootFreq * Math.pow(2, currentSemi / 12); }
+                while (currentFreq > maxFreq) { currentSemi -= 12; currentFreq = this.rootFreq * Math.pow(2, currentSemi / 12); }
+                return currentSemi;
+            };
+
+            // Standard Tenor: ~E3 to A4
+            const constrainToTenor = (semi) => constrainRange(semi, 163.91, 369.1); 
+            // The Climax (High Solo): ~C4 to C5 (Soars above the A4 cap)
+            const constrainToHigh = (semi) => constrainRange(semi, 369.1, 613.91);
+
+            // --- DIATONIC HARMONY HELPER ---
+            const getDiatonic = (baseDegree, interval) => {
+                let targetD = baseDegree + interval;
+                let oct = 0;
+                while (targetD < 0) { targetD += this.scale.length; oct -= 1; }
+                while (targetD >= this.scale.length) { targetD -= this.scale.length; oct += 1; }
+                return this.scale[targetD] + (oct * 12);
+            };
+
+            let d = parseInt(this.lastMelodyDegree);
+            if (isNaN(d)) d = 0;
+            const tickDuration = secondsPerBeat * 0.25; 
+
+            let ticksUntilNext = 1;
+            for (let i = 0; i < this.vocalQueue.length; i++) {
+                if (this.vocalQueue[i] !== null) { ticksUntilNext = i + 1; break; }
+            }
+            if (ticksUntilNext === 1 && this.vocalQueue[0] === null) ticksUntilNext = 4; 
+            const targetDuration = Math.min(ticksUntilNext * tickDuration, secondsPerBeat * 1.5);
+
+            // --- THE 16-BAR MACRO STRUCTURE ---
+            // measure cycles from 0 to 15. 
+            const lineInSong = measure % 16; 
+
+            // Helper function to fire the 3-part Chorus
+            const fireChorus = () => {
+                let semiRoot = constrainToTenor(getDiatonic(d, 0));
+                let semiThird = constrainToHigh(getDiatonic(d, 2));
+                let semiFifth = constrainToHigh(getDiatonic(d, 4));
+                if(Math.random()>.910613){semiRoot = constrainToHigh(getDiatonic(d, rnd(0,12)));}
+                if(Math.random()>.910613){semiThird = constrainToHigh(getDiatonic(d, rnd(0,12)));}
+                if(Math.random()>.910613){semiFifth = constrainToHigh(getDiatonic(d, rnd(0,12)));}
+                MusicEngine.sing(vocalSyllable, t, [semiRoot], this.rootFreq, targetDuration, 0.95, 0.2);
+                MusicEngine.sing(vocalSyllable, t + 0.022, [semiThird], this.rootFreq, targetDuration, 0.85, 0.25);
+                MusicEngine.sing(vocalSyllable, t + 0.047, [semiFifth], this.rootFreq, targetDuration, 0.75, 0.35);
+            };
+
+            // Helper function to fire the Solo
+            const fireSolo = () => {
+                
+                let semiLead = constrainToTenor(getDiatonic(d, 0));
+                if(Math.random()>.61391){semiLead = constrainToHigh(getDiatonic(d, rnd(0,12)));}
+                MusicEngine.sing(vocalSyllable, t, [semiLead], this.rootFreq, targetDuration, 1.3, 0.1);
+            };
+
+            // --- ROUTING THE SECTIONS ---
+            if (lineInSong >= 0 && lineInSong < 6) {
+                // SECTION 1: The Intimate Solo (Lines 1-4)
+                if (tick % 16 === 0) console.log("%c[Arrangement] Verse: Solo", "color: #aaaaaa");
+                fireSolo();
+
+            } else if (lineInSong >= 6 && lineInSong < 9) {
+                // SECTION 2: The Swell (Lines 5-8)
+                if (tick % 16 === 0) console.log("%c[Arrangement] Pre-Chorus: Stack", "color: #88ccff");
+                fireChorus();
+
+            } else if (lineInSong >= 9 && lineInSong < 13) {
+                // SECTION 3: Call and Response (Lines 9-12)
+                if (tick % 16 === 0) console.log(`%c[Arrangement] Chorus: ${lineInSong % 2 === 0 ? "Call (Stack)" : "Response (Solo)"}`, "color: #ffaa00");
+                
+                if (lineInSong % 2 === 0) {
+                    fireChorus(); // Even lines: Massive Call
+                } else {
+                    fireSolo();   // Odd lines: Intimate Response
+                }
+
+            } else {
+                // SECTION 4: The Climax / Breakthrough (Lines 13-16)
+                if (tick % 16 === 0) console.log("%c[Arrangement] Bridge: High Solo + Shadow", "color: #ff3333; font-weight: bold;");
+                
+                // The piercing high lead (using constrainToHigh)
+                let semiHighLead = constrainToHigh(getDiatonic(d, 0));
+                MusicEngine.sing(vocalSyllable, t, [semiHighLead], this.rootFreq, targetDuration, 1.5, 0.05);
+                
+                // The "Ancient Shadow" Idea: A highly breathy, heavily delayed sub-octave trailing behind it
+                //let semiShadow = semiHighLead - 12; 
+                //MusicEngine.sing(vocalSyllable, t + 0.120, [semiShadow], this.rootFreq, targetDuration * 0.8, 0.6, 0.85);
+            }
+        }
+        }
+      //
       strumChord(t, rootDegree) {
             const chordOffsets = [0, 2, 4, 7, 9]; 
             let delay = 0;
@@ -66205,7 +66282,7 @@
         osc.onended = () => { osc.disconnect(); f.disconnect(); g.disconnect(); };
       }
     }
-  
+    
 
     
   //
