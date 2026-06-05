@@ -12825,7 +12825,7 @@
 
             // 3. Entity Alignment Modifiers
             if (sprite.isPlayer) {
-                scale = 0.50; hover = 0;
+                scale = 0.69; hover = 0;
             } else if (sprite.alignment === 'ally') {
                 scale *= 0.91; hover -= 0.13;
                 if ([77.1, 77, 90, 89, 35.1, 35].includes(type)) {
@@ -12858,7 +12858,7 @@
 
                             if (!seeThroughWalls.includes(hit.wallID)) {
                                 // Apply entity immunity rules if a sprite is provided
-                                if (sprite) {
+                                if (sprite &&sprite.type!= -27) {
                                     if (hit.perpWallDist <= this.currentCamDist) continue;
                                     if (sprite.isPlayer) continue; 
                                     if (sprite.alignment === 'ally' && hit.perpWallDist > targetDepth - 0.5) continue; 
