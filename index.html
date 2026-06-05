@@ -2737,10 +2737,12 @@
         // --- APPLY THE CACHED TARGET ---
         if (currentPrey) {
             if (this.alignment.startsWith('ally') || this.alignment.startsWith('defender')) {
-                if (distToActualPlayer < 6.0 || this.alignment.startsWith('defender')) {
+                let leash = this.state === 'chasing' ? 12.0 : 6.0; 
+        
+                if (distToActualPlayer < leash || this.alignment.startsWith('defender')) {
                     targetX = currentPrey.x; targetY = currentPrey.y;
                     isChasingNPC = true; this.state = 'chasing'; 
-                    this.speed = this.alignment.startsWith('defender') ? 2.5 : 1.5; 
+                    this.speed = this.alignment.startsWith('defender') ? 2.5 : 2.5; 
                 }
             } else if (this.alignment.startsWith('foe')) {
                 targetX = currentPrey.x; targetY = currentPrey.y; isChasingNPC = true;
@@ -2794,13 +2796,21 @@
                 }
             } 
             else if (this.state === 'chasing' && (this.alignment === 'ally' || this.alignment === 'friendly_messenger')) {
-                if (distToPlayer < 1.5) { 
-                    moveTargetX = targetX; moveTargetY = targetY; 
+    
+                // --- FIX 1: THE LOS BYPASS ---
+                // Check if there are any walls between the ally and the monster
+                let hasLOS = this.hasLineOfSight(dungeon.maze, targetX, targetY);
+
+                if (hasLOS || distToPlayer < 1.5) { 
+                    // The path is clear! Run directly at them like a heat-seeking missile.
+                    moveTargetX = targetX; 
+                    moveTargetY = targetY; 
                 } else {
                     // --- PATH CACHING ---
+                    // Only use A* if the monster is hiding behind a corner
                     if (this.pathTimer <= 0) {
                         this.cachedPath = dungeon.findPath(this.x, this.y, targetX, targetY);
-                        this.pathTimer = 15 + Math.floor(Math.random() * 5); // Wait ~15 frames before A* again
+                        this.pathTimer = 15 + Math.floor(Math.random() * 5); 
                     } else {
                         this.pathTimer--;
                     }
@@ -2958,6 +2968,16 @@
                                 this.lastSeenX = null;
                                 this.lastSeenY = null;
                             }
+                            else {
+                                // --- FIX 1: HIT THE GAS ---
+                                // Keep speed up while investigating the last place they saw you!
+                                this.speed = 1.5; 
+                            }
+                        }
+                        else {
+                            // --- FIX 1: HIT THE GAS ---
+                            // Keep speed up while investigating the last place they saw you!
+                            this.speed = 1.5; 
                         }
                     } else {
                         if (distToActualPlayer < 4 && hasLOS && startGame === 'explore') {
@@ -3006,16 +3026,38 @@
         // =========================================================
         // 6. COLLISION & AUTO-BATTLE RESOLUTION
         // =========================================================
-            let distToTarget = Math.sqrt(Math.pow(targetX - this.x, 2) + Math.pow(targetY - this.y, 2));
+        let distToTarget = Math.sqrt(Math.pow(targetX - this.x, 2) + Math.pow(targetY - this.y, 2));
 
-            if (this.state === 'chasing' && distToTarget < 1.2) {
-                this.speed = 1.369; 
+        // --- FIX 1: THE COMBAT ANCHOR ---
+        // If they are recovering from a strike, they must hold their ground!
+        // This stops the enemy from pushing them across the room.
+        if (this.combatCooldown > 0) {
+            this.speed = 0.25; // Just enough to allow slight flocking/sliding, but practically anchored
+        } 
+        // --- THE DYNAMIC FRICTION ---
+        else if (this.state === 'chasing' && isChasingNPC) {
+            let strikeRange = 1.5;  
+
+            if (distToTarget <= strikeRange) {
+                this.speed = 1; // Arrived. Lock in for the strike.
+            } else if (distToTarget < 2.0) {
+                // Controlled approach. Fast enough to push forward, slow enough not to overshoot.
+                this.speed = 2.0; 
             }
+        }
 
             // SCENARIO A: NPC CAUGHT AN ENEMY NPC
             if (isChasingNPC && currentPrey) {
                 
-                if (distToTarget < .6) {
+                if (distToTarget < 1.5) {
+                    if (currentPrey.cachedPrey !== this) {
+                    currentPrey.cachedPrey = this;     // Force target swap
+                    currentPrey.state = 'chasing';     // Force combat state
+                    
+                    // Give the enemy a micro-cooldown so they don't get a free hit instantly, 
+                    // but this ensures they apply their brakes immediately.
+                    if (currentPrey.combatCooldown <= 0) currentPrey.combatCooldown = 15; 
+                }
                     this.dirX = -toTargetX; 
                     this.dirY = -toTargetY;
                     
@@ -3048,8 +3090,8 @@
                                 );
                             }*/
                                 
-                            this.combatCooldown = 30;
-                            currentPrey.combatCooldown = 30;
+                            this.combatCooldown = 13;
+                            currentPrey.combatCooldown = 13;
                             return; 
                         }
 
@@ -3078,8 +3120,8 @@
                             currentPrey.x += toTargetX * 0.6;
                             currentPrey.y += toTargetY * 0.6;
 
-                            this.combatCooldown = 60;
-                            currentPrey.combatCooldown = 60;
+                            this.combatCooldown = 13;
+                            currentPrey.combatCooldown = 13;
                             return; 
                         }
                         
@@ -3194,7 +3236,7 @@
                                 }*/
                                 
                                 dungeon.killNPC(firstDefender, false, 'npc_infighting');
-                                this.combatCooldown = 60;
+                                this.combatCooldown = 0;
                                 someoneDied = true;
                             }
                         } else {
@@ -3221,7 +3263,7 @@
                                     }*/
                                     
                                     dungeon.killNPC(firstAttacker, false, 'npc_infighting');
-                                    currentPrey.combatCooldown = 60;
+                                    currentPrey.combatCooldown = 0;
                                     someoneDied = true;
                                 }
                             }
@@ -3238,8 +3280,8 @@
                             if (!currentPrey.checkCollision(maze, preyNewX, currentPrey.y)) currentPrey.x = preyNewX;
                             if (!currentPrey.checkCollision(maze, currentPrey.x, preyNewY)) currentPrey.y = preyNewY;
 
-                            this.combatCooldown = 100;
-                            currentPrey.combatCooldown = 100;
+                            this.combatCooldown = 13;
+                            currentPrey.combatCooldown = 13;
                         }
                     }
                 }
@@ -3274,7 +3316,7 @@
                                 this.slideTargetY = this.y + (dy/dist) * 1.5;
                                 this.isSliding = true;
                                 this.state = 'chasing';
-                                this.combatCooldown = 45; // Briefly stun them so you can run away
+                                this.combatCooldown = 13; // Briefly stun them so you can run away
                             } 
                             else {
                                 this.triggerInteraction(dungeon); // Starts the battle!
@@ -3542,7 +3584,7 @@
                             if (neighbors) {
                                 for (let other of neighbors) {
                                     if (other === this) continue; 
-                                    
+                                    if (this.state === 'chasing' && currentPrey && other === currentPrey) continue;
                                     let dx = this.x - other.x;
                                     let dy = this.y - other.y;
                                     let dSq = dx * dx + dy * dy;
@@ -12757,159 +12799,126 @@
           ctx.strokeStyle = 'white';
           ctx.stroke();
         }
-      drawCombinedSprites(ctx, viewX, viewY, viewW, viewH, dirX, dirY, planeX, planeY, spriteList, camX, camY) {        
-            // 1. Establish our nearsighted vision limit
-            let dynamicMaxVis = Math.max(2, Math.round(this.dSense / 3)); 
-            
-            // Add a tiny +1 buffer so sprites on the absolute edge can fade to 0 alpha before clipping
-            const MAX_DIST_SQ = Math.pow(dynamicMaxVis + 1, 2); 
-            
-            let visibleSprites = [];
-            const seeThroughWalls = [91];
-            
-            for (let i = 0; i < spriteList.length; i++) {
-                let npc = spriteList[i];
-                npc.dist = ((camX - npc.x) * (camX - npc.x) + (camY - npc.y) * (camY - npc.y));
-                
-                if (npc.dist < MAX_DIST_SQ) {
-                    visibleSprites.push(npc);
+      // HELPER: Place this outside or as a class method to clean up the main loop
+        getSpriteConfig(sprite, angle) {
+            let scale = 0.69;
+            let hover = 0.0;
+            const type = Number(sprite.type);
+
+            // 1. Base Scale & Hover
+            if (type === -27) { scale = 0.3; hover = 0.4; }
+            else if ([60.1, 60, 23].includes(type)) { scale = 0.3; hover = 0.4 + (Math.sin(angle) * 0.01); }
+            else if (type <= -39 && type >= -42) { scale = 0.15; hover = 0.5 + (Math.sin(angle) * 0.01); }
+            else if ([56, 56.1, 79, 75, 75.1, 57, 57.1].includes(type)) { scale = 0.369; hover = 0; }
+            else if ([41, 54, 10, 42].includes(type)) { scale = 0.613; hover = -0.16; }
+            else if ([99, 86, 61.1].includes(type)) { scale = 0.69; hover = 0.31; }
+            else if ([77.1, 77, 90, 89, 35.1, 35].includes(type)) { scale = 1.369; hover = -0.13; }
+            else if ([63.1, 63].includes(type)) { scale = 1.369; hover = 0.39 + (Math.sin(angle) * 0.01); }
+            else if ([81, 53, 55].includes(type)) { scale = 0.9631; hover = -0.19; }
+            else if ([49.1, 49].includes(type)) { scale = 1.69; hover = 0.0; }
+            else if (type <= -29 && type >= -35) { scale = 0.9; hover = 0.0; }
+
+            // 2. Modifiers
+            if (sprite.name && sprite.socketId && sprite.name !== "Suncat") { scale *= 0.69; hover -= 0.1; }
+            if (sprite.role === 'summoned_minion') { scale = 0.30; hover -= 0.13; }
+            if (sprite.isBoss && type !== 60.1) { scale *= 1.369; hover -= 0.13; }
+
+            // 3. Entity Alignment Modifiers
+            if (sprite.isPlayer) {
+                scale = 0.50; hover = 0;
+            } else if (sprite.alignment === 'ally') {
+                scale *= 0.91; hover -= 0.13;
+                if ([77.1, 77, 90, 89, 35.1, 35].includes(type)) {
+                    scale = 0.9631; hover = -0.369;
                 }
             }
             
+            return { scale, hover };
+        }
+
+        // MAIN FUNCTION
+        drawCombinedSprites(ctx, viewX, viewY, viewW, viewH, dirX, dirY, planeX, planeY, spriteList, camX, camY) {        
+            const dynamicMaxVis = Math.max(2, Math.round(this.dSense / 3)); 
+            const MAX_DIST_SQ = Math.pow(dynamicMaxVis + 1, 2); 
+            const seeThroughWalls = [91];
+            const horizon = (viewH / 2) + this.pitch;
+            
+            // --- REUSABLE Z-BUFFER OCCLUSION CHECKER ---
+            // Drastically reduces repetitive for-loops inside the main rendering passes
+            const checkOcclusion = (screenCol, targetDepth, dynamicBias = 0, sprite = null) => {
+                let isBlocked = false;
+                let minClipY = viewH;
+
+                if (screenCol >= 0 && screenCol < viewW) {
+                    const hits = this.zBuffer[screenCol];
+                    if (hits && hits.length > 0) {
+                        for (let j = 0; j < hits.length; j++) {
+                            const hit = hits[j];
+                            if (hit.perpWallDist >= (targetDepth - dynamicBias)) break; 
+
+                            if (!seeThroughWalls.includes(hit.wallID)) {
+                                // Apply entity immunity rules if a sprite is provided
+                                if (sprite) {
+                                    if (hit.perpWallDist <= this.currentCamDist) continue;
+                                    if (sprite.isPlayer) continue; 
+                                    if (sprite.alignment === 'ally' && hit.perpWallDist > targetDepth - 0.5) continue; 
+                                }
+                                isBlocked = true;
+                                if (hit.topY < minClipY) minClipY = hit.topY;
+                            }
+                        }
+                    }
+                }
+                return { isBlocked, minClipY };
+            };
+
+            // --- SPRITE FILTERING & SORTING ---
+            let visibleSprites = [];
+            for (let i = 0; i < spriteList.length; i++) {
+                let npc = spriteList[i];
+                npc.dist = ((camX - npc.x) * (camX - npc.x) + (camY - npc.y) * (camY - npc.y));
+                if (npc.dist < MAX_DIST_SQ) visibleSprites.push(npc);
+            }
             visibleSprites.sort((a, b) => b.dist - a.dist);
 
+            // --- SPRITE RENDERING LOOP ---
             for (let i = 0; i < visibleSprites.length; i++) {
                 const sprite = visibleSprites[i];
+                const realDist = Math.sqrt(sprite.dist);
                 
-                // --- STRICT PHYSICAL LOS FOR NPCS ---
-                let realDist = Math.sqrt(sprite.dist);
-                
-                // 1. Is it inside our dSense fog range?
-                // 2. Is there a clear line of sight? (No X-Ray bypass!)
                 let inVision = (realDist <= dynamicMaxVis) && this.checkLineOfSight(sprite.x, sprite.y);
-                
-                if (!inVision && !sprite.isPlayer) {
-                    continue; // Skip rendering! It's lost in the physical fog.
-                }
+                if (!inVision && !sprite.isPlayer) continue;
 
                 let spriteX = sprite.x - camX;
                 let spriteY = sprite.y - camY;
-
                 let invDet = 1.0 / (planeX * dirY - dirX * planeY);
                 let transformX = invDet * (dirY * spriteX - dirX * spriteY);
                 let transformY = invDet * (-planeY * spriteX + planeX * spriteY);
 
                 if (Math.abs(transformX) < 0.001) transformX = 0;
                 
-                // --- NEAR PLANE CLIPPING & FOG CLIPPING ---
+                // Near Plane & Fog Clipping
                 if (sprite.isPlayer) {
-                    if (transformY < 0.35) continue; // Let the camera get closer to the player
+                    if (transformY < 0.35) continue; 
                 } else {
-                    if (transformY <= 0.5) continue; // Standard clip for everything else
-                    if (transformY > dynamicMaxVis) continue; // Standard fog clip
-                }
-                let testcard = new Card(sprite.type, 0);
-                
-                // --- TRULY 3D SCALING & ANCHORING LOGIC ---
-                let scale = 0.69; 
-                let hover = 0.0; 
-                let angle = typeof window.cacheAngle !== 'undefined' ? window.cacheAngle : (Date.now() / 400);
-                if (sprite.type !== undefined) {
-                    sprite.type = Number(sprite.type);
+                    if (transformY <= 0.1 || transformY > dynamicMaxVis) continue; 
                 }
 
-                if (sprite.type === -27) {
-                    scale = 0.3; 
-                    hover = 0.4; 
-                }
-                if (sprite.type === 60.1 || sprite.type === 60 || sprite.type === 23) {
-                    scale = 0.3; 
-                    hover = 0.4 + (Math.sin(angle) * 0.01); 
-                } else if (sprite.type <= -39 && sprite.type >= -42) {
-                    scale = 0.15; 
-                    hover = 0.5 + (Math.sin(angle) * 0.01); 
-                } else if (sprite.type === 56 || sprite.type === 56.1 || sprite.type === 79 || sprite.type === 75 || sprite.type === 75.1) {
-                    scale = 0.369; 
-                    hover = 0; 
-                } 
-                else if (sprite.type === 57 || sprite.type === 57.1) {
-                    scale = 0.369; 
-                    hover = 0 
-                } 
-                else if (sprite.type === 41 || sprite.type === 54 || sprite.type === 10||sprite.type === 42) {
-                    scale = 0.613; 
-                    hover = -.16; 
-                } else if (sprite.type === 99 ||  sprite.type === 86 || sprite.type === 61.1) {
-                    scale = 0.69;
-                    hover = 0.31; 
-                } else if (sprite.type === 77.1 || sprite.type === 77 || sprite.type === 90 || sprite.type === 89||sprite.type === 35.1 || sprite.type === 35) {
-                    scale = 1.369; 
-                    hover = -.13;
-                } 
-                else if (sprite.type === 63.1 || sprite.type === 63 ) {
-                    scale = 1.369; 
-                    hover = 0.39 + (Math.sin(angle) * 0.01);
-                }
-                else if (sprite.type === 81 || sprite.type === 53 || sprite.type === 55) {
-                    scale = .9631; 
-                    hover = -.19;
-                } else if (sprite.type === 49.1 || sprite.type === 49) {
-                    scale = 1.69; 
-                    hover = 0.0;
-                } else if (sprite.type <= -29 && sprite.type >= -35) {
-                    scale = .9;
-                    hover = 0.0;
-                } else if (sprite.name && sprite.socketId && sprite.name !== "Suncat") {
-                    scale = scale * 0.69; 
-                    hover = hover -0.1; 
-                }
-                
-                if (sprite.role == 'summoned_minion') {
-                    scale = .30; 
-                    hover = hover-.13;
-                }
-                
-                if (sprite.isBoss&&sprite.type != 60.1) {
-                    scale = scale * 1.369; 
-                    hover = hover -.13;
-                }
-                if (sprite.isPlayer) {
-                    scale = 0.50; 
-                    hover = 0;  
-                } else if (sprite.alignment == 'ally' && !sprite.isPlayer) {
-                    scale = scale * .91; 
-                    hover = hover -.13;
-                    if (sprite.type === 77.1 || sprite.type === 77 || sprite.type === 90 || sprite.type === 89||sprite.type === 35.1 || sprite.type === 35) {
-                    scale = .9631; 
-                    hover = -.369;
-                } 
-                }
-                // 1. Calculate Base Screen Dimensions FIRST
+                let angle = typeof window.cacheAngle !== 'undefined' ? window.cacheAngle : (Date.now() / 400);
+                let { scale, hover } = this.getSpriteConfig(sprite, angle);
+
                 const spriteScreenX = Math.floor((viewW / 2) * (1 + transformX / transformY));
                 const spriteSize = Math.abs(Math.floor(((viewH * this.zScale) / transformY) * scale)); 
 
-                // 2. CHECK IF THE MONSTER'S CORE IS IN LINE OF SIGHT
-                let isCenterVisible = false;
+                // Core LOS Check
+                let isCenterVisible = true;
                 if (spriteScreenX >= 0 && spriteScreenX < viewW) {
-                    isCenterVisible = true; // Assume visible until proven otherwise
-                    let centerHits = this.zBuffer[spriteScreenX];
-                    
-                    if (centerHits && centerHits.length > 0) {
-                        for (let j = 0; j < centerHits.length; j++) {
-                            // Check true depth without any bias!
-                            if (centerHits[j].perpWallDist < transformY && !seeThroughWalls.includes(centerHits[j].wallID)) {
-                                if (sprite.isPlayer) continue; // <-- ADD THIS: Player center is immune
-                                isCenterVisible = false;
-                                break; // A solid wall is blocking the center!
-                            }
-                        }
-                    }
+                    let coreOcclusion = checkOcclusion(spriteScreenX, transformY);
+                    if (coreOcclusion.isBlocked && !sprite.isPlayer) isCenterVisible = false;
                 }
 
-                const horizon = (viewH / 2) + this.pitch;
                 const floorY = horizon + ((viewH * this.zScale) / transformY) * this.camZ;
                 const hoverOffset = ((viewH * this.zScale) / transformY) * (hover + (sprite.zHeight || 0));
-
                 const drawStartY = Math.floor(floorY - spriteSize - hoverOffset) + viewY;
                 const drawStartX = Math.floor(-spriteSize / 2 + spriteScreenX + viewX);
 
@@ -12918,92 +12927,48 @@
                 // --- 3D MODEL RENDER ---
                 if (sprite.model) {
                     if (spriteScreenX >= 0 && spriteScreenX < viewW) {
-                        
-                        let isBlocked = false;
-                        let hits = this.zBuffer[spriteScreenX];
-                        
-                        if (hits && hits.length > 0) {
-                            for (let j = 0; j < hits.length; j++) {
-                                if (hits[j].perpWallDist >= transformY) break; 
-
-                                if (!seeThroughWalls.includes(hits[j].wallID)) {
-                                    isBlocked = true; 
-                                    break;
-                                }
-                            }
-                        }
-
-                        if (!isBlocked) {
+                        let modelOcclusion = checkOcclusion(spriteScreenX, transformY);
+                        if (!modelOcclusion.isBlocked) {
                             const centerX = drawStartX + spriteSize / 2;
                             const centerY = drawStartY + spriteSize / 2;
                             sprite.model.draw(ctx, centerX, centerY, spriteSize * 0.5, 4);
                         }
                     }
                     
-                    if (sprite.type === -37) {
+                    if (sprite.type === -37 && typeof drawPortrait === 'function') {
                         const oldTX = tX; const oldTY = tY; const oldTL = tL; const oldTH = tH;
                         tX = drawStartX; tY = drawStartY; tL = spriteSize; tH = spriteSize;
-
-                        if (typeof drawPortrait === 'function') {
-                            drawPortrait(-37, 0, 0, 1); 
-                        }
-
+                        drawPortrait(-37, 0, 0, 1); 
                         tX = oldTX; tY = oldTY; tL = oldTL; tH = oldTH;
                         continue; 
                     }
                     
-                    // Interaction Check for 3D
-                    if (this.clickInput) {
-                        if (transformY < 1.0 && 
-                            this.clickInput.x >= drawStartX && this.clickInput.x <= drawStartX + spriteSize &&
-                            this.clickInput.y >= drawStartY && this.clickInput.y <= drawStartY + spriteSize) 
-                        {
-                            if (sprite.type === 99) {
-                                this.clickInput = null;
-                            }
+                    if (this.clickInput && transformY < 1.0) {
+                        if (this.clickInput.x >= drawStartX && this.clickInput.x <= drawStartX + spriteSize &&
+                            this.clickInput.y >= drawStartY && this.clickInput.y <= drawStartY + spriteSize) {
+                            if (sprite.type === 99) this.clickInput = null;
                         }
                     }
                     continue; 
                 }
 
-                // --- 2D SPRITE RENDER ---
-                const toPlayerX = this.x - sprite.x;
-                const toPlayerY = this.y - sprite.y;
-                const dotProd = (sprite.dirX * toPlayerX) + (sprite.dirY * toPlayerY);
-                const isBackTurned = dotProd < 0;
-
-                // Interaction check (Players only)
-                if (this.clickInput) {
+                // --- 2D SPRITE INTERACTION ---
+                if (this.clickInput && transformY < 2.5) {
                     let inBounds = (
-                        this.clickInput.x >= drawStartX && 
-                        this.clickInput.x <= drawStartX + spriteSize &&
-                        this.clickInput.y >= drawStartY && 
-                        this.clickInput.y <= drawStartY + spriteSize
+                        this.clickInput.x >= drawStartX && this.clickInput.x <= drawStartX + spriteSize &&
+                        this.clickInput.y >= drawStartY && this.clickInput.y <= drawStartY + spriteSize
                     );
 
                     if (inBounds) {
-                        if (transformY < 2.5) {
-                            const localClickX = Math.floor(this.clickInput.x - viewX);
-                            let wallBlock = false;
-                            
-                            if (localClickX >= 0 && localClickX < viewW) {
-                                let hits = this.zBuffer[localClickX];
-                                if (hits && hits.length > 0) {
-                                    for (let j = 0; j < hits.length; j++) {
-                                        if (hits[j].perpWallDist < transformY && !seeThroughWalls.includes(hits[j].wallID)) {
-                                            wallBlock = true; break;
-                                        }
-                                    }
-                                }
+                        const localClickX = Math.floor(this.clickInput.x - viewX);
+                        let clickOcclusion = checkOcclusion(localClickX, transformY);
+                        
+                        if (!clickOcclusion.isBlocked && sprite.socketId) {
+                            if (sprite.status === 'dueling') {
+                                console.log("Target is already in a battle.");
+                                MessageBox.show(0.5, 8, 1, 9, 2, 'That player is busy fighting!', 'dialogue', 1, 0);
+                                this.clickInput = null;
                             }
-
-                            if (!wallBlock && sprite.socketId) {
-                                if (sprite.status === 'dueling') {
-                                    console.log("Target is already in a battle.");
-                                    MessageBox.show(0.5, 8, 1, 9, 2, 'That player is busy fighting!', 'dialogue', 1, 0);
-                                    this.clickInput = null;
-                                }
-                            } 
                         } 
                     }
                 }
@@ -13011,9 +12976,9 @@
                 let imageIndex = (sprite.type !== undefined) ? Number(sprite.type) : 0;
                 let cachedSource = spriteCache[imageIndex];
                 
+                // --- RENDERING ROUTINES ---
                 if (!cachedSource || imageIndex === -27) {
-                    
-                    // --- LEGACY CLIP METHOD (For Uncached Vector Paths) ---
+                    // LEGACY CLIP METHOD
                     let hiddenColumns = 0;
                     let completelyHidden = true;
 
@@ -13022,33 +12987,15 @@
                     const loopEnd = Math.min(viewW, spriteLeftLocal + spriteSize);
 
                     for (let col = loopStart; col < loopEnd; col++) {
-                        let isBlocked = false;
-                        let minClipY = viewH;
-                        let hits = this.zBuffer[col];
-                        
-                        // --- THE V-SHAPE BIAS ---
                         let distFromCenter = Math.abs(col - spriteScreenX) / (spriteSize / 2);
                         let dynamicBias = isCenterVisible ? (1.0 * distFromCenter) : 0.15;
+                        
+                        let { isBlocked, minClipY } = checkOcclusion(col, transformY, dynamicBias, sprite);
 
-                        if (hits && hits.length > 0) {
-                            for (let j = 0; j < hits.length; j++) {
-                                if (hits[j].perpWallDist >= (transformY - dynamicBias)) break; 
-
-                                if (!seeThroughWalls.includes(hits[j].wallID)) {
-                                    
-                                    // 2. ADD THIS: Player & Ally Immunity
-                                    if (sprite.isPlayer) continue; 
-                                    if (sprite.alignment === 'ally' && hits[j].perpWallDist > transformY - 0.5) continue; // Let allies clip walls slightly without disappearing
-                                    
-                                    isBlocked = true;
-                                    if (hits[j].topY < minClipY) minClipY = hits[j].topY;
-                                }
-                            }
-                        }
                         if (!isBlocked || minClipY > drawStartY) {
-                            completelyHidden = false; // At least one slice is visible!
+                            completelyHidden = false; 
                         } else {
-                            hiddenColumns++; // Track how many slices need clipping
+                            hiddenColumns++; 
                         }
                     }
 
@@ -13064,29 +13011,10 @@
                         for (let x = 0; x < spriteSize; x++) {
                             const localCol = Math.floor(-spriteSize / 2 + spriteScreenX) + x;
                             if (localCol >= 0 && localCol < viewW) {
-                                let isBlocked = false;
-                                let minClipY = viewH;
-                                let hits = this.zBuffer[localCol];
-                                
                                 let distFromCenter = Math.abs(x - (spriteSize / 2)) / (spriteSize / 2);
                                 let dynamicBias = isCenterVisible ? (1.0 * distFromCenter) : 0.15;
-
-                                    if (hits && hits.length > 0) {
-                                        for (let j = 0; j < hits.length; j++) {
-                                            if (hits[j].perpWallDist >= (transformY - dynamicBias)) break; 
-
-                                            if (!seeThroughWalls.includes(hits[j].wallID)) {
-                                                
-                                                // 2. ADD THIS: Player & Ally Immunity
-                                                if (sprite.isPlayer) continue; 
-                                                if (sprite.alignment === 'ally' && hits[j].perpWallDist > transformY - 0.5) continue; // Let allies clip walls slightly without disappearing
-                                                
-                                                isBlocked = true;
-                                                if (hits[j].topY < minClipY) minClipY = hits[j].topY;
-                                            }
-                                        }
-                                    }
                                 
+                                let { isBlocked, minClipY } = checkOcclusion(localCol, transformY, dynamicBias, sprite);
 
                                 if (!isBlocked) {
                                     ctx.rect(viewX + localCol, drawStartY, 1, spriteSize);
@@ -13114,12 +13042,10 @@
                     ctx.restore();
 
                 } else {
-                    
-                    // --- HIGH-PERFORMANCE VERTICAL SLICING (For Cached Sprites) ---
+                    // HIGH-PERFORMANCE VERTICAL SLICING
                     let srcImg;
                     if (Array.isArray(cachedSource)) {
-                        let animationSpeed = 100; 
-                        if (imageIndex === 46.1 || imageIndex === 63.1 || imageIndex === 74.1 || imageIndex === 82) animationSpeed = 300;
+                        let animationSpeed = [46.1, 63.1, 74.1, 82].includes(imageIndex) ? 300 : 100;
                         const currentFrame = Math.floor(Date.now() / animationSpeed) % cachedSource.length;
                         srcImg = cachedSource[currentFrame];
                     } else {
@@ -13127,13 +13053,9 @@
                     }
 
                     const cacheSize = srcImg.width || 512; 
-
-                    // --- ATMOSPHERIC FOG FOR CACHED SPRITES ---
                     let fogStart = dynamicMaxVis * 0.4;
-                    let spriteFogFactor = 0;
-                    if (transformY > fogStart) {
-                        spriteFogFactor = Math.pow(Math.min((transformY - fogStart) / (dynamicMaxVis - fogStart), 1.0), 1.8);
-                    }
+                    let spriteFogFactor = transformY > fogStart ? Math.pow(Math.min((transformY - fogStart) / (dynamicMaxVis - fogStart), 1.0), 1.8) : 0;
+                    
                     ctx.globalAlpha = sprite.isPlayer ? 0.7 * (1.0 - spriteFogFactor) : 1.0 - spriteFogFactor;
                     ctx.filter = (sprite.damageFlashTimer > 0) ? 'brightness(50%) sepia(100%) hue-rotate(-50deg) saturate(1000%) contrast(200%)' : 'none';
                     
@@ -13141,23 +13063,17 @@
                     if (imageIndex === 99) ctx.globalCompositeOperation = 'lighter';
                     ctx.imageSmoothingEnabled = true;
 
-                    // The Vertical Slice Loop
-                    // --- HIGH-PERFORMANCE BATCHED SLICING ---
                     let currentStreak = null;
 
-                    // Helper function to draw accumulated streaks of pixels in ONE call
                     const flushStreak = () => {
                         if (currentStreak && currentStreak.minClipY > drawStartY) {
-                            // Calculate where this chunk starts and how wide it is on the source image
                             let srcX = (currentStreak.startX / spriteSize) * cacheSize;
                             let srcW = (currentStreak.width / spriteSize) * cacheSize;
                             
                             if (srcW > 0) {
                                 if (!currentStreak.isBlocked) {
-                                    // Draw fully visible chunk
                                     ctx.drawImage(srcImg, srcX, 0, srcW, cacheSize, viewX + currentStreak.destX, drawStartY, currentStreak.width, spriteSize);
                                 } else {
-                                    // Draw partially occluded chunk
                                     let visibleHeightRatio = (currentStreak.minClipY - drawStartY) / spriteSize;
                                     let srcHeight = cacheSize * visibleHeightRatio;
                                     ctx.drawImage(srcImg, srcX, 0, srcW, srcHeight, viewX + currentStreak.destX, drawStartY, currentStreak.width, currentStreak.minClipY - drawStartY);
@@ -13166,64 +13082,30 @@
                         }
                     };
 
-                    // The Batched Loop
                     for (let x = 0; x < spriteSize; x++) {
                         const localCol = Math.floor(-spriteSize / 2 + spriteScreenX) + x;
                         
                         if (localCol >= 0 && localCol < viewW) {
-                            let isBlocked = false;
-                            let minClipY = viewH;
-                            let hits = this.zBuffer[localCol];
-
                             let distFromCenter = Math.abs(x - (spriteSize / 2)) / (spriteSize / 2);
-                            let dynamicBias = 0;
-                            if (scale > 0.8) {
-                                dynamicBias = isCenterVisible ? (scale * 2.0 * distFromCenter) : 0.15;
-                            }
-
-                            if (hits && hits.length > 0) {
-                                for (let j = 0; j < hits.length; j++) {
-                                    if (hits[j].perpWallDist >= (transformY - dynamicBias)) break; 
-                                    
-                                    if (!seeThroughWalls.includes(hits[j].wallID)) {
-                                        if (sprite.isPlayer) continue;
-                                        isBlocked = true;
-                                        if (hits[j].topY < minClipY) minClipY = hits[j].topY;
-                                    }
-                                }
-                            }
+                            let dynamicBias = (scale > 0.8 && isCenterVisible) ? (scale * 2.0 * distFromCenter) : 0.15;
+                            
+                            let { isBlocked, minClipY } = checkOcclusion(localCol, transformY, dynamicBias, sprite);
 
                             // Force entirely hidden columns to snap to a uniform depth so they don't break streaks
-                            if (isBlocked && drawStartY >= minClipY) {
-                                minClipY = drawStartY; 
-                            }
+                            if (isBlocked && drawStartY >= minClipY) minClipY = drawStartY; 
 
-                            // --- BATCHING LOGIC ---
+                            // Batching Logic
                             if (currentStreak && currentStreak.isBlocked === isBlocked && currentStreak.minClipY === minClipY) {
-                                // This column perfectly matches the last one! Extend the streak!
                                 currentStreak.width++;
                             } else {
-                                // Something changed (hit a wall edge). Draw the old streak, start a new one.
                                 if (currentStreak) flushStreak();
-                                
-                                currentStreak = {
-                                    startX: x,
-                                    destX: localCol,
-                                    width: 1,
-                                    isBlocked: isBlocked,
-                                    minClipY: minClipY
-                                };
+                                currentStreak = { startX: x, destX: localCol, width: 1, isBlocked: isBlocked, minClipY: minClipY };
                             }
                         } else {
-                            // Hit edge of screen, draw whatever we were holding
-                            if (currentStreak) {
-                                flushStreak();
-                                currentStreak = null;
-                            }
+                            if (currentStreak) { flushStreak(); currentStreak = null; }
                         }
                     }
                     
-                    // Don't forget to draw the final chunk when the loop ends!
                     if (currentStreak) flushStreak();
 
                     ctx.globalCompositeOperation = previousBlend;
@@ -13238,11 +13120,9 @@
                         tX = oldTX; tY = oldTY; tL = oldTL; tH = oldTH;
                     }
                 }
-            } // END OF VISIBLE SPRITES LOOP
+            } 
 
-            // --- DRAW 3D PARTICLES (MOVED OUTSIDE SPRITE LOOP) ---
-            const horizon = (viewH / 2) + this.pitch;
-
+            // --- DRAW 3D PARTICLES ---
             globalParticles.forEach(p => {
                 if (!p.active) return;
                 const pX = p.x - camX;
@@ -13251,33 +13131,15 @@
                 const transformX = invDet * (dirY * pX - dirX * pY);
                 const transformY = invDet * (-planeY * pX + planeX * pY); 
 
-                // Z-Clipping Check
                 if (transformY > 0.1 && transformY <= dynamicMaxVis) {
                     const pScreenX = Math.floor((viewW / 2) * (1 + transformX / transformY));
                     
-                    // Bounds check FIRST to prevent crashing on this.zBuffer
                     if (pScreenX >= 0 && pScreenX < viewW) {
-                        // Calculate pScreenY mathematically BEFORE the occlusion check!
-                        const pZ = p.z || 0; // Prevent crash if p.z doesn't exist
+                        const pZ = p.z || 0; 
                         const pScreenY = Math.floor(horizon + ((viewH * this.zScale) / transformY) * (this.camZ - pZ)) + viewY;
                         
-                        let isVisible = true;
-                        let hits = this.zBuffer[pScreenX];
-                        
-                        if (hits && hits.length > 0) {
-                            let minClipY = viewH;
-                            let isBlocked = false;
-                            for (let j = 0; j < hits.length; j++) {
-                                // THE FIX: Early exit!
-                                if (hits[j].perpWallDist >= transformY) break;
-
-                                if (!seeThroughWalls.includes(hits[j].wallID)) {
-                                    isBlocked = true;
-                                    if (hits[j].topY < minClipY) minClipY = hits[j].topY;
-                                }
-                            }
-                            if (isBlocked && pScreenY >= minClipY) isVisible = false;
-                        }
+                        let { isBlocked, minClipY } = checkOcclusion(pScreenX, transformY);
+                        let isVisible = !(isBlocked && pScreenY >= minClipY);
 
                         if (isVisible) { 
                             const pSize = Math.max(1, (viewH / transformY) * 0.05);
@@ -13303,8 +13165,6 @@
             });
             
             ctx.globalAlpha = 1.0; 
-            
-            // Clear Click Input only after the ENTIRE frame is drawn
             this.clickInput = null;
         }
       parseColor(str) {
