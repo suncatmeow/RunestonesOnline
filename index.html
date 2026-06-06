@@ -2489,6 +2489,19 @@
         dungeon.cameraMode = 'first_person';
         dungeon.npcs.forEach(npc => npc.visible = false);
         dungeon.currentSpeaker = this;
+        const buttons = [btnMove, btnMove2, btnTurnL, btnTurnR, btnLook, btnYes, btnNo];
+        buttons.forEach(btn => {
+            if (btn) {
+                btn.isPressed = false;
+                btn.currentDir = null;
+                btn.joyX = 0;
+                btn.joyY = 0;
+            }
+        });
+        // If you have a joystick object, reset it too
+        if (typeof activePointers !== 'undefined') {
+            Object.keys(activePointers).forEach(key => delete activePointers[key]);
+        }
         console.log("Starting dialogue...");
         startGame = 'dialogue';
         if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('click');
@@ -16793,8 +16806,6 @@
                     let enemy = this.npcs.find(n => n.index === payload);
                     if (enemy) {
                         this.currentSpeaker = null;
-                        if (typeof btnYes !== 'undefined') btnYes.visible = false;
-                        if (typeof btnNo !== 'undefined') btnNo.visible = false;
                         enemy.customDialogue = null; enemy.dialogueFactory = null;
                         if (typeof startGame !== 'undefined') startGame = 'explore';
                         if (typeof preGame !== 'undefined') preGame = 'explore';
@@ -20457,14 +20468,33 @@
                         break;
                     }
                     
-                    // --- THE FIX: ADDED NULL-CHECK TO PREVENT CRASHES ---
-                    if (Dungeon.currentSpeaker && Dungeon.currentSpeaker.role === 'portal_invite') {
-                        if (typeof socket !== 'undefined') {
-                            socket.emit("accept_teleport_invite");
-                        }
+                    if (Dungeon.currentSpeaker && Dungeon.currentSpeaker.options && Dungeon.currentSpeaker.options[0] === 'Spare') {
+                        Dungeon.summonAlly(Math.floor(Dungeon.currentSpeaker.type));
+                        Dungeon.killNPC(Dungeon.currentSpeaker, true, 'dialogue');
+                        
+                        Dungeon.currentSpeaker = null;
+                        startGame = 'explore';
+                        Dungeon.dCounter = 0;
+                        Dungeon.status = 'normal';
+                        
                         if (Dungeon.savedViewMode) window.gameViewMode = Dungeon.savedViewMode;
                         if (Dungeon.savedCameraMode) Dungeon.cameraMode = Dungeon.savedCameraMode;
                         
+                        Dungeon.saveGame();
+                        btnYes.visible = false;
+                        btnNo.visible = false;
+                        return; 
+                    }
+                    if (Dungeon.currentSpeaker.role === 'portal_invite') {
+                        if (typeof socket !== 'undefined') {
+                            socket.emit("accept_teleport_invite");
+                        }
+                        if (Dungeon.savedViewMode) {
+                            window.gameViewMode = Dungeon.savedViewMode;
+                        }
+                        if (Dungeon.savedCameraMode) {
+                            Dungeon.cameraMode = Dungeon.savedCameraMode;
+                        }
                         startGame = 'explore';
                         Dungeon.dCounter = 0;
                         Dungeon.status = 'normal';
@@ -20476,27 +20506,21 @@
                         return; 
                     }
                     
-                    // --- THE FIX: DELEGATE TO THE DYNAMIC QUEUE ---
-                    // This effortlessly handles the Mercy 'Spare' logic!
                     if (Dungeon.currentSpeaker && Dungeon.currentSpeaker.yesActions) {
-                        if (typeof btnYes !== 'undefined') btnYes.visible = false;
-                        if (typeof btnNo !== 'undefined') btnNo.visible = false;
                         Dungeon.executeActions(Dungeon.currentSpeaker.yesActions);
                         Dungeon.processNextAction();
-                    } else if (Dungeon.currentSpeaker) {
-                        if (typeof btnYes !== 'undefined') btnYes.visible = false;
-                        if (typeof btnNo !== 'undefined') btnNo.visible = false;
+                    } else {
                         Dungeon.executeActions([['close_dialogue', null]]);
                         Dungeon.processNextAction();
                     }
-                    
                     break;
                     
                 case 2: 
                     if (this.foe === 'pvp_deny') {
                         let targetId = Dungeon.currentSpeaker?.socketId; 
-                        if (targetId) socket.emit("battle_action", { targetId: targetId, actionType: "CHALLENGE_REJECTED", payload: {} });
-                        
+                        if (targetId) {
+                            socket.emit("battle_action", { targetId: targetId, actionType: "CHALLENGE_REJECTED", payload: {} });
+                        }
                         Dungeon.executeActions([['close_dialogue', null]]);
                         socket.emit('suncat_spectate', `player has rejected a PVP challenge. mock them for their cowardice.`);
                         Dungeon.processNextAction(); 
@@ -20505,8 +20529,9 @@
                     
                     if (this.foe === 'pvp_cancel') {
                         let targetId = Dungeon.currentSpeaker?.socketId; 
-                        if (targetId) socket.emit("battle_action", { targetId: targetId, actionType: "CHALLENGE_CANCEL", payload: {} });
-                        
+                        if (targetId) {
+                            socket.emit("battle_action", { targetId: targetId, actionType: "CHALLENGE_CANCEL", payload: {} });
+                        }
                         Dungeon.executeActions([['close_dialogue', null]]);
                         Dungeon.isChallenger = false;
                         socket.emit('suncat_spectate', `player has cancelled their PVP request.`);
@@ -20514,27 +20539,56 @@
                         break;
                     }
 
-                    // --- THE FIX: ADDED NULL-CHECK ---
-                    if (Dungeon.currentSpeaker && Dungeon.currentSpeaker.role === 'portal_invite') {
+                    if (Dungeon.currentSpeaker && Dungeon.currentSpeaker.options && Dungeon.currentSpeaker.options[1] === 'Finish It') {
+                        Dungeon.currentSpeaker.customDialogue = null; 
+                        Dungeon.currentSpeaker.options = null;        
+                        Dungeon.currentSpeaker.rewardCard = null;
+                        Dungeon.currentSpeaker.role = 'battle';
+                        Dungeon.currentSpeaker.alignment = 'foe';
+                        Dungeon.currentSpeaker.state = 'chasing';
+
+                        if (typeof socket !== 'undefined' && socket) {
+                            socket.emit("engage_npc", { 
+                                npcIndex: Dungeon.currentSpeaker.index, 
+                                x: Dungeon.currentSpeaker.x, 
+                                y: Dungeon.currentSpeaker.y 
+                            });
+                        }
+
+                        let enemyToFight = Dungeon.currentSpeaker;
+                        Dungeon.currentSpeaker = null;
+                        Dungeon.dCounter = 0;
+                        
+                        if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('slash');
+                        
+                        enemyToFight.triggerInteraction(Dungeon);
+                        btnYes.visible = false;
+                        btnNo.visible = false;
+                        
+                        if (Dungeon.savedViewMode) window.gameViewMode = Dungeon.savedViewMode;
+                        if (Dungeon.savedCameraMode) Dungeon.cameraMode = Dungeon.savedCameraMode;
+                        return;
+                    }
+                    else if (Dungeon.currentSpeaker.role === 'portal_invite') {
                         startGame = 'explore';
                         Dungeon.dCounter = 0;
                         Dungeon.status = 'normal';
                         Dungeon.killNPC(Dungeon.currentSpeaker, true, 'dialogue'); 
                         Dungeon.currentSpeaker = null;
-                        if (Dungeon.savedViewMode) window.gameViewMode = Dungeon.savedViewMode;
-                        if (Dungeon.savedCameraMode) Dungeon.cameraMode = Dungeon.savedCameraMode;
-                        
+                        if (Dungeon.savedViewMode) {
+                            window.gameViewMode = Dungeon.savedViewMode;
+                        }
+                        if (Dungeon.savedCameraMode) {
+                            Dungeon.cameraMode = Dungeon.savedCameraMode;
+                        }
                         btnYes.visible = false;
                         btnNo.visible = false;
-                        return;
                     }
                     
-                    // --- THE FIX: DELEGATE TO THE DYNAMIC QUEUE ---
-                    // This effortlessly handles the Mercy 'Finish It' logic!
                     if (Dungeon.currentSpeaker && Dungeon.currentSpeaker.noActions) {
                         Dungeon.executeActions(Dungeon.currentSpeaker.noActions);
                         Dungeon.processNextAction();
-                    } else if (Dungeon.currentSpeaker) {
+                    } else {
                         Dungeon.executeActions([
                             ['play_sfx', 'cancel'],
                             ['close_dialogue', null]
@@ -20542,6 +20596,7 @@
                         Dungeon.processNextAction();
                     }
                     break;
+                
                 case 3:
                     if (this.type == 'arrow_left'){
                         if(this.text == 'deck'){
