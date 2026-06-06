@@ -2685,7 +2685,7 @@
                 
                 if (this.alignment !== 'escort') {
                     for (let other of dungeon.npcs) {
-                        if (other === this || other.isDead || !other.visible || !other.alignment.startsWith('foe')) continue;
+                        if (other === this || other.isDead || !other.visible || !other.alignment.startsWith('foe')|| other.alignment === 'foe_coward') continue;
                         let dSq = Math.pow(other.x - this.x, 2) + Math.pow(other.y - this.y, 2);
                         if (dSq < aggroRadiusSq && dSq < closestDistSq && this.hasLineOfSight(maze, other.x, other.y)) { 
                             closestDistSq = dSq; currentPrey = other;
@@ -2698,7 +2698,7 @@
             else if (this.alignment.startsWith('defender')) {
                 let closestDistSq = Infinity;
                 for (let other of dungeon.npcs) {
-                    if (other === this || other.isDead || !other.visible || !other.alignment.startsWith('foe')) continue;
+                    if (other === this || other.isDead || !other.visible || !other.alignment.startsWith('foe')|| other.alignment === 'foe_coward') continue;
                     let dSq = Math.pow(other.x - this.x, 2) + Math.pow(other.y - this.y, 2);
                     if (dSq < 64 && dSq < closestDistSq && this.hasLineOfSight(maze, other.x, other.y)) {  
                         closestDistSq = dSq; currentPrey = other;
@@ -2923,14 +2923,9 @@
         // 4. STATE TRANSITIONS (Personality & Aggro)
         // =========================================================
             if (this.alignment === 'foe_coward' || this.alignment === 'friendly_shy') {
-                let hasLOS = this.hasLineOfSight(maze, playerX, playerY);
-                if (hasLOS) {
                     this.state = 'fleeing'; 
                     this.speed = 4.0;
-                } else {
-                    this.state = 'wandering';
-                    this.speed = 0.5;
-                }
+                
             }
             else if (this.alignment === 'friendly_messenger') {
                 if (distToActualPlayer > 4) {
@@ -3002,7 +2997,7 @@
         // =========================================================
             if(this.alignment ==='foe_wave'){this.speed = 2.5}
             if (this.state === 'fleeing') {
-                this.speed = 3.0; // Frantic Sprint!
+                this.speed = 3; // Slight speed bump to make them properly slippery
                 
                 let diffX = this.x - playerX;
                 let diffY = this.y - playerY;
@@ -3011,15 +3006,53 @@
                 let awayX = (dist > 0) ? diffX / dist : 0;
                 let awayY = (dist > 0) ? diffY / dist : 0;
 
-                if (this.checkCollision(maze, this.x + (awayX * 1.5), this.y + (awayY * 1.5))) {
-                    if (!this.fleeTangent) this.fleeTangent = Math.random() > 0.5 ? 1 : -1;
-                    
-                    this.dirX = awayY * this.fleeTangent; 
-                    this.dirY = -awayX * this.fleeTangent;
+                // Check where they want to go
+                let idealX = this.x + (awayX * 1.5);
+                let idealY = this.y + (awayY * 1.5);
+
+                if (this.checkCollision(maze, idealX, idealY)) {
+                    // WALL IN THE WAY! Try to slide smoothly along the X or Y axis.
+                    let canSlideX = !this.checkCollision(maze, idealX, this.y);
+                    let canSlideY = !this.checkCollision(maze, this.x, idealY);
+
+                    if (canSlideX && !canSlideY) {
+                        this.dirX = Math.sign(awayX);
+                        this.dirY = 0;
+                        this.fleeTangent = null;
+                    } else if (canSlideY && !canSlideX) {
+                        this.dirX = 0;
+                        this.dirY = Math.sign(awayY);
+                        this.fleeTangent = null;
+                    } else if (canSlideX && canSlideY) {
+                        // If both are open (e.g., hitting a single pillar), pick the axis that gets them further away
+                        if (Math.abs(awayX) > Math.abs(awayY)) {
+                            this.dirX = Math.sign(awayX); this.dirY = 0;
+                        } else {
+                            this.dirX = 0; this.dirY = Math.sign(awayY);
+                        }
+                        this.fleeTangent = null;
+                    } else {
+                        // TRAPPED IN A CORNER! 
+                        // They calculate a tangent to juke perpendicularly around you.
+                        if (!this.fleeTangent) this.fleeTangent = Math.random() > 0.5 ? 1 : -1;
+                        
+                        let jukeX = awayY * this.fleeTangent;
+                        let jukeY = -awayX * this.fleeTangent;
+                        
+                        // If the juke vector is ALSO blocked by a wall, they panic and charge straight through you to escape!
+                        if (this.checkCollision(maze, this.x + jukeX, this.y + jukeY)) {
+                            this.dirX = -awayX + ((Math.random() - 0.5) * 0.5); // Run back at the player with a slight wobble
+                            this.dirY = -awayY + ((Math.random() - 0.5) * 0.5);
+                        } else {
+                            this.dirX = jukeX;
+                            this.dirY = jukeY;
+                        }
+                    }
                 } else {
+                    // Clear path, run straight away!
                     this.fleeTangent = null; 
-                    this.dirX = awayX + (Math.random() - 0.5) * 0.4; 
-                    this.dirY = awayY + (Math.random() - 0.5) * 0.4;
+                    this.dirX = awayX + (Math.random() - 0.5) * 0.2; // A tiny bit of wobble makes their path harder to predict
+                    this.dirY = awayY + (Math.random() - 0.5) * 0.2;
                 }
             }
 
@@ -3292,9 +3325,12 @@
                 
                 // INCREASING HITBOX TO 1.0: Ensures monsters don't fail to trigger when clipping your tile edge
                 if (distToActualPlayer <= .8) {
-                    
+                    if (this.alignment === 'foe_coward' || this.alignment === 'friendly_shy') {
+                        // Do absolutely nothing! They are too busy running to stop and talk.
+                        // This prevents them from forcibly opening your dialogue UI when running through your tile.
+                    }
                     // 1. FRIENDLY MESSENGERS
-                    if (this.alignment === 'friendly_messenger' && startGame === 'explore') {
+                    else if (this.alignment === 'friendly_messenger' && startGame === 'explore') {
                         this.triggerInteraction(dungeon);
                         this.startDialogue(dungeon); // Force open the UI
                         this.alignment = 'friendly'; 
@@ -16757,6 +16793,8 @@
                     let enemy = this.npcs.find(n => n.index === payload);
                     if (enemy) {
                         this.currentSpeaker = null;
+                        if (typeof btnYes !== 'undefined') btnYes.visible = false;
+                        if (typeof btnNo !== 'undefined') btnNo.visible = false;
                         enemy.customDialogue = null; enemy.dialogueFactory = null;
                         if (typeof startGame !== 'undefined') startGame = 'explore';
                         if (typeof preGame !== 'undefined') preGame = 'explore';
@@ -20419,33 +20457,14 @@
                         break;
                     }
                     
-                    if (Dungeon.currentSpeaker && Dungeon.currentSpeaker.options && Dungeon.currentSpeaker.options[0] === 'Spare') {
-                        Dungeon.summonAlly(Math.floor(Dungeon.currentSpeaker.type));
-                        Dungeon.killNPC(Dungeon.currentSpeaker, true, 'dialogue');
-                        
-                        Dungeon.currentSpeaker = null;
-                        startGame = 'explore';
-                        Dungeon.dCounter = 0;
-                        Dungeon.status = 'normal';
-                        
-                        if (Dungeon.savedViewMode) window.gameViewMode = Dungeon.savedViewMode;
-                        if (Dungeon.savedCameraMode) Dungeon.cameraMode = Dungeon.savedCameraMode;
-                        
-                        Dungeon.saveGame();
-                        btnYes.visible = false;
-                        btnNo.visible = false;
-                        return; 
-                    }
-                    if (Dungeon.currentSpeaker.role === 'portal_invite') {
+                    // --- THE FIX: ADDED NULL-CHECK TO PREVENT CRASHES ---
+                    if (Dungeon.currentSpeaker && Dungeon.currentSpeaker.role === 'portal_invite') {
                         if (typeof socket !== 'undefined') {
                             socket.emit("accept_teleport_invite");
                         }
-                        if (Dungeon.savedViewMode) {
-                            window.gameViewMode = Dungeon.savedViewMode;
-                        }
-                        if (Dungeon.savedCameraMode) {
-                            Dungeon.cameraMode = Dungeon.savedCameraMode;
-                        }
+                        if (Dungeon.savedViewMode) window.gameViewMode = Dungeon.savedViewMode;
+                        if (Dungeon.savedCameraMode) Dungeon.cameraMode = Dungeon.savedCameraMode;
+                        
                         startGame = 'explore';
                         Dungeon.dCounter = 0;
                         Dungeon.status = 'normal';
@@ -20457,21 +20476,27 @@
                         return; 
                     }
                     
+                    // --- THE FIX: DELEGATE TO THE DYNAMIC QUEUE ---
+                    // This effortlessly handles the Mercy 'Spare' logic!
                     if (Dungeon.currentSpeaker && Dungeon.currentSpeaker.yesActions) {
+                        if (typeof btnYes !== 'undefined') btnYes.visible = false;
+                        if (typeof btnNo !== 'undefined') btnNo.visible = false;
                         Dungeon.executeActions(Dungeon.currentSpeaker.yesActions);
                         Dungeon.processNextAction();
-                    } else {
+                    } else if (Dungeon.currentSpeaker) {
+                        if (typeof btnYes !== 'undefined') btnYes.visible = false;
+                        if (typeof btnNo !== 'undefined') btnNo.visible = false;
                         Dungeon.executeActions([['close_dialogue', null]]);
                         Dungeon.processNextAction();
                     }
+                    
                     break;
                     
                 case 2: 
                     if (this.foe === 'pvp_deny') {
                         let targetId = Dungeon.currentSpeaker?.socketId; 
-                        if (targetId) {
-                            socket.emit("battle_action", { targetId: targetId, actionType: "CHALLENGE_REJECTED", payload: {} });
-                        }
+                        if (targetId) socket.emit("battle_action", { targetId: targetId, actionType: "CHALLENGE_REJECTED", payload: {} });
+                        
                         Dungeon.executeActions([['close_dialogue', null]]);
                         socket.emit('suncat_spectate', `player has rejected a PVP challenge. mock them for their cowardice.`);
                         Dungeon.processNextAction(); 
@@ -20480,9 +20505,8 @@
                     
                     if (this.foe === 'pvp_cancel') {
                         let targetId = Dungeon.currentSpeaker?.socketId; 
-                        if (targetId) {
-                            socket.emit("battle_action", { targetId: targetId, actionType: "CHALLENGE_CANCEL", payload: {} });
-                        }
+                        if (targetId) socket.emit("battle_action", { targetId: targetId, actionType: "CHALLENGE_CANCEL", payload: {} });
+                        
                         Dungeon.executeActions([['close_dialogue', null]]);
                         Dungeon.isChallenger = false;
                         socket.emit('suncat_spectate', `player has cancelled their PVP request.`);
@@ -20490,56 +20514,27 @@
                         break;
                     }
 
-                    if (Dungeon.currentSpeaker && Dungeon.currentSpeaker.options && Dungeon.currentSpeaker.options[1] === 'Finish It') {
-                        Dungeon.currentSpeaker.customDialogue = null; 
-                        Dungeon.currentSpeaker.options = null;        
-                        Dungeon.currentSpeaker.rewardCard = null;
-                        Dungeon.currentSpeaker.role = 'battle';
-                        Dungeon.currentSpeaker.alignment = 'foe';
-                        Dungeon.currentSpeaker.state = 'chasing';
-
-                        if (typeof socket !== 'undefined' && socket) {
-                            socket.emit("engage_npc", { 
-                                npcIndex: Dungeon.currentSpeaker.index, 
-                                x: Dungeon.currentSpeaker.x, 
-                                y: Dungeon.currentSpeaker.y 
-                            });
-                        }
-
-                        let enemyToFight = Dungeon.currentSpeaker;
-                        Dungeon.currentSpeaker = null;
-                        Dungeon.dCounter = 0;
-                        
-                        if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('slash');
-                        
-                        enemyToFight.triggerInteraction(Dungeon);
-                        btnYes.visible = false;
-                        btnNo.visible = false;
-                        
-                        if (Dungeon.savedViewMode) window.gameViewMode = Dungeon.savedViewMode;
-                        if (Dungeon.savedCameraMode) Dungeon.cameraMode = Dungeon.savedCameraMode;
-                        return;
-                    }
-                    else if (Dungeon.currentSpeaker.role === 'portal_invite') {
+                    // --- THE FIX: ADDED NULL-CHECK ---
+                    if (Dungeon.currentSpeaker && Dungeon.currentSpeaker.role === 'portal_invite') {
                         startGame = 'explore';
                         Dungeon.dCounter = 0;
                         Dungeon.status = 'normal';
                         Dungeon.killNPC(Dungeon.currentSpeaker, true, 'dialogue'); 
                         Dungeon.currentSpeaker = null;
-                        if (Dungeon.savedViewMode) {
-                            window.gameViewMode = Dungeon.savedViewMode;
-                        }
-                        if (Dungeon.savedCameraMode) {
-                            Dungeon.cameraMode = Dungeon.savedCameraMode;
-                        }
+                        if (Dungeon.savedViewMode) window.gameViewMode = Dungeon.savedViewMode;
+                        if (Dungeon.savedCameraMode) Dungeon.cameraMode = Dungeon.savedCameraMode;
+                        
                         btnYes.visible = false;
                         btnNo.visible = false;
+                        return;
                     }
                     
+                    // --- THE FIX: DELEGATE TO THE DYNAMIC QUEUE ---
+                    // This effortlessly handles the Mercy 'Finish It' logic!
                     if (Dungeon.currentSpeaker && Dungeon.currentSpeaker.noActions) {
                         Dungeon.executeActions(Dungeon.currentSpeaker.noActions);
                         Dungeon.processNextAction();
-                    } else {
+                    } else if (Dungeon.currentSpeaker) {
                         Dungeon.executeActions([
                             ['play_sfx', 'cancel'],
                             ['close_dialogue', null]
@@ -20547,7 +20542,6 @@
                         Dungeon.processNextAction();
                     }
                     break;
-                
                 case 3:
                     if (this.type == 'arrow_left'){
                         if(this.text == 'deck'){
