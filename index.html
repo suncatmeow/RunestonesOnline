@@ -47243,7 +47243,8 @@
         }
     },
     
-    sing(text, startTime, notesArray = [0], rootFreq = 110, targetDuration = 0.25, resonance = 1.0, breathiness = 0.1) {      if (!this.ctx) return;
+    sing(text, startTime, notesArray = [0], rootFreq = 110, targetDuration = 0.25, resonance = 1.0, breathiness = 0.1) {      
+        if (!this.ctx) return;
           if (!window.settingsAudio) return;
           if (this.ctx.state === 'suspended') { this.ctx.resume(); }
 
@@ -47443,10 +47444,11 @@
                     fallback = fallback.replace(/ous\b/g, '@s'); 
                     fallback = fallback.replace(/ed\b/g, 'd');  
                     fallback = fallback.replace(/er\b/g, '@r');  
-
+                    fallback = fallback.replace(/ture\b/g, 'c@r'); // nature -> nEc@r
                     // --- B. Consonant Digraphs & Silent Letters ---
                     fallback = fallback.replace(/kn|gn/g, 'n');  
                     fallback = fallback.replace(/ought|aught/g, 'ot'); // thought/caught -> Tot/kot
+                    fallback = fallback.replace(/g(?=[eiy])/g, 'j'); 
                     fallback = fallback.replace(/wr/g, 'r');     
                     fallback = fallback.replace(/mb\b/g, 'm');   
                     fallback = fallback.replace(/ph/g, 'f');     
@@ -47500,7 +47502,6 @@
                     fallback = fallback.replace(/y/g, '1'); 
 
                     // --- G. Tricky Consonants & Final Cleanup ---
-                    fallback = fallback.replace(/g(?=[eiy])/g, 'j'); 
                     fallback = fallback.replace(/([bdfgklmnprstvz])\1/g, '$1'); 
                     fallback = fallback.replace(/le\b/g, '@l');  // battle -> bat@l
                     fallback = fallback.replace(/e\b/g, ''); 
@@ -64766,8 +64767,8 @@
             this.isFetching = false;
             this.lastMelodyDegree = 0; // Remembers the pitch for vocals
             // --- 1. THE LYRE TUNING ---
-            this.tempo = 90; 
-            this.targetTempo = 90; 
+            this.tempo = 30; 
+            this.targetTempo = 30; 
             this.baseFreq = 136.9; // Anchor frequency (approx D3)
             this.rootFreq = this.baseFreq; 
             this.currentKeyOffset = 0; // Tracks our current semitone shift (0-11)
@@ -64778,19 +64779,10 @@
             this.fingersQueue = []; 
             this.strumQueue = [];   
             this.melodyMemory = []; 
-            this.lyricsQueue = ["-", "-"];
-            this.vocalQueue = new Array(32).fill(null);
+            this.lyricsQueue = [];
+            this.vocalQueue = []
             this.lyricMemory = []; // <-- NEW: Tracks recent lyrics
-            for(let i=0; i<32; i++) {
-                this.thumbQueue.push(i % 16 === 0 ? 0 : null); 
-                this.strumQueue.push(i === 0 ? 0 : null);
-                if (i % 2 === 0) {
-                    const arp = [0, 2, 4, 7, 4, 2];
-                    this.fingersQueue.push(arp[(i/2) % arp.length]);
-                } else {
-                    this.fingersQueue.push(null);
-                }
-            }
+            
 
             // --- 3. THE ACOUSTIC SPACE ---
             this.tick = 0;
@@ -64821,9 +64813,10 @@
             
             this.limiter.connect(this.dest);
 
-            this.start();
             if (typeof socket !== 'undefined') {
-                this.composeNext(); 
+                this.composeNext(); // This will fetch the first bar and trigger start() when it arrives
+            } else {
+                this.start(); // Failsafe fallback if offline
             }
         }
       modulateRandomly() {
@@ -64894,6 +64887,11 @@
                 clearTimeout(unlockTimer); 
                 if (aiMusicTags) {
                     this.parseAiResponse(aiMusicTags);
+                    
+                    // --- NEW: If this is the very first bar, wake up the engine now! ---
+                    if (!this.isPlaying && this.vocalQueue.length > 0) {
+                        this.start();
+                    }
                 }
                 this.isFetching = false; 
             });
@@ -64916,7 +64914,9 @@
             const uiString = (lyricsUI && lyricsUI !== '-' && lyricsUI !== '') ? lyricsUI : "";
             const phoneticString = (lyricsPhonetic && lyricsPhonetic !== '-' && lyricsPhonetic !== '') ? lyricsPhonetic : "";
 
-            this.lyricsQueue.push(uiString);
+            let textBarArr = new Array(16).fill(null);
+            textBarArr[0] = uiString; 
+            this.lyricsQueue.push(...textBarArr); // Stays perfectly 1:1 with vocalQueue length!
 
             if (uiString !== "") {
                 this.lyricMemory.push(uiString);
@@ -64933,18 +64933,23 @@
             // Create a persistent measure counter so the engine knows where it is in the song
             this.measureCounter = (this.measureCounter || 0) + 1;
 
-            // --- THE MOTIF LIBRARY ---
-            // A collection of different arpeggio shapes to break the monotony
-            const arpeggios = [
-                [0, 2, 4, 7, 4, 2],       // 0: Classic Ascend & Descend
-                [0, 4, 7, 9, 7, 4],       // 1: Wide & Airy (Xianxia/Mystic feel)
-                [7, 4, 2, 0, 2, 4],       // 2: Falling Cascade
-                [0, 2, 0, 4, 0, 7],       // 3: Pedal Point (Bouncing off the root note)
-                [0, 7, 4, 7, 9, 7],       // 4: High Register Reach
-                [0, 2, 4, 5, 7, 4]        // 5: Tense/Building
-            ];
+            // --- DYNAMICALLY GENERATED RANDOM MOTIF LIBRARY ---
+            // We create 6 unique arpeggio sets, each with a completely random length and random notes
+            const arpeggios = [];
+            for (let a = 0; a < 6; a++) {
+                const randomPattern = [];
+                
+                // Pick a random length for this specific arpeggio (e.g., between 3 and 6 notes)
+                const randomLength = Math.floor(Math.random() * 4) + 3; // 3, 4, 5, or 6
+                
+                for (let p = 0; p < randomLength; p++) {
+                    // Generates an integer from 0 to 12 inclusive
+                    randomPattern.push(Math.floor(Math.random() * 13)); 
+                }
+                arpeggios.push(randomPattern);
+            }
 
-            // Pick a motif. We divide by 2 so it holds a pattern for 2 measures before switching.
+            // Pick a motif. Holds for 2 measures before switching.
             const motifIndex = Math.floor(this.measureCounter / 2) % arpeggios.length;
             const currentArp = arpeggios[motifIndex];
 
@@ -64966,11 +64971,15 @@
 
                 // --- ACCOMPANIMENT (STRUM) ---
                 // Heavy strum on beat 1. 
-                if (i === 0) strumArr[i] = 0;
-                
-                // Add a syncopated strum at the end of every 2nd measure to lead into the next bar
-                if (this.measureCounter % 2 === 0 && i === 10) {
-                    strumArr[i] = 4; // Strum the 5th interval for a subtle lift
+                if (i === 0) {
+                    // 80% chance to strum the downbeat, otherwise leave a ghostly silence
+                    if (Math.random() < 0.8) {
+                        // 30% chance to absolutely rip into a 'hard' aggressive strum
+                        strumArr[i] = Math.random() < 0.3 ? 0 : Math.floor(Math.random() * 5);
+                    }
+                } else if (i % 4 === 0 && Math.random() < 0.15) {
+                    // Rare chance to drop random mid-bar syncopated strums
+                    strumArr[i] = Math.floor(Math.random() * 7);
                 }
             }
 
@@ -65078,6 +65087,20 @@
             if (this.thumbQueue.length < 64 && !this.isFetching) {
                 this.composeNext();
             }
+            // Every 16 ticks (1 bar), subtly morph the reverb tail and master volume
+            if (this.tick % 16 === 0) {
+                const now = this.ctx.currentTime;
+                
+                // Reverb gain floats unpredictably between 0.35 (drier) and 0.75 (drenched in echoes)
+                const randomReverbMix = 0.35 + (Math.random() * 0.40);
+                this.revGain.gain.cancelScheduledValues(now);
+                this.revGain.gain.linearRampToValueAtTime(randomReverbMix, now + 2.0);
+                
+                // Subtle volume breathing so the spirit feels dynamic
+                const dynamicMaster = 0.55 + (Math.random() * 0.20);
+                this.master.gain.cancelScheduledValues(now);
+                this.master.gain.linearRampToValueAtTime(dynamicMaster, now + 1.5);
+            }
         }
       scheduleNote(tick, t) {
         const thumbNote = this.thumbQueue.length > 0 ? this.thumbQueue.shift() : null;
@@ -65086,99 +65109,159 @@
         const vocalSyllable = this.vocalQueue.length > 0 ? this.vocalQueue.shift() : null;
 
         // 1. PLAY THE LYRE MELODY
-        if (fingerNote !== null && typeof fingerNote === 'number' && !isNaN(fingerNote)) {
-            this.lastMelodyDegree = fingerNote; // Suncat listens to this note
-            const oct = (fingerNote > 7) ? 1 : 0; 
-            const swing = (Math.random() * 0.02); 
-            this.playHarpString(t + swing, fingerNote, oct, 2.5, 0.4, 'soft'); 
-        }
+            if (fingerNote !== null && typeof fingerNote === 'number' && !isNaN(fingerNote)) {
+                this.lastMelodyDegree = fingerNote; 
+                const oct = (fingerNote > 7) ? 1 : 0; 
+                
+                // Expand the human swing factor: sometimes right on time, sometimes deeply lazy
+                const swing = (Math.random() * Math.random() * 0.04); 
+                
+                // Dynamic velocities make the melody breathe
+                const dynamicVelocity = 0.2 + (Math.random() * 0.35); 
+                
+                this.playHarpString(t + swing, fingerNote, oct, 2.5, dynamicVelocity, 'soft'); 
+
+                // --- GHOST NOTE GENERATION ---
+                // 15% chance to brush a chaotic neighboring string slightly delayed and whisper quiet
+                if (Math.random() < 0.15) {
+                    const ghostDegree = (fingerNote + (Math.random() < 0.5 ? 1 : -1) + 13) % 13;
+                    this.playHarpString(t + swing + 0.04, ghostDegree, oct, 1.0, dynamicVelocity * 0.2, 'soft');
+                }
+            }
 
         // 2. PLAY ACCOMPANIMENT
-        if (strumNote !== null && typeof strumNote === 'number' && !isNaN(strumNote)) {
-            this.strumChord(t, strumNote);
-        }
-        if (thumbNote !== null && typeof thumbNote === 'number' && !isNaN(thumbNote)) {
-            this.playHarpString(t, thumbNote, -1, 3.0, 0.6, 'soft'); 
-        }
+            if (strumNote !== null && typeof strumNote === 'number' && !isNaN(strumNote)) {
+                this.strumChord(t, strumNote);
+            }
+            if (thumbNote !== null && typeof thumbNote === 'number' && !isNaN(thumbNote)) {
+                this.playHarpString(t, thumbNote, -1, 3.0, 0.6, 'soft'); 
+            }
 
         // 3. UI EVENT: Display the lyrics
-        if (tick % 16 === 0 && this.lyricsQueue.length > 0) {
-            const currentLyric = this.lyricsQueue.shift();
-            if (currentLyric !== "") {
-                const cleanLyric = currentLyric.replace(/-/g, '');
-                console.log(`%c[Suncat Sings] 🎵 "${cleanLyric}"`, 'color: #00e6e6; font-size: 16px; font-weight: bold;');
-                document.dispatchEvent(new CustomEvent('suncat_lyrics', { detail: cleanLyric }));
+            const currentLyric = this.lyricsQueue.length > 0 ? this.lyricsQueue.shift() : null;
+
+            if (currentLyric && currentLyric !== "") {
+                // Strip dashes, AND aggressively strip any rogue brackets
+                const cleanLyric = currentLyric.replace(/-/g, '').replace(/[\[\]]/g, '').trim();
+                const delayInMs = Math.max(0, (t - this.ctx.currentTime) * 1000);
+                
+                // Only fire the event if there is actual text left to sing
+                if (cleanLyric.length > 0) {
+                    setTimeout(() => {
+                        console.log(`%c[Suncat Sings] 🎵 "${cleanLyric}"`, 'color: #00e6e6; font-size: 16px; font-weight: bold;');
+                        document.dispatchEvent(new CustomEvent('suncat_lyrics', { detail: cleanLyric }));
+                    }, delayInMs);
+                }
             }
+
+        //// --- MOZART SEATS HIMSELF AT THE STRINGS ---
+        // "A song must have a heartbeat! Watch how I drive the harmony!"
+         const measure = Math.floor(tick / 16);
+            const secondsPerBeat = 60.0 / this.tempo;
+        if (tick % 8 === 0) {
+            // On the strong beats, Mozart plays the Root chord.
+            // He plays it short and dignified (1.5 beats long)
+            //this.playAmadeusStrings(t, rnd(0,11), secondsPerBeat * 1.5);
+            
+        } else if (tick % 8 === 4) {
+            // On the weak beats, he answers with the 5th degree (Dominant)
+            // This creates a continuous, breathing classical tension/resolution.
+            this.playAmadeusStrings(t, rnd(0,11), secondsPerBeat * 1.5);
         }
 
+        // --- BACH RAISES HIS FLUTE ---
+        // "I care not for your chords, Wolfgang. I care for the spaces between the notes."
+        // Bach waits for the 8th note off-beats (tick % 2 !== 0), but ONLY if the harp is silent.
+        if (tick % 2 !== 0 && fingerNote === null) {
+            
+            // He only plays occasionally (25% chance) so as not to crowd the soloist
+            if (Math.random() < 0.25) {
+                let base = this.lastMelodyDegree || 0;
+                
+                // The speed of the trill (very fast, 32nd notes)
+                const trillSpeed = secondsPerBeat * 0.15; 
+                
+                // Bach executes a perfect classical 'Mordent' (Base -> Upper Neighbor -> Base)
+                this.playJohannFlute(t, base, trillSpeed);
+                this.playJohannFlute(t + trillSpeed, base + 1, trillSpeed);
+                // The final note is held longer with grace
+                this.playJohannFlute(t + (trillSpeed * 2), base, secondsPerBeat); 
+            }
+        }
         // --- NEW: MACRO TIMING FOR VOCAL ARRANGEMENT ---
-        const measure = Math.floor(tick / 16);
-        const secondsPerBeat = 60.0 / this.tempo;
-        
+           
+            
        
 
         // --- 5. CALL AND RESPONSE (The 16-Bar Macro Arrangement) ---
-        if (vocalSyllable && typeof MusicEngine !== 'undefined' && typeof MusicEngine.sing === 'function') {
-            
-            // --- RANGE ENFORCERS ---
-            // A universal function to keep Suncat's voice in specific pockets
-            const constrainRange = (semi, minFreq, maxFreq) => {
-                let currentSemi = semi;
-                let currentFreq = this.rootFreq * Math.pow(2, currentSemi / 12);
-                while (currentFreq < minFreq) { currentSemi += 12; currentFreq = this.rootFreq * Math.pow(2, currentSemi / 12); }
-                while (currentFreq > maxFreq) { currentSemi -= 12; currentFreq = this.rootFreq * Math.pow(2, currentSemi / 12); }
-                return currentSemi;
-            };
-
-            // Standard Tenor: ~E3 to A4
-            const constrainToTenor = (semi) => constrainRange(semi, 163.91, 369.1); 
-            // The Climax (High Solo): ~C4 to C5 (Soars above the A4 cap)
-            const constrainToHigh = (semi) => constrainRange(semi, 369.1, 613.91);
-
-            // --- DIATONIC HARMONY HELPER ---
-            const getDiatonic = (baseDegree, interval) => {
-                let targetD = baseDegree + interval;
-                let oct = 0;
-                while (targetD < 0) { targetD += this.scale.length; oct -= 1; }
-                while (targetD >= this.scale.length) { targetD -= this.scale.length; oct += 1; }
-                return this.scale[targetD] + (oct * 12);
-            };
-
-            let d = parseInt(this.lastMelodyDegree);
-            if (isNaN(d)) d = 0;
-            const tickDuration = secondsPerBeat * 0.25; 
-
-            let ticksUntilNext = 1;
-            for (let i = 0; i < this.vocalQueue.length; i++) {
-                if (this.vocalQueue[i] !== null) { ticksUntilNext = i + 1; break; }
-            }
-            if (ticksUntilNext === 1 && this.vocalQueue[0] === null) ticksUntilNext = 4; 
-            const targetDuration = Math.min(ticksUntilNext * tickDuration, secondsPerBeat * 1.5);
-
-            // --- THE 16-BAR MACRO STRUCTURE ---
-            // measure cycles from 0 to 15. 
-            const lineInSong = measure % 16; 
-
-            // Helper function to fire the 3-part Chorus
-            const fireChorus = () => {
-                let semiRoot = constrainToTenor(getDiatonic(d, 0));
-                let semiThird = constrainToHigh(getDiatonic(d, 2));
-                let semiFifth = constrainToHigh(getDiatonic(d, 4));
-                if(Math.random()>.910613){semiRoot = constrainToHigh(getDiatonic(d, rnd(0,12)));}
-                if(Math.random()>.910613){semiThird = constrainToHigh(getDiatonic(d, rnd(0,12)));}
-                if(Math.random()>.910613){semiFifth = constrainToHigh(getDiatonic(d, rnd(0,12)));}
-                MusicEngine.sing(vocalSyllable, t, [semiRoot], this.rootFreq, targetDuration, 0.95, 0.2);
-                MusicEngine.sing(vocalSyllable, t + 0.022, [semiThird], this.rootFreq, targetDuration, 0.85, 0.25);
-                MusicEngine.sing(vocalSyllable, t + 0.047, [semiFifth], this.rootFreq, targetDuration, 0.75, 0.35);
-            };
-
-            // Helper function to fire the Solo
-            const fireSolo = () => {
+            if (vocalSyllable && typeof MusicEngine !== 'undefined' && typeof MusicEngine.sing === 'function') {
                 
-                let semiLead = constrainToTenor(getDiatonic(d, 0));
-                if(Math.random()>.61391){semiLead = constrainToHigh(getDiatonic(d, rnd(0,12)));}
-                MusicEngine.sing(vocalSyllable, t, [semiLead], this.rootFreq, targetDuration, 1.3, 0.1);
-            };
+                // --- RANGE ENFORCERS ---
+                // A universal function to keep Suncat's voice in specific pockets
+                const constrainRange = (semi, minFreq, maxFreq) => {
+                    let currentSemi = semi;
+                    let currentFreq = this.rootFreq * Math.pow(2, currentSemi / 12);
+                    while (currentFreq < minFreq) { currentSemi += 12; currentFreq = this.rootFreq * Math.pow(2, currentSemi / 12); }
+                    while (currentFreq > maxFreq) { currentSemi -= 12; currentFreq = this.rootFreq * Math.pow(2, currentSemi / 12); }
+                    return currentSemi;
+                };
+
+                // Standard Tenor: ~E3 to A4
+                const constrainToTenor = (semi) => constrainRange(semi, 163.91, 369.1); 
+                // The Climax (High Solo): ~C4 to C5 (Soars above the A4 cap)
+                const constrainToHigh = (semi) => constrainRange(semi, 369.1, 613.91);
+
+                // --- DIATONIC HARMONY HELPER ---
+                const getDiatonic = (baseDegree, interval) => {
+                    let targetD = baseDegree + interval;
+                    let oct = 0;
+                    while (targetD < 0) { targetD += this.scale.length; oct -= 1; }
+                    while (targetD >= this.scale.length) { targetD -= this.scale.length; oct += 1; }
+                    return this.scale[targetD] + (oct * 12);
+                };
+
+                let d = parseInt(this.lastMelodyDegree);
+                if (isNaN(d)) d = 0;
+                const tickDuration = secondsPerBeat * 0.25; 
+
+                let ticksUntilNext = 1;
+                for (let i = 0; i < this.vocalQueue.length; i++) {
+                    if (this.vocalQueue[i] !== null) { ticksUntilNext = i + 1; break; }
+                }
+                if (ticksUntilNext === 1 && this.vocalQueue[0] === null) ticksUntilNext = 4; 
+                const targetDuration = Math.min(ticksUntilNext * tickDuration, secondsPerBeat * 1.5);
+
+                // --- THE 16-BAR MACRO STRUCTURE ---
+                // measure cycles from 0 to 15. 
+                const lineInSong = measure % 16; 
+
+                // Helper function to fire the 3-part Chorus
+                const fireChorus = () => {
+                    let semiRoot = constrainToHigh(getDiatonic(d, 0));
+                    let semiThird = constrainToHigh(getDiatonic(d, 2));
+                    let semiFifth = constrainToHigh(getDiatonic(d, 4));
+                    
+                    if (Math.random() > 0.910613) { semiRoot = constrainToTenor(getDiatonic(d, rnd(0, 11))); }
+                    if (Math.random() > 0.910613) { semiThird = constrainToTenor(getDiatonic(d, rnd(0, 11))); }
+                    if (Math.random() > 0.910613) { semiFifth = constrainToTenor(getDiatonic(d, rnd(0, 11))); }
+                    
+                    // 1. THE LEAD VOICE (Strong, centered, sharp resonance)
+                    MusicEngine.sing(vocalSyllable, t, [semiRoot], this.rootFreq, targetDuration, 1.0, 0.15);
+                    
+                    // 2. THE THIRD (Softer, slightly rounded resonance, slightly delayed for a wider stereo feel)
+                    MusicEngine.sing(vocalSyllable, t + 0.025, [semiThird], this.rootFreq, targetDuration, 0.85, 0.25);
+                    
+                    // 3. THE FIFTH (Softest, dark/warm resonance, widened delay)
+                    MusicEngine.sing(vocalSyllable, t + 0.048, [semiFifth], this.rootFreq, targetDuration, 0.70, 0.35);
+                };
+
+                // Helper function to fire the Solo
+                const fireSolo = () => {
+                    
+                    let semiLead = constrainToTenor(getDiatonic(d, 0));
+                    if(Math.random()>.61391){semiLead = constrainToHigh(getDiatonic(d, rnd(0,12)));}
+                    MusicEngine.sing(vocalSyllable, t, [semiLead], this.rootFreq, targetDuration, 1.3, 0.1);
+                };
 
             // --- ROUTING THE SECTIONS ---
             if (lineInSong >= 0 && lineInSong < 6) {
@@ -65304,6 +65387,78 @@
                 g.disconnect();
             };
         }
+      // --- HERR MOZART'S STRINGS (The Rhythmic Pulse) ---
+        playAmadeusStrings(t, rootDegree, duration) {
+            // Mozart uses a mix of sawtooth for classical "bite" and sine for warmth
+            const voicings = [0, 4]; // Root and Fifth (Clean, open classical harmony)
+            
+            voicings.forEach(interval => {
+                const freq = this.getFreq(rootDegree + interval, 0);
+                if (!isFinite(freq)) return;
+
+                const osc = this.ctx.createOscillator();
+                const filter = this.ctx.createBiquadFilter();
+                const g = this.ctx.createGain();
+
+                osc.type = 'sawtooth'; 
+                osc.frequency.setValueAtTime(freq, t);
+
+                // Mozart's Bowing Technique (The Filter Envelope)
+                // It starts dark, opens up instantly to simulate the "scrape" of the bow, then settles
+                filter.type = 'lowpass';
+                filter.frequency.setValueAtTime(400, t); 
+                filter.frequency.exponentialRampToValueAtTime(1800, t + 0.05); 
+                filter.frequency.exponentialRampToValueAtTime(800, t + duration); 
+
+                // The Volume Envelope: A clear, distinct pulse rather than a washed-out drone
+                g.gain.setValueAtTime(0, t);
+                g.gain.linearRampToValueAtTime(0.09, t + 0.05); // Quick, confident attack
+                g.gain.exponentialRampToValueAtTime(0.001, t + duration); // Elegant decay
+
+                osc.connect(filter);
+                filter.connect(g);
+                g.connect(this.master); // Sent to the master mix so you can actually hear him!
+
+                osc.start(t);
+                osc.stop(t + duration);
+
+                osc.onended = () => {
+                    osc.disconnect(); filter.disconnect(); g.disconnect();
+                };
+            });
+        }
+
+        // --- HERR BACH'S FLUTE (The Strict Ornament) ---
+        playJohannFlute(t, degree, duration) {
+            const freq = this.getFreq(degree, 2); // Octave 2, piercing and clear
+            if (!isFinite(freq)) return;
+
+            const osc = this.ctx.createOscillator();
+            const filter = this.ctx.createBiquadFilter();
+            const g = this.ctx.createGain();
+
+            osc.type = 'sine'; // Pure and uncorrupted
+            osc.frequency.setValueAtTime(freq, t);
+
+            filter.type = 'lowpass';
+            filter.frequency.setValueAtTime(3000, t); 
+
+            g.gain.setValueAtTime(0, t);
+            g.gain.linearRampToValueAtTime(0.18, t + 0.03); // Fast, articulate attack
+            g.gain.linearRampToValueAtTime(0.001, t + duration); 
+
+            osc.connect(filter);
+            filter.connect(g);
+            g.connect(this.reverb); // Bathed in the acoustics of the cathedral
+
+            osc.start(t);
+            osc.stop(t + duration);
+
+            osc.onended = () => {
+                osc.disconnect(); filter.disconnect(); g.disconnect();
+            };
+        }
+      //
       }
 
 
