@@ -2516,6 +2516,29 @@
     // --- THE BARDIC GRIMOIRE ---
     const BARDIC_TALES = [
         // ==========================================================
+        // AGE: THE FORBIDDEN ARTS (The Roots of Sorcery and Awakening)
+        // ==========================================================
+            { 
+                title: "The Utterance of the First Tone (The Logos)",
+                arc: "Before light or matter, there was only a vast, empty silence. Then, a single, vibrating Tone was struck in the dark. That sound froze into light, and the light froze into stone. The sorcerer who learns to sing that ancient tone backward can unmake reality itself. Themes: Absolute silence, vibrating tones, frozen light, unmaking the world, the spoken word."
+            },
+            {
+                title: "The Carving of the Emerald Tablet",
+                arc: "A hooded figure known as Thoth-Hermes carves the ultimate truth of the universe into a slab of green stone with a diamond tip: 'As above, so below.' It contains the secret to separate the subtle from the gross, and the fire from the earth, granting the power to transmute the soul of a mortal man into immortal gold. Themes: Green stone, diamond quills, celestial fire, awakening the sleeping gold, alchemy."
+            },
+            {
+                title: "The Descent at Mount Hermon (The Watchers)",
+                arc: "Two hundred beings of blinding celestial light descend upon the icy peak of Mount Hermon, abandoning the heavens to teach mankind the forbidden arts. They whisper the secrets of root-cutting, the reading of the stars, and the forging of iron, awakening a terrible, magical fire in mortal blood. Themes: Falling stars, forbidden whispers, iron and roots, angelic rebellion, hidden knowledge."
+            },
+            {
+                title: "The Theft of the Secret Name",
+                arc: "The greatest sorceress molds a serpent out of the dust to strike the aging sun god. As he burns from the venom, he is forced to whisper his one, true, unpronounceable Name to her to be healed, transferring the ultimate magic of the universe into human hands. Themes: Dust serpents, burning venom, whispered names, ultimate sorcery, stealing divine power."
+            },
+            {
+                title: "The Slumbering Serpent of the Spine",
+                arc: "Deep within the dark cavern of the human body, a coiled serpent of raw cosmic fire sleeps. When the breath is stilled and the mind sharpened to a diamond point, the serpent awakens, rushing violently upward to shatter the crown and flood the mortal mind with blinding, divine consciousness. Themes: Coiled serpents, rushing fire, shattered crowns, breath control, cosmic awakening."
+            },
+        // ==========================================================
         // AGE I: PROTO-INDO-EUROPEAN (The Dawn of Language)
         // ==========================================================
             { 
