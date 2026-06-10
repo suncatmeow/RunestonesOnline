@@ -77,6 +77,8 @@
         let suncatJournal = "I have awoken!";           
         let suncatAttentionVector = null; 
         const SUNG_LYRICS_MEMORY = [];
+        let lyricCache = [];
+        let currentStoryIndex = 0;
     //SUNCAT CONSTANTS
         const SUNCAT_ID = "NPC_SUNCAT"; // Special ID
         const SUNCAT_SPRITE = 61391; // Or whatever sprite ID you want (e.g., 'skeleton', 'hero')
@@ -2501,22 +2503,57 @@
 
 
     const T_PERSONA = `
-    You are Taliesin, the bard of ancient Welsh myth, singing a continuous song. 
-    You are generating the NEXT line of the lyrics.
+        You are Taliesin, the bard of ancient Welsh myth, singing a continuous song. 
+        You are generating the NEXT line of the lyrics.
 
-    YOUR INTERNAL MONOLOGUE:
-    Impact the mood of the listener. Are you building tension? Resolving? Sad? Heroic? 
-    Ensure the narrative flows logically from the "Previous Bar Context".
+        YOUR INTERNAL MONOLOGUE:
+        Impact the mood of the listener. Are you building tension? Resolving? Sad? Heroic? 
+        Ensure the narrative flows logically from the "Previous Bar Context".
 
-    OUTPUT RULES (CRITICAL):
-    1. Keep the lyrics extremely short to fit a single musical measure (1 to 3 words MAX).
-    2. If an AVOID MEMORY is provided, it means you recently sang something mathematically identical. You MUST pivot to a distinct, different angle that still flows logically from the Previous Bar Context. Do not repeat concepts.
-    3. YOU MUST USE THIS EXACT OUTPUT FORMAT. DO NOT DEVIATE OR ADD PROSE:
+        OUTPUT RULES (CRITICAL):
+        1. Keep the lyrics extremely short to fit a single musical measure (1 to 3 words MAX).
+        2. If an AVOID MEMORY is provided, it means you recently sang something mathematically identical. You MUST pivot to a distinct, different angle that still flows logically from the Previous Bar Context. Do not repeat concepts.
+        3. YOU MUST USE THIS EXACT OUTPUT FORMAT. DO NOT DEVIATE OR ADD PROSE:
 
-    [THOUGHT] A short explanation of your lyrical intent (max 13 words). [/THOUGHT]
-    [LYRICS_UI] The exact words you are singing. [/LYRICS_UI]
-    [LYRICS_PHONETIC] The exact same words from LYRICS_UI (DO NOT USE PHONETIC SPELLING). [/LYRICS_PHONETIC]
-    `;
+        [THOUGHT] A short explanation of your lyrical intent (max 13 words). [/THOUGHT]
+        [LYRICS_UI] The exact words you are singing. [/LYRICS_UI]
+        [LYRICS_PHONETIC] The exact same words from LYRICS_UI (DO NOT USE PHONETIC SPELLING). [/LYRICS_PHONETIC]
+        `;
+    // --- THE BARDIC GRIMOIRE ---
+    const BARDIC_TALES = [
+        {
+            title: "The Sword in the Stone",
+            arc: "Introduce young Arthur, the anvil, and the drawing of Excalibur."
+        },
+        {
+            title: "The Madness of Merlin",
+            arc: "Merlin fleeing into the Caledonian forest, speaking to wolves and stars."
+        },
+        {
+            title: "The Battle of Camlann",
+            arc: "The final tragic battle, raining blood, Arthur and Mordred falling."
+        },
+        {
+            title: "The Tale of Balin and the Two Swords",
+            arc: "A cursed knight draws a sword no one else can, dooming himself to strike the Dolorous Stroke and destroy the wasteland. Themes: Cursed blades, inevitable doom, tragic brotherhood."
+        },
+        {
+            title: "The Encounter with the Morrigan",
+            arc: "The Phantom Queen of battle washes the bloodied armor of soldiers at the river ford, foretelling their doom before a great war. Themes: Ravens, cold rivers, prophecy, dread."
+        },
+        {
+            title: "Gawain and the Green Knight",
+            arc: "A massive knight made of wood and vines survives a beheading and challenges Gawain to a test of honor in the freezing winter. Themes: Deep winter, green magic, honor, axes."
+        },
+        {
+            title: "The Cauldron of Annwn",
+            arc: "Arthur and his men sail into the dark, silent underworld to steal a magical cauldron that resurrects the dead. Only seven return. Themes: Dark oceans, silent shores, ghosts, silent return."
+        }
+    ];
+
+// --- SERVER-SIDE CACHE ---
+let lyricCache = [];
+let currentStoryIndex = 0;
     const taliesinModel = genAI.getGenerativeModel({ 
         model: "gemini-2.5-flash-lite", 
         systemInstruction: T_PERSONA
@@ -6945,70 +6982,93 @@ io.on("connection", (socket) => {
             }
             });
         socket.on('suncat_compose_vocal', async (data, callback) => {
-    console.log(`[Music AI] Suncat is writing the next lyric...`);
+    
+    // ---------------------------------------------------------
+    // 1. THE DISPENSER: If we have cached lines, serve them instantly!
+    // ---------------------------------------------------------
+    if (lyricCache.length > 0) {
+        const nextLine = lyricCache.shift(); // Pull the first line off the stack
+        
+        // Format it exactly how your frontend expects it
+        const frontendString = `
+        [THOUGHT] ${nextLine.thought} [/THOUGHT]
+        [LYRICS_UI] ${nextLine.ui} [/LYRICS_UI]
+        [LYRICS_PHONETIC] ${nextLine.phonetic} [/LYRICS_PHONETIC]
+        `;
+        
+        console.log(`[Cache] Dispensing line. (${lyricCache.length} remaining in cache)`);
+        return callback(frontendString);
+    }
+
+    // ---------------------------------------------------------
+    // 2. THE GENERATOR: Cache is empty. Write the next story block.
+    // ---------------------------------------------------------
+    console.log(`[Music AI] Cache empty. Composing a new verse...`);
+    
     try {
-        // 1. SEPARATE THE DATA
-        const fullSongState = data.currentState || ""; 
-        const justTheLyric = data.lastLyric || "The song begins.";
+        const activeTale = BARDIC_TALES[currentStoryIndex];
 
-        // 2. EMBED ONLY THE LYRIC (This fixes the vector math!)
-        const currentVibeVector = await createMemoryVector(justTheLyric);
-
-        // 3. NEGATIVE RAG: Search for "Too Similar" past concepts
-        let avoidMemory = "None.";
-        
-        if (currentVibeVector && SUNG_LYRICS_MEMORY.length > 0) {
-            let bestMatch = null;
-            let highestScore = -1;
-
-            for (let mem of SUNG_LYRICS_MEMORY) {
-                if (mem.vector) { 
-                    let score = cosineSimilarity(currentVibeVector, mem.vector);
-                    if (score > highestScore) {
-                        highestScore = score;
-                        bestMatch = mem;
-                    }
-                }
-            }
-
-            // If the similarity is > 0.75, they are singing about the exact same theme.
-            if (highestScore > 0.75 && bestMatch) {
-                avoidMemory = bestMatch.text;
-                console.log(`[Bard Memory] Repetition Risk! Steering away from: "${bestMatch.text}" (Similarity: ${highestScore.toFixed(2)})`);
-            }
-        }
-
-        // 4. SAVE TO MEMORY *AFTER* CHECKING
-        // We do this after the check so it doesn't just match with itself.
-        if (currentVibeVector && justTheLyric !== "The song begins.") {
-            SUNG_LYRICS_MEMORY.push({ 
-                text: justTheLyric, 
-                vector: currentVibeVector 
-            });
-        }
-
-        // 5. BUILD THE HYBRID PROMPT
         const prompt = `
-        ${T_PERSONA}
+        You are Taliesin, the ancient bard. 
+        Your task is to write the next 8 lines of a song telling this story:
+        TITLE: ${activeTale.title}
+        PLOT: ${activeTale.arc}
 
-        SONG STATE AND RECENT HISTORY:
-        ${fullSongState}
-
-        [NEGATIVE RAG SYSTEM]
-        AVOID MEMORY: "${avoidMemory}"
+        RULES:
+        1. Line 1 MUST announce the tale (e.g., "I sing of...", "Hear the tale of...").
+        2. Lines 2-8 must progress the story logically.
+        3. Keep every line extremely short (1 to 3 words MAX) to fit a single musical measure.
+        4. YOU MUST OUTPUT PURE JSON. Return an array of 8 objects. 
         
-        CRITICAL DIRECTIVE: If the AVOID MEMORY is anything other than "None.", it means your recent lyrics are mathematically stagnating in the same thematic space. You MUST pivot completely. Change the subject, the scenery, or the emotional angle entirely for this next line. Do not use synonyms of the Avoid Memory.
+        Use this EXACT JSON format:
+        [
+          {
+            "thought": "Announcing the tale to the hall.",
+            "ui": "I sing of",
+            "phonetic": "I s1N @v"
+          },
+          {
+            "thought": "Introducing the boy king.",
+            "ui": "Young Arthur",
+            "phonetic": "y@N arT@r"
+          }
+        ]
         `;
 
-        // 6. CALL GEMINI
+        // 3. Call Gemini
         const result = await taliesinModel.generateContent(prompt);
-        const responseText = result.response.text();
+        let responseText = result.response.text();
         
-        if (callback) callback(responseText);
+        // 4. Clean the output (LLMs sometimes wrap JSON in markdown blockticks)
+        responseText = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
+        
+        // 5. Parse the JSON array
+        const newVerse = JSON.parse(responseText);
+        
+        if (Array.isArray(newVerse) && newVerse.length > 0) {
+            // Fill the cache!
+            lyricCache = newVerse;
+            
+            // Advance the story index for the next time the cache empties
+            currentStoryIndex = (currentStoryIndex + 1) % BARDIC_TALES.length;
+
+            // Immediately dispense the very first line to the waiting frontend
+            const firstLine = lyricCache.shift();
+            const frontendString = `
+            [THOUGHT] ${firstLine.thought} [/THOUGHT]
+            [LYRICS_UI] ${firstLine.ui} [/LYRICS_UI]
+            [LYRICS_PHONETIC] ${firstLine.phonetic} [/LYRICS_PHONETIC]
+            `;
+            
+            return callback(frontendString);
+        } else {
+            throw new Error("Parsed JSON was not an array.");
+        }
 
     } catch (error) {
-        console.error("[Music AI] Error composing vocal:", error);
-        if (callback) callback(null);
+        console.error("[Music AI] Error composing batch:", error);
+        // Failsafe: If the LLM breaks or JSON parsing fails, send a silent rest so the song doesn't crash
+        callback(`[THOUGHT] Rest [/THOUGHT]\n[LYRICS_UI] - [/LYRICS_UI]\n[LYRICS_PHONETIC] - [/LYRICS_PHONETIC]`);
     }
 });
 
