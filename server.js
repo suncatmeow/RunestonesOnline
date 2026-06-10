@@ -6945,74 +6945,72 @@ io.on("connection", (socket) => {
             }
             });
         socket.on('suncat_compose_vocal', async (data, callback) => {
-            console.log(`[Music AI] Suncat is writing the next lyric...`);
-            try {
-                const previousContext = data.currentState || "The song begins.";
+    console.log(`[Music AI] Suncat is writing the next lyric...`);
+    try {
+        // 1. SEPARATE THE DATA
+        const fullSongState = data.currentState || ""; 
+        const justTheLyric = data.lastLyric || "The song begins.";
 
-                // 1. EMBED THE RECENT LYRICS (What was just sung?)
-                const currentVibeVector = await createMemoryVector(previousContext);
+        // 2. EMBED ONLY THE LYRIC (This fixes the vector math!)
+        const currentVibeVector = await createMemoryVector(justTheLyric);
 
-                // 2. SAVE TO LYRICS MEMORY
-                // We store what was just sung so we don't repeat it later.
-                if (currentVibeVector) {
-                    SUNG_LYRICS_MEMORY.push({ 
-                        text: previousContext, 
-                        vector: currentVibeVector 
-                    });
-                }
+        // 3. NEGATIVE RAG: Search for "Too Similar" past concepts
+        let avoidMemory = "None.";
+        
+        if (currentVibeVector && SUNG_LYRICS_MEMORY.length > 0) {
+            let bestMatch = null;
+            let highestScore = -1;
 
-                // 3. NEGATIVE RAG: Search for "Too Similar" past concepts
-                let avoidMemory = "None.";
-                
-                if (currentVibeVector && SUNG_LYRICS_MEMORY.length > 1) {
-                    let bestMatch = null;
-                    let highestScore = -1;
-
-                    // Search history to see if we've lingered on this topic before
-                    for (let mem of SUNG_LYRICS_MEMORY) {
-                        // Skip comparing the line we literally just added
-                        if (mem.text === previousContext) continue;
-
-                        if (mem.vector) { 
-                            let score = cosineSimilarity(currentVibeVector, mem.vector);
-                            if (score > highestScore) {
-                                highestScore = score;
-                                bestMatch = mem;
-                            }
-                        }
-                    }
-
-                    // IRRELEVANCE CHECK: If the similarity is high (e.g., > 0.75), 
-                    // it means the song is getting repetitive. Trigger the avoidance constraint!
-                    if (highestScore > 0.75 && bestMatch) {
-                        avoidMemory = bestMatch.text;
-                        console.log(`[Bard Memory] Repetition Risk! Steering away from: "${bestMatch.text}" (Similarity: ${highestScore.toFixed(2)})`);
+            for (let mem of SUNG_LYRICS_MEMORY) {
+                if (mem.vector) { 
+                    let score = cosineSimilarity(currentVibeVector, mem.vector);
+                    if (score > highestScore) {
+                        highestScore = score;
+                        bestMatch = mem;
                     }
                 }
-
-                // 4. BUILD THE FINAL PROMPT
-                // By only passing line-by-line context + 1 constraint, we keep tokens drastically low.
-                const prompt = `
-                ${T_PERSONA}
-
-                PREVIOUS BAR CONTEXT (What was just sung):
-                ${previousContext}
-
-                AVOID MEMORY (You already explored this concept, branch out):
-                ${avoidMemory}
-                `;
-
-                // 5. CALL GEMINI
-                const result = await taliesinModel.generateContent(prompt);
-                const responseText = result.response.text();
-                
-                if (callback) callback(responseText);
-
-            } catch (error) {
-                console.error("[Music AI] Error composing vocal:", error);
-                if (callback) callback(null);
             }
-        });
+
+            // If the similarity is > 0.75, they are singing about the exact same theme.
+            if (highestScore > 0.75 && bestMatch) {
+                avoidMemory = bestMatch.text;
+                console.log(`[Bard Memory] Repetition Risk! Steering away from: "${bestMatch.text}" (Similarity: ${highestScore.toFixed(2)})`);
+            }
+        }
+
+        // 4. SAVE TO MEMORY *AFTER* CHECKING
+        // We do this after the check so it doesn't just match with itself.
+        if (currentVibeVector && justTheLyric !== "The song begins.") {
+            SUNG_LYRICS_MEMORY.push({ 
+                text: justTheLyric, 
+                vector: currentVibeVector 
+            });
+        }
+
+        // 5. BUILD THE HYBRID PROMPT
+        const prompt = `
+        ${T_PERSONA}
+
+        SONG STATE AND RECENT HISTORY:
+        ${fullSongState}
+
+        [NEGATIVE RAG SYSTEM]
+        AVOID MEMORY: "${avoidMemory}"
+        
+        CRITICAL DIRECTIVE: If the AVOID MEMORY is anything other than "None.", it means your recent lyrics are mathematically stagnating in the same thematic space. You MUST pivot completely. Change the subject, the scenery, or the emotional angle entirely for this next line. Do not use synonyms of the Avoid Memory.
+        `;
+
+        // 6. CALL GEMINI
+        const result = await taliesinModel.generateContent(prompt);
+        const responseText = result.response.text();
+        
+        if (callback) callback(responseText);
+
+    } catch (error) {
+        console.error("[Music AI] Error composing vocal:", error);
+        if (callback) callback(null);
+    }
+});
 
     //CLIENT SYNC & POLISH
         socket.on("request_stats_sync", () => {
