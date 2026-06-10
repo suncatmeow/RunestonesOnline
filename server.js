@@ -7008,7 +7008,7 @@ io.on("connection", (socket) => {
     try {
         const activeTale = BARDIC_TALES[currentStoryIndex];
 
-        const prompt = `
+       const prompt = `
         You are Taliesin, the ancient bard. 
         Your task is to write the next 8 lines of a song telling this story:
         TITLE: ${activeTale.title}
@@ -7020,17 +7020,19 @@ io.on("connection", (socket) => {
         3. Keep every line extremely short (1 to 3 words MAX) to fit a single musical measure.
         4. YOU MUST OUTPUT PURE JSON. Return an array of 8 objects. 
         
+        CRITICAL: The "ui" and "phonetic" fields MUST be identical standard English. Do NOT use phonetic spellings. The client-side engine will handle the translation.
+
         Use this EXACT JSON format:
         [
           {
             "thought": "Announcing the tale to the hall.",
             "ui": "I sing of",
-            "phonetic": "I s1N @v"
+            "phonetic": "I sing of"
           },
           {
             "thought": "Introducing the boy king.",
             "ui": "Young Arthur",
-            "phonetic": "y@N arT@r"
+            "phonetic": "Young Arthur"
           }
         ]
         `;
