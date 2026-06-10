@@ -47248,7 +47248,13 @@
         if (!this.ctx) return;
           if (!window.settingsAudio) return;
           if (this.ctx.state === 'suspended') { this.ctx.resume(); }
-
+        if (!this.activeVoiceNodes) this.activeVoiceNodes = [];
+        if (this.activeVoiceNodes.length > 150) {
+            // Keep only the 150 most recent nodes (enough for the current phrase).
+            // The dropped nodes are automatically deleted from RAM by the browser 
+            // once their scheduled stop() time passes!
+            this.activeVoiceNodes = this.activeVoiceNodes.slice(-150);
+        }
 
           // 1. NORMALIZE THE INPUT FIRST (Fixes the "Ash" and "Sword" capitalization bug)
           let t = startTime;
@@ -47271,7 +47277,7 @@
         "what": "w@t", "is": "1z", "this": "d1s", "a": "@", "i": "I",
         "one": "w@n", "two": "tu", "four": "for", "come": "k@m", "some": "s@m", 
         "where": "wer", "there": "der", "of": "@v", "to": "tu", "too": "tu", 
-        "eye": "I", "eyes": "Iz","though": "Do", "than": "Dan", "breathe": "briD", 
+        "eye": "I", "eyes": "Iz","lie":"lI","lies":"lIz","though": "Do", "than": "Dan", "breathe": "briD", 
         "father": "faD@r", "bather": "bED@r",
 
         // 2. Lore & Names (Proper Nouns)
@@ -47424,6 +47430,49 @@
 
           // --- 21. Tiny Connectives (To keep the rhythm flowing) ---
           "or": "or", "nor": "nor",
+          // --- NEW ADDITIONS: Fixes for missing plurals, plosives, and irregulars ---
+            "nears": "n1rz", "near": "n1r",
+            "surge": "s@rj", 
+            "gleam": "glim", "gleams": "glimz",
+            "charge": "carj", "charges": "carj1z",
+            "swords": "sordz", // The regex misses plurals if the root is irregular!
+            "awaits": "@wEts", "await": "@wEt",
+            "death": "deT", 
+            "galaxy": "gal@ksi", "galaxies": "gal@ksiz",
+            "unfold": "@nfold", "unfolds": "@nfoldz", "unfolding": "@nfold1N",
+            "oceans": "oS@nz", // Protecting the 'sh' sound in the plural
+            "appear": "@p1r", "appears": "@p1rz",
+            // --- THE MYTHIC PROPER NOUNS (Welsh, Norse & PIE) ---
+            "dyews": "dyus", "phter": "patEr", // Dyḗws Ph₂tḗr
+            "apam": "@pam", "napat": "napat", 
+            "ngwhi": "n1gwi", "koryos": "koryos", 
+            "yemo": "yemo", "manu": "manu", "trito": "trito",
+            "yggdrasil": "1gdr@s1l", "fenrir": "fenr1r", "mimir": "mim1r", "vigrid": "v1gr1d",
+            "ceridwen": "k@r1dw@n", // Welsh C is a hard K
+            "gwion": "gwi@n", "bach": "bak", 
+            "annwn": "anUn", 
+            "blodeuwedd": "bl@dOIweD", // Welsh 'dd' is a voiced 'th' (D)
+            "math": "maT", "gwydion": "gw1di@n", "bran": "bran",
+            "nimue": "n1muE", "guinevere": "gw1n@v1r", "lancelot": "lans@lot",
+            "galahad": "gal@had", "sangreal": "sangri@l", "percival": "p@rs1v@l",
+            "camlann": "kamlan", "bedivere": "bed1v1r", "avalon": "av@lon",
+            "pellinore": "pel1nor", "mordred": "mordred", "bors": "bors",
+            "bagdemagus": "bagd@mag@s",
+            "edmundo": "edm@ndo", "runestones": "runstonz",
+
+            // --- TRICKY HIGH-FANTASY ENGLISH ---
+            "chaos": "kEos", // Regex would make this 'chay-os'
+            "abyss": "@b1s", 
+            "magi": "majI", 
+            "choir": "kwI@r",
+            "cauldron": "koldr@n", "cauldrons": "koldr@nz",
+            "spear": "sp1r", "spears": "sp1rz",
+            "pierce": "p1rs", "pierced": "p1rst",
+            "shield": "Sild", "shields": "Sildz",
+            "weep": "wip", "weeps": "wips", "weeping": "wip1N",
+            "knowledge": "nol1j",
+            "vision": "v1Z@n", "visions": "v1Z@nz",
+            "myth": "m1T", "myths": "m1Ts",
 
       };
       const tokens = text.match(/\b\w+\b|[^\w\s]|\s+/g) || [];
@@ -64900,7 +64949,13 @@
             }, 8000);
 
             // 3. Ask the AI (Updated to use the vocal endpoint)
-            socket.emit('suncat_compose_vocal', { currentState }, (aiMusicTags) => {
+            const lastLyric = this.lyricMemory.length > 0 ? this.lyricMemory[this.lyricMemory.length - 1] : "The song begins.";
+
+            // Pass BOTH the massive state string AND the isolated lyric to the backend
+            socket.emit('suncat_compose_vocal', { 
+                currentState: currentState, 
+                lastLyric: lastLyric 
+            }, (aiMusicTags) => {
                 clearTimeout(unlockTimer); 
                 if (aiMusicTags) {
                     this.parseAiResponse(aiMusicTags);
