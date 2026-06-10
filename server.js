@@ -76,6 +76,7 @@
         let autonomousTick = 0; 
         let suncatJournal = "I have awoken!";           
         let suncatAttentionVector = null; 
+        const SUNG_LYRICS_MEMORY = [];
     //SUNCAT CONSTANTS
         const SUNCAT_ID = "NPC_SUNCAT"; // Special ID
         const SUNCAT_SPRITE = 61391; // Or whatever sprite ID you want (e.g., 'skeleton', 'hero')
@@ -2498,23 +2499,24 @@
         ]
         }];
 
+
     const T_PERSONA = `
-        You are Taliesin, the bard of ancient Welsh myth, singing a continuous song. 
-        You are generating the NEXT line of the lyrics.
+    You are Taliesin, the bard of ancient Welsh myth, singing a continuous song. 
+    You are generating the NEXT line of the lyrics.
 
-        YOUR INTERNAL MONOLOGUE:
-        Impact the mood of the listener. Are you building tension? Resolving? Sad? Heroic? 
-        Ensure the narrative flows logically from the "Previous Bar Context".
+    YOUR INTERNAL MONOLOGUE:
+    Impact the mood of the listener. Are you building tension? Resolving? Sad? Heroic? 
+    Ensure the narrative flows logically from the "Previous Bar Context".
 
-        OUTPUT RULES (CRITICAL):
-        1. Keep the lyrics extremely short to fit a single musical measure (1 to 3 words MAX).
-        2. If LORE MEMORY is provided, subtly weave a reference to it into the lyrics without breaking the poetic flow.
-        3. YOU MUST USE THIS EXACT OUTPUT FORMAT. DO NOT DEVIATE OR ADD PROSE:
+    OUTPUT RULES (CRITICAL):
+    1. Keep the lyrics extremely short to fit a single musical measure (1 to 3 words MAX).
+    2. If an AVOID MEMORY is provided, it means you recently sang something mathematically identical. You MUST pivot to a distinct, different angle that still flows logically from the Previous Bar Context. Do not repeat concepts.
+    3. YOU MUST USE THIS EXACT OUTPUT FORMAT. DO NOT DEVIATE OR ADD PROSE:
 
-        [THOUGHT] A short explanation of your lyrical intent (max 13 words). [/THOUGHT]
-        [LYRICS_UI] The exact words you are singing. [/LYRICS_UI]
-        [LYRICS_PHONETIC] The exact same words from LYRICS_UI (DO NOT USE PHONETIC SPELLING). [/LYRICS_PHONETIC]
-        `;
+    [THOUGHT] A short explanation of your lyrical intent (max 13 words). [/THOUGHT]
+    [LYRICS_UI] The exact words you are singing. [/LYRICS_UI]
+    [LYRICS_PHONETIC] The exact same words from LYRICS_UI (DO NOT USE PHONETIC SPELLING). [/LYRICS_PHONETIC]
+    `;
     const taliesinModel = genAI.getGenerativeModel({ 
         model: "gemini-2.5-flash-lite", 
         systemInstruction: T_PERSONA
@@ -6947,46 +6949,60 @@ io.on("connection", (socket) => {
             try {
                 const previousContext = data.currentState || "The song begins.";
 
-                // 1. EMBED THE RECENT LYRICS (What is the song about right now?)
+                // 1. EMBED THE RECENT LYRICS (What was just sung?)
                 const currentVibeVector = await createMemoryVector(previousContext);
 
-                // 2. SEARCH THE MASTER_KNOWLEDGE_BASE
-                let injectedLore = "No specific lore recalled.";
+                // 2. SAVE TO LYRICS MEMORY
+                // We store what was just sung so we don't repeat it later.
+                if (currentVibeVector) {
+                    SUNG_LYRICS_MEMORY.push({ 
+                        text: previousContext, 
+                        vector: currentVibeVector 
+                    });
+                }
+
+                // 3. NEGATIVE RAG: Search for "Too Similar" past concepts
+                let avoidMemory = "None.";
                 
-                if (currentVibeVector && MASTER_KNOWLEDGE_BASE.length > 0) {
+                if (currentVibeVector && SUNG_LYRICS_MEMORY.length > 1) {
                     let bestMatch = null;
                     let highestScore = -1;
 
-                    // Find the database entry that mathematically matches the song's current theme
-                    for (let entry of MASTER_KNOWLEDGE_BASE) {
-                        if (entry.vector) { // Assuming your DB entries are pre-embedded
-                            let score = cosineSimilarity(currentVibeVector, entry.vector);
+                    // Search history to see if we've lingered on this topic before
+                    for (let mem of SUNG_LYRICS_MEMORY) {
+                        // Skip comparing the line we literally just added
+                        if (mem.text === previousContext) continue;
+
+                        if (mem.vector) { 
+                            let score = cosineSimilarity(currentVibeVector, mem.vector);
                             if (score > highestScore) {
                                 highestScore = score;
-                                bestMatch = entry;
+                                bestMatch = mem;
                             }
                         }
                     }
 
-                    // If the math matches closely (threshold 0.65), inject the lore!
-                    if (highestScore > 0.65 && bestMatch) {
-                        injectedLore = bestMatch.text;
-                        console.log(`[Bard Memory] Triggered Lore: ${bestMatch.tags.join(', ')}`);
+                    // IRRELEVANCE CHECK: If the similarity is high (e.g., > 0.75), 
+                    // it means the song is getting repetitive. Trigger the avoidance constraint!
+                    if (highestScore > 0.75 && bestMatch) {
+                        avoidMemory = bestMatch.text;
+                        console.log(`[Bard Memory] Repetition Risk! Steering away from: "${bestMatch.text}" (Similarity: ${highestScore.toFixed(2)})`);
                     }
                 }
 
-                // 3. BUILD THE FINAL PROMPT
+                // 4. BUILD THE FINAL PROMPT
+                // By only passing line-by-line context + 1 constraint, we keep tokens drastically low.
                 const prompt = `
-                    ${T_PERSONA}
+                ${T_PERSONA}
 
-                    PREVIOUS BAR CONTEXT:
-                    ${previousContext}
+                PREVIOUS BAR CONTEXT (What was just sung):
+                ${previousContext}
 
-                    LORE MEMORY TRIGGERED:
-                    ${injectedLore}
+                AVOID MEMORY (You already explored this concept, branch out):
+                ${avoidMemory}
                 `;
 
-                // 4. CALL GEMINI
+                // 5. CALL GEMINI
                 const result = await taliesinModel.generateContent(prompt);
                 const responseText = result.response.text();
                 
