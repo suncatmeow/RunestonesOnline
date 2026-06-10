@@ -46700,6 +46700,7 @@
     ctx: null,
     masterGain: null,
     currentSong: null,
+    activeVoiceNodes: [],
     async init() {
       const AudioCtx = window.AudioContext || window.webkitAudioContext;
       if (!this.ctx) {
@@ -47674,7 +47675,7 @@
           shimmerLFO.connect(shimmerEnv);
           shimmerEnv.connect(f1Gain.gain); // f1Gain is now safely initialized!
           shimmerLFO.start(t);
-
+          this.activeVoiceNodes.push(vocalCords, vibratoLFO, jitterLFO, shimmerLFO, breathNoise);
         
           // === NEW: LIP RADIATION FILTER ===
           // Simulates sound leaving the human lips (+6dB/oct highpass effect)
@@ -47703,7 +47704,7 @@
 
           vocalEnv.connect(f1); vocalEnv.connect(f2); vocalEnv.connect(f3);
           f1.connect(this.masterGain); f2.connect(this.masterGain); f3.connect(this.masterGain);
-      // Set initial pitch to the first note in the array
+        // Set initial pitch to the first note in the array
         vocalCords.start(t); breathNoise.start(t);
       // SEQUENCER
           // --- NEW: THE DYNAMIC TIME STRETCHER (PRE-CALCULATION) ---
@@ -47862,7 +47863,7 @@
                       }
 
                       // Now glide to the vowel's actual target frequencies
-        // Now glide to the vowel's actual target frequencies, with High-Note Tuning!
+                        //      Now glide to the vowel's actual target frequencies, with High-Note Tuning!
                       const tunedF1 = Math.max(p.f1 * resonance, currentHz * 1.1);
                         f1.frequency.setTargetAtTime(tunedF1, t, glideSpeed);                  
                         f2.frequency.setTargetAtTime(p.f2 * resonance, t, glideSpeed); 
@@ -47896,6 +47897,7 @@
             // --- PHASE 3: THE PERCUSSION TRACK UPGRADE (Wet Consonants) ---
               if (p.type === 'fricative' || p.type === 'stop') {
                   const noise = createNoise(dur);
+                  this.activeVoiceNodes.push(noise); // <-- ADD THIS
                   const noiseFilter = this.ctx.createBiquadFilter();
                   
                   // 't', 'd', 's', 'z' are formed by the teeth. They need a highpass filter to 
@@ -48222,25 +48224,40 @@
     },
 
     stop() {
-      // 1. Cut the Master Volume immediately to kill lingering reverb tails
-      if (this.masterGain) {
-          this.masterGain.gain.cancelScheduledValues(this.ctx.currentTime);
-          this.masterGain.gain.setValueAtTime(this.masterGain.gain.value, this.ctx.currentTime);
-          this.masterGain.gain.linearRampToValueAtTime(0, this.ctx.currentTime + 0.05); // 50ms fade out
-      }
+        const t = this.ctx.currentTime;
 
-      // 2. Stop the specific song logic
-      if (this.currentSong) {
-        if (this.currentSong.stop) this.currentSong.stop();
-        this.currentSong = null;
-      }
+        // 1. Cut the Master Volume gracefully to avoid popping
+        if (this.masterGain) {
+            this.masterGain.gain.cancelScheduledValues(t);
+            this.masterGain.gain.setValueAtTime(this.masterGain.gain.value, t);
+            this.masterGain.gain.linearRampToValueAtTime(0, t + 0.05); // 50ms fade out
+        }
 
-      // 3. Reset Master Volume for the next track (after a tiny delay)
-      setTimeout(() => {
-          if(this.masterGain){
-              this.masterGain.gain.setValueAtTime(0.5, this.ctx.currentTime); 
-          }
-      }, 100);
+        // 2. STOP AND DISCONNECT ALL ACTIVE VOICE NODES
+        if (this.activeVoiceNodes && this.activeVoiceNodes.length > 0) {
+            this.activeVoiceNodes.forEach(node => {
+                try {
+                    node.stop(t);
+                    node.disconnect();
+                } catch (e) {
+                    // Failsafe: Catch errors if the node already finished naturally
+                }
+            });
+            this.activeVoiceNodes = []; // Clear the array for the next run
+            }
+
+            // 3. Stop the specific song logic
+            if (this.currentSong) {
+                if (this.currentSong.stop) this.currentSong.stop();
+                this.currentSong = null;
+            }
+
+            // 4. Reset Master Volume safely 
+            // Now that the nodes are genuinely dead, we can set this back to 0.5 
+            // without worrying about ghost voices returning.
+            if (this.masterGain) {
+                this.masterGain.gain.setTargetAtTime(0.5, t + 0.1, 0.05);
+            }
     },
     isPlaying() {
       // 1. If context doesn't exist or is suspended, we aren't playing
