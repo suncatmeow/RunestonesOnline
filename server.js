@@ -2507,7 +2507,7 @@
         Ensure the narrative flows logically from the "Previous Bar Context".
 
         OUTPUT RULES (CRITICAL):
-        1. Keep the lyrics extremely short to fit a single musical measure (1 to 3 syllables MAX).
+        1. Keep the lyrics extremely short to fit a single musical measure (1 to 3 words MAX).
         2. If LORE MEMORY is provided, subtly weave a reference to it into the lyrics without breaking the poetic flow.
         3. YOU MUST USE THIS EXACT OUTPUT FORMAT. DO NOT DEVIATE OR ADD PROSE:
 
@@ -6943,60 +6943,60 @@ io.on("connection", (socket) => {
             }
             });
         socket.on('suncat_compose_vocal', async (data, callback) => {
-    console.log(`[Music AI] Suncat is writing the next lyric...`);
-    try {
-        const previousContext = data.currentState || "The song begins.";
+            console.log(`[Music AI] Suncat is writing the next lyric...`);
+            try {
+                const previousContext = data.currentState || "The song begins.";
 
-        // 1. EMBED THE RECENT LYRICS (What is the song about right now?)
-        const currentVibeVector = await createMemoryVector(previousContext);
+                // 1. EMBED THE RECENT LYRICS (What is the song about right now?)
+                const currentVibeVector = await createMemoryVector(previousContext);
 
-        // 2. SEARCH THE MASTER_KNOWLEDGE_BASE
-        let injectedLore = "No specific lore recalled.";
-        
-        if (currentVibeVector && MASTER_KNOWLEDGE_BASE.length > 0) {
-            let bestMatch = null;
-            let highestScore = -1;
+                // 2. SEARCH THE MASTER_KNOWLEDGE_BASE
+                let injectedLore = "No specific lore recalled.";
+                
+                if (currentVibeVector && MASTER_KNOWLEDGE_BASE.length > 0) {
+                    let bestMatch = null;
+                    let highestScore = -1;
 
-            // Find the database entry that mathematically matches the song's current theme
-            for (let entry of MASTER_KNOWLEDGE_BASE) {
-                if (entry.vector) { // Assuming your DB entries are pre-embedded
-                    let score = cosineSimilarity(currentVibeVector, entry.vector);
-                    if (score > highestScore) {
-                        highestScore = score;
-                        bestMatch = entry;
+                    // Find the database entry that mathematically matches the song's current theme
+                    for (let entry of MASTER_KNOWLEDGE_BASE) {
+                        if (entry.vector) { // Assuming your DB entries are pre-embedded
+                            let score = cosineSimilarity(currentVibeVector, entry.vector);
+                            if (score > highestScore) {
+                                highestScore = score;
+                                bestMatch = entry;
+                            }
+                        }
+                    }
+
+                    // If the math matches closely (threshold 0.65), inject the lore!
+                    if (highestScore > 0.65 && bestMatch) {
+                        injectedLore = bestMatch.text;
+                        console.log(`[Bard Memory] Triggered Lore: ${bestMatch.tags.join(', ')}`);
                     }
                 }
+
+                // 3. BUILD THE FINAL PROMPT
+                const prompt = `
+                    ${T_PERSONA}
+
+                    PREVIOUS BAR CONTEXT:
+                    ${previousContext}
+
+                    LORE MEMORY TRIGGERED:
+                    ${injectedLore}
+                `;
+
+                // 4. CALL GEMINI
+                const result = await taliesinModel.generateContent(prompt);
+                const responseText = result.response.text();
+                
+                if (callback) callback(responseText);
+
+            } catch (error) {
+                console.error("[Music AI] Error composing vocal:", error);
+                if (callback) callback(null);
             }
-
-            // If the math matches closely (threshold 0.65), inject the lore!
-            if (highestScore > 0.65 && bestMatch) {
-                injectedLore = bestMatch.text;
-                console.log(`[Bard Memory] Triggered Lore: ${bestMatch.tags.join(', ')}`);
-            }
-        }
-
-        // 3. BUILD THE FINAL PROMPT
-        const prompt = `
-            ${T_PERSONA}
-
-            PREVIOUS BAR CONTEXT:
-            ${previousContext}
-
-            LORE MEMORY TRIGGERED:
-            ${injectedLore}
-        `;
-
-        // 4. CALL GEMINI
-        const result = await taliesinModel.generateContent(prompt);
-        const responseText = result.response.text();
-        
-        if (callback) callback(responseText);
-
-    } catch (error) {
-        console.error("[Music AI] Error composing vocal:", error);
-        if (callback) callback(null);
-    }
-});
+        });
 
     //CLIENT SYNC & POLISH
         socket.on("request_stats_sync", () => {
