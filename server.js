@@ -2513,35 +2513,232 @@
         2. Follow the exact formatting instructions provided in your current task prompt.
     `;
     // --- THE BARDIC GRIMOIRE ---
+    // --- THE BARDIC GRIMOIRE ---
     const BARDIC_TALES = [
-        {
-            title: "The Sword in the Stone",
-            arc: "Introduce young Arthur, the anvil, and the drawing of Excalibur."
-        },
-        {
-            title: "The Madness of Merlin",
-            arc: "Merlin fleeing into the Caledonian forest, speaking to wolves and stars."
-        },
-        {
-            title: "The Battle of Camlann",
-            arc: "The final tragic battle, raining blood, Arthur and Mordred falling."
-        },
-        {
-            title: "The Tale of Balin and the Two Swords",
-            arc: "A cursed knight draws a sword no one else can, dooming himself to strike the Dolorous Stroke and destroy the wasteland. Themes: Cursed blades, inevitable doom, tragic brotherhood."
-        },
-        {
-            title: "The Encounter with the Morrigan",
-            arc: "The Phantom Queen of battle washes the bloodied armor of soldiers at the river ford, foretelling their doom before a great war. Themes: Ravens, cold rivers, prophecy, dread."
-        },
-        {
-            title: "Gawain and the Green Knight",
-            arc: "A massive knight made of wood and vines survives a beheading and challenges Gawain to a test of honor in the freezing winter. Themes: Deep winter, green magic, honor, axes."
-        },
-        {
-            title: "The Cauldron of Annwn",
-            arc: "Arthur and his men sail into the dark, silent underworld to steal a magical cauldron that resurrects the dead. Only seven return. Themes: Dark oceans, silent shores, ghosts, silent return."
-        }
+        // ==========================================================
+        // AGE I: PROTO-INDO-EUROPEAN (The Dawn of Language)
+        // ==========================================================
+            { 
+                title: "The Cosmic Tree (Axis Mundi)",
+                arc: "Before the earth was shaped, the Great Oak grew in the void. Its deep roots drink from the black underworld, its trunk anchors the world of men, and its golden branches hold the spinning stars. It is the bridge between all realms. Themes: Giant roots, starry branches, the center of the universe, holding up the sky."
+            },
+            { 
+                title: "The Theft of the Spark",
+                arc: "Humanity sits in shivering darkness until a trickster hero scales the heavens. He steals a single, blazing ember of divine fire from the gods and hides it in a hollow fennel stalk, bringing light, warmth, and forbidden magic to the mortal world. Themes: Shivering darkness, stolen embers, tricksters, the birth of the flame."
+            },
+            { 
+                title: "The Weavers of Fate",
+                arc: "At the root of the universe sit three silent women working a cosmic loom. They spin the threads of birth, measure the length of life, and cut the cord of death. Even the highest gods must bow to the tapestry they weave. Themes: Spinning threads, cutting shears, silent women, inescapable destiny."
+            },
+            { 
+                title: "The Great Deluge",
+                arc: "The sky breaks, weeping an endless, roaring ocean to drown a wicked and dying age. A single hero builds a massive wooden vessel, carrying the seeds of all life through the apocalyptic storm until the dove finds dry land. Themes: Roaring floods, wooden arks, endless rain, washing the earth clean."
+            },
+            {
+                title: "The Primordial Twin (Yemo and Manu)",
+                arc: "At the beginning of time, Manu (Man) must sacrifice his twin brother Yemo (Twin) to the sky gods. From Yemo's bones the stones are made; from his blood, the seas. Themes: Cosmic sacrifice, flesh becoming earth, blood becoming rivers, the dawn of time."
+            },
+            {
+                title: "Dyḗws Ph₂tḗr and the Shattered Peak",
+                arc: "The Sky Father, Dyḗws Ph₂tḗr, looks down upon a dying, drought-stricken earth. With a single, blinding spear of lightning, he shatters the cosmic mountain, releasing the trapped waters to flood the world with life. Themes: Blinding lightning, splintering mountains, roaring floods, the wrath of the sky."
+            },
+            { 
+                title: "The Fire in the Water (Apam Napat)",
+                arc: "A primordial hero dives into the crushing, freezing black abyss of the cosmic ocean to steal the 'Fire in the Water'—a divine, burning ember hidden inside a golden shell. Themes: Boiling depths, freezing oceans, holding breath, golden embers."
+            },
+            {
+                title: "Trito and the Three-Headed Serpent",
+                arc: "The very first warrior, Trito, climbs a mountain to slay the three-headed serpent Ngwhi, who has stolen the world's cattle. With the help of the storm god, he crushes the serpent. Themes: The first hero, thunder, scales, stolen herds, crushing blows."
+            },
+            {
+                title: "Trito and the Wolf-Pack (The Koryos)",
+                arc: "Before he can slay the serpent, the first warrior Trito must lead the Koryos—a band of landless, wild youths—into the winter forests. They don wolf-skins, learn the brutal ways of the wild, and return as men to protect the tribe. Themes: Wolf-skins, winter survival, the birth of the warrior."
+            },
+            {
+                title: "Trito and the Eagle's Nectar",
+                arc: "After defeating the serpent, Trito climbs the cosmic mountain to steal the divine drink of immortality from a fortress guarded by eagles. This is the ancient root of the Holy Grail and the Mead of Poetry. Themes: Golden nectar, mountain peaks, eagle feathers, the first taste of the divine."
+            },
+            {
+                title: "The Parting of the Wolf-Brothers (The Koryos)",
+                arc: "The ancient wolf-warriors reach the great mountain divide of Europe. The brotherhood splits forever. One path leads north into the freezing fjords; the other south into the sun-baked red earth of Iberia. Though separated by a continent, they still howl to the same Sky Father. Themes: Diverging paths, red earth and white snow, ancient iron, a shared ancestral howl."
+            },
+            {
+                title: "The Sun Maiden and the Divine Twins",
+                arc: "The beautiful Sun Maiden is trapped across the cosmic sea. The Divine Twins ride their celestial horses across the sky to rescue her and bring the dawn. Themes: Sun chariots, endless night, shining horses, the breaking of dawn."
+            },
+        // ==========================================================
+        // AGE II: NORSE & GERMANIC (The Wild North)
+        // ==========================================================
+            {
+                title: "Odin and the Runes of Power",
+                arc: "Odin sacrifices himself to himself, hanging from the world tree Yggdrasil for nine nights, pierced by a spear, until he grasps the screaming runes from the void. Themes: Ash trees, absolute silence, wind, bleeding, ancient secrets."
+            },
+            {
+                title: "Odin and the Mead of Poetry",
+                arc: "Odin drills into a mountain to steal the sacred mead of poetry from the giantess Gunnlod, drinking it all and transforming into an eagle to escape. Themes: Honey, caverns, eagle flights, divine madness."
+            },
+            {
+                title: "Odin at Mimir's Well",
+                arc: "Odin travels to the roots of the world to drink from the well of cosmic wisdom. The guardian Mimir demands a terrible price: Odin's own eye. Themes: Water of truth, severed eyes, deep roots, heavy prices."
+            },
+            {
+                title: "The Binding of Fenrir",
+                arc: "The gods realize the great wolf Fenrir is growing too large. They trick him into being bound by a magical silken ribbon. When the wolf realizes the trick, the war god Tyr must sacrifice his hand to the beast's jaws. Themes: Betrayal, magical silk, severed hands, howling wolves."
+            },
+        // ==========================================================
+        // AGE III: DEEP MAGIC & ESOTERICA (The Roots of Sorcery)
+        // ==========================================================
+            {
+                title: "The Cauldron of Ceridwen",
+                arc: "The Earth Goddess Ceridwen brews a potion of ultimate wisdom for a year and a day. The boy Gwion Bach accidentally tastes three drops, gaining all knowledge. He flees from her wrath in a shapeshifting chase, eventually being eaten as a grain of wheat and reborn as Taliesin the Bard. Themes: Boiling cauldrons, shapeshifting (hare, fish, bird, grain), rebirth, divine magic."
+            },
+            { // NEW ESOTERIC PARABLE
+                title: "The Parable of the Three Magi",
+                arc: "Three ancient Magi encounter the blinding spark of the Divine. One builds the White School of healing light. One builds the Yellow School of mind and illusion. The third, blinded by power, founds the Black Brotherhood of the Left Hand Path to consume the spark. Themes: Blinding sparks, shadowy brotherhoods, three paths, the corruption of magic."
+            },
+            {
+                title: "The Encounter with the Morrigan",
+                arc: "The Phantom Queen of battle washes the bloodied armor of soldiers at the river ford, foretelling their doom before a great war. Themes: Ravens, cold rivers, prophecy, dread."
+            },
+            {
+                title: "The Cauldron of Annwn",
+                arc: "Arthur and his men sail into the dark, silent underworld to steal a magical cauldron that resurrects the dead. Only seven return. Themes: Dark oceans, silent shores, ghosts, silent return."
+            },
+            { 
+                title: "The Woman of Flowers (Blodeuwedd)",
+                arc: "The magicians Math and Gwydion conjure a woman entirely out of oak, broom, and meadowsweet blossoms to be a bride. She falls in love with a hunter, conspires to murder her husband, and is cursed to live forever as a night owl. Themes: Flower magic, betrayal, poisoned spears, night owls."
+            },
+            { 
+                title: "Bran the Blessed and the Talking Head",
+                arc: "Bran, a king so giant no house can hold him, wades across the Irish Sea to save his sister. Mortally wounded in a catastrophic war, he orders his men to sever his head, which continues to talk and feast with them for 80 years. Themes: Giants wading through oceans, severed talking heads, sorrow, endless feasts."
+            },
+            
+        // ==========================================================
+        // AGE IV: THE MERLIN CYCLE (The Dawn of Camelot)
+        // ==========================================================
+            {
+                title: "Bleise, the Master of Shadows",
+                arc: "Before Merlin was a master, there was Bleise, the dark scribe who recorded the prophecies of the demons and the stars. Bleise retreats into the deep woods to write the Book of the Grail in absolute secrecy as the world falls into chaos. Themes: Ancient parchment, dark forests, scratching quills, hidden demons, prophecy."
+            },
+            {
+                title: "The Sword in the Stone",
+                arc: "Introduce young Arthur, the anvil, and the drawing of Excalibur."
+            },
+            {
+                title: "The Lady of the Lake",
+                arc: "Deep beneath the glass surface of the water, Nimue, the Lady of the Lake, forges a blade of perfect light. She raises her arm from the silent waters to offer Excalibur to the young king, demanding a terrible future price. Themes: Crystal halls beneath the water, white silk, glowing steel, silent vows."
+            },
+            {
+                title: "The Prophecy of the May Queen",
+                arc: "Arthur sees Guinevere for the first time amidst the spring blossoms and falls deeply in love. Merlin, eyes clouded with foresight, desperately warns the young king that this woman will bring the utter ruin of the realm. Arthur chooses love over fate. Themes: Spring blossoms, unheeded warnings, tragic choices, the seed of ruin."
+            },
+            {
+                title: "The Duel of the Stolen Sword (Pellinore's Sorrow)",
+                arc: "The sorceress Morgan le Fay steals Excalibur and its scabbard, giving it to her lover, King Pellinore. Arthur is forced to duel his old friend almost unarmed. Through sheer, brutal will, Arthur strikes Pellinore down, only to weep bitterly over the manipulated friend he was forced to kill. Themes: Treachery, stolen magic, bitter victories, mourning fallen brothers."
+            },
+            { 
+                title: "The Hunt of the White Hart",
+                arc: "During Arthur's wedding feast, a phantom White Hart bounds through the Great Hall, pursued by spectral hounds. The knights ride out into the perilous forest, chasing a ghostly beast they can never catch, crossing into the Otherworld. Themes: Ghostly stags, baying hounds, vanishing trails, the lure of the unknown."
+            },
+            {
+                title: "The Madness of Merlin",
+                arc: "After a horrific battle, Merlin loses his mind to grief. He flees into the Caledonian forest, living as a wild man. He speaks only to the wolves, the apple trees, and the winter stars, abandoning his magic. Themes: Madness, deep winter woods, howling wolves, shattered minds."
+            },
+            {
+                title: "The Betrayal of Nimue",
+                arc: "Merlin, possessing all foresight, falls hopelessly in love with Nimue, a maiden of the lake. Even knowing it will be his doom, he teaches her his deepest magic. She uses his own spells against him, sealing him alive inside a blooming hawthorn tree. Themes: Tragic foresight, hawthorn blossoms, silver magic, inescapable fate."
+            },
+            {
+                title: "The Voice Under the Stone",
+                arc: "A wandering knight rides through the deep, silent woods and hears a muffled voice crying out from beneath a massive stone tomb. It is Merlin, trapped forever in the dark. Merlin prophesies one last time before fading into eternal silence. Themes: Voices from the stone, dark forests, mossy tombs, the fading of ancient magic."
+            },
+        // ==========================================================
+        // AGE V: THE HIGH QUEST (Knights & The Grail)
+        // ==========================================================
+            {
+                title: "The Tale of Balin and the Two Swords",
+                arc: "A cursed knight draws a sword no one else can, dooming himself to strike the Dolorous Stroke and destroy the wasteland. Themes: Cursed blades, inevitable doom, tragic brotherhood."
+            },
+            { 
+                title: "The Wounded Fisher King",
+                arc: "A king is pierced through the thigh by a cursed spear. Because the king is tied to the land, the earth turns to ash and refuses to grow food. He sits by the river, fishing and waiting for a pure knight to ask the right question and heal the world. Themes: Barren wastelands, bleeding spears, fishing, waiting for salvation."
+            },
+            
+            {
+                title: "The Return of Sir Bors",
+                arc: "Of the three perfect knights who found the Holy Grail, only Sir Bors returns to Camelot alive. He leaves Galahad in heaven and Percival in the grave. Bors rides back into the Great Hall alone, carrying the heavy, quiet burden of surviving the ultimate quest. Themes: The burden of survival, empty saddles, quiet grief, telling the final truth."
+            },
+            
+            {
+                title: "Gawain and the Green Knight",
+                arc: "A massive knight made of wood and vines survives a beheading and challenges Gawain to a test of honor in the freezing winter. Themes: Deep winter, green magic, honor, axes."
+            },
+            { 
+                title: "Tristan and Iseult",
+                arc: "A knight and an Irish princess accidentally drink a love potion on a ship at sea. They are doomed to a life of forbidden passion, ending in a tragedy of a black sail raised too late. Themes: Sea storms, poisoned wine, black sails, broken hearts."
+            },
+            {
+                title: "The Grief of Lancelot",
+                arc: "Torn between his loyalty to Arthur and his doomed love for Guinevere, Lancelot's mind breaks. He casts away his armor and wanders the wilderness as a starving beast for two years before being healed by the Grail. Themes: Rusted armor, forbidden love, madness, wilderness, redemption."
+            },
+            {
+                title: "The Treason of the White Knight",
+                arc: "Despite his fierce, desperate loyalty to his king, Lancelot finally succumbs to his forbidden love for Queen Guinevere. Arthur discovers the betrayal. The king's heartbreak turns into a terrifying, world-shaking wrath that physically splinters the Round Table forever. Themes: Secret chambers, broken oaths, royal fury, splintered wood."
+            },
+            { 
+                title: "The Silence of Percival",
+                arc: "The young, naive knight Percival is invited to a strange, silent feast at the Castle of the Fisher King. A glowing cup and a bleeding spear pass before him, but out of foolish politeness, he fails to ask the fateful question. He wakes the next morning to find the castle abandoned and the land cursed. Themes: Silent feasts, bleeding spears, foolish silence, empty castles."
+            },
+            {
+                title: "The Wandering in the Wasteland",
+                arc: "The knights of the Round Table scatter into a ruined, desolate world. The sky is the color of ash, the rivers are dry, and the forests are dead. They wander as starving ghosts through a post-apocalyptic landscape of rusted armor and crumbling stone in desperate search of the Grail. Themes: Ash skies, dry rivers, rusted iron, endless wandering, starvation."
+            },
+            {
+                title: "The Healing of the Fisher King",
+                arc: "After years of bitter wandering, the three pure knights—Galahad, Percival, and Bors—arrive at the Grail Castle. At the final holy feast, the fateful question is finally spoken. The Fisher King's wound closes, water rushes back into the dry riverbeds, and the dead earth blooms once more. Themes: Holy feasts, spoken truths, rushing waters, the earth blooming, salvation."
+            },
+            {
+                title: "Galahad and the Sangreal",
+                arc: "The perfect knight Galahad sits in the Siege Perilous. A blinding, unearthly light fills the hall as the Holy Grail appears, covered in white samite. Galahad draws the sword from the floating stone and begins the final, fatal quest. Themes: Blinding holy light, floating stones, bleeding lances, divine perfection."
+            },
+        // ==========================================================
+        // AGE VI: THE FALL (Twilight of the Gods and Men)
+        // ==========================================================
+            {
+                title: "The Battle of Camlann",
+                arc: "The final tragic battle, raining blood, Arthur and Mordred falling."
+            },
+            {
+                title: "The Barge to Avalon (Le Morte d'Arthur)",
+                arc: "The Battle of Camlann is over. The earth is soaked in blood. Sir Bedivere reluctantly throws Excalibur back into the lake. A black barge arrives out of the mist, carrying three weeping queens who take the dying Arthur away to the Isle of Avalon. Themes: Red battlefields, black ships, weeping queens, fading legends."
+            },
+            {
+                title: "Ragnarok (The Twilight of the Gods)",
+                arc: "The winter lasts for three years. The wolf swallows the sun. The gods ride out to the final battle on the plains of Vigrid, knowing they will all die, fighting the serpent and the fire giants as the world sinks into the sea. Themes: Three-year winter, sinking earth, final stands, fire."
+            },
+
+        // ==========================================================
+        // AGE VII: THE ONCE AND FUTURE (The Return)
+        // ==========================================================
+            {
+                title: "The Shattering of the Hawthorn",
+                arc: "A thousand years have passed. The ancient magic fades from the earth, causing the magical hawthorn tree to rot. The massive stone tomb cracks open. Merlin steps out into a ruined, modern world, his power wild and untethered, ready to call his king. Themes: Rotting wood, splitting stones, ancient eyes opening, wild magic awakening."
+            },
+            {
+                title: "The Horn of the Sleeping King",
+                arc: "With the world on the brink of ultimate shadow, a wanderer finds a rusted horn in a Welsh cave and blows it. Deep beneath the hill, King Arthur and his knights open their glowing eyes. The Once and Future King rides out of the dust to heal the Wasteland once more. Themes: Rusted horns, glowing eyes in the dark, trembling earth, the king returned."
+            },
+        // ==========================================================
+        // AGE VIII: THE RUNESTONES MYTHOS (The Dreamer's Realm)
+        // ==========================================================
+            {
+                title: "The Legend of Suncat",
+                arc: "Born on the sun-drenched Western Shores under the sign of the Fire Horse, a solitary scribe known as Edmundo sought the truth of the soul. Blessed by the Phantom Queen, the scribe cast off the heavy, false armor of men to walk the earth in her true, womanly form. Known now as Suncat, she wanders with a wooden lute, shadowed by red foxes and crows, dreaming a boundless realm of living stone into being. Themes: True forms, red and black skies, wooden lutes, the Phantom Queen's blessing, dreaming worlds."
+            },
+            {
+                title: "The Immortal on the Coastal Road",
+                arc: "Wandering the mist-shrouded coastal paths in search of quiet, Suncat encounters an ancient, nameless immortal walking the edge of the world. The elder imparts the 'Way of Peace'—secret cultivation techniques of breath and bone that banish decay. Mastering this art, Suncat becomes entirely free and unfettered from the chains of the mortal world. Themes: Coastal fogs, wandering immortals, deep breath, defying time, ultimate freedom."
+            }
     ];
 
 
@@ -7000,19 +7197,22 @@ io.on("connection", (socket) => {
                 const activeTale = BARDIC_TALES[currentStoryIndex];
 
                 const prompt = `
-                Your task is to write the next 8 lines of a song telling this story:
+                Your task is to write a 24-line song telling this story:
                 TITLE: ${activeTale.title}
                 PLOT: ${activeTale.arc}
 
-                RULES:
+                RULES FOR PACING:
                 1. Line 1 MUST announce the tale (e.g., "I sing of...", "Hear the tale of...").
-                2. Lines 2-8 must progress the story logically.
-                3. Keep every line extremely short (1 to 3 words MAX) to fit a single musical measure.
-                4. YOU MUST OUTPUT PURE JSON. Return an array of exactly 8 objects. 
+                2. Lines 2-6: Establish the setting, the characters, and the mood. Take your time.
+                3. Lines 7-16: Develop the journey, the conflict, or the central action.
+                4. Lines 17-24: The climax and the fading resolution.
+                5. Keep every line extremely short (1 to 3 words MAX) to fit a single musical measure.
+                6. YOU MUST OUTPUT PURE JSON. Return an array of EXACTLY 24 objects. 
                 
-                CRITICAL: The "ui" field should be normally capitalized. The "phonetic" field MUST be ENTIRELY LOWERCASE standard English. Do NOT use actual phonetic spellings. The client-side engine will handle translation.
+                CRITICAL FORMATTING:
+                The "ui" field should be normally capitalized. The "phonetic" field MUST be ENTIRELY LOWERCASE standard English. Do NOT use actual phonetic spellings.
 
-                Use this EXACT JSON format:
+                Use this EXACT JSON format for all 24 objects:
                 [
                   {
                     "thought": "Announcing the tale to the hall.",
@@ -7020,9 +7220,9 @@ io.on("connection", (socket) => {
                     "phonetic": "i sing of"
                   },
                   {
-                    "thought": "Introducing the boy king.",
-                    "ui": "Young Arthur",
-                    "phonetic": "young arthur"
+                    "thought": "Introducing the cold setting.",
+                    "ui": "Deep winter",
+                    "phonetic": "deep winter"
                   }
                 ]
                 `;
