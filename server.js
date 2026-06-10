@@ -2504,21 +2504,14 @@
 
     const T_PERSONA = `
         You are Taliesin, the bard of ancient Welsh myth, singing a continuous song. 
-        You are generating the NEXT line of the lyrics.
 
         YOUR INTERNAL MONOLOGUE:
         Impact the mood of the listener. Are you building tension? Resolving? Sad? Heroic? 
-        Ensure the narrative flows logically from the "Previous Bar Context".
 
         OUTPUT RULES (CRITICAL):
         1. Keep the lyrics extremely short to fit a single musical measure (1 to 3 words MAX).
-        2. If an AVOID MEMORY is provided, it means you recently sang something mathematically identical. You MUST pivot to a distinct, different angle that still flows logically from the Previous Bar Context. Do not repeat concepts.
-        3. YOU MUST USE THIS EXACT OUTPUT FORMAT. DO NOT DEVIATE OR ADD PROSE:
-
-        [THOUGHT] A short explanation of your lyrical intent (max 13 words). [/THOUGHT]
-        [LYRICS_UI] The exact words you are singing. [/LYRICS_UI]
-        [LYRICS_PHONETIC] The exact same words from LYRICS_UI (DO NOT USE PHONETIC SPELLING). [/LYRICS_PHONETIC]
-        `;
+        2. Follow the exact formatting instructions provided in your current task prompt.
+    `;
     // --- THE BARDIC GRIMOIRE ---
     const BARDIC_TALES = [
         {
@@ -2551,9 +2544,7 @@
         }
     ];
 
-// --- SERVER-SIDE CACHE ---
-let lyricCache = [];
-let currentStoryIndex = 0;
+
     const taliesinModel = genAI.getGenerativeModel({ 
         model: "gemini-2.5-flash-lite", 
         systemInstruction: T_PERSONA
@@ -6983,96 +6974,100 @@ io.on("connection", (socket) => {
             });
         socket.on('suncat_compose_vocal', async (data, callback) => {
     
-    // ---------------------------------------------------------
-    // 1. THE DISPENSER: If we have cached lines, serve them instantly!
-    // ---------------------------------------------------------
-    if (lyricCache.length > 0) {
-        const nextLine = lyricCache.shift(); // Pull the first line off the stack
-        
-        // Format it exactly how your frontend expects it
-        const frontendString = `
-        [THOUGHT] ${nextLine.thought} [/THOUGHT]
-        [LYRICS_UI] ${nextLine.ui} [/LYRICS_UI]
-        [LYRICS_PHONETIC] ${nextLine.phonetic} [/LYRICS_PHONETIC]
-        `;
-        
-        console.log(`[Cache] Dispensing line. (${lyricCache.length} remaining in cache)`);
-        return callback(frontendString);
-    }
+            // ---------------------------------------------------------
+            // 1. THE DISPENSER: If we have cached lines, serve them instantly!
+            // ---------------------------------------------------------
+            if (lyricCache.length > 0) {
+                const nextLine = lyricCache.shift(); // Pull the first line off the stack
+                
+                // Format it exactly how your frontend expects it
+                const frontendString = `
+                [THOUGHT] ${nextLine.thought} [/THOUGHT]
+                [LYRICS_UI] ${nextLine.ui} [/LYRICS_UI]
+                [LYRICS_PHONETIC] ${nextLine.phonetic} [/LYRICS_PHONETIC]
+                `;
+                
+                console.log(`[Cache] Dispensing line. (${lyricCache.length} remaining in cache)`);
+                return callback(frontendString);
+            }
 
-    // ---------------------------------------------------------
-    // 2. THE GENERATOR: Cache is empty. Write the next story block.
-    // ---------------------------------------------------------
-    console.log(`[Music AI] Cache empty. Composing a new verse...`);
-    
-    try {
-        const activeTale = BARDIC_TALES[currentStoryIndex];
-
-       const prompt = `
-        You are Taliesin, the ancient bard. 
-        Your task is to write the next 8 lines of a song telling this story:
-        TITLE: ${activeTale.title}
-        PLOT: ${activeTale.arc}
-
-        RULES:
-        1. Line 1 MUST announce the tale (e.g., "I sing of...", "Hear the tale of...").
-        2. Lines 2-8 must progress the story logically.
-        3. Keep every line extremely short (1 to 3 words MAX) to fit a single musical measure.
-        4. YOU MUST OUTPUT PURE JSON. Return an array of 8 objects. 
-        
-        CRITICAL: The "ui" and "phonetic" fields MUST be identical standard English. Do NOT use phonetic spellings. The client-side engine will handle the translation.
-
-        Use this EXACT JSON format:
-        [
-          {
-            "thought": "Announcing the tale to the hall.",
-            "ui": "I sing of",
-            "phonetic": "I sing of"
-          },
-          {
-            "thought": "Introducing the boy king.",
-            "ui": "Young Arthur",
-            "phonetic": "Young Arthur"
-          }
-        ]
-        `;
-
-        // 3. Call Gemini
-        const result = await taliesinModel.generateContent(prompt);
-        let responseText = result.response.text();
-        
-        // 4. Clean the output (LLMs sometimes wrap JSON in markdown blockticks)
-        responseText = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
-        
-        // 5. Parse the JSON array
-        const newVerse = JSON.parse(responseText);
-        
-        if (Array.isArray(newVerse) && newVerse.length > 0) {
-            // Fill the cache!
-            lyricCache = newVerse;
+            // ---------------------------------------------------------
+            // 2. THE GENERATOR: Cache is empty. Write the next story block.
+            // ---------------------------------------------------------
+            console.log(`[Music AI] Cache empty. Composing a new verse...`);
             
-            // Advance the story index for the next time the cache empties
-            currentStoryIndex = (currentStoryIndex + 1) % BARDIC_TALES.length;
+            try {
+                const activeTale = BARDIC_TALES[currentStoryIndex];
 
-            // Immediately dispense the very first line to the waiting frontend
-            const firstLine = lyricCache.shift();
-            const frontendString = `
-            [THOUGHT] ${firstLine.thought} [/THOUGHT]
-            [LYRICS_UI] ${firstLine.ui} [/LYRICS_UI]
-            [LYRICS_PHONETIC] ${firstLine.phonetic} [/LYRICS_PHONETIC]
-            `;
-            
-            return callback(frontendString);
-        } else {
-            throw new Error("Parsed JSON was not an array.");
-        }
+                const prompt = `
+                Your task is to write the next 8 lines of a song telling this story:
+                TITLE: ${activeTale.title}
+                PLOT: ${activeTale.arc}
 
-    } catch (error) {
-        console.error("[Music AI] Error composing batch:", error);
-        // Failsafe: If the LLM breaks or JSON parsing fails, send a silent rest so the song doesn't crash
-        callback(`[THOUGHT] Rest [/THOUGHT]\n[LYRICS_UI] - [/LYRICS_UI]\n[LYRICS_PHONETIC] - [/LYRICS_PHONETIC]`);
-    }
-});
+                RULES:
+                1. Line 1 MUST announce the tale (e.g., "I sing of...", "Hear the tale of...").
+                2. Lines 2-8 must progress the story logically.
+                3. Keep every line extremely short (1 to 3 words MAX) to fit a single musical measure.
+                4. YOU MUST OUTPUT PURE JSON. Return an array of exactly 8 objects. 
+                
+                CRITICAL: The "ui" field should be normally capitalized. The "phonetic" field MUST be ENTIRELY LOWERCASE standard English. Do NOT use actual phonetic spellings. The client-side engine will handle translation.
+
+                Use this EXACT JSON format:
+                [
+                  {
+                    "thought": "Announcing the tale to the hall.",
+                    "ui": "I sing of",
+                    "phonetic": "i sing of"
+                  },
+                  {
+                    "thought": "Introducing the boy king.",
+                    "ui": "Young Arthur",
+                    "phonetic": "young arthur"
+                  }
+                ]
+                `;
+
+                // 3. Call Gemini
+                const result = await taliesinModel.generateContent(prompt);
+                const responseText = result.response.text();
+                
+                // 4. THE BULLETPROOF EXTRACTOR
+                // This regex finds the array brackets [] even if Gemini added conversational text around it
+                const jsonMatch = responseText.match(/\[\s*\{[\s\S]*\}\s*\]/);
+                
+                if (!jsonMatch) {
+                    throw new Error("No JSON array found in the response.");
+                }
+                
+                // 5. Parse the extracted JSON array
+                const newVerse = JSON.parse(jsonMatch[0]);
+                
+                if (Array.isArray(newVerse) && newVerse.length > 0) {
+                    // Fill the cache!
+                    lyricCache = newVerse;
+                    
+                    // Advance the story index for the next time the cache empties
+                    currentStoryIndex = (currentStoryIndex + 1) % BARDIC_TALES.length;
+
+                    // Immediately dispense the very first line to the waiting frontend
+                    const firstLine = lyricCache.shift();
+                    const frontendString = `
+                    [THOUGHT] ${firstLine.thought} [/THOUGHT]
+                    [LYRICS_UI] ${firstLine.ui} [/LYRICS_UI]
+                    [LYRICS_PHONETIC] ${firstLine.phonetic} [/LYRICS_PHONETIC]
+                    `;
+                    
+                    return callback(frontendString);
+                } else {
+                    throw new Error("Parsed JSON was not an array.");
+                }
+
+            } catch (error) {
+                console.error("[Music AI] Error composing batch:", error.message);
+                // Failsafe: Send a silent rest so the song doesn't crash
+                callback(`[THOUGHT] Rest [/THOUGHT]\n[LYRICS_UI] - [/LYRICS_UI]\n[LYRICS_PHONETIC] - [/LYRICS_PHONETIC]`);
+            }
+        });
 
     //CLIENT SYNC & POLISH
         socket.on("request_stats_sync", () => {
