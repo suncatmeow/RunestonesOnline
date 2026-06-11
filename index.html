@@ -64867,16 +64867,16 @@
             this.master.gain.value = 0.7;
 
             this.reverb = ctx.createConvolver();
-            this.reverb.buffer = this.createImpulse(4.0); 
+            this.reverb.buffer = this.createImpulse(2.5); 
             this.revGain = ctx.createGain();
             this.revGain.gain.value = 0.5; 
 
             this.limiter = ctx.createDynamicsCompressor();
-            this.limiter.threshold.value = -3.0; // Catch peaks right before they clip
-            this.limiter.knee.value = 0.0;       // Hard knee for strict limiting
-            this.limiter.ratio.value = 20.0;     // Aggressive squash on anything too loud
-            this.limiter.attack.value = 0.001;   // Instant reaction
-            this.limiter.release.value = 0.1;
+            this.limiter.threshold.value = -6.0;  // Catch the peaks slightly earlier
+            this.limiter.knee.value = 12.0;       // A soft curve prevents harsh crackling
+            this.limiter.ratio.value = 12.0;      // Gentle compression instead of a brick wall
+            this.limiter.attack.value = 0.005;    // Let the very tip of the transient through
+            this.limiter.release.value = 0.25;
 
             // Route everything through the limiter before the destination
             this.master.connect(this.limiter);
@@ -65320,26 +65320,27 @@
                     let semiThird = constrainToHigh(getDiatonic(d, 2));
                     let semiFifth = constrainToHigh(getDiatonic(d, 4));
                     
-                    if (Math.random() > 0.910613) { semiRoot = constrainToTenor(getDiatonic(d, rnd(0, 11))); }
-                    if (Math.random() > 0.910613) { semiThird = constrainToTenor(getDiatonic(d, rnd(0, 11))); }
-                    if (Math.random() > 0.910613) { semiFifth = constrainToTenor(getDiatonic(d, rnd(0, 11))); }
+                    if (Math.random() > 0.910613) { semiRoot = constrainToTenor(getDiatonic(d, Math.floor(Math.random() * 12))); }
+                    if (Math.random() > 0.910613) { semiThird = constrainToTenor(getDiatonic(d, Math.floor(Math.random() * 12))); }
+                    if (Math.random() > 0.910613) { semiFifth = constrainToTenor(getDiatonic(d, Math.floor(Math.random() * 12))); }
                     
-                    // 1. THE LEAD VOICE (Strong, centered, sharp resonance)
-                    MusicEngine.sing(vocalSyllable, t, [semiRoot], this.rootFreq, targetDuration, 1.0, 0.15);
+                    // 1. LEAD VOICE (Reduced from 1.0 to 0.65)
+                    MusicEngine.sing(vocalSyllable, t, [semiRoot], this.rootFreq, targetDuration, 0.65, 0.15);
                     
-                    // 2. THE THIRD (Softer, slightly rounded resonance, slightly delayed for a wider stereo feel)
-                    MusicEngine.sing(vocalSyllable, t + 0.025, [semiThird], this.rootFreq, targetDuration, 0.85, 0.25);
+                    // 2. THE THIRD (Reduced from 0.85 to 0.45)
+                    MusicEngine.sing(vocalSyllable, t + 0.025, [semiThird], this.rootFreq, targetDuration, 0.45, 0.25);
                     
-                    // 3. THE FIFTH (Softest, dark/warm resonance, widened delay)
-                    MusicEngine.sing(vocalSyllable, t + 0.048, [semiFifth], this.rootFreq, targetDuration, 0.70, 0.35);
+                    // 3. THE FIFTH (Reduced from 0.70 to 0.35)
+                    MusicEngine.sing(vocalSyllable, t + 0.048, [semiFifth], this.rootFreq, targetDuration, 0.35, 0.35);
                 };
 
                 // Helper function to fire the Solo
                 const fireSolo = () => {
-                    
                     let semiLead = constrainToTenor(getDiatonic(d, 0));
-                    if(Math.random()>.61391){semiLead = constrainToHigh(getDiatonic(d, rnd(0,12)));}
-                    MusicEngine.sing(vocalSyllable, t, [semiLead], this.rootFreq, targetDuration, 1.3, 0.1);
+                    if(Math.random()>.61391){semiLead = constrainToHigh(getDiatonic(d, Math.floor(Math.random() * 12)));}
+                    
+                    // Reduced from 1.3 to 0.85 so it blends with the new chorus volume
+                    MusicEngine.sing(vocalSyllable, t, [semiLead], this.rootFreq, targetDuration, 0.85, 0.1);
                 };
 
             // --- ROUTING THE SECTIONS ---
