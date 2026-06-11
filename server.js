@@ -7217,6 +7217,7 @@ io.on("connection", (socket) => {
             console.log(`[Music AI] Cache empty. Composing a new verse...`);
             
             try {
+                currentStoryIndex = Math.floor(Math.random() * BARDIC_TALES.length);
                 const activeTale = BARDIC_TALES[currentStoryIndex];
 
                 const prompt = `
@@ -7270,7 +7271,7 @@ io.on("connection", (socket) => {
                     lyricCache = newVerse;
                     
                     // Advance the story index for the next time the cache empties
-                    currentStoryIndex = (currentStoryIndex + 1) % BARDIC_TALES.length;
+                    //currentStoryIndex = (currentStoryIndex + 1) % BARDIC_TALES.length;
 
                     // Immediately dispense the very first line to the waiting frontend
                     const firstLine = lyricCache.shift();
