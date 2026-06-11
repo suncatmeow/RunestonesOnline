@@ -2541,6 +2541,22 @@
         // ==========================================================
         // AGE I: PROTO-INDO-EUROPEAN (The Dawn of Language)
         // ==========================================================
+            {
+                title: "The Marriage of Bile and the River of Peaks",
+                arc: "The primordial solar Oak, Bile, marches to the far western rim of the red earth, his canopy alight with the blinding, fiery sparks of the upper sky. To prevent his wood from consuming itself in a glorious, destructive blaze, the ancient Earth Mother, Danu, pours her cool, crystalline rivers directly from her guarded mountain crests down into his parched roots, wedding the wild sky-fire to the deep, stabilizing waters of the world. Themes: Solar timber, mountain rivers, red earth, the marriage of elements, cooling currents."
+            },
+            {
+                title: "Yggdrasil and the Frost-Locked Wells",
+                arc: "The great Axis Mundi tree stands threatened by the encroaching heat of the fire-realms, its topmost branches dry and weeping sap from the cosmic glare. Deep below the surface, the unyielding stone of the northern earth holds the silent, ancient frost-wells of wisdom and fate. Only by anchoring its roots deep through the cold, dark sub-basement of the northern soil does the tree find the life-saving moisture needed to withstand the scorching winds of the universe. Themes: World ash, cosmic glare, subterranean frost-wells, deep anchoring, surviving the heat."
+            },
+            {
+                title: "The Song of the Oak to the Frozen Peak",
+                arc: "The towering Oak whose branches burn with unstoppable fire, looks back across the mountain divide. Parched and burning from his own internal heat, he sings a raw, acoustic lament to the silent, stone Mountain of the north. He begs the peak to unseal her hidden, frozen winter waters to soothe his parched bark before he burns to ash. Themes: Blazing wood, dry wind, unyielding peaks, hidden wells, the plea for the cool stream."
+            },
+            {
+                title: "The Song of the Mountain to the Burning Branch",
+                arc: "From the silent, mist-shrouded northern heights, the unshakeable Mountain responds to the distant song. For years she stood guarded and frozen in winter stone, unmoving and slow to trust. Hearing the desperate, roaring fire of the western Oak, she allows his roots to pierce her high crags, unsealing her deepest, hidden underground springs to steady his flames and anchor his path forever. Themes: Ancient stone, thawing frost, piercing roots, deep reservoirs, the immovable anchoring the wild flame."
+            },
             { 
                 title: "The Cosmic Tree (Axis Mundi)",
                 arc: "Before the earth was shaped, the Great Oak grew in the void. Its deep roots drink from the black underworld, its trunk anchors the world of men, and its golden branches hold the spinning stars. It is the bridge between all realms. Themes: Giant roots, starry branches, the center of the universe, holding up the sky."
