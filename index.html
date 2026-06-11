@@ -47244,8 +47244,8 @@
         }
     },
     
-    sing(text, startTime, notesArray = [0], rootFreq = 110, targetDuration = 0.25, resonance = 1.0, breathiness = 0.1) {      
-        if (!this.ctx) return;
+sing(text, startTime, notesArray = [0], rootFreq = 110, targetDuration = 0.25, resonance = 1.0, breathiness = 0.1, pan = 0, volOffset = 1.0) {
+            if (!this.ctx) return;
           if (!window.settingsAudio) return;
           if (this.ctx.state === 'suspended') { this.ctx.resume(); }
         if (!this.activeVoiceNodes) this.activeVoiceNodes = [];
@@ -47692,7 +47692,7 @@
           glottalFilter2.type = 'lowpass'; glottalFilter2.frequency.value = 1200;
 
           const throat = this.ctx.createBiquadFilter(); 
-          throat.type = 'lowpass'; throat.frequency.value = 3500; 
+          throat.type = 'lowpass'; throat.frequency.value = 6500; 
 
           // --- PHASE 4: THE NASAL CAVITY ---
           const maxFreq = this.ctx.sampleRate / 2; // Dynamically grab the Nyquist limit
@@ -47717,10 +47717,11 @@
           f4Gain.gain.value = 0.25;
           // === NEW: FORMANT BALANCING GAINS ===
           // Mimics the natural energy falloff of human resonance
-          const f1Gain = this.ctx.createGain(); f1Gain.gain.value = 1.0;   // 0dB (Loudest)
-          const f2Gain = this.ctx.createGain(); f2Gain.gain.value = 0.45;  // ~ -7dB
-          const f3Gain = this.ctx.createGain(); f3Gain.gain.value = 0.15;  // ~ -16dB
-
+          // === THE POST-PUNK EQ BALANCING GAINS ===
+          // Intentionally boosting the high frequencies to pierce through the mix
+          const f1Gain = this.ctx.createGain(); f1Gain.gain.value = 1.0;   // Core Body
+          const f2Gain = this.ctx.createGain(); f2Gain.gain.value = 0.85;  // High-mids (Clarity)
+          const f3Gain = this.ctx.createGain(); f3Gain.gain.value = 0.75;  // Treble (The piercing brightness)
           // ---> PASTE SHIMMER HERE <---
           // Shimmer (Amplitude Instability)
           const shimmerLFO = this.ctx.createOscillator();
@@ -47749,17 +47750,22 @@
           throat.connect(nasalNotch);
           nasalNotch.connect(vocalEnv);
           
-          // Route through Formants -> Formant Gains -> Lips -> Master
+          // Route through Formants -> Formant Gains -> Lips
           vocalEnv.connect(f1); f1.connect(f1Gain); f1Gain.connect(lips);
           vocalEnv.connect(f2); f2.connect(f2Gain); f2Gain.connect(lips);
           vocalEnv.connect(f3); f3.connect(f3Gain); f3Gain.connect(lips);
           vocalEnv.connect(f4Singer); f4Singer.connect(f4Gain); f4Gain.connect(lips);
-          lips.connect(this.masterGain);
+          
+          // === THE STEREO PANNER ===
+          // (This creates the panner and applies the left/right width!)
+          const panner = this.ctx.createStereoPanner();
+          panner.pan.value = pan;
+          
+          // Lips -> Panner -> Master
+          lips.connect(panner);
+          panner.connect(this.masterGain);
           // ------------------------------------------
 
-
-          vocalEnv.connect(f1); vocalEnv.connect(f2); vocalEnv.connect(f3);
-          f1.connect(this.masterGain); f2.connect(this.masterGain); f3.connect(this.masterGain);
         // Set initial pitch to the first note in the array
         vocalCords.start(t); breathNoise.start(t);
       // SEQUENCER
@@ -47871,8 +47877,7 @@
                         vocalEnv.gain.setTargetAtTime(0, t, 0.015); 
                         breathEnv.gain.setTargetAtTime(breathiness * 2, t, 0.01); 
                     } else {
-                        let targetVol = (p.type === 'stop' || p.type === 'fricative') ? 0.2 : (p.vol * 0.65 || 0.5);                  
-                        
+let targetVol = ((p.type === 'stop' || p.type === 'fricative') ? 0.3 : (p.vol * 0.95 || 0.8)) * volOffset * 1.8;
                         if (isStressed && (p.type === 'vowel' || p.type === 'diphthong')) {
                             targetVol = Math.min(targetVol * 1.4, 1.0); 
                             f3Gain.gain.setTargetAtTime(0.35, t, 0.04); 
@@ -48022,6 +48027,36 @@
           vocalEnv.gain.setTargetAtTime(0, t, 0.02); 
           breathEnv.gain.setTargetAtTime(0, t, 0.02);
           vocalCords.stop(t + 0.2); vibratoLFO.stop(t + 0.2); breathNoise.stop(t + 0.2); jitterLFO.stop(t + 0.2); shimmerLFO.stop(t + 0.2);
+          vocalCords.onended = () => {
+              vocalCords.disconnect();
+              vibratoLFO.disconnect();
+              jitterLFO.disconnect();
+              shimmerLFO.disconnect();
+              breathNoise.disconnect();
+              
+              glottalFilter1.disconnect();
+              glottalFilter2.disconnect();
+              throat.disconnect();
+              nasalNotch.disconnect();
+              f1.disconnect(); f2.disconnect(); f3.disconnect(); f4Singer.disconnect();
+              f1Gain.disconnect(); f2Gain.disconnect(); f3Gain.disconnect(); f4Gain.disconnect();
+              
+              lips.disconnect();
+              panner.disconnect(); // <--- The panner is safely disconnected here!
+              vocalEnv.disconnect();
+              breathEnv.disconnect();
+              
+              // Remove these specific nodes from the tracker array
+              if (this.activeVoiceNodes) {
+                  this.activeVoiceNodes = this.activeVoiceNodes.filter(n => 
+                      n !== vocalCords && 
+                      n !== vibratoLFO && 
+                      n !== breathNoise && 
+                      n !== jitterLFO && 
+                      n !== shimmerLFO
+                  );
+              }
+          };
     },//
     createTone(t, freq, type, vol, dur, slide) {
       const osc = this.ctx.createOscillator();
@@ -64867,21 +64902,28 @@
             this.master.gain.value = 0.7;
 
             this.reverb = ctx.createConvolver();
-            this.reverb.buffer = this.createImpulse(2.5); 
+            this.reverb.buffer = this.createImpulse(3.0); // Slightly longer for the ghost vibe
+            
+            // --- NEW: THE DARK REVERB FILTER ---
+            this.reverbFilter = ctx.createBiquadFilter();
+            this.reverbFilter.type = 'lowpass';
+            this.reverbFilter.frequency.value = 1800; // Cuts the harsh hiss, leaves the warm dark echoes
+
             this.revGain = ctx.createGain();
-            this.revGain.gain.value = 0.5; 
+            this.revGain.gain.value = 0.7; // We can turn it up a bit now that the harsh highs are gone
 
             this.limiter = ctx.createDynamicsCompressor();
-            this.limiter.threshold.value = -6.0;  // Catch the peaks slightly earlier
-            this.limiter.knee.value = 12.0;       // A soft curve prevents harsh crackling
-            this.limiter.ratio.value = 12.0;      // Gentle compression instead of a brick wall
-            this.limiter.attack.value = 0.005;    // Let the very tip of the transient through
+            this.limiter.threshold.value = -6.0;  
+            this.limiter.knee.value = 12.0;       
+            this.limiter.ratio.value = 12.0;      
+            this.limiter.attack.value = 0.005;    
             this.limiter.release.value = 0.25;
 
-            // Route everything through the limiter before the destination
+            // Route Master -> Reverb -> Filter -> RevGain -> Limiter -> Dest
             this.master.connect(this.limiter);
             this.master.connect(this.reverb);
-            this.reverb.connect(this.revGain);
+            this.reverb.connect(this.reverbFilter);
+            this.reverbFilter.connect(this.revGain);
             this.revGain.connect(this.limiter);
             
             this.limiter.connect(this.dest);
@@ -65315,6 +65357,8 @@
                 const lineInSong = measure % 16; 
 
                 // Helper function to fire the 3-part Chorus
+                // Helper function to fire the 3-part Chorus
+                // Helper function to fire the 3-part Chorus
                 const fireChorus = () => {
                     let semiRoot = constrainToHigh(getDiatonic(d, 0));
                     let semiThird = constrainToHigh(getDiatonic(d, 2));
@@ -65324,14 +65368,15 @@
                     if (Math.random() > 0.910613) { semiThird = constrainToTenor(getDiatonic(d, Math.floor(Math.random() * 12))); }
                     if (Math.random() > 0.910613) { semiFifth = constrainToTenor(getDiatonic(d, Math.floor(Math.random() * 12))); }
                     
-                    // 1. LEAD VOICE (Reduced from 1.0 to 0.65)
-                    MusicEngine.sing(vocalSyllable, t, [semiRoot], this.rootFreq, targetDuration, 0.65, 0.15);
+                    // Parameters: text, time, notes, root, duration, RESONANCE, breathiness, PAN, VOLUME
+                    // 1. LEAD: Bright resonance (1.3), Center pan (0), Volume (0.65)
+                    MusicEngine.sing(vocalSyllable, t, [semiRoot], this.rootFreq, targetDuration, 1.3, 0.15, 0, 0.65);
                     
-                    // 2. THE THIRD (Reduced from 0.85 to 0.45)
-                    MusicEngine.sing(vocalSyllable, t + 0.025, [semiThird], this.rootFreq, targetDuration, 0.45, 0.25);
+                    // 2. THIRD: Darker resonance (0.95), Left pan (-0.65), Volume (0.45)
+                    MusicEngine.sing(vocalSyllable, t + 0.025, [semiThird], this.rootFreq, targetDuration, 0.95, 0.25, -0.65, 0.45);
                     
-                    // 3. THE FIFTH (Reduced from 0.70 to 0.35)
-                    MusicEngine.sing(vocalSyllable, t + 0.048, [semiFifth], this.rootFreq, targetDuration, 0.35, 0.35);
+                    // 3. FIFTH: Darkest resonance (0.85), Right pan (0.65), Volume (0.35)
+                    MusicEngine.sing(vocalSyllable, t + 0.048, [semiFifth], this.rootFreq, targetDuration, 0.85, 0.35, 0.65, 0.35);
                 };
 
                 // Helper function to fire the Solo
@@ -65339,8 +65384,8 @@
                     let semiLead = constrainToTenor(getDiatonic(d, 0));
                     if(Math.random()>.61391){semiLead = constrainToHigh(getDiatonic(d, Math.floor(Math.random() * 12)));}
                     
-                    // Reduced from 1.3 to 0.85 so it blends with the new chorus volume
-                    MusicEngine.sing(vocalSyllable, t, [semiLead], this.rootFreq, targetDuration, 0.85, 0.1);
+                    // THE FIX: Very bright resonance (1.4), Center pan (0), High Volume (1.0)
+                    MusicEngine.sing(vocalSyllable, t, [semiLead], this.rootFreq, targetDuration, 1.4, 0.1, 0, 1.0);
                 };
 
             // --- ROUTING THE SECTIONS ---
@@ -65370,7 +65415,7 @@
                 
                 // The piercing high lead (using constrainToHigh)
                 let semiHighLead = constrainToHigh(getDiatonic(d, 0));
-                MusicEngine.sing(vocalSyllable, t, [semiHighLead], this.rootFreq, targetDuration, 1.5, 0.05);
+                MusicEngine.sing(vocalSyllable, t, [semiHighLead], this.rootFreq, targetDuration, 1.5, 0.05,0,1);
                 
                 // The "Ancient Shadow" Idea: A highly breathy, heavily delayed sub-octave trailing behind it
                 //let semiShadow = semiHighLead - 12; 
