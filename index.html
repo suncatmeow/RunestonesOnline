@@ -12942,6 +12942,9 @@
             const type = overrideType !== undefined ? overrideType : Number(sprite.type);            
            //3D UPDATE
             // 0. Base Scale & Hover
+                if (type >= 140 && type <= 142) { scale = 1.0; hover = 0; } // 3D Wisp 
+                else if (type >= 143 && type <= 145) { scale = 1; hover = -.6; } // 3D Imp
+
                 if (type >= 137 && type <= 139) { scale = 2; hover = -1; } // 3D Sea Serpent
                 if (type >= 134 && type <= 136) { scale = 1; hover = .13; } // 3D Gargoyle
                 if (type >= 131 && type <= 133) { scale = .69; hover = .13; } // 3D PIXIE
@@ -13093,22 +13096,26 @@
                 // ==========================================
                 // --- 1. DETERMINE BASE IMAGE ---
                 // ==========================================
+                let spriteVariant = 'normal';
                 let imageIndex = (sprite.type !== undefined) ? Number(sprite.type) : 0;
                 //3D UPDATE
                 // ---> THE UPGRADE PATH: Convert 2D to 3D <---
                 if (imageIndex === 23) imageIndex = 108; // Upgrade Wisp!
+                if (imageIndex === 88) { imageIndex = 140; spriteVariant = 'mirage'; } // Uses Wisp 3D!
                 if (imageIndex === 54) imageIndex = 111; // Upgrade Goblin!
                 if (imageIndex === 57||imageIndex === 57.1) imageIndex = 114; // Upgrade Spider!
                 if (imageIndex === 56) imageIndex = 117; // Upgrade Imp!
+                if (imageIndex === 79) { imageIndex = 143; spriteVariant = 'fire'; }
                 if (imageIndex === 81) imageIndex = 120; // Upgrade Ice Golem!
+                //if (imageIndex === 75||imageIndex === 75.1) { imageIndex = 146; spriteVariant = 'gnome'; } // Uses Golem 3D!
                 if (imageIndex === 82) imageIndex = 123; // Upgrade Skeleton!
                 if (imageIndex === 86) imageIndex = 126; // Upgrade Dark Sylph!
+                if (imageIndex === 61||imageIndex === 61.1) { imageIndex = 149; spriteVariant = 'light'; } // Uses Sylph 3D!
                 if (imageIndex === 33||imageIndex === 33.1) imageIndex = 129; // Upgrade Salamander
                 if (imageIndex === 60||imageIndex === 60.1) imageIndex = 131; // Upgrade Pixie
                 if (imageIndex === 74||imageIndex === 74.1) imageIndex = 134; // Upgrade Gargoyle
-                if (imageIndex === 74||imageIndex === 74.1) imageIndex = 134; // Upgrade Gargoyle
                 //if (imageIndex === 46||imageIndex === 46.1) imageIndex = 137; // Upgrade Sea Serpent
-
+                
                 // ==========================================
                 // --- 2. 3D STATE MACHINE ---
                 // ==========================================
@@ -13160,6 +13167,18 @@
                     }
                     else if (imageIndex >= 137 && imageIndex <= 139) { //SEA SERPENT
                         if (isAttacking) imageIndex = 139; else if (isMoving) imageIndex = 138; else imageIndex = 137;
+                    }
+                    else if (imageIndex >= 140 && imageIndex <= 142) { // MIRAGE
+                        if (isAttacking) imageIndex = 142; else if (isMoving) imageIndex = 141; else imageIndex = 140;
+                    }
+                    else if (imageIndex >= 143 && imageIndex <= 145) { // FIRE IMP
+                        if (isAttacking) imageIndex = 145; else if (isMoving) imageIndex = 144; else imageIndex = 143;
+                    }
+                    else if (imageIndex >= 146 && imageIndex <= 148) { // GNOME
+                        if (isAttacking) imageIndex = 148; else if (isMoving) imageIndex = 147; else imageIndex = 146;
+                    }
+                    else if (imageIndex >= 149 && imageIndex <= 151) { // LIGHT SYLPH
+                        if (isAttacking) imageIndex = 151; else if (isMoving) imageIndex = 150; else imageIndex = 149;
                     }
                     // Calculate Relative 3D Direction
                     if (sprite.isPlayer) {
@@ -46128,7 +46147,8 @@
         //3D UPDATE
         const directionalPortraits = [101, 102, 103, 104, 105, 106,
         107, 108,109,110, 111,112,113, 114,115,116, 117,118,119,
-        120,121,122, 123,124,125, 126,127,128,129,130,131,132,133,134,135,136,137,138,139];
+        120,121,122, 123,124,125, 126,127,128,129,130,131,132,133,134,135,136,137,138,139,
+        140,141,142,143,144,145,146,147,148,149,150,151];
         const cacheSize = 256; 
         const totalFrames = 4; 
 
@@ -46244,10 +46264,20 @@
                     ctx = cleanupCtx;
                     tX = 0; tY = 0; tL = cacheSize; tH = cacheSize;
                     window.cacheAngle = (i / totalFrames) * (Math.PI * 2);
-                    // Center the draw inside the cache canvas
-                    // (Using 5, 5 because the cache canvas is 10x10 relative units)
-                    drawSpritePaths(index - 100, 5, 4.5, 9, 0, ryAngle, 0);                    // Notice we do index - 100. So ID 101 will trigger 'case 1:' in drawSpritePaths.
+                    let baseIndex = index - 100;
+                    let variant = 'normal';
 
+                    // Mirage (Wisp Base 3D ID: 8, 9, 10)
+                    if (index >= 140 && index <= 142) { baseIndex = index - 140 + 8; variant = 'mirage'; }
+                    // Fire Imp (Imp Base 3D ID: 17, 18, 19)
+                    if (index >= 143 && index <= 145) { baseIndex = index - 143 + 17; variant = 'fire'; }
+                    // Gnome (Golem Base 3D ID: 20, 21, 22)
+                    if (index >= 146 && index <= 148) { baseIndex = index - 146 + 20; variant = 'gnome'; }
+                    // Light Sylph (Sylph Base 3D ID: 26, 27, 28)
+                    if (index >= 149 && index <= 151) { baseIndex = index - 149 + 26; variant = 'light'; }
+
+                    // Pass the baseIndex and variant into your draw function!
+                    drawSpritePaths(baseIndex, 5, 4.5, 9, 0, ryAngle, 0, variant);
                     spriteCache[index][dir].push(frameCanvas);
 
                     // Progress Update
@@ -46318,13 +46348,14 @@
         } 
     // 3D SPRITES
         //SPRITE MODELS
-        function drawSpritePaths(index, x, y, z, rx, ry, rz) {
+        function drawSpritePaths(index, x, y, z, rx, ry, rz,variant='normal') {
             let mesh = { vertices: [], faces: [] };
             //3D UPDATE
             // --- 1. DEFINE ALL COLORS ONCE AT THE TOP ---
                 const cWood  = {r: 0.5, g: 0.25, b: 0.1};
                 const cSteel = {r: 0.7, g: 0.7, b: 0.7};
                 const cGold  = {r: 1.0, g: 0.8, b: 0.1};
+
                 const cGem   = {r: 1.0, g: 0.0, b: 0.2};
                 const cArmor = {r: 0.8, g: 0.8, b: 0.8}; // Moved from case 4
                 const cJoint = {r: 0.2, g: 0.2, b: 0.2}; // Moved from case 4
@@ -46338,8 +46369,20 @@
                 const cSpidHourglass = {r: 0.9, g: 0.0, b: 0.0};
                 const cSpidEye = {r: 0.05, g: 0.05, b: 0.05};
                 const cSpidFang = {r: 0.9, g: 0.9, b: 0.9};
-                const cImpSkin = {r: 0.0, g: 0.05, b: 0.25}; // Very dark midnight blue
-                const cImpRed  = {r: 1.0, g: 0.0, b: 0.0};   // Eyes / Tongue
+
+                let cImpSkin = {r: 0.0, g: 0.05, b: 0.25}; // Very dark midnight blue
+                let cImpRed  = {r: 1.0, g: 0.0, b: 0.0};   // Eyes / Tongue
+                // Golem Base
+                let cIceCore = {r: 0.0, g: 0.3, b: 0.8}; 
+                let cIceDark = {r: 0.0, g: 0.15, b: 0.5}; 
+                
+                // Sylph Base
+                let cSyArmor = {r: 0.2, g: 0.2, b: 0.25}; 
+                let cVisor = {r: 1.0, g: 0.0, b: 0.0}; 
+                
+                // Wisp Base
+                let ghostHalo = {r: 0.8, g: 0.2, b: 1.0, a: 0.25};
+                let ghostCore = {r: 0.6, g: 0.1, b: 0.8, a: 0.50};
                 const cImpBlack= {r: 0.0, g: 0.0, b: 0.0};   // Mouth
                 const cImpWhite= {r: 1.0, g: 1.0, b: 1.0};   // Fangs
                 const cSalamander = {r: 0.95, g: 0.27, b: 0.04};  // Fiery Orange/Red (#F4450B)
@@ -46362,6 +46405,23 @@
                 const cSerpDark  = {r: 0.0, g: 0.35, b: 0.35}; // Shadowed belly
                 const cSerpMouth = {r: 0.0, g: 0.1, b: 0.15};  // Deep dark throat
                 const cSerpEye   = {r: 0.0, g: 0.0, b: 0.0};   // Innocent black dot
+                // --- 2. PALETTE SWAPPING (THE MAGIC TRICK) ---
+                if (variant === 'fire') {
+                    cImpSkin = {r: 0.8, g: 0.1, b: 0.0};   // Deep Red Skin
+                    cImpRed  = {r: 1.0, g: 0.8, b: 0.0};   // Orange/Yellow eyes and tongue
+                } 
+                else if (variant === 'gnome') {
+                    cIceCore = {r: 0.4, g: 0.25, b: 0.1};  // Dirt Brown
+                    cIceDark = {r: 0.2, g: 0.1, b: 0.05};  // Darker Mud
+                } 
+                else if (variant === 'light') {
+                    cSyArmor = {r: 0.85, g: 0.85, b: 0.9}; // Light Gray / White Armor
+                    cVisor = {r: 0.0, g: 0.8, b: 1.0};   // Friendly Blue Visor instead of Evil Red
+                } 
+                else if (variant === 'mirage') {
+                    ghostHalo = {r: 1.0, g: 0.1, b: 0.1, a: 0.25}; // Red Aura
+                    ghostCore = {r: 0.7, g: 0.0, b: 0.0, a: 0.50}; // Crimson Core
+                }
                 // Sea Serpent Bone Variables
                 let serpRoot, serpNeck, serpHead, serpJaw;
                 let serpTailRoot, serpTailTip;
@@ -47300,8 +47360,6 @@
                 let t = window.cacheAngle || 0;
 
                 // 1. Define Ghostly Transparency Colors
-                const ghostHalo = {r: 0.8, g: 0.2, b: 1.0, a: 0.25}; // Outer layer
-                const ghostCore = {r: 0.6, g: 0.1, b: 0.8, a: 0.50}; // Inner layer
                 const solidFace = {r: 0.1, g: 0.1, b: 0.15, a: 1.0}; // Face: 100% Opaque!
 
                 // 2. Independent Bobbing Math
@@ -47497,9 +47555,7 @@
             // --- RENDER ICE GOLEM ---
             if (index >= 20 && index <= 22) {
                 // Color Palette
-                const cIceCore = {r: 0.0, g: 0.3, b: 0.8}; // Main body blue
-                const cIceDark = {r: 0.0, g: 0.15, b: 0.5}; // Darker blue for extremities/shield
-                const cIceSword = {r: 0.0, g: 1.0, b: 1.0, a: 0.7}; // Glowing transparent Cyan!
+               const cIceSword = {r: 0.0, g: 1.0, b: 1.0, a: 0.7}; // Glowing transparent Cyan!
 
                 // 1. Diamond Head (Cube rotated 45 degrees on Z axis)
                 let headShape = computeBone(gHead, 0, 0, 0, 0, 0, Math.PI/4);
@@ -47617,8 +47673,6 @@
                 let gWave = 0.5 + Math.sin(t * 13) * 0.5;
                 let bWave = 0.5 + Math.cos(t * 10) * 0.5;
 
-                const cArmor = {r: 0.2, g: 0.2, b: 0.25}; // Dark Grey/Charcoal
-                const cVisor = {r: 1.0, g: 0.0, b: 0.0};  // Pure Red
                 const cSword = {r: rWave, g: gWave, b: bWave, a: 0.9}; // Rainbow Shimmer!
                 const cWings = {r: 0.8 * rWave, g: 0.1, b: 0.8 * bWave, a: 0.4}; // Translucent pulsing purple/pink
 
@@ -47630,27 +47684,27 @@
                 // 2. The Pulsating Bottom Thruster/Flame
                 let pulse = 1.0 + Math.sin(t * 20) * 0.2; // Rapid expansion and contraction
                 let flameBone = computeBone(syThruster, 0, 0.1, 0, -Math.PI/2, 0, 0); // Pointing down
-                add3dShapeRigged(mesh, 'tri', flameBone, 0.25 * pulse, 0.25 * pulse, 0.4 * pulse, cArmor);
+                add3dShapeRigged(mesh, 'tri', flameBone, 0.25 * pulse, 0.25 * pulse, 0.4 * pulse, cSyArmor);
 
                 // 3. Torso & Armor Skirts
-                add3dShapeRigged(mesh, 'arc', syBody, 0.2, 0.25, 0.15, cArmor);
+                add3dShapeRigged(mesh, 'arc', syBody, 0.2, 0.25, 0.15, cSyArmor);
                 
                 let skirtL = computeBone(syBody, -0.15, 0.25, 0, 0, 0, 0.4);
                 let skirtR = computeBone(syBody,  0.15, 0.25, 0, 0, 0, -0.4);
-                add3dShapeRigged(mesh, 'tri', skirtL, 0.15, 0.05, 0.3, cArmor);
-                add3dShapeRigged(mesh, 'tri', skirtR, 0.15, 0.05, 0.3, cArmor);
+                add3dShapeRigged(mesh, 'tri', skirtL, 0.15, 0.05, 0.3, cSyArmor);
+                add3dShapeRigged(mesh, 'tri', skirtR, 0.15, 0.05, 0.3, cSyArmor);
 
                 // 4. Shoulders & Arms
-                add3dShapeRigged(mesh, 'arc', syLArm, 0.1, 0.15, 0.1, cArmor); // Left shoulder pauldron
-                add3dShapeRigged(mesh, 'arc', syLFore, 0.04, 0.2, 0.04, cArmor);
-                add3dShapeRigged(mesh, 'arc', syRArm, 0.1, 0.15, 0.1, cArmor); // Right shoulder pauldron
-                add3dShapeRigged(mesh, 'arc', syRFore, 0.04, 0.2, 0.04, cArmor);
+                add3dShapeRigged(mesh, 'arc', syLArm, 0.1, 0.15, 0.1, cSyArmor); // Left shoulder pauldron
+                add3dShapeRigged(mesh, 'arc', syLFore, 0.04, 0.2, 0.04, cSyArmor);
+                add3dShapeRigged(mesh, 'arc', syRArm, 0.1, 0.15, 0.1, cSyArmor); // Right shoulder pauldron
+                add3dShapeRigged(mesh, 'arc', syRFore, 0.04, 0.2, 0.04, cSyArmor);
 
                 // 5. The Head (Bird Beak + Red Visor)
-                add3dShapeRigged(mesh, 'arc', syHead, 0.15, 0.15, 0.15, cArmor);
+                add3dShapeRigged(mesh, 'arc', syHead, 0.15, 0.15, 0.15, cSyArmor);
                 
                 let beak = computeBone(syHead, 0, 0.05, -0.12, 0, 0, 0);
-                add3dShapeRigged(mesh, 'tri', beak, 0.12, 0.05, 0.2, cArmor); // Pointy metal beak
+                add3dShapeRigged(mesh, 'tri', beak, 0.12, 0.05, 0.2, cSyArmor); // Pointy metal beak
 
                 let visor = computeBone(syHead, 0, -0.05, -0.14, 0, 0, 0);
                 add3dShapeRigged(mesh, 'rec', visor, 0.12, 0.02, 0.02, cVisor); // Glowing slit
@@ -47659,8 +47713,8 @@
                 let shieldRoot = computeBone(syLFore, 0, 0.1, -0.1, 0, Math.PI/2 + 0.2, 0);
                 let shieldTop = computeBone(shieldRoot, 0, -0.15, 0, 0, 0, 0);
                 let shieldBot = computeBone(shieldRoot, 0, 0.15, 0, -Math.PI/2, 0, 0); 
-                add3dShapeRigged(mesh, 'rec', shieldTop, 0.25, 0.3, 0.05, cArmor);
-                add3dShapeRigged(mesh, 'tri', shieldBot, 0.25, 0.25, 0.05, cArmor);
+                add3dShapeRigged(mesh, 'rec', shieldTop, 0.25, 0.3, 0.05, cSyArmor);
+                add3dShapeRigged(mesh, 'tri', shieldBot, 0.25, 0.25, 0.05, cSyArmor);
 
                 // 7. Shimmering Sword (Right Arm)
                 let swordGrip = computeBone(syRFore, 0, 0.2, 0, Math.PI/2 + 0.2, 0, 0);
