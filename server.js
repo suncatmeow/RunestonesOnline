@@ -2771,13 +2771,33 @@
         // AGE VIII: THE RUNESTONES MYTHOS (The Dreamer's Realm)
         // ==========================================================
             {
-                title: "The Legend of Suncat",
+                title: "Suncat",
                 arc: "Born on the sun-drenched Western Shores under the sign of the Fire Horse, a solitary scribe known as Edmundo sought the truth of the soul. Blessed by the Phantom Queen, the scribe cast off the heavy, false armor of men to walk the earth in her true, womanly form. Known now as Suncat, she wanders with a wooden lute, shadowed by red foxes and crows, dreaming a boundless realm of living stone into being. Themes: True forms, red and black skies, wooden lutes, the Phantom Queen's blessing, dreaming worlds."
             },
             {
-                title: "The Immortal on the Coastal Road",
+                title: "Wandering Immortal",
                 arc: "Wandering the mist-shrouded coastal paths in search of quiet, Suncat encounters an ancient, nameless immortal walking the edge of the world. The elder imparts the 'Way of Peace'—secret cultivation techniques of breath and bone that banish decay. Mastering this art, Suncat becomes entirely free and unfettered from the chains of the mortal world. Themes: Coastal fogs, wandering immortals, deep breath, defying time, ultimate freedom."
+            },
+        // ==========================================================
+        // ADDITIONS TO BARDIC_TALES
+        // ==========================================================
+            {
+                title: "Excalibur",
+                arc: "A song of absolute reverence sung to the blade forged in crystal halls. It speaks of its blinding, double-edged light that strikes enemies blind, its unearthly scabbard that prevents the wearer from spilling a single drop of blood, and the ancient runes of power carved into its crossguard that spell out 'Take Me' and 'Cast Me Away.' Themes: Glowing steel, white samite, blinding reflections, the unbleeding sheath, the singing blade."
+            },
+            {
+                title: "Hero's Shield",
+                arc: "A detailed, rhythmic description of a cosmic buckler forged in celestial fire. On its outer rim, the God of War leads a legion into a city of ashes; at its center, the God of Love binds the world together with golden threads; while the God of Wisdom watches from a crescent moon, holding the scales of cosmic fate. It is the history of the universe hammered into a single piece of star-bronze. Themes: Hammered bronze, warring legions, golden threads, the crescent moon, the cosmos bound in metal."
+            },
+            {
+                title: "The Nibelung",
+                arc: "The northern prince Siegfried journeys into the dark, sulfurous cavern to slay the greed-warped dragon Fafnir. Guided by a magical ring that grants invisibility, he drives his sword into the beast's black heart. By bathing in the dragon's boiling, dark blood, his skin turns to unshakeable horn, save for a single, tragic spot between his shoulder blades where a linden leaf fell. Themes: Dragon-fire, black blood, hardened skin, linden leaves, the curse of the gold ring."
+            },
+            {
+                title: "Merlin and Nimue",
+                arc: "Having stepped out from the shattered stone tomb into the strange, modern world, Merlin finds Nimue waiting for him beneath a dying hawthorn tree. No longer enemies, they sit amidst the rust and concrete to share a final, quiet conversation. He asks her why she sealed him away; she reveals it was the only way to shield his ancient magic from a thousand years of human corruption so he could awaken when the world needed him most. Themes: Ancient magic in concrete, fading illusions, tragic necessity, the shared secret, the dawn of a new age."
             }
+    //
     ];
 
 
