@@ -2680,118 +2680,118 @@
         // =========================================================
         // 2. DYNAMIC TARGET SELECTION (The Universal Radar)
         // =========================================================
-        let targetX = playerX;
-        let targetY = playerY;
-        let isChasingNPC = false; 
-        let currentPrey = this.cachedPrey; // Default to our cached target
-        let distToActualPlayer = Math.sqrt(Math.pow(playerX - this.x, 2) + Math.pow(playerY - this.y, 2));        
+            let targetX = playerX;
+            let targetY = playerY;
+            let isChasingNPC = false; 
+            let currentPrey = this.cachedPrey; // Default to our cached target
+            let distToActualPlayer = Math.sqrt(Math.pow(playerX - this.x, 2) + Math.pow(playerY - this.y, 2));        
 
-        // --- RADAR THROTTLE ---
-        // Only scan for targets every 15 frames. Staggered by NPC index so they don't all scan at once!
-        if (!dungeon.frame || dungeon.frame % 15 === (this.index % 15)) {
-            currentPrey = null; // Reset to find a new target
+            // --- RADAR THROTTLE ---
+            // Only scan for targets every 15 frames. Staggered by NPC index so they don't all scan at once!
+            if (!dungeon.frame || dungeon.frame % 15 === (this.index % 15)) {
+                currentPrey = null; // Reset to find a new target
 
-            // --- ALLY & ESCORT LOGIC ---
-            if (this.alignment === 'ally' || this.alignment === 'escort' || this.alignment === 'escort_combat') {
-                let closestDistSq = Infinity;
-                let aggroRadiusSq = 36; 
+                // --- ALLY & ESCORT LOGIC ---
+                if (this.alignment === 'ally' || this.alignment === 'escort' || this.alignment === 'escort_combat') {
+                    let closestDistSq = Infinity;
+                    let aggroRadiusSq = 36; 
+                    
+                    if (this.alignment !== 'escort') {
+                        for (let other of dungeon.npcs) {
+                            if (other === this || other.isDead || !other.visible || !other.alignment.startsWith('foe')|| other.alignment === 'foe_coward') continue;
+                            let dSq = Math.pow(other.x - this.x, 2) + Math.pow(other.y - this.y, 2);
+                            if (dSq < aggroRadiusSq && dSq < closestDistSq && this.hasLineOfSight(maze, other.x, other.y)) { 
+                                closestDistSq = dSq; currentPrey = other;
+                            }
+                        }
+                    }
+                }
                 
-                if (this.alignment !== 'escort') {
+                // --- DEFENDER LOGIC (The Guards) ---
+                else if (this.alignment.startsWith('defender')) {
+                    let closestDistSq = Infinity;
                     for (let other of dungeon.npcs) {
                         if (other === this || other.isDead || !other.visible || !other.alignment.startsWith('foe')|| other.alignment === 'foe_coward') continue;
                         let dSq = Math.pow(other.x - this.x, 2) + Math.pow(other.y - this.y, 2);
-                        if (dSq < aggroRadiusSq && dSq < closestDistSq && this.hasLineOfSight(maze, other.x, other.y)) { 
+                        if (dSq < 64 && dSq < closestDistSq && this.hasLineOfSight(maze, other.x, other.y)) {  
                             closestDistSq = dSq; currentPrey = other;
                         }
                     }
                 }
-            }
-            
-            // --- DEFENDER LOGIC (The Guards) ---
-            else if (this.alignment.startsWith('defender')) {
-                let closestDistSq = Infinity;
-                for (let other of dungeon.npcs) {
-                    if (other === this || other.isDead || !other.visible || !other.alignment.startsWith('foe')|| other.alignment === 'foe_coward') continue;
-                    let dSq = Math.pow(other.x - this.x, 2) + Math.pow(other.y - this.y, 2);
-                    if (dSq < 64 && dSq < closestDistSq && this.hasLineOfSight(maze, other.x, other.y)) {  
-                        closestDistSq = dSq; currentPrey = other;
-                    }
-                }
-            }
-            
-            // --- FOE LOGIC (The Invaders) ---
-            else if (typeof this.alignment === 'string' && this.alignment.startsWith('foe')) {
-                let distToPlayerSq = Math.pow(playerX - this.x, 2) + Math.pow(playerY - this.y, 2);
-                let closestDistSq = distToPlayerSq; // Player is the default target
+                
+                // --- FOE LOGIC (The Invaders) ---
+                else if (typeof this.alignment === 'string' && this.alignment.startsWith('foe')) {
+                    let distToPlayerSq = Math.pow(playerX - this.x, 2) + Math.pow(playerY - this.y, 2);
+                    let closestDistSq = distToPlayerSq; // Player is the default target
 
-                for (let other of dungeon.npcs) {
-                    if (other === this || other.isDead || !other.visible) continue;
-                    if (other.role === 'dropped_card' || other.role.includes('portal')) continue;
-                    
-                    let isEnemyFaction = !other.alignment.startsWith('foe') && other.alignment !== 'neutral'&& other.role !== 'shop' && !other.alignment.startsWith('friendly');
-                    if (!isEnemyFaction) continue;
-                    
-                    let dSq = Math.pow(other.x - this.x, 2) + Math.pow(other.y - this.y, 2);
-                    if (dSq < 36 && dSq < closestDistSq && this.hasLineOfSight(maze, other.x, other.y)) { 
-                        closestDistSq = dSq; currentPrey = other;
+                    for (let other of dungeon.npcs) {
+                        if (other === this || other.isDead || !other.visible) continue;
+                        if (other.role === 'dropped_card' || other.role.includes('portal')) continue;
+                        
+                        let isEnemyFaction = !other.alignment.startsWith('foe') && other.alignment !== 'neutral'&& other.role !== 'shop' && !other.alignment.startsWith('friendly');
+                        if (!isEnemyFaction) continue;
+                        
+                        let dSq = Math.pow(other.x - this.x, 2) + Math.pow(other.y - this.y, 2);
+                        if (dSq < 36 && dSq < closestDistSq && this.hasLineOfSight(maze, other.x, other.y)) { 
+                            closestDistSq = dSq; currentPrey = other;
+                        }
+                    }
+
+                    let hasLOS = this.hasLineOfSight(maze, playerX, playerY);
+                    if (hasLOS) { 
+                        this.lastSeenX = playerX; this.lastSeenY = playerY;
                     }
                 }
 
-                let hasLOS = this.hasLineOfSight(maze, playerX, playerY);
-                if (hasLOS) { 
-                    this.lastSeenX = playerX; this.lastSeenY = playerY;
-                }
+                // Save whoever we found to memory so we don't have to loop again next frame!
+                this.cachedPrey = currentPrey; 
             }
 
-            // Save whoever we found to memory so we don't have to loop again next frame!
-            this.cachedPrey = currentPrey; 
-        }
-
-        // --- APPLY THE CACHED TARGET ---
-        if (currentPrey) {
-            if (this.alignment.startsWith('ally') || this.alignment.startsWith('defender')) {
-                let leash = this.state === 'chasing' ? 12.0 : 6.0; 
-        
-                if (distToActualPlayer < leash || this.alignment.startsWith('defender')) {
-                    targetX = currentPrey.x; targetY = currentPrey.y;
-                    isChasingNPC = true; this.state = 'chasing'; 
-                    this.speed = this.alignment.startsWith('defender') ? 2.5 : 2.5; 
+            // --- APPLY THE CACHED TARGET ---
+            if (currentPrey) {
+                if (this.alignment.startsWith('ally') || this.alignment.startsWith('defender')) {
+                    let leash = this.state === 'chasing' ? 12.0 : 6.0; 
+            
+                    if (distToActualPlayer < leash || this.alignment.startsWith('defender')) {
+                        targetX = currentPrey.x; targetY = currentPrey.y;
+                        isChasingNPC = true; this.state = 'chasing'; 
+                        this.speed = this.alignment.startsWith('defender') ? 2.5 : 2.5; 
+                    }
+                } else if (this.alignment.startsWith('foe')) {
+                    targetX = currentPrey.x; targetY = currentPrey.y; isChasingNPC = true;
                 }
-            } else if (this.alignment.startsWith('foe')) {
-                targetX = currentPrey.x; targetY = currentPrey.y; isChasingNPC = true;
-            }
-        } else {
-            // Failsafes when no prey is found
-            if (this.alignment.startsWith('foe')) {
-                let hasLOS = this.hasLineOfSight(maze, playerX, playerY);
-                if (!hasLOS && this.lastSeenX !== null && this.state === 'chasing') {
-                    targetX = this.lastSeenX; targetY = this.lastSeenY;
-                } else {
-                    targetX = playerX; targetY = playerY;
-                }
-                isChasingNPC = false; 
-            } else if (this.alignment.startsWith('defender')) {
-                targetX = this.originx; targetY = this.originy; isChasingNPC = false;
-                let distToHome = Math.sqrt(Math.pow(targetX - this.x, 2) + Math.pow(targetY - this.y, 2));
-                if (distToHome > 2.0) { this.state = 'following'; this.speed = 1.5; } 
-                else { this.state = 'wandering'; this.speed = 0.5; }
-            } else if (this.alignment.startsWith('friendly')) {
-                targetX = (this.alignment === 'friendly_messenger') ? playerX : (this.originx || this.x); 
-                targetY = (this.alignment === 'friendly_messenger') ? playerY : (this.originy || this.y);
-                isChasingNPC = false;
             } else {
-                // Default Ally Fallback
-                targetX = playerX; targetY = playerY; isChasingNPC = false;
-                this.state = 'following';
-                if (distToActualPlayer > 1.5) this.speed = distToActualPlayer > 5 ? 4.0 : 2.0; 
-                else this.speed = 0;
+                // Failsafes when no prey is found
+                if (this.alignment.startsWith('foe')) {
+                    let hasLOS = this.hasLineOfSight(maze, playerX, playerY);
+                    if (!hasLOS && this.lastSeenX !== null && this.state === 'chasing') {
+                        targetX = this.lastSeenX; targetY = this.lastSeenY;
+                    } else {
+                        targetX = playerX; targetY = playerY;
+                    }
+                    isChasingNPC = false; 
+                } else if (this.alignment.startsWith('defender')) {
+                    targetX = this.originx; targetY = this.originy; isChasingNPC = false;
+                    let distToHome = Math.sqrt(Math.pow(targetX - this.x, 2) + Math.pow(targetY - this.y, 2));
+                    if (distToHome > 2.0) { this.state = 'following'; this.speed = 1.5; } 
+                    else { this.state = 'wandering'; this.speed = 0.5; }
+                } else if (this.alignment.startsWith('friendly')) {
+                    targetX = (this.alignment === 'friendly_messenger') ? playerX : (this.originx || this.x); 
+                    targetY = (this.alignment === 'friendly_messenger') ? playerY : (this.originy || this.y);
+                    isChasingNPC = false;
+                } else {
+                    // Default Ally Fallback
+                    targetX = playerX; targetY = playerY; isChasingNPC = false;
+                    this.state = 'following';
+                    if (distToActualPlayer > 1.5) this.speed = distToActualPlayer > 5 ? 4.0 : 2.0; 
+                    else this.speed = 0;
+                }
             }
-        }
 
-        this.chasing = isChasingNPC;
-        const diffPlayerX = targetX - this.x;
-        const diffPlayerY = targetY - this.y;
-        const distToPlayer = Math.sqrt((diffPlayerX * diffPlayerX) + (diffPlayerY * diffPlayerY));
+            this.chasing = isChasingNPC;
+            const diffPlayerX = targetX - this.x;
+            const diffPlayerY = targetY - this.y;
+            const distToPlayer = Math.sqrt((diffPlayerX * diffPlayerX) + (diffPlayerY * diffPlayerY));
             
         // =========================================================
         // 3. READ THE FLOW FIELD / PATHFINDING
@@ -5331,7 +5331,7 @@
                 // ==========================================
                 // --- E-RANK GUILD CLERK ---
                 // ==========================================
-                let guildClerk2 = new NPC(202, 25.5, 75.5, 26, 'stationary', '#00ff00', [], 'dialogue', false, 'friendly');
+                let guildClerk2 = new NPC(202, 25.5, 75.5, 188, 'stationary', '#00ff00', [], 'dialogue', false, 'friendly');
                 
                 guildClerk2.dialogueFactory = (dungeon) => {
                     if (dungeon.memory['guild_rep'] === undefined) dungeon.memory['guild_rep'] = 0; 
@@ -5517,7 +5517,7 @@
                 // ==========================================
                 // --- D-RANK GUILD CLERK ---
                 // ==========================================
-                let guildClerk3 = new NPC(203, 31.5, 71.5, 76, 'stationary', '#00ff00', [], 'dialogue', false, 'friendly');
+                let guildClerk3 = new NPC(203, 31.5, 71.5, 191, 'stationary', '#00ff00', [], 'dialogue', false, 'friendly');
                 
                 guildClerk3.dialogueFactory = (dungeon) => {
                     if (dungeon.memory['guild_rep'] === undefined) dungeon.memory['guild_rep'] = 0; 
@@ -5806,7 +5806,7 @@
                 // ==========================================
                 // --- C-RANK GUILD CLERK (STORY CAMPAIGN) ---
                 // ==========================================
-                let guildClerk4 = new NPC(204, 25.5, 71.5, 45, 'stationary', '#00ff00', [], 'dialogue', false, 'friendly');
+                let guildClerk4 = new NPC(204, 25.5, 71.5, 194, 'stationary', '#00ff00', [], 'dialogue', false, 'friendly');
                 
                 guildClerk4.dialogueFactory = (dungeon) => {
                     if (dungeon.memory['guild_rep'] === undefined) dungeon.memory['guild_rep'] = 0; 
@@ -6094,7 +6094,7 @@
                 // ==========================================
                 // Check rank the moment the map loads to set the correct sprite!
                 let isTraitorGone = (this.memory['guild_rank'] === 'A' || this.memory['guild_rank'] === 'S');
-                let bRankSprite = isTraitorGone ? 27 : 49;
+                let bRankSprite = isTraitorGone ? 203 : 203;
 
                 let guildClerk5 = new NPC(205, 31.5, 65.5, bRankSprite, 'stationary', '#00ff00', [], 'dialogue', false, 'friendly');
                 guildClerk5.dialogueFactory = (dungeon) => {
@@ -6370,7 +6370,7 @@
                 // ==========================================
                 // --- A-RANK GUILD CLERK (VANGUARD TIER) ---
                 // ==========================================
-                let guildClerk6 = new NPC(206, 25.5, 65.5, 53, 'stationary', '#00ff00', [], 'dialogue', false, 'friendly');
+                let guildClerk6 = new NPC(206, 25.5, 65.5, 197, 'stationary', '#00ff00', [], 'dialogue', false, 'friendly');
                 
                 guildClerk6.dialogueFactory = (dungeon) => {
                     if (dungeon.memory['guild_rep'] === undefined) dungeon.memory['guild_rep'] = 0; 
@@ -6587,7 +6587,7 @@
                 // ==========================================
                 // --- S-RANK GUILDMASTER (THE FINALE) ---
                 // ==========================================
-                let guildClerk7 = new NPC(207, 28.5, 64.5, 45, 'stationary', '#ffd700', [], 'dialogue', false, 'friendly');
+                let guildClerk7 = new NPC(207, 28.5, 64.5, 200, 'stationary', '#ffd700', [], 'dialogue', false, 'friendly');
                 
                 guildClerk7.dialogueFactory = (dungeon) => {
                     if (dungeon.memory['guild_rep'] === undefined) dungeon.memory['guild_rep'] = 0; 
@@ -6779,7 +6779,7 @@
                     ]
                 }));
                 // 2. The Wave Commander (Arena Master)
-                this.npcs.push(Object.assign(new NPC(2, 5.5, 11.5, 5, 'stationary', '#00ff00', [], 'dialogue', false, 'friendly'), {
+                this.npcs.push(Object.assign(new NPC(2, 5.5, 11.5, 203, 'stationary', '#00ff00', [], 'dialogue', false, 'friendly'), {
                     customDialogue: ["Welcome to the Crucible.", "Survive my minions, and you shall earn glory. Prepare yourself!"],
                     options: ['Start', 'Leave'],
                     yesActions: [
@@ -7785,6 +7785,7 @@
                         ['spectate', "Player has confronted the Djinn in the witch queen's castle."],
                         ['disappear', null]
                     ];
+                    djinnDialogue.dir = 2;
                     this.npcs.push(djinnDialogue);
                     
                 } else {
@@ -8416,7 +8417,7 @@
                 if (!isArthurDead) {
                     let arthurDeck = [50,64,59,51,8,28,85];
                     let arthurDialog = new NPC(2, 5.5, 2.5, 85, 'stationary', '#00ff00', arthurDeck, 'dialogue', true, 'friendly');
-                    
+                    arthurDialog.dir = 2;
                     arthurDialog.customDialogue = [
                         "Who disturbs this King's slumber?", "The realm is in dire need?",
                         "It is not yet my appointed time.", "...I sense your desire to save the people of this land.",
@@ -8655,6 +8656,7 @@
 
               // --- THE ELF QUEEN ---
               let elfQueen = new NPC(3, 17.5, 8.5, 76, 'stationary', '#66ccff', [76,77,74,74,74,75,66,71], 'dialogue', null, 'friendly');
+              
               elfQueen.dialogueFactory = (dungeonInstance) => {
                   if (dungeonInstance.gd === 0) {
                       return { 
@@ -12944,10 +12946,20 @@
             // 0. Base Scale & Hover
                 if (type >= 140 && type <= 142) { scale = 1.0; hover = 0; } // 3D Wisp 
                 else if (type >= 143 && type <= 145) { scale = 1; hover = -.6; } // 3D Imp
+                else if (type >= 152 && type <= 154) { scale = 4; hover = -2; } // 3D Djinn
+                else if (type >= 155 && type <= 157) { scale = 2; hover = -.5; } // 3D Shade
+                else if (type >= 158 && type <= 160) { scale =2; hover = -.9; } // 3D Knight
+                else if (type >= 161 && type <= 163) { scale =1; hover = -.6; } // 3D Brown Knight
+                else if (type >= 164 && type <= 166) { scale =2; hover = -.9; } // 3D Ghost Knight
+                else if (type >= 167 && type <= 169) { scale =4; hover = -2; } // 3D Kraken
+                else if (type >= 170 && type <= 172) { scale =2; hover = -.9; } // 3D Kraken
+                else if (type >= 173 && type <= 187) { scale =1.3; hover = .13; } // 3D Fairy Queen
+                else if (type >= 188 && type <= 197) { scale =3; hover = -1.3; } // 3D Fairy Queen
+                else if (type >= 198 && type <= 209) { scale =4; hover = -2; } // 3D Fairy Queen
 
                 if (type >= 137 && type <= 139) { scale = 2; hover = -1; } // 3D Sea Serpent
                 if (type >= 134 && type <= 136) { scale = 1; hover = .13; } // 3D Gargoyle
-                if (type >= 131 && type <= 133) { scale = .69; hover = .13; } // 3D PIXIE
+                if (type >= 131 && type <= 133) { scale = .69; hover = .13; } // 3D Pixie
                 if (type >= 129 && type <= 130) { scale = 2.5; hover = -1; } // 3D Salamander
                 if (type >= 126 && type <= 128) { scale = .69; hover = .13; } // 3D Dark Sylph
                 if (type >= 123 && type <= 125) { scale = 2; hover = -1; } // 3D Skeleton
@@ -13115,7 +13127,20 @@
                 if (imageIndex === 60||imageIndex === 60.1) imageIndex = 131; // Upgrade Pixie
                 if (imageIndex === 74||imageIndex === 74.1) imageIndex = 134; // Upgrade Gargoyle
                 //if (imageIndex === 46||imageIndex === 46.1) imageIndex = 137; // Upgrade Sea Serpent
-                
+                //if (imageIndex === 35||imageIndex === 35.1) imageIndex = 152; // Upgrade Gargoyle
+                if (imageIndex === 42||imageIndex === 42.1) imageIndex = 155; // Upgrade Gargoyle
+                //if (imageIndex === 4 || imageIndex === 4.1) imageIndex = 158; // Upgrade Knight!
+                if (imageIndex === 85) { imageIndex = 164; spriteVariant = 'ghost_knight'; } // Ghost Variant!
+                if (imageIndex === 75|| imageIndex === 75.1) { imageIndex = 161; spriteVariant = 'brown_knight'; }
+                //if (imageIndex === 49 || imageIndex === 49.1) imageIndex = 167; // Upgrade Kraken King!
+                //if (imageIndex === 32 || imageIndex === 32.1) imageIndex = 170; // Upgrade Apprentice!
+                if (imageIndex === 62 || imageIndex === 62.1) imageIndex = 173; // Upgrade Fairy Queen!
+                if (imageIndex === 76 || imageIndex === 76.1) imageIndex = 176; // Upgrade Fairy Queen!
+                if (imageIndex === 48 || imageIndex === 48.1) imageIndex = 179; // Upgrade Fairy Queen!
+                if (imageIndex === 34 || imageIndex === 34.1) imageIndex = 182; // Upgrade Fairy Queen!
+                if (imageIndex === 999 || imageIndex === 61391) imageIndex = 185; // Upgrade Fairy Queen!
+                //if (imageIndex === 63 || imageIndex === 63.1) imageIndex = 206; // Upgrade Fairy Queen!
+
                 // ==========================================
                 // --- 2. 3D STATE MACHINE ---
                 // ==========================================
@@ -13179,6 +13204,70 @@
                     }
                     else if (imageIndex >= 149 && imageIndex <= 151) { // LIGHT SYLPH
                         if (isAttacking) imageIndex = 151; else if (isMoving) imageIndex = 150; else imageIndex = 149;
+                    }
+                    else if (imageIndex >= 152 && imageIndex <= 154) { // DJINN
+                        if (isAttacking) imageIndex = 154; else if (isMoving) imageIndex = 153; else imageIndex = 152;
+                    }
+                    else if (imageIndex >= 155 && imageIndex <= 157) { // SHADE
+                        if (isAttacking) imageIndex = 157; else if (isMoving) imageIndex = 156; else imageIndex = 155;
+                    }
+                    else if (imageIndex >= 158 && imageIndex <= 160) { // KNIGHT
+                        if (isAttacking) imageIndex = 160; else if (isMoving) imageIndex = 159; else imageIndex = 158;
+                    }
+                    else if (imageIndex >= 161 && imageIndex <= 163) { // BROWN KNIGHT
+                        if (isAttacking) imageIndex = 163; else if (isMoving) imageIndex = 162; else imageIndex = 161;
+                    }
+                    else if (imageIndex >= 164 && imageIndex <= 166) { // GHOST KNIGHT
+                        if (isAttacking) imageIndex = 166; else if (isMoving) imageIndex = 165; else imageIndex = 164;
+                    }
+                    else if (imageIndex >= 167 && imageIndex <= 169) { // KRAKEN KING
+                        if (isAttacking) imageIndex = 169; else if (isMoving) imageIndex = 168; else imageIndex = 167;
+                    }
+                    else if (imageIndex >= 170 && imageIndex <= 172) { // APPRENTICE
+                        if (isAttacking) imageIndex = 172; else if (isMoving) imageIndex = 171; else imageIndex = 170;
+                    }
+                    else if (imageIndex >= 173 && imageIndex <= 175) { // FAIRY QUEEN
+                        if (isAttacking) imageIndex = 175; else if (isMoving) imageIndex = 174; else imageIndex = 173;
+                    }
+                    else if (imageIndex >= 176 && imageIndex <= 178) { // FAIRY green
+                        if (isAttacking) imageIndex = 178; else if (isMoving) imageIndex = 177; else imageIndex = 176;
+                    }
+                    else if (imageIndex >= 179 && imageIndex <= 181) { // FAIRY blue
+                        if (isAttacking) imageIndex = 181; else if (isMoving) imageIndex = 180; else imageIndex = 179;
+                    }
+                    else if (imageIndex >= 182 && imageIndex <= 184) { // FAIRY reb
+                        if (isAttacking) imageIndex = 184; else if (isMoving) imageIndex = 183; else imageIndex = 182;
+                    }
+                    else if (imageIndex >= 185 && imageIndex <= 187) { // FAIRY black
+                        if (isAttacking) imageIndex = 187; else if (isMoving) imageIndex = 185; else imageIndex = 185;
+                    }
+                    else if (imageIndex >= 188 && imageIndex <= 190) { // bear
+                        if (isAttacking) imageIndex = 190; else if (isMoving) imageIndex = 189; else imageIndex = 188;
+                    }
+                    else if (imageIndex >= 191 && imageIndex <= 193) { // wolf
+                        if (isAttacking) imageIndex = 193; else if (isMoving) imageIndex = 192; else imageIndex = 191;
+                    }
+                    else if (imageIndex >= 194 && imageIndex <= 196) { // boar
+                        if (isAttacking) imageIndex = 196; else if (isMoving) imageIndex = 195; else imageIndex = 194;
+                    }
+                    else if (imageIndex >= 197 && imageIndex <= 199) { // vampire
+                        if (isAttacking) imageIndex = 199; else if (isMoving) imageIndex = 198; else imageIndex = 197;
+                    }
+                    else if (imageIndex >= 200 && imageIndex <= 202) { // spriggan
+                        if (isAttacking) imageIndex = 202; else if (isMoving) imageIndex = 201; else imageIndex = 200;
+                    }
+                    else if (imageIndex >= 203 && imageIndex <= 205) { // dullahan
+                        if (isAttacking) imageIndex = 205; else if (isMoving) imageIndex = 204; else imageIndex = 203;
+                    }
+                    // --- 1. HANDLE EXCEPTIONS ---
+                    if (imageIndex >= 206 && imageIndex <= 209) { // DRAGON (4 Frames)
+                    if (isAttacking) {
+                        // Alternate between Bite (108) and Fire (109) every 2 seconds
+                        let useFireBreath = Math.floor(Date.now() / 2000) % 2 === 0;
+                        imageIndex = useFireBreath ? 209 : 208;
+                    }
+                        else if (isMoving) imageIndex = 207;
+                        else imageIndex = 206;
                     }
                     // Calculate Relative 3D Direction
                     if (sprite.isPlayer) {
@@ -45013,163 +45102,163 @@
                 drawShape('arc',x,y,z,3,7 ,.5,0, 6,0, 0,0,'brown',0);
                 break;
             case 20.1: //HEART
-            drawShape('tri',x,y,z,0,6.59,5,10,10,6.6,0,0,'rgb(255,72,72)',1);
-            drawShape('arc',x,y,z,2.25,3.7,3.63,0,6,0,0,0,'rgb(255,72,72)',1);
-            drawShape('arc',x,y,z,7.75,3.7,3.63,0,6,0,0,0,'rgb(255,72,72)',1);
-            drawShape('arc',x,y,z,5,7,3,3,0,0,0,0,'rgb(255,72,72)',1);
+                drawShape('tri',x,y,z,0,6.59,5,10,10,6.6,0,0,'rgb(255,72,72)',1);
+                drawShape('arc',x,y,z,2.25,3.7,3.63,0,6,0,0,0,'rgb(255,72,72)',1);
+                drawShape('arc',x,y,z,7.75,3.7,3.63,0,6,0,0,0,'rgb(255,72,72)',1);
+                drawShape('arc',x,y,z,5,7,3,3,0,0,0,0,'rgb(255,72,72)',1);
             break;
             case 20.1: //HEARTShield
-            drawShape('tri',x,y,z,-1.26,4.9, 5,13, 10,6.6, 0,0,'gray',1);
-            drawShape('arc',x,y,z,2.25,3.7,3.63,0,6,0,0,0,'gray',1);
-            drawShape('arc',x,y,z,7.75,3.7,3.63,0,6,0,0,0,'gray',1);
-            drawShape('arc',x,y,z,5,7,3,3,0,0,0,0,'gray',1);
+                drawShape('tri',x,y,z,-1.26,4.9, 5,13, 10,6.6, 0,0,'gray',1);
+                drawShape('arc',x,y,z,2.25,3.7,3.63,0,6,0,0,0,'gray',1);
+                drawShape('arc',x,y,z,7.75,3.7,3.63,0,6,0,0,0,'gray',1);
+                drawShape('arc',x,y,z,5,7,3,3,0,0,0,0,'gray',1);
             break;
             case 13.1: //WBOOT
-            drawShape('qua',x,y,z,4.9,1, 5.1,.7, 5.22,.9, 3.4,6.4,'gray',1);
-            drawShape('qua',x,y,z,4.75,2, 4.75,2, 5.5,4.2, 3.3,6.4,'rgba(128,64,0,1)',1);
-            drawShape('qua',x,y,z,3.5,1, 5,9.45, 8.3,7.4, 8.5,1,'rgba(128,64,0,1)',1)
-            drawShape('qua',x,y,z,3.75,1, 6,9.45, 4.5,7.4, 8,1,'rgba(0,0,0,.06)',1)
-            drawShape('qua',x,y,z*1.1,7.8,1, 8,.7, 8.3,4.2, 6.3,6.4,'lightgray',1);
-            drawShape('qua',x,y,z*1.1,7.8,1, 8,.7, 8.02,.9, 6.3,6.4,'gray',1);
-            drawShape('ell',x,y,z,4,7.2, 2.9,2.4,1,0,6,0,'rgba(128,64,0,1)',1);
-            drawShape('ell',x,y,z,4,7.2, 2.9,2.4,1,0,6,0,'rgba(0,0,0,.06)',1);
+                drawShape('qua',x,y,z,4.9,1, 5.1,.7, 5.22,.9, 3.4,6.4,'gray',1);
+                drawShape('qua',x,y,z,4.75,2, 4.75,2, 5.5,4.2, 3.3,6.4,'rgba(128,64,0,1)',1);
+                drawShape('qua',x,y,z,3.5,1, 5,9.45, 8.3,7.4, 8.5,1,'rgba(128,64,0,1)',1)
+                drawShape('qua',x,y,z,3.75,1, 6,9.45, 4.5,7.4, 8,1,'rgba(0,0,0,.06)',1)
+                drawShape('qua',x,y,z*1.1,7.8,1, 8,.7, 8.3,4.2, 6.3,6.4,'lightgray',1);
+                drawShape('qua',x,y,z*1.1,7.8,1, 8,.7, 8.02,.9, 6.3,6.4,'gray',1);
+                drawShape('ell',x,y,z,4,7.2, 2.9,2.4,1,0,6,0,'rgba(128,64,0,1)',1);
+                drawShape('ell',x,y,z,4,7.2, 2.9,2.4,1,0,6,0,'rgba(0,0,0,.06)',1);
             break;
             case 28888://Trick7
-            drawShape('arc',x,y,z,5,5,5,0,2,0,0,0,`rgba(${Math.floor(Math.random()*255)},${Math.floor(Math.random()*255)},${Math.floor(Math.random()*255)},.015)`,1);//bag
+                drawShape('arc',x,y,z,5,5,5,0,2,0,0,0,`rgba(${Math.floor(Math.random()*255)},${Math.floor(Math.random()*255)},${Math.floor(Math.random()*255)},.015)`,1);//bag
 
-            drawShape('qua',x,y,z,4,0.5, 6,0.5, 5.5,8.25, 4.5,8.25,`rgba(${Math.floor(Math.random()*255)},${Math.floor(Math.random()*255)},${Math.floor(Math.random()*255)},.025)`,1);
-            drawShape('arc',x,y,z,5,9.25,.75,0,2,0,0,0,`rgba(${Math.floor(Math.random()*255)},${Math.floor(Math.random()*255)},${Math.floor(Math.random()*255)},.025)`,1);//bag
+                drawShape('qua',x,y,z,4,0.5, 6,0.5, 5.5,8.25, 4.5,8.25,`rgba(${Math.floor(Math.random()*255)},${Math.floor(Math.random()*255)},${Math.floor(Math.random()*255)},.025)`,1);
+                drawShape('arc',x,y,z,5,9.25,.75,0,2,0,0,0,`rgba(${Math.floor(Math.random()*255)},${Math.floor(Math.random()*255)},${Math.floor(Math.random()*255)},.025)`,1);//bag
 
-            sx = 2.8*z;
-            sy = -7.2*z;
-            sz = 2;
-            for (let i = 0;i<64;i++){
-                drawShape('ell',x+sx,y+sy,z*sz,    1+i*.001, 6+i*.001,        2-i*.01,   .5+i*.01,  0,    0,   2,    0,   `rgba(${255},${155},${155},1)`,1)
-                drawShape('ell',x+sx,y+sy,z*sz,    1+i*.001, 6+i*.001,        2-i*.01,   .5+i*.01,  0,    1.1,   -.1,    0,   `rgba(${255},${179},${102},1)`,1)
-                drawShape('ell',x+sx,y+sy,z*sz,    1+i*.001, 6+i*.001,        2-i*.01,   .5+i*.01,  0,    .1,  .9,    0,   `rgba(${255},${179},${102},1)`,1)
-                drawShape('ell',x+sx,y+sy,z*sz,    1+i*.001, 6+i*.001,        2-i*.01,   .5+i*.01,  0,    1.1,   -.1,    0,   `rgba(${0},${0},${0},.2)`,1)
-                drawShape('ell',x+sx,y+sy,z*sz,    1+i*.001, 6+i*.001,        2-i*.01,   .5+i*.01,  0,    .1,  .9,    0,   `rgba(${0},${0},${0},.2)`,1)
-            }
-            sz = .75;
-            sx = 1.05*z;
-            sy = 1.1*z;
+                sx = 2.8*z;
+                sy = -7.2*z;
+                sz = 2;
+                for (let i = 0;i<64;i++){
+                    drawShape('ell',x+sx,y+sy,z*sz,    1+i*.001, 6+i*.001,        2-i*.01,   .5+i*.01,  0,    0,   2,    0,   `rgba(${255},${155},${155},1)`,1)
+                    drawShape('ell',x+sx,y+sy,z*sz,    1+i*.001, 6+i*.001,        2-i*.01,   .5+i*.01,  0,    1.1,   -.1,    0,   `rgba(${255},${179},${102},1)`,1)
+                    drawShape('ell',x+sx,y+sy,z*sz,    1+i*.001, 6+i*.001,        2-i*.01,   .5+i*.01,  0,    .1,  .9,    0,   `rgba(${255},${179},${102},1)`,1)
+                    drawShape('ell',x+sx,y+sy,z*sz,    1+i*.001, 6+i*.001,        2-i*.01,   .5+i*.01,  0,    1.1,   -.1,    0,   `rgba(${0},${0},${0},.2)`,1)
+                    drawShape('ell',x+sx,y+sy,z*sz,    1+i*.001, 6+i*.001,        2-i*.01,   .5+i*.01,  0,    .1,  .9,    0,   `rgba(${0},${0},${0},.2)`,1)
+                }
+                sz = .75;
+                sx = 1.05*z;
+                sy = 1.1*z;
 
-            drawShape('ell',x+sx,y+sy,z*sz,    5.1, 5.1,        4.1,   2.1,  0,    2,  0,    0,   `rgba(${255},${255},${255},1)`,1)
-            drawShape('ell',x+sx,y+sy,z*sz,    5.1, 5.1,        2,   2,  0,    2,  0,    0,   `rgba(${180},${180},${255},1)`,1)
+                drawShape('ell',x+sx,y+sy,z*sz,    5.1, 5.1,        4.1,   2.1,  0,    2,  0,    0,   `rgba(${255},${255},${255},1)`,1)
+                drawShape('ell',x+sx,y+sy,z*sz,    5.1, 5.1,        2,   2,  0,    2,  0,    0,   `rgba(${180},${180},${255},1)`,1)
 
-            drawShape('ell',x+sx,y+sy,z*sz,    5.1, 5.1,        .25,   .25,  0,    2,  0,    0,   `rgba(${0},${0},${0},1)`,1)
-            //drawShape('qua',x,y,z,4,0.5, 6,0.5, 5.5,8.25, 4.5,8.25,'rgba(255,0,0,.131)',1);
-            //drawShape('arc',x,y,z,5,9.25,.75,0,2,0,0,0,'rgba(255,0,0,.131)',1);//bag
-            drawShape('tri',x,y,z,4.5,5, 3.5,5, 3.6,5.1,    5.1,8.25,`rgba(${Math.floor(Math.random()*255)},${Math.floor(Math.random()*255)},${Math.floor(Math.random()*255)})`,1);
-            drawShape('tri',x,y,z,4.65,5.1, 3.75,5.75, 3.76,5.5,    5.1,8.25,`rgba(${Math.floor(Math.random()*255)},${Math.floor(Math.random()*255)},${Math.floor(Math.random()*255)})`,1);
-            drawShape('tri',x,y,z,4.75,5.2, 4.5,6, 4.25,6,    5.1,8.25,`rgba(${Math.floor(Math.random()*255)},${Math.floor(Math.random()*255)},${Math.floor(Math.random()*255)})`,1);
+                drawShape('ell',x+sx,y+sy,z*sz,    5.1, 5.1,        .25,   .25,  0,    2,  0,    0,   `rgba(${0},${0},${0},1)`,1)
+                //drawShape('qua',x,y,z,4,0.5, 6,0.5, 5.5,8.25, 4.5,8.25,'rgba(255,0,0,.131)',1);
+                //drawShape('arc',x,y,z,5,9.25,.75,0,2,0,0,0,'rgba(255,0,0,.131)',1);//bag
+                drawShape('tri',x,y,z,4.5,5, 3.5,5, 3.6,5.1,    5.1,8.25,`rgba(${Math.floor(Math.random()*255)},${Math.floor(Math.random()*255)},${Math.floor(Math.random()*255)})`,1);
+                drawShape('tri',x,y,z,4.65,5.1, 3.75,5.75, 3.76,5.5,    5.1,8.25,`rgba(${Math.floor(Math.random()*255)},${Math.floor(Math.random()*255)},${Math.floor(Math.random()*255)})`,1);
+                drawShape('tri',x,y,z,4.75,5.2, 4.5,6, 4.25,6,    5.1,8.25,`rgba(${Math.floor(Math.random()*255)},${Math.floor(Math.random()*255)},${Math.floor(Math.random()*255)})`,1);
 
-            drawShape('tri',x,y,z,5,5.25, 5.5,6, 5.8,6,    5.1,8.25,`rgba(${Math.floor(Math.random()*255)},${Math.floor(Math.random()*255)},${Math.floor(Math.random()*255)})`,1);
-            drawShape('tri',x,y,z,5.45,5, 5.95,5, 6.35,5.1,    5.1,8.25,`rgba(${Math.floor(Math.random()*255)},${Math.floor(Math.random()*255)},${Math.floor(Math.random()*255)})`,1);
-            drawShape('tri',x,y,z,5.2,5.1, 6.1,5.75, 6.1,5.5,    5.1,8.25,`rgba(${Math.floor(Math.random()*255)},${Math.floor(Math.random()*255)},${Math.floor(Math.random()*255)})`,1);
-            drawShape('tri',x,y,z,4.9,4.75, 4.85,3.75, 4.95,3.75,    5.1,8.25,'brown',1);
-            drawShape('ell',x+sx,y+sy,z*sz,    5.1, 5.1,        2,   2,  0,    2,  0,    0,   `rgba(${Math.floor(Math.random()*255)},${Math.floor(Math.random()*255)},${Math.floor(Math.random()*255)},.25)`,1)
+                drawShape('tri',x,y,z,5,5.25, 5.5,6, 5.8,6,    5.1,8.25,`rgba(${Math.floor(Math.random()*255)},${Math.floor(Math.random()*255)},${Math.floor(Math.random()*255)})`,1);
+                drawShape('tri',x,y,z,5.45,5, 5.95,5, 6.35,5.1,    5.1,8.25,`rgba(${Math.floor(Math.random()*255)},${Math.floor(Math.random()*255)},${Math.floor(Math.random()*255)})`,1);
+                drawShape('tri',x,y,z,5.2,5.1, 6.1,5.75, 6.1,5.5,    5.1,8.25,`rgba(${Math.floor(Math.random()*255)},${Math.floor(Math.random()*255)},${Math.floor(Math.random()*255)})`,1);
+                drawShape('tri',x,y,z,4.9,4.75, 4.85,3.75, 4.95,3.75,    5.1,8.25,'brown',1);
+                drawShape('ell',x+sx,y+sy,z*sz,    5.1, 5.1,        2,   2,  0,    2,  0,    0,   `rgba(${Math.floor(Math.random()*255)},${Math.floor(Math.random()*255)},${Math.floor(Math.random()*255)},.25)`,1)
 
-            break;
+                break;
             case 3.1://SKELETON
-            //ribs+spine
-            drawShape('ell',x,y,z,5,5,1,1,0,0.1,.9,0,'lightgray',1);//rib5
-            drawShape('ell',x,y,z,5,5,.75,.7,0,0.1,.9,0,'black',1);//rib5-shadow
-            drawShape('ell',x,y,z,5,4.5,1.5,1,0,0.1,.9,0,'lightgray',1);//rib4
-            drawShape('ell',x,y,z,5,4.5,1,.7,0,0.1,.9,0,'black',1);//rib4-shadow
-            drawShape('ell',x,y,z,5,4,1.5,1,0,0.1,.9,0,'lightgray',1);//rib3
-            drawShape('ell',x,y,z,5,4,1,.7,0,0.1,.9,0,'black',1);//rib3-shadow
-            drawShape('ell',x,y,z,5,3.5,1.5,1,0,0.1,.9,0,'lightgray',1);//rib2
-            drawShape('ell',x,y,z,5,3.5,1,.7,0,0.1,.9,0,'black',1);//rib2-shadow
-            drawShape('ell',x,y,z,5,3,1.5,1,0,0.1,.9,0,'lightgray',1);//rib1
-            drawShape('ell',x,y,z,5,3,1,.7,0,0.1,.9,0,'black',1);//rib1-shadow
-            drawShape('lin',x,y,z,5,3.5,5,6,0,0,0,0,'gray',0);//spine
-            //head
-            drawShape('arc',x,y,z,5,1.5,1.5,0,6,0,0,0,'lightgray',1);//head
-            drawShape('arc',x,y,z,5.5,1.5,.5,0,6,0,0,0,'black',1);//r-eye
-            drawShape('arc',x,y,z,4.5,1.5,.5,0,6,0,0,0,'black',1);//l-eye
-            drawShape('lin',x,y,z,5.1,1.3,3.9,.75,0,0,0,0,'black',0);//l-eyebrow
-            drawShape('lin',x,y,z,4.9,1.3,6.1,.75,0,0,0,0,'black',0);//l-eyebrow
-            drawShape('tri',x,y,z,5,2,4.5,2.5,5.5,2.5,0,0,'black',1);//nose
-            drawShape('lin',x,y,z,5,2,5,2.4,0,0,0,0,'lightgray',0);//nostrils
-            drawShape('ell',x,y,z,5,3,1,.5,0,0,6,0,'lightgray',1);//jaw
-            drawShape('lin',x,y,z,4,3,6,3,0,0,0,0,'black',0);//mouth
-            //arms
-            drawShape('arc',x,y,z,3.5,3.5,.5,0,6,0,0,0,'lightgray',1);//l-shoulder
-            drawShape('arc',x,y,z,6.5,3.5,.5,0,6,0,0,0,'lightgray',1);//r-shoulder
-            drawShape('arc',x,y,z,3.5,3.5,.5,0,6,0,0,0,'black',0);//l-shoulder-shadow
-            drawShape('arc',x,y,z,6.5,3.5,.5,0,6,0,0,0,'black',0);//r-shoulder-shadow
-            drawShape('tri',x,y,z,3,3.5,3.5,4,2,5,0,0,'lightgray',1);//l-arm
-            drawShape('tri',x,y,z,7,3.5,6.5,4,8,5,0,0,'lightgray',1);//r-arm
-            drawShape('tri',x,y,z,2,5,1.5,6.5,2.4,4.9,0,0,'lightgray',1);//l-forearm
-            drawShape('tri',x,y,z,7.8,4.8,8.5,6.3,7.5,4.8,0,0,'lightgray',1);//r-forearm
-            drawShape('arc',x,y,z,1.7,6.3,.35,0,6,0,0,0,'lightgray',1);//l-hand
-            drawShape('arc',x,y,z,8.1,6.1,.35,0,6,0,0,0,'lightgray',1);//r-hand
-            //lower body
-            drawShape('ell',x,y,z,5,6.5,1,.5,0,0,6,0,'lightgray',1);//hip
-            drawShape('arc',x,y,z,5.75,6.5,.5,0,6,0,0,0,'gray',1);//hip
-            drawShape('arc',x,y,z,4.25,6.5,.5,0,6,0,0,0,'gray',1);//hip
-            drawShape('tri',x,y,z,6.15,6.4, 5.4,6.75, 8,8, 0,0,'lightgray',1);//r-leg
-            drawShape('tri',x,y,z,3.85,6.4, 4.6,6.75, 2,8, 0,0,'lightgray',1);//l-leg
-            drawShape('tri',x,y,z,2,8,2.5,7.5,4,10, 0,0,'lightgray',1);//l-shin
-            drawShape('tri',x,y,z,8,8,7.5,7.5,6,9, 0,0,'lightgray',1);//r-shin
-            drawShape('tri',x,y,z,4,10,1.75,10,3.5,9.3, 0,0,'lightgray',1);//l-foot
-            drawShape('tri',x,y,z,6.8,8.3,8,10,6,9, 0,0,'lightgray',1);//r-foot
-            break;
+                //ribs+spine
+                drawShape('ell',x,y,z,5,5,1,1,0,0.1,.9,0,'lightgray',1);//rib5
+                drawShape('ell',x,y,z,5,5,.75,.7,0,0.1,.9,0,'black',1);//rib5-shadow
+                drawShape('ell',x,y,z,5,4.5,1.5,1,0,0.1,.9,0,'lightgray',1);//rib4
+                drawShape('ell',x,y,z,5,4.5,1,.7,0,0.1,.9,0,'black',1);//rib4-shadow
+                drawShape('ell',x,y,z,5,4,1.5,1,0,0.1,.9,0,'lightgray',1);//rib3
+                drawShape('ell',x,y,z,5,4,1,.7,0,0.1,.9,0,'black',1);//rib3-shadow
+                drawShape('ell',x,y,z,5,3.5,1.5,1,0,0.1,.9,0,'lightgray',1);//rib2
+                drawShape('ell',x,y,z,5,3.5,1,.7,0,0.1,.9,0,'black',1);//rib2-shadow
+                drawShape('ell',x,y,z,5,3,1.5,1,0,0.1,.9,0,'lightgray',1);//rib1
+                drawShape('ell',x,y,z,5,3,1,.7,0,0.1,.9,0,'black',1);//rib1-shadow
+                drawShape('lin',x,y,z,5,3.5,5,6,0,0,0,0,'gray',0);//spine
+                //head
+                drawShape('arc',x,y,z,5,1.5,1.5,0,6,0,0,0,'lightgray',1);//head
+                drawShape('arc',x,y,z,5.5,1.5,.5,0,6,0,0,0,'black',1);//r-eye
+                drawShape('arc',x,y,z,4.5,1.5,.5,0,6,0,0,0,'black',1);//l-eye
+                drawShape('lin',x,y,z,5.1,1.3,3.9,.75,0,0,0,0,'black',0);//l-eyebrow
+                drawShape('lin',x,y,z,4.9,1.3,6.1,.75,0,0,0,0,'black',0);//l-eyebrow
+                drawShape('tri',x,y,z,5,2,4.5,2.5,5.5,2.5,0,0,'black',1);//nose
+                drawShape('lin',x,y,z,5,2,5,2.4,0,0,0,0,'lightgray',0);//nostrils
+                drawShape('ell',x,y,z,5,3,1,.5,0,0,6,0,'lightgray',1);//jaw
+                drawShape('lin',x,y,z,4,3,6,3,0,0,0,0,'black',0);//mouth
+                //arms
+                drawShape('arc',x,y,z,3.5,3.5,.5,0,6,0,0,0,'lightgray',1);//l-shoulder
+                drawShape('arc',x,y,z,6.5,3.5,.5,0,6,0,0,0,'lightgray',1);//r-shoulder
+                drawShape('arc',x,y,z,3.5,3.5,.5,0,6,0,0,0,'black',0);//l-shoulder-shadow
+                drawShape('arc',x,y,z,6.5,3.5,.5,0,6,0,0,0,'black',0);//r-shoulder-shadow
+                drawShape('tri',x,y,z,3,3.5,3.5,4,2,5,0,0,'lightgray',1);//l-arm
+                drawShape('tri',x,y,z,7,3.5,6.5,4,8,5,0,0,'lightgray',1);//r-arm
+                drawShape('tri',x,y,z,2,5,1.5,6.5,2.4,4.9,0,0,'lightgray',1);//l-forearm
+                drawShape('tri',x,y,z,7.8,4.8,8.5,6.3,7.5,4.8,0,0,'lightgray',1);//r-forearm
+                drawShape('arc',x,y,z,1.7,6.3,.35,0,6,0,0,0,'lightgray',1);//l-hand
+                drawShape('arc',x,y,z,8.1,6.1,.35,0,6,0,0,0,'lightgray',1);//r-hand
+                //lower body
+                drawShape('ell',x,y,z,5,6.5,1,.5,0,0,6,0,'lightgray',1);//hip
+                drawShape('arc',x,y,z,5.75,6.5,.5,0,6,0,0,0,'gray',1);//hip
+                drawShape('arc',x,y,z,4.25,6.5,.5,0,6,0,0,0,'gray',1);//hip
+                drawShape('tri',x,y,z,6.15,6.4, 5.4,6.75, 8,8, 0,0,'lightgray',1);//r-leg
+                drawShape('tri',x,y,z,3.85,6.4, 4.6,6.75, 2,8, 0,0,'lightgray',1);//l-leg
+                drawShape('tri',x,y,z,2,8,2.5,7.5,4,10, 0,0,'lightgray',1);//l-shin
+                drawShape('tri',x,y,z,8,8,7.5,7.5,6,9, 0,0,'lightgray',1);//r-shin
+                drawShape('tri',x,y,z,4,10,1.75,10,3.5,9.3, 0,0,'lightgray',1);//l-foot
+                drawShape('tri',x,y,z,6.8,8.3,8,10,6,9, 0,0,'lightgray',1);//r-foot
+                break;
             case 3.2: //skull
                 //head
-            drawShape('arc',x,y,z,5,5,5,0,6,0,0,0,'rgba(0,0,0,.4)',1);//head
-            drawShape('arc',x,y,z,5,5,4.55,0,6,0,0,0,'rgba(0,0,0,.15)',1);//head
-            drawShape('arc',x,y,z,5,5,4.2,0,6,0,0,0,'rgba(0,0,0,.15)',1);//head
-                sx = -8.75*z;
-                sy = .2 * z;
-                sz = 2.75;
-            drawShape('arc',x+sx,y+sy,z*sz,5,1.5,1.5,0,6,0,0,0,'lightgray',1);//head
-            drawShape('arc',x+sx,y+sy,z*sz,5.5,1.5,.5,0,6,0,0,0,'black',1);//r-eye
-            drawShape('arc',x+sx,y+sy,z*sz,4.5,1.5,.5,0,6,0,0,0,'black',1);//l-eye
-            drawShape('lin',x+sx,y+sy,z*sz,5.1,1.3,3.9,.75,0,0,0,0,'black',0);//l-eyebrow
-            drawShape('lin',x+sx,y+sy,z*sz,4.9,1.3,6.1,.75,0,0,0,0,'black',0);//l-eyebrow
-            drawShape('tri',x+sx,y+sy,z*sz,5,2,4.5,2.5,5.5,2.5,0,0,'black',1);//nose
-            drawShape('lin',x+sx,y+sy,z*sz,5,2,5,2.4,0,0,0,0,'lightgray',0);//nostrils
-            drawShape('ell',x+sx,y+sy,z*sz,5,3,1,.5,0,0,6,0,'lightgray',1);//jaw
-            drawShape('lin',x+sx,y+sy,z*sz,4,3,6,3,0,0,0,0,'black',0);//mouth
+                drawShape('arc',x,y,z,5,5,5,0,6,0,0,0,'rgba(0,0,0,.4)',1);//head
+                drawShape('arc',x,y,z,5,5,4.55,0,6,0,0,0,'rgba(0,0,0,.15)',1);//head
+                drawShape('arc',x,y,z,5,5,4.2,0,6,0,0,0,'rgba(0,0,0,.15)',1);//head
+                    sx = -8.75*z;
+                    sy = .2 * z;
+                    sz = 2.75;
+                drawShape('arc',x+sx,y+sy,z*sz,5,1.5,1.5,0,6,0,0,0,'lightgray',1);//head
+                drawShape('arc',x+sx,y+sy,z*sz,5.5,1.5,.5,0,6,0,0,0,'black',1);//r-eye
+                drawShape('arc',x+sx,y+sy,z*sz,4.5,1.5,.5,0,6,0,0,0,'black',1);//l-eye
+                drawShape('lin',x+sx,y+sy,z*sz,5.1,1.3,3.9,.75,0,0,0,0,'black',0);//l-eyebrow
+                drawShape('lin',x+sx,y+sy,z*sz,4.9,1.3,6.1,.75,0,0,0,0,'black',0);//l-eyebrow
+                drawShape('tri',x+sx,y+sy,z*sz,5,2,4.5,2.5,5.5,2.5,0,0,'black',1);//nose
+                drawShape('lin',x+sx,y+sy,z*sz,5,2,5,2.4,0,0,0,0,'lightgray',0);//nostrils
+                drawShape('ell',x+sx,y+sy,z*sz,5,3,1,.5,0,0,6,0,'lightgray',1);//jaw
+                drawShape('lin',x+sx,y+sy,z*sz,4,3,6,3,0,0,0,0,'black',0);//mouth
 
-            break;
+                break;
             case 4.1://KNIGHT(emperor)
-            drawShape('tri',x,y,z,5,5.5,/*tr*/ 4,8,/*br*/ 3.5,7,/*bl*/ 0,0,`rgba(${Math.random()*255},${Math.random()*255},${Math.random()*255},.39)`,1);//l-thigh
-            drawShape('qua',x,y,z,4.5,9.1,/*tr*/4.5,9.6,/*br*/ 2,9.6,/*l*/4.5,8.6,/*tl*/`rgba(${Math.random()*255},${Math.random()*255},${Math.random()*255},.39)`,1);//l-foot
-            drawShape('qua',x,y,z,4.5,9.5,/*br*/ 4.5,7.7,/*tr*/ 3.3,7.3,/*tl*/ 3.9,9,/*bl*/`rgba(${Math.random()*255},${Math.random()*255},${Math.random()*255},.39)`,1);//l-calf
-            drawShape('qua',x,y,z,4.5,9.5,/*br*/ 4.5,7.7,/*tr*/ 3.3,7.3,/*tl*/ 3.9,9,/*b*/`rgba(${Math.random()*255},${Math.random()*255},${Math.random()*255},.39)`,0);//l-calf
-            drawShape('arc',x,y,z,4.25,2.65, .63,0, 3,0, 0,0,`rgba(${Math.random()*255},${Math.random()*255},${Math.random()*255},.39)`,1);//l-shoulder
-            drawShape('arc',x,y,z,4.25,2.65, .63,0, 3,0, 0,0,`rgba(${Math.random()*255},${Math.random()*255},${Math.random()*255},.39)`,0);//l-shoulder-shadow
-            drawShape('ell',x,y,z,5.15,3.6,1.15,1.75,0,0,6,0,`rgba(${Math.random()*255},${Math.random()*255},${Math.random()*255},.39)`,1);//torso
-            drawShape('qua',x,y,z,4.7,2,5.5,1.5,6,2.5,4.25,2.5,`rgba(${Math.random()*255},${Math.random()*255},${Math.random()*255},.39)`,1);//neck
-            drawShape('arc',x,y,z,5,1,1,0,2,0,0,0,`rgba(${Math.random()*255},${Math.random()*255},${Math.random()*255},.39)`,1);//head
-            drawShape('tri',x,y,z,3.5,1.5,4.3,.25,4.9,2,0,0,`rgba(${Math.random()*255},${Math.random()*255},${Math.random()*255},.39)`,1);//helm nose
-            drawShape('qua',x,y,z,4.5,5.5,/*tl*/6,4.5,/*tr*/ 6.5,7.7,/*br*/ 5.8,8,/*bl*/ `rgba(${Math.random()*255},${Math.random()*255},${Math.random()*255},.39)`,1);//r-thigh
-            drawShape('qua',x,y,z,5.5,8,/*tl*/6.25,7.25,/*tm*/6.75,8,/*tr*/ 6.25,9.5,/*b*/`rgba(${Math.random()*255},${Math.random()*255},${Math.random()*255},.39)`,1);//r-calf
-            drawShape('qua',x,y,z,5.5,8,/*tl*/6.25,7.25,/*tm*/6.75,8,/*tr*/ 6.25,9.5,/**/`rgba(${Math.random()*255},${Math.random()*255},${Math.random()*255},.39)`,0);//r-calf
-            drawShape('qua',x,y,z,6.25,9,/*t*/5.6,9.6,/*bl*/6.25,10,/*bm*/ 6.9,9.6,/*br*/`rgba(${Math.random()*255},${Math.random()*255},${Math.random()*255},.39)`,1);//r-foot
-            drawShape('qua',x,y,z,6.2,4.3,7.25,7.25,5.1,6.3,4.75,5.25,`rgba(${Math.random()*255},${Math.random()*255},${Math.random()*255},.39)`,1);//hip armor
-            drawShape('qua',x,y,z,6.2,4.3,7.25,7.25,5.1,6.3,4.75,5.25,`rgba(${Math.random()*255},${Math.random()*255},${Math.random()*255},.39)`,0);//hip armor
-            drawShape('qua',x,y,z,4.5,7, 5.2,5, 4.5,5.2, 4.2,5,`rgba(${Math.random()*255},${Math.random()*255},${Math.random()*255},.39)`,1);//groin armor
-            drawShape('qua',x,y,z,4.5,7, 5.2,5, 4.5,5.2, 4.2,5,`rgba(${Math.random()*255},${Math.random()*255},${Math.random()*255},.39)`,0);//groin armor
-            drawShape('qua',x,y,z,2.75,1.75, 4.5,2.75, 4.5,5.8, 2.75,4.8,`rgba(${Math.random()*255},${Math.random()*255},${Math.random()*255},.39)`,1);//shield top
-            drawShape('tri',x,y,z,2.75,4.8,4.5,5.8,3.5,7.5,0,0,`rgba(${Math.random()*255},${Math.random()*255},${Math.random()*255},.39)`,1);//shield bot
-            drawShape('lin',x,y,z,3.5,7.6,3.45,2.1,0,0,0,0,`rgba(${Math.random()*255},${Math.random()*255},${Math.random()*255},.39)`,0);//shield cross |
-            drawShape('lin',x,y,z,2.75,4,4.5,5,0,0,0,0,`rgba(${Math.random()*255},${Math.random()*255},${Math.random()*255},.39)`,0);//shield cross--
-            drawShape('tri',x,y,z,/*tl*/ 5.55,3.55, /*tr*/6.3,2.5, /*br*/7.7,4, 0,0,`rgba(${Math.random()*255},${Math.random()*255},${Math.random()*255},.39)`,1);//r-arm
-            drawShape('tri',x,y,z,/*tl*/ 5.6,3.5, /*tr*/6.3,2.5, /*br*/7.7,4, 0,0,`rgba(${Math.random()*255},${Math.random()*255},${Math.random()*255},.39)`,0);//r-arm
-            drawShape('tri',x,y,z,/*br*/ 7.9,3.9, /*tr*/7.3,3.4, /*l*/6,6, 0,0,`rgba(${Math.random()*255},${Math.random()*255},${Math.random()*255},.39)`,1);//r-forearm
-            drawShape('tri',x,y,z,/*br*/ 7.9,3.9, /*tr*/7.3,3.4, /*l*/6,6, 0,0,`rgba(${Math.random()*255},${Math.random()*255},${Math.random()*255},.39)`,0);//r-forearm
-            drawShape('qua',x,y,z,5.9,5.5, 5.9,5.7, 7.2,6.1, 7.2,5.7,`rgba(${Math.random()*255},${Math.random()*255},${Math.random()*255},.39)`,1);//sword-hilt
-            drawShape('arc',x,y,z,6.2,5.75,.4,0,3,0,0,0,`rgba(${Math.random()*255},${Math.random()*255},${Math.random()*255},.39)`,1);//r-hand
-            drawShape('tri',x,y,z,1,4.6, 5.9,5.35, 6.1,6.15,0,0,`rgba(${Math.random()*255},${Math.random()*255},${Math.random()*255},.39)`,1);//sword-blade
-            drawShape('qua',x,y,z,5.8,4.5,5.9,5.7,6.3,6.8,6.4,6,`rgba(${Math.random()*255},${Math.random()*255},${Math.random()*255},.39)`,1);//sword-crossguard
-            drawShape('arc',x,y,z,6,3, .63,0, 3,0, 0,0,`rgba(${Math.random()*255},${Math.random()*255},${Math.random()*255},.39)`,1);//r-shoulder
-            drawShape('arc',x,y,z,6,3, .63,0, 3,0, 0,0,`rgba(${Math.random()*255},${Math.random()*255},${Math.random()*255},.39)`,0);//r-shoulder
-            drawShape('qua',x,y,z,5.8,.7, 3.95,.8, 4.1,.5, 4.25,.6,'black',1);//helmet visor
-        
+                drawShape('tri',x,y,z,5,5.5,/*tr*/ 4,8,/*br*/ 3.5,7,/*bl*/ 0,0,`rgba(${Math.random()*255},${Math.random()*255},${Math.random()*255},.39)`,1);//l-thigh
+                drawShape('qua',x,y,z,4.5,9.1,/*tr*/4.5,9.6,/*br*/ 2,9.6,/*l*/4.5,8.6,/*tl*/`rgba(${Math.random()*255},${Math.random()*255},${Math.random()*255},.39)`,1);//l-foot
+                drawShape('qua',x,y,z,4.5,9.5,/*br*/ 4.5,7.7,/*tr*/ 3.3,7.3,/*tl*/ 3.9,9,/*bl*/`rgba(${Math.random()*255},${Math.random()*255},${Math.random()*255},.39)`,1);//l-calf
+                drawShape('qua',x,y,z,4.5,9.5,/*br*/ 4.5,7.7,/*tr*/ 3.3,7.3,/*tl*/ 3.9,9,/*b*/`rgba(${Math.random()*255},${Math.random()*255},${Math.random()*255},.39)`,0);//l-calf
+                drawShape('arc',x,y,z,4.25,2.65, .63,0, 3,0, 0,0,`rgba(${Math.random()*255},${Math.random()*255},${Math.random()*255},.39)`,1);//l-shoulder
+                drawShape('arc',x,y,z,4.25,2.65, .63,0, 3,0, 0,0,`rgba(${Math.random()*255},${Math.random()*255},${Math.random()*255},.39)`,0);//l-shoulder-shadow
+                drawShape('ell',x,y,z,5.15,3.6,1.15,1.75,0,0,6,0,`rgba(${Math.random()*255},${Math.random()*255},${Math.random()*255},.39)`,1);//torso
+                drawShape('qua',x,y,z,4.7,2,5.5,1.5,6,2.5,4.25,2.5,`rgba(${Math.random()*255},${Math.random()*255},${Math.random()*255},.39)`,1);//neck
+                drawShape('arc',x,y,z,5,1,1,0,2,0,0,0,`rgba(${Math.random()*255},${Math.random()*255},${Math.random()*255},.39)`,1);//head
+                drawShape('tri',x,y,z,3.5,1.5,4.3,.25,4.9,2,0,0,`rgba(${Math.random()*255},${Math.random()*255},${Math.random()*255},.39)`,1);//helm nose
+                drawShape('qua',x,y,z,4.5,5.5,/*tl*/6,4.5,/*tr*/ 6.5,7.7,/*br*/ 5.8,8,/*bl*/ `rgba(${Math.random()*255},${Math.random()*255},${Math.random()*255},.39)`,1);//r-thigh
+                drawShape('qua',x,y,z,5.5,8,/*tl*/6.25,7.25,/*tm*/6.75,8,/*tr*/ 6.25,9.5,/*b*/`rgba(${Math.random()*255},${Math.random()*255},${Math.random()*255},.39)`,1);//r-calf
+                drawShape('qua',x,y,z,5.5,8,/*tl*/6.25,7.25,/*tm*/6.75,8,/*tr*/ 6.25,9.5,/**/`rgba(${Math.random()*255},${Math.random()*255},${Math.random()*255},.39)`,0);//r-calf
+                drawShape('qua',x,y,z,6.25,9,/*t*/5.6,9.6,/*bl*/6.25,10,/*bm*/ 6.9,9.6,/*br*/`rgba(${Math.random()*255},${Math.random()*255},${Math.random()*255},.39)`,1);//r-foot
+                drawShape('qua',x,y,z,6.2,4.3,7.25,7.25,5.1,6.3,4.75,5.25,`rgba(${Math.random()*255},${Math.random()*255},${Math.random()*255},.39)`,1);//hip armor
+                drawShape('qua',x,y,z,6.2,4.3,7.25,7.25,5.1,6.3,4.75,5.25,`rgba(${Math.random()*255},${Math.random()*255},${Math.random()*255},.39)`,0);//hip armor
+                drawShape('qua',x,y,z,4.5,7, 5.2,5, 4.5,5.2, 4.2,5,`rgba(${Math.random()*255},${Math.random()*255},${Math.random()*255},.39)`,1);//groin armor
+                drawShape('qua',x,y,z,4.5,7, 5.2,5, 4.5,5.2, 4.2,5,`rgba(${Math.random()*255},${Math.random()*255},${Math.random()*255},.39)`,0);//groin armor
+                drawShape('qua',x,y,z,2.75,1.75, 4.5,2.75, 4.5,5.8, 2.75,4.8,`rgba(${Math.random()*255},${Math.random()*255},${Math.random()*255},.39)`,1);//shield top
+                drawShape('tri',x,y,z,2.75,4.8,4.5,5.8,3.5,7.5,0,0,`rgba(${Math.random()*255},${Math.random()*255},${Math.random()*255},.39)`,1);//shield bot
+                drawShape('lin',x,y,z,3.5,7.6,3.45,2.1,0,0,0,0,`rgba(${Math.random()*255},${Math.random()*255},${Math.random()*255},.39)`,0);//shield cross |
+                drawShape('lin',x,y,z,2.75,4,4.5,5,0,0,0,0,`rgba(${Math.random()*255},${Math.random()*255},${Math.random()*255},.39)`,0);//shield cross--
+                drawShape('tri',x,y,z,/*tl*/ 5.55,3.55, /*tr*/6.3,2.5, /*br*/7.7,4, 0,0,`rgba(${Math.random()*255},${Math.random()*255},${Math.random()*255},.39)`,1);//r-arm
+                drawShape('tri',x,y,z,/*tl*/ 5.6,3.5, /*tr*/6.3,2.5, /*br*/7.7,4, 0,0,`rgba(${Math.random()*255},${Math.random()*255},${Math.random()*255},.39)`,0);//r-arm
+                drawShape('tri',x,y,z,/*br*/ 7.9,3.9, /*tr*/7.3,3.4, /*l*/6,6, 0,0,`rgba(${Math.random()*255},${Math.random()*255},${Math.random()*255},.39)`,1);//r-forearm
+                drawShape('tri',x,y,z,/*br*/ 7.9,3.9, /*tr*/7.3,3.4, /*l*/6,6, 0,0,`rgba(${Math.random()*255},${Math.random()*255},${Math.random()*255},.39)`,0);//r-forearm
+                drawShape('qua',x,y,z,5.9,5.5, 5.9,5.7, 7.2,6.1, 7.2,5.7,`rgba(${Math.random()*255},${Math.random()*255},${Math.random()*255},.39)`,1);//sword-hilt
+                drawShape('arc',x,y,z,6.2,5.75,.4,0,3,0,0,0,`rgba(${Math.random()*255},${Math.random()*255},${Math.random()*255},.39)`,1);//r-hand
+                drawShape('tri',x,y,z,1,4.6, 5.9,5.35, 6.1,6.15,0,0,`rgba(${Math.random()*255},${Math.random()*255},${Math.random()*255},.39)`,1);//sword-blade
+                drawShape('qua',x,y,z,5.8,4.5,5.9,5.7,6.3,6.8,6.4,6,`rgba(${Math.random()*255},${Math.random()*255},${Math.random()*255},.39)`,1);//sword-crossguard
+                drawShape('arc',x,y,z,6,3, .63,0, 3,0, 0,0,`rgba(${Math.random()*255},${Math.random()*255},${Math.random()*255},.39)`,1);//r-shoulder
+                drawShape('arc',x,y,z,6,3, .63,0, 3,0, 0,0,`rgba(${Math.random()*255},${Math.random()*255},${Math.random()*255},.39)`,0);//r-shoulder
+                drawShape('qua',x,y,z,5.8,.7, 3.95,.8, 4.1,.5, 4.25,.6,'black',1);//helmet visor
+            
 
 
             break;
@@ -46145,10 +46234,12 @@
         78,82,84,85,86,92,93,98,99,999]; 
         
         //3D UPDATE
-        const directionalPortraits = [101, 102, 103, 104, 105, 106,
-        107, 108,109,110, 111,112,113, 114,115,116, 117,118,119,
-        120,121,122, 123,124,125, 126,127,128,129,130,131,132,133,134,135,136,137,138,139,
-        140,141,142,143,144,145,146,147,148,149,150,151];
+        const directionalPortraits = [];
+        const max3D_ID = 209; // Set this to whatever your highest ID is (x)
+
+        for (let i = 101; i <= max3D_ID; i++) {
+            directionalPortraits.push(i);
+        }
         const cacheSize = 256; 
         const totalFrames = 4; 
 
@@ -46266,7 +46357,7 @@
                     window.cacheAngle = (i / totalFrames) * (Math.PI * 2);
                     let baseIndex = index - 100;
                     let variant = 'normal';
-
+                    //3D Update VARIANTS
                     // Mirage (Wisp Base 3D ID: 8, 9, 10)
                     if (index >= 140 && index <= 142) { baseIndex = index - 140 + 8; variant = 'mirage'; }
                     // Fire Imp (Imp Base 3D ID: 17, 18, 19)
@@ -46275,6 +46366,14 @@
                     if (index >= 146 && index <= 148) { baseIndex = index - 146 + 20; variant = 'gnome'; }
                     // Light Sylph (Sylph Base 3D ID: 26, 27, 28)
                     if (index >= 149 && index <= 151) { baseIndex = index - 149 + 26; variant = 'light'; }
+                    //Knights
+                    if (index >= 161 && index <= 163) { baseIndex = index - 161 + 58; variant = 'brown_knight'; }
+                    if (index >= 164 && index <= 166) { baseIndex = index - 164 + 58; variant = 'ghost_knight'; }
+                    // Fairy Variants (Fairy Queen Base 3D ID: 170, 171, 172)
+                    if (index >= 176 && index <= 178) { baseIndex = index - 176 + 73; variant = 'fairy_green'; }
+                    if (index >= 179 && index <= 181) { baseIndex = index - 179 + 73; variant = 'fairy_blue'; }
+                    if (index >= 182 && index <= 184) { baseIndex = index - 182 + 73; variant = 'fairy_red'; }
+                    if (index >= 185 && index <= 187) { baseIndex = index - 185 + 73; variant = 'fairy_black'; }
 
                     // Pass the baseIndex and variant into your draw function!
                     drawSpritePaths(baseIndex, 5, 4.5, 9, 0, ryAngle, 0, variant);
@@ -46352,90 +46451,233 @@
             let mesh = { vertices: [], faces: [] };
             //3D UPDATE
             // --- 1. DEFINE ALL COLORS ONCE AT THE TOP ---
-                const cWood  = {r: 0.5, g: 0.25, b: 0.1};
-                const cSteel = {r: 0.7, g: 0.7, b: 0.7};
-                const cGold  = {r: 1.0, g: 0.8, b: 0.1};
+                // --- THE UNIVERSAL QUADRUPED (Bear, Wolf, Boar) ---
+                    let cBearBody = {r: 0.25, g: 0.15, b: 0.05, a: 1.0}; // Dark Brown
+                    let cWolfBody = {r: 0.35, g: 0.35, b: 0.40, a: 1.0}; // Slate Grey
+                    let cBoarBody = {r: 0.45, g: 0.30, b: 0.20, a: 1.0}; // Muddy Brown
+                    let cBoarTusk = {r: 0.90, g: 0.90, b: 0.85, a: 1.0}; // Dirty Bone
 
-                const cGem   = {r: 1.0, g: 0.0, b: 0.2};
-                const cArmor = {r: 0.8, g: 0.8, b: 0.8}; // Moved from case 4
-                const cJoint = {r: 0.2, g: 0.2, b: 0.2}; // Moved from case 4
-                const cWispGlow = {r: 0.6, g: 0.1, b: 0.8}; // Deep Purple
-                const cWispDark = {r: 0.1, g: 0.1, b: 0.15}; // Shadowy Black/Blue
-                const cGobSkin = {r: 0.0, g: 0.5, b: 0.1}; // Dark Green
-                const cGobHat  = {r: 0.8, g: 0.1, b: 0.1}; // Red
-                const cGobTunic = {r: 0.4, g: 0.2, b: 0.05}; // Brown
-                const cSpidBody = {r: 0.0, g: 0.4, b: 0.1};
-                const cSpidHead = {r: 0.0, g: 0.5, b: 0.15};
-                const cSpidHourglass = {r: 0.9, g: 0.0, b: 0.0};
-                const cSpidEye = {r: 0.05, g: 0.05, b: 0.05};
-                const cSpidFang = {r: 0.9, g: 0.9, b: 0.9};
+                    let qBody, qHead, qSnout, qFL, qFR, qBL, qBR, qTail; // The shared 4-legged skeleton
 
-                let cImpSkin = {r: 0.0, g: 0.05, b: 0.25}; // Very dark midnight blue
-                let cImpRed  = {r: 1.0, g: 0.0, b: 0.0};   // Eyes / Tongue
-                // Golem Base
-                let cIceCore = {r: 0.0, g: 0.3, b: 0.8}; 
-                let cIceDark = {r: 0.0, g: 0.15, b: 0.5}; 
+                    // --- THE MYTHICS (Vampire, Spriggan, Dullahan) ---
+                    let cVampSkin = {r: 0.9, g: 0.9, b: 0.95, a: 1.0}; // Pale white
+                    let cVampCape = {r: 0.05, g: 0.0, b: 0.05, a: 1.0}; // Pitch black
+                    let cSprigWood = {r: 0.4, g: 0.2, b: 0.1, a: 1.0}; // Bark brown
+                    let cSprigLeaf = {r: 0.1, g: 0.6, b: 0.2, a: 1.0}; // Leaf green
+                    let cDulArmor = {r: 0.1, g: 0.1, b: 0.15, a: 1.0}; // Black steel
+                    let cDulFire  = {r: 1.0, g: 0.4, b: 0.0, a: 0.8}; // Pumpkin/Spectral fire
+
+                    let vBody, vHead, vWingL, vWingR, vArmL, vArmR;
+                    let sBody, sHead, sArmL, sArmR, sLegL, sLegR;
+                    let dBody, dNeckStump, dHead, dArmL, dArmR, dLegL, dLegR, dWhip;
+                // Natural Colors
+                    const cWood  = {r: 0.5, g: 0.25, b: 0.1};
+                    const cSteel = {r: 0.7, g: 0.7, b: 0.7};
+                    const cGold  = {r: 1.0, g: 0.8, b: 0.1};
+
+                    const cGem   = {r: 1.0, g: 0.0, b: 0.2};
+                // Sprite
+                    const cArmor = {r: 0.8, g: 0.8, b: 0.8}; // Moved from case 4
+                    const cJoint = {r: 0.2, g: 0.2, b: 0.2}; // Moved from case 4
+                // Wisp (purple)
+                    const cWispGlow = {r: 0.6, g: 0.1, b: 0.8}; // Deep Purple
+                    const cWispDark = {r: 0.1, g: 0.1, b: 0.15}; // Shadowy Black/Blue
+                // Goblin (Green, Red, Brown)
+                    const cGobSkin = {r: 0.0, g: 0.5, b: 0.1}; // Dark Green
+                    const cGobHat  = {r: 0.8, g: 0.1, b: 0.1}; // Red
+                    const cGobTunic = {r: 0.4, g: 0.2, b: 0.05}; // Brown
+                // Spider Green, Red, White
+                    const cSpidBody = {r: 0.0, g: 0.4, b: 0.1};
+                    const cSpidHead = {r: 0.0, g: 0.5, b: 0.15};
+                    const cSpidHourglass = {r: 0.9, g: 0.0, b: 0.0};
+                    const cSpidEye = {r: 0.05, g: 0.05, b: 0.05};
+                    const cSpidFang = {r: 0.9, g: 0.9, b: 0.9};
+                // Djinn Colors (Blue Tan White)
+                    let cDjDome  = {r: 0.40, g: 0.00, b: 0.00, a: 1.00}; // Dark Red Turban Dome
+                    let cDjSkin  = {r: 0.16, g: 0.47, b: 0.80, a: 0.75}; // Translucent Blue Body
+                    let cDjDark  = {r: 0.05, g: 0.20, b: 0.50, a: 0.95}; // Darker Blue Abs/Shadows
+                    let cDjSash  = {r: 0.60, g: 0.00, b: 0.00, a: 0.90}; // Deep Red Sash
+                    let cDjSmoke = {r: 1.00, g: 1.00, b: 1.00, a: 0.50}; // Ghostly White Ethereal Tail
+                    let cDjTurban= {r: 0.82, g: 0.70, b: 0.53, a: 1.00}; // Tan Turban Wraps
+                    let cDjEye   = {r: 0.00, g: 0.00, b: 1.00, a: 1.00}; // Pure Blue Eye Glow
+
+                // Golem Color Base
+                    let cIceCore = {r: 0.0, g: 0.3, b: 0.8}; 
+                    let cIceDark = {r: 0.0, g: 0.15, b: 0.5}; 
                 
-                // Sylph Base
-                let cSyArmor = {r: 0.2, g: 0.2, b: 0.25}; 
-                let cVisor = {r: 1.0, g: 0.0, b: 0.0}; 
+                // Sylph Color Base
+                    let cSyArmor = {r: 0.2, g: 0.2, b: 0.25}; 
+                    let cVisor = {r: 1.0, g: 0.0, b: 0.0}; 
                 
-                // Wisp Base
-                let ghostHalo = {r: 0.8, g: 0.2, b: 1.0, a: 0.25};
-                let ghostCore = {r: 0.6, g: 0.1, b: 0.8, a: 0.50};
-                const cImpBlack= {r: 0.0, g: 0.0, b: 0.0};   // Mouth
-                const cImpWhite= {r: 1.0, g: 1.0, b: 1.0};   // Fangs
-                const cSalamander = {r: 0.95, g: 0.27, b: 0.04};  // Fiery Orange/Red (#F4450B)
-                const cSalYellow  = {r: 0.91, g: 0.86, b: 0.0};   // Vibrant Accent Yellow
-                const cSalGlow    = {r: 1.0, g: 0.0, b: 0.0};     // Evil Red Eyes
-                const cSalDark    = {r: 0.4, g: 0.0, b: 0.0};     // Deep Maroon Inner Mouth / Tongue
+                // Wisp Color Base
+                    let ghostHalo = {r: 0.8, g: 0.2, b: 1.0, a: 0.25};
+                    let ghostCore = {r: 0.6, g: 0.1, b: 0.8, a: 0.50};
+                // Imp Color Base
+                    const cImpBlack= {r: 0.0, g: 0.0, b: 0.0};   // Mouth
+                    const cImpWhite= {r: 1.0, g: 1.0, b: 1.0};   // Fangs
+                // Salamander Colors
+                    const cSalamander = {r: 0.95, g: 0.27, b: 0.04};  // Fiery Orange/Red (#F4450B)
+                    const cSalYellow  = {r: 0.91, g: 0.86, b: 0.0};   // Vibrant Accent Yellow
+                    const cSalGlow    = {r: 1.0, g: 0.0, b: 0.0};     // Evil Red Eyes
+                    const cSalDark    = {r: 0.4, g: 0.0, b: 0.0};     // Deep Maroon Inner Mouth / Tongue
                 // Pixie Page Colors
-                const cPixSkin  = {r: 1.0, g: 0.7, b: 0.5};   // Peachy Skin
-                const cPixTunic = {r: 0.0, g: 0.8, b: 1.0};   // Cyan Tunic
-                const cPixLegs  = {r: 0.5, g: 0.15, b: 0.1};  // Reddish-Brown Pants
-                const cPixGold  = {r: 1.0, g: 0.8, b: 0.0};   // Gold Boots/Hair/Hilts
-                const cPixWing  = {r: 0.9, g: 0.9, b: 1.0, a: 0.35}; // Translucent Wings
+                    const cPixSkin  = {r: 1.0, g: 0.7, b: 0.5};   // Peachy Skin
+                    const cPixTunic = {r: 0.0, g: 0.8, b: 1.0};   // Cyan Tunic
+                    const cPixLegs  = {r: 0.5, g: 0.15, b: 0.1};  // Reddish-Brown Pants
+                    const cPixGold  = {r: 1.0, g: 0.8, b: 0.0};   // Gold Boots/Hair/Hilts
+                    const cPixWing  = {r: 0.9, g: 0.9, b: 1.0, a: 0.35}; // Translucent Wings
                 // Gargoyle Colors (Translucent Ghostly Stone)
-                const cGarBody  = {r: 0.85, g: 0.85, b: 0.9, a: 0.65}; // Translucent grey/white
-                const cGarDark  = {r: 0.05, g: 0.05, b: 0.1, a: 0.9};  // Dark slate for wing backing/horns
-                const cGarBlack = {r: 0.0, g: 0.0, b: 0.0, a: 1.0};    // Eyes & Mouth cavity
-                const cGarFang  = {r: 1.0, g: 1.0, b: 1.0, a: 1.0};    // Pure white fangs
+                    const cGarBody  = {r: 0.85, g: 0.85, b: 0.9, a: 0.65}; // Translucent grey/white
+                    const cGarDark  = {r: 0.05, g: 0.05, b: 0.1, a: 0.9};  // Dark slate for wing backing/horns
+                    const cGarBlack = {r: 0.0, g: 0.0, b: 0.0, a: 1.0};    // Eyes & Mouth cavity
+                    const cGarFang  = {r: 1.0, g: 1.0, b: 1.0, a: 1.0};    // Pure white fangs
                 // Sea Serpent Colors (Origami Teal)
-                const cSerpTeal  = {r: 0.0, g: 0.5, b: 0.5};  // Main rgb(0, 128, 128)
-                const cSerpDark  = {r: 0.0, g: 0.35, b: 0.35}; // Shadowed belly
-                const cSerpMouth = {r: 0.0, g: 0.1, b: 0.15};  // Deep dark throat
-                const cSerpEye   = {r: 0.0, g: 0.0, b: 0.0};   // Innocent black dot
-                // --- 2. PALETTE SWAPPING (THE MAGIC TRICK) ---
-                if (variant === 'fire') {
-                    cImpSkin = {r: 0.8, g: 0.1, b: 0.0};   // Deep Red Skin
-                    cImpRed  = {r: 1.0, g: 0.8, b: 0.0};   // Orange/Yellow eyes and tongue
-                } 
-                else if (variant === 'gnome') {
-                    cIceCore = {r: 0.4, g: 0.25, b: 0.1};  // Dirt Brown
-                    cIceDark = {r: 0.2, g: 0.1, b: 0.05};  // Darker Mud
-                } 
-                else if (variant === 'light') {
-                    cSyArmor = {r: 0.85, g: 0.85, b: 0.9}; // Light Gray / White Armor
-                    cVisor = {r: 0.0, g: 0.8, b: 1.0};   // Friendly Blue Visor instead of Evil Red
-                } 
-                else if (variant === 'mirage') {
-                    ghostHalo = {r: 1.0, g: 0.1, b: 0.1, a: 0.25}; // Red Aura
-                    ghostCore = {r: 0.7, g: 0.0, b: 0.0, a: 0.50}; // Crimson Core
-                }
+                    const cSerpTeal  = {r: 0.0, g: 0.5, b: 0.5};  // Main rgb(0, 128, 128)
+                    const cSerpDark  = {r: 0.0, g: 0.35, b: 0.35}; // Shadowed belly
+                    const cSerpMouth = {r: 0.0, g: 0.1, b: 0.15};  // Deep dark throat
+                    const cSerpEye   = {r: 0.0, g: 0.0, b: 0.0};   // Innocent black dot
+                
+                // Shade Colors (Fatter, Fluttering Ethereal Geometry)
+                    let cShadeRobe = {r: 0.30, g: 0.10, b: 0.55, a: 0.55}; // Ghostly transparent purple
+                    let cShadeAura = {r: 0.40, g: 0.15, b: 0.70, a: 0.15}; // Scaled up, highly transparent aura
+                    let cShadeVoid = {r: 0.05, g: 0.02, b: 0.15, a: 0.95}; // Deep indigo/blue shadow (Face & Armholes)
+                    let cShadeEye  = {r: 1.00, g: 0.00, b: 0.00, a: 1.00}; // Glowing Red
+                    let cShadeTail = {r: 0.30, g: 0.10, b: 0.55, a: 0.25}; // Fading ghost tail
+                // Knight Colors
+                    let cKnArmor  = {r: 0.65, g: 0.65, b: 0.70, a: 1.0}; // Steel Armor
+                    let cKnTrim   = {r: 0.80, g: 0.70, b: 0.20, a: 1.0}; // Gold/Brass Trim
+                    let cKnUnder  = {r: 0.20, g: 0.20, b: 0.25, a: 1.0}; // Dark under-cloth
+                    let cKnVisor  = {r: 0.00, g: 0.00, b: 0.00, a: 1.0}; // Pitch black visor slit
+                    let cKnSword  = {r: 0.85, g: 0.85, b: 0.90, a: 1.0}; // Silver Blade
+                    let cKnShield = {r: 0.15, g: 0.40, b: 0.25, a: 1.0}; // Green painted shield
+
+                // Kraken King Colors (Deep Ocean Teals and Gold)
+                    let cKrakBody  = {r: 0.16, g: 0.70, b: 0.80, a: 0.95}; // Vibrant Teal (rgba(41,180,205))
+                    let cKrakDark  = {r: 0.00, g: 0.25, b: 0.50, a: 0.95}; // Deep shadow blue
+                    let cKrakFin   = {r: 0.16, g: 0.78, b: 0.80, a: 0.60}; // Translucent Teal for fins
+                    let cKrakBeak  = {r: 1.00, g: 0.50, b: 0.00, a: 1.00}; // Orange/Gold Beak
+                    let cKrakEye   = {r: 0.72, g: 0.47, b: 0.34, a: 1.00}; // Brown Iris
+                    let cKrakWhite = {r: 1.00, g: 1.00, b: 1.00, a: 1.00}; // Sclera
+
+                    // Kraken King Bone Variables
+                    let krRoot, krBody, krHead, krBeak;
+                    let krFinL, krFinR, krFinTop;
+                    let krTent1 = [], krTent2 = [], krTent3 = [], krTent4 = [];
+                // Apprentice Colors
+                    let cAppRobe  = {r: 0.16, g: 0.47, b: 0.80, a: 1.00}; // Classic Wizard Blue (rgb(41,121,205))
+                    let cAppDark  = {r: 0.05, g: 0.20, b: 0.50, a: 1.00}; // Shadowed Blue
+                    let cAppSkin  = {r: 0.72, g: 0.47, b: 0.34, a: 1.00}; // Peach/Tan Skin (rgb(185,122,87))
+                    let cAppShoe  = {r: 0.25, g: 0.00, b: 0.00, a: 1.00}; // Dark Red Shoes (rgb(64,0,0))
+                    let cAppWand  = {r: 0.50, g: 0.25, b: 0.10, a: 1.00}; // Wood Brown
+                    let cAppMagic = {r: 0.00, g: 0.20, b: 0.80, a: 0.80}; // Glowing Blue Magic orb
+                // Base Fairy Queen Colors
+                    let cFqDress = {r: 0.50, g: 0.60, b: 0.10, a: 1.00}; // Olive green dress
+                    let cFqDark  = {r: 0.30, g: 0.40, b: 0.05, a: 1.00}; // Darker olive shadows
+                    let cFqSkin  = {r: 1.00, g: 0.77, b: 0.66, a: 1.00}; // Peach Skin
+                    let cFqHair  = {r: 0.10, g: 0.10, b: 0.10, a: 1.00}; // Dark angular hair
+                    let cFqWing  = {r: 0.60, g: 0.80, b: 0.20, a: 0.35}; // Translucent lime/yellow wings
+                    let cFqGold  = {r: 1.00, g: 0.80, b: 0.00, a: 1.00}; // Gold crown/sword
+                    let cFqOrb   = {r: 1.00, g: 1.00, b: 0.20, a: 0.85}; // Glowing yellow/green magic
+                // --- DRAGON COLORS & BONES ---
+                    let cDragBody  = {r: 0.00, g: 0.40, b: 0.15, a: 1.00}; // Deep Forest Green
+                    let cDragBelly = {r: 0.85, g: 0.85, b: 0.30, a: 1.00}; // Pale Yellow/Green Belly
+                    let cDragWing  = {r: 0.00, g: 0.25, b: 0.10, a: 0.85}; // Dark Leathery Green Wings
+                    let cDragHorn  = {r: 0.90, g: 0.90, b: 0.70, a: 1.00}; // Pale Bone
+                    let cDragEye   = {r: 1.00, g: 0.80, b: 0.00, a: 1.00}; // Glowing Yellow Eye
+
+                    let drBody, drNeck, drHead, drJaw;
+                    let drWingL, drWingR;
+                    let drTail1, drTail2, drTail3, drTail4;
+                // Fairy Queen Bone Variables
+                    let fqBody, fqHead, fqLArm, fqLFore, fqRArm, fqRFore;
+                    let fqLThigh, fqRThigh;
+                    let fqWingL, fqWingR, fqSword, fqOrb;
+                // Apprentice Bone Variables
+                    let appBody, appHead, appHat, appLArm, appLFore, appRArm, appRFore;
+                    let appLThigh, appRThigh;
+                    let appWandRoot, appWandTip;
+                // Knight Bone Variables
+                    let knBody, knHead, knLArm, knLFore, knRArm, knRFore;
+                    let knLThigh, knLCalf, knRThigh, knRCalf;
+                    let knShieldRoot, knSwordRoot;    
+                // Shade Bone Variables
+                    let shBody, shHood, shLArm, shRArm, shTail;
                 // Sea Serpent Bone Variables
-                let serpRoot, serpNeck, serpHead, serpJaw;
-                let serpTailRoot, serpTailTip;
+                    let serpRoot, serpNeck, serpHead, serpJaw;
+                    let serpTailRoot, serpTailTip;
                 // Gargoyle Bone Variables
-                let garBody, garHead, garLArm, garLFore, garRArm, garRFore;
-                let garLThigh, garLCalf, garRThigh, garRCalf;
-                let garWingL1, garWingL2, garWingR1, garWingR2, garTail;
+                    let garBody, garHead, garLArm, garLFore, garRArm, garRFore;
+                    let garLThigh, garLCalf, garRThigh, garRCalf;
+                    let garWingL1, garWingL2, garWingR1, garWingR2, garTail;
                 // Pixie Bone Variables
-                let pixBody, pixHead, pixLArm, pixLFore, pixRArm, pixRFore;
-                let pixLThigh, pixLCalf, pixRThigh, pixRCalf, pixWingL, pixWingR;
-                let pixSwordL, pixSwordR;
-                let spidBody, spidHead, spidThighRX, spidCalfRX, spidLegRY;
-                let impBody, impHead, impLArm, impLFore, impRArm, impRFore;
-                let impLThigh, impLCalf, impRThigh, impRCalf, impTail;
+                    let pixBody, pixHead, pixLArm, pixLFore, pixRArm, pixRFore;
+                    let pixLThigh, pixLCalf, pixRThigh, pixRCalf, pixWingL, pixWingR;
+                    let pixSwordL, pixSwordR;
+                // Spider Bone Variables
+                    let spidBody, spidHead, spidThighRX, spidCalfRX, spidLegRY;
+                // Imp Bone Variables
+                    let impBody, impHead, impLArm, impLFore, impRArm, impRFore;
+                    let impLThigh, impLCalf, impRThigh, impRCalf, impTail;
+                // Djinn Bone Variables
+                        let djBody, djHead, djLArm, djLFore, djRArm, djRFore;
+                        let djSash, djTail1, djTail2, djTail3;
+                        let cImpSkin = {r: 0.0, g: 0.05, b: 0.25}; // Very dark midnight blue
+                        let cImpRed  = {r: 1.0, g: 0.0, b: 0.0};   // Eyes / Tongue
+                    
+            // --- 2. PALETTE SWAPPING (THE MAGIC TRICK) ---
+                    if (variant === 'fire') {
+                        cImpSkin = {r: 0.8, g: 0.1, b: 0.0};   // Deep Red Skin
+                        cImpRed  = {r: 1.0, g: 0.8, b: 0.0};   // Orange/Yellow eyes and tongue
+                    } 
+                    else if (variant === 'gnome') {
+                        cIceCore = {r: 0.4, g: 0.25, b: 0.1};  // Dirt Brown
+                        cIceDark = {r: 0.2, g: 0.1, b: 0.05};  // Darker Mud
+                    } 
+                    else if (variant === 'light') {
+                        cSyArmor = {r: 0.85, g: 0.85, b: 0.9}; // Light Gray / White Armor
+                        cVisor = {r: 0.0, g: 0.8, b: 1.0};   // Friendly Blue Visor instead of Evil Red
+                    } 
+                    else if (variant === 'mirage') {
+                        ghostHalo = {r: 1.0, g: 0.1, b: 0.1, a: 0.25}; // Red Aura
+                        ghostCore = {r: 0.7, g: 0.0, b: 0.0, a: 0.50}; // Crimson Core
+                    }
+                    else if (variant === 'brown_knight') {
+                        cKnArmor  = {r: 0.45, g: 0.30, b: 0.15, a: 1.0}; // Leather/Brown Armor
+                        cKnTrim   = {r: 0.60, g: 0.45, b: 0.25, a: 1.0}; // Bronze/Lighter Brown Trim
+                        cKnUnder  = {r: 0.15, g: 0.10, b: 0.05, a: 1.0}; // Dark Brown cloth
+                        cKnVisor  = {r: 0.00, g: 0.00, b: 0.00, a: 1.0}; // Black Visor
+                        cKnSword  = {r: 0, g: 1, b: 0, a: 1.0}; // Iron Sword
+                        cKnShield = {r: 0.45, g: 0.30, b: 0.15, a: 1.0}; // Brown Shield
+                    }
+                    else if (variant === 'fairy_green') {
+                        cFqDress = {r: 0.10, g: 0.60, b: 0.20, a: 1.00}; // Emerald Green
+                        cFqDark  = {r: 0.05, g: 0.30, b: 0.10, a: 1.00}; // Dark Forest Green
+                        cFqWing  = {r: 0.40, g: 0.90, b: 0.40, a: 0.35}; // Pale Green Wings
+                        cFqOrb   = {r: 0.20, g: 1.00, b: 0.20, a: 0.85}; // Lime Magic
+                    }
+                    else if (variant === 'fairy_blue') {
+                        cFqDress = {r: 0.10, g: 0.30, b: 0.80, a: 1.00}; // Deep Blue/Sapphire
+                        cFqDark  = {r: 0.05, g: 0.15, b: 0.50, a: 1.00}; // Navy Shadow
+                        cFqWing  = {r: 0.20, g: 0.80, b: 1.00, a: 0.35}; // Cyan/Ice Wings
+                        cFqOrb   = {r: 0.00, g: 0.80, b: 1.00, a: 0.85}; // Bright Cyan Magic
+                        cFqHair  = {r: 0.90, g: 0.90, b: 0.90, a: 1.00}; // Silvery White Hair
+                    }
+                    else if (variant === 'fairy_red') {
+                        cFqDress = {r: 0.80, g: 0.10, b: 0.10, a: 1.00}; // Crimson Red
+                        cFqDark  = {r: 0.50, g: 0.00, b: 0.00, a: 1.00}; // Deep Maroon Shadow
+                        cFqWing  = {r: 1.00, g: 0.40, b: 0.10, a: 0.35}; // Fiery Orange Wings
+                        cFqOrb   = {r: 1.00, g: 0.50, b: 0.00, a: 0.85}; // Fire Magic
+                        cFqHair  = {r: 0.20, g: 0.00, b: 0.00, a: 1.00}; // Dark Red Hair
+                    }
+                    else if (variant === 'fairy_black') { // Corrupted / Dark Fairy
+                        cFqDress = {r: 0.15, g: 0.15, b: 0.15, a: 1.00}; // Charcoal Black
+                        cFqDark  = {r: 0.05, g: 0.05, b: 0.05, a: 1.00}; // Pitch Black Shadow
+                        cFqSkin  = {r: 0.85, g: 0.85, b: 0.95, a: 1.00}; // Sickly Pale/Grey Skin
+                        cFqWing  = {r: 0.40, g: 0.00, b: 0.60, a: 0.40}; // Dark Purple Wings
+                        cFqOrb   = {r: 0.50, g: 0.00, b: 0.80, a: 0.85}; // Dark Magic
+                        cFqGold  = {r: 0.50, g: 0.50, b: 0.60, a: 1.00}; // Tarnished Silver Crown/Sword
+                    }
+                //
             switch(index) {
                 case 1: // 3D SWORD
                     add3dShape(mesh, 'rec', 0, -1.5, 0,  0.2, 1.5, 0.05, cSteel); 
@@ -47352,8 +47594,695 @@
                         serpTailTip  = computeBone(serpTailRoot, 0, -0.4, 0.2, 0.2, 0, 0);
                         break;
                     }
+                // ==========================================
+                // --- 3D DJINN MONSTER ---
+                // ==========================================
+                    case 52: { // DJINN IDLE (Majestic Hovering & Drifting Tail)
+                        let t = Date.now() / 300; 
+                        let bob = Math.sin(t) * 0.08;       
+                        
+                        // Complex Tail Shifting Math
+                        let swirl = t * 2; 
+                        let driftX = Math.sin(t * 1.5) * 0.2; // Tail sways left and right
+                        let driftZ = Math.cos(t * 1.2) * 0.1; // Tail shifts forward and back slightly
+
+                        djBody = { x: 0, y: -0.1 + bob, z: 0, rx: 0.1, ry: 0, rz: 0 };
+                        djHead = computeBone(djBody, 0, -0.4, 0, 0, 0, 0);
+
+                        // Muscular arms crossed or hovering out
+                        djLArm  = computeBone(djBody, -0.3, -0.3, 0.1, 0.2, 0,  0.4);
+                        djLFore = computeBone(djLArm, 0, 0.3, 0, -0.6, 0, -0.2); 
+                        djRArm  = computeBone(djBody,  0.3, -0.3, 0.1, 0.2, 0, -0.4);
+                        djRFore = computeBone(djRArm, 0, 0.3, 0, -0.6, 0,  0.2);
+
+                        djSash = computeBone(djBody, 0, 0.15, 0, 0, 0, 0);
+
+                        // Ethereal Shifting Tail (Second Waist)
+                        // The tail segments rotate, but ALSO sway on the X and Z axis like smoke
+                        djTail1 = computeBone(djSash,  driftX * 0.5, 0.15, driftZ * 0.5,  0.1,  swirl,       -driftX * 0.5);
+                        djTail2 = computeBone(djTail1, driftX * 0.8, 0.25, driftZ * 0.8,  0.1, -swirl * 1.5, -driftX * 0.8);
+                        djTail3 = computeBone(djTail2, driftX * 1.0, 0.25, driftZ * 1.0,  0.1,  swirl * 2.0, -driftX * 1.0);
+                        break;
+                    }
+
+                    case 53: { // DJINN CHASE (Leaning Forward, Tail Trailing)
+                        let t = Date.now() / 200; 
+                        let bob = Math.abs(Math.sin(t * 2)) * 0.05; 
+                        let swirl = t * 3; 
+                        let trail = Math.sin(t * 2) * 0.15; // Whips behind him as he moves
+
+                        djBody = { x: 0, y: -0.1 + bob, z: 0, rx: 0.5, ry: 0, rz: 0 }; // Leaning aggressively into the chase
+                        djHead = computeBone(djBody, 0, -0.4, 0, -0.3, 0, 0); 
+
+                        djLArm  = computeBone(djBody, -0.3, -0.3, 0.1, -0.6, 0.2,  0.2);
+                        djLFore = computeBone(djLArm, 0, 0.3, 0, -0.2, 0, 0);
+                        djRArm  = computeBone(djBody,  0.3, -0.3, 0.1, -0.6, -0.2, -0.2);
+                        djRFore = computeBone(djRArm, 0, 0.3, 0, -0.2, 0, 0);
+
+                        djSash = computeBone(djBody, 0, 0.15, 0, -0.2, 0, 0);
+
+                        // Tail drags backwards behind the body
+                        djTail1 = computeBone(djSash,  trail * 0.5, 0.15,  0.1,  0.4,  swirl, 0);
+                        djTail2 = computeBone(djTail1, trail * 1.0, 0.25,  0.15, 0.4, -swirl * 1.5, 0);
+                        djTail3 = computeBone(djTail2, trail * 1.5, 0.25,  0.2,  0.4,  swirl * 2.0, 0);
+                        break;
+                    }
+
+                    case 54: { // DJINN ATTACK (Overhead Double Slam)
+                        let t = Date.now() / 150;
+                        let lunge = Math.cos(t); 
+                        let thrust = lunge > 0 ? -lunge * 0.6 : lunge * 0.1; 
+                        let swirl = t * 4; 
+
+                        djBody = { x: 0, y: -0.1, z: thrust, rx: lunge > 0 ? 0.6 : -0.2, ry: 0, rz: 0 };
+                        djHead = computeBone(djBody, 0, -0.4, 0, lunge > 0 ? -0.4 : 0.2, 0, 0);
+
+                        // Double-fisted magic slam
+                        let slam = lunge > 0 ? -1.8 : 0.8;
+                        djLArm  = computeBone(djBody, -0.3, -0.3, 0.1, slam, 0.2,  0.2);
+                        djLFore = computeBone(djLArm, 0, 0.3, 0, -0.2, 0, 0);
+                        djRArm  = computeBone(djBody,  0.3, -0.3, 0.1, slam, -0.2, -0.2);
+                        djRFore = computeBone(djRArm, 0, 0.3, 0, -0.2, 0, 0);
+
+                        djSash = computeBone(djBody, 0, 0.15, 0, 0, 0, 0);
+
+                        // Tail compresses and expands like a spring during the slam
+                        let compress = lunge > 0 ? -0.1 : 0.1;
+                        let twitch = lunge > 0 ? Math.sin(t * 8) * 0.1 : 0; // Violent shaking upon impact
+
+                        djTail1 = computeBone(djSash,  twitch, 0.15 + compress, 0, 0.2,  swirl, 0);
+                        djTail2 = computeBone(djTail1, -twitch, 0.25 + compress, 0, 0.2, -swirl * 1.5, 0);
+                        djTail3 = computeBone(djTail2, twitch, 0.25 + compress, 0, 0.2,  swirl * 2.0, 0);
+                        break;
+                    }
+                // ==========================================
+                // --- 3D SHADE / WRAITH MONSTER ---
+                // ==========================================
+                    case 55: { // SHADE IDLE (Fluttering, Fatter Robe)
+                        let t = Date.now() / 300; 
+                        let bob = Math.sin(t) * 0.1;       
+                        let flutter = Math.sin(t * 8) * 0.05; // Rapid shivering/fluttering
+
+                        // Body flutters rapidly on the X-axis while bobbing up and down
+                        shBody = { x: 0, y: 0.1 + bob, z: 0, rx: 0.1 + flutter, ry: 0, rz: 0 };
+                        shHood = computeBone(shBody, 0, -0.4, 0, 0.1, 0, 0); 
+
+                        // Huge droopy sleeves hanging down and out
+                        shLArm  = computeBone(shBody, -0.25, -0.1, 0, 0, 0,  0.2);
+                        shRArm  = computeBone(shBody,  0.25, -0.1, 0, 0, 0, -0.2);
+
+                        // Ethereal wisp tail dragging below, swaying gently
+                        shTail = computeBone(shBody, 0, 0.4, 0.1, -0.1, Math.sin(t * 1.5) * 0.2, 0);
+                        break;
+                    }
+
+                    case 56: { // SHADE CHASE (Swooping Forward)
+                        let t = Date.now() / 200; 
+                        let bob = Math.abs(Math.sin(t * 2)) * 0.05; 
+                        let flutter = Math.sin(t * 10) * 0.08; 
+                        let trail = Math.sin(t * 3) * 0.2; 
+
+                        shBody = { x: 0, y: 0.1 + bob, z: 0, rx: 0.5 + flutter, ry: 0, rz: 0 }; // Leaning hard forward
+                        shHood = computeBone(shBody, 0, -0.4, 0, -0.4, 0, 0); // Head looks up at you
+
+                        // Sleeves trail behind slightly from momentum
+                        shLArm  = computeBone(shBody, -0.25, -0.1, 0, -0.4, 0,  0.2);
+                        shRArm  = computeBone(shBody,  0.25, -0.1, 0, -0.4, 0, -0.2);
+
+                        shTail = computeBone(shBody, 0, 0.4, 0.2, -0.6, trail, 0);
+                        break;
+                    }
+
+                    case 57: { // SHADE ATTACK (Lifts Empty Sleeves)
+                        let t = Date.now() / 150;
+                        let lunge = Math.cos(t); 
+                        let thrust = lunge > 0 ? -lunge * 0.8 : lunge * 0.1; 
+                        let flutter = Math.sin(t * 12) * 0.1; // Violent shaking during attack
+
+                        shBody = { x: 0, y: 0.1, z: thrust, rx: (lunge > 0 ? 0.6 : 0.1) + flutter, ry: 0, rz: 0 };
+                        shHood = computeBone(shBody, 0, -0.4, 0, lunge > 0 ? -0.5 : 0.1, 0, 0);
+
+                        // Violently throws its massive empty sleeves forward/up!
+                        let lift = lunge > 0 ? -1.5 : 0.2;
+                        shLArm  = computeBone(shBody, -0.25, -0.1, 0, lift, 0.2,  0.3);
+                        shRArm  = computeBone(shBody,  0.25, -0.1, 0, lift, -0.2, -0.3);
+
+                        shTail = computeBone(shBody, 0, 0.4, 0.1, -0.2, 0, 0);
+                        break;
+                    }
+                // ==========================================
+                // --- 3D KNIGHT / GHOST KNIGHT ---
+                // ==========================================
+                    case 58: { // KNIGHT IDLE (Heroic Stance)
+                        let t = Date.now() / 400;
+                        let breath = Math.sin(t) * 0.02; // Heavy armor breathing
+
+                        knBody = { x: 0, y: 0.1 + breath, z: 0, rx: 0.05, ry: 0, rz: 0 };
+                        knHead = computeBone(knBody, 0, -0.35, 0, 0, 0, 0);
+
+                        // Left Arm holds the massive kite shield defensively
+                        knLArm  = computeBone(knBody, -0.3, -0.2, 0, 0.2, 0,  0.2);
+                        knLFore = computeBone(knLArm, 0, 0.25, 0, -0.6, 0.5, 0); 
+                        
+                        // Right Arm holds sword at rest
+                        knRArm  = computeBone(knBody,  0.3, -0.2, 0, 0.2, 0, -0.2);
+                        knRFore = computeBone(knRArm, 0, 0.25, 0, -0.2, 0, 0);
+
+                        // Wide stable leg stance
+                        knLThigh = computeBone(knBody, -0.15, 0.25, 0,  0.1, 0,  0.1);
+                        knLCalf  = computeBone(knLThigh, 0, 0.25, 0, -0.1, 0, 0);
+                        knRThigh = computeBone(knBody,  0.15, 0.25, 0,  0.1, 0, -0.1);
+                        knRCalf  = computeBone(knRThigh, 0, 0.25, 0, -0.1, 0, 0);
+                        break;
+                    }
+
+                    case 59: { // KNIGHT WALK (Heavy March)
+                        let t = Date.now() / 180;
+                        let step1 = Math.sin(t);
+                        let step2 = Math.sin(t + Math.PI);
+                        let bounce = Math.abs(step1) * 0.05;
+
+                        knBody = { x: 0, y: 0.1 + bounce, z: 0, rx: 0.1, ry: step1 * 0.1, rz: step1 * 0.05 };
+                        knHead = computeBone(knBody, 0, -0.35, 0, -0.1, -step1 * 0.1, 0);
+
+                        // Arms march (Shield stays relatively stable, sword swings)
+                        knLArm  = computeBone(knBody, -0.3, -0.2, 0, step2 * 0.2 + 0.2, 0,  0.2);
+                        knLFore = computeBone(knLArm, 0, 0.25, 0, -0.6, 0.5, 0);
+                        knRArm  = computeBone(knBody,  0.3, -0.2, 0, step1 * 0.6, 0, -0.2);
+                        knRFore = computeBone(knRArm, 0, 0.25, 0, -0.2, 0, 0);
+
+                        // Marching Legs
+                        let lift1 = Math.max(0, step1);
+                        let lift2 = Math.max(0, step2);
+                        knLThigh = computeBone(knBody, -0.15, 0.25, 0, 0.1 + lift1 * 0.8, 0, 0.1);
+                        knLCalf  = computeBone(knLThigh, 0, 0.25, 0, -0.1 - lift1 * 0.4, 0, 0);
+                        knRThigh = computeBone(knBody,  0.15, 0.25, 0, 0.1 + lift2 * 0.8, 0, -0.1);
+                        knRCalf  = computeBone(knRThigh, 0, 0.25, 0, -0.1 - lift2 * 0.4, 0, 0);
+                        break;
+                    }
+
+                    case 60: { // KNIGHT ATTACK (Overhand Chop while Bracing Shield)
+                        let t = Date.now() / 150;
+                        let lunge = Math.cos(t);
+                        let thrust = lunge > 0 ? -lunge * 0.4 : lunge * 0.1;
+
+                        // Body twists into the sword swing
+                        knBody = { x: 0, y: 0.1, z: thrust, rx: 0.2, ry: lunge > 0 ? 0.4 : -0.2, rz: 0 };
+                        knHead = computeBone(knBody, 0, -0.35, 0, -0.1, lunge > 0 ? -0.4 : 0.2, 0);
+
+                        // Shield arm braces hard across body
+                        knLArm  = computeBone(knBody, -0.3, -0.2, 0, -0.2, 0.6, 0.2);
+                        knLFore = computeBone(knLArm, 0, 0.25, 0, -0.8, 0.5, 0);
+
+                        // Sword arm chops down hard
+                        let chop = lunge > 0 ? -1.2 : 0.8;
+                        knRArm  = computeBone(knBody,  0.3, -0.2, 0, chop, -0.2, -0.2);
+                        knRFore = computeBone(knRArm, 0, 0.25, 0, -0.4, 0, 0);
+
+                        knLThigh = computeBone(knBody, -0.15, 0.25, 0,  0.2, 0,  0.1);
+                        knLCalf  = computeBone(knLThigh, 0, 0.25, 0, -0.2, 0, 0);
+                        knRThigh = computeBone(knBody,  0.15, 0.25, 0,  0.1, 0, -0.1);
+                        knRCalf  = computeBone(knRThigh, 0, 0.25, 0, -0.1, 0, 0);
+                        break;
+                    }
+                // ==========================================
+                // --- 3D KRAKEN KING ---
+                // ==========================================
+                    case 67: { // KRAKEN IDLE (Submerged Bobbing & Fluid Tentacles)
+                        let t = Date.now() / 400; 
+                        let bob = Math.sin(t) * 0.1;       
+                        let sway = Math.cos(t * 0.5) * 0.2; // Slow torso rotation for shadow shifting
+                        let blink = Math.sin(t * 2) > 0.95 ? 1 : 0; // Rare, sudden blink
+
+                        // Root is pushed deep into the ground (y: 0.5) to look submerged!
+                        krRoot = { x: 0, y: 0.5 + bob, z: 0, rx: 0.1, ry: sway, rz: 0 };
+                        krBody = computeBone(krRoot, 0, -0.4, 0, 0, 0, 0);
+                        krHead = computeBone(krBody, 0, -0.3, 0.1, blink * -0.2, 0, 0); // Blink compresses the eye
+                        krBeak = computeBone(krBody, 0, -0.1, 0.2, 0, 0, 0);
+
+                        krFinTop = computeBone(krBody, 0, -0.6, -0.2, 0.2, 0, 0);
+
+                        // Fluid Tentacle Generation (4 Tentacles, 3 Segments each)
+                        for(let i=0; i<3; i++) {
+                            let wave1 = Math.sin(t * 2 - (i * 0.8)) * 0.3; 
+                            let wave2 = Math.cos(t * 2 - (i * 0.8)) * 0.3;
+
+                            // Front Left & Right (Tentacles 1 & 2)
+                            krTent1[i] = computeBone(i === 0 ? krRoot : krTent1[i-1], -0.2, -0.1, 0.2, -0.2 + wave1, 0.4, 0.2 + wave2);
+                            krTent2[i] = computeBone(i === 0 ? krRoot : krTent2[i-1],  0.2, -0.1, 0.2, -0.2 + wave2, -0.4, -0.2 + wave1);
+                            
+                            // Back Left & Right (Tentacles 3 & 4)
+                            krTent3[i] = computeBone(i === 0 ? krRoot : krTent3[i-1], -0.3, -0.2, -0.2, 0.2 + wave2, 0.6, 0.4 + wave1);
+                            krTent4[i] = computeBone(i === 0 ? krRoot : krTent4[i-1],  0.3, -0.2, -0.2, 0.2 + wave1, -0.6, -0.4 + wave2);
+                        }
+                        break;
+                    }
+
+                    case 68: { // KRAKEN CHASE (Jetting forward through water)
+                        let t = Date.now() / 200; 
+                        let jet = Math.abs(Math.sin(t * 2)) * 0.1; 
+                        let swimWave = Math.sin(t * 4);
+
+                        // Leans forward heavily
+                        krRoot = { x: 0, y: 0.5 + jet, z: 0, rx: 0.5, ry: 0, rz: 0 };
+                        krBody = computeBone(krRoot, 0, -0.4, 0, 0, 0, 0);
+                        krHead = computeBone(krBody, 0, -0.3, 0.1, -0.2, 0, 0); 
+                        krBeak = computeBone(krBody, 0, -0.1, 0.2, 0.2, 0, 0); // Beak opens!
+
+                        krFinTop = computeBone(krBody, 0, -0.6, -0.2, 0.5, 0, 0); // Fin folds back for speed
+
+                        for(let i=0; i<3; i++) {
+                            let w = Math.sin(t * 6 - (i * 1.0)) * 0.4; // Fast, synchronized undulating wave
+                            
+                            // All tentacles trail straight back (-Z) and undulate
+                            krTent1[i] = computeBone(i === 0 ? krRoot : krTent1[i-1], -0.2, 0, -0.2, 0.8 + w, 0, 0.1);
+                            krTent2[i] = computeBone(i === 0 ? krRoot : krTent2[i-1],  0.2, 0, -0.2, 0.8 - w, 0, -0.1);
+                            krTent3[i] = computeBone(i === 0 ? krRoot : krTent3[i-1], -0.3, -0.1, -0.3, 0.6 + w, 0, 0.2);
+                            krTent4[i] = computeBone(i === 0 ? krRoot : krTent4[i-1],  0.3, -0.1, -0.3, 0.6 - w, 0, -0.2);
+                        }
+                        break;
+                    }
+
+                    case 69: { // KRAKEN ATTACK (Front Tentacles Lunge Forward)
+                        let t = Date.now() / 150;
+                        let lunge = Math.cos(t); 
+                        let thrust = lunge > 0 ? -lunge * 0.8 : lunge * 0.1; 
+
+                        krRoot = { x: 0, y: 0.5, z: thrust, rx: lunge > 0 ? -0.2 : 0.2, ry: 0, rz: 0 }; // Rears back, then lunges
+                        krBody = computeBone(krRoot, 0, -0.4, 0, 0, 0, 0);
+                        krHead = computeBone(krBody, 0, -0.3, 0.1, 0, 0, 0);
+                        krBeak = computeBone(krBody, 0, -0.1, 0.2, lunge > 0 ? 0.6 : 0, 0, 0); // Snaps beak!
+
+                        krFinTop = computeBone(krBody, 0, -0.6, -0.2, 0, 0, 0);
+
+                        for(let i=0; i<3; i++) {
+                            let strike = lunge > 0 ? -1.0 : 0.2; // Front tentacles whip violently forward over the head
+                            let w = Math.sin(t * 8 - (i * 0.5)) * 0.2; 
+
+                            krTent1[i] = computeBone(i === 0 ? krRoot : krTent1[i-1], -0.2, -0.1, 0.2, strike + w, 0.2,  0.1);
+                            krTent2[i] = computeBone(i === 0 ? krRoot : krTent2[i-1],  0.2, -0.1, 0.2, strike - w, -0.2, -0.1);
+                            
+                            // Back tentacles brace against the water
+                            krTent3[i] = computeBone(i === 0 ? krRoot : krTent3[i-1], -0.3, 0.1, -0.2, 0.8, 0.4, 0.4);
+                            krTent4[i] = computeBone(i === 0 ? krRoot : krTent4[i-1],  0.3, 0.1, -0.2, 0.8, -0.4, -0.4);
+                        }
+                        break;
+                    }
+                // ==========================================
+                // --- 3D APPRENTICE (Chubby Wizard) ---
+                // ==========================================
+                    case 70: { // APPRENTICE IDLE (Looking around, bobbing wand)
+                        let t = Date.now() / 400;
+                        let breath = Math.sin(t) * 0.02; // Chubby breathing
+                        let look = Math.sin(t * 0.5) * 0.3; // Looking side to side slowly
+
+                        appBody = { x: 0, y: 0.1 + breath, z: 0, rx: 0.05, ry: 0, rz: 0 };
+                        appHead = computeBone(appBody, 0, -0.35, 0, 0, look, 0);
+                        appHat  = computeBone(appHead, 0, -0.15, 0, -0.2, 0, 0); // Hat tilts back slightly
+
+                        // Left Arm (Holding Wand out to the side)
+                        appLArm  = computeBone(appBody, -0.3, -0.2, 0, 0.2, 0.2,  0.4);
+                        appLFore = computeBone(appLArm, 0, 0.2, 0, -0.6, 0, 0.1); 
+                        
+                        // Right Arm (Resting)
+                        appRArm  = computeBone(appBody,  0.3, -0.2, 0, 0.1, 0, -0.2);
+                        appRFore = computeBone(appRArm, 0, 0.2, 0, -0.1, 0, 0);
+
+                        appWandRoot = computeBone(appLFore, 0, 0.15, 0, Math.PI/2, 0, 0); // Pointing forward/out
+                        appWandTip  = computeBone(appWandRoot, 0, 0.3, 0, 0, 0, 0);
+
+                        appLThigh = computeBone(appBody, -0.15, 0.3, 0,  0.1, 0,  0.1);
+                        appRThigh = computeBone(appBody,  0.15, 0.3, 0,  0.1, 0, -0.1);
+                        break;
+                    }
+
+                    case 71: { // APPRENTICE WALK (Waddling)
+                        let t = Date.now() / 150;
+                        let step1 = Math.sin(t);
+                        let step2 = Math.sin(t + Math.PI);
+                        let waddle = step1 * 0.1; // Side to side waddle
+
+                        appBody = { x: waddle, y: 0.1 + Math.abs(step1)*0.05, z: 0, rx: 0.15, ry: 0, rz: waddle };
+                        appHead = computeBone(appBody, 0, -0.35, 0, -0.1, 0, -waddle);
+                        appHat  = computeBone(appHead, 0, -0.15, 0, -0.3, 0, 0); 
+
+                        // Arms pump slightly
+                        appLArm  = computeBone(appBody, -0.3, -0.2, 0, step2 * 0.3, 0.2,  0.3);
+                        appLFore = computeBone(appLArm, 0, 0.2, 0, -0.4, 0, 0); 
+                        appRArm  = computeBone(appBody,  0.3, -0.2, 0, step1 * 0.3, 0, -0.2);
+                        appRFore = computeBone(appRArm, 0, 0.2, 0, -0.2, 0, 0);
+
+                        appWandRoot = computeBone(appLFore, 0, 0.15, 0, Math.PI/2, 0, 0);
+                        appWandTip  = computeBone(appWandRoot, 0, 0.3, 0, 0, 0, 0);
+
+                        let lift1 = Math.max(0, step1);
+                        let lift2 = Math.max(0, step2);
+                        appLThigh = computeBone(appBody, -0.15, 0.3, 0, 0.1 + lift1 * 0.6, 0, 0.1);
+                        appRThigh = computeBone(appBody,  0.15, 0.3, 0, 0.1 + lift2 * 0.6, 0, -0.1);
+                        break;
+                    }
+
+                    case 72: { // APPRENTICE ATTACK (Thrusting Wand)
+                        let t = Date.now() / 150;
+                        let lunge = Math.cos(t);
+                        let thrust = lunge > 0 ? -lunge * 0.5 : lunge * 0.1;
+
+                        appBody = { x: 0, y: 0.1, z: thrust, rx: lunge > 0 ? 0.3 : -0.1, ry: lunge > 0 ? -0.4 : 0.2, rz: 0 };
+                        appHead = computeBone(appBody, 0, -0.35, 0, lunge > 0 ? -0.2 : 0.1, 0, 0);
+                        appHat  = computeBone(appHead, 0, -0.15, 0, -0.2, 0, 0);
+
+                        // Thrusts Left Arm forward with wand
+                        let strike = lunge > 0 ? -1.2 : 0.2;
+                        appLArm  = computeBone(appBody, -0.3, -0.2, 0, strike, 0, 0.1);
+                        appLFore = computeBone(appLArm, 0, 0.2, 0, -0.2, 0, 0); 
+                        
+                        appRArm  = computeBone(appBody,  0.3, -0.2, 0, 0.4, 0, -0.2); // Right arm pulls back
+                        appRFore = computeBone(appRArm, 0, 0.2, 0, -0.4, 0, 0);
+
+                        appWandRoot = computeBone(appLFore, 0, 0.15, 0, Math.PI/2, 0, 0); 
+                        appWandTip  = computeBone(appWandRoot, 0, 0.3, 0, 0, 0, 0);
+
+                        appLThigh = computeBone(appBody, -0.15, 0.3, 0,  0.1, 0,  0.1);
+                        appRThigh = computeBone(appBody,  0.15, 0.3, 0,  0.1, 0, -0.1);
+                        break;
+                    }
+                // ==========================================
+                // --- 3D FAIRY QUEEN ---
+                // ==========================================
+                    case 73: { // FAIRY QUEEN IDLE (Swaying, Fluttering, Floating)
+                        let t = Date.now() / 400;
+                        let bob = Math.sin(t * 2) * 0.1;
+                        let sway = Math.cos(t) * 0.1; // Regal side-to-side torso sway
+                        let flutter = Math.sin(t * 25) * 0.4; // Rapid wing flutter
+
+                        fqBody = { x: 0, y: 0.1 + bob, z: 0, rx: 0.05, ry: 0, rz: sway };
+                        fqHead = computeBone(fqBody, 0, -0.35, 0, -0.05, 0, -sway); // Head stabilizes the sway
+
+                        // Wings stick out the back and flutter wildly
+                        fqWingL = computeBone(fqBody, -0.1, -0.1, 0.1, 0.2, -0.4 + flutter, 0.2);
+                        fqWingR = computeBone(fqBody,  0.1, -0.1, 0.1, 0.2,  0.4 - flutter, -0.2);
+
+                        // Left Arm (Raised, holding floating magic orb)
+                        fqLArm  = computeBone(fqBody, -0.2, -0.2, 0, -0.3, 0.2,  0.3);
+                        fqLFore = computeBone(fqLArm, 0, 0.2, 0, -0.6, 0, 0); 
+                        
+                        // Right Arm (Relaxed, holding sword pointing down/backwards)
+                        fqRArm  = computeBone(fqBody,  0.2, -0.2, 0, 0.2, -0.2, -0.3);
+                        fqRFore = computeBone(fqRArm, 0, 0.2, 0, 0.2, 0, 0);
+
+                        fqSword = computeBone(fqRFore, 0, 0.15, 0, 0, 0, 0); 
+                        fqOrb   = computeBone(fqLFore, 0, 0.25 + Math.sin(t*3)*0.05, 0, 0, t*2, 0); // Orb hovers and spins
+
+                        // Gracefully dangling legs
+                        fqLThigh = computeBone(fqBody, -0.1, 0.25, 0,  0.1, 0,  0.1);
+                        fqRThigh = computeBone(fqBody,  0.1, 0.25, 0,  0.1, 0, -0.1);
+                        break;
+                    }
+
+                    case 74: { // FAIRY QUEEN CHASE (Leaning Forward, Aggressive Flutter)
+                        let t = Date.now() / 200;
+                        let bob = Math.abs(Math.sin(t * 3)) * 0.05; 
+                        let flutter = Math.sin(t * 30) * 0.5; // Even faster wing beat
+
+                        fqBody = { x: 0, y: 0.1 + bob, z: 0, rx: 0.4, ry: 0, rz: 0 }; // Leans forward
+                        fqHead = computeBone(fqBody, 0, -0.35, 0, -0.3, 0, 0);
+
+                        fqWingL = computeBone(fqBody, -0.1, -0.1, 0.1, 0.1, -0.3 + flutter, 0.1);
+                        fqWingR = computeBone(fqBody,  0.1, -0.1, 0.1, 0.1,  0.3 - flutter, -0.1);
+
+                        // Left Arm (Orb extended forward like a lantern)
+                        fqLArm  = computeBone(fqBody, -0.2, -0.2, 0, -0.8, 0,  0.2);
+                        fqLFore = computeBone(fqLArm, 0, 0.2, 0, -0.2, 0, 0); 
+                        
+                        // Right Arm (Sword pulled back ready to strike)
+                        fqRArm  = computeBone(fqBody,  0.2, -0.2, 0, 0.6, 0, -0.2);
+                        fqRFore = computeBone(fqRArm, 0, 0.2, 0, 0.2, 0, 0);
+
+                        fqSword = computeBone(fqRFore, 0, 0.15, 0, 0, 0, 0); 
+                        fqOrb   = computeBone(fqLFore, 0, 0.25, 0, 0, t*4, 0); 
+
+                        fqLThigh = computeBone(fqBody, -0.1, 0.25, 0, -0.2, 0,  0.1);
+                        fqRThigh = computeBone(fqBody,  0.1, 0.25, 0, -0.2, 0, -0.1);
+                        break;
+                    }
+
+                    case 75: { // FAIRY QUEEN ATTACK (Sword Slash)
+                        let t = Date.now() / 150;
+                        let lunge = Math.cos(t);
+                        let thrust = lunge > 0 ? -lunge * 0.6 : lunge * 0.1;
+                        let flutter = Math.sin(t * 25) * 0.4;
+
+                        fqBody = { x: 0, y: 0.1, z: thrust, rx: 0.2, ry: lunge > 0 ? 0.4 : -0.2, rz: 0 };
+                        fqHead = computeBone(fqBody, 0, -0.35, 0, -0.1, lunge > 0 ? -0.3 : 0.1, 0);
+
+                        fqWingL = computeBone(fqBody, -0.1, -0.1, 0.1, 0.2, -0.4 + flutter, 0.2);
+                        fqWingR = computeBone(fqBody,  0.1, -0.1, 0.1, 0.2,  0.4 - flutter, -0.2);
+
+                        // Orb arm pulls in defensively
+                        fqLArm  = computeBone(fqBody, -0.2, -0.2, 0, 0.2, 0,  0.4);
+                        fqLFore = computeBone(fqLArm, 0, 0.2, 0, -0.8, 0, 0); 
+                        
+                        // Sword arm slashes heavily
+                        let slash = lunge > 0 ? -1.6 : 0.4;
+                        fqRArm  = computeBone(fqBody,  0.2, -0.2, 0, slash, -0.4, -0.2);
+                        fqRFore = computeBone(fqRArm, 0, 0.2, 0, -0.2, 0, 0);
+
+                        fqSword = computeBone(fqRFore, 0, 0.15, 0, Math.PI/2, 0, 0); // Points sword forward during slash
+                        fqOrb   = computeBone(fqLFore, 0, 0.25, 0, 0, 0, 0); 
+
+                        fqLThigh = computeBone(fqBody, -0.1, 0.25, 0,  0.2, 0,  0.1);
+                        fqRThigh = computeBone(fqBody,  0.1, 0.25, 0,  0.1, 0, -0.1);
+                        break;
+                    }
+                // ==========================================
+                // --- 3D UNIVERSAL QUADRUPED (173-181) ---
+                // 173-175: Bear | 176-178: Wolf | 179-181: Boar
+                // ==========================================
+                case 88: case 91: case 94: { // QUAD IDLE
+                    let t = Date.now() / 400;
+                    let breath = Math.sin(t) * 0.02;
+
+                    qBody = { x: 0, y: 0.2 + breath, z: 0, rx: 0, ry: 0, rz: 0 }; // Parallel to ground
+                    qHead = computeBone(qBody, 0, -0.15, -0.4, Math.sin(t*0.5)*0.1, 0, 0); // Sniffing the air
+                    
+                    qFL = computeBone(qBody, -0.2, 0.1, -0.3, 0.1, 0, 0); // Front Left
+                    qFR = computeBone(qBody,  0.2, 0.1, -0.3, 0.1, 0, 0); // Front Right
+                    qBL = computeBone(qBody, -0.2, 0.1,  0.3, -0.1, 0, 0); // Back Left
+                    qBR = computeBone(qBody,  0.2, 0.1,  0.3, -0.1, 0, 0); // Back Right
+                    
+                    qTail = computeBone(qBody, 0, -0.1, 0.4, 0.2, Math.sin(t*2)*0.2, 0); // Wagging
+                    break;
+                }
+                case 89: case 92: case 95: { // QUAD RUN/WALK
+                    let t = Date.now() / 150;
+                    let stride1 = Math.sin(t);
+                    let stride2 = Math.cos(t);
+                    let bounce = Math.abs(stride1) * 0.05;
+
+                    qBody = { x: 0, y: 0.2 + bounce, z: 0, rx: -0.1, ry: stride1*0.05, rz: 0 };
+                    qHead = computeBone(qBody, 0, -0.15, -0.4, 0.1, 0, 0); // Head lowered for run
+                    
+                    qFL = computeBone(qBody, -0.2, 0.1, -0.3, stride1 * 0.8, 0, 0);
+                    qFR = computeBone(qBody,  0.2, 0.1, -0.3, stride2 * 0.8, 0, 0);
+                    qBL = computeBone(qBody, -0.2, 0.1,  0.3, stride2 * 0.8, 0, 0); // Opposing gait
+                    qBR = computeBone(qBody,  0.2, 0.1,  0.3, stride1 * 0.8, 0, 0);
+                    qTail = computeBone(qBody, 0, -0.1, 0.4, 0.4, stride1*0.2, 0);
+                    break;
+                }
+                case 90: case 93: case 96: { // QUAD ATTACK
+                    let t = Date.now() / 150;
+                    let lunge = Math.cos(t);
+                    let thrust = lunge > 0 ? -lunge * 0.8 : lunge * 0.1;
+
+                    if (index === 175) { // BEAR ATTACK (Rears up on hind legs and slams)
+                        let rearUp = lunge > 0 ? 0 : -0.8; // Tilts torso 90 degrees up
+                        qBody = { x: 0, y: 0.1, z: thrust*0.5, rx: rearUp, ry: 0, rz: 0 };
+                        qHead = computeBone(qBody, 0, -0.15, -0.4, lunge > 0 ? 0.4 : -0.4, 0, 0);
+                        
+                        let slam = lunge > 0 ? 0.2 : -1.5; // Paws reach high, then slam down
+                        qFL = computeBone(qBody, -0.2, 0.1, -0.3, slam, 0, 0);
+                        qFR = computeBone(qBody,  0.2, 0.1, -0.3, slam, 0, 0);
+                    } else { // WOLF & BOAR ATTACK (Low, violent forward lunge)
+                        qBody = { x: 0, y: 0.2, z: thrust, rx: lunge > 0 ? 0.2 : -0.2, ry: 0, rz: 0 };
+                        qHead = computeBone(qBody, 0, -0.15, -0.4, lunge > 0 ? -0.4 : 0.2, 0, 0);
+                        qFL = computeBone(qBody, -0.2, 0.1, -0.3, lunge > 0 ? -0.5 : 0.5, 0, 0);
+                        qFR = computeBone(qBody,  0.2, 0.1, -0.3, lunge > 0 ? -0.5 : 0.5, 0, 0);
+                    }
+                    qBL = computeBone(qBody, -0.2, 0.1,  0.3, 0.2, 0, 0); // Braced back legs
+                    qBR = computeBone(qBody,  0.2, 0.1,  0.3, 0.2, 0, 0);
+                    qTail = computeBone(qBody, 0, -0.1, 0.4, 0, 0, 0);
+                    break;
+                }
+
+                // ==========================================
+                // --- 3D VAMPIRE (182-184) ---
+                // ==========================================
+                case 97: case 98: case 99: { 
+                    let t = Date.now() / 300;
+                    let isAttack = index === 184;
+                    let isWalk = index === 183;
+                    let bob = Math.sin(t) * 0.05;
+                    let flap = Math.sin(t * (isWalk ? 10 : 3)) * (isWalk ? 0.4 : 0.1); // Wings flap faster when moving
+
+                    vBody = { x: 0, y: 0.1 + bob, z: 0, rx: isWalk ? 0.3 : 0, ry: 0, rz: 0 };
+                    vHead = computeBone(vBody, 0, -0.35, 0, isWalk ? -0.2 : 0, 0, 0);
+
+                    // Vampire crosses arms over chest while idle/walking, throws them out to attack
+                    let armPose = isAttack ? -1.2 : 0.4;
+                    vArmL = computeBone(vBody, -0.2, -0.2, 0.1, armPose, 0, isAttack ? 0.4 : 0.6);
+                    vArmR = computeBone(vBody,  0.2, -0.2, 0.1, armPose, 0, isAttack ? -0.4 : -0.6);
+
+                    vWingL = computeBone(vBody, -0.1, -0.2, 0.1, 0.2, -0.4 + flap, 0.2);
+                    vWingR = computeBone(vBody,  0.1, -0.2, 0.1, 0.2,  0.4 - flap, -0.2);
+                    break;
+                }
+
+                // ==========================================
+                // --- 3D SPRIGGAN (185-187) ---
+                // ==========================================
+                case 100: case 101: case 102: {
+                    let t = Date.now() / 150;
+                    let isAttack = index === 187;
+                    let isWalk = index === 186;
+                    let bounce = isWalk ? Math.abs(Math.sin(t))*0.1 : 0; // Jittery
+                    
+                    sBody = { x: 0, y: 0.2 + bounce, z: isAttack ? -0.4 : 0, rx: 0.2, ry: 0, rz: 0 }; // Hunched over
+                    sHead = computeBone(sBody, 0, -0.3, 0.1, -0.2, 0, 0);
+
+                    let swing = isWalk ? Math.sin(t) : 0;
+                    sArmL = computeBone(sBody, -0.2, -0.2, 0, isAttack ? -1.5 : swing, 0, 0.2);
+                    sArmR = computeBone(sBody,  0.2, -0.2, 0, isAttack ? -1.5 : -swing, 0, -0.2);
+                    sLegL = computeBone(sBody, -0.15, 0.2, 0, isWalk ? -swing : 0, 0, 0);
+                    sLegR = computeBone(sBody,  0.15, 0.2, 0, isWalk ? swing : 0, 0, 0);
+                    break;
+                }
+
+                // ==========================================
+                // --- 3D DULLAHAN (188-190) ---
+                // ==========================================
+                case 103: case 104: case 105: {
+                    let t = Date.now() / 200;
+                    let isAttack = index === 190;
+                    let isWalk = index === 189;
+                    let step = isWalk ? Math.sin(t) : 0;
+
+                    dBody = { x: 0, y: 0.1, z: 0, rx: 0.05, ry: 0, rz: 0 };
+                    dNeckStump = computeBone(dBody, 0, -0.35, 0, 0, 0, 0); // Where the head SHOULD be
+
+                    // Left arm cradles the head!
+                    dArmL = computeBone(dBody, -0.3, -0.2, 0, -0.4, 0.5, 0); 
+                    dHead = computeBone(dArmL, 0, 0.3, -0.2, 0, 0, 0); // Head attached to the hand!
+
+                    // Right arm holds a weapon, swings wildly when attacking
+                    dArmR = computeBone(dBody,  0.3, -0.2, 0, isAttack ? Math.cos(t*2)*-2.0 : step, 0, -0.2);
+                    dWhip = computeBone(dArmR, 0, 0.3, 0, Math.PI/2, 0, 0);
+
+                    dLegL = computeBone(dBody, -0.15, 0.25, 0,  step, 0, 0);
+                    dLegR = computeBone(dBody,  0.15, 0.25, 0, -step, 0, 0);
+                    break;
+                }
+                // ==========================================
+                // --- 3D DRAGON (191-193) ---
+                // ==========================================
+                case 106: { // DRAGON IDLE (Hovering, Slow Wing Beats, Curled Tail)
+                    let t = Date.now() / 300; 
+                    let bob = Math.sin(t) * 0.15;       
+                    let flap = Math.cos(t * 1.5) * 0.4; // Slow, powerful wing beats
+                    let breathe = Math.sin(t * 2) * 0.1; // Jaw opens and closes slightly
+
+                    drBody = { x: 0, y: -0.2 + bob, z: 0, rx: 0.1, ry: 0, rz: 0 };
+                    drNeck = computeBone(drBody, 0, -0.2, 0.2, 0.3, 0, 0); // Neck curves up and forward
+                    drHead = computeBone(drNeck, 0, -0.3, -0.1, -0.2, 0, 0);
+                    drJaw  = computeBone(drHead, 0, 0.05, 0.1, 0.1 + Math.abs(breathe), 0, 0);
+
+                    // Massive wings sweeping out and down
+                    drWingL = computeBone(drBody, -0.2, -0.1, 0.1, 0, -0.2 + flap, 0.2);
+                    drWingR = computeBone(drBody,  0.2, -0.1, 0.1, 0,  0.2 - flap, -0.2);
+
+                    // Classic Curled Dragon Tail (Sweeps in a big C-shape)
+                    let swish = Math.sin(t * 1.2) * 0.2;
+                    drTail1 = computeBone(drBody,  0, 0.2, 0.2, -0.2, swish, 0);
+                    drTail2 = computeBone(drTail1, 0, 0.3, 0.2, -0.4, swish * 1.5, 0);
+                    drTail3 = computeBone(drTail2, 0, 0.3, 0.1, -0.6, swish * 2.0, 0);
+                    drTail4 = computeBone(drTail3, 0, 0.3, -0.1, -0.8, swish * 2.5, 0); // Tip curls back under
+                    break;
+                }
+
+                case 107: { // DRAGON CHASE (Leaning Forward, Fast Flight)
+                    let t = Date.now() / 150; 
+                    let bob = Math.sin(t * 2) * 0.1; 
+                    let flap = Math.cos(t * 3) * 0.6; // Faster, aggressive flapping
+
+                    drBody = { x: 0, y: -0.2 + bob, z: 0, rx: 0.4, ry: 0, rz: 0 }; // Leans hard forward
+                    drNeck = computeBone(drBody, 0, -0.2, 0.2, 0.1, 0, 0); 
+                    drHead = computeBone(drNeck, 0, -0.3, -0.1, -0.4, 0, 0); // Head levels out to look at player
+                    drJaw  = computeBone(drHead, 0, 0.05, 0.1, 0.3, 0, 0); // Mouth open roaring
+
+                    drWingL = computeBone(drBody, -0.2, -0.1, 0.1, 0.2, -0.4 + flap, 0.1);
+                    drWingR = computeBone(drBody,  0.2, -0.1, 0.1, 0.2,  0.4 - flap, -0.1);
+
+                    // Tail stretches out straight behind it for aerodynamics
+                    let swish = Math.sin(t * 2) * 0.3;
+                    drTail1 = computeBone(drBody,  0, 0.1, 0.3, 0.2, swish, 0);
+                    drTail2 = computeBone(drTail1, 0, 0.1, 0.3, 0.1, -swish * 1.2, 0);
+                    drTail3 = computeBone(drTail2, 0, 0.0, 0.3, 0.1, swish * 1.5, 0);
+                    drTail4 = computeBone(drTail3, 0, 0.0, 0.3, 0.0, -swish * 2.0, 0); 
+                    break;
+                }
+
+                case 108: { // DRAGON ATTACK (Vicious Snapping Bite)
+                    let t = Date.now() / 150;
+                    let lunge = Math.cos(t); 
+                    let thrust = lunge > 0 ? -lunge * 1.0 : lunge * 0.2; 
+                    let flap = Math.cos(t * 4) * 0.3; 
+
+                    // Rears back on the windup, throws its whole body forward on the strike
+                    drBody = { x: 0, y: -0.2, z: thrust, rx: lunge > 0 ? 0.3 : -0.2, ry: 0, rz: 0 };
+                    drNeck = computeBone(drBody, 0, -0.2, 0.2, lunge > 0 ? 0.4 : -0.2, 0, 0); 
+                    drHead = computeBone(drNeck, 0, -0.3, -0.1, lunge > 0 ? -0.4 : 0.2, 0, 0);
+                    
+                    // Jaw opens incredibly wide, then snaps shut violently
+                    let bite = lunge > 0 ? -0.1 : 0.8; 
+                    drJaw  = computeBone(drHead, 0, 0.05, 0.1, bite, 0, 0);
+
+                    drWingL = computeBone(drBody, -0.2, -0.1, 0.1, 0.1, -0.2 + flap, 0.2);
+                    drWingR = computeBone(drBody,  0.2, -0.1, 0.1, 0.1,  0.2 - flap, -0.2);
+
+                    // Tail whips as a counterbalance to the bite
+                    let whip = lunge > 0 ? 0.5 : -0.5;
+                    drTail1 = computeBone(drBody,  0, 0.2, 0.2, -0.2, whip, 0);
+                    drTail2 = computeBone(drTail1, 0, 0.3, 0.2, -0.2, whip, 0);
+                    drTail3 = computeBone(drTail2, 0, 0.3, 0.1, -0.2, whip, 0);
+                    drTail4 = computeBone(drTail3, 0, 0.3, -0.1, -0.2, whip, 0); 
+                    break;
+                }
+                case 109: { // DRAGON ATTACK 2 (Fire Breath)
+                    let t = Date.now() / 100;
+                    let shake = Math.sin(t * 5) * 0.05; // Violent shaking while breathing fire
+                    let flap = Math.cos(t * 4) * 0.4;
+
+                    // Rears up tall and shakes
+                    drBody = { x: shake, y: -0.1 + shake, z: 0.1, rx: -0.3, ry: 0, rz: 0 }; 
+                    drNeck = computeBone(drBody, 0, -0.2, 0.2, -0.2, 0, 0); 
+                    drHead = computeBone(drNeck, 0, -0.3, -0.1, 0.3, 0, 0); // Head points forward
+                    
+                    // Jaw unhinged completely wide!
+                    drJaw = computeBone(drHead, 0, 0.05, 0.1, 0.9, 0, 0); 
+
+                    drWingL = computeBone(drBody, -0.2, -0.1, 0.1, 0.2, -0.2 + flap, 0.2);
+                    drWingR = computeBone(drBody,  0.2, -0.1, 0.1, 0.2,  0.2 - flap, -0.2);
+
+                    // Tail whips wildly
+                    let swish = Math.sin(t * 2) * 0.3;
+                    drTail1 = computeBone(drBody,  0, 0.2, 0.2, -0.4, swish, 0);
+                    drTail2 = computeBone(drTail1, 0, 0.3, 0.2, -0.2, swish * 1.5, 0);
+                    drTail3 = computeBone(drTail2, 0, 0.3, 0.1, -0.2, swish * 2.0, 0);
+                    drTail4 = computeBone(drTail3, 0, 0.3, -0.1, 0, swish * 2.5, 0); 
+                    break;
+                }
                 ///////////////////
-            }
+                //////////////////
+                }
 
             // --- RENDER WISP --- 
             if (index >= 8 && index <= 10) {
@@ -47928,6 +48857,561 @@
 
                 let tailFin = computeBone(serpTailTip, 0, -0.1, 0, 0, 0, 0);
                 add3dShapeRigged(mesh, 'tri', tailFin, 0.05, 0.3, 0.15, cSerpTeal);
+            }
+            //40 - 51 alternate color sprites
+            // --- RENDER DJINN ---
+            if (index >= 52 && index <= 53) {
+
+                // 1. ETHEREAL SHIFTING TAIL (Ghostly White Lower Robe)
+                // Three stacked, downward-pointing pyramids that sway dynamically
+                let t1Center = computeBone(djTail1, 0, 0, 0, Math.PI/2, 0, 0);
+                let t2Center = computeBone(djTail2, 0, 0, 0, Math.PI/2, 0, 0);
+                let t3Center = computeBone(djTail3, 0, 0, 0, Math.PI/2, 0, 0);
+
+                // They taper as they reach the floor
+                add3dShapeRigged(mesh, 'tri', t1Center, 0.25, 0.25, 0.3, cDjSmoke);
+                add3dShapeRigged(mesh, 'tri', t2Center, 0.18, 0.18, 0.3, cDjSmoke);
+                add3dShapeRigged(mesh, 'tri', t3Center, 0.10, 0.10, 0.4, cDjSmoke);
+
+                // 2. THE SASH (Dark Red Belt)
+                add3dShapeRigged(mesh, 'arc', djSash, 0.25, 0.08, 0.2, cDjSash);
+
+                // 3. MUSCULAR TORSO (Broad V-Shape with faceted abs)
+                // Lower Torso
+                let lowerTorso = computeBone(djBody, 0, 0.1, 0, Math.PI/2, 0, 0);
+                add3dShapeRigged(mesh, 'tri', lowerTorso, 0.3, 0.15, 0.2, cDjSkin);
+
+                // Broad upper chest
+                let chest = computeBone(djBody, 0, -0.1, 0, 0, 0, 0); 
+                add3dShapeRigged(mesh, 'rec', chest, 0.3, 0.15, 0.15, cDjSkin);
+                
+                // Dark faceted abs pushed slightly forward
+                let abs = computeBone(djBody, 0, 0, 0.08, 0, 0, Math.PI/4);
+                add3dShapeRigged(mesh, 'rec', abs, 0.15, 0.15, 0.05, cDjDark);
+
+                // 4. THE HEAD & TURBAN
+                let face = computeBone(djHead, 0, 0, 0, 0, 0, Math.PI/4); 
+                add3dShapeRigged(mesh, 'rec', face, 0.18, 0.18, 0.12, cDjSkin);
+
+                // The Turban Wraps (Stacked octagons sitting on the head)
+                let turbanBot = computeBone(djHead, 0, -0.12, -0.05, 0, 0, 0);
+                let turbanMid = computeBone(djHead, 0, -0.18, -0.05, 0, Math.PI/8, 0); // Offset rotation for wrapped look
+                let turbanTop = computeBone(djHead, 0, -0.22, -0.05, 0, 0, 0);
+                add3dShapeRigged(mesh, 'arc', turbanBot, 0.22, 0.05, 0.22, cDjTurban);
+                add3dShapeRigged(mesh, 'arc', turbanMid, 0.20, 0.05, 0.20, cDjTurban);
+                add3dShapeRigged(mesh, 'arc', turbanTop, 0.12, 0.04, 0.12, cDjDome); // The red jewel/dome center
+
+                // Piercing Blue Eyes 
+                let eyeL = computeBone(djHead, -0.08, -0.02, 0.12, Math.PI/2, 0,  0.2);
+                let eyeR = computeBone(djHead,  0.08, -0.02, 0.12, Math.PI/2, 0, -0.2);
+                add3dShapeRigged(mesh, 'tri', eyeL, 0.05, 0.02, 0.02, cDjEye);
+                add3dShapeRigged(mesh, 'tri', eyeR, 0.05, 0.02, 0.02, cDjEye);
+                
+                // Black Mustache
+                let stacheL = computeBone(djHead, -0.03, 0.08, 0.12, 0, 0, -0.2);
+                let stacheR = computeBone(djHead,  0.03, 0.08, 0.12, 0, 0,  0.2);
+                add3dShapeRigged(mesh, 'rec', stacheL, 0.03, 0.01, 0.01, {r: 0, g: 0, b: 0, a: 1});
+                add3dShapeRigged(mesh, 'rec', stacheR, 0.03, 0.01, 0.01, {r: 0, g: 0, b: 0, a: 1});
+
+                // 5. ARMS AND HANDS (Sharp geometric crystals)
+                let bicepL = computeBone(djLArm, 0, 0.15, 0, 0, Math.PI/4, 0);
+                let bicepR = computeBone(djRArm, 0, 0.15, 0, 0, Math.PI/4, 0);
+                add3dShapeRigged(mesh, 'rec', bicepL, 0.08, 0.15, 0.08, cDjSkin);
+                add3dShapeRigged(mesh, 'rec', bicepR, 0.08, 0.15, 0.08, cDjSkin);
+
+                let foreL = computeBone(djLFore, 0, 0.15, 0, 0, Math.PI/4, 0);
+                let foreR = computeBone(djRFore, 0, 0.15, 0, 0, Math.PI/4, 0);
+                add3dShapeRigged(mesh, 'rec', foreL, 0.06, 0.15, 0.06, cDjSkin);
+                add3dShapeRigged(mesh, 'rec', foreR, 0.06, 0.15, 0.06, cDjSkin);
+
+                // Hands taper into massive downward points
+                let handLBone = computeBone(djLFore, 0, 0.35, 0, Math.PI/2, 0, 0);
+                let handRBone = computeBone(djRFore, 0, 0.35, 0, Math.PI/2, 0, 0);
+                add3dShapeRigged(mesh, 'tri', handLBone, 0.08, 0.08, 0.15, cDjSkin);
+                add3dShapeRigged(mesh, 'tri', handRBone, 0.08, 0.08, 0.15, cDjSkin);
+            }
+            // --- RENDER SHADE ---
+            if (index >= 55 && index <= 57) {
+
+                // 1. Ghostly Tail (Downward pointing pyramid fading away)
+                let tailBone = computeBone(shTail, 0, 0, 0, Math.PI/2, 0, 0);
+                add3dShapeRigged(mesh, 'tri', tailBone, 0.25, 0.2, 0.4, cShadeTail);
+                // 1. Ghostly Tail (Pyramid pointing UP so it flares at the base)
+                // Using -Math.PI/2 flips the pyramid upside down!
+                tailBone = computeBone(shTail, 0, 0, 0, -Math.PI/2, 0, 0);
+                
+                // You might want to make it a bit wider at the bottom now that it's flipped
+                add3dShapeRigged(mesh, 'tri', tailBone, 0.35, 0.2, 0.4, cShadeTail);
+                // 2. Main Cloak Body (Pyramid pointing UP so it flares heavily at the base)
+                let bodyCore = computeBone(shBody, 0, 0.1, 0, -Math.PI/2, 0, 0);
+                
+                // --> THE AURA: Draw a fatter, highly transparent version first
+                add3dShapeRigged(mesh, 'tri', bodyCore, 0.55, 0.35, 0.55, cShadeAura);
+                // --> THE CORE: Draw the slightly more opaque inner robe
+                add3dShapeRigged(mesh, 'tri', bodyCore, 0.45, 0.25, 0.45, cShadeRobe);
+
+                // 3. The Hood Top (Massive inverted pyramid resting on the head)
+                let hoodTop = computeBone(shHood, 0, -0.2, 0, Math.PI/2, 0, 0);
+                add3dShapeRigged(mesh, 'tri', hoodTop, 0.35, 0.2, 0.25, cShadeRobe);
+
+                // 4. The Indigo Face Shadow (Box sitting under the hood top)
+                let faceVoid = computeBone(shHood, 0, -0.05, -0.05, 0, 0, 0);
+                add3dShapeRigged(mesh, 'rec', faceVoid, 0.18, 0.15, 0.15, cShadeVoid);
+
+                // 5. Glowing Red Slanted Eyes (On the indigo face)
+                let eyeL = computeBone(faceVoid, -0.08, -0.02, -0.16, 0, 0, -0.2); 
+                let eyeR = computeBone(faceVoid,  0.08, -0.02, -0.16, 0, 0,  0.2);
+                add3dShapeRigged(mesh, 'rec', eyeL, 0.05, 0.015, 0.02, cShadeEye);
+                add3dShapeRigged(mesh, 'rec', eyeR, 0.05, 0.015, 0.02, cShadeEye);
+
+                // 6. Huge Drooping Sleeves (Pyramids pointing straight DOWN)
+                let lSleeve = computeBone(shLArm, -0.1, 0.2, 0, Math.PI/2, 0,  0.2);
+                let rSleeve = computeBone(shRArm,  0.1, 0.2, 0, Math.PI/2, 0, -0.2);
+                
+                // Sleeve Auras
+                add3dShapeRigged(mesh, 'tri', lSleeve, 0.25, 0.18, 0.45, cShadeAura);
+                add3dShapeRigged(mesh, 'tri', rSleeve, 0.25, 0.18, 0.45, cShadeAura);
+                // Sleeve Cores
+                add3dShapeRigged(mesh, 'tri', lSleeve, 0.2, 0.15, 0.35, cShadeRobe);
+                add3dShapeRigged(mesh, 'tri', rSleeve, 0.2, 0.15, 0.35, cShadeRobe);
+
+                // 7. Indigo Armhole Voids (Dark caps at the wide bottom of the sleeves)
+                let lHole = computeBone(lSleeve, 0, 0, 0.35, -Math.PI/2, 0, 0);
+                let rHole = computeBone(rSleeve, 0, 0, 0.35, -Math.PI/2, 0, 0);
+                add3dShapeRigged(mesh, 'rec', lHole, 0.15, 0.1, 0.05, cShadeVoid);
+                add3dShapeRigged(mesh, 'rec', rHole, 0.15, 0.1, 0.05, cShadeVoid);
+            }
+            // --- RENDER KNIGHT ---
+            if (index >= 58 && index <= 60) {
+                // 1. Torso & Tassets (Hip Armor)
+                add3dShapeRigged(mesh, 'arc', knBody, 0.25, 0.25, 0.18, cKnArmor); 
+                
+                // Tassets hanging over the thighs
+                let tassetL = computeBone(knBody, -0.15, 0.2, 0.1, 0.2, 0,  0.2);
+                let tassetR = computeBone(knBody,  0.15, 0.2, 0.1, 0.2, 0, -0.2);
+                add3dShapeRigged(mesh, 'rec', tassetL, 0.12, 0.15, 0.02, cKnTrim);
+                add3dShapeRigged(mesh, 'rec', tassetR, 0.12, 0.15, 0.02, cKnTrim);
+
+                // 2. Head & Visor
+                add3dShapeRigged(mesh, 'arc', knHead, 0.15, 0.18, 0.15, cKnArmor);
+
+                // Pitch black visor slit
+                let visorBase = computeBone(knHead, 0, -0.02, -0.14, 0, 0, 0);
+                add3dShapeRigged(mesh, 'rec', visorBase, 0.12, 0.03, 0.02, cKnVisor);
+                
+                // Pointy nose-guard dropping down from the helmet
+                let noseGuard = computeBone(knHead, 0, 0.05, -0.15, Math.PI/4, 0, 0);
+                add3dShapeRigged(mesh, 'tri', noseGuard, 0.04, 0.02, 0.1, cKnArmor);
+
+                // 3. Arms & Massive Shoulder Pauldrons
+                // The pauldrons are flattened cylinders sitting on top of the shoulders
+                let pauldronL = computeBone(knLArm, 0, -0.05, 0, 0, 0, 0.2);
+                let pauldronR = computeBone(knRArm, 0, -0.05, 0, 0, 0, -0.2);
+                add3dShapeRigged(mesh, 'arc', pauldronL, 0.15, 0.15, 0.15, cKnArmor);
+                add3dShapeRigged(mesh, 'arc', pauldronR, 0.15, 0.15, 0.15, cKnArmor);
+
+                add3dShapeRigged(mesh, 'arc', knLArm, 0.06, 0.15, 0.06, cKnUnder);
+                add3dShapeRigged(mesh, 'arc', knLFore, 0.07, 0.15, 0.07, cKnArmor); // Armored gauntlet
+                add3dShapeRigged(mesh, 'arc', knRArm, 0.06, 0.15, 0.06, cKnUnder);
+                add3dShapeRigged(mesh, 'arc', knRFore, 0.07, 0.15, 0.07, cKnArmor); // Armored gauntlet
+
+                // 4. Kite Shield (Attached to Left Forearm)
+                knShieldRoot = computeBone(knLFore, 0, 0.15, -0.15, 0, 0, 0); // The handle
+                
+                // --- TOP HALF (Rectangle) ---
+                // Scaled to sy: 0.2 (Total height 0.4). 
+                // Centered at y: -0.1, meaning its bottom edge rests perfectly at y: +0.1
+                let shieldTop = computeBone(knShieldRoot, 0, -0.1, 0, 0, 0, 0); 
+                add3dShapeRigged(mesh, 'rec', shieldTop, 0.22, 0.2, 0.04, cKnShield);
+                
+                // --- BOTTOM HALF (Pointy Triangle) ---
+                // Scaled to sz: 0.3 (Total length 0.6).
+                // Because it is rotated -90 degrees (-Math.PI/2), its flat base sits at local y: -0.3.
+                // By placing the bone at y: +0.4, the base sits perfectly at y: +0.1, snapping seamlessly to the top half!
+                let shieldBot = computeBone(knShieldRoot, 0, 0.4, 0, -Math.PI/2, 0, 0); 
+                add3dShapeRigged(mesh, 'tri', shieldBot, 0.22, 0.04, 0.3, cKnShield);
+                
+                // --- SHIELD TRIM / CROSS ---
+                // Vertical bar on the top half
+                add3dShapeRigged(mesh, 'rec', shieldTop, 0.02, 0.2, 0.06, cKnTrim); 
+                // Vertical bar continuing down the pointy bottom half
+                add3dShapeRigged(mesh, 'rec', shieldBot, 0.02, 0.06, 0.3, cKnTrim); 
+                // Horizontal crossbar
+                add3dShapeRigged(mesh, 'rec', computeBone(shieldTop, 0, 0.05, 0, 0,0,0), 0.22, 0.02, 0.06, cKnTrim);
+                // 5. Sword (Attached to Right Forearm)
+                knSwordRoot = computeBone(knRFore, 0, 0.3, 0, Math.PI/2 + 0.2, 0, 0); // Points forward from the hand
+                add3dShapeRigged(mesh, 'rec', knSwordRoot, 0.03, 0.03, 0.1, cKnTrim); // Hilt
+                
+                let crossguard = computeBone(knSwordRoot, 0, 0, 0.08, 0, 0, 0);
+                add3dShapeRigged(mesh, 'rec', crossguard, 0.12, 0.02, 0.02, cKnTrim); // Crossguard
+                
+                let blade = computeBone(knSwordRoot, 0, 0, 0.1, 0, 0, 0);
+                add3dShapeRigged(mesh, 'tri', blade, 0.05, 0.02, 0.6, cKnSword); // Long pointy blade
+
+                // 6. Legs & Pointy Sabatons (Feet)
+                add3dShapeRigged(mesh, 'arc', knLThigh, 0.08, 0.15, 0.08, cKnUnder);
+                add3dShapeRigged(mesh, 'arc', knLCalf, 0.09, 0.15, 0.09, cKnArmor);
+                add3dShapeRigged(mesh, 'arc', knRThigh, 0.08, 0.15, 0.08, cKnUnder);
+                add3dShapeRigged(mesh, 'arc', knRCalf, 0.09, 0.15, 0.09, cKnArmor);
+
+                // Sabatons point directly forward on the Z axis
+                let footL = computeBone(knLCalf, 0, 0.15, -0.05, 0, 0, 0);
+                let footR = computeBone(knRCalf, 0, 0.15, -0.05, 0, 0, 0);
+                add3dShapeRigged(mesh, 'tri', footL, 0.09, 0.05, 0.25, cKnArmor);
+                add3dShapeRigged(mesh, 'tri', footR, 0.09, 0.05, 0.25, cKnArmor);
+            }
+            //61,62,63-Gnome, 64,65,66, ghost knight
+            // --- RENDER KRAKEN KING ---
+            if (index >= 67 && index <= 69) {
+
+                // 1. Fluid Tentacles (Rendered first so they sit behind the body)
+                // We loop through the 3 segments of all 4 tentacles
+                for(let i=0; i<3; i++) {
+                    let tWidth = 0.15 - (i * 0.04); // Tentacles taper to a point!
+                    let tLength = 0.25;
+
+                    // Front Tentacles
+                    add3dShapeRigged(mesh, 'arc', krTent1[i], tWidth, tLength, tWidth, cKrakBody);
+                    add3dShapeRigged(mesh, 'arc', krTent2[i], tWidth, tLength, tWidth, cKrakBody);
+                    // Back Tentacles (slightly darker for depth)
+                    add3dShapeRigged(mesh, 'arc', krTent3[i], tWidth, tLength, tWidth, cKrakDark);
+                    add3dShapeRigged(mesh, 'arc', krTent4[i], tWidth, tLength, tWidth, cKrakDark);
+                }
+
+                // 2. The Main Mantle (Giant rounded squid head)
+                // We use a large, fat cylinder, and put a slightly smaller, darker one behind it to give it depth
+                add3dShapeRigged(mesh, 'arc', krBody, 0.35, 0.45, 0.35, cKrakBody);
+                add3dShapeRigged(mesh, 'arc', computeBone(krBody, 0,0,-0.05, 0,0,0), 0.3, 0.4, 0.3, cKrakDark);
+
+                // 3. The Top Fin (Translucent pointed hat)
+                // A massive flat triangle pointing UP (-Math.PI/2) attached to the top of the head
+                let finBase = computeBone(krFinTop, 0, 0, 0, -Math.PI/2, 0, 0);
+                add3dShapeRigged(mesh, 'tri', finBase, 0.6, 0.05, 0.4, cKrakFin);
+
+                // 4. The Giant Cyclops Eye
+                let eyeSocket = computeBone(krHead, 0, 0, 0.3, Math.PI/2, 0, 0); // Flat on the front of the face
+                add3dShapeRigged(mesh, 'rec', eyeSocket, 0.15, 0.05, 0.02, cKrakWhite); // White sclera
+                
+                let iris = computeBone(eyeSocket, 0, 0, 0.02, 0, 0, 0);
+                add3dShapeRigged(mesh, 'arc', iris, 0.04, 0.04, 0.02, cKrakEye); // Brown pupil
+
+                // 5. The Sharp Orange Beak
+                // Diamond shape jutting out from below the eye
+                let beakBase = computeBone(krBeak, 0, 0, 0.32, 0, 0, Math.PI/4);
+                add3dShapeRigged(mesh, 'tri', beakBase, 0.12, 0.12, 0.15, cKrakBeak);
+            }
+            // --- RENDER APPRENTICE ---
+            if (index >= 70 && index <= 72) {
+                // 1. Chubby Wizard Robes (Wide Cylinder)
+                add3dShapeRigged(mesh, 'arc', appBody, 0.3, 0.3, 0.25, cAppRobe); 
+
+                // Inner shadow at the bottom of the robe to give depth
+                let robeBase = computeBone(appBody, 0, 0.3, 0, 0, 0, 0);
+                add3dShapeRigged(mesh, 'arc', robeBase, 0.28, 0.05, 0.23, cAppDark);
+
+                // 2. The Head
+                add3dShapeRigged(mesh, 'arc', appHead, 0.12, 0.15, 0.12, cAppSkin);
+
+                // Closed slanted eyes
+                let eyeL = computeBone(appHead, -0.05, -0.02, -0.12, 0, 0, -0.2); 
+                let eyeR = computeBone(appHead,  0.05, -0.02, -0.12, 0, 0,  0.2);
+                add3dShapeRigged(mesh, 'rec', eyeL, 0.03, 0.01, 0.02, {r: 0, g: 0, b: 0, a: 1});
+                add3dShapeRigged(mesh, 'rec', eyeR, 0.03, 0.01, 0.02, {r: 0, g: 0, b: 0, a: 1});
+
+                // 3. The Classic Pointy Wizard Hat
+                // A wide base rim, and a tall pyramid pointing UP (-Math.PI/2 on X)
+                let hatBrim = computeBone(appHat, 0, 0, 0, 0, 0, 0);
+                add3dShapeRigged(mesh, 'arc', hatBrim, 0.2, 0.02, 0.2, cAppRobe);
+
+                let hatPoint = computeBone(appHat, 0, -0.15, 0, -Math.PI/2, 0, 0);
+                add3dShapeRigged(mesh, 'tri', hatPoint, 0.15, 0.15, 0.3, cAppRobe);
+
+                // 4. Flowing Sleeves
+                // Upper arms are standard cylinders
+                add3dShapeRigged(mesh, 'arc', appLArm, 0.08, 0.15, 0.08, cAppRobe);
+                add3dShapeRigged(mesh, 'arc', appRArm, 0.08, 0.15, 0.08, cAppRobe);
+                
+                // Lower arms flare out into wide robe cuffs (Triangles pointing UP)
+                let lSleeve = computeBone(appLFore, 0, 0.1, 0, -Math.PI/2, 0, 0);
+                let rSleeve = computeBone(appRFore, 0, 0.1, 0, -Math.PI/2, 0, 0);
+                add3dShapeRigged(mesh, 'tri', lSleeve, 0.12, 0.12, 0.2, cAppRobe);
+                add3dShapeRigged(mesh, 'tri', rSleeve, 0.12, 0.12, 0.2, cAppRobe);
+
+                // Little hands peeking out of the sleeves
+                let handL = computeBone(appLFore, 0, 0.25, 0, 0, 0, 0);
+                let handR = computeBone(appRFore, 0, 0.25, 0, 0, 0, 0);
+                add3dShapeRigged(mesh, 'arc', handL, 0.04, 0.04, 0.04, cAppSkin);
+                add3dShapeRigged(mesh, 'arc', handR, 0.04, 0.04, 0.04, cAppSkin);
+
+                // 5. The Wand (Held in Left Hand)
+                // Long thin cylinder for the wood
+                add3dShapeRigged(mesh, 'arc', computeBone(appWandRoot, 0,0.15,0, 0,0,0), 0.015, 0.15, 0.015, cAppWand);
+                
+                // Glowing Blue Magic Orb at the tip!
+                // We make it slightly translucent and pulse its size
+                let magicPulse = 1.0 + Math.sin(Date.now() / 150) * 0.2;
+                add3dShapeRigged(mesh, 'arc', appWandTip, 0.04 * magicPulse, 0.04 * magicPulse, 0.04 * magicPulse, cAppMagic);
+
+                // 6. Feet (Dark Red Pointy Shoes)
+                let footL = computeBone(appLThigh, 0, 0.15, -0.05, Math.PI/2, 0, 0);
+                let footR = computeBone(appRThigh, 0, 0.15, -0.05, Math.PI/2, 0, 0);
+                add3dShapeRigged(mesh, 'tri', footL, 0.06, 0.03, 0.15, cAppShoe);
+                add3dShapeRigged(mesh, 'tri', footR, 0.06, 0.03, 0.15, cAppShoe);
+            }
+            // --- RENDER FAIRY QUEEN ---
+            if (index >= 73 && index <= 75) {
+                // 1. Translucent Geometric Wings (Rendered first so they sit in back)
+                // We use large Quads to replicate the huge diamond wings from the 2D art
+                add3dShapeRigged(mesh, 'qua', fqWingL, 0.6, 0.7, 0.02, cFqWing);
+                add3dShapeRigged(mesh, 'qua', fqWingR, 0.6, 0.7, 0.02, cFqWing);
+
+                // 2. Dress & Torso
+                // The skirt is a pyramid pointing UP (-Math.PI/2 on X) so it flares widely at the bottom
+                let skirt = computeBone(fqBody, 0, 0.15, 0, -Math.PI/2, 0, 0);
+                add3dShapeRigged(mesh, 'tri', skirt, 0.25, 0.2, 0.35, cFqDress); 
+
+                // The upper chest is an inverted pyramid pointing DOWN
+                let chest = computeBone(fqBody, 0, -0.1, 0, Math.PI/2, 0, 0);
+                add3dShapeRigged(mesh, 'tri', chest, 0.18, 0.12, 0.25, cFqDark);
+
+                // 3. Head, Hair, and Crown
+                add3dShapeRigged(mesh, 'rec', fqHead, 0.12, 0.12, 0.12, cFqSkin);
+
+                // Dark jagged hair flanking the face
+                let hairL = computeBone(fqHead, -0.1, -0.05, 0, 0, 0, 0);
+                let hairR = computeBone(fqHead,  0.1, -0.05, 0, 0, 0, 0);
+                add3dShapeRigged(mesh, 'tri', hairL, 0.05, 0.05, 0.2, cFqHair);
+                add3dShapeRigged(mesh, 'tri', hairR, 0.05, 0.05, 0.2, cFqHair);
+
+                // 3-Pointed Golden Crown
+                let crownBase = computeBone(fqHead, 0, -0.14, 0, 0, 0, 0);
+                add3dShapeRigged(mesh, 'arc', crownBase, 0.13, 0.02, 0.13, cFqGold);
+                
+                let cPoint1 = computeBone(crownBase, -0.08, -0.02, -0.1, 0, 0, -0.2);
+                let cPoint2 = computeBone(crownBase,  0.00, -0.02, -0.12, 0, 0,  0.0);
+                let cPoint3 = computeBone(crownBase,  0.08, -0.02, -0.1, 0, 0,  0.2);
+                add3dShapeRigged(mesh, 'tri', cPoint1, 0.04, 0.02, 0.1, cFqGold);
+                add3dShapeRigged(mesh, 'tri', cPoint2, 0.04, 0.02, 0.12, cFqGold);
+                add3dShapeRigged(mesh, 'tri', cPoint3, 0.04, 0.02, 0.1, cFqGold);
+
+                // Tiny closed/slanted eyes
+                let eyeL = computeBone(fqHead, -0.05, -0.02, -0.13, 0, 0, -0.2); 
+                let eyeR = computeBone(fqHead,  0.05, -0.02, -0.13, 0, 0,  0.2);
+                add3dShapeRigged(mesh, 'rec', eyeL, 0.03, 0.01, 0.02, {r: 0, g: 0, b: 0, a: 1});
+                add3dShapeRigged(mesh, 'rec', eyeR, 0.03, 0.01, 0.02, {r: 0, g: 0, b: 0, a: 1});
+
+                // 4. Arms and Hands
+                add3dShapeRigged(mesh, 'arc', fqLArm, 0.05, 0.12, 0.05, cFqSkin);
+                add3dShapeRigged(mesh, 'arc', fqRArm, 0.05, 0.12, 0.05, cFqSkin);
+                
+                // Flared sleeve cuffs (Pyramids pointing UP)
+                let sleeveL = computeBone(fqLFore, 0, 0.1, 0, -Math.PI/2, 0, 0);
+                let sleeveR = computeBone(fqRFore, 0, 0.1, 0, -Math.PI/2, 0, 0);
+                add3dShapeRigged(mesh, 'tri', sleeveL, 0.08, 0.08, 0.15, cFqDress);
+                add3dShapeRigged(mesh, 'tri', sleeveR, 0.08, 0.08, 0.15, cFqDress);
+
+                let handL = computeBone(fqLFore, 0, 0.2, 0, 0, 0, 0);
+                let handR = computeBone(fqRFore, 0, 0.2, 0, 0, 0, 0);
+                add3dShapeRigged(mesh, 'arc', handL, 0.04, 0.04, 0.04, cFqSkin);
+                add3dShapeRigged(mesh, 'arc', handR, 0.04, 0.04, 0.04, cFqSkin);
+
+                // 5. Weapons and Magic
+                // Floating Glowing Orb (Left Hand) - Rotated by 45 degrees (PI/4) to look like a floating diamond
+                let orbSpin = computeBone(fqOrb, 0, 0, 0, Math.PI/4, 0, Math.PI/4);
+                add3dShapeRigged(mesh, 'rec', orbSpin, 0.08, 0.08, 0.08, cFqOrb);
+
+                // Gold Sword (Right Hand) - A sharp triangle
+                let blade = computeBone(fqSword, 0, 0.2, 0, Math.PI/2, 0, 0);
+                add3dShapeRigged(mesh, 'tri', blade, 0.04, 0.02, 0.35, cFqGold); 
+
+                // 6. Legs & Pointy Boots
+                add3dShapeRigged(mesh, 'arc', fqLThigh, 0.04, 0.15, 0.04, cFqSkin);
+                add3dShapeRigged(mesh, 'arc', fqRThigh, 0.04, 0.15, 0.04, cFqSkin);
+
+                let footL = computeBone(fqLThigh, 0, 0.15, -0.05, Math.PI/2, 0, 0);
+                let footR = computeBone(fqRThigh, 0, 0.15, -0.05, Math.PI/2, 0, 0);
+                add3dShapeRigged(mesh, 'tri', footL, 0.05, 0.03, 0.12, cFqDark);
+                add3dShapeRigged(mesh, 'tri', footR, 0.05, 0.03, 0.12, cFqDark);
+            }
+            //76-87,fairy queen variants
+            // --- RENDER BEAR ---
+            if (index >= 88 && index <= 90) {
+                add3dShapeRigged(mesh, 'arc', qBody, 0.35, 0.25, 0.45, cBearBody); // Fat cylinder body
+                add3dShapeRigged(mesh, 'arc', qHead, 0.2, 0.2, 0.2, cBearBody); // Round head
+                add3dShapeRigged(mesh, 'arc', computeBone(qHead, 0, 0, -0.15, 0,0,0), 0.12, 0.12, 0.1, {r:0.1, g:0.05, b:0.0}); // Blunt snout
+
+                add3dShapeRigged(mesh, 'arc', qFL, 0.1, 0.2, 0.1, cBearBody); // Thick tree-trunk legs
+                add3dShapeRigged(mesh, 'arc', qFR, 0.1, 0.2, 0.1, cBearBody);
+                add3dShapeRigged(mesh, 'arc', qBL, 0.1, 0.2, 0.1, cBearBody);
+                add3dShapeRigged(mesh, 'arc', qBR, 0.1, 0.2, 0.1, cBearBody);
+            }
+
+            // --- RENDER WOLF ---
+            if (index >= 91 && index <= 93) {
+                add3dShapeRigged(mesh, 'rec', qBody, 0.2, 0.2, 0.4, cWolfBody); // Lean rectangular body
+                add3dShapeRigged(mesh, 'tri', computeBone(qHead, 0,0,-0.2, -Math.PI/2,0,0), 0.15, 0.1, 0.25, cWolfBody); // Pointy snout
+                
+                // Pointy Wolf Ears
+                add3dShapeRigged(mesh, 'tri', computeBone(qHead, -0.1, -0.15, 0, 0,0,0), 0.05, 0.05, 0.1, cWolfBody);
+                add3dShapeRigged(mesh, 'tri', computeBone(qHead,  0.1, -0.15, 0, 0,0,0), 0.05, 0.05, 0.1, cWolfBody);
+
+                add3dShapeRigged(mesh, 'tri', computeBone(qFL, 0,0,0, Math.PI/2,0,0), 0.06, 0.06, 0.2, cWolfBody); // Angular legs
+                add3dShapeRigged(mesh, 'tri', computeBone(qFR, 0,0,0, Math.PI/2,0,0), 0.06, 0.06, 0.2, cWolfBody);
+                add3dShapeRigged(mesh, 'tri', computeBone(qBL, 0,0,0, Math.PI/2,0,0), 0.06, 0.06, 0.2, cWolfBody);
+                add3dShapeRigged(mesh, 'tri', computeBone(qBR, 0,0,0, Math.PI/2,0,0), 0.06, 0.06, 0.2, cWolfBody);
+                
+                // Bushy diamond tail
+                add3dShapeRigged(mesh, 'rec', computeBone(qTail, 0,0,0, 0,0,Math.PI/4), 0.1, 0.1, 0.2, cWolfBody);
+            }
+
+            // --- RENDER BOAR ---
+            if (index >= 94 && index <= 96) {
+                add3dShapeRigged(mesh, 'tri', computeBone(qBody, 0,0,0, -Math.PI/2,0,0), 0.3, 0.3, 0.4, cBoarBody); // Massive front chest tapering back
+                add3dShapeRigged(mesh, 'rec', qHead, 0.18, 0.18, 0.15, cBoarBody); // Flat blocky head
+                
+                // Upward curving tusks (White triangles pointing up)
+                add3dShapeRigged(mesh, 'tri', computeBone(qHead, -0.15, 0.05, -0.1, Math.PI - 0.2,0,0), 0.04, 0.04, 0.2, cBoarTusk);
+                add3dShapeRigged(mesh, 'tri', computeBone(qHead,  0.15, 0.05, -0.1, Math.PI - 0.2,0,0), 0.04, 0.04, 0.2, cBoarTusk);
+
+                add3dShapeRigged(mesh, 'arc', qFL, 0.08, 0.15, 0.08, cBoarBody); // Short stubby legs
+                add3dShapeRigged(mesh, 'arc', qFR, 0.08, 0.15, 0.08, cBoarBody);
+                add3dShapeRigged(mesh, 'arc', qBL, 0.06, 0.15, 0.06, cBoarBody);
+                add3dShapeRigged(mesh, 'arc', qBR, 0.06, 0.15, 0.06, cBoarBody);
+            }
+
+            // --- RENDER VAMPIRE ---
+            if (index >= 97 && index <= 99) {
+                add3dShapeRigged(mesh, 'qua', vWingL, 0.5, 0.5, 0.02, cVampCape); // Bat wings
+                add3dShapeRigged(mesh, 'qua', vWingR, 0.5, 0.5, 0.02, cVampCape);
+                add3dShapeRigged(mesh, 'arc', vBody, 0.15, 0.25, 0.1, cVampCape); // Tall thin body
+                add3dShapeRigged(mesh, 'arc', vHead, 0.1, 0.12, 0.1, cVampSkin); // Pale face
+                add3dShapeRigged(mesh, 'arc', vArmL, 0.04, 0.2, 0.04, cVampCape);
+                add3dShapeRigged(mesh, 'arc', vArmR, 0.04, 0.2, 0.04, cVampCape);
+                
+                // High red collar
+                add3dShapeRigged(mesh, 'arc', computeBone(vBody, 0, -0.2, 0.05, 0,0,0), 0.2, 0.05, 0.15, {r: 0.6, g: 0, b: 0, a: 1}); 
+            }
+
+            // --- RENDER SPRIGGAN ---
+            if (index >= 100 && index <= 102) {
+                add3dShapeRigged(mesh, 'arc', sBody, 0.1, 0.15, 0.1, cSprigWood); // Tiny twig body
+                add3dShapeRigged(mesh, 'tri', computeBone(sHead, 0,0,0, 0,0,Math.PI/4), 0.12, 0.12, 0.12, cSprigWood); // Diamond wooden head
+                
+                // Leaves sprouting from head
+                add3dShapeRigged(mesh, 'tri', computeBone(sHead, 0,-0.15,0, -0.2,0,0), 0.05, 0.02, 0.15, cSprigLeaf);
+                add3dShapeRigged(mesh, 'tri', computeBone(sHead, 0,-0.15,0, 0.2,0,0), 0.05, 0.02, 0.15, cSprigLeaf);
+
+                // Sharp wooden spike arms
+                add3dShapeRigged(mesh, 'tri', computeBone(sArmL, 0,0,0, Math.PI/2,0,0), 0.04, 0.04, 0.25, cSprigWood);
+                add3dShapeRigged(mesh, 'tri', computeBone(sArmR, 0,0,0, Math.PI/2,0,0), 0.04, 0.04, 0.25, cSprigWood);
+                add3dShapeRigged(mesh, 'arc', sLegL, 0.03, 0.15, 0.03, cSprigWood);
+                add3dShapeRigged(mesh, 'arc', sLegR, 0.03, 0.15, 0.03, cSprigWood);
+            }
+
+            // --- RENDER DULLAHAN ---
+            if (index >= 103 && index <= 105) {
+                add3dShapeRigged(mesh, 'arc', dBody, 0.25, 0.25, 0.15, cDulArmor); // Knight armor body
+                add3dShapeRigged(mesh, 'arc', dNeckStump, 0.08, 0.05, 0.08, {r:0.4, g:0, b:0}); // Bloody neck stump
+                
+                add3dShapeRigged(mesh, 'arc', dArmL, 0.06, 0.2, 0.06, cDulArmor);
+                add3dShapeRigged(mesh, 'arc', dArmR, 0.06, 0.2, 0.06, cDulArmor);
+                add3dShapeRigged(mesh, 'arc', dLegL, 0.08, 0.2, 0.08, cDulArmor);
+                add3dShapeRigged(mesh, 'arc', dLegR, 0.08, 0.2, 0.08, cDulArmor);
+
+                // Head is held in the left hand! (Jack-o-lantern/Fire head)
+                add3dShapeRigged(mesh, 'arc', dHead, 0.12, 0.12, 0.12, cDulFire);
+                
+                // Scythe / Whip in the right hand
+                let blade = computeBone(dWhip, 0,0,0, 0,0,0);
+                add3dShapeRigged(mesh, 'tri', blade, 0.02, 0.02, 0.5, cSteel);
+            }
+            // --- RENDER DRAGON ---
+            if (index >= 106 && index <= 109) {
+
+                // 1. Serpentine Tail (Rendered back to front)
+                let t4 = computeBone(drTail4, 0, 0, 0, Math.PI/2, 0, 0);
+                let t3 = computeBone(drTail3, 0, 0, 0, Math.PI/2, 0, 0);
+                let t2 = computeBone(drTail2, 0, 0, 0, Math.PI/2, 0, 0);
+                let t1 = computeBone(drTail1, 0, 0, 0, Math.PI/2, 0, 0);
+
+                add3dShapeRigged(mesh, 'tri', t4, 0.08, 0.08, 0.25, cDragBody);
+                add3dShapeRigged(mesh, 'tri', t3, 0.12, 0.12, 0.25, cDragBody);
+                add3dShapeRigged(mesh, 'tri', t2, 0.16, 0.16, 0.30, cDragBody);
+                add3dShapeRigged(mesh, 'tri', t1, 0.22, 0.22, 0.30, cDragBody);
+
+                // 2. Wings (Massive Leathery Quads)
+                add3dShapeRigged(mesh, 'qua', drWingL, 0.8, 0.8, 0.02, cDragWing);
+                add3dShapeRigged(mesh, 'qua', drWingR, 0.8, 0.8, 0.02, cDragWing);
+
+                // 3. Body & Neck (Dark Green Back, Yellow Belly)
+                // Torso
+                let torsoCore = computeBone(drBody, 0, 0, 0, -Math.PI/2, 0, 0);
+                add3dShapeRigged(mesh, 'arc', torsoCore, 0.28, 0.28, 0.4, cDragBody); // Green Back
+                add3dShapeRigged(mesh, 'arc', computeBone(torsoCore, 0,-0.05,0, 0,0,0), 0.25, 0.25, 0.38, cDragBelly); // Yellow Belly
+
+                // Neck
+                let neckCore = computeBone(drNeck, 0, 0, 0, -Math.PI/2, 0, 0);
+                add3dShapeRigged(mesh, 'arc', neckCore, 0.20, 0.20, 0.3, cDragBody);
+                add3dShapeRigged(mesh, 'arc', computeBone(neckCore, 0,-0.05,0, 0,0,0), 0.18, 0.18, 0.28, cDragBelly);
+
+                // 4. Dragon Head
+                add3dShapeRigged(mesh, 'rec', drHead, 0.18, 0.15, 0.20, cDragBody); // Upper Skull
+
+                // Snout (Points forward)
+                let snout = computeBone(drHead, 0, 0, -0.2, -Math.PI/2, 0, 0);
+                add3dShapeRigged(mesh, 'tri', snout, 0.15, 0.12, 0.3, cDragBody);
+
+                // Horns (Pointing up and back)
+                let hornL = computeBone(drHead, -0.15, -0.1, 0.1, Math.PI/4, 0, -0.2);
+                let hornR = computeBone(drHead,  0.15, -0.1, 0.1, Math.PI/4, 0,  0.2);
+                add3dShapeRigged(mesh, 'tri', hornL, 0.04, 0.04, 0.25, cDragHorn);
+                add3dShapeRigged(mesh, 'tri', hornR, 0.04, 0.04, 0.25, cDragHorn);
+
+                // Glowing Slit Eyes
+                let eyeL = computeBone(drHead, -0.15, -0.05, -0.1, 0, 0, 0);
+                let eyeR = computeBone(drHead,  0.15, -0.05, -0.1, 0, 0, 0);
+                add3dShapeRigged(mesh, 'arc', eyeL, 0.04, 0.02, 0.02, cDragEye);
+                add3dShapeRigged(mesh, 'arc', eyeR, 0.04, 0.02, 0.02, cDragEye);
+
+                // 5. Lower Jaw & Teeth
+                let jawBase = computeBone(drJaw, 0, 0, -0.15, -Math.PI/2, 0, 0);
+                add3dShapeRigged(mesh, 'tri', jawBase, 0.14, 0.06, 0.28, cDragBelly); // Yellow under-jaw
+
+                // Fangs (Attached to the upper snout and lower jaw)
+                let fang1 = computeBone(snout, -0.1, 0.1, -0.1, Math.PI/2, 0, 0); // Upper Left
+                let fang2 = computeBone(snout,  0.1, 0.1, -0.1, Math.PI/2, 0, 0); // Upper Right
+                let fang3 = computeBone(jawBase, -0.08, -0.05, -0.1, -Math.PI/2, 0, 0); // Lower Left
+                let fang4 = computeBone(jawBase,  0.08, -0.05, -0.1, -Math.PI/2, 0, 0); // Lower Right
+                
+                add3dShapeRigged(mesh, 'tri', fang1, 0.02, 0.02, 0.1, cDragHorn);
+                add3dShapeRigged(mesh, 'tri', fang2, 0.02, 0.02, 0.1, cDragHorn);
+                add3dShapeRigged(mesh, 'tri', fang3, 0.02, 0.02, 0.1, cDragHorn);
+                add3dShapeRigged(mesh, 'tri', fang4, 0.02, 0.02, 0.1, cDragHorn);
+                // --- NEW: FIRE BREATH RENDERING ---
+                if (index === 109) {
+                    let t = Date.now() / 50;
+                    
+                    // Anchor the fire inside the open mouth, pointing forward (-Math.PI/2)
+                    let fireRoot = computeBone(drHead, 0, 0.1, -0.25, -Math.PI/2, 0, 0); 
+                    
+                    let cFire1 = {r: 1.0, g: 0.8, b: 0.0, a: 0.9}; // Yellow core
+                    let cFire2 = {r: 1.0, g: 0.4, b: 0.0, a: 0.7}; // Orange mid
+                    let cFire3 = {r: 0.8, g: 0.0, b: 0.0, a: 0.5}; // Red tips
+
+                    // Pulsing scale for the flames
+                    let pulse1 = 1.0 + Math.sin(t) * 0.3;
+                    let pulse2 = 1.0 + Math.cos(t * 1.3) * 0.4;
+                    let pulse3 = 1.0 + Math.sin(t * 1.7) * 0.5;
+
+                    // Draw overlapping triangular prisms extending outward and spinning
+                    let f1 = computeBone(fireRoot, 0, 0, 0.2, 0, 0, t); 
+                    let f2 = computeBone(fireRoot, 0, 0, 0.5, 0, 0, -t);
+                    let f3 = computeBone(fireRoot, 0, 0, 0.8, 0, 0, t * 1.5);
+
+                    add3dShapeRigged(mesh, 'tri', f1, 0.15 * pulse1, 0.15 * pulse1, 0.4, cFire1);
+                    add3dShapeRigged(mesh, 'tri', f2, 0.25 * pulse2, 0.25 * pulse2, 0.5, cFire2);
+                    add3dShapeRigged(mesh, 'tri', f3, 0.35 * pulse3, 0.35 * pulse3, 0.6, cFire3);
+                }
             }
                 // Render the final compiled mesh
                 render3dMesh(mesh, x, y, z, rx, ry, rz);
