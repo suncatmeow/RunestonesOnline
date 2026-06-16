@@ -5002,10 +5002,10 @@
             else this.weather.setMode('clear');
             }
             //MAPDATA
-            if (id === 999||id === -2) {
-                    this.skyColor = 'rgba(0,0,0,1)';   // Dark Blue Sky
-                        this.floorColor = 'rgba(0,128,0,1)'; // Blue Floor
-                        this.mapname = 'Inner Dungeon'
+            if (id === 999||id === -2||id === 2) {
+                    this.mapname = 'Tintagel Forest'
+                this.skyColor = 'rgba(0,16,0,1)';   // Dark Blue Sky
+                this.floorColor = 'rgba(32,32,16,1)'; // Blue Floor
                             //0,  1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,33,33,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,63,65,66,67,68,69,70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90,91,92,93,94,95,96,97,98,99 
                     this.maze = [
                         /*00*/[ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,  3],
@@ -5111,190 +5111,283 @@
                         // 0,  1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,33,33,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,63,65,66,67,68,69,70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90,91,92,93,94,95,96,97,98,99 
                     ];
                     this.npcs = [];
+                    // MAP 2: Tintagel Forest
+                
+                // ==========================================
+                // 1. STANDARD MOBS & CARDS
+                // ==========================================
+                    this.npcs.push(Object.assign(new NPC(2, 3.5, 16.5, 54, 'wandering', '#660066', [40, 41, 54], 'battle', false, 'foe'), {customDialogue: ["We can't go back!"]})); 
+                    this.npcs.push(Object.assign(new NPC(3, 13.5, 19.5, 54, 'wandering', '#660066', [58, 52, 54], 'battle', false, 'foe'), {customDialogue: ["This forest is ours! We claim it!"]})); 
+                    this.npcs.push(Object.assign(new NPC(4, 4.5, 21.5, 54, 'stationary', '#660066', [40, 41, 54, 58, 52, 54, 51, 54], 'battle', true, 'foe'), {customDialogue: ["We lost our home! Now you want to kill us?"]}));
+                    this.npcs.push(new NPC(5, 1.5, 3.5, 23, 'wandering', '#660066', [26, 26, 23, 15], 'battle', false, 'foe')); // Wisp
+                    this.npcs.push(new NPC(15, 14.5, 21.5, 57, 'stationary', '#660066', [57, 12, 52, 59], 'battle', false, 'foe')); // Spider
+
+                    // Loot Cards
+                    this.npcs.push(new NPC(8, 14.5, 4.5, -27, 'stationary', '#404040', [16], 'dialogue', null, 'friendly')); // Ruin
+                    this.npcs.push(new NPC(9, 15.5, 7.5, -27, 'stationary', '#ffff00', [12], 'dialogue', null, 'friendly')); // Bind
+                    this.npcs.push(new NPC(10, 15.5, 22.5, -27, 'stationary', '#ffff00', [53], 'dialogue', null, 'friendly')); // Camp
+                    this.npcs.push(new NPC(11, 6.5, 21.5, -27, 'stationary', '#ffff00', [10], 'dialogue', null, 'friendly')); // Treasure Chest
+                    this.npcs.push(new NPC(12, 10.5, 3.5, -27, 'stationary', '#ffff00', [18], 'dialogue', null, 'friendly')); // Lunacy
+
+                    // Portals [destX, destY, mapID, direction]
+                    this.npcs.push(new NPC(6, 9.5, 12.5, 99, 'stationary', '#66ccff', [6.5, 1.5, 1, 2], 'portal', null, 'friendly')); // Back to Map 1
+                    this.npcs.push(new NPC(7, 1.5, 1.5, -29, 'stationary', '#66ccff', [8.5, 20.5, 3, 0], 'portal', null, 'friendly')); // Cave entrance Map 3
+
+                // ==========================================
+                // 2. THE MAGICIAN
+                // ==========================================
+                    let magician = new NPC(0, 9.5, 8.5, 1, 'stationary', '#00ff00', [1,22,36,50,64], 'dialogue', null, 'friendly');
+                    magician.customDialogue = [
+                        "I have brought us to the forest outside of Tintagel.",
+                        "We must find my master, The Hermit. He will know what to do.",
+                        "He has a magical formation protecting his hermitage...",
+                        "We will have to seek him out without the use of magic."
+                    ];
+                    magician.endActions = [['spectate', 'Player has spoken to the magician in tintagel forest who said they must find the hermit. Give a clue to the player on where to find him.'],['disappear',null]];
+                    this.npcs.push(magician);
+
+                // ==========================================
+                // ==========================================
+                // 3. THE HERMIT & PIXIE AMBUSH CHAIN
+                // ==========================================
+                    // Only spawn the Hermit if he hasn't joined the party yet
+                    let isHermitFound = this.memory["2_1"] && this.memory["2_1"].permanent;
+
+                    if (!isHermitFound) {
+                        let hermit = new NPC(1, 15.5, 5.5, 9.1, 'stationary', '#404040', [9,16,12,26,13,15], 'dialogue', null, 'friendly');
+
+                        // Use a factory so coordinates calculate at the moment of interaction!
+                        hermit.dialogueFactory = (dungeon) => {
+                            
+                            // Dynamic coords: Spawns exactly where the player is standing
+                            let battlePixieArgs = [
+                                2, 14, 'SPEAKER_X', 'SPEAKER_Y', 60.1, 'chasing', '#ff0000', 
+                                [60,6,50,50,51,59,58], null, null, 'battle', null, true, 'foe', []
+                            ];
+
+                            // Spawns 1 tile above the player
+                            let dialoguePixieArgs = [
+                                2, 13, 9.5, 6.5, 60.1, 'chasing', '#ff0000', 
+                                [60,6,29,8,28], 
+                                [ 
+                                    "Heh, letting you escape was part of the plan.",
+                                    "And just like that we found The Hermit as well.",
+                                    "Don't worry about your apprentice old man, we'll take care of him!"
+                                ], 
+                                null, 'dialogue', null, true, 'friendly_messenger', 
+                                [ 
+                                    ['spawn_npc', battlePixieArgs], 
+                                    ['disappear', null], 
+                                    ['spectate', 'Player was ambushed by the Pixie outside of the hermitage.'], 
+                                    
+                                ] 
+                            ];
+
+                            return {
+                                text: [
+                                    "If you came this means the four kings have made their move...",
+                                    "The goblins have left their caverns in the North West and made a camp to the South West...",
+                                    "They were driven out by something even more terrible, I imagine...",
+                                    "My apprentice has already gone to investigate. Let us go meet with him and see if we can provide any assistance."
+                                ],
+                                rewardCard: null, // Gives Hermit Card & vanishes
+                                actions: [
+                                    ['set_memory', {key: 'mq_map2', value: true}], // <--- ADD THIS
+                                    ['give_card',{card:9, text:"Hermit joins your party!"}],
+                                    ['spectate', 'Player has found the hermit and obtained the Hermit card.'],
+                                    ['spawn_npc', dialoguePixieArgs],
+                                    ['disappear',null] 
+                                ]
+                            };
+                        };
+                        
+                        this.npcs.push(hermit);
+                    }
+                    
                     let npc_522944 = new NPC(522944, 10.852912654669144, 52.01922885730901, 61, 'wandering', '#ff0000', [61], 'dialogue', null, 'defender');
                     npc_522944.customDialogue = ["Monster attacks have become more frequent."];
                     this.npcs.push(npc_522944);
 
-                    let npc_593938 = new NPC(593938, 13.084931876169627, 51.88259267230234, 61, 'wandering', '#ff0000', [61], 'dialogue', null, 'defender');
-                    npc_593938.customDialogue = ["Monster attacks have become more frequent."];
-                    this.npcs.push(npc_593938);
+                        let npc_593938 = new NPC(593938, 13.084931876169627, 51.88259267230234, 61, 'wandering', '#ff0000', [61], 'dialogue', null, 'defender');
+                        npc_593938.customDialogue = ["Monster attacks have become more frequent."];
+                        this.npcs.push(npc_593938);
 
-                    let npc_545560 = new NPC(545560, 5.399609687057276, 49.9383496197686, 61, 'wandering', '#ff0000', [61], 'dialogue', null, 'defender');
-                    npc_545560.customDialogue = ["Be careful out there, traveler."];
-                    this.npcs.push(npc_545560);
+                        let npc_545560 = new NPC(545560, 5.399609687057276, 49.9383496197686, 61, 'wandering', '#ff0000', [61], 'dialogue', null, 'defender');
+                        npc_545560.customDialogue = ["Be careful out there, traveler."];
+                        this.npcs.push(npc_545560);
 
-                    let npc_570540 = new NPC(570540, 21.25624533482329, 51.62800360721069, 61, 'wandering', '#ff0000', [61], 'dialogue', null, 'defender');
-                    npc_570540.customDialogue = ["Be careful out there, traveler."];
-                    this.npcs.push(npc_570540);
+                        let npc_570540 = new NPC(570540, 21.25624533482329, 51.62800360721069, 61, 'wandering', '#ff0000', [61], 'dialogue', null, 'defender');
+                        npc_570540.customDialogue = ["Be careful out there, traveler."];
+                        this.npcs.push(npc_570540);
 
-                    let npc_569795 = new NPC(569795, 31.30996485245261, 52.3007798066185, 61, 'wandering', '#ff0000', [61], 'dialogue', null, 'defender');
-                    npc_569795.customDialogue = ["Be careful out there, traveler."];
-                    this.npcs.push(npc_569795);
+                        let npc_569795 = new NPC(569795, 31.30996485245261, 52.3007798066185, 61, 'wandering', '#ff0000', [61], 'dialogue', null, 'defender');
+                        npc_569795.customDialogue = ["Be careful out there, traveler."];
+                        this.npcs.push(npc_569795);
 
-                    let npc_542948 = new NPC(542948, 47.86088148672324, 55.31820867805009, 61, 'wandering', '#ff0000', [61], 'dialogue', null, 'defender');
-                    npc_542948.customDialogue = ["Be careful out there, traveler."];
-                    this.npcs.push(npc_542948);
+                        let npc_542948 = new NPC(542948, 47.86088148672324, 55.31820867805009, 61, 'wandering', '#ff0000', [61], 'dialogue', null, 'defender');
+                        npc_542948.customDialogue = ["Be careful out there, traveler."];
+                        this.npcs.push(npc_542948);
 
-                    let npc_583440 = new NPC(583440, 48.673268626483505, 63.05995611321338, 61, 'wandering', '#ff0000', [61], 'dialogue', null, 'defender');
-                    npc_583440.customDialogue = ["Be careful out there, traveler."];
-                    this.npcs.push(npc_583440);
+                        let npc_583440 = new NPC(583440, 48.673268626483505, 63.05995611321338, 61, 'wandering', '#ff0000', [61], 'dialogue', null, 'defender');
+                        npc_583440.customDialogue = ["Be careful out there, traveler."];
+                        this.npcs.push(npc_583440);
 
-                    let npc_527661 = new NPC(527661, 50.76682796143539, 91.98817021993102, 61, 'wandering', '#ff0000', [61], 'dialogue', null, 'defender');
-                    npc_527661.customDialogue = ["Be careful out there, traveler."];
-                    this.npcs.push(npc_527661);
+                        let npc_527661 = new NPC(527661, 50.76682796143539, 91.98817021993102, 61, 'wandering', '#ff0000', [61], 'dialogue', null, 'defender');
+                        npc_527661.customDialogue = ["Be careful out there, traveler."];
+                        this.npcs.push(npc_527661);
 
-                    let npc_571494 = new NPC(571494, 35.600477939929114, 94.34564625679305, 62, 'wandering', '#ff0000', [62], 'dialogue', null, 'defender');
-                    npc_571494.customDialogue = ["Monsters roam the land."];
-                    this.npcs.push(npc_571494);
+                        let npc_571494 = new NPC(571494, 35.600477939929114, 94.34564625679305, 62, 'wandering', '#ff0000', [62], 'dialogue', null, 'defender');
+                        npc_571494.customDialogue = ["Monsters roam the land."];
+                        this.npcs.push(npc_571494);
 
-                    let npc_557424 = new NPC(557424, 21.5, 94.5, 75, 'stationary', '#ff0000', [84,92,93,72,66,43,39,28,26,25,6,7,8], 'shop', null, 'friendly');
-                    npc_557424.customDialogue = ["Don't leave the city unless  you can defend yourself."];
-                    this.npcs.push(npc_557424);
+                        let npc_557424 = new NPC(557424, 21.5, 94.5, 75, 'stationary', '#ff0000', [84,92,93,72,66,43,39,28,26,25,6,7,8], 'shop', null, 'friendly');
+                        npc_557424.customDialogue = ["Don't leave the city unless  you can defend yourself."];
+                        this.npcs.push(npc_557424);
 
-                    let npc_570543 = new NPC(570543, 10.899365902367588, 90.72326081431223, 63, 'wandering', '#ff0000', [63], 'dialogue', null, 'friendly');
-                    npc_570543.customDialogue = ["Grrrr....."];
-                    this.npcs.push(npc_570543);
+                        let npc_570543 = new NPC(570543, 10.899365902367588, 90.72326081431223, 63, 'wandering', '#ff0000', [63], 'dialogue', null, 'friendly');
+                        npc_570543.customDialogue = ["Grrrr....."];
+                        this.npcs.push(npc_570543);
 
-                    let npc_556628 = new NPC(556628, 10.759138660176076, 94.55490864361462, 81, 'wandering', '#ff0000', [81], 'dialogue', null, 'friendly');
-                    npc_556628.customDialogue = ["*It seems uninterested in you*"];
-                    this.npcs.push(npc_556628);
+                        let npc_556628 = new NPC(556628, 10.759138660176076, 94.55490864361462, 81, 'wandering', '#ff0000', [81], 'dialogue', null, 'friendly');
+                        npc_556628.customDialogue = ["*It seems uninterested in you*"];
+                        this.npcs.push(npc_556628);
 
-                    let npc_567865 = new NPC(567865, 13.78409401138906, 97.63427843840688, 57, 'wandering', '#ff0000', [57], 'dialogue', null, 'friendly');
-                    npc_567865.customDialogue = ["*It eyes you warily*"];
-                    this.npcs.push(npc_567865);
+                        let npc_567865 = new NPC(567865, 13.78409401138906, 97.63427843840688, 57, 'wandering', '#ff0000', [57], 'dialogue', null, 'friendly');
+                        npc_567865.customDialogue = ["*It eyes you warily*"];
+                        this.npcs.push(npc_567865);
 
-                    let npc_522558 = new NPC(522558, 9.726029879264155, 91.37150647926148, 33, 'wandering', '#ff0000', [33], 'dialogue', null, 'friendly');
-                    npc_522558.customDialogue = ["*It bares its teeth at you*"];
-                    this.npcs.push(npc_522558);
+                        let npc_522558 = new NPC(522558, 9.726029879264155, 91.37150647926148, 33, 'wandering', '#ff0000', [33], 'dialogue', null, 'friendly');
+                        npc_522558.customDialogue = ["*It bares its teeth at you*"];
+                        this.npcs.push(npc_522558);
 
-                    let npc_527768 = new NPC(527768, 12.5, 94.5, 75, 'stationary', '#ff0000', [23,33,37,42,47,56,57,63,74,79,80,81,82,83,87,88], 'shop', null, 'friendly');
-                    npc_527768.customDialogue = ["Don't go out of the city alone."];
-                    this.npcs.push(npc_527768);
+                        let npc_527768 = new NPC(527768, 12.5, 94.5, 75, 'stationary', '#ff0000', [23,33,37,42,47,56,57,63,74,79,80,81,82,83,87,88], 'shop', null, 'friendly');
+                        npc_527768.customDialogue = ["Don't go out of the city alone."];
+                        this.npcs.push(npc_527768);
 
-                    let npc_573586 = new NPC(573586, 3.5, 93.5, 32, 'stationary', '#ff0000', [93,28,29,25,22,18,15,13,12,8,7,14,30,31,70], 'shop', null, 'friendly');
-                    npc_573586.customDialogue = ["Do not underestimate your ignorance."];
-                    this.npcs.push(npc_573586);
+                        let npc_573586 = new NPC(573586, 3.5, 93.5, 32, 'stationary', '#ff0000', [93,28,29,25,22,18,15,13,12,8,7,14,30,31,70], 'shop', null, 'friendly');
+                        npc_573586.customDialogue = ["Do not underestimate your ignorance."];
+                        this.npcs.push(npc_573586);
 
-                    let npc_5 = new NPC(5, 13.5, 63.5, 4, 'stationary', '#ff0000', [5,12,18,24,30,42], 'dialogue', null, 'friendly');
-                    npc_5.customDialogue = ["It's quiet in this dungeon. Too quiet.","Fancy a friendly game of cards to pass the time?"];
-                    npc_5.options = ["Play Eidolon","Not Right Now"];
-                    npc_5.yesActions = [["spectate","Player sat down for a casual game in the custom dungeon."],["open_guild_clerk","F"]];
-                    npc_5.noActions = [["play_sfx","cancel"],["close_dialogue",null]];
-                    this.npcs.push(npc_5);
+                        let npc_5 = new NPC(5, 13.5, 63.5, 4, 'stationary', '#ff0000', [5,12,18,24,30,42], 'dialogue', null, 'friendly');
+                        npc_5.customDialogue = ["It's quiet in this dungeon. Too quiet.","Fancy a friendly game of cards to pass the time?"];
+                        npc_5.options = ["Play Eidolon","Not Right Now"];
+                        npc_5.yesActions = [["spectate","Player sat down for a casual game in the custom dungeon."],["open_guild_clerk","F"]];
+                        npc_5.noActions = [["play_sfx","cancel"],["close_dialogue",null]];
+                        this.npcs.push(npc_5);
 
-                    let npc_531288 = new NPC(531288, 5.5, 81.5, 31, 'stationary', '#ff0000', [5,12,18,24,30,42], 'dialogue', null, 'friendly');
-                    npc_531288.customDialogue = ["Do you prefer the sky or the sea?"];
-                    npc_531288.options = ["Sky","Sea"];
-                    npc_531288.yesActions = [["add_stat",0],["disappear",null],["close_dialogue",null]];
-                    npc_531288.noActions = [["add_stat",3],["disappear",null],["close_dialogue",null]];
-                    this.npcs.push(npc_531288);
+                        let npc_531288 = new NPC(531288, 5.5, 81.5, 31, 'stationary', '#ff0000', [5,12,18,24,30,42], 'dialogue', null, 'friendly');
+                        npc_531288.customDialogue = ["Do you prefer the sky or the sea?"];
+                        npc_531288.options = ["Sky","Sea"];
+                        npc_531288.yesActions = [["add_stat",0],["disappear",null],["close_dialogue",null]];
+                        npc_531288.noActions = [["add_stat",3],["disappear",null],["close_dialogue",null]];
+                        this.npcs.push(npc_531288);
 
-                    let npc_569106 = new NPC(569106, 3.5, 68.5, 74, 'stationary', '#ff0000', [5,12,18,24,30,42], 'dialogue', null, 'friendly');
-                    npc_569106.customDialogue = ["An crazy old hermit used to live next door."];
-                    this.npcs.push(npc_569106);
+                        let npc_569106 = new NPC(569106, 3.5, 68.5, 74, 'stationary', '#ff0000', [5,12,18,24,30,42], 'dialogue', null, 'friendly');
+                        npc_569106.customDialogue = ["An crazy old hermit used to live next door."];
+                        this.npcs.push(npc_569106);
 
-                    let npc_554865 = new NPC(554865, 43.5, 88.5, 47, 'stationary', '#ff0000', [26,26,26,33,35,33], 'dialogue', null, 'friendly');
-                    npc_554865.customDialogue = ["My husband left the city a year ago and never returned."];
-                    this.npcs.push(npc_554865);
+                        let npc_554865 = new NPC(554865, 43.5, 88.5, 47, 'stationary', '#ff0000', [26,26,26,33,35,33], 'dialogue', null, 'friendly');
+                        npc_554865.customDialogue = ["My husband left the city a year ago and never returned."];
+                        this.npcs.push(npc_554865);
 
-                    let npc_595418 = new NPC(595418, 37.5, 61.5, 44, 'stationary', '#ff0000', [26,26,26,33,35,33], 'dialogue', null, 'friendly');
-                    npc_595418.customDialogue = ["*You sense a dark aura*"];
-                    npc_595418.endActions = [["start_hunted",{"waves":3,"interval":300,"mobs":[{"sprite":23}]}],["give_card",{"card":72,"text":"*You hear a ghostly voice calling*"}],["disappear",null],["close_dialogue",null]];
-                    this.npcs.push(npc_595418);
+                        let npc_595418 = new NPC(595418, 37.5, 61.5, 44, 'stationary', '#ff0000', [26,26,26,33,35,33], 'dialogue', null, 'friendly');
+                        npc_595418.customDialogue = ["*You sense a dark aura*"];
+                        npc_595418.endActions = [["start_hunted",{"waves":3,"interval":300,"mobs":[{"sprite":23}]}],["give_card",{"card":72,"text":"*You hear a ghostly voice calling*"}],["disappear",null],["close_dialogue",null]];
+                        this.npcs.push(npc_595418);
 
-                    let npc_516330 = new NPC(516330, 49.5, 66.5, 72, 'stationary', '#ff0000', [26,26,26,33,35,33], 'dialogue', null, 'friendly');
-                    npc_516330.customDialogue = ["*You sense a dark aura*"];
-                    npc_516330.endActions = [["start_hunted",{"waves":3,"interval":300,"mobs":[{"sprite":23}]}],["give_card",{"card":72,"text":"*You hear a ghostly voice calling*"}],["disappear",null],["close_dialogue",null]];
-                    this.npcs.push(npc_516330);
+                        let npc_516330 = new NPC(516330, 49.5, 66.5, 72, 'stationary', '#ff0000', [26,26,26,33,35,33], 'dialogue', null, 'friendly');
+                        npc_516330.customDialogue = ["*You sense a dark aura*"];
+                        npc_516330.endActions = [["start_hunted",{"waves":3,"interval":300,"mobs":[{"sprite":23}]}],["give_card",{"card":72,"text":"*You hear a ghostly voice calling*"}],["disappear",null],["close_dialogue",null]];
+                        this.npcs.push(npc_516330);
 
-                    let npc_536964 = new NPC(536964, 38.5, 71.5, 73, 'stationary', '#ff0000', [26,26,26,33,35,33], 'dialogue', null, 'friendly');
-                    npc_536964.customDialogue = ["*sparkle sparkle*"];
-                    this.npcs.push(npc_536964);
+                        let npc_536964 = new NPC(536964, 38.5, 71.5, 73, 'stationary', '#ff0000', [26,26,26,33,35,33], 'dialogue', null, 'friendly');
+                        npc_536964.customDialogue = ["*sparkle sparkle*"];
+                        this.npcs.push(npc_536964);
 
-                    let npc_547886 = new NPC(547886, 38.5, 72.5, 73, 'stationary', '#ff0000', [26,26,26,33,35,33], 'dialogue', null, 'friendly');
-                    npc_547886.customDialogue = ["*sparkle sparkle*"];
-                    this.npcs.push(npc_547886);
+                        let npc_547886 = new NPC(547886, 38.5, 72.5, 73, 'stationary', '#ff0000', [26,26,26,33,35,33], 'dialogue', null, 'friendly');
+                        npc_547886.customDialogue = ["*sparkle sparkle*"];
+                        this.npcs.push(npc_547886);
 
-                    let npc_578509 = new NPC(578509, 40.5, 71.5, 73, 'stationary', '#ff0000', [26,26,26,33,35,33], 'dialogue', null, 'friendly');
-                    npc_578509.customDialogue = ["*sparkle sparkle*"];
-                    this.npcs.push(npc_578509);
+                        let npc_578509 = new NPC(578509, 40.5, 71.5, 73, 'stationary', '#ff0000', [26,26,26,33,35,33], 'dialogue', null, 'friendly');
+                        npc_578509.customDialogue = ["*sparkle sparkle*"];
+                        this.npcs.push(npc_578509);
 
-                    let npc_545847 = new NPC(545847, 40.5, 72.5, 73, 'stationary', '#ff0000', [26,26,26,33,35,33], 'dialogue', null, 'friendly');
-                    npc_545847.customDialogue = ["*sparkle sparkle*"];
-                    this.npcs.push(npc_545847);
+                        let npc_545847 = new NPC(545847, 40.5, 72.5, 73, 'stationary', '#ff0000', [26,26,26,33,35,33], 'dialogue', null, 'friendly');
+                        npc_545847.customDialogue = ["*sparkle sparkle*"];
+                        this.npcs.push(npc_545847);
 
-                    let npc_516491 = new NPC(516491, 43.5, 71.5, 73, 'stationary', '#ff0000', [26,26,26,33,35,33], 'dialogue', null, 'friendly');
-                    npc_516491.customDialogue = ["*sparkle sparkle*"];
-                    this.npcs.push(npc_516491);
+                        let npc_516491 = new NPC(516491, 43.5, 71.5, 73, 'stationary', '#ff0000', [26,26,26,33,35,33], 'dialogue', null, 'friendly');
+                        npc_516491.customDialogue = ["*sparkle sparkle*"];
+                        this.npcs.push(npc_516491);
 
-                    let npc_515693 = new NPC(515693, 42.5, 71.5, 73, 'stationary', '#ff0000', [26,26,26,33,35,33], 'dialogue', null, 'friendly');
-                    npc_515693.customDialogue = ["*sparkle sparkle*"];
-                    this.npcs.push(npc_515693);
+                        let npc_515693 = new NPC(515693, 42.5, 71.5, 73, 'stationary', '#ff0000', [26,26,26,33,35,33], 'dialogue', null, 'friendly');
+                        npc_515693.customDialogue = ["*sparkle sparkle*"];
+                        this.npcs.push(npc_515693);
 
-                    let npc_510195 = new NPC(510195, 43.5, 72.5, 73, 'stationary', '#ff0000', [26,26,26,33,35,33], 'dialogue', null, 'friendly');
-                    npc_510195.customDialogue = ["*sparkle sparkle*"];
-                    this.npcs.push(npc_510195);
+                        let npc_510195 = new NPC(510195, 43.5, 72.5, 73, 'stationary', '#ff0000', [26,26,26,33,35,33], 'dialogue', null, 'friendly');
+                        npc_510195.customDialogue = ["*sparkle sparkle*"];
+                        this.npcs.push(npc_510195);
 
-                    let npc_513361 = new NPC(513361, 42.5, 72.5, 73, 'stationary', '#ff0000', [26,26,26,33,35,33], 'dialogue', null, 'friendly');
-                    npc_513361.customDialogue = ["*sparkle sparkle*"];
-                    this.npcs.push(npc_513361);
+                        let npc_513361 = new NPC(513361, 42.5, 72.5, 73, 'stationary', '#ff0000', [26,26,26,33,35,33], 'dialogue', null, 'friendly');
+                        npc_513361.customDialogue = ["*sparkle sparkle*"];
+                        this.npcs.push(npc_513361);
 
-                    let npc_537724 = new NPC(537724, 39.12080829182023, 69.43895940798684, 75, 'wandering', '#ff0000', [75], 'dialogue', null, 'defender');
-                    npc_537724.customDialogue = ["Watch yourself, traveler."];
-                    this.npcs.push(npc_537724);
+                        let npc_537724 = new NPC(537724, 39.12080829182023, 69.43895940798684, 75, 'wandering', '#ff0000', [75], 'dialogue', null, 'defender');
+                        npc_537724.customDialogue = ["Watch yourself, traveler."];
+                        this.npcs.push(npc_537724);
 
-                    let npc_535712 = new NPC(535712, 42.46751908126292, 68.44326846666665, 75, 'wandering', '#ff0000', [75], 'dialogue', null, 'defender');
-                    npc_535712.customDialogue = ["Watch yourself, traveler."];
-                    this.npcs.push(npc_535712);
+                        let npc_535712 = new NPC(535712, 42.46751908126292, 68.44326846666665, 75, 'wandering', '#ff0000', [75], 'dialogue', null, 'defender');
+                        npc_535712.customDialogue = ["Watch yourself, traveler."];
+                        this.npcs.push(npc_535712);
 
-                    let npc_595899 = new NPC(595899, 41.5, 70.5, 75, 'stationary', '#ff0000', [84,66,43,39,21,20,11], 'shop', null, 'friendly');
-                    npc_595899.customDialogue = ["A life saving trinket can be considered another life!"];
-                    this.npcs.push(npc_595899);
+                        let npc_595899 = new NPC(595899, 41.5, 70.5, 75, 'stationary', '#ff0000', [84,66,43,39,21,20,11], 'shop', null, 'friendly');
+                        npc_595899.customDialogue = ["A life saving trinket can be considered another life!"];
+                        this.npcs.push(npc_595899);
 
-                    let npc_571258 = new NPC(571258, 34.5, 84.5, 82, 'stationary', '#ff0000', [13,15,18,16,23,26,35,42,47,52,56,58,59,68,82,85,86,88,93,94], 'shop', null, 'friendly');
-                    npc_571258.customDialogue = ["There is no good or evil, only friend or foe."];
-                    this.npcs.push(npc_571258);
+                        let npc_571258 = new NPC(571258, 34.5, 84.5, 82, 'stationary', '#ff0000', [13,15,18,16,23,26,35,42,47,52,56,58,59,68,82,85,86,88,93,94], 'shop', null, 'friendly');
+                        npc_571258.customDialogue = ["There is no good or evil, only friend or foe."];
+                        this.npcs.push(npc_571258);
 
-                    let npc_582838 = new NPC(582838, 27.5, 86.5, 54, 'stationary', '#ff0000', [54], 'dialogue', null, 'friendly');
-                    npc_582838.customDialogue = ["I should never have come to this town."];
-                    this.npcs.push(npc_582838);
+                        let npc_582838 = new NPC(582838, 27.5, 86.5, 54, 'stationary', '#ff0000', [54], 'dialogue', null, 'friendly');
+                        npc_582838.customDialogue = ["I should never have come to this town."];
+                        this.npcs.push(npc_582838);
 
-                    let npc_540289 = new NPC(540289, 30.998154237045433, 80.34936991639955, 57, 'wandering', '#ff0000', [57,12,12], 'battle', null, 'foe');
-                    npc_540289.customDialogue = ["*Its eyes glare at you menacingly*"];
-                    this.npcs.push(npc_540289);
+                        let npc_540289 = new NPC(540289, 30.998154237045433, 80.34936991639955, 57, 'wandering', '#ff0000', [57,12,12], 'battle', null, 'foe');
+                        npc_540289.customDialogue = ["*Its eyes glare at you menacingly*"];
+                        this.npcs.push(npc_540289);
 
-                    let npc_507043 = new NPC(507043, 13.424354085199338, 85.50231353360863, 57, 'wandering', '#ff0000', [57,12,12], 'battle', null, 'foe');
-                    npc_507043.customDialogue = ["*Its eyes glare at you menacingly*"];
-                    this.npcs.push(npc_507043);
+                        let npc_507043 = new NPC(507043, 13.424354085199338, 85.50231353360863, 57, 'wandering', '#ff0000', [57,12,12], 'battle', null, 'foe');
+                        npc_507043.customDialogue = ["*Its eyes glare at you menacingly*"];
+                        this.npcs.push(npc_507043);
 
-                    let npc_523060 = new NPC(523060, 8.854630140512793, 78.07300409556076, 57, 'wandering', '#ff0000', [57,12,12], 'battle', null, 'foe');
-                    npc_523060.customDialogue = ["*Its eyes glare at you menacingly*"];
-                    this.npcs.push(npc_523060);
+                        let npc_523060 = new NPC(523060, 8.854630140512793, 78.07300409556076, 57, 'wandering', '#ff0000', [57,12,12], 'battle', null, 'foe');
+                        npc_523060.customDialogue = ["*Its eyes glare at you menacingly*"];
+                        this.npcs.push(npc_523060);
 
-                    let npc_501047 = new NPC(501047, 14.5, 84.5, 56, 'stationary', '#ff0000', [57,12,12], 'dialogue', null, 'friendly');
-                    npc_501047.customDialogue = ["Careful, they bite!"];
-                    this.npcs.push(npc_501047);
+                        let npc_501047 = new NPC(501047, 14.5, 84.5, 56, 'stationary', '#ff0000', [57,12,12], 'dialogue', null, 'friendly');
+                        npc_501047.customDialogue = ["Careful, they bite!"];
+                        this.npcs.push(npc_501047);
 
-                    let npc_514450 = new NPC(514450, 14.707149602648308, 84.48250853906477, 56, 'chasing', '#ff0000', [56], 'dialogue', null, 'defender');
-                    npc_514450.customDialogue = ["Careful, they bite!"];
-                    this.npcs.push(npc_514450);
+                        let npc_514450 = new NPC(514450, 14.707149602648308, 84.48250853906477, 56, 'chasing', '#ff0000', [56], 'dialogue', null, 'defender');
+                        npc_514450.customDialogue = ["Careful, they bite!"];
+                        this.npcs.push(npc_514450);
 
-                    let npc_593986 = new NPC(593986, 16.564546045645816, 84.28379552484864, 56, 'chasing', '#ff0000', [56], 'dialogue', null, 'defender');
-                    npc_593986.customDialogue = ["Careful, they bite!"];
-                    this.npcs.push(npc_593986);
-                    let centerX = this.maze[0].length / 2; // Width / 2
-                    let centerY = this.maze.length / 2;    // Height / 2
+                        let npc_593986 = new NPC(593986, 16.564546045645816, 84.28379552484864, 56, 'chasing', '#ff0000', [56], 'dialogue', null, 'defender');
+                        npc_593986.customDialogue = ["Careful, they bite!"];
+                        this.npcs.push(npc_593986);
+                        let centerX = this.maze[0].length / 2; // Width / 2
+                        let centerY = this.maze.length / 2;    // Height / 2
 
-                    // 2. Find the longest side to use as the search radius
-                    let maxRadius = Math.max(this.maze.length, this.maze[0].length);
+                        // 2. Find the longest side to use as the search radius
+                        let maxRadius = Math.max(this.maze.length, this.maze[0].length);
 
-                    // 3. Get the safe spawn point
-                    let safePOS= this.getSafeSpawn(centerX, centerY, maxRadius);
-            
-                    let randomX = safePOS.x;
-                    let randomY = safePOS.y;
-                    this.npcs.push(this.createRandomEncounter(80.5, 20.5));
-                        this.npcs.push(this.createRandomEncounter(95.5, 78.5));
+                        // 3. Get the safe spawn point
+                        let safePOS= this.getSafeSpawn(centerX, centerY, maxRadius);
+                
+                        let randomX = safePOS.x;
+                        let randomY = safePOS.y;
+                        this.npcs.push(this.createRandomEncounter(80.5, 20.5));
+                            this.npcs.push(this.createRandomEncounter(95.5, 78.5));
                     // ==========================================
                     // --- THE F-RANK GUILD CLERK ---
                     // ==========================================
@@ -6978,8 +7071,8 @@
                     }));
                     
                     
-                        this.x = 20.5; 
-                        this.y = 78.5;
+                        this.x = 9.5; 
+                        this.y = 12.5;
                     }
             //Teleport map
             else if (id === -1) {
@@ -8298,25 +8391,25 @@
                 this.maze = [
                 // 0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33
                 [25,25,25,25,25,25,25,25,25,25,21,21,21,21,25,25,25,25,25,25,25,21,21,21,21,25,25,25,25,25,25,25,25,25,25],//0
-                [25, 0, 0, 0, 0, 0, 0, 0, 0,21, 0, 0, 0, 0,21,25,25,25,25,25,21, 0, 0, 0, 0,21, 0, 0, 0,25,25, 0, 0, 0,25],//1
+                [25, 0, 0, 0, 0, 0, 0, 0, 0,21, 0, 0, 0, 0,21,25,25,25,25,25,21, 0, 0, 0, 0,21, 0,25, 0,25,25, 0, 0, 0,25],//1
                 [25, 0,25,25,25,25,25,25,19,21, 0, 0, 0, 0, 0,21,25,21,25,21, 0, 0, 0, 0, 0,21, 0,25, 0, 0,25, 0, 0, 0,25],//2
                 [25, 0,25,25,25,25,25, 0, 0, 0,21, 0, 0, 0, 0, 0,21, 0,21, 0, 0, 0, 0, 0,21, 0, 0,25,25, 0, 0, 0, 0, 0,25],//3
                 [25, 0,25,25,25,25, 0, 0, 0, 0,19,21, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,21, 0, 0, 0, 0,25,25, 0, 0, 0,25,25],//4
-                [25, 0,25,25,25, 0, 0, 0,19, 0, 0,19,21, 0, 0, 0, 0, 0, 0, 0, 0, 0,21, 0, 0, 0, 3, 3, 3,25,25,25, 0,25,25],//5
-                [25, 0,25,25,25, 0, 0,19,19,19, 0, 0, 0,21, 0, 0, 0, 0, 0, 0, 0,21, 0, 0, 3, 3, 3, 0, 0, 3,25,25, 0,25,25],//6
-                [25, 0,25,25,25,19, 0, 0,19,19,19, 0, 0,19,21, 0, 0, 0, 0, 0,21, 0, 0, 3, 3, 0, 0, 0, 0, 0, 3,25, 0, 0,25],//7
+                [25, 0,25,25,25, 0, 0, 0,19, 0, 0,19,21, 0, 0, 0, 0, 0, 0, 0, 0, 0,21, 0, 0, 0, 0, 0, 3,25,25,25, 0,25,25],//5
+                [25, 0,25,25,25, 0, 0,19,19,19, 0, 0, 0,21, 0, 0, 0, 0, 0, 0, 0,21, 0, 0, 0, 0, 3, 0, 0, 3,25,25, 0,25,25],//6
+                [25, 0,25,25,25,19, 0, 0,19,19,19, 0, 0,19,21, 0, 0, 0, 0, 0,21, 0, 0, 0, 3, 0, 0, 0, 0, 0, 3,25, 0, 0,25],//7
                 [25, 0,25, 0, 0, 0, 0,19,19, 0,19,19, 0, 0,19,21,21, 0,21,21, 0, 0, 0, 3, 0, 0, 0, 3, 3, 0, 0, 3,25, 0,25],//8
-                [25, 0,25, 0,19,19,19,19, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 3, 0, 3, 3, 3, 0, 0, 0, 3, 3, 0,25],//9
-                [25,25, 0, 0, 0,19, 0, 0, 0, 0,19, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 3, 3, 3, 0, 0, 3, 0,25],//10
-                [25, 0, 0, 0, 0, 0, 0,19, 0, 0, 0, 0,19, 0, 0, 0, 0, 0, 0, 0, 3, 3, 0, 3, 3, 3, 3, 3, 0, 3, 0, 0, 3, 0,25],//11
-                [25,25, 0, 0,19, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 3, 0, 0, 3, 3, 0, 0, 0, 3, 3, 0, 0, 0, 0,25],//12
-                [25,25,25, 0, 0, 0,19, 0, 0,19, 0, 0,19, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 3, 0, 0, 3, 0, 0, 3, 3, 0, 0, 0,25],//13
-                [25,25,25,25, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 3, 0, 0, 3, 3, 0, 0, 3, 3, 0, 0, 3, 3, 3,25,25],//14
-                [25,25,25,25,25,25, 0,19, 0, 0, 0,19, 0, 0, 0, 0, 0, 0, 3, 0, 0, 3, 3, 0, 0, 0, 3, 3, 0, 0, 3, 0, 3, 3,25],//25
-                [25,25,25,25,25,25, 0,19,19, 0,19,19, 0, 0, 0, 0, 0, 0, 3, 0, 0, 3, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0,-12,29],//16
-                [25,25,25,25,25,25, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 3, 3, 0, 0, 0, 0, 0, 3, 3, 0, 0, 0, 0,-12,29],//17
-                [25,25,25,25,25,25,25,25, 0, 0,19,19, 0, 0, 0, 0, 0, 0, 3, 0, 0, 3, 3, 0, 3, 3, 3, 3, 3, 0, 0, 0, 0,-12,29],//18
-                [25,25,25,25,25,25,25,25,25, 0, 0, 0,25,25,25,25,25,25,25, 3, 0, 0, 3, 3, 3, 0, 0, 0, 3, 3, 0, 0, 0, 3,25],//19
+                [25, 0,25, 0,19,19,19,19, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 3, 0, 0, 0, 0, 3, 3, 0,25],//9
+                [25,25, 0, 0, 0,19, 0, 0, 0, 0,19, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 3, 0,25],//10
+                [25, 0, 0, 0, 0, 0, 0,19, 0, 0, 0, 0,19, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 3, 0, 0, 3, 0, 0, 3, 0, 0, 3, 0,25],//11
+                [25,25, 0, 0,19, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 3, 0, 0, 0, 0, 0,25],//12
+                [25,25,25, 0, 0, 0,19, 0, 0,19, 0, 0,19, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 3, 0, 0, 0,25],//13
+                [25,25,25,25, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 3, 0, 0, 3, 0, 3,25,25],//14
+                [25,25,25,25,25,25, 0,19, 0, 0, 0,19, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 3, 0, 0, 0, 3, 0, 0, 3,25],//25
+                [25,25,25,25,25,25, 0,19,19, 0,19,19, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0,-12,29],//16
+                [25,25,25,25,25,25, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0,-12,29],//17
+                [25,25,25,25,25,25,25,25, 0, 0,19,19, 0, 0, 0, 0, 0, 0, 3, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,-12,29],//18
+                [25,25,25,25,25,25,25,25,25, 0, 0, 0,25,25,25,25,25,25,25, 3, 0, 0, 3, 0, 3, 0, 0, 0, 3, 3, 0, 0, 0, 3,25],//19
                 [25,25,25,25,25,25,25,25,25,25,25, 0, 0, 0, 0, 0, 0, 0,25,25, 3, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 3, 3, 3,25],//20
                 [25,25,25,25,25,25,25,25,25,25,25,25,25,25,25,25,25,25,25,25,25, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,25,25,25,25]//21
                 
@@ -49754,9 +49847,9 @@
         let targetX = currentTileX + moveX;
         let targetY = currentTileY + moveY;
         
-        if(targetX > 50 && targetY < 50 && Dungeon.mapID == 2){Dungeon.floorColor = 'rgb(64,64,64)'}
-        else if(targetX > 50 && targetY > 50 && Dungeon.mapID == 2){Dungeon.floorColor = 'rgb(32,16,8)'}
-        else if(targetX < 50 && Dungeon.mapID == 2){Dungeon.floorColor = 'rgba(32,32,16,1)'}
+        //if(targetX > 50 && targetY < 50 && Dungeon.mapID == 2){Dungeon.floorColor = 'rgb(64,64,64)'}
+        //else if(targetX > 50 && targetY > 50 && Dungeon.mapID == 2){Dungeon.floorColor = 'rgb(32,16,8)'}
+       // else if(targetX < 50 && Dungeon.mapID == 2){Dungeon.floorColor = 'rgba(32,32,16,1)'}
         // A. WALL CHECK
             if (Dungeon.isWall(targetX, targetY) && (!Dungeon.ghost)) {
                 let tileID = Dungeon.maze[targetY][targetX];
