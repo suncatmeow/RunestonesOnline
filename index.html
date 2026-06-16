@@ -91,7 +91,8 @@
   }
 ////////////////////[GLOBAL VARIABLE DECLARATIONS]///////////////////////////
 ///////////////////vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv//////////////////////
-  //CANVAS VARIABLES
+
+   //CANVAS VARIABLES
     var canvas = document.getElementById("c");
     var ctx = canvas.getContext("2d");
     var wX = 0; //window length
@@ -118,6 +119,7 @@
 
     mistBlobCtx.fillStyle = mGrad;
     mistBlobCtx.fillRect(0, 0, BLOB_SIZE, BLOB_SIZE);
+  
   //GLOBAL CARD DIMENSIONS
     var cL = 2.25; //card length
     var cH = 3.5; //card height
@@ -10035,7 +10037,7 @@
             let err = dx - dy;
 
             // --- NEW: Define walls that don't block vision ---
-            const seeThroughWalls = [91]; 
+            const seeThroughWalls = [91,88]; 
 
             while (true) {
                 // --- THE FIX: SAFETY BOUNDARY CHECK ---
@@ -12163,7 +12165,6 @@
             }
             }
         castWallRay(rayDirX, rayDirY, stripX, viewX, viewY, viewW, viewH, width = 1, camX, camY) {
-            let newColor = `rgba(0, 0, 0, 0.45)`;
             let mapX = Math.floor(camX);
             let mapY = Math.floor(camY);
             const deltaDistX = (rayDirX === 0) ? 1e30 : Math.abs(1 / rayDirX);
@@ -12175,791 +12176,485 @@
             if (rayDirY < 0) { stepY = -1; sideDistY = (camY - mapY) * deltaDistY; }
             else { stepY = 1; sideDistY = (mapY + 1 - camY) * deltaDistY; }
 
-            ctx.globalAlpha = 1.0; 
-            let lastKnownFillStyle = "";
             const horizon = (viewH / 2) + this.pitch; 
-            
-            // ==========================================
-            // --- OPTIMIZATION 1: HOISTED INVARIANTS ---
-            // ==========================================
-            // These math operations NEVER change per-pixel or per-wall.
-            // Doing them once here saves thousands of CPU cycles per frame.
-            const floorScale = viewH * this.zScale * this.camZ;
             const wallScale = viewH * this.zScale;
             const zOffset = this.camZ - 0.5;
 
-            // ==========================================
-            // 1. RAM SAVER: DYNAMIC RENDER DEPTH
-            // ==========================================
             let dynamicMaxVis = Math.max(2, Math.round(this.dSense / 3));
             const MAX_RENDER_DEPTH = Math.min(32, dynamicMaxVis + 1); 
             
             let hitBlocks = [];
             let losBlockedDepth = MAX_RENDER_DEPTH;
 
+            // ==========================================
+            // 1. DDA RAYCASTING
+            // ==========================================
             while (true) {
-                let side;
-                let currentDepth;
-                
+                let side, currentDepth;
                 if (sideDistX < sideDistY) { 
-                    sideDistX += deltaDistX; mapX += stepX; side = 0; 
-                    currentDepth = sideDistX - deltaDistX; 
+                    sideDistX += deltaDistX; mapX += stepX; side = 0; currentDepth = sideDistX - deltaDistX; 
                 } else { 
-                    sideDistY += deltaDistY; mapY += stepY; side = 1; 
-                    currentDepth = sideDistY - deltaDistY; 
+                    sideDistY += deltaDistY; mapY += stepY; side = 1; currentDepth = sideDistY - deltaDistY; 
                 }
 
                 if (currentDepth > MAX_RENDER_DEPTH) break;
                 if (isNaN(mapY) || isNaN(mapX) || mapY < 0 || mapY >= this.maze.length || mapX < 0 || mapX >= this.maze[0].length) break; 
 
-                if (this.explored[mapY] && this.explored[mapY][mapX] !== undefined) {
-                    this.explored[mapY][mapX] = 1;
-                }
+                if (this.explored[mapY] && this.explored[mapY][mapX] !== undefined) this.explored[mapY][mapX] = 1;
 
                 const tileID = this.maze[mapY][mapX];
-                
                 if (tileID > 0) { 
                     let perpWallDist = (side === 0) ? (rayDirX === 0 ? 100 : (mapX - camX + (1 - stepX) / 2) / rayDirX) 
                                                     : (rayDirY === 0 ? 100 : (mapY - camY + (1 - stepY) / 2) / rayDirY);
-
                     if (isNaN(perpWallDist) || perpWallDist <= 0) perpWallDist = 0.1;
+                    
                     let exitDist = Math.min(sideDistX, sideDistY);
-
+                    
                     hitBlocks.push({ wallID: tileID, side: side, mapX: mapX, mapY: mapY, perpWallDist: perpWallDist, exitDist: exitDist });
                     if (hitBlocks.length > 3) break;
                     
-                    let isTransparentWall = [91].includes(tileID);
+                    let isTransparentWall = [88, 91].includes(tileID);
                     let isInfinite = this.toweringWalls.includes(tileID) && !this.tileHeights[tileID] && !this.randomTreeTiles.includes(tileID);
-
-                    if (losBlockedDepth === MAX_RENDER_DEPTH && this.isWall(mapX, mapY) && !isTransparentWall && isInfinite) {
-                        losBlockedDepth = perpWallDist; 
-                    }
-
+                    if (losBlockedDepth === MAX_RENDER_DEPTH && !isTransparentWall && isInfinite) losBlockedDepth = perpWallDist; 
                     if (isInfinite && !isTransparentWall) break;
                 }
             }
 
             // ==========================================
-            // 2. TRUE 3D FLOOR CASTING 
+            // 2. BACK-TO-FRONT PROCEDURAL RENDERING
             // ==========================================
-                let startFloorY = Math.floor(horizon) + 1; 
+            let fR = this.fogColorRGB ? this.fogColorRGB.r : 5;
+            let fG = this.fogColorRGB ? this.fogColorRGB.g : 5;
+            let fB = this.fogColorRGB ? this.fogColorRGB.b : 8;
+            ctx.imageSmoothingEnabled = false;
+            
+            // THE SPEED FIX: Stop the canvas from calculating sub-pixel blending
+            const screenX = Math.floor(viewX + stripX);
+            const drawWidth = Math.ceil(width);
+            let lastKnownFillStyle = "";
 
-                let fR = this.fogColorRGB ? this.fogColorRGB.r : 5;
-                let fG = this.fogColorRGB ? this.fogColorRGB.g : 5;
-                let fB = this.fogColorRGB ? this.fogColorRGB.b : 8;
+            for (let i = hitBlocks.length - 1; i >= 0; i--) {
+                let hit = hitBlocks[i];
+                let wallID = hit.wallID;
+                let side = hit.side;
+                let perpWallDist = hit.perpWallDist;
 
-                let maxDistToRender = Math.min(losBlockedDepth, dynamicMaxVis);
-                let abyssY = horizon + (floorScale / maxDistToRender);
-
-                abyssY = Math.max(startFloorY, Math.min(viewH, abyssY));
-
-                if (abyssY > startFloorY) {
-                    ctx.fillStyle = `rgb(${fR},${fG},${fB})`;
-                    ctx.fillRect(viewX + stripX, viewY + startFloorY, width + 0.5, (abyssY - startFloorY) + 1);
+                let heightMult = this.tileHeights[wallID] || 1.0;
+                if (this.randomTreeTiles.includes(wallID)) {
+                    let pseudoRandom = Math.abs(Math.sin(hit.mapX * 12.9898 + hit.mapY * 78.233)) * 43758.5453 % 1;
+                    heightMult = 2.0 + (pseudoRandom * 2.0); 
                 }
+                if (this.toweringWalls.includes(wallID) && !this.tileHeights[wallID]) heightMult = 15.0;
 
-                // Track raw variables, not strings!
+                const lineHeight = wallScale / perpWallDist;     
+                const zShift = lineHeight * zOffset;             
+
+                const wallBottom = lineHeight / 2 + horizon + zShift;
+                const trueDrawStart = wallBottom - (lineHeight * heightMult);
                 
-                let currentColorStr = null;
-                let currentFogFactor = -1;
-                let colorStartY = Math.floor(abyssY);
-                let currentFillStyle = null;
+                let drawStart = Math.floor(Math.max(0, trueDrawStart));
+                hit.topY = drawStart; 
+                
+                let bIndex = (stripX * 12) + (i * 3);
+                this.zBuffer[bIndex] = perpWallDist;
+                this.zBuffer[bIndex + 1] = wallID;
+                this.zBuffer[bIndex + 2] = drawStart;
 
-                for (let y = Math.floor(abyssY); y < viewH; y += 1) {
-                    let currentDist = floorScale / (y - horizon); 
-                    let currentFloorX = camX + rayDirX * currentDist;
-                    let currentFloorY = camY + rayDirY * currentDist;
+                let drawEnd = Math.ceil(Math.min(viewH, wallBottom)) + 1;
+                let actualDrawHeight = drawEnd - drawStart;
+                if (actualDrawHeight <= 0) continue;
+
+                let colorStr = this.wallColors[wallID] || '#8b4513';
+                let { r: baseR, g: baseG, b: baseB } = this.parseColor(colorStr);
+                if (isNaN(baseR)) { baseR = 139; baseG = 69; baseB = 19; }
+
+                // --- THE FIX: SAFELY ANCHORED 3D ROOFS ---
+                if (heightMult < 15.0) {
+                    let exitLineHeight = wallScale / hit.exitDist; 
+                    let exitZShift = exitLineHeight * zOffset;     
+                    let exitWallBottom = exitLineHeight / 2 + horizon + exitZShift;
                     
-                    let floorMapX = Math.floor(currentFloorX);
-                    let floorMapY = Math.floor(currentFloorY);
-
-                    let colorStr = this.floorColor || '#333333'; 
+                    let roofBackY = exitWallBottom - (exitLineHeight * heightMult);
+                    let rStart = Math.floor(roofBackY);
+                    let rEnd = Math.floor(trueDrawStart) + 1;
                     
-                    if (!isNaN(floorMapX) && !isNaN(floorMapY) && floorMapX >= 0 && floorMapX < this.maze[0].length && floorMapY >= 0 && floorMapY < this.maze.length) {
-                        let tile = this.maze[floorMapY][floorMapX];
-                        if (tile !== 0 && this.floorColors && this.floorColors[tile]) {
-                            colorStr = this.floorColors[tile];
+                    // Clamp so drawing orientation never flips and stretches to the floor
+                    let finalRoofY = Math.max(0, Math.min(rStart, rEnd));
+                    let finalRoofEnd = Math.min(viewH, Math.max(rStart, rEnd));
+                    let roofH = finalRoofEnd - finalRoofY;
+                    
+                    if (roofH > 0 && finalRoofY < viewH) {
+                        let roofR = baseR * 0.4, roofG = baseG * 0.4, roofB = baseB * 0.4;
+                        let roofFog = 0;
+                        let fogStart = dynamicMaxVis * 0.4;
+                        
+                        if (hit.exitDist > fogStart) {
+                            let ratio = Math.min((hit.exitDist - fogStart) / (dynamicMaxVis - fogStart), 1.0);
+                            roofFog = ratio * ratio; 
                         }
-                    }
+                        if (hit.exitDist > losBlockedDepth) roofFog = 1.0;
 
-                    let inVision = (currentDist <= losBlockedDepth) && (currentDist <= dynamicMaxVis);
-                    let fogStart = dynamicMaxVis * 0.13; 
-                    let floorFogFactor = 0;
+                        roofR = (roofR * (1 - roofFog)) + (fR * roofFog);
+                        roofG = (roofG * (1 - roofFog)) + (fG * roofFog);
+                        roofB = (roofB * (1 - roofFog)) + (fB * roofFog);
 
-                    if (currentDist > fogStart) {
-                        // OPTIMIZATION 3 (Math.pow removal):
-                        // Math.pow is incredibly slow. A simple multiplication is ~50x faster.
-                        let ratio = Math.min((currentDist - fogStart) / (dynamicMaxVis - fogStart), 1.0);
-                        floorFogFactor = ratio * ratio; // Acts almost exactly like Math.pow(x, 1.8), but instantly!
-                    }
-
-                    if (!inVision) floorFogFactor = 1.0; 
-                    floorFogFactor = Math.round(floorFogFactor * 20) / 20;
-
-                    // Direct comparison! Zero strings generated.
-                    if (colorStr !== currentColorStr || floorFogFactor !== currentFogFactor) {
-                        if (currentColorStr !== null && currentFillStyle !== null) {
-                            ctx.fillStyle = currentFillStyle;
-                            ctx.fillRect(viewX + stripX, viewY + colorStartY, width + 0.5, (y - colorStartY) + 1);
-                        }
-                        
-                        currentColorStr = colorStr;
-                        currentFogFactor = floorFogFactor;
-                        colorStartY = y;
-                        
-                        let { r: bR, g: bG, b: bB } = this.parseColor(colorStr);
-                        if (isNaN(bR)) { bR = 10; bG = 50; bB = 10; } 
-                        
-                        let finalR = (bR * (1 - floorFogFactor)) + (fR * floorFogFactor);
-                        let finalG = (bG * (1 - floorFogFactor)) + (fG * floorFogFactor);
-                        let finalB = (bB * (1 - floorFogFactor)) + (fB * floorFogFactor);
-                        
-                        currentFillStyle = `rgb(${Math.floor(finalR)},${Math.floor(finalG)},${Math.floor(finalB)})`;
+                        let newColor = `rgb(${Math.floor(roofR)},${Math.floor(roofG)},${Math.floor(roofB)})`;
+                        if (lastKnownFillStyle !== newColor) { ctx.fillStyle = newColor; lastKnownFillStyle = newColor; }
+                        ctx.fillRect(screenX, viewY + finalRoofY, drawWidth, roofH);
                     }
                 }
 
-                if (currentColorStr !== null && currentFillStyle !== null) {
-                    ctx.fillStyle = currentFillStyle;
-                    ctx.fillRect(viewX + stripX, viewY + colorStartY, width + 0.5, (viewH - colorStartY) + 1);
+                // --- CORE FOG & SHADING MATH ---
+                let wallHitX; 
+                if (side == 0) wallHitX = camY + perpWallDist * rayDirY;
+                else           wallHitX = camX + perpWallDist * rayDirX;
+                wallHitX -= Math.floor(wallHitX);
+
+                let intensity = this.noiseLevels[wallID] !== undefined ? this.noiseLevels[wallID] : 20;
+                let noise = (Math.random() - 0.5) * intensity; 
+                if (this.mapID !== -1) { if (perpWallDist > 5) noise = 0; }
+
+                let shade = (163 / (perpWallDist + 1)) + 20; 
+                if (this.mapID === -1) shade = 193;
+                if (shade > 255) shade = 255;
+                if (side === 1) shade *= 0.75; 
+
+                let brightness = shade / 255;
+                let r = baseR * brightness + noise;
+                let g = baseG * brightness + noise;
+                let b = baseB * brightness + noise;
+                
+                let fogStart = dynamicMaxVis * 0.4;
+                let fogFactor = 0;
+
+                if (perpWallDist > fogStart) {
+                    let ratio = Math.min((perpWallDist - fogStart) / (dynamicMaxVis - fogStart), 1.0);
+                    fogFactor = ratio * ratio; // Fast Math.pow approximation
                 }
+                if (perpWallDist > losBlockedDepth) fogFactor = 1.0;
 
-            // ==========================================
-            // 3. BACK-TO-FRONT WALL RENDERING
-            // ==========================================
-                let zBufferHitCount = 0; // Prepare to track how many hits we save for sprites
+                let rawR = r, rawG = g, rawB = b;
+                r = (r * (1 - fogFactor)) + (fR * fogFactor);
+                g = (g * (1 - fogFactor)) + (fG * fogFactor);
+                b = (b * (1 - fogFactor)) + (fB * fogFactor);
+                
+                let drawFullStrip = true; 
+                let fadeAlpha = Math.max(0, 1.0 - fogFactor);
+                let newColor;
 
-                for (let i = hitBlocks.length - 1; i >= 0; i--) {
-                    let hit = hitBlocks[i];
-                    let wallID = hit.wallID;
-                    let side = hit.side;
-                    let mapX = hit.mapX;
-                    let mapY = hit.mapY;
-                    let perpWallDist = hit.perpWallDist;
+                // ==========================================
+                // --- RESTORED PROCEDURAL SCREEN SHADERS ---
+                // ==========================================
+                
+                if ([2,3,15,23,41,42,43,62,63].includes(wallID)) {
+                    // A. BARK LOGIC
+                    let wave1 = Math.sin(wallHitX * Math.PI * 14); 
+                    let wave2 = Math.sin(wallHitX * Math.PI * 5);  
+                    let bark = (wave1 * 0.6) + (wave2 * 0.4);
+                    let texR = rawR, texG = rawG, texB = rawB;
 
-                    let heightMult = this.tileHeights[wallID] || 1.0;
+                    if (bark > 0.4) { texR *= 0.3; texG *= 0.3; texB *= 0.3; } 
+                    else if (bark < -0.4) { texR *= 1.1; texG *= 1.1; texB *= 1.1; } 
+                    else { texR *= 0.8; texG *= 0.8; texB *= 0.8; }
+
+                    texR = Math.max(0, Math.min(255, (texR * (1 - fogFactor)) + (fR * fogFactor))); 
+                    texG = Math.max(0, Math.min(255, (texG * (1 - fogFactor)) + (fG * fogFactor))); 
+                    texB = Math.max(0, Math.min(255, (texB * (1 - fogFactor)) + (fB * fogFactor)));
+
+                    newColor = `rgb(${Math.floor(texR)},${Math.floor(texG)},${Math.floor(texB)})`;
+                    if (lastKnownFillStyle !== newColor) { ctx.fillStyle = newColor; lastKnownFillStyle = newColor; }
+                    ctx.fillRect(screenX, viewY + drawStart, drawWidth, actualDrawHeight);
+                    drawFullStrip = false; 
                     
-                    if (this.randomTreeTiles.includes(wallID)) {
-                        let pseudoRandom = Math.abs(Math.sin(mapX * 12.9898 + mapY * 78.233)) * 43758.5453 % 1;
-                        heightMult = 2.0 + (pseudoRandom * 2.0); 
-                    }
                     
-                    if (this.toweringWalls.includes(wallID) && !this.tileHeights[wallID] && !this.randomTreeTiles.includes(wallID)) {
-                        heightMult = 13.0; 
-                    }
-                    if (this.toweringWalls.includes(wallID) && !this.tileHeights[wallID]) heightMult = 15.0;
+                }
+                else if ([1,33,35,11,73,75,5,45].includes(wallID)) {
+                    // B. BRICK & STEEL LOGIC
+                    let isSteel = [5,45].includes(wallID);
+                    let texR = rawR, texG = rawG, texB = rawB;
+                    let isVertMortar = (wallHitX < 0.05 || wallHitX > 0.95);
                     
-                    const lineHeight = wallScale / perpWallDist;     // <--- FASTER HOISTED MATH
-                    const zShift = lineHeight * zOffset;             // <--- FASTER HOISTED MATH
+                    if (isSteel && isVertMortar) { texR *= 0.3; texG *= 0.3; texB *= 0.3; }
 
-                    const wallBottom = lineHeight / 2 + horizon + zShift;
-                    const trueDrawStart = wallBottom - (lineHeight * heightMult);
+                    texR = Math.max(0, Math.min(255, (texR * (1 - fogFactor)) + (fR * fogFactor))); 
+                    texG = Math.max(0, Math.min(255, (texG * (1 - fogFactor)) + (fG * fogFactor))); 
+                    texB = Math.max(0, Math.min(255, (texB * (1 - fogFactor)) + (fB * fogFactor)));
                     
-                    let drawStart = Math.floor(Math.max(0, trueDrawStart));
-                    hit.topY = Math.max(0, trueDrawStart); 
+                    newColor = `rgb(${Math.floor(texR)},${Math.floor(texG)},${Math.floor(texB)})`;
+                    if (lastKnownFillStyle !== newColor) { ctx.fillStyle = newColor; lastKnownFillStyle = newColor; }
+                    ctx.fillRect(screenX, viewY + drawStart, drawWidth, actualDrawHeight);
+                    drawFullStrip = false;
 
-                    // ==========================================
-                    // --- OPTIMIZATION 2: FLOATING Z-BUFFER ---
-                    // ==========================================
-                    // 'i' is exactly 0 for the closest wall, 1 for the next, etc.
-                    let bIndex = (stripX * 12) + (i * 3);
-                    this.zBuffer[bIndex] = perpWallDist;
-                    this.zBuffer[bIndex + 1] = wallID;
-                    this.zBuffer[bIndex + 2] = hit.topY;
-
-                    const drawEnd = Math.ceil(Math.min(viewH, wallBottom)) + 1;
-                    let colorStr = this.wallColors[wallID] || '#8b4513';
-                    let { r: baseR, g: baseG, b: baseB } = this.parseColor(colorStr);
-                    if (isNaN(baseR) || isNaN(baseG) || isNaN(baseB)) {
-                        baseR = 139; baseG = 69; baseB = 19; 
-                    }
-
-                    if (heightMult < 15.0) {
-                        newColor =  `rgba(0, 0, 0, 0.45)`;
-                        if (lastKnownFillStyle !== newColor) {
-                            ctx.fillStyle = newColor;
-                            lastKnownFillStyle = newColor;
-                        }
-                        let lipHeight = Math.min(3, drawEnd - drawStart); 
-                        if (lipHeight > 0) {
-                            ctx.fillRect(viewX + stripX, viewY + drawStart, width + 0.5, lipHeight); 
-                        }
-                    }
-
-                    if (heightMult < 15.0) {
-                        let exitLineHeight = wallScale / hit.exitDist; // <--- FASTER HOISTED MATH
-                        let exitZShift = exitLineHeight * zOffset;     // <--- FASTER HOISTED MATH
-                        let exitWallBottom = exitLineHeight / 2 + horizon + exitZShift;
-                        let roofBackY = exitWallBottom - (exitLineHeight * heightMult);
-                        let roofStartY = Math.floor(Math.max(0, roofBackY));
-                        let roofEndY = drawStart + 1; 
+                    const actualWallHeight = lineHeight * heightMult; 
+                    const rows = Math.max(1, Math.round(5 * heightMult)); 
+                    const rowHeight = actualWallHeight / rows;
+                    
+                    newColor = isSteel ? `rgba(0,0,0, ${0.6 * fadeAlpha})` : `rgba(0,0,0, ${0.7 * fadeAlpha})`; 
+                    if (lastKnownFillStyle !== newColor) { ctx.fillStyle = newColor; lastKnownFillStyle = newColor; }
+                    
+                    for (let j = 0; j < rows; j++) {
+                        let yOffset = Math.floor(viewY + trueDrawStart + (j * rowHeight));
                         
-                        if (roofEndY > roofStartY) {
-                            let roofR = baseR * 0.4;
-                            let roofG = baseG * 0.4;
-                            let roofB = baseB * 0.4;
-                            
-                            let roofInVision = (hit.exitDist <= losBlockedDepth);
-
-                            let fogStart = dynamicMaxVis * 0.4;
-                            let roofFog = 0;
-
-                            if (hit.exitDist > fogStart) {
-                                roofFog = Math.pow(Math.min((hit.exitDist - fogStart) / (dynamicMaxVis - fogStart), 1.0), 1.8);
-                            }
-
-                            if (!roofInVision) roofFog = 1.0;
-                            
-                            roofR = (roofR * (1 - roofFog)) + (fR * roofFog);
-                            roofG = (roofG * (1 - roofFog)) + (fG * roofFog);
-                            roofB = (roofB * (1 - roofFog)) + (fB * roofFog);
-                            newColor =  `rgb(${Math.floor(roofR)},${Math.floor(roofG)},${Math.floor(roofB)})`;
-                            if (lastKnownFillStyle !== newColor) {
-                                ctx.fillStyle = newColor;
-                                lastKnownFillStyle = newColor;
-                            }
-                            ctx.fillRect(viewX + stripX, viewY + roofStartY, width + 0.5, roofEndY - roofStartY);
-                        }
-                    }
-
-                    let wallHitX; 
-                    if (side == 0) wallHitX = camY + perpWallDist * rayDirY;
-                    else           wallHitX = camX + perpWallDist * rayDirX;
-                    wallHitX -= Math.floor(wallHitX);
-
-                    let intensity = this.noiseLevels[wallID] !== undefined ? this.noiseLevels[wallID] : 20;
-                    let noise = (Math.random() - 0.5) * intensity; 
-
-                    if (this.mapID !== -1) {
-                        if (perpWallDist > 5) noise = 0; 
-                    }
-
-                    let shade = (163 / (perpWallDist + 1)) + 20; 
-                    if (this.mapID === -1){ shade = 193}
-                    if (shade > 255) shade = 255;
-                    if (side === 1) shade *= 0.75; 
-
-                    let brightness = shade / 255;
-                    let r = baseR * brightness + noise;
-                    let g = baseG * brightness + noise;
-                    let b = baseB * brightness + noise;
-                    
-                    let wallInVision = (perpWallDist <= losBlockedDepth);
-
-                    let fogStart = dynamicMaxVis * 0.4;
-                    let fogFactor = 0;
-
-                    if (perpWallDist > fogStart) {
-                        let ratio = Math.min((perpWallDist - fogStart) / (dynamicMaxVis - fogStart), 1.0);
-                        fogFactor = ratio * ratio; // Instantly calculated, no heavy pow()
-                    }
-
-                    if (!wallInVision) fogFactor = 1.0;
-
-                    let rawR = r, rawG = g, rawB = b;
-                    r = (r * (1 - fogFactor)) + (fR * fogFactor);
-                    g = (g * (1 - fogFactor)) + (fG * fogFactor);
-                    b = (b * (1 - fogFactor)) + (fB * fogFactor);
-                    
-                    let drawFullStrip = true; 
-                    let fadeAlpha = Math.max(0, 1.0 - fogFactor);
-
-                    // ==========================================
-                    // [YOUR EXISTING WALL-TYPE RENDERING BLOCK REMAINS UNCHANGED HERE]
-                    // A. WOOD GRAIN / REAL BARK
-                    // B. BRICK MASONRY
-                    // ... ALL THE WAY DOWN TO L. SEE-THROUGH PRISON BARS
-                    // ==========================================
-
-                    // (I am compressing this block for space, but leave your wall types exactly as they are!)
-                    if ([2,3,15,23].includes(wallID)) {
-                        // ... Bark Logic ...
-                        if ([].includes(this.mapID)) { 
-                            newColor =  `rgb(${Math.floor(r)},${Math.floor(g)},${Math.floor(b)})`;
-                            if (lastKnownFillStyle !== newColor) {
-                                ctx.fillStyle = newColor;
-                                lastKnownFillStyle = newColor;
-                            }
-                            ctx.fillRect(viewX + stripX, viewY + drawStart, width + 0.5, drawEnd - drawStart);
-                            drawFullStrip = false; 
-                            newColor = `rgba(15, 10, 10, ${0.9 * fadeAlpha})`; 
-                            if (lastKnownFillStyle !== newColor) {
-                                ctx.fillStyle = newColor;
-                                lastKnownFillStyle = newColor;
-                            }
-
-                            let crack1Y = 0.3 + 0.15 * Math.sin(wallHitX * 12 + mapX * 4); 
-                            if (Math.sin(wallHitX * 35 + mapY) > 0.2) {
-                                let yPos = viewY + trueDrawStart + (lineHeight * crack1Y);
-                                if (yPos >= viewY + drawStart && yPos <= viewY + drawEnd) {
-                                    let crackThick = 1 + Math.abs(Math.cos(wallHitX * 20)) * 3;
-                                    ctx.fillRect(viewX + stripX, yPos, width + 0.5, crackThick);
-                                }
-                            }
-
-                            let crack2Y = 0.7 - 0.2 * Math.cos(wallHitX * 7 - mapX * 2);
-                            if (Math.cos(wallHitX * 28 + mapX) > 0.0) {
-                                let yPos = viewY + trueDrawStart + (lineHeight * crack2Y);
-                                if (yPos >= viewY + drawStart && yPos <= viewY + drawEnd) {
-                                    let crackThick = 1 + Math.abs(Math.sin(wallHitX * 15)) * 4;
-                                    ctx.fillRect(viewX + stripX, yPos, width + 0.5, crackThick);
-                                }
-                            }
-
-                            let crack3Y = 0.5 + 0.1 * Math.sin(wallHitX * 22 - mapY * 3);
-                            if (Math.sin(wallHitX * 45 + mapX) > 0.5) {
-                                let yPos = viewY + trueDrawStart + (lineHeight * crack3Y);
-                                if (yPos >= viewY + drawStart && yPos <= viewY + drawEnd) {
-                                    ctx.fillRect(viewX + stripX, yPos, width + 0.5, 2);
-                                }
-                            }
-                        } else {
-                            let wave1 = Math.sin(wallHitX * Math.PI * 14); 
-                            let wave2 = Math.sin(wallHitX * Math.PI * 5);  
-                            let bark = (wave1 * 0.6) + (wave2 * 0.4);
-
-                            // USE RAW COLORS SO WE DON'T MULTIPLY THE MIST
-                            let texR = rawR, texG = rawG, texB = rawB;
-
-                            if (bark > 0.4) { texR *= 0.3; texG *= 0.3; texB *= 0.3; } 
-                            else if (bark < -0.4) { texR *= 1.1; texG *= 1.1; texB *= 1.1; } 
-                            else { texR *= 0.8; texG *= 0.8; texB *= 0.8; }
-
-                            // RE-APPLY THE MIST SEAMLESSLY
-                            texR = (texR * (1 - fogFactor)) + (fR * fogFactor);
-                            texG = (texG * (1 - fogFactor)) + (fG * fogFactor);
-                            texB = (texB * (1 - fogFactor)) + (fB * fogFactor);
-
-                            texR = Math.max(0, Math.min(255, texR)); 
-                            texG = Math.max(0, Math.min(255, texG)); 
-                            texB = Math.max(0, Math.min(255, texB));
-
-                            newColor =  `rgb(${Math.floor(texR)},${Math.floor(texG)},${Math.floor(texB)})`;
-                            if (lastKnownFillStyle !== newColor) {
-                                ctx.fillStyle = newColor;
-                                lastKnownFillStyle = newColor;
-                            }
-                            ctx.fillRect(viewX + stripX, viewY + drawStart, width + 0.5, drawEnd - drawStart);
-                            drawFullStrip = false;
-                        }
-                    }
-                    else if ([1,33,35,11,73,75].includes(wallID)) {
-                        // ... Brick Logic ...
-                        r = Math.max(0, Math.min(255, r)); g = Math.max(0, Math.min(255, g)); b = Math.max(0, Math.min(255, b));
-                        ctx.fillStyle = `rgb(${Math.floor(r)},${Math.floor(g)},${Math.floor(b)})`;
-                        ctx.fillRect(viewX + stripX, viewY + drawStart, width + 0.5, drawEnd - drawStart);
-                        drawFullStrip = false;
-
-                        const actualWallHeight = lineHeight * heightMult; 
-                        const rows = Math.max(1, Math.round(5 * heightMult)); 
-                        const rowHeight = actualWallHeight / rows;
-                        
-                        newColor =  `rgba(0,0,0, ${0.7 * fadeAlpha})`; 
-                        if (lastKnownFillStyle !== newColor) {
-                            ctx.fillStyle = newColor;
-                            lastKnownFillStyle = newColor;
-                        }
-                        for (let i = 0; i < rows; i++) {
-                            let yOffset = viewY + trueDrawStart + (i * rowHeight);
-                            
+                        if (isSteel && !isVertMortar) {
+                            let h33 = Math.floor(yOffset + (rowHeight * 0.33));
+                            let h66 = Math.floor(yOffset + (rowHeight * 0.66));
+                            if (h33 >= viewY + drawStart && h33 <= viewY + drawEnd) ctx.fillRect(screenX, h33, drawWidth, 3);
+                            if (h66 >= viewY + drawStart && h66 <= viewY + drawEnd) ctx.fillRect(screenX, h66, drawWidth, 3);
+                        } else if (!isSteel) {
                             if (yOffset >= viewY + drawStart && yOffset <= viewY + drawEnd) {
-                                ctx.fillRect(viewX + stripX, yOffset, width + 0.5, 3);
+                                ctx.fillRect(screenX, yOffset, drawWidth, 3);
                             }
+                            let isEvenRow = (j % 2 === 0);
+                            let drawVert = false;
 
-                            let isEvenRow = (i % 2 === 0);
-                            let drawVertMortar = false;
+                            if (isEvenRow && (wallHitX < 0.05 || wallHitX > 0.95)) drawVert = true; 
+                            if (!isEvenRow && (wallHitX > 0.45 && wallHitX < 0.55)) drawVert = true; 
 
-                            if (isEvenRow && (wallHitX < 0.05 || wallHitX > 0.95)) drawVertMortar = true; 
-                            if (!isEvenRow && (wallHitX > 0.45 && wallHitX < 0.55)) drawVertMortar = true; 
-
-                            if (drawVertMortar) {
-                                let mortHeight = Math.min(rowHeight, (viewY + drawEnd) - yOffset);
+                            if (drawVert) {
+                                let mortHeight = Math.min(Math.ceil(rowHeight), (viewY + drawEnd) - yOffset);
                                 if (mortHeight > 0 && yOffset >= viewY + drawStart) {
-                                    ctx.fillRect(viewX + stripX, yOffset, width + 0.5, mortHeight);
+                                    ctx.fillRect(screenX, yOffset, drawWidth, mortHeight);
                                 }
                             }
                         }
                     }
-                    else if ([5,45].includes(wallID)) {
-                        // ... Steel logic ...
-                        let isVertMortar = (wallHitX < 0.05 || wallHitX > 0.95);
-                        let texR = rawR, texG = rawG, texB = rawB;
+                }
+                else if ([7].includes(wallID)) {
+                    // C. PLANKS
+                    let bgR = rawR * 0.2, bgG = rawG * 0.2, bgB = rawB * 0.2;
+                    bgR = (bgR * (1 - fogFactor)) + (fR * fogFactor);
+                    bgG = (bgG * (1 - fogFactor)) + (fG * fogFactor);
+                    bgB = (bgB * (1 - fogFactor)) + (fB * fogFactor);
 
-                        if (isVertMortar) { texR *= 0.3; texG *= 0.3; texB *= 0.3; }
+                    newColor = `rgb(${Math.floor(bgR)}, ${Math.floor(bgG)}, ${Math.floor(bgB)})`;
+                    if (lastKnownFillStyle !== newColor) { ctx.fillStyle = newColor; lastKnownFillStyle = newColor; }
+                    ctx.fillRect(screenX, viewY + drawStart, drawWidth, actualDrawHeight);
+                    drawFullStrip = false; 
 
-                        texR = (texR * (1 - fogFactor)) + (fR * fogFactor);
-                        texG = (texG * (1 - fogFactor)) + (fG * fogFactor);
-                        texB = (texB * (1 - fogFactor)) + (fB * fogFactor);
+                    const numPlanks = 8; 
+                    const plankHeight = lineHeight / numPlanks;
 
-                        texR = Math.max(0, Math.min(255, texR)); 
-                        texG = Math.max(0, Math.min(255, texG)); 
-                        texB = Math.max(0, Math.min(255, texB));
+                    for (let j = 0; j < numPlanks; j++) {
+                        let yOffset = Math.floor(viewY + trueDrawStart + (j * plankHeight));
+                        let plankStart = Math.max(viewY + drawStart, yOffset);
+                        let plankEnd = Math.min(viewY + drawEnd, Math.floor(yOffset + plankHeight));
+                        let plankDrawHeight = plankEnd - plankStart;
+
+                        if (plankDrawHeight > 0) {
+                            let isEvenRow = (j % 2 === 0);
+                            let isVerticalGap = false;
+                            
+                            if (isEvenRow && wallHitX > 0.48 && wallHitX < 0.52) isVerticalGap = true; 
+                            if (!isEvenRow && (wallHitX < 0.02 || wallHitX > 0.98)) isVerticalGap = true; 
+
+                            if (isVerticalGap) {
+                                newColor = `rgba(10, 5, 0, ${0.9 * fadeAlpha})`;
+                                if (lastKnownFillStyle !== newColor) { ctx.fillStyle = newColor; lastKnownFillStyle = newColor; }
+                                ctx.fillRect(screenX, plankStart, drawWidth, plankDrawHeight);
+                                continue; 
+                            }
+
+                            let plankSeed = Math.abs(Math.sin(mapX * 3.1 + mapY * 7.2 + j * 2.8));
+                            let plankR = rawR * (0.8 + plankSeed * 0.4); 
+                            let plankG = rawG * (0.8 + plankSeed * 0.4);
+                            let plankB = rawB * (0.8 + plankSeed * 0.4);
+
+                            let grain = Math.sin(wallHitX * Math.PI * (12 + plankSeed * 6) + j);
+                            if (grain > 0.6) { plankR *= 0.7; plankG *= 0.7; plankB *= 0.7; }
+
+                            if (isEvenRow && (wallHitX > 0.45 && wallHitX < 0.47 || wallHitX > 0.53 && wallHitX < 0.55)) {
+                                plankR *= 0.3; plankG *= 0.3; plankB *= 0.3;
+                            }
+                            if (!isEvenRow && (wallHitX > 0.04 && wallHitX < 0.06 || wallHitX > 0.94 && wallHitX < 0.96)) {
+                                plankR *= 0.3; plankG *= 0.3; plankB *= 0.3;
+                            }
+                            
+                            plankR = Math.max(0, Math.min(255, (plankR * (1 - fogFactor)) + (fR * fogFactor)));
+                            plankG = Math.max(0, Math.min(255, (plankG * (1 - fogFactor)) + (fG * fogFactor)));
+                            plankB = Math.max(0, Math.min(255, (plankB * (1 - fogFactor)) + (fB * fogFactor)));
+
+                            newColor = `rgb(${Math.floor(plankR)},${Math.floor(plankG)},${Math.floor(plankB)})`;
+                            if (lastKnownFillStyle !== newColor) { ctx.fillStyle = newColor; lastKnownFillStyle = newColor; }
+                            ctx.fillRect(screenX, plankStart, drawWidth, plankDrawHeight);
+
+                            if (plankEnd < viewY + drawEnd) {
+                                ctx.fillStyle = `rgba(10, 5, 0, ${0.8 * fadeAlpha})`;
+                                ctx.fillRect(screenX, plankEnd - 2, drawWidth, 2); 
+                            }
+                        }
+                    }
+                }
+                else if ([59].includes(wallID)) {
+                    // D. TERMINAL
+                    let texR = rawR * 0.3, texG = rawG * 0.3, texB = rawB * 0.3;
+                    if (wallHitX < 0.05 || wallHitX > 0.95) { texR *= 2; texG *= 2; texB *= 2; }
+
+                    texR = Math.max(0, Math.min(255, (texR * (1 - fogFactor)) + (fR * fogFactor))); 
+                    texG = Math.max(0, Math.min(255, (texG * (1 - fogFactor)) + (fG * fogFactor))); 
+                    texB = Math.max(0, Math.min(255, (texB * (1 - fogFactor)) + (fB * fogFactor)));
+
+                    newColor = `rgb(${Math.floor(texR)},${Math.floor(texG)},${Math.floor(texB)})`;
+                    if (lastKnownFillStyle !== newColor) { ctx.fillStyle = newColor; lastKnownFillStyle = newColor; }
+                    ctx.fillRect(screenX, viewY + drawStart, drawWidth, actualDrawHeight);
+                    drawFullStrip = false;
+
+                    ctx.fillStyle = `rgba(0, ${Math.random()*255}, 0, ${0.9 * fadeAlpha})`; 
+                    let glowY = Math.floor(viewY + trueDrawStart + (lineHeight * 0.5));
+                    ctx.fillRect(screenX, glowY, drawWidth, 4);
+
+                    if (wallHitX > 0.45 && wallHitX < 0.55) {
+                        let nodeStartY = Math.floor(viewY + trueDrawStart + (lineHeight * 0.3));
+                        ctx.fillRect(screenX, nodeStartY, drawWidth, Math.ceil(lineHeight * 0.4));
+                    }
+                }
+                else if ([13].includes(wallID)) {
+                    // E. STONE
+                    let texR = rawR, texG = rawG, texB = rawB;
+                    if (wallHitX > 0.35 && wallHitX < 0.4) { texR *= 1.6; texG *= 1.6; texB *= 1.6; }
+                    if (wallHitX > 0.75 && wallHitX < 0.85) { texR *= 1.4; texG *= 1.4; texB *= 1.4; }
+                    if (wallHitX < 0.1 || wallHitX > 0.9) { texR *= 0.7; texG *= 0.7; texB *= 0.7; }
+                    r = (texR * (1 - fogFactor)) + (fR * fogFactor);
+                    g = (texG * (1 - fogFactor)) + (fG * fogFactor);
+                    b = (texB * (1 - fogFactor)) + (fB * fogFactor);
+                }
+                else if ([9,21,31,25].includes(wallID)) {
+                    // F. MAGIC
+                    let sheen = Math.sin(wallHitX * Math.PI); 
+                    let texR = rawR * (0.7 + sheen * 0.5);
+                    let texG = rawG * (0.7 + sheen * 0.5);
+                    let texB = rawB * (0.7 + sheen * 0.5);
+                    r = (texR * (1 - fogFactor)) + (fR * fogFactor);
+                    g = (texG * (1 - fogFactor)) + (fG * fogFactor);
+                    b = (texB * (1 - fogFactor)) + (fB * fogFactor);
+                }
+                else if ([88, 91].includes(wallID)) {
+                    // G. BARS
+                    drawFullStrip = false;
+                    let isBar = (wallHitX % 0.25 < (wallID===88 ? 0.08 : 0.05)); 
+                    
+                    if (isBar) {
+                        let barR = rawR * 0.3, barG = rawG * 0.3, barB = rawB * 0.3;
+                        if (wallHitX % 0.25 < 0.02) { barR *= 1.5; barG *= 1.5; barB *= 1.5; }
                         
-                        newColor =  `rgb(${Math.floor(texR)},${Math.floor(texG)},${Math.floor(texB)})`;
-                        if (lastKnownFillStyle !== newColor) {
-                            ctx.fillStyle = newColor;
-                            lastKnownFillStyle = newColor;
-                        }
-                        ctx.fillRect(viewX + stripX, viewY + drawStart, width + 0.5, drawEnd - drawStart);
-                        drawFullStrip = false; 
-
-                        newColor =  `rgba(0,0,0, ${0.6 * fadeAlpha})`; 
-                        if (lastKnownFillStyle !== newColor) {
-                            ctx.fillStyle = newColor;
-                            lastKnownFillStyle = newColor;
-                        }
+                        barR = Math.max(0, Math.min(255, (barR * (1 - fogFactor)) + (fR * fogFactor)));
+                        barG = Math.max(0, Math.min(255, (barG * (1 - fogFactor)) + (fG * fogFactor)));
+                        barB = Math.max(0, Math.min(255, (barB * (1 - fogFactor)) + (fB * fogFactor)));
+                        
+                        newColor = `rgb(${Math.floor(barR)},${Math.floor(barG)},${Math.floor(barB)})`;
+                        if (lastKnownFillStyle !== newColor) { ctx.fillStyle = newColor; lastKnownFillStyle = newColor; }
+                        ctx.fillRect(screenX, viewY + drawStart, drawWidth, actualDrawHeight);
+                    } else if (wallID === 91) {
+                        ctx.fillStyle = `rgba(30, 30, 30, ${0.9 * fadeAlpha})`;
                         const actualWallHeight = lineHeight * heightMult;
-                        const numPlates = Math.max(1, Math.round(heightMult)); 
-                        const plateHeight = actualWallHeight / numPlates;
-                        
-                        if (!isVertMortar) {
-                            for (let i = 0; i < numPlates; i++) {
-                                let plateStartY = viewY + trueDrawStart + (i * plateHeight);
-                                let h33 = plateStartY + (plateHeight * 0.33);
-                                let h66 = plateStartY + (plateHeight * 0.66);
-                                
-                                if (h33 >= viewY + drawStart && h33 <= viewY + drawEnd) {
-                                    ctx.fillRect(viewX + stripX, h33, width + 0.5, 3);
-                                }
-                                if (h66 >= viewY + drawStart && h66 <= viewY + drawEnd) {
-                                    ctx.fillRect(viewX + stripX, h66, width + 0.5, 3);
-                                }
+                        const numBraces = Math.max(2, Math.round(2 * heightMult));
+                        const braceGap = actualWallHeight / numBraces;
+
+                        for (let j = 1; j < numBraces; j++) {
+                            let braceY = Math.floor(viewY + trueDrawStart + (j * braceGap));
+                            if (braceY >= viewY + drawStart && braceY <= viewY + drawEnd) {
+                                ctx.fillRect(screenX, braceY - 2, drawWidth, 4);
                             }
                         }
                     }
-                    else if ([7].includes(wallID)) {
-                        // ... Planks logic ...
-                        let bgR = rawR * 0.2, bgG = rawG * 0.2, bgB = rawB * 0.2;
-                        bgR = (bgR * (1 - fogFactor)) + (fR * fogFactor);
-                        bgG = (bgG * (1 - fogFactor)) + (fG * fogFactor);
-                        bgB = (bgB * (1 - fogFactor)) + (fB * fogFactor);
+                }
+                else if ([89].includes(wallID)) { 
+                    // H. SLIME
+                    let baseR = Math.max(0, Math.min(255, (rawR * 0.4 * (1 - fogFactor)) + (fR * fogFactor)));
+                    let baseG = Math.max(0, Math.min(255, (rawG * 0.4 * (1 - fogFactor)) + (fG * fogFactor)));
+                    let baseB = Math.max(0, Math.min(255, (rawB * 0.4 * (1 - fogFactor)) + (fB * fogFactor)));
+                    
+                    newColor = `rgb(${Math.floor(baseR)},${Math.floor(baseG)},${Math.floor(baseB)})`;
+                    if (lastKnownFillStyle !== newColor) { ctx.fillStyle = newColor; lastKnownFillStyle = newColor; }
+                    ctx.fillRect(screenX, viewY + drawStart, drawWidth, actualDrawHeight);
+                    drawFullStrip = false;
 
-                        newColor =  `rgb(${Math.floor(bgR)}, ${Math.floor(bgG)}, ${Math.floor(bgB)})`;
-                        if (lastKnownFillStyle !== newColor) {
-                            ctx.fillStyle = newColor;
-                            lastKnownFillStyle = newColor;
-                        }
-                        ctx.fillRect(viewX + stripX, viewY + drawStart, width + 0.5, drawEnd - drawStart);
-                        drawFullStrip = false; 
+                    let dripFactor = (Math.sin(wallHitX * 18 + mapX) * 0.5) + (Math.sin(wallHitX * 45) * 0.5);
+                    let dripPixelHeight = Math.floor((lineHeight * heightMult) * (0.5 + (dripFactor * 0.3))); 
+                    
+                    let clippedDripEnd = Math.min(viewY + drawEnd, Math.floor(viewY + trueDrawStart + dripPixelHeight));
 
-                        const numPlanks = 8; 
-                        const plankHeight = lineHeight / numPlanks;
-
-                        for (let i = 0; i < numPlanks; i++) {
-                            let yOffset = viewY + trueDrawStart + (i * plankHeight);
-                            let plankStart = Math.max(viewY + drawStart, yOffset);
-                            let plankEnd = Math.min(viewY + drawEnd, yOffset + plankHeight);
-                            let actualDrawHeight = plankEnd - plankStart;
-
-                            if (actualDrawHeight > 0) {
-                                let isEvenRow = (i % 2 === 0);
-                                let isVerticalGap = false;
-                                
-                                if (isEvenRow && wallHitX > 0.48 && wallHitX < 0.52) isVerticalGap = true; 
-                                if (!isEvenRow && (wallHitX < 0.02 || wallHitX > 0.98)) isVerticalGap = true; 
-
-                                if (isVerticalGap) {
-                                    newColor =  `rgba(10, 5, 0, ${0.9 * fadeAlpha})`;
-                                    if (lastKnownFillStyle !== newColor) {
-                                        ctx.fillStyle = newColor;
-                                        lastKnownFillStyle = newColor;
-                                    }
-                                    ctx.fillRect(viewX + stripX, plankStart, width + 0.5, actualDrawHeight);
-                                    continue; 
-                                }
-
-                                let plankSeed = Math.abs(Math.sin(mapX * 3.1 + mapY * 7.2 + i * 2.8));
-                                let plankR = rawR * (0.8 + plankSeed * 0.4); 
-                                let plankG = rawG * (0.8 + plankSeed * 0.4);
-                                let plankB = rawB * (0.8 + plankSeed * 0.4);
-
-                                let grain = Math.sin(wallHitX * Math.PI * (12 + plankSeed * 6) + i);
-                                if (grain > 0.6) {
-                                    plankR *= 0.7; plankG *= 0.7; plankB *= 0.7; 
-                                }
-
-                                if (isEvenRow && (wallHitX > 0.45 && wallHitX < 0.47 || wallHitX > 0.53 && wallHitX < 0.55)) {
-                                    plankR *= 0.3; plankG *= 0.3; plankB *= 0.3;
-                                }
-                                if (!isEvenRow && (wallHitX > 0.04 && wallHitX < 0.06 || wallHitX > 0.94 && wallHitX < 0.96)) {
-                                    plankR *= 0.3; plankG *= 0.3; plankB *= 0.3;
-                                }
-                                
-                                plankR = (plankR * (1 - fogFactor)) + (fR * fogFactor);
-                                plankG = (plankG * (1 - fogFactor)) + (fG * fogFactor);
-                                plankB = (plankB * (1 - fogFactor)) + (fB * fogFactor);
-
-                                plankR = Math.max(0, Math.min(255, plankR));
-                                plankG = Math.max(0, Math.min(255, plankG));
-                                plankB = Math.max(0, Math.min(255, plankB));
-
-                                let newColor = `rgb(${Math.floor(plankR)},${Math.floor(plankG)},${Math.floor(plankB)})`;
-                                if (lastKnownFillStyle !== newColor) {
-                                    ctx.fillStyle = newColor;
-                                    lastKnownFillStyle = newColor;
-                                }
-                                ctx.fillRect(viewX + stripX, plankStart, width + 0.5, actualDrawHeight);
-
-                                if (plankEnd < viewY + drawEnd) {
-                                    ctx.fillStyle = `rgba(10, 5, 0, ${0.8 * fadeAlpha})`;
-                                    ctx.fillRect(viewX + stripX, plankEnd - 2, width + 0.5, 2); 
-                                }
-                            }
-                        }
-                    }
-                    else if ([59].includes(wallID)) {
-                        // ... Sci Fi Terminal Logic ...
-                        let texR = rawR * 0.3, texG = rawG * 0.3, texB = rawB * 0.3;
-                        if (wallHitX < 0.05 || wallHitX > 0.95) { texR *= 2; texG *= 2; texB *= 2; }
-
-                        texR = (texR * (1 - fogFactor)) + (fR * fogFactor);
-                        texG = (texG * (1 - fogFactor)) + (fG * fogFactor);
-                        texB = (texB * (1 - fogFactor)) + (fB * fogFactor);
-
-                        texR = Math.max(0, Math.min(255, texR)); 
-                        texG = Math.max(0, Math.min(255, texG)); 
-                        texB = Math.max(0, Math.min(255, texB));
-
-                        newColor =  `rgb(${Math.floor(texR)},${Math.floor(texG)},${Math.floor(texB)})`;
-                        if (lastKnownFillStyle !== newColor) {
-                            ctx.fillStyle = newColor;
-                            lastKnownFillStyle = newColor;
-                        }
-                        ctx.fillRect(viewX + stripX, viewY + drawStart, width + 0.5, drawEnd - drawStart);
-                        drawFullStrip = false;
-
-                        ctx.fillStyle = `rgba(0, ${Math.random()*255}, 0, ${0.9 * fadeAlpha})`; 
-                        let glowY = viewY + trueDrawStart + (lineHeight * 0.5);
-                        ctx.fillRect(viewX + stripX, glowY, width + 0.5, 4);
-
-                        if (wallHitX > 0.45 && wallHitX < 0.55) {
-                            let nodeStartY = viewY + trueDrawStart + (lineHeight * 0.3);
-                            ctx.fillRect(viewX + stripX, nodeStartY, width + 0.5, lineHeight * 0.4);
-                        }
-                    }
-                    else if ([13].includes(wallID)) {
-                        // ... Stone Logic ...
-                        let texR = rawR, texG = rawG, texB = rawB;
-                        if (wallHitX > 0.35 && wallHitX < 0.4) { texR *= 1.6; texG *= 1.6; texB *= 1.6; }
-                        if (wallHitX > 0.75 && wallHitX < 0.85) { texR *= 1.4; texG *= 1.4; texB *= 1.4; }
-                        if (wallHitX < 0.1 || wallHitX > 0.9) { texR *= 0.7; texG *= 0.7; texB *= 0.7; }
-
-                        r = (texR * (1 - fogFactor)) + (fR * fogFactor);
-                        g = (texG * (1 - fogFactor)) + (fG * fogFactor);
-                        b = (texB * (1 - fogFactor)) + (fB * fogFactor);
-                    }
-                    else if ([9,21,31,25].includes(wallID)) {
-                        // ... Magic Logic ...
-                        let sheen = Math.sin(wallHitX * Math.PI); 
-                        let texR = rawR * (0.7 + sheen * 0.5);
-                        let texG = rawG * (0.7 + sheen * 0.5);
-                        let texB = rawB * (0.7 + sheen * 0.5);
-
-                        r = (texR * (1 - fogFactor)) + (fR * fogFactor);
-                        g = (texG * (1 - fogFactor)) + (fG * fogFactor);
-                        b = (texB * (1 - fogFactor)) + (fB * fogFactor);
-                    }
-                    else if ([88].includes(wallID)) {
-                        // ... Iron Bars Logic ...
-                        let bgR = rawR * 0.1, bgG = rawG * 0.1, bgB = rawB * 0.1;
-                        bgR = Math.max(0, Math.min(255, (bgR * (1 - fogFactor)) + (fR * fogFactor)));
-                        bgG = Math.max(0, Math.min(255, (bgG * (1 - fogFactor)) + (fG * fogFactor)));
-                        bgB = Math.max(0, Math.min(255, (bgB * (1 - fogFactor)) + (fB * fogFactor)));
+                    if (clippedDripEnd > viewY + drawStart) {
+                        let slimeR = Math.max(0, Math.min(255, (rawR * 1.5 * (1 - fogFactor)) + (fR * fogFactor)));
+                        let slimeG = Math.max(0, Math.min(255, (rawG * 1.5 * (1 - fogFactor)) + (fG * fogFactor)));
+                        let slimeB = Math.max(0, Math.min(255, (rawB * 1.5 * (1 - fogFactor)) + (fB * fogFactor)));
                         
-                        ctx.fillStyle = `rgb(${Math.floor(bgR)},${Math.floor(bgG)},${Math.floor(bgB)})`;
-                        if (lastKnownFillStyle !== newColor) {
-                            ctx.fillStyle = newColor;
-                            lastKnownFillStyle = newColor;
-                        }
-                        ctx.fillRect(viewX + stripX, viewY + drawStart, width + 0.5, drawEnd - drawStart);
-                        drawFullStrip = false;
-
-                        let isBar = (wallHitX % 0.25 < 0.08); 
+                        newColor = `rgb(${Math.floor(slimeR)},${Math.floor(slimeG)},${Math.floor(slimeB)})`;
+                        if (lastKnownFillStyle !== newColor) { ctx.fillStyle = newColor; lastKnownFillStyle = newColor; }
+                        ctx.fillRect(screenX, Math.floor(viewY + Math.max(0, drawStart)), drawWidth, clippedDripEnd - Math.max(0, drawStart));
                         
-                        if (isBar) {
-                            let barR = Math.max(0, Math.min(255, (rawR * (1 - fogFactor)) + (fR * fogFactor)));
-                            let barG = Math.max(0, Math.min(255, (rawG * (1 - fogFactor)) + (fG * fogFactor)));
-                            let barB = Math.max(0, Math.min(255, (rawB * (1 - fogFactor)) + (fB * fogFactor)));
+                        if (clippedDripEnd > 0 && clippedDripEnd < viewY + viewH) {
+                            ctx.fillStyle = `rgba(255, 255, 255, ${0.6 * fadeAlpha})`;
+                            ctx.fillRect(screenX, clippedDripEnd - 3, drawWidth, 3);
+                        }
+                    }
+                }
+                else if ([90].includes(wallID)) {
+                    // I. BOOKSHELVES
+                    let bgR = Math.max(0, Math.min(255, (rawR * 0.1 * (1 - fogFactor)) + (fR * fogFactor)));
+                    let bgG = Math.max(0, Math.min(255, (rawG * 0.1 * (1 - fogFactor)) + (fG * fogFactor)));
+                    let bgB = Math.max(0, Math.min(255, (rawB * 0.1 * (1 - fogFactor)) + (fB * fogFactor)));
+                    
+                    newColor = `rgb(${Math.floor(bgR)},${Math.floor(bgG)},${Math.floor(bgB)})`;
+                    if (lastKnownFillStyle !== newColor) { ctx.fillStyle = newColor; lastKnownFillStyle = newColor; }
+                    ctx.fillRect(screenX, viewY + drawStart, drawWidth, actualDrawHeight);
+                    drawFullStrip = false;
+
+                    const numShelves = Math.max(4, Math.round(4 * heightMult)); 
+                    const shelfHeight = (lineHeight * heightMult) / numShelves;
+
+                    for (let j = 0; j < numShelves; j++) {
+                        let shelfBottomY = Math.floor(viewY + trueDrawStart + (j * shelfHeight) + shelfHeight);
+                        
+                        if (shelfBottomY >= viewY + drawStart && shelfBottomY <= viewY + drawEnd) {
+                            newColor = `rgba(60, 30, 10, ${1.0 * fadeAlpha})`; 
+                            if (lastKnownFillStyle !== newColor) { ctx.fillStyle = newColor; lastKnownFillStyle = newColor; }
+                            ctx.fillRect(screenX, shelfBottomY - 4, drawWidth, 4);
+                        }
+
+                        let bookPattern = Math.sin(wallHitX * 40 + j * 15);
+                        if (bookPattern > -0.2) {
+                            let colorGen = Math.abs(Math.cos(wallHitX * 10 + j));
+                            let bR = rawR, bG = rawG, bB = rawB;
                             
-                            if (wallHitX % 0.25 < 0.02) { barR *= 1.5; barG *= 1.5; barB *= 1.5; }
+                            if (colorGen > 0.8) { bR *= 1.5; bG *= 0.3; bB *= 0.3; } 
+                            else if (colorGen > 0.5) { bR *= 0.3; bG *= 0.3; bB *= 1.5; } 
+                            else { bR *= 0.3; bG *= 1.2; bB *= 0.3; } 
+
+                            bR = Math.max(0, Math.min(255, (bR * (1 - fogFactor)) + (fR * fogFactor)));
+                            bG = Math.max(0, Math.min(255, (bG * (1 - fogFactor)) + (fG * fogFactor)));
+                            bB = Math.max(0, Math.min(255, (bB * (1 - fogFactor)) + (fB * fogFactor)));
+
+                            let bookHeight = Math.floor(shelfHeight * (0.6 + (Math.abs(Math.sin(wallHitX * 25 + j)) * 0.3)));
+                            let bookStartY = shelfBottomY - bookHeight;
                             
-                            newColor =  `rgb(${Math.floor(barR)},${Math.floor(barG)},${Math.floor(barB)})`;
-                            if (lastKnownFillStyle !== newColor) {
-                                ctx.fillStyle = newColor;
-                                lastKnownFillStyle = newColor;
-                            }
-                            ctx.fillRect(viewX + stripX, viewY + drawStart, width + 0.5, drawEnd - drawStart);
-                        } else {
-                            ctx.fillStyle = `rgba(30, 30, 30, ${0.9 * fadeAlpha})`;
-                            const actualWallHeight = lineHeight * heightMult;
-                            const numBraces = Math.max(2, Math.round(2 * heightMult));
-                            const braceGap = actualWallHeight / numBraces;
-
-                            for (let i = 1; i < numBraces; i++) {
-                                let braceY = viewY + trueDrawStart + (i * braceGap);
-                                if (braceY >= viewY + drawStart && braceY <= viewY + drawEnd) {
-                                    ctx.fillRect(viewX + stripX, braceY - 2, width + 0.5, 4);
-                                }
-                            }
-                        }
-                    }
-                    else if ([89].includes(wallID)) { 
-                        // ... Alien Slime Logic ...
-                        let baseR = Math.max(0, Math.min(255, (rawR * 0.4 * (1 - fogFactor)) + (fR * fogFactor)));
-                        let baseG = Math.max(0, Math.min(255, (rawG * 0.4 * (1 - fogFactor)) + (fG * fogFactor)));
-                        let baseB = Math.max(0, Math.min(255, (rawB * 0.4 * (1 - fogFactor)) + (fB * fogFactor)));
-                        
-                        newColor =  `rgb(${Math.floor(baseR)},${Math.floor(baseG)},${Math.floor(baseB)})`;
-                        if (lastKnownFillStyle !== newColor) {
-                            ctx.fillStyle = newColor;
-                            lastKnownFillStyle = newColor;
-                        }
-                        ctx.fillRect(viewX + stripX, viewY + drawStart, width + 0.5, drawEnd - drawStart);
-                        drawFullStrip = false;
-
-                        let dripFactor = (Math.sin(wallHitX * 18 + mapX) * 0.5) + (Math.sin(wallHitX * 45) * 0.5);
-                        let dripEndDepth = 0.5 + (dripFactor * 0.3); 
-                        let dripPixelHeight = (lineHeight * heightMult) * dripEndDepth;
-                        
-                        let dripEndY = viewY + trueDrawStart + dripPixelHeight;
-                        let clippedDripEnd = Math.min(viewY + drawEnd, dripEndY);
-
-                        if (clippedDripEnd > viewY + drawStart) {
-                            let slimeR = Math.max(0, Math.min(255, (rawR * 1.5 * (1 - fogFactor)) + (fR * fogFactor)));
-                            let slimeG = Math.max(0, Math.min(255, (rawG * 1.5 * (1 - fogFactor)) + (fG * fogFactor)));
-                            let slimeB = Math.max(0, Math.min(255, (rawB * 1.5 * (1 - fogFactor)) + (fB * fogFactor)));
+                            let drawTop = Math.max(viewY + drawStart, bookStartY);
+                            let drawBot = Math.min(viewY + drawEnd, shelfBottomY - 4);
                             
-                            newColor =  `rgb(${Math.floor(slimeR)},${Math.floor(slimeG)},${Math.floor(slimeB)})`;
-                            if (lastKnownFillStyle !== newColor) {
-                                ctx.fillStyle = newColor;
-                                lastKnownFillStyle = newColor;
-                            }
-                            ctx.fillRect(viewX + stripX, viewY + Math.max(0, drawStart), width + 0.5, clippedDripEnd - Math.max(0, drawStart));
-                            
-                            if (clippedDripEnd > 0 && clippedDripEnd < viewY + viewH) {
-                                ctx.fillStyle = `rgba(255, 255, 255, ${0.6 * fadeAlpha})`;
-                                ctx.fillRect(viewX + stripX, clippedDripEnd - 3, width + 0.5, 3);
-                            }
-                        }
-                    }
-                    else if ([90].includes(wallID)) {
-                        // ... Bookshelves Logic ...
-                        let bgR = rawR * 0.1, bgG = rawG * 0.1, bgB = rawB * 0.1;
-                        bgR = Math.max(0, Math.min(255, (bgR * (1 - fogFactor)) + (fR * fogFactor)));
-                        bgG = Math.max(0, Math.min(255, (bgG * (1 - fogFactor)) + (fG * fogFactor)));
-                        bgB = Math.max(0, Math.min(255, (bgB * (1 - fogFactor)) + (fB * fogFactor)));
-                        
-                        newColor =  `rgb(${Math.floor(bgR)},${Math.floor(bgG)},${Math.floor(bgB)})`;
-                        if (lastKnownFillStyle !== newColor) {
-                            ctx.fillStyle = newColor;
-                            lastKnownFillStyle = newColor;
-                        }
-                        ctx.fillRect(viewX + stripX, viewY + drawStart, width + 0.5, drawEnd - drawStart);
-                        drawFullStrip = false;
-
-                        const actualWallHeight = lineHeight * heightMult;
-                        const numShelves = Math.max(4, Math.round(4 * heightMult)); 
-                        const shelfHeight = actualWallHeight / numShelves;
-
-                        for (let i = 0; i < numShelves; i++) {
-                            let yOffset = viewY + trueDrawStart + (i * shelfHeight);
-                            let shelfBottomY = yOffset + shelfHeight;
-                            
-                            if (shelfBottomY >= viewY + drawStart && shelfBottomY <= viewY + drawEnd) {
-                                let newColor =  `rgba(60, 30, 10, ${1.0 * fadeAlpha})`; 
-                                if (lastKnownFillStyle !== newColor) {
-                                    ctx.fillStyle = newColor;
-                                    lastKnownFillStyle = newColor;
-                                }
-                                ctx.fillRect(viewX + stripX, shelfBottomY - 4, width + 0.5, 4);
-                            }
-
-                            let bookPattern = Math.sin(wallHitX * 40 + i * 15);
-                            if (bookPattern > -0.2) {
-                                let colorGen = Math.abs(Math.cos(wallHitX * 10 + i));
-                                let bR = rawR, bG = rawG, bB = rawB;
+                            if (drawBot > drawTop) {
+                                newColor = `rgb(${Math.floor(bR)},${Math.floor(bG)},${Math.floor(bB)})`;
+                                if (lastKnownFillStyle !== newColor) { ctx.fillStyle = newColor; lastKnownFillStyle = newColor; }
+                                ctx.fillRect(screenX, drawTop, drawWidth, drawBot - drawTop);
                                 
-                                if (colorGen > 0.8) { bR *= 1.5; bG *= 0.3; bB *= 0.3; } 
-                                else if (colorGen > 0.5) { bR *= 0.3; bG *= 0.3; bB *= 1.5; } 
-                                else { bR *= 0.3; bG *= 1.2; bB *= 0.3; } 
-
-                                bR = Math.max(0, Math.min(255, (bR * (1 - fogFactor)) + (fR * fogFactor)));
-                                bG = Math.max(0, Math.min(255, (bG * (1 - fogFactor)) + (fG * fogFactor)));
-                                bB = Math.max(0, Math.min(255, (bB * (1 - fogFactor)) + (fB * fogFactor)));
-
-                                let bookHeightFactor = 0.6 + (Math.abs(Math.sin(wallHitX * 25 + i)) * 0.3);
-                                let bookHeight = shelfHeight * bookHeightFactor;
-                                let bookStartY = shelfBottomY - bookHeight;
-                                
-                                let drawTop = Math.max(viewY + drawStart, bookStartY);
-                                let drawBot = Math.min(viewY + drawEnd, shelfBottomY - 4);
-                                
-                                if (drawBot > drawTop) {
-                                    newColor =  `rgb(${Math.floor(bR)},${Math.floor(bG)},${Math.floor(bB)})`;
-                                    if (lastKnownFillStyle !== newColor) {
-                                        ctx.fillStyle = newColor;
-                                        lastKnownFillStyle = newColor;
-                                    }
-                                    ctx.fillRect(viewX + stripX, drawTop, width + 0.5, drawBot - drawTop);
-                                    
-                                    if (Math.sin(wallHitX * 80) > 0.8) {
-                                        ctx.fillStyle = `rgba(0,0,0,${0.5 * fadeAlpha})`;
-                                        ctx.fillRect(viewX + stripX, drawTop, width + 0.5, drawBot - drawTop);
-                                    }
+                                if (Math.sin(wallHitX * 80) > 0.8) {
+                                    ctx.fillStyle = `rgba(0,0,0,${0.5 * fadeAlpha})`;
+                                    ctx.fillRect(screenX, drawTop, drawWidth, drawBot - drawTop);
                                 }
                             }
                         }
                     }
-                    else if ([91].includes(wallID)) { 
-                        // ... Prison Bars Logic ...
-                        drawFullStrip = false;
-                        let isBar = (wallHitX % 0.25 < 0.05); 
-                        
-                        if (isBar) {
-                            let barR = rawR * 0.3, barG = rawG * 0.3, barB = rawB * 0.3;
-                            if (wallHitX % 0.25 < 0.015) { barR *= 2.0; barG *= 2.0; barB *= 2.0; }
+                }
 
-                            barR = Math.max(0, Math.min(255, (barR * (1 - fogFactor)) + (fR * fogFactor)));
-                            barG = Math.max(0, Math.min(255, (barG * (1 - fogFactor)) + (fG * fogFactor)));
-                            barB = Math.max(0, Math.min(255, (barB * (1 - fogFactor)) + (fB * fogFactor)));
-                            
-                            newColor =  `rgb(${Math.floor(barR)},${Math.floor(barG)},${Math.floor(barB)})`;
-                            if (lastKnownFillStyle !== newColor) {
-                                ctx.fillStyle = newColor;
-                                lastKnownFillStyle = newColor;
-                            }
-                            ctx.fillRect(viewX + stripX, viewY + drawStart, width + 0.5, drawEnd - drawStart);
-                        } 
-                        else {
-                            const actualWallHeight = lineHeight * heightMult;
-                            const numBraces = Math.max(2, Math.round(2 * heightMult));
-                            const braceGap = actualWallHeight / numBraces;
-
-                            for (let i = 1; i < numBraces; i++) {
-                                let braceY = viewY + trueDrawStart + (i * braceGap);
-                                if (braceY >= viewY + drawStart && braceY <= viewY + drawEnd) {
-                                    // Empty for see-through
-                                }
-                            }
-                        }
-                    }
-
-                r = Math.max(0, Math.min(255, r));
-                g = Math.max(0, Math.min(255, g));
-                b = Math.max(0, Math.min(255, b));
-                
+                // Draw remaining generic fills
                 if (drawFullStrip) {
-                    newColor =  `rgb(${Math.floor(r)},${Math.floor(g)},${Math.floor(b)})`;
-                    if (lastKnownFillStyle !== newColor) {
-                        ctx.fillStyle = newColor;
-                        lastKnownFillStyle = newColor;
-                    }
-                    ctx.fillRect(viewX + stripX, viewY + drawStart, width + 0.5, drawEnd - drawStart);
+                    r = Math.max(0, Math.min(255, r)); g = Math.max(0, Math.min(255, g)); b = Math.max(0, Math.min(255, b));
+                    newColor = `rgb(${Math.floor(r)},${Math.floor(g)},${Math.floor(b)})`;
+                    if (lastKnownFillStyle !== newColor) { ctx.fillStyle = newColor; lastKnownFillStyle = newColor; }
+                    ctx.fillRect(screenX, viewY + drawStart, drawWidth, actualDrawHeight);
                 }
             }
             
-            // Save how many hits we tracked in this specific vertical strip so the sprite renderer knows what to read
             this.zBufferCounts[stripX] = hitBlocks.length;
-            }
+        }
         drawMinimap(ctx, viewX, viewY, viewW, viewH) {
             if (!this.maze || this.maze.length === 0 || !this.maze[0]) return;
             const size = viewW * 0.2; 
@@ -36587,7 +36282,7 @@
         
         // 1. The absolute maximum internal resolution your engine will render.
         // Tweak this to find your sweet spot between performance and visual fidelity.
-        const MAX_INTERNAL_RES = 800; 
+        const MAX_INTERNAL_RES = 1440; 
         
         wX = window.innerWidth;
         wY = window.innerHeight;
@@ -46655,6 +46350,8 @@
         tX = oldTX; tY = oldTY; tL = oldTL; tH = oldTH;
         delete window.cacheAngle;
     }
+
+
     // DRAWS BOTH 3D AND 2D
         function drawPortrait(index, x, y, z, card = 0, direction = 0, frameOverride = -1) {
             if (Number(index) === -27 || !spriteCache[index]) {
@@ -72797,7 +72494,7 @@
   async function bootGame() {
     const loader = document.getElementById('loading-screen');
     const progressBar = document.getElementById('loading-bar-progress');
-    const statusText = document.getElementById('loading-text-sub'); // Grab the text
+    const statusText = document.getElementById('loading-text-sub'); 
     
     // Reset bar and show loader
     progressBar.style.width = '0%';
@@ -72813,13 +72510,11 @@
         "Tuning the instruments...",
         "Generating infinite dungeons...",
         "Buffing Suncat's stats...",
-        "Bribing the Treasure Snake..."
+        "Bribing the Treasure Snake...",
     ];
 
     // 2. START THE CYCLER
-    // This runs every 800 milliseconds and picks a random phrase
     const phraseCycler = setInterval(() => {
-        // Pick a random phrase
         let randomText = loadingPhrases[Math.floor(Math.random() * loadingPhrases.length)];
         statusText.innerText = randomText;
     }, 800); 
@@ -72827,15 +72522,18 @@
     // Give the UI a tiny moment to appear
     await new Promise(r => setTimeout(r, 50)); 
     
-    // (If these are in your real code, keep them here)
-    
     initializeStoryArchive();
-
-    // Start caching and WAIT for it to finish.
     resizeCanvas(); 
+
+    // ==========================================
+    // CACHING PHASE 1: PORTRAITS (0% -> 50%)
+    // ==========================================
     await cacheAllPortraits((progressPercentage) => {
-        progressBar.style.width = progressPercentage + '%';
+        // Divide by 2 so it fills exactly half the bar
+        progressBar.style.width = (progressPercentage) + '%';
     });
+
+   
 
     // --- MATH IS DONE ---
     
@@ -72852,7 +72550,6 @@
 
     // Give the canvas 50ms to actually paint that first frame to the hidden canvas
     setTimeout(() => {
-        
         // Fade the loading screen out gracefully
         loader.style.opacity = '0';
         
@@ -72860,7 +72557,6 @@
         setTimeout(() => {
             loader.style.display = 'none';
         }, 300);
-
     }, 50); 
 }
 window.onload = () => {
