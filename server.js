@@ -6044,6 +6044,17 @@
                 }
                 return; 
             }
+            // --- ADD THIS NEW BLOCK RIGHT HERE ---
+            if (triggerType === 'chat' && data.text) {
+                const textLower = data.text.toLowerCase();
+                const asksOpinion = ["think of me", "your opinion", "judge me", "evaluate me", "how do you see me", "what kind of person"].some(kw => textLower.includes(kw));
+                
+                if (asksOpinion) {
+                    console.log(`[Judgement] ${player.name} asked for an evaluation. Forcing instant digestion...`);
+                    // Force Suncat to instantly digest the player's recent history to form a fresh opinion
+                    await processCognitiveLoad(socketId, true);
+                }
+            }
     
         //CONTEXT PROCESSING
         player.npcIsTyping = true;
@@ -6240,12 +6251,16 @@
             const asksPersonal = ["who are", "your past", "remember", "real life", "favorite", "you like", "about yourself", "memories", "where are you from", "your name"].some(kw => chatText.includes(kw));
             const asksHistory = ["remember when", "my past", "did i ever", "what did i do", "our adventure"].some(kw => chatText.includes(kw));
             const needsSlayer = ["slay", "smite", "kill", "destroy"].some(kw => chatText.includes(kw));
-
+            const asksOpinion = ["think of me", "your opinion", "judge me", "evaluate me", "how do you see me", "what kind of person"].some(kw => chatText.includes(kw));
             const isMap999Active = Object.values(players).some(p => p.mapID === 999 && p.id !== SUNCAT_ID);
             let needsDM = wantsNewMap || wantsAction;
             if (data.isConversing) {
                 systemOverride += `\n[CONVERSATION OVERRIDE]: You are conversing with the player. Stay in character and respond to the user. Do not leave them hanging.`;
             } 
+            else if (asksOpinion) {
+                useBigBrain = true;
+                systemOverride += `\n[JUDGEMENT OVERRIDE]: The player is asking for your honest opinion of them. You just analyzed their behavior. Your current perception of them is: "${player.suncatPerception}". Tell them exactly what you think of them based on this perception. Do NOT hold back. Be blunt, poetic, or cryptic depending on your current mood.`;
+            }
             else if (wantsNewMap && isMap999Active) {
                 useBigBrain = false; 
                 systemOverride += `\n[SYSTEM OVERRIDE]: The player wants a new map/quest, but a custom scenario is ALREADY ONGOING. REFUSE the request. DO NOT use the 'createCustomMap' tool. Tell them to finish the current quest or join it via '.hack//teleport 999'.`;
