@@ -7184,7 +7184,8 @@ io.on("connection", (socket) => {
                 if (["suncat you there", "suncat wake up"].some(w => content.includes(w))) player.npcIsTyping = false;
 
                 player.lastSuncatChat = now; 
-                
+                if (!player.undigestedInfo) player.undigestedInfo = [];
+                player.undigestedInfo.push(`Player said: "${safeText}"`);
                 processSuncatThought(socket.id, 'chat', { 
                     text: safeText,
                     vector: msgVector,
@@ -7653,7 +7654,7 @@ io.on("connection", (socket) => {
                 // Every 6 ticks (3 minutes), he stops wandering and actively plots a move
                 if (autonomousTick >= 6) {
                     autonomousTick = 0;
-                    if (Math.random() < 0.01) {
+                    if (Math.random() < 0.09) {
                     executeAutonomousOODA();
                     }
                 } else {
@@ -7667,7 +7668,7 @@ io.on("connection", (socket) => {
                     if(Math.random()>.9){
                         suncat.mapID = Math.floor(Math.random()*22);
                     }
-                    if (Math.random() < 0.25) {
+                    if (Math.random() < 0.09) {
                         writeSuncatJournal();
                     }
                 }
