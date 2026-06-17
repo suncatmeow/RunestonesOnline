@@ -7669,7 +7669,7 @@ io.on("connection", (socket) => {
                 // Every 6 ticks (3 minutes), he stops wandering and actively plots a move
                 if (autonomousTick >= 6) {
                     autonomousTick = 0;
-                    if (Math.random() < 0.09) {
+                    if (Math.random() < 0.03) {
                     executeAutonomousOODA();
                     }
                 } else {
@@ -7683,7 +7683,7 @@ io.on("connection", (socket) => {
                     if(Math.random()>.9){
                         suncat.mapID = Math.floor(Math.random()*22);
                     }
-                    if (Math.random() < 0.09) {
+                    if (Math.random() < 0.03) {
                         writeSuncatJournal();
                     }
                 }
