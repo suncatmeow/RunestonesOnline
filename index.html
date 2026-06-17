@@ -16014,30 +16014,59 @@
 
                             }
                             
-                          else if(this.currentSpeaker.alignment === 'foe_coward') {
-                            let imageIndex = this.currentSpeaker.type;
-                            imageIndex = getUpgradedImageIndex(imageIndex);
-                            
-                            // 1. Fetch the exact 3D scale and hover properties from your master config
-                            let config = this.getSpriteConfig(this.currentSpeaker, 0, imageIndex);
-                            
-                            // 2. Define your baseline UI coordinates
-                            let baseX = -0.01;
-                            let baseY = 0.013;
-                            
-                            // 3. Translate the 3D properties to the 2D Canvas!
-                            // In your 3D engine, negative hover means floating UP. 
-                            // In 2D canvas, a smaller Y coordinate is also UP. 
-                            // Adding the negative hover naturally pushes the 2D portrait up the screen!
-                            let portraitY = baseY + (config.hover * 0.05); 
-                            // 4. Apply the 3D scale
-                            // (Note: If the pure 3D scale feels a bit too small for the dialogue box, 
-                            // you can multiply it here, e.g., config.scale * 1.2)
-                            let portraitScale = config.scale;
-                            if(imageIndex >=129 || imageIndex <= 131){portraitY = -6;baseX = -6;portraitScale= config.scale*.9}
+                          // ... existing dialogue logic ...
 
-                            drawPortrait(imageIndex, baseX, portraitY, portraitScale, cardToDraw);
-                        }
+else if(this.currentSpeaker.alignment === 'foe_coward') {
+    // --- NEW: Snap coward directly in front of the player ---
+    // this.dir: 0 = North, 1 = East, 2 = South, 3 = West
+    this.currentSpeaker.speed = 0;
+    if (this.dir === 0) { 
+        this.currentSpeaker.x = this.x;
+        this.currentSpeaker.y = this.y - 0.8;
+        this.currentSpeaker.dir = 2; // Foe faces South
+    } else if (this.dir === 1) { 
+        this.currentSpeaker.x = this.x + 0.8;
+        this.currentSpeaker.y = this.y;
+        this.currentSpeaker.dir = 3; // Foe faces West
+    } else if (this.dir === 2) { 
+        this.currentSpeaker.x = this.x;
+        this.currentSpeaker.y = this.y + 0.8;
+        this.currentSpeaker.dir = 0; // Foe faces North
+    } else if (this.dir === 3) { 
+        this.currentSpeaker.x = this.x - 0.8;
+        this.currentSpeaker.y = this.y;
+        this.currentSpeaker.dir = 1; // Foe faces East
+    }
+
+    // --- ORIGINAL RENDERING LOGIC ---
+    let imageIndex = this.currentSpeaker.type;
+    imageIndex = getUpgradedImageIndex(imageIndex);
+    
+    let config = this.getSpriteConfig(this.currentSpeaker, 0, imageIndex);
+
+// 2. Define your baseline UI coordinates
+let baseX = -0.01;
+let baseY = 0.013;
+
+// 3. Translate the 3D properties to the 2D Canvas!
+let portraitY = baseY + (config.hover * 0.05); 
+
+// 4. Apply the 3D scale
+let portraitScale = config.scale;
+if(imageIndex >= 129 || imageIndex <= 131) {
+    portraitY = -6;
+    baseX = -6;
+    portraitScale = config.scale * .9;
+}
+
+// --- NEW: Direction Override ---
+// 0 was Left. Try 1, 2, 3, etc., until the sprite is looking directly at the camera!
+ 
+
+// Pass portraitDir as the 6th argument!
+drawPortrait(imageIndex, baseX, portraitY, portraitScale);
+}
+
                            // else{
                                 
                               //  drawPortrait(this.currentSpeaker.type, 1.55, 3.1, .69, cardToDraw);
@@ -36462,51 +36491,48 @@
         return Math.floor(Math.random() * (max - min + 1)+ min);
         }
     function resizeCanvas(){  //USED IN EVENT LISTENER TO GET NEW WINDOW X,Y(tX,tY)
-        //after event handler detects window resize, sets canvas x,y to window x,y
-        // 1. Get the scaling factor (2 or 3 for iPhones)
-        if (isChatActive&&startGame!='charSelect') return;
-        var dpr = window.devicePixelRatio || 1;
-
+        if (typeof isChatActive !== 'undefined' && isChatActive && startGame != 'charSelect') return;
+        
+        // 1. The absolute maximum internal resolution your engine will render.
+        // Tweak this to find your sweet spot between performance and visual fidelity.
+        const MAX_INTERNAL_RES = 800; 
+        
         wX = window.innerWidth;
         wY = window.innerHeight;
 
-        // 2. Set actual canvas memory size to scaled value
-        canvas.width = wX * dpr;
-        canvas.height = wY * dpr;
-
-        // 3. Force the CSS size to match the window
+        // 2. Force the CSS display size to fill the screen
         canvas.style.width = wX + "px";
         canvas.style.height = wY + "px";
 
-        // 4. Normalize the coordinate system
-        ctx.scale(dpr, dpr);
+        // 3. Calculate internal scale to maintain aspect ratio without blowing up memory
+        let scale = Math.min(MAX_INTERNAL_RES / wX, MAX_INTERNAL_RES / wY);
+        if (scale > 1) scale = 1; // Don't upscale if the window is tiny
 
-        //canvas redimensioned, so re-set values for playing table width and length
-        tX = wX; //table length (actual x determined after funtion)
-        tY = wY; //table height (actual y determined after function)
+        // 4. Set actual canvas memory size
+        canvas.width = Math.floor(wX * scale);
+        canvas.height = Math.floor(wY * scale);
 
-        //find largest dimension for tX and tY that is divisible by 2 without remainder
+        // Turn off anti-aliasing so CSS stretching stays beautifully pixelated
+        ctx.imageSmoothingEnabled = false;
+        canvas.style.imageRendering = "pixelated"; // Add this for modern browsers
+
+        // 5. Base your table math on the INTERNAL resolution, NOT the CSS window size!
+        tX = canvas.width; 
+        tY = canvas.height;
+
         if (tX % 2 !== 0) tX--;
         if (tY % 2 !== 0) tY--;
-            //make sure table dimensions have ratio of 1:1 for x and y respectively
-            //if table too wide make shorter
-            if (tX > tY){
-            tX = tY;
-            }
-            //if table too high make shorter
-            else if(tY > tX){
-            tY = tX;
-            }
 
-            //find difference between window dimensions and ratio'd table dims for padding
-            var dX = wX - tX;
-            var dY = wY - tY;
-            tL = tX;
-            tH = tY;
+        if (tX > tY) { tX = tY; }
+        else if (tY > tX) { tY = tX; }
 
-            //find table top-left(0,0) with table centered and equal padding on all sides
-            tX = Math.floor(dX / 2);
-            tY = Math.floor(dY / 2);
+        var dX = canvas.width - tX;
+        var dY = canvas.height - tY;
+        tL = tX;
+        tH = tY;
+
+        tX = Math.floor(dX / 2);
+        tY = Math.floor(dY / 2);
 
             //set x,y, width, height,length for all frames[to do]
         /////////ONLINE
@@ -36522,7 +36548,9 @@
         chatInput.style.zIndex = '1000';     // On top of canvas
         document.body.appendChild(chatInput);
         }
+      
         }
+    //
   
     function drawShape(shape,x,y,z,x1,y1,x2,y2,x3,y3,x4,y4,color,fill,x5 = 0,y5 = 0){
         //frame
