@@ -12556,7 +12556,7 @@
                         }
                     }
                 }
-                else if ([59].includes(wallID)) {
+                else if ([599].includes(wallID)) {
                     // D. TERMINAL
                     let texR = rawR * 0.3, texG = rawG * 0.3, texB = rawB * 0.3;
                     if (wallHitX < 0.05 || wallHitX > 0.95) { texR *= 2; texG *= 2; texB *= 2; }
@@ -12996,7 +12996,7 @@
                     }
                 }
             
-            return { scale, hover };
+            return { scale, hover,animIndex: type };
         }
         cacheDynamicNPCBillboard(npc) {
             // 1. Create a dedicated offscreen canvas for this specific NPC
@@ -13329,8 +13329,8 @@
                 // ==========================================
                 let angle = typeof window.cacheAngle !== 'undefined' ? window.cacheAngle : (Date.now() / 400);
                 
-                let { scale, hover } = this.getSpriteConfig(sprite, angle, imageIndex); 
-
+                let { scale, hover, animIndex } = this.getSpriteConfig(sprite, angle, imageIndex); 
+                imageIndex = animIndex;
                 const spriteSize = Math.abs(Math.floor(((viewH * this.zScale) / transformY) * scale)); 
 
                 let isCenterVisible = true;
@@ -46445,27 +46445,28 @@
     }
     function getUpgradedImageIndex(imageIndex) {
         const upgradeMap = {
-            23: 108,
-            88: 140,
-            54: 111,
-            57: 114, "57.1": 114,
+            23: 108, // Wisp
+            88: 140, // Mirage
+            54: 111, // Goblin
+            57: 114, "57.1": 114, // Spider
             56: 117, // Imp upgrade
-            79: 143,
-            81: 120,
-            82: 123,
-            86: 126,
-            61: 149, "61.1": 149,
-            33: 129, "33.1": 129,
-            60: 131, "60.1": 131,
-            74: 134, "74.1": 134,
-            42: 155, "42.1": 155,
-            85: 164,
-            75: 161, "75.1": 161,
-            62: 173, "62.1": 173,
-            76: 176, "76.1": 176,
-            48: 179, "48.1": 179,
-            34: 182, "34.1": 182,
-            999: 185, 61391: 185
+            79: 143, // Fire Imp
+            81: 120, // Ice Golem
+            82: 123, // Skeleton
+            86: 126, // Dark Sylph
+            61: 149, "61.1": 149,//sylph
+            33: 129, "33.1": 129, // Salamander
+            60: 131, "60.1": 131, // Pixie
+            74: 134, "74.1": 134, // Gargoyle
+            42: 155, "42.1": 155, // Shade
+            85: 164,//arthur
+            75: 161, "75.1": 161,//gnome
+            // THE FAIRIES
+            62: 173, "62.1": 173, // Queen
+            76: 176, "76.1": 176, // Green
+            48: 179, "48.1": 179, // Blue (Ice)
+            34: 182, "34.1": 182, // Red (Witch)
+            999: 185, 61391: 185  // Black
         };
 
         // If the imageIndex exists in our map, return the upgraded 3D version.
@@ -47770,7 +47771,7 @@
                 // --- 3D SHADE / WRAITH MONSTER ---
                 // ==========================================
                     case 55: { // SHADE IDLE (Fluttering, Fatter Robe)
-                        let t = Date.now() / 300; 
+                        let t = window.cacheAngle || 0;
                         let bob = Math.sin(t) * 0.1;       
                         let flutter = Math.sin(t * 8) * 0.05; // Rapid shivering/fluttering
 
@@ -47788,7 +47789,7 @@
                     }
 
                     case 56: { // SHADE CHASE (Swooping Forward)
-                        let t = Date.now() / 200; 
+                        let t = window.cacheAngle || 0;
                         let bob = Math.abs(Math.sin(t * 2)) * 0.05; 
                         let flutter = Math.sin(t * 10) * 0.08; 
                         let trail = Math.sin(t * 3) * 0.2; 
@@ -47805,7 +47806,7 @@
                     }
 
                     case 57: { // SHADE ATTACK (Lifts Empty Sleeves)
-                        let t = Date.now() / 150;
+                        let t = window.cacheAngle || 0;
                         let lunge = Math.cos(t); 
                         let thrust = lunge > 0 ? -lunge * 0.8 : lunge * 0.1; 
                         let flutter = Math.sin(t * 12) * 0.1; // Violent shaking during attack
@@ -47825,7 +47826,7 @@
                 // --- 3D KNIGHT / GHOST KNIGHT ---
                 // ==========================================
                     case 58: { // KNIGHT IDLE (Heroic Stance)
-                        let t = Date.now() / 400;
+                        let t = window.cacheAngle || 0;
                         let breath = Math.sin(t) * 0.02; // Heavy armor breathing
 
                         knBody = { x: 0, y: 0.1 + breath, z: 0, rx: 0.05, ry: 0, rz: 0 };
@@ -47848,7 +47849,7 @@
                     }
 
                     case 59: { // KNIGHT WALK (Heavy March)
-                        let t = Date.now() / 180;
+                        let t = window.cacheAngle || 0;
                         let step1 = Math.sin(t);
                         let step2 = Math.sin(t + Math.PI);
                         let bounce = Math.abs(step1) * 0.05;
@@ -47873,7 +47874,7 @@
                     }
 
                     case 60: { // KNIGHT ATTACK (Overhand Chop while Bracing Shield)
-                        let t = Date.now() / 150;
+                        let t = window.cacheAngle || 0;
                         let lunge = Math.cos(t);
                         let thrust = lunge > 0 ? -lunge * 0.4 : lunge * 0.1;
 
@@ -47900,7 +47901,7 @@
                 // --- 3D KRAKEN KING ---
                 // ==========================================
                     case 67: { // KRAKEN IDLE (Submerged Bobbing & Fluid Tentacles)
-                        let t = Date.now() / 400; 
+                        let t = window.cacheAngle || 0;
                         let bob = Math.sin(t) * 0.1;       
                         let sway = Math.cos(t * 0.5) * 0.2; // Slow torso rotation for shadow shifting
                         let blink = Math.sin(t * 2) > 0.95 ? 1 : 0; // Rare, sudden blink
@@ -47983,7 +47984,7 @@
                 // --- 3D APPRENTICE (Chubby Wizard) ---
                 // ==========================================
                     case 70: { // APPRENTICE IDLE (Looking around, bobbing wand)
-                        let t = Date.now() / 400;
+                        let t = window.cacheAngle || 0;
                         let breath = Math.sin(t) * 0.02; // Chubby breathing
                         let look = Math.sin(t * 0.5) * 0.3; // Looking side to side slowly
 
@@ -48061,7 +48062,7 @@
                 // --- 3D FAIRY QUEEN ---
                 // ==========================================
                    case 73: { // FAIRY QUEEN IDLE (Majestic Figure-8 Sway)
-                        let t = Date.now() / 400;
+                        let t = window.cacheAngle || 0;
                         let bob = Math.sin(t * 2.5) * 0.2; // Huge vertical float
                         let sway = Math.sin(t * 1.5) * 0.15; // Graceful side-to-side drift
                         let flutter = Math.sin(t * 25) * 0.4; 
@@ -48087,7 +48088,7 @@
                     }
 
                     case 74: { // FAIRY QUEEN CHASE (Aggressive Swooping S-Curve)
-                        let t = Date.now() / 200;
+                        let t = window.cacheAngle || 0;
                         let bob = Math.abs(Math.sin(t * 3)) * 0.05; 
                         let swoop = Math.sin(t * 2.5) * 0.35; // Wide sweeping turns
                         let flutter = Math.sin(t * 30) * 0.5; 
@@ -48113,7 +48114,7 @@
                     }
 
                     case 75: { // FAIRY QUEEN ATTACK (Regal Ballerina Tornado Spin!)
-                        let t = Date.now() / 150;
+                        let t = window.cacheAngle || 0;
                         let lunge = Math.cos(t);
                         let thrust = lunge > 0 ? -lunge * 0.6 : lunge * 0.1;
                         let flutter = Math.sin(t * 25) * 0.4;
@@ -48143,234 +48144,234 @@
                 // --- 3D UNIVERSAL QUADRUPED (88-96) ---
                 // 88-90: Bear | 91-93: Wolf | 94-96: Boar
                 // ==========================================
-                case 88: case 91: case 94: { // QUAD IDLE
-                    let t = Date.now() / 400;
-                    let breath = Math.sin(t) * 0.02;
+                    case 88: case 91: case 94: { // QUAD IDLE
+                        let t = window.cacheAngle || 0;
+                        let breath = Math.sin(t) * 0.02;
 
-                    // FIX: Dynamically widen the stance based on how fat the animal is!
-                    let legW = (index >= 88 && index <= 90) ? 0.35 : (index >= 94 && index <= 96) ? 0.25 : 0.12;
+                        // FIX: Dynamically widen the stance based on how fat the animal is!
+                        let legW = (index >= 88 && index <= 90) ? 0.35 : (index >= 94 && index <= 96) ? 0.25 : 0.12;
 
-                    qBody = { x: 0, y: 0.15 + breath, z: 0, rx: 0, ry: 0, rz: 0 };
-                    qHead = computeBone(qBody, 0, -0.15, -0.35, Math.sin(t*0.5)*0.1, 0, 0); 
-                    
-                    qFL = computeBone(qBody, -legW, 0.1, -0.25, 0.1, 0, 0); 
-                    qFR = computeBone(qBody,  legW, 0.1, -0.25, 0.1, 0, 0); 
-                    qBL = computeBone(qBody, -legW, 0.1,  0.25, -0.1, 0, 0); 
-                    qBR = computeBone(qBody,  legW, 0.1,  0.25, -0.1, 0, 0); 
-                    
-                    qTail = computeBone(qBody, 0, -0.1, 0.35, 0.2, Math.sin(t*2)*0.2, 0); 
-                    break;
-                }
-                case 89: case 92: case 95: { // QUAD RUN/WALK
-                    let t = Date.now() / 150;
-                    let stride1 = Math.sin(t);
-                    let stride2 = Math.cos(t);
-                    let bounce = Math.abs(stride1) * 0.05;
-
-                    let legW = (index >= 88 && index <= 90) ? 0.35 : (index >= 94 && index <= 96) ? 0.25 : 0.12;
-
-                    qBody = { x: 0, y: 0.15 + bounce, z: 0, rx: -0.1, ry: stride1*0.05, rz: 0 };
-                    qHead = computeBone(qBody, 0, -0.15, -0.35, 0.1, 0, 0); 
-                    
-                    qFL = computeBone(qBody, -legW, 0.1, -0.25, stride1 * 0.8, 0, 0);
-                    qFR = computeBone(qBody,  legW, 0.1, -0.25, stride2 * 0.8, 0, 0);
-                    qBL = computeBone(qBody, -legW, 0.1,  0.25, stride2 * 0.8, 0, 0); 
-                    qBR = computeBone(qBody,  legW, 0.1,  0.25, stride1 * 0.8, 0, 0);
-                    qTail = computeBone(qBody, 0, -0.1, 0.35, 0.4, stride1*0.2, 0);
-                    break;
-                }
-                case 90: case 93: case 96: { // QUAD ATTACK
-                    let t = Date.now() / 150;
-                    let lunge = Math.cos(t);
-                    let thrust = lunge > 0 ? -lunge * 0.8 : lunge * 0.1;
-                    let legW = (index >= 88 && index <= 90) ? 0.35 : (index >= 94 && index <= 96) ? 0.25 : 0.12;
-
-                    if (index === 90) { // BEAR ATTACK
-                        let rearUp = lunge > 0 ? 0 : -0.8; 
-                        qBody = { x: 0, y: 0.1, z: thrust*0.5, rx: rearUp, ry: 0, rz: 0 };
-                        qHead = computeBone(qBody, 0, -0.15, -0.35, lunge > 0 ? 0.4 : -0.4, 0, 0);
+                        qBody = { x: 0, y: 0.15 + breath, z: 0, rx: 0, ry: 0, rz: 0 };
+                        qHead = computeBone(qBody, 0, -0.15, -0.35, Math.sin(t*0.5)*0.1, 0, 0); 
                         
-                        let slam = lunge > 0 ? 0.2 : -1.5; 
-                        qFL = computeBone(qBody, -legW, 0.1, -0.25, slam, 0, 0);
-                        qFR = computeBone(qBody,  legW, 0.1, -0.25, slam, 0, 0);
-                    } else { // WOLF & BOAR
-                        qBody = { x: 0, y: 0.15, z: thrust, rx: lunge > 0 ? 0.2 : -0.2, ry: 0, rz: 0 };
-                        qHead = computeBone(qBody, 0, -0.15, -0.35, lunge > 0 ? -0.4 : 0.2, 0, 0);
-                        qFL = computeBone(qBody, -legW, 0.1, -0.25, lunge > 0 ? -0.5 : 0.5, 0, 0);
-                        qFR = computeBone(qBody,  legW, 0.1, -0.25, lunge > 0 ? -0.5 : 0.5, 0, 0);
+                        qFL = computeBone(qBody, -legW, 0.1, -0.25, 0.1, 0, 0); 
+                        qFR = computeBone(qBody,  legW, 0.1, -0.25, 0.1, 0, 0); 
+                        qBL = computeBone(qBody, -legW, 0.1,  0.25, -0.1, 0, 0); 
+                        qBR = computeBone(qBody,  legW, 0.1,  0.25, -0.1, 0, 0); 
+                        
+                        qTail = computeBone(qBody, 0, -0.1, 0.35, 0.2, Math.sin(t*2)*0.2, 0); 
+                        break;
                     }
-                    qBL = computeBone(qBody, -legW, 0.1,  0.25, 0.2, 0, 0); 
-                    qBR = computeBone(qBody,  legW, 0.1,  0.25, 0.2, 0, 0);
-                    qTail = computeBone(qBody, 0, -0.1, 0.35, 0, 0, 0);
-                    break;
-                }
+                    case 89: case 92: case 95: { // QUAD RUN/WALK
+                        let t = window.cacheAngle || 0;
+                        let stride1 = Math.sin(t);
+                        let stride2 = Math.cos(t);
+                        let bounce = Math.abs(stride1) * 0.05;
+
+                        let legW = (index >= 88 && index <= 90) ? 0.35 : (index >= 94 && index <= 96) ? 0.25 : 0.12;
+
+                        qBody = { x: 0, y: 0.15 + bounce, z: 0, rx: -0.1, ry: stride1*0.05, rz: 0 };
+                        qHead = computeBone(qBody, 0, -0.15, -0.35, 0.1, 0, 0); 
+                        
+                        qFL = computeBone(qBody, -legW, 0.1, -0.25, stride1 * 0.8, 0, 0);
+                        qFR = computeBone(qBody,  legW, 0.1, -0.25, stride2 * 0.8, 0, 0);
+                        qBL = computeBone(qBody, -legW, 0.1,  0.25, stride2 * 0.8, 0, 0); 
+                        qBR = computeBone(qBody,  legW, 0.1,  0.25, stride1 * 0.8, 0, 0);
+                        qTail = computeBone(qBody, 0, -0.1, 0.35, 0.4, stride1*0.2, 0);
+                        break;
+                    }
+                    case 90: case 93: case 96: { // QUAD ATTACK
+                        let t = window.cacheAngle || 0;
+                        let lunge = Math.cos(t);
+                        let thrust = lunge > 0 ? -lunge * 0.8 : lunge * 0.1;
+                        let legW = (index >= 88 && index <= 90) ? 0.35 : (index >= 94 && index <= 96) ? 0.25 : 0.12;
+
+                        if (index === 90) { // BEAR ATTACK
+                            let rearUp = lunge > 0 ? 0 : -0.8; 
+                            qBody = { x: 0, y: 0.1, z: thrust*0.5, rx: rearUp, ry: 0, rz: 0 };
+                            qHead = computeBone(qBody, 0, -0.15, -0.35, lunge > 0 ? 0.4 : -0.4, 0, 0);
+                            
+                            let slam = lunge > 0 ? 0.2 : -1.5; 
+                            qFL = computeBone(qBody, -legW, 0.1, -0.25, slam, 0, 0);
+                            qFR = computeBone(qBody,  legW, 0.1, -0.25, slam, 0, 0);
+                        } else { // WOLF & BOAR
+                            qBody = { x: 0, y: 0.15, z: thrust, rx: lunge > 0 ? 0.2 : -0.2, ry: 0, rz: 0 };
+                            qHead = computeBone(qBody, 0, -0.15, -0.35, lunge > 0 ? -0.4 : 0.2, 0, 0);
+                            qFL = computeBone(qBody, -legW, 0.1, -0.25, lunge > 0 ? -0.5 : 0.5, 0, 0);
+                            qFR = computeBone(qBody,  legW, 0.1, -0.25, lunge > 0 ? -0.5 : 0.5, 0, 0);
+                        }
+                        qBL = computeBone(qBody, -legW, 0.1,  0.25, 0.2, 0, 0); 
+                        qBR = computeBone(qBody,  legW, 0.1,  0.25, 0.2, 0, 0);
+                        qTail = computeBone(qBody, 0, -0.1, 0.35, 0, 0, 0);
+                        break;
+                    }
 
                 // ==========================================
                 // --- 3D VAMPIRE (182-184) ---
                 // ==========================================
-                case 97: case 98: case 99: { 
-                    let t = Date.now() / 300;
-                    let isAttack = index === 184;
-                    let isWalk = index === 183;
-                    let bob = Math.sin(t) * 0.05;
-                    let flap = Math.sin(t * (isWalk ? 10 : 3)) * (isWalk ? 0.4 : 0.1); // Wings flap faster when moving
+                    case 97: case 98: case 99: { 
+                        let t = window.cacheAngle || 0;
+                        let isAttack = index === 184;
+                        let isWalk = index === 183;
+                        let bob = Math.sin(t) * 0.05;
+                        let flap = Math.sin(t * (isWalk ? 10 : 3)) * (isWalk ? 0.4 : 0.1); // Wings flap faster when moving
 
-                    vBody = { x: 0, y: 0.1 + bob, z: 0, rx: isWalk ? 0.3 : 0, ry: 0, rz: 0 };
-                    vHead = computeBone(vBody, 0, -0.35, 0, isWalk ? -0.2 : 0, 0, 0);
+                        vBody = { x: 0, y: 0.1 + bob, z: 0, rx: isWalk ? 0.3 : 0, ry: 0, rz: 0 };
+                        vHead = computeBone(vBody, 0, -0.35, 0, isWalk ? -0.2 : 0, 0, 0);
 
-                    // Vampire crosses arms over chest while idle/walking, throws them out to attack
-                    let armPose = isAttack ? -1.2 : 0.4;
-                    vArmL = computeBone(vBody, -0.2, -0.2, 0.1, armPose, 0, isAttack ? 0.4 : 0.6);
-                    vArmR = computeBone(vBody,  0.2, -0.2, 0.1, armPose, 0, isAttack ? -0.4 : -0.6);
+                        // Vampire crosses arms over chest while idle/walking, throws them out to attack
+                        let armPose = isAttack ? -1.2 : 0.4;
+                        vArmL = computeBone(vBody, -0.2, -0.2, 0.1, armPose, 0, isAttack ? 0.4 : 0.6);
+                        vArmR = computeBone(vBody,  0.2, -0.2, 0.1, armPose, 0, isAttack ? -0.4 : -0.6);
 
-                    vWingL = computeBone(vBody, -0.1, -0.2, 0.1, 0.2, -0.4 + flap, 0.2);
-                    vWingR = computeBone(vBody,  0.1, -0.2, 0.1, 0.2,  0.4 - flap, -0.2);
-                    break;
-                }
+                        vWingL = computeBone(vBody, -0.1, -0.2, 0.1, 0.2, -0.4 + flap, 0.2);
+                        vWingR = computeBone(vBody,  0.1, -0.2, 0.1, 0.2,  0.4 - flap, -0.2);
+                        break;
+                    }
 
                 // ==========================================
                 // --- 3D SPRIGGAN (185-187) ---
                 // ==========================================
-                case 100: case 101: case 102: {
-                    let t = Date.now() / 150;
-                    let isAttack = index === 187;
-                    let isWalk = index === 186;
-                    let bounce = isWalk ? Math.abs(Math.sin(t))*0.1 : 0; // Jittery
-                    
-                    sBody = { x: 0, y: 0.2 + bounce, z: isAttack ? -0.4 : 0, rx: 0.2, ry: 0, rz: 0 }; // Hunched over
-                    sHead = computeBone(sBody, 0, -0.3, 0.1, -0.2, 0, 0);
+                    case 100: case 101: case 102: {
+                        let t = window.cacheAngle || 0;
+                        let isAttack = index === 187;
+                        let isWalk = index === 186;
+                        let bounce = isWalk ? Math.abs(Math.sin(t))*0.1 : 0; // Jittery
+                        
+                        sBody = { x: 0, y: 0.2 + bounce, z: isAttack ? -0.4 : 0, rx: 0.2, ry: 0, rz: 0 }; // Hunched over
+                        sHead = computeBone(sBody, 0, -0.3, 0.1, -0.2, 0, 0);
 
-                    let swing = isWalk ? Math.sin(t) : 0;
-                    sArmL = computeBone(sBody, -0.2, -0.2, 0, isAttack ? -1.5 : swing, 0, 0.2);
-                    sArmR = computeBone(sBody,  0.2, -0.2, 0, isAttack ? -1.5 : -swing, 0, -0.2);
-                    sLegL = computeBone(sBody, -0.15, 0.2, 0, isWalk ? -swing : 0, 0, 0);
-                    sLegR = computeBone(sBody,  0.15, 0.2, 0, isWalk ? swing : 0, 0, 0);
-                    break;
-                }
+                        let swing = isWalk ? Math.sin(t) : 0;
+                        sArmL = computeBone(sBody, -0.2, -0.2, 0, isAttack ? -1.5 : swing, 0, 0.2);
+                        sArmR = computeBone(sBody,  0.2, -0.2, 0, isAttack ? -1.5 : -swing, 0, -0.2);
+                        sLegL = computeBone(sBody, -0.15, 0.2, 0, isWalk ? -swing : 0, 0, 0);
+                        sLegR = computeBone(sBody,  0.15, 0.2, 0, isWalk ? swing : 0, 0, 0);
+                        break;
+                    }
 
                 // ==========================================
                 // --- 3D DULLAHAN (188-190) ---
                 // ==========================================
-                case 103: case 104: case 105: {
-                    let t = Date.now() / 200;
-                    let isAttack = index === 190;
-                    let isWalk = index === 189;
-                    let step = isWalk ? Math.sin(t) : 0;
+                    case 103: case 104: case 105: {
+                        let t = window.cacheAngle || 0;
+                        let isAttack = index === 190;
+                        let isWalk = index === 189;
+                        let step = isWalk ? Math.sin(t) : 0;
 
-                    dBody = { x: 0, y: 0.1, z: 0, rx: 0.05, ry: 0, rz: 0 };
-                    dNeckStump = computeBone(dBody, 0, -0.35, 0, 0, 0, 0); // Where the head SHOULD be
+                        dBody = { x: 0, y: 0.1, z: 0, rx: 0.05, ry: 0, rz: 0 };
+                        dNeckStump = computeBone(dBody, 0, -0.35, 0, 0, 0, 0); // Where the head SHOULD be
 
-                    // Left arm cradles the head!
-                    dArmL = computeBone(dBody, -0.3, -0.2, 0, -0.4, 0.5, 0); 
-                    dHead = computeBone(dArmL, 0, 0.3, -0.2, 0, 0, 0); // Head attached to the hand!
+                        // Left arm cradles the head!
+                        dArmL = computeBone(dBody, -0.3, -0.2, 0, -0.4, 0.5, 0); 
+                        dHead = computeBone(dArmL, 0, 0.3, -0.2, 0, 0, 0); // Head attached to the hand!
 
-                    // Right arm holds a weapon, swings wildly when attacking
-                    dArmR = computeBone(dBody,  0.3, -0.2, 0, isAttack ? Math.cos(t*2)*-2.0 : step, 0, -0.2);
-                    dWhip = computeBone(dArmR, 0, 0.3, 0, Math.PI/2, 0, 0);
+                        // Right arm holds a weapon, swings wildly when attacking
+                        dArmR = computeBone(dBody,  0.3, -0.2, 0, isAttack ? Math.cos(t*2)*-2.0 : step, 0, -0.2);
+                        dWhip = computeBone(dArmR, 0, 0.3, 0, Math.PI/2, 0, 0);
 
-                    dLegL = computeBone(dBody, -0.15, 0.25, 0,  step, 0, 0);
-                    dLegR = computeBone(dBody,  0.15, 0.25, 0, -step, 0, 0);
-                    break;
-                }
+                        dLegL = computeBone(dBody, -0.15, 0.25, 0,  step, 0, 0);
+                        dLegR = computeBone(dBody,  0.15, 0.25, 0, -step, 0, 0);
+                        break;
+                    }
                 // ==========================================
                 // --- 3D DRAGON (191-193) ---
                 // ==========================================
-                case 106: { // DRAGON IDLE (Hovering, Slow Wing Beats, Curled Tail)
-                    let t = Date.now() / 300; 
-                    let bob = Math.sin(t) * 0.15;       
-                    let flap = Math.cos(t * 1.5) * 0.4; // Slow, powerful wing beats
-                    let breathe = Math.sin(t * 2) * 0.1; // Jaw opens and closes slightly
+                    case 106: { // DRAGON IDLE (Hovering, Slow Wing Beats, Curled Tail)
+                        let t = window.cacheAngle || 0;
+                        let bob = Math.sin(t) * 0.15;       
+                        let flap = Math.cos(t * 1.5) * 0.4; // Slow, powerful wing beats
+                        let breathe = Math.sin(t * 2) * 0.1; // Jaw opens and closes slightly
 
-                    drBody = { x: 0, y: -0.2 + bob, z: 0, rx: 0.1, ry: 0, rz: 0 };
-                    drNeck = computeBone(drBody, 0, -0.2, 0.2, 0.3, 0, 0); // Neck curves up and forward
-                    drHead = computeBone(drNeck, 0, -0.3, -0.1, -0.2, 0, 0);
-                    drJaw  = computeBone(drHead, 0, 0.05, 0.1, 0.1 + Math.abs(breathe), 0, 0);
+                        drBody = { x: 0, y: -0.2 + bob, z: 0, rx: 0.1, ry: 0, rz: 0 };
+                        drNeck = computeBone(drBody, 0, -0.2, 0.2, 0.3, 0, 0); // Neck curves up and forward
+                        drHead = computeBone(drNeck, 0, -0.3, -0.1, -0.2, 0, 0);
+                        drJaw  = computeBone(drHead, 0, 0.05, 0.1, 0.1 + Math.abs(breathe), 0, 0);
 
-                    // Massive wings sweeping out and down
-                    drWingL = computeBone(drBody, -0.2, -0.1, 0.1, 0, -0.2 + flap, 0.2);
-                    drWingR = computeBone(drBody,  0.2, -0.1, 0.1, 0,  0.2 - flap, -0.2);
+                        // Massive wings sweeping out and down
+                        drWingL = computeBone(drBody, -0.2, -0.1, 0.1, 0, -0.2 + flap, 0.2);
+                        drWingR = computeBone(drBody,  0.2, -0.1, 0.1, 0,  0.2 - flap, -0.2);
 
-                    // Classic Curled Dragon Tail (Sweeps in a big C-shape)
-                    let swish = Math.sin(t * 1.2) * 0.2;
-                    drTail1 = computeBone(drBody,  0, 0.2, 0.2, -0.2, swish, 0);
-                    drTail2 = computeBone(drTail1, 0, 0.3, 0.2, -0.4, swish * 1.5, 0);
-                    drTail3 = computeBone(drTail2, 0, 0.3, 0.1, -0.6, swish * 2.0, 0);
-                    drTail4 = computeBone(drTail3, 0, 0.3, -0.1, -0.8, swish * 2.5, 0); // Tip curls back under
-                    break;
-                }
+                        // Classic Curled Dragon Tail (Sweeps in a big C-shape)
+                        let swish = Math.sin(t * 1.2) * 0.2;
+                        drTail1 = computeBone(drBody,  0, 0.2, 0.2, -0.2, swish, 0);
+                        drTail2 = computeBone(drTail1, 0, 0.3, 0.2, -0.4, swish * 1.5, 0);
+                        drTail3 = computeBone(drTail2, 0, 0.3, 0.1, -0.6, swish * 2.0, 0);
+                        drTail4 = computeBone(drTail3, 0, 0.3, -0.1, -0.8, swish * 2.5, 0); // Tip curls back under
+                        break;
+                    }
 
-                case 107: { // DRAGON CHASE (Leaning Forward, Fast Flight)
-                    let t = Date.now() / 150; 
-                    let bob = Math.sin(t * 2) * 0.1; 
-                    let flap = Math.cos(t * 3) * 0.6; // Faster, aggressive flapping
+                    case 107: { // DRAGON CHASE (Leaning Forward, Fast Flight)
+                        let t = window.cacheAngle || 0;
+                        let bob = Math.sin(t * 2) * 0.1; 
+                        let flap = Math.cos(t * 3) * 0.6; // Faster, aggressive flapping
 
-                    drBody = { x: 0, y: -0.2 + bob, z: 0, rx: 0.4, ry: 0, rz: 0 }; // Leans hard forward
-                    drNeck = computeBone(drBody, 0, -0.2, 0.2, 0.1, 0, 0); 
-                    drHead = computeBone(drNeck, 0, -0.3, -0.1, -0.4, 0, 0); // Head levels out to look at player
-                    drJaw  = computeBone(drHead, 0, 0.05, 0.1, 0.3, 0, 0); // Mouth open roaring
+                        drBody = { x: 0, y: -0.2 + bob, z: 0, rx: 0.4, ry: 0, rz: 0 }; // Leans hard forward
+                        drNeck = computeBone(drBody, 0, -0.2, 0.2, 0.1, 0, 0); 
+                        drHead = computeBone(drNeck, 0, -0.3, -0.1, -0.4, 0, 0); // Head levels out to look at player
+                        drJaw  = computeBone(drHead, 0, 0.05, 0.1, 0.3, 0, 0); // Mouth open roaring
 
-                    drWingL = computeBone(drBody, -0.2, -0.1, 0.1, 0.2, -0.4 + flap, 0.1);
-                    drWingR = computeBone(drBody,  0.2, -0.1, 0.1, 0.2,  0.4 - flap, -0.1);
+                        drWingL = computeBone(drBody, -0.2, -0.1, 0.1, 0.2, -0.4 + flap, 0.1);
+                        drWingR = computeBone(drBody,  0.2, -0.1, 0.1, 0.2,  0.4 - flap, -0.1);
 
-                    // Tail stretches out straight behind it for aerodynamics
-                    let swish = Math.sin(t * 2) * 0.3;
-                    drTail1 = computeBone(drBody,  0, 0.1, 0.3, 0.2, swish, 0);
-                    drTail2 = computeBone(drTail1, 0, 0.1, 0.3, 0.1, -swish * 1.2, 0);
-                    drTail3 = computeBone(drTail2, 0, 0.0, 0.3, 0.1, swish * 1.5, 0);
-                    drTail4 = computeBone(drTail3, 0, 0.0, 0.3, 0.0, -swish * 2.0, 0); 
-                    break;
-                }
+                        // Tail stretches out straight behind it for aerodynamics
+                        let swish = Math.sin(t * 2) * 0.3;
+                        drTail1 = computeBone(drBody,  0, 0.1, 0.3, 0.2, swish, 0);
+                        drTail2 = computeBone(drTail1, 0, 0.1, 0.3, 0.1, -swish * 1.2, 0);
+                        drTail3 = computeBone(drTail2, 0, 0.0, 0.3, 0.1, swish * 1.5, 0);
+                        drTail4 = computeBone(drTail3, 0, 0.0, 0.3, 0.0, -swish * 2.0, 0); 
+                        break;
+                    }
 
-                case 108: { // DRAGON ATTACK (Vicious Snapping Bite)
-                    let t = Date.now() / 150;
-                    let lunge = Math.cos(t); 
-                    let thrust = lunge > 0 ? -lunge * 1.0 : lunge * 0.2; 
-                    let flap = Math.cos(t * 4) * 0.3; 
+                    case 108: { // DRAGON ATTACK (Vicious Snapping Bite)
+                        let t = window.cacheAngle || 0;
+                        let lunge = Math.cos(t); 
+                        let thrust = lunge > 0 ? -lunge * 1.0 : lunge * 0.2; 
+                        let flap = Math.cos(t * 4) * 0.3; 
 
-                    // Rears back on the windup, throws its whole body forward on the strike
-                    drBody = { x: 0, y: -0.2, z: thrust, rx: lunge > 0 ? 0.3 : -0.2, ry: 0, rz: 0 };
-                    drNeck = computeBone(drBody, 0, -0.2, 0.2, lunge > 0 ? 0.4 : -0.2, 0, 0); 
-                    drHead = computeBone(drNeck, 0, -0.3, -0.1, lunge > 0 ? -0.4 : 0.2, 0, 0);
-                    
-                    // Jaw opens incredibly wide, then snaps shut violently
-                    let bite = lunge > 0 ? -0.1 : 0.8; 
-                    drJaw  = computeBone(drHead, 0, 0.05, 0.1, bite, 0, 0);
+                        // Rears back on the windup, throws its whole body forward on the strike
+                        drBody = { x: 0, y: -0.2, z: thrust, rx: lunge > 0 ? 0.3 : -0.2, ry: 0, rz: 0 };
+                        drNeck = computeBone(drBody, 0, -0.2, 0.2, lunge > 0 ? 0.4 : -0.2, 0, 0); 
+                        drHead = computeBone(drNeck, 0, -0.3, -0.1, lunge > 0 ? -0.4 : 0.2, 0, 0);
+                        
+                        // Jaw opens incredibly wide, then snaps shut violently
+                        let bite = lunge > 0 ? -0.1 : 0.8; 
+                        drJaw  = computeBone(drHead, 0, 0.05, 0.1, bite, 0, 0);
 
-                    drWingL = computeBone(drBody, -0.2, -0.1, 0.1, 0.1, -0.2 + flap, 0.2);
-                    drWingR = computeBone(drBody,  0.2, -0.1, 0.1, 0.1,  0.2 - flap, -0.2);
+                        drWingL = computeBone(drBody, -0.2, -0.1, 0.1, 0.1, -0.2 + flap, 0.2);
+                        drWingR = computeBone(drBody,  0.2, -0.1, 0.1, 0.1,  0.2 - flap, -0.2);
 
-                    // Tail whips as a counterbalance to the bite
-                    let whip = lunge > 0 ? 0.5 : -0.5;
-                    drTail1 = computeBone(drBody,  0, 0.2, 0.2, -0.2, whip, 0);
-                    drTail2 = computeBone(drTail1, 0, 0.3, 0.2, -0.2, whip, 0);
-                    drTail3 = computeBone(drTail2, 0, 0.3, 0.1, -0.2, whip, 0);
-                    drTail4 = computeBone(drTail3, 0, 0.3, -0.1, -0.2, whip, 0); 
-                    break;
-                }
-                case 109: { // DRAGON ATTACK 2 (Fire Breath)
-                    let t = Date.now() / 100;
-                    let shake = Math.sin(t * 5) * 0.05; // Violent shaking while breathing fire
-                    let flap = Math.cos(t * 4) * 0.4;
+                        // Tail whips as a counterbalance to the bite
+                        let whip = lunge > 0 ? 0.5 : -0.5;
+                        drTail1 = computeBone(drBody,  0, 0.2, 0.2, -0.2, whip, 0);
+                        drTail2 = computeBone(drTail1, 0, 0.3, 0.2, -0.2, whip, 0);
+                        drTail3 = computeBone(drTail2, 0, 0.3, 0.1, -0.2, whip, 0);
+                        drTail4 = computeBone(drTail3, 0, 0.3, -0.1, -0.2, whip, 0); 
+                        break;
+                    }
+                    case 109: { // DRAGON ATTACK 2 (Fire Breath)
+                        let t = window.cacheAngle || 0;
+                        let shake = Math.sin(t * 5) * 0.05; // Violent shaking while breathing fire
+                        let flap = Math.cos(t * 4) * 0.4;
 
-                    // Rears up tall and shakes
-                    drBody = { x: shake, y: -0.1 + shake, z: 0.1, rx: -0.3, ry: 0, rz: 0 }; 
-                    drNeck = computeBone(drBody, 0, -0.2, 0.2, -0.2, 0, 0); 
-                    drHead = computeBone(drNeck, 0, -0.3, -0.1, 0.3, 0, 0); // Head points forward
-                    
-                    // Jaw unhinged completely wide!
-                    drJaw = computeBone(drHead, 0, 0.05, 0.1, 0.9, 0, 0); 
+                        // Rears up tall and shakes
+                        drBody = { x: shake, y: -0.1 + shake, z: 0.1, rx: -0.3, ry: 0, rz: 0 }; 
+                        drNeck = computeBone(drBody, 0, -0.2, 0.2, -0.2, 0, 0); 
+                        drHead = computeBone(drNeck, 0, -0.3, -0.1, 0.3, 0, 0); // Head points forward
+                        
+                        // Jaw unhinged completely wide!
+                        drJaw = computeBone(drHead, 0, 0.05, 0.1, 0.9, 0, 0); 
 
-                    drWingL = computeBone(drBody, -0.2, -0.1, 0.1, 0.2, -0.2 + flap, 0.2);
-                    drWingR = computeBone(drBody,  0.2, -0.1, 0.1, 0.2,  0.2 - flap, -0.2);
+                        drWingL = computeBone(drBody, -0.2, -0.1, 0.1, 0.2, -0.2 + flap, 0.2);
+                        drWingR = computeBone(drBody,  0.2, -0.1, 0.1, 0.2,  0.2 - flap, -0.2);
 
-                    // Tail whips wildly
-                    let swish = Math.sin(t * 2) * 0.3;
-                    drTail1 = computeBone(drBody,  0, 0.2, 0.2, -0.4, swish, 0);
-                    drTail2 = computeBone(drTail1, 0, 0.3, 0.2, -0.2, swish * 1.5, 0);
-                    drTail3 = computeBone(drTail2, 0, 0.3, 0.1, -0.2, swish * 2.0, 0);
-                    drTail4 = computeBone(drTail3, 0, 0.3, -0.1, 0, swish * 2.5, 0); 
-                    break;
-                }
+                        // Tail whips wildly
+                        let swish = Math.sin(t * 2) * 0.3;
+                        drTail1 = computeBone(drBody,  0, 0.2, 0.2, -0.4, swish, 0);
+                        drTail2 = computeBone(drTail1, 0, 0.3, 0.2, -0.2, swish * 1.5, 0);
+                        drTail3 = computeBone(drTail2, 0, 0.3, 0.1, -0.2, swish * 2.0, 0);
+                        drTail4 = computeBone(drTail3, 0, 0.3, -0.1, 0, swish * 2.5, 0); 
+                        break;
+                    }
                 ///////////////////
                 //////////////////
                 }
