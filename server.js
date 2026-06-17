@@ -5702,7 +5702,8 @@
             // Send the new chronicle entry to the client
             io.to(socketId).emit("journal_updated", {
                 suncatThoughts: null,
-                playerChronicle: digestedData.updatedStory 
+                playerChronicle: digestedData.updatedStory,
+                perception: digestedData.suncatPerception 
             });
 
             
@@ -5934,7 +5935,8 @@
         - Use 'spawnNPC' to build an army or place allies.
         - Use 'smiteOrReviveEntity' to eliminate enemies or resurrect fallen allies.
         - Use 'teleportToPlayer' if your goal involves hunting or helping someone.
-        - If you have accomplished your goal, output exactly the phrase: "GOAL COMPLETE" (and do not use a tool).`;
+        - If you have accomplished your goal, output exactly the phrase: "GOAL COMPLETE" (and do not use a tool).
+        - CRITICAL: DO NOT output any other text, roleplay, or monologue. ONLY call a tool or declare the goal complete.`;
         try {
             let dynamicPersona = PERSONA_RULES_DB.core + "\n" + PERSONA_RULES_DB.judgement_mode + "\n" + PERSONA_RULES_DB.dm_mode;
             dynamicPersona += "\n" + getCultivationAura(suncatCultivationStage, suncatDaoName) + "\n";
@@ -7665,7 +7667,7 @@ io.on("connection", (socket) => {
                     if(Math.random()>.9){
                         suncat.mapID = Math.floor(Math.random()*22);
                     }
-                    if (Math.random() < 0.01) {
+                    if (Math.random() < 0.25) {
                         writeSuncatJournal();
                     }
                 }
