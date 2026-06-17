@@ -2550,30 +2550,9 @@
         // 2. Tilt the camera up/down based on the NPC's TRUE 3D height!
         let imageIndex = Number(this.type);
         
-        // ---> SYNC WITH 3D RENDERER UPGRADES <---
+        // 3D Update <---
         // We must calculate pitch using the 3D model's config, not the 2D map config!
-        if (imageIndex === 23) imageIndex = 108;
-        if (imageIndex === 88) imageIndex = 140; 
-        if (imageIndex === 54) imageIndex = 111; 
-        if (imageIndex === 57 || imageIndex === 57.1) imageIndex = 114;
-        if (imageIndex === 56) imageIndex = 117; // Imp upgrade
-        if (imageIndex === 79) imageIndex = 143;
-        if (imageIndex === 81) imageIndex = 120;
-        if (imageIndex === 82) imageIndex = 123;
-        if (imageIndex === 86) imageIndex = 126;
-        if (imageIndex === 61 || imageIndex === 61.1) imageIndex = 149;
-        if (imageIndex === 33 || imageIndex === 33.1) imageIndex = 129;
-        if (imageIndex === 60 || imageIndex === 60.1) imageIndex = 131;
-        if (imageIndex === 74 || imageIndex === 74.1) imageIndex = 134;
-        if (imageIndex === 42 || imageIndex === 42.1) imageIndex = 155;
-        if (imageIndex === 85) imageIndex = 164;
-        if (imageIndex === 75 || imageIndex === 75.1) imageIndex = 161;
-        if (imageIndex === 62 || imageIndex === 62.1) imageIndex = 173;
-        if (imageIndex === 76 || imageIndex === 76.1) imageIndex = 176;
-        if (imageIndex === 48 || imageIndex === 48.1) imageIndex = 179;
-        if (imageIndex === 34 || imageIndex === 34.1) imageIndex = 182;
-        if (imageIndex === 999 || imageIndex === 61391) imageIndex = 185;
-
+        imageIndex = getUpgradedImageIndex(imageIndex);
         // Fetch the config using the UPGRADED 3D index
         let config = dungeon.getSpriteConfig(this, 0, imageIndex); 
         
@@ -3192,25 +3171,25 @@
         // =========================================================
         // 6. COLLISION & AUTO-BATTLE RESOLUTION
         // =========================================================
-        let distToTarget = Math.sqrt(Math.pow(targetX - this.x, 2) + Math.pow(targetY - this.y, 2));
+            let distToTarget = Math.sqrt(Math.pow(targetX - this.x, 2) + Math.pow(targetY - this.y, 2));
 
-        // --- FIX 1: THE COMBAT ANCHOR ---
-        // If they are recovering from a strike, they must hold their ground!
-        // This stops the enemy from pushing them across the room.
-        if (this.combatCooldown > 0) {
-            this.speed = 0.25; // Just enough to allow slight flocking/sliding, but practically anchored
-        } 
-        // --- THE DYNAMIC FRICTION ---
-        else if (this.state === 'chasing' && isChasingNPC) {
-            let strikeRange = 1.5;  
+            // --- FIX 1: THE COMBAT ANCHOR ---
+            // If they are recovering from a strike, they must hold their ground!
+            // This stops the enemy from pushing them across the room.
+            if (this.combatCooldown > 0) {
+                this.speed = 0.25; // Just enough to allow slight flocking/sliding, but practically anchored
+            } 
+            // --- THE DYNAMIC FRICTION ---
+            else if (this.state === 'chasing' && isChasingNPC) {
+                let strikeRange = 1.5;  
 
-            if (distToTarget <= strikeRange) {
-                this.speed = 1; // Arrived. Lock in for the strike.
-            } else if (distToTarget < 2.0) {
-                // Controlled approach. Fast enough to push forward, slow enough not to overshoot.
-                this.speed = 2.0; 
+                if (distToTarget <= strikeRange) {
+                    this.speed = 1; // Arrived. Lock in for the strike.
+                } else if (distToTarget < 2.0) {
+                    // Controlled approach. Fast enough to push forward, slow enough not to overshoot.
+                    this.speed = 2.0; 
+                }
             }
-        }
 
             // SCENARIO A: NPC CAUGHT AN ENEMY NPC
             if (isChasingNPC && currentPrey) {
@@ -15963,9 +15942,30 @@
 
                             }
                             
-                          //  else if(this.currentSpeaker.isBoss){
-                          //      drawPortrait(this.currentSpeaker.type, -.01, .013, 1, cardToDraw);
-                           // }
+                          else if(this.currentSpeaker.alignment === 'foe_coward') {
+                            let imageIndex = this.currentSpeaker.type;
+                            imageIndex = getUpgradedImageIndex(imageIndex);
+                            
+                            // 1. Fetch the exact 3D scale and hover properties from your master config
+                            let config = this.getSpriteConfig(this.currentSpeaker, 0, imageIndex);
+                            
+                            // 2. Define your baseline UI coordinates
+                            let baseX = -0.01;
+                            let baseY = 0.013;
+                            
+                            // 3. Translate the 3D properties to the 2D Canvas!
+                            // In your 3D engine, negative hover means floating UP. 
+                            // In 2D canvas, a smaller Y coordinate is also UP. 
+                            // Adding the negative hover naturally pushes the 2D portrait up the screen!
+                            let portraitY = baseY + (config.hover * 0.05); 
+                            
+                            // 4. Apply the 3D scale
+                            // (Note: If the pure 3D scale feels a bit too small for the dialogue box, 
+                            // you can multiply it here, e.g., config.scale * 1.2)
+                            let portraitScale = config.scale;
+                            
+                            drawPortrait(imageIndex, baseX, portraitY, portraitScale, cardToDraw);
+                        }
                            // else{
                                 
                               //  drawPortrait(this.currentSpeaker.type, 1.55, 3.1, .69, cardToDraw);
@@ -46443,7 +46443,35 @@
         tX = oldTX; tY = oldTY; tL = oldTL; tH = oldTH;
         delete window.cacheAngle;
     }
+    function getUpgradedImageIndex(imageIndex) {
+        const upgradeMap = {
+            23: 108,
+            88: 140,
+            54: 111,
+            57: 114, "57.1": 114,
+            56: 117, // Imp upgrade
+            79: 143,
+            81: 120,
+            82: 123,
+            86: 126,
+            61: 149, "61.1": 149,
+            33: 129, "33.1": 129,
+            60: 131, "60.1": 131,
+            74: 134, "74.1": 134,
+            42: 155, "42.1": 155,
+            85: 164,
+            75: 161, "75.1": 161,
+            62: 173, "62.1": 173,
+            76: 176, "76.1": 176,
+            48: 179, "48.1": 179,
+            34: 182, "34.1": 182,
+            999: 185, 61391: 185
+        };
 
+        // If the imageIndex exists in our map, return the upgraded 3D version.
+        // If it doesn't exist, just return the original imageIndex unchanged.
+        return upgradeMap[imageIndex] !== undefined ? upgradeMap[imageIndex] : imageIndex;
+    }
 
     // DRAWS BOTH 3D AND 2D
         function drawPortrait(index, x, y, z, card = 0, direction = 0, frameOverride = -1) {
