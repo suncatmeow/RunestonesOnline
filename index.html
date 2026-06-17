@@ -198,7 +198,7 @@
           64: { type: 'item_buff', name: 'Shield',      buffStat: 1, amount: 1, duration: 1800, visual: 'arc', auraColor: 'rgba(0, 255, 0, 0.6)' },
           36: { type: 'item_buff', name: 'Hourglass',   buffStat: 3, amount: 1, duration: 1800, visual: 'arc', auraColor: 'rgba(0, 0, 255, 0.6)' },
           22: { type: 'item_buff', name: 'Wand',        buffStat: 2, amount: 1, duration: 1800, visual: 'arc', auraColor: 'rgba(255, 0, 0, 0.6)' },
-          72: { type: 'item_buff', name: 'Amulet',      buffStat: '2', amount: 3, duration: 1800, visual: 'arc', auraColor: 'rgba(255, 255, 255, 0.6)' },
+          27: { type: 'item_buff', name: 'Amulet',      buffStat: '2', amount: 3, duration: 1800, visual: 'arc', auraColor: 'rgba(255, 255, 255, 0.6)' },
           31: { type: 'item_buff', name: 'Tome',        multiStat: [{stat: 2, amount: 6}, {stat: 0, amount: -1}, {stat: 3, amount: -3}], duration: 1800, visual: 'arc', auraColor: 'rgba(255, 255, 255, 0.6)' },
 
           72: { type: 'item_buff', name: 'Magic Ring',  buffStat: 'all', amount: 2, duration: 1800, visual: 'arc', auraColor: 'rgba(255, 255, 255, 0.6)' },
@@ -1327,15 +1327,34 @@
                 localStorage.setItem('suncat_chronicle', JSON.stringify(suncatChronicle));
             }
             
+            // --- ADD THIS NEW BLOCK ---
+            // Instantly update the UI Card if Suncat changed his opinion!
+            if (data.perception) {
+                myLivePerception = data.perception;
+                
+                if (typeof Dungeon !== 'undefined' && Dungeon.uiPlayerCard) {
+                    Dungeon.uiPlayerCard.desc = myLivePerception;
+                }
+                
+                
+                localStorage.setItem('runestones_perception', myLivePerception);
+                console.log("Live Perception Updated:", myLivePerception);
+            }
+            // --------------------------
+            
             console.log("Memory synchronized and saved to local storage.");
-          });
+        });
       
         socket.on('stats_sync_reply', (data) => {
-            myLiveFavor = data.favor;
-            myLiveMana = data.mana;
-            myLiveTiles = data.tiles;
             myLivePerception = data.perception;
-          });
+
+            // Update the Player Card UI immediately
+            if (typeof Dungeon !== 'undefined' && Dungeon.uiPlayerCard) {
+                Dungeon.uiPlayerCard.desc = myLivePerception;
+            }
+            
+            
+        });
         socket.on("new_quest_objective", (data) => {
           currentQuest = data.questText;
           if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('heal'); // Play a nice sound when getting a quest!
@@ -1512,7 +1531,7 @@
     let myLiveFavor = 0;
     let myLiveMana = 0;
     let myLiveTiles = 0;
-    let myLivePerception = "Awaiting Suncat's judgment..."; // <-- NEW
+    let myLivePerception = localStorage.getItem('runestones_perception') || "An unpredictable wanderer stepping into the unknown.";
     let playerStoryBeats = []; // The list of Story Objects the player has seen
     const STORY_CAMPAIGN_DB = {
       // === PROLOGUE ===
@@ -4100,10 +4119,12 @@
             let targetAgi = targetCard.rollStat(3) + targetAgiMod;
 
             if (myAgi > targetAgi) {
+                bestTarget.damageFlashTimer = 3;
                 // SUCCESS! Ally gets an instant kill!
                 if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('slash');
                 dungeon.killNPC(bestTarget, false, 'ally_backstab');
             } else {
+                bestTarget.damageFlashTimer = 3;
                 // FAIL! The monster blocks it.
                 if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('block');
                 bestTarget.dir = (bestTarget.dir + 2) % 4; // Target spins around
@@ -4214,9 +4235,11 @@
 
                         if (myAtk > targetDef) {
                             // OVERPOWERED! Instant Kill.
+                            target.damageFlashTimer = 3;
                             dungeon.killNPC(target, false, 'cone_attack');
                         } else {
                             // SURVIVED! Apply Knockback
+                            target.damageFlashTimer = 3;
                             let knockPower = spellData.knockback || 1.0;
                             
                             let pushX = (tDx/tDist) * knockPower;
@@ -4448,6 +4471,7 @@
           }
           this.stat = [[1, 4, 0], [1, 4, 0], [1, 4, 0], [1, 4, 0]]; 
           this.statPoints = 0;
+          this.statProgress = [0, 0, 0, 0];
         Player[0].deck = []; 
         Player[0].hand = [];
         Player[0].aMonster = [];
@@ -4704,6 +4728,7 @@
                 MainQuest: this.MainQuest,
                 name: playerName,
                 sprite: playerSprite,
+                perception: myLivePerception,
                 gd: this.gd,                
                 dSense: this.dSense,        
                 memory: this.memory,        
@@ -4717,6 +4742,7 @@
                 activeSummons: this.activeSummons || [] ,
                 activeEscorts: this.activeEscorts || [], // <--- Add this line
                 stat:this.stat,
+                statProgress: this.statProgress,
                 statPoints:this.statPoints,
                 xpNeeded:this.xpNeeded,
                 activeEscortQuest: this.activeEscortQuest || null,
@@ -4758,6 +4784,7 @@
                 
             this.stat = data.stat; 
             this.statPoints = data.statPoints; 
+            this.statProgress = data.statProgress || [0, 0, 0, 0];
                 // --- NEW: LOAD MASTERY FIRST! ---
                 // We MUST load this before the cards, otherwise the cards won't get their stat buffs when created!
                 this.mastery = data.mastery || {};
@@ -4785,7 +4812,12 @@
                     playerSprite = data.sprite;
                     Player[0].name = data.name; 
                 }
-
+                if (data.perception) {
+                    myLivePerception = data.perception;
+                    if (typeof Player !== 'undefined' && Player[0]) {
+                        Player[0].desc = myLivePerception;
+                    }
+                }
                 // 3. Restore Memory (Dead NPCs)
                 this.memory = { ...this.memory, ...data.memory };
 
@@ -15982,7 +16014,7 @@
 
                             }
                             
-                          else if(this.currentSpeaker.alignment === 'foe_coward'||this.currentSpeaker.state ==='fleeing') {
+                          else if(this.currentSpeaker.alignment === 'foe_coward') {
                             let imageIndex = this.currentSpeaker.type;
                             imageIndex = getUpgradedImageIndex(imageIndex);
                             
@@ -15998,12 +16030,12 @@
                             // In 2D canvas, a smaller Y coordinate is also UP. 
                             // Adding the negative hover naturally pushes the 2D portrait up the screen!
                             let portraitY = baseY + (config.hover * 0.05); 
-                            
                             // 4. Apply the 3D scale
                             // (Note: If the pure 3D scale feels a bit too small for the dialogue box, 
                             // you can multiply it here, e.g., config.scale * 1.2)
                             let portraitScale = config.scale;
-                            
+                            if(imageIndex >=129 || imageIndex <= 131){portraitY = -6;baseX = -6;portraitScale= config.scale*.9}
+
                             drawPortrait(imageIndex, baseX, portraitY, portraitScale, cardToDraw);
                         }
                            // else{
@@ -19131,6 +19163,7 @@
                         let magnitude = atkRoll - defStat; 
                         
                         if (spellData.type === 'debuff') {
+                            npc.damageFlashTimer = 3;
                             npc.applySpell(this.spellId, magnitude);
                             if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('debuff_sound');
                         } else {
@@ -19139,9 +19172,11 @@
                             
                             if (ward) {
                                 ward.hits--; // Armor absorbs the Fireball!
+                                npc.damageFlashTimer = 3;
                                 if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('cancel'); 
                             } else {
                                 // No armor, they burn to ash!
+                                npc.damageFlashTimer = 3;
                                 exploreRef.killNPC(npc, false, 'projectile_spell');
                                 if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('death');
                             }
@@ -19152,7 +19187,7 @@
                     } else {
                         // SPELL RESISTED!
                         if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('cancel');
-
+                        npc.damageFlashTimer = 3
                         let knockPower = spellData.knockback !== undefined ? spellData.knockback : 0.5;
                         
                         // Push direction is based on the projectile's velocity
@@ -29473,7 +29508,7 @@
                     this.stat[2][2]= 0;//modINT
                     this.stat[2][3] = '' + this.stat[2][0] +'d'+ this.stat[2][1];
                     this.stat[3][0]=1;//minAGI
-                    this.stat[3][1] = 20;//maxAGI
+                    this.stat[3][1] = 4;//maxAGI
                     this.stat[3][2]= 0;//modAGI
                     this.stat[3][3] = '' + this.stat[3][0] +'d'+ this.stat[3][1];
                     
@@ -33558,28 +33593,44 @@
                     if (pts > 0) {
                         // --- NEW: THE DICE UPGRADE HELPER ---
                         const upgradeDice = (statIndex) => {
-                            let stat = Dungeon.stat[statIndex];
-                            // stat[0] = Dice Count, stat[1] = Dice Sides, stat[2] = Modifier
+                        let stat = Dungeon.stat[statIndex];
+                        
+                        // Check our NEW permanent tracker, ignoring temporary buffs in stat[2]
+                        if (Dungeon.statProgress[statIndex] >= 3) {
                             
-                            if (stat[2] >= 3) {
-                                // They are at +3! Reset modifier to 0 and upgrade the dice
-                                stat[2] = 0; 
-                                
-                                if (stat[1] === 4) stat[1] = 6;
-                                else if (stat[1] === 6) stat[1] = 8;
-                                else if (stat[1] === 8) stat[1] = 10;
-                                else if (stat[1] === 10) stat[1] = 12;
-                                else if (stat[1] === 12) stat[1] = 20;
-                                else if (stat[1] === 20) {
-                                    // If they maxed out a d20, reset to d4 but ADD another dice (e.g., 2d4)
-                                    stat[1] = 4; 
-                                    stat[0] += 1; 
-                                }
-                            } else {
-                                // Standard upgrade, just add +1 to the modifier
-                                stat[2] += 1;
+                            // 1. Reset the permanent progression tracker
+                            Dungeon.statProgress[statIndex] = 0; 
+                            
+                            // 2. Subtract the permanent +3 from the actual stat modifier.
+                            // We subtract instead of setting to 0 so we don't accidentally delete an active buff!
+                            stat[2] -= 3; 
+                            
+                            // 3. Upgrade the Die
+                            if (stat[1] === 4) stat[1] = 6;
+                            else if (stat[1] === 6) stat[1] = 8;
+                            else if (stat[1] === 8) stat[1] = 10;
+                            else if (stat[1] === 10) stat[1] = 12;
+                            else if (stat[1] === 12) stat[1] = 20;
+                            else if (stat[1] === 20) {
+                                stat[1] = 4; 
+                                stat[0] += 1; 
                             }
-                        };
+                        } else {
+                            // Standard upgrade: Add to BOTH the permanent tracker and the active modifier
+                            Dungeon.statProgress[statIndex] += 1;
+                            stat[2] += 1;
+                        }
+
+                        // --- NEW: FORCE UI UPDATE ---
+                        // Push the updated stats directly into the player card so it renders immediately
+                        if (Dungeon.uiPlayerCard) {
+                            let pCard = Dungeon.uiPlayerCard;
+                            pCard.stat[statIndex][0] = stat[0]; // min
+                            pCard.stat[statIndex][1] = stat[1]; // max
+                            pCard.stat[statIndex][2] = stat[2]; // mod (base + buffs)
+                            pCard.stat[statIndex][3] = `${stat[0]}d${stat[1]}`; // label
+                        }
+                    }
                         // ------------------------------------
 
                         // AGI
@@ -36411,48 +36462,51 @@
         return Math.floor(Math.random() * (max - min + 1)+ min);
         }
     function resizeCanvas(){  //USED IN EVENT LISTENER TO GET NEW WINDOW X,Y(tX,tY)
-        if (typeof isChatActive !== 'undefined' && isChatActive && startGame != 'charSelect') return;
-        
-        // 1. The absolute maximum internal resolution your engine will render.
-        // Tweak this to find your sweet spot between performance and visual fidelity.
-        const MAX_INTERNAL_RES = 1440; 
-        
+        //after event handler detects window resize, sets canvas x,y to window x,y
+        // 1. Get the scaling factor (2 or 3 for iPhones)
+        if (isChatActive&&startGame!='charSelect') return;
+        var dpr = window.devicePixelRatio || 1;
+
         wX = window.innerWidth;
         wY = window.innerHeight;
 
-        // 2. Force the CSS display size to fill the screen
+        // 2. Set actual canvas memory size to scaled value
+        canvas.width = wX * dpr;
+        canvas.height = wY * dpr;
+
+        // 3. Force the CSS size to match the window
         canvas.style.width = wX + "px";
         canvas.style.height = wY + "px";
 
-        // 3. Calculate internal scale to maintain aspect ratio without blowing up memory
-        let scale = Math.min(MAX_INTERNAL_RES / wX, MAX_INTERNAL_RES / wY);
-        if (scale > 1) scale = 1; // Don't upscale if the window is tiny
+        // 4. Normalize the coordinate system
+        ctx.scale(dpr, dpr);
 
-        // 4. Set actual canvas memory size
-        canvas.width = Math.floor(wX * scale);
-        canvas.height = Math.floor(wY * scale);
+        //canvas redimensioned, so re-set values for playing table width and length
+        tX = wX; //table length (actual x determined after funtion)
+        tY = wY; //table height (actual y determined after function)
 
-        // Turn off anti-aliasing so CSS stretching stays beautifully pixelated
-        ctx.imageSmoothingEnabled = false;
-        canvas.style.imageRendering = "pixelated"; // Add this for modern browsers
-
-        // 5. Base your table math on the INTERNAL resolution, NOT the CSS window size!
-        tX = canvas.width; 
-        tY = canvas.height;
-
+        //find largest dimension for tX and tY that is divisible by 2 without remainder
         if (tX % 2 !== 0) tX--;
         if (tY % 2 !== 0) tY--;
+            //make sure table dimensions have ratio of 1:1 for x and y respectively
+            //if table too wide make shorter
+            if (tX > tY){
+            tX = tY;
+            }
+            //if table too high make shorter
+            else if(tY > tX){
+            tY = tX;
+            }
 
-        if (tX > tY) { tX = tY; }
-        else if (tY > tX) { tY = tX; }
+            //find difference between window dimensions and ratio'd table dims for padding
+            var dX = wX - tX;
+            var dY = wY - tY;
+            tL = tX;
+            tH = tY;
 
-        var dX = canvas.width - tX;
-        var dY = canvas.height - tY;
-        tL = tX;
-        tH = tY;
-
-        tX = Math.floor(dX / 2);
-        tY = Math.floor(dY / 2);
+            //find table top-left(0,0) with table centered and equal padding on all sides
+            tX = Math.floor(dX / 2);
+            tY = Math.floor(dY / 2);
 
             //set x,y, width, height,length for all frames[to do]
         /////////ONLINE
@@ -36468,9 +36522,8 @@
         chatInput.style.zIndex = '1000';     // On top of canvas
         document.body.appendChild(chatInput);
         }
-      
         }
-    //
+  
     function drawShape(shape,x,y,z,x1,y1,x2,y2,x3,y3,x4,y4,color,fill,x5 = 0,y5 = 0){
         //frame
         let lx1 = 0;
