@@ -1390,10 +1390,10 @@
             // data.text contains Suncat's full, personalized prophecy!
             console.log("The Oracle speaks:", data.text);
             Interpretation = data.text;
-            // Example: Save it to a global variable so your draw loop can render it
-            // activeTarotReading = data.text;
-        
-          });
+            
+            // --- NEW: Reset the loading flag! ---
+            window.loadingInterpretation = false;
+        });
 
         socket.on("playerMoved", (data) => {
           // 1. Are they on the exact same map as me?
@@ -35132,10 +35132,7 @@
                         Oracle.deck[i].desc = getOracleText(Oracle.deck[i])
                         }
                         Interpretation = "";
-                        socket.emit('request_tarot_reading', {
-                            spreadName: "One Truth",
-                            cards: [{ position: "The Truth", name: Oracle.deck[0].name }]
-                        });
+                        
                     
                     }
                     //cups
@@ -35147,13 +35144,7 @@
                         Oracle.deck[i].desc = getOracleText(Oracle.deck[i])
                         }
                         Interpretation = "";
-                        socket.emit('request_tarot_reading', {
-                            spreadName: "Situation/Challenge",
-                            cards: [
-                                { position: "Situation", name: Oracle.deck[0].name },
-                                { position: "Challenge", name: Oracle.deck[1].name }
-                            ]
-                        });
+                        
                     
                     }
                     //swords
@@ -35165,14 +35156,7 @@
                         Oracle.deck[i].desc = getOracleText(Oracle.deck[i])
                         }
                         Interpretation = "";
-                        socket.emit('request_tarot_reading', {
-                            spreadName: "Past, Present, Future",
-                            cards: [
-                                { position: "Mind (Past)", name: Oracle.deck[0].name },
-                                { position: "Body (Present)", name: Oracle.deck[1].name },
-                                { position: "Spirit (Future)", name: Oracle.deck[2].name }
-                            ]
-                        });
+                        
                     
                     }
                     //pentacles
@@ -35184,15 +35168,7 @@
                         Oracle.deck[i].desc = getOracleText(Oracle.deck[i])
                         }
                         Interpretation = "";
-                        socket.emit('request_tarot_reading', {
-                            spreadName: "Mind, Will, Body, Heart",
-                            cards: [
-                                { position: "Air / Mind", name: Oracle.deck[0].name },
-                                { position: "Fire / Will", name: Oracle.deck[1].name },
-                                { position: "Earth / Body", name: Oracle.deck[2].name },
-                                { position: "Water / Heart", name: Oracle.deck[3].name }
-                            ]
-                        });
+                        
                 
                     }
                     
@@ -35203,8 +35179,97 @@
                 if (pos.x > (tL/10)*0 && pos.x <= (tL/10)*3  && 
                     pos.y > (tH/10)*8.25 && pos.y < (tH/10)*10 ){
                     spread = 0;
+                    window.loadingInterpretation = false;
                     return;
                     }
+                    // --- NEW: "?" BUTTON CHECK ---
+                    // 2. Oracle Request Button (x: 8.5 to 9.5, y: 8.5 to 9.5)
+                    if (Interpretation === "" && !window.loadingInterpretation) {
+                        if ((pos.x > (tL/10)*8.5 && pos.x <= (tL/10)*9.5 && 
+                            pos.y > (tH/10)*8.5 && pos.y < (tH/10)*9.5)||
+                            (spread === 3 &&pos.x > (tL/10)*4.5 && pos.x <= (tL/10)*5.5 && 
+                            pos.y > (tH/10)*8.5 && pos.y < (tH/10)*9.5)) {
+                            window.showTarotPopup = !window.showTarotPopup;
+                            // Play a mysterious sound
+                            if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('chime');
+                            
+                            // Flag it so the UI shows "..." and prevents spam-clicking
+                            window.loadingInterpretation = true;
+                            
+                            // Dispatch the correct payload based on the active spread
+                            if (spread === 1) {
+                                socket.emit('request_tarot_reading', {
+                                    spreadName: "One Truth",
+                                    cards: [{ position: "The Truth", name: Oracle.deck[0].name }]
+                                });
+                            } 
+                            else if (spread === 2) {
+                                socket.emit('request_tarot_reading', {
+                                    spreadName: "Situation/Challenge",
+                                    cards: [
+                                        { position: "Situation", name: Oracle.deck[0].name },
+                                        { position: "Challenge", name: Oracle.deck[1].name }
+                                    ]
+                                });
+                            } 
+                            else if (spread === 3) {
+                                socket.emit('request_tarot_reading', {
+                                    spreadName: "Past, Present, Future",
+                                    cards: [
+                                        { position: "Mind (Past)", name: Oracle.deck[0].name },
+                                        { position: "Body (Present)", name: Oracle.deck[1].name },
+                                        { position: "Spirit (Future)", name: Oracle.deck[2].name }
+                                    ]
+                                });
+                            } 
+                            else if (spread === 4) {
+                                socket.emit('request_tarot_reading', {
+                                    spreadName: "Mind, Will, Body, Heart",
+                                    cards: [
+                                        { position: "Air / Mind", name: Oracle.deck[0].name },
+                                        { position: "Fire / Will", name: Oracle.deck[1].name },
+                                        { position: "Earth / Body", name: Oracle.deck[2].name },
+                                        { position: "Water / Heart", name: Oracle.deck[3].name }
+                                    ]
+                                });
+                            }
+                            return;
+                        }
+                    }
+                    // --- NEW: TAROT SCROLLING & POPUP INPUT ---
+                        if (window.showTarotPopup) {
+                            // MATCH THE NEW RENDER SIZES HERE!
+                            let boxX = 1.0; let boxY = 1.5; let boxW = 8.0; let boxH = 7.0;
+
+                            // --- NEW: Clicked the "X" Close Button ---
+                            if (pos.x > (tL/10)*(boxX + boxW - 0.6) && pos.x < (tL/10)*(boxX + boxW - 0.1) &&
+                                pos.y > (tH/10)*(boxY + 0.1) && pos.y < (tH/10)*(boxY + 0.6)) {
+                                
+                                window.showTarotPopup = false;
+                                if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('cancel');
+                                return;
+                            }
+
+                            // Clicked UP arrow
+                            if (pos.x > (tL/10)*(boxX + boxW - 0.5) && pos.x < (tL/10)*(boxX + boxW) &&
+                                pos.y > (tH/10)*(boxY + 0.8) && pos.y < (tH/10)*(boxY + 1.6)) {
+                                window.tarotScrollY = Math.max(0, window.tarotScrollY - 0.5); // Scroll up
+                                return;
+                            }
+                            
+                            // Clicked DOWN arrow
+                            if (pos.x > (tL/10)*(boxX + boxW - 0.5) && pos.x < (tL/10)*(boxX + boxW) &&
+                                pos.y > (tH/10)*(boxY + boxH - 0.8) && pos.y < (tH/10)*(boxY + boxH)) {
+                                window.tarotScrollY += 0.5; // Scroll down
+                                return;
+                            }
+
+                            // Clicked anywhere ELSE inside the popup box? Block the click so it doesn't hit cards underneath!
+                            if (pos.x > (tL/10)*boxX && pos.x < (tL/10)*(boxX + boxW) &&
+                                pos.y > (tH/10)*boxY && pos.y < (tH/10)*(boxY + boxH)) {
+                                return;
+                            }
+                        }
                     //vvvCHATvvv/////
                     if (gridPos.x >= 0 && gridPos.x <= 3.5 && gridPos.y >= 0 && gridPos.y <= 2.25) {
                         if (Player[1].isCPU === 0&&!Player[0].battleOpponentId&&startGame > 3){return}
@@ -36641,66 +36706,66 @@
         return Math.floor(Math.random() * (max - min + 1)+ min);
         }
      function resizeCanvas(){  //USED IN EVENT LISTENER TO GET NEW WINDOW X,Y(tX,tY)
-    //after event handler detects window resize, sets canvas x,y to window x,y
-    // 1. Get the scaling factor (2 or 3 for iPhones)
-    if (isChatActive&&startGame!='charSelect') return;
-      var dpr = window.devicePixelRatio || 1;
+        //after event handler detects window resize, sets canvas x,y to window x,y
+        // 1. Get the scaling factor (2 or 3 for iPhones)
+        if (isChatActive&&startGame!='charSelect') return;
+        var dpr = window.devicePixelRatio || 1;
 
-      wX = window.innerWidth;
-      wY = window.innerHeight;
+        wX = window.innerWidth;
+        wY = window.innerHeight;
 
-      // 2. Set actual canvas memory size to scaled value
-      canvas.width = wX * dpr;
-      canvas.height = wY * dpr;
+        // 2. Set actual canvas memory size to scaled value
+        canvas.width = wX * dpr;
+        canvas.height = wY * dpr;
 
-      // 3. Force the CSS size to match the window
-      canvas.style.width = wX + "px";
-      canvas.style.height = wY + "px";
+        // 3. Force the CSS size to match the window
+        canvas.style.width = wX + "px";
+        canvas.style.height = wY + "px";
 
-      // 4. Normalize the coordinate system
-      ctx.scale(dpr, dpr);
+        // 4. Normalize the coordinate system
+        ctx.scale(dpr, dpr);
 
-    //canvas redimensioned, so re-set values for playing table width and length
-    tX = wX; //table length (actual x determined after funtion)
-    tY = wY; //table height (actual y determined after function)
+        //canvas redimensioned, so re-set values for playing table width and length
+        tX = wX; //table length (actual x determined after funtion)
+        tY = wY; //table height (actual y determined after function)
 
-    //find largest dimension for tX and tY that is divisible by 2 without remainder
-    if (tX % 2 !== 0) tX--;
-      if (tY % 2 !== 0) tY--;
-        //make sure table dimensions have ratio of 1:1 for x and y respectively
-        //if table too wide make shorter
-        if (tX > tY){
-          tX = tY;
+        //find largest dimension for tX and tY that is divisible by 2 without remainder
+        if (tX % 2 !== 0) tX--;
+        if (tY % 2 !== 0) tY--;
+            //make sure table dimensions have ratio of 1:1 for x and y respectively
+            //if table too wide make shorter
+            if (tX > tY){
+            tX = tY;
+            }
+            //if table too high make shorter
+            else if(tY > tX){
+            tY = tX;
+            }
+
+            //find difference between window dimensions and ratio'd table dims for padding
+            var dX = wX - tX;
+            var dY = wY - tY;
+            tL = tX;
+            tH = tY;
+
+            //find table top-left(0,0) with table centered and equal padding on all sides
+            tX = Math.floor(dX / 2);
+            tY = Math.floor(dY / 2);
+
+            //set x,y, width, height,length for all frames[to do]
+        /////////ONLINE
+        if(startGame == 'explore'||startGame == 'battle'){
+        chatInput.type = 'text';
+        chatInput.style.position = 'fixed';
+        chatInput.style.top = `${tY}px`;        // Put it at the top
+        chatInput.style.left = `${tX}px`;       // Put it at the left
+        chatInput.style.width = `${(tL/10)*7.8}px`;
+        chatInput.style.height = `${(tL/10)*.5}px`;
+        chatInput.style.opacity = `${.01}px`;       // VISIBLE
+        chatInput.style.background = 'rgba(255,255,255,.01)';  // RED BACKGROUND
+        chatInput.style.zIndex = '1000';     // On top of canvas
+        document.body.appendChild(chatInput);
         }
-        //if table too high make shorter
-        else if(tY > tX){
-          tY = tX;
-        }
-
-        //find difference between window dimensions and ratio'd table dims for padding
-        var dX = wX - tX;
-        var dY = wY - tY;
-        tL = tX;
-        tH = tY;
-
-        //find table top-left(0,0) with table centered and equal padding on all sides
-        tX = Math.floor(dX / 2);
-        tY = Math.floor(dY / 2);
-
-        //set x,y, width, height,length for all frames[to do]
-      /////////ONLINE
-      if(startGame == 'explore'||startGame == 'battle'){
-      chatInput.type = 'text';
-      chatInput.style.position = 'fixed';
-      chatInput.style.top = `${tY}px`;        // Put it at the top
-      chatInput.style.left = `${tX}px`;       // Put it at the left
-      chatInput.style.width = `${(tL/10)*7.8}px`;
-      chatInput.style.height = `${(tL/10)*.5}px`;
-      chatInput.style.opacity = `${.01}px`;       // VISIBLE
-      chatInput.style.background = 'rgba(255,255,255,.01)';  // RED BACKGROUND
-      chatInput.style.zIndex = '1000';     // On top of canvas
-      document.body.appendChild(chatInput);
-      }
     }
   
   
@@ -71050,7 +71115,7 @@
                     drawText(6.75,.5,3.25,3.5,"Ask, 'How did the past manifest into my present, and what is forming for the future?'",`gray`,1,'left');
 
                 }
-                //pentacle
+                //pentacles
                 if (spread == 4){
                     drawPortrait(-6,0,0,1)////shield
                     Oracle.deck[0].place(3.88,.075,1,false)
@@ -71075,24 +71140,106 @@
                     
                     drawText(0,0,3,2,"Focus on your current state of balance.",`gray`,1,'center');
                     drawText(7,0,3,2,"Ask, 'How is my energy flowing through my Mind, Heart, Body, and Spirit?'",`gray`,1,'left');
+                } // <--- END SPREAD 4
+
+                if (spread > 0) {
+                // 1. Draw the "?" Button (Always visible once text is loaded)
+                if (Interpretation !== "") {
+                    // Check if it's the exact string "..." that we set when loading
+                    if (Interpretation === "...") {
+                         // Still Loading
+                         drawText(8, 8.75, 2, 0.8, "...", `rgba(255,165,0,${0.6 + 0.4 * Math.sin(Date.now() / 200)})`, 1, 'center');
+                    } else {
+                        if (spread != 3){
+                        // Fully Loaded - Draw the Button!
+                        drawShape('rec', 0, 0, 1, 8.5, 8.5, 1, 1, 0, 0, 0, 0, 'gold', 1);
+                        drawShape('rec', 0, 0, 1, 8.55, 8.55, 0.9, 0.9, 0, 0, 0, 0, window.showTarotPopup ? '#d4af37' : 'rgba(0,0,100,0.8)', 1);
+                        drawText(8.5, 8.65, 1, 1, "?", window.showTarotPopup ? "black" : "gold", 1, 'center');
+                        }
+                        else{
+                        drawShape('rec', 0, 0, 1, 4.5, 8.5, 1, 1, 0, 0, 0, 0, 'gold', 1);
+                        drawShape('rec', 0, 0, 1, 4.55, 8.55, 0.9, 0.9, 0, 0, 0, 0, window.showTarotPopup ? '#d4af37' : 'rgba(0,0,100,0.8)', 1);
+                        drawText(4.5, 8.65, 1, 1, "?", window.showTarotPopup ? "black" : "gold", 1, 'center');
+                        
+                        }
+                    }
+                } 
+                // 2. Initial state - Draw the Request button
+                else if (!window.loadingInterpretation) {
+                    if (spread != 3){
+                        // Fully Loaded - Draw the Button!
+                        drawShape('rec', 0, 0, 1, 8.5, 8.5, 1, 1, 0, 0, 0, 0, 'gold', 1);
+                        drawShape('rec', 0, 0, 1, 8.55, 8.55, 0.9, 0.9, 0, 0, 0, 0, window.showTarotPopup ? '#d4af37' : 'rgba(0,0,100,0.8)', 1);
+                        drawText(8.5, 8.65, 1, 1, "?", window.showTarotPopup ? "black" : "gold", 1, 'center');
+                        }
+                        else{
+                        drawShape('rec', 0, 0, 1, 4.5, 8.5, 1, 1, 0, 0, 0, 0, 'gold', 1);
+                        drawShape('rec', 0, 0, 1, 4.55, 8.55, 0.9, 0.9, 0, 0, 0, 0, window.showTarotPopup ? '#d4af37' : 'rgba(0,0,100,0.8)', 1);
+                        drawText(4.5, 8.65, 1, 1, "?", window.showTarotPopup ? "black" : "gold", 1, 'center');
+                        
+                        }
+                }
+                else {
+                     // Loading state before Interpretation is set
+                     drawText(8, 8.75, 2, 0.8, "...", `rgba(255,165,0,${0.6 + 0.4 * Math.sin(Date.now() / 200)})`, 1, 'center');
+                }
+
+                // ==================================================
+                // --- CLIPPED SCROLL BOX POPUP ---
+                // ==================================================
+                if (window.showTarotPopup && Interpretation !== "" && Interpretation !== "...") {
+                    // Initialize a scroll variable if it doesn't exist
+                    if (window.tarotScrollY === undefined) window.tarotScrollY = 0;
+
+                    // 1. Draw the Background and Frame
+                    // --- CHANGED: Made the box much wider and taller! ---
+                    let boxX = 1.0; let boxY = 1.5; let boxW = 8.0; let boxH = 7.0;
+                    // ----------------------------------------------------
                     
+                    drawShape('rec', 0, 0, 1, boxX, boxY, boxW, boxH, 0,0,0,0, 'rgba(10,10,25,0.95)', 1); // Dark background
+                    drawShape('rec', 0, 0, 1, boxX, boxY, boxW, boxH, 0,0,0,0, '#d4af37', 0); // Gold Border
 
+                    // Draw Header
+                    drawText(boxX, boxY + 0.2, boxW, 0.5, "- SUNCAT'S INTERPRETATION -", 'gold', 1, 'center');
+                    drawShape('lin', 0, 0, 1, boxX + 0.5, boxY + 0.7, boxX + boxW - 0.5, boxY + 0.7, 0,0,0,0, 'rgba(212,175,55,0.5)', 0);
+
+                    // --- NEW: RED "X" CLOSE BUTTON ---
+                    drawShape('rec', 0, 0, 1, boxX + boxW - 0.6, boxY + 0.1, 0.5, 0.5, 0,0,0,0, '#880000', 1);
+                    drawShape('rec', 0, 0, 1, boxX + boxW - 0.6, boxY + 0.1, 0.5, 0.5, 0,0,0,0, '#ff0000', 0);
+                    drawText(boxX + boxW - 0.6, boxY + 0.15, 0.5, 0.4, "X", 'white', 1, 'center');
+                    // ---------------------------------
+
+                    // --- 2. CREATE THE CLIPPING REGION ---
+                    ctx.save(); // Save the canvas state before we cut a hole in it!
+                    ctx.beginPath();
+                    
+                    // Define the window we want to look through (slightly padded inside the box)
+                    let clipX = tX + (tL/10) * (boxX + 0.2);
+                    let clipY = tY + (tH/10) * (boxY + 0.8);
+                    let clipW = (tL/10) * (boxW - 0.4);
+                    let clipH = (tH/10) * (boxH - 1.0);
+                    
+                    ctx.rect(clipX, clipY, clipW, clipH);
+                    ctx.clip(); // <--- ACTIVATE CLIPPING!
+
+                    // --- 3. DRAW THE TEXT INSIDE THE CLIPPING REGION ---
+                    drawText(boxX + 0.2, boxY + 0.8 - window.tarotScrollY, boxW - 0.4, 20.0, Interpretation, 'white', 1, 'left');
+
+                    // --- 4. RESTORE THE CANVAS ---
+                    ctx.restore(); // Turn clipping off so the rest of the game draws normally
+
+                    // --- 5. DRAW SCROLL ARROWS ---
+                    drawShape('rec', 0, 0, 1, boxX + boxW - 0.4, boxY + 1.0, 0.3, 0.5, 0,0,0,0, '#333', 1);
+                    drawText(boxX + boxW - 0.4, boxY + 1.05, 0.3, 0.4, "^", 'gold', 1, 'center');
+                    
+                    drawShape('rec', 0, 0, 1, boxX + boxW - 0.4, boxY + boxH - 0.6, 0.3, 0.5, 0,0,0,0, '#333', 1);
+                    drawText(boxX + boxW - 0.4, boxY + boxH - 0.55, 0.3, 0.4, "v", 'gold', 1, 'center');
                 }
-                if (spread > 0){
-                    if (Interpretation != ""){
-                    if (spread == 3){
-                        drawShape('rec',0,0,1,3.25,7.5,3.75,2.5,0,0,0,0,'rgba(0,0,0,.75)',1)
-                        drawText(3.25,7.5,3.75,2.5,Interpretation,`orange`,1,'center');
-                    }else{
-                        drawShape('rec',0,0,1,6.5,6.9,3.5,2.9,0,0,0,0,'rgba(0,0,0,.75)',1)
-                        drawText(6.5,6.9,3.5,2.9,Interpretation,`orange`,1,'center');
-                    }
-                    }
-                }
+            } // <--- END IF SPREAD > 0
+
                 drawText(0,8.75,2,.8,"<<Back",`rgba(60,60,60,${0.6 + 0.4 * Math.sin(Date.now() / 400)})`,1,'center');
-                        //drawChatInterface();
-
-                }
+                //drawChatInterface();
+            }
             else if (startGame == 'charSelect') {
                 /*switch(ps){
                     case 0:
