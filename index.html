@@ -145,13 +145,14 @@
 
     var actLH = .66; //use/examine/attack button LH
     var actY = cY - actLH-.16;//use/examine/attack Y
-  //GAME STATE VARIABLES
+  ////GAME STATE VARIABLES
     var startGame = 0;
     var preGame = 0;
     let debug = 0;
     let Dbug = 0;
     let songcount = 48;
     var resize = 0;
+    const MOVEMENT_KEYS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'w', 'W', 'a', 'A', 's', 'S', 'd', 'D', 'q', 'Q', 'e', 'E']);
     const eIMG = {BLANK:0,LOGO:1,HEART:2,CHEST:3,TOME:4,SWORD:5,SHIELD:6,STAFF:7,WBOOT:8,GOBLIN:9}
     const eLOOK = {F:0,D:1,M:2,H:3,A:4,R:5,S:6,STAT:7,INDEX:8}//field,deck,monster,hand,action,roll,stone
     const eSTAT = {S:0,C:1,I:2,A:3}
@@ -1024,7 +1025,7 @@
                   text: displayText, 
                     color: msgColor 
                 });
-                
+                if (chatLog.length > 100) chatLog.shift();
                 lastSenderName = senderName;
                 lastMessageTimeReceived = currentTime;
                 lastChatTime = currentTime;
@@ -1127,6 +1128,7 @@
                     // Trigger your native revive function!
                     Dungeon.reviveNPC(deadNPC.index);
                     chatLog.push(`[SYSTEM]: Suncat breathed life back into the fallen...`);
+                    if (chatLog.length > 100) chatLog.shift();
                 } else {
                     console.warn(`[Suncat Magic] No dead entity of type ${data.nType} found to revive.`);
                 }
@@ -1229,6 +1231,7 @@
 
                 // Add a cool system message so the player feels the impact
                 chatLog.push(`[SYSTEM]: The atmosphere around you suddenly shifts...`);
+                if (chatLog.length > 100) chatLog.shift();
                 if (typeof MusicEngine !== 'undefined') {
                     MusicEngine.playSFX('warp'); // Optional: Play a magic sound
                 }
@@ -1277,14 +1280,11 @@
                 // 3. [NEW] Visual Notification
                 // So the player actually sees what they got in the chat log
                 chatLog.push(`[SYSTEM]: You received a Gift! (Card ID: ${data.cardIndex})`);
-                
+                if (chatLog.length > 100) chatLog.shift();
                 // 4. [CRITICAL] Auto-Save
                 // If your save function is called 'saveGame()' or similar, call it here!
                 // Otherwise, manually update the storage:
-                if (typeof saveGame === 'function') {
-                    saveGame();
-                    chatLog.push(`[SYSTEM]: Game Saved.`);
-                }
+                
                 
                 console.log("Suncat Gift Received:", data.cardIndex);
             }
@@ -1305,12 +1305,7 @@
           });
         socket.on("suncat_learned_fact", (factString) => {
             // Just display a cool system message so the player knows Suncat is paying attention!
-            if (typeof chatLog !== 'undefined') {
-                chatLog.push({ 
-                    text: `[SYSTEM]: Suncat will remember that...`, 
-                    color: "#ffff00" 
-                });
-            }
+            
           });
         socket.on("journal_updated", (data) => {
             const timeString = new Date().toLocaleTimeString();
@@ -1369,10 +1364,11 @@
               alterReality();
               
               chatLog.push(`[SYSTEM]: Suncat altered the fabric of reality...`);
-              
+              if (chatLog.length > 100) chatLog.shift();
           } catch (e) {
               console.error("Suncat's spell fizzled:", e);
               chatLog.push(`[SYSTEM]: A spell was cast, but the magic collapsed.`);
+                if (chatLog.length > 100) chatLog.shift();
           }
           });
         socket.on("remote_npc_dash", (data) => {
@@ -8218,7 +8214,7 @@
                         }));
                     }
                     // Enemies
-                    this.npcs.push(Object.assign(new NPC(2, 5.5, 4.5, 42, 'stationary', '#660066', [42,42,42,26,26,26,15,28,52,68], 'battle', false, 'foe'), {customDialogue: ["Shadow falls over all realms."]})); 
+                    this.npcs.push(Object.assign(new NPC(2, 5.5, 4.5, 42, 'stationary', '#660066', [42,42,42,26,26,26,15,28,52,68], 'battle', false, 'foe'), {customDialogue: ["..."]})); 
                     this.npcs.push(Object.assign(new NPC(3, 1.5, 8.5, 82, 'wandering', '#660066', [82,50,64,59,58], 'battle', false, 'foe'), {customDialogue: ["Why can't things go back to how they were?"]}));
                     this.npcs.push(Object.assign(new NPC(4, 1.5, 1.5, 82, 'wandering', '#660066', [82,50,64,59,58], 'battle', false, 'foe'), {customDialogue: ["I remember the warmth... so long ago..."]}));
                     this.npcs.push(Object.assign(new NPC(5, 9.5, 1.5, 82, 'wandering', '#660066', [82,50,64,59,58], 'battle', false, 'foe'), {customDialogue: ["will the summer find me again?"]}));
@@ -31300,14 +31296,14 @@
         //CHAT
     //Chat
         chatInput.addEventListener('input', function(e) {
-        chatDraft = chatInput.value;
-        lastChatTime = Date.now(); // <--- ADD THIS (Keep awake while typing)
-        //console.log("Typing:", chatDraft); // Check your console when you type!
+            chatDraft = chatInput.value;
+            lastChatTime = Date.now(); // <--- ADD THIS (Keep awake while typing)
         });
+
         window.addEventListener('keydown', function(e) {
-        if (e.key === "Enter") {
-            if (isChatActive) {
-                // --- NEW LOGIC FOR CHARACTER SELECT ---
+            if (e.key === "Enter") {
+                if (isChatActive) {
+                    // --- NEW LOGIC FOR CHARACTER SELECT ---
                     if (startGame == 'charSelect') {
                         if (chatDraft.trim() !== "") {
                             playerName = chatDraft; // Save the name
@@ -31315,30 +31311,29 @@
                             
                             // Set the flag to true so the portrait stops overriding the name
                             hasCustomName = true;
-                        }else{hasCustomName = false;}
+                        } else {
+                            hasCustomName = false;
+                        }
                         chatInput.blur();
                         isChatActive = false;
                         return; // Stop here! Don't send as chat.
                     }
-                // --------------------------------------
-                // SEND
+                    // --------------------------------------
+
+                    // SEND
                     let msg = chatDraft.trim(); 
 
                     if (msg !== "") {
                         const isCommand = msg.toLowerCase().startsWith('.hack//');
                         if (isCommand) {
-                // === COMMAND CHECK: TELEPORT ===
-                            // Usage: .//teleport 5
+                            // === COMMAND CHECK: TELEPORT ===
                             if (msg.toLowerCase().startsWith('.hack//teleport')) {
                                 let parts = msg.split(" ");
                                 let targetID;
 
-                                // If they typed exactly ".hack//teleport" with no spaces/numbers
                                 if (parts.length === 1 || parts[1] === "") {
-                                    // Default to prevMap. (Added a fallback to 22 just in case prevMap is undefined at login!)
                                     targetID = Dungeon.prevMap !== undefined ? Dungeon.prevMap : 22; 
                                 } else {
-                                    // Otherwise, try to parse the string they typed
                                     targetID = parseInt(parts[1]);
                                 }
 
@@ -31347,15 +31342,14 @@
                                     Dungeon.loadMap(targetID); // Teleport!
                                     chatLog.push(`[SYSTEM]: Teleporting to Map ${targetID}...`);
                                     Dungeon.requestSave();
+                                    if (chatLog.length > 100) chatLog.shift();
                                 } else {
                                     chatLog.push(`[SYSTEM]: Invalid Map ID.`);
+                                    if (chatLog.length > 100) chatLog.shift();
                                 }
                             }
                             else if (msg.toLowerCase().startsWith('.hack//blink')) {
-                                // 1. Remove the command part and clean up extra spaces
                                 let coordStr = msg.substring('.hack//blink'.length).trim();
-                                
-                                // 2. Split by either a comma OR a space
                                 let parts = coordStr.split(/[ ,]+/); 
 
                                 if (parts.length >= 2) {
@@ -31363,14 +31357,13 @@
                                     let targetY = parseInt(parts[1]);
 
                                     if (!isNaN(targetX) && !isNaN(targetY)) {
-                                        // 3. Snap to tile center (x.5, y.5) to prevent wall clipping
                                         Dungeon.x = targetX + 0.5;
                                         Dungeon.y = targetY + 0.5;
                                         
                                         chatLog.push(`[SYSTEM]: Blinked to X: ${targetX}, Y: ${targetY}.`);
-                                         // --- NEW: MOVEMENT & PHYSICS KILL SWITCH ---
-                                        // Forget sliding destinations so we don't rubberband across the new map!
-                                       Dungeon.targetMapX = Dungeon.x;
+                                        if (chatLog.length > 100) chatLog.shift();
+
+                                        Dungeon.targetMapX = Dungeon.x;
                                         Dungeon.targetMapY = Dungeon.y;
                                         Dungeon.isSlidingToTile = false;
                                         
@@ -31379,16 +31372,13 @@
                                         if (Dungeon.tX !== undefined) Dungeon.tX = Dungeon.x;
                                         if (Dungeon.tY !== undefined) Dungeon.tY = Dungeon.y;
 
-                                        // Force the player to stop and re-press keys
                                         window.activeMoveKey = null;
                                         window.activeCtrlKey = false;
                                         if (typeof btnMove !== 'undefined') { btnMove.isPressed = false; btnMove.currentDir = null; }
                                         if (typeof btnMove2 !== 'undefined') { btnMove2.isPressed = false; btnMove2.currentDir = null; }
                                         if (typeof btnTurnL !== 'undefined') { btnTurnL.isPressed = false; btnTurnL.currentDir = null; }
                                         if (typeof btnTurnR !== 'undefined') { btnTurnR.isPressed = false; btnTurnR.currentDir = null; }
-                                        // -------------------------------------------
-                                        // 4. --- INSTANT SERVER SYNC ---
-                                        // Force the server to acknowledge the teleport immediately!
+
                                         if (typeof socket !== 'undefined') {
                                             socket.emit("move", {
                                                 x: Dungeon.x,
@@ -31400,22 +31390,20 @@
                                                 name: playerName 
                                             });
                                         }
-
                                     } else {
                                         chatLog.push(`[SYSTEM]: Invalid coordinates. Use: .hack//blink X Y`);
+                                        if (chatLog.length > 100) chatLog.shift();
                                     }
                                 } else {
                                     chatLog.push(`[SYSTEM]: Missing coordinates. Use: .hack//blink X Y`);
+                                    if (chatLog.length > 100) chatLog.shift();
                                 }
                             }
                             else if (msg.toLowerCase() === '.hack//ghost') {
-                                if(Dungeon.ghost == false){
-                                
-                                Dungeon.ghost = true;
-                                
-                                }
-                                else{
-                                Dungeon.ghost = false;
+                                if (Dungeon.ghost == false) {
+                                    Dungeon.ghost = true;
+                                } else {
+                                    Dungeon.ghost = false;
                                 }
                             }
                             else if (msg.toLowerCase().startsWith('.hack//transform')) {
@@ -31423,197 +31411,76 @@
                                 let targetp = parseInt(parts2[1]);
 
                                 if (!isNaN(targetp)) {
-                                    switch(targetp){
-                                case 0:
-                                    playerSprite = 0;
-                                    break;
-                                    case 1:
-                                    playerSprite = 1;
-                                    break;
-                                    case 2:
-                                    playerSprite = 2;
-                                    break;
-                                    case 3:
-                                    playerSprite = 3;
-                                    break;
-                                    case 4:
-                                    playerSprite = 4;
-                                    break;
-                                    case 5:
-                                    playerSprite = 5;
-                                    break;
-                                    case 6:
-                                    playerSprite = 8;
-                                    break;
-                                    case 7:
-                                    playerSprite = 9.1;
-                                    break;
-                                    case 8:
-                                    playerSprite = 10;
-                                    break;
-                                    case 9:
-                                    playerSprite = 13;
-                                    break;
-                                    case 10:
-                                    playerSprite = 23.1;
-                                    break;
-                                    case 11:
-                                    playerSprite = 32.1;
-                                    break;
-                                    case 12:
-                                    playerSprite = 33.1;
-                                    break;
-                                    case 13:
-                                    playerSprite = 34.1;
-                                    break;
-                                    case 14:
-                                    playerSprite = 35.1;
-                                    break;
-                                    case 15:
-                                    playerSprite = 37.1;
-                                    break;
-                                    case 16:
-                                    playerSprite = 46.1;
-                                    break;
-                                    case 17:
-                                    playerSprite = 48.1;
-                                    break;
-                                    case 18:
-                                    playerSprite = 54;
-                                    break;
-                                    case 19:
-                                    playerSprite = 56.1;
-                                    break;
-                                    case 20:
-                                    playerSprite = 57.1;
-                                    break;
-                                    case 21:
-                                    playerSprite = 60.1;
-                                    break;
-                                    case 22:
-                                    playerSprite = 61.1;
-                                    break;
-                                    case 23:
-                                    playerSprite = 61.2;
-                                    break;
-                                    case 24:
-                                    playerSprite = 50;
-                                    break;
-                                    case 25:
-                                    playerSprite = 23;
-                                    break;
-                                    case 26:
-                                    playerSprite = 77.1;
-                                    break;
-                                    case 27:
-                                    playerSprite = 77.2;
-                                    break;
-                                    case 28:
-                                    playerSprite = 75.1;
-                                    break;
-                                    case 29:
-                                    playerSprite = 81;
-                                    break;
-                                    case 30:
-                                    playerSprite = 82;
-                                    break;
-                                    case 31:
-                                    playerSprite = 56;
-                                    break;
-                                    case 32:
-                                    playerSprite = 28888;
-                                    break;
-                                    case 33:
-                                    playerSprite = 61391;
-                                    break
-                                    case 34:
-                                        playerSprite = .61391;
-                                    break;
-
-                                }
-                
+                                    playerSprite = targetp;
                                 } else {
                                     chatLog.push(`[SYSTEM]: Invalid Sprite Index`);
+                                    if (chatLog.length > 100) chatLog.shift();
                                 }
                             }
                             else if (msg.toLowerCase() === '.hack//deleteall') {
-                                // 1. Tell the server to wipe Suncat's memory of us
                                 if (typeof socket !== 'undefined') {
                                     socket.emit('delete_save');
                                 }
-                                
-                                // 2. Wipe the Game Save AND the UI Journals
                                 localStorage.removeItem('battlemage_save'); 
                                 localStorage.removeItem('runestones_chronicle');
                                 localStorage.removeItem('suncat_chronicle');
                                 
-                                // 3. Give the server a tiny fraction of a second to process the delete before reloading
                                 setTimeout(() => {
                                     location.reload(); 
                                 }, 200); 
                             }
                             else if (msg.toLowerCase() === '.hack//delete') {
-                                // Clear the save data
                                 localStorage.removeItem('battlemage_save'); 
                                 localStorage.removeItem('runestones_chronicle');
                                 localStorage.removeItem('suncat_chronicle');
-                                // Optional: Clear everything if you have other keys
-                                // localStorage.clear(); 
-                                
-                                // Reload to force the "New Game" state
                                 location.reload(); 
                             }
                             else if (msg.toLowerCase() === '.hack//vanquish') {
-                                if(startGame == 'battle'){
-                                Player[1].option = 10.1;
-                                Player[0].option = 10;
+                                if (startGame == 'battle') {
+                                    Player[1].option = 10.1;
+                                    Player[0].option = 10;
                                 }
                             }
                             else if (msg.toLowerCase() === '.hack//sign') {
-                                if(Dbug == 0){
-                                Dbug = 1;
-                                Dungeon.dSense = 100;
-                                Dungeon.ghost = true;
-                                
-                                }
-                                else if(Dbug == 1){
-                                Dbug = 0;
+                                if (Dbug == 0) {
+                                    Dbug = 1;
+                                    Dungeon.dSense = 100;
+                                    Dungeon.ghost = true;
+                                } else if (Dbug == 1) {
+                                    Dbug = 0;
                                 }
                             }
                             else if (msg.toLowerCase() === '.hack//respawn') {
-                                // A. Identify the prefix for this map (e.g., "1_" for Map 1)
                                 let prefix = Dungeon.mapID + "_";
-                                
-                                // B. Clear memory of dead NPCs ONLY on this map
-                                // (We don't want to reset bosses on other maps we already killed)
                                 for (let key in Dungeon.memory) {
                                     if (key.startsWith(prefix)) {
                                         delete Dungeon.memory[key];
                                     }
                                 }
-
-                                    // C. Now reload the map (The game will see no memory of death, so they spawn)
-                                    Dungeon.loadMap(Dungeon.mapID);
-                                    
-                                    chatLog.push(`[SYSTEM]: Local NPCs respawned.`);
+                                let preX = Dungeon.x; let preY = Dungeon.y;
+                                Dungeon.loadMap(Dungeon.mapID);
+                                Dungeon.x = preX; Dungeon.y = preY;
+                                chatLog.push(`[SYSTEM]: Local NPCs respawned.`);
+                                if (chatLog.length > 100) chatLog.shift();
                             }
                             else if (msg.toLowerCase() === '.hack//reset') {
-                                Dungeon.refreshNPCs()
-                                // C. Now reload the map (The game will see no memory of death, so they spawn)
+                                Dungeon.refreshNPCs();
                                 Dungeon.loadMap(Dungeon.mapID);
                                 chatLog.push(`[SYSTEM]: Monsters roam the land...`);
+                                if (chatLog.length > 100) chatLog.shift();
                             }
                             else if (msg.toLowerCase().startsWith('.hack//card')){
                                 let parts3 = msg.split(" ");
                                 let targetID3 = parseInt(parts3[1]);
 
                                 if (!isNaN(targetID3)) {
-                                    Dungeon.spawnPersistentNPC(Dungeon.mapID, Dungeon.npcs.length, Dungeon.x, Dungeon.y-1, -27, 'stationary', '#ffff00',[targetID3],null,null,'dialogue',null,null,'friendly');    
+                                    Dungeon.spawnPersistentNPC(Dungeon.mapID, Dungeon.npcs.length, Dungeon.x, Dungeon.y-1, -27, 'stationary', '#ffff00',[targetID3],null,null,'dialogue',null,null,'friendly');  
                                     chatLog.push(`[SYSTEM]: A card meterializes out of thin air...`);
+                                    if (chatLog.length > 100) chatLog.shift();
                                 } else {
                                     chatLog.push(`[SYSTEM]: The spell fizzles into smoke.`);
+                                    if (chatLog.length > 100) chatLog.shift();
                                 }
-
                             }
                             else if (msg.toLowerCase().startsWith('.hack//song')) {
                                 let parts4 = msg.split(" ");
@@ -31621,15 +31488,17 @@
 
                                 if (!isNaN(targetID4)) {
                                     chatLog.push(`[SYSTEM]: A melody fills the air only I can hear...`);
+                                    if (chatLog.length > 100) chatLog.shift();
                                     MusicEngine.stop();
-                                    MusicEngine.play(targetID4)
+                                    MusicEngine.play(targetID4);
                                 } else {
-                                    chatLog.push(`[SYSTEM]: Invalid Song (pick from tracks 0-42) .`);
+                                    chatLog.push(`[SYSTEM]: Invalid Song (pick from tracks 0-42).`);
+                                    if (chatLog.length > 100) chatLog.shift();
                                 }
                             }
                             else if (msg.toLowerCase() === '.hack//ssong') {
                                 MusicEngine.stop();
-                                MusicEngine.play(rnd(0,songcount - 1))
+                                MusicEngine.play(rnd(0, songcount - 1));
                             }
                             else if (msg.toLowerCase().startsWith('.hack//sfx')) {
                                 let parts5 = msg.split(" ");
@@ -31637,64 +31506,57 @@
 
                                 if (!isNaN(targetID5)) {
                                     chatLog.push(`[SYSTEM]: A strange sound fills the air...`);
-                                    MusicEngine.play3DSFX(targetID5, Dungeon.x, Dungeon.y,Dungeon.x+1, Dungeon.y+1,Dungeon.dir)
+                                    if (chatLog.length > 100) chatLog.shift();
+                                    MusicEngine.play3DSFX(targetID5, Dungeon.x, Dungeon.y, Dungeon.x+1, Dungeon.y+1, Dungeon.dir);
                                     socket.emit('playerAction_SFX', {
-                                    id: targetID5,
-                                    x: Dungeon.x,
-                                    y: Dungeon.y,
-                                    dir: Dungeon.dir
+                                        id: targetID5,
+                                        x: Dungeon.x,
+                                        y: Dungeon.y,
+                                        dir: Dungeon.dir
                                     });
-                                }
-                                else {
-                                    chatLog.push(`[SYSTEM]: Invalid SFX (pick from 0-8) .`);
+                                } else {
+                                    chatLog.push(`[SYSTEM]: Invalid SFX (pick from 0-8).`);
+                                    if (chatLog.length > 100) chatLog.shift();
                                 }
                             }
-                            // 1. GM SPAWN: .hack//spawn [cardIndex] [roleEnum]
                             else if (msg.toLowerCase().startsWith('.hack//spawn')) {
                                 let parts = msg.split(" ");
-                                
-                                // We send this to the server so it syncs for everyone!
                                 if (typeof socket !== 'undefined') {
                                     socket.emit("admin_spawn", {
-                                        cardIndex: parts[1], // Can be undefined
-                                        roleEnum: parts[2]   // 0=Battle, 1=Dialogue, 2=Reward, 3=Traitor
+                                        cardIndex: parts[1], 
+                                        roleEnum: parts[2]   
                                     });
                                 }
                                 chatLog.push(`[SYSTEM]: Conjuring entity...`);
-                                
+                                if (chatLog.length > 100) chatLog.shift();
                             }
-                            // 2. THE FIRESTORM: .hack//firestorm
                             else if (msg.toLowerCase().startsWith('.hack//firestorm')) {
                                 chatLog.push(`${playerName} cast Firestorm!`);
+                                if (chatLog.length > 100) chatLog.shift();
                                 if (startGame === 'battle'){
-                                MusicEngine.play(Dungeon.mapSong[Dungeon.mapID])}
-                                // 1. Set local weather
+                                    MusicEngine.play(Dungeon.mapSong[Dungeon.mapID]);
+                                }
                                 if (Dungeon.weather) Dungeon.weather.mode = 'apocalypse';
-                                
-                                // 2. Eradicate all hostiles
                                 Dungeon.npcs.forEach(npc => {
-                                    // Kill anything that fights, isn't already dead, and isn't a portal/card
-                                    if (!npc.isDead && !npc.isBoss && npc.role === 'battle' &&npc.alignment != 'ally'&& npc.type !== 99 && npc.type !== -27) {
-                                        // Because killNPC already emits to the server, everyone will see them die!
+                                    if (!npc.isDead && !npc.isBoss && npc.role === 'battle' && npc.alignment != 'ally' && npc.type !== 99 && npc.type !== -27) {
                                         Dungeon.killNPC(npc, false, 'firestorm');
                                     }
                                 });
-                                
                             }
                             else if (msg.toLowerCase().startsWith('.hack//fire')) {
                                 chatLog.push(`${playerName} cast Fire!`);
+                                if (chatLog.length > 100) chatLog.shift();
                                 Dungeon.castSpell(26);
-                                
                             }
                             else if (msg.toLowerCase().startsWith('.hack//atk')) {
                                 chatLog.push(`${playerName} attacks!`);
+                                if (chatLog.length > 100) chatLog.shift();
                                 Dungeon.castSpell(9999);
-                                
                             }
                             else if (msg.toLowerCase().startsWith('.hack//mm')) {
                                 chatLog.push(`${playerName} cast Magic Missile!`);
+                                if (chatLog.length > 100) chatLog.shift();
                                 Dungeon.castSpell(13);
-                                
                             }
                             else if (msg.toLowerCase().startsWith('.hack//summon')) {
                                 let parts9 = msg.split(" ");
@@ -31702,41 +31564,43 @@
 
                                 if (!isNaN(targetID9)) {
                                     chatLog.push(`[SYSTEM]: A phantom ally appears...`);
+                                    if (chatLog.length > 100) chatLog.shift();
                                     MusicEngine.playSFX('warp');
-                                    Dungeon.summonAlly(targetID9)
+                                    Dungeon.summonAlly(targetID9);
                                 } else {
-                                    Dungeon.summonAlly(23.1)
+                                    Dungeon.summonAlly(23.1);
                                 }
                             }
                             if (msg.toLowerCase().startsWith('.hack//sm')) {
-                                exportCurrentMap(); // Trigger the export engine
+                                exportCurrentMap(); 
                                 chatLog.push(`[SYSTEM]: Exporting Map ${Dungeon.mapID} to file...`);
+                                if (chatLog.length > 100) chatLog.shift();
                                 isChatActive = false;
                                 chatInput.blur();
                             }
-                            
-                            // If the user types .hack//pjournal
                             else if (msg.toLowerCase() === '.hack//read') {
-                                preGame = startGame; // Save where we currently are
-                                startGame = 'journal'; // Switch to journal view
+                                preGame = startGame; 
+                                startGame = 'journal'; 
                             }
                             else if (msg.toLowerCase() === '.hack//shop') {
-                                if(startGame == 'shop'){startGame = preGame;}
-                                else{
+                                if (startGame == 'shop') {
+                                    startGame = preGame;
+                                } else {
                                     shopInventory.length = 0;
-                                    let shoplength  = rnd(1,19);
-                                    for (let i = 0;i<shoplength;i++){
-                                    shopInventory.push(rnd(0,90))
+                                    let shoplength = rnd(1, 19);
+                                    for (let i = 0; i < shoplength; i++) {
+                                        shopInventory.push(rnd(0, 90));
                                     }
-                                preGame = startGame; // Save where we currently are
-                                startGame = 'shop'; // Switch to journal view
+                                    preGame = startGame; 
+                                    startGame = 'shop'; 
                                 }
                             }
                             else if (msg.toLowerCase() === '.hack//map'){
-                                if(startGame == 'mapmaker'){startGame = 'explore'}
-                                else{
-                                startGame = 'mapmaker';}
-                                
+                                if (startGame == 'mapmaker') {
+                                    startGame = 'explore';
+                                } else {
+                                    startGame = 'mapmaker';
+                                }
                             }
                             else if (msg.toLowerCase() === '.hack//tactics') {
                                 const monsterIndices = [
@@ -31744,25 +31608,18 @@
                                     48, 49, 54, 56, 57, 60, 61, 62, 63, 74, 75, 76, 77, 78, 
                                     79, 80, 81, 82, 83, 85, 86, 87, 88, 89, 90, 91, 94, 98
                                 ];
-
                                 const getRandomMonsterId = () => monsterIndices[Math.floor(Math.random() * monsterIndices.length)];
-
-                                // Randomize extra team sizes
-                                // allyCount is extra allies (so 0 to 5, plus the main player = 1 to 6 total)
                                 const allyCount = Math.floor(Math.random() * 6);
                                 const foeCount = Math.floor(Math.random() * 6) + 1;
 
-                                // --- INJECT PLAYER CONTEXT ---
-                                // Make sure we pass an object so the engine detects it and keeps tracking info for the menus
                                 const playerUnitData = {
                                     source: 'player',
-                                    index: getRandomMonsterId(), // Fallback if sprite isn't found
+                                    index: getRandomMonsterId(), 
                                     dungeonContext: (typeof dungeon !== 'undefined') ? dungeon.extra : null
                                 };
 
-                                const allyTeam = [playerUnitData]; // Push the player object at index 0
+                                const allyTeam = [playerUnitData]; 
 
-                                // Fill the rest with random monsters
                                 for (let i = 0; i < allyCount; i++) {
                                     allyTeam.push(getRandomMonsterId());
                                 }
@@ -31770,7 +31627,6 @@
                                 const foeTeam = Array.from({ length: foeCount }, () => getRandomMonsterId());
 
                                 Dungeon.startEidolonMinigame(allyTeam, foeTeam);
-                                
                                 console.log(`Tactics! Player + ${allyCount} Allies vs ${foeCount} Foes.`);
                             }
                             
@@ -31780,34 +31636,33 @@
                             chatInput.blur();
                             return;
                         }
-                    // === NORMAL CHAT MESSAGE ===
-                    else {
-                        // If chat is disabled, block the emit and warn the player locally
-                        if (!window.settingsChat) {
-                            chatLog.push({ sender: "[SYSTEM]", text: "Chat is disabled in Settings. Your message was not sent.", color: "gray" });
-                        } 
-                        // Otherwise, send the full string directly to the server!
-                        else if (typeof socket !== 'undefined') {
-                            socket.emit('chat_message', msg); 
+                        // === NORMAL CHAT MESSAGE ===
+                        else {
+                            if (!window.settingsChat) {
+                                chatLog.push({ sender: "[SYSTEM]", text: "Chat is disabled in Settings. Your message was not sent.", color: "gray" });
+                                if (chatLog.length > 100) chatLog.shift();
+                            } 
+                            else if (typeof socket !== 'undefined') {
+                                socket.emit('chat_message', msg); 
+                            }
                         }
+                        
+                        // === CLEANUP ===
+                        lastChatTime = Date.now(); 
+                        chatInput.value = "";
+                        chatDraft = "";
                     }
-                    
-                    // === CLEANUP ===
-                    lastChatTime = Date.now(); // Keep awake
-                    chatInput.value = "";
-                    chatDraft = "";
-                }
 
-                // Close Chat Mode
-                chatInput.blur();
-                isChatActive = false;
-                
-            } else {
-                // OPEN Chat Mode
-                chatInput.focus();
-                isChatActive = true;
+                    // Close Chat Mode
+                    chatInput.blur();
+                    isChatActive = false;
+                    
+                } else {
+                    // OPEN Chat Mode
+                    chatInput.focus();
+                    isChatActive = true;
+                }
             }
-        }
         });
         // --- NEW: KEYBOARD TRACKERS & HELPER FUNCTION ---
         window.activeMoveKey = null;
@@ -32007,8 +31862,7 @@
             }
         if (typeof startGame === 'undefined' || (startGame !== 'explore' && startGame !== 'mapmaker')) return;
         // Check if the key pressed is a movement key
-        const isMoveKey = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'w', 'W', 'a', 'A', 's', 'S', 'd', 'D', 'q', 'Q', 'e', 'E'].includes(e.key);
-        
+            const isMoveKey = MOVEMENT_KEYS.has(e.key);
         if (isMoveKey) {
             // Prevent the web page from scrolling if they use arrow keys
             if (e.key.startsWith('Arrow')) e.preventDefault();
@@ -50630,12 +50484,18 @@
 
         // History
         let maxLines = 9;
-        let visibleLog = chatLog.slice(-maxLines); 
         
-        for (let i = 0; i < visibleLog.length; i++) {
+        // --- THE FIX: Calculate the starting point instead of slicing! ---
+        let totalMsgs = chatLog.length;
+        let startIndex = Math.max(0, totalMsgs - maxLines);
+        let visibleCount = Math.min(maxLines, totalMsgs);
+        
+        for (let i = 0; i < visibleCount; i++) {
             // Because we start at chatY (0.6), the text naturally "drops" from the top down
             let lineY = chatY + (i * rowHeight) + 0.1;
-            let msgObj = visibleLog[i];
+            
+            // Grab the message directly from the main array
+            let msgObj = chatLog[startIndex + i]; 
             
             let displayText = "";
             let displayColor = "white"; // Fallback color
