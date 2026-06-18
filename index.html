@@ -102,6 +102,8 @@
     var tX = 0; //table top-left x coordinate(0,0)
     var tY = 0; //table top-left x coordinate(0,0)
     var spriteCache = {};
+    const textLayoutCache = new Map();
+    const globalButtonCache = new Map();
     // ==========================================
     // OFF-SCREEN MIST CACHE (Global Scope)
     // ==========================================
@@ -1098,7 +1100,7 @@
                     }
                 }
                 
-                Dungeon.saveGame();
+                Dungeon.requestSave();
             }
             });
         socket.on("client_killed_npc", (data) => {
@@ -1141,7 +1143,7 @@
                 Dungeon.loadMap(Dungeon.mapID); 
                 
                 // 3. Save the clean slate
-                Dungeon.saveGame();
+                Dungeon.requestSave();
 
                 if (typeof MessageBox !== 'undefined') {
                     // Optional: Let the player know reality just shifted
@@ -2331,7 +2333,7 @@
                         }
                         
                         // Always save after a successful teleport
-                        //if (typeof dungeon.saveGame === 'function') dungeon.saveGame();
+                        //if (typeof dungeon.saveGame === 'function') Dungeon.requestSave();
                         
                     }, 50); 
                     return; // Stop execution!
@@ -4154,14 +4156,14 @@
                 MusicEngine.playSFX(spellData.name === 'Shield Bash' ? 'block' : 'slash');
             }
 
-            // Spawn visual cone particles
-            for(let p = 0; p < 5; p++) {
-                if (typeof globalParticles !== 'undefined') {
-                    globalParticles.push(new Particle(
-                        this.x + fX + (Math.random()-0.5), 
-                        this.y + fY + (Math.random()-0.5), 
-                        '#ffffff', 'smoke'
-                    ));
+            if (typeof globalParticles !== 'undefined') {
+                for (let p = 0; p < 12; p++) {
+                    spawnParticle(
+                        this.x + (Math.random() - 0.5) * 0.8,
+                        this.y + (Math.random() - 0.5) * 0.8,
+                        '#00ffff', 
+                        'sparkle'
+                    );
                 }
             }
 
@@ -4353,10 +4355,14 @@
 
         if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('arcane');
         
-        // Visual smoke puff at the spawn location
-        for(let p = 0; p < 10; p++) {
-            if (typeof globalParticles !== 'undefined') {
-                globalParticles.push(new Particle(spawnX, spawnY, '#aa00ff', 'smoke'));
+        if (typeof globalParticles !== 'undefined') {
+            for (let p = 0; p < 12; p++) {
+                spawnParticle(
+                    this.x + (Math.random() - 0.5) * 0.8,
+                    this.y + (Math.random() - 0.5) * 0.8,
+                    '#00ffff', 
+                    'sparkle'
+                );
             }
         }
         }
@@ -4366,6 +4372,13 @@
   class Explore {
     constructor() {
         this.uiPlayerCard = new Card(91,0);
+        this.renderList = [];
+        this.playerRenderObj = {
+            isPlayer: true,
+            alignment: 'ally',
+            visible: true,
+            isDead: false
+        };
         this.ghost = 0;
         this.constructing = false;
         this.biome = '';
@@ -4609,6 +4622,10 @@
 
             };
 
+        this.parsedWallColors = {};
+            for (let key in this.wallColors) {
+                this.parsedWallColors[key] = this.parseColor(this.wallColors[key]);
+            }
         // NOISE LEVELS (0 = Smooth/Glass, 20 = Very Gritty/Organic)
         this.noiseLevels = {
             // Organics (High Noise)
@@ -4758,6 +4775,19 @@
             }
             }
         
+        // Call this instead of saveGame() during gameplay!
+        requestSave() {
+            // If a save was already requested recently, cancel the old timer
+            if (this.saveDebounceTimer) {
+                clearTimeout(this.saveDebounceTimer);
+            }
+            
+            // Wait 2 seconds. If nothing else triggers a save request in that time, write to disk.
+            this.saveDebounceTimer = setTimeout(() => {
+                this.saveGame();
+                this.saveDebounceTimer = null;
+            }, 2000); // 2000ms = 2 seconds
+        }
         loadGame() {
             const json = localStorage.getItem('battlemage_save');
             if (!json) {
@@ -9563,7 +9593,7 @@
                 }
             // Only trigger an auto-save if we are genuinely exploring, NOT if we are mid-load
                 if (typeof this.saveGame === 'function' && !this.isLoading) {
-                    this.saveGame();
+                    this.requestSave();
                 }
         
             }
@@ -10416,15 +10446,14 @@
                     
                     if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('cancel');
                     
-                    // Spawn a burst of cyan magic sparks
                     if (typeof globalParticles !== 'undefined') {
                         for (let p = 0; p < 12; p++) {
-                            globalParticles.push(new Particle(
+                            spawnParticle(
                                 this.x + (Math.random() - 0.5) * 0.8,
                                 this.y + (Math.random() - 0.5) * 0.8,
-                                '#00ffff', // Cyan magic color
+                                '#00ffff', 
                                 'sparkle'
-                            ));
+                            );
                         }
                     }
                     return true; // The hit was successfully absorbed!
@@ -10489,11 +10518,14 @@
                             this.x += (dx / dist) * dashSpeed;
                             this.y += (dy / dist) * dashSpeed;
                             if (typeof globalParticles !== 'undefined') {
-                                globalParticles.push(new Particle(
-                                    this.x + (Math.random() - 0.5) * 0.2, 
-                                    this.y + (Math.random() - 0.5) * 0.2, 
-                                    '#ffffff', 'smoke'
-                                ));
+                                for (let p = 0; p < 1; p++) {
+                                    spawnParticle(
+                                        this.x + (Math.random() - 0.5) * 0.8,
+                                        this.y + (Math.random() - 0.5) * 0.8,
+                                        '#00ffff', 
+                                        'sparkle'
+                                    );
+                                }
                             }
                         }
                     }
@@ -10765,7 +10797,7 @@
                                     setTimeout(() => MessageBox.show(0.5, 2, 1, 9, 2, `You have survived the bounty. They've given up.`, 'system', 1, 0), 6000);
                                 }
                             }
-                            this.saveGame();
+                            this.requestSave();
                         }
                     }
             //ROUTE TO 2D
@@ -10820,9 +10852,13 @@
                             this.y += (dy / dist) * speed;
                         }
                     }
-                    this.projectiles.forEach(p => p.update(this, dt));
-                    this.projectiles = this.projectiles.filter(p => p.active);
-                    
+                    for (let i = this.projectiles.length - 1; i >= 0; i--) {
+                        this.projectiles[i].update(this, dt);
+                        // If the projectile died during the update, remove it directly from the array
+                        if (!this.projectiles[i].active) {
+                            this.projectiles.splice(i, 1);
+                        }
+                    }
                     const viewW = (tL > 0) ? tL : 400;
                     const viewH = (tH > 0) ? tH : 400;
                     const viewX = tX; 
@@ -11354,43 +11390,42 @@
             // 6. Draw everything
             // ==========================================
                 //Sprites
-                    let renderList = this.npcs.filter(npc => npc.visible && !npc.isDead);
-                    this.projectiles.forEach(p => { if (p.active) renderList.push(p); });
-                    
-                    if (window.remotePlayers) {
-                        for (let id in window.remotePlayers) {
-                            let p = window.remotePlayers[id];
-                            let isOpponent = (this.currentSpeaker && this.currentSpeaker.socketId === id);
-                            if (p.mapID === this.mapID && p.x !== undefined) {
-                                if (p.status === 'dueling' && !isOpponent) continue; 
-                                p.visible = true; 
-                                renderList.push(p);
-                            }
+                    this.renderList.length = 0; 
+
+                    // 1. Manually add NPCs
+                    for (let i = 0; i < this.npcs.length; i++) {
+                        if (this.npcs[i].visible && !this.npcs[i].isDead) {
+                            this.renderList.push(this.npcs[i]);
                         }
                     }
 
+                    // 2. Manually add projectiles
+                    for (let i = 0; i < this.projectiles.length; i++) {
+                        if (this.projectiles[i].active) {
+                            this.renderList.push(this.projectiles[i]);
+                        }
+                    }
+
+                    // 3. Update and push the pre-allocated player object
                     if (!this.isFirstPerson) {
                         if (this.playerAttackTimer === undefined) this.playerAttackTimer = 0;
                         if (this.playerAttackTimer > 0) this.playerAttackTimer -= (30 * dt);
-                        // Convert the player's grid direction (0=N, 1=E, 2=S, 3=W) into X/Y velocities
+                        
                         let playerDirX = Math.sin(this.dir * (Math.PI / 2));
                         let playerDirY = -Math.cos(this.dir * (Math.PI / 2));
 
-                        renderList.push({ 
-                            x: this.x, 
-                            y: this.y, 
-                            type: playerSprite, // Set this to 101 to test playing as the Mech!
-                            visible: true, 
-                            isDead: false, 
-                            alignment: 'ally', 
-                            isPlayer: true,
-                            dirX: playerDirX,
-                            dirY: playerDirY,
-                            combatCooldown: this.playerAttackTimer
-                        });
+                        this.playerRenderObj.x = this.x;
+                        this.playerRenderObj.y = this.y;
+                        this.playerRenderObj.type = playerSprite;
+                        this.playerRenderObj.dirX = playerDirX;
+                        this.playerRenderObj.dirY = playerDirY;
+                        this.playerRenderObj.combatCooldown = this.playerAttackTimer;
+                        
+                        this.renderList.push(this.playerRenderObj);
                     }
+                    
 
-                    this.drawCombinedSprites(ctx, viewX, viewY, viewW, viewH, dirX, dirY, planeX, planeY, renderList, camX, camY);
+                    this.drawCombinedSprites(ctx, viewX, viewY, viewW, viewH, dirX, dirY, planeX, planeY, this.renderList, camX, camY);
                 //UI
                     this.drawMinimap(ctx, viewX, viewY, viewW, viewH);
                     // ==========================================
@@ -11469,29 +11504,31 @@
                 let btnHeight = 1.0; 
 
                 if (typeof window.uiSpellButtons !== 'undefined') {
-                    let activeBtns = [];
+                    // 1. Recycle the array instead of creating a new one
+                    if (!this.activeBtnsCache) this.activeBtnsCache = [];
+                    this.activeBtnsCache.length = 0; // Empty it safely
                     
-                    // 1. Gather all active cards, stopping at your max stat limit
+                    // 2. Gather all active cards, stopping at your max stat limit
                     for (let i = 0; i < maxSlots; i++) {
                         let btn = window.uiSpellButtons[i];
                         if (btn && btn.assignedCard) {
-                            activeBtns.push(btn);
+                            this.activeBtnsCache.push(btn);
                         } else if (btn) {
                             btn.visible = false; // Hide empty slots immediately
                         }
                     }
 
-                    // Hide any leftover buttons beyond max slots so they don't become "Ghosts"
+                    // Hide any leftover buttons beyond max slots
                     for (let i = maxSlots; i < window.uiSpellButtons.length; i++) {
                         if (window.uiSpellButtons[i]) window.uiSpellButtons[i].visible = false;
                     }
 
-                    // 2. Draw them in an alternating L-Bracket shape
                     let evenCount = 0;
                     let oddCount = 0;
 
-                    for (let v = 0; v < activeBtns.length; v++) {
-                        let btn = activeBtns[v];
+                    // 3. IMPORTANT: Change 'activeBtns' to 'this.activeBtnsCache' in this loop!
+                    for (let v = 0; v < this.activeBtnsCache.length; v++) {
+                        let btn = this.activeBtnsCache[v];
                         
                         if (v % 2 === 0) {
                             // EVEN SLOTS: Stack upwards along the left edge
@@ -11607,21 +11644,16 @@
                 if (!npc.isDead && npc.visible && npc.activeBuffs && npc.activeBuffs.length > 0) {
                     if (this.frame % 3 === 0) { 
                         npc.activeBuffs.forEach(buff => {
-                            // 1. Determine Particle Type based on Registry Visuals
-                            let pType = 'sparkle'; // Default
-                            if (buff.visual === 'shield') pType = 'bubble';
-                            if (buff.visual === 'aura' || buff.visual === 'chains' || buff.type === 'debuff') pType = 'smoke';
-
-                            // 2. Get the specific color from the registry
-                            let pColor = buff.auraColor || buff.glow || '#ffffff';
-
-                            // 3. Spawn the particle
-                            globalParticles.push(new Particle(
-                                npc.x + (Math.random() - 0.5) * 0.4, // Spread them out slightly
-                                npc.y + (Math.random() - 0.5) * 0.4, 
-                                pColor, 
-                                pType // Pass the mapped type into the constructor!
-                            ));
+                            if (typeof globalParticles !== 'undefined') {
+                                for (let p = 0; p < 12; p++) {
+                                    spawnParticle(
+                                        this.x + (Math.random() - 0.5) * 0.8,
+                                        this.y + (Math.random() - 0.5) * 0.8,
+                                        '#00ffff', 
+                                        'sparkle'
+                                    );
+                                }
+                            }
                         });
                     }
                 }
@@ -12379,9 +12411,10 @@
                 
                 // (REMOVED the 'continue' skip from here!)
 
-                let colorStr = this.wallColors[wallID] || '#8b4513';
-                let { r: baseR, g: baseG, b: baseB } = this.parseColor(colorStr);
-                if (isNaN(baseR)) { baseR = 139; baseG = 69; baseB = 19; }
+                let parsed = this.parsedWallColors[wallID];
+                let baseR = parsed ? parsed.r : 139;
+                let baseG = parsed ? parsed.g : 69;
+                let baseB = parsed ? parsed.b : 19;
 
                 // --- THE FIX: SAFELY ANCHORED 3D ROOFS ---
                 // We draw the roof FIRST. This guarantees the top of floor tiles are 
@@ -13699,15 +13732,14 @@
                 }
             });
             
-            // Visual Blast Ring (Optional, but looks cool)
-            for(let p = 0; p < 20; p++) {
-                if (typeof globalParticles !== 'undefined') {
-                    globalParticles.push(new Particle(
-                        this.x + (Math.random()*6-3), 
-                        this.y + (Math.random()*6-3), 
-                        '#ffffff', 
-                        'smoke'
-                    ));
+            if (typeof globalParticles !== 'undefined') {
+                for (let p = 0; p < 12; p++) {
+                    spawnParticle(
+                        this.x + (Math.random() - 0.5) * 0.8,
+                        this.y + (Math.random() - 0.5) * 0.8,
+                        '#00ffff', 
+                        'sparkle'
+                    );
                 }
             }
         }
@@ -13759,14 +13791,14 @@
                 MusicEngine.playSFX(spellData.name === 'Shield Bash' ? 'block' : 'slash');
             }
 
-            // Optional: Spawn some instant particles right in front of you!
-            for(let p=0; p<5; p++) {
-                if (typeof globalParticles !== 'undefined') {
-                    globalParticles.push(new Particle(
-                        this.x + fX + (Math.random()-0.5), 
-                        this.y + fY + (Math.random()-0.5), 
-                        '#ffffff', 'smoke'
-                    ));
+            if (typeof globalParticles !== 'undefined') {
+                for (let p = 0; p < 12; p++) {
+                    spawnParticle(
+                        this.x + (Math.random() - 0.5) * 0.8,
+                        this.y + (Math.random() - 0.5) * 0.8,
+                        '#00ffff', 
+                        'sparkle'
+                    );
                 }
             }
 
@@ -14460,7 +14492,7 @@
                 this.npcs.push(newNPC);
             }
             
-            this.saveGame();
+            this.requestSave();
         }
      
       killNPC(npc, respawnInput = false, reason = 'combat',alignment = null) {
@@ -14525,10 +14557,14 @@
                         minion.visible = false;
                         minion.x = -999; // Move off map
                         
-                        // Visual pop so they don't just vanish into thin air
-                        for(let p = 0; p < 10; p++) {
-                            if (typeof globalParticles !== 'undefined') {
-                                globalParticles.push(new Particle(minion.x, minion.y, '#aa00ff', 'smoke'));
+                        if (typeof globalParticles !== 'undefined') {
+                            for (let p = 0; p < 12; p++) {
+                                spawnParticle(
+                                    this.x + (Math.random() - 0.5) * 0.8,
+                                    this.y + (Math.random() - 0.5) * 0.8,
+                                    '#00ffff', 
+                                    'sparkle'
+                                );
                             }
                         }
                     }
@@ -14592,7 +14628,7 @@
                     // Force the hotbar to shuffle in a new card
                     if (typeof this.shuffleSpells === 'function') this.shuffleSpells();
 
-                    this.saveGame();
+                    this.requestSave();
                 }
                 // -------------------------------
                     // -------------------------------
@@ -14859,7 +14895,7 @@
                             this.activeSummons = [];
                             
                             this.loadMap(this.prevMap); 
-                            this.saveGame();
+                            this.requestSave();
                         }
                     }, 10000); 
                 }
@@ -14891,7 +14927,7 @@
         }
 
         // 4. FORCE SAVE immediately so this fix persists through refresh
-        this.saveGame();
+        this.requestSave();
         console.log(`[Revive] Game Saved. The NPC should now exist on refresh.`);
       
         }
@@ -14913,7 +14949,7 @@
 
             // 3. Reload the pristine map and save
             this.loadMap(this.mapID);
-            this.saveGame();
+            this.requestSave();
             
             // 4. Sync with server
             if (typeof socket !== 'undefined') {
@@ -14967,7 +15003,7 @@
               });
               
               if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('heal'); 
-              if (typeof this.saveGame === 'function') this.saveGame();
+              if (typeof this.saveGame === 'function') this.requestSave();
           } else {
               // If restoring a map, update the old activeSummon with the newly spawned NPC's ID
               let existingSummon = this.activeSummons.find(s => s.uid === cardUID);
@@ -16016,56 +16052,56 @@
                             
                           // ... existing dialogue logic ...
 
-else if(this.currentSpeaker.alignment === 'foe_coward') {
-    // --- NEW: Snap coward directly in front of the player ---
-    // this.dir: 0 = North, 1 = East, 2 = South, 3 = West
-    this.currentSpeaker.speed = 0;
-    if (this.dir === 0) { 
-        this.currentSpeaker.x = this.x;
-        this.currentSpeaker.y = this.y - 0.8;
-        this.currentSpeaker.dir = 2; // Foe faces South
-    } else if (this.dir === 1) { 
-        this.currentSpeaker.x = this.x + 0.8;
-        this.currentSpeaker.y = this.y;
-        this.currentSpeaker.dir = 3; // Foe faces West
-    } else if (this.dir === 2) { 
-        this.currentSpeaker.x = this.x;
-        this.currentSpeaker.y = this.y + 0.8;
-        this.currentSpeaker.dir = 0; // Foe faces North
-    } else if (this.dir === 3) { 
-        this.currentSpeaker.x = this.x - 0.8;
-        this.currentSpeaker.y = this.y;
-        this.currentSpeaker.dir = 1; // Foe faces East
-    }
+            else if(this.currentSpeaker.alignment === 'foe_coward') {
+                // --- NEW: Snap coward directly in front of the player ---
+                // this.dir: 0 = North, 1 = East, 2 = South, 3 = West
+                this.currentSpeaker.speed = 0;
+                if (this.dir === 0) { 
+                    this.currentSpeaker.x = this.x;
+                    this.currentSpeaker.y = this.y - 0.8;
+                    this.currentSpeaker.dir = 2; // Foe faces South
+                } else if (this.dir === 1) { 
+                    this.currentSpeaker.x = this.x + 0.8;
+                    this.currentSpeaker.y = this.y;
+                    this.currentSpeaker.dir = 3; // Foe faces West
+                } else if (this.dir === 2) { 
+                    this.currentSpeaker.x = this.x;
+                    this.currentSpeaker.y = this.y + 0.8;
+                    this.currentSpeaker.dir = 0; // Foe faces North
+                } else if (this.dir === 3) { 
+                    this.currentSpeaker.x = this.x - 0.8;
+                    this.currentSpeaker.y = this.y;
+                    this.currentSpeaker.dir = 1; // Foe faces East
+                }
 
-    // --- ORIGINAL RENDERING LOGIC ---
-    let imageIndex = this.currentSpeaker.type;
-    imageIndex = getUpgradedImageIndex(imageIndex);
-    
-    let config = this.getSpriteConfig(this.currentSpeaker, 0, imageIndex);
+                // --- ORIGINAL RENDERING LOGIC ---
+                let imageIndex = this.currentSpeaker.type;
+                imageIndex = getUpgradedImageIndex(imageIndex);
+                
+                let config = this.getSpriteConfig(this.currentSpeaker, 0, imageIndex);
 
-// 2. Define your baseline UI coordinates
-let baseX = -0.01;
-let baseY = 0.013;
+            // 2. Define your baseline UI coordinates
+            let baseX = -0.01;
+            let baseY = 0.013;
 
-// 3. Translate the 3D properties to the 2D Canvas!
-let portraitY = baseY + (config.hover * 0.05); 
+            // 3. Translate the 3D properties to the 2D Canvas!
+            let portraitY = baseY + (config.hover * 0.05); 
 
-// 4. Apply the 3D scale
-let portraitScale = config.scale;
-if(imageIndex >= 129 || imageIndex <= 131) {
-    portraitY = -6;
-    baseX = -6;
-    portraitScale = config.scale * .9;
-}
+            // 4. Apply the 3D scale
+            let portraitScale = config.scale;
+            if(imageIndex >= 129 || imageIndex <= 131) {
+                portraitY = -6;
+                baseX = -6;
+                portraitScale = config.scale * .9;
+            }
 
-// --- NEW: Direction Override ---
-// 0 was Left. Try 1, 2, 3, etc., until the sprite is looking directly at the camera!
- 
+            // --- NEW: Direction Override ---
+            // 0 was Left. Try 1, 2, 3, etc., until the sprite is looking directly at the camera!
+            
 
-// Pass portraitDir as the 6th argument!
-drawPortrait(imageIndex, baseX, portraitY, portraitScale);
-}
+            // Pass portraitDir as the 6th argument!
+            drawPortrait(imageIndex, baseX, portraitY, portraitScale);
+            }
 
                            // else{
                                 
@@ -16213,7 +16249,7 @@ drawPortrait(imageIndex, baseX, portraitY, portraitScale);
 
             // ---> DELETED: The loop that makes NPCs visible again. They were never hidden! <---
 
-            this.saveGame();
+            this.requestSave();
 
             // Push any remaining actions from the speaker to the FRONT of the queue
             if (actions && actions.length > 0) {
@@ -16245,7 +16281,7 @@ drawPortrait(imageIndex, baseX, portraitY, portraitScale);
                 }
                 // ---> ADD !this.isLoading HERE <---
                 if (typeof this.saveGame === 'function' && !this.isLoading) {
-                    this.saveGame();
+                    this.requestSave();
                 }
                 return;
             }
@@ -16388,7 +16424,7 @@ drawPortrait(imageIndex, baseX, portraitY, portraitScale);
                     case 'set_flag': this[payload.key] = payload.value; break;           
                     case 'set_memory': 
                         this.memory[payload.key] = payload.value; 
-                        if (typeof this.saveGame === 'function') this.saveGame();
+                        if (typeof this.saveGame === 'function') this.requestSave();
                         break;
                     case 'change_weather': if (this.weather) this.weather.setMode(payload); break;
                     case 'change_sky': this.skyColor = payload; break;
@@ -17146,15 +17182,15 @@ drawPortrait(imageIndex, baseX, portraitY, portraitScale);
                         } else if (this.currentSpeaker) {
                             this.killNPC(this.currentSpeaker, true, 'story_event');
                         }
-                        if (typeof this.saveGame === 'function') this.saveGame();
+                        if (typeof this.saveGame === 'function') this.requestSave();
                         break;
                     case 'kill_type': 
                         this.npcs.forEach(n => { if (!n.isDead && Math.floor(n.type) === payload) this.killNPC(n, true, 'story_event'); });
-                        if (typeof this.saveGame === 'function') this.saveGame();
+                        if (typeof this.saveGame === 'function') this.requestSave();
                         break;
                     case 'kill_all': 
                         this.npcs.forEach(n => { if (!n.isDead) this.killNPC(n, true, 'story_event'); });
-                        if (typeof this.saveGame === 'function') this.saveGame();
+                        if (typeof this.saveGame === 'function') this.requestSave();
                         break;
                     case 'transform_npc':
                         let tIndex = (payload.index !== undefined && payload.index !== null) ? payload.index : (this.currentSpeaker ? this.currentSpeaker.index : null);
@@ -17180,7 +17216,14 @@ drawPortrait(imageIndex, baseX, portraitY, portraitScale);
                                 let transformPayload = { index: n.index, ...payload };
                                 this.actionQueue.unshift(['transform_npc', transformPayload]);
                                 if (typeof globalParticles !== 'undefined') {
-                                    for(let p=0; p<5; p++) globalParticles.push(new Particle(n.x, n.y, '#550055', 'smoke'));
+                                    for (let p = 0; p < 12; p++) {
+                                        spawnParticle(
+                                            this.x + (Math.random() - 0.5) * 0.8,
+                                            this.y + (Math.random() - 0.5) * 0.8,
+                                            '#00ffff', 
+                                            'sparkle'
+                                        );
+                                    }
                                 }
                             }
                         });
@@ -17241,7 +17284,7 @@ drawPortrait(imageIndex, baseX, portraitY, portraitScale);
                     this.memory['hunted_interval'] = payload.interval; 
                     this.memory['hunted_timer'] = payload.interval;
                     this.memory['hunted_mobs'] = payload.mobs;
-                    this.saveGame();
+                    this.requestSave();
                     break;
 
                     case 'start_minigame':
@@ -17304,7 +17347,7 @@ drawPortrait(imageIndex, baseX, portraitY, portraitScale);
                         this.memory['hunted_active'] = false;
                         this.memory['hunted_timer'] = 0;
                         this.memory['hunted_waves_left'] = 0;
-                        if (typeof this.saveGame === 'function') this.saveGame();
+                        if (typeof this.saveGame === 'function') this.requestSave();
                         break;
                     // --- COMBAT & EVENTS ---
                     case 'start_tactics':
@@ -17450,7 +17493,7 @@ drawPortrait(imageIndex, baseX, portraitY, portraitScale);
                         if (this.mapID === 888) {
                                 startGame = 'tactics';
                             } else {
-                                this.saveGame();
+                                this.requestSave();
                             }
                         break;
 
@@ -19763,29 +19806,74 @@ drawPortrait(imageIndex, baseX, portraitY, portraitScale);
       this.originy = y;
       this.originz = z;
     }
-    show(x,y,z,l,h,text,type='frame',visible = 1,foe,originx = this.x, originy = this.y,originz = this.originz){
-      if (foe == 1&&Player[1].isCPU == 1){return}
-      this.foe = foe
-        this.x = x;
-        this.y = y;
-        this.z = z;
-        this.l = l;
-        this.h = h;
+    show(x, y, z, l, h, text, type = 'frame', visible = 1, foe, originx = this.x, originy = this.y, originz = this.originz) {
+        if (foe == 1 && typeof Player !== 'undefined' && Player[1] && Player[1].isCPU == 1) { return; }
+        
+        this.foe = foe;
+        this.x = x; this.y = y; this.z = z;
+        this.l = l; this.h = h;
+        this.originx = originx; this.originy = originy; this.originz = originz;
+        this.type = type; this.visible = visible; this.text = text;
+
+        if (this.visible <= 0) return;
+
+        // ==========================================
+        // --- 1. CACHE IDENTIFICATION ---
+        // ==========================================
+        // Some buttons constantly animate (like the joystick knob or pulsing neon). We skip caching them.
+        let skipCache = ['joystick', 'pulse', 'indicator', 'seesaw', 'dialogue'].includes(type);
+
+        // Check if this is a blinking summoned card (we skip caching so it can blink freely)
+        if (this.foe === 'spell' && this.assignedCard && typeof Dungeon !== 'undefined' && Dungeon.activeSummons) {
+            let isSummoned = Dungeon.activeSummons.some(s => typeof s === 'object' && s.uid === this.assignedCard.uid);
+            if (isSummoned) skipCache = true;
+        }
+
+        // Generate a unique "fingerprint" for this exact button state
+        let stateMod = this.isPressed ? "_pressed" : "_normal";
+        if (['d_pad', 'b_pad', 'turn_l', 'turn_r'].includes(type)) stateMod += "_" + (this.currentDir || "none");
+        
+        // Include screen size (tL) in the key so if the window resizes, it redraws a crisp new button!
+        let cacheKey = `${type}_${text}_${l}_${h}_${z}_${tL}${stateMod}`;
+
+        let padding = (tL / 10) * 0.2; // Padding to prevent clipping drop-shadows
+
+        // ==========================================
+        // --- 2. DRAW FROM CACHE (INSTANT!) ---
+        // ==========================================
+        if (!skipCache && globalButtonCache.has(cacheKey)) {
+            let cachedImg = globalButtonCache.get(cacheKey);
+            let drawX = tX + (tL / 10) * this.x - padding;
+            let drawY = tY + (tH / 10) * this.y - padding;
+            ctx.drawImage(cachedImg, drawX, drawY);
+            return; // WE ARE DONE! Skip all the vector math!
+        }
+
+        // ==========================================
+        // --- 3. PREPARE TO CACHE ---
+        // ==========================================
+        let originalCtx = ctx, oldTX = tX, oldTY = tY;
+        let offCanvas = null;
+
+        if (!skipCache) {
+            offCanvas = document.createElement('canvas');
+            offCanvas.width = ((tL / 10) * this.l * this.z) + (padding * 2);
+            offCanvas.height = ((tH / 10) * this.h * this.z) + (padding * 2);
+            
+            // Hijack the global context!
+            ctx = offCanvas.getContext('2d');
+            tX = padding - ((tL / 10) * this.x);
+            tY = padding - ((tH / 10) * this.y);
+        }
+
         let pulse = 0;
-        let isPressed = 0;
+        let isPressed = this.isPressed;
         let bSize = 0;
         let baseCol = 0;
         let frameCol = 0;
         let inset = 0;
         let borderCol = 0;
         let bgCol = 0;
-        this.originx = originx;
-        this.originy = originy;
-        this.originz = originz;
-        this.type = type;
-        this.visible = visible;
-        this.text = text
-      if (this.visible > 0){
         switch(type){
           case 'frame':
             this.frameColor = 'rgba(0,0,190,.75)';
@@ -20439,9 +20527,31 @@ drawPortrait(imageIndex, baseX, portraitY, portraitScale);
                     }
                 }
             }
-                break;
-                }
+          break;
+        }
         //
+        // ==========================================
+        // --- 5. FINALIZE AND SAVE CACHE ---
+        // ==========================================
+        if (!skipCache) {
+            // 1. Restore the global variables
+            ctx = originalCtx;
+            tX = oldTX;
+            tY = oldTY;
+
+            // 2. Save the newly painted canvas to the memory bank
+            globalButtonCache.set(cacheKey, offCanvas);
+            
+            // Prevent memory leaks by capping the cache size
+            if (globalButtonCache.size > 150) {
+                let firstKey = globalButtonCache.keys().next().value;
+                globalButtonCache.delete(firstKey);
+            }
+
+            // 3. Draw it to the real screen for this frame
+            let drawX = tX + (tL / 10) * this.x - padding;
+            let drawY = tY + (tH / 10) * this.y - padding;
+            ctx.drawImage(offCanvas, drawX, drawY);
         }
         
         }
@@ -20719,7 +20829,7 @@ drawPortrait(imageIndex, baseX, portraitY, portraitScale);
                             
                             if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('cancel'); 
                             setTimeout(() => {
-                                if (typeof Dungeon.saveGame === 'function') Dungeon.saveGame();
+                                if (typeof Dungeon.requestSave === 'function') Dungeon.requestSave();
                             }, 10);
                             
                             cardWasUsed = false; 
@@ -20802,7 +20912,7 @@ drawPortrait(imageIndex, baseX, portraitY, portraitScale);
                     
                 case 1: 
                     if (this.foe == 'emperor'){
-                        Dungeon.saveGame();
+                        Dungeon.requestSave();
                         preGame = 'explore';
                         startGame = 8; 
                         Dungeon.dCounter = 0;
@@ -20893,7 +21003,7 @@ drawPortrait(imageIndex, baseX, portraitY, portraitScale);
                         if (Dungeon.savedViewMode) window.gameViewMode = Dungeon.savedViewMode;
                         if (Dungeon.savedCameraMode) Dungeon.cameraMode = Dungeon.savedCameraMode;
                         
-                        Dungeon.saveGame();
+                        Dungeon.requestSave();
                         btnYes.visible = false;
                         btnNo.visible = false;
                         return; 
@@ -20913,7 +21023,7 @@ drawPortrait(imageIndex, baseX, portraitY, portraitScale);
                         Dungeon.status = 'normal';
                         Dungeon.killNPC(Dungeon.currentSpeaker, true, 'dialogue'); 
                         Dungeon.currentSpeaker = null;
-                        Dungeon.saveGame(); 
+                        Dungeon.requestSave(); 
                         btnYes.visible = false;
                         btnNo.visible = false;
                         return; 
@@ -21370,17 +21480,29 @@ drawPortrait(imageIndex, baseX, portraitY, portraitScale);
                                 // 1. An Ally (or the Player) picked it up! Open the UI.
                                 this.openTacticsBooster(steppedOn.cardId);
                                 
-                                // Golden visual pop!
                                 if (typeof globalParticles !== 'undefined') {
-                                    for(let i = 0; i < 10; i++) globalParticles.push(new Particle(activeUnit.x, activeUnit.y, '#FFD700', 'smoke'));
+                                    for (let p = 0; p < 12; p++) {
+                                        spawnParticle(
+                                            this.x + (Math.random() - 0.5) * 0.8,
+                                            this.y + (Math.random() - 0.5) * 0.8,
+                                            '#00ffff', 
+                                            'sparkle'
+                                        );
+                                    }
                                 }
                                 // (MusicEngine.playSFX('chime') is already handled inside openTacticsBooster)
                                 
                             } else {
                                 // 2. A Foe stepped on it! The loot is stolen/destroyed.
                                 if (typeof globalParticles !== 'undefined') {
-                                    // Evil red/purple visual pop to show the player they lost it
-                                    for(let i = 0; i < 10; i++) globalParticles.push(new Particle(activeUnit.x, activeUnit.y, '#ff0044', 'smoke'));
+                                    for (let p = 0; p < 12; p++) {
+                                        spawnParticle(
+                                            this.x + (Math.random() - 0.5) * 0.8,
+                                            this.y + (Math.random() - 0.5) * 0.8,
+                                            '#00ffff', 
+                                            'sparkle'
+                                        );
+                                    }
                                 }
                                 if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('debuff_sound'); // Plays a negative sound so you know they took it!
                             }
@@ -21467,10 +21589,14 @@ drawPortrait(imageIndex, baseX, portraitY, portraitScale);
                         // 1. Destroy the wall! (Turn it into a floor)
                         Dungeon.maze[currentGridY][currentGridX] = 0;
                         
-                        // 2. Visual and Audio Feedback
                         if (typeof globalParticles !== 'undefined') {
-                            for (let i = 0; i < 15; i++) {
-                                globalParticles.push(new Particle(currentGridX + 0.5, currentGridY + 0.5, '#aaaaaa', 'smoke'));
+                            for (let p = 0; p < 12; p++) {
+                                spawnParticle(
+                                    this.x + (Math.random() - 0.5) * 0.8,
+                                    this.y + (Math.random() - 0.5) * 0.8,
+                                    '#00ffff', 
+                                    'sparkle'
+                                );
                             }
                         }
                         if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('block'); // or 'shatter'
@@ -21581,10 +21707,14 @@ drawPortrait(imageIndex, baseX, portraitY, portraitScale);
                             }
                         }
 
-                        // Trigger visual explosion
                         if (typeof globalParticles !== 'undefined') {
-                            for (let i = 0; i < 10; i++) {
-                                globalParticles.push(new Particle(p.x, p.y, sData.glow || '#aa00ff', 'smoke'));
+                            for (let p = 0; p < 12; p++) {
+                                spawnParticle(
+                                    this.x + (Math.random() - 0.5) * 0.8,
+                                    this.y + (Math.random() - 0.5) * 0.8,
+                                    '#00ffff', 
+                                    'sparkle'
+                                );
                             }
                         }
 
@@ -22233,8 +22363,14 @@ drawPortrait(imageIndex, baseX, portraitY, portraitScale);
             if (atkCrit > defCrit) {
                 critBonus = atkCrit - defCrit; // The static modifier
                 if (typeof globalParticles !== 'undefined') {
-                    // Burst of gold particles for visual feedback!
-                    for(let i=0; i<15; i++) globalParticles.push(new Particle(defender.x, defender.y, '#FFD700', 'smoke'));
+                    for (let p = 0; p < 12; p++) {
+                        spawnParticle(
+                            this.x + (Math.random() - 0.5) * 0.8,
+                            this.y + (Math.random() - 0.5) * 0.8,
+                            '#00ffff', 
+                            'sparkle'
+                        );
+                    }
                 }
             }
 
@@ -22873,7 +23009,14 @@ drawPortrait(imageIndex, baseX, portraitY, portraitScale);
                     this.units.push(newAlly);
                     
                     if (typeof globalParticles !== 'undefined') {
-                        for(let p = 0; p < 10; p++) globalParticles.push(new Particle(mapX + 0.5, mapY + 0.5, '#aa00ff', 'smoke'));
+                        for (let p = 0; p < 12; p++) {
+                            spawnParticle(
+                                this.x + (Math.random() - 0.5) * 0.8,
+                                this.y + (Math.random() - 0.5) * 0.8,
+                                '#00ffff', 
+                                'sparkle'
+                            );
+                        }
                     }
                     if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('heal');
                     
@@ -22991,7 +23134,14 @@ drawPortrait(imageIndex, baseX, portraitY, portraitScale);
 
                     this.units.push(newAlly);
                     if (typeof globalParticles !== 'undefined') {
-                        for(let p = 0; p < 10; p++) globalParticles.push(new Particle(tile.x + 0.5, tile.y + 0.5, '#aa00ff', 'smoke'));
+                        for (let p = 0; p < 12; p++) {
+                            spawnParticle(
+                                this.x + (Math.random() - 0.5) * 0.8,
+                                this.y + (Math.random() - 0.5) * 0.8,
+                                '#00ffff', 
+                                'sparkle'
+                            );
+                        }
                     }
                 }
                 if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('heal');
@@ -27342,7 +27492,7 @@ drawPortrait(imageIndex, baseX, portraitY, portraitScale);
                 drawText(7+.625,6,1,.5,(Player[attacker].look[eLOOK.D]+1)+'/'+(Player[attacker].look[eLOOK.R]),'white',1)
                 btnAction.show(6.5,7.75,1,1,1,'deck','arrow_left',1,0)
                 btnAction2.show(9,7.75,1,1,1,'deck','arrow_right',1,0)
-                btnAdd.show(6.9,5.8,.9,1,1,'deck','add_toHand',1,0)
+                btnAdd.show(6.9,5.8,.5,1,1,'deck','add_toHand',1,0)
                 if(btnAdd.visible == true){//Add To Hand/Field TEXT}
                   if (Player[attacker].hand[Player[attacker].look[eLOOK.H]].index == 44){
                     if(Player[attacker].deck[Player[attacker].look[eLOOK.D]].type == 0){
@@ -31196,7 +31346,7 @@ drawPortrait(imageIndex, baseX, portraitY, portraitScale);
                                     Dungeon.constructing = false;
                                     Dungeon.loadMap(targetID); // Teleport!
                                     chatLog.push(`[SYSTEM]: Teleporting to Map ${targetID}...`);
-                                    Dungeon.saveGame();
+                                    Dungeon.requestSave();
                                 } else {
                                     chatLog.push(`[SYSTEM]: Invalid Map ID.`);
                                 }
@@ -32762,7 +32912,7 @@ drawPortrait(imageIndex, baseX, portraitY, portraitScale);
                                 MusicEngine?.playSFX('chime');
                                 Dungeon.editorStatusMsg = "FILE DOWNLOADED!"; Dungeon.editorStatusTimer = Date.now(); return; 
                         }
-                        if (gridPos.y >= 9.0 && gridPos.y <= 9.6) { startGame = 'explore'; window.gameViewMode = Dungeon.savedViewMode || '3d'; Dungeon.cameraMode = Dungeon.savedCameraMode || 'first_person'; MusicEngine?.playSFX('cancel'); Dungeon.saveGame();return; }
+                        if (gridPos.y >= 9.0 && gridPos.y <= 9.6) { startGame = 'explore'; window.gameViewMode = Dungeon.savedViewMode || '3d'; Dungeon.cameraMode = Dungeon.savedCameraMode || 'first_person'; MusicEngine?.playSFX('cancel'); Dungeon.requestSave();return; }
                     }
                     return; 
                 }
@@ -32849,7 +32999,7 @@ drawPortrait(imageIndex, baseX, portraitY, portraitScale);
                                 // Temporarily bypass the editor save-block to commit the memory to localStorage
                                 let tempState = startGame;
                                 startGame = 'explore';
-                                Dungeon.saveGame();
+                                Dungeon.requestSave();
                                 startGame = tempState;
                             }
 
@@ -33306,7 +33456,7 @@ drawPortrait(imageIndex, baseX, portraitY, portraitScale);
                     if (gridPos.y >= 7.2 && gridPos.y <= 8.0) {
                         if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('heal'); 
                         if (typeof Dungeon !== 'undefined') {
-                            Dungeon.saveGame();
+                            Dungeon.requestSave();
                             if (typeof MessageBox !== 'undefined') MessageBox.show(0.5, 8, 1, 9, 2, 'Game Saved Successfully!', 'dialogue', 1, 0);
                         }
                         return;
@@ -33315,7 +33465,7 @@ drawPortrait(imageIndex, baseX, portraitY, portraitScale);
                     // EXIT TO MAIN MENU
                     if (gridPos.y >= 8.2 && gridPos.y <= 9.0) {
                         if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('cancel');
-                        if (typeof Dungeon !== 'undefined') Dungeon.saveGame(); 
+                        if (typeof Dungeon !== 'undefined') Dungeon.requestSave(); 
                         startGame = 3; 
                         return;
                     }
@@ -33458,7 +33608,7 @@ drawPortrait(imageIndex, baseX, portraitY, portraitScale);
                                 
                                 
                                 // Send them back to explore or options depending on where they came from
-                                Dungeon.saveGame();
+                                Dungeon.requestSave();
                                 startGame = preGame === 'explore' ? 'explore' : 'options';
                                 return;
                             }
@@ -33699,7 +33849,7 @@ drawPortrait(imageIndex, baseX, portraitY, portraitScale);
                     
                     
                     // Send them back to explore or options depending on where they came from
-                    Dungeon.saveGame();
+                    Dungeon.requestSave();
                     startGame = preGame === 'explore' ? 'explore' : 'options';
                     return;
                 }
@@ -34186,7 +34336,7 @@ drawPortrait(imageIndex, baseX, portraitY, portraitScale);
                     if (comboSlot1) { Dungeon.extra.push(comboSlot1); comboSlot1 = null; }
                     if (comboSlot2) { Dungeon.extra.push(comboSlot2); comboSlot2 = null; }
                     
-                    Dungeon.saveGame();
+                    Dungeon.requestSave();
                     Dungeon.isProcessingActions = false;
                     Dungeon.processNextAction();
                     startGame = preGame === 'explore' ? 'explore' : 'options';
@@ -34254,7 +34404,7 @@ drawPortrait(imageIndex, baseX, portraitY, portraitScale);
                             
                             // Cleanup and return to the main game
                             window.djinnPage = 0;
-                            Dungeon.saveGame(); // Save their new loot!
+                            Dungeon.requestSave(); // Save their new loot!
                             
                             // Return them to wherever they were before opening the lamp
                             startGame = 'explore'
@@ -34304,7 +34454,7 @@ drawPortrait(imageIndex, baseX, portraitY, portraitScale);
                             Dungeon.dSense += 1;
                             Dungeon.isProcessingActions = false;
                             Dungeon.processNextAction();
-                            Dungeon.saveGame();
+                            Dungeon.requestSave();
                             return;
                         } 
                         else {
@@ -34349,7 +34499,7 @@ drawPortrait(imageIndex, baseX, portraitY, portraitScale);
                                 aRune = new stone(5.545,4.53,1,eSTAT.A);
                             }
                             if(typeof MusicEngine !== 'undefined') MusicEngine.stop();
-                            Dungeon.saveGame();
+                            Dungeon.requestSave();
                             Dungeon.isProcessingActions = false;
                              Dungeon.processNextAction();
                             return;
@@ -34381,7 +34531,7 @@ drawPortrait(imageIndex, baseX, portraitY, portraitScale);
                             }
                             Dungeon.isProcessingActions = false;
                             Dungeon.processNextAction();
-                            Dungeon.saveGame();
+                            Dungeon.requestSave();
                             return;
                         } else {
                             // EMPEROR LOSS
@@ -34413,7 +34563,7 @@ drawPortrait(imageIndex, baseX, portraitY, portraitScale);
                             Dungeon.status = 'normal';
                             
                             if(typeof MusicEngine !== 'undefined') MusicEngine.stop();
-                            Dungeon.saveGame();
+                            Dungeon.requestSave();
                              // 1. GLOBAL RESET (Always restore camera and runes on battle exit)
                             Player = [
                                 new Field(0),
@@ -34486,7 +34636,7 @@ drawPortrait(imageIndex, baseX, portraitY, portraitScale);
                             iRune = new stone(3.545,4.49,1,eSTAT.I);
                             aRune = new stone(5.545,4.53,1,eSTAT.A);
                         }
-                        Dungeon.saveGame();
+                        Dungeon.requestSave();
                         return;
                     } 
                     
@@ -35211,7 +35361,7 @@ drawPortrait(imageIndex, baseX, portraitY, portraitScale);
                     
                     
                 
-                    Dungeon.saveGame()
+                    Dungeon.requestSave()
 
                     return;
                 }
@@ -36490,67 +36640,69 @@ drawPortrait(imageIndex, baseX, portraitY, portraitScale);
         max = Math.floor(max);
         return Math.floor(Math.random() * (max - min + 1)+ min);
         }
-    function resizeCanvas(){  //USED IN EVENT LISTENER TO GET NEW WINDOW X,Y(tX,tY)
-        if (typeof isChatActive !== 'undefined' && isChatActive && startGame != 'charSelect') return;
-        
-        // 1. The absolute maximum internal resolution your engine will render.
-        // Tweak this to find your sweet spot between performance and visual fidelity.
-        const MAX_INTERNAL_RES = 800; 
-        
-        wX = window.innerWidth;
-        wY = window.innerHeight;
+     function resizeCanvas(){  //USED IN EVENT LISTENER TO GET NEW WINDOW X,Y(tX,tY)
+    //after event handler detects window resize, sets canvas x,y to window x,y
+    // 1. Get the scaling factor (2 or 3 for iPhones)
+    if (isChatActive&&startGame!='charSelect') return;
+      var dpr = window.devicePixelRatio || 1;
 
-        // 2. Force the CSS display size to fill the screen
-        canvas.style.width = wX + "px";
-        canvas.style.height = wY + "px";
+      wX = window.innerWidth;
+      wY = window.innerHeight;
 
-        // 3. Calculate internal scale to maintain aspect ratio without blowing up memory
-        let scale = Math.min(MAX_INTERNAL_RES / wX, MAX_INTERNAL_RES / wY);
-        if (scale > 1) scale = 1; // Don't upscale if the window is tiny
+      // 2. Set actual canvas memory size to scaled value
+      canvas.width = wX * dpr;
+      canvas.height = wY * dpr;
 
-        // 4. Set actual canvas memory size
-        canvas.width = Math.floor(wX * scale);
-        canvas.height = Math.floor(wY * scale);
+      // 3. Force the CSS size to match the window
+      canvas.style.width = wX + "px";
+      canvas.style.height = wY + "px";
 
-        // Turn off anti-aliasing so CSS stretching stays beautifully pixelated
-        ctx.imageSmoothingEnabled = false;
-        canvas.style.imageRendering = "pixelated"; // Add this for modern browsers
+      // 4. Normalize the coordinate system
+      ctx.scale(dpr, dpr);
 
-        // 5. Base your table math on the INTERNAL resolution, NOT the CSS window size!
-        tX = canvas.width; 
-        tY = canvas.height;
+    //canvas redimensioned, so re-set values for playing table width and length
+    tX = wX; //table length (actual x determined after funtion)
+    tY = wY; //table height (actual y determined after function)
 
-        if (tX % 2 !== 0) tX--;
-        if (tY % 2 !== 0) tY--;
+    //find largest dimension for tX and tY that is divisible by 2 without remainder
+    if (tX % 2 !== 0) tX--;
+      if (tY % 2 !== 0) tY--;
+        //make sure table dimensions have ratio of 1:1 for x and y respectively
+        //if table too wide make shorter
+        if (tX > tY){
+          tX = tY;
+        }
+        //if table too high make shorter
+        else if(tY > tX){
+          tY = tX;
+        }
 
-        if (tX > tY) { tX = tY; }
-        else if (tY > tX) { tY = tX; }
-
-        var dX = canvas.width - tX;
-        var dY = canvas.height - tY;
+        //find difference between window dimensions and ratio'd table dims for padding
+        var dX = wX - tX;
+        var dY = wY - tY;
         tL = tX;
         tH = tY;
 
+        //find table top-left(0,0) with table centered and equal padding on all sides
         tX = Math.floor(dX / 2);
         tY = Math.floor(dY / 2);
 
-            //set x,y, width, height,length for all frames[to do]
-        /////////ONLINE
-        if(startGame == 'explore'||startGame == 'battle'){
-        chatInput.type = 'text';
-        chatInput.style.position = 'fixed';
-        chatInput.style.top = `${tY}px`;        // Put it at the top
-        chatInput.style.left = `${tX}px`;       // Put it at the left
-        chatInput.style.width = `${(tL/10)*7.8}px`;
-        chatInput.style.height = `${(tL/10)*.5}px`;
-        chatInput.style.opacity = `${.01}px`;       // VISIBLE
-        chatInput.style.background = 'rgba(255,255,255,.01)';  // RED BACKGROUND
-        chatInput.style.zIndex = '1000';     // On top of canvas
-        document.body.appendChild(chatInput);
-        }
-      
-        }
-    //
+        //set x,y, width, height,length for all frames[to do]
+      /////////ONLINE
+      if(startGame == 'explore'||startGame == 'battle'){
+      chatInput.type = 'text';
+      chatInput.style.position = 'fixed';
+      chatInput.style.top = `${tY}px`;        // Put it at the top
+      chatInput.style.left = `${tX}px`;       // Put it at the left
+      chatInput.style.width = `${(tL/10)*7.8}px`;
+      chatInput.style.height = `${(tL/10)*.5}px`;
+      chatInput.style.opacity = `${.01}px`;       // VISIBLE
+      chatInput.style.background = 'rgba(255,255,255,.01)';  // RED BACKGROUND
+      chatInput.style.zIndex = '1000';     // On top of canvas
+      document.body.appendChild(chatInput);
+      }
+    }
+  
   
     function drawShape(shape,x,y,z,x1,y1,x2,y2,x3,y3,x4,y4,color,fill,x5 = 0,y5 = 0){
         //frame
@@ -36684,11 +36836,12 @@ drawPortrait(imageIndex, baseX, portraitY, portraitScale);
         } //END SWITCH x,y,radX,radY,rotation,start angle,end angle[,anticlockwise])
         if(fill>0){ctx.fill();}else{ctx.stroke();}
         }//end function
+    
     function drawText(x, y, boxW, boxH, text, color, z, align) {
         
         // Default to 'left' if they forget to add the argument
         if (typeof align === 'undefined') align = 'left';
-
+        ctx.textBaseline = "hanging";
         // 1. Setup Coordinates
         var zx = x, zy = y; 
         var zl = boxW, zh = boxH;
@@ -36697,48 +36850,66 @@ drawPortrait(imageIndex, baseX, portraitY, portraitScale);
         var drawY = tY + (tH / 10) * y;
         var maxWidth = (tL / 10) * boxW * z;
         var maxHeight = (tH / 10) * boxH * z;
+        // --- NEW CACHE LOGIC START ---
+        // Create a unique fingerprint for this specific string and box size
+        let cacheKey = `${text}_${maxWidth}_${maxHeight}_${align}`;
+        let layout;
 
-        // 2. Setup Font Initial State
-        var fs = maxHeight; 
-        ctx.textBaseline = "hanging";
-        
-        // 3. Helper: Wrap Text
-        function getWrappedLines(ctx, text, limit) {
-        var words = text.split(" ");
-        var lines = [];
-        var currentLine = words[0];
-
-        for (var i = 1; i < words.length; i++) {
-            var word = words[i];
-            var width = ctx.measureText(currentLine + " " + word).width;
-            if (width < limit) {
-            currentLine += " " + word;
-            } else {
-            lines.push(currentLine);
-            currentLine = word;
-            }
-        }
-        lines.push(currentLine);
-        return lines;
-        }
-
-        // 4. Autosize Loop
-        var linesArr = [];
-        var fitFound = false;
-        
-        while (!fitFound && fs > 1) {
-        ctx.font = fs + "px Franklin Gothic, Helvetica, Arial, sans-serif";
-        linesArr = getWrappedLines(ctx, text, maxWidth);
-        
-        if ((linesArr.length * fs) > maxHeight) {
-            fs = fs * 0.95; 
+        if (textLayoutCache.has(cacheKey)) {
+            // Retrieve the pre-calculated math
+            layout = textLayoutCache.get(cacheKey);
         } else {
-            fitFound = true;
-        }
-        }
+            // 2. Setup Font Initial State
+            let fs = maxHeight; 
+            
+            // 3. Helper: Wrap Text
+            function getWrappedLines(ctx, text, limit) {
+                var words = text.split(" ");
+                var lines = [];
+                var currentLine = words[0];
 
+                for (var i = 1; i < words.length; i++) {
+                    var word = words[i];
+                    var width = ctx.measureText(currentLine + " " + word).width;
+                    if (width < limit) {
+                        currentLine += " " + word;
+                    } else {
+                        lines.push(currentLine);
+                        currentLine = word;
+                    }
+                }
+                lines.push(currentLine);
+                return lines;
+            }
+
+            // 4. Autosize Loop
+            let linesArr = [];
+            let fitFound = false;
+            
+            while (!fitFound && fs > 1) {
+                ctx.font = fs + "px Franklin Gothic, Helvetica, Arial, sans-serif";
+                linesArr = getWrappedLines(ctx, text, maxWidth);
+                
+                if ((linesArr.length * fs) > maxHeight) {
+                    fs = fs * 0.95; 
+                } else {
+                    fitFound = true;
+                }
+            }
+
+            // Save the heavy math for next frame
+            layout = { linesArr: linesArr, fs: fs };
+            textLayoutCache.set(cacheKey, layout);
+            
+            // Keep the cache from overflowing if text changes constantly
+            if (textLayoutCache.size > 200) {
+                textLayoutCache.delete(textLayoutCache.keys().next().value);
+            }
+        } // <--- END OF ELSE BLOCK
+        let fs = layout.fs;
+        let linesArr = layout.linesArr;
+        let lineHeight = maxHeight / linesArr.length;
         // 5. Render Loop
-        var lineHeight = maxHeight / linesArr.length;
         
         for (let i = 0; i < linesArr.length; i++) {
         let lineStr = linesArr[i];
@@ -50074,7 +50245,7 @@ drawPortrait(imageIndex, baseX, portraitY, portraitScale);
 
             if (hitNPC) {
                 if (movingForward) {
-                    Dungeon.saveGame();
+                    Dungeon.requestSave();
                     hitNPC.triggerInteraction(Dungeon);
                     
                     // Use startsWith to catch 'foe', 'foe_wave', etc.
