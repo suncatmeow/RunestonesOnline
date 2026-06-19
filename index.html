@@ -104,6 +104,21 @@
     var spriteCache = {};
     const textLayoutCache = new Map();
     const globalButtonCache = new Map();
+    const CanvasPool = {
+        pool: [],
+        getCanvas: function(w, h) {
+            let canvas = this.pool.pop() || document.createElement('canvas');
+            canvas.width = w;
+            canvas.height = h;
+            let ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, w, h); // CRITICAL: Wipes GPU memory clean for reuse
+            return canvas;
+        },
+        returnCanvas: function(canvas) {
+            // Give it back so it doesn't get left in memory
+            this.pool.push(canvas);
+        }
+    };
     // ==========================================
     // OFF-SCREEN MIST CACHE (Global Scope)
     // ==========================================
@@ -4375,6 +4390,7 @@
             visible: true,
             isDead: false
         };
+        this.visibleSprites = []
         this.ghost = 0;
         this.constructing = false;
         this.biome = '';
@@ -4524,6 +4540,9 @@
         // Initialize Z-Buffer (Depth Buffer)
         this.zBuffer = [];
       // Map Data
+        this.hitPool = Array.from({length: 32}, () => ({
+            wallID: 0, side: 0, mapX: 0, mapY: 0, perpWallDist: 0, exitDist: 0, isShort: false, topY: 0
+        }));
         this.projectiles = []; // Track active fireballs
         this.weather = new WeatherSystem(tL);
         //odd solid even walkthru 0 is default open space floor color set in map id
@@ -10297,7 +10316,7 @@
                 // Grab the node with the lowest "f" score (shortest estimated distance)
                 openList.sort((a, b) => a.f - b.f);
                 let currentNode = openList.shift();
-                closedList.add(`${currentNode.x},${currentNode.y}`);
+                closedList.add(currentNode.x + (currentNode.y * 10000));
 
                 // 1. DID WE REACH THE TARGET TILE?
                 if (currentNode.x === targetNode.x && currentNode.y === targetNode.y) {
@@ -10321,7 +10340,7 @@
 
                     // Ignore Walls and already-checked tiles
                     if (this.isWall(nx, ny)) continue;
-                    if (closedList.has(`${nx},${ny}`)) continue;
+                    if (closedList.has(nx + (ny * 10000))) continue;
 
                     // Calculate weights (Diagonals cost 1.4, straight lines cost 1)
                     let g = currentNode.g + (dir.x !== 0 && dir.y !== 0 ? 1.414 : 1);
@@ -10343,21 +10362,24 @@
             return []; // Return empty array if no path is found (blocked by walls)
             }
         generateFlowField(targetX, targetY) {
-            // 1. Create an empty grid matching your maze dimensions
-            
-                if (!this.flowField || this.flowField.length !== this.maze.length) {
-                    this.flowField = new Array(this.maze.length);
-                    for (let i = 0; i < this.maze.length; i++) {
-                        this.flowField[i] = new Array(this.maze[0].length);
-                    }
-                }
-
-                // Just wipe the data, keep the arrays alive
+            // 1. SETUP ONCE
+            if (!this.flowField || this.flowField.length !== this.maze.length) {
+                this.flowField = new Array(this.maze.length);
                 for (let y = 0; y < this.maze.length; y++) {
+                    this.flowField[y] = new Array(this.maze[0].length);
                     for (let x = 0; x < this.maze[0].length; x++) {
-                        this.flowField[y][x] = null;
+                        // Pre-allocate the object!
+                        this.flowField[y][x] = { x: 0, y: 0, active: false }; 
                     }
                 }
+            }
+
+            // Wipe data without destroying the objects
+            for (let y = 0; y < this.maze.length; y++) {
+                for (let x = 0; x < this.maze[0].length; x++) {
+                    this.flowField[y][x].active = false;
+                }
+            }
 
             let startXInt = Math.floor(targetX);
             let startYInt = Math.floor(targetY);
@@ -10369,7 +10391,9 @@
             let queue = [{ x: startXInt, y: startYInt }];
             
             // The tile the target is standing on has zero velocity (NPCs stop here)
-            this.flowField[startYInt][startXInt] = { x: 0, y: 0 }; 
+            this.flowField[startYInt][startXInt].x = 0; 
+            this.flowField[startYInt][startXInt].y = 0;
+            this.flowField[startYInt][startXInt].active = true;
 
             // We can use 8 directions here so they cut corners beautifully!
             let dirs = [
@@ -10385,18 +10409,17 @@
 
                     // 3. If within bounds, not a wall, and not yet assigned an arrow...
                     if (ny >= 0 && ny < this.maze.length && nx >= 0 && nx < this.maze[0].length) {
-                        if (!this.isWall(nx, ny) && this.flowField[ny][nx] === null) {
-                            
-                            // 4. Calculate the vector pointing BACK to the previous tile
+                        if (!this.isWall(nx, ny) && !this.flowField[ny][nx].active) {
                             let dx = current.x - nx;
                             let dy = current.y - ny;
-                            
-                            // Normalize the vector (make its length exactly 1)
                             let dist = Math.sqrt(dx*dx + dy*dy);
-                            this.flowField[ny][nx] = { x: dx/dist, y: dy/dist };
                             
-                            // Push the new tile to keep the smoke expanding
-                            queue.push({ x: nx, y: ny });
+                            // --- THE FIX: Update properties, don't create new {} ---
+                            this.flowField[ny][nx].x = dx/dist; 
+                            this.flowField[ny][nx].y = dy/dist;
+                            this.flowField[ny][nx].active = true;
+                            
+                            queue.push({ x: nx, y: ny }); // Queue still creates tiny objects, but it's much smaller scale
                         }
                     }
                 }
@@ -12304,6 +12327,36 @@
             const deltaDistX = (rayDirX === 0) ? 1e30 : Math.abs(1 / rayDirX);
             const deltaDistY = (rayDirY === 0) ? 1e30 : Math.abs(1 / rayDirY);
             let stepX, stepY, sideDistX, sideDistY;
+            
+            // --- THE CACHING SYSTEM INIT ---
+            if (this.lastR === undefined) {
+                this.lastR = -1; this.lastG = -1; this.lastB = -1;
+            }
+            let lastKnownFillStyle = "";
+
+            // HELPER 1: Zero-Allocation RGB Cacher
+            const setRGB = (rVal, gVal, bVal) => {
+                let rInt = Math.floor(rVal);
+                let gInt = Math.floor(gVal);
+                let bInt = Math.floor(bVal);
+                if (this.lastR !== rInt || this.lastG !== gInt || this.lastB !== bInt) {
+                    this.lastR = rInt; 
+                    this.lastG = gInt; 
+                    this.lastB = bInt;
+                    lastKnownFillStyle = `rgb(${rInt},${gInt},${bInt})`;
+                    ctx.fillStyle = lastKnownFillStyle;
+                }
+            };
+
+            // HELPER 2: Standard String Cacher (Invalidates RGB cache)
+            const setStyle = (styleStr) => {
+                if (lastKnownFillStyle !== styleStr) {
+                    lastKnownFillStyle = styleStr;
+                    ctx.fillStyle = styleStr;
+                    this.lastR = -1; // Force the next RGB to rebuild its string
+                }
+            };
+            // -------------------------------
 
             if (rayDirX < 0) { stepX = -1; sideDistX = (camX - mapX) * deltaDistX; }
             else { stepX = 1; sideDistX = (mapX + 1 - camX) * deltaDistX; }
@@ -12317,7 +12370,8 @@
             let dynamicMaxVis = Math.max(2, Math.round(this.dSense / 3));
             const MAX_RENDER_DEPTH = Math.min(32, dynamicMaxVis + 1); 
             
-            let hitBlocks = [];
+            let hitCount = 0;
+            let solidHits = 0;
             let losBlockedDepth = MAX_RENDER_DEPTH;
 
             // ==========================================
@@ -12343,17 +12397,24 @@
                     if (isNaN(perpWallDist) || perpWallDist <= 0) perpWallDist = 0.1;
                     
                     let exitDist = Math.min(sideDistX, sideDistY);
-                    
-                    // THE FIX: Check if this is a short floor tile
                     let heightMult = this.tileHeights[tileID] !== undefined ? this.tileHeights[tileID] : 1.0;
                     let isShort = heightMult <= 0.25;
                     
-                    hitBlocks.push({ wallID: tileID, side: side, mapX: mapX, mapY: mapY, perpWallDist: perpWallDist, exitDist: exitDist, isShort: isShort });
+                    // --- THE FIX: USE THE POOL INSTEAD OF .push() ---
+                    let hit = this.hitPool[hitCount];
+                    hit.wallID = tileID;
+                    hit.side = side;
+                    hit.mapX = mapX;
+                    hit.mapY = mapY;
+                    hit.perpWallDist = perpWallDist;
+                    hit.exitDist = exitDist;
+                    hit.isShort = isShort;
                     
-                    // THE FIX: Only count TALL walls towards the early-exit limit.
-                    // (We also add a hard cap of 16 total blocks just to prevent lag on huge open floors)
-                    let solidHits = hitBlocks.filter(h => !h.isShort).length;
-                    if (solidHits > 3 || hitBlocks.length > 16) break;
+                    hitCount++;
+                    if (!isShort) solidHits++;
+
+                    // THE FIX: No more .filter(), we use our manual counter
+                    if (solidHits > 3 || hitCount >= 32) break; 
                     
                     let isTransparentWall = [88, 91].includes(tileID);
                     let isInfinite = this.toweringWalls.includes(tileID) && !this.tileHeights[tileID] && !this.randomTreeTiles.includes(tileID);
@@ -12370,13 +12431,12 @@
             let fB = this.fogColorRGB ? this.fogColorRGB.b : 8;
             ctx.imageSmoothingEnabled = false;
             
-            // THE SPEED FIX: Stop the canvas from calculating sub-pixel blending
             const screenX = Math.floor(viewX + stripX);
             const drawWidth = Math.ceil(width);
-            let lastKnownFillStyle = "";
 
-            for (let i = hitBlocks.length - 1; i >= 0; i--) {
-                let hit = hitBlocks[i];
+            for (let i = hitCount - 1; i >= 0; i--) { 
+                let hit = this.hitPool[i];
+                
                 let wallID = hit.wallID;
                 let side = hit.side;
                 let perpWallDist = hit.perpWallDist;
@@ -12404,17 +12464,13 @@
 
                 let drawEnd = Math.ceil(Math.min(viewH, wallBottom)) + 1;
                 let actualDrawHeight = drawEnd - drawStart;
-                
-                // (REMOVED the 'continue' skip from here!)
 
                 let parsed = this.parsedWallColors[wallID];
                 let baseR = parsed ? parsed.r : 139;
                 let baseG = parsed ? parsed.g : 69;
                 let baseB = parsed ? parsed.b : 19;
 
-                // --- THE FIX: SAFELY ANCHORED 3D ROOFS ---
-                // We draw the roof FIRST. This guarantees the top of floor tiles are 
-                // always drawn, even if you are standing right on top of their front edge!
+                // --- SAFELY ANCHORED 3D ROOFS ---
                 if (heightMult < 15.0) {
                     let exitLineHeight = wallScale / hit.exitDist; 
                     let exitZShift = exitLineHeight * zOffset;     
@@ -12443,390 +12499,358 @@
                         roofG = (roofG * (1 - roofFog)) + (fG * roofFog);
                         roofB = (roofB * (1 - roofFog)) + (fB * roofFog);
 
-                        let newColor = `rgb(${Math.floor(roofR)},${Math.floor(roofG)},${Math.floor(roofB)})`;
-                        if (lastKnownFillStyle !== newColor) { ctx.fillStyle = newColor; lastKnownFillStyle = newColor; }
+                        setRGB(roofR, roofG, roofB); // <--- FASTER
                         ctx.fillRect(screenX, viewY + finalRoofY, drawWidth, roofH);
                     }
                 }
 
-                // THE FIX: NOW we can safely skip the front-face drawing if it's off-screen or 0 pixels tall!
                 if (actualDrawHeight <= 0) continue;
 
                 // --- CORE FOG & SHADING MATH ---
-                let wallHitX;
-                if (side == 0) wallHitX = camY + perpWallDist * rayDirY;
-                else           wallHitX = camX + perpWallDist * rayDirX;
-                wallHitX -= Math.floor(wallHitX);
+                    let wallHitX;
+                    if (side == 0) wallHitX = camY + perpWallDist * rayDirY;
+                    else           wallHitX = camX + perpWallDist * rayDirX;
+                    wallHitX -= Math.floor(wallHitX);
 
-                let intensity = this.noiseLevels[wallID] !== undefined ? this.noiseLevels[wallID] : 20;
-                let noise = (Math.random() - 0.5) * intensity; 
-                if (this.mapID !== -1) { if (perpWallDist > 5) noise = 0; }
+                    let intensity = this.noiseLevels[wallID] !== undefined ? this.noiseLevels[wallID] : 20;
+                    let noise = (Math.random() - 0.5) * intensity; 
+                    if (this.mapID !== -1) { if (perpWallDist > 5) noise = 0; }
 
-                let shade = (163 / (perpWallDist + 1)) + 20; 
-                if (this.mapID === -1) shade = 193;
-                if (shade > 255) shade = 255;
-                if (side === 1) shade *= 0.75; 
+                    let shade = (163 / (perpWallDist + 1)) + 20; 
+                    if (this.mapID === -1) shade = 193;
+                    if (shade > 255) shade = 255;
+                    if (side === 1) shade *= 0.75; 
 
-                let brightness = shade / 255;
-                let r = baseR * brightness + noise;
-                let g = baseG * brightness + noise;
-                let b = baseB * brightness + noise;
-                
-                let fogStart = dynamicMaxVis * 0.4;
-                let fogFactor = 0;
+                    let brightness = shade / 255;
+                    let r = baseR * brightness + noise;
+                    let g = baseG * brightness + noise;
+                    let b = baseB * brightness + noise;
+                    
+                    let fogStart = dynamicMaxVis * 0.4;
+                    let fogFactor = 0;
 
-                if (perpWallDist > fogStart) {
-                    let ratio = Math.min((perpWallDist - fogStart) / (dynamicMaxVis - fogStart), 1.0);
-                    fogFactor = ratio * ratio; // Fast Math.pow approximation
-                }
-                if (perpWallDist > losBlockedDepth) fogFactor = 1.0;
+                    if (perpWallDist > fogStart) {
+                        let ratio = Math.min((perpWallDist - fogStart) / (dynamicMaxVis - fogStart), 1.0);
+                        fogFactor = ratio * ratio; 
+                    }
+                    if (perpWallDist > losBlockedDepth) fogFactor = 1.0;
 
-                let rawR = r, rawG = g, rawB = b;
-                r = (r * (1 - fogFactor)) + (fR * fogFactor);
-                g = (g * (1 - fogFactor)) + (fG * fogFactor);
-                b = (b * (1 - fogFactor)) + (fB * fogFactor);
-                
-                let drawFullStrip = true; 
-                let fadeAlpha = Math.max(0, 1.0 - fogFactor);
-                let newColor;
+                    let rawR = r, rawG = g, rawB = b;
+                    r = (r * (1 - fogFactor)) + (fR * fogFactor);
+                    g = (g * (1 - fogFactor)) + (fG * fogFactor);
+                    b = (b * (1 - fogFactor)) + (fB * fogFactor);
+                    
+                    let drawFullStrip = true; 
+                    let fadeAlpha = Math.max(0, 1.0 - fogFactor);
 
                 // ==========================================
-                // --- RESTORED PROCEDURAL SCREEN SHADERS ---
+                // --- PROCEDURAL SCREEN SHADERS ---
                 // ==========================================
                 
-                if ([2,3,15,23,41,42,43,62,63].includes(wallID)) {
-                    // A. BARK LOGIC
-                    let wave1 = Math.sin(wallHitX * Math.PI * 14); 
-                    let wave2 = Math.sin(wallHitX * Math.PI * 5);  
-                    let bark = (wave1 * 0.6) + (wave2 * 0.4);
-                    let texR = rawR, texG = rawG, texB = rawB;
+                    if ([2,3,15,23,41,42,43,62,63].includes(wallID)) {
+                        // A. BARK LOGIC
+                        let wave1 = Math.sin(wallHitX * Math.PI * 14); 
+                        let wave2 = Math.sin(wallHitX * Math.PI * 5);  
+                        let bark = (wave1 * 0.6) + (wave2 * 0.4);
+                        let texR = rawR, texG = rawG, texB = rawB;
 
-                    if (bark > 0.4) { texR *= 0.3; texG *= 0.3; texB *= 0.3; } 
-                    else if (bark < -0.4) { texR *= 1.1; texG *= 1.1; texB *= 1.1; } 
-                    else { texR *= 0.8; texG *= 0.8; texB *= 0.8; }
+                        if (bark > 0.4) { texR *= 0.3; texG *= 0.3; texB *= 0.3; } 
+                        else if (bark < -0.4) { texR *= 1.1; texG *= 1.1; texB *= 1.1; } 
+                        else { texR *= 0.8; texG *= 0.8; texB *= 0.8; }
 
-                    texR = Math.max(0, Math.min(255, (texR * (1 - fogFactor)) + (fR * fogFactor))); 
-                    texG = Math.max(0, Math.min(255, (texG * (1 - fogFactor)) + (fG * fogFactor))); 
-                    texB = Math.max(0, Math.min(255, (texB * (1 - fogFactor)) + (fB * fogFactor)));
+                        texR = Math.max(0, Math.min(255, (texR * (1 - fogFactor)) + (fR * fogFactor))); 
+                        texG = Math.max(0, Math.min(255, (texG * (1 - fogFactor)) + (fG * fogFactor))); 
+                        texB = Math.max(0, Math.min(255, (texB * (1 - fogFactor)) + (fB * fogFactor)));
 
-                    newColor = `rgb(${Math.floor(texR)},${Math.floor(texG)},${Math.floor(texB)})`;
-                    if (lastKnownFillStyle !== newColor) { ctx.fillStyle = newColor; lastKnownFillStyle = newColor; }
-                    ctx.fillRect(screenX, viewY + drawStart, drawWidth, actualDrawHeight);
-                    drawFullStrip = false; 
-                    
-                    
-                }
-                else if ([1,33,35,11,73,75,5,45].includes(wallID)) {
-                    // B. BRICK & STEEL LOGIC
-                    let isSteel = [5,45].includes(wallID);
-                    let texR = rawR, texG = rawG, texB = rawB;
-                    let isVertMortar = (wallHitX < 0.05 || wallHitX > 0.95);
-                    
-                    if (isSteel && isVertMortar) { texR *= 0.3; texG *= 0.3; texB *= 0.3; }
-
-                    texR = Math.max(0, Math.min(255, (texR * (1 - fogFactor)) + (fR * fogFactor))); 
-                    texG = Math.max(0, Math.min(255, (texG * (1 - fogFactor)) + (fG * fogFactor))); 
-                    texB = Math.max(0, Math.min(255, (texB * (1 - fogFactor)) + (fB * fogFactor)));
-                    
-                    newColor = `rgb(${Math.floor(texR)},${Math.floor(texG)},${Math.floor(texB)})`;
-                    if (lastKnownFillStyle !== newColor) { ctx.fillStyle = newColor; lastKnownFillStyle = newColor; }
-                    ctx.fillRect(screenX, viewY + drawStart, drawWidth, actualDrawHeight);
-                    drawFullStrip = false;
-
-                    const actualWallHeight = lineHeight * heightMult; 
-                    
-                    // THE FIX: Use the old 1x multiplier for Steel, and the 5x multiplier for Bricks
-                    const rows = isSteel ? 1 : Math.max(1, Math.round(5 * heightMult));
-                        
-                    const rowHeight = actualWallHeight / rows;
-                    
-                    newColor = isSteel ? `rgba(0,0,0, ${0.6 * fadeAlpha})` : `rgba(0,0,0, ${0.7 * fadeAlpha})`; 
-                    if (lastKnownFillStyle !== newColor) { ctx.fillStyle = newColor; lastKnownFillStyle = newColor; }
-                    
-                    for (let j = 0; j < rows; j++) {
-                        let yOffset = Math.floor(viewY + trueDrawStart + (j * rowHeight));
-                        
-                        if (isSteel && !isVertMortar) {
-                            let h33 = Math.floor(yOffset + (rowHeight * 0.33));
-                            let h66 = Math.floor(yOffset + (rowHeight * 0.66));
-                            if (h33 >= viewY + drawStart && h33 <= viewY + drawEnd) ctx.fillRect(screenX, h33, drawWidth, 3);
-                            if (h66 >= viewY + drawStart && h66 <= viewY + drawEnd) ctx.fillRect(screenX, h66, drawWidth, 3);
-                        } else if (!isSteel) {
-                            if (yOffset >= viewY + drawStart && yOffset <= viewY + drawEnd) {
-                                ctx.fillRect(screenX, yOffset, drawWidth, 3);
-                            }
-                            let isEvenRow = (j % 2 === 0);
-                            let drawVert = false;
-
-                            if (isEvenRow && (wallHitX < 0.05 || wallHitX > 0.95)) drawVert = true; 
-                            if (!isEvenRow && (wallHitX > 0.45 && wallHitX < 0.55)) drawVert = true; 
-
-                            if (drawVert) {
-                                let mortHeight = Math.min(Math.ceil(rowHeight), (viewY + drawEnd) - yOffset);
-                                if (mortHeight > 0 && yOffset >= viewY + drawStart) {
-                                    ctx.fillRect(screenX, yOffset, drawWidth, mortHeight);
-                                }
-                            }
-                        }
-                    }
-                }
-                else if ([7].includes(wallID)) {
-                    // C. PLANKS
-                    let bgR = rawR * 0.2, bgG = rawG * 0.2, bgB = rawB * 0.2;
-                    bgR = (bgR * (1 - fogFactor)) + (fR * fogFactor);
-                    bgG = (bgG * (1 - fogFactor)) + (fG * fogFactor);
-                    bgB = (bgB * (1 - fogFactor)) + (fB * fogFactor);
-
-                    newColor = `rgb(${Math.floor(bgR)}, ${Math.floor(bgG)}, ${Math.floor(bgB)})`;
-                    if (lastKnownFillStyle !== newColor) { ctx.fillStyle = newColor; lastKnownFillStyle = newColor; }
-                    ctx.fillRect(screenX, viewY + drawStart, drawWidth, actualDrawHeight);
-                    drawFullStrip = false; 
-
-                    const numPlanks = 8; 
-                    const plankHeight = lineHeight / numPlanks;
-
-                    for (let j = 0; j < numPlanks; j++) {
-                        let yOffset = Math.floor(viewY + trueDrawStart + (j * plankHeight));
-                        let plankStart = Math.max(viewY + drawStart, yOffset);
-                        let plankEnd = Math.min(viewY + drawEnd, Math.floor(yOffset + plankHeight));
-                        let plankDrawHeight = plankEnd - plankStart;
-
-                        if (plankDrawHeight > 0) {
-                            let isEvenRow = (j % 2 === 0);
-                            let isVerticalGap = false;
-                            
-                            if (isEvenRow && wallHitX > 0.48 && wallHitX < 0.52) isVerticalGap = true; 
-                            if (!isEvenRow && (wallHitX < 0.02 || wallHitX > 0.98)) isVerticalGap = true; 
-
-                            if (isVerticalGap) {
-                                newColor = `rgba(10, 5, 0, ${0.9 * fadeAlpha})`;
-                                if (lastKnownFillStyle !== newColor) { ctx.fillStyle = newColor; lastKnownFillStyle = newColor; }
-                                ctx.fillRect(screenX, plankStart, drawWidth, plankDrawHeight);
-                                continue; 
-                            }
-
-                            let plankSeed = Math.abs(Math.sin(mapX * 3.1 + mapY * 7.2 + j * 2.8));
-                            let plankR = rawR * (0.8 + plankSeed * 0.4); 
-                            let plankG = rawG * (0.8 + plankSeed * 0.4);
-                            let plankB = rawB * (0.8 + plankSeed * 0.4);
-
-                            let grain = Math.sin(wallHitX * Math.PI * (12 + plankSeed * 6) + j);
-                            if (grain > 0.6) { plankR *= 0.7; plankG *= 0.7; plankB *= 0.7; }
-
-                            if (isEvenRow && (wallHitX > 0.45 && wallHitX < 0.47 || wallHitX > 0.53 && wallHitX < 0.55)) {
-                                plankR *= 0.3; plankG *= 0.3; plankB *= 0.3;
-                            }
-                            if (!isEvenRow && (wallHitX > 0.04 && wallHitX < 0.06 || wallHitX > 0.94 && wallHitX < 0.96)) {
-                                plankR *= 0.3; plankG *= 0.3; plankB *= 0.3;
-                            }
-                            
-                            plankR = Math.max(0, Math.min(255, (plankR * (1 - fogFactor)) + (fR * fogFactor)));
-                            plankG = Math.max(0, Math.min(255, (plankG * (1 - fogFactor)) + (fG * fogFactor)));
-                            plankB = Math.max(0, Math.min(255, (plankB * (1 - fogFactor)) + (fB * fogFactor)));
-
-                            newColor = `rgb(${Math.floor(plankR)},${Math.floor(plankG)},${Math.floor(plankB)})`;
-                            if (lastKnownFillStyle !== newColor) { ctx.fillStyle = newColor; lastKnownFillStyle = newColor; }
-                            ctx.fillRect(screenX, plankStart, drawWidth, plankDrawHeight);
-
-                            if (plankEnd < viewY + drawEnd) {
-                                ctx.fillStyle = `rgba(10, 5, 0, ${0.8 * fadeAlpha})`;
-                                ctx.fillRect(screenX, plankEnd - 2, drawWidth, 2); 
-                            }
-                        }
-                    }
-                }
-                else if ([59].includes(wallID)) {
-                    // D. TERMINAL
-                    let texR = rawR * 0.3, texG = rawG * 0.3, texB = rawB * 0.3;
-                    if (wallHitX < 0.05 || wallHitX > 0.95) { texR *= 2; texG *= 2; texB *= 2; }
-
-                    texR = Math.max(0, Math.min(255, (texR * (1 - fogFactor)) + (fR * fogFactor))); 
-                    texG = Math.max(0, Math.min(255, (texG * (1 - fogFactor)) + (fG * fogFactor))); 
-                    texB = Math.max(0, Math.min(255, (texB * (1 - fogFactor)) + (fB * fogFactor)));
-
-                    newColor = `rgb(${Math.floor(texR)},${Math.floor(texG)},${Math.floor(texB)})`;
-                    if (lastKnownFillStyle !== newColor) { 
-                        ctx.fillStyle = newColor; 
-                        lastKnownFillStyle = newColor; 
-                    }
-                    ctx.fillRect(screenX, viewY + drawStart, drawWidth, actualDrawHeight);
-                    drawFullStrip = false;
-
-                    // Apply the glow color
-                    let glowColor = `rgba(0, ${Math.random()*255}, 0, ${0.9 * fadeAlpha})`; 
-                    ctx.fillStyle = glowColor;
-                    
-                    // THE FIX: Overwrite the cache so the next raycaster strip knows the color changed
-                    lastKnownFillStyle = glowColor; 
-
-                    let glowY = Math.floor(viewY + trueDrawStart + (lineHeight * 0.5));
-                    
-                    // BONUS FIX: Added clipping to prevent the line bleeding into the floor/ceiling
-                    if (glowY >= viewY + drawStart && glowY <= viewY + drawEnd) {
-                        ctx.fillRect(screenX, glowY, drawWidth, 4);
-                    }
-
-                    if (wallHitX > 0.45 && wallHitX < 0.55) {
-                        let nodeStartY = Math.floor(viewY + trueDrawStart + (lineHeight * 0.3));
-                        let nodeHeight = Math.ceil(lineHeight * 0.4);
-                        
-                        // Clip the top of the node
-                        let drawY = Math.max(viewY + drawStart, nodeStartY);
-                        // Clip the bottom of the node
-                        let drawH = Math.min((viewY + drawEnd) - drawY, (nodeStartY + nodeHeight) - drawY);
-                        
-                        if (drawH > 0) {
-                            ctx.fillRect(screenX, drawY, drawWidth, drawH);
-                        }
-                    }
-                }
-                else if ([13].includes(wallID)) {
-                    // E. STONE
-                    let texR = rawR, texG = rawG, texB = rawB;
-                    if (wallHitX > 0.35 && wallHitX < 0.4) { texR *= 1.6; texG *= 1.6; texB *= 1.6; }
-                    if (wallHitX > 0.75 && wallHitX < 0.85) { texR *= 1.4; texG *= 1.4; texB *= 1.4; }
-                    if (wallHitX < 0.1 || wallHitX > 0.9) { texR *= 0.7; texG *= 0.7; texB *= 0.7; }
-                    r = (texR * (1 - fogFactor)) + (fR * fogFactor);
-                    g = (texG * (1 - fogFactor)) + (fG * fogFactor);
-                    b = (texB * (1 - fogFactor)) + (fB * fogFactor);
-                }
-                else if ([9,21,31,25].includes(wallID)) {
-                    // F. MAGIC
-                    let sheen = Math.sin(wallHitX * Math.PI); 
-                    let texR = rawR * (0.7 + sheen * 0.5);
-                    let texG = rawG * (0.7 + sheen * 0.5);
-                    let texB = rawB * (0.7 + sheen * 0.5);
-                    r = (texR * (1 - fogFactor)) + (fR * fogFactor);
-                    g = (texG * (1 - fogFactor)) + (fG * fogFactor);
-                    b = (texB * (1 - fogFactor)) + (fB * fogFactor);
-                }
-                else if ([88, 91].includes(wallID)) {
-                    // G. BARS
-                    drawFullStrip = false;
-                    let isBar = (wallHitX % 0.25 < (wallID===88 ? 0.08 : 0.05)); 
-                    
-                    if (isBar) {
-                        let barR = rawR * 0.3, barG = rawG * 0.3, barB = rawB * 0.3;
-                        if (wallHitX % 0.25 < 0.02) { barR *= 1.5; barG *= 1.5; barB *= 1.5; }
-                        
-                        barR = Math.max(0, Math.min(255, (barR * (1 - fogFactor)) + (fR * fogFactor)));
-                        barG = Math.max(0, Math.min(255, (barG * (1 - fogFactor)) + (fG * fogFactor)));
-                        barB = Math.max(0, Math.min(255, (barB * (1 - fogFactor)) + (fB * fogFactor)));
-                        
-                        newColor = `rgb(${Math.floor(barR)},${Math.floor(barG)},${Math.floor(barB)})`;
-                        if (lastKnownFillStyle !== newColor) { ctx.fillStyle = newColor; lastKnownFillStyle = newColor; }
+                        setRGB(texR, texG, texB); // <--- FASTER
                         ctx.fillRect(screenX, viewY + drawStart, drawWidth, actualDrawHeight);
-                    } else if (wallID === 91) {
-                        ctx.fillStyle = `rgba(30, 30, 30, ${0.9 * fadeAlpha})`;
-                        const actualWallHeight = lineHeight * heightMult;
-                        const numBraces = Math.max(2, Math.round(2 * heightMult));
-                        const braceGap = actualWallHeight / numBraces;
-
-                        for (let j = 1; j < numBraces; j++) {
-                            let braceY = Math.floor(viewY + trueDrawStart + (j * braceGap));
-                            if (braceY >= viewY + drawStart && braceY <= viewY + drawEnd) {
-                                ctx.fillRect(screenX, braceY - 2, drawWidth, 4);
-                            }
-                        }
+                        drawFullStrip = false; 
                     }
-                }
-                else if ([89].includes(wallID)) { 
-                    // H. SLIME
-                    let baseR = Math.max(0, Math.min(255, (rawR * 0.4 * (1 - fogFactor)) + (fR * fogFactor)));
-                    let baseG = Math.max(0, Math.min(255, (rawG * 0.4 * (1 - fogFactor)) + (fG * fogFactor)));
-                    let baseB = Math.max(0, Math.min(255, (rawB * 0.4 * (1 - fogFactor)) + (fB * fogFactor)));
-                    
-                    newColor = `rgb(${Math.floor(baseR)},${Math.floor(baseG)},${Math.floor(baseB)})`;
-                    if (lastKnownFillStyle !== newColor) { ctx.fillStyle = newColor; lastKnownFillStyle = newColor; }
-                    ctx.fillRect(screenX, viewY + drawStart, drawWidth, actualDrawHeight);
-                    drawFullStrip = false;
-
-                    let dripFactor = (Math.sin(wallHitX * 18 + mapX) * 0.5) + (Math.sin(wallHitX * 45) * 0.5);
-                    let dripPixelHeight = Math.floor((lineHeight * heightMult) * (0.5 + (dripFactor * 0.3))); 
-                    
-                    let clippedDripEnd = Math.min(viewY + drawEnd, Math.floor(viewY + trueDrawStart + dripPixelHeight));
-
-                    if (clippedDripEnd > viewY + drawStart) {
-                        let slimeR = Math.max(0, Math.min(255, (rawR * 1.5 * (1 - fogFactor)) + (fR * fogFactor)));
-                        let slimeG = Math.max(0, Math.min(255, (rawG * 1.5 * (1 - fogFactor)) + (fG * fogFactor)));
-                        let slimeB = Math.max(0, Math.min(255, (rawB * 1.5 * (1 - fogFactor)) + (fB * fogFactor)));
+                    else if ([1,33,35,11,73,75,5,45].includes(wallID)) {
+                        // B. BRICK & STEEL LOGIC
+                        let isSteel = [5,45].includes(wallID);
+                        let texR = rawR, texG = rawG, texB = rawB;
+                        let isVertMortar = (wallHitX < 0.05 || wallHitX > 0.95);
                         
-                        newColor = `rgb(${Math.floor(slimeR)},${Math.floor(slimeG)},${Math.floor(slimeB)})`;
-                        if (lastKnownFillStyle !== newColor) { ctx.fillStyle = newColor; lastKnownFillStyle = newColor; }
-                        ctx.fillRect(screenX, Math.floor(viewY + Math.max(0, drawStart)), drawWidth, clippedDripEnd - Math.max(0, drawStart));
+                        if (isSteel && isVertMortar) { texR *= 0.3; texG *= 0.3; texB *= 0.3; }
+
+                        texR = Math.max(0, Math.min(255, (texR * (1 - fogFactor)) + (fR * fogFactor))); 
+                        texG = Math.max(0, Math.min(255, (texG * (1 - fogFactor)) + (fG * fogFactor))); 
+                        texB = Math.max(0, Math.min(255, (texB * (1 - fogFactor)) + (fB * fogFactor)));
                         
-                        if (clippedDripEnd > 0 && clippedDripEnd < viewY + viewH) {
-                            ctx.fillStyle = `rgba(255, 255, 255, ${0.6 * fadeAlpha})`;
-                            ctx.fillRect(screenX, clippedDripEnd - 3, drawWidth, 3);
-                        }
-                    }
-                }
-                else if ([90].includes(wallID)) {
-                    // I. BOOKSHELVES
-                    let bgR = Math.max(0, Math.min(255, (rawR * 0.1 * (1 - fogFactor)) + (fR * fogFactor)));
-                    let bgG = Math.max(0, Math.min(255, (rawG * 0.1 * (1 - fogFactor)) + (fG * fogFactor)));
-                    let bgB = Math.max(0, Math.min(255, (rawB * 0.1 * (1 - fogFactor)) + (fB * fogFactor)));
-                    
-                    newColor = `rgb(${Math.floor(bgR)},${Math.floor(bgG)},${Math.floor(bgB)})`;
-                    if (lastKnownFillStyle !== newColor) { ctx.fillStyle = newColor; lastKnownFillStyle = newColor; }
-                    ctx.fillRect(screenX, viewY + drawStart, drawWidth, actualDrawHeight);
-                    drawFullStrip = false;
+                        setRGB(texR, texG, texB); // <--- FASTER
+                        ctx.fillRect(screenX, viewY + drawStart, drawWidth, actualDrawHeight);
+                        drawFullStrip = false;
 
-                    const numShelves = Math.max(4, Math.round(4 * heightMult)); 
-                    const shelfHeight = (lineHeight * heightMult) / numShelves;
-
-                    for (let j = 0; j < numShelves; j++) {
-                        let shelfBottomY = Math.floor(viewY + trueDrawStart + (j * shelfHeight) + shelfHeight);
+                        const actualWallHeight = lineHeight * heightMult; 
+                        const rows = isSteel ? 1 : Math.max(1, Math.round(5 * heightMult));
+                        const rowHeight = actualWallHeight / rows;
                         
-                        if (shelfBottomY >= viewY + drawStart && shelfBottomY <= viewY + drawEnd) {
-                            newColor = `rgba(60, 30, 10, ${1.0 * fadeAlpha})`; 
-                            if (lastKnownFillStyle !== newColor) { ctx.fillStyle = newColor; lastKnownFillStyle = newColor; }
-                            ctx.fillRect(screenX, shelfBottomY - 4, drawWidth, 4);
-                        }
-
-                        let bookPattern = Math.sin(wallHitX * 40 + j * 15);
-                        if (bookPattern > -0.2) {
-                            let colorGen = Math.abs(Math.cos(wallHitX * 10 + j));
-                            let bR = rawR, bG = rawG, bB = rawB;
+                        setStyle(isSteel ? `rgba(0,0,0, ${0.6 * fadeAlpha})` : `rgba(0,0,0, ${0.7 * fadeAlpha})`); // <--- FASTER
+                        
+                        for (let j = 0; j < rows; j++) {
+                            let yOffset = Math.floor(viewY + trueDrawStart + (j * rowHeight));
                             
-                            if (colorGen > 0.8) { bR *= 1.5; bG *= 0.3; bB *= 0.3; } 
-                            else if (colorGen > 0.5) { bR *= 0.3; bG *= 0.3; bB *= 1.5; } 
-                            else { bR *= 0.3; bG *= 1.2; bB *= 0.3; } 
+                            if (isSteel && !isVertMortar) {
+                                let h33 = Math.floor(yOffset + (rowHeight * 0.33));
+                                let h66 = Math.floor(yOffset + (rowHeight * 0.66));
+                                if (h33 >= viewY + drawStart && h33 <= viewY + drawEnd) ctx.fillRect(screenX, h33, drawWidth, 3);
+                                if (h66 >= viewY + drawStart && h66 <= viewY + drawEnd) ctx.fillRect(screenX, h66, drawWidth, 3);
+                            } else if (!isSteel) {
+                                if (yOffset >= viewY + drawStart && yOffset <= viewY + drawEnd) {
+                                    ctx.fillRect(screenX, yOffset, drawWidth, 3);
+                                }
+                                let isEvenRow = (j % 2 === 0);
+                                let drawVert = false;
 
-                            bR = Math.max(0, Math.min(255, (bR * (1 - fogFactor)) + (fR * fogFactor)));
-                            bG = Math.max(0, Math.min(255, (bG * (1 - fogFactor)) + (fG * fogFactor)));
-                            bB = Math.max(0, Math.min(255, (bB * (1 - fogFactor)) + (fB * fogFactor)));
+                                if (isEvenRow && (wallHitX < 0.05 || wallHitX > 0.95)) drawVert = true; 
+                                if (!isEvenRow && (wallHitX > 0.45 && wallHitX < 0.55)) drawVert = true; 
 
-                            let bookHeight = Math.floor(shelfHeight * (0.6 + (Math.abs(Math.sin(wallHitX * 25 + j)) * 0.3)));
-                            let bookStartY = shelfBottomY - bookHeight;
-                            
-                            let drawTop = Math.max(viewY + drawStart, bookStartY);
-                            let drawBot = Math.min(viewY + drawEnd, shelfBottomY - 4);
-                            
-                            if (drawBot > drawTop) {
-                                newColor = `rgb(${Math.floor(bR)},${Math.floor(bG)},${Math.floor(bB)})`;
-                                if (lastKnownFillStyle !== newColor) { ctx.fillStyle = newColor; lastKnownFillStyle = newColor; }
-                                ctx.fillRect(screenX, drawTop, drawWidth, drawBot - drawTop);
-                                
-                                if (Math.sin(wallHitX * 80) > 0.8) {
-                                    ctx.fillStyle = `rgba(0,0,0,${0.5 * fadeAlpha})`;
-                                    ctx.fillRect(screenX, drawTop, drawWidth, drawBot - drawTop);
+                                if (drawVert) {
+                                    let mortHeight = Math.min(Math.ceil(rowHeight), (viewY + drawEnd) - yOffset);
+                                    if (mortHeight > 0 && yOffset >= viewY + drawStart) {
+                                        ctx.fillRect(screenX, yOffset, drawWidth, mortHeight);
+                                    }
                                 }
                             }
                         }
                     }
-                }
+                    else if ([7].includes(wallID)) {
+                        // C. PLANKS
+                        let bgR = rawR * 0.2, bgG = rawG * 0.2, bgB = rawB * 0.2;
+                        bgR = (bgR * (1 - fogFactor)) + (fR * fogFactor);
+                        bgG = (bgG * (1 - fogFactor)) + (fG * fogFactor);
+                        bgB = (bgB * (1 - fogFactor)) + (fB * fogFactor);
+
+                        setRGB(bgR, bgG, bgB); // <--- FASTER
+                        ctx.fillRect(screenX, viewY + drawStart, drawWidth, actualDrawHeight);
+                        drawFullStrip = false; 
+
+                        const numPlanks = 8; 
+                        const plankHeight = lineHeight / numPlanks;
+
+                        for (let j = 0; j < numPlanks; j++) {
+                            let yOffset = Math.floor(viewY + trueDrawStart + (j * plankHeight));
+                            let plankStart = Math.max(viewY + drawStart, yOffset);
+                            let plankEnd = Math.min(viewY + drawEnd, Math.floor(yOffset + plankHeight));
+                            let plankDrawHeight = plankEnd - plankStart;
+
+                            if (plankDrawHeight > 0) {
+                                let isEvenRow = (j % 2 === 0);
+                                let isVerticalGap = false;
+                                
+                                if (isEvenRow && wallHitX > 0.48 && wallHitX < 0.52) isVerticalGap = true; 
+                                if (!isEvenRow && (wallHitX < 0.02 || wallHitX > 0.98)) isVerticalGap = true; 
+
+                                if (isVerticalGap) {
+                                    setStyle(`rgba(10, 5, 0, ${0.9 * fadeAlpha})`); // <--- FASTER
+                                    ctx.fillRect(screenX, plankStart, drawWidth, plankDrawHeight);
+                                    continue; 
+                                }
+
+                                let plankSeed = Math.abs(Math.sin(mapX * 3.1 + mapY * 7.2 + j * 2.8));
+                                let plankR = rawR * (0.8 + plankSeed * 0.4); 
+                                let plankG = rawG * (0.8 + plankSeed * 0.4);
+                                let plankB = rawB * (0.8 + plankSeed * 0.4);
+
+                                let grain = Math.sin(wallHitX * Math.PI * (12 + plankSeed * 6) + j);
+                                if (grain > 0.6) { plankR *= 0.7; plankG *= 0.7; plankB *= 0.7; }
+
+                                if (isEvenRow && (wallHitX > 0.45 && wallHitX < 0.47 || wallHitX > 0.53 && wallHitX < 0.55)) {
+                                    plankR *= 0.3; plankG *= 0.3; plankB *= 0.3;
+                                }
+                                if (!isEvenRow && (wallHitX > 0.04 && wallHitX < 0.06 || wallHitX > 0.94 && wallHitX < 0.96)) {
+                                    plankR *= 0.3; plankG *= 0.3; plankB *= 0.3;
+                                }
+                                
+                                plankR = Math.max(0, Math.min(255, (plankR * (1 - fogFactor)) + (fR * fogFactor)));
+                                plankG = Math.max(0, Math.min(255, (plankG * (1 - fogFactor)) + (fG * fogFactor)));
+                                plankB = Math.max(0, Math.min(255, (plankB * (1 - fogFactor)) + (fB * fogFactor)));
+
+                                setRGB(plankR, plankG, plankB); // <--- FASTER
+                                ctx.fillRect(screenX, plankStart, drawWidth, plankDrawHeight);
+
+                                if (plankEnd < viewY + drawEnd) {
+                                    setStyle(`rgba(10, 5, 0, ${0.8 * fadeAlpha})`); // <--- FASTER
+                                    ctx.fillRect(screenX, plankEnd - 2, drawWidth, 2); 
+                                }
+                            }
+                        }
+                    }
+                    else if ([59].includes(wallID)) {
+                        // D. TERMINAL
+                        let texR = rawR * 0.3, texG = rawG * 0.3, texB = rawB * 0.3;
+                        if (wallHitX < 0.05 || wallHitX > 0.95) { texR *= 2; texG *= 2; texB *= 2; }
+
+                        texR = Math.max(0, Math.min(255, (texR * (1 - fogFactor)) + (fR * fogFactor))); 
+                        texG = Math.max(0, Math.min(255, (texG * (1 - fogFactor)) + (fG * fogFactor))); 
+                        texB = Math.max(0, Math.min(255, (texB * (1 - fogFactor)) + (fB * fogFactor)));
+
+                        setRGB(texR, texG, texB); // <--- FASTER
+                        ctx.fillRect(screenX, viewY + drawStart, drawWidth, actualDrawHeight);
+                        drawFullStrip = false;
+
+                        // Apply the glow color
+                        setStyle(`rgba(0, ${Math.random()*255}, 0, ${0.9 * fadeAlpha})`); // <--- FASTER
+                        
+                        let glowY = Math.floor(viewY + trueDrawStart + (lineHeight * 0.5));
+                        if (glowY >= viewY + drawStart && glowY <= viewY + drawEnd) {
+                            ctx.fillRect(screenX, glowY, drawWidth, 4);
+                        }
+
+                        if (wallHitX > 0.45 && wallHitX < 0.55) {
+                            let nodeStartY = Math.floor(viewY + trueDrawStart + (lineHeight * 0.3));
+                            let nodeHeight = Math.ceil(lineHeight * 0.4);
+                            let drawY = Math.max(viewY + drawStart, nodeStartY);
+                            let drawH = Math.min((viewY + drawEnd) - drawY, (nodeStartY + nodeHeight) - drawY);
+                            
+                            if (drawH > 0) {
+                                ctx.fillRect(screenX, drawY, drawWidth, drawH);
+                            }
+                        }
+                    }
+                    else if ([13].includes(wallID)) {
+                        // E. STONE
+                        let texR = rawR, texG = rawG, texB = rawB;
+                        if (wallHitX > 0.35 && wallHitX < 0.4) { texR *= 1.6; texG *= 1.6; texB *= 1.6; }
+                        if (wallHitX > 0.75 && wallHitX < 0.85) { texR *= 1.4; texG *= 1.4; texB *= 1.4; }
+                        if (wallHitX < 0.1 || wallHitX > 0.9) { texR *= 0.7; texG *= 0.7; texB *= 0.7; }
+                        r = (texR * (1 - fogFactor)) + (fR * fogFactor);
+                        g = (texG * (1 - fogFactor)) + (fG * fogFactor);
+                        b = (texB * (1 - fogFactor)) + (fB * fogFactor);
+                    }
+                    else if ([9,21,31,25].includes(wallID)) {
+                        // F. MAGIC
+                        let sheen = Math.sin(wallHitX * Math.PI); 
+                        let texR = rawR * (0.7 + sheen * 0.5);
+                        let texG = rawG * (0.7 + sheen * 0.5);
+                        let texB = rawB * (0.7 + sheen * 0.5);
+                        r = (texR * (1 - fogFactor)) + (fR * fogFactor);
+                        g = (texG * (1 - fogFactor)) + (fG * fogFactor);
+                        b = (texB * (1 - fogFactor)) + (fB * fogFactor);
+                    }
+                    else if ([88, 91].includes(wallID)) {
+                        // G. BARS
+                        drawFullStrip = false;
+                        let isBar = (wallHitX % 0.25 < (wallID===88 ? 0.08 : 0.05)); 
+                        
+                        if (isBar) {
+                            let barR = rawR * 0.3, barG = rawG * 0.3, barB = rawB * 0.3;
+                            if (wallHitX % 0.25 < 0.02) { barR *= 1.5; barG *= 1.5; barB *= 1.5; }
+                            
+                            barR = Math.max(0, Math.min(255, (barR * (1 - fogFactor)) + (fR * fogFactor)));
+                            barG = Math.max(0, Math.min(255, (barG * (1 - fogFactor)) + (fG * fogFactor)));
+                            barB = Math.max(0, Math.min(255, (barB * (1 - fogFactor)) + (fB * fogFactor)));
+                            
+                            setRGB(barR, barG, barB); // <--- FASTER
+                            ctx.fillRect(screenX, viewY + drawStart, drawWidth, actualDrawHeight);
+                        } else if (wallID === 91) {
+                            setStyle(`rgba(30, 30, 30, ${0.9 * fadeAlpha})`); // <--- FASTER
+                            const actualWallHeight = lineHeight * heightMult;
+                            const numBraces = Math.max(2, Math.round(2 * heightMult));
+                            const braceGap = actualWallHeight / numBraces;
+
+                            for (let j = 1; j < numBraces; j++) {
+                                let braceY = Math.floor(viewY + trueDrawStart + (j * braceGap));
+                                if (braceY >= viewY + drawStart && braceY <= viewY + drawEnd) {
+                                    ctx.fillRect(screenX, braceY - 2, drawWidth, 4);
+                                }
+                            }
+                        }
+                    }
+                    else if ([89].includes(wallID)) { 
+                        // H. SLIME
+                        let baseR = Math.max(0, Math.min(255, (rawR * 0.4 * (1 - fogFactor)) + (fR * fogFactor)));
+                        let baseG = Math.max(0, Math.min(255, (rawG * 0.4 * (1 - fogFactor)) + (fG * fogFactor)));
+                        let baseB = Math.max(0, Math.min(255, (rawB * 0.4 * (1 - fogFactor)) + (fB * fogFactor)));
+                        
+                        setRGB(baseR, baseG, baseB); // <--- FASTER
+                        ctx.fillRect(screenX, viewY + drawStart, drawWidth, actualDrawHeight);
+                        drawFullStrip = false;
+
+                        let dripFactor = (Math.sin(wallHitX * 18 + mapX) * 0.5) + (Math.sin(wallHitX * 45) * 0.5);
+                        let dripPixelHeight = Math.floor((lineHeight * heightMult) * (0.5 + (dripFactor * 0.3))); 
+                        
+                        let clippedDripEnd = Math.min(viewY + drawEnd, Math.floor(viewY + trueDrawStart + dripPixelHeight));
+
+                        if (clippedDripEnd > viewY + drawStart) {
+                            let slimeR = Math.max(0, Math.min(255, (rawR * 1.5 * (1 - fogFactor)) + (fR * fogFactor)));
+                            let slimeG = Math.max(0, Math.min(255, (rawG * 1.5 * (1 - fogFactor)) + (fG * fogFactor)));
+                            let slimeB = Math.max(0, Math.min(255, (rawB * 1.5 * (1 - fogFactor)) + (fB * fogFactor)));
+                            
+                            setRGB(slimeR, slimeG, slimeB); // <--- FASTER
+                            ctx.fillRect(screenX, Math.floor(viewY + Math.max(0, drawStart)), drawWidth, clippedDripEnd - Math.max(0, drawStart));
+                            
+                            if (clippedDripEnd > 0 && clippedDripEnd < viewY + viewH) {
+                                setStyle(`rgba(255, 255, 255, ${0.6 * fadeAlpha})`); // <--- FASTER
+                                ctx.fillRect(screenX, clippedDripEnd - 3, drawWidth, 3);
+                            }
+                        }
+                    }
+                    else if ([90].includes(wallID)) {
+                        // I. BOOKSHELVES
+                        let bgR = Math.max(0, Math.min(255, (rawR * 0.1 * (1 - fogFactor)) + (fR * fogFactor)));
+                        let bgG = Math.max(0, Math.min(255, (rawG * 0.1 * (1 - fogFactor)) + (fG * fogFactor)));
+                        let bgB = Math.max(0, Math.min(255, (rawB * 0.1 * (1 - fogFactor)) + (fB * fogFactor)));
+                        
+                        setRGB(bgR, bgG, bgB); // <--- FASTER
+                        ctx.fillRect(screenX, viewY + drawStart, drawWidth, actualDrawHeight);
+                        drawFullStrip = false;
+
+                        const numShelves = Math.max(4, Math.round(4 * heightMult)); 
+                        const shelfHeight = (lineHeight * heightMult) / numShelves;
+
+                        for (let j = 0; j < numShelves; j++) {
+                            let shelfBottomY = Math.floor(viewY + trueDrawStart + (j * shelfHeight) + shelfHeight);
+                            
+                            if (shelfBottomY >= viewY + drawStart && shelfBottomY <= viewY + drawEnd) {
+                                setStyle(`rgba(60, 30, 10, ${1.0 * fadeAlpha})`); // <--- FASTER
+                                ctx.fillRect(screenX, shelfBottomY - 4, drawWidth, 4);
+                            }
+
+                            let bookPattern = Math.sin(wallHitX * 40 + j * 15);
+                            if (bookPattern > -0.2) {
+                                let colorGen = Math.abs(Math.cos(wallHitX * 10 + j));
+                                let bR = rawR, bG = rawG, bB = rawB;
+                                
+                                if (colorGen > 0.8) { bR *= 1.5; bG *= 0.3; bB *= 0.3; } 
+                                else if (colorGen > 0.5) { bR *= 0.3; bG *= 0.3; bB *= 1.5; } 
+                                else { bR *= 0.3; bG *= 1.2; bB *= 0.3; } 
+
+                                bR = Math.max(0, Math.min(255, (bR * (1 - fogFactor)) + (fR * fogFactor)));
+                                bG = Math.max(0, Math.min(255, (bG * (1 - fogFactor)) + (fG * fogFactor)));
+                                bB = Math.max(0, Math.min(255, (bB * (1 - fogFactor)) + (fB * fogFactor)));
+
+                                let bookHeight = Math.floor(shelfHeight * (0.6 + (Math.abs(Math.sin(wallHitX * 25 + j)) * 0.3)));
+                                let bookStartY = shelfBottomY - bookHeight;
+                                
+                                let drawTop = Math.max(viewY + drawStart, bookStartY);
+                                let drawBot = Math.min(viewY + drawEnd, shelfBottomY - 4);
+                                
+                                if (drawBot > drawTop) {
+                                    setRGB(bR, bG, bB); // <--- FASTER
+                                    ctx.fillRect(screenX, drawTop, drawWidth, drawBot - drawTop);
+                                    
+                                    if (Math.sin(wallHitX * 80) > 0.8) {
+                                        setStyle(`rgba(0,0,0,${0.5 * fadeAlpha})`); // <--- FASTER
+                                        ctx.fillRect(screenX, drawTop, drawWidth, drawBot - drawTop);
+                                    }
+                                }
+                            }
+                        }
+                    }
 
                 // Draw remaining generic fills
                 if (drawFullStrip) {
-                    r = Math.max(0, Math.min(255, r)); g = Math.max(0, Math.min(255, g)); b = Math.max(0, Math.min(255, b));
-                    newColor = `rgb(${Math.floor(r)},${Math.floor(g)},${Math.floor(b)})`;
-                    if (lastKnownFillStyle !== newColor) { ctx.fillStyle = newColor; lastKnownFillStyle = newColor; }
+                    r = Math.max(0, Math.min(255, r)); 
+                    g = Math.max(0, Math.min(255, g)); 
+                    b = Math.max(0, Math.min(255, b));
+                    setRGB(r, g, b); // <--- FASTER
                     ctx.fillRect(screenX, viewY + drawStart, drawWidth, actualDrawHeight);
                 }
             }
             
-            this.zBufferCounts[stripX] = hitBlocks.length;
+            this.zBufferCounts[stripX] = hitCount;
         }
         drawMinimap(ctx, viewX, viewY, viewW, viewH) {
             if (!this.maze || this.maze.length === 0 || !this.maze[0]) return;
@@ -13102,9 +13126,13 @@
         cacheDynamicNPCBillboard(npc) {
             // 1. Create a dedicated offscreen canvas for this specific NPC
             const cacheSize = 512; // Standard size
-            const offCanvas = document.createElement('canvas');
-            offCanvas.width = cacheSize;
-            offCanvas.height = cacheSize;
+            // --- THE FIX: RETURN OLD CANVAS BEFORE GETTING A NEW ONE ---
+            if (npc.cachedBillboard) {
+                CanvasPool.returnCanvas(npc.cachedBillboard);
+            }
+            
+            // --- THE FIX: PASS WIDTH AND HEIGHT ---
+            const offCanvas = CanvasPool.getCanvas(cacheSize, cacheSize);
             const offCtx = offCanvas.getContext('2d');
 
             // 2. Hijack the global context temporarily
@@ -13138,55 +13166,53 @@
             const MAX_DIST_SQ = Math.pow(dynamicMaxVis + 1, 2); 
             const seeThroughWalls = [91];
             const horizon = (viewH / 2) + this.pitch;
-            
+            let occlusionResult = { isBlocked: false, minClipY: 0 };
+
             const checkOcclusion = (screenCol, targetDepth, dynamicBias = 0, sprite = null) => {
-                let isBlocked = false;
-                let minClipY = viewH;
+                    occlusionResult.isBlocked = false;
+                    occlusionResult.minClipY = viewH;
 
                 if (screenCol >= 0 && screenCol < viewW) {
-                    let hitCount = this.zBufferCounts[screenCol];
-                    
-                    for (let j = 0; j < hitCount; j++) {
-                        // Find the data for this specific hit in the flat array
-                        let index = (screenCol * 4 * 3) + (j * 3); // 4 = MAX_HITS, 3 = STRIDE
-                        
-                        let hitDist = this.zBuffer[index];
-                        let hitWallID = this.zBuffer[index + 1];
-                        let hitTopY = this.zBuffer[index + 2];
+                        let hitCount = this.zBufferCounts[screenCol];
+                        for (let j = 0; j < hitCount; j++) {
+                            let index = (screenCol * 4 * 3) + (j * 3);
+                            let hitDist = this.zBuffer[index];
+                            let hitWallID = this.zBuffer[index + 1];
+                            let hitTopY = this.zBuffer[index + 2];
 
-                        if (hitDist >= (targetDepth - dynamicBias)) break; 
+                            if (hitDist >= (targetDepth - dynamicBias)) break; 
 
-                        if (!seeThroughWalls.includes(hitWallID)) {
-                            if (sprite && sprite.type != -27) {
-                                if (hitDist <= this.currentCamDist) continue;
-                                if (sprite.isPlayer) continue; 
-                                if (sprite.alignment === 'ally' && hitDist > targetDepth - 0.5) continue; 
+                            if (!seeThroughWalls.includes(hitWallID)) {
+                                if (sprite && sprite.type != -27) {
+                                    if (hitDist <= this.currentCamDist) continue;
+                                    if (sprite.isPlayer) continue; 
+                                    if (sprite.alignment === 'ally' && hitDist > targetDepth - 0.5) continue; 
+                                }
+                                occlusionResult.isBlocked = true;
+                                if (hitTopY < occlusionResult.minClipY) occlusionResult.minClipY = hitTopY;
                             }
-                            isBlocked = true;
-                            if (hitTopY < minClipY) minClipY = hitTopY;
                         }
                     }
-                }
-                return { isBlocked, minClipY };
-            };
+                    return occlusionResult;
+                };
 
             // --- SPRITE FILTERING & SORTING ---
-            let visibleSprites = [];
+           this.visibleSprites.length = 0;
             for (let i = 0; i < spriteList.length; i++) {
                 let npc = spriteList[i];
                 if (npc.type === -27 && npc.needsBillboardUpdate) {
                     this.cacheDynamicNPCBillboard(npc);
                 }
                 npc.dist = ((camX - npc.x) * (camX - npc.x) + (camY - npc.y) * (camY - npc.y));
-                if (npc.dist < MAX_DIST_SQ) visibleSprites.push(npc);
+                if (npc.dist < MAX_DIST_SQ) this.visibleSprites.push(npc);
             }
-            visibleSprites.sort((a, b) => b.dist - a.dist);
+            this.visibleSprites.sort((a, b) => b.dist - a.dist);
 
             // ==========================================
             // --- MAIN SPRITE RENDERING LOOP ---
             // ==========================================
-            for (let i = 0; i < visibleSprites.length; i++) {
-                const sprite = visibleSprites[i];
+            for (let i = 0; i < this.visibleSprites.length; i++) {
+                const sprite = this.visibleSprites[i];
                 const realDist = Math.sqrt(sprite.dist);
                 
                 let inVision = (realDist <= dynamicMaxVis) && this.checkLineOfSight(sprite.x, sprite.y);
@@ -13487,21 +13513,22 @@
                 // HOIST INVARIANTS OUTSIDE THE LOOP!
                 const textureRatio = cacheSize / spriteSize;
 
-                let currentStreak = null;
+                // Replace `let currentStreak = null;` and `const flushStreak...` with:
+                let streakActive = false;
+                let s_startX = 0, s_destX = 0, s_width = 0, s_blocked = false, s_clipY = 0;
 
                 const flushStreak = () => {
-                    if (currentStreak && currentStreak.minClipY > drawStartY) {
-                        // KILL FLOATS: Force integers so the GPU doesn't smudge sub-pixels
-                        let srcX = Math.floor(currentStreak.startX * textureRatio);
-                        let srcW = Math.max(1, Math.floor(currentStreak.width * textureRatio));
+                    if (streakActive && s_clipY > drawStartY) {
+                        let srcX = Math.floor(s_startX * textureRatio);
+                        let srcW = Math.max(1, Math.floor(s_width * textureRatio));
                         
                         if (srcW > 0) {
-                            if (!currentStreak.isBlocked) {
-                                ctx.drawImage(srcImg, srcX, 0, srcW, cacheSize, viewX + currentStreak.destX, drawStartY, currentStreak.width, spriteSize);
+                            if (!s_blocked) {
+                                ctx.drawImage(srcImg, srcX, 0, srcW, cacheSize, viewX + s_destX, drawStartY, s_width, spriteSize);
                             } else {
-                                let visibleHeightRatio = (currentStreak.minClipY - drawStartY) / spriteSize;
+                                let visibleHeightRatio = (s_clipY - drawStartY) / spriteSize;
                                 let srcHeight = cacheSize * visibleHeightRatio;
-                                ctx.drawImage(srcImg, srcX, 0, srcW, srcHeight, viewX + currentStreak.destX, drawStartY, currentStreak.width, currentStreak.minClipY - drawStartY);
+                                ctx.drawImage(srcImg, srcX, 0, srcW, srcHeight, viewX + s_destX, drawStartY, s_width, s_clipY - drawStartY);
                             }
                         }
                     }
@@ -13513,22 +13540,27 @@
                     if (localCol >= 0 && localCol < viewW) {
                         let distFromCenter = Math.abs(x - (spriteSize / 2)) / (spriteSize / 2);
                         let dynamicBias = isCenterVisible ? 0.08 * (1.0 - distFromCenter) : 0.02;                            
-                        let { isBlocked, minClipY } = checkOcclusion(localCol, transformY, dynamicBias, sprite);
+                        
+                        checkOcclusion(localCol, transformY, dynamicBias, sprite); // Sets occlusionResult
 
-                        if (isBlocked && drawStartY >= minClipY) minClipY = drawStartY; 
+                        if (occlusionResult.isBlocked && drawStartY >= occlusionResult.minClipY) occlusionResult.minClipY = drawStartY; 
 
-                        if (currentStreak && currentStreak.isBlocked === isBlocked && currentStreak.minClipY === minClipY) {
-                            currentStreak.width++;
+                        if (streakActive && s_blocked === occlusionResult.isBlocked && s_clipY === occlusionResult.minClipY) {
+                            s_width++;
                         } else {
-                            if (currentStreak) flushStreak();
-                            currentStreak = { startX: x, destX: localCol, width: 1, isBlocked: isBlocked, minClipY: minClipY };
+                            if (streakActive) flushStreak();
+                            streakActive = true;
+                            s_startX = x;
+                            s_destX = localCol;
+                            s_width = 1;
+                            s_blocked = occlusionResult.isBlocked;
+                            s_clipY = occlusionResult.minClipY;
                         }
                     } else {
-                        if (currentStreak) { flushStreak(); currentStreak = null; }
+                        if (streakActive) { flushStreak(); streakActive = false; }
                     }
                 }
-
-                if (currentStreak) flushStreak();
+                if (streakActive) flushStreak();
 
                 ctx.globalCompositeOperation = previousBlend;
                 ctx.filter = 'none';
@@ -19852,10 +19884,9 @@
         let offCanvas = null;
 
         if (!skipCache) {
-            offCanvas = document.createElement('canvas');
-            offCanvas.width = ((tL / 10) * this.l * this.z) + (padding * 2);
-            offCanvas.height = ((tH / 10) * this.h * this.z) + (padding * 2);
-            
+            let reqWidth = ((tL / 10) * this.l * this.z) + (padding * 2);
+            let reqHeight = ((tH / 10) * this.h * this.z) + (padding * 2);
+            offCanvas = CanvasPool.getCanvas(reqWidth, reqHeight); // <--- THE FIX
             // Hijack the global context!
             ctx = offCanvas.getContext('2d');
             tX = padding - ((tL / 10) * this.x);
@@ -20538,10 +20569,12 @@
             // 2. Save the newly painted canvas to the memory bank
             globalButtonCache.set(cacheKey, offCanvas);
             
-            // Prevent memory leaks by capping the cache size
+            // Prevent memory leaks by capping the cache size AND recycling
             if (globalButtonCache.size > 150) {
                 let firstKey = globalButtonCache.keys().next().value;
+                let oldCanvas = globalButtonCache.get(firstKey);
                 globalButtonCache.delete(firstKey);
+                CanvasPool.returnCanvas(oldCanvas); // Recycle it!
             }
 
             // 3. Draw it to the real screen for this frame
@@ -36559,7 +36592,7 @@
         max = Math.floor(max);
         return Math.floor(Math.random() * (max - min + 1)+ min);
         }
-     function resizeCanvas(){  //USED IN EVENT LISTENER TO GET NEW WINDOW X,Y(tX,tY)
+    function resizeCanvas(){  //USED IN EVENT LISTENER TO GET NEW WINDOW X,Y(tX,tY)
         //after event handler detects window resize, sets canvas x,y to window x,y
         // 1. Get the scaling factor (2 or 3 for iPhones)
         if (isChatActive&&startGame!='charSelect') return;
@@ -36761,27 +36794,25 @@
         // Default to 'left' if they forget to add the argument
         if (typeof align === 'undefined') align = 'left';
         ctx.textBaseline = "hanging";
+        
         // 1. Setup Coordinates
         var zx = x, zy = y; 
-        var zl = boxW, zh = boxH;
+        var zl = boxW, zh = boxH; // <--- Restored zl and zh!
         
         var drawX = tX + (tL / 10) * x; 
         var drawY = tY + (tH / 10) * y;
         var maxWidth = (tL / 10) * boxW * z;
         var maxHeight = (tH / 10) * boxH * z;
-        // --- NEW CACHE LOGIC START ---
-        // Create a unique fingerprint for this specific string and box size
+        
+        // --- CACHE LOGIC START ---
         let cacheKey = `${text}_${maxWidth}_${maxHeight}_${align}`;
         let layout;
 
         if (textLayoutCache.has(cacheKey)) {
-            // Retrieve the pre-calculated math
             layout = textLayoutCache.get(cacheKey);
         } else {
-            // 2. Setup Font Initial State
             let fs = maxHeight; 
             
-            // 3. Helper: Wrap Text
             function getWrappedLines(ctx, text, limit) {
                 var words = text.split(" ");
                 var lines = [];
@@ -36801,7 +36832,6 @@
                 return lines;
             }
 
-            // 4. Autosize Loop
             let linesArr = [];
             let fitFound = false;
             
@@ -36816,101 +36846,107 @@
                 }
             }
 
-            // Save the heavy math for next frame
             layout = { linesArr: linesArr, fs: fs };
             textLayoutCache.set(cacheKey, layout);
             
-            // Keep the cache from overflowing if text changes constantly
             if (textLayoutCache.size > 200) {
                 textLayoutCache.delete(textLayoutCache.keys().next().value);
             }
-        } // <--- END OF ELSE BLOCK
+        } 
+        
         let fs = layout.fs;
         let linesArr = layout.linesArr;
         let lineHeight = maxHeight / linesArr.length;
+        
         // 5. Render Loop
-        
         for (let i = 0; i < linesArr.length; i++) {
-        let lineStr = linesArr[i];
-        let yLine = drawY + (i * lineHeight);
+            let lineStr = linesArr[i];
+            let yLine = drawY + (i * lineHeight);
 
-        // --- ALIGNMENT LOGIC ---
-        let centerOffset = 0;
-        
-        // Only do the math if we specifically asked for 'center'
-        if (align === 'center') {
-            let previewStr = lineStr.replace(/\b(STR|CON|INT|AGI)\b/g, '   ');
-            ctx.font = fs + "px Franklin Gothic, Helvetica, Arial, sans-serif"; 
-            let lineWidth = ctx.measureText(previewStr).width;
-            
-            centerOffset = (maxWidth - lineWidth) / 2;
-            if (centerOffset < 0) centerOffset = 0;
-        }
-        
-        let gridOffset = centerOffset / (tL / 10);
-        // -----------------------
+            // Force the standard font BEFORE doing any measurements 
+            // so bold text from previous loops doesn't inflate the width!
+            ctx.font = fs + "px Franklin Gothic, Helvetica, Arial, sans-serif";
 
-        let parts = lineStr.split(' ');
-        let drawStr = '';
-        
-        for (let h = 0; h < parts.length; h++) {
-            let part = parts[h];
-            let p = 0;
-            switch (part) {
-            case 'INT': p = -5; break;
-            case 'STR': p = -4; break;
-            case 'CON': p = -6; break;
-            case 'AGI': p = -7; break;
-            }
-
-            if (p !== 0) {
-            let currentWidth = ctx.measureText(drawStr).width;
-            // Apply gridOffset here so portraits move with the text alignment
-            let k = (zx + gridOffset) + (currentWidth / (tL / 10));
-            let j = zy + (zh * z / linesArr.length) * i;
-            let m = fs / tH;
-
-            drawPortrait(p, k, j, m);
-            part = '   '; 
+            // --- ALIGNMENT LOGIC ---
+            let centerOffset = 0;
+            if (align === 'center') {
+                let previewStr = lineStr.replace(/\b(STR|CON|INT|AGI)\b/g, '   ');
+                let lineWidth = ctx.measureText(previewStr).width;
+                centerOffset = (maxWidth - lineWidth) / 2;
+                if (centerOffset < 0) centerOffset = 0;
             }
             
-            drawStr += part + " ";
+            let gridOffset = centerOffset / (tL / 10);
+
+            let parts = lineStr.split(' ');
+            let drawStr = '';
+            
+            for (let h = 0; h < parts.length; h++) {
+                let part = parts[h];
+                let p = 0;
+                
+                // Strip punctuation (e.g. "STR!" becomes "STR") to ensure the switch matches it
+                let cleanPart = part.replace(/[^A-Za-z]/g, '');
+                
+                switch (cleanPart) {
+                    case 'INT': p = -5; break;
+                    case 'STR': p = -4; break;
+                    case 'CON': p = -6; break;
+                    case 'AGI': p = -7; break;
+                }
+
+                if (p !== 0) {
+                    // Measure how wide the text is leading up to the icon
+                    let currentWidth = ctx.measureText(drawStr).width;
+                    
+                    // Apply gridOffset so portraits move with the text alignment
+                    // Now zx, zh, and zl are all safely defined!
+                    let k = (zx + gridOffset) + (currentWidth / (tL / 10));
+                    let j = zy + (zh * z / linesArr.length) * i;
+                    let m = fs / tH;
+
+                    drawPortrait(p, k - 0.03, j, m);
+                    
+                    // Replace the token with 3 spaces, but preserve any attached punctuation
+                    part = part.replace(cleanPart, '   '); 
+                }
+                
+                drawStr += part + " ";
+            }
+            
+            drawStr = drawStr.trimEnd();
+
+            // Final Draw
+            const diceRe = /^\s*\d+d\d+\s*$/;
+            const hasToken = /\b(?:STR|CON|INT|AGI)\b/.test(lineStr);
+            
+            ctx.font = fs + "px Franklin Gothic, Helvetica, Arial, sans-serif";
+            
+            if (!hasToken) {
+                let w = ctx.measureText(drawStr).width;
+                
+                if (w > maxWidth) {
+                    let scale = maxWidth / w;
+                    if (diceRe.test(drawStr)) {
+                        ctx.font = "bold " + (fs * scale) + "px Franklin Gothic, Helvetica, Arial, sans-serif";
+                    } else {
+                        ctx.font = (fs * scale) + "px Franklin Gothic, Helvetica, Arial, sans-serif";
+                    }
+                    centerOffset = 0; 
+                } else {
+                    if (diceRe.test(drawStr)) {
+                        ctx.font = "bold " + fs + "px Franklin Gothic, Helvetica, Arial, sans-serif";
+                    }
+                }
+            }
+            
+            ctx.fillStyle = color;
+            ctx.fillText(drawStr, drawX + centerOffset, yLine);
         }
         
-        drawStr = drawStr.trimEnd();
-
-        // Final Draw
-        const diceRe = /^\s*\d+d\d+\s*$/;
-        const hasToken = /\b(?:STR|CON|INT|AGI)\b/.test(lineStr);
-        
+        // Reset to standard font at the very end to be safe
         ctx.font = fs + "px Franklin Gothic, Helvetica, Arial, sans-serif";
-        
-        if (!hasToken) {
-            let w = ctx.measureText(drawStr).width;
-            
-            // Force Left Align if we had to scale the text down to fit
-            if (w > maxWidth) {
-            let scale = maxWidth / w;
-            if (diceRe.test(drawStr)) {
-                ctx.font = "bold " + (fs * scale) + "px Franklin Gothic, Helvetica, Arial, sans-serif";
-            } else {
-                ctx.font = (fs * scale) + "px Franklin Gothic, Helvetica, Arial, sans-serif";
-            }
-            centerOffset = 0; // Reset offset because it now fills the line
-            } else {
-            if (diceRe.test(drawStr)) {
-                ctx.font = "bold " + fs + "px Franklin Gothic, Helvetica, Arial, sans-serif";
-            }
-            }
-        }
-        
-        ctx.fillStyle = color;
-        // Add the offset (which is 0 for left, calculated for center)
-        ctx.fillText(drawStr, drawX + centerOffset, yLine);
-        }
-        
-        ctx.font = fs + "px Franklin Gothic, Helvetica, Arial, sans-serif";
-        }
+    }
     //2D SPRITES
     function drawPortraitPaths(index,x,y,z,card = 0){
         let sx = 0;
@@ -46472,25 +46508,25 @@
         }
     async function cacheAllPortraits(updateProgressCallback) {
         const staticPortraits = [
-        -1, -2,-3,-4,-5,-6,-7,-8,-9,-10,-11,-12,-13,-14,-15,-15.1,
-        -16,-17,-18,-19,-20,-21,-22,-23,-24,-25,-26,
-        -28,-29,-30,-31,-32,-33,-34,-35,-36,
-        0,1,1.1,2,3,4,5,6,7,8,9,9.1,,10,11,12,13,14,16,17,18,19,20,21,
-        22,23,24,25,26,27,28,30,33.1,34,
-        36,38,39,40,41,43,44,49.1,
-        50,51,52,54,56,57,57.1,58,
-        64,69,75.1,77.1,77.2,
-        79,80,81,83,87,88,89,90,91,
-        94,61391,.61391]; 
+            -1, -2,-3,-4,-5,-6,-7,-8,-9,-10,-11,-12,-13,-14,-15,-15.1,
+            -16,-17,-18,-19,-20,-21,-22,-23,-24,-25,-26,
+            -28,-29,-30,-31,-32,-33,-34,-35,-36,
+            0,1,1.1,2,3,4,5,6,7,8,9,9.1,,10,11,12,13,14,16,17,18,19,20,21,
+            22,23,24,25,26,27,28,30,33.1,34,
+            36,38,39,40,41,43,44,49.1,
+            50,51,52,54,56,57,57.1,58,
+            64,69,75.1,77.1,77.2,
+            79,80,81,83,87,88,89,90,91,
+            94,61391,.61391]; 
         
         const animatedPortraits = [
-        -37,-50,15,
-        29,31,32,33,34,34.1,35,35.1,
-        37,42,45,46,46.1,47,47.1,48.1,48,49,
-        53,55,59,60,60.1,61,61.1,61.2,62,62.1,63,63.1,
-        65,66,67,68,70,70.1,71,72,73,74,74.1,75,76,76.1,77,
-        78,82,84,85,86,92,93,98,99,999]; 
-        
+            -37,-50,15,
+            29,31,32,33,34,34.1,35,35.1,
+            37,42,45,46,46.1,47,47.1,48.1,48,49,
+            53,55,59,60,60.1,61,61.1,61.2,62,62.1,63,63.1,
+            65,66,67,68,70,70.1,71,72,73,74,74.1,75,76,76.1,77,
+            78,82,84,85,86,92,93,98,99,999]; 
+            
         //3D UPDATE
         const directionalPortraits = [];
         const max3D_ID = 209; // Set this to whatever your highest ID is (x)
@@ -46498,7 +46534,7 @@
         for (let i = 101; i <= max3D_ID; i++) {
             directionalPortraits.push(i);
         }
-        const cacheSize = 256; 
+        const cacheSize = 128; 
         const totalFrames = 4; 
 
         const originalCtx = ctx;
@@ -46595,6 +46631,7 @@
         // ==========================================
         // 4. CACHE 8-DIRECTIONAL 3D SPRITES
         // ==========================================
+        let dirCacheSize = 128;
         for (let index of directionalPortraits) {
             spriteCache[index] = []; // Initialize the main array
 
@@ -46606,12 +46643,12 @@
 
                 for (let i = 0; i < totalFrames; i++) {
                     const frameCanvas = document.createElement('canvas');
-                    frameCanvas.width = cacheSize; 
-                    frameCanvas.height = cacheSize;
+                    frameCanvas.width = dirCacheSize; 
+                    frameCanvas.height = dirCacheSize;
                     const cleanupCtx = frameCanvas.getContext('2d');
                     
                     ctx = cleanupCtx;
-                    tX = 0; tY = 0; tL = cacheSize; tH = cacheSize;
+                    tX = 0; tY = 0; tL = dirCacheSize; tH = dirCacheSize;
                     window.cacheAngle = (i / totalFrames) * (Math.PI * 2);
                     let baseIndex = index - 100;
                     let variant = 'normal';
