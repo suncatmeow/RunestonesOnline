@@ -4069,7 +4069,7 @@
             this.x = behindX;
             this.y = behindY;
             this.dir = bestTarget.dir; 
-            if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('warp');
+            MusicEngine.play3DSFX('warp', this.x, this.y, dungeon.x, dungeon.y, dungeon.dir);                        
 
             // The AGI Clash
             let myCard = new Card(Math.floor(this.type), 0);
@@ -10992,12 +10992,24 @@
                     const viewY = tY; 
 
                     // ==========================================
-                    // --- TYPED ARRAY Z-BUFFER MEMORY ALLOCATION
+                    // --- TYPED ARRAY & HIT POOL MEMORY ALLOCATION
                     // ==========================================
-                    // Allocate once. If the screen resizes, it re-allocates automatically.
-                    if (!this.zBuffer || this.zBuffer.length !== viewW * 12) {
-                        this.zBuffer = new Float32Array(viewW * 12);
+                    // Force the max hits per ray so it's never undefined!
+                    this.maxHitsPerRay = 5; 
+
+                    // Allocate once. If the screen resizes or memory is missing, it builds itself automatically.
+                    if (!this.zBuffer || this.zBuffer.length !== viewW * this.maxHitsPerRay * 3) {
+                        this.zBuffer = new Float32Array(viewW * this.maxHitsPerRay * 3);
                         this.zBufferCounts = new Uint8Array(viewW);
+                        
+                        // Build the Zero-Allocation Hit Pool
+                        this.hitPool = [];
+                        for (let i = 0; i < this.maxHitsPerRay; i++) {
+                            this.hitPool.push({
+                                dist: 0, wallID: 0, side: 0, mapX: 0, mapY: 0, 
+                                isShort: false, perpWallDist: 0, exitDist: 0, heightMult: 1.0
+                            });
+                        }
                     }
                     
                     // Wipe it clean instantly for this frame!
@@ -11068,28 +11080,32 @@
                     // ==========================================
                     // --- THE FIX: DYNAMIC FACE TRACKING ---
                     // ==========================================
-                    // By calculating this every frame, the camera will actively track 
-                    // the NPC perfectly even if they or the player are mid-slide!
                     if (this.currentSpeaker) {
                         let dx = this.currentSpeaker.x - this.x;
                         let dy = this.currentSpeaker.y - this.y;
                         let dist = Math.sqrt(dx * dx + dy * dy);
                         
                         if (dist > 0) {
+                            let imageIndex = Number(this.currentSpeaker.type);
+                            if (typeof getUpgradedImageIndex === 'function') imageIndex = getUpgradedImageIndex(imageIndex);
+                            
+                            // Grab the config, which now includes faceZ and facePan
+                            let config = this.getSpriteConfig(this.currentSpeaker, 0, imageIndex); 
+                            
+                            // --- 1. HORIZONTAL TRACKING (PAN) ---
                             let desiredAngle = Math.atan2(dx, -dy);
-                            let panNeeded = desiredAngle - this.currentAngle;
+                            
+                            // Apply the custom horizontal offset from the config
+                            let panNeeded = (desiredAngle + (config.facePan || 0)) - this.currentAngle;
                             
                             while (panNeeded < -Math.PI) panNeeded += Math.PI * 2;
                             while (panNeeded > Math.PI) panNeeded -= Math.PI * 2;
                             this.cinematicPan = panNeeded;
                             
-                            let imageIndex = Number(this.currentSpeaker.type);
-                            if (typeof getUpgradedImageIndex === 'function') imageIndex = getUpgradedImageIndex(imageIndex);
-                            
-                            let config = this.getSpriteConfig(this.currentSpeaker, 0, imageIndex); 
-                            
-                            // Aim for the face (70% up)
-                            let focusZ = config.hover + (config.scale * 0.70);
+                            // --- 2. VERTICAL TRACKING (PITCH) ---
+                            // Use config.faceZ instead of the hardcoded 0.70
+                            let currentFaceZ = config.faceZ !== undefined ? config.faceZ : 0.70;
+                            let focusZ = config.hover + (config.scale * currentFaceZ);
                             let zDiff = focusZ - this.camZ; 
                             
                             let viewH = (typeof tH !== 'undefined' && tH > 0) ? tH : 400;
@@ -11534,6 +11550,7 @@
             // ==========================================
             // 5. CAST RAYS FOR WALLS
             // ==========================================
+            this.lastR = -1; this.lastG = -1; this.lastB = -1;
                 for (let x = 0; x < viewW; x += resStep) {
                     const cameraX = 2 * x / viewW - 1;
                     const rayDirX = dirX + planeX * cameraX;
@@ -12481,57 +12498,25 @@
             const deltaDistX = (rayDirX === 0) ? 1e30 : Math.abs(1 / rayDirX);
             const deltaDistY = (rayDirY === 0) ? 1e30 : Math.abs(1 / rayDirY);
             let stepX, stepY, sideDistX, sideDistY;
-            
-            // --- THE CACHING SYSTEM INIT ---
-            if (this.lastR === undefined) {
-                this.lastR = -1; this.lastG = -1; this.lastB = -1;
-            }
-            let lastKnownFillStyle = "";
-
-            // HELPER 1: Zero-Allocation RGB Cacher
-            const setRGB = (rVal, gVal, bVal) => {
-                let rInt = Math.floor(rVal);
-                let gInt = Math.floor(gVal);
-                let bInt = Math.floor(bVal);
-                if (this.lastR !== rInt || this.lastG !== gInt || this.lastB !== bInt) {
-                    this.lastR = rInt; 
-                    this.lastG = gInt; 
-                    this.lastB = bInt;
-                    lastKnownFillStyle = `rgb(${rInt},${gInt},${bInt})`;
-                    ctx.fillStyle = lastKnownFillStyle;
-                }
-            };
-
-            // HELPER 2: Standard String Cacher (Invalidates RGB cache)
-            const setStyle = (styleStr) => {
-                if (lastKnownFillStyle !== styleStr) {
-                    lastKnownFillStyle = styleStr;
-                    ctx.fillStyle = styleStr;
-                    this.lastR = -1; // Force the next RGB to rebuild its string
-                }
-            };
-            // -------------------------------
 
             if (rayDirX < 0) { stepX = -1; sideDistX = (camX - mapX) * deltaDistX; }
             else { stepX = 1; sideDistX = (mapX + 1 - camX) * deltaDistX; }
             if (rayDirY < 0) { stepY = -1; sideDistY = (camY - mapY) * deltaDistY; }
             else { stepY = 1; sideDistY = (mapY + 1 - camY) * deltaDistY; }
 
-            const horizon = (viewH / 2) + this.pitch; 
-            const wallScale = viewH * this.zScale;
-            const zOffset = this.camZ - 0.5;
-
             let dynamicMaxVis = Math.max(2, Math.round(this.dSense / 3));
             const MAX_RENDER_DEPTH = Math.min(32, dynamicMaxVis + 1); 
             
             let hitCount = 0;
-            let solidHits = 0;
+            let solidHit = false;
             let losBlockedDepth = MAX_RENDER_DEPTH;
 
+           // ==========================================
+            // 1. ZERO-ALLOCATION DDA RAYCASTING
             // ==========================================
-            // 1. DDA RAYCASTING
-            // ==========================================
-            while (true) {
+            let maxHeightSoFar = 0; // NEW: Tracks the visual horizon to prevent starvation
+
+            while (hitCount < this.maxHitsPerRay && !solidHit) {
                 let side, currentDepth;
                 if (sideDistX < sideDistY) { 
                     sideDistX += deltaDistX; mapX += stepX; side = 0; currentDepth = sideDistX - deltaDistX; 
@@ -12540,46 +12525,99 @@
                 }
 
                 if (currentDepth > MAX_RENDER_DEPTH) break;
-                if (isNaN(mapY) || isNaN(mapX) || mapY < 0 || mapY >= this.maze.length || mapX < 0 || mapX >= this.maze[0].length) break; 
+                if (mapY < 0 || mapY >= this.maze.length || mapX < 0 || mapX >= this.maze[0].length) break; 
 
                 if (this.explored[mapY] && this.explored[mapY][mapX] !== undefined) this.explored[mapY][mapX] = 1;
 
                 const tileID = this.maze[mapY][mapX];
                 if (tileID > 0) { 
-                    let perpWallDist = (side === 0) ? (rayDirX === 0 ? 100 : (mapX - camX + (1 - stepX) / 2) / rayDirX) 
-                                                    : (rayDirY === 0 ? 100 : (mapY - camY + (1 - stepY) / 2) / rayDirY);
-                    if (isNaN(perpWallDist) || perpWallDist <= 0) perpWallDist = 0.1;
                     
-                    let exitDist = Math.min(sideDistX, sideDistY);
+                    // 1. Calculate true height immediately
                     let heightMult = this.tileHeights[tileID] !== undefined ? this.tileHeights[tileID] : 1.0;
-                    let isShort = heightMult <= 0.25;
-                    
-                    // --- THE FIX: USE THE POOL INSTEAD OF .push() ---
-                    let hit = this.hitPool[hitCount];
-                    hit.wallID = tileID;
-                    hit.side = side;
-                    hit.mapX = mapX;
-                    hit.mapY = mapY;
-                    hit.perpWallDist = perpWallDist;
-                    hit.exitDist = exitDist;
-                    hit.isShort = isShort;
-                    
-                    hitCount++;
-                    if (!isShort) solidHits++;
-
-                    // THE FIX: No more .filter(), we use our manual counter
-                    if (solidHits > 3 || hitCount >= 32) break; 
-                    
                     let isTransparentWall = [88, 91].includes(tileID);
-                    let isInfinite = this.toweringWalls.includes(tileID) && !this.tileHeights[tileID] && !this.randomTreeTiles.includes(tileID);
-                    if (losBlockedDepth === MAX_RENDER_DEPTH && !isTransparentWall && isInfinite) losBlockedDepth = perpWallDist; 
-                    if (isInfinite && !isTransparentWall) break;
+                    
+                    if (this.randomTreeTiles && this.randomTreeTiles.includes(tileID)) {
+                        let pseudoRandom = Math.abs(Math.sin(mapX * 12.9898 + mapY * 78.233)) * 43758.5453 % 1;
+                        heightMult = 2.0 + (pseudoRandom * 2.0); 
+                    }
+                    
+                    let isInfinite = false;
+                    if (this.toweringWalls && this.toweringWalls.includes(tileID) && !this.tileHeights[tileID] && (!this.randomTreeTiles || !this.randomTreeTiles.includes(tileID))) {
+                        heightMult = 15.0;
+                        isInfinite = true;
+                    }
+
+                    // 2. OCCLUSION CULLING - Only record if taller than what we've already hit!
+                    if (heightMult > maxHeightSoFar || isTransparentWall) {
+                        
+                        // Update visual horizon if it's an opaque block
+                        if (!isTransparentWall) {
+                            maxHeightSoFar = heightMult;
+                        }
+
+                        let perpWallDist = (side === 0) ? (mapX - camX + (1 - stepX) / 2) / rayDirX 
+                                                        : (mapY - camY + (1 - stepY) / 2) / rayDirY;
+                        if (isNaN(perpWallDist) || perpWallDist <= 0) perpWallDist = 0.1;
+                        
+                        let exitDist = Math.min(sideDistX, sideDistY);
+                        let isShort = heightMult <= 0.25;
+                        
+                        // RECYCLE FROM POOL
+                        let hit = this.hitPool[hitCount];
+                        hit.wallID = tileID;
+                        hit.side = side;
+                        hit.mapX = mapX;
+                        hit.mapY = mapY;
+                        hit.perpWallDist = perpWallDist;
+                        hit.exitDist = exitDist;
+                        hit.isShort = isShort;
+                        hit.heightMult = heightMult; // Store calculated height!
+                        
+                        hitCount++;
+                        
+                        if (losBlockedDepth === MAX_RENDER_DEPTH && !isTransparentWall && isInfinite) losBlockedDepth = perpWallDist; 
+                        
+                        // 3. Stop ray ONLY if it hits the absolute skybox ceiling
+                        if (heightMult >= 15.0) {
+                            solidHit = true;
+                        }
+                    }
                 }
             }
 
-            // ==========================================
-            // 2. BACK-TO-FRONT PROCEDURAL RENDERING
-            // ==========================================
+            // Send all collected hits to the drawing pipeline
+            this.drawColumn(stripX, hitCount, viewX, viewY, viewW, viewH, width, camX, camY, rayDirX, rayDirY, losBlockedDepth, dynamicMaxVis);
+        }
+
+        drawColumn(stripX, hitCount, viewX, viewY, viewW, viewH, width, camX, camY, rayDirX, rayDirY, losBlockedDepth, dynamicMaxVis) {
+            // --- CACHING HELPERS ---
+            if (this.lastR === undefined) { this.lastR = -1; this.lastG = -1; this.lastB = -1; }
+            let lastKnownFillStyle = "";
+
+            const setRGB = (rVal, gVal, bVal) => {
+                let rInt = Math.floor(rVal), gInt = Math.floor(gVal), bInt = Math.floor(bVal);
+                if (this.lastR !== rInt || this.lastG !== gInt || this.lastB !== bInt) {
+                    this.lastR = rInt; this.lastG = gInt; this.lastB = bInt;
+                    lastKnownFillStyle = `rgb(${rInt},${gInt},${bInt})`;
+                    ctx.fillStyle = lastKnownFillStyle;
+                }
+            };
+
+            const setStyle = (styleStr) => {
+                if (lastKnownFillStyle !== styleStr) {
+                    lastKnownFillStyle = styleStr;
+                    ctx.fillStyle = styleStr;
+                    this.lastR = -1; 
+                }
+            };
+
+            // --- RENDER SETUP ---
+            this.zBufferCounts[stripX] = hitCount;
+            
+            const horizon = (viewH / 2) + this.pitch; 
+            const wallScale = viewH * this.zScale;
+            const zOffset = this.camZ - 0.5;
+
             let fR = this.fogColorRGB ? this.fogColorRGB.r : 5;
             let fG = this.fogColorRGB ? this.fogColorRGB.g : 5;
             let fB = this.fogColorRGB ? this.fogColorRGB.b : 8;
@@ -12588,14 +12626,17 @@
             const screenX = Math.floor(viewX + stripX);
             const drawWidth = Math.ceil(width);
 
+            // ==========================================
+            // 2. BACK-TO-FRONT PROCEDURAL RENDERING
+            // ==========================================
             for (let i = hitCount - 1; i >= 0; i--) { 
                 let hit = this.hitPool[i];
                 
                 let wallID = hit.wallID;
                 let side = hit.side;
                 let perpWallDist = hit.perpWallDist;
+                let heightMult = hit.heightMult;
 
-                let heightMult = this.tileHeights[wallID] || 1.0;
                 if (this.randomTreeTiles.includes(wallID)) {
                     let pseudoRandom = Math.abs(Math.sin(hit.mapX * 12.9898 + hit.mapY * 78.233)) * 43758.5453 % 1;
                     heightMult = 2.0 + (pseudoRandom * 2.0); 
@@ -12611,10 +12652,23 @@
                 let drawStart = Math.floor(Math.max(0, trueDrawStart));
                 hit.topY = drawStart; 
                 
-                let bIndex = (stripX * 12) + (i * 3);
-                this.zBuffer[bIndex] = perpWallDist;
-                this.zBuffer[bIndex + 1] = wallID;
-                this.zBuffer[bIndex + 2] = drawStart;
+                // --- NEW Z-BUFFER INDEX MATH ---
+                let bIndex = (stripX * this.maxHitsPerRay * 3) + (i * 3);
+                
+                let wallHitX = (side == 0) ? camY + perpWallDist * rayDirY : camX + perpWallDist * rayDirX;
+                wallHitX -= Math.floor(wallHitX);
+                let isBar = [88, 91].includes(wallID) && (wallHitX % 0.25 < (wallID===88 ? 0.08 : 0.05));
+
+                // Allow sprites to render "inside" gaps of transparent blocks
+                if ([88, 91].includes(wallID) && !isBar) {
+                    this.zBuffer[bIndex] = 1e30;
+                    this.zBuffer[bIndex + 1] = 0;
+                    this.zBuffer[bIndex + 2] = drawStart;
+                } else {
+                    this.zBuffer[bIndex] = perpWallDist;
+                    this.zBuffer[bIndex + 1] = wallID;
+                    this.zBuffer[bIndex + 2] = drawStart;
+                }
 
                 let drawEnd = Math.ceil(Math.min(viewH, wallBottom)) + 1;
                 let actualDrawHeight = drawEnd - drawStart;
@@ -12625,7 +12679,7 @@
                 let baseB = parsed ? parsed.b : 19;
 
                 // --- SAFELY ANCHORED 3D ROOFS ---
-                if (heightMult < 15.0&&(wallID!==91&&wallID!==88)) {
+                if (heightMult < 15.0 && wallID !== 91 && wallID !== 88) {
                     let exitLineHeight = wallScale / hit.exitDist; 
                     let exitZShift = exitLineHeight * zOffset;     
                     let exitWallBottom = exitLineHeight / 2 + horizon + exitZShift;
@@ -12653,369 +12707,339 @@
                         roofG = (roofG * (1 - roofFog)) + (fG * roofFog);
                         roofB = (roofB * (1 - roofFog)) + (fB * roofFog);
 
-                        setRGB(roofR, roofG, roofB); // <--- FASTER
+                        setRGB(roofR, roofG, roofB); 
                         ctx.fillRect(screenX, viewY + finalRoofY, drawWidth, roofH);
                     }
                 }
 
                 if (actualDrawHeight <= 0) continue;
 
-                // --- CORE FOG & SHADING MATH ---
-                    let wallHitX;
-                    if (side == 0) wallHitX = camY + perpWallDist * rayDirY;
-                    else           wallHitX = camX + perpWallDist * rayDirX;
-                    wallHitX -= Math.floor(wallHitX);
+                // --- SHADING MATH ---
+                let intensity = this.noiseLevels[wallID] !== undefined ? this.noiseLevels[wallID] : 20;
+                let noise = (Math.random() - 0.5) * intensity; 
+                if (this.mapID !== -1 && perpWallDist > 5) noise = 0;
 
-                    let intensity = this.noiseLevels[wallID] !== undefined ? this.noiseLevels[wallID] : 20;
-                    let noise = (Math.random() - 0.5) * intensity; 
-                    if (this.mapID !== -1) { if (perpWallDist > 5) noise = 0; }
+                let shade = (163 / (perpWallDist + 1)) + 20; 
+                if (this.mapID === -1) shade = 193;
+                if (shade > 255) shade = 255;
+                if (side === 1) shade *= 0.75; 
 
-                    let shade = (163 / (perpWallDist + 1)) + 20; 
-                    if (this.mapID === -1) shade = 193;
-                    if (shade > 255) shade = 255;
-                    if (side === 1) shade *= 0.75; 
+                let brightness = shade / 255;
+                let r = baseR * brightness + noise;
+                let g = baseG * brightness + noise;
+                let b = baseB * brightness + noise;
+                
+                let fogStart = dynamicMaxVis * 0.4;
+                let fogFactor = 0;
 
-                    let brightness = shade / 255;
-                    let r = baseR * brightness + noise;
-                    let g = baseG * brightness + noise;
-                    let b = baseB * brightness + noise;
-                    
-                    let fogStart = dynamicMaxVis * 0.4;
-                    let fogFactor = 0;
+                if (perpWallDist > fogStart) {
+                    let ratio = Math.min((perpWallDist - fogStart) / (dynamicMaxVis - fogStart), 1.0);
+                    fogFactor = ratio * ratio; 
+                }
+                if (perpWallDist > losBlockedDepth) fogFactor = 1.0;
 
-                    if (perpWallDist > fogStart) {
-                        let ratio = Math.min((perpWallDist - fogStart) / (dynamicMaxVis - fogStart), 1.0);
-                        fogFactor = ratio * ratio; 
-                    }
-                    if (perpWallDist > losBlockedDepth) fogFactor = 1.0;
-
-                    let rawR = r, rawG = g, rawB = b;
-                    r = (r * (1 - fogFactor)) + (fR * fogFactor);
-                    g = (g * (1 - fogFactor)) + (fG * fogFactor);
-                    b = (b * (1 - fogFactor)) + (fB * fogFactor);
-                    
-                    let drawFullStrip = true; 
-                    let fadeAlpha = Math.max(0, 1.0 - fogFactor);
+                let rawR = r, rawG = g, rawB = b;
+                r = (r * (1 - fogFactor)) + (fR * fogFactor);
+                g = (g * (1 - fogFactor)) + (fG * fogFactor);
+                b = (b * (1 - fogFactor)) + (fB * fogFactor);
+                
+                let drawFullStrip = true; 
+                let fadeAlpha = Math.max(0, 1.0 - fogFactor);
 
                 // ==========================================
                 // --- PROCEDURAL SCREEN SHADERS ---
                 // ==========================================
-                
-                    if ([2,3,15,23,41,42,43,62,63].includes(wallID)) {
-                        // A. BARK LOGIC
-                        let wave1 = Math.sin(wallHitX * Math.PI * 14); 
-                        let wave2 = Math.sin(wallHitX * Math.PI * 5);  
-                        let bark = (wave1 * 0.6) + (wave2 * 0.4);
-                        let texR = rawR, texG = rawG, texB = rawB;
+                if ([2,3,15,23,41,42,43,62,63].includes(wallID)) {
+                    let wave1 = Math.sin(wallHitX * Math.PI * 14); 
+                    let wave2 = Math.sin(wallHitX * Math.PI * 5);  
+                    let bark = (wave1 * 0.6) + (wave2 * 0.4);
+                    let texR = rawR, texG = rawG, texB = rawB;
 
-                        if (bark > 0.4) { texR *= 0.3; texG *= 0.3; texB *= 0.3; } 
-                        else if (bark < -0.4) { texR *= 1.1; texG *= 1.1; texB *= 1.1; } 
-                        else { texR *= 0.8; texG *= 0.8; texB *= 0.8; }
+                    if (bark > 0.4) { texR *= 0.3; texG *= 0.3; texB *= 0.3; } 
+                    else if (bark < -0.4) { texR *= 1.1; texG *= 1.1; texB *= 1.1; } 
+                    else { texR *= 0.8; texG *= 0.8; texB *= 0.8; }
 
-                        texR = Math.max(0, Math.min(255, (texR * (1 - fogFactor)) + (fR * fogFactor))); 
-                        texG = Math.max(0, Math.min(255, (texG * (1 - fogFactor)) + (fG * fogFactor))); 
-                        texB = Math.max(0, Math.min(255, (texB * (1 - fogFactor)) + (fB * fogFactor)));
+                    texR = Math.max(0, Math.min(255, (texR * (1 - fogFactor)) + (fR * fogFactor))); 
+                    texG = Math.max(0, Math.min(255, (texG * (1 - fogFactor)) + (fG * fogFactor))); 
+                    texB = Math.max(0, Math.min(255, (texB * (1 - fogFactor)) + (fB * fogFactor)));
 
-                        setRGB(texR, texG, texB); // <--- FASTER
-                        ctx.fillRect(screenX, viewY + drawStart, drawWidth, actualDrawHeight);
-                        drawFullStrip = false; 
-                    }
-                    else if ([1,33,35,11,73,75,5,45].includes(wallID)) {
-                        // B. BRICK & STEEL LOGIC
-                        let isSteel = [5,45].includes(wallID);
-                        let texR = rawR, texG = rawG, texB = rawB;
-                        let isVertMortar = (wallHitX < 0.05 || wallHitX > 0.95);
+                    setRGB(texR, texG, texB); 
+                    ctx.fillRect(screenX, viewY + drawStart, drawWidth, actualDrawHeight);
+                    drawFullStrip = false; 
+                }
+                else if ([1,33,35,11,73,75,5,45].includes(wallID)) {
+                    let isSteel = [5,45].includes(wallID);
+                    let texR = rawR, texG = rawG, texB = rawB;
+                    let isVertMortar = (wallHitX < 0.05 || wallHitX > 0.95);
+                    
+                    if (isSteel && isVertMortar) { texR *= 0.3; texG *= 0.3; texB *= 0.3; }
+
+                    texR = Math.max(0, Math.min(255, (texR * (1 - fogFactor)) + (fR * fogFactor))); 
+                    texG = Math.max(0, Math.min(255, (texG * (1 - fogFactor)) + (fG * fogFactor))); 
+                    texB = Math.max(0, Math.min(255, (texB * (1 - fogFactor)) + (fB * fogFactor)));
+                    
+                    setRGB(texR, texG, texB); 
+                    ctx.fillRect(screenX, viewY + drawStart, drawWidth, actualDrawHeight);
+                    drawFullStrip = false;
+
+                    const actualWallHeight = lineHeight * heightMult; 
+                    const rows = isSteel ? 1 : Math.max(1, Math.round(5 * heightMult));
+                    const rowHeight = actualWallHeight / rows;
+                    
+                    setStyle(isSteel ? `rgba(0,0,0, ${0.6 * fadeAlpha})` : `rgba(0,0,0, ${0.7 * fadeAlpha})`); 
+                    
+                    for (let j = 0; j < rows; j++) {
+                        let yOffset = Math.floor(viewY + trueDrawStart + (j * rowHeight));
                         
-                        if (isSteel && isVertMortar) { texR *= 0.3; texG *= 0.3; texB *= 0.3; }
+                        if (isSteel && !isVertMortar) {
+                            let h33 = Math.floor(yOffset + (rowHeight * 0.33));
+                            let h66 = Math.floor(yOffset + (rowHeight * 0.66));
+                            if (h33 >= viewY + drawStart && h33 <= viewY + drawEnd) ctx.fillRect(screenX, h33, drawWidth, 3);
+                            if (h66 >= viewY + drawStart && h66 <= viewY + drawEnd) ctx.fillRect(screenX, h66, drawWidth, 3);
+                        } else if (!isSteel) {
+                            if (yOffset >= viewY + drawStart && yOffset <= viewY + drawEnd) {
+                                ctx.fillRect(screenX, yOffset, drawWidth, 3);
+                            }
+                            let isEvenRow = (j % 2 === 0);
+                            let drawVert = false;
 
-                        texR = Math.max(0, Math.min(255, (texR * (1 - fogFactor)) + (fR * fogFactor))); 
-                        texG = Math.max(0, Math.min(255, (texG * (1 - fogFactor)) + (fG * fogFactor))); 
-                        texB = Math.max(0, Math.min(255, (texB * (1 - fogFactor)) + (fB * fogFactor)));
-                        
-                        setRGB(texR, texG, texB); // <--- FASTER
-                        ctx.fillRect(screenX, viewY + drawStart, drawWidth, actualDrawHeight);
-                        drawFullStrip = false;
+                            if (isEvenRow && (wallHitX < 0.05 || wallHitX > 0.95)) drawVert = true; 
+                            if (!isEvenRow && (wallHitX > 0.45 && wallHitX < 0.55)) drawVert = true; 
 
-                        const actualWallHeight = lineHeight * heightMult; 
-                        const rows = isSteel ? 1 : Math.max(1, Math.round(5 * heightMult));
-                        const rowHeight = actualWallHeight / rows;
-                        
-                        setStyle(isSteel ? `rgba(0,0,0, ${0.6 * fadeAlpha})` : `rgba(0,0,0, ${0.7 * fadeAlpha})`); // <--- FASTER
-                        
-                        for (let j = 0; j < rows; j++) {
-                            let yOffset = Math.floor(viewY + trueDrawStart + (j * rowHeight));
-                            
-                            if (isSteel && !isVertMortar) {
-                                let h33 = Math.floor(yOffset + (rowHeight * 0.33));
-                                let h66 = Math.floor(yOffset + (rowHeight * 0.66));
-                                if (h33 >= viewY + drawStart && h33 <= viewY + drawEnd) ctx.fillRect(screenX, h33, drawWidth, 3);
-                                if (h66 >= viewY + drawStart && h66 <= viewY + drawEnd) ctx.fillRect(screenX, h66, drawWidth, 3);
-                            } else if (!isSteel) {
-                                if (yOffset >= viewY + drawStart && yOffset <= viewY + drawEnd) {
-                                    ctx.fillRect(screenX, yOffset, drawWidth, 3);
-                                }
-                                let isEvenRow = (j % 2 === 0);
-                                let drawVert = false;
-
-                                if (isEvenRow && (wallHitX < 0.05 || wallHitX > 0.95)) drawVert = true; 
-                                if (!isEvenRow && (wallHitX > 0.45 && wallHitX < 0.55)) drawVert = true; 
-
-                                if (drawVert) {
-                                    let mortHeight = Math.min(Math.ceil(rowHeight), (viewY + drawEnd) - yOffset);
-                                    if (mortHeight > 0 && yOffset >= viewY + drawStart) {
-                                        ctx.fillRect(screenX, yOffset, drawWidth, mortHeight);
-                                    }
+                            if (drawVert) {
+                                let mortHeight = Math.min(Math.ceil(rowHeight), (viewY + drawEnd) - yOffset);
+                                if (mortHeight > 0 && yOffset >= viewY + drawStart) {
+                                    ctx.fillRect(screenX, yOffset, drawWidth, mortHeight);
                                 }
                             }
                         }
                     }
-                    else if ([7].includes(wallID)) {
-                        // C. PLANKS
-                        let bgR = rawR * 0.2, bgG = rawG * 0.2, bgB = rawB * 0.2;
-                        bgR = (bgR * (1 - fogFactor)) + (fR * fogFactor);
-                        bgG = (bgG * (1 - fogFactor)) + (fG * fogFactor);
-                        bgB = (bgB * (1 - fogFactor)) + (fB * fogFactor);
+                }
+                else if ([7].includes(wallID)) {
+                    let bgR = rawR * 0.2, bgG = rawG * 0.2, bgB = rawB * 0.2;
+                    bgR = (bgR * (1 - fogFactor)) + (fR * fogFactor);
+                    bgG = (bgG * (1 - fogFactor)) + (fG * fogFactor);
+                    bgB = (bgB * (1 - fogFactor)) + (fB * fogFactor);
 
-                        setRGB(bgR, bgG, bgB); // <--- FASTER
-                        ctx.fillRect(screenX, viewY + drawStart, drawWidth, actualDrawHeight);
-                        drawFullStrip = false; 
+                    setRGB(bgR, bgG, bgB);
+                    ctx.fillRect(screenX, viewY + drawStart, drawWidth, actualDrawHeight);
+                    drawFullStrip = false; 
 
-                        const numPlanks = 8; 
-                        const plankHeight = lineHeight / numPlanks;
+                    const numPlanks = 8; 
+                    const plankHeight = lineHeight / numPlanks;
 
-                        for (let j = 0; j < numPlanks; j++) {
-                            let yOffset = Math.floor(viewY + trueDrawStart + (j * plankHeight));
-                            let plankStart = Math.max(viewY + drawStart, yOffset);
-                            let plankEnd = Math.min(viewY + drawEnd, Math.floor(yOffset + plankHeight));
-                            let plankDrawHeight = plankEnd - plankStart;
+                    for (let j = 0; j < numPlanks; j++) {
+                        let yOffset = Math.floor(viewY + trueDrawStart + (j * plankHeight));
+                        let plankStart = Math.max(viewY + drawStart, yOffset);
+                        let plankEnd = Math.min(viewY + drawEnd, Math.floor(yOffset + plankHeight));
+                        let plankDrawHeight = plankEnd - plankStart;
 
-                            if (plankDrawHeight > 0) {
-                                let isEvenRow = (j % 2 === 0);
-                                let isVerticalGap = false;
-                                
-                                if (isEvenRow && wallHitX > 0.48 && wallHitX < 0.52) isVerticalGap = true; 
-                                if (!isEvenRow && (wallHitX < 0.02 || wallHitX > 0.98)) isVerticalGap = true; 
+                        if (plankDrawHeight > 0) {
+                            let isEvenRow = (j % 2 === 0);
+                            let isVerticalGap = false;
+                            
+                            if (isEvenRow && wallHitX > 0.48 && wallHitX < 0.52) isVerticalGap = true; 
+                            if (!isEvenRow && (wallHitX < 0.02 || wallHitX > 0.98)) isVerticalGap = true; 
 
-                                if (isVerticalGap) {
-                                    setStyle(`rgba(10, 5, 0, ${0.9 * fadeAlpha})`); // <--- FASTER
-                                    ctx.fillRect(screenX, plankStart, drawWidth, plankDrawHeight);
-                                    continue; 
-                                }
-
-                                let plankSeed = Math.abs(Math.sin(mapX * 3.1 + mapY * 7.2 + j * 2.8));
-                                let plankR = rawR * (0.8 + plankSeed * 0.4); 
-                                let plankG = rawG * (0.8 + plankSeed * 0.4);
-                                let plankB = rawB * (0.8 + plankSeed * 0.4);
-
-                                let grain = Math.sin(wallHitX * Math.PI * (12 + plankSeed * 6) + j);
-                                if (grain > 0.6) { plankR *= 0.7; plankG *= 0.7; plankB *= 0.7; }
-
-                                if (isEvenRow && (wallHitX > 0.45 && wallHitX < 0.47 || wallHitX > 0.53 && wallHitX < 0.55)) {
-                                    plankR *= 0.3; plankG *= 0.3; plankB *= 0.3;
-                                }
-                                if (!isEvenRow && (wallHitX > 0.04 && wallHitX < 0.06 || wallHitX > 0.94 && wallHitX < 0.96)) {
-                                    plankR *= 0.3; plankG *= 0.3; plankB *= 0.3;
-                                }
-                                
-                                plankR = Math.max(0, Math.min(255, (plankR * (1 - fogFactor)) + (fR * fogFactor)));
-                                plankG = Math.max(0, Math.min(255, (plankG * (1 - fogFactor)) + (fG * fogFactor)));
-                                plankB = Math.max(0, Math.min(255, (plankB * (1 - fogFactor)) + (fB * fogFactor)));
-
-                                setRGB(plankR, plankG, plankB); // <--- FASTER
+                            if (isVerticalGap) {
+                                setStyle(`rgba(10, 5, 0, ${0.9 * fadeAlpha})`);
                                 ctx.fillRect(screenX, plankStart, drawWidth, plankDrawHeight);
+                                continue; 
+                            }
 
-                                if (plankEnd < viewY + drawEnd) {
-                                    setStyle(`rgba(10, 5, 0, ${0.8 * fadeAlpha})`); // <--- FASTER
-                                    ctx.fillRect(screenX, plankEnd - 2, drawWidth, 2); 
-                                }
+                            let plankSeed = Math.abs(Math.sin(hit.mapX * 3.1 + hit.mapY * 7.2 + j * 2.8));
+                            let plankR = rawR * (0.8 + plankSeed * 0.4); 
+                            let plankG = rawG * (0.8 + plankSeed * 0.4);
+                            let plankB = rawB * (0.8 + plankSeed * 0.4);
+
+                            let grain = Math.sin(wallHitX * Math.PI * (12 + plankSeed * 6) + j);
+                            if (grain > 0.6) { plankR *= 0.7; plankG *= 0.7; plankB *= 0.7; }
+
+                            if (isEvenRow && (wallHitX > 0.45 && wallHitX < 0.47 || wallHitX > 0.53 && wallHitX < 0.55)) {
+                                plankR *= 0.3; plankG *= 0.3; plankB *= 0.3;
+                            }
+                            if (!isEvenRow && (wallHitX > 0.04 && wallHitX < 0.06 || wallHitX > 0.94 && wallHitX < 0.96)) {
+                                plankR *= 0.3; plankG *= 0.3; plankB *= 0.3;
+                            }
+                            
+                            plankR = Math.max(0, Math.min(255, (plankR * (1 - fogFactor)) + (fR * fogFactor)));
+                            plankG = Math.max(0, Math.min(255, (plankG * (1 - fogFactor)) + (fG * fogFactor)));
+                            plankB = Math.max(0, Math.min(255, (plankB * (1 - fogFactor)) + (fB * fogFactor)));
+
+                            setRGB(plankR, plankG, plankB);
+                            ctx.fillRect(screenX, plankStart, drawWidth, plankDrawHeight);
+
+                            if (plankEnd < viewY + drawEnd) {
+                                setStyle(`rgba(10, 5, 0, ${0.8 * fadeAlpha})`);
+                                ctx.fillRect(screenX, plankEnd - 2, drawWidth, 2); 
                             }
                         }
                     }
-                    else if ([59].includes(wallID)) {
-                        // D. TERMINAL
-                        let texR = rawR * 0.3, texG = rawG * 0.3, texB = rawB * 0.3;
-                        if (wallHitX < 0.05 || wallHitX > 0.95) { texR *= 2; texG *= 2; texB *= 2; }
+                }
+                else if ([59].includes(wallID)) {
+                    let texR = rawR * 0.3, texG = rawG * 0.3, texB = rawB * 0.3;
+                    if (wallHitX < 0.05 || wallHitX > 0.95) { texR *= 2; texG *= 2; texB *= 2; }
 
-                        texR = Math.max(0, Math.min(255, (texR * (1 - fogFactor)) + (fR * fogFactor))); 
-                        texG = Math.max(0, Math.min(255, (texG * (1 - fogFactor)) + (fG * fogFactor))); 
-                        texB = Math.max(0, Math.min(255, (texB * (1 - fogFactor)) + (fB * fogFactor)));
+                    texR = Math.max(0, Math.min(255, (texR * (1 - fogFactor)) + (fR * fogFactor))); 
+                    texG = Math.max(0, Math.min(255, (texG * (1 - fogFactor)) + (fG * fogFactor))); 
+                    texB = Math.max(0, Math.min(255, (texB * (1 - fogFactor)) + (fB * fogFactor)));
 
-                        setRGB(texR, texG, texB); // <--- FASTER
+                    setRGB(texR, texG, texB);
+                    ctx.fillRect(screenX, viewY + drawStart, drawWidth, actualDrawHeight);
+                    drawFullStrip = false;
+
+                    setStyle(`rgba(0, ${Math.random()*255}, 0, ${0.9 * fadeAlpha})`);
+                    
+                    let glowY = Math.floor(viewY + trueDrawStart + (lineHeight * 0.5));
+                    if (glowY >= viewY + drawStart && glowY <= viewY + drawEnd) {
+                        ctx.fillRect(screenX, glowY, drawWidth, 4);
+                    }
+
+                    if (wallHitX > 0.45 && wallHitX < 0.55) {
+                        let nodeStartY = Math.floor(viewY + trueDrawStart + (lineHeight * 0.3));
+                        let nodeHeight = Math.ceil(lineHeight * 0.4);
+                        let drawY = Math.max(viewY + drawStart, nodeStartY);
+                        let drawH = Math.min((viewY + drawEnd) - drawY, (nodeStartY + nodeHeight) - drawY);
+                        
+                        if (drawH > 0) {
+                            ctx.fillRect(screenX, drawY, drawWidth, drawH);
+                        }
+                    }
+                }
+                else if ([13].includes(wallID)) {
+                    let texR = rawR, texG = rawG, texB = rawB;
+                    if (wallHitX > 0.35 && wallHitX < 0.4) { texR *= 1.6; texG *= 1.6; texB *= 1.6; }
+                    if (wallHitX > 0.75 && wallHitX < 0.85) { texR *= 1.4; texG *= 1.4; texB *= 1.4; }
+                    if (wallHitX < 0.1 || wallHitX > 0.9) { texR *= 0.7; texG *= 0.7; texB *= 0.7; }
+                    r = (texR * (1 - fogFactor)) + (fR * fogFactor);
+                    g = (texG * (1 - fogFactor)) + (fG * fogFactor);
+                    b = (texB * (1 - fogFactor)) + (fB * fogFactor);
+                }
+                else if ([9,21,31,25].includes(wallID)) {
+                    let sheen = Math.sin(wallHitX * Math.PI); 
+                    let texR = rawR * (0.7 + sheen * 0.5);
+                    let texG = rawG * (0.7 + sheen * 0.5);
+                    let texB = rawB * (0.7 + sheen * 0.5);
+                    r = (texR * (1 - fogFactor)) + (fR * fogFactor);
+                    g = (texG * (1 - fogFactor)) + (fG * fogFactor);
+                    b = (texB * (1 - fogFactor)) + (fB * fogFactor);
+                }
+                else if ([88, 91].includes(wallID)) {
+                    drawFullStrip = false;
+                    let isBar = (wallHitX % 0.25 < (wallID===88 ? 0.08 : 0.05)); 
+                    
+                    if (isBar) {
+                        let barR = rawR * 0.3, barG = rawG * 0.3, barB = rawB * 0.3;
+                        if (wallHitX % 0.25 < 0.02) { barR *= 1.5; barG *= 1.5; barB *= 1.5; }
+                        
+                        barR = Math.max(0, Math.min(255, (barR * (1 - fogFactor)) + (fR * fogFactor)));
+                        barG = Math.max(0, Math.min(255, (barG * (1 - fogFactor)) + (fG * fogFactor)));
+                        barB = Math.max(0, Math.min(255, (barB * (1 - fogFactor)) + (fB * fogFactor)));
+                        
+                        setRGB(barR, barG, barB); 
                         ctx.fillRect(screenX, viewY + drawStart, drawWidth, actualDrawHeight);
-                        drawFullStrip = false;
+                    } else if (wallID === 91) {
+                        setStyle(`rgba(30, 30, 30, ${0.9 * fadeAlpha})`);
+                        const actualWallHeight = lineHeight * heightMult;
+                        const numBraces = Math.max(2, Math.round(2 * heightMult));
+                        const braceGap = actualWallHeight / numBraces;
 
-                        // Apply the glow color
-                        setStyle(`rgba(0, ${Math.random()*255}, 0, ${0.9 * fadeAlpha})`); // <--- FASTER
-                        
-                        let glowY = Math.floor(viewY + trueDrawStart + (lineHeight * 0.5));
-                        if (glowY >= viewY + drawStart && glowY <= viewY + drawEnd) {
-                            ctx.fillRect(screenX, glowY, drawWidth, 4);
-                        }
-
-                        if (wallHitX > 0.45 && wallHitX < 0.55) {
-                            let nodeStartY = Math.floor(viewY + trueDrawStart + (lineHeight * 0.3));
-                            let nodeHeight = Math.ceil(lineHeight * 0.4);
-                            let drawY = Math.max(viewY + drawStart, nodeStartY);
-                            let drawH = Math.min((viewY + drawEnd) - drawY, (nodeStartY + nodeHeight) - drawY);
-                            
-                            if (drawH > 0) {
-                                ctx.fillRect(screenX, drawY, drawWidth, drawH);
+                        for (let j = 1; j < numBraces; j++) {
+                            let braceY = Math.floor(viewY + trueDrawStart + (j * braceGap));
+                            if (braceY >= viewY + drawStart && braceY <= viewY + drawEnd) {
+                                ctx.fillRect(screenX, braceY - 2, drawWidth, 4);
                             }
                         }
                     }
-                    else if ([13].includes(wallID)) {
-                        // E. STONE
-                        let texR = rawR, texG = rawG, texB = rawB;
-                        if (wallHitX > 0.35 && wallHitX < 0.4) { texR *= 1.6; texG *= 1.6; texB *= 1.6; }
-                        if (wallHitX > 0.75 && wallHitX < 0.85) { texR *= 1.4; texG *= 1.4; texB *= 1.4; }
-                        if (wallHitX < 0.1 || wallHitX > 0.9) { texR *= 0.7; texG *= 0.7; texB *= 0.7; }
-                        r = (texR * (1 - fogFactor)) + (fR * fogFactor);
-                        g = (texG * (1 - fogFactor)) + (fG * fogFactor);
-                        b = (texB * (1 - fogFactor)) + (fB * fogFactor);
-                    }
-                    else if ([9,21,31,25].includes(wallID)) {
-                        // F. MAGIC
-                        let sheen = Math.sin(wallHitX * Math.PI); 
-                        let texR = rawR * (0.7 + sheen * 0.5);
-                        let texG = rawG * (0.7 + sheen * 0.5);
-                        let texB = rawB * (0.7 + sheen * 0.5);
-                        r = (texR * (1 - fogFactor)) + (fR * fogFactor);
-                        g = (texG * (1 - fogFactor)) + (fG * fogFactor);
-                        b = (texB * (1 - fogFactor)) + (fB * fogFactor);
-                    }
-                    else if ([88, 91].includes(wallID)) {
-                        // G. BARS
-                        drawFullStrip = false;
-                        let isBar = (wallHitX % 0.25 < (wallID===88 ? 0.08 : 0.05)); 
-                        
-                        // --- THE FIX: FAKE OPAQUE Z-BUFFER ---
-                        if (isBar) {
-                            // Fake the wall ID to 1 (solid brick) so the sprite renderer doesn't ignore it as transparent.
-                            // This forces the sprite renderer to occlude sprites behind the black bar.
-                            this.zBuffer[bIndex + 1] = 1;
-                        } else {
-                            // Push the distance to infinity and fake ID 0 so sprites render perfectly in the gaps!
-                            this.zBuffer[bIndex] = 1e30; 
-                            this.zBuffer[bIndex + 1] = 0; 
-                        }
-                        
-                        if (isBar) {
-                            let barR = rawR * 0.3, barG = rawG * 0.3, barB = rawB * 0.3;
-                            if (wallHitX % 0.25 < 0.02) { barR *= 1.5; barG *= 1.5; barB *= 1.5; }
-                            
-                            barR = Math.max(0, Math.min(255, (barR * (1 - fogFactor)) + (fR * fogFactor)));
-                            barG = Math.max(0, Math.min(255, (barG * (1 - fogFactor)) + (fG * fogFactor)));
-                            barB = Math.max(0, Math.min(255, (barB * (1 - fogFactor)) + (fB * fogFactor)));
-                            
-                            setRGB(barR, barG, barB); // <--- FASTER
-                            ctx.fillRect(screenX, viewY + drawStart, drawWidth, actualDrawHeight);
-                        } else if (wallID === 91) {
-                            setStyle(`rgba(30, 30, 30, ${0.9 * fadeAlpha})`); // <--- FASTER
-                            const actualWallHeight = lineHeight * heightMult;
-                            const numBraces = Math.max(2, Math.round(2 * heightMult));
-                            const braceGap = actualWallHeight / numBraces;
+                }
+                else if ([89].includes(wallID)) { 
+                    let baseR = Math.max(0, Math.min(255, (rawR * 0.4 * (1 - fogFactor)) + (fR * fogFactor)));
+                    let baseG = Math.max(0, Math.min(255, (rawG * 0.4 * (1 - fogFactor)) + (fG * fogFactor)));
+                    let baseB = Math.max(0, Math.min(255, (rawB * 0.4 * (1 - fogFactor)) + (fB * fogFactor)));
+                    
+                    setRGB(baseR, baseG, baseB);
+                    ctx.fillRect(screenX, viewY + drawStart, drawWidth, actualDrawHeight);
+                    drawFullStrip = false;
 
-                            for (let j = 1; j < numBraces; j++) {
-                                let braceY = Math.floor(viewY + trueDrawStart + (j * braceGap));
-                                if (braceY >= viewY + drawStart && braceY <= viewY + drawEnd) {
-                                    ctx.fillRect(screenX, braceY - 2, drawWidth, 4);
-                                }
-                            }
+                    let dripFactor = (Math.sin(wallHitX * 18 + hit.mapX) * 0.5) + (Math.sin(wallHitX * 45) * 0.5);
+                    let dripPixelHeight = Math.floor((lineHeight * heightMult) * (0.5 + (dripFactor * 0.3))); 
+                    
+                    let clippedDripEnd = Math.min(viewY + drawEnd, Math.floor(viewY + trueDrawStart + dripPixelHeight));
+
+                    if (clippedDripEnd > viewY + drawStart) {
+                        let slimeR = Math.max(0, Math.min(255, (rawR * 1.5 * (1 - fogFactor)) + (fR * fogFactor)));
+                        let slimeG = Math.max(0, Math.min(255, (rawG * 1.5 * (1 - fogFactor)) + (fG * fogFactor)));
+                        let slimeB = Math.max(0, Math.min(255, (rawB * 1.5 * (1 - fogFactor)) + (fB * fogFactor)));
+                        
+                        setRGB(slimeR, slimeG, slimeB);
+                        ctx.fillRect(screenX, Math.floor(viewY + Math.max(0, drawStart)), drawWidth, clippedDripEnd - Math.max(0, drawStart));
+                        
+                        if (clippedDripEnd > 0 && clippedDripEnd < viewY + viewH) {
+                            setStyle(`rgba(255, 255, 255, ${0.6 * fadeAlpha})`);
+                            ctx.fillRect(screenX, clippedDripEnd - 3, drawWidth, 3);
                         }
                     }
-                    else if ([89].includes(wallID)) { 
-                        // H. SLIME
-                        let baseR = Math.max(0, Math.min(255, (rawR * 0.4 * (1 - fogFactor)) + (fR * fogFactor)));
-                        let baseG = Math.max(0, Math.min(255, (rawG * 0.4 * (1 - fogFactor)) + (fG * fogFactor)));
-                        let baseB = Math.max(0, Math.min(255, (rawB * 0.4 * (1 - fogFactor)) + (fB * fogFactor)));
-                        
-                        setRGB(baseR, baseG, baseB); // <--- FASTER
-                        ctx.fillRect(screenX, viewY + drawStart, drawWidth, actualDrawHeight);
-                        drawFullStrip = false;
+                }
+                else if ([90].includes(wallID)) {
+                    let bgR = Math.max(0, Math.min(255, (rawR * 0.1 * (1 - fogFactor)) + (fR * fogFactor)));
+                    let bgG = Math.max(0, Math.min(255, (rawG * 0.1 * (1 - fogFactor)) + (fG * fogFactor)));
+                    let bgB = Math.max(0, Math.min(255, (rawB * 0.1 * (1 - fogFactor)) + (fB * fogFactor)));
+                    
+                    setRGB(bgR, bgG, bgB);
+                    ctx.fillRect(screenX, viewY + drawStart, drawWidth, actualDrawHeight);
+                    drawFullStrip = false;
 
-                        let dripFactor = (Math.sin(wallHitX * 18 + mapX) * 0.5) + (Math.sin(wallHitX * 45) * 0.5);
-                        let dripPixelHeight = Math.floor((lineHeight * heightMult) * (0.5 + (dripFactor * 0.3))); 
-                        
-                        let clippedDripEnd = Math.min(viewY + drawEnd, Math.floor(viewY + trueDrawStart + dripPixelHeight));
+                    const numShelves = Math.max(4, Math.round(4 * heightMult)); 
+                    const shelfHeight = (lineHeight * heightMult) / numShelves;
 
-                        if (clippedDripEnd > viewY + drawStart) {
-                            let slimeR = Math.max(0, Math.min(255, (rawR * 1.5 * (1 - fogFactor)) + (fR * fogFactor)));
-                            let slimeG = Math.max(0, Math.min(255, (rawG * 1.5 * (1 - fogFactor)) + (fG * fogFactor)));
-                            let slimeB = Math.max(0, Math.min(255, (rawB * 1.5 * (1 - fogFactor)) + (fB * fogFactor)));
-                            
-                            setRGB(slimeR, slimeG, slimeB); // <--- FASTER
-                            ctx.fillRect(screenX, Math.floor(viewY + Math.max(0, drawStart)), drawWidth, clippedDripEnd - Math.max(0, drawStart));
-                            
-                            if (clippedDripEnd > 0 && clippedDripEnd < viewY + viewH) {
-                                setStyle(`rgba(255, 255, 255, ${0.6 * fadeAlpha})`); // <--- FASTER
-                                ctx.fillRect(screenX, clippedDripEnd - 3, drawWidth, 3);
-                            }
+                    for (let j = 0; j < numShelves; j++) {
+                        let shelfBottomY = Math.floor(viewY + trueDrawStart + (j * shelfHeight) + shelfHeight);
+                        
+                        if (shelfBottomY >= viewY + drawStart && shelfBottomY <= viewY + drawEnd) {
+                            setStyle(`rgba(60, 30, 10, ${1.0 * fadeAlpha})`);
+                            ctx.fillRect(screenX, shelfBottomY - 4, drawWidth, 4);
                         }
-                    }
-                    else if ([90].includes(wallID)) {
-                        // I. BOOKSHELVES
-                        let bgR = Math.max(0, Math.min(255, (rawR * 0.1 * (1 - fogFactor)) + (fR * fogFactor)));
-                        let bgG = Math.max(0, Math.min(255, (rawG * 0.1 * (1 - fogFactor)) + (fG * fogFactor)));
-                        let bgB = Math.max(0, Math.min(255, (rawB * 0.1 * (1 - fogFactor)) + (fB * fogFactor)));
-                        
-                        setRGB(bgR, bgG, bgB); // <--- FASTER
-                        ctx.fillRect(screenX, viewY + drawStart, drawWidth, actualDrawHeight);
-                        drawFullStrip = false;
 
-                        const numShelves = Math.max(4, Math.round(4 * heightMult)); 
-                        const shelfHeight = (lineHeight * heightMult) / numShelves;
-
-                        for (let j = 0; j < numShelves; j++) {
-                            let shelfBottomY = Math.floor(viewY + trueDrawStart + (j * shelfHeight) + shelfHeight);
+                        let bookPattern = Math.sin(wallHitX * 40 + j * 15);
+                        if (bookPattern > -0.2) {
+                            let colorGen = Math.abs(Math.cos(wallHitX * 10 + j));
+                            let bR = rawR, bG = rawG, bB = rawB;
                             
-                            if (shelfBottomY >= viewY + drawStart && shelfBottomY <= viewY + drawEnd) {
-                                setStyle(`rgba(60, 30, 10, ${1.0 * fadeAlpha})`); // <--- FASTER
-                                ctx.fillRect(screenX, shelfBottomY - 4, drawWidth, 4);
-                            }
+                            if (colorGen > 0.8) { bR *= 1.5; bG *= 0.3; bB *= 0.3; } 
+                            else if (colorGen > 0.5) { bR *= 0.3; bG *= 0.3; bB *= 1.5; } 
+                            else { bR *= 0.3; bG *= 1.2; bB *= 0.3; } 
 
-                            let bookPattern = Math.sin(wallHitX * 40 + j * 15);
-                            if (bookPattern > -0.2) {
-                                let colorGen = Math.abs(Math.cos(wallHitX * 10 + j));
-                                let bR = rawR, bG = rawG, bB = rawB;
+                            bR = Math.max(0, Math.min(255, (bR * (1 - fogFactor)) + (fR * fogFactor)));
+                            bG = Math.max(0, Math.min(255, (bG * (1 - fogFactor)) + (fG * fogFactor)));
+                            bB = Math.max(0, Math.min(255, (bB * (1 - fogFactor)) + (fB * fogFactor)));
+
+                            let bookHeight = Math.floor(shelfHeight * (0.6 + (Math.abs(Math.sin(wallHitX * 25 + j)) * 0.3)));
+                            let bookStartY = shelfBottomY - bookHeight;
+                            
+                            let drawTop = Math.max(viewY + drawStart, bookStartY);
+                            let drawBot = Math.min(viewY + drawEnd, shelfBottomY - 4);
+                            
+                            if (drawBot > drawTop) {
+                                setRGB(bR, bG, bB);
+                                ctx.fillRect(screenX, drawTop, drawWidth, drawBot - drawTop);
                                 
-                                if (colorGen > 0.8) { bR *= 1.5; bG *= 0.3; bB *= 0.3; } 
-                                else if (colorGen > 0.5) { bR *= 0.3; bG *= 0.3; bB *= 1.5; } 
-                                else { bR *= 0.3; bG *= 1.2; bB *= 0.3; } 
-
-                                bR = Math.max(0, Math.min(255, (bR * (1 - fogFactor)) + (fR * fogFactor)));
-                                bG = Math.max(0, Math.min(255, (bG * (1 - fogFactor)) + (fG * fogFactor)));
-                                bB = Math.max(0, Math.min(255, (bB * (1 - fogFactor)) + (fB * fogFactor)));
-
-                                let bookHeight = Math.floor(shelfHeight * (0.6 + (Math.abs(Math.sin(wallHitX * 25 + j)) * 0.3)));
-                                let bookStartY = shelfBottomY - bookHeight;
-                                
-                                let drawTop = Math.max(viewY + drawStart, bookStartY);
-                                let drawBot = Math.min(viewY + drawEnd, shelfBottomY - 4);
-                                
-                                if (drawBot > drawTop) {
-                                    setRGB(bR, bG, bB); // <--- FASTER
+                                if (Math.sin(wallHitX * 80) > 0.8) {
+                                    setStyle(`rgba(0,0,0,${0.5 * fadeAlpha})`);
                                     ctx.fillRect(screenX, drawTop, drawWidth, drawBot - drawTop);
-                                    
-                                    if (Math.sin(wallHitX * 80) > 0.8) {
-                                        setStyle(`rgba(0,0,0,${0.5 * fadeAlpha})`); // <--- FASTER
-                                        ctx.fillRect(screenX, drawTop, drawWidth, drawBot - drawTop);
-                                    }
                                 }
                             }
                         }
                     }
+                }
 
-                // Draw remaining generic fills
                 if (drawFullStrip) {
                     r = Math.max(0, Math.min(255, r)); 
                     g = Math.max(0, Math.min(255, g)); 
                     b = Math.max(0, Math.min(255, b));
-                    setRGB(r, g, b); // <--- FASTER
+                    setRGB(r, g, b); 
                     ctx.fillRect(screenX, viewY + drawStart, drawWidth, actualDrawHeight);
                 }
             }
-            
-            this.zBufferCounts[stripX] = hitCount;
         }
         drawMinimap(ctx, viewX, viewY, viewW, viewH) {
             if (!this.maze || this.maze.length === 0 || !this.maze[0]) return;
@@ -13232,37 +13256,46 @@
         getSpriteConfig(sprite, angle,overrideType) {
             let scale = 0.69;
             let hover = -.13;
+            let faceZ = 0.70; // 70% up the sprite's height
+            let facePan = 0.0; // Dead center
             const type = overrideType !== undefined ? overrideType : Number(sprite.type);            
            //3D UPDATE
-            // 0. Base Scale & Hover
+            // 0. 3D Base Scale & Hover
                 if (type >= 140 && type <= 142) { scale = 1.0; hover = 0; } // 3D Wisp 
-                else if (type >= 143 && type <= 145) { scale = 1; hover = -.6; } // 3D Imp
-                else if (type >= 149 && type <= 151) { scale = .69; hover = .13; } // 3D Sylph
-                else if (type >= 152 && type <= 154) { scale = 4; hover = -2; } // 3D Djinn
-                else if (type >= 155 && type <= 157) { scale = 2; hover = -.5; } // 3D Shade
-                else if (type >= 158 && type <= 160) { scale =2; hover = -.9; } // 3D Knight
-                else if (type >= 161 && type <= 163) { scale =1; hover = -.6; } // 3D Brown Knight
-                else if (type >= 164 && type <= 166) { scale =2; hover = -.9; } // 3D Ghost Knight
-                else if (type >= 167 && type <= 169) { scale =4; hover = -2; } // 3D Kraken
-                else if (type >= 170 && type <= 172) { scale =2; hover = -.9; } // 3D Kraken
-                else if (type >= 173 && type <= 187) { scale =1.3; hover = .13; } // 3D Fairy Queen
-                else if (type >= 188 && type <= 190) { scale =4; hover = -1.75; } // 3D bear 
-                else if (type >= 191 && type <= 197) { scale =3; hover = -1.369; } // 3D wolf n boar
-                else if (type >= 198 && type <= 209) { scale =4; hover = -2; } // 3D Fairy Queen
+                    else if (type >= 143 && type <= 145) { scale = 1; hover = -.6; } // 3D Imp
+                    else if (type >= 149 && type <= 151) { scale = .69; hover = .13; } // 3D Sylph
+                    else if (type >= 152 && type <= 154) { scale = 4; hover = -2; } // 3D Djinn
+                    else if (type >= 155 && type <= 157) { scale = 2; hover = -.5; } // 3D Shade
+                    else if (type >= 158 && type <= 160) { scale =2; hover = -.9; } // 3D Knight
+                    else if (type >= 161 && type <= 163) { scale =1; hover = -.6; } // 3D Brown Knight
+                    else if (type >= 164 && type <= 166) { scale =2; hover = -.9; } // 3D Ghost Knight
+                    else if (type >= 167 && type <= 169) { scale =4; hover = -2; } // 3D Kraken
+                    else if (type >= 170 && type <= 172) { scale =2; hover = -.9; } // 3D Kraken
+                    else if (type >= 173 && type <= 187) { scale =1.3; hover = .13; } // 3D Fairy Queen
+                    else if (type >= 188 && type <= 190) { scale =4; hover = -1.75; } // 3D bear 
+                    else if (type >= 191 && type <= 197) { scale =3; hover = -1.369; } // 3D wolf n boar
+                    else if (type >= 203 && type <= 205) { scale =3; hover = -1; } // 3D Dullahan
+                    else if (type >= 198 && type <= 209) { scale =4; hover = -2; } // 3D Fairy Queen
 
-                if (type >= 137 && type <= 139) { scale = 2; hover = -1; } // 3D Sea Serpent
-                if (type >= 134 && type <= 136) { scale = 1; hover = .13; } // 3D Gargoyle
-                if (type >= 131 && type <= 133) { scale = .69; hover = .13; } // 3D Pixie
-                if (type >= 129 && type <= 130) { scale = 2.5; hover = -1; } // 3D Salamander
-                if (type >= 126 && type <= 128) { scale = .69; hover = .13; } // 3D Dark Sylph
-                if (type >= 123 && type <= 125) { scale = 2; hover = -1; } // 3D Skeleton
-                else if (type >= 120 && type <= 122) { scale = 3; hover = -1; } // 3D Ice Golem
-                else if (type >= 117 && type <= 119) { scale = 1; hover = -.6; } // 3D Imp
-                else if (type >= 114 && type <= 116) { scale = 2; hover = -1; } // 3D Spider 
-                else if (type >= 108 && type <= 110) { scale = 1.0; hover = 0; } // 3D Wisp 
-                else if (type >= 100 && type <= 106) { scale = 1.1; hover = -0.15; } // 3D Mech
-
-            // 1. Base Scale & Hover
+                    if (type >= 137 && type <= 139) { scale = 2; hover = -1; } // 3D Sea Serpent
+                    if (type >= 134 && type <= 136) { scale = 1; hover = .13; } // 3D Gargoyle
+                    if (type >= 131 && type <= 133) { scale = .69; hover = .13; } // 3D Pixie
+                    if (type >= 129 && type <= 130) { scale = 2.5; hover = -1; } // 3D Salamander
+                    if (type >= 126 && type <= 128) { scale = .69; hover = .13; } // 3D Dark Sylph
+                    if (type >= 123 && type <= 125) { scale = 2; hover = -1; } // 3D Skeleton
+                    else if (type >= 120 && type <= 122) { scale = 3; hover = -1; } // 3D Ice Golem
+                    else if (type >= 117 && type <= 119) { scale = 1; hover = -.6; } // 3D Imp
+                    else if (type >= 114 && type <= 116) { scale = 2; hover = -1; } // 3D Spider 
+                    else if (type >= 108 && type <= 110) { scale = 1.0; hover = 0; } // 3D Wisp 
+                    else if (type >= 100 && type <= 106) { scale = 1.1; hover = -0.15; } // 3D Mech
+                // --- NEW: HARDCODE CUSTOM FACE POSITIONS HERE
+                    if (type == 63 || type == 63.1) { faceZ = 0.36; facePan = -0.15; } 
+                    // Example: The Spider is squat, so look lower
+                    //if (type >= 114 && type <= 116) { faceZ = 0.40; } 
+                    // Example: The Kraken King's face is dead center, but massive, so look lower relative to scale
+                    if  (type == 49 || type == 49.1) { faceZ = 0.36; }
+                    if  (type == 77 || type == 77.1) { faceZ = 0.69; }
+            // 1. 2D Base Scale & Hover
                 if (type === -27) { scale = 0.3; hover = 0.4; }
                 else if ([60.1, 60, 23].includes(type)) { scale = 0.3; hover = 0.4 + (Math.sin(angle) * 0.01); }
                 else if (type <= -39 && type >= -42) { scale = 0.15; hover = 0.5 + (Math.sin(angle) * 0.01); }
@@ -13290,7 +13323,8 @@
                     }
                 }
             
-            return { scale, hover,animIndex: type };
+            //
+            return { scale, hover, animIndex: type, faceZ, facePan };
         }
         cacheDynamicNPCBillboard(npc) {
             // 1. Create a dedicated offscreen canvas for this specific NPC
@@ -13344,7 +13378,7 @@
                 if (screenCol >= 0 && screenCol < viewW) {
                         let hitCount = this.zBufferCounts[screenCol];
                         for (let j = 0; j < hitCount; j++) {
-                            let index = (screenCol * 4 * 3) + (j * 3);
+                            let index = (screenCol * this.maxHitsPerRay * 3) + (j * 3);
                             let hitDist = this.zBuffer[index];
                             let hitWallID = this.zBuffer[index + 1];
                             let hitTopY = this.zBuffer[index + 2];
@@ -14161,9 +14195,11 @@
                     let targetAgi = targetCard.rollStat(3) + targetAgiMod;
 
                     if (playerAgi > targetAgi) {
-                        MusicEngine.play3DSFX('slash', bestTarget.x, bestTarget.y, dungeon.x, dungeon.y, dungeon.dir);                        this.killNPC(bestTarget, false, 'backstab');
+                        MusicEngine.play3DSFX('slash');                        
+                        this.killNPC(bestTarget, false, 'backstab');
                     } else {
-                        MusicEngine.play3DSFX('block', bestTarget.x, bestTarget.y, dungeon.x, dungeon.y, dungeon.dir);                        bestTarget.dirX *= -1; 
+                        MusicEngine.play3DSFX('block');                        
+                        bestTarget.dirX *= -1; 
                         bestTarget.dirY *= -1;
                         //bestTarget.triggerInteraction(this); 
                     }
@@ -19147,7 +19183,7 @@
             
             if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('chime');
         }
-    }
+    }//
   class Projectile {
     constructor(x, y, dirX, dirY, speed, damage = 1, owner = null, isHoming = false, spellId = 26) {
         
@@ -31942,8 +31978,13 @@
                                     MusicEngine.play3DSFX('warp');
                                     Dungeon.summonAlly(targetID9);
                                 } else {
-                                    Dungeon.summonAlly(23.1);
+                                    Dungeon.summonAlly(35);
+                                    Dungeon.summonAlly(49);
+                                    Dungeon.summonAlly(63);
+                                    Dungeon.summonAlly(77);
+                                    Dungeon.summonAlly(999);
                                 }
+                                
                             }
                             if (msg.toLowerCase().startsWith('.hack//sm')) {
                                 exportCurrentMap(); 
@@ -34291,7 +34332,7 @@
                                 while (Dungeon.xp >= xpNeeded) {
                                     Dungeon.xp -= xpNeeded; 
                                     Dungeon.level++;
-                                    Dungeon.statPoints = (Dungeon.statPoints || 0) + 1;
+                                    Dungeon.statPoints =Dungeon.statPoints + 1;
                                     Dungeon.power = 100 + (Dungeon.level * 13); // Linear scaling we built!
                                     leveledUp = true;
                                     xpNeeded = Math.floor(100 * Math.pow(Dungeon.level + 1, 1.8)); 
@@ -37001,9 +37042,7 @@
         chatInput.style.zIndex = '1000';     // On top of canvas
         document.body.appendChild(chatInput);
         }
-    }
-  
-  
+        }
     function drawShape(shape,x,y,z,x1,y1,x2,y2,x3,y3,x4,y4,color,fill,x5 = 0,y5 = 0){
         //frame
         let lx1 = 0;
@@ -37294,7 +37333,7 @@
         
         // Reset to standard font at the very end to be safe
         ctx.font = fs + "px Franklin Gothic, Helvetica, Arial, sans-serif";
-    }
+        }
     //2D SPRITES
     function drawPortraitPaths(index,x,y,z,card = 0){
         let sx = 0;
@@ -47038,7 +47077,7 @@
         ctx = originalCtx;
         tX = oldTX; tY = oldTY; tL = oldTL; tH = oldTH;
         delete window.cacheAngle;
-    }
+        }
     function getUpgradedImageIndex(imageIndex) {
         const upgradeMap = {
             23: 108, // Wisp
@@ -47069,10 +47108,10 @@
         // If the imageIndex exists in our map, return the upgraded 3D version.
         // If it doesn't exist, just return the original imageIndex unchanged.
         return upgradeMap[imageIndex] !== undefined ? upgradeMap[imageIndex] : imageIndex;
-    }
+        }
 
     // DRAWS BOTH 3D AND 2D
-        function drawPortrait(index, x, y, z, card = 0, direction = 0, frameOverride = -1) {
+    function drawPortrait(index, x, y, z, card = 0, direction = 0, frameOverride = -1) {
             if (Number(index) === -27 || !spriteCache[index]) {
                 drawPortraitPaths(index, x, y, z, card);
                 return;
@@ -47273,6 +47312,8 @@
                     let cCrimson     = {r: 0.65, g: 0.10, b: 0.15, a: 1.0}; // Deep Red Satin
                     let cPurple      = {r: 0.35, g: 0.05, b: 0.40, a: 1.0}; // Royal Purple Velvet
                     let cPearl       = {r: 0.95, g: 0.95, b: 0.90, a: 1.0}; // White accents
+                //Giant Dullahan
+                let gDulBody, gDulNeckStump, gDulHead, gDulArmL, gDulArmR, gDulLegL, gDulLegR, gDulWhip;
                 //Dragon Bones
                     let drBody, drNeck, drHead, drJaw;
                     let drWingL, drWingR;
@@ -48845,31 +48886,36 @@
                         sLegR = computeBone(sBody,  0.15, 0.2, 0, isWalk ? swing : 0, 0, 0);
                         break;
                     }
-
                 // ==========================================
-                // --- 3D DULLAHAN (188-190) ---
+                // --- 3D GIANT DULLAHAN (110-112) ---
                 // ==========================================
-                    case 103: case 104: case 105: {
+                    case 103: case 104: case 105: { // Idle, Walk, Attack
                         let t = window.cacheAngle || 0;
-                        let isAttack = index === 190;
-                        let isWalk = index === 189;
+                        
+                        // Animation triggers fixed to match these specific cases!
+                        let isWalk = index === 111;
+                        let isAttack = index === 112;
                         let step = isWalk ? Math.sin(t) : 0;
 
-                        dBody = { x: 0, y: 0.1, z: 0, rx: 0.05, ry: 0, rz: 0 };
-                        dNeckStump = computeBone(dBody, 0, -0.35, 0, 0, 0, 0); // Where the head SHOULD be
+                        // Everything mathematically scaled up by 1.8x
+                        gDulBody = { x: 0, y: 0.18, z: 0, rx: 0.05, ry: 0, rz: 0 };
+                        gDulNeckStump = computeBone(gDulBody, 0, -0.63, 0, 0, 0, 0); 
 
-                        // Left arm cradles the head!
-                        dArmL = computeBone(dBody, -0.3, -0.2, 0, -0.4, 0.5, 0); 
-                        dHead = computeBone(dArmL, 0, 0.3, -0.2, 0, 0, 0); // Head attached to the hand!
+                        // Left arm cradles the massive head
+                        gDulArmL = computeBone(gDulBody, -0.54, -0.36, 0, -0.4, 0.5, 0); 
+                        gDulHead = computeBone(gDulArmL, 0, 0.54, -0.36, 0, 0, 0); 
 
-                        // Right arm holds a weapon, swings wildly when attacking
-                        dArmR = computeBone(dBody,  0.3, -0.2, 0, isAttack ? Math.cos(t*2)*-2.0 : step, 0, -0.2);
-                        dWhip = computeBone(dArmR, 0, 0.3, 0, Math.PI/2, 0, 0);
+                        // Right arm swings the colossal weapon
+                        gDulArmR = computeBone(gDulBody,  0.54, -0.36, 0, isAttack ? Math.cos(t*2)*-2.0 : step, 0, -0.2);
+                        gDulWhip = computeBone(gDulArmR, 0, 0.54, 0, Math.PI/2, 0, 0);
 
-                        dLegL = computeBone(dBody, -0.15, 0.25, 0,  step, 0, 0);
-                        dLegR = computeBone(dBody,  0.15, 0.25, 0, -step, 0, 0);
+                        // Thick, heavy stomping legs
+                        gDulLegL = computeBone(gDulBody, -0.27, 0.45, 0,  step, 0, 0);
+                        gDulLegR = computeBone(gDulBody,  0.27, 0.45, 0, -step, 0, 0);
                         break;
                     }
+                    
+                
                 // ==========================================
                 // --- 3D DRAGON (191-193) ---
                 // ==========================================
@@ -48969,7 +49015,7 @@
                         drTail4 = computeBone(drTail3, 0, 0.3, -0.1, 0, swish * 2.5, 0); 
                         break;
                     }
-                ///////////////////
+               ///////////////////
                 //////////////////
                 }
 
@@ -50071,22 +50117,27 @@
                 add3dShapeRigged(mesh, 'arc', sLegR, 0.03, 0.15, 0.03, cSprigWood);
             }
 
-            // --- RENDER DULLAHAN ---
+            // --- RENDER GIANT DULLAHAN ---
             if (index >= 103 && index <= 105) {
-                add3dShapeRigged(mesh, 'arc', dBody, 0.25, 0.25, 0.15, cDulArmor); // Knight armor body
-                add3dShapeRigged(mesh, 'arc', dNeckStump, 0.08, 0.05, 0.08, {r:0.4, g:0, b:0}); // Bloody neck stump
+                // A distinct "Boss" color palette!
+                const cGDulArmor = {r: 0.05, g: 0.05, b: 0.08, a: 1.0}; // Darker, heavier steel
+                const cGDulFire  = {r: 1.0, g: 0.1, b: 0.0, a: 0.9}; // Furious crimson fire
                 
-                add3dShapeRigged(mesh, 'arc', dArmL, 0.06, 0.2, 0.06, cDulArmor);
-                add3dShapeRigged(mesh, 'arc', dArmR, 0.06, 0.2, 0.06, cDulArmor);
-                add3dShapeRigged(mesh, 'arc', dLegL, 0.08, 0.2, 0.08, cDulArmor);
-                add3dShapeRigged(mesh, 'arc', dLegR, 0.08, 0.2, 0.08, cDulArmor);
+                // Renders scaled up by 1.8x
+                add3dShapeRigged(mesh, 'arc', gDulBody, 0.45, 0.45, 0.27, cGDulArmor); 
+                add3dShapeRigged(mesh, 'arc', gDulNeckStump, 0.14, 0.09, 0.14, {r: 0.3, g: 0, b: 0}); 
+                
+                add3dShapeRigged(mesh, 'arc', gDulArmL, 0.11, 0.36, 0.11, cGDulArmor);
+                add3dShapeRigged(mesh, 'arc', gDulArmR, 0.11, 0.36, 0.11, cGDulArmor);
+                add3dShapeRigged(mesh, 'arc', gDulLegL, 0.14, 0.36, 0.14, cGDulArmor);
+                add3dShapeRigged(mesh, 'arc', gDulLegR, 0.14, 0.36, 0.14, cGDulArmor);
 
-                // Head is held in the left hand! (Jack-o-lantern/Fire head)
-                add3dShapeRigged(mesh, 'arc', dHead, 0.12, 0.12, 0.12, cDulFire);
+                // Giant fiery head
+                add3dShapeRigged(mesh, 'arc', gDulHead, 0.22, 0.22, 0.22, cGDulFire);
                 
-                // Scythe / Whip in the right hand
-                let blade = computeBone(dWhip, 0,0,0, 0,0,0);
-                add3dShapeRigged(mesh, 'tri', blade, 0.02, 0.02, 0.5, cSteel);
+                // Colossal weapon blade sweeping across
+                let blade = computeBone(gDulWhip, 0, 0, 0, 0, 0, 0);
+                add3dShapeRigged(mesh, 'tri', blade, 0.04, 0.04, 0.9, cSteel);
             }
             // --- RENDER DRAGON ---
             if (index >= 106 && index <= 109) {
@@ -51089,28 +51140,126 @@
       source.start(0);
       return true;
     },
-      
-    play3DSFX(type) {
+    play3DSFX(type, sourceX, sourceY, playerX, playerY, playerDirIdx) {
       if (!window.settingsAudio) return;
       if (!this.ctx) return;
-      if (this.ctx.state === 'suspended') { this.ctx.resume(); }
+      if (this.ctx.state === 'suspended') this.ctx.resume();
+
+      let panVal = 0;
+      let volume = 1; // Default to full volume for 2D/UI sounds
+
+      // --- THE FIX: 2D FALLBACK CHECK ---
+      // If no coordinates were passed (e.g., MusicEngine.play3DSFX('click')), 
+      // we skip the complex math and leave the sound perfectly centered and loud!
+      let is3D = (sourceX !== undefined && sourceY !== undefined && playerX !== undefined && playerY !== undefined && playerDirIdx !== undefined);
+
+      if (is3D) {
+          // 1. Calculate Distance
+          const dx = sourceX - playerX;
+          const dy = sourceY - playerY;
+          const dist = Math.sqrt(dx*dx + dy*dy);
+
+          if (dist > 15) return; // Too far away to hear
+
+          // 2. Calculate Panning
+          if (dist > 0.001) {
+              const angle = playerDirIdx * Math.PI / 2;
+              const pDirX = Math.sin(angle);
+              const pDirY = -Math.cos(angle);
+              
+              const rightX = -pDirY;
+              const rightY = pDirX;
+
+              let nDx = dx / dist;
+              let nDy = dy / dist;
+
+              panVal = (nDx * rightX) + (nDy * rightY);
+          }
+          
+          // Clamp Panning
+          if (isNaN(panVal)) panVal = 0;
+          if (panVal > 1) panVal = 1;
+          if (panVal < -1) panVal = -1;
+
+          // 3. Calculate Volume Attenuation (Drastic Linear Drop-off)
+          if (dist <= 9) {
+              // Distance 0 to 9 maps from 100% to 10% volume
+              // (e.g., dist 0 = 1.0, dist 8 = 0.2, dist 9 = 0.1)
+              volume = 1.0 - (dist * 0.1); 
+          } else {
+              // After 9 tiles, it drops by 2.5% (0.025) per tile.
+              // At distance 13, it hits exactly 0.0 (completely silent).
+              let outerDropRate = 0.025; 
+              volume = 0.1 - ((dist - 9) * outerDropRate);
+          }
+
+          // Safety Clamps so Web Audio API doesn't crash from negative numbers
+          if (volume > 1) volume = 1;
+          if (volume < 0 || isNaN(volume)) volume = 0; 
+          
+          // If the sound has reached 0 volume, kill it instantly to save processing power!
+          if (volume === 0) return;
+      }
+
+      // --- AUDIO GRAPH ROUTING ---
       const t = this.ctx.currentTime;
-      switch (type) {
-        case 'click': default:
+      const panner = this.ctx.createStereoPanner();
+      panner.pan.value = panVal;
+
+      const distGain = this.ctx.createGain();
+      distGain.gain.value = volume;
+
+      // ==========================================
+      // COMBINED SWITCH STATEMENT GOES HERE!
+      // ==========================================
+      switch(type) {
+        case 'step':
+          this.createStepSound(t, distGain, panner);
+          break;
+        case 0:case 'grunt':
+          this.createGruntSound(t, distGain, panner);
+          break;
+        case 1:case 'musical':
+          this.createMusicalMovement(t, distGain, panner);
+          break;
+        case 2:case 'fairy':
+          this.createFairyVoice(t, distGain, panner);
+          break;
+        case 3:case 'ghost':
+          this.createGhostSound(t, distGain, panner);
+          break;
+        case 4:case 'musical2':
+          this.createMusicalMovement2(t, distGain, panner);
+          break;
+        case 5:case 'musical3':
+          this.createMusicalMovement3(t, distGain, panner);
+          break;
+        case 6: case 'musical4':
+          this.createMusicalMovement4(t, distGain, panner);
+          break;
+        case 7: case 'talk':
+          // Pass a 'voiceType' if you want distinctive voices later
+          // For now we default to a standard "Boy/Hero" sound
+          this.createDialogueMumble(t, distGain, panner, 'mid'); 
+          break;
+          case 8:case 'scream': 
+          this.createScream(t, distGain, panner);
+          break;
+          case 'click': default:
           this.createTone(t, 1500, 'sine', 1, 0.1, -200);
           break;
-        case 'cancel':
+        case 8:case 'cancel':
           this.createTone(t, 150, 'sawtooth', 0.15, 0.2, -50);
           break;
-        case 'chime2':
+        case 9:case 'chime2':
           this.createTone(t, 1200, 'sine', 2, 0.5, 0);
           this.createTone(t, 2400, 'sine', 1, 0.5, 0);
           break;
-        case 'fireball':
+        case 10:case 'fireball':
           this.createNoise(t, 'lowpass', 100, 2, 3, 800); // Filter sweeps up
           this.createTone(t, 100, 'sawtooth', 1.5, 3, -50); // Low rumble
           break;
-        case 'warp':
+        case 11:case 'warp':
           const oscW = this.ctx.createOscillator();
           const gainW = this.ctx.createGain();
           oscW.type = 'sine';
@@ -51123,17 +51272,17 @@
           oscW.start(t); oscW.stop(t + 0.4);
           this.cleanupNodes(t + 0.4, oscW, gainW);
           break;
-        case 'heal':case 'chime':
+        case 12:case 'heal':case 'chime':
           for (let i = 0; i < 5; i++) {
             setTimeout(() => {
               this.createTone(this.ctx.currentTime, 800 + (i * 200), 'sine', 0.1, 0.3, 0);
             }, i * 50);
           }
           break;
-        case 'slash':
+        case 13:case 'slash':
           this.createNoise(t, 'highpass', 1000, 1, 1, 0);
           break;
-        case 'clang':
+        case 14:case 'clang':
           const c = this.ctx.createOscillator();
           const cG = this.ctx.createGain();
           c.type = 'square';
@@ -51150,7 +51299,7 @@
           c.stop(t + 0.5); m.stop(t + 0.5);
           this.cleanupNodes(t + 1, c, cG, m, mG);
           break;
-        case 'death':
+        case 15:case 'death':
           const oscD = this.ctx.createOscillator();
           const gainD = this.ctx.createGain();
           oscD.type = 'sawtooth';
@@ -51165,10 +51314,10 @@
           oscD.start(t); oscD.stop(t + 1.5);
           this.cleanupNodes(t + 1.5, oscD, gainD, filter);
           break;
-        case 'lightning':
+        case 16:case 'lightning':
           this.createLightning(t);
           break;
-        case 'teleport':
+        case 17:case 'teleport':
           // Phase 1: Charge up (0 to 1 second)
           const telOsc = this.ctx.createOscillator();
           const telGain = this.ctx.createGain();
@@ -51191,7 +51340,7 @@
           }, 1000); 
           break;
 
-        case 'fire':
+        case 18:case 'fire':
           this.createNoise(t, 'highpass', 5000, 0.5, 0.1, 0);
 
           const fireDur = 2;
@@ -51229,7 +51378,7 @@
           this.cleanupNodes(t + fireDur, fireNoise, fireFilter, lfo, lfoGain, fireMasterGain); // ADDED CLEANUP
           break;
 
-        case 'water': // Ice Shatter
+        case 19:case 'water': // Ice Shatter
           // 3 rapid icy snaps
           for (let i = 0; i < 3; i++) {
             const timeOffset = t + (i * 0.08);
@@ -51239,7 +51388,7 @@
           this.createNoise(t, 'highpass', 2000, 0.6, 0.4, -1000);
           break;
 
-        case 'earth': // Quake
+        case 20:case 'earth': // Quake
           // Deep dropping sub-bass (Impact)
           this.createTone(t, 60, 'sine', 1, 1.5, -40);
           // Grinding crunch (Low square)
@@ -51248,7 +51397,7 @@
           this.createNoise(t, 'lowpass', 150, 1.5, 1, -100);
           break;
 
-        case 'air': // Metal Clash
+        case 21:case 'air': // Metal Clash
           // The initial sharp scrape
           this.createNoise(t, 'highpass', 3000, 0.5, 0.1, 0);
           
@@ -51267,7 +51416,7 @@
           });
           break;
 
-        case 'buff':
+        case 22:case 'buff':
           // Major chord (4:5:6 ratio) sweeping up and swelling
           const buffFreqs = [440, 550, 660]; 
           buffFreqs.forEach((freq, i) => {
@@ -51289,7 +51438,7 @@
           });
           break;
 
-        case 'debuff':
+        case 23:case 'debuff':
           // Dissonant Tritone (Devil's interval) dragging down
           const debuffFreqs = [300, 424.26]; 
           
@@ -51316,7 +51465,7 @@
             
           });
           break;
-        case 'arcane': // Arcane Missile / Dart
+        case 24:case 'arcane': // Arcane Missile / Dart
           const arc1Dur = 0.4;
           
           // Two slightly detuned sine waves to create a magical "pulse"
@@ -51343,7 +51492,7 @@
           this.createNoise(t, 'highpass', 4000, 0.2, 0.1, 0);
           break;
 
-        case 'arcane2': // Arcane Nova / Cosmic Beam
+        case 25:case 'arcane2': // Arcane Nova / Cosmic Beam
           // Phase 1: The Gathering (Fast upward sweep)
           const chargeOsc = this.ctx.createOscillator();
           const chargeGain = this.ctx.createGain();
@@ -51395,7 +51544,7 @@
              }, 400 + (Math.random() * 1200)); // Triggers randomly after the Nova hits
           }
           break;
-        case 'fire2': // Fireball / Explosion
+        case 26:case 'fire2': // Fireball / Explosion
           // The "Suck-In" anticipation (Reverse noise sweep)
           this.createNoise(t, 'lowpass', 100, 0.4, 0.4, 1500); 
           
@@ -51412,7 +51561,7 @@
           }
           break;
 
-        case 'water2': // Glacier / Blizzard
+        case 27:case 'water2': // Glacier / Blizzard
           // The deep groaning of massive ice
           const w2Osc = this.ctx.createOscillator();
           const w2Gain = this.ctx.createGain();
@@ -51435,7 +51584,7 @@
           }
           break;
 
-        case 'earth2': // Tectonic Spike Eruption
+        case 28:case 'earth2': // Tectonic Spike Eruption
           // The rising subterranean rumble
           this.createNoise(t, 'lowpass', 50, 0.8, 0.6, 500);
           
@@ -51446,7 +51595,7 @@
           this.createNoise(e2SpikeTime, 'lowpass', 2500, 1.2, 1, -2000); // Dirt blast
           break;
 
-        case 'air2': // Heavy Execution / Sonic Boom
+        case 29:case 'air2': // Heavy Execution / Sonic Boom
           // The rapid wind-up
           this.createTone(t, 150, 'sine', 0.6, 0.3, 400); 
           
@@ -51470,7 +51619,7 @@
           this.createNoise(a2HitTime, 'lowpass', 800, 1.2, 0.5, -700);
           break;
 
-        case 'buff2': // Ascension / Party Buff
+        case 30:case 'buff2': // Ascension / Party Buff
           // A sweeping A-Major extended arpeggio
           const b2Notes = [440, 554, 659, 880, 1108]; 
           b2Notes.forEach((freq, i) => {
@@ -51507,7 +51656,7 @@
           });
           break;
 
-        case 'debuff2': // Doom / Venom Plague
+        case 31:case 'debuff2': // Doom / Venom Plague
           // Rising dissonant interval (sickly)
           const d2Osc1 = this.ctx.createOscillator();
           const d2Osc2 = this.ctx.createOscillator();
@@ -51550,33 +51699,33 @@
           // The fatal finish (Muffled thump)
           this.createNoise(t + 1.8, 'lowpass', 150, 1.5, 1, -100);
           break;
-        case 'fire3': // Hellfire Whip / Instant Cremation
+        case 32:case 'fire3': // Hellfire Whip / Instant Cremation
           // A literal crack of heat. Instant max volume, sharp cutoff.
           this.createNoise(t, 'lowpass', 5000, 1.5, 0.2, -4500); // Explosive burst
           this.createTone(t, 600, 'sawtooth', 1.2, 0.25, -500); // Aggressive heat snap
           break;
 
-        case 'water3': // Flash Freeze / Absolute Zero
+        case 33:case 'water3': // Flash Freeze / Absolute Zero
           // Glass shattering in a microsecond. Extremely high, extremely fast.
           this.createTone(t, 2500, 'triangle', 1.5, 0.1, -1500); // The snap
           this.createTone(t, 3500, 'sine', 1, 0.15, 0); // The icy ring
           this.createNoise(t, 'highpass', 4000, 1, 0.1, 0); // The frost bite
           break;
 
-        case 'earth3': // Geostrike / Seismic Punch
+        case 34:case 'earth3': // Geostrike / Seismic Punch
           // A singular, deafening, blunt force 'crack'. 
           this.createTone(t, 35, 'square', 2, 0.25, -20); // Sub-bass distortion
           this.createNoise(t, 'lowpass', 800, 1.8, 0.2, -700); // Dirt impact
           break;
 
-        case 'air3': // Vacuum Slash / Vorpal Strike
+        case 35:case 'air3': // Vacuum Slash / Vorpal Strike
           // A sonic boom. The air tearing open instantly.
           // Sweeping a high-pass filter UP incredibly fast mimics a vacuum pop.
           this.createNoise(t, 'highpass', 100, 1.5, 0.2, 4000); 
           this.createTone(t, 800, 'sine', 1, 0.15, -600); // The blade whistling
           break;
 
-        case 'buff3': // Flash Aura / Instant Maximize
+        case 36:case 'buff3': // Flash Aura / Instant Maximize
           // A hyper-fast, ascending glissando (like a rapid-fire slot machine win)
           const b3Notes = [523.25, 659.25, 783.99, 1046.50]; // C-Major fast arpeggio
           b3Notes.forEach((freq, i) => {
@@ -51587,7 +51736,7 @@
           });
           break;
 
-        case 'debuff3': // Death Mark / Hex
+        case 37:case 'debuff3': // Death Mark / Hex
           // A sudden, terrifying "clang" that drops pitch instantly.
           const d3Freqs = [400, 475]; // Dissonant clash
           d3Freqs.forEach(freq => {
@@ -51597,7 +51746,7 @@
           this.createNoise(t + 0.1, 'lowpass', 300, 1.2, 0.2, -250);
           break;
 
-        case 'arcane3': // Singularity / Void Implosion
+        case 38:case 'arcane3': // Singularity / Void Implosion
           // The physics: High and low frequencies rushing to meet in the middle (implosion)
           const a3HighOsc = this.ctx.createOscillator();
           const a3LowOsc = this.ctx.createOscillator();
@@ -51624,8 +51773,9 @@
           // The "pop" of the singularity collapsing
           this.createNoise(t + 0.2, 'highpass', 3000, 0.8, 0.1, 0);
           break;
-        }
-    },
+        
+      }
+    },  
     
     sing(text, startTime, notesArray = [0], rootFreq = 110, targetDuration = 0.25, resonance = 1.0, breathiness = 0.1, pan = 0, volOffset = 1.0) {
             if (!this.ctx) return;
@@ -52885,628 +53035,7 @@
           };
       });
     },
-    play3DSFX(type, sourceX, sourceY, playerX, playerY, playerDirIdx) {
-      if (!window.settingsAudio) return;
-      if (!this.ctx) return;
-      if (this.ctx.state === 'suspended') this.ctx.resume();
-
-      let panVal = 0;
-      let volume = 1; // Default to full volume for 2D/UI sounds
-
-      // --- THE FIX: 2D FALLBACK CHECK ---
-      // If no coordinates were passed (e.g., MusicEngine.play3DSFX('click')), 
-      // we skip the complex math and leave the sound perfectly centered and loud!
-      let is3D = (sourceX !== undefined && sourceY !== undefined && playerX !== undefined && playerY !== undefined && playerDirIdx !== undefined);
-
-      if (is3D) {
-          // 1. Calculate Distance
-          const dx = sourceX - playerX;
-          const dy = sourceY - playerY;
-          const dist = Math.sqrt(dx*dx + dy*dy);
-
-          if (dist > 15) return; // Too far away to hear
-
-          // 2. Calculate Panning
-          if (dist > 0.001) {
-              const angle = playerDirIdx * Math.PI / 2;
-              const pDirX = Math.sin(angle);
-              const pDirY = -Math.cos(angle);
-              
-              const rightX = -pDirY;
-              const rightY = pDirX;
-
-              let nDx = dx / dist;
-              let nDy = dy / dist;
-
-              panVal = (nDx * rightX) + (nDy * rightY);
-          }
-          
-          // Clamp Panning
-          if (isNaN(panVal)) panVal = 0;
-          if (panVal > 1) panVal = 1;
-          if (panVal < -1) panVal = -1;
-
-          // 3. Calculate Volume Attenuation
-          volume = 1 / (0.5 + (dist * 0.5));
-          if (volume > 1) volume = 1;
-          if (isNaN(volume)) volume = 1;
-      }
-
-      // --- AUDIO GRAPH ROUTING ---
-      const t = this.ctx.currentTime;
-      const panner = this.ctx.createStereoPanner();
-      panner.pan.value = panVal;
-
-      const distGain = this.ctx.createGain();
-      distGain.gain.value = volume;
-
-      // ==========================================
-      // COMBINED SWITCH STATEMENT GOES HERE!
-      // ==========================================
-      switch(type) {
-        case 'step':
-          this.createStepSound(t, distGain, panner);
-          break;
-        case 0:case 'grunt':
-          this.createGruntSound(t, distGain, panner);
-          break;
-        case 1:case 'musical':
-          this.createMusicalMovement(t, distGain, panner);
-          break;
-        case 2:case 'fairy':
-          this.createFairyVoice(t, distGain, panner);
-          break;
-        case 3:case 'ghost':
-          this.createGhostSound(t, distGain, panner);
-          break;
-        case 4:case 'musical2':
-          this.createMusicalMovement2(t, distGain, panner);
-          break;
-        case 5:case 'musical3':
-          this.createMusicalMovement3(t, distGain, panner);
-          break;
-        case 6: case 'musical4':
-          this.createMusicalMovement4(t, distGain, panner);
-          break;
-        case 7: case 'talk':
-          // Pass a 'voiceType' if you want distinctive voices later
-          // For now we default to a standard "Boy/Hero" sound
-          this.createDialogueMumble(t, distGain, panner, 'mid'); 
-          break;
-          case 8:case 'scream': 
-          this.createScream(t, distGain, panner);
-          break;
-          case 'click': default:
-          this.createTone(t, 1500, 'sine', 1, 0.1, -200);
-          break;
-        case 'cancel':
-          this.createTone(t, 150, 'sawtooth', 0.15, 0.2, -50);
-          break;
-        case 'chime2':
-          this.createTone(t, 1200, 'sine', 2, 0.5, 0);
-          this.createTone(t, 2400, 'sine', 1, 0.5, 0);
-          break;
-        case 'fireball':
-          this.createNoise(t, 'lowpass', 100, 2, 3, 800); // Filter sweeps up
-          this.createTone(t, 100, 'sawtooth', 1.5, 3, -50); // Low rumble
-          break;
-        case 'warp':
-          const oscW = this.ctx.createOscillator();
-          const gainW = this.ctx.createGain();
-          oscW.type = 'sine';
-          oscW.frequency.setValueAtTime(200, t);
-          oscW.frequency.exponentialRampToValueAtTime(2000, t + 0.2); // Zip up
-          oscW.frequency.exponentialRampToValueAtTime(100, t + 0.4); // Zip down
-          gainW.gain.setValueAtTime(0.2, t);
-          gainW.gain.linearRampToValueAtTime(0, t + 0.4);
-          oscW.connect(gainW); gainW.connect(this.ctx.destination);
-          oscW.start(t); oscW.stop(t + 0.4);
-          this.cleanupNodes(t + 0.4, oscW, gainW);
-          break;
-        case 'heal':case 'chime':
-          for (let i = 0; i < 5; i++) {
-            setTimeout(() => {
-              this.createTone(this.ctx.currentTime, 800 + (i * 200), 'sine', 0.1, 0.3, 0);
-            }, i * 50);
-          }
-          break;
-        case 'slash':
-          this.createNoise(t, 'highpass', 1000, 1, 1, 0);
-          break;
-        case 'clang':
-          const c = this.ctx.createOscillator();
-          const cG = this.ctx.createGain();
-          c.type = 'square';
-          c.frequency.value = 400;
-          const m = this.ctx.createOscillator();
-          const mG = this.ctx.createGain();
-          m.frequency.value = 567; // Non-integer ratio
-          mG.gain.value = 2000;
-          m.connect(mG); mG.connect(c.frequency);
-          c.connect(cG); cG.connect(this.ctx.destination);
-          cG.gain.setValueAtTime(1, t);
-          cG.gain.exponentialRampToValueAtTime(0.01, t + 1);
-          c.start(t); m.start(t);
-          c.stop(t + 0.5); m.stop(t + 0.5);
-          this.cleanupNodes(t + 1, c, cG, m, mG);
-          break;
-        case 'death':
-          const oscD = this.ctx.createOscillator();
-          const gainD = this.ctx.createGain();
-          oscD.type = 'sawtooth';
-          oscD.frequency.setValueAtTime(150, t);
-          oscD.frequency.exponentialRampToValueAtTime(40, t + 1.5);
-          const filter = this.ctx.createBiquadFilter();
-          filter.type = 'lowpass';
-          filter.frequency.value = 300;
-          gainD.gain.setValueAtTime(1, t);
-          gainD.gain.linearRampToValueAtTime(0, t + 1.5);
-          oscD.connect(filter); filter.connect(gainD); gainD.connect(this.ctx.destination);
-          oscD.start(t); oscD.stop(t + 1.5);
-          this.cleanupNodes(t + 1.5, oscD, gainD, filter);
-          break;
-        case 'lightning':
-          this.createLightning(t);
-          break;
-        case 'teleport':
-          // Phase 1: Charge up (0 to 1 second)
-          const telOsc = this.ctx.createOscillator();
-          const telGain = this.ctx.createGain();
-          telOsc.type = 'sine';
-          telOsc.frequency.setValueAtTime(100, t);
-          telOsc.frequency.exponentialRampToValueAtTime(800, t + 1);
-          telGain.gain.setValueAtTime(0, t);
-          telGain.gain.linearRampToValueAtTime(0.5, t + 1);
-          telOsc.connect(telGain); telGain.connect(this.ctx.destination);
-          telOsc.start(t); telOsc.stop(t + 1);
-          this.cleanupNodes(t + 1, telOsc, telGain);
-
-          // Phase 2 & 3: The Tear and the Chime echo (triggers at t + 1)
-          setTimeout(() => {
-            const tearTime = this.ctx.currentTime;
-            this.createTone(tearTime, 600, 'sawtooth', 0.8, 0.5, -500);
-            this.createNoise(tearTime, 'lowpass', 2000, 1, 0.5, -1500);
-            this.createTone(tearTime + 0.1, 1200, 'sine', 0.3, 2, 0);
-            this.createTone(tearTime + 0.1, 2400, 'sine', 0.15, 2, 0);
-          }, 1000); 
-          break;
-
-        case 'fire':
-          this.createNoise(t, 'highpass', 5000, 0.5, 0.1, 0);
-
-          const fireDur = 2;
-          // IMPORTANT: I am swapping your dynamic buffer for the shared one we discussed previously to prevent the massive memory leak here!
-          if (!this._sharedNoiseBuffer) {
-              const bufSize = this.ctx.sampleRate * 2.0;
-              this._sharedNoiseBuffer = this.ctx.createBuffer(1, bufSize, this.ctx.sampleRate);
-              const data = this._sharedNoiseBuffer.getChannelData(0);
-              for (let i = 0; i < bufSize; i++) data[i] = Math.random() * 2 - 1;
-          }
-          const fireNoise = this.ctx.createBufferSource();
-          fireNoise.buffer = this._sharedNoiseBuffer;
-
-          const fireFilter = this.ctx.createBiquadFilter();
-          fireFilter.type = 'lowpass';
-          fireFilter.frequency.setValueAtTime(400, t);
-          
-          const lfo = this.ctx.createOscillator();
-          lfo.type = 'sine';
-          lfo.frequency.value = 12; 
-          const lfoGain = this.ctx.createGain();
-          lfoGain.gain.value = 300; 
-          lfo.connect(lfoGain); lfoGain.connect(fireFilter.frequency);
-          lfo.start(t); lfo.stop(t + fireDur);
-
-          const fireMasterGain = this.ctx.createGain();
-          fireMasterGain.gain.setValueAtTime(0, t);
-          fireMasterGain.gain.linearRampToValueAtTime(0.8, t + 0.1);
-          fireMasterGain.gain.setValueAtTime(0.8, t + fireDur - 0.2);
-          fireMasterGain.gain.linearRampToValueAtTime(0, t + fireDur);
-
-          fireNoise.connect(fireFilter); fireFilter.connect(fireMasterGain); fireMasterGain.connect(this.ctx.destination);
-          fireNoise.start(t); fireNoise.stop(t + fireDur);
-          
-          this.cleanupNodes(t + fireDur, fireNoise, fireFilter, lfo, lfoGain, fireMasterGain); // ADDED CLEANUP
-          break;
-
-        case 'water': // Ice Shatter
-          // 3 rapid icy snaps
-          for (let i = 0; i < 3; i++) {
-            const timeOffset = t + (i * 0.08);
-            this.createTone(timeOffset, 1200 + (Math.random() * 400), 'triangle', 0.8, 0.1, -200);
-          }
-          // The freezing wind
-          this.createNoise(t, 'highpass', 2000, 0.6, 0.4, -1000);
-          break;
-
-        case 'earth': // Quake
-          // Deep dropping sub-bass (Impact)
-          this.createTone(t, 60, 'sine', 1, 1.5, -40);
-          // Grinding crunch (Low square)
-          this.createTone(t, 40, 'square', 0.8, 1, -20);
-          // Dirt settling (Low noise)
-          this.createNoise(t, 'lowpass', 150, 1.5, 1, -100);
-          break;
-
-        case 'air': // Metal Clash
-          // The initial sharp scrape
-          this.createNoise(t, 'highpass', 3000, 0.5, 0.1, 0);
-          
-          // Two clashing (inharmonic) squares
-          const ringFreqs = [600, 853];
-          ringFreqs.forEach(freq => {
-            const osc = this.ctx.createOscillator();
-            const gain = this.ctx.createGain();
-            osc.type = 'square';
-            osc.frequency.setValueAtTime(freq, t);
-            gain.gain.setValueAtTime(0.6, t);
-            gain.gain.exponentialRampToValueAtTime(0.01, t + 0.8);
-            osc.connect(gain); gain.connect(this.ctx.destination);
-            osc.start(t); osc.stop(t + 0.8);
-            this.cleanupNodes(t + 0.8, osc, gain);
-          });
-          break;
-
-        case 'buff':
-          // Major chord (4:5:6 ratio) sweeping up and swelling
-          const buffFreqs = [440, 550, 660]; 
-          buffFreqs.forEach((freq, i) => {
-            const osc = this.ctx.createOscillator();
-            const gain = this.ctx.createGain();
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(freq, t);
-            osc.frequency.linearRampToValueAtTime(freq + 50, t + 1.5); // Lift pitch up
-            
-            gain.gain.setValueAtTime(0, t); // Start quiet
-            gain.gain.linearRampToValueAtTime(0.3, t + 0.5); // Swell up
-            gain.gain.exponentialRampToValueAtTime(0.01, t + 1.5); // Fade out
-            
-            osc.connect(gain); gain.connect(this.ctx.destination);
-            // Stagger start times slightly for a "sparkle" effect
-            const startT = t + (i * 0.1);
-            osc.start(startT); osc.stop(startT + 1.5);
-            this.cleanupNodes(startT + 1.5, osc, gain);
-          });
-          break;
-
-        case 'debuff':
-          // Dissonant Tritone (Devil's interval) dragging down
-          const debuffFreqs = [300, 424.26]; 
-          
-          // Suffocating lowpass filter over the whole sound
-          const debuffFilter = this.ctx.createBiquadFilter();
-          debuffFilter.type = 'lowpass';
-          debuffFilter.frequency.setValueAtTime(2000, t);
-          debuffFilter.frequency.exponentialRampToValueAtTime(100, t + 1.5);
-          debuffFilter.connect(this.ctx.destination);
-          this.cleanupNodes(t + 1.5, debuffFilter);
-          debuffFreqs.forEach(freq => {
-            const osc = this.ctx.createOscillator();
-            const gain = this.ctx.createGain();
-            osc.type = 'sawtooth'; // Buzzy and harsh
-            osc.frequency.setValueAtTime(freq, t);
-            osc.frequency.exponentialRampToValueAtTime(freq / 2, t + 1.5); // Drag pitch down
-            
-            gain.gain.setValueAtTime(0.4, t);
-            gain.gain.linearRampToValueAtTime(0, t + 1.5);
-            
-            osc.connect(gain); gain.connect(debuffFilter);
-            osc.start(t); osc.stop(t + 1.5);
-            this.cleanupNodes(t + 1.5, osc, gain);
-            
-          });
-          break;
-        case 'arcane': // Arcane Missile / Dart
-          const arc1Dur = 0.4;
-          
-          // Two slightly detuned sine waves to create a magical "pulse"
-          const arc1Freqs = [800, 815]; 
-          
-          arc1Freqs.forEach(freq => {
-            const osc = this.ctx.createOscillator();
-            const gain = this.ctx.createGain();
-            osc.type = 'sine';
-            
-            // Rapid upward sweep for a projectile feel
-            osc.frequency.setValueAtTime(freq, t);
-            osc.frequency.exponentialRampToValueAtTime(freq * 2, t + arc1Dur);
-            
-            gain.gain.setValueAtTime(0.4, t);
-            gain.gain.exponentialRampToValueAtTime(0.01, t + arc1Dur);
-            
-            osc.connect(gain); gain.connect(this.ctx.destination);
-            osc.start(t); osc.stop(t + arc1Dur);
-            this.cleanupNodes(t + arc1Dur, osc, gain);
-          });
-          
-          // A tiny "sparkle" of high noise at the cast
-          this.createNoise(t, 'highpass', 4000, 0.2, 0.1, 0);
-          break;
-
-        case 'arcane2': // Arcane Nova / Cosmic Beam
-          // Phase 1: The Gathering (Fast upward sweep)
-          const chargeOsc = this.ctx.createOscillator();
-          const chargeGain = this.ctx.createGain();
-          chargeOsc.type = 'sine';
-          chargeOsc.frequency.setValueAtTime(200, t);
-          chargeOsc.frequency.exponentialRampToValueAtTime(1500, t + 0.4);
-          chargeGain.gain.setValueAtTime(0, t);
-          chargeGain.gain.linearRampToValueAtTime(0.6, t + 0.4);
-          
-          chargeOsc.connect(chargeGain); chargeGain.connect(this.ctx.destination);
-          chargeOsc.start(t); chargeOsc.stop(t + 0.4);
-          this.cleanupNodes(t + 0.4, chargeOsc, chargeGain);
-          // Phase 2: The Unstable Nova (Triggered at t + 0.4)
-          const novaTime = t + 0.4;
-          const novaFreqs = [400, 500, 600, 615]; // Detuned major chord for wide, glassy power
-          
-          novaFreqs.forEach(freq => {
-            const osc = this.ctx.createOscillator();
-            const gain = this.ctx.createGain();
-            
-            // Unstable energy LFO
-            const lfo = this.ctx.createOscillator();
-            const lfoGain = this.ctx.createGain();
-            
-            osc.type = 'triangle'; // More aggressive than sine
-            osc.frequency.setValueAtTime(freq, novaTime);
-            osc.frequency.exponentialRampToValueAtTime(freq / 1.5, novaTime + 1.5); // Drags down slightly as energy dissipates
-            
-            // Make the beam vibrate violently (20 times a second)
-            lfo.type = 'sine';
-            lfo.frequency.value = 20; 
-            lfoGain.gain.value = 0.5;
-            
-            gain.gain.setValueAtTime(0.5, novaTime);
-            gain.gain.exponentialRampToValueAtTime(0.01, novaTime + 1.5);
-            
-            lfo.connect(lfoGain); lfoGain.connect(gain.gain);
-            osc.connect(gain); gain.connect(this.ctx.destination);
-            
-            lfo.start(novaTime); lfo.stop(novaTime + 1.5);
-            osc.start(novaTime); osc.stop(novaTime + 1.5);
-            this.cleanupNodes(novaTime + 1.5, osc, gain, lfo, lfoGain); // ADDED CLEANUP
-          });
-
-          // Phase 3: Cosmic Stardust fading away
-          for(let i = 0; i < 12; i++) {
-             setTimeout(() => {
-                this.createTone(this.ctx.currentTime, 2000 + (Math.random() * 2000), 'sine', 0.15, 0.2, 0);
-             }, 400 + (Math.random() * 1200)); // Triggers randomly after the Nova hits
-          }
-          break;
-        case 'fire2': // Fireball / Explosion
-          // The "Suck-In" anticipation (Reverse noise sweep)
-          this.createNoise(t, 'lowpass', 100, 0.4, 0.4, 1500); 
-          
-          // The Concussive Impact (Triggered 0.4s later)
-          const f2ImpactTime = t + 0.4;
-          this.createTone(f2ImpactTime, 250, 'sawtooth', 1.2, 0.8, -200); // Deep aggressive drop
-          this.createNoise(f2ImpactTime, 'lowpass', 1000, 1.5, 1.2, -900); // Explosive boom
-          
-          // The crackling embers settling (Randomized high-pitched pops)
-          for(let i = 0; i < 8; i++) {
-            setTimeout(() => {
-              this.createNoise(this.ctx.currentTime, 'highpass', 4000, 0.15, 0.05, 0);
-            }, 400 + (Math.random() * 1200));
-          }
-          break;
-
-        case 'water2': // Glacier / Blizzard
-          // The deep groaning of massive ice
-          const w2Osc = this.ctx.createOscillator();
-          const w2Gain = this.ctx.createGain();
-          w2Osc.type = 'square';
-          w2Osc.frequency.setValueAtTime(60, t);
-          w2Osc.frequency.linearRampToValueAtTime(30, t + 2); // Dragging down slowly
-          w2Gain.gain.setValueAtTime(0.5, t);
-          w2Gain.gain.exponentialRampToValueAtTime(0.01, t + 2);
-          w2Osc.connect(w2Gain); w2Gain.connect(this.ctx.destination);
-          w2Osc.start(t); w2Osc.stop(t + 2);
-          this.cleanupNodes(t + 2, w2Osc, w2Gain);
-          // The sustained blizzard winds
-          this.createNoise(t, 'highpass', 1200, 0.7, 2.5, 800);
-
-          // The dense shower of ice shards
-          for(let i = 0; i < 15; i++) {
-             setTimeout(() => {
-                this.createTone(this.ctx.currentTime, 1000 + (Math.random() * 800), 'triangle', 0.4, 0.1, -100);
-             }, Math.random() * 1800);
-          }
-          break;
-
-        case 'earth2': // Tectonic Spike Eruption
-          // The rising subterranean rumble
-          this.createNoise(t, 'lowpass', 50, 0.8, 0.6, 500);
-          
-          // The sudden, violent rock spike piercing through
-          const e2SpikeTime = t + 0.6;
-          this.createTone(e2SpikeTime, 70, 'sawtooth', 1.5, 1, -40); // Jagged, low tear
-          this.createTone(e2SpikeTime, 120, 'square', 1, 0.8, -80); // Grinding crunch
-          this.createNoise(e2SpikeTime, 'lowpass', 2500, 1.2, 1, -2000); // Dirt blast
-          break;
-
-        case 'air2': // Heavy Execution / Sonic Boom
-          // The rapid wind-up
-          this.createTone(t, 150, 'sine', 0.6, 0.3, 400); 
-          
-          const a2HitTime = t + 0.3;
-          
-          // Heavy, dense, inharmonic weaponry (3 frequencies instead of 2, pitched lower)
-          const a2Freqs = [180, 256, 381];
-          a2Freqs.forEach(freq => {
-             const osc = this.ctx.createOscillator();
-             const gain = this.ctx.createGain();
-             osc.type = 'square';
-             osc.frequency.setValueAtTime(freq, a2HitTime);
-             gain.gain.setValueAtTime(1, a2HitTime);
-             gain.gain.exponentialRampToValueAtTime(0.01, a2HitTime + 1.8); // Long, heavy ring
-             osc.connect(gain); gain.connect(this.ctx.destination);
-             osc.start(a2HitTime); osc.stop(a2HitTime + 1.8);
-             this.cleanupNodes(a2HitTime + 1.8, osc, gain);
-          });
-          
-          // The blunt force impact
-          this.createNoise(a2HitTime, 'lowpass', 800, 1.2, 0.5, -700);
-          break;
-
-        case 'buff2': // Ascension / Party Buff
-          // A sweeping A-Major extended arpeggio
-          const b2Notes = [440, 554, 659, 880, 1108]; 
-          b2Notes.forEach((freq, i) => {
-             const startTime = t + (i * 0.12); // Cascading sequence
-             
-             if (i === b2Notes.length - 1) {
-                // Apply the holy "shimmer" (LFO) to the final top note
-                const osc = this.ctx.createOscillator();
-                const gain = this.ctx.createGain();
-                const lfo = this.ctx.createOscillator();
-                const lfoGain = this.ctx.createGain();
-                
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(freq, startTime);
-                
-                lfo.type = 'sine';
-                lfo.frequency.value = 10; // The speed of the shimmer
-                lfoGain.gain.value = 0.6; // The intensity of the volume wobble
-                
-                gain.gain.setValueAtTime(0, startTime);
-                gain.gain.linearRampToValueAtTime(0.5, startTime + 0.2); // Swell
-                gain.gain.exponentialRampToValueAtTime(0.01, startTime + 2.5); // Long fade
-                
-                lfo.connect(lfoGain); lfoGain.connect(gain.gain); // Wire LFO to Volume
-                osc.connect(gain); gain.connect(this.ctx.destination);
-                
-                lfo.start(startTime); lfo.stop(startTime + .5);
-                osc.start(startTime); osc.stop(startTime + .5);
-                this.cleanupNodes(startTime + 2.5, osc, gain, lfo, lfoGain);
-             } else {
-                // The leading notes
-                this.createTone(startTime, freq, 'sine', 0.4, 0.8, 0);
-             }
-          });
-          break;
-
-        case 'debuff2': // Doom / Venom Plague
-          // Rising dissonant interval (sickly)
-          const d2Osc1 = this.ctx.createOscillator();
-          const d2Osc2 = this.ctx.createOscillator();
-          const d2Gain = this.ctx.createGain();
-          
-          d2Osc1.type = 'sawtooth';
-          d2Osc2.type = 'sawtooth';
-          d2Osc1.frequency.setValueAtTime(140, t);
-          d2Osc1.frequency.linearRampToValueAtTime(280, t + 2); // Rising tension
-          d2Osc2.frequency.setValueAtTime(155, t); // Dissonance
-          d2Osc2.frequency.linearRampToValueAtTime(295, t + 2);
-          
-          // The accelerating "Heartbeat" of dread (LFO choking the volume)
-          const d2Pulse = this.ctx.createOscillator();
-          const d2PulseGain = this.ctx.createGain();
-          d2Pulse.type = 'square';
-          d2Pulse.frequency.setValueAtTime(2, t); // Starts slow (2 beats a second)
-          d2Pulse.frequency.linearRampToValueAtTime(9, t + 2); // Ramps up to panic (9 beats)
-          d2PulseGain.gain.value = 1; 
-          
-          d2Gain.gain.setValueAtTime(0.6, t);
-          d2Gain.gain.linearRampToValueAtTime(0, t + 2);
-          
-          // Wire the pulse to chop the gain
-          d2Pulse.connect(d2PulseGain); d2PulseGain.connect(d2Gain.gain);
-          
-          // Muffle everything with a lowpass filter
-          const d2Filter = this.ctx.createBiquadFilter();
-          d2Filter.type = 'lowpass';
-          d2Filter.frequency.setValueAtTime(1000, t);
-          d2Filter.frequency.linearRampToValueAtTime(200, t + 2); // Suffocates out
-          
-          d2Osc1.connect(d2Gain); d2Osc2.connect(d2Gain); 
-          d2Gain.connect(d2Filter); d2Filter.connect(this.ctx.destination);
-          
-          d2Osc1.start(t); d2Osc1.stop(t + 2);
-          d2Osc2.start(t); d2Osc2.stop(t + 2);
-          d2Pulse.start(t); d2Pulse.stop(t + 2);
-          this.cleanupNodes(t + 2, d2Osc1, d2Osc2, d2Gain, d2Pulse, d2PulseGain, d2Filter); // ADDED CLEANUP
-          // The fatal finish (Muffled thump)
-          this.createNoise(t + 1.8, 'lowpass', 150, 1.5, 1, -100);
-          break;
-        case 'fire3': // Hellfire Whip / Instant Cremation
-          // A literal crack of heat. Instant max volume, sharp cutoff.
-          this.createNoise(t, 'lowpass', 5000, 1.5, 0.2, -4500); // Explosive burst
-          this.createTone(t, 600, 'sawtooth', 1.2, 0.25, -500); // Aggressive heat snap
-          break;
-
-        case 'water3': // Flash Freeze / Absolute Zero
-          // Glass shattering in a microsecond. Extremely high, extremely fast.
-          this.createTone(t, 2500, 'triangle', 1.5, 0.1, -1500); // The snap
-          this.createTone(t, 3500, 'sine', 1, 0.15, 0); // The icy ring
-          this.createNoise(t, 'highpass', 4000, 1, 0.1, 0); // The frost bite
-          break;
-
-        case 'earth3': // Geostrike / Seismic Punch
-          // A singular, deafening, blunt force 'crack'. 
-          this.createTone(t, 35, 'square', 2, 0.25, -20); // Sub-bass distortion
-          this.createNoise(t, 'lowpass', 800, 1.8, 0.2, -700); // Dirt impact
-          break;
-
-        case 'air3': // Vacuum Slash / Vorpal Strike
-          // A sonic boom. The air tearing open instantly.
-          // Sweeping a high-pass filter UP incredibly fast mimics a vacuum pop.
-          this.createNoise(t, 'highpass', 100, 1.5, 0.2, 4000); 
-          this.createTone(t, 800, 'sine', 1, 0.15, -600); // The blade whistling
-          break;
-
-        case 'buff3': // Flash Aura / Instant Maximize
-          // A hyper-fast, ascending glissando (like a rapid-fire slot machine win)
-          const b3Notes = [523.25, 659.25, 783.99, 1046.50]; // C-Major fast arpeggio
-          b3Notes.forEach((freq, i) => {
-            // All notes fire off within 0.15 seconds of each other
-            setTimeout(() => {
-               this.createTone(this.ctx.currentTime, freq, 'sine', 0.6, 0.2, 50);
-            }, i * 40); 
-          });
-          break;
-
-        case 'debuff3': // Death Mark / Hex
-          // A sudden, terrifying "clang" that drops pitch instantly.
-          const d3Freqs = [400, 475]; // Dissonant clash
-          d3Freqs.forEach(freq => {
-            this.createTone(t, freq, 'sawtooth', 0.8, 0.3, -300); // Violent downward drag
-          });
-          // A quick suffocating thump at the end
-          this.createNoise(t + 0.1, 'lowpass', 300, 1.2, 0.2, -250);
-          break;
-
-        case 'arcane3': // Singularity / Void Implosion
-          // The physics: High and low frequencies rushing to meet in the middle (implosion)
-          const a3HighOsc = this.ctx.createOscillator();
-          const a3LowOsc = this.ctx.createOscillator();
-          const a3Gain = this.ctx.createGain();
-          
-          a3HighOsc.type = 'triangle';
-          a3LowOsc.type = 'triangle';
-          
-          a3HighOsc.frequency.setValueAtTime(2000, t);
-          a3HighOsc.frequency.exponentialRampToValueAtTime(500, t + 0.25); // Crashes down
-          
-          a3LowOsc.frequency.setValueAtTime(100, t);
-          a3LowOsc.frequency.exponentialRampToValueAtTime(500, t + 0.25); // Rushes up
-          
-          a3Gain.gain.setValueAtTime(1, t);
-          a3Gain.gain.exponentialRampToValueAtTime(0.01, t + 0.25); // Vanishes instantly
-          
-          a3HighOsc.connect(a3Gain); a3LowOsc.connect(a3Gain);
-          a3Gain.connect(this.ctx.destination);
-          
-          a3HighOsc.start(t); a3HighOsc.stop(t + 0.25);
-          a3LowOsc.start(t); a3LowOsc.stop(t + 0.25);
-          this.cleanupNodes(t + 0.25, a3HighOsc, a3LowOsc, a3Gain);
-          // The "pop" of the singularity collapsing
-          this.createNoise(t + 0.2, 'highpass', 3000, 0.8, 0.1, 0);
-          break;
-        
-      }
-    },
+    
     // 7. WOMAN SCREAM (Linguistics/Anatomy Simulation)
     createScream(t, distGain, panner) {
       distGain.connect(panner);
