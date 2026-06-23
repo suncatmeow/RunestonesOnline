@@ -1047,8 +1047,8 @@
             }
 
             // 3. Play Sound (Optional)
-            // (If Audio is turned off in settings, playSFX will automatically block this inside the MusicEngine anyway!)
-            if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('chat_sound');
+            // (If Audio is turned off in settings, play3DSFX will automatically block this inside the MusicEngine anyway!)
+            if(typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('chat_sound');
             
             console.log(`[CHAT] ${senderName}: ${messageText}`);
             });
@@ -1248,14 +1248,14 @@
                 chatLog.push(`[SYSTEM]: The atmosphere around you suddenly shifts...`);
                 if (chatLog.length > 100) chatLog.shift();
                 if (typeof MusicEngine !== 'undefined') {
-                    MusicEngine.playSFX('warp'); // Optional: Play a magic sound
+                    MusicEngine.play3DSFX('warp'); // Optional: Play a magic sound
                 }
             }
           });
         socket.on("remote_spawn_npc", (data) => {
             if (typeof Dungeon !== 'undefined') {
                 if (typeof MusicEngine !== 'undefined') {
-                    MusicEngine.playSFX('warp'); 
+                    MusicEngine.play3DSFX('warp'); 
                 }
 
                 Dungeon.spawnPersistentNPC(
@@ -1290,7 +1290,7 @@
                 Dungeon.extra.push(newCard);
                 
                 // 2. Play Sound (Existing logic)
-                if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('heal');
+                if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('heal');
                 
                 // 3. [NEW] Visual Notification
                 // So the player actually sees what they got in the chat log
@@ -1369,7 +1369,7 @@
         });
         socket.on("new_quest_objective", (data) => {
           currentQuest = data.questText;
-          if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('heal'); // Play a nice sound when getting a quest!
+          if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('heal'); // Play a nice sound when getting a quest!
           });
         socket.on("suncat_client_spell", (payload) => {
           try {
@@ -2274,7 +2274,7 @@
             if (this.type === 88 && dungeon.mapID !== 999&&dungeon.mapID == 4) {
                 if (this.alignment == 'foe_coward'){this.startDialogue(dungeon)}
                 else if (Dbug == 0){
-                if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('warp');
+                if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('warp');
                 dungeon.loadMap(4);
                 }
                 return;
@@ -2306,7 +2306,7 @@
 
                 // If coordinates are valid, execute the unified warp!
                 if (!isNaN(destX) && !isNaN(destY)) {
-                    if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('warp');
+                    if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('warp');
                     
                     // 50ms delay allows the collision engine to resolve before we yank the player away
                     setTimeout(() => {
@@ -2390,7 +2390,7 @@
                     console.log("Starting Battle...");
                     startGame = 'battle';
                     preGame = 'explore';
-                    if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('slash');
+                    if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('slash');
                     
                     if (typeof Field !== 'undefined') {
                         Player[0] = new Field(0, 0); // 0 = Player Side, 0 = Human
@@ -2587,7 +2587,7 @@
         }
         console.log("Starting dialogue...");
         startGame = 'dialogue';
-        if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('click');
+        if(typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('click');
          //high priestess
         //first interaction
         if((this.index == 0&&dungeon.MainQuest == 0&&dungeon.mapID ==  0)){
@@ -2711,7 +2711,7 @@
                     if (b.hits <= 0) {
                         // Armor broke!
                         this.activeBuffs.splice(i, 1);
-                        if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('cancel'); // Shatter sound
+                        MusicEngine.play3DSFX('cancel', this.x, this.y, playerX, playerY, dungeon.dir);
                     }
                 }
             } // End of Buff For-Loop
@@ -3203,8 +3203,7 @@
                     
                     if (this.combatCooldown <= 0) {
                         if (this.clashCount < 3) {
-                            if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('slash');
-                            
+                            MusicEngine.play3DSFX('slash', this.x, this.y, playerX, playerY, dungeon.dir);
                             let myNewX = this.x - toTargetX * 0.3;
                             let myNewY = this.y - toTargetY * 0.3;
                             if (!this.checkCollision(maze, myNewX, this.y)) this.x = myNewX;
@@ -3253,8 +3252,7 @@
                         }
                         
                         if (isCinematic) {
-                            if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('slash');
-                            
+                            MusicEngine.play3DSFX('slash', this.x, this.y, playerX, playerY, dungeon.dir);
                             let myNewX = this.x - toTargetX * 0.6;
                             let myNewY = this.y - toTargetY * 0.6;
                             if (!this.checkCollision(dungeon.maze, myNewX, this.y)) this.x = myNewX;
@@ -3342,7 +3340,7 @@
                             firstDefender = currentPrey; secondCard = targetCard; defenderMastery = 0;
                         }
 
-                        if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('slash');
+                        MusicEngine.play3DSFX('slash', this.x, this.y, playerX, playerY, dungeon.dir);
 
                         // Round 1: First Attacker STR vs First Defender CON
                         let atkStr = getOverworldRoll(firstCard, 0, firstAttacker, attackerMastery);
@@ -3365,7 +3363,7 @@
                             if (ward) {
                                 firstDefender.damageFlashTimer = 3; 
                                 ward.hits--; 
-                                if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('cancel'); 
+                                if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('cancel'); 
                             } else {
                                 firstDefender.damageFlashTimer = 3; 
                                 /*
@@ -3394,7 +3392,7 @@
                                 if (ward) {
                                     firstAttacker.damageFlashTimer = 3; 
                                     ward.hits--; 
-                                    if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('cancel'); 
+                                    if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('cancel'); 
                                 } else {
                                     /*// 3. ATTACKER DIES BLOOD/*
                                     for (let p = 0; p < 8; p++) {
@@ -3891,7 +3889,7 @@
             dungeon.projectiles.push(new Projectile(startX, startY, dirX, dirY, 6.0, 1, this, false, spellId));        
             
             if (typeof MusicEngine !== 'undefined') {
-                //MusicEngine.playSFX('fire2');
+                //MusicEngine.play3DSFX('fire2');
             }
         }
         // ==========================================
@@ -3916,8 +3914,7 @@
             } else {
                 // If they are at the cap, they "fizzle" the spell. 
                 // You could optionally refund their cooldown here so they try a different attack next frame.
-                if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('cancel');
-            }
+                if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('cancel', this.x, this.y, dungeon.x, dungeon.y, dungeon.dir);            }
         }
         // ==========================================
         // NEW (NPC): AOE WALL-SLAM & JUDGEMENT
@@ -3934,7 +3931,7 @@
                 }
             }
 
-            if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX(isJudgement ? 'horn' : 'wind');
+            if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX(isJudgement ? 'horn' : 'wind');
 
             // 2. Build target list (Include the player!)
             let targetsToCheck = [...dungeon.npcs];
@@ -4072,7 +4069,7 @@
             this.x = behindX;
             this.y = behindY;
             this.dir = bestTarget.dir; 
-            if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('warp');
+            if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('warp');
 
             // The AGI Clash
             let myCard = new Card(Math.floor(this.type), 0);
@@ -4097,13 +4094,10 @@
             if (myAgi > targetAgi) {
                 bestTarget.damageFlashTimer = 3;
                 // SUCCESS! Ally gets an instant kill!
-                if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('slash');
-                dungeon.killNPC(bestTarget, false, 'ally_backstab');
-            } else {
+                if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('slash', bestTarget.x, bestTarget.y, dungeon.x, dungeon.y, dungeon.dir);            } else {
                 bestTarget.damageFlashTimer = 3;
                 // FAIL! The monster blocks it.
-                if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('block');
-                bestTarget.dir = (bestTarget.dir + 2) % 4; // Target spins around
+                if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('block', bestTarget.x, bestTarget.y, dungeon.x, dungeon.y, dungeon.dir);                bestTarget.dir = (bestTarget.dir + 2) % 4; // Target spins around
                 
                 // Instead of a card duel, the ally is now in point-blank melee range!
                 // We briefly stagger the target so the ally gets the first strike on the next frame.
@@ -4127,7 +4121,7 @@
             let fY = dy / distToTarget;
 
             if (typeof MusicEngine !== 'undefined') {
-                MusicEngine.playSFX(spellData.name === 'Shield Bash' ? 'block' : 'slash');
+                MusicEngine.play3DSFX(spellData.name === 'Shield Bash' ? 'block' : 'slash');
             }
 
             if (typeof globalParticles !== 'undefined') {
@@ -4246,7 +4240,7 @@
                 }
             });
             
-            if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('heal'); // Or a potion/chime sound
+            if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('heal', this.x, this.y, dungeon.x, dungeon.y, dungeon.dir); // Or a potion/chime sound
         }
         }
     applySpell(spellId, magnitude = 1) {
@@ -4327,7 +4321,7 @@
         
         dungeon.npcs.push(minion);
 
-        if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('arcane');
+        if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('arcane');
         
         if (typeof globalParticles !== 'undefined') {
             for (let p = 0; p < 12; p++) {
@@ -7328,15 +7322,16 @@
                                 ];
 
                                 let spawnPortal = ['spawn_ephemeral_npc', {
-                                    index: bossId, x: 5.5, y: 5.5, sprite: 91, state: 'stationary', role: 'dialogue', alignment: 'friendly', color: '#ff0000', deck: [91, 88, 88, 93, 26], isBoss: true,
+                                    index: bossId, x: 9.5, y: 9.5, sprite: -35, state: 'stationary', role: 'dialogue', alignment: 'friendly', color: '#ff0000', deck: [91, 88, 88, 93, 26], isBoss: true,
                                     customDialogue: ["*The air is suffocating. The Mastermind waits inside.*"],
                                     options: ['Breach the Sanctum', 'Not Yet'],
                                     yesActions: [
-                                        ['play_sfx', 'horn'],
-                                        // FIRE THE FINALE FLAG!
-                                        ['start_tactics', { id: bossId, isFinale: true, stakes: 'real' }],
+                                        ['play_sfx', 'horn'], 
+                                        ['transform_npc', { index: bossId, clearDialogue: true, newDeathActions: finaleWinActions }],
+                                        
+                                        ['start_tactics', { id: bossId, isFinale: true, stakes: 'real' }], 
                                         ['close_dialogue', null]
-                                    ],
+                                    ], 
                                     noActions: [['close_dialogue', null]]
                                 }];
 
@@ -10355,7 +10350,7 @@
                     MusicEngine.play3DSFX('musical2')
                     setTimeout(() => {
                     this.x = 3.5;this.y = 12.5;this.dir = 0;
-                    MusicEngine.playSFX('cancel')}, 500);
+                    MusicEngine.play3DSFX('cancel')}, 500);
                     }
                     else if(this.mapID == 15){
                         // Forget sliding destinations so we don't rubberband across the new map!
@@ -10374,7 +10369,7 @@
                     MusicEngine.play3DSFX('musical2')
                     setTimeout(() => {
                     this.x = 8.5;this.y = 1.5;this.dir = 2;
-                    MusicEngine.playSFX('cancel')}, 500);
+                    MusicEngine.play3DSFX('cancel')}, 500);
                     }
                     break;
 
@@ -10383,7 +10378,7 @@
                 case -10: // To Map 10 Avalon from Map 9 Stormy Sea
                     this.loadMap(10);
                     MusicEngine.stop();
-                    MusicEngine.playSFX('warp');
+                    MusicEngine.play3DSFX('warp');
                     MusicEngine.play(this.mapSong[10]);
                     break;
                     
@@ -10404,7 +10399,7 @@
                     // -------------------------------------------
                     MusicEngine.stop();
 
-                    MusicEngine.playSFX('warp');
+                    MusicEngine.play3DSFX('warp');
                     setTimeout(() => {
                     this.x = 1.5;this.y = 7.5;this.dir = 1;MusicEngine.play(this.mapSong[9]);}, 500);
                 }
@@ -10576,7 +10571,7 @@
                     this.currentWards--;
                     this.playerFlashTimer = 15; // Flash the screen cyan for 15 frames
                     
-                    if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('cancel');
+                    if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('cancel');
                     
                     if (typeof globalParticles !== 'undefined') {
                         for (let p = 0; p < 12; p++) {
@@ -10622,7 +10617,7 @@
                     if (this.wardRegenTimer >= 13.0) { // 1 ward every 3 seconds
                         this.currentWards++;
                         this.wardRegenTimer = 0;
-                        //if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('heal'); // Optional quiet ding
+                        //if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('heal'); // Optional quiet ding
                     }
                 } else {
                     this.wardRegenTimer = 0;
@@ -10754,7 +10749,7 @@
                                     });
                                     
                                     this.npcs.push(randomGiver);
-                                    if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('chime');
+                                    if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('chime');
                                 }
                             }
                         }
@@ -10874,7 +10869,7 @@
                             if (typeof MessageBox !== 'undefined') {
                                 MessageBox.show(0.5, 2, 1, 9, 2, `Bounty hunters have tracked you down!`, 'system', 1, 0);
                             }
-                            if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('horn');
+                            if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('horn');
                             
                             let mobs = this.memory['hunted_mobs'] || [{sprite: 42}];
 
@@ -11747,7 +11742,7 @@
                 let sfxtimer = Date.now();
                 if (sfxtimer - lastsfxtime > 550){
                     if (this.weather.mode == 'storm' || this.weather.mode == 'lightning' || this.weather.mode == 'apocalypse'){
-                        if (Math.random() > 0.25) MusicEngine.playSFX('lightning');
+                        if (Math.random() > 0.25) MusicEngine.play3DSFX('lightning');
                     }
                     lastsfxtime = Date.now();
                 }
@@ -12311,7 +12306,7 @@
                 this.lastSpellShuffleTime = currentTime;
                 
                 // Optional: Add a subtle 'card draw' sound here so the player knows their hand changed without looking down
-                // if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('draw_card');
+                // if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('draw_card');
             }
             
                 
@@ -13840,7 +13835,7 @@
             // 2. APPLY TO THE PLAYER
             this.applySpell(spellId, magnitude); 
             
-            if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('arcane');
+            if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('arcane');
         }
         // ==========================================
         // NEW: AOE WALL-SLAM & JUDGEMENT
@@ -13857,7 +13852,7 @@
                 }
             }
 
-            if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX(isJudgement ? 'horn' : 'wind');
+            if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX(isJudgement ? 'horn' : 'wind');
 
             // 2. Scan for Enemies in Range
             this.npcs.forEach(npc => {
@@ -13952,7 +13947,7 @@
         // Inside castSpell...
         else if (spellData.type === 'item_booster') {
             this.openBoosterPack(spellId); // Pass the ID instead of the amount!
-            if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('chime'); 
+            if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('chime'); 
         }
         // --- PROJECTILES & RANGED DEBUFFS ---
         else if (spellData.type === 'projectile' || spellData.type === 'debuff') {
@@ -13974,9 +13969,9 @@
             this.playerAttackTimer = 15;
             if (spellData.type === 'projectile') {
                 // You might want to map specific sounds in the registry later!
-                MusicEngine.playSFX('fire2'); 
+                MusicEngine.play3DSFX('fire2'); 
             }else{
-              MusicEngine.playSFX('arcane3'); 
+              MusicEngine.play3DSFX('arcane3'); 
             }
         }
         // ==========================================
@@ -13991,7 +13986,7 @@
             else if (this.dir === 3) fX = -1; // West
 
             if (typeof MusicEngine !== 'undefined') {
-                MusicEngine.playSFX(spellData.name === 'Shield Bash' ? 'block' : 'slash');
+                MusicEngine.play3DSFX(spellData.name === 'Shield Bash' ? 'block' : 'slash');
             }
 
             if (typeof globalParticles !== 'undefined') {
@@ -14088,7 +14083,7 @@
 
             // Optional: If you missed entirely, play a "whiff" sound
             if (!hitSomething && typeof MusicEngine !== 'undefined') {
-                // MusicEngine.playSFX('miss');
+                // MusicEngine.play3DSFX('miss');
             }
         }
         // ==========================================
@@ -14115,7 +14110,7 @@
                 });
 
                 if (!bestTarget) {
-                    if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('cancel');
+                    if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('cancel');
                     return; // No target in range, whiff!
                 }
 
@@ -14144,7 +14139,7 @@
                 // 3. Collision Check (Are they against a wall?)
                 if (this.isWall(Math.floor(behindX), Math.floor(behindY))) {
                     if (typeof MessageBox !== 'undefined') MessageBox.show(0.5, 8, 1, 9, 2, "No room to step behind them!", 'dialogue', 1, 0);
-                    if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('cancel');
+                    if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('cancel');
                     return; 
                 }
 
@@ -14154,7 +14149,7 @@
                 this.isAggroDashing = true; 
                 this.dir = targetDir; 
 
-                if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('wind');
+                if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('wind');
 
                 // 5. DELAY THE AGI CLASH UNTIL THE DASH IS COMPLETE
                 this.dashCallback = () => {
@@ -14166,11 +14161,9 @@
                     let targetAgi = targetCard.rollStat(3) + targetAgiMod;
 
                     if (playerAgi > targetAgi) {
-                        if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('slash');
-                        this.killNPC(bestTarget, false, 'backstab');
+                        MusicEngine.play3DSFX('slash', bestTarget.x, bestTarget.y, dungeon.x, dungeon.y, dungeon.dir);                        this.killNPC(bestTarget, false, 'backstab');
                     } else {
-                        if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('block');
-                        bestTarget.dirX *= -1; 
+                        MusicEngine.play3DSFX('block', bestTarget.x, bestTarget.y, dungeon.x, dungeon.y, dungeon.dir);                        bestTarget.dirX *= -1; 
                         bestTarget.dirY *= -1;
                         //bestTarget.triggerInteraction(this); 
                     }
@@ -14204,7 +14197,7 @@
                 }
             });
             
-            if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('heal'); // Or a potion/chime sound
+            if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('heal'); // Or a potion/chime sound
         }
         // ==========================================
         // NEW: UTILITY ITEMS (Teleportation)
@@ -14213,11 +14206,11 @@
             if (this.mapID === -1) {
                 // If they use it while ALREADY in the hub, maybe it acts as a "Return" 
                 // spell to send them back to the dungeon they were just in!
-                if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('warp');
+                if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('warp');
                 this.loadMap(this.prevMap); 
             } else {
                 // Zap them to the Portal Hub
-                if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('warp');
+                if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('warp');
                 this.loadMap(-1); 
               
             }
@@ -14276,7 +14269,7 @@
             // --- DJINN LAMP INTERCEPT ---
             // If they use the Djinn Lamp, skip the RNG and open the Wish menu!
             if (spellId === 44) {
-                if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('buff2');
+                if(typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('buff2');
                 startGame = 'djinn_lamp'; // Triggers your custom UI render loop
                 // We will need a variable to track what page of the wish grid they are on
                 window.djinnPage = 0; 
@@ -14733,7 +14726,7 @@
                 console.log(`Level Up! You are now Level ${this.level}. Max Deck Power increased to ${this.power}.`);
                 this.dSense = this.dSense + 3;
 
-            // if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('teleport');MusicEngine.play(8);
+            if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('buff2');
                 // Optional: You could trigger a MessageBox here to tell the player!
             }
         //2. REMOVE NPCS
@@ -15205,7 +15198,7 @@
                   npcId: uniqueIndex 
               });
               
-              if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('heal'); 
+              if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('heal'); 
               if (typeof this.saveGame === 'function') this.requestSave();
           } else {
               // If restoring a map, update the old activeSummon with the newly spawned NPC's ID
@@ -15710,7 +15703,7 @@
 
                         }
                     } else {
-                        if (this.mc == 1) { MusicEngine.playSFX('death'); MusicEngine.stop(); MusicEngine.play(21); this.mc = 0; }
+                        if (this.mc == 1) { MusicEngine.play3DSFX('death'); MusicEngine.stop(); MusicEngine.play(21); this.mc = 0; }
                         MessageBox.show(.5, 6, 1.5, 2, 1, 'Fool is slain!', 'jrpg', 1, 0);
                         drawShape('rec', 0, 0, 1, 3.875, 6.45, 2.25, 3.55, 0, 0, 0, 0, `rgba(0,0,0,${(.3 + this.at * .01)})`, 1);
                         
@@ -15987,7 +15980,7 @@
                     drawText(7.7, 5.6, 1, 1, '' + 9, 'white', 1);
                     Player[1].flip();
                     
-                    if (this.mc == 1) { MusicEngine.stop(); MusicEngine.playSFX('death'); MusicEngine.play(21); this.mc = 0; }
+                    if (this.mc == 1) { MusicEngine.stop(); MusicEngine.play3DSFX('death'); MusicEngine.play(21); this.mc = 0; }
                     MessageBox.show(.5, 6, 1.5, 2, 1, 'Fool succumbs to the spell!', 'jrpg', 1, 0);
                     drawShape('rec', 0, 0, 1, 3.875, 6.45, 2.25, 3.55, 0, 0, 0, 0, `rgba(0,0,0,${(.3 + (this.at - 100) * .2)})`, 1);
                     }
@@ -16032,7 +16025,7 @@
                 
                 if (typeof MusicEngine !== 'undefined') {
                     MusicEngine.stop();
-                    MusicEngine.playSFX('heal');
+                    MusicEngine.play3DSFX('heal');
                     MusicEngine.play(4);
                 }
                 this.dSense = this.dSense + 1;
@@ -16051,7 +16044,7 @@
             } 
             }
         advanceTutorial(clickX, clickY) {
-            if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('click');
+            if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('click');
 
             // Helper variables for checking button clicks (based on your old logic)
             let clickedLeftArrow = (clickX > (tL/10)*0 && clickX < (tL/10)*1 && clickY > (tH/10)*7.5 && clickY < (tH/10)*9);
@@ -16070,7 +16063,7 @@
                     if (clickX >= (tL/10)*mX && clickX <= (tL/10)*(mX+cL) && clickY > (tH/10)*cY && clickY < (tH/10)*(cY+cH)) {
                         this.option = 2; 
                         this.dCounter = 0;
-                        if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('heal');
+                        if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('heal');
                     }
                     break; 
                 
@@ -16083,7 +16076,7 @@
                     if (clickedAttackButton) {
                         if (typeof MusicEngine !== 'undefined') {
                             MusicEngine.stop();
-                            MusicEngine.playSFX('slash');
+                            MusicEngine.play3DSFX('slash');
                             MusicEngine.play(15);
                         }
                         this.option = 4;
@@ -16123,7 +16116,7 @@
                     if (this.dCounter === 1) {
                         if (clickedLeftArrow || clickedRightArrow) {
                             this.dCounter = 2;
-                            if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('heal');
+                            if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('heal');
                         }
                         return;
                     }
@@ -16134,7 +16127,7 @@
                     if (this.dCounter === 3) {
                         if (clickedCard) {
                             this.dCounter = 4;
-                            if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('heal');
+                            if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('heal');
                         }
                         return;
                     }
@@ -16143,7 +16136,7 @@
                             this.dCounter = 6;
                             if (typeof MusicEngine !== 'undefined') {
                                 MusicEngine.stop();
-                                MusicEngine.playSFX('slash'); 
+                                MusicEngine.play3DSFX('slash'); 
                                 MusicEngine.play(25);
                             }
                         }
@@ -16596,7 +16589,7 @@
                         else if (stat[1] === 12) stat[1] = 20;
                         else if (stat[1] === 20) { stat[1] = 4; stat[0] += 1; }
                     } else { stat[2] += 1; }
-                    if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('buff2'); 
+                    if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('buff2'); 
                     if (typeof this.shuffleSpells === 'function') this.shuffleSpells();
                     break;
 
@@ -17430,7 +17423,7 @@
                                 }
                             }
                         });
-                        if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('horn');
+                        if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('horn');
                         break;
 
                     case 'rout_foes':
@@ -17479,7 +17472,7 @@
                         this.activeWave.current = 0;
                         this.activeWave.timer = 2.0; 
                         this.activeWave.state = 'spawning';
-                        if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('horn');
+                        if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('horn');
                         break;
                     case 'start_hunted':
                     this.memory['hunted_active'] = true;
@@ -17630,7 +17623,7 @@
                         };
                         startGame = 'dialogue';
                         this.dCounter = 0;
-                        if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('chime');
+                        if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('chime');
                         break;
 
                     case 'set_dialogue':
@@ -18379,7 +18372,7 @@
                                 if (playerRank === 'A' && aProgress === 2) {
                                     let bossId = pIndex + 1000;
                                     let finaleWinActions = [['update_quest_state', { key: 'guild_quest', state: 2 }], ['set_memory', { key: 'guild_rank', value: 'S' }], ['set_memory', { key: 'a_rank_progress', value: 3 }], ['give_card', { card: 71, text: "You earned your S-Rank License!" }], ['play_song', 20], ['play_sfx', 'chime'], ['spawn_ephemeral_npc', { index: pIndex+1001, x: this.x, y: this.y, sprite: 45, state: 'stationary', role: 'dialogue', alignment: 'friendly', color: '#ffd700', customDialogue: ["It's over. The Cult is destroyed.", "You avenged our best teams and saved the continent. You are officially an S-Rank Adventurer.", "Return to me at the Guild. You are a legend now."], endActions: [['close_dialogue', null]]}], ['trigger_dialogue', pIndex+1001]];
-                                    let spawnPortal = ['spawn_ephemeral_npc', { index: bossId, x: 5.5, y: 5.5, sprite: 91, state: 'stationary', role: 'dialogue', alignment: 'friendly', color: '#ff0000', deck: [91, 88, 88, 93, 26], isBoss: true, customDialogue: ["*The air is suffocating. The Mastermind waits inside.*"], options: ['Breach the Sanctum', 'Not Yet'], yesActions: [['play_sfx', 'horn'], ['start_tactics', { id: bossId, isFinale: true, stakes: 'real' }], ['close_dialogue', null]], noActions: [['close_dialogue', null]] }];
+                                    let spawnPortal = ['spawn_ephemeral_npc', { index: bossId, x: 5.5, y: 5.5, sprite: 98, state: 'stationary', role: 'dialogue', alignment: 'friendly', color: '#ff0000', deck: [106, 88, 88, 93, 26], isBoss: true, customDialogue: ["*The air is suffocating. The Mastermind waits inside.*"], options: ['Breach the Sanctum', 'Not Yet'], yesActions: [['play_sfx', 'horn'], ['start_tactics', { id: bossId, isFinale: true, stakes: 'real' }], ['close_dialogue', null]], noActions: [['close_dialogue', null]] }];
                                     dialogueData = {
                                         text: ["Come in. Close the door.", "We found it. The Cult's main stronghold. I've already deployed the S-Rank teams, but the energy readings are catastrophic.", "I need you to reinforce them. If you pull this off, the S-Rank license is yours."],
                                         options: ['Join the Assault', 'Wait'],
@@ -18434,7 +18427,7 @@
                         if (typeof MusicEngine !== 'undefined') { MusicEngine.stop(); MusicEngine.play(payload); }
                         break;
                     case 'play_sfx':
-                        if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX(payload);
+                        if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX(payload);
                         break;
                     case 'spectate':
                     if (typeof socket !== 'undefined') socket.emit('suncat_spectate', payload);
@@ -19131,7 +19124,7 @@
                     this.executeActions([['give_card', cardID]]);
                 });
                 
-                if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('chime');
+                if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('chime');
                 return; // Stop here so it doesn't drop a physical map NPC
             }
             
@@ -19152,7 +19145,7 @@
             droppedCard.lifespan = Infinity; 
             this.npcs.push(droppedCard);
             
-            if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('chime');
+            if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('chime');
         }
     }
   class Projectile {
@@ -19369,7 +19362,7 @@
                         if (atkRoll >= toughness) {
                             exploreRef.maze[mapY][mapX] = 0; // Tile Destroyed!
                             if (typeof socket !== 'undefined') socket.emit('tile_destroyed', { mapID: exploreRef.mapID, x: mapX, y: mapY });
-                            if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('break'); // Optional sound
+                            MusicEngine.play3DSFX('earth', this.x, this.y, exploreRef.x, exploreRef.y, exploreRef.dir);
                         }
                     }
                     this.triggerExplosion();
@@ -19450,7 +19443,7 @@
                         if (spellData.type === 'debuff') {
                             npc.damageFlashTimer = 3;
                             npc.applySpell(this.spellId, magnitude);
-                            if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('debuff_sound');
+                            MusicEngine.play3DSFX('debuff', this.x, this.y, exploreRef.x, exploreRef.y, exploreRef.dir);
                         } else {
                             // --- NEW: CHECK FOR ARMOR AGAINST SPELLS ---
                             let ward = npc.activeBuffs ? npc.activeBuffs.find(b => b.type === 'ward') : null;
@@ -19458,12 +19451,14 @@
                             if (ward) {
                                 ward.hits--; // Armor absorbs the Fireball!
                                 npc.damageFlashTimer = 3;
-                                if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('cancel'); 
+                                MusicEngine.play3DSFX('cancel', this.x, this.y, exploreRef.x, exploreRef.y, exploreRef.dir);
                             } else {
                                 // No armor, they burn to ash!
                                 npc.damageFlashTimer = 3;
                                 exploreRef.killNPC(npc, false, 'projectile_spell');
-                                if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('death');
+                                if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('death');
+                                MusicEngine.play3DSFX('death', this.x, this.y, exploreRef.x, exploreRef.y, exploreRef.dir);
+
                             }
                         }
                         
@@ -19471,9 +19466,9 @@
                         return;
                     } else {
                         // SPELL RESISTED!
-                        if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('cancel');
-                        npc.damageFlashTimer = 3
-                        let knockPower = spellData.knockback !== undefined ? spellData.knockback : 0.5;
+                            MusicEngine.play3DSFX('cancel', this.x, this.y, exploreRef.x, exploreRef.y, exploreRef.dir);
+                            npc.damageFlashTimer = 3
+                            let knockPower = spellData.knockback !== undefined ? spellData.knockback : 0.5;
                         
                         // Push direction is based on the projectile's velocity
                         let pushX = this.vx / this.baseSpeed;
@@ -19598,7 +19593,7 @@
           this.vy = 0;
         
           this.type = -37; 
-          //if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('fire2');
+          //if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('fire2');
       }
     }
   class WeatherSystem {
@@ -21042,7 +21037,7 @@
                 
                 case 'spell_slot':
                     if (!this.assignedCard) {
-                        if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('cancel');
+                        if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('cancel');
                         return; 
                     }
                     
@@ -21063,7 +21058,7 @@
                             
                             Dungeon.activeSummons = Dungeon.activeSummons.filter(s => s.uid !== cardObj.uid);
                             
-                            if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('cancel'); 
+                            if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('cancel'); 
                             setTimeout(() => {
                                 if (typeof Dungeon.requestSave === 'function') Dungeon.requestSave();
                             }, 10);
@@ -21078,9 +21073,9 @@
                         Dungeon.castSpell(cardObj.index);
                         cardWasUsed = true;
                         if (cardObj.index === 26){
-                            if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('fire2');
+                            if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('fire2');
                         } else { 
-                            if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('arcane');
+                            if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('arcane');
                         }
                         
                         if (typeof startGame !== 'undefined' && startGame === 'tutorial' && Dungeon.option === 3) {
@@ -21127,7 +21122,7 @@
                     console.log("Opening Deck View via Button...");
                     preGame = 'explore'
                     startGame = 'journal';
-                    MusicEngine.playSFX('heal'); 
+                    MusicEngine.play3DSFX('heal'); 
                     if (typeof socket !== 'undefined') socket.emit('request_stats_sync');
                     break;
                     
@@ -21201,7 +21196,7 @@
                             Player[0].deck[0].stat[3][2] = 100;
                         }
                         MusicEngine.stop();
-                        MusicEngine.playSFX('heal');
+                        MusicEngine.play3DSFX('heal');
                         MusicEngine.play(4);
                         btnYes.visible = false;
                         btnNo.visible = false;
@@ -21318,7 +21313,7 @@
                         Dungeon.currentSpeaker = null;
                         Dungeon.dCounter = 0;
                         
-                        if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('slash');
+                        if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('slash');
                         
                         enemyToFight.triggerInteraction(Dungeon);
                         btnYes.visible = false;
@@ -21727,7 +21722,7 @@
                                             );
                                         }
                                     }
-                                    // (MusicEngine.playSFX('chime') is already handled inside openTacticsBooster)
+                                    // (MusicEngine.play3DSFX('chime') is already handled inside openTacticsBooster)
                                     
                                 } else {
                                     // 2. A Foe stepped on it! The loot is stolen/destroyed.
@@ -21741,7 +21736,7 @@
                                             );
                                         }
                                     }
-                                    if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('debuff_sound'); // Plays a negative sound so you know they took it!
+                                    if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('debuff_sound'); // Plays a negative sound so you know they took it!
                                 }
                             }
                             // -------------------------
@@ -21773,17 +21768,17 @@
                             let ward = this.animDefender.activeBuffs ? this.animDefender.activeBuffs.find(b => b.type === 'ward') : null;
                             if (ward) {
                                 ward.hits--;
-                                if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('cancel');
+                                if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('cancel');
                             } else {
                                 this.animDefender.isDead = true;
                                 this.animDefender.visible = false;
                                 this.dropTacticsLoot(this.animDefender);
                                 this.animDefender.x = -999;
                                 
-                                if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('death');
+                                if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('death');
                             }
                         } else {
-                            if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('block');
+                            if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('block');
                             
                             // --- COUNTER ATTACK TRIGGER ---
                             if (!this.isCounterAttack && !this.animDefender.isDead && !this.animAttacker.isDead) {
@@ -21836,7 +21831,7 @@
                                     );
                                 }
                             }
-                            if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('block'); // or 'shatter'
+                            if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('block'); // or 'shatter'
                             
                             // 3. Clean up the projectile and end the turn
                             this.activeProjectile = null;
@@ -21901,7 +21896,7 @@
                                     }
                                     
                                     this.applyTacticalSpell(target, p.spellId, magnitude);
-                                    if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('heal');
+                                    if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('heal');
                                     
                                 } else {
                                     // 2. IT IS HARMFUL! (Attacks & Debuffs)
@@ -21923,23 +21918,23 @@
                                     if (atkRoll > defRoll) {
                                         if (sData.type === 'debuff') {
                                             this.applyTacticalSpell(target, p.spellId, atkRoll - defRoll);
-                                            if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('debuff_sound');
+                                            if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('debuff_sound');
                                         } else {
                                             let ward = target.activeBuffs ? target.activeBuffs.find(b => b.type === 'ward') : null;
                                             if (ward) {
                                                 ward.hits--;
-                                                if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('cancel');
+                                                if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('cancel');
                                             } else {
                                                 target.isDead = true;
                                                 target.visible = false;
                                                 this.dropTacticsLoot(target);
                                                 
                                                 target.x = -999;
-                                                if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('death');
+                                                if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('death');
                                             }
                                         }
                                     } else {
-                                        if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('cancel');
+                                        if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('cancel');
                                     }
                                 }
                             }
@@ -22039,22 +22034,22 @@
                             let defRoll = this.rollTacticalStat(target, defStat);
 
                             if (atkRoll > defRoll) {
-                                if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('slash');
+                                if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('slash');
                                 
                                 let ward = target.activeBuffs ? target.activeBuffs.find(b => b.type === 'ward') : null;
                                 if (ward) {
                                     ward.hits--;
-                                    if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('cancel');
+                                    if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('cancel');
                                 } else {
                                     target.isDead = true;
                                     target.visible = false;
                                     this.dropTacticsLoot(target);                                
                                     target.x = -999;
                                     
-                                    if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('death');
+                                    if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('death');
                                 }
                             } else {
-                                if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('block');
+                                if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('block');
                                 // Target parried! (Optional: You could trigger a counter-attack here if desired)
                             }
 
@@ -22659,7 +22654,7 @@
                 if (str > defRoll) this.animResult = 'killed';
                 else this.animResult = 'resisted';
                 
-                if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('wind');
+                if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('wind');
         }  
     //Turn Order
         getUnitAt(x, y) {
@@ -22990,7 +22985,7 @@
             }
             
             this.state = 'ANIMATING_PROJECTILE';
-            if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('arcane3');
+            if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('arcane3');
         }
         attemptMove(movingUnit, targetX, targetY) {
             // Tap into the existing global pathfinding used by your NPCs
@@ -23010,7 +23005,7 @@
                 movingUnit.targetY = nextWaypoint.y;
                 
                 this.state = 'ANIMATING_MOVE';
-                if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('wind');
+                if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('wind');
                 return true; 
             }
             
@@ -23153,7 +23148,7 @@
             // --- NEW: ADVANCE IN-BATTLE DIALOGUE ---
             if (this.state === 'CINEMATIC') {
                 this.cinematicQueue.shift();
-                if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('click');
+                if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('click');
                 
                 if (this.cinematicQueue.length === 0) {
                     this.state = 'INIT'; // Resume game!
@@ -23173,10 +23168,10 @@
                 if (isValidMove) {
                     if (this.attemptMove(activeUnit, mapX + 0.5, mapY + 0.5)) {
                         activeUnit.hasMoved = true;
-                        if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('step');
+                        if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('step');
                     }
                 } else {
-                    if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('cancel');
+                    if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('cancel');
                 }
                 return;
             }
@@ -23190,7 +23185,7 @@
                         this.startAttackAnimation(activeUnit, target);
                     }
                 } else {
-                    if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('cancel');
+                    if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('cancel');
                 }
                 return;
             }
@@ -23216,14 +23211,14 @@
                 if (!sData) {
                     // Safe fallback: Reset to menu and bail out
                     this.state = 'PLAYER_TURN';
-                    if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('cancel');
+                    if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('cancel');
                     return;
                 }
 
                 // A. Did they click a valid highlighted tile?
                 let clickedValidTile = validArray && validArray.some(m => m.x === mapX && m.y === mapY);
                 if (!clickedValidTile) {
-                    if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('cancel');
+                    if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('cancel');
                     return;
                 }
 
@@ -23291,7 +23286,7 @@
                                 );
                             }
                         }
-                        if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('heal');
+                        if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('heal');
                         
                         activeUnit.hasActed = true;
                         if (activeUnit.hasMoved && activeUnit.hasActed) {
@@ -23306,7 +23301,7 @@
                     }
                 } else {
                     // Illegal Target! Buzzer.
-                    if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('cancel');
+                    if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('cancel');
                 }
             }
         }
@@ -23486,7 +23481,7 @@
                         }
                     }
                 });
-                if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('heal');
+                if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('heal');
             }
             
             // ==========================================
@@ -23537,9 +23532,9 @@
                             }
                         }
                     }
-                    if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('heal');
+                    if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('heal');
                 } else {
-                    if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('cancel');
+                    if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('cancel');
                 }
             }
             
@@ -23554,7 +23549,7 @@
                     let casterCard = new Card(Math.floor(caster.type), 0);
                     for(let s = 0; s < 4; s++) casterTotalStats += casterCard.rollStat(s) + (caster.bonusStats ? caster.bonusStats[s] || 0 : 0);
                 }
-                if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX(isJudgement ? 'horn' : 'wind');
+                if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX(isJudgement ? 'horn' : 'wind');
 
                 this.units.forEach(target => {
                     if (target.isDead || target.alignment === caster.alignment || target.role === 'dropped_card') return;
@@ -23573,7 +23568,7 @@
 
                             if (casterTotalStats > targetTotalStats) {
                                 target.isDead = true; target.visible = false; target.x = -999;
-                                if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('death');
+                                if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('death');
                             } else {
                                 resisted = true;
                             }
@@ -23616,7 +23611,7 @@
                 
                 let fX = dx / distToTarget;
                 let fY = dy / distToTarget;
-                if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('slash');
+                if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('slash');
 
                 this.units.forEach(target => {
                     if (target.isDead || target.alignment === caster.alignment || target.role === 'dropped_card') return;
@@ -23635,7 +23630,7 @@
 
                             if (atkRoll > defRoll) {
                                 target.isDead = true; this.dropTacticsLoot(target);target.visible = false; target.x = -999;
-                                if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('death');
+                                if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('death');
                             } else {
                                 // Tactical Knockback
                                 let pushX = Math.sign(tDx); let pushY = Math.sign(tDy);
@@ -23645,7 +23640,7 @@
                                 if (!Dungeon.isWall(Math.floor(target.x), Math.floor(target.y + pushY)) && !this.isTileOccupied(Math.floor(target.x), Math.floor(target.y + pushY))) {
                                     target.y += pushY;
                                 }
-                                if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('block');
+                                if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('block');
                             }
                         }
                     }
@@ -23660,7 +23655,7 @@
                     this.state = 'GAME_OVER';
                     this.playerWon = true; 
                     this.endTimer = 0;
-                    if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('warp');
+                    if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('warp');
                     return; 
                 } else if (sData.type === 'item_booster') {
                     
@@ -23710,7 +23705,7 @@
                     if (!foundFallback) {
                         // Enemy is perfectly surrounded by walls/units! Cannot dash to them.
                         this.state = 'PLAYER_TURN';
-                        if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('cancel');
+                        if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('cancel');
                         return;
                     }
                 }
@@ -23791,7 +23786,7 @@
             }
 
             this.state = 'ANIMATING_DASH'; 
-            if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('wind');
+            if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('wind');
         }
     //Loot
         dropTacticsLoot(deadUnit) {
@@ -23825,7 +23820,7 @@
 
             // --- DJINN LAMP INTERCEPT ---
             if (spellId === 44) {
-                if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('buff2');
+                if(typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('buff2');
                 if (typeof startGame !== 'undefined') startGame = 'djinn_lamp'; 
                 window.djinnPage = 0; 
                 if (typeof preGame !== 'undefined') preGame = 'tactics'; // Ensure it comes back to battle!
@@ -23880,7 +23875,7 @@
                 };
             }
 
-            if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('chime');
+            if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('chime');
             
             // 5. Shift state to Dialogue! (It will return to Tactics automatically when closed)
             if (typeof startGame !== 'undefined') startGame = 'dialogue'; 
@@ -24010,7 +24005,7 @@
                     for(let i=0; i<15; i++) globalParticles.push(new Particle(a.x, a.y, '#aa00ff', 'smoke'));
                 });
             }
-            if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('death');
+            if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('death');
             
             // Remove their bodies from the board
             deadAllies.forEach(a => { a.isDead = true; a.visible = false; a.x = -999; });
@@ -25460,7 +25455,7 @@
                         }
                         //Cleanup and go to opt 8
                         if (this.at > 99){
-                          MusicEngine.playSFX('death');
+                          MusicEngine.play3DSFX('death');
                           if(attacker == 0){
                             Player[0].option = 8;
                             Player[1].option = 8.1
@@ -31944,7 +31939,7 @@
                                 if (!isNaN(targetID9)) {
                                     chatLog.push(`[SYSTEM]: A phantom ally appears...`);
                                     if (chatLog.length > 100) chatLog.shift();
-                                    MusicEngine.playSFX('warp');
+                                    MusicEngine.play3DSFX('warp');
                                     Dungeon.summonAlly(targetID9);
                                 } else {
                                     Dungeon.summonAlly(23.1);
@@ -32216,7 +32211,7 @@
                         if (isAdvanceKey) {
                             // Play sound on reward transition
                             if (Dungeon.dCounter === maxLines - 1 && Dungeon.currentSpeaker.rewardCard !== undefined && Dungeon.currentSpeaker.rewardCard !== null) {
-                                if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('heal');
+                                if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('heal');
                             }
 
                             let clickLimit = (Dungeon.currentSpeaker.rewardCard !== undefined && Dungeon.currentSpeaker.rewardCard !== null) 
@@ -32297,7 +32292,7 @@
                     // --- NEW: DISMISS EXAMINE SCREEN ---
                     if (window.TacticsEngine.state === 'EXAMINE_UNIT') {
                         window.TacticsEngine.state = 'PLAYER_TURN';
-                        if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('cancel');
+                        if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('cancel');
                         return;
                     }
                 // 2. PLAYER ACTION MENU
@@ -32330,13 +32325,13 @@
                         if (slot === 0 && !activeUnit.hasMoved) {
                             window.TacticsEngine.validMoves = window.TacticsEngine.getValidMoves(activeUnit.x, activeUnit.y, activeUnit.movePoints); 
                             window.TacticsEngine.state = 'SELECT_MOVE';
-                            if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('click');
+                            if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('click');
                         }
                         // 2. Attack
                         else if (slot === 1 && !activeUnit.hasActed) {
                             window.TacticsEngine.validAttacks = window.TacticsEngine.getValidAttacks(activeUnit.x, activeUnit.y);
                             window.TacticsEngine.state = 'SELECT_ATTACK';
-                            if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('click');
+                            if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('click');
                         }
                         // 3. Item
                         else if (slot === 2 && !activeUnit.hasActed && activeUnit.tacticsHand.item) {
@@ -32344,7 +32339,7 @@
                             window.TacticsEngine.validItems = window.TacticsEngine.getValidSupportTargets(activeUnit.x, activeUnit.y, 1); 
                             window.TacticsEngine.state = 'PREVIEW_CARD';
                             window.TacticsEngine.previewType = 'item';
-                            if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('click');
+                            if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('click');
                         }
                         // 4. Spell
                             else if (slot === 3 && !activeUnit.hasActed && activeUnit.tacticsHand.spell) {
@@ -32353,7 +32348,7 @@
                                 // --- NEW: Failsafe check to prevent the crash! ---
                                 if (!sData) {
                                     console.error("Missing Spell Data! ID: " + activeUnit.tacticsHand.spell);
-                                    if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('cancel');
+                                    if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('cancel');
                                     return; 
                                 }
                                 // -------------------------------------------------
@@ -32365,14 +32360,14 @@
                                 }
                                 window.TacticsEngine.state = 'PREVIEW_CARD';
                                 window.TacticsEngine.previewType = 'spell';
-                                if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('click');
+                                if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('click');
                             }
                         // 5. Call
                         else if (slot === 4 && !activeUnit.hasActed && activeUnit.tacticsHand.call) {
                             window.TacticsEngine.validCalls = window.TacticsEngine.getValidSummonTiles(activeUnit.x, activeUnit.y, 2); 
                             window.TacticsEngine.state = 'PREVIEW_CARD';
                             window.TacticsEngine.previewType = 'call';
-                            if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('click');
+                            if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('click');
                         }
                         // 6. Wait (Accounts for slot 5, or slot 6 if they clicked the forgiving bottom padding)
                         else if (slot === 5 || slot === 6) {
@@ -32399,7 +32394,7 @@
 
                             window.TacticsEngine.turnQueue.shift(); 
                             window.TacticsEngine.state = 'INIT'; 
-                            if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('cancel');
+                            if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('cancel');
                         }
                         
                         // Because the Y-bounds are checked above, this safely only fires if they clicked INSIDE the menu!
@@ -32409,7 +32404,7 @@
                         if (clickedUnit) {
                             window.TacticsEngine.examinedUnit = clickedUnit;
                             window.TacticsEngine.state = 'EXAMINE_UNIT';
-                            if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('click');
+                            if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('click');
                             return;
                         }
                         return;
@@ -32426,7 +32421,7 @@
                         // Did they click the CANCEL button in the top right?
                         if (gridPos.x >= 8.5 && gridPos.x <= 10 && gridPos.y >= 0.5 && gridPos.y <= 1.5) {
                             window.TacticsEngine.state = 'PLAYER_TURN';
-                            if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('cancel');
+                            if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('cancel');
                             return;
                         }
 
@@ -32438,7 +32433,7 @@
                 else if (window.TacticsEngine.state === 'GAME_OVER') {
                     if (window.TacticsEngine.canDismissEndScreen) {
                         window.TacticsEngine.canDismissEndScreen = false; // Prevent double-clicks!
-                        if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('click');
+                        if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('click');
                         
                         // Extract Cached Config Data
                         let config = window.TacticsEngine.config || {};
@@ -32466,7 +32461,7 @@
                                             if (!hasPlayerWon) { // <--- Updated
                                                 window.isDead = true;
                                                 startGame = 'gameover'; // Real death triggers Game Over Screen
-                                                if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('cancel'); 
+                                                if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('cancel'); 
                                             } else {
                                                 console.log("Player knocked out, but allies clutched the win!");
                                             }
@@ -32577,7 +32572,7 @@
                 if ((startGame === 'explore' || startGame === 'dialogue') && Dungeon.isTestingMap && gridPos.x >= 7.5 && gridPos.y <= 1.0) {
                         Dungeon.isTestingMap = false;
                         startGame = 'mapmaker';
-                        MusicEngine?.playSFX('cancel');
+                        MusicEngine?.play3DSFX('cancel');
                         return;
                     }
 
@@ -32601,11 +32596,11 @@
                             if (gridPos.y >= yRow - 0.2 && gridPos.y <= yRow + 0.6) {
                                 if (gridPos.x >= 4.0 && gridPos.x <= 5.5) { 
                                     if (isBrush) Dungeon.genMenu[key]--; else Dungeon.genMenu[key] = (Dungeon.genMenu[key] - 1 + maxVal) % maxVal; 
-                                    MusicEngine?.playSFX('click'); 
+                                    MusicEngine?.play3DSFX('click'); 
                                 }
                                 if (gridPos.x >= 7.0 && gridPos.x <= 8.5) { 
                                     if (isBrush) Dungeon.genMenu[key]++; else Dungeon.genMenu[key] = (Dungeon.genMenu[key] + 1) % maxVal; 
-                                    MusicEngine?.playSFX('click'); 
+                                    MusicEngine?.play3DSFX('click'); 
                                 }
                             }
                         };
@@ -32619,31 +32614,31 @@
                             if (Dungeon.genMenu.algos[Dungeon.genMenu.algoIdx] === 'MIX') {
                                 // Row 1
                                 if (gridPos.y >= 6.5 && gridPos.y <= 6.85) {
-                                    if (gridPos.x >= 1.5 && gridPos.x <= 3.6) { Dungeon.genMenu.mixToggles[0] = !Dungeon.genMenu.mixToggles[0]; MusicEngine?.playSFX('click'); }
-                                    if (gridPos.x >= 3.8 && gridPos.x <= 5.9) { Dungeon.genMenu.mixToggles[1] = !Dungeon.genMenu.mixToggles[1]; MusicEngine?.playSFX('click'); }
-                                    if (gridPos.x >= 6.1 && gridPos.x <= 8.2) { Dungeon.genMenu.mixToggles[2] = !Dungeon.genMenu.mixToggles[2]; MusicEngine?.playSFX('click'); }
+                                    if (gridPos.x >= 1.5 && gridPos.x <= 3.6) { Dungeon.genMenu.mixToggles[0] = !Dungeon.genMenu.mixToggles[0]; MusicEngine?.play3DSFX('click'); }
+                                    if (gridPos.x >= 3.8 && gridPos.x <= 5.9) { Dungeon.genMenu.mixToggles[1] = !Dungeon.genMenu.mixToggles[1]; MusicEngine?.play3DSFX('click'); }
+                                    if (gridPos.x >= 6.1 && gridPos.x <= 8.2) { Dungeon.genMenu.mixToggles[2] = !Dungeon.genMenu.mixToggles[2]; MusicEngine?.play3DSFX('click'); }
                                 }
                                 // Row 2
                                 if (gridPos.y >= 7.0 && gridPos.y <= 7.35) {
-                                    if (gridPos.x >= 1.5 && gridPos.x <= 3.6) { Dungeon.genMenu.mixToggles[3] = !Dungeon.genMenu.mixToggles[3]; MusicEngine?.playSFX('click'); }
-                                    if (gridPos.x >= 3.8 && gridPos.x <= 5.9) { Dungeon.genMenu.mixToggles[4] = !Dungeon.genMenu.mixToggles[4]; MusicEngine?.playSFX('click'); }
-                                    if (gridPos.x >= 6.1 && gridPos.x <= 8.2) { Dungeon.genMenu.mixToggles[5] = !Dungeon.genMenu.mixToggles[5]; MusicEngine?.playSFX('click'); }
+                                    if (gridPos.x >= 1.5 && gridPos.x <= 3.6) { Dungeon.genMenu.mixToggles[3] = !Dungeon.genMenu.mixToggles[3]; MusicEngine?.play3DSFX('click'); }
+                                    if (gridPos.x >= 3.8 && gridPos.x <= 5.9) { Dungeon.genMenu.mixToggles[4] = !Dungeon.genMenu.mixToggles[4]; MusicEngine?.play3DSFX('click'); }
+                                    if (gridPos.x >= 6.1 && gridPos.x <= 8.2) { Dungeon.genMenu.mixToggles[5] = !Dungeon.genMenu.mixToggles[5]; MusicEngine?.play3DSFX('click'); }
                                 }
                                 // Row 3 (Just Castle for now)
                                 if (gridPos.y >= 7.5 && gridPos.y <= 7.85) {
-                                    if (gridPos.x >= 1.5 && gridPos.x <= 3.6) { Dungeon.genMenu.mixToggles[6] = !Dungeon.genMenu.mixToggles[6]; MusicEngine?.playSFX('click'); }
+                                    if (gridPos.x >= 1.5 && gridPos.x <= 3.6) { Dungeon.genMenu.mixToggles[6] = !Dungeon.genMenu.mixToggles[6]; MusicEngine?.play3DSFX('click'); }
                                 }
                             }
 
                         // Actions
                         if (gridPos.y >= 8.0 && gridPos.y <= 8.6) {
                             if (gridPos.x >= 2.0 && gridPos.x <= 4.5) { 
-                                Dungeon.editorState = 'idle'; MusicEngine?.playSFX('cancel'); return; 
+                                Dungeon.editorState = 'idle'; MusicEngine?.play3DSFX('cancel'); return; 
                             }
                             if (gridPos.x >= 5.5 && gridPos.x <= 8.0) { 
                                 Dungeon.editorGenerateProceduralMap(); 
                                 Dungeon.editorState = 'idle'; 
-                                MusicEngine?.playSFX('warp'); 
+                                MusicEngine?.play3DSFX('warp'); 
                                 return; 
                             }
                         }
@@ -32655,7 +32650,7 @@
                 // PAGE TOGGLE BUTTON (Updated to cycle 3 pages)
                     if (gridPos.x >= 7.0 && gridPos.x <= 8.8 && gridPos.y >= 0.6 && gridPos.y <= 1.1) {
                         Dungeon.customMenu.page = (Dungeon.customMenu.page + 1) % 3;
-                        MusicEngine?.playSFX('click');
+                        MusicEngine?.play3DSFX('click');
                         return;
                     }
 
@@ -32714,7 +32709,7 @@
                         }
                         parentState.actArrays[targetArray].push([actionType, childPayload]);
                         Dungeon.customMenu = parentState;
-                        MusicEngine?.playSFX('heal');
+                        MusicEngine?.play3DSFX('heal');
                         return;
                     }
                     if (Dungeon.customMenu.editingTargetId !== null && Dungeon.customMenu.editingTargetId !== undefined) {
@@ -32756,22 +32751,22 @@
                         // Wipe edit target ID and close menu
                         Dungeon.customMenu.editingTargetId = null;
                         Dungeon.editorState = 'idle'; 
-                        MusicEngine?.playSFX('heal'); 
+                        MusicEngine?.play3DSFX('heal'); 
                         return;
                     }
 
                     // --- STANDARD EXIT ---
                     else {
                         Dungeon.editorState = 'idle'; 
-                        MusicEngine?.playSFX('heal'); 
+                        MusicEngine?.play3DSFX('heal'); 
                         return;
                     }
                 }
 
                     const handleToggle = (yRow, maxVal, key) => {
                         if (gridPos.y >= yRow - 0.2 && gridPos.y <= yRow + 0.6) {
-                            if (gridPos.x >= 4.0 && gridPos.x <= 5.5) { Dungeon.customMenu[key] = (Dungeon.customMenu[key] - 1 + maxVal) % maxVal; MusicEngine?.playSFX('click'); }
-                            if (gridPos.x >= 7.0 && gridPos.x <= 8.5) { Dungeon.customMenu[key] = (Dungeon.customMenu[key] + 1) % maxVal; MusicEngine?.playSFX('click'); }
+                            if (gridPos.x >= 4.0 && gridPos.x <= 5.5) { Dungeon.customMenu[key] = (Dungeon.customMenu[key] - 1 + maxVal) % maxVal; MusicEngine?.play3DSFX('click'); }
+                            if (gridPos.x >= 7.0 && gridPos.x <= 8.5) { Dungeon.customMenu[key] = (Dungeon.customMenu[key] + 1) % maxVal; MusicEngine?.play3DSFX('click'); }
                         }
                     };
 
@@ -32788,21 +32783,21 @@
                         
                         if (curSpec === 'PORTAL') {
                             if (gridPos.y >= 6.8 && gridPos.y <= 7.4) {
-                                if (gridPos.x >= 2.8 && gridPos.x <= 3.2) { Dungeon.customMenu.portX--; MusicEngine?.playSFX('click'); }
-                                if (gridPos.x >= 4.2 && gridPos.x <= 4.6) { Dungeon.customMenu.portX++; MusicEngine?.playSFX('click'); }
-                                if (gridPos.x >= 5.8 && gridPos.x <= 6.2) { Dungeon.customMenu.portY--; MusicEngine?.playSFX('click'); }
-                                if (gridPos.x >= 7.2 && gridPos.x <= 7.6) { Dungeon.customMenu.portY++; MusicEngine?.playSFX('click'); }
+                                if (gridPos.x >= 2.8 && gridPos.x <= 3.2) { Dungeon.customMenu.portX--; MusicEngine?.play3DSFX('click'); }
+                                if (gridPos.x >= 4.2 && gridPos.x <= 4.6) { Dungeon.customMenu.portX++; MusicEngine?.play3DSFX('click'); }
+                                if (gridPos.x >= 5.8 && gridPos.x <= 6.2) { Dungeon.customMenu.portY--; MusicEngine?.play3DSFX('click'); }
+                                if (gridPos.x >= 7.2 && gridPos.x <= 7.6) { Dungeon.customMenu.portY++; MusicEngine?.play3DSFX('click'); }
                             }
                             if (gridPos.y >= 7.6 && gridPos.y <= 8.2) {
-                                if (gridPos.x >= 5.2 && gridPos.x <= 5.6) { Dungeon.customMenu.portMap--; MusicEngine?.playSFX('click'); }
-                                if (gridPos.x >= 6.6 && gridPos.x <= 7.0) { Dungeon.customMenu.portMap++; MusicEngine?.playSFX('click'); }
+                                if (gridPos.x >= 5.2 && gridPos.x <= 5.6) { Dungeon.customMenu.portMap--; MusicEngine?.play3DSFX('click'); }
+                                if (gridPos.x >= 6.6 && gridPos.x <= 7.0) { Dungeon.customMenu.portMap++; MusicEngine?.play3DSFX('click'); }
                             }
                         } else if (curSpec !== 'QUEST GIVER' && curSpec !== 'BOUNTY MERCH') {
                             if (gridPos.y >= 7.0 && gridPos.y <= 7.6) {
-                                if (gridPos.x >= 4.0 && gridPos.x <= 4.5) { Dungeon.customMenu.deckModeCard--; if (Dungeon.customMenu.deckModeCard < -42) Dungeon.customMenu.deckModeCard = 99; MusicEngine?.playSFX('click'); }
-                                if (gridPos.x >= 5.7 && gridPos.x <= 6.2) { Dungeon.customMenu.deckModeCard++; if (Dungeon.customMenu.deckModeCard > 99) Dungeon.customMenu.deckModeCard = -42; MusicEngine?.playSFX('click'); }
-                                if (gridPos.x >= 6.5 && gridPos.x <= 7.5) { Dungeon.customMenu.deckArray.push(Dungeon.customMenu.deckModeCard); MusicEngine?.playSFX('step'); } 
-                                if (gridPos.x >= 7.7 && gridPos.x <= 8.7) { Dungeon.customMenu.deckArray = []; MusicEngine?.playSFX('cancel'); } 
+                                if (gridPos.x >= 4.0 && gridPos.x <= 4.5) { Dungeon.customMenu.deckModeCard--; if (Dungeon.customMenu.deckModeCard < -42) Dungeon.customMenu.deckModeCard = 99; MusicEngine?.play3DSFX('click'); }
+                                if (gridPos.x >= 5.7 && gridPos.x <= 6.2) { Dungeon.customMenu.deckModeCard++; if (Dungeon.customMenu.deckModeCard > 99) Dungeon.customMenu.deckModeCard = -42; MusicEngine?.play3DSFX('click'); }
+                                if (gridPos.x >= 6.5 && gridPos.x <= 7.5) { Dungeon.customMenu.deckArray.push(Dungeon.customMenu.deckModeCard); MusicEngine?.play3DSFX('step'); } 
+                                if (gridPos.x >= 7.7 && gridPos.x <= 8.7) { Dungeon.customMenu.deckArray = []; MusicEngine?.play3DSFX('cancel'); } 
                             }
                         }
                     }
@@ -32818,8 +32813,8 @@
                     if (curType === 'play_sfx') handleToggle(5.5, sfxList.length, 'sfxPayload');
                     else if (!['close_dialogue', 'rout_foes', 'disappear', 'start_battle', 'become_foe', 'notify'].includes(curType)) {
                         if (gridPos.y >= 5.3 && gridPos.y <= 6.1) {
-                            if (gridPos.x >= 4.0 && gridPos.x <= 5.5) { Dungeon.customMenu.actPayload--; MusicEngine?.playSFX('click'); }
-                            if (gridPos.x >= 7.0 && gridPos.x <= 8.5) { Dungeon.customMenu.actPayload++; MusicEngine?.playSFX('click'); }
+                            if (gridPos.x >= 4.0 && gridPos.x <= 5.5) { Dungeon.customMenu.actPayload--; MusicEngine?.play3DSFX('click'); }
+                            if (gridPos.x >= 7.0 && gridPos.x <= 8.5) { Dungeon.customMenu.actPayload++; MusicEngine?.play3DSFX('click'); }
                         }
                     }
                     if (gridPos.x >= 7.5 && gridPos.x <= 8.5 && gridPos.y >= 1.8 && gridPos.y <= 3.5) {
@@ -32836,7 +32831,7 @@
                                 // Give it a generous hitbox top and bottom
                                 if (gridPos.y >= rowY - 0.15 && gridPos.y <= rowY + 0.35) {
                                     currentScript.splice(i, 1); // Delete that specific action!
-                                    MusicEngine?.playSFX('cancel');
+                                    MusicEngine?.play3DSFX('cancel');
                                     return;
                                 }
                             }
@@ -32871,7 +32866,7 @@
                                     isNestedChild: true, // FLAG FOR THE DONE BUTTON
                                     customMenuStack: Dungeon.customMenu.customMenuStack // Preserve the stack!
                                 };
-                                MusicEngine?.playSFX('warp');
+                                MusicEngine?.play3DSFX('warp');
                                 return; // STOP HERE! Don't add to script yet.
                             }
 
@@ -32930,13 +32925,13 @@
                             
                             // Push to the actual array
                             Dungeon.customMenu.actArrays[curTgtStr].push([curType, payload]);
-                            MusicEngine?.playSFX('step');
+                            MusicEngine?.play3DSFX('step');
                         }
                         
                         // CLEAR SCRIPT BUTTON
                         if (gridPos.x >= 5.5 && gridPos.x <= 8.0) { 
                             Dungeon.customMenu.actArrays[curTgtStr] = []; 
-                            MusicEngine?.playSFX('cancel'); 
+                            MusicEngine?.play3DSFX('cancel'); 
                         }
                     }
                 }
@@ -32948,7 +32943,7 @@
                             let userText = window.prompt("Enter a line of dialogue:");
                             if (userText && userText.trim() !== "") {
                                 Dungeon.customMenu.dialogueArray.push(userText.trim());
-                                MusicEngine?.playSFX('step');
+                                MusicEngine?.play3DSFX('step');
                             }
                             return;
                         }
@@ -32956,14 +32951,14 @@
                         if (gridPos.x >= 4.0 && gridPos.x <= 6.0) {
                             if (Dungeon.customMenu.dialogueArray.length > 0) {
                                 Dungeon.customMenu.dialogueArray.pop();
-                                MusicEngine?.playSFX('cancel');
+                                MusicEngine?.play3DSFX('cancel');
                             }
                             return;
                         }
                         // CLEAR ALL
                         if (gridPos.x >= 6.5 && gridPos.x <= 8.5) {
                             Dungeon.customMenu.dialogueArray = [];
-                            MusicEngine?.playSFX('cancel');
+                            MusicEngine?.play3DSFX('cancel');
                             return;
                         }
                     }
@@ -32973,7 +32968,7 @@
                             let yesText = window.prompt("Enter text for Option 1 (e.g. Yes, Accept, Spare):", Dungeon.customMenu.optYesText || "Yes");
                             if (yesText !== null && yesText.trim() !== "") {
                                 Dungeon.customMenu.optYesText = yesText.trim();
-                                MusicEngine?.playSFX('step');
+                                MusicEngine?.play3DSFX('step');
                             } else if (yesText !== null) {
                                 Dungeon.customMenu.optYesText = null; // Clear it if they erase the text
                             }
@@ -32984,7 +32979,7 @@
                             let noText = window.prompt("Enter text for Option 2 (e.g. No, Decline, Attack):", Dungeon.customMenu.optNoText || "No");
                             if (noText !== null && noText.trim() !== "") {
                                 Dungeon.customMenu.optNoText = noText.trim();
-                                MusicEngine?.playSFX('step');
+                                MusicEngine?.play3DSFX('step');
                             } else if (noText !== null) {
                                 Dungeon.customMenu.optNoText = null; // Clear it
                             }
@@ -32999,30 +32994,30 @@
                     if (gridPos.y > 7.5) {
                         // Tabs (Now 6 Tabs!)
                         if (gridPos.y >= 7.6 && gridPos.y <= 8.3) {
-                            if (gridPos.x >= 0.5 && gridPos.x <= 1.6) { Dungeon.editorTab = 'tiles'; MusicEngine?.playSFX('click'); return; }
-                            if (gridPos.x >= 1.7 && gridPos.x <= 2.8) { Dungeon.editorTab = 'npcs'; MusicEngine?.playSFX('click'); return; }
-                            if (gridPos.x >= 2.9 && gridPos.x <= 4.0) { Dungeon.editorTab = 'edit'; MusicEngine?.playSFX('click'); return; } // NEW
-                            if (gridPos.x >= 4.1 && gridPos.x <= 5.2) { Dungeon.editorTab = 'erase'; MusicEngine?.playSFX('click'); return; }
-                            if (gridPos.x >= 5.3 && gridPos.x <= 6.4) { Dungeon.editorTab = 'env'; MusicEngine?.playSFX('click'); return; }
-                            if (gridPos.x >= 6.5 && gridPos.x <= 7.6) { Dungeon.editorTab = 'file'; MusicEngine?.playSFX('click'); return; }
+                            if (gridPos.x >= 0.5 && gridPos.x <= 1.6) { Dungeon.editorTab = 'tiles'; MusicEngine?.play3DSFX('click'); return; }
+                            if (gridPos.x >= 1.7 && gridPos.x <= 2.8) { Dungeon.editorTab = 'npcs'; MusicEngine?.play3DSFX('click'); return; }
+                            if (gridPos.x >= 2.9 && gridPos.x <= 4.0) { Dungeon.editorTab = 'edit'; MusicEngine?.play3DSFX('click'); return; } // NEW
+                            if (gridPos.x >= 4.1 && gridPos.x <= 5.2) { Dungeon.editorTab = 'erase'; MusicEngine?.play3DSFX('click'); return; }
+                            if (gridPos.x >= 5.3 && gridPos.x <= 6.4) { Dungeon.editorTab = 'env'; MusicEngine?.play3DSFX('click'); return; }
+                            if (gridPos.x >= 6.5 && gridPos.x <= 7.6) { Dungeon.editorTab = 'file'; MusicEngine?.play3DSFX('click'); return; }
                         }
 
                 // --- FILE MENU BUTTONS ---
                     if (Dungeon.editorTab === 'file') {
                         if (gridPos.y >= 8.6 && gridPos.y <= 9.4) {
                             // OPEN GENERATOR
-                            if (gridPos.x >= 0.5 && gridPos.x <= 4.0) { Dungeon.editorState = 'generating_map'; MusicEngine?.playSFX('click'); return; }
+                            if (gridPos.x >= 0.5 && gridPos.x <= 4.0) { Dungeon.editorState = 'generating_map'; MusicEngine?.play3DSFX('click'); return; }
                         }
                         if (gridPos.y >= 8.6 && gridPos.y <= 9.0) {
                             if (gridPos.x >= 4.3 && gridPos.x <= 7.8) { 
-                                Dungeon.editorSaveDraft(); MusicEngine?.playSFX('heal'); 
+                                Dungeon.editorSaveDraft(); MusicEngine?.play3DSFX('heal'); 
                                 Dungeon.editorStatusMsg = "DRAFT SAVED!"; Dungeon.editorStatusTimer = Date.now(); return; 
                             }
                         }
                         if (gridPos.y >= 9.05 && gridPos.y <= 9.45) {
                             if (gridPos.x >= 4.3 && gridPos.x <= 7.8) { 
-                                if(Dungeon.editorLoadDraft()) { MusicEngine?.playSFX('teleport'); Dungeon.editorStatusMsg = "DRAFT LOADED!"; } 
-                                else { MusicEngine?.playSFX('cancel'); Dungeon.editorStatusMsg = "NO SAVED DRAFT!"; }
+                                if(Dungeon.editorLoadDraft()) { MusicEngine?.play3DSFX('teleport'); Dungeon.editorStatusMsg = "DRAFT LOADED!"; } 
+                                else { MusicEngine?.play3DSFX('cancel'); Dungeon.editorStatusMsg = "NO SAVED DRAFT!"; }
                                 Dungeon.editorStatusTimer = Date.now(); return; 
                             }
                         }
@@ -33031,8 +33026,8 @@
                     else if (Dungeon.editorTab === 'env') {
                         const handleEnvToggle = (yRow, maxVal, key) => {
                             if (gridPos.y >= yRow - 0.2 && gridPos.y <= yRow + 0.4) {
-                                if (gridPos.x >= 3.5 && gridPos.x <= 4.0) { Dungeon.editorEnvScroll[key] = (Dungeon.editorEnvScroll[key] - 1 + maxVal) % maxVal; MusicEngine?.playSFX('click'); }
-                                if (gridPos.x >= 7.4 && gridPos.x <= 7.9) { Dungeon.editorEnvScroll[key] = (Dungeon.editorEnvScroll[key] + 1) % maxVal; MusicEngine?.playSFX('click'); }
+                                if (gridPos.x >= 3.5 && gridPos.x <= 4.0) { Dungeon.editorEnvScroll[key] = (Dungeon.editorEnvScroll[key] - 1 + maxVal) % maxVal; MusicEngine?.play3DSFX('click'); }
+                                if (gridPos.x >= 7.4 && gridPos.x <= 7.9) { Dungeon.editorEnvScroll[key] = (Dungeon.editorEnvScroll[key] + 1) % maxVal; MusicEngine?.play3DSFX('click'); }
                             }
                         };
 
@@ -33066,35 +33061,35 @@
                         if (gridPos.x >= 0.5 && gridPos.x <= 1.1) {
                             if (Dungeon.editorTab === 'tiles') Dungeon.editorTileBrush--;
                             else if (Dungeon.editorTab === 'npcs') { Dungeon.editorSpriteBrush--; if (Dungeon.editorSpriteBrush < -42) Dungeon.editorSpriteBrush = 99; }
-                            MusicEngine?.playSFX('click'); return;
+                            MusicEngine?.play3DSFX('click'); return;
                         }
                         if (gridPos.x >= 2.6 && gridPos.x <= 3.2) {
                             if (Dungeon.editorTab === 'tiles') Dungeon.editorTileBrush++;
                             else if (Dungeon.editorTab === 'npcs') { Dungeon.editorSpriteBrush++; if (Dungeon.editorSpriteBrush > 99) Dungeon.editorSpriteBrush = -42; }
-                            MusicEngine?.playSFX('click'); return;
+                            MusicEngine?.play3DSFX('click'); return;
                         }
                         
                         if (Dungeon.editorTab === 'tiles') {
                             // --- NEW: TOGGLE FILL MODE ---
                             if (gridPos.x >= 5.5 && gridPos.x <= 7.5) {
                                 Dungeon.editorFillMode = !Dungeon.editorFillMode;
-                                MusicEngine?.playSFX('click');
+                                MusicEngine?.play3DSFX('click');
                                 return;
                             }
                         }
                         else if (Dungeon.editorTab === 'npcs') {
-                            if (gridPos.x >= 4.0 && gridPos.x <= 4.6) { Dungeon.editorNpcBehavior = (Dungeon.editorNpcBehavior + 3) % 4; MusicEngine?.playSFX('click'); return; }
-                            if (gridPos.x >= 7.0 && gridPos.x <= 7.6) { Dungeon.editorNpcBehavior = (Dungeon.editorNpcBehavior + 1) % 4; MusicEngine?.playSFX('click'); return; }
+                            if (gridPos.x >= 4.0 && gridPos.x <= 4.6) { Dungeon.editorNpcBehavior = (Dungeon.editorNpcBehavior + 3) % 4; MusicEngine?.play3DSFX('click'); return; }
+                            if (gridPos.x >= 7.0 && gridPos.x <= 7.6) { Dungeon.editorNpcBehavior = (Dungeon.editorNpcBehavior + 1) % 4; MusicEngine?.play3DSFX('click'); return; }
                             if (gridPos.x >= 4.8 && gridPos.x <= 6.8 && Dungeon.editorNpcBehavior === 3) {
                                 Dungeon.tempSpawnCard = Dungeon.editorSpriteBrush; 
-                                Dungeon.editorState = 'configuring_custom'; MusicEngine?.playSFX('click'); return;
+                                Dungeon.editorState = 'configuring_custom'; MusicEngine?.play3DSFX('click'); return;
                             }
                         }
                     }
 
                 // Test, Export & Exit
                         if (gridPos.x >= 8.2 && gridPos.x <= 9.8) {
-                            if (gridPos.y >= 7.6 && gridPos.y <= 8.2) { Dungeon.isTestingMap = true; startGame = 'explore'; window.gameViewMode = '3d'; Dungeon.cameraMode = 'first_person'; MusicEngine?.playSFX('warp'); return; }
+                            if (gridPos.y >= 7.6 && gridPos.y <= 8.2) { Dungeon.isTestingMap = true; startGame = 'explore'; window.gameViewMode = '3d'; Dungeon.cameraMode = 'first_person'; MusicEngine?.play3DSFX('warp'); return; }
                             if (gridPos.y >= 8.3 && gridPos.y <= 8.9) { 
                             
                             // --- EXPORT TO FILE (PERFECT FORMATTING) ---
@@ -33145,10 +33140,10 @@
                                 link.click(); document.body.removeChild(link);
                                 
                                 console.log("Map Code Exported!\n\n" + output); 
-                                MusicEngine?.playSFX('chime');
+                                MusicEngine?.play3DSFX('chime');
                                 Dungeon.editorStatusMsg = "FILE DOWNLOADED!"; Dungeon.editorStatusTimer = Date.now(); return; 
                         }
-                        if (gridPos.y >= 9.0 && gridPos.y <= 9.6) { startGame = 'explore'; window.gameViewMode = Dungeon.savedViewMode || '3d'; Dungeon.cameraMode = Dungeon.savedCameraMode || 'first_person'; MusicEngine?.playSFX('cancel'); Dungeon.requestSave();return; }
+                        if (gridPos.y >= 9.0 && gridPos.y <= 9.6) { startGame = 'explore'; window.gameViewMode = Dungeon.savedViewMode || '3d'; Dungeon.cameraMode = Dungeon.savedCameraMode || 'first_person'; MusicEngine?.play3DSFX('cancel'); Dungeon.requestSave();return; }
                     }
                     return; 
                 }
@@ -33188,7 +33183,7 @@
                                                 queue.push({x: x+1, y: y}, {x: x-1, y: y}, {x: x, y: y+1}, {x: x, y: y-1});
                                             }
                                         }
-                                        MusicEngine?.playSFX('warp'); // Satisfying sound for a big fill
+                                        MusicEngine?.play3DSFX('warp'); // Satisfying sound for a big fill
                                     }
                                 } 
                                 // --- STANDARD DRAG PAINTING ---
@@ -33196,7 +33191,7 @@
                                     // Only play the step sound on discrete clicks, not every frame of a drag
                                     if (Dungeon.maze[targetY][targetX] !== parseInt(Dungeon.editorTileBrush)) {
                                         Dungeon.maze[targetY][targetX] = parseInt(Dungeon.editorTileBrush);
-                                        if (!isDrag) MusicEngine?.playSFX('step'); 
+                                        if (!isDrag) MusicEngine?.play3DSFX('step'); 
                                     }
                                 }
                             }
@@ -33239,11 +33234,11 @@
                                 startGame = tempState;
                             }
 
-                            MusicEngine?.playSFX('cancel');
+                            MusicEngine?.play3DSFX('cancel');
                         } else if (hitIndex === -1) {
                             if (Dungeon.maze[targetY][targetX] !== 0) {
                                 Dungeon.maze[targetY][targetX] = 0;
-                                if (!isDrag) MusicEngine?.playSFX('cancel');
+                                if (!isDrag) MusicEngine?.play3DSFX('cancel');
                             }
                         }
                     }
@@ -33282,9 +33277,9 @@
                             };
                             
                             Dungeon.editorState = 'configuring_custom';
-                            MusicEngine?.playSFX('click');
+                            MusicEngine?.play3DSFX('click');
                         } else if (!isDrag) {
-                            MusicEngine?.playSFX('cancel');
+                            MusicEngine?.play3DSFX('cancel');
                         }
                     }
                     else if (Dungeon.editorTab === 'npcs') {
@@ -33389,9 +33384,9 @@
                                 selectedPreset.isCinematic || false, // <-- PASS IT IN HERE!
                                 selectedPreset.yesActions || null, selectedPreset.noActions || null
                             );
-                            MusicEngine?.playSFX('heal');
+                            MusicEngine?.play3DSFX('heal');
                         } else {
-                        MusicEngine?.playSFX('cancel');
+                        MusicEngine?.play3DSFX('cancel');
                         }
                 }
             }
@@ -33441,7 +33436,7 @@
                             } 
                             // If there's a reward, play the sound when we transition to the loot screen
                             else if (Dungeon.currentSpeaker.rewardCard !== undefined && Dungeon.currentSpeaker.rewardCard !== null) {
-                                if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('heal');
+                                if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('heal');
                             }
                         }
                         
@@ -33486,7 +33481,7 @@
                         if (gridPos.x >= tx && gridPos.x <= tx + tabWidth) {
                             journalTab = tabs[i];
                             journalScroll = 0; 
-                            if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('click');
+                            if(typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('click');
                             if (journalTab === '  map  ') {
                                 journalTab = 'record';
                                 window.gameViewMode = '2d'; // Fixed the semicolon inside the string!
@@ -33505,13 +33500,13 @@
                         // Clicked BACK (x: 4 to 6, y: 8.2 to 9.0)
                         if (gridPos.x >= 4 && gridPos.x <= 6 && gridPos.y >= 8.2 && gridPos.y <= 9.0) {
                             window.questFullscreenIndex = -1;
-                            if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('click');
+                            if(typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('click');
                             return;
                         }
                         // Clicked PREV (x: 1.5 to 3.0, y: 8.2 to 9.0)
                         if (gridPos.x >= 1.5 && gridPos.x <= 3.0 && gridPos.y >= 8.2 && gridPos.y <= 9.0 && window.questFullscreenIndex > 0) {
                             window.questFullscreenIndex--;
-                            if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('click');
+                            if(typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('click');
                             return;
                         }
                         // Clicked NEXT (x: 7.0 to 8.5, y: 8.2 to 9.0)
@@ -33519,7 +33514,7 @@
                             // We don't have the array length here, so we just increment. 
                             // The render loop will catch it if it goes out of bounds, but it's safe.
                             window.questFullscreenIndex++; 
-                            if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('click');
+                            if(typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('click');
                             return;
                         }
                     }
@@ -33533,17 +33528,17 @@
                         if (gridPos.x >= 1 && gridPos.x <= 8.2) {
                             if (gridPos.y >= 2.5 && gridPos.y <= 3.8) {
                                 window.questFullscreenIndex = journalScroll + 0;
-                                if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('click');
+                                if(typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('click');
                                 return;
                             }
                             if (gridPos.y >= 4.1 && gridPos.y <= 5.4) {
                                 window.questFullscreenIndex = journalScroll + 1;
-                                if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('click');
+                                if(typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('click');
                                 return;
                             }
                             if (gridPos.y >= 5.7 && gridPos.y <= 7.0) {
                                 window.questFullscreenIndex = journalScroll + 2;
-                                if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('click');
+                                if(typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('click');
                                 return;
                             }
                         }
@@ -33576,7 +33571,7 @@
                     if (gridPos.x >= 8.5 && gridPos.x <= 9.5 && gridPos.y >= 2.5 && gridPos.y <= 3.5) {
                         if (journalScroll > 0) {
                             journalScroll -= (journalTab === ' story ' ? 1 : 3);
-                            if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('click');
+                            if(typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('click');
                         }
                         return;
                     }
@@ -33589,7 +33584,7 @@
                             
                         if (canScroll) {
                             journalScroll += (journalTab === ' story ' ? 1 : 3);
-                            if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('click');
+                            if(typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('click');
                         }
                         return;
                     }
@@ -33605,12 +33600,12 @@
                     // If they click NO (Right side button)
                     if (gridPos.x >= 5.5 && gridPos.x <= 7.5 && gridPos.y >= 6.0 && gridPos.y <= 7.0) {
                         window.confirmDeletePrompt = false; 
-                        if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('cancel');
+                        if(typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('cancel');
                         return;
                     }
                     // If they click YES (Left side button)
                     if (gridPos.x >= 2.5 && gridPos.x <= 4.5 && gridPos.y >= 6.0 && gridPos.y <= 7.0) {
-                        if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('death'); 
+                        if(typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('death'); 
                         
                         if (typeof socket !== 'undefined') {
                             socket.emit('delete_save');
@@ -33630,7 +33625,7 @@
                     if (gridPos.x >= 5 && gridPos.x <= 6.5) { 
                         window.settingsAudio = true; 
                         if(typeof MusicEngine !== 'undefined') {
-                            MusicEngine.playSFX('click');
+                            MusicEngine.play3DSFX('click');
                             if (MusicEngine.style) MusicEngine.play(MusicEngine.style);
                         }
                         return; 
@@ -33647,13 +33642,13 @@
                     if (gridPos.x >= 5 && gridPos.x <= 6.5) { 
                         window.settingsNarration = true; 
                         if(typeof socket !== 'undefined') socket.emit('toggle_narration', true);
-                        if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('click'); 
+                        if(typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('click'); 
                         return; 
                     }
                     if (gridPos.x > 6.5 && gridPos.x <= 8.0) { 
                         window.settingsNarration = false; 
                         if(typeof socket !== 'undefined') socket.emit('toggle_narration', false);
-                        if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('click'); 
+                        if(typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('click'); 
                         return; 
                     }
                 }
@@ -33662,12 +33657,12 @@
                 if (gridPos.y >= 5.0 && gridPos.y <= 5.8) {
                     if (gridPos.x >= 5 && gridPos.x <= 6.5) { 
                         window.settingsChat = true; 
-                        if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('click'); 
+                        if(typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('click'); 
                         return; 
                     }
                     if (gridPos.x > 6.5 && gridPos.x <= 8.0) { 
                         window.settingsChat = false; 
-                        if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('click'); 
+                        if(typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('click'); 
                         return; 
                     }
                 }
@@ -33676,12 +33671,12 @@
                 if (gridPos.y >= 6.0 && gridPos.y <= 6.8) {
                     if (gridPos.x >= 4.5 && gridPos.x <= 6.2) { // D-PAD
                         window.settingsControlsMode = 'dpad'; 
-                        if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('click'); 
+                        if(typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('click'); 
                         return; 
                     }
                     if (gridPos.x > 6.2 && gridPos.x <= 8.5) { // TOUCH
                         window.settingsControlsMode = 'touch'; 
-                        if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('click'); 
+                        if(typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('click'); 
                         return; 
                     }
                 }
@@ -33690,7 +33685,7 @@
                 if (gridPos.x >= 3 && gridPos.x <= 7) {
                     // SAVE BUTTON
                     if (gridPos.y >= 7.2 && gridPos.y <= 8.0) {
-                        if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('heal'); 
+                        if(typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('heal'); 
                         if (typeof Dungeon !== 'undefined') {
                             Dungeon.requestSave();
                             if (typeof MessageBox !== 'undefined') MessageBox.show(0.5, 8, 1, 9, 2, 'Game Saved Successfully!', 'dialogue', 1, 0);
@@ -33700,7 +33695,7 @@
                 
                     // EXIT TO MAIN MENU
                     if (gridPos.y >= 8.2 && gridPos.y <= 9.0) {
-                        if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('cancel');
+                        if(typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('cancel');
                         if (typeof Dungeon !== 'undefined') Dungeon.requestSave(); 
                         startGame = 3; 
                         return;
@@ -33708,7 +33703,7 @@
                     
                     // INITIAL DELETE BUTTON CLICK
                     if (gridPos.y >= 9.2 && gridPos.y <= 10.0) {
-                        if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('click');
+                        if(typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('click');
                         window.confirmDeletePrompt = true; 
                         return;
                     }
@@ -33717,7 +33712,7 @@
                 
                         // 3. CHECK EXIT BUTTON (Bottom Center)
                 if (gridPos.x > 8 && gridPos.x < 10 && gridPos.y > 9 && gridPos.y < 10) {
-                    if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('cancel');
+                    if(typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('cancel');
                     startGame = preGame === 'explore' ? 'explore' : 'options2';
                     return;
                 }
@@ -33737,7 +33732,7 @@
                         let tx = i * tabWidth;
                         if (gridPos.x >= tx && gridPos.x <= tx + tabWidth) {
                             activeDeckTab = tabs[i];
-                            if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('click');
+                            if(typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('click');
                             return;
                         }
                     }
@@ -33745,7 +33740,7 @@
                 if (activeDeckTab === 'grimoire') {
                     if (pos.x >= (tL/10)*8 && pos.x <= (tL/10)*9 && 
                     pos.y > (tH/10)*6 && pos.y < (tH/10)*7.5) {
-                    MusicEngine.playSFX('cancel');
+                    MusicEngine.play3DSFX('cancel');
                     if (preGame == 'explore'){startGame =preGame;}
                     else{
                     startGame = '0';}
@@ -33840,7 +33835,7 @@
                             return;
                         }
                         if (gridPos.x > 7.75 && gridPos.x < 9.5 && gridPos.y > 6 && gridPos.y < 7) {
-                                if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('cancel');
+                                if(typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('cancel');
                                 
                                 
                                 // Send them back to explore or options depending on where they came from
@@ -33857,7 +33852,7 @@
                                 if (gridPos.x >= 1.5 && gridPos.x <= 3 && gridPos.y >= 2.0 && gridPos.y <= 2.5) {
                                     if (deckScrollIndex > 0) {
                                         deckScrollIndex--;
-                                        if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('click');
+                                        if(typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('click');
                                     }
                                     return;
                                 }
@@ -33865,7 +33860,7 @@
                                 if (gridPos.x >= 1.5&& gridPos.x <= 3 && gridPos.y >=8.75 && gridPos.y <= 9.25) {
                                     if (groupedDeckCards && deckScrollIndex < groupedDeckCards.length - 1) {
                                         deckScrollIndex++;
-                                        if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('click');
+                                        if(typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('click');
                                     }
                                     return;
                                 }
@@ -33875,7 +33870,7 @@
                                 if (gridPos.x >= 7 && gridPos.x <= 8.5 && gridPos.y >= 2.0 && gridPos.y <= 2.5) {
                                     if (extraScrollIndex > 0) {
                                         extraScrollIndex--;
-                                        if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('click');
+                                        if(typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('click');
                                     }
                                     return;
                                 }
@@ -33883,7 +33878,7 @@
                                 if (gridPos.x >=7 && gridPos.x <= 8.5 && gridPos.y >= 8.75 && gridPos.y <= 9.25) {
                                     if (groupedExtraCards && extraScrollIndex < groupedExtraCards.length - 1) {
                                         extraScrollIndex++;
-                                        if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('click');
+                                        if(typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('click');
                                     }
                                     return;
                                 }
@@ -33910,7 +33905,7 @@
                                         
                                         // If this is the absolute last monster card, block the transfer!
                                         if (monsterCount <= 1) {
-                                            if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('cancel');
+                                            if(typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('cancel');
                                             console.log("Deck must contain at least one monster!");
                                             
                                             // Optional: Flash a message to the player so they know why it failed
@@ -33939,7 +33934,7 @@
                                         if (deckScrollIndex >= groupedDeckCards.length) {
                                             deckScrollIndex = Math.max(0, groupedDeckCards.length - 1);
                                         }
-                                        if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('cancel'); // Sound for un-equipping
+                                        if(typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('cancel'); // Sound for un-equipping
                                     }
                                 }
                                 return;
@@ -33974,7 +33969,7 @@
 
                                         // D. The Rejection Logic
                                         if (currentDeckPower + newCardPower > maxDeckCapacity) {
-                                            if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('cancel');
+                                            if(typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('cancel');
                                             console.log(`Failed: Deck Power (${currentDeckPower} + ${newCardPower}) exceeds Max (${maxDeckCapacity})`);
                                             return; 
                                         }
@@ -33995,7 +33990,7 @@
                                             if (extraScrollIndex >= groupedExtraCards.length) {
                                                 extraScrollIndex = Math.max(0, groupedExtraCards.length - 1);
                                             }
-                                            if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('heal'); // Success sound!
+                                            if(typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('heal'); // Success sound!
                                         }
                                     }
                                     return;
@@ -34052,21 +34047,21 @@
                         if (pos.x >= (tL/10)*7 && pos.x <= (tL/10)*10  && pos.y > (tH/10)*6  && pos.y < (tH/10)*9){
                             upgradeDice(3); // Call the helper for AGI (Index 3)
                             Dungeon.statPoints -= 1;
-                            if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('buff2'); // Upgraded sound!
+                            if(typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('buff2'); // Upgraded sound!
                             return;
                         }
                         // INT
                         if (pos.x >= (tL/10)*0 && pos.x <= (tL/10)*3  && pos.y > (tH/10)*6  && pos.y < (tH/10)*9){
                             upgradeDice(2); // Call the helper for INT (Index 2)
                             Dungeon.statPoints -= 1;
-                            if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('buff2');
+                            if(typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('buff2');
                             return;
                         }
                         // CON
                         if (pos.x >= (tL/10)*7 && pos.x <= (tL/10)*10  && pos.y > (tH/10)*2  && pos.y < (tH/10)*5){
                             upgradeDice(1); // Call the helper for CON (Index 1)
                             Dungeon.statPoints -= 1;
-                            if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('buff2');
+                            if(typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('buff2');
                             Player[0].sendAction('CULTIVATE', { s: 1 });
                             return;
                         }
@@ -34074,14 +34069,14 @@
                         if (pos.x >= (tL/10)*0 && pos.x <= (tL/10)*3  && pos.y > (tH/10)*2  && pos.y < (tH/10)*5){
                             upgradeDice(0); // Call the helper for STR (Index 0)
                             Dungeon.statPoints -= 1;
-                            if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('buff2');
+                            if(typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('buff2');
                             return;
                         }
                     }
                 }
                 // 3. EXIT BUTTON (Bottom Right Corner, matching Journal logic)
                 if ((activeDeckTab === 'deck'||activeDeckTab === 'player')&&gridPos.x > 4 && gridPos.x < 6 && gridPos.y > 9 && gridPos.y < 10) {
-                    if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('cancel');
+                    if(typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('cancel');
                     
                     
                     // Send them back to explore or options depending on where they came from
@@ -34108,7 +34103,7 @@
                         if (gridPos.x >= tx && gridPos.x <= tx + tabWidth) {
                             activeShopTab = tabs[i];
                             shopSubState = 'grid'; // Always reset to grid when changing tabs!
-                            if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('click');
+                            if(typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('click');
                             return;
                         }
                     }
@@ -34120,12 +34115,12 @@
                     if (shopSubState === 'grid') {
                         // A. Pagination Arrows
                         if (gridPos.x >= .25 && gridPos.x <= 1.75 && gridPos.y >= 9.4 && gridPos.y <= 10) {
-                            if (shopPage > 0) { shopPage--; MusicEngine.playSFX('click'); }
+                            if (shopPage > 0) { shopPage--; MusicEngine.play3DSFX('click'); }
                             return;
                         }
                         if (gridPos.x >= 8.25 && gridPos.x <= 9.75 && gridPos.y >= 9.4 && gridPos.y <= 10) {
                             let maxPage = Math.ceil(shopInventory.length / 6) - 1;
-                            if (shopPage < maxPage) { shopPage++; MusicEngine.playSFX('click'); }
+                            if (shopPage < maxPage) { shopPage++; MusicEngine.play3DSFX('click'); }
                             return;
                         }
 
@@ -34148,7 +34143,7 @@
                                     targetShopCard = shopInventory[clickedInventoryIndex];
                                     shopSubState = 'barter'; // Dive into the Barter sub-screen!
                                     
-                                    if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('heal');
+                                    if(typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('heal');
                                     return;
                                 }
                             }
@@ -34161,18 +34156,18 @@
 
                         // --- 1. LEFT SIDE SCROLLING (Extras) ---
                         if (gridPos.x >= 1.0 && gridPos.x <= 2.4 && gridPos.y >= 2.0 && gridPos.y <= 2.4) {
-                            if (shopExtraScroll > 0) { shopExtraScroll--; MusicEngine.playSFX('click'); } return;
+                            if (shopExtraScroll > 0) { shopExtraScroll--; MusicEngine.play3DSFX('click'); } return;
                         }
                         if (gridPos.x >= 1.0 && gridPos.x <= 2.4 && gridPos.y >= 6.5 && gridPos.y <= 6.9) {
-                            if (shopExtraScroll < groupedExtra.length - 1) { shopExtraScroll++; MusicEngine.playSFX('click'); } return;
+                            if (shopExtraScroll < groupedExtra.length - 1) { shopExtraScroll++; MusicEngine.play3DSFX('click'); } return;
                         }
 
                         // --- 2. RIGHT SIDE SCROLLING (Offered) ---
                         if (gridPos.x >= 7.6 && gridPos.x <= 9.0 && gridPos.y >= 2.0 && gridPos.y <= 2.4) {
-                            if (shopOfferScroll > 0) { shopOfferScroll--; MusicEngine.playSFX('click'); } return;
+                            if (shopOfferScroll > 0) { shopOfferScroll--; MusicEngine.play3DSFX('click'); } return;
                         }
                         if (gridPos.x >= 7.6 && gridPos.x <= 9.0 && gridPos.y >= 6.5 && gridPos.y <= 6.9) {
-                            if (shopOfferScroll < groupedOffered.length - 1) { shopOfferScroll++; MusicEngine.playSFX('click'); } return;
+                            if (shopOfferScroll < groupedOffered.length - 1) { shopOfferScroll++; MusicEngine.play3DSFX('click'); } return;
                         }
 
                         // --- 3. TRANSFER ARROWS ---
@@ -34184,7 +34179,7 @@
                                 if (foundIndex !== -1) {
                                     offeredCards.push(Dungeon.extra.splice(foundIndex, 1)[0]);
                                     if (shopExtraScroll >= groupCards(Dungeon.extra).length) shopExtraScroll = Math.max(0, groupCards(Dungeon.extra).length - 1);
-                                    if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('click');
+                                    if(typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('click');
                                 }
                             }
                             return;
@@ -34198,7 +34193,7 @@
                                 if (foundIndex !== -1) {
                                     Dungeon.extra.push(offeredCards.splice(foundIndex, 1)[0]);
                                     if (shopOfferScroll >= groupCards(offeredCards).length) shopOfferScroll = Math.max(0, groupCards(offeredCards).length - 1);
-                                    if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('cancel');
+                                    if(typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('cancel');
                                 }
                             }
                             return;
@@ -34239,11 +34234,11 @@
                                 // ---------------------------------------
 
                                 // Play a massive success sound and return to grid
-                                if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('heal');
+                                if(typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('heal');
                                 shopSubState = 'grid';
                             } else {
                                 // Not enough power! Play error sound
-                                if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('cancel');
+                                if(typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('cancel');
                             }
                             return;
                         }
@@ -34254,7 +34249,7 @@
                             while(offeredCards.length > 0) { Dungeon.extra.push(offeredCards.pop()); }
                             
                             shopSubState = 'grid';
-                            if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('cancel');
+                            if(typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('cancel');
                             return;
                         }
                     }
@@ -34266,11 +34261,11 @@
                     // A. SCROLLING (Extras)
                     // Up Arrow: x: 2.3 to 3.7, y: 2.0 to 2.4
                     if (gridPos.x >= 1.5 && gridPos.x <= 3 && gridPos.y >= 1.5 && gridPos.y <= 2.5) {
-                        if (shopChannelScroll > 0) { shopChannelScroll--; MusicEngine.playSFX('click'); } return;
+                        if (shopChannelScroll > 0) { shopChannelScroll--; MusicEngine.play3DSFX('click'); } return;
                     }
                     // Down Arrow: x: 2.3 to 3.7, y: 7.0 to 7.4
                     if (gridPos.x >= 1.5 && gridPos.x <= 3 && gridPos.y >= 7.8 && gridPos.y <= 8.6) {
-                        if (shopChannelScroll < groupedExtra.length - 1) { shopChannelScroll++; MusicEngine.playSFX('click'); } return;
+                        if (shopChannelScroll < groupedExtra.length - 1) { shopChannelScroll++; MusicEngine.play3DSFX('click'); } return;
                     }
 
                     // B. ABSORB BUTTON
@@ -34296,7 +34291,7 @@
                                 while (Dungeon.xp >= xpNeeded) {
                                     Dungeon.xp -= xpNeeded; 
                                     Dungeon.level++;
-                                    Dungeon.statPoints = (this.statPoints || 0) + 1;
+                                    Dungeon.statPoints = (Dungeon.statPoints || 0) + 1;
                                     Dungeon.power = 100 + (Dungeon.level * 13); // Linear scaling we built!
                                     leveledUp = true;
                                     xpNeeded = Math.floor(100 * Math.pow(Dungeon.level + 1, 1.8)); 
@@ -34304,11 +34299,11 @@
 
                                 // Play sounds
                                 if (leveledUp) {
-                                    if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('teleport'); // Big success!
+                                    if(typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('teleport'); // Big success!
                                     console.log(`Leveled up to ${Dungeon.level} in the Altar!`);
                                 } else {
                                     // Just a normal crunch sound
-                                    if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('arcane'); 
+                                    if(typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('arcane'); 
                                 }
 
                                 // Prevent scrolling out of bounds if they absorb their very last copy
@@ -34330,11 +34325,11 @@
                         // A. SCROLLING (Left Side)
                         // Up Arrow: x: 1.3 to 2.7, y: 2.0 to 2.4
                         if (gridPos.x >= 1.3 && gridPos.x <= 2.7 && gridPos.y >= 2.0 && gridPos.y <= 2.4) {
-                            if (shopInfuseScroll > 0) { shopInfuseScroll--; MusicEngine.playSFX('click'); } return;
+                            if (shopInfuseScroll > 0) { shopInfuseScroll--; MusicEngine.play3DSFX('click'); } return;
                         }
                         // Down Arrow: x: 1.3 to 2.7, y: 6.5 to 6.9
                         if (gridPos.x >= 1.3 && gridPos.x <= 2.7 && gridPos.y >= 6.5 && gridPos.y <= 6.9) {
-                            if (shopInfuseScroll < uniqueMonsters.length - 1) { shopInfuseScroll++; MusicEngine.playSFX('click'); } return;
+                            if (shopInfuseScroll < uniqueMonsters.length - 1) { shopInfuseScroll++; MusicEngine.play3DSFX('click'); } return;
                         }
                         // B. INFUSE BUTTON
                         // Hitbox: x: 4.0 to 6.0, y: 6.2 to 7.0
@@ -34348,7 +34343,7 @@
                             let currentMastery = Dungeon.mastery[cIndex].level;
 
                             if (currentMastery >= 3) {
-                                if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('cancel');
+                                if(typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('cancel');
                                 return; 
                             }
 
@@ -34397,9 +34392,9 @@
                                 }
                                 // -------------------------
 
-                                if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('buff2'); 
+                                if(typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('buff2'); 
                             } else {
-                                if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('cancel');
+                                if(typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('cancel');
                             }
                             return;
                         }
@@ -34415,13 +34410,13 @@
                                 // Refund card if slot is full
                                 Dungeon.extra.push(comboSlot1);
                                 comboSlot1 = null;
-                                if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('cancel');
+                                if(typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('cancel');
                             } else {
                                 // Open grid to select
                                 activeComboSlot = 1;
                                 shopComboPage = 0;
                                 shopComboState = 'grid';
-                                if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('click');
+                                if(typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('click');
                             }
                             return;
                         }
@@ -34432,13 +34427,13 @@
                                 // Refund card if slot is full
                                 Dungeon.extra.push(comboSlot2);
                                 comboSlot2 = null;
-                                if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('cancel');
+                                if(typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('cancel');
                             } else {
                                 // Open grid to select
                                 activeComboSlot = 2;
                                 shopComboPage = 0;
                                 shopComboState = 'grid';
-                                if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('click');
+                                if(typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('click');
                             }
                             return;
                         }
@@ -34468,11 +34463,11 @@
 
                                     // 3. Change state and play sound
                                     shopComboState = 'results';
-                                    if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('buff2');
+                                    if(typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('buff2');
                                 } else {
                                     // FAILED! (Invalid combo)
                                     // Play an error sound and keep them on the 'main' screen so they can swap cards out
-                                    if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('debuff'); 
+                                    if(typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('debuff'); 
                                 }
                             }
                             return;
@@ -34483,19 +34478,19 @@
                         
                         // Pagination Arrows
                         if (gridPos.x >= -5 && gridPos.x <= 2 && gridPos.y >= 9&& gridPos.y <= 15) {
-                            if (shopComboPage > 0) { shopComboPage--; MusicEngine.playSFX('click'); }
+                            if (shopComboPage > 0) { shopComboPage--; MusicEngine.play3DSFX('click'); }
                             return;
                         }
                         if (gridPos.x >= 8.5 && gridPos.x <= 15 && gridPos.y >= 9 && gridPos.y <= 15) {
                             let maxPage = Math.ceil(groupedExtra.length / 6) - 1;
-                            if (shopComboPage < maxPage) { shopComboPage++; MusicEngine.playSFX('click'); }
+                            if (shopComboPage < maxPage) { shopComboPage++; MusicEngine.play3DSFX('click'); }
                             return;
                         }
 
                         // CANCEL BUTTON
                         if (gridPos.x >= 9 && gridPos.x <= 15 && gridPos.y >= 1 && gridPos.y <= 2) {
                             shopComboState = 'main';
-                            if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('cancel');
+                            if(typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('cancel');
                             return;
                         }
 
@@ -34531,7 +34526,7 @@
 
                                     // 4. Return to main combo screen
                                     shopComboState = 'main';
-                                    if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('click');
+                                    if(typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('click');
                                     return;
                                 }
                             }
@@ -34551,14 +34546,14 @@
                             comboSlot2 = null;
                             shopComboState = 'main';
                             
-                            if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('cancel');
+                            if(typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('cancel');
                             return;
                         }
                     }
                 }
                 // 3. LEAVE BUTTON (Bottom Center)
                 if (gridPos.x > 4 && gridPos.x < 6 && gridPos.y > 9.2 && gridPos.y < 10) {
-                    if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('cancel');
+                    if(typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('cancel');
                     if (Dungeon.savedViewMode) {
                             window.gameViewMode = Dungeon.savedViewMode;
                         }
@@ -34599,7 +34594,7 @@
                 if (gridPos.x >= 0.25 && gridPos.x <= 1.75 && gridPos.y >= 9.4 && gridPos.y <= 10) {
                     if (window.djinnPage > 0) { 
                         window.djinnPage--; 
-                        if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('click'); 
+                        if(typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('click'); 
                     }
                     return;
                 }
@@ -34607,7 +34602,7 @@
                     let maxPage = Math.ceil(allValidCards.length / 6) - 1;
                     if (window.djinnPage < maxPage) { 
                         window.djinnPage++; 
-                        if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('click'); 
+                        if(typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('click'); 
                     }
                     return;
                 }
@@ -34636,7 +34631,7 @@
                             Dungeon.extra.push(new Card(chosenCardId, 0));
                             
                             // Play a legendary success sound
-                            if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('teleport'); 
+                            if(typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('teleport'); 
                             
                             // Cleanup and return to the main game
                             window.djinnPage = 0;
@@ -34884,7 +34879,7 @@
                         startGame = 'gameover'; 
                         if(typeof MusicEngine !== 'undefined') {
                             MusicEngine.stop();
-                            MusicEngine.playSFX('cancel'); 
+                            MusicEngine.play3DSFX('cancel'); 
                         }
                         Dungeon.isProcessingActions = false;
                         Dungeon.processNextAction();
@@ -34970,7 +34965,7 @@
                     cursong = rnd(0,songcount - 1)
                         MusicEngine.play(cursong);
                     startGame = 'options2';
-                    MusicEngine.playSFX('cancel');
+                    MusicEngine.play3DSFX('cancel');
                     return;
                 }
             }
@@ -35178,7 +35173,7 @@
                         Dungeon.startEidolonMinigame(allyTeam, foeTeam, { stakes: 'mock_menu', forcePlayerSprite: randomPlayerSprite });
                         
                         console.log(`Tactics! Player + ${allyCount} Allies vs ${foeCount} Foes.`);
-                        if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('heal');
+                        if(typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('heal');
                         return;
                     }
                 else if (pos.x > (tL/10)*6 && pos.x <= (tL/10)*9.5  && //grimoire
@@ -35194,14 +35189,14 @@
                         pos.y > (tH/10)*8.25 && pos.y < (tH/10)*10 ){
                     
                     startGame = 3;
-                    MusicEngine.playSFX('cancel');
+                    MusicEngine.play3DSFX('cancel');
                     return;
                     }
                 else if (pos.x > (tL/10)*6&& pos.x <= (tL/10)*10  && //tarot
                     pos.y > (tH/10)*8.5 && pos.y < (tH/10)*10 ){
                     // Player[1].isCPU = 0;
                     //MusicEngine.stop();
-                    MusicEngine.playSFX('heal');
+                    MusicEngine.play3DSFX('heal');
 
                     startGame = 'options2';
                     return;
@@ -35216,7 +35211,7 @@
                             MusicEngine.stop();
                             preGame = 'options2';
                             startGame = 'jukebox';
-                            MusicEngine.playSFX('heal');
+                            MusicEngine.play3DSFX('heal');
                             return;
                         }
                 //grimoire
@@ -35231,7 +35226,7 @@
                         let fullLib = getFullLibrary();
                         activePlaylist = fullLib.map(c => c.index);
                         startGame = 'grimoire';
-                        MusicEngine.playSFX('heal');
+                        MusicEngine.play3DSFX('heal');
                         return;
                     }
                 //Back Button
@@ -35239,7 +35234,7 @@
                         pos.y > (tH/10)*8.25 && pos.y < (tH/10)*10 ){
                         
                         startGame = 'options';
-                        MusicEngine.playSFX('cancel');
+                        MusicEngine.play3DSFX('cancel');
                         return;
                         }
                 //tarot
@@ -35250,7 +35245,7 @@
                         preGame = 'options2'
                         startGame = 'journal';
                         journalTab = 'settings';
-                        MusicEngine.playSFX('heal');
+                        MusicEngine.play3DSFX('heal');
                         return;
                         
                         //return;
@@ -35260,7 +35255,7 @@
             
                 if (pos.x >= (tL/10)*8 && pos.x <= (tL/10)*9 && 
                     pos.y > (tH/10)*6 && pos.y < (tH/10)*7.5) {
-                    MusicEngine.playSFX('cancel');
+                    MusicEngine.play3DSFX('cancel');
                     if (preGame == 'explore'){startGame =preGame;}
                     else{
                     startGame = 'options2';}
@@ -35431,7 +35426,7 @@
                             pos.y > (tH/10)*8.5 && pos.y < (tH/10)*9.5)) {
                             window.showTarotPopup = !window.showTarotPopup;
                             // Play a mysterious sound
-                            if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('chime');
+                            if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('chime');
                             
                             // Flag it so the UI shows "..." and prevents spam-clicking
                             window.loadingInterpretation = true;
@@ -35486,7 +35481,7 @@
                                 pos.y > (tH/10)*(boxY + 0.1) && pos.y < (tH/10)*(boxY + 0.6)) {
                                 
                                 window.showTarotPopup = false;
-                                if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('cancel');
+                                if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('cancel');
                                 return;
                             }
 
@@ -35541,7 +35536,7 @@
                     Player[1].isCPU = 1;
                     preGame = 3;
                     startGame = 4;
-                    MusicEngine.playSFX('heal');
+                    MusicEngine.play3DSFX('heal');
                     return;
                     }
                 else if (pos.x > (tL/10)*6 && pos.x <= (tL/10)*9.5  && //LOCAL
@@ -35554,7 +35549,7 @@
                     MusicEngine.play(4);
                     preGame = 3;
                     startGame = 4;
-                    MusicEngine.playSFX('heal');
+                    MusicEngine.play3DSFX('heal');
                     return;
                 }
                 else if (pos.x > (tL/10)*1 && pos.x <= (tL/10)*4  && //Tutorial
@@ -35576,7 +35571,7 @@
                     } else {
                     startGame = 'charSelect';
                     }
-                    MusicEngine.playSFX('heal');
+                    MusicEngine.play3DSFX('heal');
                     return;
                     }
                 else if (pos.x > (tL/10)*6&& pos.x <= (tL/10)*9.5  && //options
@@ -35584,7 +35579,7 @@
                     Player[1].isCPU = 0;
                     
                     startGame = 'options';
-                    MusicEngine.playSFX('click');
+                    MusicEngine.play3DSFX('click');
                     return;
                     }
             }
@@ -35592,14 +35587,14 @@
                 lastSongTime = Date.now();
                 lastTriggerTime = Date.now();
                 startGame = 3
-                MusicEngine.playSFX('click');
+                MusicEngine.play3DSFX('click');
                 return;
             }
             if (startGame == 1){
                 lastTriggerTime = Date.now();
                 lastSongTime = Date.now();
                 startGame = 2;
-                MusicEngine.playSFX('click');
+                MusicEngine.play3DSFX('click');
                 
                 return;
             }
@@ -35610,7 +35605,7 @@
 
             
 
-                MusicEngine.playSFX('warp');
+                MusicEngine.play3DSFX('warp');
                 
                 
                 startGame = 1;
@@ -35653,7 +35648,7 @@
                     chatInput.blur();
 
                     // START GAME
-                    MusicEngine.playSFX('warp');
+                    MusicEngine.play3DSFX('warp');
                     startGame = 'explore'; // OR 'tutorial' if you prefer
                         resizeCanvas()
                     Player[0].name = playerName; // Attach the name to the local Player object too
@@ -35865,7 +35860,7 @@
                                 Player[0].btnDo('atk')
                                 Player[0].sendAction('SELECTION', { look: Player[0].look });
                                 Player[0].sendAction('PHASE_CHANGE', { option: Player[0].option });
-                                MusicEngine.playSFX('slash');
+                                MusicEngine.play3DSFX('slash');
                                 Player[0].sendAction('PRE_OPT', { preOpt: 3 });
                             }
                             //redundant buttons
@@ -36252,14 +36247,14 @@
                                 Player[0].look[eLOOK.S] = eSTAT.S;
                                 Player[0].sendAction('SYNC_TIMER', { at: 1 });
                                 Player[0].sendAction('SELECTION', { look: Player[0].look });
-                                MusicEngine.playSFX('heal');
+                                MusicEngine.play3DSFX('heal');
                             }
                             else if (Player[1].option == 8.2&&!Player[1].battleOpponentId){
                                 Player[1].at = 1;
                                 Player[1].look[eLOOK.S] = eSTAT.S;
                                 Player[0].sendAction('SYNC_TIMER', { at: 1 });
                                 Player[0].sendAction('SELECTION', { look: Player[0].look });
-                                MusicEngine.playSFX('heal');
+                                MusicEngine.play3DSFX('heal');
                             }
                             if(startGame != 'battle'){startGame = 4;}
                             }
@@ -36270,14 +36265,14 @@
                                 Player[0].look[eLOOK.S] = eSTAT.S;
                                 Player[0].sendAction('SYNC_TIMER', { at: 1 });
                                 Player[0].sendAction('SELECTION', { look: Player[0].look });
-                                MusicEngine.playSFX('heal');
+                                MusicEngine.play3DSFX('heal');
                             }
                             else if (Player[1].option == 8.2&&!Player[1].battleOpponentId){
                                 Player[1].at = 1;
                                 Player[1].look[eLOOK.S] = eSTAT.S;
                                 Player[0].sendAction('SYNC_TIMER', { at: 1 });
                                 Player[0].sendAction('SELECTION', { look: Player[0].look });
-                                MusicEngine.playSFX('heal');
+                                MusicEngine.play3DSFX('heal');
                             }
                             if(startGame != 'battle'){startGame = 4;}
                             }
@@ -36289,13 +36284,13 @@
                                 Player[0].look[eLOOK.S] = eSTAT.C;
                                 Player[0].sendAction('SYNC_TIMER', { at: 1 });
                                 Player[0].sendAction('SELECTION', { look: Player[0].look });
-                                MusicEngine.playSFX('heal');
+                                MusicEngine.play3DSFX('heal');
                             }
                             else if (Player[1].option == 8.2&&!Player[1].battleOpponentId){
                                 Player[1].at = 1;
                                 Player[1].look[eLOOK.S] = eSTAT.C;
                                 Player[0].sendAction('SYNC_TIMER', { at: 1 });
-                                MusicEngine.playSFX('heal');
+                                MusicEngine.play3DSFX('heal');
                             }
                             if(startGame != 'battle'){startGame = 4;}
                             }
@@ -36307,14 +36302,14 @@
                                 Player[0].look[eLOOK.S] = eSTAT.C;
                                 Player[0].sendAction('SYNC_TIMER', { at: 1 });
                                 Player[0].sendAction('SELECTION', { look: Player[0].look });
-                                MusicEngine.playSFX('heal');
+                                MusicEngine.play3DSFX('heal');
                             }
                             else if (Player[1].option == 8.2&&!Player[1].battleOpponentId){
                                 Player[1].at = 1;
                                 Player[1].look[eLOOK.S] = eSTAT.C;
                                 Player[0].sendAction('SYNC_TIMER', { at: 1 });
                                 Player[0].sendAction('SELECTION', { look: Player[0].look });
-                                MusicEngine.playSFX('heal');
+                                MusicEngine.play3DSFX('heal');
                             }
                             if(startGame != 'battle'){startGame = 4;}}
                             //int rune
@@ -36325,14 +36320,14 @@
                                 Player[0].look[eLOOK.S] = eSTAT.I;
                                 Player[0].sendAction('SYNC_TIMER', { at: 1 });
                                 Player[0].sendAction('SELECTION', { look: Player[0].look });
-                                MusicEngine.playSFX('heal');
+                                MusicEngine.play3DSFX('heal');
                             }
                             else if (Player[1].option == 8.2&&!Player[1].battleOpponentId){
                                 Player[1].at = 1;
                                 Player[1].look[eLOOK.S] = eSTAT.I;
                                 Player[0].sendAction('SYNC_TIMER', { at: 1 });
                                 Player[0].sendAction('SELECTION', { look: Player[0].look });
-                                MusicEngine.playSFX('heal');
+                                MusicEngine.play3DSFX('heal');
                             }
                             if(startGame != 'battle'){startGame = 4;}
                             }
@@ -36343,14 +36338,14 @@
                                 Player[0].look[eLOOK.S] = eSTAT.I;
                                 Player[0].sendAction('SYNC_TIMER', { at: 1 });
                                 Player[0].sendAction('SELECTION', { look: Player[0].look });
-                                MusicEngine.playSFX('heal');
+                                MusicEngine.play3DSFX('heal');
                             }
                             else if (Player[1].option == 8.2&&!Player[1].battleOpponentId){
                                 Player[1].at = 1;
                                 Player[1].look[eLOOK.S] = eSTAT.I;
                                 Player[0].sendAction('SYNC_TIMER', { at: 1 });
                                 Player[0].sendAction('SELECTION', { look: Player[0].look });
-                                MusicEngine.playSFX('heal');
+                                MusicEngine.play3DSFX('heal');
                             }
                             if(startGame != 'battle'){startGame = 4;}
                             }
@@ -36362,7 +36357,7 @@
                             Player[0].look[eLOOK.S] = eSTAT.A;
                             Player[0].sendAction('SYNC_TIMER', { at: 1 });
                             Player[0].sendAction('SELECTION', { look: Player[0].look });
-                                        MusicEngine.playSFX('heal');
+                                        MusicEngine.play3DSFX('heal');
 
                                 }
                                 else if (Player[1].option == 8.2&&!Player[1].battleOpponentId){
@@ -36370,7 +36365,7 @@
                                 Player[1].look[eLOOK.S] = eSTAT.A;
                                 Player[0].sendAction('SYNC_TIMER', { at: 1 });
                             Player[0].sendAction('SELECTION', { look: Player[0].look });
-                                        MusicEngine.playSFX('heal');
+                                        MusicEngine.play3DSFX('heal');
 
                                 }
                             if(startGame != 'battle'){
@@ -36383,7 +36378,7 @@
                             Player[0].look[eLOOK.S] = eSTAT.A;
                             Player[0].sendAction('SYNC_TIMER', { at: 1 });
                             Player[0].sendAction('SELECTION', { look: Player[0].look });
-                                        MusicEngine.playSFX('heal');
+                                        MusicEngine.play3DSFX('heal');
 
                                 }
                                 else if (Player[1].option == 8.2&&!Player[1].battleOpponentId){
@@ -36391,7 +36386,7 @@
                                 Player[1].look[eLOOK.S] = eSTAT.A;
                                 Player[0].sendAction('SYNC_TIMER', { at: 1 });
                             Player[0].sendAction('SELECTION', { look: Player[0].look });
-                                        MusicEngine.playSFX('heal');
+                                        MusicEngine.play3DSFX('heal');
 
                                 }
                             if(startGame != 'battle'){
@@ -50503,7 +50498,7 @@
                         Dungeon.maze[targetY][targetX] = 0;
                         smashedThrough = true; // Flag so we don't block movement!
                         
-                        if (typeof MusicEngine !== 'undefined') MusicEngine.playSFX('break'); // Add a break sound!
+                        if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('break'); // Add a break sound!
                         if (typeof socket !== 'undefined') {
                             socket.emit('tile_destroyed', { mapID: Dungeon.mapID, x: targetX, y: targetY });
                             socket.emit('suncat_spectate', `player smashed through a wall!`);
@@ -50514,7 +50509,7 @@
                 // --- FAILURE TO BREAK / INDESTRUCTIBLE ---
                 if (!smashedThrough) {
                     if (typeof MusicEngine !== 'undefined') { 
-                        MusicEngine.playSFX('cancel');
+                        MusicEngine.play3DSFX('cancel');
                         if (typeof socket !== 'undefined') socket.emit('suncat_spectate', `player has crashed into a wall.`);
                     }
                     return; // Stop the movement!
@@ -50777,7 +50772,7 @@
     // 3. SAFETY CHECK
     if (results.length === 0) {
         console.log("No cards found for filter:", value);
-        if(typeof MusicEngine !== 'undefined') MusicEngine.playSFX('cancel'); 
+        if(typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('cancel'); 
         return; 
     }
 
@@ -51095,7 +51090,7 @@
       return true;
     },
       
-    playSFX(type) {
+    play3DSFX(type) {
       if (!window.settingsAudio) return;
       if (!this.ctx) return;
       if (this.ctx.state === 'suspended') { this.ctx.resume(); }
@@ -52895,46 +52890,49 @@
       if (!this.ctx) return;
       if (this.ctx.state === 'suspended') this.ctx.resume();
 
-      // 1. Calculate Distance
-      const dx = sourceX - playerX;
-      const dy = sourceY - playerY;
-      const dist = Math.sqrt(dx*dx + dy*dy);
-
-      // --- SAFETY CHECK 1: Infinity/NaN Prevention ---
-      // If distance is effectively zero, we can't calculate a direction vector.
-      // We just assume the sound is "centered" (pan = 0) and proceed.
       let panVal = 0;
+      let volume = 1; // Default to full volume for 2D/UI sounds
 
-      if (dist > 0.001) {
-          // Only do the division if dist is NOT zero
-          const angle = playerDirIdx * Math.PI / 2;
-          const pDirX = Math.sin(angle);
-          const pDirY = -Math.cos(angle);
+      // --- THE FIX: 2D FALLBACK CHECK ---
+      // If no coordinates were passed (e.g., MusicEngine.play3DSFX('click')), 
+      // we skip the complex math and leave the sound perfectly centered and loud!
+      let is3D = (sourceX !== undefined && sourceY !== undefined && playerX !== undefined && playerY !== undefined && playerDirIdx !== undefined);
+
+      if (is3D) {
+          // 1. Calculate Distance
+          const dx = sourceX - playerX;
+          const dy = sourceY - playerY;
+          const dist = Math.sqrt(dx*dx + dy*dy);
+
+          if (dist > 15) return; // Too far away to hear
+
+          // 2. Calculate Panning
+          if (dist > 0.001) {
+              const angle = playerDirIdx * Math.PI / 2;
+              const pDirX = Math.sin(angle);
+              const pDirY = -Math.cos(angle);
+              
+              const rightX = -pDirY;
+              const rightY = pDirX;
+
+              let nDx = dx / dist;
+              let nDy = dy / dist;
+
+              panVal = (nDx * rightX) + (nDy * rightY);
+          }
           
-          const rightX = -pDirY;
-          const rightY = pDirX;
+          // Clamp Panning
+          if (isNaN(panVal)) panVal = 0;
+          if (panVal > 1) panVal = 1;
+          if (panVal < -1) panVal = -1;
 
-          // Normalized vector (This was the crash point: 0/0)
-          let nDx = dx / dist;
-          let nDy = dy / dist;
-
-          panVal = (nDx * rightX) + (nDy * rightY);
+          // 3. Calculate Volume Attenuation
+          volume = 1 / (0.5 + (dist * 0.5));
+          if (volume > 1) volume = 1;
+          if (isNaN(volume)) volume = 1;
       }
-      
-      // --- SAFETY CHECK 2: Clamp Panning ---
-      // Ensure pan is strictly between -1 and 1
-      if (isNaN(panVal)) panVal = 0;
-      if (panVal > 1) panVal = 1;
-      if (panVal < -1) panVal = -1;
 
-      // --- Volume Logic ---
-      if (dist > 15) return; // Too far away
-
-      let volume = 1 / (0.5 + (dist * 0.5));
-      if (volume > 1) volume = 1;
-      if (isNaN(volume)) volume = 1; // Safety fallback
-
-      // 3. Audio Graph Setup
+      // --- AUDIO GRAPH ROUTING ---
       const t = this.ctx.currentTime;
       const panner = this.ctx.createStereoPanner();
       panner.pan.value = panVal;
@@ -52942,7 +52940,9 @@
       const distGain = this.ctx.createGain();
       distGain.gain.value = volume;
 
-      // 4. Switch
+      // ==========================================
+      // COMBINED SWITCH STATEMENT GOES HERE!
+      // ==========================================
       switch(type) {
         case 'step':
           this.createStepSound(t, distGain, panner);
@@ -52976,6 +52976,535 @@
           case 8:case 'scream': 
           this.createScream(t, distGain, panner);
           break;
+          case 'click': default:
+          this.createTone(t, 1500, 'sine', 1, 0.1, -200);
+          break;
+        case 'cancel':
+          this.createTone(t, 150, 'sawtooth', 0.15, 0.2, -50);
+          break;
+        case 'chime2':
+          this.createTone(t, 1200, 'sine', 2, 0.5, 0);
+          this.createTone(t, 2400, 'sine', 1, 0.5, 0);
+          break;
+        case 'fireball':
+          this.createNoise(t, 'lowpass', 100, 2, 3, 800); // Filter sweeps up
+          this.createTone(t, 100, 'sawtooth', 1.5, 3, -50); // Low rumble
+          break;
+        case 'warp':
+          const oscW = this.ctx.createOscillator();
+          const gainW = this.ctx.createGain();
+          oscW.type = 'sine';
+          oscW.frequency.setValueAtTime(200, t);
+          oscW.frequency.exponentialRampToValueAtTime(2000, t + 0.2); // Zip up
+          oscW.frequency.exponentialRampToValueAtTime(100, t + 0.4); // Zip down
+          gainW.gain.setValueAtTime(0.2, t);
+          gainW.gain.linearRampToValueAtTime(0, t + 0.4);
+          oscW.connect(gainW); gainW.connect(this.ctx.destination);
+          oscW.start(t); oscW.stop(t + 0.4);
+          this.cleanupNodes(t + 0.4, oscW, gainW);
+          break;
+        case 'heal':case 'chime':
+          for (let i = 0; i < 5; i++) {
+            setTimeout(() => {
+              this.createTone(this.ctx.currentTime, 800 + (i * 200), 'sine', 0.1, 0.3, 0);
+            }, i * 50);
+          }
+          break;
+        case 'slash':
+          this.createNoise(t, 'highpass', 1000, 1, 1, 0);
+          break;
+        case 'clang':
+          const c = this.ctx.createOscillator();
+          const cG = this.ctx.createGain();
+          c.type = 'square';
+          c.frequency.value = 400;
+          const m = this.ctx.createOscillator();
+          const mG = this.ctx.createGain();
+          m.frequency.value = 567; // Non-integer ratio
+          mG.gain.value = 2000;
+          m.connect(mG); mG.connect(c.frequency);
+          c.connect(cG); cG.connect(this.ctx.destination);
+          cG.gain.setValueAtTime(1, t);
+          cG.gain.exponentialRampToValueAtTime(0.01, t + 1);
+          c.start(t); m.start(t);
+          c.stop(t + 0.5); m.stop(t + 0.5);
+          this.cleanupNodes(t + 1, c, cG, m, mG);
+          break;
+        case 'death':
+          const oscD = this.ctx.createOscillator();
+          const gainD = this.ctx.createGain();
+          oscD.type = 'sawtooth';
+          oscD.frequency.setValueAtTime(150, t);
+          oscD.frequency.exponentialRampToValueAtTime(40, t + 1.5);
+          const filter = this.ctx.createBiquadFilter();
+          filter.type = 'lowpass';
+          filter.frequency.value = 300;
+          gainD.gain.setValueAtTime(1, t);
+          gainD.gain.linearRampToValueAtTime(0, t + 1.5);
+          oscD.connect(filter); filter.connect(gainD); gainD.connect(this.ctx.destination);
+          oscD.start(t); oscD.stop(t + 1.5);
+          this.cleanupNodes(t + 1.5, oscD, gainD, filter);
+          break;
+        case 'lightning':
+          this.createLightning(t);
+          break;
+        case 'teleport':
+          // Phase 1: Charge up (0 to 1 second)
+          const telOsc = this.ctx.createOscillator();
+          const telGain = this.ctx.createGain();
+          telOsc.type = 'sine';
+          telOsc.frequency.setValueAtTime(100, t);
+          telOsc.frequency.exponentialRampToValueAtTime(800, t + 1);
+          telGain.gain.setValueAtTime(0, t);
+          telGain.gain.linearRampToValueAtTime(0.5, t + 1);
+          telOsc.connect(telGain); telGain.connect(this.ctx.destination);
+          telOsc.start(t); telOsc.stop(t + 1);
+          this.cleanupNodes(t + 1, telOsc, telGain);
+
+          // Phase 2 & 3: The Tear and the Chime echo (triggers at t + 1)
+          setTimeout(() => {
+            const tearTime = this.ctx.currentTime;
+            this.createTone(tearTime, 600, 'sawtooth', 0.8, 0.5, -500);
+            this.createNoise(tearTime, 'lowpass', 2000, 1, 0.5, -1500);
+            this.createTone(tearTime + 0.1, 1200, 'sine', 0.3, 2, 0);
+            this.createTone(tearTime + 0.1, 2400, 'sine', 0.15, 2, 0);
+          }, 1000); 
+          break;
+
+        case 'fire':
+          this.createNoise(t, 'highpass', 5000, 0.5, 0.1, 0);
+
+          const fireDur = 2;
+          // IMPORTANT: I am swapping your dynamic buffer for the shared one we discussed previously to prevent the massive memory leak here!
+          if (!this._sharedNoiseBuffer) {
+              const bufSize = this.ctx.sampleRate * 2.0;
+              this._sharedNoiseBuffer = this.ctx.createBuffer(1, bufSize, this.ctx.sampleRate);
+              const data = this._sharedNoiseBuffer.getChannelData(0);
+              for (let i = 0; i < bufSize; i++) data[i] = Math.random() * 2 - 1;
+          }
+          const fireNoise = this.ctx.createBufferSource();
+          fireNoise.buffer = this._sharedNoiseBuffer;
+
+          const fireFilter = this.ctx.createBiquadFilter();
+          fireFilter.type = 'lowpass';
+          fireFilter.frequency.setValueAtTime(400, t);
+          
+          const lfo = this.ctx.createOscillator();
+          lfo.type = 'sine';
+          lfo.frequency.value = 12; 
+          const lfoGain = this.ctx.createGain();
+          lfoGain.gain.value = 300; 
+          lfo.connect(lfoGain); lfoGain.connect(fireFilter.frequency);
+          lfo.start(t); lfo.stop(t + fireDur);
+
+          const fireMasterGain = this.ctx.createGain();
+          fireMasterGain.gain.setValueAtTime(0, t);
+          fireMasterGain.gain.linearRampToValueAtTime(0.8, t + 0.1);
+          fireMasterGain.gain.setValueAtTime(0.8, t + fireDur - 0.2);
+          fireMasterGain.gain.linearRampToValueAtTime(0, t + fireDur);
+
+          fireNoise.connect(fireFilter); fireFilter.connect(fireMasterGain); fireMasterGain.connect(this.ctx.destination);
+          fireNoise.start(t); fireNoise.stop(t + fireDur);
+          
+          this.cleanupNodes(t + fireDur, fireNoise, fireFilter, lfo, lfoGain, fireMasterGain); // ADDED CLEANUP
+          break;
+
+        case 'water': // Ice Shatter
+          // 3 rapid icy snaps
+          for (let i = 0; i < 3; i++) {
+            const timeOffset = t + (i * 0.08);
+            this.createTone(timeOffset, 1200 + (Math.random() * 400), 'triangle', 0.8, 0.1, -200);
+          }
+          // The freezing wind
+          this.createNoise(t, 'highpass', 2000, 0.6, 0.4, -1000);
+          break;
+
+        case 'earth': // Quake
+          // Deep dropping sub-bass (Impact)
+          this.createTone(t, 60, 'sine', 1, 1.5, -40);
+          // Grinding crunch (Low square)
+          this.createTone(t, 40, 'square', 0.8, 1, -20);
+          // Dirt settling (Low noise)
+          this.createNoise(t, 'lowpass', 150, 1.5, 1, -100);
+          break;
+
+        case 'air': // Metal Clash
+          // The initial sharp scrape
+          this.createNoise(t, 'highpass', 3000, 0.5, 0.1, 0);
+          
+          // Two clashing (inharmonic) squares
+          const ringFreqs = [600, 853];
+          ringFreqs.forEach(freq => {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(freq, t);
+            gain.gain.setValueAtTime(0.6, t);
+            gain.gain.exponentialRampToValueAtTime(0.01, t + 0.8);
+            osc.connect(gain); gain.connect(this.ctx.destination);
+            osc.start(t); osc.stop(t + 0.8);
+            this.cleanupNodes(t + 0.8, osc, gain);
+          });
+          break;
+
+        case 'buff':
+          // Major chord (4:5:6 ratio) sweeping up and swelling
+          const buffFreqs = [440, 550, 660]; 
+          buffFreqs.forEach((freq, i) => {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, t);
+            osc.frequency.linearRampToValueAtTime(freq + 50, t + 1.5); // Lift pitch up
+            
+            gain.gain.setValueAtTime(0, t); // Start quiet
+            gain.gain.linearRampToValueAtTime(0.3, t + 0.5); // Swell up
+            gain.gain.exponentialRampToValueAtTime(0.01, t + 1.5); // Fade out
+            
+            osc.connect(gain); gain.connect(this.ctx.destination);
+            // Stagger start times slightly for a "sparkle" effect
+            const startT = t + (i * 0.1);
+            osc.start(startT); osc.stop(startT + 1.5);
+            this.cleanupNodes(startT + 1.5, osc, gain);
+          });
+          break;
+
+        case 'debuff':
+          // Dissonant Tritone (Devil's interval) dragging down
+          const debuffFreqs = [300, 424.26]; 
+          
+          // Suffocating lowpass filter over the whole sound
+          const debuffFilter = this.ctx.createBiquadFilter();
+          debuffFilter.type = 'lowpass';
+          debuffFilter.frequency.setValueAtTime(2000, t);
+          debuffFilter.frequency.exponentialRampToValueAtTime(100, t + 1.5);
+          debuffFilter.connect(this.ctx.destination);
+          this.cleanupNodes(t + 1.5, debuffFilter);
+          debuffFreqs.forEach(freq => {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = 'sawtooth'; // Buzzy and harsh
+            osc.frequency.setValueAtTime(freq, t);
+            osc.frequency.exponentialRampToValueAtTime(freq / 2, t + 1.5); // Drag pitch down
+            
+            gain.gain.setValueAtTime(0.4, t);
+            gain.gain.linearRampToValueAtTime(0, t + 1.5);
+            
+            osc.connect(gain); gain.connect(debuffFilter);
+            osc.start(t); osc.stop(t + 1.5);
+            this.cleanupNodes(t + 1.5, osc, gain);
+            
+          });
+          break;
+        case 'arcane': // Arcane Missile / Dart
+          const arc1Dur = 0.4;
+          
+          // Two slightly detuned sine waves to create a magical "pulse"
+          const arc1Freqs = [800, 815]; 
+          
+          arc1Freqs.forEach(freq => {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = 'sine';
+            
+            // Rapid upward sweep for a projectile feel
+            osc.frequency.setValueAtTime(freq, t);
+            osc.frequency.exponentialRampToValueAtTime(freq * 2, t + arc1Dur);
+            
+            gain.gain.setValueAtTime(0.4, t);
+            gain.gain.exponentialRampToValueAtTime(0.01, t + arc1Dur);
+            
+            osc.connect(gain); gain.connect(this.ctx.destination);
+            osc.start(t); osc.stop(t + arc1Dur);
+            this.cleanupNodes(t + arc1Dur, osc, gain);
+          });
+          
+          // A tiny "sparkle" of high noise at the cast
+          this.createNoise(t, 'highpass', 4000, 0.2, 0.1, 0);
+          break;
+
+        case 'arcane2': // Arcane Nova / Cosmic Beam
+          // Phase 1: The Gathering (Fast upward sweep)
+          const chargeOsc = this.ctx.createOscillator();
+          const chargeGain = this.ctx.createGain();
+          chargeOsc.type = 'sine';
+          chargeOsc.frequency.setValueAtTime(200, t);
+          chargeOsc.frequency.exponentialRampToValueAtTime(1500, t + 0.4);
+          chargeGain.gain.setValueAtTime(0, t);
+          chargeGain.gain.linearRampToValueAtTime(0.6, t + 0.4);
+          
+          chargeOsc.connect(chargeGain); chargeGain.connect(this.ctx.destination);
+          chargeOsc.start(t); chargeOsc.stop(t + 0.4);
+          this.cleanupNodes(t + 0.4, chargeOsc, chargeGain);
+          // Phase 2: The Unstable Nova (Triggered at t + 0.4)
+          const novaTime = t + 0.4;
+          const novaFreqs = [400, 500, 600, 615]; // Detuned major chord for wide, glassy power
+          
+          novaFreqs.forEach(freq => {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            
+            // Unstable energy LFO
+            const lfo = this.ctx.createOscillator();
+            const lfoGain = this.ctx.createGain();
+            
+            osc.type = 'triangle'; // More aggressive than sine
+            osc.frequency.setValueAtTime(freq, novaTime);
+            osc.frequency.exponentialRampToValueAtTime(freq / 1.5, novaTime + 1.5); // Drags down slightly as energy dissipates
+            
+            // Make the beam vibrate violently (20 times a second)
+            lfo.type = 'sine';
+            lfo.frequency.value = 20; 
+            lfoGain.gain.value = 0.5;
+            
+            gain.gain.setValueAtTime(0.5, novaTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, novaTime + 1.5);
+            
+            lfo.connect(lfoGain); lfoGain.connect(gain.gain);
+            osc.connect(gain); gain.connect(this.ctx.destination);
+            
+            lfo.start(novaTime); lfo.stop(novaTime + 1.5);
+            osc.start(novaTime); osc.stop(novaTime + 1.5);
+            this.cleanupNodes(novaTime + 1.5, osc, gain, lfo, lfoGain); // ADDED CLEANUP
+          });
+
+          // Phase 3: Cosmic Stardust fading away
+          for(let i = 0; i < 12; i++) {
+             setTimeout(() => {
+                this.createTone(this.ctx.currentTime, 2000 + (Math.random() * 2000), 'sine', 0.15, 0.2, 0);
+             }, 400 + (Math.random() * 1200)); // Triggers randomly after the Nova hits
+          }
+          break;
+        case 'fire2': // Fireball / Explosion
+          // The "Suck-In" anticipation (Reverse noise sweep)
+          this.createNoise(t, 'lowpass', 100, 0.4, 0.4, 1500); 
+          
+          // The Concussive Impact (Triggered 0.4s later)
+          const f2ImpactTime = t + 0.4;
+          this.createTone(f2ImpactTime, 250, 'sawtooth', 1.2, 0.8, -200); // Deep aggressive drop
+          this.createNoise(f2ImpactTime, 'lowpass', 1000, 1.5, 1.2, -900); // Explosive boom
+          
+          // The crackling embers settling (Randomized high-pitched pops)
+          for(let i = 0; i < 8; i++) {
+            setTimeout(() => {
+              this.createNoise(this.ctx.currentTime, 'highpass', 4000, 0.15, 0.05, 0);
+            }, 400 + (Math.random() * 1200));
+          }
+          break;
+
+        case 'water2': // Glacier / Blizzard
+          // The deep groaning of massive ice
+          const w2Osc = this.ctx.createOscillator();
+          const w2Gain = this.ctx.createGain();
+          w2Osc.type = 'square';
+          w2Osc.frequency.setValueAtTime(60, t);
+          w2Osc.frequency.linearRampToValueAtTime(30, t + 2); // Dragging down slowly
+          w2Gain.gain.setValueAtTime(0.5, t);
+          w2Gain.gain.exponentialRampToValueAtTime(0.01, t + 2);
+          w2Osc.connect(w2Gain); w2Gain.connect(this.ctx.destination);
+          w2Osc.start(t); w2Osc.stop(t + 2);
+          this.cleanupNodes(t + 2, w2Osc, w2Gain);
+          // The sustained blizzard winds
+          this.createNoise(t, 'highpass', 1200, 0.7, 2.5, 800);
+
+          // The dense shower of ice shards
+          for(let i = 0; i < 15; i++) {
+             setTimeout(() => {
+                this.createTone(this.ctx.currentTime, 1000 + (Math.random() * 800), 'triangle', 0.4, 0.1, -100);
+             }, Math.random() * 1800);
+          }
+          break;
+
+        case 'earth2': // Tectonic Spike Eruption
+          // The rising subterranean rumble
+          this.createNoise(t, 'lowpass', 50, 0.8, 0.6, 500);
+          
+          // The sudden, violent rock spike piercing through
+          const e2SpikeTime = t + 0.6;
+          this.createTone(e2SpikeTime, 70, 'sawtooth', 1.5, 1, -40); // Jagged, low tear
+          this.createTone(e2SpikeTime, 120, 'square', 1, 0.8, -80); // Grinding crunch
+          this.createNoise(e2SpikeTime, 'lowpass', 2500, 1.2, 1, -2000); // Dirt blast
+          break;
+
+        case 'air2': // Heavy Execution / Sonic Boom
+          // The rapid wind-up
+          this.createTone(t, 150, 'sine', 0.6, 0.3, 400); 
+          
+          const a2HitTime = t + 0.3;
+          
+          // Heavy, dense, inharmonic weaponry (3 frequencies instead of 2, pitched lower)
+          const a2Freqs = [180, 256, 381];
+          a2Freqs.forEach(freq => {
+             const osc = this.ctx.createOscillator();
+             const gain = this.ctx.createGain();
+             osc.type = 'square';
+             osc.frequency.setValueAtTime(freq, a2HitTime);
+             gain.gain.setValueAtTime(1, a2HitTime);
+             gain.gain.exponentialRampToValueAtTime(0.01, a2HitTime + 1.8); // Long, heavy ring
+             osc.connect(gain); gain.connect(this.ctx.destination);
+             osc.start(a2HitTime); osc.stop(a2HitTime + 1.8);
+             this.cleanupNodes(a2HitTime + 1.8, osc, gain);
+          });
+          
+          // The blunt force impact
+          this.createNoise(a2HitTime, 'lowpass', 800, 1.2, 0.5, -700);
+          break;
+
+        case 'buff2': // Ascension / Party Buff
+          // A sweeping A-Major extended arpeggio
+          const b2Notes = [440, 554, 659, 880, 1108]; 
+          b2Notes.forEach((freq, i) => {
+             const startTime = t + (i * 0.12); // Cascading sequence
+             
+             if (i === b2Notes.length - 1) {
+                // Apply the holy "shimmer" (LFO) to the final top note
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                const lfo = this.ctx.createOscillator();
+                const lfoGain = this.ctx.createGain();
+                
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(freq, startTime);
+                
+                lfo.type = 'sine';
+                lfo.frequency.value = 10; // The speed of the shimmer
+                lfoGain.gain.value = 0.6; // The intensity of the volume wobble
+                
+                gain.gain.setValueAtTime(0, startTime);
+                gain.gain.linearRampToValueAtTime(0.5, startTime + 0.2); // Swell
+                gain.gain.exponentialRampToValueAtTime(0.01, startTime + 2.5); // Long fade
+                
+                lfo.connect(lfoGain); lfoGain.connect(gain.gain); // Wire LFO to Volume
+                osc.connect(gain); gain.connect(this.ctx.destination);
+                
+                lfo.start(startTime); lfo.stop(startTime + .5);
+                osc.start(startTime); osc.stop(startTime + .5);
+                this.cleanupNodes(startTime + 2.5, osc, gain, lfo, lfoGain);
+             } else {
+                // The leading notes
+                this.createTone(startTime, freq, 'sine', 0.4, 0.8, 0);
+             }
+          });
+          break;
+
+        case 'debuff2': // Doom / Venom Plague
+          // Rising dissonant interval (sickly)
+          const d2Osc1 = this.ctx.createOscillator();
+          const d2Osc2 = this.ctx.createOscillator();
+          const d2Gain = this.ctx.createGain();
+          
+          d2Osc1.type = 'sawtooth';
+          d2Osc2.type = 'sawtooth';
+          d2Osc1.frequency.setValueAtTime(140, t);
+          d2Osc1.frequency.linearRampToValueAtTime(280, t + 2); // Rising tension
+          d2Osc2.frequency.setValueAtTime(155, t); // Dissonance
+          d2Osc2.frequency.linearRampToValueAtTime(295, t + 2);
+          
+          // The accelerating "Heartbeat" of dread (LFO choking the volume)
+          const d2Pulse = this.ctx.createOscillator();
+          const d2PulseGain = this.ctx.createGain();
+          d2Pulse.type = 'square';
+          d2Pulse.frequency.setValueAtTime(2, t); // Starts slow (2 beats a second)
+          d2Pulse.frequency.linearRampToValueAtTime(9, t + 2); // Ramps up to panic (9 beats)
+          d2PulseGain.gain.value = 1; 
+          
+          d2Gain.gain.setValueAtTime(0.6, t);
+          d2Gain.gain.linearRampToValueAtTime(0, t + 2);
+          
+          // Wire the pulse to chop the gain
+          d2Pulse.connect(d2PulseGain); d2PulseGain.connect(d2Gain.gain);
+          
+          // Muffle everything with a lowpass filter
+          const d2Filter = this.ctx.createBiquadFilter();
+          d2Filter.type = 'lowpass';
+          d2Filter.frequency.setValueAtTime(1000, t);
+          d2Filter.frequency.linearRampToValueAtTime(200, t + 2); // Suffocates out
+          
+          d2Osc1.connect(d2Gain); d2Osc2.connect(d2Gain); 
+          d2Gain.connect(d2Filter); d2Filter.connect(this.ctx.destination);
+          
+          d2Osc1.start(t); d2Osc1.stop(t + 2);
+          d2Osc2.start(t); d2Osc2.stop(t + 2);
+          d2Pulse.start(t); d2Pulse.stop(t + 2);
+          this.cleanupNodes(t + 2, d2Osc1, d2Osc2, d2Gain, d2Pulse, d2PulseGain, d2Filter); // ADDED CLEANUP
+          // The fatal finish (Muffled thump)
+          this.createNoise(t + 1.8, 'lowpass', 150, 1.5, 1, -100);
+          break;
+        case 'fire3': // Hellfire Whip / Instant Cremation
+          // A literal crack of heat. Instant max volume, sharp cutoff.
+          this.createNoise(t, 'lowpass', 5000, 1.5, 0.2, -4500); // Explosive burst
+          this.createTone(t, 600, 'sawtooth', 1.2, 0.25, -500); // Aggressive heat snap
+          break;
+
+        case 'water3': // Flash Freeze / Absolute Zero
+          // Glass shattering in a microsecond. Extremely high, extremely fast.
+          this.createTone(t, 2500, 'triangle', 1.5, 0.1, -1500); // The snap
+          this.createTone(t, 3500, 'sine', 1, 0.15, 0); // The icy ring
+          this.createNoise(t, 'highpass', 4000, 1, 0.1, 0); // The frost bite
+          break;
+
+        case 'earth3': // Geostrike / Seismic Punch
+          // A singular, deafening, blunt force 'crack'. 
+          this.createTone(t, 35, 'square', 2, 0.25, -20); // Sub-bass distortion
+          this.createNoise(t, 'lowpass', 800, 1.8, 0.2, -700); // Dirt impact
+          break;
+
+        case 'air3': // Vacuum Slash / Vorpal Strike
+          // A sonic boom. The air tearing open instantly.
+          // Sweeping a high-pass filter UP incredibly fast mimics a vacuum pop.
+          this.createNoise(t, 'highpass', 100, 1.5, 0.2, 4000); 
+          this.createTone(t, 800, 'sine', 1, 0.15, -600); // The blade whistling
+          break;
+
+        case 'buff3': // Flash Aura / Instant Maximize
+          // A hyper-fast, ascending glissando (like a rapid-fire slot machine win)
+          const b3Notes = [523.25, 659.25, 783.99, 1046.50]; // C-Major fast arpeggio
+          b3Notes.forEach((freq, i) => {
+            // All notes fire off within 0.15 seconds of each other
+            setTimeout(() => {
+               this.createTone(this.ctx.currentTime, freq, 'sine', 0.6, 0.2, 50);
+            }, i * 40); 
+          });
+          break;
+
+        case 'debuff3': // Death Mark / Hex
+          // A sudden, terrifying "clang" that drops pitch instantly.
+          const d3Freqs = [400, 475]; // Dissonant clash
+          d3Freqs.forEach(freq => {
+            this.createTone(t, freq, 'sawtooth', 0.8, 0.3, -300); // Violent downward drag
+          });
+          // A quick suffocating thump at the end
+          this.createNoise(t + 0.1, 'lowpass', 300, 1.2, 0.2, -250);
+          break;
+
+        case 'arcane3': // Singularity / Void Implosion
+          // The physics: High and low frequencies rushing to meet in the middle (implosion)
+          const a3HighOsc = this.ctx.createOscillator();
+          const a3LowOsc = this.ctx.createOscillator();
+          const a3Gain = this.ctx.createGain();
+          
+          a3HighOsc.type = 'triangle';
+          a3LowOsc.type = 'triangle';
+          
+          a3HighOsc.frequency.setValueAtTime(2000, t);
+          a3HighOsc.frequency.exponentialRampToValueAtTime(500, t + 0.25); // Crashes down
+          
+          a3LowOsc.frequency.setValueAtTime(100, t);
+          a3LowOsc.frequency.exponentialRampToValueAtTime(500, t + 0.25); // Rushes up
+          
+          a3Gain.gain.setValueAtTime(1, t);
+          a3Gain.gain.exponentialRampToValueAtTime(0.01, t + 0.25); // Vanishes instantly
+          
+          a3HighOsc.connect(a3Gain); a3LowOsc.connect(a3Gain);
+          a3Gain.connect(this.ctx.destination);
+          
+          a3HighOsc.start(t); a3HighOsc.stop(t + 0.25);
+          a3LowOsc.start(t); a3LowOsc.stop(t + 0.25);
+          this.cleanupNodes(t + 0.25, a3HighOsc, a3LowOsc, a3Gain);
+          // The "pop" of the singularity collapsing
+          this.createNoise(t + 0.2, 'highpass', 3000, 0.8, 0.1, 0);
+          break;
+        
       }
     },
     // 7. WOMAN SCREAM (Linguistics/Anatomy Simulation)
@@ -66719,7 +67248,7 @@
             // --- RANDOM LIGHTNING TRIGGER ---
             // Every beat (4 ticks), 5% chance of lightning
             if (tick % 4 === 0 && Math.random() > 0.1) {
-                if(MusicEngine && MusicEngine.playSFX) MusicEngine.playSFX('lightning');
+                if(MusicEngine && MusicEngine.play3DSFX) MusicEngine.play3DSFX('lightning');
             }
 
             // --- SEQUENCE LOGIC ---
@@ -72230,10 +72759,17 @@
                 
 
                 // TAB CONTENTS
+                // TAB CONTENTS
                 if (activeDeckTab === 'player') {
-                    let xptext = `XP:${Dungeon.xp}/${Dungeon.xpNeeded}`;
-                    let xtcolor = 'white'
-                    Dungeon.uiPlayerCard.name = `${playerName} Lv.${Dungeon.level}`;
+                    // --- THE FIX: CALCULATE XP NEEDED DYNAMICALLY ---
+                    let currentLvl = Dungeon.level || 0;
+                    let currentXp = Math.floor(Dungeon.xp || 0);
+                    let xpNeeded = Math.floor(100 * Math.pow(currentLvl + 1, 1.8));
+                    
+                    let xptext = `XP: ${currentXp} / ${xpNeeded}`;
+                    let xtcolor = 'white';
+                    
+                    Dungeon.uiPlayerCard.name = `${playerName} Lv.${currentLvl}`;
                     Dungeon.uiPlayerCard.description =myLivePerception;
                     Dungeon.uiPlayerCard.portrait = playerSprite;
                     Dungeon.uiPlayerCard.place (2.75,1.75,2)
