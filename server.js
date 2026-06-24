@@ -6346,7 +6346,12 @@
                     }  else if (rngRoll < 0.03) {
                         useBigBrain = false; 
                         eventInstruction = `[PLAYER ACTION]: Slayed a creature ${data.action}\nTASK: Throw a childish tantrum! Pout, curse at the player, and act like a sore loser because they broke your toy. ONE sentence.`;
+                    } else {
+                        // ADDED FALLBACK: Cover the remaining 97% of normal mob kills!
+                        useBigBrain = false; 
+                        eventInstruction = `[PLAYER ACTION]: Slayed a creature ${data.action}\nTASK: Narrate the monster's defeat in one quick, brutal sentence.`;
                     }
+                    
                 }
             }
             eventInstruction += recentNarratives;
@@ -6355,11 +6360,16 @@
             messageOptions = { sender: "", color: "#FFD700" }; // Narrator Mode
             if (rngRoll < 0.03) {
                 useBigBrain = false; 
-                eventInstruction = `[PLAYER ACTION]: ${data.action}\nTASK: As the DM, narrate the player's journey through this desolate place. Give an atmospheric description based on the [LOCAL LORE] and their progress (2 sentences MAX). Speak as an omniscient narrator. DO NOT ask questions.Omit Suncat's perspective.`;
+                eventInstruction = `[PLAYER ACTION]: ${data.action}\nTASK: As the DM, narrate the player's journey through this desolate place. Give an atmospheric description based on the [LOCAL LORE] and their progress (1 sentence MAX). Speak as an omniscient narrator. DO NOT ask questions.Omit Suncat's perspective.`;
             }
             else if (rngRoll < 0.039) {
                 useBigBrain = true; 
-                eventInstruction = `[PLAYER ACTION]: ${data.action} TASK: If you feel the dungeon is too quiet, you MUST use the 'spawnNPC' tool to ambush them, or the 'changeEnvironment' tool to alter the weather. Narrate the sudden shift atmospherically. DO NOT ask questions.Omit Suncat's perspective.`;
+                eventInstruction = `[PLAYER ACTION]: ${data.action} TASK: If you feel the dungeon is too quiet, you MUST use the 'spawnNPC' tool to ambush them, or the 'changeEnvironment' tool to alter the weather. Narrate the sudden shift atmospherically(1 sentence MAX). DO NOT ask questions.Omit Suncat's perspective.`;
+            }
+            else {
+                // ADDED FALLBACK: Don't lose the data.action!
+                useBigBrain = false;
+                eventInstruction = `[PLAYER ACTION]: ${data.action}\nTASK: Briefly narrate the atmosphere around the player in exactly ONE sentence.`;
             }
         }
         else if (triggerType === 'spectate') {
@@ -6412,7 +6422,6 @@
         // If Suncat needs to build something, load his DM and Quest brains
         if (useBigBrain) {
             dynamicPersona += PERSONA_RULES_DB.dm_mode + "\n";
-            dynamicPersona += PERSONA_RULES_DB.quest_mode + "\n";
         }
         
         // ---> NEW: INJECT STATE DIRECTLY INTO THE SYSTEM BRAIN <---
@@ -6841,7 +6850,7 @@ io.on("connection", (socket) => {
                     player.exploredTiles.add(`${Math.floor(data.x)},${Math.floor(data.y)}`);
 
                     // Every 75 steps, ping Suncat to DM the journey!
-                    if (Math.random()>.999) {
+                    if (player.stepsTaken > 0 && player.stepsTaken % 75 === 0&&Math.random()>.999) {
                         //let exploredPct = Math.floor((player.exploredTiles.size / 2000) * 100); // Rough estimate of reachable tiles
                         let actionDesc = `Is currently adventuring. Narrate their surroundings in the style of an epic chronicler (1 sentence MAX). Use high-fantasy vocabulary and a detached, omniscient tone. Focus on the weight of fate and the atmospheric gloom of the realm. Avoid addressing the player as 'you' in every sentence; treat their journey as a tale already being etched into legend. `;
                         
