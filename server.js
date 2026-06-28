@@ -3836,14 +3836,13 @@
         vecImpulse = await createMemoryVector("kill, destroy, attack, hurry, impatient, wrath, force, break");
         vecMaterial = await createMemoryVector("gold, money, loot, stats, optimal, hoard, steal, greedy");
         
-        // Esoteric Archetypes
-        // Esoteric Archetypes
+        //Archetypes
         vecLeftHandPath = await createMemoryVector("The path of domination and the exaltation of the self, seeking absolute power and refusing to yield by clinging fiercely to the ego and control.");
         vecBlackSchool = await createMemoryVector("The profound realization that existence is an illusion, finding peace in the detachment from worldly suffering and the embrace of nothingness.");
         vecYellowSchool = await createMemoryVector("The path of the passive observer, finding perfect balance and stillness in nature by accepting what is without forcing outcomes.");
         vecWhiteSchool = await createMemoryVector("The dynamic joy of existence, participating in the Great Work through selfless action, love, and unity with all living things.");
         // Chat Radar
-        suncatAttentionVector = await createMemoryVector("quest, magic, lore, adventure, combat, rules, tarot, dungeon, fighting, spells");
+        suncatAttentionVector = await createMemoryVector("quest, magic, lore, adventure, combat, rules, tarot, dungeon, fighting, spells, funny, joke, lol, lmao, haha, crazy, hilarious");
         console.log("[System] Philosophical Compass Online.");
         }
     async function evolveEgoMatrix() {
@@ -6255,8 +6254,12 @@
             const isMap999Active = Object.values(players).some(p => p.mapID === 999 && p.id !== SUNCAT_ID);
             let needsDM = wantsNewMap || wantsAction;
             if (data.isConversing) {
-                systemOverride += `\n[CONVERSATION OVERRIDE]: You are conversing with the player. Stay in character and respond to the user. Do not leave them hanging.`;
+                systemOverride += `\n[CONVERSATION OVERRIDE]: You are in a direct back-and-forth conversation with the player. However, this is a crowded multiplayer room. If the player's message makes absolutely no sense as a logical response to your previous message, assume they turned to talk to another human and output EXACTLY the word [IGNORE] and nothing else. Otherwise, reply naturally.`;
             } 
+            else if (data.isEavesdropping) {
+                systemOverride += `\n[EAVESDROP OVERRIDE]: You are lurking in a public chat room. The players are NOT talking to you. Drop a very short, highly natural gamer reaction to what was just said (e.g., "lol", "LMAO", "wow", "wild", or a single emoji). Act entirely like a human player hanging out. DO NOT act like a Dungeon Master, and DO NOT output [IGNORE].`;
+                useBigBrain = false; // Turn off his tools so he doesn't accidentally spawn a boss while laughing
+            }
             else if (asksOpinion) {
                 useBigBrain = true;
                 systemOverride += `\n[JUDGEMENT OVERRIDE]: The player is asking for your honest opinion of them. You just analyzed their behavior. Your current perception of them is: "${player.suncatPerception}". Tell them exactly what you think of them based on this perception. Do NOT hold back. Be blunt, poetic, or cryptic depending on your current mood.`;
@@ -6534,7 +6537,12 @@
 
         // --- Standard Post-Processing (Saving Facts/Favor/Journaling) ---
         if (finalSpeech !== "") {
-            
+            // --- NEW: THE SILENT BAILOUT ---
+            if (finalSpeech.includes("[IGNORE]")) {
+                console.log(`[Semantic Router] Suncat realized ${player.name} was talking to someone else. Window closed.`);
+                player.lastSuncatChat = 0; // Snap the window shut so we stop burning API tokens on this crosstalk
+                return; // Exit the function entirely without broadcasting or saving history
+            }
             if (triggerType === 'chat') {
                 const saveMatch = finalSpeech.match(/\[\[SAVE:\s*(.*?)\]\]/i);
                 if (saveMatch && saveMatch[1]) {
@@ -7177,47 +7185,74 @@ io.on("connection", (socket) => {
             // ==========================================
             const now = Date.now();
             
-        
-            const isConversing = player.lastSuncatChat && (now - player.lastSuncatChat < 60000);
-            let shouldListen = isConversing || content.includes("suncat");
+            const mentionsName = content.includes("suncat");
 
-                let msgVector = null;
-
-                // 2. The Semantic Threshold Check (Math-based routing)
-            if (suncatAttentionVector) {
-                    try {
-                        msgVector = await createMemoryVector(safeText);
-                        
-                        // SHIELD: Only do the math if the vector was successfully created!
-                        if (msgVector) {
-                            let topicRelevance = cosineSimilarity(msgVector, suncatAttentionVector);
-                            
-                            if (topicRelevance > 0.45) {
-                                shouldListen = true;
-                                console.log(`[Semantic Router] Intercepted message: Relevance Score ${topicRelevance.toFixed(2)}`);
-                            }
-                        }
-                } catch (err) {
-                    console.error("[Semantic Router] Vector math failed:", err);
+            let mentionsOtherPlayer = false;
+            for (let id in players) {
+                if (id !== socket.id && id !== SUNCAT_ID) { 
+                    let otherName = players[id].name.toLowerCase();
+                    if (otherName.length > 2 && content.includes(otherName)) { 
+                        mentionsOtherPlayer = true;
+                        break;
+                    }
                 }
             }
 
-            // 3. Execution
-        
-                if (shouldListen || Math.random() < 0.05) {
+            let isConversing = (now - (player.lastSuncatChat || 0)) < 30000;
+
+            if (mentionsOtherPlayer && !mentionsName) {
+                isConversing = false;
+                player.lastSuncatChat = 0; 
+            }
+
+            // --- THE EAVESDROP & SEMANTIC RADAR ---
+            let msgVector = null;
+            let isEavesdropping = false;
+
+            try {
+                // We must embed the message to check semantic relevance
+                msgVector = await createMemoryVector(safeText);
+            } catch (err) {
+                console.error("[Semantic Router] Vector math failed:", err);
+            }
+
+            let semanticScore = 0;
+            if (msgVector && suncatAttentionVector) {
+                semanticScore = cosineSimilarity(msgVector, suncatAttentionVector);
+            }
+
+            // He listens IF: Named OR Conversing OR Semantic Score > 0.65 OR 1% Random chance
+            if (!mentionsName && !isConversing) {
+                // 0.65 means highly relevant to his vector. 0.01 is the 1% random chance.
+                if (semanticScore > 0.65 || Math.random() < 0.01) {
+                    isEavesdropping = true;
+                }
+            }
+
+            let shouldListen = mentionsName || isConversing || isEavesdropping;
+
+            // 6. Execution
+            if (shouldListen) {
                 if (["suncat you there", "suncat wake up"].some(w => content.includes(w))) player.npcIsTyping = false;
 
-                player.lastSuncatChat = now; 
+                // IMPORTANT: Only open the 30-second window if they actively named him. 
+                // Eavesdropping shouldn't lock him into a 1-on-1 convo!
+                if (mentionsName || isConversing) {
+                    player.lastSuncatChat = now; 
+                }
+                
                 if (!player.undigestedInfo) player.undigestedInfo = [];
                 player.undigestedInfo.push(`Player said: "${safeText}"`);
+                
                 processSuncatThought(socket.id, 'chat', { 
                     text: safeText,
                     vector: msgVector,
-                    isConversing: isConversing // <--- Fixed Key!
+                    isConversing: (mentionsName || isConversing),
+                    isEavesdropping: isEavesdropping // Pass this down to the brain!
                 });
             }
             
-            });
+        }); // End of socket.on('chat_message')
         socket.on("request_tarot_reading", (data) => {
             const player = players[socket.id];
             if (!player) return;
