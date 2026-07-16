@@ -4688,7 +4688,8 @@
                                     spawnY: mapData.bastionCenter.y + 0.5,
                                     bossX: mapData.lairCenter.x + 0.5,
                                     bossY: mapData.lairCenter.y + 0.5,
-                                    biome: biome.name
+                                    biome: biome.name,
+                                    floorTiles: mapData.validFloors
                                 };
 
                                 activeCustomMap = customMapData;
@@ -7820,9 +7821,17 @@ io.on("connection", (socket) => {
                         } 
                         else {
                             // 1. SERVER does the logic. No AI required here.
-                            let mID = getSafeMinion(hostileMinions); // Pick a monster
-                            let spawnSpot = pickTile(activeCustomMap.floorTiles); // Pick a tile
-                            
+                                let bossNPC = activeCustomMap.npcs.find(n => n.isBoss);
+                                let mID = bossNPC ? bossNPC.type : 54; // Fallback to Goblin if no boss found
+
+                                let spawnSpot = {
+                                    x: advPlayer.x + (Math.random() > 0.5 ? 4 : -4),
+                                    y: advPlayer.y + (Math.random() > 0.5 ? 4 : -4)
+                                };
+
+                                // Clamp it safely within the 100x100 grid bounds
+                                spawnSpot.x = Math.max(2, Math.min(97, Math.floor(spawnSpot.x)));
+                                spawnSpot.y = Math.max(2, Math.min(97, Math.floor(spawnSpot.y)));
                             // 2. SERVER spawns the monster natively
                             io.emit("remote_spawn_npc", {
                                 mapID: advPlayer.mapID,
