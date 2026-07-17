@@ -2368,7 +2368,7 @@
                     type: "OBJECT",
                     properties: {
                         targetName: { type: "STRING" },
-                        npcType: { type: "NUMBER", description: "The ID of the entity to spawn (e.g., 63 for Dragon)." },
+                        npcType: { type: "STRING", description: "The name or ID of the entity to spawn (e.g., 'Dragon' or '63')." },
                         state: { type: "STRING", description: "'chasing', 'wandering', or 'stationary'." },
                         role: { 
                             type: "STRING", 
