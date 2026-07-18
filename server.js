@@ -6245,7 +6245,8 @@
                 messageOptions = { sender: "", color: "#FFD700", targetId: socketId };            
             }
             const chatText = data.text.toLowerCase();
-            const wantsNewMap = chatText.includes(".hack//amap") || ["make me","make me a scenario","give me a quest","give me an adventure","im bored","create a map", "generate a quest", "start a scenario", "build a dungeon"].some(kw => chatText.includes(kw));            const wantsAction = ["teleport", "spawn", "boss", "enemy"].some(kw => chatText.includes(kw));
+            const wantsNewMap = ["make me","make me a scenario","give me a quest","give me an adventure","im bored","create a map", "generate a quest", "start a scenario", "build a dungeon"].some(kw => chatText.includes(kw));            
+            const wantsAction = ["teleport", "spawn", "boss", "enemy"].some(kw => chatText.includes(kw));
             const needsOracle = ["tarot", "fortune", "reading", "interpret", "meaning of"].some(kw => chatText.includes(kw));            
             const isDirectCommand = chatText.includes("[reply]") || chatText.includes("suncat")|| data.isConversing;
             const asksPersonal = ["who are", "your past", "remember", "real life", "favorite", "you like", "about yourself", "memories", "where are you from", "your name"].some(kw => chatText.includes(kw));
@@ -6254,7 +6255,15 @@
             const asksOpinion = ["think of me", "your opinion", "judge me", "evaluate me", "how do you see me", "what kind of person"].some(kw => chatText.includes(kw));
             const isMap999Active = Object.values(players).some(p => p.mapID === 999 && p.id !== SUNCAT_ID);
             let needsDM = wantsNewMap || wantsAction;
-            if (data.isConversing) {
+            if (wantsNewMap) {
+                useBigBrain = true;
+                systemOverride += `\n[CRITICAL OVERRIDE]: The player is asking for a new map, adventure, or quest. DO NOT roleplay the terrain shifting. DO NOT tell the player to use a .hack command. You MUST execute the 'createCustomMap' tool right now to physically generate the world.`;
+            }
+            if (wantsAction) {
+                useBigBrain = true;
+                systemOverride += `\n[DM OVERRIDE]: The player wants you to alter the world. You MUST use your tools (spawnNPC, alterTerrain, changeEnvironment). Do not just roleplay it.`;
+            }
+            else if (data.isConversing) {
                 systemOverride += `\n[CONVERSATION OVERRIDE]: You are in a direct back-and-forth conversation with the player. However, this is a crowded multiplayer room. If the player's message makes absolutely no sense as a logical response to your previous message, assume they turned to talk to another human and output EXACTLY the word [IGNORE] and nothing else. Otherwise, reply naturally.`;
             } 
             else if (data.isEavesdropping) {
@@ -6265,11 +6274,7 @@
                 useBigBrain = true;
                 systemOverride += `\n[JUDGEMENT OVERRIDE]: The player is asking for your honest opinion of them. You just analyzed their behavior. Your current perception of them is: "${player.suncatPerception}". Tell them exactly what you think of them based on this perception. Do NOT hold back. Be blunt, poetic, or cryptic depending on your current mood.`;
             }
-            else if (wantsNewMap && isMap999Active) {
-                useBigBrain = false; 
-                systemOverride += `\n[SYSTEM OVERRIDE]: The player wants a new map/quest, but a custom scenario is ALREADY ONGOING. REFUSE the request. DO NOT use the 'createCustomMap' tool. Tell them to finish the current quest or join it via '.hack//teleport 999'.`;
-                needsDM = false; 
-            } 
+            
             else if (needsSlayer) {
                 useBigBrain = true; 
                 systemOverride += `\n[CRITICAL OVERRIDE]: The player wants you to slay an NPC.DO NOT roleplay the smiting. DO NOT tell the player to use a .hack command. DO NOT tell the player to do it themselves. You MUST execute the "smiteOrReviveEntity" tool right now to physically smite the NPC.`;
@@ -6283,14 +6288,7 @@
                 needsDM = true; 
                 systemOverride += `\n[MEMORY OVERRIDE]: The player is asking about the past. If they ask about YOUR past/identity, execute 'consultGameManual'. If they ask about THEIR past/adventures, execute 'searchPlayerMemories'!`;
             }
-            else if (wantsNewMap && !isMap999Active) {
-                useBigBrain = true;
-                systemOverride += `\n[CRITICAL OVERRIDE]: The player is asking for a new map, adventure, or quest. DO NOT roleplay the terrain shifting. DO NOT tell the player to use a .hack command. You MUST execute the 'createCustomMap' tool right now to physically generate the world.`;
-            }
-            else if (wantsAction) {
-                useBigBrain = true;
-                systemOverride += `\n[DM OVERRIDE]: The player wants you to alter the world. You MUST use your tools (spawnNPC, alterTerrain, changeEnvironment). Do not just roleplay it.`;
-            } else {
+             else {
                 useBigBrain = isDirectCommand || useBigBrain; 
             }
             let focusPrompt = (data.isConversing || isDirectCommand) 
