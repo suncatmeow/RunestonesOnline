@@ -2266,7 +2266,7 @@
                 this.speed = .5; 
                 this.xp= getPower(null,this.cards);
             // WARD SYSTEM ---
-                this.maxWards = (this.isBoss) ? 3 : 0; // Bosses get 3 natural wards!
+                this.maxWards = (this.isBoss) ? 3 : 1; // Bosses get 3 natural wards!
                 this.timePerWard = 3.0;
                 this.currentWardTime = this.maxWards * this.timePerWard;
                 this.wardShatterCooldown = 0;
@@ -3502,13 +3502,7 @@
                             let targetCard = currentPrey.baseCard;
                             const getOverworldRoll = (card, statIndex, entity, masteryLevel = 0) => {
                                 const rollOnce = () => {
-                                    let total = 0;
-                                    let numRolls = entity.isBoss ? 3 : 1; 
-                                    if (entity.alignment === 'foe_coward') numRolls = 1; 
-                                    
-                                    for (let i = 0; i < numRolls; i++) {
-                                        total += card.rollStat(statIndex);
-                                    }
+                                    let total = card.rollStat(statIndex); // Everyone just rolls once!
                                     
                                     if (entity.stat && entity.stat[statIndex]) total += entity.stat[statIndex][2];
                                     total += masteryLevel;
@@ -4471,7 +4465,8 @@
                                 
                                 if (bestTarget === dungeon) {
                                     // 🩸 ENEMY HIT THE PLAYER!
-                                    if (typeof dungeon.absorbHit === 'function' && dungeon.absorbHit(this)) {
+                                    if (typeof dungeon.absorbHit === 'function' && dungeon.absorbHit(this, spellId)) {
+
                                     } else {
                                         dungeon.power -= damage; // Deal HP Damage
                                         dungeon.playerFlashTimer = 3;
@@ -4620,7 +4615,8 @@
                                         let damage = myAtk - targetDef;
                                         
                                         if (target === dungeon) {
-                                            if (typeof dungeon.absorbHit === 'function' && dungeon.absorbHit(this)) {
+                                            if (typeof dungeon.absorbHit === 'function' && dungeon.absorbHit(this, spellId)) {
+
                                             } else {
                                                 dungeon.power -= damage;
                                                 dungeon.playerFlashTimer = 3;
@@ -4854,7 +4850,6 @@
             let defCard = new Card(Math.floor(this.type), 0);
             let defRoll = defCard.rollStat(defStat);
             if (this.stat && this.stat[defStat]) defRoll += this.stat[defStat][2];
-            if (this.isBoss) defRoll += defCard.rollStat(defStat); // Bosses get a defense bonus!
 
             // 4. Resolve the Tug-of-War
             if (atkRoll > defRoll) {
@@ -12491,7 +12486,6 @@
                 // 2. Calculate NPC STR Roll (Stat index 0)
                 let npcCard = new Card(Math.floor(targetNPC.type), 0);
                 let npcStrRoll = npcCard.rollStat(0);
-                if (targetNPC.isBoss) { npcStrRoll += npcCard.rollStat(0); } // Bosses hit harder
                 if (targetNPC.stat && targetNPC.stat[0]) npcStrRoll += targetNPC.stat[0][2];
 
                 // 3. Resolve the Block
@@ -12526,70 +12520,15 @@
                 } 
                 else {
                     // ==========================================
-                    // PHASE 2: THE STRIKE (Player STR vs NPC CON)
+                    // PHASE 2: THE STRIKE (Player vs NPC)
                     // ==========================================
                     if (typeof MusicEngine !== 'undefined') {
                         MusicEngine.play3DSFX('slash', targetNPC.x, targetNPC.y, this.x, this.y, this.dir);
                     }
 
-                    // 1. Calculate Player STR Roll (Stat index 0)
-                    let pStrBase = (this.stat && this.stat[0]) ? this.stat[0][0] : 1;
-                    let pStrDice = (this.stat && this.stat[0]) ? this.stat[0][1] : 4;
-                    let pStrMod  = (this.stat && this.stat[0]) ? this.stat[0][2] : 0;
-                    
-                    let pStrRoll = pStrMod;
-                    for (let i = 0; i < pStrBase; i++) { 
-                        pStrRoll += Math.floor(Math.random() * pStrDice) + 1; 
-                    }
-
-                    // 2. Calculate NPC CON Roll (Stat index 1)
-                    let npcConRoll = 0;
-                    let numRolls = targetNPC.isBoss ? 6 : 1; // Bosses get 6 rolls to defend, exactly like Projectile logic
-                    for (let r = 0; r < numRolls; r++) {
-                        npcConRoll += npcCard.rollStat(1);
-                    }
-                    if (targetNPC.stat && targetNPC.stat[1]) npcConRoll += targetNPC.stat[1][2];
-
-                    // 3. Resolve the Attack
-                    if (pStrRoll > npcConRoll) {
-                        // --- PLAYER OVERPOWERS THE NPC ---
-                        
-                        // Attempt to absorb via Ward Time Pool!
-                        if (targetNPC.absorbHit(this)) {
-                            // WARD ABSORBED IT: Bounce them back and stun them!
-                            let dx = targetNPC.x - this.x;
-                            let dy = targetNPC.y - this.y;
-                            let dist = Math.sqrt(dx * dx + dy * dy) || 1;
-
-                            targetNPC.slideTargetX = targetNPC.x + (dx / dist) * 1.2; 
-                            targetNPC.slideTargetY = targetNPC.y + (dy / dist) * 1.2;
-                            targetNPC.isSliding = true;
-                            targetNPC.state = 'chasing';   
-                            targetNPC.combatCooldown = 20; 
-                        } else {
-                            // NO WARDS LEFT: Crushed!
-                            targetNPC.damageFlashTimer = 5;
-                            if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('death', targetNPC.x, targetNPC.y, this.x, this.y, this.dir);
-                            
-                            if (typeof globalParticles !== 'undefined' && typeof spawnParticle !== 'undefined') {
-                                for (let p = 0; p < 8; p++) {
-                                    spawnParticle(
-                                        targetNPC.x + (Math.random() - 0.5) * 0.4,
-                                        targetNPC.y + (Math.random() - 0.5) * 0.4,
-                                        '#ff0000', 'smoke'
-                                    );
-                                }
-                            }
-
-                            // Trigger Death & Loot
-                            this.killNPC(targetNPC, targetNPC.isBoss ? true : false, 'melee_combat');
-                        }
-                    } else {
-                        // --- ATTACK RESISTED ---
-                        // The NPC's CON was too high. They survive, but take the knockback!
-                        targetNPC.damageFlashTimer = 3;
-                        if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('cancel', targetNPC.x, targetNPC.y, this.x, this.y, this.dir);
-
+                    // Attempt to absorb via Ward Time Pool! (absorbHit rolls the dice for us!)
+                    if (targetNPC.absorbHit(this)) {
+                        // WARD ABSORBED IT (Or they Blocked it): Bounce them back and stun them!
                         let dx = targetNPC.x - this.x;
                         let dy = targetNPC.y - this.y;
                         let dist = Math.sqrt(dx * dx + dy * dy) || 1;
@@ -12597,9 +12536,25 @@
                         targetNPC.slideTargetX = targetNPC.x + (dx / dist) * 1.2; 
                         targetNPC.slideTargetY = targetNPC.y + (dy / dist) * 1.2;
                         targetNPC.isSliding = true;
-
                         targetNPC.state = 'chasing';   
                         targetNPC.combatCooldown = 20; 
+                    } else {
+                        // NO WARDS LEFT: Crushed!
+                        targetNPC.damageFlashTimer = 5;
+                        if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('death', targetNPC.x, targetNPC.y, this.x, this.y, this.dir);
+                        
+                        if (typeof globalParticles !== 'undefined' && typeof spawnParticle !== 'undefined') {
+                            for (let p = 0; p < 8; p++) {
+                                spawnParticle(
+                                    targetNPC.x + (Math.random() - 0.5) * 0.4,
+                                    targetNPC.y + (Math.random() - 0.5) * 0.4,
+                                    '#ff0000', 'smoke'
+                                );
+                            }
+                        }
+
+                        // Trigger Death & Loot
+                        this.killNPC(targetNPC, targetNPC.isBoss ? true : false, 'melee_combat');
                     }
                 }
             }
@@ -17043,7 +16998,7 @@
                                let targetDef = targetCard.rollStat(spellData.defStat) + (npc.stat[spellData.defStat] ? npc.stat[spellData.defStat][2] : 0);
 
                                if (playerAtk > targetDef) {
-                                   if (npc.absorbHit(this, this.spellId)) {
+                                   if (npc.absorbHit(this, spellId)) {
                                        // Survived via ward! Add a small knockback so they don't just stand inside the cone.
                                        let knockPower = (spellData.knockback || 1.0) * 0.5;
                                        let pushX = dx / dist;
@@ -17226,10 +17181,9 @@
                             }
                         } 
                         else {
-                        if (playerAgi > targetAgi) {
                             if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('slash');                        
                             
-                            // --- THE FIX: Let the Ward try to block the backstab! ---
+                            // Let absorbHit handle the math!
                             if (bestTarget.absorbHit(this, spellId)) {
                                 // Survived via ward! Add a small flinch/knockback so they don't clip.
                                 let pushX = this.dir === 1 ? 1 : (this.dir === 3 ? -1 : 0);
@@ -17243,12 +17197,7 @@
                                 // No ward left, instant kill!
                                 this.killNPC(bestTarget, false, 'backstab');
                             }
-                        } else {
-                            if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('block');                        
-                            bestTarget.dirX *= -1; 
-                            bestTarget.dirY *= -1;
                         }
-                    }
 
                         // --- MOVEMENT & PHYSICS KILL SWITCH ---
                         // Forget sliding destinations so we don't rubberband across the map!
@@ -22903,7 +22852,7 @@
                         if (Math.sqrt(dx * dx + dy * dy) < this.radius + 0.3) {
                             this.triggerExplosion();
                             if (this.owner && typeof startGame !== 'undefined' && startGame === 'explore') {
-                                if (!exploreRef.absorbHit(this.owner)) {
+                                if (!exploreRef.absorbHit(this.owner, this.spellId)) {
                                     this.owner.triggerInteraction(exploreRef);
                                 }
                             }
@@ -22942,93 +22891,53 @@
                                 let defCard = new Card(Math.floor(npc.type), 0);
                             
                 
-                        // 3. Roll the Dice!
+                        // 3. Apply the Hit using the new Ward System!
                             let spellData = SPELL_REGISTRY[this.spellId] || SPELL_REGISTRY[26];
                             
-                            // 1. DYNAMIC ATTACKER ROLL
-                            // Default to INT (2) if someone forgot to add it to the registry
-                            let statToCast = spellData.castStat !== undefined ? spellData.castStat : 2; 
-                            
-                            // Roll the specific stat for this skill!
-                            let atkRoll = atkCard.rollStat(statToCast) + this.damage; 
-                            
-                            // 2. DYNAMIC DEFENDER ROLL
-                            let defStat = 0;
-                            let statToDefend = spellData.defStat !== undefined ? spellData.defStat : 1; 
-                            
-                            let numRolls = npc.isBoss ? 6 : 1; 
-                            for (let r = 0; r < numRolls; r++) {
-                                defStat += defCard.rollStat(statToDefend);
-                            }
-                            
-                        // 3. Resolve the Hit
-                        if (atkRoll > defStat) {
-                        let magnitude = atkRoll - defStat; 
-                        
-                        if (spellData.type === 'debuff') {
-                            npc.damageFlashTimer = 3;
-                            npc.applySpell(this.spellId, magnitude);
-                            MusicEngine.play3DSFX('debuff', this.x, this.y, exploreRef.x, exploreRef.y, exploreRef.dir);
-                        } else {
-                            // --- NEW TIME-BASED WARD CHECK ---
-                            // Pass this.owner (or exploreRef if player fired it directly) so stats roll properly!
-                            let caster = this.owner || exploreRef;
-
-                            if (npc.absorbHit(caster, this.spellId)) {
-                                // Ward absorbed the hit and deducted time! (absorbHit handles particles & sounds)
-                            } else {
-                                // Wards shattered / 0 time left: Lethal hit!
+                            if (spellData.type === 'debuff') {
                                 npc.damageFlashTimer = 3;
-                                exploreRef.killNPC(npc, false, 'projectile_spell');
-                                if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('death', this.x, this.y, exploreRef.x, exploreRef.y, exploreRef.dir);
-                            }
-                        }
-                        
-                        this.triggerExplosion();
-                        return;
-                    } else {
-                            // SPELL RESISTED!
-                                MusicEngine.play3DSFX('cancel', this.x, this.y, exploreRef.x, exploreRef.y, exploreRef.dir);
-                                npc.damageFlashTimer = 3
-                                let knockPower = spellData.knockback !== undefined ? spellData.knockback : 0.5;
-                            
-                            // Push direction is based on the projectile's velocity
-                            let pushX = this.vx / this.baseSpeed;
-                            let pushY = this.vy / this.baseSpeed;
-
-                            // Break the total knockback distance into small, safe 0.25-tile steps
-                            let maxPushSteps = Math.floor(knockPower * 4); 
-                            let pushed = 0;
-                            
-                            let testX = npc.x;
-                            let testY = npc.y;
-                            
-                            while (pushed < maxPushSteps) {
-                                let nextX = testX + pushX * 0.25; 
-                                let nextY = testY + pushY * 0.25;
+                                npc.applySpell(this.spellId, 1); // Debuffs apply immediately
+                                MusicEngine.play3DSFX('debuff', this.x, this.y, exploreRef.x, exploreRef.y, exploreRef.dir);
+                            } else {
+                                // Let absorbHit handle all the math, ward reduction, and lethal checks
+                                let caster = this.owner || exploreRef; // Who fired it?
                                 
-                                // RADIUS BUFFER: Add 0.3 padding in the direction they are moving.
-                                let bufferX = pushX > 0 ? 0.3 : (pushX < 0 ? -0.3 : 0);
-                                let bufferY = pushY > 0 ? 0.3 : (pushY < 0 ? -0.3 : 0);
+                                if (npc.absorbHit(caster, this.spellId)) {
+                                    // Ward absorbed it! They survive, but take knockback from the impact
+                                    npc.damageFlashTimer = 3;
+                                    let knockPower = spellData.knockback !== undefined ? spellData.knockback : 0.5;
+                                    
+                                    let pushX = this.vx / this.baseSpeed;
+                                    let pushY = this.vy / this.baseSpeed;
+                                    let maxPushSteps = Math.floor(knockPower * 4); 
+                                    let pushed = 0, testX = npc.x, testY = npc.y;
+                                    
+                                    while (pushed < maxPushSteps) {
+                                        let nextX = testX + pushX * 0.25; 
+                                        let nextY = testY + pushY * 0.25;
+                                        let bufferX = pushX > 0 ? 0.3 : (pushX < 0 ? -0.3 : 0);
+                                        let bufferY = pushY > 0 ? 0.3 : (pushY < 0 ? -0.3 : 0);
 
-                                // Notice we use exploreRef.isWall here since we are inside the Projectile class!
-                                if (exploreRef.isWall(Math.floor(nextX + bufferX), Math.floor(nextY + bufferY))) {
-                                    break; 
+                                        if (exploreRef.isWall(Math.floor(nextX + bufferX), Math.floor(nextY + bufferY))) break; 
+                                        
+                                        testX = nextX; testY = nextY; pushed++;
+                                    }
+
+                                    npc.slideTargetX = testX;
+                                    npc.slideTargetY = testY;
+                                    npc.isSliding = true;
+                                    npc.state = 'chasing';
+                                    npc.combatCooldown = 13; 
+                                } else {
+                                    // No wards left! They burn to ash.
+                                    npc.damageFlashTimer = 3;
+                                    exploreRef.killNPC(npc, false, 'projectile_spell');
+                                    if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('death', this.x, this.y, exploreRef.x, exploreRef.y, exploreRef.dir);
                                 }
-                                
-                                testX = nextX;
-                                testY = nextY;
-                                pushed++;
                             }
-
-                            // Set the destination and trigger the smooth slide
-                            npc.slideTargetX = testX;
-                            npc.slideTargetY = testY;
-                            npc.isSliding = true;
                             
-                            npc.state = 'chasing';
-                            npc.combatCooldown = 13; // Stunned while sliding!
-                        }
+                            this.triggerExplosion();
+                            return;
                         // ==========================================
                         // NEW: CHAIN LIGHTNING LOGIC
                         // ==========================================
