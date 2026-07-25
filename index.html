@@ -187,12 +187,12 @@
                 
                 // --- PROJECTILES (Attack) ---
                 13: { type: 'projectile', name: 'Death', cooldown: 9000,castStat: 2, defStat: 2, color: [0,0,0], glow: '#00ffff',  model3D: 'd4', isHoming: true }, 
-                26: { type: 'projectile', name: 'Fireball', cooldown: 6000,     castStat: 2, defStat: 1, color: [1,0.5,0], glow: '#ff0000', sprite2D: -37, isHoming: false }, 
+                26: { type: 'projectile', name: 'Fireball', cooldown: 6000,     castStat: 2, defStat: 1, color: [1,0.5,0], glow: '#ff0000', sprite2D: -37, isHoming: false,knockback: 1.5  }, 
                 92: { type: 'imbue', name: 'Imbue Fire', consume: 26, cooldown: 3000 },
                 93: { type: 'projectile', name: 'Lightning',cooldown: 7000, castStat: 2, defStat: 3, color: [1,1,0], glow: '#ffff00', model3D: 'd4', isHoming: true, chains: 1 },
                 94: { type: 'projectile', name: 'Ice Shard',cooldown: 9000,     castStat: 2, defStat: 1, color: [0,0,1], glow: '#0000ff', model3D: 'd4', isHoming: false  },
                 9999: { type: 'projectile', name: 'Attack', castStat: 0, defStat: 1, color: [1,1,1], glow: '#ffff00', sprite2D: 315, isHoming: false, range: 1.3, knockback: 1.3 },
-                9998: { type: 'projectile', name: 'Imbued Attack', castStat: 0, defStat: 1, color: [1,0.5,0], glow: '#ff0000', sprite2D: 92, isHoming: false, range: 6.0, knockback: 1.5 },
+                9998: { type: 'projectile', name: 'Imbued Attack', castStat: 0, defStat: 1, color: [1,0.5,0], glow: '#ff0000', sprite2D: -37, isHoming: false, knockback: 1.5 },
                 // // --- INSTANT FRONTAL AoE (Cone) ---
                 95: { type: 'cone', name: 'Flurry',cooldown: 3000, castStat: 3, defStat: 1, range: 2.0, knockback: 0.5, angle: 0.5 },
                 // // --- INSTANT TELEPORT STRIKES ---
@@ -256,8 +256,8 @@
                 39: { type: 'aoe_knockback', name: 'Dragon Wing', range: 8,cooldown: 30000 },
                 20: { type: 'aoe_judgement', name: 'Horn of Judgement', range: 8 ,cooldown: 86400000},
                 // --- NPC SUMMONING SPELLS ---
-                88: { type: 'summon', name: 'Raise Dead', summonType: 82, count: 1,maxMinions:1,cooldown: 450000, }, // Spawns 2 Skeletons
-                92: { type: 'summon', name: 'Call Familiar', summonType: 23, count: 1,maxMinions:1,cooldown: 450000, }, // Spawns 1 Wisp
+                500: { type: 'summon', name: 'Raise Dead', summonType: 82, count: 1,maxMinions:1,cooldown: 450000, }, // Spawns 2 Skeletons
+                501: { type: 'summon', name: 'Call Familiar', summonType: 23, count: 1,maxMinions:1,cooldown: 450000, }, // Spawns 1 Wisp
                 };//
             
             const CARD_MANIFEST_DB = {
@@ -2296,8 +2296,9 @@
                 this.preState = state;
                 this.state = state; 
             //RANGED COMBAT STATS ---
-                const rangedTypes = [0, 1, 2, 5, 9, 9.1,32, 32.1, 33, 33.1, 34, 34.1, 35, 35.1,37,37.1,42, 48,57,57.1, 62, 63,63.1,76,78,79,83,999]; 
-                this.isRanged = rangedTypes.includes(Math.floor(this.type)) || rangedTypes.includes(this.type);
+                //const rangedTypes = [0, 1, 2, 5, 9, 9.1,32, 32.1, 33, 33.1, 34, 34.1, 35, 35.1,37,37.1,42, 48,57,57.1, 62, 63,63.1,76,78,79,83,999]; 
+                //this.isRanged = rangedTypes.includes(Math.floor(this.type)) || rangedTypes.includes(this.type);
+                this.isRanged = true;
                 this.rangedCooldown = Math.random() * 60;
                 
                 this.stat = [
@@ -3916,8 +3917,9 @@
             // --- SMOOTH DASHING & SLIDING (Assassination & Knockback) ---
             // =========================================================
                 if (this.isAggroDashing || this.isSliding) {
-                    let destX = this.isSliding ? this.slideTargetX : this.targetX;
-                    let destY = this.isSliding ? this.slideTargetY : this.targetY;
+                    // FIX: Changed this.targetX to this.dashTargetX
+                    let destX = this.isSliding ? this.slideTargetX : this.dashTargetX; 
+                    let destY = this.isSliding ? this.slideTargetY : this.dashTargetY;
                     
                     let dx = destX - this.x;
                     let dy = destY - this.y;
@@ -3934,6 +3936,12 @@
                         if (this.isAggroDashing) {
                             this.isAggroDashing = false;
                             this.state = 'battling'; // Ready to strike!
+                            
+                            // FIX: Actually execute the attack logic!
+                            if (typeof this.dashCallback === 'function') {
+                                this.dashCallback();
+                                this.dashCallback = null;
+                            }
                         }
                         if (this.isSliding) {
                             this.isSliding = false;
@@ -3951,7 +3959,7 @@
                             this.y = nextY;
                         }
                         
-                        // Update facing direction for dashing (sliding shouldn't turn them around)
+                        // Update facing direction for dashing
                         if (this.isAggroDashing) {
                             this.dirX = dx / distance;
                             this.dirY = dy / distance;
@@ -3959,7 +3967,7 @@
                     }
                     
                     return; // SKIP the rest of the normal AI movement for this frame!
-                } 
+                }
                 
                 // FREEZE MOVEMENT DURING DIALOGUE!
                 else if ((this.state === 'chasing' || this.state === 'fleeing' || this.state === 'wandering' || this.state === 'following') && startGame !== 'dialogue') {            
@@ -4308,51 +4316,72 @@
                     }
                 }
                 // ==========================================
-                // NEW: ALLY ASSASSINATION SPELLS (Backstab)
+                // NEW: ALLY / FOE ASSASSINATION SPELLS (Backstab)
                 // ==========================================
                 else if (spellData.type === 'assassination') {
-                    // Find the actual target object at those coordinates
-                    let bestTarget = dungeon.npcs.find(n => Math.floor(n.x) === Math.floor(targetX) && Math.floor(n.y) === Math.floor(targetY));
                     
-                    // Fallback proximity check if they are moving
-                    if (!bestTarget) {
-                        let closestDist = Infinity;
-                        dungeon.npcs.forEach(npc => {
-                            if (npc === this || npc.isDead || !npc.visible || npc.alignment === this.alignment) return;
-                            let dx = npc.x - this.x;
-                            let dy = npc.y - this.y;
-                            let dist = Math.sqrt(dx*dx + dy*dy);
-                            if (dist < closestDist) { closestDist = dist; bestTarget = npc; }
-                        });
+                    // 1. Build target list (Include player if caster is a foe)
+                    let targetsToCheck = [...dungeon.npcs];
+                    if (typeof this.alignment === 'string' && this.alignment.startsWith('foe')) {
+                        targetsToCheck.push(dungeon); 
                     }
+
+                    let bestTarget = null;
+                    let closestDist = Infinity;
+
+                    // 2. Find closest valid target
+                    targetsToCheck.forEach(target => {
+                        if (target !== dungeon) {
+                            if (target === this || target.isDead || !target.visible || target.alignment === this.alignment) return;
+                        }
+
+                        // Friendly Fire Check
+                        let isEnemy = false;
+                        if (this.alignment === 'ally' || this.alignment === 'defender') {
+                            isEnemy = (target !== dungeon && typeof target.alignment === 'string' && target.alignment.startsWith('foe'));
+                        } else if (typeof this.alignment === 'string' && this.alignment.startsWith('foe')) {
+                            if (target === dungeon) isEnemy = true; 
+                            else isEnemy = (target.alignment === 'ally' || target.alignment === 'defender');
+                        }
+
+                        if (!isEnemy) return;
+
+                        let dx = target.x - this.x;
+                        let dy = target.y - this.y;
+                        let dist = Math.sqrt(dx*dx + dy*dy);
+
+                        // If they are in range, select them!
+                        if (dist <= (spellData.range || 5.0) && dist < closestDist) { 
+                            closestDist = dist; 
+                            bestTarget = target; 
+                        }
+                    });
 
                     if (!bestTarget) return;
 
-                    // Calculate Blind Spot
+                    // 3. Calculate Blind Spot
+                    let targetDir = bestTarget === dungeon ? dungeon.dir : bestTarget.dir;
                     let behindX = bestTarget.x;
                     let behindY = bestTarget.y;
 
-                    if (bestTarget.dir === 0) behindY += 1;
-                    else if (bestTarget.dir === 1) behindX -= 1;
-                    else if (bestTarget.dir === 2) behindY -= 1;
-                    else if (bestTarget.dir === 3) behindX += 1;
+                    if (targetDir === 0) behindY += 1;
+                    else if (targetDir === 1) behindX -= 1;
+                    else if (targetDir === 2) behindY -= 1;
+                    else if (targetDir === 3) behindX += 1;
                     else { behindY += 1; } 
 
                     // Collision Check
                     if (dungeon.isWall(Math.floor(behindX), Math.floor(behindY))) return; 
 
-                    // Teleport Ally
+                    // 4. Teleport NPC Behind Target!
                     this.x = behindX;
                     this.y = behindY;
-                    this.dir = bestTarget.dir; 
-                    MusicEngine.play3DSFX('warp', this.x, this.y, dungeon.x, dungeon.y, dungeon.dir);                        
+                    this.dir = targetDir; 
+                    if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('warp', this.x, this.y, dungeon.x, dungeon.y, dungeon.dir);                        
 
-                    // The AGI Clash
+                    // 5. The AGI Clash
                     let myCard = new Card(Math.floor(this.type), 0);
-                    let targetCard = new Card(Math.floor(bestTarget.type), 0);
-
                     let myAgiMod = (this.stat && this.stat[3]) ? this.stat[3][2] : 0;
-                    let targetAgiMod = (bestTarget.stat && bestTarget.stat[3]) ? bestTarget.stat[3][2] : 0;
 
                     // Apply Commander Bonus if it's an Ally
                     if (this.alignment === 'ally' && dungeon.stat && dungeon.stat[3]) {
@@ -4365,21 +4394,56 @@
                     }
 
                     let myAgi = myCard.rollStat(3) + myAgiMod;
-                    let targetAgi = targetCard.rollStat(3) + targetAgiMod;
+                    
+                    // Determine Target's AGI
+                    let targetAgi = 0;
+                    if (bestTarget === dungeon) {
+                        let pCard = new Card(91, 0, { mastery: dungeon.level });
+                        let pAgiMod = (dungeon.stat && dungeon.stat[3]) ? dungeon.stat[3][2] || 0 : 0;
+                        targetAgi = pCard.rollStat(3) + pAgiMod;
+                    } else {
+                        let tCard = new Card(Math.floor(bestTarget.type), 0);
+                        let tAgiMod = (bestTarget.stat && bestTarget.stat[3]) ? bestTarget.stat[3][2] : 0;
+                        targetAgi = tCard.rollStat(3) + tAgiMod;
+                    }
 
+                    // 6. Combat Resolution
                     if (myAgi > targetAgi) {
-                        bestTarget.damageFlashTimer = 3;
-                        // SUCCESS! Ally gets an instant kill!
-                        if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('slash', bestTarget.x, bestTarget.y, dungeon.x, dungeon.y, dungeon.dir);            } else {
-                        bestTarget.damageFlashTimer = 3;
-                        // FAIL! The monster blocks it.
-                        if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('block', bestTarget.x, bestTarget.y, dungeon.x, dungeon.y, dungeon.dir);                bestTarget.dir = (bestTarget.dir + 2) % 4; // Target spins around
+                        let damage = myAgi - targetAgi;
                         
-                        // Instead of a card duel, the ally is now in point-blank melee range!
-                        // We briefly stagger the target so the ally gets the first strike on the next frame.
+                        if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('slash', bestTarget.x, bestTarget.y, dungeon.x, dungeon.y, dungeon.dir);
+                        
+                        if (bestTarget === dungeon) {
+                            // 🩸 ENEMY BACKSTABBED THE PLAYER!
+                            if (typeof dungeon.absorbHit === 'function' && dungeon.absorbHit(this)) {
+                            } else {
+                                dungeon.power -= damage; // Deal HP Damage
+                                dungeon.playerFlashTimer = 3;
+                            }
+                        } else {
+                            // ALLY/NPC BACKSTABBED AN ENEMY
+                            bestTarget.damageFlashTimer = 3;
+                            dungeon.killNPC(bestTarget, false, 'backstab');
+                        }
+                    } else {
+                        // FAIL! The target blocks it.
+                        if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('block', bestTarget.x, bestTarget.y, dungeon.x, dungeon.y, dungeon.dir);
+                        
+                        if (bestTarget === dungeon) {
+                            // Player blocked the backstab!
+                            dungeon.playerFlashTimer = 3;
+                            
+                           
+                        } else {
+                            // NPC blocked it!
+                            bestTarget.damageFlashTimer = 3;
+                            bestTarget.dir = (bestTarget.dir + 2) % 4; // Target spins around
+                            bestTarget.state = 'chasing';
+                            bestTarget.combatCooldown = 13; 
+                        }
+                        
                         this.state = 'chasing';
-                        bestTarget.state = 'chasing';
-                        bestTarget.combatCooldown = 13; 
+                        this.combatCooldown = 13; // Stun the attacker slightly
                     }
                 }
                 // ==========================================
@@ -16466,35 +16530,60 @@
                     if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('arcane');
                 }
                 // ==========================================
-                // NEW: IMBUEMENT MAGIC (Stackable Weapon Buffs)
+                // NEW: IMBUEMENT MAGIC (Pooled INT Damage)
                 // ==========================================
                 else if (spellData.type === 'imbue') {
                     let requiredSpellId = spellData.consume; // 26 (Fire)
                     
-                    // Check if the required spell is in the active hand
-                    let hasRequired = this.hand.some(c => c !== null && c.index === requiredSpellId);
-                    
-                    // Check if the required spell is currently on cooldown
-                    let isOnCooldown = (this.skillCooldowns[requiredSpellId] || 0) > Date.now();
+                    // Check if player has the required spell in hand (Battle-Mage) OR learned (Skill)
+                    let handIndex = -1;
+                    if (this.hand) {
+                        handIndex = this.hand.findIndex(c => c !== null && c.index === requiredSpellId);
+                    }
+                    let isSkillReady = this.spellsLearned && this.spellsLearned[requiredSpellId] && !((this.skillCooldowns[requiredSpellId] || 0) > Date.now());
 
-                    if (hasRequired && !isOnCooldown) {
-                        // 1. Consume the spell by putting it on full cooldown!
-                        this.skillCooldowns[requiredSpellId] = Date.now() + (SPELL_REGISTRY[requiredSpellId].cooldown || 6000);
+                    if (handIndex !== -1 || isSkillReady) {
+                        // 1. CONSUME THE SECONDARY SPELL (Fire)
+                        // (The primary spell, Imbue Fire, is already consumed by the UI button click)
+                        if (handIndex !== -1) {
+                            this.hand[handIndex] = null; // Consume Fire from hand
+                            if (typeof this.shuffleSpells === 'function') this.shuffleSpells(); // Re-draw
+                        } else {
+                            // Put Fire skill on full cooldown
+                            let reqCooldown = (SPELL_REGISTRY[requiredSpellId] && SPELL_REGISTRY[requiredSpellId].cooldown) ? SPELL_REGISTRY[requiredSpellId].cooldown : 6000;
+                            this.skillCooldowns[requiredSpellId] = Date.now() + reqCooldown;
+                        }
                         
-                        // 2. Add the stack
-                        this.imbuedFireStacks = (this.imbuedFireStacks || 0) + 1;
+                        // 2. ROLL INT DIRECTLY FROM PLAYER STATS
+                        let intDiceCount = this.stat[2][0] || 1;
+                        let intDiceSides = this.stat[2][1] || 4;
+                        let intDiceMod = this.stat[2][2] || 0;
                         
-                        // 3. Visuals and Audio
+                        let intRoll = 0;
+                        for (let r = 0; r < intDiceCount; r++) {
+                            intRoll += Math.floor(Math.random() * intDiceSides) + 1;
+                        }
+                        intRoll += intDiceMod;
+                        
+                        // 3. Add to the cumulative damage pool
+                        this.imbuedFireDamage = (this.imbuedFireDamage || 0) + intRoll;
+                        
+                        // 4. Visuals and Audio (No UI Notify!)
                         if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('buff2');
                         if (typeof globalParticles !== 'undefined') {
                             for (let p = 0; p < 15; p++) spawnParticle(this.x, this.y, '#ff4400', 'sparkle');
                         }
-                        
-                        this.actionQueue.unshift(['notify', { text: `Weapon Imbued! (Fire Stacks: ${this.imbuedFireStacks})`, endActions: [['close_dialogue', null]] }]);
+
                     } else {
+                        // FAILS TO CAST (Missing Fire spell)
                         if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('cancel');
-                        this.actionQueue.unshift(['notify', { text: "Requires an active Fire spell ready to cast!", endActions: [['close_dialogue', null]] }]);
+                        
+                        // NOTE: Because the UI button click already executed, "Imbue Fire" will still go 
+                        // on cooldown. This acts as a punishing "miscast" penalty if they try to imbue 
+                        // without having the required elements ready!
                     }
+                    
+                    if (typeof this.updateSkills === 'function') this.updateSkills();
                 }
                 // ==========================================
                 // NEW: AOE WALL-SLAM & JUDGEMENT
@@ -16608,40 +16697,33 @@
                     this.openBoosterPack(spellId); // Pass the ID instead of the amount!
                     if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('chime'); 
                 }
-                // --- PROJECTILES & RANGED DEBUFFS ---
+                // ==========================================
+                // PROJECTILES & RANGED DEBUFFS
+                // ==========================================
                 else if (spellData.type === 'projectile' || spellData.type === 'debuff') {
-                    // 1. Determine baseline vector (0=N, 1=E, 2=S, 3=W)
-                    let baseDirX = 0;
-                    let baseDirY = 0;
-                    
+                    let baseDirX = 0; let baseDirY = 0;
                     if (this.dir === 0) baseDirY = -1;
                     else if (this.dir === 1) baseDirX = 1;
                     else if (this.dir === 2) baseDirY = 1;
                     else if (this.dir === 3) baseDirX = -1;
 
-                    let finalDirX = baseDirX;
-                    let finalDirY = baseDirY;
+                    let finalDirX = baseDirX; let finalDirY = baseDirY;
 
-                    // ==========================================
-                    // --- THE FIX: MAGNETIC AIM ASSIST (Basic Attack) ---
-                    // ==========================================
-                    if (this.cameraMode !== undefined && (spellId === 999 || !spellData.isHoming)) { 
+                    // --- MAGNETIC AIM ASSIST (Basic Attack) ---
+                    if (this.cameraMode !== undefined && (spellId === 9999 || !spellData.isHoming)) { 
                         let bestTarget = null;
                         let closestDist = Infinity;
-                        
                         let maxScanRange = spellData.range !== undefined ? spellData.range : 5.0;
 
                         this.npcs.forEach(npc => {
                             if (npc.isDead || !npc.visible || npc.type < 0 || npc.type === 99 || npc.alignment === 'ally') return;
                             if (typeof npc.alignment === 'string' && !npc.alignment.startsWith('foe')) return;
 
-                            let dx = npc.x - this.x;
-                            let dy = npc.y - this.y;
+                            let dx = npc.x - this.x; let dy = npc.y - this.y;
                             let dist = Math.sqrt(dx*dx + dy*dy);
 
                             if (dist > 0 && dist <= maxScanRange + 0.5) {
                                 let dot = (baseDirX * (dx/dist)) + (baseDirY * (dy/dist));
-                                
                                 if (dot > 0.707 && dist < closestDist) {
                                     closestDist = dist;
                                     bestTarget = npc;
@@ -16653,7 +16735,6 @@
                             finalDirX = (bestTarget.x - this.x) / closestDist;
                             finalDirY = (bestTarget.y - this.y) / closestDist;
 
-                            // 🧲 MAGNETIC SNAP! (Only if manual override timer is inactive)
                             if ((this.manualTurnTimer || 0) <= 0) {
                                 if (Math.abs(finalDirX) > Math.abs(finalDirY)) {
                                     this.dir = finalDirX > 0 ? 1 : 3;
@@ -16661,45 +16742,40 @@
                                     this.dir = finalDirY > 0 ? 2 : 0;
                                 }
 
-                                // Reset the camera variables instantly so the grid and camera are perfectly unified
                                 this.currentAngle = this.dir * (Math.PI / 2);
                                 this._cinePan = 0; 
                                 this.lookPan = 0;
                             }
                         }
                     }
-                    // ==========================================
 
-                    // Spawn slightly in front of the caster, using the final vector
                     const startX = this.x + (finalDirX * 0.5);
                     const startY = this.y + (finalDirY * 0.5);
 
                     let finalSpellId = spellId;
                     let finalDamage = 0;
 
-                    if (spellId === 9999 && this.imbuedFireStacks > 0) {
-                        finalSpellId = 9998; // Use the Imbued Attack profile!
+                    // --- THE FIX: RELEASE THE ACCUMULATED DAMAGE POOL ---
+                    if ((spellId === 9999 || spellId === 26) && this.imbuedFireDamage > 0) {
+                        finalSpellId = (spellId === 9999) ? 9998 : 26; 
                         
-                        // Roll the player's STR
-                        let pCard = new Card(91, 0, { mastery: this.level });
-                        let strRoll = pCard.rollStat(0) + (this.stat[0][2] || 0);
+                        // Pass the EXACT INT damage we pooled up into the projectile
+                        finalDamage = this.imbuedFireDamage; 
                         
-                        // Combine STR roll with 5 damage per stack
-                        finalDamage = strRoll + (this.imbuedFireStacks * 5); 
-                        
-                        this.imbuedFireStacks = 0; // Consume the stacks!
+                        // Empty the pool so it doesn't apply to the next attack
+                        this.imbuedFireDamage = 0; 
                     }
 
                     // Now push it with the updated variables!
                     this.projectiles.push(new Projectile(startX, startY, finalDirX, finalDirY, 6.0, finalDamage, null, SPELL_REGISTRY[finalSpellId].isHoming, finalSpellId));        
                     this.playerAttackTimer = 15;
                     
-                    if (spellId === 9999) {
-                        MusicEngine.play3DSFX("slash");
+                    if (finalSpellId === 9999 || finalSpellId === 9998) {
+                        if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX("slash");
                     } else if (spellData.type === 'projectile') {
-                        MusicEngine.play3DSFX('fire2'); 
+                        if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('fire2'); 
                     } else {
-                        MusicEngine.play3DSFX('arcane3'); 
+                        if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('arcane3'); 
                     }
                 }
                 // ==========================================
@@ -16785,11 +16861,12 @@
                             if (dot > spellData.angle) {
                                 hitSomething = true;
 
-                                // --- COMBAT RESOLUTION ---
+                               // --- COMBAT RESOLUTION ---
                                 let playerCard = new Card(91, 0, { mastery: this.level }); 
                                 let targetCard = new Card(Math.floor(npc.type), 0);
 
-                                let playerAtk = playerCard.rollStat(spellData.castStat) + (this.stat[spellData.castStat][2] || 0);
+                                // THE FIX: Add `this.damage` to the player's attack roll!
+                                let playerAtk = playerCard.rollStat(spellData.castStat) + (this.stat[spellData.castStat][2] || 0) + this.damage;
                                 let targetDef = targetCard.rollStat(spellData.defStat) + (npc.stat[spellData.defStat] ? npc.stat[spellData.defStat][2] : 0);
 
                                 if (playerAtk > targetDef) {
@@ -21389,6 +21466,14 @@
                         btn.isSkill = false;
                     }
                 }
+                if (!this.activeBtnsCache) this.activeBtnsCache = [];
+                this.activeBtnsCache.length = 0; 
+                for (let i = 0; i < maxSlots; i++) {
+                    let btn = window.uiSpellButtons[i];
+                    if (btn && btn.assignedCard && btn.visible) {
+                        this.activeBtnsCache.push(btn);
+                    }
+                }
             }
             updateAllyFormations(dt) {
                     let allies = this.npcs.filter(n => (n.alignment === 'ally' || n.alignment === 'escort') && !n.isDead && n.state !== 'chasing'); 
@@ -23293,6 +23378,15 @@
             let stateMod = this.isPressed ? "_pressed" : "_normal";
             if (['d_pad', 'b_pad', 'turn_l', 'turn_r'].includes(type)) stateMod += "_" + (this.currentDir || "none");
             let displayIcon = this.assignedCard ? this.assignedCard.index : 'empty';
+
+            // --- THE FIX: DYNAMIC CACHE FOR THE ATK BUTTON ---
+            if (this.text === 'ATK') {
+                displayIcon = -15; // Default Sword
+                if (typeof Dungeon !== 'undefined' && Dungeon.imbuedFireDamage > 0) {
+                    displayIcon = 92; // Flaming Sword
+                }
+            }
+
             let cacheKey = `${type}_${text}_${l}_${h}_${z}_${tL}${stateMod}_${displayIcon}`;
 
             let padding = (tL / 10) * 0.2; // Padding to prevent clipping drop-shadows
@@ -23655,13 +23749,12 @@
                         let displayIcon = -15; // Default Sword
 
                         // Check Overworld Stacks
-                        if (typeof Dungeon !== 'undefined' && Dungeon.imbuedFireStacks > 0) {
+                        if (typeof Dungeon !== 'undefined' && Dungeon.imbuedFireDamage > 0) {
                             displayIcon = 92; 
                         } 
-                        // Check Tactics Stacks
                         else if (typeof window.TacticsEngine !== 'undefined' && window.TacticsEngine.state !== 'GAME_OVER') {
                             let pUnit = window.TacticsEngine.units.find(u => u.role === 'player');
-                            if (pUnit && pUnit.imbuedFireStacks > 0) displayIcon = 92;
+                            if (pUnit && pUnit.imbuedFireDamage > 0) displayIcon = 92;
                         }
 
                         drawPortrait(displayIcon, drawX + nudgeX, drawY + nudgeY, iconScale);
@@ -24202,11 +24295,11 @@
                         
                         // Reduce the delay by 15ms for every point of Agility.
                         // Math.max ensures the delay never drops below 80ms (sanity cap to prevent crashing)
-                        speedMs = Math.max(80, 350 - (playerAgi * 15)); 
+                        speedMs = Math.max(90, 360 - (playerAgi)); 
                     }
                     
                     // Your setTimeout multiplies count by 200, so we divide our target MS by 200 here
-                    count = speedMs / 200; 
+                    count = speedMs / 300; 
                 }
 
             // ==========================================
@@ -33388,7 +33481,7 @@
                 this.type = 0;//0-monster, 1-item, 2-spell
                 this.desc = 'Visit Suncat on IG @suncat.meow';
                 this.suit = 'Major Arcana';
-                this.rank = 'The Fool';
+                this.rank = '0';
                 this.stat[0][0]=1;//minSTR
                 this.stat[0][1] = 4;//maxSTR
                 this.stat[0][2]= 0;//modSTR
@@ -33479,56 +33572,59 @@
                 this.stat[3][3] = '' + this.stat[3][0] +'d'+ this.stat[3][1];
                 break;
               case 91://player
-                this.name = playerName;
-                this.portrait = playerSprite;
-                this.type = 0;//0-monster, 1-item, 2-spell
-                this.desc = myLivePerception;
+                this.name = typeof playerName !== 'undefined' ? playerName : 'Player';
+                this.portrait = typeof playerSprite !== 'undefined' ? playerSprite : 91;
+                this.type = 0; //0-monster, 1-item, 2-spell
+                this.desc = typeof myLivePerception !== 'undefined' ? myLivePerception : 'Ready for adventure.';
+                
+                // Defaults
                 this.suit = 'Major Arcana';
-                this.rank = 'XXII';
+                this.rank = '0';
+                
                 if (typeof Dungeon !== 'undefined') {
                     let pClass = (Dungeon.playerClass || 'none').toLowerCase();                                 
-                        if (pClass === 'warrior') this.suit = 'Swords';
-                        if (pClass === 'knight') this.suit = 'Pentacles';
-                        if (pClass === 'rogue') this.suit = 'Cups';
-                        if (pClass === 'mage') this.suit = 'Swords';    
-                    this.stat[0][0]=Dungeon.stat[0][0];//minSTR
-                    this.stat[0][1]=Dungeon.stat[0][1];//maxSTR
-                    this.stat[0][2]=Dungeon.stat[0][2];//modSTR
-                    this.stat[0][3] = '' + this.stat[0][0] +'d'+ this.stat[0][1];//STRlabel
-                    this.stat[1][0]=Dungeon.stat[1][0];//minCON
-                    this.stat[1][1]=Dungeon.stat[1][1];//maxCON
-                    this.stat[1][2]=Dungeon.stat[1][2];//modCON
-                    this.stat[1][3] = '' + this.stat[1][0] +'d'+ this.stat[1][1];
-                    this.stat[2][0]=Dungeon.stat[2][0];//minINT
-                    this.stat[2][1]=Dungeon.stat[2][1];//maxINT
-                    this.stat[2][2]=Dungeon.stat[2][2];//modINT
-                    this.stat[2][3] = '' + this.stat[2][0] +'d'+ this.stat[2][1];
-                    this.stat[3][0]=Dungeon.stat[3][0];//minAGI
-                    this.stat[3][1]=Dungeon.stat[3][1];//maxAGI
-                    this.stat[3][2]=Dungeon.stat[3][2];//modAGI
-                }
-                else{
-                      
-                    this.stat[0][0]=1;//minSTR
-                    this.stat[0][1] = 4;//maxSTR
-                    this.stat[0][2]= 0;//modSTR
-                    this.stat[0][3] = '' + this.stat[0][0] +'d'+ this.stat[0][1];//STRlabel
-                    this.stat[1][0]=1;//minCON
-                    this.stat[1][1] = 4;//maxCON
-                    this.stat[1][2]= 0;//modCON
-                    this.stat[1][3] = '' + this.stat[1][0] +'d'+ this.stat[1][1];
-                    this.stat[2][0]=1;//minINT
-                    this.stat[2][1] = 4;//maxINT
-                    this.stat[2][2]= 0;//modINT
-                    this.stat[2][3] = '' + this.stat[2][0] +'d'+ this.stat[2][1];
-                    this.stat[3][0]=1;//minAGI
-                    this.stat[3][1] = 4;//maxAGI
-                    this.stat[3][2]= 0;//modAGI
-                    this.stat[3][3] = '' + this.stat[3][0] +'d'+ this.stat[3][1];
                     
+                    // 1. DYNAMIC SUIT MAPPING
+                    if (pClass === 'warrior') this.suit = 'Swords';
+                    else if (pClass === 'knight') this.suit = 'Pentacles';
+                    else if (pClass === 'rogue') this.suit = 'Cups';
+                    else if (pClass === 'mage') this.suit = 'Wands'; // (Fixed from Swords)
+                    else if (pClass === 'priest') this.suit = 'Cups';
+                    else if (pClass === 'hunter') this.suit = 'Swords';
+                    else if (pClass === 'druid') this.suit = 'Wands';
+                    else if (pClass === 'battle-mage' || pClass === 'battlemage') this.suit = 'Major Arcana';
+
+                    // 2. DYNAMIC RANK (Level to Roman Numeral)
+                    let lvl = Dungeon.level || 0;
+                    if (lvl === 0) {
+                        this.rank = '0';
+                    } else {
+                        const romanMap = { M: 1000, CM: 900, D: 500, CD: 400, C: 100, XC: 90, L: 50, XL: 40, X: 10, IX: 9, V: 5, IV: 4, I: 1 };
+                        let str = '';
+                        let tempLvl = lvl;
+                        for (let i of Object.keys(romanMap)) {
+                            let q = Math.floor(tempLvl / romanMap[i]);
+                            tempLvl -= q * romanMap[i];
+                            str += i.repeat(q);
+                        }
+                        this.rank = str; // E.g., Level 14 becomes "XIV"
+                    }
+
+                    // 3. STAT SYNC
+                    for (let i = 0; i < 4; i++) {
+                        this.stat[i][0] = Dungeon.stat[i][0]; // min
+                        this.stat[i][1] = Dungeon.stat[i][1]; // max
+                        this.stat[i][2] = Dungeon.stat[i][2]; // mod
+                        this.stat[i][3] = '' + this.stat[i][0] + 'd' + this.stat[i][1]; // label
+                    }
+                } else {
+                    // Safety Fallback
+                    for(let i=0; i<4; i++) {
+                        this.stat[i][0] = 1; this.stat[i][1] = 4; this.stat[i][2] = 0;
+                        this.stat[i][3] = '1d4';
+                    }
                 }
-                this.stat[3][3] = '' + this.stat[3][0] +'d'+ this.stat[3][1];
-                break;
+              break;
               
         
         
@@ -34594,6 +34690,7 @@
                         else if (this.rank === 'Eight') rankTextToDraw = 'VIII';
                         else if (this.rank === 'Nine') rankTextToDraw = 'IX';
                         else if (this.rank === 'Ten') rankTextToDraw = 'X';
+                        else rankTextToDraw = this.rank; 
                     }
 
                 // --- DRAWING EXECUTION ---
@@ -38113,20 +38210,18 @@
                                 if (pClass === 'priest' && (statIndex === 1 || statIndex === 2)) isBonus = true;
                                 if (Dungeon.playerClass === 'Battle-Mage') isBonus = true;
 
-                                // 2. Assign the points (+2 for specialists, +1 for normal)
+                               // 2. Assign the points (+2 for specialists, +1 for normal)
                                 let increment = isBonus ? 2 : 1;
-                                
-                                // Add to permanent tracker and active modifier
+
+                                // Add strictly to the permanent tracker
                                 Dungeon.statProgress[statIndex] += increment;
-                                stat[2] += increment;
-                                
-                                // 3. Check our permanent tracker for a Die Upgrade
-                                if (Dungeon.statProgress[statIndex] >= 3) {
+
+                                // 3. Check our permanent tracker for a Die Upgrade (Now requires 4 points!)
+                                // Using a 'while' loop safely handles massive overflow if they somehow get a lot of bonus points at once
+                                while (Dungeon.statProgress[statIndex] >= 4) {
                                     
-                                    // Subtract the 3 points that are being "converted" into a die size.
-                                    // (This perfectly preserves any 'overflow' if they gained +2 while at 2/3 progress!)
-                                    Dungeon.statProgress[statIndex] -= 3; 
-                                    stat[2] -= 3; 
+                                    // Subtract the 4 points that are being "converted" into a die size.
+                                    Dungeon.statProgress[statIndex] -= 4; 
                                     
                                     // Upgrade the Die
                                     if (stat[1] === 4) stat[1] = 6;
@@ -38139,6 +38234,11 @@
                                         stat[0] += 1; 
                                     }
                                 }
+
+                                // 4. Sync the active modifier to the remaining progress!
+                                // If they have 3 points of progress, they get a +3. 
+                                // If it just upgraded and dropped to 0, they get +0!
+                                stat[2] = Dungeon.statProgress[statIndex];
 
                                 // 4. FORCE UI UPDATE
                                 if (Dungeon.uiPlayerCard) {
