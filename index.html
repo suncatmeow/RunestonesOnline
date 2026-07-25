@@ -369,15 +369,15 @@
                 // --- Endgame Spells / Equip ---
                     92: { name: "Fire Sword", type: "item", classes: ["Warrior", "Knight", "Mage","Rogue","Druid","Hunter","Priest"], power: 1 },
                     93: { name: "Lightning", type: "spell", classes: ["Mage","Druid","Priest"], power: 1 },
-                    94: { name: "Lich", type: "monster", rank: "IX", classes: ["Priest", "Mage"], power: 45 },
+                    94: { name: "Lich", type: "monster", rank: "IX", classes: ["Mage", "Priest"], power: 45 },
                 
                 // --- Combo Cards ---
                     95: { name: "Flurry", type: "spell", classes: ["Rogue", "Hunter", "Warrior"], power: 1 },
                     96: { name: "Outlast", type: "spell", classes: ["Knight", "Warrior", "Priest"], power: 1 },
                     97: { name: "Gravity", type: "spell", classes: ["Mage", "Druid"], power: 1 },
-                // --- NEW Cards ---
+                // --- 3D Cards ---
                     188: { name: "Bear", type: "monster", rank: "Eight", classes: ["Warrior", "Knight","Druid","Hunter"], power: 40 },
-                    191: { name: "Wolf", type: "monster", rank: "Eighteen", classes: ["Knight", "Priest", "Warrior", "Mage", "Rogue","Hunter","Druid"], power: 40 },
+                    191: { name: "Wolf", type: "monster", rank: "Eighteen", classes: ["Knight", "Warrior","Priest",  "Mage", "Rogue","Hunter","Druid"], power: 40 },
                     194: { name: "Boar", type: "monster", rank: "Seven", classes: ["Warrior", "Knight","Druid","Hunter"], power: 40 },
                     197: { name: "Vampire", type: "monster", rank: "Temptation", classes: ["Mage", "Rogue", "Knight"], power: 40 },
                     200: { name: "Spriggan", type: "monster", rank: "Seven", classes: ["Mage", "Druid"], power: 20 },
@@ -395,7 +395,11 @@
                     237: { name: "Suncat", type: "monster", rank: "The Fool", classes: ["Rogue", "Mage", "Hunter", "Druid"], power: 30 },
                     240: { name: "Fox", type: "monster", rank: "Seven", classes: ["Rogue", "Hunter", "Mage"], power: 15 },
                     246: { name: "Auroch", type: "monster", rank: "Seven", classes: ["Warrior", "Knight", "Druid"], power: 20 },
-                    249: { name: "Woman", type: "monster", rank: "Seven", classes: ["Priest", "Mage", "Rogue"], power: 15 },
+                    249: { name: "Dancer", type: "monster", rank: "Seven", classes: ["Priest", "Mage", "Rogue"], power: 15 },
+                    252: { name: "Warrior", type: "monster", rank: "Seven", classes: ["Warrior"], power: 15 },
+                    255: { name: "Rogue", type: "monster", rank: "Seven", classes: ["Rogue"], power: 15 },
+                    258: { name: "Priest", type: "monster", rank: "Seven", classes: ["Priest"], power: 15 },
+                    261: { name: "Mage", type: "monster", rank: "Seven", classes: ["Mage"], power: 15 },
                 // --- Generic Player Fallbacks ---
                 
                     999: { name: "Suncat", type: "monster", rank: "I", classes: ["Knight", "Priest", "Warrior", "Mage", "Rogue","Hunter","Druid"], power: 99 },
@@ -2320,15 +2324,28 @@
                 if (myManifest && myManifest.classes && myManifest.classes.length > 0) {
                     let validSpells = [];
                     
-                    // Scan the entire manifest for spells that match this monster's classes
+                    // --- THE FIX: Grab up to the first TWO classes. 
+                    // .slice(0, 2) safely handles monsters that only have 1 class.
+                    // .map converts to lowercase so we can safely check for "all"
+                    let primaryClasses = myManifest.classes.slice(0, 2).map(c => c.toLowerCase());
+                    
+                    // Scan the entire manifest for spells that match this monster's primary classes
                     for (let cardId in CARD_MANIFEST_DB) {
                         let cardDef = CARD_MANIFEST_DB[cardId];
                         
                         // Ensure it's classified as a spell in the manifest AND exists in the engine's Spell Registry
                         if (cardDef.type === 'spell' && typeof SPELL_REGISTRY !== 'undefined' && SPELL_REGISTRY[cardId]) {
                             
-                            // Check if the spell shares at least one class with the monster
-                            let hasMatchingClass = cardDef.classes.some(c => myManifest.classes.includes(c));
+                            // Safely grab the spell's classes, or default to an empty array
+                            let spellClasses = (cardDef.classes || []).map(c => c.toLowerCase());
+                            
+                            // It's a match if: 
+                            // 1. The spell is for "all"
+                            // 2. The monster is for "all"
+                            // 3. The spell shares at least one of the monster's 2 primary classes
+                            let hasMatchingClass = spellClasses.includes('all') || 
+                                                primaryClasses.includes('all') || 
+                                                spellClasses.some(c => primaryClasses.includes(c));
                             
                             if (hasMatchingClass) {
                                 validSpells.push(parseInt(cardId));
@@ -2352,7 +2369,7 @@
 
                 // Fallback: If they have no classes or no spells matched, give them Fireball
                 if (this.innateSpells.length === 0) {
-                    this.innateSpells = [26]; 
+                    this.innateSpells = [999]; 
                 }
 
                 // ==========================================
@@ -4390,39 +4407,44 @@
 
                     // 4. DELAY THE CLASH UNTIL THE DASH IS COMPLETE
                     this.dashCallback = () => {
+                        // --- THE FIX: DYNAMIC STATTING ---
+                        // Grab the specific stats required by this spell from the registry
+                        let atkStatIndex = spellData.castStat !== undefined ? spellData.castStat : 3; // Default to AGI(3)
+                        let defStatIndex = spellData.defStat !== undefined ? spellData.defStat : 3;   // Default to AGI(3)
+
                         // Prepare Caster Stats
                         let myCardId = (this.owner === null && this.type !== 0) ? Math.floor(this.type) : 91; 
                         let myCard = new Card(myCardId, 0);
-                        let myAgiMod = (this.stat && this.stat[3]) ? this.stat[3][2] : 0;
+                        let myAtkMod = (this.stat && this.stat[atkStatIndex]) ? this.stat[atkStatIndex][2] : 0;
 
                         // Apply Commander Bonus if it's an Ally
-                        if (this.alignment === 'ally' && dungeon.stat && dungeon.stat[3]) {
-                            let agiSides = dungeon.stat[3][1];
-                            if (agiSides === 6) myAgiMod += 1;
-                            else if (agiSides === 8) myAgiMod += 2;
-                            else if (agiSides === 10) myAgiMod += 3;
-                            else if (agiSides === 12) myAgiMod += 4;
-                            else if (agiSides === 20) myAgiMod += 5;
+                        if (this.alignment === 'ally' && dungeon.stat && dungeon.stat[atkStatIndex]) {
+                            let statSides = dungeon.stat[atkStatIndex][1];
+                            if (statSides === 6) myAtkMod += 1;
+                            else if (statSides === 8) myAtkMod += 2;
+                            else if (statSides === 10) myAtkMod += 3;
+                            else if (statSides === 12) myAtkMod += 4;
+                            else if (statSides === 20) myAtkMod += 5;
                         }
-                        let myAgi = myCard.rollStat(3) + myAgiMod;
+                        let myAtk = myCard.rollStat(atkStatIndex) + myAtkMod;
 
                         // Prepare Defender Stats dynamically
-                        let targetAgi = 0;
+                        let targetDef = 0;
                         if (bestTarget === dungeon) {
                             let pCard = new Card(91, 0, { mastery: dungeon.level });
-                            let pAgiMod = (dungeon.stat && dungeon.stat[3]) ? dungeon.stat[3][2] || 0 : 0;
-                            targetAgi = pCard.rollStat(3) + pAgiMod;
+                            let pDefMod = (dungeon.stat && dungeon.stat[defStatIndex]) ? dungeon.stat[defStatIndex][2] || 0 : 0;
+                            targetDef = pCard.rollStat(defStatIndex) + pDefMod;
                         } else {
                             let tCard = new Card(Math.floor(bestTarget.type), 0);
-                            let tAgiMod = (bestTarget.stat && bestTarget.stat[3]) ? bestTarget.stat[3][2] : 0;
-                            targetAgi = tCard.rollStat(3) + tAgiMod;
+                            let tDefMod = (bestTarget.stat && bestTarget.stat[defStatIndex]) ? bestTarget.stat[defStatIndex][2] : 0;
+                            targetDef = tCard.rollStat(defStatIndex) + tDefMod;
                         }
 
                         // ===========================
                         // --- COMBAT RESOLUTION ---
                         // ===========================
                         if (spellData.isSteal) {
-                            if (myAgi > targetAgi) {
+                            if (myAtk > targetDef) {
                                 if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('chime');
                                 
                                 if (this.alignment === 'ally') {
@@ -4450,7 +4472,7 @@
                         } 
                         else {
                             // --- ASSASSINATION (CHARGE HIT) ---
-                            let damage = myAgi - targetAgi;
+                            let damage = myAtk - targetDef;
                             
                             if (damage > 0) {
                                 if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('slash', bestTarget.x, bestTarget.y, dungeon.x, dungeon.y, dungeon.dir);                        
@@ -4458,7 +4480,6 @@
                                 if (bestTarget === dungeon) {
                                     // 🩸 ENEMY HIT THE PLAYER!
                                     if (typeof dungeon.absorbHit === 'function' && dungeon.absorbHit(this)) {
-                                        dungeon.actionQueue.unshift(['notify', { text: `Your Ward blocked ${this.name}'s attack!`, endActions: [['close_dialogue', null]] }]);
                                     } else {
                                         dungeon.power -= damage; // Deal HP Damage
                                         dungeon.playerFlashTimer = 3;
@@ -4476,8 +4497,9 @@
                                 if (bestTarget === dungeon) {
                                     dungeon.playerFlashTimer = 3;
                                     
-                                    // Yank the player into standard combat
-                                    this.triggerInteraction(dungeon);
+                                    // --- THE FIX: REMOVED INSTANT DEATH CARD BATTLE ---
+                                    // Just put the monster on a combat cooldown so the player can retaliate or flee!
+                                    this.combatCooldown = 15;
                                 } else {
                                     bestTarget.damageFlashTimer = 3;
                                     bestTarget.dirX *= -1; 
@@ -6184,7 +6206,7 @@
                 //MAP 0: Moors
                 else if (id === 0) {
                     this.skyColor = 'rgba(0,0,0,1)';   // Dark Blue Sky
-                        this.floorColor = 'rgba(0,8,0,1)'; // Blue Floor
+                        this.floorColor = 'rgba(0,36,0,1)'; // Blue Floor
                         this.mapname = 'Moors'
                         //this.weather.setMode('space');
                     this.maze = [
@@ -6303,9 +6325,7 @@
                             randomX = safePOS.x;
                             randomY = safePOS.y;
                      
-                            wildlifeSpawns = [
-                                
-                                
+                            wildlifeSpawns = [           
                                 {
                                     type: 'moorSpider',
                                     count: 1,
@@ -6361,11 +6381,6 @@
                                     zoneY: centerY,
                                     radius: maxRadius * 0.5
                                 },
-                              
-                              
-                               
-                               
-                            
                                 {
                                     type: 'moorKing',
                                     count: 1,
@@ -6388,9 +6403,7 @@
                                     zoneY: this.maze.length*.27,
                                     radius: maxRadius * 0.05,
                                     customDialogue:["Armorica lies beyond the southern sea."]
-                                },
-                             
-                                
+                                },                          
                                 {
                                     type: 'moorDeer',
                                     count: 1,
@@ -6402,14 +6415,7 @@
                                     zoneY: this.maze.length*.50,
                                     radius: maxRadius * 0.5,
                                     customDialogue:['*It eyes you apathetically.*']
-                                },
-                             
-                             
-                                
-                                
-
-                                
-                                
+                                },                          
                                 {
                                     type: 'moorDrunk',
                                     count: 1,
@@ -6421,11 +6427,8 @@
                                     zoneY: this.maze.length*.27,
                                     radius: maxRadius * 0.05,
                                     customDialogue:["Experts come here to hunt and discuss ideas.","I come for the cheap ale.","*burp*"]
-                                },
-
-                                
-                          
-                        ];
+                                },         
+                            ];
                     // Warrior Trainer
                         let warriorTrainer = new NPC(8001, 47.5, 23.5, 252, 'stationary', '#00ff00', [50, 51, 58, 59], 'dialogue', null, 'friendly');
                         warriorTrainer.customDialogue = ["Those without power fall prey to those with power.","You must get stronger!"];
@@ -6463,10 +6466,7 @@
                         knightTrainer.options = ["Listen", "Leave"];
                         knightTrainer.yesActions = [['train', 'knight_trainer']];
                         knightTrainer.noActions = [['close_dialogue', null]];
-                        this.npcs.push(knightTrainer);
-                        this.npcs.push(new NPC(1, 9.5, 1.5, 99, 'stationary', '#66ccff', [5.5, 5.5, -1, 0], 'portal', null, 'friendly'));
-                        
-                        this.dir = 2;
+                        this.npcs.push(knightTrainer);                        
                     // Beastmaster Trainer
                         let beastTrainer = new NPC(8006, 56.5, 23.5, 264, 'stationary', '#00ff00', [191, 194, 188], 'dialogue', null, 'friendly');
                         beastTrainer.customDialogue = ["Some hunters capture and tame beasts."];
@@ -14150,7 +14150,7 @@
                                         let checkId = Math.floor(imageToDraw);
                                         
                                         // Check if it's the Bear, Wolf, or Boar (IDs 188 to 196)
-                                        if (checkId >= 188 && checkId <= 326) {
+                                        if (checkId >= 188 && checkId <= 329) {
                                             let zoomMult = 2.5; // <-- Set to 3.0 if you want them massive!
                                             
                                             // Pull the massive sprite up and left so it stays perfectly centered
@@ -17801,7 +17801,7 @@
 
                                     if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('buff2');
                                     // Optional: You could trigger a MessageBox here to tell the player!
-                                }
+                                }else{this.dSense = this.dSense + .3;}
                         }
 
                 //2. ONLINE SYNC: UPDATE SERVER
@@ -21020,7 +21020,7 @@
                                     // 24: Scry 
                                     { id: 24, name: "Scry", reqs: {
                                         'mage': { lvl: 2, stats: { 2: 6 } },
-                                        'priest': { lvl: 7, stats: { 2:12 } },
+                                        'priest': { lvl: 3, stats: { 2:12 } },
                                     }},
                                     // 26: Fire 
                                     { id: 26, name: "Fire", reqs: {
@@ -21029,7 +21029,7 @@
                                         'priest': { lvl: 6, stats: { 2: 10 } },
                                         'all': { lvl: 9, stats: { 2: 12 } } 
                                     }},
-                                    // 26: Fire 
+                                    // 92: Imbue Fire 
                                     { id: 92, name: "Imbue Fire", reqs: {
                                         'mage': { lvl: 6, stats: { 2: 6 } },
                                         'druid': { lvl: 8, stats: { 2: 8 } },
@@ -21303,7 +21303,7 @@
                     // Trap A: You get hunted
                     [['start_hunted', { waves: 2, interval: 200, mobs: [{sprite: 56}] }], ['notify', "The entity is angered by your refusal!"]],
                     // Trap B: The NPC transforms and attacks you
-                    [['transform_npc', { index: pIndex, newAlignment: 'foe', newRole: 'battle', newState: 'chasing', clearDialogue: true }], ['start_battle', pIndex]],
+                    [['transform_npc', { index: pIndex, newAlignment: 'foe', newRole: 'battle', newState: 'chasing', clearDialogue: true }]],
                     // Trap C: It just vanishes peacefully
                     [['notify', "A wise choice... this time."], ['disappear', pIndex]]
                 ];
@@ -21707,7 +21707,7 @@
                         generateBlueprint: () => {
                             let setup = getQuestSetup();
                             let examWinActions = [['set_memory', { key: 'guild_rank', value: 'E' }], ['set_memory', { key: 'guild_quest', value: { state: 0 } }], ['give_card', { card: 71, text: "You earned your E-Rank License!" }], ['play_sfx', 'chime'], ['notify', "Congratulations! You are now an E-Rank Adventurer!"]];
-                            let spawnBoss = ['spawn_ephemeral_npc', { index: setup.id, x: -999, y: -999, sprite: 5, state: 'stationary', role: 'battle', alignment: 'foe', color: '#ff0000', deck: [5, 54, 56, 42], isBoss: true, isTarget: true, deathActions: examWinActions }];
+                            let spawnBoss = ['spawn_ephemeral_npc', { index: setup.id, x: -999, y: -999, sprite: 249, state: 'stationary', role: 'battle', alignment: 'foe', color: '#ff0000', deck: [246, 240, 222, 225], isBoss: true, isTarget: true, deathActions: examWinActions }];
                             return { state: 0, type: 'exam', tName: 'Promotion Exam', qRank: 'F', targetMap: this.mapID, spawnActions: [spawnBoss, ['start_tactics', { id: setup.id, stakes: 'exam' }]] };
                         }
                     });
@@ -21766,7 +21766,7 @@
                         generateBlueprint: () => {
                             let setup = getQuestSetup();
                             let examWinActions = [['set_memory', { key: 'guild_rank', value: 'D' }], ['set_memory', { key: 'guild_quest', value: { state: 0 } }], ['give_card', { card: 71, text: "You earned your D-Rank License!" }], ['play_sfx', 'chime'], ['notify', "Congratulations! You are now a D-Rank Adventurer!"]];
-                            let spawnBoss = ['spawn_ephemeral_npc', { index: setup.id, x: -999, y: -999, sprite: 5, state: 'stationary', role: 'battle', alignment: 'foe', color: '#ff0000', deck: [5, 54, 56, 42, 42], isBoss: true, isTarget: true, deathActions: examWinActions }];
+                            let spawnBoss = ['spawn_ephemeral_npc', { index: setup.id, x: -999, y: -999, sprite: 5, state: 'stationary', role: 'battle', alignment: 'foe', color: '#ff0000', deck: [249, 188, 191,194], isBoss: true, isTarget: true, deathActions: examWinActions }];
                             return { state: 0, type: 'exam', tName: 'Promotion Exam', qRank: 'E', targetMap: this.mapID, spawnActions: [spawnBoss, ['start_tactics', { id: setup.id, stakes: 'exam' }]] };
                         }
                     });
@@ -21837,7 +21837,7 @@
                         generateBlueprint: () => {
                             let setup = getQuestSetup();
                             let examWinActions = [['set_memory', { key: 'guild_rank', value: 'C' }], ['set_memory', { key: 'guild_quest', value: { state: 0 } }], ['give_card', { card: 71, text: "You earned your C-Rank License!" }], ['play_sfx', 'chime'], ['notify', "Congratulations! You are now a C-Rank Veteran!"]];
-                            let spawnBoss = ['spawn_ephemeral_npc', { index: setup.id, x: -999, y: -999, sprite: 42, state: 'stationary', role: 'battle', alignment: 'foe', color: '#ff0000', deck: [42, 55, 55, 56], isBoss: true, isTarget: true, deathActions: examWinActions }];
+                            let spawnBoss = ['spawn_ephemeral_npc', { index: setup.id, x: -999, y: -999, sprite: 249, state: 'stationary', role: 'battle', alignment: 'foe', color: '#ff0000', deck: [249,56,54,56,54], isBoss: true, isTarget: true, deathActions: examWinActions }];
                             return { state: 0, type: 'exam', tName: 'Promotion Exam', qRank: 'D', targetMap: this.mapID, spawnActions: [spawnBoss, ['start_tactics', { id: setup.id, stakes: 'exam' }]] };
                         }
                     });
@@ -21954,7 +21954,7 @@
                         generateBlueprint: () => {
                             let setup = getQuestSetup();
                             let examWinActions = [['set_memory', { key: 'guild_rank', value: 'B' }], ['set_memory', { key: 'c_rank_progress', value: 5 }], ['set_memory', { key: 'guild_quest', value: { state: 0 } }], ['give_card', { card: 71, text: "You earned your B-Rank License!" }], ['play_song', 23], ['play_sfx', 'chime'], ['notify', "Congratulations! You survived the ambush and earned your B-Rank!"]];
-                            let spawnBoss = ['spawn_ephemeral_npc', { index: setup.id, x: -999, y: -999, sprite: 45, state: 'stationary', role: 'battle', alignment: 'foe', color: '#ff0000', deck: [45, 42, 42], isBoss: true, isTarget: true, deathActions: examWinActions }];
+                            let spawnBoss = ['spawn_ephemeral_npc', { index: setup.id, x: -999, y: -999, sprite: 249, state: 'stationary', role: 'battle', alignment: 'foe', color: '#ff0000', deck: [249, 252, 255,258,261], isBoss: true, isTarget: true, deathActions: examWinActions }];
                             return { state: 0, type: 'exam', tName: 'Promotion Exam', qRank: 'C', targetMap: this.mapID, spawnActions: [spawnBoss, ['start_tactics', { id: setup.id, isExam: true, stakes: 'real' }]] };
                         }
                     });
@@ -33858,7 +33858,7 @@
             
             
             
-          //Forest Monsters
+          //3D Monsters
             case 188: //bear                     MONSTER
                 this.name = 'Bear';
                 this.portrait = 188;
@@ -34449,7 +34449,7 @@
                 
               break;
             
-            //
+            
             case 258: //Rogue                     MONSTER
               this.name = 'Rogue';
                 this.portrait = 258;
@@ -34476,7 +34476,7 @@
                 
               break;
             
-            //
+            
             case 261: //Mage                     MONSTER
               this.name = 'Mage';
                 this.portrait = 261;
@@ -34820,7 +34820,7 @@
               let portY = y + 1.66 * z;
 
               // Check if it's the Bear, Wolf, or Boar (IDs 188 to 196)
-              if (this.portrait >= 188 && this.portrait <= 196) {
+              if (this.portrait >= 188 && this.portrait <= 329) {
                   let zoomMult = 2.5; // <-- Change this to 3.0 if you want them massive!
                   
                   // Calculate how much we need to shift X and Y to keep it perfectly centered
