@@ -1746,6 +1746,13 @@
                     hook: "Ask the player who they would want standing by their side in the dark.",
                     next_beat: "ch1_1"
                 },
+                "prologue_5": {
+                    title: "Prologue: Hazard Pay",
+                    text: "As the portal closed behind them, the Guild recruit stopped, crossed their arms, and cleared their throat. 'So, who exactly is paying for this escort mission?' The Emperor blinked, confused by the concept of currency, while the High Priestess offered to pay them in 'spiritual enlightenment.' The recruit sighed deeply, realizing they were doing a continental-level threat mission for absolutely free.",
+                    system_events: [],
+                    hook: "Ask the player if they've ever been trapped in a massive escort quest with absolutely zero promise of loot.",
+                    next_beat: "ch1_1"
+                },
 
             // === CHAPTER 1 ===
                 "ch1_1": {
@@ -1784,8 +1791,15 @@
                     next_beat: "ch1_4"
                 },
                 "ch1_4": {
+                    title: "Chapter 1: Unbothered Looting",
+                    text: "While the Magician delivered a dramatic, tear-filled monologue about his devastating defeat at the hands of the Four Kings, the player was busy prying a slightly glowing gem out of a dead wisp's remains. 'Are you even listening to me?!' the Magician demanded. The player just held up a finger, currently calculating the local market value of ectoplasm.",
+                    system_events: ["Tactical Disregard Gained."],
+                    hook: "Ask the player if they regularly ignore crucial story dialogue because they spotted a shiny chest in the corner of the room.",
+                    next_beat: "ch1_3"
+                },
+                "ch1_5": {
                     title: "Chapter 1: Gathering the Pieces",
-                    text: "He looked at The Fool’s hopeful expression and shook his head. 'Ever the optimist... Before we go, let's collect my things from these halls. We will need them for the forest.'",
+                    text: "He looked at the player's expression and shook his head. '... Before we go, let's collect my things from these halls. We will need them. The player's expression quickly turned from one of greed to concern. He took the Magician's hands in his own and said, yes, you poor man, lets us recover your loot--, er, I mean artifacts. Come. Come. Lets hurry.'",
                     system_events: ["The Magician joins your party!", "You collected scattered Artifacts!"],
                     hook: "Ask the player if they are ready to venture into the eerie Tintagel Forest.",
                     next_beat: "ch2_1"
@@ -1892,6 +1906,13 @@
                     hook: "Ask the player how they would fight a creature made entirely of fire and rage.",
                     next_beat: "ch3_3"
                 },
+                "ch3_2b": {
+                    title: "Chapter 3: Fire Resistance",
+                    text: "The Djinn unleashed a massive wave of localized heat, enough to melt steel. The royal court gasped, shielding their faces. The player didn't flinch, having already pre-cast a tier-three Fire Ward and eaten a mildly spicy pepper to build elemental tolerance. 'Is that the opener?' the player muttered, checking their buff timers.",
+                    system_events: [],
+                    hook: "Ask the player if they enjoy completely trivializing a boss mechanic through sheer over-preparation.",
+                    next_beat: "ch3_3"
+                },
                 "ch3_3": {
                     title: "Chapter 3: Embers",
                     text: "The Magician and Apprentice combined their magic while The Fool struck the final blow, dissolving the Djinn into embers. He wasn't entirely evil, just a being desperate to experience the freedom his wishes granted others.",
@@ -1934,6 +1955,13 @@
                     text: "Emerging from the cave, they found the Ice Queen standing alone in her sapphire fortress. She was a picture of beautiful sorrow amidst the unending snowfall, looking out over the frozen horizon.",
                     system_events: ["The Ice Queen joins your party!"],
                     hook: "Ask the player if they have ever felt trapped inside their own home.",
+                    next_beat: "ch4_3"
+                },
+                "ch4_2b": {
+                    title: "Chapter 4: Inadequate Attire",
+                    text: "The Ice Queen's domain was an absolute zero nightmare. The High Priestess shivered violently, and the Emperor's teeth chattered. The player, clad in freshly-looted winter furs, looked back at the royals who were still wearing their thin, silk ceremonial robes. 'I can craft themn a coat for a fee?' the player thought to himself.",
+                    system_events: [],
+                    hook: "Ask the player if they ever get annoyed when escort NPCs refuse to wear biome-appropriate gear.",
                     next_beat: "ch4_3"
                 },
                 "ch4_3": {
@@ -2001,6 +2029,13 @@
                     hook: "Ask the player how heavy the weight of a legend feels in their hands.",
                     next_beat: "ch5_3"
                 },
+                "ch5_2c1": {
+                    title: "Chapter 5: Stat Checking the Legend",
+                    text: "Excalibur practically hummed with ancient, divine power. The royal court bowed their heads in reverence. The player swung it twice, checked the balance, and pulled out an abacus. 'The base damage is decent, but my custom-forged shortsword has a better crit multiplier...' they mumbled, casually tossing the legendary blade into their dimensional storage.",
+                    system_events: ["[Excalibur] sent to Extras."],
+                    hook: "Ask the player if they've ever thrown a legendary plot weapon into the trash because their crafted gear was mathematically superior.",
+                    next_beat: "ch5_3"
+                },
                 "ch5_3": {
                     title: "Chapter 5: The Hoard",
                     text: "Armed with the blade, they marched into the cavernous Dragon's Lair. The grumpy, treasure-loving lizard sat atop a massive hoard. 'Arrogant fools...,' the Dragon rumbled, smoke curling from his nostrils. 'You don't know the difference between heaven and earth!'",
@@ -2040,7 +2075,7 @@
                 },
                 "ch6_2": {
                     title: "Chapter 6: Unwanted Affection",
-                    text: "The rescued woman blushed, looking at The Fool with starry eyes. 'My hero... I must return to my father. I shall never forget you.' Confused, the party continued to the castle.",
+                    text: "The rescued woman blushed, looking at the player with starry eyes. 'My hero... I must return to my father. I shall never forget you.' Confused, the party continued to the castle.",
                     system_events: [],
                     hook: "Ask the player if they are good at handling sudden, unwanted romantic attention.",
                     next_beat: "ch6_3"
@@ -2059,9 +2094,16 @@
                     hook: "Pause dramatically. Ask the player: If it meant stopping a war, would they marry a Giant's daughter?",
                     next_beat: "ch6_5"
                 },
+                "ch6_4b": {
+                    title: "Chapter 6: Action Economy Romance",
+                    text: "The Giant's daughter batted her eyelashes, awaiting the player's response to the sudden marriage proposal. The player stood entirely still, running complex calculations. Did the 'Married' status effect provide a stamina regen buff? Did the Giant become a summonable unit? Or was this just a permanent escort quest? The silence stretched on uncomfortably.",
+                    system_events: [],
+                    hook: "Ask the player if they judge in-game romances based purely on the stat bonuses they provide.",
+                    next_beat: "ch6_5"
+                },
                 "ch6_5": {
                     title: "Chapter 6: A Heart of Stone",
-                    text: "The Fool looked at the woman, then at the Giant, and gently shook his head No. The Giant roared in absolute fury, his stone heart breaking for his child. 'Then you reject my mercy! Die!'",
+                    text: "The player looked at the woman, then at the Giant, and gently shook his head No. The Giant roared in absolute fury, his stone heart breaking for his child. 'Then you reject my mercy! Die!'",
                     system_events: [],
                     hook: "Ask the player if they have ever accidentally enraged a protective father.",
                     next_beat: "ch6_6"
@@ -2089,6 +2131,7 @@
                     hook: "Ask the player if standing over a bottomless pit makes them dizzy.",
                     next_beat: "finale_1b"
                 },
+                
                 "finale_1b": {
                     title: "Finale: Ascent of Fire",
                     text: "Entering the first floor, the space resembled outer space, twinkling with distant stars. On the second floor, a menacing fiery figure loomed—the Shade of the Djinn, forced by the Emperor to fight one last time.",
@@ -2170,41 +2213,41 @@
                 system_events: [],
                 hook: "Ask the player if they enjoy the humbling experience of starting at the absolute bottom.",
                 next_beat: "g_ch1_2"
-            },"g_ch1_2": {
+            },
+            "g_ch1_2": {
                 title: "Guildmates",
                 text: "The Guild was filled with experts. The Warrior bellowed about breaking foes through sheer force of will, while the Rogue casually flipped a stolen coin, muttering about profit margins. In the corner, the Hunter was aggressively haggling with a merchant over the price of a half-eaten sandwich, while the Mage stared at the wall, declaring reality a scam. 'It is the duty of the strong to protect the weak,' the Knight advised a nearby Priest, polishing a shield larger than a tavern door. The recruit sighed, drew their rusted blade, and prepared to commit atrocities against the local wildlife for pocket change.",
                 system_events: [],
                 hook: "Ask the player which mentor they would immediately regret taking advice from.",
-                next_beat: "g_ch1_2"
+                next_beat: "g_ch1_3" // Fixed loop
             },
-            
             "g_ch1_3": {
                 title: "The First Hunt",
                 text: "The first few bounties were messy. A crazed beast here, a lost shipment there. The local wildlife was easily routed, but the gold was good. Earning their E-Rank License, the recruit was no longer just a civilian; they were an Adventurer, stepping onto the true path.",
                 system_events: ["Earned E-Rank License!"],
                 hook: "Ask the player how it feels to finally get paid for swinging a sword.",
-                next_beat: null
+                next_beat: "g_ch1_4" // Fixed null
             },
             "g_ch1_4": {
                 title: "Lament",
-                text: "Grib the Goblin Scrapper had a simple life. Scavenge, sleep, occasionally throw rocks at merchants. Then *they* arrived. The Vanguard recruit didn't just clear the infestation; they dismantled the goblin camp with terrifying, dead-eyed efficiency, picking up every single dropped copper piece before Grib's body even hit the floor. The recruit returned to the Lodge smelling of cheap monster blood, proudly slapping their new E-Rank badge on the counter.",
-                system_events: ["Earned E-Rank License!"],
+                text: "Grib the Goblin Scrapper had a simple life. Scavenge, sleep, occasionally throw rocks at merchants. Then *they* arrived. The Guild recruit didn't just clear the infestation; they dismantled the goblin camp with terrifying, dead-eyed efficiency, picking up every single dropped copper piece before Grib's body even hit the floor.",
+                system_events: ["Rep + 1!"],
                 hook: "Ask the player if they ever feel bad for the level 1 monsters whose homes they barge into.",
-                next_beat: null
+                next_beat: "g_ch1_5" // Fixed null
             },
             "g_ch1_5": {
                 title: "The Geometry of Violence",
-                text: "The recruit stood exactly one tile out of alignment from the Cave Imp. Why? Because the Imp's fireball required a direct, orthogonal line of sight. By holding their ground—a calculated tactical 'Wait' to boost their Agility for the coming turn—they forced the screeching creature to step forward into the exact center of the stone grid. The recruit pivoted seamlessly, unleashed a brutal Shield Bash, and sent the creature skidding backward into a solid wall. Efficiency isn't just about raw strength; it's about making the geometry of the battlefield work for you.",
+                text: "The recruit stood exactly one tile out of alignment from the Cave Imp. Why? Because the Imp's fireball required a direct, orthogonal line of sight. By holding their ground—a calculated tactical 'Wait' to boost their Agility for the coming turn—they forced the screeching creature to step forward into the exact center of the stone grid. The recruit pivoted seamlessly, unleashed a brutal Shield Bash, and sent the creature skidding backward into a solid wall disappearing into a neat pile of loot.",
                 system_events: ["Tactical Insight gained."],
                 hook: "Ask the player if they measure their victories in lives saved, or in action points conserved.",
-                next_beat: null
+                next_beat: "g_ch1_6" // Fixed null
             },
             "g_ch1_6": {
                 title: "Miscalculations",
-                text: "Acolyte Vorn stared at the scrying pool in absolute horror. 'Elder, the dire wolves we stationed to guard the northern leyline... the Vanguard recruit butchered them all.' The hooded Elder frowned. 'Did they discover the seal?' Vorn shook his head. 'No, Elder. They killed them because they wanted to craft a slightly warmer pair of boots. They didn't even look at the ancient ruins.'",
+                text: "Acolyte Vorn stared at the scrying pool in absolute horror. 'Elder, the dire wolves we stationed to guard the northern border... the Guild recruit butchered them all.' The hooded Elder frowned. 'Did they discover the seal?' Vorn shook his head. 'No, Elder. They killed them because they wanted to craft a slightly warmer pair of boots. They didn't even look at the ancient ruins.'",
                 system_events: [],
                 hook: "Ask the player if they ever stop to read the lore of the areas they are pillaging.",
-                next_beat: null
+                next_beat: "g_ch2_1" // Bridges to Rank D
             },
             
             // === RANK D & C: THE LEFT HAND PATH ===
@@ -2213,28 +2256,28 @@
                 text: "By D-Rank, the jobs grew stranger. An anonymous client requested an extermination out in the wilds. Upon arrival, the 'client' dropped its disguise—a bloated horror attempting to consume the recruit to steal their cultivated power. 'What do you mean the client was a shapeshifting horror?' the Knight trainer boomed, nearly dropping his massive shield. The recruit simply shrugged, tossing a bag of hazard pay onto the table. They had refused a bribe, murdered an imposter, and looted its corpse. The Guild members exchanged nervous glances. These weren't random monster attacks.",
                 system_events: ["Earned D-Rank License!"],
                 hook: "Ask the player if they ever read the fine print on their contracts.",
-                next_beat: null
+                next_beat: "g_ch2_2" // Fixed null
             },
             "g_ch2_2": {
                 title: "Shattering the Halo",
                 text: "The Gargoyle was wreathed in a pulsing cyan halo—a magical Ward that absorbed all kinetic impact. A lesser adventurer would have exhausted their stamina swinging blindly at the stone beast. The recruit simply calculated the exact hit-count required to break the barrier. A rapid flurry of cheap, low-energy strikes chipped the Ward down to its final thread. With the shield shattered like glass, a single, perfectly aimed Lightning spell chained through the cavern, turning the mighty elemental to gravel. The recruit knelt to gather the dropped treasure before the dust even settled.",
                 system_events: ["Ward mechanics mastered."],
                 hook: "Ask the player how satisfying the sound of a breaking shield really is.",
-                next_beat: null
+                next_beat: "g_ch2_3" // Fixed null
             },
             "g_ch2_3": {
                 title: "Red Strings",
-                text: "Sorting through the loot from the latest D-Rank 'infestation,' the recruit noticed a pattern. The Goblin Scrappers, the Cave Imps, the rogue Earth Elemental—they weren't attacking settlements. If you mapped their spawn points, they formed a perfect geometric seal around the Moors. The Guild wasn't clearing out pests; they were systematically breaking a magical blockade. But who was issuing these bounties?",
+                text: "Sorting through the loot from the latest D-Rank 'infestation,' the recruit noticed a pattern. The Goblin Scrappers, the Cave Imps, the rogue Earth Elemental—they weren't attacking settlements. If you mapped their spawn points, they made magical formation around the Moors. Who was issuing these bounties?",
                 system_events: ["You gain +1 Rep."],
                 hook: "Ask the player if they have ever felt like the bad guy in a video game.",
-                next_beat: null
+                next_beat: "g_ch2_4" // Fixed null
             },
             "g_ch2_4": {
                 title: "The Left Hand Path",
                 text: "The Guild's suspicions were confirmed. The 'monsters' were being directed. Acolytes of the Left Hand Path—adepts who seek to dominate the human race—were meeting with an undercover fellow guildmember. The recruit met with the double-agent and smashed the gathering, ignoring their monologues entirely. The cult's roots ran deeper than anyone knew.",
                 system_events: ["Earned C-Rank License!"],
                 hook: "Ask the player if they prefer fighting mindless beasts or calculating cultists.",
-                next_beat: null
+                next_beat: "g_ch2_5" // Fixed null
             },
             
             "g_ch2_5": {
@@ -2242,58 +2285,122 @@
                 text: "Retaliation was swift. The Left Hand Path marched an army of undead and corrupted beast-men against the southern port. The recruit held the line alongside the mounted knights, executing the Giant Dullahan leading the charge. The port survived, but the war had officially begun.",
                 system_events: ["The Southern Port is safe!"],
                 hook: "Ask the player how they handle defending a location when vastly outnumbered.",
-                next_beat: null
+                next_beat: "g_ch3_1" // Bridges to Rank B
             },
 
             // === RANK B & A: THE ELITE VANGUARD ===
             "g_ch3_1": {
                 title: "Selfish Desires",
-                text: "With B-Rank clearance, the recruit was thrust into the darkest corners of the realm. The Path was attempting to summon a monstrous beast by performing a ritual, intending to direct its might as their own. The sky turned blood red as the ritual began. The Guildmaster watched from the Guild balcony, gripping the railing. 'Who did we send to stop this?' he asked gravely. 'Just the one, sir,' the clerk replied. Out in the wastes, the newly promoted B-Rank was currently chasing a terrified, monstrous whimpering beast across the dunes, screaming at it to drop a rare crafting material. Slaying the beast pushed the recruit to their absolute limits, forging an unbreakable will.",
+                text: "With B-Rank clearance, the recruit was thrust into the darkest corners of the realm. The Path was attempting to summon a monstrous beast by performing a ritual, intending to direct its might as their own. The sky turned blood red as the ritual began. The Guildmaster watched from the Guild balcony, gripping the railing. 'Who did we send to stop this?' he asked gravely. 'Just the one, sir,' the clerk replied. Out in the wastes, the newly promoted B-Rank was currently chasing a terrified, monstrous whimpering beast across the dunes, screaming at it to drop a rare crafting material.",
                 system_events: ["Earned B-Rank License!"],
                 hook: "Ask the player if fighting world-ending threats ever just feels like another day.",
-                next_beat: null
+                next_beat: "g_ch3_2" // Fixed null
             },
             "g_ch3_2": {
+                    title: "The B-Rank Exam",
+                    text: "The B-Rank Guild Clerk stamped the ledger, his eyes shadowed beneath his cowl. 'Your A-Rank promotion is due,' he muttered. 'This exam requires extreme privacy and field testing. Meet me in the depths of the Ruined Keep. Come alone.' The recruit nodded, packed their inventory with an absurd amount of healing potions, and headed out.",
+                    system_events: [],
+                    hook: "Ask the player if they immediately suspect a trap when an NPC says 'come alone'.",
+                    next_beat: "g_ch3_3"
+                },
+            "g_ch3_3": {
+                    title: "The Elder Revealed",
+                    text: "In the desolate ruins, the Clerk stood flanked by Left Hand Path cultists. 'You actually showed up... kekeke,' the Clerk laughed, his Guild uniform burning away to reveal the robes of a Sect Elder. 'I assigned you those suicide missions hoping you'd die, but you just kept succeeding. Now, I will handle you myself!' The recruit didn't even blink, already calculating the exact AoE radius needed to vaporize the Elder and his minions in one turn.",
+                    system_events: ["Sect Elder Defeated!"],
+                    hook: "Ask the player how satisfying it is to finally put down the NPC who has been giving them terrible fetch quests.",
+                    next_beat: "g_ch3_4"
+                },
+            "g_ch3_4": {
+                title: "The Mathematics of Faith",
+                text: "Four Skeleton Warriors spawned from the dirt, surrounding the recruit in a flawless tactical box. The Sect Strike Leader laughed from the edge of the room, assuming numerical superiority guaranteed victory. He didn't understand the action economy. The recruit didn't panic or try to fight their way out of the encirclement. They simply cast a massive AoE Judgement, comparing their overwhelmingly min-maxed base stats against the fragile undead. The radiant blast instantly vaporized all four minions in a single turn. The Sect Leader's smile vanished as they realized they were now alone on the grid, and it was still the recruit's turn.",
+                system_events: ["AoE combat verified."],
+                hook: "Ask the player if they consider 'overwhelming area damage' a valid stealth tactic.",
+                next_beat: "g_ch3_5"
+            },
+            "g_ch3_5": {
+                    title: "The Rot Runs Deep",
+                    text: "The recruit dumped the Elder's storage ring and severed badge onto the S-Rank Guildmaster's desk. The Guildmaster stared in absolute disbelief. A Left Hand Path Elder had infiltrated the Guild as a B-Rank clerk, manipulating contracts to feed recruits to the Sect. 'We've been tracking a traitor for months... to think they were at the front desk,' the Guildmaster rasped. 'You survived an execution squad. Consider yourself an A-Rank.'",
+                    system_events: ["Earned A-Rank License!"],
+                    hook: "Ask the player if they ever wonder who is actually doing the background checks on Guild employees.",
+                    next_beat: "g_ch3_6"
+                },
+            "g_ch3_6": {
                 title: "The Expedition",
                 text: "Promoted to the A-Rank, the recruit was now hunting the hunters. An elder of the Left Hand Path was slaughtering fledgeling recruits during a training expedition, confident in his absolute stealth. 'like slaughtering chickens...', he thought to himself smugly. Suddenly, a tap on his shoulder. Emerging from the the starry dark, a sword flashed and severed the assassin's head, sending a clear message to the Sect's elders: The Guild does not yield. The assassin's final thought before the flash of light was utter bewilderment. Back at the Guild, the recruit dumped a pile of storage rings on the desk. 'Is this enough for the S-Rank exam?'",
                 system_events: ["Earned A-Rank License!"],
                 hook: "Ask the player if they enjoy becoming the very thing the monsters fear.",
-                next_beat: null
-            },
-            "g_ch3_3": {
-                title:"Lethal Trajectories",
-                text: "Assassination wasn't just a spell; it was a physics equation. The target was a heavily armored Giant Dullahan, shielded from the front and flanked by walls. The recruit didn't charge blindly. They calculated the exact dash trajectory required to bypass the beast's line of sight, sliding effortlessly through the one open tile behind the monster. The backstab bypassed the Dullahan's parry completely, executing the colossus in a single, silent motion. The recruit wiped their blade, already plotting the path to the extraction portal.",
-                system_events: [],
-                hook: "Ask the player how it feels when a complex, multi-turn plan executes flawlessly.",
-                next_beat: null
-            },
-            "g_ch3_4": {
-                title: "Action Economy",
-                text: "'They don't fight like humans,' a surviving dark sect member reported to the Left Hand Path elder, trembling despite his lethal training. 'We set a perfect ambush in the dungeon. We had the high ground. But the Guild didn't advance. They just stood there... waiting. Just staring at us from out of range. We grew impatient and broke formation. The moment we stepped into their grid, they moved with impossible speed, as if their agility had been infinitely stacking while they stood still. We were dead before we could even cast a curse.'",
-                system_events: [],
-                hook: "Ask the player if the hardest tactical decision is sometimes choosing to do absolutely nothing.",
-                next_beat: null
+                next_beat: "g_ch4_1" // Bridges to Rank S
             },
 
             // === RANK S: THE LEGEND ===
             "g_ch4_1": {
                 title: "The Aftermath",
-                text: "The Guildmaster rarely spoke, but the annihilation of the expedition warranted an audience. 'You have crippled their leadership,' the old master rasped. 'Alas, we lost many recruits. As you know the next generation is the future of this Guild...Sigh...I task you, young here. Defeat the Left Hand Path!'",
+                text: "The Guildmaster rarely spoke, but the annihilation of the expedition warranted an audience. 'You have dealt a blow to that terrible sect,' the old master rasped. 'Alas, we lost many recruits. As you know the next generation is the future of this Guild...Sigh...I appoint you, S-Rank. Defeat the Left Hand Path!'",
                 system_events: ["S-Rank Granted!"],
                 hook: "Ask the player if standing at the pinnacle of the Guild feels lonely, or just empowering.",
-                next_beat: null
+                next_beat: "g_ch4_2" // Fixed null
             },
+            // === RANK S: THE MASTERMIND (FINALE EXPANSION) ===
             "g_ch4_2": {
-                title: "Guild: The Mathematics of Faith",
-                text: "Four Skeleton Warriors spawned from the dirt, surrounding the recruit in a flawless tactical box. The Cult Strike Leader laughed from the edge of the room, assuming numerical superiority guaranteed victory. He didn't understand the action economy. The recruit didn't panic or try to fight their way out of the encirclement. They simply cast a massive AoE Judgement, comparing their overwhelmingly min-maxed base stats against the fragile undead. The radiant blast instantly vaporized all four minions in a single turn. The Cult Leader's smile vanished as they realized they were now alone on the grid, and it was still the recruit's turn.",
-                system_events: ["AoE combat verified."],
-                hook: "Ask the player if they consider 'overwhelming area damage' a valid stealth tactic.",
-                next_beat: null
+                title: "Triangulating the Void",
+                text: "Finding the Left Hand Path's hidden stronghold should have required months of espionage, deciphering ancient texts, and interrogating high-ranking acolytes. The Guild recruit didn't have time for that. They simply gathered three corrupted teleportation crystals dropped by slain cultists, placed them in a perfect equilateral triangle on the grid, and cast Gravity. The conflicting return-to-base protocols caused a magical physics error, violently snapping a glowing red ley-line directly toward an uncharted mountain range.",
+                system_events: ["Coordinates Acquired.", "Sequence Break Successful."],
+                hook: "Ask the player if they've ever sequence-broken a quest by completely bypassing the intended investigation mechanics.",
+                next_beat: "g_ch4_3"
             },
             "g_ch4_3": {
+                title: "The Unintended Entrance",
+                text: "The Left Hand Path's stronghold was considered an impregnable fortress. The front gates were guarded by shades and skeletons, and the perimeter was wreathed in instant-death curses. The recruit looked at the map, noted a slight collision-mesh gap in the anti-magic warding on the northern cliff face, and spent six hours casually mining through solid granite with a standard-issue iron pickaxe. They stepped out of the wall, brushed the dust off their armor, and immediately backstabbed a completely bewildered guard.",
+                system_events: ["Stealth Mechanics Ignored."],
+                hook: "Ask the player if they prefer storming the front gates, or spending hours digging a tunnel just to skip the trash mobs.",
+                next_beat: "g_ch4_4" // Fixed pointer
+            },
+            "g_ch4_4": {
+                title: "The Stronghold Assault",
+                text: "The infiltration was complete. The Guild rallied its forces to assault the Left Hand Path's main stronghold. While the Guild held the line outside, the recruit breached the inner sanctum to execute the Mastermind. But sitting on the throne wasn't an ancient Lich or a monstrous beast—it was a human.",
+                system_events: [],
+                hook: "Ask the player what goes through their mind when the final boss is just a regular person with a sword.",
+                next_beat: "g_ch4_5" // Fixed pointer
+            },
+            "g_ch4_5": {
+                title: "The Dark Mirror",
+                text: "The Mastermind stood up, drawing a blade identical to the recruit's. The Sect Leader, once a recruit like our own. They had started at the exact same time, but while the Guild recruit took bounties to protect the weak, the Sect recruit cultivated the Left Hand Path, sacrificing innocents to rapidly stack their stats and dominate the continent. Two absolute min-maxed anomalies, forged in the same fire, standing on opposite sides of the grid.",
+                system_events: [],
+                hook: "Ask the player how they plan to defeat an enemy who knows every single one of their tactical tricks.",
+                next_beat: "g_ch4_6" // Fixed pointer
+            },
+            "g_ch4_6": {
+                title: "Exploiting the Engine",
+                text: "The Sect Leader smirked, suddenly vanishing from the tactical grid. They had clipped out of bounds, exploiting a collision mesh oversight to rain down unblockable projectiles from the negative coordinates. 'I have transcended the rules of this reality!' the Mastermind gloated, assuming total victory. The Guild recruit sighed, buffered a movement command against a cracked pillar, and clipped right into the void beside them. 'I know how to speedrun too,' the recruit muttered, parrying the glitched projectiles with a frame-perfect cancel. 'But honestly? Cheat loot is dirty. It completely takes the fun out of the grind.'",
+                system_events: ["Collision Mesh Bypassed.", "Frame-Data Exploited."],
+                hook: "Ask the player if they've ever used a wall-clip glitch to skip a boss phase, or if they prefer to fight fair.",
+                next_beat: "g_ch4_7" 
+            },
+            "g_ch4_7": {
+                title: "Tick-Rate Manipulation",
+                text: "Furious, the Mastermind attempted to desync the local server state. They cast 'Abyssal Swarm', spawning thousands of overlapping shadow particles on a single tile, intentionally trying to drop the Recruit's frame rate so a fatal heavy attack would land un-parried during the lag spike. The Guild recruit simply scoffed, dynamically dropping their internal render resolution to zero. Blinded to the visuals, they read the raw combat log array flowing in the background, executing a flawless parry purely off the timing of the incoming hex-codes.",
+                system_events: ["Render Thread Disabled.", "Raw Data Interpretation Active."],
+                hook: "Ask the player if they've ever turned all their graphics settings down to 'Low' just to secure a competitive advantage.",
+                next_beat: "g_ch4_8" 
+            },
+            "g_ch4_8": {
+                title: "The Array Limit",
+                text: "Realizing raw mechanics wouldn't work, the Sect Leader tried to crash the action queue. They popped a corrupted artifact, spawning exactly 255 Shadow Clones—hitting the absolute 8-bit integer limit for active grid entities in a single room. The Recruit just smiled. They cast 'Chain Lightning', a spell whose damage multiplied by 1.5x for *every* connected target. The resulting mathematical escalation didn't just clear the room; the damage calculation hit a stack overflow, instantly corrupting the clones' memory pointers and bypassing the Mastermind's auto-revive passive entirely.",
+                system_events: ["Stack Overflow Achieved.", "Integer Limit Exceeded."],
+                hook: "Ask the player if they've ever intentionally broken a game's damage cap by exploiting enemy density.",
+                next_beat: "g_ch4_9" 
+            },
+            "g_ch4_9": {
+                title: "The Guild Legend",
+                text: "Forced back into the bounds of reality, the battle became a terrifying display of lethal trajectories, broken Wards, and frame-perfect parries. The Sect Leader fought with ruthless ambition, but the Guild Recruit fought with the unbreakable discipline forged from hundreds of miserable F-Rank slime-culling quests. The Mastermind fell. The stronghold crumbled. The recruit sheathed their sword, finally bringing an end to the plot.",
+                system_events: ["TRIUMPH"],
+                hook: "Ask the player what they plan to do now that there is nothing left to conquer.",
+                next_beat: "g_ch5_1" // Connects to the final Epilogue!
+            },
+            "g_ch5_1": {
                 title: "Gods and Monsters",
                 text: "As an S-Rank, the recruit no longer hunted mere beasts, bandits and local wildlife for loot. They hunted continental level threats. Whether it was an Dragon hoarding treasure, a Lich hoarding the dead, or a Dark Sect seeking to dominate humankind,the recruit's blade was ever ready.",
-                system_events: ["The Vanguard Legend is cemented."],
+                system_events: ["Select a bounty"],
                 hook: "Ask the player what they plan to do now that there is nothing left to conquer.",
                 next_beat: null
             }
@@ -82670,7 +82777,7 @@
                 if (journalTab === ' story ') {
                     // 1. Determine active data source
                     let activeArray = storyViewMode === 'main' ? playerStoryBeats : playerGuildBeats;
-                    let displayTitle = storyViewMode === 'main' ? "- The Fool's Journey -" : "- The Adventurer's Guild -";
+                    let displayTitle = storyViewMode === 'main' ? "- The Fool's Journey -" : "-Guild Log -";
                     let emptyText = storyViewMode === 'main' ? "The history of this world is yet to be written..." : "Your Guild ledger is currently empty...";
 
                     drawText(1, 1.5, 8, 0.8, displayTitle, '#d4af37', 1, 'center');
