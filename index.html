@@ -1700,7 +1700,8 @@
         let myLiveMana = 0;
         let myLiveTiles = 0;
         let myLivePerception = localStorage.getItem('runestones_perception') || "An unpredictable wanderer stepping into the unknown.";
-        let playerStoryBeats = []; // The list of Story Objects the player has seen
+        
+        let storyViewMode = 'main'; // Tracks whether we are viewing 'main' or 'guild'
         const STORY_CAMPAIGN_DB = {
             // === PROLOGUE ===
                 "prologue_1": {
@@ -2161,6 +2162,144 @@
     
         
         };
+        const GUILD_CAMPAIGN_DB = {
+            // === RANK F & E: THE INITIATE ===
+            "g_ch1_1": {
+                title: "The Adventurer's Guild",
+                text: "The heavy oak doors of the Adventurer's Guild slammed shut behind the new recruit. The Guild Receptionist stamped another F-tier contract, barely looking up from her ledger. 'Find the missing crate,' she muttered. 'Don't get eaten by a squirrel...', 'Oh, Hello! A new recruit, eh?,' she asked already knowing the answer. 'Would you like to take on a bounty? Or select a class, perhaps?'",
+                system_events: [],
+                hook: "Ask the player if they enjoy the humbling experience of starting at the absolute bottom.",
+                next_beat: "g_ch1_2"
+            },"g_ch1_2": {
+                title: "Guildmates",
+                text: "The Guild was filled with experts. The Warrior bellowed about breaking foes through sheer force of will, while the Rogue casually flipped a stolen coin, muttering about profit margins. In the corner, the Hunter was aggressively haggling with a merchant over the price of a half-eaten sandwich, while the Mage stared at the wall, declaring reality a scam. 'It is the duty of the strong to protect the weak,' the Knight advised a nearby Priest, polishing a shield larger than a tavern door. The recruit sighed, drew their rusted blade, and prepared to commit atrocities against the local wildlife for pocket change.",
+                system_events: [],
+                hook: "Ask the player which mentor they would immediately regret taking advice from.",
+                next_beat: "g_ch1_2"
+            },
+            
+            "g_ch1_3": {
+                title: "The First Hunt",
+                text: "The first few bounties were messy. A crazed beast here, a lost shipment there. The local wildlife was easily routed, but the gold was good. Earning their E-Rank License, the recruit was no longer just a civilian; they were an Adventurer, stepping onto the true path.",
+                system_events: ["Earned E-Rank License!"],
+                hook: "Ask the player how it feels to finally get paid for swinging a sword.",
+                next_beat: null
+            },
+            "g_ch1_4": {
+                title: "Lament",
+                text: "Grib the Goblin Scrapper had a simple life. Scavenge, sleep, occasionally throw rocks at merchants. Then *they* arrived. The Vanguard recruit didn't just clear the infestation; they dismantled the goblin camp with terrifying, dead-eyed efficiency, picking up every single dropped copper piece before Grib's body even hit the floor. The recruit returned to the Lodge smelling of cheap monster blood, proudly slapping their new E-Rank badge on the counter.",
+                system_events: ["Earned E-Rank License!"],
+                hook: "Ask the player if they ever feel bad for the level 1 monsters whose homes they barge into.",
+                next_beat: null
+            },
+            "g_ch1_5": {
+                title: "The Geometry of Violence",
+                text: "The recruit stood exactly one tile out of alignment from the Cave Imp. Why? Because the Imp's fireball required a direct, orthogonal line of sight. By holding their ground—a calculated tactical 'Wait' to boost their Agility for the coming turn—they forced the screeching creature to step forward into the exact center of the stone grid. The recruit pivoted seamlessly, unleashed a brutal Shield Bash, and sent the creature skidding backward into a solid wall. Efficiency isn't just about raw strength; it's about making the geometry of the battlefield work for you.",
+                system_events: ["Tactical Insight gained."],
+                hook: "Ask the player if they measure their victories in lives saved, or in action points conserved.",
+                next_beat: null
+            },
+            "g_ch1_6": {
+                title: "Miscalculations",
+                text: "Acolyte Vorn stared at the scrying pool in absolute horror. 'Elder, the dire wolves we stationed to guard the northern leyline... the Vanguard recruit butchered them all.' The hooded Elder frowned. 'Did they discover the seal?' Vorn shook his head. 'No, Elder. They killed them because they wanted to craft a slightly warmer pair of boots. They didn't even look at the ancient ruins.'",
+                system_events: [],
+                hook: "Ask the player if they ever stop to read the lore of the areas they are pillaging.",
+                next_beat: null
+            },
+            
+            // === RANK D & C: THE LEFT HAND PATH ===
+            "g_ch2_1": {
+                title: "A Suspicious Contract",
+                text: "By D-Rank, the jobs grew stranger. An anonymous client requested an extermination out in the wilds. Upon arrival, the 'client' dropped its disguise—a bloated horror attempting to consume the recruit to steal their cultivated power. 'What do you mean the client was a shapeshifting horror?' the Knight trainer boomed, nearly dropping his massive shield. The recruit simply shrugged, tossing a bag of hazard pay onto the table. They had refused a bribe, murdered an imposter, and looted its corpse. The Guild members exchanged nervous glances. These weren't random monster attacks.",
+                system_events: ["Earned D-Rank License!"],
+                hook: "Ask the player if they ever read the fine print on their contracts.",
+                next_beat: null
+            },
+            "g_ch2_2": {
+                title: "Shattering the Halo",
+                text: "The Gargoyle was wreathed in a pulsing cyan halo—a magical Ward that absorbed all kinetic impact. A lesser adventurer would have exhausted their stamina swinging blindly at the stone beast. The recruit simply calculated the exact hit-count required to break the barrier. A rapid flurry of cheap, low-energy strikes chipped the Ward down to its final thread. With the shield shattered like glass, a single, perfectly aimed Lightning spell chained through the cavern, turning the mighty elemental to gravel. The recruit knelt to gather the dropped treasure before the dust even settled.",
+                system_events: ["Ward mechanics mastered."],
+                hook: "Ask the player how satisfying the sound of a breaking shield really is.",
+                next_beat: null
+            },
+            "g_ch2_3": {
+                title: "Red Strings",
+                text: "Sorting through the loot from the latest D-Rank 'infestation,' the recruit noticed a pattern. The Goblin Scrappers, the Cave Imps, the rogue Earth Elemental—they weren't attacking settlements. If you mapped their spawn points, they formed a perfect geometric seal around the Moors. The Guild wasn't clearing out pests; they were systematically breaking a magical blockade. But who was issuing these bounties?",
+                system_events: ["You gain +1 Rep."],
+                hook: "Ask the player if they have ever felt like the bad guy in a video game.",
+                next_beat: null
+            },
+            "g_ch2_4": {
+                title: "The Left Hand Path",
+                text: "The Guild's suspicions were confirmed. The 'monsters' were being directed. Acolytes of the Left Hand Path—adepts who seek to dominate the human race—were meeting with an undercover fellow guildmember. The recruit met with the double-agent and smashed the gathering, ignoring their monologues entirely. The cult's roots ran deeper than anyone knew.",
+                system_events: ["Earned C-Rank License!"],
+                hook: "Ask the player if they prefer fighting mindless beasts or calculating cultists.",
+                next_beat: null
+            },
+            
+            "g_ch2_5": {
+                title: "The Port Siege",
+                text: "Retaliation was swift. The Left Hand Path marched an army of undead and corrupted beast-men against the southern port. The recruit held the line alongside the mounted knights, executing the Giant Dullahan leading the charge. The port survived, but the war had officially begun.",
+                system_events: ["The Southern Port is safe!"],
+                hook: "Ask the player how they handle defending a location when vastly outnumbered.",
+                next_beat: null
+            },
+
+            // === RANK B & A: THE ELITE VANGUARD ===
+            "g_ch3_1": {
+                title: "Selfish Desires",
+                text: "With B-Rank clearance, the recruit was thrust into the darkest corners of the realm. The Path was attempting to summon a monstrous beast by performing a ritual, intending to direct its might as their own. The sky turned blood red as the ritual began. The Guildmaster watched from the Guild balcony, gripping the railing. 'Who did we send to stop this?' he asked gravely. 'Just the one, sir,' the clerk replied. Out in the wastes, the newly promoted B-Rank was currently chasing a terrified, monstrous whimpering beast across the dunes, screaming at it to drop a rare crafting material. Slaying the beast pushed the recruit to their absolute limits, forging an unbreakable will.",
+                system_events: ["Earned B-Rank License!"],
+                hook: "Ask the player if fighting world-ending threats ever just feels like another day.",
+                next_beat: null
+            },
+            "g_ch3_2": {
+                title: "The Expedition",
+                text: "Promoted to the A-Rank, the recruit was now hunting the hunters. An elder of the Left Hand Path was slaughtering fledgeling recruits during a training expedition, confident in his absolute stealth. 'like slaughtering chickens...', he thought to himself smugly. Suddenly, a tap on his shoulder. Emerging from the the starry dark, a sword flashed and severed the assassin's head, sending a clear message to the Sect's elders: The Guild does not yield. The assassin's final thought before the flash of light was utter bewilderment. Back at the Guild, the recruit dumped a pile of storage rings on the desk. 'Is this enough for the S-Rank exam?'",
+                system_events: ["Earned A-Rank License!"],
+                hook: "Ask the player if they enjoy becoming the very thing the monsters fear.",
+                next_beat: null
+            },
+            "g_ch3_3": {
+                title:"Lethal Trajectories",
+                text: "Assassination wasn't just a spell; it was a physics equation. The target was a heavily armored Giant Dullahan, shielded from the front and flanked by walls. The recruit didn't charge blindly. They calculated the exact dash trajectory required to bypass the beast's line of sight, sliding effortlessly through the one open tile behind the monster. The backstab bypassed the Dullahan's parry completely, executing the colossus in a single, silent motion. The recruit wiped their blade, already plotting the path to the extraction portal.",
+                system_events: [],
+                hook: "Ask the player how it feels when a complex, multi-turn plan executes flawlessly.",
+                next_beat: null
+            },
+            "g_ch3_4": {
+                title: "Action Economy",
+                text: "'They don't fight like humans,' a surviving dark sect member reported to the Left Hand Path elder, trembling despite his lethal training. 'We set a perfect ambush in the dungeon. We had the high ground. But the Guild didn't advance. They just stood there... waiting. Just staring at us from out of range. We grew impatient and broke formation. The moment we stepped into their grid, they moved with impossible speed, as if their agility had been infinitely stacking while they stood still. We were dead before we could even cast a curse.'",
+                system_events: [],
+                hook: "Ask the player if the hardest tactical decision is sometimes choosing to do absolutely nothing.",
+                next_beat: null
+            },
+
+            // === RANK S: THE LEGEND ===
+            "g_ch4_1": {
+                title: "The Aftermath",
+                text: "The Guildmaster rarely spoke, but the annihilation of the expedition warranted an audience. 'You have crippled their leadership,' the old master rasped. 'Alas, we lost many recruits. As you know the next generation is the future of this Guild...Sigh...I task you, young here. Defeat the Left Hand Path!'",
+                system_events: ["S-Rank Granted!"],
+                hook: "Ask the player if standing at the pinnacle of the Guild feels lonely, or just empowering.",
+                next_beat: null
+            },
+            "g_ch4_2": {
+                title: "Guild: The Mathematics of Faith",
+                text: "Four Skeleton Warriors spawned from the dirt, surrounding the recruit in a flawless tactical box. The Cult Strike Leader laughed from the edge of the room, assuming numerical superiority guaranteed victory. He didn't understand the action economy. The recruit didn't panic or try to fight their way out of the encirclement. They simply cast a massive AoE Judgement, comparing their overwhelmingly min-maxed base stats against the fragile undead. The radiant blast instantly vaporized all four minions in a single turn. The Cult Leader's smile vanished as they realized they were now alone on the grid, and it was still the recruit's turn.",
+                system_events: ["AoE combat verified."],
+                hook: "Ask the player if they consider 'overwhelming area damage' a valid stealth tactic.",
+                next_beat: null
+            },
+            "g_ch4_3": {
+                title: "Gods and Monsters",
+                text: "As an S-Rank, the recruit no longer hunted mere beasts, bandits and local wildlife for loot. They hunted continental level threats. Whether it was an Dragon hoarding treasure, a Lich hoarding the dead, or a Dark Sect seeking to dominate humankind,the recruit's blade was ever ready.",
+                system_events: ["The Vanguard Legend is cemented."],
+                hook: "Ask the player what they plan to do now that there is nothing left to conquer.",
+                next_beat: null
+            }
+        };
+        let playerStoryBeats = Object.values(STORY_CAMPAIGN_DB); 
+        let playerGuildBeats = Object.values(GUILD_CAMPAIGN_DB);
     //SHOP VARIABLES
         let activeShopTab = 'browse';
         let shopSubState = 'grid'; // Can be 'grid' or 'barter'
@@ -21749,6 +21888,17 @@
 
 
             getBountyList(rankToView) {
+                // --- NEW: THE ATLAS HELPER ---
+                const getMapName = (id) => {
+                    const mapNames = {
+                        0: "The Moors", 1: "The Outer Dungeon", 2: "Tintagel Forest", 3: "Hadrian's Wall",
+                        4: "The Shimmering Sands", 5: "The Savage Forest", 6: "Cairn Gorm", 7: "The Ice Caves",
+                        8: "The Ice Palace", 9: "The Boreal Sea", 10: "Avalon", 11: "The Fairy Court",
+                        12: "The Dragon Lair", 13: "The Ancient Tomb", 14: "The Elfwood", 15: "The Dark Bridge",
+                        22: "The Suncat Realm", "-2": "The Abyss"
+                    };
+                    return mapNames[id] || `Uncharted Sector (${id})`;
+                };
                 let rep = this.memory['guild_rep'] || 0;
                 let playerRank = this.memory['guild_rank'] || 'F';
                 let cProgress = this.memory['c_rank_progress'] || 0;
@@ -21774,7 +21924,7 @@
                 if (rankToView === 'F') {
                     let isExamDone = pRankVal >= 1; 
                     quests.push({
-                        id: 'f_exam', title: "PROMOTION EXAM: E-RANK", desc: "Take the tactical duel to prove your worth.", isStory: true,
+                        id: 'f_exam', title: "PROMOTION EXAM: E-RANK", desc: "Face the Crucible. Prove your right to step into the wilds.", isStory: true,
                         status: isExamDone ? 'completed' : (rep >= 3 ? 'available' : 'locked'), lockReason: "Requires 3 Reputation.",
                         generateBlueprint: () => {
                             let setup = getQuestSetup();
@@ -21785,7 +21935,7 @@
                     });
 
                     quests.push({
-                        id: 'f_bounty_1', title: "Local Extermination", desc: "A wild beast is causing trouble. Slay it.", isStory: false, status: 'available',
+                        id: 'f_bounty_1', title: "Local Extermination", desc: "A frenzied beast stalks the perimeter. Put it down.", isStory: false, status: 'available',
                         generateBlueprint: () => {
                             let setup = getQuestSetup();
                             let validTargets = [
@@ -21796,16 +21946,7 @@
                             let target = validTargets[Math.floor(Math.random() * validTargets.length)];
                             let deathAct = [['update_quest_state', { key: 'guild_quest', state: 2 }], ['play_sfx', 'chime'], ['notify', "Target eliminated! Return to the Guild."]];
                             let spawnAction = ['spawn_ephemeral_npc', { 
-                                index: setup.id, 
-                                x: setup.pos.x, 
-                                y: setup.pos.y, 
-                                sprite: target.sprite, 
-                                state: 'stationary', 
-                                role: 'dialogue', 
-                                alignment: 'friendly_messenger', 
-                                color: '#ff0000', 
-                                isBoss: false, 
-                                isTarget: true, // Marked as yellow star objective
+                                index: setup.id, x: setup.pos.x, y: setup.pos.y, sprite: target.sprite, state: 'stationary', role: 'dialogue', alignment: 'friendly_messenger', color: '#ff0000', isBoss: false, isTarget: true, 
                                 customDialogue: ["You'll never take me alive!"], 
                                 endActions: [
                                     ['transform_npc', { index: setup.id, newAlignment: 'foe', newRole: 'battle', newState: 'chasing', clearDialogue: true, newIsBoss: false, newIsTarget: true, newDeathActions: deathAct }], 
@@ -21813,16 +21954,50 @@
                                 ], 
                                 deathActions: deathAct 
                             }];
-                            return { state: 1, type: 'bounty', tName: target.name, qRank: 'F', targetMap: this.mapID, spawnActions: [spawnAction] };
+                            return { 
+                                text: [`Welcome. (Rank: ${playerRank} | Rep: ${rep})`, "I have an F-Rank Bounty available. Interested?"],
+                                options: ['Accept Bounty', 'Leave'],
+                                yesActions: [
+                                    ['set_memory', { key: 'guild_quest', value: { state: 1, type: 'bounty', tName: target.name, qRank: 'F', targetMap: this.mapID, spawnActions: [spawnAction] } }],
+                                    spawnAction, 
+                                    ['play_sfx', 'click'],
+                                    ['notify', `${target.name} last seen near [X: ${Math.floor(setup.pos.x)}, Y: ${Math.floor(setup.pos.y)}]. Slay them and report back.`]
+                                ],
+                                noActions: [['close_dialogue', null]]
+                            };
                         }
                     });
 
                     quests.push({
-                        id: 'f_fetch_1', title: "Lost Shipment", desc: "Recover an F-Rank guild shipment lost nearby.", isStory: false, status: 'available',
+                        id: 'f_fetch_1', title: "Lost Shipment", desc: "A supply convoy vanished in the wilds. Recover the cargo.", isStory: false, status: 'available',
                         generateBlueprint: () => {
                             let setup = getQuestSetup();
-                            let spawnAction = ['spawn_ephemeral_npc', { index: setup.id, x: setup.pos.x, y: setup.pos.y, sprite: 10, state: 'stationary', role: 'dialogue', alignment: 'friendly', color: '#ffff00', isTarget: true, isBoss: false, customDialogue: ["You found the lost guild shipment! Take it?"], options: ['Take', 'Leave'], yesActions: [['update_quest_state', { key: 'guild_quest', state: 2 }], ['play_sfx', 'horn'], ['disappear', null], ['start_wave', { delay: 1.0, waves: [[{sprite: 56, isBoss: false}, {sprite: 54, isBoss: false}], [{sprite: 56, isBoss: false}]], onComplete: [['notify', "Ambush defeated!"]]}], ['start_hunted', { waves: 2, interval: 400, mobs: [{sprite: 56, isBoss: false}] }], ['notify', "You recovered the shipment... but triggered an ambush!"]], noActions: [['close_dialogue', null]] }];
-                            return { state: 1, type: 'fetch', tName: 'Lost Shipment', qRank: 'F', targetMap: this.mapID, spawnActions: [spawnAction] };
+                            let spawnAction = ['spawn_ephemeral_npc', { 
+                                index: setup.id, x: setup.pos.x, y: setup.pos.y, sprite: 10, state: 'stationary', role: 'dialogue', alignment: 'friendly', color: '#ffff00', isTarget: true, isBoss: false, 
+                                customDialogue: ["You found the lost guild shipment! Take it?"], 
+                                options: ['Take', 'Leave'], 
+                                yesActions: [
+                                    ['close_dialogue', null], 
+                                    ['update_quest_state', { key: 'guild_quest', state: 2 }], 
+                                    ['play_sfx', 'horn'], 
+                                    ['disappear', setup.id],  
+                                    ['start_wave', { delay: 1.0, waves: [[{sprite: 56, isBoss: false}, {sprite: 54, isBoss: false}], [{sprite: 56, isBoss: false}]], onComplete: [['notify', "Ambush defeated!"]]}], 
+                                    ['start_hunted', { waves: 2, interval: 400, mobs: [{sprite: 56, isBoss: false}] }], 
+                                    ['notify', "You recovered the shipment... but triggered an ambush!"]
+                                ], 
+                                noActions: [['close_dialogue', null]] 
+                            }];
+                            return { 
+                                text: [`Welcome. (Rank: ${playerRank} | Rep: ${rep})`, "An F-Rank guild shipment was lost nearby. We need it recovered."],
+                                options: ['Accept Fetch Quest', 'Leave'],
+                                yesActions: [
+                                    ['set_memory', { key: 'guild_quest', value: { state: 1, type: 'fetch', tName: 'Lost Shipment', qRank: 'F', targetMap: this.mapID, spawnActions: [spawnAction] } }],
+                                    spawnAction, 
+                                    ['play_sfx', 'click'],
+                                    ['notify', `Intel places the drop near [X: ${Math.floor(setup.pos.x)}, Y: ${Math.floor(setup.pos.y)}]. Beware of scavengers.`]
+                                ],
+                                noActions: [['close_dialogue', null]]
+                            };
                         }
                     });
                 }
@@ -21844,7 +22019,7 @@
                     });
 
                     quests.push({
-                        id: 'e_bounty_1', title: "Beast Extermination", desc: "A tougher monster is prowling the area. Eliminate it.", isStory: false, status: 'available',
+                        id: 'e_bounty_1', title: "Beast Extermination", desc: "A vicious predator claims this territory. Cull the beast.", isStory: false, status: 'available',
                         generateBlueprint: () => {
                             let setup = getQuestSetup();
                             let validTargets = [{ sprite: 57, name: "Giant Spider" }, { sprite: 33, name: "Salamander" }, { sprite: 42, name: "Wandering Shade" }];
@@ -21856,44 +22031,83 @@
                     });
 
                     quests.push({
-                        id: 'e_escort_1', title: "VIP Escort", desc: "High-risk. Escort the VIP to their supplier. Beware assassins.", isStory: false, status: 'available',
+                        id: 'e_escort_1', title: "VIP Escort", desc: "A VIP requires safe passage through hostile ground. Keep them alive.", isStory: false, status: 'available',
                         generateBlueprint: () => {
                             let setup = getQuestSetup();
                             let isBetrayal = Math.random() < 0.3; 
                             let sId = setup.id + 1;
                             let betrayActions = [['update_quest_state', { key: 'guild_quest', state: 2 }], ['play_sfx', 'chime'], ['notify', "Traitor eliminated! Return to the Guild."]];
-                            let supYes = isBetrayal ? [['stop_hunted', null], ['play_sfx', 'horn'], ['transform_npc', { index: setup.id, newAlignment: 'foe', newRole: 'battle', newState: 'chasing', clearDialogue: true, newIsTarget: true, newDeathActions: betrayActions }], ['transform_npc', { index: sId, newAlignment: 'foe', newRole: 'battle', newState: 'chasing', clearDialogue: true, newIsTarget: true, newDeathActions: betrayActions }], ['notify', "Fools! We lured you right into our trap!"]] : [['stop_hunted', null], ['play_sfx', 'chime'], ['disappear', setup.id], ['update_quest_state', { key: 'guild_quest', state: 2 }], ['notify', { text: ["Thank you for bringing them safely. Delivery complete!"], endActions: [['disappear', sId], ['close_dialogue', null]] }]];
+                            
+                            let supYes = isBetrayal ? [
+                                ['close_dialogue', null],
+                                ['stop_hunted', null], 
+                                ['play_sfx', 'horn'], 
+                                ['transform_npc', { index: setup.id, newAlignment: 'foe', newRole: 'battle', newState: 'chasing', clearDialogue: true, newIsTarget: true, newDeathActions: betrayActions }], 
+                                ['transform_npc', { index: sId, newAlignment: 'foe', newRole: 'battle', newState: 'chasing', clearDialogue: true, newIsTarget: true, newDeathActions: betrayActions }], 
+                                ['notify', "Fools! We lured you right into our trap!"]
+                            ] : [
+                                ['close_dialogue', null],
+                                ['stop_hunted', null], 
+                                ['play_sfx', 'chime'], 
+                                ['disappear', setup.id], 
+                                ['update_quest_state', { key: 'guild_quest', state: 2 }], 
+                                ['notify', { text: ["Thank you for bringing them safely. Delivery complete!"], endActions: [['disappear', sId]] }]
+                            ];
                             
                             let spawnEscort = ['spawn_ephemeral_npc', { index: setup.id, x: this.x, y: this.y, sprite: 32, state: 'following', role: 'dialogue', alignment: 'ally', color: '#00ff00', isTarget: true, customDialogue: ["I'm right behind you!"] }];
                             let spawnSupplier = ['spawn_ephemeral_npc', { index: sId, x: setup.pos.x, y: setup.pos.y, sprite: 5, state: 'stationary', role: 'dialogue', alignment: 'friendly', color: '#00ff00', isTarget: true, isBoss: false, customDialogue: ["Ah, the escort has arrived."], options: ['Deliver Client'], yesActions: supYes }];
-                            return { state: 1, type: 'escort', tName: 'VIP Escort', wasBetrayal: isBetrayal, qRank: 'E', targetMap: this.mapID, spawnActions: [spawnEscort, spawnSupplier, ['start_hunted', { waves: 5, interval: 250, mobs: [{sprite: 56, isBoss: false}, {sprite: 56, isBoss: false}] }]] };
+                            
+                            return { 
+                                text: [`Welcome. (Rank: ${playerRank} | Rep: ${rep})`, "I have a high-risk Escort mission. Beware of assassins."],
+                                options: ['Accept Escort', 'Leave'],
+                                yesActions: [
+                                    ['set_memory', { key: 'guild_quest', value: { state: 1, type: 'escort', tName: 'VIP Escort', wasBetrayal: isBetrayal, qRank: 'E', targetMap: this.mapID, spawnActions: [spawnEscort, spawnSupplier, ['start_hunted', { waves: 5, interval: 250, mobs: [{sprite: 56, isBoss: false}, {sprite: 56, isBoss: false}] }]] } }],
+                                    spawnEscort,
+                                    spawnSupplier,
+                                    ['start_hunted', { waves: 5, interval: 250, mobs: [{sprite: 42}, {sprite: 56}] }],
+                                    ['play_sfx', 'click'],
+                                    ['notify', { text: `Escort joined! Move to the safehouse near [X: ${Math.floor(setup.pos.x)}, Y: ${Math.floor(setup.pos.y)}]. Assassins incoming!`, endActions: [['close_dialogue', null]] }]
+                                ],
+                                noActions: [['close_dialogue', null]]
+                            };
                         }
                     });
 
                     quests.push({
-                        id: 'e_squad_1', title: "Bandit Squad", desc: "A group of hostiles has banded together. Take out their leader.", isStory: false, status: 'available',
+                        id: 'e_squad_1', title: "Bandit Squad", desc: "Renegades are gathering strength. Break their ranks and slay the leader.", isStory: false, status: 'available',
                         generateBlueprint: () => {
                             let setup = getQuestSetup();
                             let deathAct = [['update_quest_state', { key: 'guild_quest', state: 2 }], ['play_sfx', 'chime'], ['notify', "Squad Leader eliminated! Return to the Guild."]];
+                            
+                            let m1Pos = this.getSafeSpawn(setup.pos.x, setup.pos.y, 2);
+                            let m2Pos = this.getSafeSpawn(setup.pos.x, setup.pos.y, 2);
+
                             let spawnLeader = ['spawn_ephemeral_npc', { 
-                                index: setup.id, 
-                                x: setup.pos.x, 
-                                y: setup.pos.y, 
-                                sprite: 55, 
-                                state: 'stationary', 
-                                role: 'dialogue', 
-                                alignment: 'friendly_messenger', 
-                                color: '#ff0000', 
-                                customDialogue: ["Get 'em, boys!"], 
-                                isTarget: true,
-                                isBoss: false, 
+                                index: setup.id, x: setup.pos.x, y: setup.pos.y, sprite: 55, state: 'stationary', role: 'dialogue', alignment: 'friendly_messenger', color: '#ff0000', customDialogue: ["Get 'em, boys!"], isTarget: true, isBoss: false, 
                                 endActions: [
                                     ['transform_npc', { index: setup.id, newAlignment: 'foe', newRole: 'battle', newState: 'chasing', clearDialogue: true, newIsTarget: true, newDeathActions: deathAct }], 
                                     ['close_dialogue', null]
                                 ], 
                                 deathActions: deathAct 
                             }];
-                            return { state: 1, type: 'squad_bounty', tName: 'Bandit Squad', qRank: 'E', targetMap: this.mapID, spawnActions: [spawnLeader, ['spawn_ephemeral_npc', { index: setup.id+1, x: setup.pos.x+1, y: setup.pos.y, sprite: 54, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000' }], ['spawn_ephemeral_npc', { index: setup.id+2, x: setup.pos.x-1, y: setup.pos.y, sprite: 54, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000' }]] };
+                            
+                            return { 
+                                text: [`Welcome. (Rank: ${playerRank} | Rep: ${rep})`, "A group of hostiles has banded together. Take out their leader."],
+                                options: ['Accept Squad Bounty', 'Leave'],
+                                yesActions: [
+                                    ['set_memory', { key: 'guild_quest', value: { state: 1, type: 'squad_bounty', tName: 'Bandit Squad', qRank: 'E', targetMap: this.mapID, spawnActions: [
+                                        spawnLeader, 
+                                        ['spawn_ephemeral_npc', { index: setup.id+1, x: m1Pos.x, y: m1Pos.y, sprite: 54, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000' }], 
+                                        ['spawn_ephemeral_npc', { index: setup.id+2, x: m2Pos.x, y: m2Pos.y, sprite: 54, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000' }]
+                                    ]} }],
+                                    spawnLeader, 
+                                    ['spawn_ephemeral_npc', { index: setup.id+1, x: m1Pos.x, y: m1Pos.y, sprite: 54, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000' }], 
+                                    ['spawn_ephemeral_npc', { index: setup.id+2, x: m2Pos.x, y: m2Pos.y, sprite: 54, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000' }],
+                                    ['play_sfx', 'click'],
+                                    ['notify', `Squad spotted near [X: ${Math.floor(setup.pos.x)}, Y: ${Math.floor(setup.pos.y)}]. Eliminate the leader.`]
+                                ],
+                                noActions: [['close_dialogue', null]]
+                            };
                         }
                     });
                 }
@@ -21915,7 +22129,7 @@
                     });
 
                     quests.push({
-                        id: 'd_bounty_1', title: "Stone Extermination", desc: "A sturdy elemental is wreaking havoc. Shatter it.", isStory: false, status: 'available',
+                        id: 'd_bounty_1', title: "Stone Extermination", desc: "An elemental construct has gone rogue. Return it to dust.", isStory: false, status: 'available',
                         generateBlueprint: () => {
                             let setup = getQuestSetup();
                             let validTargets = [{ sprite: 74, name: "Gargoyle" }, { sprite: 75, name: "Gnome" }, { sprite: 37, name: "Siren" }];
@@ -21927,30 +22141,119 @@
                     });
 
                     quests.push({
-                        id: 'd_infestation_1', title: "Monster Infestation", desc: "A client reported an infestation. Clear them out.", isStory: false, status: 'available',
+                        id: 'd_infestation_1', title: "Monster Infestation", desc: "A monstrous brood festers in the dark. Scour the nest.", isStory: false, status: 'available',
                         generateBlueprint: () => {
                             let setup = getQuestSetup(); let bossId = setup.id + 1;
-                            let killPayload = ['update_quest_count', { key: 'guild_quest', onComplete: [['inject_dialogue', { index: setup.id, text: ["It's over! Take this extra gold and don't tell the Guild I panicked!"], options: ['Accept Bribe', 'Refuse'], yesActions: [['set_memory', { key: 'guild_quest', value: { state: 2, type: 'infestation', tName: 'Infestation', qRank: 'D', bribeTaken: true } }], ['give_card', { card: 50, text: "You accepted the bribe." }], ['disappear', setup.id], ['close_dialogue', null]], noActions: [['set_memory', { key: 'guild_quest', value: { state: 2, type: 'infestation', tName: 'Infestation', qRank: 'D', bribeTaken: false } }], ['notify', { text: "You refused the bribe. The client respects your honor.", endActions: [['disappear', setup.id], ['close_dialogue', null]] }]] }], ['trigger_dialogue', setup.id]] }];
-                            let spawnClient = ['spawn_ephemeral_npc', { index: setup.id, x: setup.pos.x, y: setup.pos.y, sprite: 30, state: 'stationary', role: 'dialogue', alignment: 'friendly', color: '#00ff00', isTarget: true, isBoss: false, customDialogue: ["Thank goodness you're here!", "The monsters are right behind me!"], options: ['Help Them', 'Leave'], yesActions: [['spawn_ephemeral_npc', { index: bossId, x: setup.pos.x, y: setup.pos.y, sprite: 55, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', isTarget: true, isBoss: false, deathActions: [killPayload] }], ['spawn_ephemeral_npc', { index: bossId+1, x: setup.pos.x+1, y: setup.pos.y, sprite: 54, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', deathActions: [killPayload] }], ['spawn_ephemeral_npc', { index: bossId+2, x: setup.pos.x-1, y: setup.pos.y, sprite: 54, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', deathActions: [killPayload] }], ['spawn_ephemeral_npc', { index: bossId+3, x: setup.pos.x, y: setup.pos.y+1, sprite: 54, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', deathActions: [killPayload] }], ['play_sfx', 'horn'], ['inject_dialogue', { index: setup.id, text: ["Please! Kill them all!"], endActions: [['close_dialogue', null]] }]], noActions: [['close_dialogue', null]] }];
-                            return { state: 1, type: 'infestation', tName: 'Infestation', qRank: 'D', count: 0, max: 4, bribeTaken: false, targetMap: this.mapID, spawnActions: [spawnClient] };
+                            
+                            let killPayload = ['update_quest_count', { 
+                                key: 'guild_quest', 
+                                onComplete: [
+                                    ['inject_dialogue', { 
+                                        index: setup.id, 
+                                        text: ["It's over! Take this extra gold and don't tell the Guild I panicked!"], 
+                                        options: ['Accept Bribe', 'Refuse'], 
+                                        yesActions: [
+                                            ['close_dialogue', null],
+                                            ['set_memory', { key: 'guild_quest', value: { state: 2, type: 'infestation', tName: 'Infestation', qRank: 'D', bribeTaken: true } }], 
+                                            ['give_card', { card: 50, text: "You accepted the bribe." }], 
+                                            ['disappear', setup.id]
+                                        ], 
+                                        noActions: [
+                                            ['close_dialogue', null],
+                                            ['set_memory', { key: 'guild_quest', value: { state: 2, type: 'infestation', tName: 'Infestation', qRank: 'D', bribeTaken: false } }], 
+                                            ['notify', "You refused the bribe. The client respects your honor."],
+                                            ['disappear', setup.id]
+                                        ] 
+                                    }], 
+                                    ['trigger_dialogue', setup.id]
+                                ] 
+                            }];
+
+                            let pos1 = this.getSafeSpawn(setup.pos.x, setup.pos.y, 2);
+                            let pos2 = this.getSafeSpawn(setup.pos.x, setup.pos.y, 2);
+                            let pos3 = this.getSafeSpawn(setup.pos.x, setup.pos.y, 2);
+                            let pos4 = this.getSafeSpawn(setup.pos.x, setup.pos.y, 2);
+
+                            let spawnClient = ['spawn_ephemeral_npc', { 
+                                index: setup.id, x: setup.pos.x, y: setup.pos.y, sprite: 170, state: 'stationary', role: 'dialogue', alignment: 'friendly', color: '#00ff00', isTarget: true, isBoss: false, 
+                                customDialogue: ["Thank goodness you're here!", "The monsters are right behind me!"], 
+                                options: ['Help Them', 'Leave'], 
+                                yesActions: [
+                                    ['close_dialogue', null],
+                                    ['spawn_ephemeral_npc', { index: bossId, x: pos1.x, y: pos1.y, sprite: 55, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', isTarget: true, isBoss: false, deathActions: [killPayload] }], 
+                                    ['spawn_ephemeral_npc', { index: bossId+1, x: pos2.x, y: pos2.y, sprite: 54, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', deathActions: [killPayload] }], 
+                                    ['spawn_ephemeral_npc', { index: bossId+2, x: pos3.x, y: pos3.y, sprite: 54, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', deathActions: [killPayload] }], 
+                                    ['spawn_ephemeral_npc', { index: bossId+3, x: pos4.x, y: pos4.y, sprite: 54, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', deathActions: [killPayload] }], 
+                                    ['play_sfx', 'horn']
+                                ], 
+                                noActions: [['close_dialogue', null]] 
+                            }];
+                            
+                            return { 
+                                text: [`Greetings, ${playerRank}-Rank. A client reported a monster infestation.`, "Clear them out and report back to me."],
+                                options: ['Accept Mission', 'Leave'],
+                                yesActions: [
+                                    ['set_memory', { key: 'guild_quest', value: { state: 1, type: 'infestation', tName: 'Infestation', qRank: 'D', count: 0, max: 4, bribeTaken: false, targetMap: this.mapID, spawnActions: [spawnClient] } }],
+                                    spawnClient,
+                                    ['play_sfx', 'click'],
+                                    ['notify', { text: `Client's distress signal traces to [X: ${Math.floor(setup.pos.x)}, Y: ${Math.floor(setup.pos.y)}]. Investigate.`, endActions: [['close_dialogue', null]] }]
+                                ],
+                                noActions: [['close_dialogue', null]]
+                            };
                         }
                     });
 
                     quests.push({
-                        id: 'd_reinforce_1', title: "C-Rank Rescue", desc: "A C-Rank squad is pinned down. Reinforce them.", isStory: false, status: 'available',
+                        id: 'd_reinforce_1', title: "C-Rank Rescue", desc: "A veteran squad is trapped behind enemy lines. Break the siege.", isStory: false, status: 'available',
                         generateBlueprint: () => {
                             let setup = getQuestSetup(); let bossId = setup.id + 1;
                             let spawnLeader = ['spawn_ephemeral_npc', { index: setup.id, x: setup.pos.x, y: setup.pos.y, sprite: 42, state: 'stationary', role: 'dialogue', alignment: 'friendly', color: '#00ff00', customDialogue: ["We're pinned down! Join our squad and help us break through!"], options: ['Join Squad', 'Leave'], isTarget: true, isBoss: false, yesActions: [['become_ally', 42], ['disappear', setup.id], ['spawn_ephemeral_npc', { index: bossId, x: this.x, y: this.y, sprite: 5, state: 'stationary', role: 'battle', alignment: 'foe', color: '#ff0000', isBoss: true, deck: [5, 56, 56, 56], deathActions: [['update_quest_state', { key: 'guild_quest', state: 2 }], ['cleanup_quest_npcs', null], ['notify', { text: "Ambush cleared! The squad is safe. Return to the guild.", endActions: [['close_dialogue', null]] }]] }], ['start_tactics', bossId], ['close_dialogue', null]], noActions: [['close_dialogue', null]] }];
-                            return { state: 1, type: 'reinforcement', tName: 'C-Rank Rescue', qRank: 'D', targetMap: this.mapID, spawnActions: [spawnLeader] };
+                            return { 
+                                text: [`Greetings, ${playerRank}-Rank. A C-Rank squad is pinned down in a dungeon.`, "They need immediate tactical reinforcement. Do not let them fall."],
+                                options: ['Accept Reinforcement', 'Leave'],
+                                yesActions: [
+                                    ['set_memory', { key: 'guild_quest', value: { state: 1, type: 'reinforcement', tName: 'C-Rank Rescue', qRank: 'D', targetMap: this.mapID, spawnActions: [spawnLeader] } }],
+                                    spawnLeader,
+                                    ['play_sfx', 'click'],
+                                    ['notify', { text: `Rescue coordinates marked at [X: ${Math.floor(setup.pos.x)}, Y: ${Math.floor(setup.pos.y)}]. Hurry!`, endActions: [['close_dialogue', null]] }]
+                                ],
+                                noActions: [['close_dialogue', null]]
+                            };
                         }
                     });
                     
                     quests.push({
-                        id: 'd_mystery_1', title: "Suspicious Client", desc: "An anonymous extermination request. Proceed with caution.", isStory: false, status: 'available',
+                        id: 'd_mystery_1', title: "Suspicious Client", desc: "A shadow client offers a blind contract. Tread carefully.", isStory: false, status: 'available',
                         generateBlueprint: () => {
                             let setup = getQuestSetup();
-                            let spawnImposter = ['spawn_ephemeral_npc', { index: setup.id, x: setup.pos.x, y: setup.pos.y, sprite: 12, state: 'stationary', role: 'dialogue', alignment: 'friendly', color: '#00ff00', isTarget: true, isBoss: false, customDialogue: ["The guild sent such a puny adventurer?", "Not nearly enough to fill my belly!"], endActions: [['play_sfx', 'horn'], ['transform_npc', { index: setup.id, newType: 88, newAlignment: 'foe', newRole: 'battle', newState: 'chasing', clearDialogue: true, newIsTarget: true, newDeathActions: [['update_quest_state', {key: 'guild_quest', state: 2}], ['notify', { text: "The imposter is dead! Return to the Guild.", endActions: [['close_dialogue', null]]}]] }], ['spawn_ephemeral_npc', { index: setup.id+1, x: setup.pos.x+1, y: setup.pos.y, sprite: 56, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000' }], ['spawn_ephemeral_npc', { index: setup.id+2, x: setup.pos.x-1, y: setup.pos.y, sprite: 56, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000' }], ['spawn_ephemeral_npc', { index: setup.id+3, x: setup.pos.x, y: setup.pos.y+1, sprite: 56, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000' }]] }];
-                            return { state: 1, type: 'mysterious_client', tName: 'Suspicious Client', qRank: 'D', targetMap: this.mapID, spawnActions: [spawnImposter] };
+                            
+                            let m1Pos = this.getSafeSpawn(setup.pos.x, setup.pos.y, 2);
+                            let m2Pos = this.getSafeSpawn(setup.pos.x, setup.pos.y, 2);
+                            let m3Pos = this.getSafeSpawn(setup.pos.x, setup.pos.y, 2);
+
+                            let spawnImposter = ['spawn_ephemeral_npc', { 
+                                index: setup.id, x: setup.pos.x, y: setup.pos.y, sprite: 12, state: 'stationary', role: 'dialogue', alignment: 'friendly', color: '#00ff00', isTarget: true, isBoss: false, 
+                                customDialogue: ["The guild sent such a puny adventurer?", "Not nearly enough to fill my belly!"], 
+                                endActions: [
+                                    ['play_sfx', 'horn'], 
+                                    ['transform_npc', { index: setup.id, newType: 88, newAlignment: 'foe', newRole: 'battle', newState: 'chasing', clearDialogue: true, newIsTarget: true, newDeathActions: [['update_quest_state', {key: 'guild_quest', state: 2}], ['notify', { text: "The imposter is dead! Return to the Guild.", endActions: [['close_dialogue', null]]}]] }], 
+                                    ['spawn_ephemeral_npc', { index: setup.id+1, x: m1Pos.x, y: m1Pos.y, sprite: 56, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000' }], 
+                                    ['spawn_ephemeral_npc', { index: setup.id+2, x: m2Pos.x, y: m2Pos.y, sprite: 56, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000' }], 
+                                    ['spawn_ephemeral_npc', { index: setup.id+3, x: m3Pos.x, y: m3Pos.y, sprite: 56, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000' }]
+                                ] 
+                            }];
+                            
+                            return { 
+                                text: [`Greetings, ${playerRank}-Rank. An anonymous client requested monster extermination.`, "The details are vague. Proceed with caution."],
+                                options: ['Accept Request', 'Leave'],
+                                yesActions: [
+                                    ['set_memory', { key: 'guild_quest', value: { state: 1, type: 'mysterious_client', tName: 'Suspicious Client', qRank: 'D', targetMap: this.mapID, spawnActions: [spawnImposter] } }],
+                                    spawnImposter, 
+                                    ['play_sfx', 'click'],
+                                    ['notify', { text: `Meeting site logged at [X: ${Math.floor(setup.pos.x)}, Y: ${Math.floor(setup.pos.y)}].`, endActions: [['close_dialogue', null]] }]
+                                ],
+                                noActions: [['close_dialogue', null]]
+                            };
                         }
                     });
                 }
@@ -21963,7 +22266,7 @@
                     quests.push({
                         id: 'c_story_1', 
                         title: "CAMPAIGN: Cult Meeting", 
-                        desc: "We have a double agent inside. Backup their meeting on Map 10.", 
+                        desc: "Our operative infiltrated the Cult's gathering in Avalon. Intervene.", 
                         isStory: true,
                         status: cProgress > 0 ? 'completed' : 'available',
                         
@@ -21971,19 +22274,12 @@
                             let setup = getQuestSetup(); 
                             let leaderId = setup.id + 1;
 
-                            // ==========================================
-                            // DYNAMIC SAFE SPAWN COORDINATES
-                            // ==========================================
                             let agentPos = setup.pos; 
                             
-                            // Find safe spots nearby (radius of 4 tiles) for the enemies so they spawn as a group!
                             let leaderPos = this.getSafeSpawn(agentPos.x, agentPos.y, 4);
                             let minion1Pos = this.getSafeSpawn(leaderPos.x, leaderPos.y, 2);
                             let minion2Pos = this.getSafeSpawn(leaderPos.x, leaderPos.y, 2);
 
-                            // ==========================================
-                            // 1. WHAT HAPPENS WHEN YOU TALK TO THE LEADER
-                            // ==========================================
                             let leaderAmbush = [
                                 ['play_sfx', 'horn'], 
                                 ['transform_npc', { 
@@ -21999,12 +22295,9 @@
                                 ['close_dialogue', null]
                             ];
 
-                            // ==========================================
-                            // 2. THE CULT LEADER (AND MINIONS) SPAWN DATA
-                            // ==========================================
                             let spawnLeader = ['spawn_ephemeral_npc', { 
                                 index: leaderId, 
-                                x: leaderPos.x, y: leaderPos.y,  // <-- NOW USES DYNAMIC SAFE SPAWN
+                                x: leaderPos.x, y: leaderPos.y, 
                                 sprite: 5,               
                                 state: 'stationary', 
                                 role: 'dialogue', 
@@ -22012,7 +22305,7 @@
                                 color: '#ffff00', 
                                 isBoss: true, 
                                 isTarget: true, 
-                                deck: [5, 56, 56],       
+                                deck: [5, 56, 56],        
                                 customDialogue: [
                                     "Welcome, brothers. Wait... I know that face.", 
                                     "You're the rat who's been ruining our operations! KILL THEM!"
@@ -22022,7 +22315,7 @@
 
                             let spawnMinion1 = ['spawn_ephemeral_npc', { 
                                 index: leaderId+1, 
-                                x: minion1Pos.x, y: minion1Pos.y, // <-- NOW USES DYNAMIC SAFE SPAWN
+                                x: minion1Pos.x, y: minion1Pos.y,
                                 sprite: 56,              
                                 state: 'stationary', role: 'dialogue', alignment: 'friendly', color: '#ffff00', isBoss: true, 
                                 customDialogue: ["Praise the Master."] 
@@ -22030,18 +22323,15 @@
 
                             let spawnMinion2 = ['spawn_ephemeral_npc', { 
                                 index: leaderId+2, 
-                                x: minion2Pos.x, y: minion2Pos.y, // <-- NOW USES DYNAMIC SAFE SPAWN
+                                x: minion2Pos.x, y: minion2Pos.y,
                                 sprite: 56,              
                                 state: 'stationary', role: 'dialogue', alignment: 'friendly', color: '#ffff00', isBoss: true, 
                                 customDialogue: ["Praise the Master."] 
                             }];
 
-                            // ==========================================
-                            // 3. THE DOUBLE AGENT (THE FIRST NPC YOU MEET)
-                            // ==========================================
                             let spawnAgent = ['spawn_ephemeral_npc', { 
                                 index: setup.id, 
-                                x: agentPos.x, y: agentPos.y,     // <-- NOW USES DYNAMIC SAFE SPAWN
+                                x: agentPos.x, y: agentPos.y,
                                 sprite: 42,              
                                 state: 'stationary', 
                                 role: 'dialogue', 
@@ -22056,10 +22346,10 @@
                                 ], 
                                 options: ['Ambush', 'Wait'], 
                                 yesActions: [
-                                    ['become_ally', 42],       
+                                    ['become_ally', 42],        
                                     ['disappear', setup.id],   
                                     ['play_sfx', 'buff2'], 
-                                    spawnLeader,               
+                                    spawnLeader,                
                                     spawnMinion1,              
                                     spawnMinion2,              
                                     ['notify', {
@@ -22075,14 +22365,14 @@
                                 type: 'infiltration', 
                                 tName: 'Cult Meeting', 
                                 qRank: 'C', 
-                                targetMap: 0,             
+                                targetMap: 10,              
                                 spawnActions: [spawnAgent] 
                             };
                         }
                     });
 
                     quests.push({
-                        id: 'c_bounty_1', title: "Undead Extermination", desc: "An undead horror has risen. Put it back in the dirt.", isStory: false, status: 'available',
+                        id: 'c_bounty_1', title: "Undead Extermination", desc: "A restless horror haunts these lands. Grant it eternal sleep.", isStory: false, status: 'available',
                         generateBlueprint: () => {
                             let setup = getQuestSetup();
                             let validTargets = [{ sprite: 81, name: "Ice Golem" }, { sprite: 82, name: "Cursed Skeleton" }];
@@ -22094,20 +22384,24 @@
                     });
 
                     quests.push({
-                        id: 'c_story_2', title: "CAMPAIGN: Beast Dilemma", desc: "A noble requested extermination. Handle it.", isStory: true,
+                        id: 'c_story_2', title: "CAMPAIGN: Beast Dilemma", desc: "A chained beast awaits execution by a corrupt decree. Decide its fate.", isStory: true,
                         status: cProgress > 1 ? 'completed' : (cProgress === 1 ? 'available' : 'locked'), lockReason: "Complete 'Cult Meeting' first.",
                         generateBlueprint: () => {
                             let setup = getQuestSetup(); let monsterId = setup.id + 1;
                             let slayActions = [['transform_npc', { index: monsterId, newAlignment: 'foe', newRole: 'battle', newState: 'chasing', clearDialogue: true, newIsTarget: true, newIsBoss: true, newDeathActions: [['update_quest_state', {key: 'guild_quest', state: 2}], ['set_memory', {key: 'c_rank_dilemma_choice', value: 'monster'}], ['play_sfx', 'chime'], ['notify', "The beast is dead. Return to the Guild."]] }], ['close_dialogue', null]];
-                            let spareActions = [['disappear', monsterId], ['play_sfx', 'chime'], ['update_quest_state', {key: 'guild_quest', state: 3}], ['inject_dialogue', { index: setup.id, text: ["You let it go?! You fool, that was my prize!"], endActions: [['transform_npc', { index: setup.id, newAlignment: 'foe', newRole: 'battle', newState: 'chasing', clearDialogue: true, newIsTarget: true, newIsBoss: true, newDeathActions: [['update_quest_state', {key: 'guild_quest', state: 2}], ['set_memory', {key: 'c_rank_dilemma_choice', value: 'client'}], ['play_sfx', 'chime'], ['notify', "The corrupt client is dead. Return to the Guild."]] }], ['close_dialogue', null]]}], ['notify', { text: "You freed the beast! Return and confront the client.", endActions: [['close_dialogue', null]] }]];
+                            let spareActions = [['become_ally', 206], ['play_sfx', 'chime'], ['update_quest_state', {key: 'guild_quest', state: 3}], ['inject_dialogue', { index: setup.id, text: ["You let it go?! You fool, that was my prize!"], endActions: [['transform_npc', { index: setup.id, newAlignment: 'foe', newRole: 'battle', newState: 'chasing', clearDialogue: true, newIsTarget: true, newIsBoss: true, newDeathActions: [['update_quest_state', {key: 'guild_quest', state: 2}], ['set_memory', {key: 'c_rank_dilemma_choice', value: 'client'}], ['play_sfx', 'chime'], ['notify', "The corrupt client is dead. Return to the Guild."]] }], ['close_dialogue', null]]}], ['notify', { text: "You freed the beast! Return and confront the client.", endActions: [['close_dialogue', null]] }]];
+                            let beastPos = this.getSafeSpawn(setup.pos.x, setup.pos.y, 3);
+
                             let spawnClient = ['spawn_ephemeral_npc', { index: setup.id, x: setup.pos.x, y: setup.pos.y, sprite: 24, state: 'stationary', role: 'dialogue', alignment: 'friendly', color: '#00ff00', isTarget: true, isBoss: false, customDialogue: ["There's a vicious beast out there! Please, kill it!"] }];
-                            let spawnMonster = ['spawn_ephemeral_npc', { index: monsterId, x: setup.pos.x+2, y: setup.pos.y+2, sprite: 63, state: 'stationary', role: 'dialogue', alignment: 'friendly', color: '#ffff00', isTarget: true, isBoss: false, customDialogue: ["*The creature whimpers and cowers. It is chained to a post and heavily abused. It isn't a threat.*"], options: ['Slay It', 'Spare It & Confront Client'], yesActions: slayActions, noActions: spareActions }];
+
+                            let spawnMonster = ['spawn_ephemeral_npc', { index: monsterId, x: beastPos.x, y: beastPos.y, sprite: 63, state: 'stationary', role: 'dialogue', alignment: 'friendly', color: '#ffff00', isTarget: true, isBoss: false, customDialogue: ["*The creature whimpers and cowers. It is chained to a post and heavily abused. It isn't a threat.*"], options: ['Slay It', 'Spare It & Confront Client'], yesActions: slayActions, noActions: spareActions }];
+
                             return { state: 1, type: 'dilemma', tName: 'Monster Extermination', qRank: 'C', targetMap: this.mapID, spawnActions: [spawnClient, spawnMonster] };
                         }
                     });
 
                     quests.push({
-                        id: 'c_story_3', title: "CAMPAIGN: Shipment Intercept", desc: "Secure the smuggled artifact before they use it.", isStory: true,
+                        id: 'c_story_3', title: "CAMPAIGN: Shipment Intercept", desc: "A profane idol changes hands today. Seize it before the ritual begins.", isStory: true,
                         status: cProgress > 2 ? 'completed' : (cProgress === 2 ? 'available' : 'locked'), lockReason: "Complete 'Beast Dilemma' first.",
                         generateBlueprint: () => {
                             let setup = getQuestSetup(); let bossId = setup.id + 1;
@@ -22118,14 +22412,23 @@
                     });
 
                     quests.push({
-                        id: 'c_story_4', title: "CAMPAIGN: Town Assault", desc: "EMERGENCY: The Cult has launched a full-scale assault on Map 22!", isStory: true,
+                        id: 'c_story_4', title: "CAMPAIGN: Town Assault", desc: "EMERGENCY: The Cult lays siege to the Suncat Realm. Break their lines.", isStory: true,
                         status: cProgress > 3 ? 'completed' : (cProgress === 3 ? 'available' : 'locked'), lockReason: "Complete 'Shipment Intercept' first.",
                         generateBlueprint: () => {
                             let setup = getQuestSetup(); let bossId = setup.id; let invasionSpawns = [];
-                            invasionSpawns.push(['spawn_ephemeral_npc', { index: bossId, x: 15, y: 15, sprite: 5, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', isBoss: true, isTarget: true, deck: [5, 56, 56, 54], deathActions: [['update_quest_state', { key: 'guild_quest', state: 2 }], ['play_song', 8], ['spawn_npc', [22, bossId+99, 'PLAYER_X', 'PLAYER_Y', 42, 'stationary', '#00ff00', [42], ["The Commander is dead! Great work!", "Go back to the Guild and report this. We'll handle the cleanup!"], null, 'dialogue', null, false, 'friendly', [['close_dialogue', null]]]], ['trigger_dialogue', bossId+99]] }]);
-                            for (let i = 1; i <= 10; i++) invasionSpawns.push(['spawn_ephemeral_npc', { index: bossId + i, x: 10 + Math.random() * 10, y: 10 + Math.random() * 10, sprite: (Math.random() > 0.5 ? 54 : 56), state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000' }]);
-                            for (let i = 11; i <= 15; i++) invasionSpawns.push(['spawn_ephemeral_npc', { index: bossId + i, x: 10 + Math.random() * 10, y: 10 + Math.random() * 10, sprite: 42, state: 'chasing', role: 'battle', alignment: 'defender', color: '#0000ff' }]);
-                            return { state: 1, type: 'invasion', tName: 'Town Assault', qRank: 'C', targetMap: 2, spawnActions: invasionSpawns };
+                            
+                            let bossPos = this.getSafeSpawn(15, 15, 2);
+                            invasionSpawns.push(['spawn_ephemeral_npc', { index: bossId, x: bossPos.x, y: bossPos.y, sprite: 5, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', isBoss: true, isTarget: true, deck: [5, 56, 56, 54], deathActions: [['update_quest_state', { key: 'guild_quest', state: 2 }], ['play_song', 8], ['spawn_npc', [22, bossId+99, 'PLAYER_X', 'PLAYER_Y', 42, 'stationary', '#00ff00', [42], ["The Commander is dead! Great work!", "Go back to the Guild and report this. We'll handle the cleanup!"], null, 'dialogue', null, false, 'friendly', [['close_dialogue', null]]]], ['trigger_dialogue', bossId+99]] }]);
+                            
+                            for (let i = 1; i <= 10; i++) {
+                                let invaderPos = this.getSafeSpawn(bossPos.x, bossPos.y, 6);
+                                invasionSpawns.push(['spawn_ephemeral_npc', { index: bossId + i, x: invaderPos.x, y: invaderPos.y, sprite: (Math.random() > 0.5 ? 54 : 56), state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000' }]);
+                            }
+                            for (let i = 11; i <= 15; i++) {
+                                let defPos = this.getSafeSpawn(bossPos.x, bossPos.y, 6);
+                                invasionSpawns.push(['spawn_ephemeral_npc', { index: bossId + i, x: defPos.x, y: defPos.y, sprite: 42, state: 'chasing', role: 'battle', alignment: 'defender', color: '#0000ff' }]);
+                            }
+                            return { state: 1, type: 'invasion', tName: 'Town Assault', qRank: 'C', targetMap: 22, spawnActions: invasionSpawns };
                         }
                     });
 
@@ -22148,7 +22451,7 @@
                     let isExamDone = pRankVal >= 5;
 
                     quests.push({
-                        id: 'b_bounty_1', title: "Deep Extermination", desc: "A massive creature has breached the crust. Slay it.", isStory: false, status: 'available',
+                        id: 'b_bounty_1', title: "Deep Extermination", desc: "An ancient terror rises from the depths. Slay the leviathan.", isStory: false, status: 'available',
                         generateBlueprint: () => {
                             let setup = getQuestSetup();
                             let validTargets = [{ sprite: 80, name: "Frost Wyrm" }, { sprite: 83, name: "Abyssal Tentacle" }];
@@ -22160,7 +22463,7 @@
                     });
 
                     quests.push({
-                        id: 'b_ritual_1', title: "Apocalyptic Ritual", desc: "Destroy the 3 pillars before the Apex is fully summoned.", isStory: false, status: 'available',
+                        id: 'b_ritual_1', title: "Apocalyptic Ritual", desc: "The Cult awakens a forgotten god. Shatter their monoliths.", isStory: false, status: 'available',
                         generateBlueprint: () => {
                             let setup = getQuestSetup(); let p2 = setup.id+1; let p3 = setup.id+2; let bossId = setup.id+3;
                             let ritualClimax = [
@@ -22191,13 +22494,19 @@
                                 }], 
                                 ['close_dialogue', null] 
                             ];
+                            
+                            let p1Pos = this.getSafeSpawn(setup.pos.x, setup.pos.y, 2);
+                            let p2Pos = this.getSafeSpawn(setup.pos.x + 4, setup.pos.y - 4, 3);
+                            let p3Pos = this.getSafeSpawn(setup.pos.x - 4, setup.pos.y + 4, 3);
+
                             let createPillar = (id, px, py) => (['spawn_ephemeral_npc', { index: id, x: px, y: py, sprite: 18, state: 'stationary', role: 'dialogue', alignment: 'friendly', color: '#ffff00', isTarget: true, isBoss: false, customDialogue: ["*The pillar hums with dark, apocalyptic energy.*"], options: ['Shatter Pillar', 'Leave'], yesActions: [['update_quest_count', { key: 'guild_quest', onComplete: ritualClimax }], ['disappear', id], ['play_sfx', 'block'], ['start_wave', { delay: 0.5, waves: [[{sprite: 56, isBoss: true}, {sprite: 42, isBoss: true}]] }], ['close_dialogue', null]], noActions: [['close_dialogue', null]] }]);
-                            return { state: 1, type: 'ritual', tName: 'Apocalyptic Ritual', qRank: 'B', count: 0, max: 3, targetMap: this.mapID, spawnActions: [createPillar(setup.id, setup.pos.x, setup.pos.y), createPillar(p2, setup.pos.x + 4, setup.pos.y - 4), createPillar(p3, setup.pos.x - 4, setup.pos.y + 4)] };
+                            
+                            return { state: 1, type: 'ritual', tName: 'Apocalyptic Ritual', qRank: 'B', count: 0, max: 3, targetMap: this.mapID, spawnActions: [createPillar(setup.id, p1Pos.x, p1Pos.y), createPillar(p2, p2Pos.x, p2Pos.y), createPillar(p3, p3Pos.x, p3Pos.y)] };
                         }
                     });
                     
                     quests.push({
-                        id: 'b_extract_1', title: "Black-Site Rescue", desc: "Survive 10 waves and extract the VIP through the portal.", isStory: false, status: 'available',
+                        id: 'b_extract_1', title: "Black-Site Rescue", desc: "A High-Councilor rots in a black-site prison. Secure the extraction.", isStory: false, status: 'available',
                         generateBlueprint: () => {
                             let setup = getQuestSetup(); let portalId = setup.id+1;
                             let vipYes = [['become_ally', 5], ['disappear', setup.id], ['change_sky', '#000000'], ['change_weather', 'space'], ['play_song', 25], ['start_hunted', { waves: 10, interval: 150, mobs: [{sprite: 74, isBoss: true}, {sprite: 42, isBoss: true}] }], ['play_sfx', 'horn'], ['notify', { text: "ALARM TRIPPED! Facility on lockdown! Run to the Extraction Portal!", endActions: [['close_dialogue', null]] }]];
@@ -22209,7 +22518,7 @@
                     });
 
                     quests.push({
-                        id: 'b_apex_1', title: "Bioweapon Raid", desc: "Eradicate a regenerating bioweapon. Leave no clones alive.", isStory: false, status: 'available',
+                        id: 'b_apex_1', title: "Bioweapon Raid", desc: "A mutating abomination multiplies in the dark. Burn every last cell.", isStory: false, status: 'available',
                         generateBlueprint: () => {
                             let setup = getQuestSetup();
                             let p3Death = [['update_quest_count', { key: 'guild_quest', onComplete: [['update_quest_state', { key: 'guild_quest', state: 2 }], ['play_sfx', 'chime'], ['notify', "The bioweapon has been eradicated! Return to the Guild."]] }]];
@@ -22237,7 +22546,7 @@
                 else if (rankToView === 'A') {
                     
                     quests.push({
-                        id: 'a_bounty_1', title: "Mythic Extermination", desc: "A creature of myth is hunting sailors. Execute it.", isStory: false, status: 'available',
+                        id: 'a_bounty_1', title: "Mythic Extermination", desc: "A legend of the deep claims our ships. Bleed the myth.", isStory: false, status: 'available',
                         generateBlueprint: () => {
                             let setup = getQuestSetup();
                             let validTargets = [{ sprite: 46, name: "Sea Serpent" }, { sprite: 47, name: "Undine" }];
@@ -22249,7 +22558,7 @@
                     });
 
                     quests.push({
-                        id: 'a_story_1', title: "CAMPAIGN: Abyssal Hunt", desc: "An invisible execution squad is hiding on Map -2. Put them down.", isStory: true,
+                        id: 'a_story_1', title: "CAMPAIGN: Abyssal Hunt", desc: "Abyssal assassins stalk the shadows below. Hunt the hunters.", isStory: true,
                         status: aProgress > 0 ? 'completed' : 'available', 
                         generateBlueprint: () => {
                             let setup = getQuestSetup(); let inqId = setup.id+1;
@@ -22268,25 +22577,36 @@
                     });
 
                     quests.push({
-                        id: 'a_story_2', title: "CAMPAIGN: Training Expedition", desc: "Monitor trainees and secure an artifact. Expect interference.", isStory: true,
+                        id: 'a_story_2', title: "CAMPAIGN: Training Expedition", desc: "Trainees march into hostile ruins. Guard their flank and secure the prize.", isStory: true,
                         status: aProgress > 1 ? 'completed' : (aProgress === 1 ? 'available' : 'locked'), lockReason: "Complete 'Abyssal Hunt' first.",
                         generateBlueprint: () => {
                             let setup = getQuestSetup(); let bossId = setup.id+1; let spawnList = [];
                             let artifactPickup = [['disappear', setup.id], ['play_sfx', 'horn'], ['spawn_ephemeral_npc', { index: bossId, x: setup.pos.x , y: setup.pos.y, sprite: 35, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', isBoss: true, isTarget: true, deck: [35, 93, 12], deathActions: [['update_quest_state', { key: 'guild_quest', state: 2 }], ['play_sfx', 'chime'], ['notify', "The Cult forces have been routed! The artifact is secure!"]] }], ['spawn_ephemeral_npc', { index: bossId+1, x: setup.pos.x , y: setup.pos.y, sprite: 56, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', isBoss: true }], ['spawn_ephemeral_npc', { index: bossId+2, x: setup.pos.x , y: setup.pos.y, sprite: 56, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', isBoss: true }], ['notify', { text: "Cult Strike Leader: Fool! We'll pry that artifact from your cold, dead hands!", endActions: [['close_dialogue', null]] }]];
                             spawnList.push(['spawn_ephemeral_npc', { index: setup.id, x: setup.pos.x, y: setup.pos.y, sprite: 10, state: 'stationary', role: 'dialogue', alignment: 'friendly', color: '#ffff00', isTarget: true, isBoss: false, customDialogue: ["*An ancient, glowing artifact.*"], options: ['Secure Artifact'], yesActions: artifactPickup }]);
-                            for (let i=1; i<=3; i++) spawnList.push(['spawn_ephemeral_npc', { index: setup.id+10+i, x: setup.pos.x + Math.random()*4 - 2, y: setup.pos.y + Math.random()*4 - 2, sprite: 42, state: 'chasing', role: 'dialogue', alignment: 'defender', color: '#0000ff', isBoss: true }]);
-                            for (let i=1; i<=3; i++) spawnList.push(['spawn_ephemeral_npc', { index: setup.id+20+i, x: setup.pos.x + Math.random()*4 - 2, y: setup.pos.y + Math.random()*4 - 2, sprite: 54, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', isBoss: true }]);
+
+                            for (let i=1; i<=3; i++) {
+                                let defPos = this.getSafeSpawn(setup.pos.x, setup.pos.y, 3);
+                                spawnList.push(['spawn_ephemeral_npc', { index: setup.id+10+i, x: defPos.x, y: defPos.y, sprite: 42, state: 'chasing', role: 'dialogue', alignment: 'defender', color: '#0000ff', isBoss: true }]);
+                            }
+                            for (let i=1; i<=3; i++) {
+                                let foePos = this.getSafeSpawn(setup.pos.x, setup.pos.y, 4);
+                                spawnList.push(['spawn_ephemeral_npc', { index: setup.id+20+i, x: foePos.x, y: foePos.y, sprite: 54, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', isBoss: true }]);
+                            }
                             return { state: 1, type: 'expedition', tName: 'Training Expedition', qRank: 'A', targetMap: this.mapID, spawnActions: spawnList };
                         }
                     });
 
                     quests.push({
-                        id: 'a_stronghold_1', title: "Stronghold Raid", desc: "A Cult stronghold has been found. Execute the Commander.", isStory: false, 
+                        id: 'a_stronghold_1', title: "Stronghold Raid", desc: "We found their fortress. Kick the doors in and execute the Commander.", isStory: false, 
                         status: aProgress >= 2 ? 'available' : 'locked', lockReason: "Complete Vanguard training operations first.",
                         generateBlueprint: () => {
                             let setup = getQuestSetup(); let spawnList = [];
                             spawnList.push(['spawn_ephemeral_npc', { index: setup.id, x: setup.pos.x, y: setup.pos.y, sprite: 5, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', isBoss: true, isTarget: true, deck: [5, 66, 66, 26, 92], deathActions: [['update_quest_state', { key: 'guild_quest', state: 2 }], ['play_sfx', 'chime'], ['notify', "The Stronghold Commander is dead. The base is ours!"]] }]);
-                            for (let i=1; i<=4; i++) spawnList.push(['spawn_ephemeral_npc', { index: setup.id+i, x: setup.pos.x + Math.random()*3 - 1.5, y: setup.pos.y + Math.random()*3 - 1.5, sprite: 55, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', isBoss: true }]);
+
+                            for (let i=1; i<=4; i++) {
+                                let minionPos = this.getSafeSpawn(setup.pos.x, setup.pos.y, 3);
+                                spawnList.push(['spawn_ephemeral_npc', { index: setup.id+i, x: minionPos.x, y: minionPos.y, sprite: 55, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', isBoss: true }]);
+                            }
                             return { state: 1, type: 'stronghold', tName: 'Stronghold Raid', qRank: 'A', targetMap: this.mapID, spawnActions: spawnList };
                         }
                     });
@@ -22308,7 +22628,7 @@
                     });
 
                     quests.push({
-                        id: 's_god_hunt', title: "God-Tier Extermination", desc: "A world-ending threat has been sighted. Only you can stop it.", isStory: false, 
+                        id: 's_god_hunt', title: "God-Tier Extermination", desc: "A world-ending threat darkens the horizon. Stand against oblivion.", isStory: false, 
                         status: isExamDone ? 'available' : 'locked', lockReason: "Requires S-Rank clearance.",
                         generateBlueprint: () => {
                             let setup = getQuestSetup();
@@ -26293,7 +26613,7 @@
                     let pScale = 1;
                     let checkId = Math.floor(spriteToDraw);
                     
-                    if (checkId >= 188 && checkId <= 196) {
+                    if (checkId >= 188 && checkId <= 329) {
                         let zoomMult = 2.5; 
                         let offset = (zoomMult - 1) / 2;
                         pX -= offset*10;
@@ -38021,28 +38341,33 @@
                             }
                         }
 
-                        // --- THE FIX: DYNAMIC QUEST COUNTING ---
-                        // --- THE FIX: DYNAMIC QUEST COUNTING ---
-                        let maxItems = 0;
-                        if (journalTab === 'record') { maxItems = playerChronicle.length; }
-                        else if (journalTab === 'suncat') { maxItems = suncatChronicle.length; }
-                        else if (journalTab === ' story ') { maxItems = playerStoryBeats.length; }
-                        else if (journalTab === ' quest ') { 
-                            let qCount = 0;
-                            // Count Scenario Directive
-                            if (typeof currentQuest !== 'undefined' && currentQuest !== "") qCount++;
-                            
-                            // --- NEW: Count the Permanent Guild Ledger! ---
-                            qCount++; 
+                        // --- 1. DYNAMIC STORY MAX ITEMS FIX ---
+                            let maxItems = 0;
+                            if (journalTab === 'record') { maxItems = playerChronicle.length; }
+                            else if (journalTab === 'suncat') { maxItems = suncatChronicle.length; }
+                            else if (journalTab === ' story ') { 
+                                // Dynamically check the active database length
+                                maxItems = (storyViewMode === 'main') ? playerStoryBeats.length : playerGuildBeats.length; 
+                            }
+                            else if (journalTab === ' quest ') { 
+                                let qCount = 1; // Default 1 for Guild Ledger
+                                if (typeof currentQuest !== 'undefined' && currentQuest !== "") qCount++;
+                                for (let key in Dungeon.memory) {
+                                    if (key.startsWith('q_') && typeof Dungeon.memory[key] === 'object') qCount++;
+                                }
+                                maxItems = qCount;
+                            }
 
-                            // Count all dynamic quests in memory
-                            for (let key in Dungeon.memory) {
-                                if (key.startsWith('q_') && typeof Dungeon.memory[key] === 'object') {
-                                    qCount++;
+                            // --- 2. TOGGLE CAMPAIGN BUTTON CLICK ---
+                            if (journalTab === ' story ') {
+                                // Clicked TOGGLE (x: 1.5 to 4.5, y: 8.2 to 9.0)
+                                if (gridPos.x >= 1.5 && gridPos.x <= 4.5 && gridPos.y >= 8.5 && gridPos.y <= 9.5) {
+                                    storyViewMode = (storyViewMode === 'main') ? 'guild' : 'main';
+                                    journalScroll = 0; // Reset to page 1 when swapping books
+                                    if(typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('click');
+                                    return;
                                 }
                             }
-                            maxItems = qCount;
-                        }
 
                         // UP ARROW
                         if (gridPos.x >= 8.5 && gridPos.x <= 9.5 && gridPos.y >= 2.5 && gridPos.y <= 3.5) {
@@ -53810,7 +54135,7 @@
                                 }
                                 break;
                             }
-                        //WISP (170-172)
+                        //Merchant (170-172)
                             case 70: { // APPRENTICE IDLE (Looking around, bobbing wand)
                                 let t = window.cacheAngle || 0;
                                 let breath = Math.sin(t) * 0.02; // Chubby breathing
@@ -59725,16 +60050,12 @@
                 }
         //JOURNAL + STORY
             function initializeStoryArchive() {
-                    playerStoryBeats = []; // Clear current session
-                    
-                    // Loop through all keys in your Campaign DB
-                    // This ensures they stay in the order you defined them
-                    for (let key in STORY_CAMPAIGN_DB) {
-                        playerStoryBeats.unshift(STORY_CAMPAIGN_DB[key]);
-                    }
-                    
-                    console.log(`Archive Loaded: ${playerStoryBeats.length} story beats ready.`);
-                }
+                // This grabs all the objects inside your DBs and instantly turns them into ordered arrays
+                playerStoryBeats = Object.values(STORY_CAMPAIGN_DB);
+                playerGuildBeats = Object.values(GUILD_CAMPAIGN_DB);
+                
+                console.log(`Archive Loaded: ${playerStoryBeats.length} Main beats and ${playerGuildBeats.length} Guild beats ready.`);
+            }
             function unlockStoryBeat(beatKey) {
                 const data = STORY_CAMPAIGN_DB[beatKey];
                 if (!data) return;
@@ -82347,44 +82668,54 @@
                 // 3. DRAW CONTENT BASED ON ACTIVE TAB
                 // ----------------------------------------------------
                 if (journalTab === ' story ') {
-                drawText(1, 1.5, 8, 0.8, "- The Fool's Journey -", '#d4af37', 1, 'center');
+                    // 1. Determine active data source
+                    let activeArray = storyViewMode === 'main' ? playerStoryBeats : playerGuildBeats;
+                    let displayTitle = storyViewMode === 'main' ? "- The Fool's Journey -" : "- The Adventurer's Guild -";
+                    let emptyText = storyViewMode === 'main' ? "The history of this world is yet to be written..." : "Your Guild ledger is currently empty...";
 
-                if (playerStoryBeats.length === 0) {
-                    drawText(1, 4, 8, 0.5, "The history of this world is yet to be written...", 'gray', 1, 'center');
-                } else {
-                    let maxDisplay = 1; // Story beats are long, show 1 at a time for readability
-                    let reversedStory = [...playerStoryBeats].reverse();
-                    let entry = reversedStory[journalScroll]; // Scroll acts as an index for the beat
-                    let currentPage = journalScroll + 1; 
-                    let totalPages = playerStoryBeats.length;
-                    if (entry) {
-                        // Draw Title
-                        drawText(1, 2.5, 8, 0.5, entry.title.toUpperCase(), '#00ffff', 1, 'center');
-                        
-                        // Draw Story Text (Height 3.5 allows for deep wrapping)
-                        drawText(1, 3.5, 8, 3.5, entry.text, 'white', 1);
+                    drawText(1, 1.5, 8, 0.8, displayTitle, '#d4af37', 1, 'center');
 
-                        // Draw System Note / Reward if exists
-                        if (entry.system_events && entry.system_events.length > 0) {
-                            drawText(1, 7.2, 8, 0.5, ">> " + entry.system_events.join(', '), '#00ff00', 1);
+                    // 2. Render Story Content
+                    if (activeArray.length === 0) {
+                        drawText(1, 4, 8, 0.5, emptyText, 'gray', 1, 'center');
+                    } else {
+                        // We removed ALL .reverse() logic here. It now reads strictly Start-to-Finish.
+                        let entry = activeArray[journalScroll];
+                        let currentPage = journalScroll + 1; 
+                        let totalPages = activeArray.length;
+
+                        if (entry) {
+                            // Draw Title
+                            drawText(1, 2.5, 8, 0.5, entry.title.toUpperCase(), '#00ffff', 1, 'center');
+                            
+                            // Draw Story Text 
+                            drawText(1, 3.5, 8, 3.5, entry.text, 'white', 1);
+
+                            // Draw System Note / Reward if it exists
+                            if (entry.system_events && entry.system_events.length > 0) {
+                                drawText(1, 7.2, 8, 0.5, ">> " + entry.system_events.join(', '), '#00ff00', 1);
+                            }
+
+                            // Page Indicator
+                            drawText(1, 8.0, 8, 0.4, `Beat ${currentPage} of ${totalPages}`, '#888888', 1, 'center');
                         }
 
-                        // Page Indicator
-                    drawText(1, 8.0, 8, 0.4, `Beat ${currentPage} of ${totalPages}`, '#888888', 1, 'center');
+                        // Scroll Arrows
+                        if (journalScroll > 0) {
+                            drawShape('rec', 8.5, 2.5, 1, 0, 0, 1, 1, 0,0,0,0, '#444444', 1);
+                            drawText(8.5, 2.7, 1, 0.6, "^", '#d4af37', 1, 'center'); 
+                        }
+                        if (journalScroll < activeArray.length - 1) {
+                            drawShape('rec', 8.5, 7.0, 1, 0, 0, 1, 1, 0,0,0,0, '#444444', 1);
+                            drawText(8.5, 7.2, 1, 0.6, "v", '#d4af37', 1, 'center');
+                        }
                     }
 
-                    // Scroll Arrows
-                    if (journalScroll > 0) {
-                        drawShape('rec', 8.5, 2.5, 1, 0, 0, 1, 1, 0,0,0,0, '#444444', 1);
-                        drawText(8.5, 2.7, 1, 0.6, "^", '#d4af37', 1, 'center'); 
-                    }
-                    if (journalScroll < reversedStory.length - 1) {
-                        drawShape('rec', 8.5, 7.0, 1, 0, 0, 1, 1, 0,0,0,0, '#444444', 1);
-                        drawText(8.5, 7.2, 1, 0.6, "v", '#d4af37', 1, 'center');
-                    }
+                    // 3. DRAW TOGGLE CAMPAIGN BUTTON
+                    drawShape('rec', 1.5, 8.5, 1, 0, 0, 3.0, 0.8, 0,0,0,0, '#222244', 1);
+                    let toggleLabel = storyViewMode === 'main' ? "VIEW: GUILD LOG" : "VIEW: MAIN TALE";
+                    drawText(1.5, 8.6, 3.0, 0.4, toggleLabel, 'white', 1, 'center');
                 }
-                }
-            
                 
                     // ----------------------------------------------------
                 else if (journalTab === 'record' || journalTab === 'suncat') {
@@ -82422,22 +82753,20 @@
                     }
                 }
                 // ----------------------------------------------------
+                // JOURNAL: QUEST LOG
                 // ----------------------------------------------------
                 else if (journalTab === ' quest ') {
                     drawText(1, 1.5, 8, 0.8, "- QUEST LOG -", '#d4af37', 1, 'center');
                     let allQuests = [];
-                    // --- NEW: A. MAIN QUEST PROGRESS TRACKER (Memory Key Verification) ---
-                    // Grab the current map to determine where they are in the story
+                    // --- NEW: A. MAIN QUEST PROGRESS TRACKER ---
                     let currentMapId = typeof Dungeon !== 'undefined' ? Dungeon.mapID : 0;
                     let mem = typeof Dungeon !== 'undefined' ? Dungeon.memory : {};
                     
-                    // Only show The Fool's Journey if they are in the main campaign maps (0-21)
+                    // Only show The Fool's Journey if they are in the main campaign maps
                     if (currentMapId !== 999) {
                         let mqDesc = "";
                         let isObjCompleted = false;
 
-                        // Determine the objective AND if it is completed by checking the exact memory key!
-                        // (We check for backwards compatibility with old saves where applicable)
                         if (currentMapId === 0) {
                             mqDesc = "Speak to the High Priestess to learn the basics, then find the portal.";
                             isObjCompleted = mem['mq_map0'] || (Dungeon && Dungeon.MainQuest > 0);
@@ -82455,28 +82784,28 @@
                             isObjCompleted = mem['mq_map3'] === true; 
                         }
                         else if (currentMapId === 4 || currentMapId === 5) {
-                            mqDesc = "Cross the desert and defeat the King of Wands (Djinn) to save the Witch Queen.";
+                            mqDesc = "Cross the desert and defeat the Djinn to save the Witch Queen.";
                             isObjCompleted = mem['mq_map5'] || (mem["5_11"] && mem["5_11"].permanent); 
                         }
                         else if (currentMapId >= 6 && currentMapId <= 9) {
-                            mqDesc = "Reach the Ice Queen, borrow her ship, and slay the King of Cups (Kraken).";
+                            mqDesc = "Reach the Ice Queen, borrow her ship, and slay the Kraken.";
                             isObjCompleted = mem['mq_map9'] || (mem["9_1"] && mem["9_1"].permanent);
                         }
                         else if (currentMapId >= 10 && currentMapId <= 13) {
-                            mqDesc = "Convince the Fairy Queen to fight, then slay the King of Swords (Dragon) in his lair.";
+                            mqDesc = "Convince the Fairy Queen to fight, then slay the Dragon in his lair.";
                             isObjCompleted = mem['mq_map12'] || (mem["12_12"] && mem["12_12"].permanent);
                         }
                         else if (currentMapId === 14) {
-                            mqDesc = "Rendezvous with the Elf Queen and deal with the King of Pentacles (Giant).";
+                            mqDesc = "Rendezvous with the Elf Queen and deal with the Giant.";
                             isObjCompleted = mem['mq_map14'] || (Dungeon && Dungeon.gd >= 6); 
                         }
                         else if (currentMapId === 15) {
                             mqDesc = "Cross the Dark Bridge. There is no turning back now.";
-                            isObjCompleted = false; // Transition map
+                            isObjCompleted = false;
                         }
                         else if (currentMapId >= 16 && currentMapId <= 20) {
                             mqDesc = `Ascend the Dark Tower (Floor ${currentMapId - 15} of 5). Defeat the phantoms of the past.`;
-                            isObjCompleted = false; // Active while ascending
+                            isObjCompleted = false; 
                         }
                         else if (currentMapId >= 21) {
                             mqDesc = "Confront the mastermind at the top of the tower!";
@@ -82490,9 +82819,7 @@
                             failed: false 
                         });
                     }
-                // 1. BUILD THE DYNAMIC QUEST LIST
-                    
-                    
+
                     // A. SCENARIO / DIRECTIVES (Map 999 overrides)
                     if (typeof currentQuest !== 'undefined' && currentQuest !== "") {
                         let isDone = currentQuest.includes("vanquished") || currentQuest.includes("defeated") || currentQuest.includes("Teleporting");
@@ -82511,65 +82838,65 @@
                         gDetails += "Status: Available for work. Speak to a Guild Clerk to accept a new task.";
                     } else if (gQuest.state === 1) {
                         let qRank = gQuest.qRank || 'F';
-                        let tMap = gQuest.targetMap !== undefined ? gQuest.targetMap : 'Unknown';
+                        let tMap = gQuest.targetMap !== undefined ? getMapName(gQuest.targetMap) : 'Unknown Territory';
                         let objText = "Follow your guild directives.";
                         
-                        // --- DYNAMIC QUEST DESCRIPTIONS ---
+                        // --- DYNAMIC EPIC QUEST DESCRIPTIONS WITH ATLAS MAP NAMES ---
                         switch (gQuest.type) {
                             case 'bounty':
                             case 'squad_bounty':
-                                objText = `Hunt down the target on Map ${tMap} and eliminate them.`;
+                                objText = `Hunt down the target in ${tMap} and eliminate them.`;
                                 break;
                             case 'fetch':
-                                objText = `Locate the lost shipment on Map ${tMap} and secure it.`;
+                                objText = `Locate the lost shipment in ${tMap} and secure it.`;
                                 break;
                             case 'escort':
-                                objText = `Find the VIP on Map ${tMap} and safely escort them to their supplier on the same map. Keep them alive!`;
+                                objText = `Find the VIP in ${tMap} and safely escort them to their supplier. Keep them alive!`;
                                 break;
                             case 'infestation':
-                                objText = `Clear out the monster infestation on Map ${tMap}. (${gQuest.count || 0}/${gQuest.max || 4} defeated)`;
+                                objText = `Clear out the monster infestation in ${tMap}. (${gQuest.count || 0}/${gQuest.max || 4} defeated)`;
                                 break;
                             case 'reinforcement':
-                                objText = `Rescue the pinned squad on Map ${tMap} by joining their tactical battle.`;
+                                objText = `Rescue the pinned squad in ${tMap} by joining their tactical battle.`;
                                 break;
                             case 'mysterious_client':
-                                objText = `Meet the anonymous client on Map ${tMap}. Proceed with extreme caution.`;
+                                objText = `Meet the anonymous client in ${tMap}. Proceed with extreme caution.`;
                                 break;
                             case 'idol':
-                                objText = `Intercept the Cult supply line on Map ${tMap} and secure the evil idol.`;
+                                objText = `Intercept the Cult supply line in ${tMap} and secure the evil idol.`;
                                 break;
                             case 'ritual':
-                                objText = `Sabotage the summoning ritual on Map ${tMap}. Destroy the pillars! (${gQuest.count || 0}/${gQuest.max || 3} destroyed)`;
+                                objText = `Sabotage the summoning ritual in ${tMap}. Destroy the pillars! (${gQuest.count || 0}/${gQuest.max || 3} destroyed)`;
                                 break;
                             case 'extraction':
-                                objText = `Locate the captured VIP on Map ${tMap} and escort them to the extraction portal.`;
+                                objText = `Locate the captured VIP in ${tMap} and escort them to the extraction portal.`;
                                 break;
                             case 'apex':
-                                objText = `Eradicate the regenerating bioweapon on Map ${tMap}. Destroy all clones!`;
+                                objText = `Eradicate the regenerating bioweapon in ${tMap}. Destroy all clones!`;
                                 break;
                             case 'invasion':
-                                objText = `Warp to Map ${tMap} immediately! Defend the town and execute the Commander.`;
+                                objText = `Warp to ${tMap} immediately! Defend the town and execute the Commander.`;
                                 break;
                             case 'exam_trap':
-                                objText = `Rendezvous with the Clerk on Map ${tMap} for your private promotion exam.`;
+                                objText = `Rendezvous with the Clerk in ${tMap} for your private promotion exam.`;
                                 break;
                             case 'inquisitor':
-                                objText = `Hunt the invisible stalker in the depths of Map ${tMap}.`;
+                                objText = `Hunt the invisible stalker in the depths of ${tMap}.`;
                                 break;
                             case 'expedition':
-                                objText = `Monitor the trainees and secure the artifact on Map ${tMap}.`;
+                                objText = `Monitor the trainees and secure the artifact in ${tMap}.`;
                                 break;
                             case 'stronghold':
-                                objText = `Raid the Cult stronghold on Map ${tMap} and execute the Commander.`;
+                                objText = `Raid the Cult stronghold in ${tMap} and execute the Commander.`;
                                 break;
                             case 'finale':
-                                objText = `Warp to Map ${tMap} (Inferno) and reinforce the S-Rank teams against the Mastermind!`;
+                                objText = `Warp to ${tMap} and reinforce the S-Rank teams against the Mastermind!`;
                                 break;
                             case 'apex_hunt':
-                                objText = `Track down and execute the God-Tier threat on Map ${tMap}.`;
+                                objText = `Track down and execute the God-Tier threat in ${tMap}.`;
                                 break;
                             case 'dilemma':
-                                objText = `Exterminate the beast for the client on Map ${tMap}.`;
+                                objText = `Exterminate the beast for the client in ${tMap}.`;
                                 break;
                         }
 
@@ -82578,7 +82905,7 @@
                     } else if (gQuest.state === 2) {
                         let qRank = gQuest.qRank || 'F';
                         gDetails += `Status: [READY] ${qRank}-Rank ${gQuest.tName || 'Task'}. Objective: Proof secured! Return to any Guild Clerk to collect your payment.`;
-                        isGuildDone = true; // This will color the box green in the UI!
+                        isGuildDone = true; 
                     }
 
                     allQuests.push({
@@ -83576,6 +83903,18 @@
                         drawText(tx + 0.1, 0.275, tabWidth - 0.2, 0.6, tabs[i].toUpperCase(), textColor, 1, 'center');
                     }
 
+                // --- NEW: THE ATLAS HELPER ---
+                const getMapName = (id) => {
+                    const mapNames = {
+                        0: "The Moors", 1: "The Outer Dungeon", 2: "Tintagel Forest", 3: "Hadrian's Wall",
+                        4: "The Shimmering Sands", 5: "The Savage Forest", 6: "Cairn Gorm", 7: "The Ice Caves",
+                        8: "The Ice Palace", 9: "The Boreal Sea", 10: "Avalon", 11: "The Fairy Court",
+                        12: "The Dragon Lair", 13: "The Ancient Tomb", 14: "The Elfwood", 15: "The Dark Bridge",
+                        22: "The Suncat Realm", "-2": "The Abyss"
+                    };
+                    return mapNames[id] || `Uncharted Sector (${id})`;
+                };
+
                 // ==========================================
                 // 3. ACTIVE COMMISSION (Quest In Progress)
                 // ==========================================
@@ -83599,7 +83938,9 @@
                             drawShape('rec', 3.0, 7.0, 1, 0, 0, 4, 0.8, 0,0,0,0, '#008800', 1);
                             drawText(3.0, 7.2, 4, 0.4, "TURN IN BOUNTY", 'white', 1, 'center');
                         } else {
-                            drawText(2.0, 4.8, 6, 1.0, `Your target is located on Map ${activeQ.targetMap}. Return here when the objective is complete.`, 'gray', 1, 'left');
+                            // --- NEW EPIC MAP NAME RESOLUTION ---
+                            let mapLocStr = activeQ.targetMap !== undefined ? getMapName(activeQ.targetMap) : 'Unknown Territory';
+                            drawText(2.0, 4.8, 6, 1.0, `Your target is located in ${mapLocStr}. Return here when the objective is complete.`, 'gray', 1, 'left');
                             
                             // Abandon Button
                             drawShape('rec', 3.0, 7.0, 1, 0, 0, 4, 0.8, 0,0,0,0, '#880000', 1);
@@ -83981,8 +84322,9 @@
                         
                         drawText(1.6, 4.0, 6.9, 0.6, `TARGET: ${qInfo.title}`, 'white', 1, 'center');
                         
-                        let mapLoc = window.acceptedQuestTargetMap !== undefined ? `MAP ${window.acceptedQuestTargetMap}` : 'UNKNOWN';
-                        drawText(1.6, 5.0, 6.9, 0.4, `LOCATION: ${mapLoc}`, '#00ffff', 1, 'center');
+                        // --- NEW EPIC MAP NAME RESOLUTION ---
+                        let mapLoc = window.acceptedQuestTargetMap !== undefined ? getMapName(window.acceptedQuestTargetMap) : 'UNKNOWN';
+                        drawText(1.6, 5.0, 6.9, 0.4, `LOCATION: ${mapLoc.toUpperCase()}`, '#00ffff', 1, 'center');
                         drawText(1.6, 5.7, 6.9, 0.3, "Safe adventuring out there!", 'gray', 1, 'center');
                         
                         // DEPLOY BUTTON
