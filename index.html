@@ -15894,19 +15894,28 @@
                     else if (type <= -29 && type >= -35) { scale = 0.9; hover = 0.0; }
                     if (type === 55) { scale = 2.0; hover = -0.5; }
                 // 2. Modifiers
-                    if (sprite.name && sprite.socketId && sprite.name !== "Suncat") { scale *= 0.69; hover -= 0.1; }
                     if (sprite.role === 'summoned_minion') { scale = 0.30; hover -= 0.13; }
                     if (sprite.isBoss && type !== 60.1&& type <100) { scale *= 1.369; hover -= 0.13; }
                     //if (sprite.isBoss && type >100) { scale *= 1.369; hover -= 0.6; }
                 // 3. Entity Alignment Modifiers
-                    if (sprite.isPlayer&&this.mapId !== 9) {
+                    if (sprite.isPlayer&&this.mapID !== 9) {
                         scale = 0.69; hover = -.13;
-                    } else if (sprite.alignment === 'ally') {
+                    } 
+                    else if (sprite.isPlayer&&this.mapID === 9) {
+                        scale =3; hover = -1.369;
+                    } 
+                    else if (sprite.name && sprite.socketId && sprite.name !== "Suncat") { scale *= 0.69; hover -= 0.1; }
+
+                    if (sprite.alignment === 'ally') {
                         scale *= 0.91; hover -= 0.13;
                         if ([77.1, 77, 90, 89, 35.1, 35].includes(type)) {
                             scale = 0.9631; hover = -0.369;
                         }
+                        if ([63,63.1].includes(type)) {
+                            scale = 0.9631; hover = -0.369;
+                        }
                     }
+                    
                 
                 //
                 return { scale, hover, animIndex: type, faceZ, facePan };
@@ -25845,26 +25854,49 @@
                             }
 
                             // Pass our new dynamic coordinates to the renderer!
-                            drawPortrait(spriteToDraw, drawX, drawY, drawScale, cardParam);
-                            
-                            // Hide HP bars for loot on the ground!
-                            if (unit.role !== 'dropped_card') {
-                                let color = unit.alignment === 'ally' ? '#00ff00' : '#ff0000';
-                                drawShape('rec', 0, 0.9, 1, 0, 0, 1, 0.1, 0, 0, 0, 0, 'rgba(0,0,0,0.5)', 1);
-                                drawShape('rec', 0, 0.9, 1, 0, 0, 1, 0.1, 0, 0, 0, 0, color, 0);
+                                drawPortrait(spriteToDraw, drawX, drawY, drawScale, cardParam);
+                                
+                                // --- 1. NEW: THICK HP & WARD BARS ---
+                                // Hide HP bars for loot on the ground!
+                                if (unit.role !== 'dropped_card') {
+                                    let hpColor = unit.alignment === 'ally' ? '#00ff00' : (unit.isBoss ? '#FFD700' : '#ff0000');
+                                    
+                                    // Dark Background (y=8.5 pushes it to the bottom, x2=10 makes it span the full tile width, y2=1.5 makes it thick!)
+                                    drawShape('rec', 0, 8.5, 1, 0, 0, 10, 1.5, 0, 0, 0, 0, 'rgba(0,0,0,0.8)', 1); 
+                                    
+                                    // Actual HP Bar (Notice fill=1 instead of 0 so it's a solid block of color)
+                                    drawShape('rec', 0, 8.5, 1, 0, 0, 10, 1.5, 0, 0, 0, 0, hpColor, 1); 
+                                    
+                                    // VISUAL WARD/SHIELD OVERLAY
+                                    let ward = unit.activeBuffs ? unit.activeBuffs.find(b => b.type === 'ward') : null;
+                                    if (ward) {
+                                        // Assuming 10 hits is a "full" shield, this scales the cyan bar across the tile
+                                        let wardWidth = Math.min(10.0, ward.hits * 1.0); 
+                                        
+                                        // Draw the Cyan Ward Bar slightly thinner and centered vertically inside the HP bar
+                                        drawShape('rec', 0, 8.8, 1, 0, 0, wardWidth, 0.9, 0, 0, 0, 0, '#00ffff', 1); 
+                                    }
+                                }
                             }
-                        }
-                        // --- NEW: DRAW PULSING BUFF AURAS ---
-                        if (unit.activeBuffs && unit.activeBuffs.length > 0) {
-                            let pulse = 0.05 * Math.sin(Date.now() / 150); // Smooth breathing effect
-                            unit.activeBuffs.forEach((buff, idx) => {
-                                let auraColor = buff.auraColor || buff.glow || 'cyan';
-                                let radius = 0.55 + (idx * 0.1) + pulse; // Stack rings outward
-                                drawShape('arc', 0, 0, 1, 0.5, 0.5, radius, 0, 2, 0,0,0, auraColor, 0); 
-                            });
-                        }
+                            
+                            // --- 2. NEW: MASSIVE PULSING BUFF AURAS ---
+                            if (unit.activeBuffs && unit.activeBuffs.length > 0) {
+                                // Bigger, smoother pulse
+                                let pulse = 0.4 * Math.sin(Date.now() / 150); 
+                                
+                                unit.activeBuffs.forEach((buff, idx) => {
+                                    let auraColor = buff.auraColor || buff.glow || 'cyan';
+                                    
+                                    // Radius of 5 means it spans 50% from the center (touching the exact edges of the tile)
+                                    // We push it out slightly further if they have multiple buffs stacking
+                                    let radius = 5 + (idx * 0.6) + pulse; 
+                                    
+                                    // x1=5 and y1=5 perfectly centers the ring over the unit's portrait!
+                                    drawShape('arc', 0, 0, 1, 5, 5, radius, 0, 2, 0, 0, 0, auraColor, 0); 
+                                });
+                            }
 
-                        tX = oldTX; tY = oldTY; tL = oldTL; tH = oldTH;
+                            tX = oldTX; tY = oldTY; tL = oldTL; tH = oldTH;
                     });
                     // --- NEW: ACTIVE UNIT INDICATOR ---
                     // Drawn after all units so it always stays perfectly on top!
