@@ -4629,7 +4629,6 @@
                                         
                                         if (target === dungeon) {
                                             if (typeof dungeon.absorbHit === 'function' && dungeon.absorbHit(this)) {
-                                                dungeon.actionQueue.unshift(['notify', { text: `Your Ward blocked ${this.name}'s ${spellData.name}!`, endActions: [['close_dialogue', null]] }]);
                                             } else {
                                                 dungeon.power -= damage;
                                                 dungeon.playerFlashTimer = 3;
