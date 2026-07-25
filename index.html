@@ -2260,12 +2260,16 @@
                 this.isDead = false;          // Is the NPC currently dead?
                 this.respawnTime = Infinity;         // Timestamp when they should return
                 this.respawnDelay = 910613;    // 30 Seconds (Adjust as needed)
-            // MOVEMENT
+            //// MOVEMENT
                 this.dirX = Math.random() - 0.5;
                 this.dirY = Math.random() - 0.5;
                 this.speed = .5; 
                 this.xp= getPower(null,this.cards);
-            
+            // WARD SYSTEM ---
+                this.maxWards = (this.isBoss) ? 3 : 0; // Bosses get 3 natural wards!
+                this.timePerWard = 3.0;
+                this.currentWardTime = this.maxWards * this.timePerWard;
+                this.wardShatterCooldown = 0;
             //FATNESS ---
                 const fatSprites = [33, 33.1, 63, 63.1, 74, 74.1, 49, 49.1, 89, 37, 37.1, 47, 47.1]; 
             
@@ -2895,6 +2899,20 @@
             }
         update(maze, playerX, playerY, dungeon, dt) {
             if (this.role === 'sign') return;
+            // --- 1. NEW NPC WARD REGENERATION ---
+            if (this.wardShatterCooldown > 0) {
+                this.wardShatterCooldown -= dt;
+            } else if (this.maxWards > 0 && this.currentWardTime < this.maxWards * this.timePerWard) {
+                let conSides = (this.stat && this.stat[1]) ? this.stat[1][1] || 4 : 4;
+                let conBonus = (this.stat && this.stat[1]) ? this.stat[1][2] || 0 : 0;
+                let conRoll = Math.floor(Math.random() * conSides) + 1 + conBonus;
+                let regenAmount = (conRoll * 0.0613) * dt; 
+                this.currentWardTime += regenAmount;
+
+                if (this.currentWardTime > this.maxWards * this.timePerWard) {
+                    this.currentWardTime = this.maxWards * this.timePerWard;
+                }
+            }
             // --- BUFF & WARD MANAGER ---
                 let isBound = false; // Check if we are frozen!
 
@@ -3570,13 +3588,8 @@
                             let someoneDied = false;
 
                             if (atkStr > defCon) {
-                                let ward = firstDefender.activeBuffs ? firstDefender.activeBuffs.find(b => b.type === 'ward') : null;
-                                
-                                if (ward) {
-                                    firstDefender.damageFlashTimer = 3; 
-                                    ward.hits--; 
-                                    if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('cancel'); 
-                                    // --- NEW: WARD KNOCKBACK (Bounce Attacker Away) ---
+                                if (firstDefender.absorbHit(firstAttacker)) {
+                                    // Defender's ward absorbed it! Bounce attacker away
                                     let dx = firstAttacker.x - firstDefender.x;
                                     let dy = firstAttacker.y - firstDefender.y;
                                     let dist = Math.sqrt(dx*dx + dy*dy) || 1;
@@ -3586,21 +3599,12 @@
                                     firstAttacker.isSliding = true;
                                     firstAttacker.combatCooldown = 13; // Stun the attacker
                                     
-                                    // TRICK: Tell the engine someone "died" so it skips the default reset animation at the end of Round 4
-                                    someoneDied = true;
+                                    someoneDied = true; // Tell the engine someone "died" to skip the reset animation
                                 } else {
-                                    firstDefender.damageFlashTimer = 3; 
-                                    
                                     // 2. DEFENDER DIES BLOOD
                                     for (let p = 0; p < 8; p++) {
-                                        spawnParticle(
-                                            firstDefender.x + (Math.random() - 0.5) * 0.4,
-                                            firstDefender.y + (Math.random() - 0.5) * 0.4,
-                                            '#ff0000', 
-                                            'smoke' 
-                                        );
+                                        spawnParticle(firstDefender.x + (Math.random() - 0.5) * 0.4, firstDefender.y + (Math.random() - 0.5) * 0.4, '#ff0000', 'smoke');
                                     }
-                                    
                                     dungeon.killNPC(firstDefender, false, 'npc_infighting');
                                     this.combatCooldown = 0;
                                     someoneDied = true;
@@ -3611,12 +3615,8 @@
                                 let atkCon = getOverworldRoll(firstCard, 1, firstAttacker, attackerMastery);
 
                                 if (defStr > atkCon) {
-                                    let ward = firstAttacker.activeBuffs ? firstAttacker.activeBuffs.find(b => b.type === 'ward') : null;
-                                    
-                                    if (ward) {
-                                        firstAttacker.damageFlashTimer = 3; 
-                                        ward.hits--; 
-                                        if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('cancel'); 
+                                    if (firstAttacker.absorbHit(firstDefender)) {
+                                        // Attacker's ward absorbed it! Bounce Defender away
                                         let dx = firstDefender.x - firstAttacker.x;
                                         let dy = firstDefender.y - firstAttacker.y;
                                         let dist = Math.sqrt(dx*dx + dy*dy) || 1;
@@ -3625,18 +3625,10 @@
                                         firstDefender.slideTargetY = firstDefender.y + (dy/dist) * 1.5;
                                         firstDefender.isSliding = true;
                                         firstDefender.combatCooldown = 13; // Stun the defender
-                                        
-                                        someoneDied = true; // Skip default reset animation
+                                        someoneDied = true;
                                     } else {
-                                        // 3. ATTACKER DIES BLOOD/*
-                                        for (let p = 0; p < 8; p++) {
-                                            spawnParticle(
-                                                firstAttacker.x + (Math.random() - 0.5) * 0.4,
-                                                firstAttacker.y + (Math.random() - 0.5) * 0.4,
-                                                '#ff0000', 
-                                                'smoke' 
-                                            );
-                                        }
+                                        // 3. ATTACKER DIES BLOOD
+                                        for (let p = 0; p < 8; p++) spawnParticle(firstAttacker.x + (Math.random() - 0.5) * 0.4, firstAttacker.y + (Math.random() - 0.5) * 0.4, '#ff0000', 'smoke');
                                         
                                         dungeon.killNPC(firstAttacker, false, 'npc_infighting');
                                         currentPrey.combatCooldown = 0;
@@ -4743,6 +4735,13 @@
                 this.stat[newEffect.buffStat][2] += newEffect.amount;
             } else if (newEffect.type === 'debuff' && newEffect.debuffStat !== undefined) {
                 this.stat[newEffect.debuffStat][2] += newEffect.amount; 
+            }else if (newEffect.type === 'ward' || newEffect.type === 'item_ward') {
+                this.maxWards = Math.max(this.maxWards || 0, newEffect.hits || 3);
+                this.currentWardTime += (newEffect.hits || 3) * this.timePerWard;
+                if (this.currentWardTime > this.maxWards * this.timePerWard) {
+                    this.currentWardTime = this.maxWards * this.timePerWard;
+                }
+                this.wardShatterCooldown = 0;
             }
 
             this.activeBuffs.push(newEffect);
@@ -4814,6 +4813,90 @@
 
             if (canMoveX) this.x = targetX;
             if (canMoveY) this.y = targetY;
+        }
+        absorbHit(attacker, spellId = null) {
+            let legacyWard = this.activeBuffs ? this.activeBuffs.find(b => b.type === 'ward' || b.type === 'item_ward') : null;
+
+            // 1. If shattered and no ward time left (and no legacy ward), take full damage (Trigger Death/Battle)
+            if (this.currentWardTime <= 0 && !legacyWard) return false;
+
+            let atkStat = 0; // Default to STR for physical/collision
+            let defStat = 1; // Default to CON for physical defense
+            
+            // Adjust for spell logic
+            if (spellId !== null && typeof SPELL_REGISTRY !== 'undefined' && SPELL_REGISTRY[spellId]) {
+                let spell = SPELL_REGISTRY[spellId];
+                atkStat = spell.castStat !== undefined ? spell.castStat : 2; 
+                defStat = spell.defStat !== undefined ? spell.defStat : 1;
+            }
+
+            // 2. Attacker Roll
+            let atkRoll = 0;
+            if (attacker) {
+                // Is it the player? (Dungeon/Explore instance)
+                if (attacker.isPlayer || attacker.deck !== undefined) {
+                    let pCard = new Card(91, 0, { mastery: attacker.level || 0 });
+                    atkRoll = pCard.rollStat(atkStat);
+                    if (attacker.stat && attacker.stat[atkStat]) atkRoll += attacker.stat[atkStat][2];
+                    if (attacker.damage) atkRoll += attacker.damage; 
+                } else if (attacker.type !== undefined) {
+                    let atkCardId = attacker.type;
+                    let atkCard = new Card(Math.floor(atkCardId), 0);
+                    atkRoll = atkCard.rollStat(atkStat);
+                    if (attacker.stat && attacker.stat[atkStat]) atkRoll += attacker.stat[atkStat][2];
+                    if (attacker.damage) atkRoll += attacker.damage;
+                }
+            } else {
+                atkRoll = Math.floor(Math.random() * 6) + 1; // Fallback
+            }
+
+            // 3. Defender Roll (NPC)
+            let defCard = new Card(Math.floor(this.type), 0);
+            let defRoll = defCard.rollStat(defStat);
+            if (this.stat && this.stat[defStat]) defRoll += this.stat[defStat][2];
+            if (this.isBoss) defRoll += defCard.rollStat(defStat); // Bosses get a defense bonus!
+
+            // 4. Resolve the Tug-of-War
+            if (atkRoll > defRoll) {
+                let damageScalar = 0.75; 
+                let timeLost = (atkRoll - defRoll) * damageScalar;
+                
+                if (this.currentWardTime > 0) {
+                    this.currentWardTime -= timeLost;
+                } else if (legacyWard) {
+                    legacyWard.hits--;
+                }
+                
+                this.damageFlashTimer = 15; 
+                
+                if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('cancel', this.x, this.y);
+
+                if (typeof globalParticles !== 'undefined' && typeof spawnParticle !== 'undefined') {
+                    for (let p = 0; p < 8; p++) {
+                        spawnParticle(
+                            this.x + (Math.random() - 0.5) * 0.8,
+                            this.y + (Math.random() - 0.5) * 0.8,
+                            '#00ffff', 
+                            'sparkle'
+                        );
+                    }
+                }
+
+                // Did the wards break entirely?
+                if (this.currentWardTime <= 0 && !legacyWard) {
+                    this.currentWardTime = 0;
+                    this.wardShatterCooldown = 9.0; // Apply the 9-second penalty!
+                } else if (legacyWard && legacyWard.hits <= 0) {
+                    let wIdx = this.activeBuffs.findIndex(b => b === legacyWard);
+                    if (wIdx > -1) this.activeBuffs.splice(wIdx, 1);
+                }
+            } else {
+                // Blocked successfully (Ward holds strong, no time lost!)
+                if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('block', this.x, this.y);
+            }
+
+            // We successfully absorbed the hit (preventing immediate death)
+            return true; 
         }
         }
     
@@ -12471,15 +12554,9 @@
                     if (pStrRoll > npcConRoll) {
                         // --- PLAYER OVERPOWERS THE NPC ---
                         
-                        // Check if the NPC has a magical Ward active
-                        let ward = targetNPC.activeBuffs ? targetNPC.activeBuffs.find(b => b.type === 'ward') : null;
-
-                        if (ward && ward.hits > 0) {
-                            // NPC HAS ARMOR: The blow is absorbed! Break the Ward and knock them back.
-                            ward.hits--;
-                            targetNPC.damageFlashTimer = 5;
-                            if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('cancel');
-
+                        // Attempt to absorb via Ward Time Pool!
+                        if (targetNPC.absorbHit(this)) {
+                            // WARD ABSORBED IT: Bounce them back and stun them!
                             let dx = targetNPC.x - this.x;
                             let dy = targetNPC.y - this.y;
                             let dist = Math.sqrt(dx * dx + dy * dy) || 1;
@@ -12490,11 +12567,10 @@
                             targetNPC.state = 'chasing';   
                             targetNPC.combatCooldown = 20; 
                         } else {
-                            // NO ARMOR: The NPC is crushed!
+                            // NO WARDS LEFT: Crushed!
                             targetNPC.damageFlashTimer = 5;
                             if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('death', targetNPC.x, targetNPC.y, this.x, this.y, this.dir);
                             
-                            // Spawn some visceral impact particles
                             if (typeof globalParticles !== 'undefined' && typeof spawnParticle !== 'undefined') {
                                 for (let p = 0; p < 8; p++) {
                                     spawnParticle(
@@ -12505,7 +12581,7 @@
                                 }
                             }
 
-                            // ---> TRIGGER THE DEATH & LOOT DROP <---
+                            // Trigger Death & Loot
                             this.killNPC(targetNPC, targetNPC.isBoss ? true : false, 'melee_combat');
                         }
                     } else {
@@ -16960,18 +17036,28 @@
                             if (dot > spellData.angle) {
                                 hitSomething = true;
 
-                               // --- COMBAT RESOLUTION ---
-                                let playerCard = new Card(91, 0, { mastery: this.level }); 
-                                let targetCard = new Card(Math.floor(npc.type), 0);
+                               let playerCard = new Card(91, 0, { mastery: this.level }); 
+                               let targetCard = new Card(Math.floor(npc.type), 0);
 
-                                // THE FIX: Add `this.damage` to the player's attack roll!
-                                let playerAtk = playerCard.rollStat(spellData.castStat) + (this.stat[spellData.castStat][2] || 0) + this.damage;
-                                let targetDef = targetCard.rollStat(spellData.defStat) + (npc.stat[spellData.defStat] ? npc.stat[spellData.defStat][2] : 0);
+                               let playerAtk = playerCard.rollStat(spellData.castStat) + (this.stat[spellData.castStat][2] || 0) + this.damage;
+                               let targetDef = targetCard.rollStat(spellData.defStat) + (npc.stat[spellData.defStat] ? npc.stat[spellData.defStat][2] : 0);
 
-                                if (playerAtk > targetDef) {
-                                    // OVERPOWERED! Instant Kill.
-                                    this.killNPC(npc, false, 'cone_attack');
-                                } else {
+                               if (playerAtk > targetDef) {
+                                   if (npc.absorbHit(this, this.spellId)) {
+                                       // Survived via ward! Add a small knockback so they don't just stand inside the cone.
+                                       let knockPower = (spellData.knockback || 1.0) * 0.5;
+                                       let pushX = dx / dist;
+                                       let pushY = dy / dist;
+                                       
+                                       npc.slideTargetX = npc.x + pushX * knockPower;
+                                       npc.slideTargetY = npc.y + pushY * knockPower;
+                                       npc.isSliding = true;
+                                       npc.state = 'chasing';
+                                   } else {
+                                       // OVERPOWERED! Instant Kill.
+                                       this.killNPC(npc, false, 'cone_attack');
+                                   }
+                               } else {
                                 // SURVIVED! Apply Knockback based on spell registry
                                     let knockPower = spellData.knockback || 1.0;
                                     
@@ -17139,17 +17225,30 @@
                                 }
                             }
                         } 
-                        // --- ASSASSINATION LOGIC ---
                         else {
-                            if (playerAgi > targetAgi) {
-                                if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('slash');                        
-                                this.killNPC(bestTarget, false, 'backstab');
+                        if (playerAgi > targetAgi) {
+                            if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('slash');                        
+                            
+                            // --- THE FIX: Let the Ward try to block the backstab! ---
+                            if (bestTarget.absorbHit(this, spellId)) {
+                                // Survived via ward! Add a small flinch/knockback so they don't clip.
+                                let pushX = this.dir === 1 ? 1 : (this.dir === 3 ? -1 : 0);
+                                let pushY = this.dir === 2 ? 1 : (this.dir === 0 ? -1 : 0);
+                                
+                                bestTarget.slideTargetX = bestTarget.x + (pushX * 0.5);
+                                bestTarget.slideTargetY = bestTarget.y + (pushY * 0.5);
+                                bestTarget.isSliding = true;
+                                bestTarget.state = 'chasing';
                             } else {
-                                if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('block');                        
-                                bestTarget.dirX *= -1; 
-                                bestTarget.dirY *= -1;
+                                // No ward left, instant kill!
+                                this.killNPC(bestTarget, false, 'backstab');
                             }
+                        } else {
+                            if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('block');                        
+                            bestTarget.dirX *= -1; 
+                            bestTarget.dirY *= -1;
                         }
+                    }
 
                         // --- MOVEMENT & PHYSICS KILL SWITCH ---
                         // Forget sliding destinations so we don't rubberband across the map!
@@ -22862,35 +22961,32 @@
                                 defStat += defCard.rollStat(statToDefend);
                             }
                             
-                    // 3. Resolve the Hit
+                        // 3. Resolve the Hit
                         if (atkRoll > defStat) {
-                            let magnitude = atkRoll - defStat; 
-                            
-                            if (spellData.type === 'debuff') {
-                                npc.damageFlashTimer = 3;
-                                npc.applySpell(this.spellId, magnitude);
-                                MusicEngine.play3DSFX('debuff', this.x, this.y, exploreRef.x, exploreRef.y, exploreRef.dir);
-                            } else {
-                                // --- NEW: CHECK FOR ARMOR AGAINST SPELLS ---
-                                let ward = npc.activeBuffs ? npc.activeBuffs.find(b => b.type === 'ward') : null;
-                                
-                                if (ward) {
-                                    ward.hits--; // Armor absorbs the Fireball!
-                                    npc.damageFlashTimer = 3;
-                                    MusicEngine.play3DSFX('cancel', this.x, this.y, exploreRef.x, exploreRef.y, exploreRef.dir);
-                                } else {
-                                    // No armor, they burn to ash!
-                                    npc.damageFlashTimer = 3;
-                                    exploreRef.killNPC(npc, false, 'projectile_spell');
-                                    if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('death');
-                                    MusicEngine.play3DSFX('death', this.x, this.y, exploreRef.x, exploreRef.y, exploreRef.dir);
-
-                                }
-                            }
-                            
-                            this.triggerExplosion();
-                            return;
+                        let magnitude = atkRoll - defStat; 
+                        
+                        if (spellData.type === 'debuff') {
+                            npc.damageFlashTimer = 3;
+                            npc.applySpell(this.spellId, magnitude);
+                            MusicEngine.play3DSFX('debuff', this.x, this.y, exploreRef.x, exploreRef.y, exploreRef.dir);
                         } else {
+                            // --- NEW TIME-BASED WARD CHECK ---
+                            // Pass this.owner (or exploreRef if player fired it directly) so stats roll properly!
+                            let caster = this.owner || exploreRef;
+
+                            if (npc.absorbHit(caster, this.spellId)) {
+                                // Ward absorbed the hit and deducted time! (absorbHit handles particles & sounds)
+                            } else {
+                                // Wards shattered / 0 time left: Lethal hit!
+                                npc.damageFlashTimer = 3;
+                                exploreRef.killNPC(npc, false, 'projectile_spell');
+                                if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('death', this.x, this.y, exploreRef.x, exploreRef.y, exploreRef.dir);
+                            }
+                        }
+                        
+                        this.triggerExplosion();
+                        return;
+                    } else {
                             // SPELL RESISTED!
                                 MusicEngine.play3DSFX('cancel', this.x, this.y, exploreRef.x, exploreRef.y, exploreRef.dir);
                                 npc.damageFlashTimer = 3
