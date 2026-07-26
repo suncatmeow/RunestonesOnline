@@ -38448,22 +38448,33 @@
                             }
                         }
 
-                        // --- 1. DYNAMIC STORY MAX ITEMS FIX ---
-                            let maxItems = 0;
-                            if (journalTab === 'record') { maxItems = playerChronicle.length; }
-                            else if (journalTab === 'suncat') { maxItems = suncatChronicle.length; }
-                            else if (journalTab === ' story ') { 
-                                // Dynamically check the active database length
-                                maxItems = (storyViewMode === 'main') ? playerStoryBeats.length : playerGuildBeats.length; 
-                            }
-                            else if (journalTab === ' quest ') { 
-                                let qCount = 1; // Default 1 for Guild Ledger
-                                if (typeof currentQuest !== 'undefined' && currentQuest !== "") qCount++;
+                       // --- THE FIX: DYNAMIC QUEST COUNTING ---
+                        let maxItems = 0;
+                        if (journalTab === 'record') { maxItems = playerChronicle.length; }
+                        else if (journalTab === 'suncat') { maxItems = suncatChronicle.length; }
+                        else if (journalTab === ' story ') { maxItems = playerStoryBeats.length; }
+                        else if (journalTab === ' quest ') { 
+                            let qCount = 0;
+                            
+                            // 1. Count The Fool's Journey (If in a valid map)
+                            if (typeof Dungeon !== 'undefined' && Dungeon.mapID !== 999) qCount++;
+                            
+                            // 2. Count Scenario Directive
+                            if (typeof currentQuest !== 'undefined' && currentQuest !== "") qCount++;
+                            
+                            // 3. Count the Permanent Guild Ledger!
+                            qCount++; 
+
+                            // 4. Count all dynamic quests in memory safely
+                            if (typeof Dungeon !== 'undefined' && Dungeon.memory) {
                                 for (let key in Dungeon.memory) {
-                                    if (key.startsWith('q_') && typeof Dungeon.memory[key] === 'object') qCount++;
+                                    if (key.startsWith('q_') && typeof Dungeon.memory[key] === 'object') {
+                                        qCount++;
+                                    }
                                 }
-                                maxItems = qCount;
                             }
+                            maxItems = qCount;
+                        }
 
                             // --- 2. TOGGLE CAMPAIGN BUTTON CLICK ---
                             if (journalTab === ' story ') {
@@ -39661,7 +39672,7 @@
                             let val = repTable[activeQ.qRank] || 1;
                             
                             if (activeQ.state === 2) {
-                               // --- TURN IN ---
+                                // --- TURN IN ---
                                 if(typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('heal');
                                 Dungeon.memory['guild_rep'] = rep + val;
                                 Dungeon.memory['guild_quest'] = { state: 0 };
@@ -39669,10 +39680,6 @@
                                 // 1. Generate Rewards instantly and save them to show on screen
                                 window.lastQuestRewards = [];
                                 let numRewards = val > 5 ? 5 : val; // Cap normal drops at 5
-                                
-                                // SAFETY CHECK: Ensure the array exists on fresh games!
-                                if (!Dungeon.extra) Dungeon.extra = []; 
-                                
                                 for (let i = 0; i < numRewards; i++) {
                                     window.lastQuestRewards.push(38); // Standard Quest Reward Card
                                     Dungeon.extra.push(new Card(38, 0));
@@ -39684,19 +39691,15 @@
 
                                 window.earnedRep = val;
                                 window.guildSubState = 'quest_rewards'; // SWITCH TO REWARDS UI
+                                
                                 // 2. Advance Story Campaigns silently!
-                                // We use a fallback of || 0 so it correctly triggers on a fresh save
-                                let currentCProg = Dungeon.memory['c_rank_progress'] || 0;
-                                let currentAProg = Dungeon.memory['a_rank_progress'] || 0;
-
-                                if (activeQ.type === 'infiltration' && currentCProg === 0) Dungeon.memory['c_rank_progress'] = 1;
-                                if (activeQ.type === 'dilemma' && currentCProg === 1) Dungeon.memory['c_rank_progress'] = 2;
-                                if (activeQ.type === 'idol' && currentCProg === 2) Dungeon.memory['c_rank_progress'] = 3;
-                                if (activeQ.type === 'invasion' && currentCProg === 3) Dungeon.memory['c_rank_progress'] = 4;
-
-                                if (activeQ.type === 'inquisitor' && currentAProg === 0) Dungeon.memory['a_rank_progress'] = 1;
-                                if (activeQ.type === 'expedition' && currentAProg === 1) Dungeon.memory['a_rank_progress'] = 2;
-
+                                if (activeQ.type === 'infiltration' && Dungeon.memory['c_rank_progress'] === 0) Dungeon.memory['c_rank_progress'] = 1;
+                                if (activeQ.type === 'dilemma' && Dungeon.memory['c_rank_progress'] === 1) Dungeon.memory['c_rank_progress'] = 2;
+                                if (activeQ.type === 'idol' && Dungeon.memory['c_rank_progress'] === 2) Dungeon.memory['c_rank_progress'] = 3;
+                                if (activeQ.type === 'invasion' && Dungeon.memory['c_rank_progress'] === 3) Dungeon.memory['c_rank_progress'] = 4;
+                                if (activeQ.type === 'inquisitor' && Dungeon.memory['a_rank_progress'] === 0) Dungeon.memory['a_rank_progress'] = 1;
+                                if (activeQ.type === 'expedition' && Dungeon.memory['a_rank_progress'] === 1) Dungeon.memory['a_rank_progress'] = 2;
+                                
                                 Dungeon.requestSave();
                             } else {
                                 // --- ABANDON ---
@@ -82865,18 +82868,21 @@
                 else if (journalTab === ' quest ') {
                     drawText(1, 1.5, 8, 0.8, "- QUEST LOG -", '#d4af37', 1, 'center');
                     let allQuests = [];
-                    // --- NEW: A. MAIN QUEST PROGRESS TRACKER ---
+                    // --- NEW: A. MAIN QUEST PROGRESS TRACKER (Memory Key Verification) ---
+                    // Grab the current map to determine where they are in the story safely
                     let currentMapId = typeof Dungeon !== 'undefined' ? Dungeon.mapID : 0;
                     let mem = typeof Dungeon !== 'undefined' ? Dungeon.memory : {};
                     
-                    // Only show The Fool's Journey if they are in the main campaign maps
+                    // Only show The Fool's Journey if they are in the main campaign maps (0-21)
                     if (currentMapId !== 999) {
                         let mqDesc = "";
                         let isObjCompleted = false;
 
+                        // Determine the objective AND if it is completed by checking the exact memory key!
+                        // (We check for backwards compatibility with old saves where applicable)
                         if (currentMapId === 0) {
                             mqDesc = "Speak to the High Priestess to learn the basics, then find the portal.";
-                            isObjCompleted = mem['mq_map0'] || (Dungeon && Dungeon.MainQuest > 0);
+                            isObjCompleted = mem['mq_map0'] || (typeof Dungeon !== 'undefined' && Dungeon.MainQuest > 0);
                         }
                         else if (currentMapId === 1) {
                             mqDesc = "Search the Outer Dungeon for the Magician and his artifacts.";
@@ -82891,28 +82897,28 @@
                             isObjCompleted = mem['mq_map3'] === true; 
                         }
                         else if (currentMapId === 4 || currentMapId === 5) {
-                            mqDesc = "Cross the desert and defeat the Djinn to save the Witch Queen.";
+                            mqDesc = "Cross the desert and defeat the King of Wands (Djinn) to save the Witch Queen.";
                             isObjCompleted = mem['mq_map5'] || (mem["5_11"] && mem["5_11"].permanent); 
                         }
                         else if (currentMapId >= 6 && currentMapId <= 9) {
-                            mqDesc = "Reach the Ice Queen, borrow her ship, and slay the Kraken.";
+                            mqDesc = "Reach the Ice Queen, borrow her ship, and slay the King of Cups (Kraken).";
                             isObjCompleted = mem['mq_map9'] || (mem["9_1"] && mem["9_1"].permanent);
                         }
                         else if (currentMapId >= 10 && currentMapId <= 13) {
-                            mqDesc = "Convince the Fairy Queen to fight, then slay the Dragon in his lair.";
+                            mqDesc = "Convince the Fairy Queen to fight, then slay the King of Swords (Dragon) in his lair.";
                             isObjCompleted = mem['mq_map12'] || (mem["12_12"] && mem["12_12"].permanent);
                         }
                         else if (currentMapId === 14) {
-                            mqDesc = "Rendezvous with the Elf Queen and deal with the Giant.";
-                            isObjCompleted = mem['mq_map14'] || (Dungeon && Dungeon.gd >= 6); 
+                            mqDesc = "Rendezvous with the Elf Queen and deal with the King of Pentacles (Giant).";
+                            isObjCompleted = mem['mq_map14'] || (typeof Dungeon !== 'undefined' && Dungeon.gd >= 6); 
                         }
                         else if (currentMapId === 15) {
                             mqDesc = "Cross the Dark Bridge. There is no turning back now.";
-                            isObjCompleted = false;
+                            isObjCompleted = false; // Transition map
                         }
                         else if (currentMapId >= 16 && currentMapId <= 20) {
                             mqDesc = `Ascend the Dark Tower (Floor ${currentMapId - 15} of 5). Defeat the phantoms of the past.`;
-                            isObjCompleted = false; 
+                            isObjCompleted = false; // Active while ascending
                         }
                         else if (currentMapId >= 21) {
                             mqDesc = "Confront the mastermind at the top of the tower!";
@@ -82926,7 +82932,9 @@
                             failed: false 
                         });
                     }
-
+                // 1. BUILD THE DYNAMIC QUEST LIST
+                    
+                    
                     // A. SCENARIO / DIRECTIVES (Map 999 overrides)
                     if (typeof currentQuest !== 'undefined' && currentQuest !== "") {
                         let isDone = currentQuest.includes("vanquished") || currentQuest.includes("defeated") || currentQuest.includes("Teleporting");
@@ -82934,9 +82942,9 @@
                     }
 
                     // B. --- NEW: PERMANENT GUILD LEDGER ---
-                    let gRep = Dungeon.memory['guild_rep'] || 0;
-                    let gRank = Dungeon.memory['guild_rank'] || 'F';
-                    let gQuest = Dungeon.memory['guild_quest'] || { state: 0 };
+                    let gRep = mem['guild_rep'] || 0;
+                    let gRank = mem['guild_rank'] || 'F';
+                    let gQuest = mem['guild_quest'] || { state: 0 };
                     
                     let gDetails = `Current Rank: ${gRank} | Reputation: ${gRep}. `;
                     let isGuildDone = false;
@@ -82945,65 +82953,65 @@
                         gDetails += "Status: Available for work. Speak to a Guild Clerk to accept a new task.";
                     } else if (gQuest.state === 1) {
                         let qRank = gQuest.qRank || 'F';
-                        let tMap = gQuest.targetMap !== undefined ? getMapName(gQuest.targetMap) : 'Unknown Territory';
+                        let tMap = gQuest.targetMap !== undefined ? gQuest.targetMap : 'Unknown';
                         let objText = "Follow your guild directives.";
                         
-                        // --- DYNAMIC EPIC QUEST DESCRIPTIONS WITH ATLAS MAP NAMES ---
+                        // --- DYNAMIC QUEST DESCRIPTIONS ---
                         switch (gQuest.type) {
                             case 'bounty':
                             case 'squad_bounty':
-                                objText = `Hunt down the target in ${tMap} and eliminate them.`;
+                                objText = `Hunt down the target on Map ${tMap} and eliminate them.`;
                                 break;
                             case 'fetch':
-                                objText = `Locate the lost shipment in ${tMap} and secure it.`;
+                                objText = `Locate the lost shipment on Map ${tMap} and secure it.`;
                                 break;
                             case 'escort':
-                                objText = `Find the VIP in ${tMap} and safely escort them to their supplier. Keep them alive!`;
+                                objText = `Find the VIP on Map ${tMap} and safely escort them to their supplier on the same map. Keep them alive!`;
                                 break;
                             case 'infestation':
-                                objText = `Clear out the monster infestation in ${tMap}. (${gQuest.count || 0}/${gQuest.max || 4} defeated)`;
+                                objText = `Clear out the monster infestation on Map ${tMap}. (${gQuest.count || 0}/${gQuest.max || 4} defeated)`;
                                 break;
                             case 'reinforcement':
-                                objText = `Rescue the pinned squad in ${tMap} by joining their tactical battle.`;
+                                objText = `Rescue the pinned squad on Map ${tMap} by joining their tactical battle.`;
                                 break;
                             case 'mysterious_client':
-                                objText = `Meet the anonymous client in ${tMap}. Proceed with extreme caution.`;
+                                objText = `Meet the anonymous client on Map ${tMap}. Proceed with extreme caution.`;
                                 break;
                             case 'idol':
-                                objText = `Intercept the Cult supply line in ${tMap} and secure the evil idol.`;
+                                objText = `Intercept the Cult supply line on Map ${tMap} and secure the evil idol.`;
                                 break;
                             case 'ritual':
-                                objText = `Sabotage the summoning ritual in ${tMap}. Destroy the pillars! (${gQuest.count || 0}/${gQuest.max || 3} destroyed)`;
+                                objText = `Sabotage the summoning ritual on Map ${tMap}. Destroy the pillars! (${gQuest.count || 0}/${gQuest.max || 3} destroyed)`;
                                 break;
                             case 'extraction':
-                                objText = `Locate the captured VIP in ${tMap} and escort them to the extraction portal.`;
+                                objText = `Locate the captured VIP on Map ${tMap} and escort them to the extraction portal.`;
                                 break;
                             case 'apex':
-                                objText = `Eradicate the regenerating bioweapon in ${tMap}. Destroy all clones!`;
+                                objText = `Eradicate the regenerating bioweapon on Map ${tMap}. Destroy all clones!`;
                                 break;
                             case 'invasion':
-                                objText = `Warp to ${tMap} immediately! Defend the town and execute the Commander.`;
+                                objText = `Warp to Map ${tMap} immediately! Defend the town and execute the Commander.`;
                                 break;
                             case 'exam_trap':
-                                objText = `Rendezvous with the Clerk in ${tMap} for your private promotion exam.`;
+                                objText = `Rendezvous with the Clerk on Map ${tMap} for your private promotion exam.`;
                                 break;
                             case 'inquisitor':
-                                objText = `Hunt the invisible stalker in the depths of ${tMap}.`;
+                                objText = `Hunt the invisible stalker in the depths of Map ${tMap}.`;
                                 break;
                             case 'expedition':
-                                objText = `Monitor the trainees and secure the artifact in ${tMap}.`;
+                                objText = `Monitor the trainees and secure the artifact on Map ${tMap}.`;
                                 break;
                             case 'stronghold':
-                                objText = `Raid the Cult stronghold in ${tMap} and execute the Commander.`;
+                                objText = `Raid the Cult stronghold on Map ${tMap} and execute the Commander.`;
                                 break;
                             case 'finale':
-                                objText = `Warp to ${tMap} and reinforce the S-Rank teams against the Mastermind!`;
+                                objText = `Warp to Map ${tMap} (Inferno) and reinforce the S-Rank teams against the Mastermind!`;
                                 break;
                             case 'apex_hunt':
-                                objText = `Track down and execute the God-Tier threat in ${tMap}.`;
+                                objText = `Track down and execute the God-Tier threat on Map ${tMap}.`;
                                 break;
                             case 'dilemma':
-                                objText = `Exterminate the beast for the client in ${tMap}.`;
+                                objText = `Exterminate the beast for the client on Map ${tMap}.`;
                                 break;
                         }
 
@@ -83012,7 +83020,7 @@
                     } else if (gQuest.state === 2) {
                         let qRank = gQuest.qRank || 'F';
                         gDetails += `Status: [READY] ${qRank}-Rank ${gQuest.tName || 'Task'}. Objective: Proof secured! Return to any Guild Clerk to collect your payment.`;
-                        isGuildDone = true; 
+                        isGuildDone = true; // This will color the box green in the UI!
                     }
 
                     allQuests.push({
@@ -83022,10 +83030,10 @@
                         failed: false
                     });
 
-                    // C. READ OTHER MISC QUESTS FROM MEMORY
-                    for (let key in Dungeon.memory) {
+                    // C. READ OTHER MISC QUESTS FROM MEMORY (Safe Access)
+                    for (let key in mem) {
                         if (key.startsWith('q_')) {
-                            let q = Dungeon.memory[key];
+                            let q = mem[key];
                             // Skip old integer-based saves to prevent crashes
                             if (typeof q !== 'object' || q.state === undefined) continue;
 
@@ -83042,8 +83050,8 @@
                                 details += `Target Location: Map ${q.targetMap || 'Unknown'}. `;
                                 if (q.max > 1) details += `Progress: [${q.count}/${q.max}]. `;
 
-                                // Inject Live Wave Data if they are currently fighting!
-                                if (Dungeon.activeWave && Dungeon.mapID === q.targetMap) {
+                                // Inject Live Wave Data safely!
+                                if (typeof Dungeon !== 'undefined' && Dungeon.activeWave && Dungeon.mapID === q.targetMap) {
                                     let w = Dungeon.activeWave;
                                     let aliveWaveFoes = Dungeon.npcs.filter(n => n.alignment === 'foe_wave' && !n.isDead).length;
                                     details += `>> COMBAT EVENT ACTIVE: `;
@@ -83991,9 +83999,9 @@
             }
             if (startGame === 'guild_menu') {
                 // 1. BACKGROUND
-                    ctx.fillStyle = "rgba(0,6,13,1)";
-                    ctx.fillRect(0,0,wX,wY);
-                    drawShape('rec', 0, 0, 1, 0, 0, 10, 10, 0, 0, 0, 0, 'rgba(0, 0, 0, 0.95)', 1);
+                ctx.fillStyle = "rgba(0,6,13,1)";
+                ctx.fillRect(0,0,wX,wY);
+                drawShape('rec', 0, 0, 1, 0, 0, 10, 10, 0, 0, 0, 0, 'rgba(0, 0, 0, 0.95)', 1);
 
                 // 2. TABS
                     // Note: Even if we are on the 'active_quest' screen, we still highlight the 'bounties' tab!
@@ -84010,50 +84018,36 @@
                         drawText(tx + 0.1, 0.275, tabWidth - 0.2, 0.6, tabs[i].toUpperCase(), textColor, 1, 'center');
                     }
 
-                // --- NEW: THE ATLAS HELPER ---
-                const getMapName = (id) => {
-                    const mapNames = {
-                        0: "The Moors", 1: "The Outer Dungeon", 2: "Tintagel Forest", 3: "Hadrian's Wall",
-                        4: "The Shimmering Sands", 5: "The Savage Forest", 6: "Cairn Gorm", 7: "The Ice Caves",
-                        8: "The Ice Palace", 9: "The Boreal Sea", 10: "Avalon", 11: "The Fairy Court",
-                        12: "The Dragon Lair", 13: "The Ancient Tomb", 14: "The Elfwood", 15: "The Dark Bridge",
-                        22: "The Suncat Realm", "-2": "The Abyss"
-                    };
-                    return mapNames[id] || `Uncharted Sector (${id})`;
-                };
-
                 // ==========================================
                 // 3. ACTIVE COMMISSION (Quest In Progress)
                 // ==========================================
-                    if (window.activeGuildTab === 'active_quest') {
-                        let activeQ = Dungeon.memory['guild_quest'];
-                        drawText(0, 1.2, 10, 0.6, "- ACTIVE COMMISSION -", '#d4af37', 1, 'center');
+                if (window.activeGuildTab === 'active_quest') {
+                    let activeQ = Dungeon.memory['guild_quest'];
+                    drawText(0, 1.2, 10, 0.6, "- ACTIVE COMMISSION -", '#d4af37', 1, 'center');
+                    
+                    let statusText = activeQ.state === 2 ? "[ READY TO TURN IN ]" : "[ IN PROGRESS ]";
+                    let statusColor = activeQ.state === 2 ? '#00ff00' : '#00ffff';
+                    
+                    drawShape('rec', 1.5, 2.5, 1, 0, 0, 7, 4, 0,0,0,0, '#111122', 1);
+                    drawShape('rec', 1.5, 2.5, 1, 0, 0, 7, 4, 0,0,0,0, statusColor, 0);
+                    
+                    drawText(1.5, 3.0, 7, 0.6, `${activeQ.qRank}-RANK: ${activeQ.tName}`.toUpperCase(), 'white', 1, 'center');
+                    drawText(1.5, 3.8, 7, 0.4, statusText, statusColor, 1, 'center');
+                    
+                    if (activeQ.state === 2) {
+                        drawText(2.0, 4.8, 6, 1.0, "Mission accomplished! The Guild thanks you for your service. Submit your report to receive your payment.", 'gray', 1, 'left');
                         
-                        let statusText = activeQ.state === 2 ? "[ READY TO TURN IN ]" : "[ IN PROGRESS ]";
-                        let statusColor = activeQ.state === 2 ? '#00ff00' : '#00ffff';
+                        // Turn In Button
+                        drawShape('rec', 3.0, 7.0, 1, 0, 0, 4, 0.8, 0,0,0,0, '#008800', 1);
+                        drawText(3.0, 7.2, 4, 0.4, "TURN IN BOUNTY", 'white', 1, 'center');
+                    } else {
+                        drawText(2.0, 4.8, 6, 1.0, `Your target is located on Map ${activeQ.targetMap}. Return here when the objective is complete.`, 'gray', 1, 'left');
                         
-                        drawShape('rec', 1.5, 2.5, 1, 0, 0, 7, 4, 0,0,0,0, '#111122', 1);
-                        drawShape('rec', 1.5, 2.5, 1, 0, 0, 7, 4, 0,0,0,0, statusColor, 0);
-                        
-                        drawText(1.5, 3.0, 7, 0.6, `${activeQ.qRank}-RANK: ${activeQ.tName}`.toUpperCase(), 'white', 1, 'center');
-                        drawText(1.5, 3.8, 7, 0.4, statusText, statusColor, 1, 'center');
-                        
-                        if (activeQ.state === 2) {
-                            drawText(2.0, 4.8, 6, 1.0, "Mission accomplished! The Guild thanks you for your service. Submit your report to receive your payment.", 'gray', 1, 'left');
-                            
-                            // Turn In Button
-                            drawShape('rec', 3.0, 7.0, 1, 0, 0, 4, 0.8, 0,0,0,0, '#008800', 1);
-                            drawText(3.0, 7.2, 4, 0.4, "TURN IN BOUNTY", 'white', 1, 'center');
-                        } else {
-                            // --- NEW EPIC MAP NAME RESOLUTION ---
-                            let mapLocStr = activeQ.targetMap !== undefined ? getMapName(activeQ.targetMap) : 'Unknown Territory';
-                            drawText(2.0, 4.8, 6, 1.0, `Your target is located in ${mapLocStr}. Return here when the objective is complete.`, 'gray', 1, 'left');
-                            
-                            // Abandon Button
-                            drawShape('rec', 3.0, 7.0, 1, 0, 0, 4, 0.8, 0,0,0,0, '#880000', 1);
-                            drawText(3.0, 7.2, 4, 0.4, "ABANDON QUEST", '#ffaaaa', 1, 'center');
-                        }
+                        // Abandon Button
+                        drawShape('rec', 3.0, 7.0, 1, 0, 0, 4, 0.8, 0,0,0,0, '#880000', 1);
+                        drawText(3.0, 7.2, 4, 0.4, "ABANDON QUEST", '#ffaaaa', 1, 'center');
                     }
+                }
                 
 
 
@@ -84061,148 +84055,149 @@
                 // ==========================================
                 // 3A. BOUNTY BOARD
                 // ==========================================
-                    else if (window.activeGuildTab === 'bounties') {
+                else if (window.activeGuildTab === 'bounties') {
+                    
+                    // --- REPUTATION BADGE & HELP BUTTON ---
+                        let rep = Dungeon.memory['guild_rep'] || 0;
+                        let pRank = Dungeon.memory['guild_rank'] || 'F';
                         
-                        // --- REPUTATION BADGE & HELP BUTTON ---
-                            let rep = Dungeon.memory['guild_rep'] || 0;
-                            let pRank = Dungeon.memory['guild_rank'] || 'F';
+                    // [ ? ] Button
+                        drawShape('rec', 0.1, 1.1, 1, 0, 0, 0.8, 0.7, 0,0,0,0, '#00ffff', 1);
+                        drawText(0.1, 1.25, 0.8, 0.4, "?", 'black', 1, 'center');
+
+                    // Badge
+                        drawShape('rec', 9.05, 1.1, 1, 0, 0, .9, 0.7, 0,0,0,0, '#111122', 1);
+                        drawShape('rec', 9.05, 1.1, 1, 0, 0, .9, 0.7, 0,0,0,0, '#d4af37', 0);
+                        drawText(9.06, 1.2, .88, 0.35, `Rank: ${pRank}`, '#d4af37', 1, 'center');
+                        drawText(9.06, 1.51, .88, 0.3, `Rep: ${rep}`, '#00ff00', 1, 'center');
+
+                    if (window.guildSubState === 'rank_select') {
+                        drawText(0, 1.2, 10, 0.6, "- SELECT MISSION RANK -", '#00ffff', 1, 'center');
+                        
+                        let rankValues = { 'F':0, 'E':1, 'D':2, 'C':3, 'B':4, 'A':5, 'S':6 };
+                        let pVal = rankValues[pRank];
+
+                        const rankData = [
+                            { r: 'F', c: '#223322', bc: '#00ff00', desc: "Exterminations, Gatherings, and Local Threats." },
+                            { r: 'E', c: '#222233', bc: '#0088ff', desc: "Escorts, Intercepts, and Squad Bounties." },
+                            { r: 'D', c: '#332222', bc: '#ff8800', desc: "Elite Targets, Rescue Ops, and Infestations." },
+                            { r: 'C', c: '#333311', bc: '#ffff00', desc: "Veteran Campaigns and Dilemmas." },
+                            { r: 'B', c: '#221133', bc: '#aa00ff', desc: "Expert Campaigns and Apocalyptic Rituals." },
+                            { r: 'A', c: '#331111', bc: '#ff0000', desc: "Vanguard Black-Ops and Mythic Hunts." },
+                            { r: 'S', c: '#111111', bc: '#d4af37', desc: "Continental Threats and God-Tier Bounties." }
+                        ];
+
+                        // DYNAMICALLY DRAW ALL 7 RANKS
+                        for (let i = 0; i < 7; i++) {
+                            let y = 1.8 + (i * 1.0); // Spaced perfectly down the screen
+                            let unlocked = pVal >= i;
                             
-                        // [ ? ] Button
-                            drawShape('rec', 0.1, 1.1, 1, 0, 0, 0.8, 0.7, 0,0,0,0, '#00ffff', 1);
-                            drawText(0.1, 1.25, 0.8, 0.4, "?", 'black', 1, 'center');
+                            let bg = unlocked ? rankData[i].c : '#111111';
+                            let border = unlocked ? rankData[i].bc : '#333333';
+                            let txtColor = unlocked ? 'white' : '#555555';
+                            let descColor = unlocked ? 'gray' : '#333333';
 
-                        // Badge
-                            drawShape('rec', 9.05, 1.1, 1, 0, 0, .9, 0.7, 0,0,0,0, '#111122', 1);
-                            drawShape('rec', 9.05, 1.1, 1, 0, 0, .9, 0.7, 0,0,0,0, '#d4af37', 0);
-                            drawText(9.06, 1.2, .88, 0.35, `Rank: ${pRank}`, '#d4af37', 1, 'center');
-                            drawText(9.06, 1.51, .88, 0.3, `Rep: ${rep}`, '#00ff00', 1, 'center');
-
-                        if (window.guildSubState === 'rank_select') {
-                            drawText(0, 1.2, 10, 0.6, "- SELECT MISSION RANK -", '#00ffff', 1, 'center');
+                            drawShape('rec', 1, y, 1, 0, 0, 8, 0.9, 0,0,0,0, bg, 1);
+                            drawShape('rec', 1, y, 1, 0, 0, 8, 0.9, 0,0,0,0, border, 0);
+                            drawText(1.2, y + 0.15, 7.6, 0.4, `${rankData[i].r}-RANK COMMISSIONS`, txtColor, 1, 'left');
+                            drawText(1.2, y + 0.55, 7.6, 0.25, rankData[i].desc, descColor, 1, 'left');
                             
-                            let rankValues = { 'F':0, 'E':1, 'D':2, 'C':3, 'B':4, 'A':5, 'S':6 };
-                            let pVal = rankValues[pRank];
-
-                            const rankData = [
-                                { r: 'F', c: '#223322', bc: '#00ff00', desc: "Exterminations, Gatherings, and Local Threats." },
-                                { r: 'E', c: '#222233', bc: '#0088ff', desc: "Escorts, Intercepts, and Squad Bounties." },
-                                { r: 'D', c: '#332222', bc: '#ff8800', desc: "Elite Targets, Rescue Ops, and Infestations." },
-                                { r: 'C', c: '#333311', bc: '#ffff00', desc: "Veteran Campaigns and Dilemmas." },
-                                { r: 'B', c: '#221133', bc: '#aa00ff', desc: "Expert Campaigns and Apocalyptic Rituals." },
-                                { r: 'A', c: '#331111', bc: '#ff0000', desc: "Vanguard Black-Ops and Mythic Hunts." },
-                                { r: 'S', c: '#111111', bc: '#d4af37', desc: "Continental Threats and God-Tier Bounties." }
-                            ];
-
-                            // DYNAMICALLY DRAW ALL 7 RANKS
-                            for (let i = 0; i < 7; i++) {
-                                let y = 1.8 + (i * 1.0); // Spaced perfectly down the screen
-                                let unlocked = pVal >= i;
-                                
-                                let bg = unlocked ? rankData[i].c : '#111111';
-                                let border = unlocked ? rankData[i].bc : '#333333';
-                                let txtColor = unlocked ? 'white' : '#555555';
-                                let descColor = unlocked ? 'gray' : '#333333';
-
-                                drawShape('rec', 1, y, 1, 0, 0, 8, 0.9, 0,0,0,0, bg, 1);
-                                drawShape('rec', 1, y, 1, 0, 0, 8, 0.9, 0,0,0,0, border, 0);
-                                drawText(1.2, y + 0.15, 7.6, 0.4, `${rankData[i].r}-RANK COMMISSIONS`, txtColor, 1, 'left');
-                                drawText(1.2, y + 0.55, 7.6, 0.25, rankData[i].desc, descColor, 1, 'left');
-                                
-                                if (!unlocked) drawText(6.9, y + 0.25, 2, 0.4, "[LOCKED]", 'red', 1, 'center');
-                            }
-                        }
-                        else if (window.guildSubState === 'quest_list') {
-                            drawText(0, 1.2, 10, 0.6, `- ${window.selectedBountyRank}-RANK AVAILABLE BOUNTIES -`, '#d4af37', 1, 'center');
-                            
-                            let bScroll = window.bountyBoardScroll || 0;
-                            let visibleList = (window.activeBountyList || []).slice(bScroll, bScroll + 3);
-                            let yOffset = 2.0;
-
-                            // DRAW THE LIST
-                            for (let i = 0; i < visibleList.length; i++) {
-                                let q = visibleList[i];
-                                
-                                // Colors based on Status
-                                let bgColor = q.status === 'completed' ? '#111111' : (q.status === 'locked' ? '#2a0a0a' : '#222233');
-                                let borderColor = q.status === 'completed' ? '#333333' : (q.status === 'locked' ? '#880000' : '#00ffff');
-                                let titleColor = q.status === 'completed' ? 'gray' : (q.status === 'locked' ? '#ff4444' : 'white');
-
-                                drawShape('rec', 1, yOffset, 1, 0, 0, 7.2, 1.5, 0,0,0,0, bgColor, 1);
-                                drawShape('rec', 1, yOffset, 1, 0, 0, 7.2, 1.5, 0,0,0,0, borderColor, 0); 
-                                
-                                drawText(1.2, yOffset + 0.3, 5, 0.4, q.title, titleColor, 1, 'left');
-                                
-                                // Status Tags
-                                if (q.status === 'completed') drawText(6.0, yOffset + 0.3, 2, 0.3, "[COMPLETED]", '#00aa00', 1);
-                                else if (q.status === 'locked') drawText(6.0, yOffset + 0.3, 2, 0.3, "[LOCKED]", '#ff0000', 1);
-                                else if (q.isStory) drawText(6.0, yOffset + 0.3, 2, 0.3, "[PROMOTION]", '#d4af37', 1);
-                                
-                                // Description
-                                if (q.status === 'locked') {
-                                    drawText(1.2, yOffset + 0.8, 6.8, 0.3, `Locked: ${q.lockReason}`, '#ffaaaa', 1);
-                                } else {
-                                    drawText(1.2, yOffset + 0.8, 6.8, 0.3, q.desc, 'gray', 1);
-                                }
-                                yOffset += 1.8;
-                            }
-
-                            // DRAW SCROLL ARROWS
-                            if (bScroll > 0) {
-                                drawShape('rec', 8.5, 2.0, 1, 0, 0, 1, 1, 0,0,0,0, '#444444', 1);
-                                drawText(8.5, 2.2, 1, 0.6, "^", '#d4af37', 1, 'center'); 
-                            }
-                            if (window.activeBountyList && bScroll + 3 < window.activeBountyList.length) {
-                                drawShape('rec', 8.5, 6.1, 1, 0, 0, 1, 1, 0,0,0,0, '#444444', 1);
-                                drawText(8.5, 6.3, 1, 0.6, "v", '#d4af37', 1, 'center');
-                            }
-
-                            // --- DETAILS OVERLAY POPUP ---
-                            if (window.selectedQuestInfo) {
-                                drawShape('rec', 0, 0, 1, 0, 0, 10, 10, 0, 0, 0, 0, 'rgba(0,0,0,0.85)', 1);
-                                
-                                drawShape('rec', 1.5, 1.5, 1, 0, 0, 7, 7, 0,0,0,0, '#111122', 1);
-                                drawShape('rec', 1.5, 1.5, 1, 0, 0, 7, 7, 0,0,0,0, '#d4af37', 0);
-                                
-                                let q = window.selectedQuestInfo;
-                                drawText(1.5, 2.0, 7, 0.6, q.title.toUpperCase(), '#00ffff', 1, 'center');
-                                drawText(2.0, 3.5, 6, 2.0, q.desc, 'white', 1, 'left');
-                                
-                                // Close X
-                                drawShape('rec', 8.5, 1.5, 1, 0, 0, 1, 1, 0,0,0,0, '#555555', 1);
-                                drawText(8.5, 1.7, 1, 0.6, "X", 'white', 1, 'center');
-                                
-                                let activeQ = Dungeon.memory['guild_quest'] || { state: 0 };
-                                if (activeQ.state === 0) {
-                                    // Accept Button
-                                    drawShape('rec', 3.0, 7.0, 1, 0, 0, 4, 0.8, 0,0,0,0, '#008800', 1);
-                                    drawText(3.0, 7.2, 4, 0.4, "ACCEPT BOUNTY", 'white', 1, 'center');
-                                } else {
-                                    drawShape('rec', 3.0, 7.0, 1, 0, 0, 4, 0.8, 0,0,0,0, '#444444', 1);
-                                    drawText(3.0, 7.2, 4, 0.4, "FINISH ACTIVE QUEST FIRST", 'gray', 1, 'center');
-                                }
-                            } else {
-                                // Back Button (Only draw if popup is closed)
-                                drawShape('rec', 1, 9.2, 1, 0, 0, 2, 0.6, 0,0,0,0, '#555555', 1);
-                                drawText(1, 9.3, 2, 0.4, "< BACK", 'white', 1, 'center');
-                            }
-                        }
-                        // --- 4. HELP OVERLAY ---
-                        if (window.guildSubState === 'help_overlay') {
-                            drawShape('rec', 0, 0, 1, 0, 0, 10, 10, 0, 0, 0, 0, 'rgba(0,0,0,0.9)', 1);
-                            
-                            drawShape('rec', 1, 1, 1, 0, 0, 8, 8, 0,0,0,0, '#111122', 1);
-                            drawShape('rec', 1, 1, 1, 0, 0, 8, 8, 0,0,0,0, '#00ffff', 0);
-                            
-                            drawText(1, 1.5, 8, 0.6, "THE ADVENTURER'S GUILD", '#d4af37', 1, 'center');
-                            
-                            let helpText = "BOUNTIES:\nComplete commissions to earn Reputation (Rep) and rank up. Higher ranks unlock Story Campaigns and harder bounties.\n\nREWARDS:\nTurn in completed bounties to receive Cards. Sometimes clients will offer bribes or hazard pay. Abandoning quests hurts your Rep.\n\nCLASSES:\nChoose a specialization to gain bonuses to specific Stat Rolls. Battle-Mages can use all cards, but gain fewer stats.\n\nSHOP:\nSpend your earned Reputation here to acquire specific cards directly from the Guild's vault!";
-                            
-                            drawText(1.5, 2.5, 7, 6.0, helpText, 'white', 1, 'left');
-                            
-                            drawShape('rec', 4, 8.2, 1, 0, 0, 2, 0.6, 0,0,0,0, '#555555', 1);
-                            drawText(4, 8.3, 2, 0.4, "CLOSE", 'white', 1, 'center');
+                            if (!unlocked) drawText(6.9, y + 0.25, 2, 0.4, "[LOCKED]", 'red', 1, 'center');
                         }
                     }
+                    else if (window.guildSubState === 'quest_list') {
+                        drawText(0, 1.2, 10, 0.6, `- ${window.selectedBountyRank}-RANK AVAILABLE BOUNTIES -`, '#d4af37', 1, 'center');
+                        
+                        let bScroll = window.bountyBoardScroll || 0;
+                        let visibleList = (window.activeBountyList || []).slice(bScroll, bScroll + 3);
+                        let yOffset = 2.0;
+
+                        // DRAW THE LIST
+                        for (let i = 0; i < visibleList.length; i++) {
+                            let q = visibleList[i];
+                            
+                            // Colors based on Status
+                            let bgColor = q.status === 'completed' ? '#111111' : (q.status === 'locked' ? '#2a0a0a' : '#222233');
+                            let borderColor = q.status === 'completed' ? '#333333' : (q.status === 'locked' ? '#880000' : '#00ffff');
+                            let titleColor = q.status === 'completed' ? 'gray' : (q.status === 'locked' ? '#ff4444' : 'white');
+
+                            drawShape('rec', 1, yOffset, 1, 0, 0, 7.2, 1.5, 0,0,0,0, bgColor, 1);
+                            drawShape('rec', 1, yOffset, 1, 0, 0, 7.2, 1.5, 0,0,0,0, borderColor, 0); 
+                            
+                            drawText(1.2, yOffset + 0.3, 5, 0.4, q.title, titleColor, 1, 'left');
+                            
+                            // Status Tags
+                            if (q.status === 'completed') drawText(6.0, yOffset + 0.3, 2, 0.3, "[COMPLETED]", '#00aa00', 1);
+                            else if (q.status === 'locked') drawText(6.0, yOffset + 0.3, 2, 0.3, "[LOCKED]", '#ff0000', 1);
+                            else if (q.isStory) drawText(6.0, yOffset + 0.3, 2, 0.3, "[PROMOTION]", '#d4af37', 1);
+                            
+                            // Description
+                            if (q.status === 'locked') {
+                                drawText(1.2, yOffset + 0.8, 6.8, 0.3, `Locked: ${q.lockReason}`, '#ffaaaa', 1);
+                            } else {
+                                drawText(1.2, yOffset + 0.8, 6.8, 0.3, q.desc, 'gray', 1);
+                            }
+                            yOffset += 1.8;
+                        }
+
+                        // DRAW SCROLL ARROWS
+                        if (bScroll > 0) {
+                            drawShape('rec', 8.5, 2.0, 1, 0, 0, 1, 1, 0,0,0,0, '#444444', 1);
+                            drawText(8.5, 2.2, 1, 0.6, "^", '#d4af37', 1, 'center'); 
+                        }
+                        if (window.activeBountyList && bScroll + 3 < window.activeBountyList.length) {
+                            drawShape('rec', 8.5, 6.1, 1, 0, 0, 1, 1, 0,0,0,0, '#444444', 1);
+                            drawText(8.5, 6.3, 1, 0.6, "v", '#d4af37', 1, 'center');
+                        }
+
+                        // --- DETAILS OVERLAY POPUP ---
+                        if (window.selectedQuestInfo) {
+                            drawShape('rec', 0, 0, 1, 0, 0, 10, 10, 0, 0, 0, 0, 'rgba(0,0,0,0.85)', 1);
+                            
+                            drawShape('rec', 1.5, 1.5, 1, 0, 0, 7, 7, 0,0,0,0, '#111122', 1);
+                            drawShape('rec', 1.5, 1.5, 1, 0, 0, 7, 7, 0,0,0,0, '#d4af37', 0);
+                            
+                            let q = window.selectedQuestInfo;
+                            drawText(1.5, 2.0, 7, 0.6, q.title.toUpperCase(), '#00ffff', 1, 'center');
+                            drawText(2.0, 3.5, 6, 2.0, q.desc, 'white', 1, 'left');
+                            
+                            // Close X
+                            drawShape('rec', 8.5, 1.5, 1, 0, 0, 1, 1, 0,0,0,0, '#555555', 1);
+                            drawText(8.5, 1.7, 1, 0.6, "X", 'white', 1, 'center');
+                            
+                            let activeQ = Dungeon.memory['guild_quest'] || { state: 0 };
+                            if (activeQ.state === 0) {
+                                // Accept Button
+                                drawShape('rec', 3.0, 7.0, 1, 0, 0, 4, 0.8, 0,0,0,0, '#008800', 1);
+                                drawText(3.0, 7.2, 4, 0.4, "ACCEPT BOUNTY", 'white', 1, 'center');
+                            } else {
+                                drawShape('rec', 3.0, 7.0, 1, 0, 0, 4, 0.8, 0,0,0,0, '#444444', 1);
+                                drawText(3.0, 7.2, 4, 0.4, "FINISH ACTIVE QUEST FIRST", 'gray', 1, 'center');
+                            }
+                        } else {
+                            // Back Button (Only draw if popup is closed)
+                            drawShape('rec', 1, 9.2, 1, 0, 0, 2, 0.6, 0,0,0,0, '#555555', 1);
+                            drawText(1, 9.3, 2, 0.4, "< BACK", 'white', 1, 'center');
+                        }
+                    }
+                    // --- 4. HELP OVERLAY ---
+                    if (window.guildSubState === 'help_overlay') {
+                        drawShape('rec', 0, 0, 1, 0, 0, 10, 10, 0, 0, 0, 0, 'rgba(0,0,0,0.9)', 1);
+                        
+                        drawShape('rec', 1, 1, 1, 0, 0, 8, 8, 0,0,0,0, '#111122', 1);
+                        drawShape('rec', 1, 1, 1, 0, 0, 8, 8, 0,0,0,0, '#00ffff', 0);
+                        
+                        drawText(1, 1.5, 8, 0.6, "THE ADVENTURER'S GUILD", '#d4af37', 1, 'center');
+                        
+                        let helpText = "BOUNTIES:\nComplete commissions to earn Reputation (Rep) and rank up. Higher ranks unlock Story Campaigns and harder bounties.\n\nREWARDS:\nTurn in completed bounties to receive Cards. Sometimes clients will offer bribes or hazard pay. Abandoning quests hurts your Rep.\n\nCLASSES:\nChoose a specialization to gain bonuses to specific Stat Rolls. Battle-Mages can use all cards, but gain fewer stats.\n\nSHOP:\nSpend your earned Reputation here to acquire specific cards directly from the Guild's vault!";
+                        
+                        drawText(1.5, 2.5, 7, 6.0, helpText, 'white', 1, 'left');
+                        
+                        drawShape('rec', 4, 8.2, 1, 0, 0, 2, 0.6, 0,0,0,0, '#555555', 1);
+                        drawText(4, 8.3, 2, 0.4, "CLOSE", 'white', 1, 'center');
+                    }
+                }
+                        
                 
                 // ==========================================
                 // 3B. CLASS SELECTION (RENDER)
@@ -84416,60 +84411,59 @@
                 // ==========================================
                 // SPLASH SCREEN: QUEST ACCEPTED
                 // ==========================================
-                    if (window.guildSubState === 'quest_accepted') {
-                        // Darken background
-                        drawShape('rec', 0, 0, 1, 0, 0, 10, 10, 0, 0, 0, 0, 'rgba(0,0,0,0.9)', 1);
-                        
-                        let qInfo = window.selectedQuestInfo;
-                        drawText(1.5, 2.5, 8, 1.0, "COMMISSION ACCEPTED", '#d4af37', 1, 'center');
-                        
-                        // Draw a fancy box for the details
-                        drawShape('rec', 1.5, 3.5, 1, 0, 0, 7, 3, 0,0,0,0, '#111122', 1);
-                        drawShape('rec', 1.5, 3.5, 1, 0, 0, 7, 3, 0,0,0,0, '#00ffff', 0);
-                        
-                        drawText(1.6, 4.0, 6.9, 0.6, `TARGET: ${qInfo.title}`, 'white', 1, 'center');
-                        
-                        // --- NEW EPIC MAP NAME RESOLUTION ---
-                        let mapLoc = window.acceptedQuestTargetMap !== undefined ? getMapName(window.acceptedQuestTargetMap) : 'UNKNOWN';
-                        drawText(1.6, 5.0, 6.9, 0.4, `LOCATION: ${mapLoc.toUpperCase()}`, '#00ffff', 1, 'center');
-                        drawText(1.6, 5.7, 6.9, 0.3, "Safe adventuring out there!", 'gray', 1, 'center');
-                        
-                        // DEPLOY BUTTON
-                        drawShape('rec', 3.0, 8, 1, 0, 0, 4, 1.0, 0,0,0,0, '#008800', 1);
-                        drawShape('rec', 3.0, 8, 1, 0, 0, 4, 1.0, 0,0,0,0, '#00ff00', 0);
-                        drawText(3.0, 8.25, 4, 0.5, "DEPLOY TO FIELD", 'white', 1, 'center');
-                    }
+                if (window.guildSubState === 'quest_accepted') {
+                    // Darken background
+                    drawShape('rec', 0, 0, 1, 0, 0, 10, 10, 0, 0, 0, 0, 'rgba(0,0,0,0.9)', 1);
+                    
+                    let qInfo = window.selectedQuestInfo;
+                    drawText(1.5, 2.5, 8, 1.0, "COMMISSION ACCEPTED", '#d4af37', 1, 'center');
+                    
+                    // Draw a fancy box for the details
+                    drawShape('rec', 1.5, 3.5, 1, 0, 0, 7, 3, 0,0,0,0, '#111122', 1);
+                    drawShape('rec', 1.5, 3.5, 1, 0, 0, 7, 3, 0,0,0,0, '#00ffff', 0);
+                    
+                    drawText(1.6, 4.0, 6.9, 0.6, `TARGET: ${qInfo.title}`, 'white', 1, 'center');
+                    
+                    let mapLoc = window.acceptedQuestTargetMap !== undefined ? `MAP ${window.acceptedQuestTargetMap}` : 'UNKNOWN';
+                    drawText(1.6, 5.0, 6.9, 0.4, `LOCATION: ${mapLoc}`, '#00ffff', 1, 'center');
+                    drawText(1.6, 5.7, 6.9, 0.3, "Safe adventuring out there!", 'gray', 1, 'center');
+                    
+                    // DEPLOY BUTTON
+                    drawShape('rec', 3.0, 8, 1, 0, 0, 4, 1.0, 0,0,0,0, '#008800', 1);
+                    drawShape('rec', 3.0, 8, 1, 0, 0, 4, 1.0, 0,0,0,0, '#00ff00', 0);
+                    drawText(3.0, 8.25, 4, 0.5, "DEPLOY TO FIELD", 'white', 1, 'center');
+                }
                 
                 // ==========================================
                 // SPLASH SCREEN: SPOILS OF WAR
                 // ==========================================
-                    else if (window.guildSubState === 'quest_rewards') {
-                        // Darken background
-                        drawShape('rec', 0, 0, 1, 0, 0, 10, 10, 0, 0, 0, 0, 'rgba(0,0,0,0.95)', 1);
-                        
-                        drawText(0.0, 1.5, 10, 1.0, "COMMISSION COMPLETE", '#00ff00', 1, 'center');
-                        drawText(0.0, 3.0, 10, 0.5, `Guild Reputation increased by +${window.earnedRep || 0}`, '#00ffff', 1, 'center');
-                        
-                        drawText(0.0, 4.2, 10, 0.6, "- SPOILS OF WAR -", '#d4af37', 1, 'center');
+                else if (window.guildSubState === 'quest_rewards') {
+                    // Darken background
+                    drawShape('rec', 0, 0, 1, 0, 0, 10, 10, 0, 0, 0, 0, 'rgba(0,0,0,0.95)', 1);
+                    
+                    drawText(0.0, 1.5, 10, 1.0, "COMMISSION COMPLETE", '#00ff00', 1, 'center');
+                    drawText(0.0, 3.0, 10, 0.5, `Guild Reputation increased by +${window.earnedRep || 0}`, '#00ffff', 1, 'center');
+                    
+                    drawText(0.0, 4.2, 10, 0.6, "- SPOILS OF WAR -", '#d4af37', 1, 'center');
 
-                        // Draw the actual cards lined up in a row!
-                        if (window.lastQuestRewards && window.lastQuestRewards.length > 0) {
-                            let totalCards = window.lastQuestRewards.length;
-                            let cardSpacing = 1.4; // Slightly tighter spacing
-                            let startX = 5.0 - ((totalCards * cardSpacing) / 2) + (cardSpacing / 2);
-                            
-                            for (let i = 0; i < totalCards; i++) {
-                                let rewardCard = new Card(window.lastQuestRewards[i], 0);
-                                rewardCard.location = 'field';
-                                // Draw them at Y = 5.0, scaled down slightly to 0.9
-                                rewardCard.place(startX + (i * cardSpacing) - 0.75, 5.0, 0.9);
-                            }
+                    // Draw the actual cards lined up in a row!
+                    if (window.lastQuestRewards && window.lastQuestRewards.length > 0) {
+                        let totalCards = window.lastQuestRewards.length;
+                        let cardSpacing = 1.4; // Slightly tighter spacing
+                        let startX = 5.0 - ((totalCards * cardSpacing) / 2) + (cardSpacing / 2);
+                        
+                        for (let i = 0; i < totalCards; i++) {
+                            let rewardCard = new Card(window.lastQuestRewards[i], 0);
+                            rewardCard.location = 'field';
+                            // Draw them at Y = 5.0, scaled down slightly to 0.9
+                            rewardCard.place(startX + (i * cardSpacing) - 0.75, 5.0, 0.9);
                         }
-
-                        // COLLECT BUTTON
-                        drawShape('rec', 3.0, 8.5, 1, 0, 0, 4, 1.0, 0,0,0,0, '#d4af37', 1);
-                        drawText(3.0, 8.75, 4, 0.5, "COLLECT", 'black', 1, 'center');
                     }
+
+                    // COLLECT BUTTON
+                    drawShape('rec', 3.0, 8.5, 1, 0, 0, 4, 1.0, 0,0,0,0, '#d4af37', 1);
+                    drawText(3.0, 8.75, 4, 0.5, "COLLECT", 'black', 1, 'center');
+                }
                 else if (window.guildSubState != 'quest_rewards'||window.guildSubState === 'quest_accepted') {
                     // 4. LEAVE GUILD BUTTON (Bottom Center)
                     drawShape('rec', 4, 9.2, 1, 0, 0, 2, 0.6, 0,0,0,0, '#880000', 1);
