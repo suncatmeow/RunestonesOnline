@@ -22168,7 +22168,7 @@
                             let m2Pos = this.getSafeSpawn(setup.pos.x, setup.pos.y, 2);
 
                             let spawnLeader = ['spawn_ephemeral_npc', { 
-                                index: setup.id, x: setup.pos.x, y: setup.pos.y, sprite: 55, state: 'stationary', role: 'dialogue', alignment: 'friendly_messenger', color: '#ff0000', customDialogue: ["Get 'em, boys!"], isTarget: true, isBoss: false, 
+                                index: setup.id, x: setup.pos.x, y: setup.pos.y, sprite: 54, state: 'chasing', role: 'dialogue', alignment: 'friendly_messenger', color: '#ff0000', customDialogue: ["Get 'em, boys!"], isTarget: true, isBoss: false, 
                                 endActions: [
                                     ['transform_npc', { index: setup.id, newAlignment: 'foe', newRole: 'battle', newState: 'chasing', clearDialogue: true, newIsTarget: true, newDeathActions: deathAct }], 
                                     ['close_dialogue', null]
@@ -22205,7 +22205,7 @@
                         id: 'd_bounty_1', title: "Stone Extermination", desc: "An elemental construct has gone rogue. Return it to dust.", isStory: false, status: 'available',
                         generateBlueprint: () => {
                             let setup = getQuestSetup();
-                            let validTargets = [{ sprite: 74, name: "Gargoyle" }, { sprite: 75, name: "Gnome" }, { sprite: 37, name: "Siren" }];
+                            let validTargets = [{ sprite: 74, name: "Gargoyle" }, { sprite: 75, name: "Gnome" }, { sprite: 81, name: "Ice Golem" }];
                             let target = validTargets[Math.floor(Math.random() * validTargets.length)];
                             let deathAct = [['update_quest_state', { key: 'guild_quest', state: 2 }], ['play_sfx', 'chime'], ['notify', "Target shattered! Return to the Guild."]];
                             let spawnAction = ['spawn_ephemeral_npc', { index: setup.id, x: setup.pos.x, y: setup.pos.y, sprite: target.sprite, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', isTarget: true, isBoss: false, deathActions: deathAct }];
@@ -22226,16 +22226,13 @@
                                         text: ["It's over! Take this extra gold and don't tell the Guild I panicked!"], 
                                         options: ['Accept Bribe', 'Refuse'], 
                                         yesActions: [
-                                            ['close_dialogue', null],
                                             ['set_memory', { key: 'guild_quest', value: { state: 2, type: 'infestation', tName: 'Infestation', qRank: 'D', bribeTaken: true } }], 
-                                            ['give_card', { card: 50, text: "You accepted the bribe." }], 
-                                            ['disappear', setup.id]
+                                            ['disappear', setup.id],
+                                            ['give_card', { card: 50, text: "You accepted the bribe." }] 
                                         ], 
                                         noActions: [
-                                            ['close_dialogue', null],
                                             ['set_memory', { key: 'guild_quest', value: { state: 2, type: 'infestation', tName: 'Infestation', qRank: 'D', bribeTaken: false } }], 
-                                            ['notify', "You refused the bribe. The client respects your honor."],
-                                            ['disappear', setup.id]
+                                            ['notify', { text: "You refused the bribe. The client respects your honor.", endActions: [['disappear', setup.id], ['close_dialogue', null]] }]
                                         ] 
                                     }], 
                                     ['trigger_dialogue', setup.id]
@@ -22253,7 +22250,7 @@
                                 options: ['Help Them', 'Leave'], 
                                 yesActions: [
                                     ['close_dialogue', null],
-                                    ['spawn_ephemeral_npc', { index: bossId, x: pos1.x, y: pos1.y, sprite: 55, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', isTarget: true, isBoss: false, deathActions: [killPayload] }], 
+                                    ['spawn_ephemeral_npc', { index: bossId, x: pos1.x, y: pos1.y, sprite: 54, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', isTarget: true, isBoss: true, deathActions: [killPayload] }], 
                                     ['spawn_ephemeral_npc', { index: bossId+1, x: pos2.x, y: pos2.y, sprite: 54, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', deathActions: [killPayload] }], 
                                     ['spawn_ephemeral_npc', { index: bossId+2, x: pos3.x, y: pos3.y, sprite: 54, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', deathActions: [killPayload] }], 
                                     ['spawn_ephemeral_npc', { index: bossId+3, x: pos4.x, y: pos4.y, sprite: 54, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', deathActions: [killPayload] }], 
@@ -22270,7 +22267,7 @@
                         id: 'd_reinforce_1', title: "C-Rank Rescue", desc: "A veteran squad is trapped behind enemy lines. Break the siege.", isStory: false, status: 'available',
                         generateBlueprint: () => {
                             let setup = getQuestSetup(); let bossId = setup.id + 1;
-                            let spawnLeader = ['spawn_ephemeral_npc', { index: setup.id, x: setup.pos.x, y: setup.pos.y, sprite: 42, state: 'stationary', role: 'dialogue', alignment: 'friendly', color: '#00ff00', customDialogue: ["We're pinned down! Join our squad and help us break through!"], options: ['Join Squad', 'Leave'], isTarget: true, isBoss: false, yesActions: [['become_ally', 42], ['disappear', setup.id], ['spawn_ephemeral_npc', { index: bossId, x: this.x, y: this.y, sprite: 5, state: 'stationary', role: 'battle', alignment: 'foe', color: '#ff0000', isBoss: true, deck: [5, 56, 56, 56], deathActions: [['update_quest_state', { key: 'guild_quest', state: 2 }], ['cleanup_quest_npcs', null], ['notify', { text: "Ambush cleared! The squad is safe. Return to the guild.", endActions: [['close_dialogue', null]] }]] }], ['start_tactics', bossId], ['close_dialogue', null]], noActions: [['close_dialogue', null]] }];
+                            let spawnLeader = ['spawn_ephemeral_npc', { index: setup.id, x: setup.pos.x, y: setup.pos.y, sprite: 258, state: 'stationary', role: 'dialogue', alignment: 'friendly', color: '#00ff00', customDialogue: ["We're pinned down! Join our squad and help us break through!"], options: ['Join Squad', 'Leave'], isTarget: true, isBoss: false, yesActions: [['become_ally', 42], ['disappear', setup.id], ['spawn_ephemeral_npc', { index: bossId, x: this.x, y: this.y, sprite: 5, state: 'stationary', role: 'battle', alignment: 'foe', color: '#ff0000', isBoss: true, deck: [42, 56, 56, 56], deathActions: [['update_quest_state', { key: 'guild_quest', state: 2 }], ['cleanup_quest_npcs', null], ['notify', { text: "Ambush cleared! The squad is safe. Return to the guild.", endActions: [['close_dialogue', null]] }]] }], ['start_tactics', bossId], ['close_dialogue', null]], noActions: [['close_dialogue', null]] }];
                             
                             return { state: 1, type: 'reinforcement', tName: 'C-Rank Rescue', qRank: 'D', targetMap: this.mapID, targetX: Math.floor(setup.pos.x), targetY: Math.floor(setup.pos.y), spawnActions: [spawnLeader] };
                         }
@@ -22433,13 +22430,30 @@
                         status: cProgress > 1 ? 'completed' : (cProgress === 1 ? 'available' : 'locked'), lockReason: "Complete 'Cult Meeting' first.",
                         generateBlueprint: () => {
                             let setup = getQuestSetup(); let monsterId = setup.id + 1;
-                            let slayActions = [['transform_npc', { index: monsterId, newAlignment: 'foe', newRole: 'battle', newState: 'chasing', clearDialogue: true, newIsTarget: true, newIsBoss: true, newDeathActions: [['update_quest_state', {key: 'guild_quest', state: 2}], ['set_memory', {key: 'c_rank_dilemma_choice', value: 'monster'}], ['play_sfx', 'chime'], ['notify', "The beast is dead. Return to the Guild."]] }], ['close_dialogue', null]];
-                            let spareActions = [['become_ally', 206], ['play_sfx', 'chime'], ['update_quest_state', {key: 'guild_quest', state: 3}], ['inject_dialogue', { index: setup.id, text: ["You let it go?! You fool, that was my prize!"], endActions: [['transform_npc', { index: setup.id, newAlignment: 'foe', newRole: 'battle', newState: 'chasing', clearDialogue: true, newIsTarget: true, newIsBoss: true, newDeathActions: [['update_quest_state', {key: 'guild_quest', state: 2}], ['set_memory', {key: 'c_rank_dilemma_choice', value: 'client'}], ['play_sfx', 'chime'], ['notify', "The corrupt client is dead. Return to the Guild."]] }], ['close_dialogue', null]]}], ['notify', { text: "You freed the beast! Return and confront the client.", endActions: [['close_dialogue', null]] }]];
+                            
+                            let slayActions = [
+                                ['transform_npc', { index: monsterId, newAlignment: 'foe', newRole: 'battle', newState: 'chasing', clearDialogue: true, newIsTarget: true, newIsBoss: true, newDeathActions: [['update_quest_state', {key: 'guild_quest', state: 2}], ['set_memory', {key: 'c_rank_dilemma_choice', value: 'monster'}], ['play_sfx', 'chime'], ['notify', "The beast is dead. Return to the Guild."]] }], 
+                                ['close_dialogue', null]
+                            ];
+                            
+                            let spareActions = [
+                                ['become_ally', 206], 
+                                ['play_sfx', 'chime'], 
+                                ['update_quest_state', {key: 'guild_quest', state: 3}], 
+                                ['notify', { 
+                                    text: "You freed the beast! The corrupt client attacks you in a rage!", 
+                                    endActions: [
+                                        ['transform_npc', { index: setup.id, newAlignment: 'foe', newRole: 'battle', newState: 'chasing', clearDialogue: true, newIsTarget: true, newIsBoss: true, newDeathActions: [['update_quest_state', {key: 'guild_quest', state: 2}], ['set_memory', {key: 'c_rank_dilemma_choice', value: 'client'}], ['play_sfx', 'chime'], ['notify', "The corrupt client is dead. Return to the Guild."]] }], 
+                                        ['close_dialogue', null]
+                                    ] 
+                                }]
+                            ];
+                            
                             let beastPos = this.getSafeSpawn(setup.pos.x, setup.pos.y, 3);
 
-                            let spawnClient = ['spawn_ephemeral_npc', { index: setup.id, x: setup.pos.x, y: setup.pos.y, sprite: 24, state: 'stationary', role: 'dialogue', alignment: 'friendly', color: '#00ff00', isTarget: true, isBoss: false, customDialogue: ["There's a vicious beast out there! Please, kill it!"] }];
+                            let spawnClient = ['spawn_ephemeral_npc', { index: setup.id, x: setup.pos.x, y: setup.pos.y, sprite: 170, state: 'stationary', role: 'dialogue', alignment: 'friendly', color: '#00ff00', isTarget: true, isBoss: false, customDialogue: ["There's a vicious beast out there! Please, kill it!"] }];
 
-                            let spawnMonster = ['spawn_ephemeral_npc', { index: monsterId, x: beastPos.x, y: beastPos.y, sprite: 63, state: 'stationary', role: 'dialogue', alignment: 'friendly', color: '#ffff00', isTarget: true, isBoss: false, customDialogue: ["*The creature whimpers and cowers. It is chained to a post and heavily abused. It isn't a threat.*"], options: ['Slay It', 'Spare It & Confront Client'], yesActions: slayActions, noActions: spareActions }];
+                            let spawnMonster = ['spawn_ephemeral_npc', { index: monsterId, x: beastPos.x, y: beastPos.y, sprite: 206, state: 'stationary', role: 'dialogue', alignment: 'friendly', color: '#ffff00', isTarget: true, isBoss: false, customDialogue: ["*The creature whimpers and cowers. It is chained to a post and heavily abused. It isn't a threat.*"], options: ['Slay It', 'Spare It & Confront Client'], yesActions: slayActions, noActions: spareActions }];
 
                             return { state: 1, type: 'dilemma', tName: 'Monster Extermination', qRank: 'C', targetMap: this.mapID, targetX: Math.floor(setup.pos.x), targetY: Math.floor(setup.pos.y), spawnActions: [spawnClient, spawnMonster] };
                         }
@@ -39623,12 +39637,16 @@
                                 window.guildSubState = 'quest_rewards'; // SWITCH TO REWARDS UI
                                 
                                 // 2. Advance Story Campaigns silently!
-                                if (activeQ.type === 'infiltration' && Dungeon.memory['c_rank_progress'] === 0) Dungeon.memory['c_rank_progress'] = 1;
-                                if (activeQ.type === 'dilemma' && Dungeon.memory['c_rank_progress'] === 1) Dungeon.memory['c_rank_progress'] = 2;
-                                if (activeQ.type === 'idol' && Dungeon.memory['c_rank_progress'] === 2) Dungeon.memory['c_rank_progress'] = 3;
-                                if (activeQ.type === 'invasion' && Dungeon.memory['c_rank_progress'] === 3) Dungeon.memory['c_rank_progress'] = 4;
-                                if (activeQ.type === 'inquisitor' && Dungeon.memory['a_rank_progress'] === 0) Dungeon.memory['a_rank_progress'] = 1;
-                                if (activeQ.type === 'expedition' && Dungeon.memory['a_rank_progress'] === 1) Dungeon.memory['a_rank_progress'] = 2;
+                                let cProg = Dungeon.memory['c_rank_progress'] || 0;
+                                let aProg = Dungeon.memory['a_rank_progress'] || 0;
+
+                                if (activeQ.type === 'infiltration' && cProg === 0) Dungeon.memory['c_rank_progress'] = 1;
+                                if (activeQ.type === 'dilemma' && cProg === 1) Dungeon.memory['c_rank_progress'] = 2;
+                                if (activeQ.type === 'idol' && cProg === 2) Dungeon.memory['c_rank_progress'] = 3;
+                                if (activeQ.type === 'invasion' && cProg === 3) Dungeon.memory['c_rank_progress'] = 4;
+                                
+                                if (activeQ.type === 'inquisitor' && aProg === 0) Dungeon.memory['a_rank_progress'] = 1;
+                                if (activeQ.type === 'expedition' && aProg === 1) Dungeon.memory['a_rank_progress'] = 2;
                                 
                                 Dungeon.requestSave();
                             } else {
