@@ -376,9 +376,9 @@
                     96: { name: "Outlast", type: "spell", classes: ["Knight", "Warrior", "Priest"], power: 1 },
                     97: { name: "Gravity", type: "spell", classes: ["Mage", "Druid"], power: 1 },
                 // --- 3D Cards ---
-                    188: { name: "Bear", type: "monster", rank: "Eight", classes: ["Warrior", "Knight","Druid","Hunter"], power: 40 },
-                    191: { name: "Wolf", type: "monster", rank: "Eighteen", classes: ["Knight", "Warrior","Priest",  "Mage", "Rogue","Hunter","Druid"], power: 40 },
-                    194: { name: "Boar", type: "monster", rank: "Seven", classes: ["Warrior", "Knight","Druid","Hunter"], power: 40 },
+                    188: { name: "Bear", type: "monster", rank: "Eight", classes: ["Warrior", "Knight"], power: 40 },
+                    191: { name: "Wolf", type: "monster", rank: "Eighteen", classes: ["Knight", "Warrior"], power: 40 },
+                    194: { name: "Boar", type: "monster", rank: "Seven", classes: ["Warrior", "Knight"], power: 40 },
                     197: { name: "Vampire", type: "monster", rank: "Temptation", classes: ["Mage", "Rogue", "Knight"], power: 40 },
                     200: { name: "Spriggan", type: "monster", rank: "Seven", classes: ["Mage", "Druid"], power: 20 },
                     203: { name: "Dullahan", type: "monster", rank: "Knight", classes: ["Warrior", "Knight"], power: 35 },
@@ -388,13 +388,13 @@
                     216: { name: "Ant", type: "monster", rank: "Three", classes: ["Warrior", "Druid"], power: 15 },
                     219: { name: "Rat", type: "monster", rank: "Five", classes: ["Rogue"], power: 10 },
                     222: { name: "Slime", type: "monster", rank: "Four", classes: ["Mage", "Druid"], power: 10 },
-                    225: { name: "Rabbit", type: "monster", rank: "Eight", classes: ["Rogue", "Druid"], power: 5 },
+                    225: { name: "Rabbit", type: "monster", rank: "Eight", classes: ["Warrior"], power: 5 },
                     228: { name: "Bird", type: "monster", rank: "Nine", classes: ["Hunter", "Druid", "Mage"], power: 10 },
                     231: { name: "Hart", type: "monster", rank: "King", classes: ["Knight", "Druid", "Hunter"], power: 20 },
-                    234: { name: "Squirrel", type: "monster", rank: "Four", classes: ["Rogue", "Druid"], power: 5 },
+                    234: { name: "Squirrel", type: "monster", rank: "Four", classes: ["Rogue"], power: 5 },
                     237: { name: "Suncat", type: "monster", rank: "The Fool", classes: ["Rogue", "Mage", "Hunter", "Druid"], power: 30 },
                     240: { name: "Fox", type: "monster", rank: "Seven", classes: ["Rogue", "Hunter", "Mage"], power: 15 },
-                    246: { name: "Auroch", type: "monster", rank: "Seven", classes: ["Warrior", "Knight", "Druid"], power: 20 },
+                    246: { name: "Auroch", type: "monster", rank: "Seven", classes: ["Warrior", "Knight"], power: 20 },
                     249: { name: "Dancer", type: "monster", rank: "Seven", classes: ["Priest", "Mage", "Rogue"], power: 15 },
                     252: { name: "Warrior", type: "monster", rank: "Seven", classes: ["Warrior"], power: 15 },
                     255: { name: "Rogue", type: "monster", rank: "Seven", classes: ["Rogue"], power: 15 },
@@ -18100,7 +18100,7 @@
                 if (existingSummon) existingSummon.npcId = uniqueIndex;
             }
             }
-       //NPC Interaction rendering
+        //NPC Interaction rendering
             tutorial(dt) {
                 let tick = 30 * dt;
                 const SPEED_Y = 6 * dt; 
@@ -19810,242 +19810,212 @@
                             let reasons = []; // Tracks why spells were skipped to give a smart failure message
 
                             // ==========================================
-                            // MASTER SPELL CATALOG (Uses exact DB IDs)
-                            // stats map: { 0: STR, 1: CON, 2: INT, 3: AGI }
-                            // Checks against Player Max Die Size (index 1)
+                            // MASTER SPELL CATALOG (Everquest / D&D Style)
+                            // Stats Map: { 0: STR, 1: CON, 2: INT, 3: AGI }
+                            // Die Scale: 4(d4), 6(d6), 8(d8), 10(d10), 12(d12), 20(d20)
                             // ==========================================
                             const catalogs = {
                                 'warrior_trainer': [
-                                    // 50: Sword. Warriors/Knights learn it early. Mages need a d6 STR.
+                                    // 50: Sword (Basic Melee)
                                     { id: 50, name: "Sword", reqs: {
                                         'warrior': { lvl: 1, stats: { 0: 4 } },
+                                        'knight':  { lvl: 2, stats: { 0: 4 } },
+                                        'all':     { lvl: 4, stats: { 0: 6 } } // Casters must pump STR to a d6 to learn basics
                                     }},
-                                     // 53: Camp. 
-                                    { id: 53, name: "Camp", reqs: {
-                                        'warrior': { lvl: 2, stats: { 1: 6 } },
-                                        'knight': { lvl: 1, stats: { 1: 4 } },
-                                    }},
-                                    // 58: Intimidate.
+                                    // 58: Intimidate (Warrior exclusive early, Rogues learn it by cross-training STR)
                                     { id: 58, name: "Intimidate", reqs: {
-                                        'warrior': { lvl: 3, stats: { 0: 8 } },
-                                        'rogue': { lvl: 6, stats: { 0: 6 } }, // Rogues use d6 AGI + d6 STR
+                                        'warrior': { lvl: 3, stats: { 0: 6 } },
+                                        'knight':  { lvl: 5, stats: { 0: 6, 1: 6 } },
+                                        'rogue':   { lvl: 7, stats: { 0: 8, 3: 6 } }, // Rogue realizes flexing works!
                                     }},
-                                    // 51: Overpower. 
+                                    // 53: Camp (Survival skill)
+                                    { id: 53, name: "Camp", reqs: {
+                                        'warrior': { lvl: 5, stats: { 1: 6 } }, 
+                                        'hunter':  { lvl: 5, stats: { 1: 6 } },
+                                        'all':     { lvl: 8, stats: { 1: 8 } }, // Others need a d8 CON to survive outside
+                                    }},
+                                    // 51: Overpower
                                     { id: 51, name: "Overpower", reqs: {
-                                        'warrior': { lvl: 6, stats: { 0: 10 } },
-                                        'knight': { lvl: 9, stats: { 0: 12 } },
+                                        'warrior': { lvl: 8, stats: { 0: 8 } }, 
+                                        'knight':  { lvl: 9, stats: { 0: 8 } },
                                     }},
-                                    
-                                    // 59: Critical Strike. Requires STR and AGI.
+                                    // 59: Critical Strike (Warrior Capstone, Rogues learn from them)
                                     { id: 59, name: "Critical Strike", reqs: {
-                                        'warrior': { lvl: 9, stats: { 0: 12, 3: 6 } },
-                                        'rogue': { lvl: 5, stats: { 0: 6, 3: 10 } }, 
-                                        'hunter': { lvl: 7, stats: { 0: 6, 3: 8 } },
-                                        'all': { lvl: 9, stats: { 0: 8, 3: 8 } }
+                                        'warrior': { lvl: 11, stats: { 0: 10, 3: 8 } }, 
+                                        'rogue':   { lvl: 11, stats: { 0: 8, 3: 10 } }, 
+                                        'all':     { lvl: 14, stats: { 0: 10, 3: 10 } }
                                     }}
                                 ],
 
                                 'rogue_trainer': [
-                                    // 36: Hourglass 
-                                    { id: 36, name: "Hourglass", reqs: {
-                                        'rogue': { lvl: 1, stats: { 3: 4 } },
-                                        'hunter': { lvl: 2, stats: { 3: 6 } },
-                                        'all': { lvl: 5, stats: { 3: 6 } }
-                                    }},
-                                    // 40: Steal 
-                                    { id: 40, name: "Steal", reqs: {
-                                        'rogue': { lvl: 2, stats: { 3: 6 } },
-                                        'hunter': { lvl: 3, stats: { 3: 8 } },
-                                        
-                                    }},
-                                    // 52: Backstab
-                                    { id: 52, name: "Backstab", reqs: {
-                                        'rogue': { lvl: 3, stats: { 3: 6 } },
-                                        'hunter': { lvl: 6, stats: { 3: 8 } },
-                                        'all': { lvl: 9, stats: { 3: 12 } } // A Warrior who pumped AGI to d10
-                                    }},
-                                    { id: 10, name: "Treasure", reqs: {
-                                        'rogue': { lvl: 9, stats: { 3: 12 } },
-                                        'hunter': { lvl: 13, stats: { 3: 20 } },
-                                        'warrior': { lvl: 9, stats: { 0: 12 } } // A Warrior who pumped AGI to d10
-                                    }},
-                                     //41: Loot 
+                                    // 41: Loot (Lockpicking - Everyone can learn it eventually)
                                     { id: 41, name: "Loot", reqs: {
-                                        
-                                        'all': { lvl: 1, stats: { 0: 4 } } // A Warrior who pumped AGI to d10
-
+                                        'rogue':   { lvl: 1, stats: { 3: 4 } },
+                                        'hunter':  { lvl: 2, stats: { 3: 4 } },
+                                        'all':     { lvl: 5, stats: { 3: 6 } } 
                                     }},
-                                    
-                                    // 95: Flurry
-                                    { id: 95, name: "Flurry", reqs: {
-                                        'rogue': { lvl: 9, stats: { 3: 12 } },
-                                        'warrior': { lvl: 8, stats: { 3: 8, 0: 8 } }
+                                    // 40: Steal (ROGUE EXCLUSIVE - Notice there is no 'all' fallback)
+                                    { id: 40, name: "Steal", reqs: {
+                                        'rogue':   { lvl: 3, stats: { 3: 6 } },
+                                        'hunter':  { lvl: 6, stats: { 3: 8 } }, // Hunters can swipe things in the wild
                                     }},
-                                    //7: Winged Boot 
+                                    // 52: Backstab (Assassination)
+                                    { id: 52, name: "Backstab", reqs: {
+                                        'rogue':   { lvl: 5, stats: { 3: 8 } }, 
+                                        'hunter':  { lvl: 7, stats: { 3: 8 } },
+                                        'warrior': { lvl: 10, stats: { 3: 10 } } // Warriors cross-training AGI
+                                    }},
+                                    // 43: Teleport (Rogues learn to Shadow-step from Mages)
+                                    { id: 43, name: "Teleport", reqs: {
+                                        'mage':    { lvl: 7, stats: { 2: 10 } },
+                                        'rogue':   { lvl: 9, stats: { 3: 10, 2: 6 } }, // Needs massive AGI and a bit of INT
+                                    }},
+                                    // 7: Winged Boots / Fly (Shared Utility)
                                     { id: 7, name: "Fly", reqs: {
-                                        'rogue': { lvl: 13, stats: { 3: 20 } },
-                                        'mage': { lvl: 13, stats: { 2: 20 } },
-                                        'all': { lvl: 13, stats: { 3: 20 } },
-                                        
-                                       
+                                        'rogue':   { lvl: 11, stats: { 3: 12 } }, 
+                                        'mage':    { lvl: 11, stats: { 2: 12 } },
+                                        'all':     { lvl: 14, stats: { 3: 12 } }
                                     }},
+                                    // 10: Treasure Chest (Rogue early access, others must grind)
+                                    { id: 10, name: "Treasure Chest", reqs: {
+                                        'rogue':   { lvl: 13, stats: { 3: 12 } }, 
+                                        'all':     { lvl: 16, stats: { 3: 20 } } // Absolute endgame for others
+                                    }}
                                 ],
 
                                 'mage_trainer': [
-                                    // 22: Wand 
+                                    // 22: Wand
                                     { id: 22, name: "Wand", reqs: {
-                                        'mage': { lvl: 1, stats: { 2: 4 } },
+                                        'mage':    { lvl: 1, stats: { 2: 4 } },
+                                        'priest':  { lvl: 2, stats: { 2: 4 } },
+                                        'all':     { lvl: 4, stats: { 2: 6 } }
                                     }},
-                                    // 24: Scry 
-                                    { id: 24, name: "Scry", reqs: {
-                                        'mage': { lvl: 2, stats: { 2: 6 } },
-                                        'priest': { lvl: 3, stats: { 2:12 } },
-                                    }},
-                                    // 26: Fire 
+                                    // 26: Fire
                                     { id: 26, name: "Fire", reqs: {
-                                        'mage': { lvl: 3, stats: { 2: 6 } },
-                                        'druid': { lvl: 5, stats: { 2: 8 } },
-                                        'priest': { lvl: 6, stats: { 2: 10 } },
-                                        'all': { lvl: 9, stats: { 2: 12 } } 
+                                        'mage':    { lvl: 3, stats: { 2: 6 } }, 
+                                        'druid':   { lvl: 4, stats: { 2: 6 } },
+                                        'all':     { lvl: 7, stats: { 2: 8 } } 
                                     }},
-                                    // 92: Imbue Fire 
+                                    // 23: Wisp (MONSTER SUMMON)
+                                    { id: 23, name: "Summon Wisp", reqs: {
+                                        'mage':    { lvl: 5, stats: { 2: 8 } },
+                                        'priest':  { lvl: 6, stats: { 2: 8 } },
+                                    }},
+                                    // 92: Imbue Fire
                                     { id: 92, name: "Imbue Fire", reqs: {
-                                        'mage': { lvl: 6, stats: { 2: 6 } },
-                                        'druid': { lvl: 8, stats: { 2: 8 } },
-                                        'priest': { lvl: 9, stats: { 2: 10 } },
-                                        'all': { lvl: 9, stats: { 2: 12 } } 
+                                        'mage':    { lvl: 8, stats: { 2: 10 } }, 
+                                        'all':     { lvl: 11, stats: { 2: 12 } } 
                                     }},
-                                    { id: 23, name: "Wisp", reqs: {
-                                        'mage': { lvl: 6, stats: { 2: 8 } },
-                                        'priest': { lvl: 8, stats: { 2: 10 } },
-
-                                    }},
-                                    // 29: Haste 
-                                    { id: 29, name: "Haste", reqs: {
-                                        'mage': { lvl: 5, stats: { 2: 8 } },
-                                        'priest': { lvl: 6, stats: { 2: 8 } },
-                                        'rogue': { lvl: 7, stats: { 2: 6, 3: 8 } }, 
-                                    }},
-                                    // 43: Teleport
-                                    { id: 43, name: "Teleport", reqs: {
-                                        'mage': { lvl: 9, stats: { 2: 12 } },
-                                        'priest': { lvl: 13, stats: { 2: 20 } },
-                                     
-                                    }},
-                                    // 93: Lightning 
+                                    // 93: Lightning
                                     { id: 93, name: "Lightning", reqs: {
-                                        'mage': { lvl: 9, stats: { 2: 12 } },
-                                        'druid': { lvl: 9, stats: { 2: 10 } }
+                                        'mage':    { lvl: 11, stats: { 2: 12 } }, 
+                                        'druid':   { lvl: 11, stats: { 2: 12 } },
+                                        'priest':  { lvl: 13, stats: { 2: 12, 3: 8 } },
                                     }},
-                                    { id: 13, name: "Death", reqs: {
-                                        'mage': { lvl: 13, stats: { 2: 20 } },
-                                    }},
+                                    // 63: Dragon (MONSTER SUMMON - Mages commune with Dragons!)
+                                    { id: 63, name: "Summon Dragon", reqs: {
+                                        'mage':    { lvl: 14, stats: { 2: 20 } } // Requires legendary INT (d20)
+                                    }}
                                 ],
 
                                 'priest_trainer': [
-                                    // 27: Elixir 
-                                    { id: 27, name: "Elixir", reqs: {
-                                        'priest': { lvl: 1, stats: { 2: 4,3:4 } },
+                                    // 25: Elixir (Minor Heal - Knights learn this to become Paladins!)
+                                    { id: 25, name: "Elixir", reqs: { 
+                                        'priest':  { lvl: 1, stats: { 2: 4 } },
+                                        'druid':   { lvl: 2, stats: { 2: 4 } },
+                                        'knight':  { lvl: 5, stats: { 2: 6, 1: 6 } }, // Paladin cross-training
+                                        'all':     { lvl: 6, stats: { 2: 8 } }
                                     }},
                                     // 12: Bind
                                     { id: 12, name: "Bind", reqs: {
-                                        'priest': { lvl: 2, stats: { 2: 6 } },
-                                        'mage': { lvl: 6, stats: { 2: 10 } }
+                                        'priest':  { lvl: 3, stats: { 2: 6 } }, 
+                                        'mage':    { lvl: 4, stats: { 2: 6 } }
                                     }},
-                                    
-                                    //82. Skeleton
-                                    { id: 82, name: "Skeleton", reqs: {
-                                        'mage': { lvl: 3, stats: { 2: 10 } },
-                                        'priest': { lvl: 3, stats: { 2: 6 } },
-                                        
-
+                                    // 82: Skeleton (MONSTER SUMMON - Necromancer vibes)
+                                    { id: 82, name: "Raise Skeleton", reqs: {
+                                        'priest':  { lvl: 5, stats: { 2: 8 } }, 
+                                        'mage':    { lvl: 6, stats: { 2: 8 } },
                                     }},
-                                    //15. Curse
-                                    { id: 15, name: "Curse", reqs: {
-                                        'mage': { lvl: 2, stats: { 2: 10 } },
-                                        'priest': { lvl: 4, stats: { 2: 6 } },
-                                        
-
-                                    }},
-                                    //69. Charity
-                                    { id: 69, name: "Charity", reqs: {
-                                        'priest': { lvl: 5, stats: { 3: 12 } },
-                                        
-                                    }},
-                                    // 28: Defense
+                                    // 28: Defense (Holy Armor)
                                     { id: 28, name: "Defense", reqs: {
-                                        'priest': { lvl: 6, stats: { 2: 8 } },
-                                        'mage': { lvl: 9, stats: { 2: 10 } },
-                                        'knight': { lvl: 13, stats: { 2: 12 } }, 
+                                        'priest':  { lvl: 7, stats: { 2: 8, 1: 6 } }, 
+                                        'knight':  { lvl: 8, stats: { 2: 6, 1: 8 } }, 
                                     }},
-                                    // 8: Strength
-                                    { id: 8, name: "Strength", reqs: {
-                                        'priest': { lvl: 8, stats: { 2: 8 } },
-                                        'druid': { lvl: 8, stats: { 2: 8 } },
-                                        'mage': { lvl: 8, stats: { 2: 8 } },
+                                    // 94: Lich (MONSTER SUMMON - High level Necromancy)
+                                    { id: 94, name: "Form of the Lich", reqs: {
+                                        'priest':  { lvl: 11, stats: { 2: 12 } }, 
+                                        'mage':    { lvl: 12, stats: { 2: 12 } },
                                     }},
-                                    
-                                    
-                                    // 93: Lightning
-                                    { id: 93, name: "Lightning", reqs: {
-                                        'priest': { lvl: 9, stats: { 2: 12,3:6 } },
-                                        'mage': { lvl: 13, stats: { 2: 20 } }
-                                    }},
-                                    // 20: Judgement
-                                    { id: 20, name: "Judgement", reqs: {
-                                        'priest': { lvl: 13, stats: { 2: 20,3:12 } },
-                                        'knight': { lvl: 13, stats: { 2: 8 } }, 
-
-                                    }},
+                                    // 20: Judgement (Massive AoE)
+                                    { id: 20, name: "Judgement", reqs: { 
+                                        'priest':  { lvl: 13, stats: { 2: 12, 1: 8 } },
+                                        'knight':  { lvl: 14, stats: { 2: 8, 1: 12 } }, // Paladin Capstone
+                                    }}
                                 ],
 
                                 'knight_trainer': [
                                     // 64: Shield
                                     { id: 64, name: "Shield", reqs: {
-                                        'knight': { lvl: 1, stats: { 1: 4 } },
-                                  
+                                        'knight':  { lvl: 1, stats: { 1: 4 } },
+                                        'warrior': { lvl: 2, stats: { 1: 4 } },
+                                        'all':     { lvl: 5, stats: { 1: 6 } },
                                     }},
                                     // 65: Shield Bash
                                     { id: 65, name: "Shield Bash", reqs: {
-                                        'knight': { lvl: 3, stats: { 1: 6 } },
-                                        'priest': { lvl: 6, stats: { 1: 8 } },
+                                        'knight':  { lvl: 4, stats: { 1: 6, 0: 4 } },
+                                        'priest':  { lvl: 6, stats: { 1: 8 } },
                                     }},
                                     // 66: Armor
                                     { id: 66, name: "Armor", reqs: {
-                                        'knight': { lvl: 6, stats: { 1: 8 } },
-                                        'warrior': { lvl: 9, stats: { 1: 12 } },
+                                        'knight':  { lvl: 7, stats: { 1: 8 } }, 
+                                        'warrior': { lvl: 8, stats: { 1: 8 } },
+                                    }},
+                                    // 203: Dullahan (MONSTER SUMMON - Shadowknight equivalent!)
+                                    { id: 203, name: "Summon Dullahan", reqs: {
+                                        'knight':  { lvl: 10, stats: { 1: 10, 2: 8 } }, // Needs CON and INT!
+                                        'warrior': { lvl: 12, stats: { 1: 10, 2: 8 } }
                                     }},
                                     // 71: Forge
                                     { id: 71, name: "Forge", reqs: {
-                                        'knight': { lvl: 9, stats: { 1: 8, 0: 8 } },
-                                        'warrior': { lvl: 8, stats: { 1: 8, 0: 8 } }
+                                        'knight':  { lvl: 12, stats: { 1: 10, 0: 8 } },
+                                        'warrior': { lvl: 13, stats: { 1: 10, 0: 10 } }
                                     }},
-                                    // 70: Cultivate
+                                    // 70: Cultivate (The absolute limit break)
                                     { id: 70, name: "Cultivate", reqs: {
-                                        'all': { lvl: 13, stats: { 0: 20,1: 20,2: 20,3: 20 } } // Need a d12 in CON!
+                                        'knight':  { lvl: 14, stats: { 0: 12, 1: 12 } }, 
+                                        'all':     { lvl: 16, stats: { 0: 12, 1: 12, 2: 12, 3: 12 } } // Prestige level stats required
                                     }}
                                 ],
+
+                                'druid_trainer': [
+                                    // Druids respect nature. Beasts, Elementals, and raw Magic. No humanoid/undead monsters.
+                                    { id: 24, name: "Scry", reqs: { 'druid': { lvl: 1, stats: { 2: 4 } }, 'hunter': { lvl: 1, stats: { 3: 4 } } }},
+                                    { id: 8,  name: "Strength", reqs: { 'druid': { lvl: 3, stats: { 2: 6 } }, 'priest': { lvl: 4, stats: { 2: 6 } } }},
+                                    { id: 213, name: "Tame Wasp", reqs: { 'druid': { lvl: 5, stats: { 2: 8 } }, 'hunter': { lvl: 6, stats: { 3: 8 } } }},
+                                    { id: 216, name: "Tame Ant", reqs: { 'druid': { lvl: 7, stats: { 2: 8, 1: 6 } }, 'hunter': { lvl: 8, stats: { 3: 8, 1: 6 } } }},
+                                    { id: 206, name: "Tame Wyvern", reqs: { // Druid early access! Sky mastery.
+                                        'druid':   { lvl: 9, stats: { 2: 10, 1: 8 } },
+                                        'hunter':  { lvl: 12, stats: { 3: 10, 2: 8 } } // Hunters need INT to tame it later
+                                    }},
+                                    { id: 210, name: "Tame Scorpion", reqs: { 'druid': { lvl: 11, stats: { 2: 12 } }, 'hunter': { lvl: 13, stats: { 3: 12, 1: 8 } } }},
+                                    { id: 188, name: "Tame Bear", reqs: { 'druid': { lvl: 13, stats: { 2: 12, 1: 8 } }, 'hunter': { lvl: 13, stats: { 3: 10, 0: 10 } } }}
+                                ],
+
                                 'hunter_trainer': [
-                                    // 191: Wolf (Needs AGI and CON)
-                                    { id: 191, name: "Wolf", reqs: {
-                                        'hunter': { lvl: 2, stats: { 3: 4 } },
-                                        'druid': { lvl: 2, stats: { 3: 4 } },
-                                        'all': { lvl: 5, stats: { 3: 6, 0: 6 } }
-                                    }},
-                                    // 194: Boar (Needs STR and CON)
-                                    { id: 194, name: "Boar", reqs: {
-                                        'hunter': { lvl: 4, stats: { 0: 6 } },
-                                        'warrior': { lvl: 5, stats: { 0: 6, 1: 6 } },
-                                        'all': { lvl: 7, stats: { 0: 8, 1: 6,3:6 } }
-                                    }},
-                                    // 188: Bear (Needs massive STR and CON)
-                                    { id: 188, name: "Bear", reqs: {
-                                        'hunter': { lvl: 7, stats: { 0: 8, 1: 8 } },
-                                        'druid': { lvl: 7, stats: { 0: 8, 1: 8 } },
-                                        'warrior': { lvl: 8, stats: { 0: 10 } },
-                                        'all': { lvl: 9, stats: { 0: 10, 1: 10 } }
-                                    }}
-                                ],
+                                    // The Ultimate Beastmaster progression. Starts with small game, moves to literal monsters.
+                                    { id: 234, name: "Tame Squirrel", reqs: { 'hunter': { lvl: 1, stats: { 3: 4 } } }},
+                                    { id: 225, name: "Tame Bunny", reqs: { 'hunter': { lvl: 2, stats: { 3: 4 } } }},
+                                    { id: 240, name: "Tame Fox", reqs: { 'hunter': { lvl: 3, stats: { 3: 6, 2: 4 } }, 'druid': { lvl: 3, stats: { 2: 6 } } }}, // Needs INT
+                                    { id: 219, name: "Tame Rat", reqs: { 'rogue': { lvl: 2, stats: { 3: 4, 2: 4 } }, 'hunter': { lvl: 4, stats: { 3: 6, 2: 4 } } }}, 
+                                    { id: 191, name: "Tame Wolf", reqs: { 'warrior': { lvl: 3, stats: { 0: 6, 1: 6 } }, 'hunter': { lvl: 5, stats: { 3: 6 } } }},
+                                    { id: 194, name: "Tame Boar", reqs: { 'knight': { lvl: 5, stats: { 0: 6, 1: 8 } }, 'hunter': { lvl: 6, stats: { 3: 8, 0: 6 } } }},
+                                    { id: 188, name: "Tame Bear", reqs: { 'hunter': { lvl: 7, stats: { 3: 8, 0: 8 } }, 'druid': { lvl: 8, stats: { 2: 8, 1: 8 } } }}, // Bear is now Mid-Level!
+                                    // High level Hunters start sub-jugating humanoid monsters
+                                    { id: 60, name: "Summon Pixie", reqs: { 'hunter': { lvl: 8, stats: { 3: 8, 2: 6 } }, 'rogue': { lvl: 10, stats: { 3: 10, 2: 6 } } }},
+                                    { id: 56, name: "Summon Imp", reqs: { 'hunter': { lvl: 9, stats: { 3: 10, 0: 6 } }, 'mage': { lvl: 10, stats: { 2: 10 } } }},
+                                    { id: 54, name: "Summon Goblin", reqs: { 'hunter': { lvl: 10, stats: { 3: 10, 0: 8 } }, 'warrior': { lvl: 12, stats: { 0: 10, 3: 8 } } }},
+                                    { id: 206, name: "Tame Wyvern", reqs: { 'druid': { lvl: 9, stats: { 2: 10 } }, 'hunter': { lvl: 12, stats: { 3: 12, 2: 8 } } }},
+                                ]
                             };
 
                             let catalog = catalogs[trainerIndex];
@@ -21231,63 +21201,63 @@
                     }
                 }
                 // ==========================================
-// AVALON S-CLASS ANOMALY BOUNTIES
-// ==========================================
-let avalonRanks = ['COPPER', 'SILVER', 'GOLD', 'MITHRIL'];
-if (avalonRanks.includes(rankToView)) {
+                // AVALON S-CLASS ANOMALY BOUNTIES
+                // ==========================================
+                let avalonRanks = ['COPPER', 'SILVER', 'GOLD', 'MITHRIL'];
+                if (avalonRanks.includes(rankToView)) {
 
-    // 1. REPEATABLE S-CLASS QUEST (Shared across all S-Class boards)
-    quests.push({
-        id: `s_shared_${rankToView.toLowerCase()}`, 
-        title: `Global Anomaly (${rankToView})`, 
-        desc: "A continental crisis broadcasted to all S-Class posts.", 
-        isStory: false, status: 'available',
-        generateBlueprint: () => {
-            let setup = getQuestSetup();
-            let spawnAction = ['spawn_ephemeral_npc', { index: setup.id, x: setup.pos.x, y: setup.pos.y, sprite: 74, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', isBoss: true, isTarget: true, deathActions: [['update_quest_state', { key: 'guild_quest', state: 2 }], ['play_sfx', 'chime'], ['notify', "Target eliminated! Return to any Guild Clerk."]] }];
-            return { state: 1, type: 'bounty', tName: 'Global Anomaly', qRank: 'S', targetMap: this.mapID, targetX: Math.floor(setup.pos.x), targetY: Math.floor(setup.pos.y), spawnActions: [spawnAction] };
-        }
-    });
+                    // 1. REPEATABLE S-CLASS QUEST (Shared across all S-Class boards)
+                    quests.push({
+                        id: `s_shared_${rankToView.toLowerCase()}`, 
+                        title: `Global Anomaly (${rankToView})`, 
+                        desc: "A continental crisis broadcasted to all S-Class posts.", 
+                        isStory: false, status: 'available',
+                        generateBlueprint: () => {
+                            let setup = getQuestSetup();
+                            let spawnAction = ['spawn_ephemeral_npc', { index: setup.id, x: setup.pos.x, y: setup.pos.y, sprite: 74, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', isBoss: true, isTarget: true, deathActions: [['update_quest_state', { key: 'guild_quest', state: 2 }], ['play_sfx', 'chime'], ['notify', "Target eliminated! Return to any Guild Clerk."]] }];
+                            return { state: 1, type: 'bounty', tName: 'Global Anomaly', qRank: 'S', targetMap: this.mapID, targetX: Math.floor(setup.pos.x), targetY: Math.floor(setup.pos.y), spawnActions: [spawnAction] };
+                        }
+                    });
 
-    // 2. AVALON EXCLUSIVE TIER BOSS
-    let bossSprite, bossName, hazardMapId, weatherEffect;
-    switch(rankToView) {
-        case 'COPPER': bossSprite = Math.random() > 0.5 ? 94 : 91; bossName = bossSprite === 94 ? "Ancient Dragon" : "Demon Lord"; hazardMapId = 12; weatherEffect = 'storm'; break;
-        case 'SILVER': bossSprite = 83; bossName = "Void Incursion"; hazardMapId = 22; weatherEffect = 'space'; break;
-        case 'GOLD': bossSprite = 46; bossName = "World-Serpent Anomaly"; hazardMapId = 9; weatherEffect = 'apocalypse'; break;
-        case 'MITHRIL': bossSprite = 999; bossName = "Avatar of Destruction"; hazardMapId = -1; weatherEffect = 'inferno'; break;
-    }
-    
-    quests.push({
-        id: `s_avalon_${rankToView.toLowerCase()}`, 
-        title: `${rankToView}-TIER EXTERMINATION`, 
-        desc: "A world-ending threat darkens the horizon. Stand against oblivion.", 
-        isStory: false, status: 'available',
-        generateBlueprint: () => {
-            let setup = getQuestSetup();
-            let bossDeath = [ ['update_quest_state', { key: 'guild_quest', state: 2 }], ['play_sfx', 'chime'], ['change_weather', 'clear'], ['restore_map_song', hazardMapId], ['notify', `The ${bossName} has been eradicated. Return to Avalon.`] ];
-            let spawnApex = ['spawn_ephemeral_npc', { index: setup.id, x: 10.5, y: 10.5, sprite: bossSprite, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', isBoss: true, isTarget: true, deck: [bossSprite, bossSprite, 93], deathActions: bossDeath }];
-            let warpActions = [ ['change_weather', weatherEffect], ['load_map', hazardMapId], ['play_sfx', 'warp'] ];
-            
-            return { state: 1, type: 'apex_hunt', tName: bossName, qRank: 'S', targetMap: hazardMapId, spawnActions: [spawnApex, ...warpActions] };
-        }
-    });
-}
+                    // 2. AVALON EXCLUSIVE TIER BOSS
+                    let bossSprite, bossName, hazardMapId, weatherEffect;
+                    switch(rankToView) {
+                        case 'COPPER': bossSprite = Math.random() > 0.5 ? 94 : 91; bossName = bossSprite === 94 ? "Ancient Dragon" : "Demon Lord"; hazardMapId = 12; weatherEffect = 'storm'; break;
+                        case 'SILVER': bossSprite = 83; bossName = "Void Incursion"; hazardMapId = 22; weatherEffect = 'space'; break;
+                        case 'GOLD': bossSprite = 46; bossName = "World-Serpent Anomaly"; hazardMapId = 9; weatherEffect = 'apocalypse'; break;
+                        case 'MITHRIL': bossSprite = 999; bossName = "Avatar of Destruction"; hazardMapId = -1; weatherEffect = 'inferno'; break;
+                    }
+                    
+                    quests.push({
+                        id: `s_avalon_${rankToView.toLowerCase()}`, 
+                        title: `${rankToView}-TIER EXTERMINATION`, 
+                        desc: "A world-ending threat darkens the horizon. Stand against oblivion.", 
+                        isStory: false, status: 'available',
+                        generateBlueprint: () => {
+                            let setup = getQuestSetup();
+                            let bossDeath = [ ['update_quest_state', { key: 'guild_quest', state: 2 }], ['play_sfx', 'chime'], ['change_weather', 'clear'], ['restore_map_song', hazardMapId], ['notify', `The ${bossName} has been eradicated. Return to Avalon.`] ];
+                            let spawnApex = ['spawn_ephemeral_npc', { index: setup.id, x: 10.5, y: 10.5, sprite: bossSprite, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', isBoss: true, isTarget: true, deck: [bossSprite, bossSprite, 93], deathActions: bossDeath }];
+                            let warpActions = [ ['change_weather', weatherEffect], ['load_map', hazardMapId], ['play_sfx', 'warp'] ];
+                            
+                            return { state: 1, type: 'apex_hunt', tName: bossName, qRank: 'S', targetMap: hazardMapId, spawnActions: [spawnApex, ...warpActions] };
+                        }
+                    });
+                }
 
-// ==========================================
-// EXAMPLE: HOW TO ADD BRANCH-EXCLUSIVE QUESTS FOR LOWER RANKS
-// ==========================================
-if (rankToView === 'E') {
-    if (window.currentGuildBranch === 'desert') {
-        quests.push({
-            id: 'e_desert_exclusive',
-            title: "Desert Caravan Escort",
-            desc: "Guard a merchant crossing the burning sands.",
-            isStory: false, status: 'available',
-            generateBlueprint: () => { /* Desert setup */ }
-        });
-    }
-}
+                // ==========================================
+                // EXAMPLE: HOW TO ADD BRANCH-EXCLUSIVE QUESTS FOR LOWER RANKS
+                // ==========================================
+                if (rankToView === 'E') {
+                    if (window.currentGuildBranch === 'desert') {
+                        quests.push({
+                            id: 'e_desert_exclusive',
+                            title: "Desert Caravan Escort",
+                            desc: "Guard a merchant crossing the burning sands.",
+                            isStory: false, status: 'available',
+                            generateBlueprint: () => { /* Desert setup */ }
+                        });
+                    }
+                }
 
                 return quests;
             }
@@ -33032,7 +33002,7 @@ if (rankToView === 'E') {
               break;
             case 95://Flurry                                SPELL - DEBUFF
                 this.name = 'Flurry';
-                this.portrait = 26;
+                this.portrait = 59;
                 this.power = 1;
                 this.type = 2;//null 0-monster, 1-item, 2-spell
                 this.subType = 'debuff'
@@ -48456,7 +48426,7 @@ if (rankToView === 'E') {
                     drawShape('qua',x,y,z,5.5,5, 6.5,3 ,8,2 ,7,3,'rgba(0,6,13,1)',1,9,9);
 
                     break;
-                case 59: //Critical Strike 10
+                case 59:case 95: //Critical Strike 10
                     drawShape('arc',x,y,z,5,5,5,0,2,0,0,0,'rgba(255,201,14,.1)',1);
                     drawShape('qua',x,y,z,5-Math.random(),1-Math.random(), 8,7+Math.random() ,7-Math.random(),1+Math.random() ,6+Math.random(),8+Math.random(),'rgba(128,6,13,1)',1,9,9);
                     
