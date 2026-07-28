@@ -21623,7 +21623,7 @@
                             let spawnAction = ['spawn_ephemeral_npc', { 
                                 index: setup.id, x: setup.pos.x, y: setup.pos.y, sprite: target.sprite, 
                                 state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', 
-                                isBoss: true, isTarget: true, deathActions: deathAct 
+                                isBoss: false, isTarget: true, deathActions: deathAct 
                             }];
                             return { state: 1, type: 'bounty', tName: target.name, qRank: 'F', targetMap: this.mapID, targetX: Math.floor(setup.pos.x), targetY: Math.floor(setup.pos.y), spawnActions: [spawnAction] };
                         }
