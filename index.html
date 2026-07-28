@@ -194,7 +194,7 @@
                 9999: { type: 'projectile', name: 'Attack', castStat: 0, defStat: 1, color: [1,1,1], glow: '#ffff00', sprite2D: 315, isHoming: false, range: 1.3, knockback: 1.3 },
                 9998: { type: 'projectile', name: 'Imbued Attack', castStat: 0, defStat: 1, color: [1,0.5,0], glow: '#ff0000', sprite2D: -37, isHoming: false, knockback: 1.5 },
                 // // --- INSTANT FRONTAL AoE (Cone) ---
-                95: { type: 'cone', name: 'Flurry',cooldown: 3000, castStat: 3, defStat: 1, range: 2.0, knockback: 0.5, angle: 0.5 },
+                95: { type: 'cone', name: 'Flurry',cooldown: 3000, castStat: 3, defStat: 1, range: 3.0, knockback: 2, angle: 0.5 },
                 // // --- INSTANT TELEPORT STRIKES ---
                 40: { type: 'assassination', name: 'Steal',cooldown: 90000, castStat: 3, defStat: 3, range: 4, isSteal: true },
                 52: { type: 'assassination', name: 'Backstab',cooldown: 6000, castStat: 3, defStat: 3, range: 9 },
@@ -2619,7 +2619,7 @@
 
                 // Fallback: If they have no classes or no spells matched, give them Fireball
                 if (this.innateSpells.length === 0) {
-                    this.innateSpells = [999]; 
+                    this.innateSpells = [9999]; 
                 }
 
                 // ==========================================
@@ -6843,660 +6843,196 @@
                         // ==========================================
                         // --- B-RANK GUILD CLERK (EXPERT TIER) ---
                         // ==========================================
-                        // Check rank the moment the map loads to set the correct sprite!
-                        let isTraitorGone = (this.memory['guild_rank'] === 'A' || this.memory['guild_rank'] === 'S');
-                        let bRankSprite = isTraitorGone ? 203 : 203;
+                            let traitorActive = this.memory['elder_traitor_active'] === true;
+                            let traitorDefeated = this.memory['elder_traitor_defeated'] === true;
 
-                        let guildClerk5 = new NPC(205, 48.5, 19.5, bRankSprite, 'stationary', '#00ff00', [], 'dialogue', false, 'friendly');
-                        guildClerk5.dialogueFactory = (dungeon) => {
-                            if (dungeon.memory['guild_rep'] === undefined) dungeon.memory['guild_rep'] = 0; 
-                            if (dungeon.memory['guild_rank'] === undefined) dungeon.memory['guild_rank'] = 'F'; 
-                            if (!dungeon.memory['guild_quest']) dungeon.memory['guild_quest'] = { state: 0 }; 
-
-                            let rep = dungeon.memory['guild_rep'];
-                            let rank = dungeon.memory['guild_rank'];
-                            let qData = dungeon.memory['guild_quest'];
-                            let qState = qData.state;
-
-                            // --- THE AFTERMATH: REPLACEMENT CLERK ---
-                            // If you passed the ambush exam, the original traitor clerk is gone!
-                            let isTraitorGone = (rank === 'A' || rank === 'S');
-                            if (isTraitorGone) {
-                                guildClerk5.type = 27; // Change sprite to the fill-in clerk!
-                            }
-
-                            // --- RANK CHECK ---
-                            if (rank === 'F' || rank === 'E' || rank === 'D' || rank === 'C') {
-                                return {
-                                    text: ["This desk handles Expert-level regional threats.", "Return to me when you reach B-Rank."],
-                                    options: ['Leave'],
-                                    yesActions: [['close_dialogue', null]],
-                                    noActions: null
-                                };
-                            }
-
-                            // --- WRONG DESK CHECK ---
-                            if (qState === 1 && qData.qRank !== 'B') {
-                                return {
-                                    text: [`That is a ${qData.qRank}-Rank issue. Take it to the lower desks. I only handle critical threats.`],
-                                    options: ['Leave'],
-                                    yesActions: [['close_dialogue', null]],
-                                    noActions: null
-                                };
-                            }
-
-                            // --- PHASE 0: ASSIGN B-RANK QUEST OR EXAM TRAP ---
-                            if (qState === 0) {
+                            // 1. ONLY spawn the desk clerk if the traitor hasn't revealed himself
+                            if (!traitorActive && !traitorDefeated) {
+                                let guildClerk5 = new NPC(205, 48.5, 19.5, 203, 'stationary', '#00ff00', [], 'dialogue', false, 'friendly');
                                 
-                                // ----------------------------------------------------
-                                // THE B-TO-A RANK EXAM: THE TRAITOR'S TRAP
-                                // ----------------------------------------------------
-                                let promotionThreshold = 30; // Set your required B-Rank rep here!
-                                
-                                if (rank === 'B' && rep >= promotionThreshold) {
-                                    let elderId = 205999;
-                                    let trapMapId = 0; // The Ruined Keep
-                                    
-                                    // The actions that fire on the OVERWORLD when the Tactics match ends
-                                    let examWinActions = [
-                                        ['cleanup_quest_npcs', null],
-                                        ['update_quest_state', { key: 'guild_quest', state: 2 }],
-                                        ['set_memory', { key: 'guild_rank', value: 'A' }], 
-                                        ['give_card', { card: 71, text: "You earned your A-Rank License!" }],
-                                        ['play_song', 20], 
-                                        // Spawn the S-Rank Leader in the overworld to give the final congratulations!
-                                        ['spawn_ephemeral_npc', { index: 205888, x: 'PLAYER_X', y: 'PLAYER_Y+1', sprite: 76, state: 'stationary', role: 'dialogue', alignment: 'friendly', color: '#00ff00', customDialogue: ["We've been tracking that traitor for months. You held him off long enough for us to corner him.", "That was supposed to be your exam, right? Consider yourself an A-Rank.", "Return to the Guild; they need to know what happened."], endActions: [['close_dialogue', null]]}],
-                                        ['trigger_dialogue', 205888]
-                                    ];
+                                guildClerk5.dialogueFactory = (dungeon) => {
+                                    let rep = dungeon.memory['guild_rep'] || 0;
+                                    let rank = dungeon.memory['guild_rank'] || 'F';
+                                    let qData = dungeon.memory['guild_quest'] || { state: 0 };
+                                    let qState = qData.state;
 
-                                    let spawnElder = ['spawn_ephemeral_npc', {
-                                        index: elderId, x: 5.5, y: 2.5, sprite: 49, state: 'stationary', role: 'dialogue', alignment: 'friendly', color: '#ff0000',
-                                        isBoss: true,               // <--- TELLS THE ENGINE HE IS A BOSS
-                                        deck: [90, 56, 56, 56, 54], // <--- GIVES HIM CULTIST MINIONS
-                                        customDialogue: [
-                                            "You actually showed up.", 
-                                            "You've been a thorn in the Master's side for too long. I assigned you those missions hoping you'd die, but you just kept succeeding.", 
-                                            "Now, I will handle you myself."
-                                        ],
-                                        options: ['Draw Weapon'],
-                                        yesActions: [
-                                            ['play_sfx', 'horn'],
-                                            ['transform_npc', { index: elderId, clearDialogue: true, newDeathActions: examWinActions }], // ADDED DEATH ACTIONS!
-                                            // FIRE THE SPECIAL EXAM FLAG!
-                                            ['start_tactics', { id: elderId, isExam: true, isElderAmbush: true, stakes: 'real' }],
-                                            ['close_dialogue', null]
-                                        ],
-                                        noActions: null
-                                    }];
-
-                                    let questBlueprint = { state: 1, type: 'exam_trap', tName: 'A-Rank Promotion', qRank: 'B', targetMap: trapMapId, spawnActions: [spawnElder] };
-
-                                    return {
-                                        text: [
-                                            "Your A-Rank promotion is due.",
-                                            "This exam requires extreme privacy and field testing. Meet me in the depths of Map 14.",
-                                            "Come alone."
-                                        ],
-                                        options: ['Accept Orders', 'Wait'],
-                                        yesActions: [
-                                            ['set_memory', { key: 'guild_quest', value: questBlueprint }],
-                                            ['play_sfx', 'click'],
-                                            ['notify', { text: "Rendezvous point marked on Map 14.", endActions: [['close_dialogue', null]] }]
-                                        ],
-                                        noActions: [['close_dialogue', null]]
-                                    };
-                                }
-
-                                // ----------------------------------------------------
-                                // STANDARD B-RANK REPEATABLES
-                                // ----------------------------------------------------
-                                let questType = Math.floor(Math.random() * 3); 
-                                let safePOS = this.getSafeSpawn(centerX, centerY, maxRadius);
-                                let randomX = safePOS.x;
-                                let randomY = safePOS.y;
-
-                                if (questType === 0) {
-                                    // 1. THE APOCALYPTIC RITUAL
-                                    let bossId = 205000;
-                                    let pillarId1 = 205001; let pillarId2 = 205002; let pillarId3 = 205003;
-
-                                    let apexDeath = [
-                                        ['update_quest_state', { key: 'guild_quest', state: 2 }],
-                                        ['change_sky', 'rgba(255,255,255,1)'], 
-                                        ['change_weather', 'clear'],           
-                                        ['restore_map_song', dungeon.mapID],   
-                                        ['play_sfx', 'chime'],
-                                        ['notify', "The Apex has fallen! The sky is clearing. Return to the Guild."]
-                                    ];
-
-                                    let ritualClimax = [
-                                        ['change_sky', '#8a2500'], // Blood Red Sky
-                                        ['change_weather', 'inferno'], 
-                                        ['play_song', 8], // Boss Music!
-                                        ['notify', "The ritual shattered! The Apex has been forcibly dragged into this realm!"],
-                                        ['spawn_ephemeral_npc', { index: bossId, x: 'PLAYER_X', y: 'PLAYER_Y-1', sprite: 63.1, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', isBoss: true, deck: [63, 63, 60, 56], deathActions: apexDeath }],
+                                    // --- B-RANK TO A-RANK PROMOTION (Triggered via UI 'info' quest) ---
+                                    if (qState === 0 && rank === 'B' && rep >= 30 && qData.type === 'info' && qData.tName === 'A-Rank Promotion') {
                                         
-                                    ];
+                                        // Generate a safe spawn far enough away on Map 0
+                                        let safePOS = dungeon.getSafeSpawn(53.5, 26.5, 20); 
 
-                                    let killPayload = ['update_quest_count', { key: 'guild_quest', onComplete: ritualClimax }];
+                                        // The actions that trigger when you finally beat him in Tactics
+                                        let elderDeathActions = [
+                                            ['set_memory', { key: 'elder_traitor_defeated', value: true }],
+                                            ['set_memory', { key: 'elder_traitor_active', value: false }],
+                                            ['set_memory', { key: 'guild_rank', value: 'A' }], 
+                                            ['give_card', { card: 71, text: "You earned your A-Rank License!" }],
+                                            ['play_song', 20], 
+                                            ['play_sfx', 'chime'],
+                                            ['notify', "The Elder is dead! You are now an A-Rank Adventurer!"]
+                                        ];
 
-                                    const createPillar = (id, px, py) => {
-                                        return ['spawn_ephemeral_npc', {
-                                            index: id, x: px, y: py, sprite: 18, state: 'stationary', role: 'dialogue', alignment: 'friendly', color: '#ffff00',
-                                            customDialogue: ["*The pillar hums with dark, apocalyptic energy.*"],
-                                            options: ['Shatter Pillar', 'Leave'],
+                                        return {
+                                            text: [
+                                                "So, you've come for your A-Rank promotion.",
+                                                "This exam requires extreme privacy and field testing. Meet me in the ruins outside the Guild.",
+                                                "Come alone."
+                                            ],
+                                            options: ['Accept Orders', 'Wait'],
                                             yesActions: [
-                                                killPayload, 
-                                                ['disappear', id], 
-                                                ['play_sfx', 'block'], 
-                                                ['start_wave', { delay: 0.5, waves: [[{sprite: 56}, {sprite: 42}]] }],
-                                                ['close_dialogue', null]
+                                                ['play_sfx', 'teleport'],
+                                                
+                                                // 1. Permanently flag the Elder as an active world boss
+                                                ['set_memory', { key: 'elder_traitor_active', value: true }],
+                                                ['set_memory', { key: 'elder_x', value: safePOS.x }],
+                                                ['set_memory', { key: 'elder_y', value: safePOS.y }],
+                                                
+                                                // 2. Clear the active guild quest so they can do other B-Rank stuff!
+                                                ['set_memory', { key: 'guild_quest', value: { state: 0 } }],
+                                                
+                                                // 3. Make the desk clerk disappear FOREVER right before their eyes
+                                                ['disappear', 205],
+                                                
+                                                // 4. Instantly spawn the boss on Map 0 for this session 
+                                                ['spawn_ephemeral_npc', {
+                                                    index: 205999, x: safePOS.x, y: safePOS.y, sprite: 49, state: 'stationary', role: 'battle', alignment: 'foe', color: '#ff0000',
+                                                    isBoss: true, isTarget: true, deck: [90, 56, 56, 56, 54],
+                                                    deathActions: elderDeathActions
+                                                }],
+                                                
+                                                ['notify', { text: "The Elder vanished. Find him in the ruins on Map 0.", endActions: [['close_dialogue', null]] }]
                                             ],
                                             noActions: [['close_dialogue', null]]
-                                        }];
-                                    };
-
-                                    let questBlueprint = { state: 1, type: 'ritual', tName: 'Apocalyptic Ritual', qRank: 'B', count: 0, max: 3, targetMap: dungeon.mapID, spawnActions: [
-                                        createPillar(pillarId1, randomX, randomY), createPillar(pillarId2, randomX + 4, randomY - 4), createPillar(pillarId3, randomX - 4, randomY + 4)
-                                    ]};
-
-                                    return {
-                                        text: [isTraitorGone ? "A remnant cult cell is attempting a massive summoning." : "EMERGENCY. A cult cell is attempting to summon an Apex predator.", "Find their 3 Ritual Pillars and destroy them. Be ready for heavy resistance."],
-                                        options: ['Stop the Ritual', 'Not Ready'],
-                                        yesActions: [['set_memory', { key: 'guild_quest', value: questBlueprint }], ['play_sfx', 'horn'], ['notify', { text: "Deploying to target zone. Sabotage the pillars.", endActions: [['close_dialogue', null]] }]],
-                                        noActions: [['close_dialogue', null]]
-                                    };
-
-                                } else if (questType === 1) {
-                                    // 2. THE BLACK-SITE EXTRACTION
-                                    let vipId = 205101; let portalId = 205102;
-
-                                    let portalYes = [
-                                        ['stop_hunted', null], ['change_sky', 'rgba(255,255,255,1)'], ['change_weather', 'clear'], ['restore_map_song', dungeon.mapID],
-                                        ['disappear', vipId], ['disappear', portalId], ['update_quest_state', { key: 'guild_quest', state: 2 }],
-                                        ['play_sfx', 'chime'], ['notify', { text: "Target secured. The lockdown is lifted.", endActions: [['close_dialogue', null]] }]
-                                    ];
-
-                                    let vipYes = [
-                                        ['become_ally', 5], ['disappear', vipId],
-                                        ['change_sky', '#000000'], ['change_weather', 'space'], ['play_song', 25], 
-                                        ['start_hunted', { waves: 10, interval: 150, mobs: [{sprite: 74}, {sprite: 42}] }],
-                                        ['play_sfx', 'horn'], ['notify', { text: "ALARM TRIPPED! Facility on lockdown! Run to the Extraction Portal!", endActions: [['close_dialogue', null]] }]
-                                    ];
-
-                                    let spawnVip = ['spawn_ephemeral_npc', { index: vipId, x: randomX, y: randomY, sprite: 5, state: 'stationary', role: 'dialogue', alignment: 'friendly', color: '#00ff00', customDialogue: ["You're from the Guild? Finally! Get me out of here!"], options: ['Extract VIP'], yesActions: vipYes }];
-                                    let spawnPortal = ['spawn_ephemeral_npc', { index: portalId, x: dungeon.x, y: dungeon.y, sprite: 99, state: 'stationary', role: 'dialogue', alignment: 'friendly', color: '#ffff00', customDialogue: ["*Extraction Portal Active*"], options: ['Secure VIP'], yesActions: portalYes }];
-
-                                    let questBlueprint = { state: 1, type: 'extraction', tName: 'Black-Site Rescue', qRank: 'B', targetMap: dungeon.mapID, spawnActions: [spawnVip, spawnPortal] };
-
-                                    return {
-                                        text: ["A High-Council member is being held in a black-site dungeon.", "Find the VIP and sprint to the extraction portal. You will be heavily hunted."],
-                                        options: ['Start Extraction', 'Leave'],
-                                        yesActions: [['set_memory', { key: 'guild_quest', value: questBlueprint }], ['play_sfx', 'click'], ['notify', { text: "Portal set at the entrance. Find the VIP.", endActions: [['close_dialogue', null]] }]],
-                                        noActions: [['close_dialogue', null]]
-                                    };
-
-                                } else {
-                                    // 3. THE APEX MULTIPLICATION
-                                    let p1Id = 205200; let p2IdA = 205201; let p2IdB = 205202; 
-                                    let p3IdA = 205203; let p3IdB = 205204; let p3IdC = 205205; let p3IdD = 205206; 
-
-                                    let p3Death = [['update_quest_count', { key: 'guild_quest', onComplete: [['update_quest_state', { key: 'guild_quest', state: 2 }], ['play_sfx', 'chime'], ['notify', "The bioweapon has been eradicated! Return to the Guild."]] }]];
-
-                                    let p2ADeath = [['notify', "The monster split again!"], ['play_sfx', 'horn'], ['spawn_ephemeral_npc', { index: p3IdA, x: 'PLAYER_X', y: 'PLAYER_Y', sprite: 77, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', deathActions: p3Death }], ['spawn_ephemeral_npc', { index: p3IdB, x: 'PLAYER_X-1', y: 'PLAYER_Y', sprite: 77, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', deathActions: p3Death }]];
-                                    let p2BDeath = [['notify', "The monster split again!"], ['play_sfx', 'horn'], ['spawn_ephemeral_npc', { index: p3IdC, x: 'PLAYER_X', y: 'PLAYER_Y', sprite: 77, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', deathActions: p3Death }], ['spawn_ephemeral_npc', { index: p3IdD, x: 'PLAYER_X+1', y: 'PLAYER_Y', sprite: 77, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', deathActions: p3Death }]];
-                                    let p1Death = [['notify', "The Apex has split into two!"], ['play_sfx', 'horn'], ['spawn_ephemeral_npc', { index: p2IdA, x: 'PLAYER_X', y: 'PLAYER_Y', sprite: 77.1, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', isBoss: true, deathActions: p2ADeath }], ['spawn_ephemeral_npc', { index: p2IdB, x: 'PLAYER_X-1', y: 'PLAYER_Y-1', sprite: 77.1, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', isBoss: true, deathActions: p2BDeath }]];
-
-                                    let spawnApex = ['spawn_ephemeral_npc', { index: p1Id, x: randomX, y: randomY, sprite: 77.2, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', isBoss: true, deck: [77, 77, 77], deathActions: p1Death }];
-
-                                    let questBlueprint = { state: 1, type: 'apex', tName: 'Bioweapon Raid', qRank: 'B', count: 0, max: 4, targetMap: dungeon.mapID, spawnActions: [spawnApex] };
-
-                                    return {
-                                        text: ["A terrifying bioweapon has been unleashed.", "It possesses aggressive cellular regeneration. Slaying it may cause it to violently divide.", "Leave nothing alive."],
-                                        options: ['Deploy to Zone', 'Leave'],
-                                        yesActions: [['set_memory', { key: 'guild_quest', value: questBlueprint }], ['play_sfx', 'click'], ['notify', { text: "Coordinates locked. Prepare for a prolonged engagement.", endActions: [['close_dialogue', null]] }]],
-                                        noActions: [['close_dialogue', null]]
-                                    };
-                                }
-                            }
-
-                            // --- PHASE 1 & 2: UNIVERSAL TURN-IN OR ABANDON ---
-                            if (qState === 1 || qState === 2) {
-                                let targetName = qData.tName;
-                                let questRank = qData.qRank || 'B';
-                                let repPenalty = 8; 
-                                let repReward = 8;  
-
-                                // EXAM TRAP CHECK
-                                if (qData.type === 'exam_trap') {
-                                    if (qState === 1) {
-                                        return {
-                                            text: ["I gave you coordinates. Do not return until the task is done."],
-                                            options: ['Leave'], yesActions: [['close_dialogue', null]], noActions: null
                                         };
                                     }
-                                    // Note: Quest state 2 for the Exam will be flipped inside the Tactics Engine by the S-Rank!
-                                }
+                                    else if (qData.type === 'info') {
+                                        // Fallback if they hold a different info quest
+                                        return { text: ["You have an assignment to turn in elsewhere."], options: ['Leave'], yesActions: [['close_dialogue', null]] };
+                                    }
 
-                                if (qState === 2) {
-                                    let turnInActions = [
-                                        ['close_dialogue', null],
-                                        ['set_memory', { key: 'guild_quest', value: { state: 0 } }],
-                                        ['set_memory', { key: 'guild_rep', value: rep + repReward }],
-                                        ['play_sfx', 'heal']
-                                    ];
-
-                                    for (let i = 0; i < 5; i++) turnInActions.push(['give_card', { card: 38, text: `Quest Reward Received! (${i+1}/5)` }]);
-                                    turnInActions.push(['give_card', { card: 65, text: "B-Rank Hazard Gem Received!" }]);
-
-                                    return {
-                                        text: [isTraitorGone ? "Outstanding work. You saved countless lives today." : "You survived. Unfortunate... I mean, impressive. Take your payment."],
-                                        options: ['Turn In', 'Leave'],
-                                        yesActions: turnInActions,
-                                        noActions: [['close_dialogue', null]]
-                                    };
-                                } else {
-                                    return {
-                                        text: [`You are assigned to the B-Rank ${targetName} emergency.`, `Do not fail us. The stakes are too high.`],
-                                        options: [`Abandon Quest (-${repPenalty} Rep)`, 'Leave'],
-                                        yesActions: [
-                                            ['play_sfx', 'cancel'],
-                                            ['stop_hunted', null],
-                                            ['change_sky', 'rgba(255,255,255,1)'], 
-                                            ['change_weather', 'clear'],           
-                                            ['restore_map_song', dungeon.mapID],
-                                            ['set_memory', { key: 'guild_quest', value: { state: 0 } }], 
-                                            ['set_memory', { key: 'guild_rep', value: Math.max(0, rep - repPenalty) }], 
-                                            ['notify', { text: "You abandoned a critical mission. The Guild will not forget this.", endActions: [['close_dialogue', null]] }]
-                                        ],
-                                        noActions: [['close_dialogue', null]]
-                                    };
-                                }
+                                    return { text: ["This desk handles Expert-level regional threats.", "Return to me when you need clearance."], endActions: [['close_dialogue', null]] };
+                                };
+                                
+                                this.npcs.push(guildClerk5);
                             }
 
-                            return { text: ["..."], endActions: [['close_dialogue', null]] };
-                        };
-                        
-                        this.npcs.push(guildClerk5);
+                            // 2. IF THE TRAITOR IS ACTIVE (Spawn him permanently as a world boss)
+                            if (traitorActive && !traitorDefeated) {
+                                let ex = this.memory['elder_x'] || 60.5;
+                                let ey = this.memory['elder_y'] || 30.5;
+                                
+                                let elderBoss = new NPC(205999, ex, ey, 49, 'stationary', '#ff0000', [], 'battle', false, 'foe');
+                                elderBoss.isBoss = true;
+                                elderBoss.isTarget = true;
+                                elderBoss.deck = [90, 56, 56, 56, 54]; // Give him his Cultist deck
+                                elderBoss.deathActions = [
+                                    ['set_memory', { key: 'elder_traitor_defeated', value: true }],
+                                    ['set_memory', { key: 'elder_traitor_active', value: false }],
+                                    ['set_memory', { key: 'guild_rank', value: 'A' }], 
+                                    ['give_card', { card: 71, text: "You earned your A-Rank License!" }],
+                                    ['play_song', 20], 
+                                    ['play_sfx', 'chime'],
+                                    ['notify', "The Elder is dead! You are now an A-Rank Adventurer!"]
+                                ];
+                                this.npcs.push(elderBoss);
+                            }
                         // ==========================================
-                        // --- A-RANK GUILD CLERK (VANGUARD TIER) ---
+                        // --- A-RANK CLERK (VANGUARD COMMANDER - MAP 0) ---
                         // ==========================================
-                        let guildClerk6 = new NPC(206, 58.5, 19.5, 197, 'stationary', '#00ff00', [], 'dialogue', false, 'friendly');
-                        
-                        guildClerk6.dialogueFactory = (dungeon) => {
-                            if (dungeon.memory['guild_rep'] === undefined) dungeon.memory['guild_rep'] = 0; 
-                            if (dungeon.memory['guild_rank'] === undefined) dungeon.memory['guild_rank'] = 'F'; 
-                            if (!dungeon.memory['guild_quest']) dungeon.memory['guild_quest'] = { state: 0 }; 
+                            let guildClerk6 = new NPC(206, 58.5, 19.5, 197, 'stationary', '#00ff00', [], 'dialogue', false, 'friendly');
                             
-                            // --- A-RANK CAMPAIGN TRACKER ---
-                            // 0 = Inquisitor Ambush, 1 = Expedition, 2 = Ready for S-Rank Interview, 3 = Repeatable Phase
-                            if (dungeon.memory['a_rank_progress'] === undefined) dungeon.memory['a_rank_progress'] = 0;
+                            guildClerk6.dialogueFactory = (dungeon) => {
+                                let rank = dungeon.memory['guild_rank'] || 'F';
+                                let aProgress = dungeon.memory['a_rank_progress'] || 0;
+                                let qData = dungeon.memory['guild_quest'] || { state: 0 };
+                                let rankValues = { 'F':0, 'E':1, 'D':2, 'C':3, 'B':4, 'A':5, 'S':6 };
 
-                            let rep = dungeon.memory['guild_rep'];
-                            let rank = dungeon.memory['guild_rank'];
-                            let qData = dungeon.memory['guild_quest'];
-                            let qState = qData.state;
-                            let aProgress = dungeon.memory['a_rank_progress'];
-
-                            // --- RANK CHECK ---
-                            if (rank === 'F' || rank === 'E' || rank === 'D' || rank === 'C' || rank === 'B') {
-                                return {
-                                    text: ["I coordinate the Guild's Elite Vanguard.", "You aren't cleared for this intel. Return when you achieve A-Rank."],
-                                    options: ['Leave'],
-                                    yesActions: [['close_dialogue', null]],
-                                    noActions: null
-                                };
-                            }
-
-                            if (qState === 1 && qData.qRank !== 'A') {
-                                return {
-                                    text: [`That's a ${qData.qRank}-Rank operation. Don't waste my time, Vanguard.`],
-                                    options: ['Leave'], yesActions: [['close_dialogue', null]], noActions: null
-                                };
-                            }
-
-                            // --- PHASE 0: ASSIGN A-RANK QUEST ---
-                            if (qState === 0) {
-                                
-                                // Wait for the S-Rank Exam to be built!
-                                if (aProgress === 2) {
-                                    return {
-                                        text: ["You've crippled their leadership.", "The Guildmaster has requested a personal audience with you. Stand by for your summons."],
-                                        options: ['Leave'], yesActions: [['close_dialogue', null]], noActions: null
-                                    };
+                                if (rankValues[rank] < 5) {
+                                    return { text: ["I coordinate the Guild's Elite Vanguard.", "You aren't cleared for this intel. Return when you achieve A-Rank."], options: ['Leave'], yesActions: [['close_dialogue', null]] };
                                 }
 
-                                // Determine Quest
-                                let questToGive = '';
-                                if (aProgress === 0) questToGive = 'inquisitor';
-                                else if (aProgress === 1) questToGive = 'expedition';
-                                else questToGive = (Math.random() < 0.5) ? 'stronghold' : 'expedition_repeat';
-
-                                let safePOS = this.getSafeSpawn(centerX, centerY, maxRadius);
-                                let randomX = safePOS.x;
-                                let randomY = safePOS.y;
-
-                                // ----------------------------------------------------
-                                // STORY MISSION 1: THE INQUISITOR'S TRAP
-                                // ----------------------------------------------------
-                                if (questToGive === 'inquisitor') {
-                                    let scoutId = 206001;
-                                    let inqId = 206002;
-
-                                    let ambushActions = [
-                                        ['play_sfx', 'horn'],
-                                        ['disappear', scoutId],
-                                        ['change_weather', 'space'], // Darken the map
-                                        ['spawn_ephemeral_npc', { index: inqId, x: randomX, y: randomY, sprite: 5, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', isBoss: true, deck: [5, 29, 29, 92], deathActions: [['update_quest_state', { key: 'guild_quest', state: 2 }], ['change_weather', 'clear'], ['play_sfx', 'chime'], ['notify', "The Inquisitor is dead! Return to base!"]] }],
-                                        ['spawn_ephemeral_npc', { index: inqId+1, x: randomX, y: randomY, sprite: 77.1, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', isBoss: true }],
-                                        ['spawn_ephemeral_npc', { index: inqId+2, x: randomX, y: randomY, sprite: 77.1, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', isBoss: true }],
-                                        ['notify', { text: "Grand Inquisitor: You killed the Elder. For that, you will suffer!", endActions: [['close_dialogue', null]] }],
-                                        
-                                    ];
-
-                                    let spawnScout = ['spawn_ephemeral_npc', {
-                                        index: scoutId, x: randomX, y: randomY, sprite: 42, state: 'stationary', role: 'dialogue', alignment: 'friendly', color: '#00ff00',
-                                        customDialogue: ["*Cough* Get out of here! It wasn't a beast... it's a Cult Execution Squad! IT'S A TRAP!"],
-                                        endActions: ambushActions
-                                    }];
-
-                                    let questBlueprint = { state: 1, type: 'inquisitor', tName: 'Abyssal Hunt', qRank: 'A', targetMap: 0, spawnActions: [spawnScout] }; // Deep dungeon map
-
-                                    return {
-                                        text: ["I can't believe they infiltrated us so deeply.", "Since you dealt with one of their Elders, I can trust you. We have an invisible stalker assassinating couriers.", "Get down there and put it down."],
-                                        options: ['Begin Hunt', 'Leave'],
-                                        yesActions: [['set_memory', { key: 'guild_quest', value: questBlueprint }], ['play_sfx', 'click'], ['notify', { text: "Stalker last seen in the deep dungeon.", endActions: [['close_dialogue', null]] }]],
-                                        noActions: [['close_dialogue', null]]
-                                    };
+                                if (rank === 'S') {
+                                    return { text: ["Vanguard Commander: *Salutes*", "It is an honor to stand in your presence, S-Rank."], options: ['Leave'], yesActions: [['close_dialogue', null]] };
                                 }
 
-                                // ----------------------------------------------------
-                                // STORY MISSION 2: THE GUILD EXPEDITION
-                                // ----------------------------------------------------
-                                else if (questToGive === 'expedition' || questToGive === 'expedition_repeat') {
-                                    let artifactId = 206101;
-                                    let bossId = 206102;
-                                    let spawnList = [];
-
-                                    let bossDeath = [['update_quest_state', { key: 'guild_quest', state: 2 }], ['play_sfx', 'chime'], ['notify', "The Cult forces have been routed! The artifact is secure!"]];
-                                    
-                                    let artifactPickup = [
-                                        ['disappear', artifactId], ['play_sfx', 'horn'],
-                                        ['spawn_ephemeral_npc', { index: bossId, x: randomX , y: randomY, sprite: 35, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', isBoss: true, deck: [35, 93, 12], deathActions: bossDeath }],
-                                        ['spawn_ephemeral_npc', { index: bossId+1, x: randomX , y: randomY, sprite: 56, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000' }],
-                                        ['spawn_ephemeral_npc', { index: bossId+2, x: randomX , y: randomY, sprite: 56, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000' }],
-                                        
-                                        ['notify', { text: "Cult Strike Leader: Fool! We'll pry that artifact from your cold, dead hands!", endActions: [['close_dialogue', null]] }]
-                                    ];
-
-                                    spawnList.push(['spawn_ephemeral_npc', { index: artifactId, x: randomX, y: randomY, sprite: 10, state: 'stationary', role: 'dialogue', alignment: 'friendly', color: '#ffff00', customDialogue: ["*An ancient, glowing artifact.*"], options: ['Secure Artifact'], yesActions: artifactPickup }]);
-
-                                    // Spawn a warzone around the artifact
-                                    for (let i=1; i<=3; i++) spawnList.push(['spawn_ephemeral_npc', { index: artifactId+10+i, x: randomX + Math.random()*4 - 2, y: randomY + Math.random()*4 - 2, sprite: 42, state: 'chasing', role: 'dialogue', alignment: 'defender', color: '#0000ff' }]);
-                                    for (let i=1; i<=3; i++) spawnList.push(['spawn_ephemeral_npc', { index: artifactId+20+i, x: randomX + Math.random()*4 - 2, y: randomY + Math.random()*4 - 2, sprite: 54, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000' }]);
-
-                                    let questBlueprint = { state: 1, type: 'expedition', tName: 'Training Expedition', qRank: 'A', targetMap: dungeon.mapID, spawnActions: spawnList };
-
-                                    return {
-                                        text: [
-                                            aProgress === 1 ? "The Guild is hosting a dungeon expedition to find an artifact. It's a training ground for B-Ranks and below." : "Another training expedition is underway.",
-                                            "I need you to monitor the trainees, provide support, and secure the item. Do not let the Cult interfere."
-                                        ],
-                                        options: ['Join Expedition', 'Leave'],
-                                        yesActions: [['set_memory', { key: 'guild_quest', value: questBlueprint }], ['play_sfx', 'click'], ['notify', { text: "Expedition coordinates marked.", endActions: [['close_dialogue', null]] }]],
-                                        noActions: [['close_dialogue', null]]
-                                    };
+                                if (qData.state === 0 && qData.type === 'info' && qData.tName === 'The Mastermind') {
+                                    return { text: ["The Guildmaster is waiting for you at the top desk.", "Don't keep him waiting."], options: ['Leave'], yesActions: [['close_dialogue', null]] };
                                 }
 
-                                // ----------------------------------------------------
-                                // REPEATABLE: THE STRONGHOLD RAID
-                                // ----------------------------------------------------
-                                else if (questToGive === 'stronghold') {
-                                    let bossId = 206200;
-                                    let spawnList = [];
+                                if (aProgress === 0) return { text: ["Check the board. We have an invisible stalker taking out our couriers. Hunt it down."], options: ['Leave'], yesActions: [['close_dialogue', null]] };
+                                if (aProgress === 1) return { text: ["Next task is on the board. Grab the Expedition contract and watch the trainees' backs."], options: ['Leave'], yesActions: [['close_dialogue', null]] };
 
-                                    let bossDeath = [['update_quest_state', { key: 'guild_quest', state: 2 }], ['play_sfx', 'chime'], ['notify', "The Stronghold Commander is dead. The base is ours!"]];
+                                return { text: ["..."], endActions: [['close_dialogue', null]] };
+                            };
+                            this.npcs.push(guildClerk6);
 
-                                    spawnList.push(['spawn_ephemeral_npc', { index: bossId, x: randomX, y: randomY, sprite: 5, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', isBoss: true, deck: [5, 66, 66, 26, 92], deathActions: bossDeath }]);
-                                    for (let i=1; i<=4; i++) spawnList.push(['spawn_ephemeral_npc', { index: bossId+i, x: randomX + Math.random()*3 - 1.5, y: randomY + Math.random()*3 - 1.5, sprite: 55, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000' }]);
-
-                                    let questBlueprint = { state: 1, type: 'stronghold', tName: 'Stronghold Raid', qRank: 'A', targetMap: dungeon.mapID, spawnActions: spawnList };
-
-                                    return {
-                                        text: ["We've identified a minor Cult stronghold in the region.", "Kick the door in, slaughter the guards, and execute the Commander."],
-                                        options: ['Begin Raid', 'Leave'],
-                                        yesActions: [['set_memory', { key: 'guild_quest', value: questBlueprint }], ['play_sfx', 'click'], ['notify', { text: "Stronghold coordinates marked. Show no mercy.", endActions: [['close_dialogue', null]] }]],
-                                        noActions: [['close_dialogue', null]]
-                                    };
-                                }
-                            }
-
-                            // --- PHASE 1 & 2: UNIVERSAL TURN-IN OR ABANDON ---
-                            if (qState === 1 || qState === 2) {
-                                let targetName = qData.tName;
-                                let questRank = qData.qRank || 'A';
-                                let repPenalty = 12; 
-                                let repReward = 12;  
-
-                                if (qState === 2) {
-                                    let successText = ["Mission accomplished. The Guild honors your strength."];
-                                    
-                                    let turnInActions = [
-                                        ['close_dialogue', null],
-                                        ['set_memory', { key: 'guild_quest', value: { state: 0 } }]
-                                    ];
-
-                                    // --- CAMPAIGN PROGRESSION LOGIC ---
-                                    if (qData.type === 'inquisitor') {
-                                        successText = ["You were ambushed by an Inquisitor?! And two mutant abominations?", "You survived an execution squad... your strength is terrifying. Take this bonus."];
-                                        repReward = 15;
-                                        turnInActions.push(['give_card', { card: 65, text: "Bonus Hazard Gem Received!" }]);
-                                        if (aProgress === 0) turnInActions.push(['set_memory', { key: 'a_rank_progress', value: 1 }]); 
-                                    } 
-                                    else if (qData.type === 'expedition') {
-                                        successText = ["I can't believe it... we lost so many good trainees...", "*Sigh* But you secured the artifact and killed the Strike Leader. You saved who you could."];
-                                        if (aProgress === 1) turnInActions.push(['set_memory', { key: 'a_rank_progress', value: 2 }]); // ADVANCE TO S-RANK EXAM
-                                    }
-                                    else if (qData.type === 'stronghold') {
-                                        successText = ["Another Cult stronghold burns. Excellent work, Vanguard."];
-                                    }
-
-                                    for (let i = 0; i < 6; i++) { // 6x Rewards for A-Rank!
-                                        turnInActions.push(['give_card', { card: 38, text: `Quest Reward Received! (${i+1}/6)` }]);
-                                    }
-                                    turnInActions.push(['give_card', { card: 50, text: "A-Rank Hazard Pay Received!" }]);
-
-                                    turnInActions.push(['set_memory', { key: 'guild_rep', value: rep + repReward }]);
-                                    turnInActions.push(['play_sfx', 'heal']);
-
-                                    return {
-                                        text: successText,
-                                        options: ['Turn In', 'Leave'],
-                                        yesActions: turnInActions,
-                                        noActions: [['close_dialogue', null]]
-                                    };
-                                } else {
-                                    return {
-                                        text: [`You are assigned to the A-Rank ${targetName} operation.`, `The Vanguard does not retreat. Finish the mission.`],
-                                        options: [`Abandon Quest (-${repPenalty} Rep)`, 'Leave'],
-                                        yesActions: [
-                                            ['play_sfx', 'cancel'],
-                                            ['change_weather', 'clear'], // Failsafe clearing
-                                            ['set_memory', { key: 'guild_quest', value: { state: 0 } }], 
-                                            ['set_memory', { key: 'guild_rep', value: Math.max(0, rep - repPenalty) }], 
-                                            ['notify', { text: "You abandoned a Vanguard operation. Disgraceful.", endActions: [['close_dialogue', null]] }]
-                                        ],
-                                        noActions: [['close_dialogue', null]]
-                                    };
-                                }
-                            }
-
-                            return { text: ["..."], endActions: [['close_dialogue', null]] };
-                        };
-                        
-                        this.npcs.push(guildClerk6);
                         // ==========================================
-                        // --- S-RANK GUILDMASTER (THE FINALE) ---
+                        // --- S-RANK GUILDMASTER (MAP 0) ---
                         // ==========================================
-                        let guildClerk7 = new NPC(207, 53.5, 18.5, 200, 'stationary', '#ffd700', [], 'dialogue', false, 'friendly');
-                        
-                        guildClerk7.dialogueFactory = (dungeon) => {
-                            if (dungeon.memory['guild_rep'] === undefined) dungeon.memory['guild_rep'] = 0; 
-                            if (dungeon.memory['guild_rank'] === undefined) dungeon.memory['guild_rank'] = 'F'; 
-                            if (!dungeon.memory['guild_quest']) dungeon.memory['guild_quest'] = { state: 0 }; 
-                            if (dungeon.memory['a_rank_progress'] === undefined) dungeon.memory['a_rank_progress'] = 0;
+                            let guildClerk7 = new NPC(207, 53.5, 18.5, 200, 'stationary', '#ffd700', [], 'dialogue', false, 'friendly');
+                            
+                            guildClerk7.dialogueFactory = (dungeon) => {
+                                let rank = dungeon.memory['guild_rank'] || 'F';
+                                let qData = dungeon.memory['guild_quest'] || { state: 0 };
 
-                            let rep = dungeon.memory['guild_rep'];
-                            let rank = dungeon.memory['guild_rank'];
-                            let qData = dungeon.memory['guild_quest'];
-                            let qState = qData.state;
-                            let aProgress = dungeon.memory['a_rank_progress'];
+                                if (rank !== 'A' && rank !== 'S') {
+                                    return { text: ["I am the Guildmaster.", "Speak to the receptionists. Do not bother me unless it is a matter of continental security."], options: ['Leave'], yesActions: [['close_dialogue', null]] };
+                                }
 
-                            // --- RANK CHECK ---
-                            if (rank !== 'A' && rank !== 'S') {
-                                return {
-                                    text: ["I am the Guildmaster.", "Speak to the receptionists for your assignments. Do not bother me unless it is a matter of continental security."],
-                                    options: ['Leave'], yesActions: [['close_dialogue', null]], noActions: null
-                                };
-                            }
+                                // --- POST-GAME LORE ---
+                                if (rank === 'S') {
+                                    return { 
+                                        text: ["Ah, our greatest champion.", "The former S-Rank Field Leader is resting in the healing springs of Avalon (Map 10).", "Seek him out if you wish to challenge the realm's ultimate anomalies."], 
+                                        options: ['Leave'], yesActions: [['close_dialogue', null]] 
+                                    };
+                                }
 
-                            // --- WRONG DESK CHECK ---
-                            if (qState === 1 && qData.qRank !== 'S') {
-                                return {
-                                    text: ["You have an active operation. Finish it before requesting an audience with me."],
-                                    options: ['Leave'], yesActions: [['close_dialogue', null]], noActions: null
-                                };
-                            }
-
-                            // --- PHASE 0: ASSIGN S-RANK QUEST OR FINALE ---
-                            if (qState === 0) {
-                                
-                                let safePOS = this.getSafeSpawn(centerX, centerY, maxRadius);
-                                let randomX = safePOS.x;
-                                let randomY = safePOS.y;
-
-                                // ----------------------------------------------------
-                                // THE S-RANK EXAM: THE MASTERMIND
-                                // ----------------------------------------------------
-                                if (rank === 'A' && aProgress === 2) {
+                                // --- OPEN THE INFERNO PORTAL ---
+                                if (qData.state === 0 && qData.type === 'info' && qData.tName === 'The Mastermind') {
                                     let bossId = 207999;
-                                    let finalMapId = 12; // Inferno Map!
                                     
+                                    // Death Actions for the Mastermind (Triggered in Tactics)
                                     let finaleWinActions = [
                                         ['update_quest_state', { key: 'guild_quest', state: 2 }],
                                         ['set_memory', { key: 'guild_rank', value: 'S' }], 
-                                        ['set_memory', { key: 'a_rank_progress', value: 3 }], // Advance to Repeatable S-Rank!
+                                        ['set_memory', { key: 'a_rank_progress', value: 3 }],
                                         ['give_card', { card: 71, text: "You earned your S-Rank License!" }],
+                                        ['give_card', { card: 21, text: "Gold Crown Received!" }],
                                         ['play_song', 20], 
                                         ['play_sfx', 'chime'],
-                                        ['spawn_ephemeral_npc', { index: 207888, x: this.x, y: this.y, sprite: 45, state: 'stationary', role: 'dialogue', alignment: 'friendly', color: '#ffd700', customDialogue: ["It's over. The Cult is destroyed.", "You avenged our best teams and saved the continent. You are officially an S-Rank Adventurer.", "Return to me at the Guild. You are a legend now."], endActions: [['close_dialogue', null]]}],
+                                        // Spawns the Wounded Field Leader in the dungeon!
+                                        ['spawn_ephemeral_npc', { index: 207888, x: 'PLAYER_X', y: 'PLAYER_Y', sprite: 76, state: 'stationary', role: 'dialogue', alignment: 'friendly', color: '#ffd700', customDialogue: ["*Cough*... You did it. The Mastermind is destroyed.", "I'm too wounded to lead the Vanguard anymore. I am retiring to the healing springs of Avalon.", "You are officially an S-Rank Adventurer. Find me in Avalon when you are ready to take my place."], endActions: [['close_dialogue', null]]}],
                                         ['trigger_dialogue', 207888]
                                     ];
 
                                     let spawnPortal = ['spawn_ephemeral_npc', {
-                                        index: bossId, x: 9.5, y: 9.5, sprite: -35, state: 'stationary', role: 'dialogue', alignment: 'friendly', color: '#ff0000', deck: [91, 88, 88, 93, 26], isBoss: true,
-                                        customDialogue: ["*The air is suffocating. The Mastermind waits inside.*"],
-                                        options: ['Breach the Sanctum', 'Not Yet'],
-                                        yesActions: [
-                                            ['play_sfx', 'horn'], 
-                                            ['transform_npc', { index: bossId, clearDialogue: true, newDeathActions: finaleWinActions }],
-                                            
-                                            ['start_tactics', { id: bossId, isFinale: true, stakes: 'real' }], 
-                                            ['close_dialogue', null]
-                                        ], 
-                                        noActions: [['close_dialogue', null]]
+                                        index: bossId, x: 53.5, y: 16.5, sprite: 99, state: 'stationary', role: 'dialogue', alignment: 'friendly', color: '#ff0000', deck: [91, 88, 88, 93, 26], isBoss: true,
+                                        dialogueFactory: () => {
+                                            return {
+                                                text: ["*The air is suffocating. The Mastermind waits inside the Inferno.*", "Will you breach the sanctum?"],
+                                                options: ['Breach the Sanctum', 'Retreat'],
+                                                yesActions: [['play_sfx', 'horn'], ['transform_npc', { index: bossId, newDeathActions: finaleWinActions }], ['start_tactics', { id: bossId, isFinale: true, stakes: 'real' }], ['close_dialogue', null]], 
+                                                noActions: [['close_dialogue', null]]
+                                            };
+                                        }
                                     }];
 
-                                    let questBlueprint = { state: 1, type: 'finale', tName: 'The Mastermind', qRank: 'S', targetMap: finalMapId, spawnActions: [spawnPortal] };
+                                    let questBlueprint = { state: 1, type: 'finale', tName: 'The Mastermind', qRank: 'S', targetMap: 12, spawnActions: [spawnPortal] };
 
                                     return {
-                                        text: [
-                                            "Come in. Close the door.",
-                                            "We found it. The Cult's main stronghold. I've already deployed the S-Rank teams, but the energy readings are catastrophic.",
-                                            "I need you to reinforce them. If you pull this off, the S-Rank license is yours."
-                                        ],
-                                        options: ['Join the Assault', 'Wait'],
-                                        yesActions: [
-                                            ['set_memory', { key: 'guild_quest', value: questBlueprint }],
-                                            ['play_sfx', 'click'],
-                                            ['notify', { text: "Warp to the Inferno. Reinforce the S-Rank teams.", endActions: [['close_dialogue', null]] }]
-                                        ],
+                                        text: ["Come in. Close the door.", "We found it. The Cult's main stronghold.", "Our S-Rank Field Leader already went inside the portal, but the energy readings are catastrophic. He is walking into a trap.", "Get in there and save him. If you pull this off, the S-Rank license is yours."],
+                                        options: ['Open the Portal', 'Wait'],
+                                        yesActions: [['set_memory', { key: 'guild_quest', value: questBlueprint }], ['play_sfx', 'teleport'], spawnPortal, ['notify', { text: "The Guildmaster opened the portal. Step through when ready.", endActions: [['close_dialogue', null]] }]],
                                         noActions: [['close_dialogue', null]]
                                     };
                                 }
 
-                                // ----------------------------------------------------
-                                // STANDARD S-RANK REPEATABLES (God-Tier Hunts)
-                                // ----------------------------------------------------
-                                if (rank === 'S') {
-                                    let isDragon = Math.random() > 0.5;
-                                    let sBossId = 207000 + Math.floor(Math.random() * 100);
-                                    
-                                    let bossSprite = isDragon ? 94 : 91; // Dragon or Demon
-                                    let bossName = isDragon ? "Ancient Dragon" : "Demon Lord";
-                                    
-                                    let bossDeath = [['update_quest_state', { key: 'guild_quest', state: 2 }], ['play_sfx', 'chime'], ['notify', `The ${bossName} has been slain! Return to the Guildmaster.`]];
-                                    let spawnApex = ['spawn_ephemeral_npc', { index: sBossId, x: randomX, y: randomY, sprite: bossSprite, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', isBoss: true, deck: [bossSprite, bossSprite, 93], deathActions: bossDeath }];
-                                    let questBlueprint = { state: 1, type: 'apex_hunt', tName: bossName, qRank: 'S', targetMap: dungeon.mapID, spawnActions: [spawnApex] };
-
-                                    return {
-                                        text: [`Greetings, S-Rank. A ${bossName} has been sighted in the region.`, "Only you have the clearance to handle a threat of this magnitude."],
-                                        options: ['Execute Target', 'Leave'],
-                                        yesActions: [['set_memory', { key: 'guild_quest', value: questBlueprint }], ['play_sfx', 'click'], ['notify', { text: "Coordinates locked. Good hunting.", endActions: [['close_dialogue', null]] }]],
-                                        noActions: [['close_dialogue', null]]
-                                    };
-                                }
-                            }
-
-                            // --- PHASE 1 & 2: UNIVERSAL TURN-IN OR ABANDON ---
-                            if (qState === 1 || qState === 2) {
-                                let targetName = qData.tName;
-                                let questRank = qData.qRank || 'S';
-                                let repPenalty = 20; 
-                                let repReward = 20;  
-
-                                if (qState === 2) {
-                                    let successText = qData.type === 'finale' 
-                                        ? ["The Cult is ashes. You are the greatest adventurer this Guild has ever seen. Take this, with my gratitude."]
-                                        : ["The threat is neutralized. Impeccable work, as always."];
-                                    
-                                    let turnInActions = [
-                                        ['close_dialogue', null],
-                                        ['set_memory', { key: 'guild_quest', value: { state: 0 } }],
-                                        ['set_memory', { key: 'guild_rep', value: rep + repReward }],
-                                        ['play_sfx', 'heal']
-                                    ];
-
-                                    for (let i = 0; i < 8; i++) turnInActions.push(['give_card', { card: 38, text: `S-Rank Reward Received! (${i+1}/8)` }]);
-                                    turnInActions.push(['give_card', { card: 21, text: "Gold Crown Received!" }]); // Always drops a crown!
-
-                                    return {
-                                        text: successText,
-                                        options: ['Turn In', 'Leave'],
-                                        yesActions: turnInActions,
-                                        noActions: [['close_dialogue', null]]
-                                    };
-                                } else {
-                                    // Can't abandon the finale without looking like a coward!
-                                    return {
-                                        text: [`The realm depends on you to handle the ${targetName}.`, `Are you retreating?`],
-                                        options: [`Abandon Quest (-${repPenalty} Rep)`, 'Leave'],
-                                        yesActions: [
-                                            ['play_sfx', 'cancel'],
-                                            ['set_memory', { key: 'guild_quest', value: { state: 0 } }], 
-                                            ['set_memory', { key: 'guild_rep', value: Math.max(0, rep - repPenalty) }], 
-                                            ['notify', { text: "Even an S-Rank must know their limits...", endActions: [['close_dialogue', null]] }]
-                                        ],
-                                        noActions: [['close_dialogue', null]]
-                                    };
-                                }
-                            }
-
-                            return { text: ["..."], endActions: [['close_dialogue', null]] };
-                        };
-                        
-                        this.npcs.push(guildClerk7);
-                    //Cursed Objects
+                                if (qData.state === 1 && qData.type === 'finale') return { text: ["The portal is open behind me. Save the Field Leader!"], options: ['Leave'], yesActions: [['close_dialogue', null]] };
+                                return { text: ["..."], endActions: [['close_dialogue', null]] };
+                            };
+                            this.npcs.push(guildClerk7);
+                    // //Cursed Objects
                             let npc_595418 = new NPC(595418, 12.5, 44.5, 44, 'stationary', '#ff0000', [26,26,26,33,35,33], 'dialogue', null, 'friendly');
                             npc_595418.customDialogue = ["*You sense a dark aura*"];
                             npc_595418.endActions = [["start_hunted",{"waves":3,"interval":300,"mobs":[{"sprite":23}]}],["give_card",{"card":72,"text":"*You hear a ghostly voice calling*"}],["disappear",null],["close_dialogue",null]];
@@ -8326,119 +7862,7 @@
                     let dungeonEntrance = new NPC(571204, 28.5, 38.5, -35, 'stationary', '#66ccff', [6.5, 1.5, 1, 2], 'portal', null, 'friendly');
                         this.npcs.push(dungeonEntrance);
                     
-                    /*
-                        
-
-                        let npc_541718 = new NPC(541718, 95.5, 55.5, 0, 'stationary', '#ff0000', [0], 'dialogue', undefined, 'friendly');
-                        npc_541718.customDialogue = ["Prisoner"];
-                        npc_541718.yesActions = [];
-                        npc_541718.noActions = [];
-                        this.npcs.push(npc_541718);
-
-                        let npc_515140 = new NPC(515140, 91.5, 55.5, 0, 'stationary', '#ff0000', [0], 'dialogue', undefined, 'friendly');
-                        npc_515140.customDialogue = ["Prisoner"];
-                        npc_515140.yesActions = [];
-                        npc_515140.noActions = [];
-                        this.npcs.push(npc_515140);
-
-                        let npc_560100 = new NPC(560100, 87.5, 54.5, 0, 'stationary', '#ff0000', [0], 'dialogue', undefined, 'friendly');
-                        npc_560100.customDialogue = ["Prisoner"];
-                        npc_560100.yesActions = [];
-                        npc_560100.noActions = [];
-                        this.npcs.push(npc_560100);
-
-                        let npc_509207 = new NPC(509207, 85.5, 54.5, 0, 'stationary', '#ff0000', [0], 'dialogue', undefined, 'friendly');
-                        npc_509207.customDialogue = ["Prisoner"];
-                        npc_509207.yesActions = [];
-                        npc_509207.noActions = [];
-                        this.npcs.push(npc_509207);
-
-                        let npc_555355 = new NPC(555355, 83.5, 54.5, 0, 'stationary', '#ff0000', [0], 'dialogue', undefined, 'friendly');
-                        npc_555355.customDialogue = ["prisoner"];
-                        npc_555355.yesActions = [];
-                        npc_555355.noActions = [];
-                        this.npcs.push(npc_555355);
-
-                        let npc_571624 = new NPC(571624, 81.5, 53.5, 0, 'stationary', '#ff0000', [0], 'dialogue', undefined, 'friendly');
-                        npc_571624.customDialogue = ["prisoner by secret exit playerspawn?"];
-                        npc_571624.yesActions = [];
-                        npc_571624.noActions = [];
-                        this.npcs.push(npc_571624);
-
-                        
-                        
-                        
-
-                        
-
-                        let npc_516315 = new NPC(516315, 95.5, 29.5, 0, 'stationary', '#ff0000', [0], 'dialogue', undefined, 'friendly');
-                        npc_516315.customDialogue = ["fake emperor"];
-                        npc_516315.yesActions = [];
-                        npc_516315.noActions = [];
-                        this.npcs.push(npc_516315);
-
-                        let npc_587729 = new NPC(587729, 95.5, 28.5, 0, 'stationary', '#ff0000', [0], 'dialogue', undefined, 'friendly');
-                        npc_587729.customDialogue = ["fake empress"];
-                        npc_587729.yesActions = [];
-                        npc_587729.noActions = [];
-                        this.npcs.push(npc_587729);
-
-                        
-
-                        
-
-                        let npc_532374 = new NPC(532374, 79.5, 21.5, 0, 'stationary', '#ff0000', [0], 'dialogue', undefined, 'friendly');
-                        npc_532374.customDialogue = ["castle npc"];
-                        npc_532374.yesActions = [];
-                        npc_532374.noActions = [];
-                        this.npcs.push(npc_532374);
-
-                        
-
-
                     
-
-                        
-
-                        let npc_573685 = new NPC(573685, 4.5, 57.5, 0, 'stationary', '#ff0000', [0], 'dialogue', undefined, 'friendly');
-                        npc_573685.customDialogue = ["forest npc"];
-                        npc_573685.yesActions = [];
-                        npc_573685.noActions = [];
-                        this.npcs.push(npc_573685);
-
-
-
-
-                        let npc_550819 = new NPC(550819, 15.5, 86.5, 0, 'stationary', '#ff0000', [0], 'dialogue', undefined, 'friendly');
-                        npc_550819.customDialogue = ["forest npc"];
-                        npc_550819.yesActions = [];
-                        npc_550819.noActions = [];
-                        this.npcs.push(npc_550819);
-
-                        
-
-                        
-
-                        let npc_569007 = new NPC(569007, 36.5, 34.5, 0, 'stationary', '#ff0000', [0], 'dialogue', undefined, 'friendly');
-                        npc_569007.customDialogue = ["hidden forest tavern?pixie hideout?"];
-                        npc_569007.yesActions = [];
-                        npc_569007.noActions = [];
-                        this.npcs.push(npc_569007);
-
-                        let npc_577470 = new NPC(577470, 34.5, 28.5, 0, 'stationary', '#ff0000', [0], 'dialogue', undefined, 'friendly');
-                        npc_577470.customDialogue = ["hidden forest tavern?pixie hideout?"];
-                        npc_577470.yesActions = [];
-                        npc_577470.noActions = [];
-                        this.npcs.push(npc_577470);
-
-                        let npc_548135 = new NPC(548135, 41.5, 29.5, 0, 'stationary', '#ff0000', [0], 'dialogue', undefined, 'friendly');
-                        npc_548135.customDialogue = ["hidden forest tavern?pixie hideout?"];
-                        npc_548135.yesActions = [];
-                        npc_548135.noActions = [];
-                        this.npcs.push(npc_548135);
-
-                        
-                    */
 
                     // ==========================================
                     // 1. STANDARD MOBS & CARDS
@@ -10332,7 +9756,122 @@
                     // --- WORLD STATE CHECK ---
                     // Check if the Battle Dragon (Map 12, Index 12) is permanently dead
                     let isDragonDead = this.memory["12_12"] && this.memory["12_12"].permanent;
+                    // ==========================================
+                        // --- S-RANK FIELD LEADER (GOD-TIER CONTRACTOR - MAP 10 AVALON) ---
+                        // ==========================================
+                            // Make sure these coordinates put him somewhere nice on Map 10!
+                            let avalonLeader = new NPC(208, 88.5, 33.5, 76, 'stationary', '#ffd700', [], 'dialogue', false, 'friendly');
+                            
+                            avalonLeader.dialogueFactory = (dungeon) => {
+                                if (dungeon.memory['guild_rep'] === undefined) dungeon.memory['guild_rep'] = 0; 
+                                if (dungeon.memory['guild_rank'] === undefined) dungeon.memory['guild_rank'] = 'F'; 
+                                if (!dungeon.memory['guild_quest']) dungeon.memory['guild_quest'] = { state: 0 }; 
+                                if (dungeon.memory['s_class_rank'] === undefined) dungeon.memory['s_class_rank'] = 0;
 
+                                let rep = dungeon.memory['guild_rep'];
+                                let rank = dungeon.memory['guild_rank'];
+                                let qData = dungeon.memory['guild_quest'];
+                                let sRankTier = dungeon.memory['s_class_rank'];
+
+                                const sRankTitles = ['Copper', 'Silver', 'Gold', 'Mithril'];
+                                let currentTitle = sRankTitles[sRankTier];
+
+                                if (rank !== 'S') {
+                                    return { text: ["*The wounded warrior meditates in the glowing waters.*", "You do not have the clearance to be in Avalon's inner sanctum. Return to the human realm."], options: ['Leave'], yesActions: [['close_dialogue', null]], noActions: null };
+                                }
+
+                                if (qData.state === 0) {
+                                    // --- DYNAMIC SUB-RANK PROMOTIONS ---
+                                    let promotionThresholds = [100, 250, 500]; // Rep required for Silver, Gold, Mithril
+                                    
+                                    if (sRankTier < 3 && rep >= promotionThresholds[sRankTier]) {
+                                        let nextRank = sRankTitles[sRankTier + 1];
+                                        return {
+                                            text: ["Your handling of the world's anomalies has been flawless.", `I am promoting you to S-Class: ${nextRank}. You are now authorized for higher threat levels.`],
+                                            options: ['Accept Promotion'],
+                                            yesActions: [
+                                                ['set_memory', { key: 's_class_rank', value: sRankTier + 1 }],
+                                                ['play_sfx', 'chime'],
+                                                ['give_card', { card: 66, text: `${nextRank} Guild Insignia Received!` }],
+                                                ['close_dialogue', null]
+                                            ], noActions: null
+                                        };
+                                    }
+
+                                    // --- GENERATE GOD-TIER QUEST ---
+                                    let bossSprite, bossName, hazardMapId, weatherEffect;
+                                    
+                                    switch(sRankTier) {
+                                        case 0: // COPPER
+                                            bossSprite = Math.random() > 0.5 ? 94 : 91; 
+                                            bossName = bossSprite === 94 ? "Ancient Dragon" : "Demon Lord";
+                                            hazardMapId = 12; weatherEffect = 'storm'; break;
+                                        case 1: // SILVER
+                                            bossSprite = 83; bossName = "Void Incursion";
+                                            hazardMapId = 22; weatherEffect = 'space'; break;
+                                        case 2: // GOLD
+                                            bossSprite = 46; bossName = "World-Serpent Anomaly";
+                                            hazardMapId = 9; weatherEffect = 'apocalypse'; break;
+                                        case 3: // MITHRIL
+                                            bossSprite = 999; bossName = "Avatar of Destruction";
+                                            hazardMapId = -1; weatherEffect = 'inferno'; break;
+                                    }
+
+                                    let bossId = 208000 + Math.floor(Math.random() * 100);
+                                    let bossDeath = [
+                                        ['update_quest_state', { key: 'guild_quest', state: 2 }], 
+                                        ['play_sfx', 'chime'], 
+                                        ['change_weather', 'clear'], // Clear the hazard!
+                                        ['restore_map_song', hazardMapId],
+                                        ['notify', `The ${bossName} has been eradicated. Return to Avalon.`]
+                                    ];
+                                    
+                                    let spawnApex = ['spawn_ephemeral_npc', { 
+                                        index: bossId, x: 10.5, y: 10.5, sprite: bossSprite, state: 'chasing', 
+                                        role: 'battle', alignment: 'foe', color: '#ff0000', isBoss: true, 
+                                        deck: [bossSprite, bossSprite, 93], deathActions: bossDeath 
+                                    }];
+                                    
+                                    let questBlueprint = { state: 1, type: 'apex_hunt', tName: bossName, qRank: 'S', targetMap: hazardMapId, spawnActions: [spawnApex] };
+
+                                    return {
+                                        text: [
+                                            `Greetings, S-Class ${currentTitle}.`, 
+                                            `A ${bossName} threat has been detected.`,
+                                            "My portal networks are ready. Eliminate the target."
+                                        ],
+                                        options: ['Enter Portal', 'Wait'],
+                                        yesActions: [
+                                            ['set_memory', { key: 'guild_quest', value: questBlueprint }],
+                                            ['change_weather', weatherEffect], 
+                                            ['load_map', hazardMapId], // Instantly warp!
+                                            ['play_sfx', 'warp'],
+                                            ['close_dialogue', null]
+                                        ],
+                                        noActions: [['close_dialogue', null]]
+                                    };
+                                }
+
+                                if (qData.state === 2) {
+                                    let repReward = 30 + (sRankTier * 20); 
+                                    return {
+                                        text: ["The threat is neutralized. Reality remains intact for another day.", "Take your payment."],
+                                        options: ['Turn In'],
+                                        yesActions: [
+                                            ['set_memory', { key: 'guild_quest', value: { state: 0 } }],
+                                            ['set_memory', { key: 'guild_rep', value: rep + repReward }],
+                                            ['give_card', { card: 21, text: "Gold Crown Received!" }],
+                                            ['play_sfx', 'heal'],
+                                            ['close_dialogue', null]
+                                        ], noActions: null
+                                    };
+                                }
+                                
+                                if (qData.state === 1) return { text: [`The ${qData.tName} is still active.`, "S-Class adventurers do not retreat. Finish it."], options: ['Leave'], yesActions: [['close_dialogue', null]] };
+                                return { text: ["..."], endActions: [['close_dialogue', null]] };
+                            };
+                            this.npcs.push(avalonLeader);
+                                
                     // Portals
                     this.npcs.push(new NPC(0, 48.5, 2.5, -33, 'stationary', '#66ccff', [5.5, 8.5, 11, 0], 'portal', null, 'friendly')); // To Fairy Castle
                     this.npcs.push(new NPC(1, 8.5, 48.5, -34, 'stationary', '#66ccff', [12.5, 14.5, 12, 0], 'portal', null, 'friendly')); // To Dragon Lair
@@ -20359,10 +19898,14 @@
                                                         options: [`Abandon Quest (-${repPenalty} Rep)`, 'Leave'],
                                                         yesActions: [
                                                             ['play_sfx', 'cancel'],
-                                                            ['stop_hunted', null], 
+                                                            ['stop_hunted', null],
+                                                            ['change_sky', 'rgba(255,255,255,1)'], 
+                                                            ['change_weather', 'clear'],           
+                                                            ['restore_map_song', dungeon.mapID],
+                                                            ['cleanup_quest_npcs', null], // <-- ADD THIS TO WIPE THE GHOSTS
                                                             ['set_memory', { key: 'guild_quest', value: { state: 0 } }], 
                                                             ['set_memory', { key: 'guild_rep', value: Math.max(0, rep - repPenalty) }], 
-                                                            ['notify', "Quest abandoned. Your reputation has decreased."]
+                                                            ['notify', { text: "You abandoned a critical mission. The Guild will not forget this.", endActions: [['close_dialogue', null]] }]
                                                         ],
                                                         noActions: [['close_dialogue', null]]
                                                     };
@@ -20521,10 +20064,14 @@
                                                         options: [`Abandon Quest (-${repPenalty} Rep)`, 'Leave'],
                                                         yesActions: [
                                                             ['play_sfx', 'cancel'],
-                                                            ['stop_hunted', null], 
+                                                            ['stop_hunted', null],
+                                                            ['change_sky', 'rgba(255,255,255,1)'], 
+                                                            ['change_weather', 'clear'],           
+                                                            ['restore_map_song', dungeon.mapID],
+                                                            ['cleanup_quest_npcs', null], // <-- ADD THIS TO WIPE THE GHOSTS
                                                             ['set_memory', { key: 'guild_quest', value: { state: 0 } }], 
                                                             ['set_memory', { key: 'guild_rep', value: Math.max(0, rep - repPenalty) }], 
-                                                            ['notify', "Quest abandoned. Your reputation has decreased."]
+                                                            ['notify', { text: "You abandoned a critical mission. The Guild will not forget this.", endActions: [['close_dialogue', null]] }]
                                                         ],
                                                         noActions: [['close_dialogue', null]]
                                                     };
@@ -20769,9 +20316,14 @@
                                                         options: [`Abandon Quest (-${repPenalty} Rep)`, 'Leave'],
                                                         yesActions: [
                                                             ['play_sfx', 'cancel'],
+                                                            ['stop_hunted', null],
+                                                            ['change_sky', 'rgba(255,255,255,1)'], 
+                                                            ['change_weather', 'clear'],           
+                                                            ['restore_map_song', dungeon.mapID],
+                                                            ['cleanup_quest_npcs', null], // <-- ADD THIS TO WIPE THE GHOSTS
                                                             ['set_memory', { key: 'guild_quest', value: { state: 0 } }], 
                                                             ['set_memory', { key: 'guild_rep', value: Math.max(0, rep - repPenalty) }], 
-                                                            ['notify', { text: "Quest abandoned. Your reputation has decreased.", endActions: [['close_dialogue', null]] }]
+                                                            ['notify', { text: "You abandoned a critical mission. The Guild will not forget this.", endActions: [['close_dialogue', null]] }]
                                                         ],
                                                         noActions: [['close_dialogue', null]]
                                                     };
@@ -22437,7 +21989,7 @@
                             ];
                             
                             let spareActions = [
-                                ['become_ally', 206], 
+                                ['become_ally', 206], ['disappear', monsterId],
                                 ['play_sfx', 'chime'], 
                                 ['update_quest_state', {key: 'guild_quest', state: 3}], 
                                 ['notify', { 
@@ -22584,10 +22136,11 @@
                     });
 
                     quests.push({
-                        id: 'b_exam', title: "PROMOTION EXAM: A-RANK", desc: "Speak to the Expert Clerk on the map to begin.", isStory: true,
+                        id: 'b_exam', title: "PROMOTION EXAM: A-RANK", desc: "Speak to the Expert Clerk to begin.", isStory: true,
                         status: isExamDone ? 'completed' : (rep >= 30 ? 'available' : 'locked'), lockReason: "Requires 30 Reputation.",
                         generateBlueprint: () => {
-                            return { state: 0, type: 'info', tName: 'A-Rank Promotion', qRank: 'B', targetMap: 14 }; 
+                            // Points the player to talk to the B-Rank Clerk
+                            return { state: 0, type: 'info', tName: 'A-Rank Promotion', qRank: 'B', targetMap: 0 }; 
                         }
                     });
                 }
@@ -22674,7 +22227,8 @@
                         id: 's_finale', title: "CAMPAIGN: The Mastermind", desc: "Speak to the Guildmaster to begin the final assault.", isStory: true,
                         status: isExamDone ? 'completed' : (playerRank === 'A' && aProgress === 2 ? 'available' : 'locked'), lockReason: "Requires S-Rank clearance.",
                         generateBlueprint: () => {
-                            return { state: 0, type: 'info', tName: 'The Mastermind', qRank: 'S', targetMap: 12 }; 
+                            // Target Map 0 so the player knows to stay in the Guild and talk to the Guildmaster
+                            return { state: 0, type: 'info', tName: 'The Mastermind', qRank: 'S', targetMap: 0 }; 
                         }
                     });
 
@@ -25843,6 +25397,7 @@
                     case 'ANIMATING_ATTACK':
                         this.animTimer += dt;
                         if (this.animTimer >= 1.5) {
+                            
                             if (this.animResult === 'killed') {
                                 // --- THE FIX: CHECK FOR WARDS BEFORE DYING! ---
                                 let ward = this.animDefender.activeBuffs ? this.animDefender.activeBuffs.find(b => b.type === 'ward') : null;
@@ -25857,7 +25412,18 @@
                                     
                                     if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('death');
                                 }
-                            } else {
+                            } else if (this.animResult === 'wall_break') {
+                                let wx = this.animDefender.wallX;
+                                let wy = this.animDefender.wallY;
+                                Dungeon.maze[wy][wx] = 0; // Shatter the tile!
+                                
+                                if (typeof globalParticles !== 'undefined') {
+                                    for (let p = 0; p < 12; p++) {
+                                        spawnParticle(wx + 0.5 + (Math.random() - 0.5), wy + 0.5 + (Math.random() - 0.5), '#cccccc', 'smoke');
+                                    }
+                                }
+                                if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('block');
+                            }else {
                                 if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('block');
                                 
                                 // --- COUNTER ATTACK TRIGGER ---
@@ -26437,7 +26003,9 @@
                     }
                     if (typeof drawPortrait === 'function') {
                         drawPortrait(-15.1, swordX - 0.5, swordY - 0.5, .1);
-                        drawPortrait(-16, shieldX - 0.5, shieldY - 0.5, .1);
+                        if (!this.animDefender.isWall) {
+                            drawPortrait(-16, shieldX - 0.5, shieldY - 0.5, .1);
+                        }
                     }
                 }
                 // --- SPELL SQUARES (Magenta) ---
@@ -26995,6 +26563,49 @@
                         }
                     }
 
+                // --- NEW PHASE 2.5: CAN I BREAK A WALL? ---
+                if (!activeUnit.hasActed) {
+                    let bestTarget = enemies.sort((a, b) => {
+                        return (Math.abs(activeUnit.x - a.x) + Math.abs(activeUnit.y - a.y)) - (Math.abs(activeUnit.x - b.x) + Math.abs(activeUnit.y - b.y));
+                    })[0];
+
+                    if (bestTarget) {
+                        let adjWalls = [];
+                        let dirs = [{x: 0, y: -1}, {x: 0, y: 1}, {x: -1, y: 0}, {x: 1, y: 0}];
+                        
+                        for (let dir of dirs) {
+                            let nx = Math.floor(activeUnit.x) + dir.x;
+                            let ny = Math.floor(activeUnit.y) + dir.y;
+                            
+                            // Is it an inner destructible wall?
+                            if (nx > 0 && nx < 9 && ny > 0 && ny < 9 && Dungeon.maze[ny][nx] > 0) {
+                                // Does breaking it reduce the Manhattan distance to the target?
+                                let currentDist = Math.abs(Math.floor(activeUnit.x) - Math.floor(bestTarget.x)) + Math.abs(Math.floor(activeUnit.y) - Math.floor(bestTarget.y));
+                                let newDist = Math.abs(nx - Math.floor(bestTarget.x)) + Math.abs(ny - Math.floor(bestTarget.y));
+                                
+                                if (newDist < currentDist) {
+                                    adjWalls.push({ x: nx, y: ny });
+                                }
+                            }
+                        }
+
+                        if (adjWalls.length > 0) {
+                            let targetWall = adjWalls[0]; // Attack the first beneficial wall
+                            
+                            this.state = 'ANIMATING_ATTACK';
+                            this.animTimer = 0;
+                            this.animAttacker = activeUnit;
+                            // Create a dummy unit to represent the wall
+                            this.animDefender = { x: targetWall.x + 0.5, y: targetWall.y + 0.5, isWall: true, wallX: targetWall.x, wallY: targetWall.y };
+                            this.animResult = 'wall_break';
+                            
+                            activeUnit.hasActed = true;
+                            if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('slash'); 
+                            return; // End AI processing for this tick
+                        }
+                    }
+                }
+
                 // 4. PHASE THREE: EXHAUSTED ALL OPTIONS
                 activeUnit.hasMoved = true;
                 activeUnit.hasActed = true;
@@ -27135,10 +26746,20 @@
             getValidAttacks(unitX, unitY) {
                 let attacks = [];
                 let dirs = [{x: 0, y: -1}, {x: 0, y: 1}, {x: -1, y: 0}, {x: 1, y: 0}];
+                
                 for (let dir of dirs) {
                     let nx = Math.floor(unitX) + dir.x;
                     let ny = Math.floor(unitY) + dir.y;
-                    if (!Dungeon.isWall(nx, ny)) attacks.push({ x: nx, y: ny });
+                    
+                    if (nx >= 0 && nx <= 9 && ny >= 0 && ny <= 9) {
+                        let isInnerWall = (nx > 0 && nx < 9 && ny > 0 && ny < 9 && Dungeon.maze[ny][nx] > 0);
+                        let targetUnit = this.getUnitAt(nx, ny);
+                        
+                        // ONLY highlight the tile if there is an enemy OR a destructible wall
+                        if (isInnerWall || (targetUnit && targetUnit.alignment === 'foe')) {
+                            attacks.push({ x: nx, y: ny });
+                        }
+                    }
                 }
                 return attacks;
             }
@@ -27360,9 +26981,28 @@
                     let isValidAtk = this.validAttacks && this.validAttacks.some(m => m.x === mapX && m.y === mapY);
                     if (isValidAtk) {
                         let target = this.getUnitAt(mapX, mapY);
+                        
+                        // 1. Attack an Enemy
                         if (target && target.alignment === 'foe') {
                             activeUnit.hasActed = true;
                             this.startAttackAnimation(activeUnit, target);
+                        } 
+                        // 2. Attack a Destructible Wall
+                        else if (mapX > 0 && mapX < 9 && mapY > 0 && mapY < 9 && Dungeon.maze[mapY][mapX] > 0) {
+                            activeUnit.hasActed = true;
+                            
+                            this.state = 'ANIMATING_ATTACK';
+                            this.animTimer = 0;
+                            this.animAttacker = activeUnit;
+                            
+                            // Create the exact same dummy wall unit the AI uses!
+                            this.animDefender = { x: mapX + 0.5, y: mapY + 0.5, isWall: true, wallX: mapX, wallY: mapY };
+                            this.animResult = 'wall_break';
+                            
+                            if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('slash');
+                        } 
+                        else {
+                            if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('cancel');
                         }
                     } else {
                         if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('cancel');
@@ -28192,9 +27832,9 @@
 
                 // 3. Queue the Cinematic Text
                 this.cinematicQueue = [
-                    { text: "Mastermind: You send your greatest champions, Guild... and they break like glass.", sprite: 91 },
+                    { text: "Mastermind: You send your greatest champions, Guild... and they break like glass.", sprite: 106 },
                     { text: "S-Rank Leader: *Gasp* ...Rookie... run...", sprite: 76 },
-                    { text: "Mastermind: Ah, the rat who killed my Elder. Come, face oblivion!", sprite: 91 }
+                    { text: "Mastermind: Ah, the rat who killed my Elder. Come, face oblivion!", sprite: 106 }
                 ];
 
                 this.state = 'CINEMATIC';
@@ -34251,7 +33891,7 @@
                 break;
               case 91://player
                 this.name = typeof playerName !== 'undefined' ? playerName : 'Player';
-                this.portrait = typeof playerSprite !== 'undefined' ? playerSprite : 91;
+                this.portrait = typeof playerSprite !== 'undefined' ? playerSprite : 106;
                 this.type = 0; //0-monster, 1-item, 2-spell
                 this.desc = typeof myLivePerception !== 'undefined' ? myLivePerception : 'Ready for adventure.';
                 
@@ -34443,7 +34083,7 @@
                 this.type = 0;//0-monster, 1-item, 2-spell
                 this.desc = 'It has the STR of ten men.';
                 this.suit = 'Major Arcana';
-                this.rank = 'Strength';
+                this.rank = 'VIII';
                 this.stat[0][0]=1;//minSTR
                 this.stat[0][1] = 8;//maxSTR
                 this.stat[0][2]= 0;//modSTR
@@ -34468,7 +34108,7 @@
                 this.type = 0;//0-monster, 1-item, 2-spell
                 this.desc = 'It howls at the moon.';
                 this.suit = 'Major Arcana';
-                this.rank = 'The Moon';
+                this.rank = 'XVIII';
                 this.stat[0][0]=1;//minSTR
                 this.stat[0][1] = 4;//maxSTR
                 this.stat[0][2]= 0;//modSTR
@@ -34492,8 +34132,8 @@
                 this.portrait = 194;
                 this.type = 0;//0-monster, 1-item, 2-spell
                 this.desc = 'It charges wildly.';
-                this.suit = 'Major Arcana';
-                this.rank = 'The Moon';
+                this.suit = 'Swords';
+                this.rank = 'Knight';
                 this.stat[0][0]=1;//minSTR
                 this.stat[0][1] = 6;//maxSTR
                 this.stat[0][2]= 0;//modSTR
@@ -39673,13 +39313,7 @@
                     // --- BOUNTY BOARD INTERACTION ---
                     else if (window.activeGuildTab === 'bounties') {
                         if (window.guildSubState === 'rank_select') {
-                            // [ ? ] HELP BUTTON
-                            if (gridPos.x >= 0.2 && gridPos.x <= 1.0 && gridPos.y >= 1.1 && gridPos.y <= 1.8) {
-                                window.previousGuildState = window.guildSubState;
-                                window.guildSubState = 'help_overlay';
-                                if(typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('click');
-                                return;
-                            }    
+                            
                             // DYNAMIC RANK CLICKING (F through S)
                             let pRank = Dungeon.memory['guild_rank'] || 'F';
                             let rankValues = { 'F':0, 'E':1, 'D':2, 'C':3, 'B':4, 'A':5, 'S':6 };
@@ -39748,7 +39382,7 @@
                                 if (window.bountyBoardScroll > 0) { window.bountyBoardScroll--; MusicEngine.play3DSFX('click'); }
                                 return;
                             }
-                            if (gridPos.x >= 8.5 && gridPos.y >= 7 && gridPos.y <= 8) {
+                            if (gridPos.x >= 8.5 && gridPos.y >= 6 && gridPos.y <= 7.3) {
                                 if (window.bountyBoardScroll < window.activeBountyList.length - 3) { window.bountyBoardScroll++; MusicEngine.play3DSFX('click'); }
                                 return;
                             }
@@ -39772,6 +39406,13 @@
                                 }
                             }
                         }
+                        // [ ? ] HELP BUTTON
+                            if (gridPos.x >= 0.2 && gridPos.x <= 1.0 && gridPos.y >= 1.1 && gridPos.y <= 1.8) {
+                                window.previousGuildState = window.guildSubState;
+                                window.guildSubState = 'help_overlay';
+                                if(typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('click');
+                                return;
+                            }    
                     }
 
                     // --- CLASS SELECT INTERACTION ---
