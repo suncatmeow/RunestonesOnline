@@ -191,7 +191,7 @@
                 92: { type: 'imbue', name: 'Imbue Fire', consume: 26, cooldown: 3000 },
                 93: { type: 'projectile', name: 'Lightning',cooldown: 7000, castStat: 2, defStat: 3, color: [1,1,0], glow: '#ffff00', model3D: 'd4', isHoming: true, chains: 1 },
                 94: { type: 'projectile', name: 'Ice Shard',cooldown: 9000,     castStat: 2, defStat: 1, color: [0,0,1], glow: '#0000ff', model3D: 'd4', isHoming: false  },
-                9999: { type: 'projectile', name: 'Attack', castStat: 0, defStat: 1, color: [1,1,1], glow: '#ffff00', sprite2D: 315, isHoming: false, range: 1.3, knockback: 1.3 },
+                9999: { type: 'projectile', name: 'Attack', castStat: 0, defStat: 1, color: [1,1,1], glow: '#ffff00', sprite2D: 315, isHoming: true, range: 1.3, knockback: 1.3 },
                 9998: { type: 'projectile', name: 'Imbued Attack', castStat: 0, defStat: 1, color: [1,0.5,0], glow: '#ff0000', sprite2D: -37, isHoming: false, knockback: 1.5 },
                 // // --- INSTANT FRONTAL AoE (Cone) ---
                 95: { type: 'cone', name: 'Flurry',cooldown: 3000, castStat: 3, defStat: 1, range: 3.0, knockback: 2, angle: 0.5 },
@@ -2606,36 +2606,26 @@
                 // This ensures your story bosses and special encounters always work exactly as designed.
                 if (this.isRanged) {
                     switch(Math.floor(this.type)) {
-                        case 0: // Fool
+                        case 0:case 83:case 87: // Fool
                             this.innateSpells = [52, 59]; 
                             break;
-                        case 83: // Tentacle
-                            this.innateSpells = [52, 59]; 
-                            break;
-                        case 37: // Siren
-                            this.innateSpells = [15, 94]; // Primary: Curse, Secondary: Ice Shard
-                            break;
+                        
+
                         case 42: // Shade
-                            this.innateSpells = [28, 93, 88]; // Primary: Defense, Secondary: Lightning, Raise Dead
+                            this.innateSpells = [28, 93,23]; // Primary: Defense, Secondary: Lightning, Raise Dead
                             break;
                         case 5: // Heirophant
-                            this.innateSpells = [12, 26, 66, 92]; // Primary: Bind, Secondary: Fireball
+                            this.innateSpells = [82,12, 26, 66, 92]; // Primary: Bind, Secondary: Fireball
                             break;                
                         case 57: // Spider 
                             this.innateSpells = [12,52]; // Primary: Bind, 
                             break;
-                        case 48: // Ice Queen
-                            this.innateSpells = [28, 15, 94]; 
+                        case 79://fire imp
+                            this.innateSpells = [26,52]; // Primary: Fire 
                             break;
-                        
-                        case 2:  // High Priestess
-                            this.innateSpells = [15, 29, 13, 92]; 
-                            break;
-                        case 32: // Apprentice,
-                            this.innateSpells = [13]; 
-                            break;
+
                         case 35: case 9: case 94: // Djinn, Hermit, Lich
-                            this.innateSpells = [28, 8, 13, 15, 66, 12, 93]; 
+                            this.innateSpells = [82,28, 8, 13, 15, 66, 12, 93]; 
                             break;
                     }
                 }
@@ -3622,39 +3612,36 @@
                 let distToTarget = Math.sqrt(Math.pow(targetX - this.x, 2) + Math.pow(targetY - this.y, 2));
 
                 // --- FIX 1: THE COMBAT ANCHOR ---
-                // If they are recovering from a strike, they must hold their ground!
-                // This stops the enemy from pushing them across the room.
                 if (this.combatCooldown > 0) {
-                    this.speed = 0.25; // Just enough to allow slight flocking/sliding, but practically anchored
+                    this.speed = 0.25; 
                 } 
                 // --- THE DYNAMIC FRICTION ---
                 else if (this.state === 'chasing' && isChasingNPC) {
                     let strikeRange = 1.5;  
 
                     if (distToTarget <= strikeRange) {
-                        this.speed = 1; // Arrived. Lock in for the strike.
+                        this.speed = 1; 
                     } else if (distToTarget < 2.0) {
-                        // Controlled approach. Fast enough to push forward, slow enough not to overshoot.
                         this.speed = 2.0; 
                     }
                 }
 
-                // SCENARIO A: NPC CAUGHT AN ENEMY NPC
-                if (isChasingNPC && currentPrey) {
-                    
-                    if (distToTarget < 1.5) {
-                        if (currentPrey.cachedPrey !== this) {
-                        currentPrey.cachedPrey = this;     // Force target swap
-                        currentPrey.state = 'chasing';     // Force combat state
-                        
-                        // Give the enemy a micro-cooldown so they don't get a free hit instantly, 
-                        // but this ensures they apply their brakes immediately.
-                        if (currentPrey.combatCooldown <= 0) currentPrey.combatCooldown = 13; 
-                    }
-                        this.dirX = -toTargetX; 
-                        this.dirY = -toTargetY;
-                        
-                        if (this.combatCooldown <= 0) {
+                // --- 🛡️ THE BUG FIX: PROTECT SLIDE/DASH VECTORS 🛡️ ---
+                // If the NPC is currently mid-air (sliding or dashing) OR stunned on cooldown, 
+                // DO NOT process new physical collisions! This prevents vectors from stacking and launching them 5 tiles!
+                if (!this.isSliding && !this.isAggroDashing && this.combatCooldown <= 0) {
+
+                    // SCENARIO A: NPC CAUGHT AN ENEMY NPC
+                    if (isChasingNPC && currentPrey) {
+                        if (distToTarget < 1.5) {
+                            if (currentPrey.cachedPrey !== this) {
+                                currentPrey.cachedPrey = this;     
+                                currentPrey.state = 'chasing';     
+                                if (currentPrey.combatCooldown <= 0) currentPrey.combatCooldown = 13; 
+                            }
+                            this.dirX = -toTargetX; 
+                            this.dirY = -toTargetY;
+                            
                             if (this.clashCount < 3) {
                                 MusicEngine.play3DSFX('slash', this.x, this.y, playerX, playerY, dungeon.dir);
                                 let myNewX = this.x - toTargetX * 0.3;
@@ -3671,17 +3658,6 @@
                                 currentPrey.clashCount++;
                                 this.damageFlashTimer = 3;
                                 currentPrey.damageFlashTimer = 3; 
-                                /*
-                                // 1. INITIAL CLASH BLOOD
-                                for (let p = 0; p < 8; p++) {
-                                    spawnParticle(
-                                        currentPrey.x + (Math.random() - 0.5) * 0.4,
-                                        currentPrey.y + (Math.random() - 0.5) * 0.4,
-                                        '#ff0000', 
-                                        'smoke' 
-                                    );
-                                }*/
-                                    
                                 this.combatCooldown = 13;
                                 currentPrey.combatCooldown = 13;
                                 return; 
@@ -3725,8 +3701,7 @@
                             let targetCard = currentPrey.baseCard;
                             const getOverworldRoll = (card, statIndex, entity, masteryLevel = 0) => {
                                 const rollOnce = () => {
-                                    let total = card.rollStat(statIndex); // Everyone just rolls once!
-                                    
+                                    let total = card.rollStat(statIndex); 
                                     if (entity.stat && entity.stat[statIndex]) total += entity.stat[statIndex][2];
                                     total += masteryLevel;
                                     
@@ -3751,13 +3726,8 @@
                             };
 
                             let allyMastery = (dungeon.mastery && dungeon.mastery[Math.floor(this.type)]) ? dungeon.mastery[Math.floor(this.type)].level : 0;
-
-                            let firstAttacker, firstDefender;
-                            let firstCard, secondCard;
-                            let attackerMastery, defenderMastery; 
-
-                            let agiTie = true;
-                            let tieBreakerFailsafe = 0; 
+                            let firstAttacker, firstDefender, firstCard, secondCard, attackerMastery, defenderMastery; 
+                            let agiTie = true, tieBreakerFailsafe = 0; 
 
                             while (agiTie && tieBreakerFailsafe < 10) {
                                 tieBreakerFailsafe++;
@@ -3789,14 +3759,12 @@
 
                             MusicEngine.play3DSFX('slash', this.x, this.y, playerX, playerY, dungeon.dir);
 
-                            // Round 1: First Attacker STR vs First Defender CON
                             let atkStr = getOverworldRoll(firstCard, 0, firstAttacker, attackerMastery);
                             let defCon = getOverworldRoll(secondCard, 1, firstDefender, defenderMastery);
                             
                             if (atkStr === defCon) {
                                 let atkLucky = firstAttacker.activeBuffs && firstAttacker.activeBuffs.some(b => b.name === 'Lucky Charm');
                                 let defLucky = firstDefender.activeBuffs && firstDefender.activeBuffs.some(b => b.name === 'Lucky Charm');
-                                
                                 if (atkLucky && !defLucky) atkStr += 99;
                                 else if (defLucky && !atkLucky) defCon += 99;
                                 else defCon += 1; 
@@ -3806,7 +3774,6 @@
 
                             if (atkStr > defCon) {
                                 if (firstDefender.absorbHit(firstAttacker)) {
-                                    // Defender's ward absorbed it! Bounce attacker away
                                     let dx = firstAttacker.x - firstDefender.x;
                                     let dy = firstAttacker.y - firstDefender.y;
                                     let dist = Math.sqrt(dx*dx + dy*dy) || 1;
@@ -3814,11 +3781,9 @@
                                     firstAttacker.slideTargetX = firstAttacker.x + (dx/dist) * 1.5;
                                     firstAttacker.slideTargetY = firstAttacker.y + (dy/dist) * 1.5;
                                     firstAttacker.isSliding = true;
-                                    firstAttacker.combatCooldown = 13; // Stun the attacker
-                                    
-                                    someoneDied = true; // Tell the engine someone "died" to skip the reset animation
+                                    firstAttacker.combatCooldown = 13; 
+                                    someoneDied = true;
                                 } else {
-                                    // 2. DEFENDER DIES BLOOD
                                     for (let p = 0; p < 8; p++) {
                                         spawnParticle(firstDefender.x + (Math.random() - 0.5) * 0.4, firstDefender.y + (Math.random() - 0.5) * 0.4, '#ff0000', 'smoke');
                                     }
@@ -3827,13 +3792,11 @@
                                     someoneDied = true;
                                 }
                             } else {
-                                // Round 2: Counterattack
                                 let defStr = getOverworldRoll(secondCard, 0, firstDefender, defenderMastery);
                                 let atkCon = getOverworldRoll(firstCard, 1, firstAttacker, attackerMastery);
 
                                 if (defStr > atkCon) {
                                     if (firstAttacker.absorbHit(firstDefender)) {
-                                        // Attacker's ward absorbed it! Bounce Defender away
                                         let dx = firstDefender.x - firstAttacker.x;
                                         let dy = firstDefender.y - firstAttacker.y;
                                         let dist = Math.sqrt(dx*dx + dy*dy) || 1;
@@ -3841,10 +3804,9 @@
                                         firstDefender.slideTargetX = firstDefender.x + (dx/dist) * 1.5;
                                         firstDefender.slideTargetY = firstDefender.y + (dy/dist) * 1.5;
                                         firstDefender.isSliding = true;
-                                        firstDefender.combatCooldown = 13; // Stun the defender
+                                        firstDefender.combatCooldown = 13; 
                                         someoneDied = true;
                                     } else {
-                                        // 3. ATTACKER DIES BLOOD
                                         for (let p = 0; p < 8; p++) spawnParticle(firstAttacker.x + (Math.random() - 0.5) * 0.4, firstAttacker.y + (Math.random() - 0.5) * 0.4, '#ff0000', 'smoke');
                                         
                                         dungeon.killNPC(firstAttacker, false, 'npc_infighting');
@@ -3870,76 +3832,51 @@
                             }
                         }
                     }
-                }
-                
-                // SCENARIO B: NO NPCs TO FIGHT (Check for Player)
-                else if (!isChasingNPC) {
                     
-                    // INCREASING HITBOX TO 1.0: Ensures monsters don't fail to trigger when clipping your tile edge
-                    if (distToActualPlayer <= .8) {
-                        if (this.alignment === 'foe_coward' || this.alignment === 'friendly_shy') {
-                            // Do absolutely nothing! They are too busy running to stop and talk.
-                            // This prevents them from forcibly opening your dialogue UI when running through your tile.
-                        }
-                        // 1. FRIENDLY MESSENGERS
-                        else if (this.alignment === 'friendly_messenger' && startGame === 'explore') {
-                            this.triggerInteraction(dungeon);
-                            this.startDialogue(dungeon); // Force open the UI
-                            this.alignment = 'friendly'; 
-                            this.state = this.preState || 'stationary'; 
-                            this.speed = (this.state === 'stationary') ? 0 : 0.5;
-                        }
-                        
-                        // 2. FOES (BATTLES)
-                        else if (typeof this.alignment === 'string' && this.alignment.startsWith('foe')) {
-                            if (startGame === 'explore' && !this.isDead) {
-                                // --- NEW WARD INTERCEPTOR ---
-                                if (dungeon.absorbHit(this)) {
-                                    // Ward absorbed it! Bounce the NPC away violently
-                                    let dx = this.x - playerX;
-                                    let dy = this.y - playerY;
-                                    let dist = Math.sqrt(dx*dx + dy*dy) || 1;
-                                    
-                                    this.slideTargetX = this.x + (dx/dist) * .61391; // Throw them 1.5 tiles back
-                                    this.slideTargetY = this.y + (dy/dist) * .61391;
-                                    this.isSliding = true;
-                                    this.state = 'chasing';
-                                    this.combatCooldown = 13; // Briefly stun them so you can run away
-                                } 
-                                else {
-                                    this.triggerInteraction(dungeon); // Starts the battle!
-                                
-                                    if (this.role === 'battle') {
-                                        if (typeof socket !== 'undefined' && socket) {
-                                            socket.emit("engage_npc", {
-                                                npcIndex: this.index, 
-                                                x: this.x,
-                                                y: this.y
-                                            });
+                    // SCENARIO B: NO NPCs TO FIGHT (Check for Player)
+                    else if (!isChasingNPC) {
+                        if (distToActualPlayer <= .8) {
+                            if (this.alignment === 'foe_coward' || this.alignment === 'friendly_shy') {
+                                // Do nothing!
+                            }
+                            else if (this.alignment === 'friendly_messenger' && startGame === 'explore') {
+                                this.triggerInteraction(dungeon);
+                                this.startDialogue(dungeon); 
+                                this.alignment = 'friendly'; 
+                                this.state = this.preState || 'stationary'; 
+                                this.speed = (this.state === 'stationary') ? 0 : 0.5;
+                            }
+                            else if (typeof this.alignment === 'string' && this.alignment.startsWith('foe')) {
+                                if (startGame === 'explore' && !this.isDead) {
+                                    // --- WARD INTERCEPTOR ---
+                                    if (dungeon.absorbHit(this)) {
+                                        let dx = this.x - playerX;
+                                        let dy = this.y - playerY;
+                                        let dist = Math.sqrt(dx*dx + dy*dy) || 1;
+                                        
+                                        this.slideTargetX = this.x + (dx/dist) * 0.8; 
+                                        this.slideTargetY = this.y + (dy/dist) * 0.8;
+                                        this.isSliding = true;
+                                        this.state = 'chasing';
+                                        this.combatCooldown = 15; // Stun them so you can run away
+                                    } 
+                                    else {
+                                        this.triggerInteraction(dungeon); 
+                                        if (this.role === 'battle') {
+                                            if (typeof socket !== 'undefined' && socket) {
+                                                socket.emit("engage_npc", { npcIndex: this.index, x: this.x, y: this.y });
+                                            }
                                         }
-                                    }
-                                    else if (this.role === 'dialogue') {
-                                        this.startDialogue(dungeon); // Force open the UI if a coward bumps you!
+                                        else if (this.role === 'dialogue') {
+                                            this.startDialogue(dungeon); 
+                                        }
                                     }
                                 }
                             }
-                        } 
-                        
-                        // 3. REGULAR FRIENDLIES (Wandering/Following)
-                    /* else if (typeof this.alignment === 'string' && this.alignment.startsWith('friendly') && this.alignment !== 'friendly_messenger') {                        
-                            if (this.state === 'chasing') this.speed = 0; 
-                            
-                            // IF THEY BUMP YOU: If the NPC is actively moving (not stationary) and enters your tile, THEY initiate the talk.
-                            // (If you bump a stationary NPC, your executeDungeonMove function handles it).
-                            if (startGame === 'explore' &&this.role!== 'shop' && this.state !== 'stationary' && (this.talkCooldown || 0) <= 0) {
-                                this.triggerInteraction(dungeon); 
-                                this.startDialogue(dungeon);      
-                                this.talkCooldown = 60; // 2 seconds buffer so the dialogue doesn't instantly re-open
-                            }
-                        }*/
+                        }
                     }
-                }
 
+                } // <--- End of Slide/Dash Protection Wrapper
             // =========================================================
             // 7. RANGED COMBAT LOGIC
             // =========================================================
@@ -4139,11 +4076,19 @@
                         }
                     }
                 }
-            // =========================================================
+           // =========================================================
             // --- SMOOTH DASHING & SLIDING (Assassination & Knockback) ---
             // =========================================================
+                
+                // --- 🛡️ THE BUG FIX: INTERRUPT DASH ATTACKS 🛡️ ---
+                // If a monster is knocked back (isSliding) WHILE executing a dash attack, 
+                // the knockback violently interrupts their attack and cancels it!
+                if (this.isSliding && this.isAggroDashing) {
+                    this.isAggroDashing = false;
+                    this.dashCallback = null;
+                }
+
                 if (this.isAggroDashing || this.isSliding) {
-                    // FIX: Changed this.targetX to this.dashTargetX
                     let destX = this.isSliding ? this.slideTargetX : this.dashTargetX; 
                     let destY = this.isSliding ? this.slideTargetY : this.dashTargetY;
                     
@@ -4151,25 +4096,26 @@
                     let dy = destY - this.y;
                     let distance = Math.sqrt(dx * dx + dy * dy);
                     
-                    // Sliding is usually faster than an assassination dash
                     let moveSpeed = this.isSliding ? (15 * dt) : (10 * dt);
 
-                    if (distance < moveSpeed) {
+                    if (distance <= moveSpeed || distance === 0 || moveSpeed === 0) {
                         // We arrived! Snap to the exact coordinate and end the animation
                         this.x = destX;
                         this.y = destY;
                         
-                        if (this.isAggroDashing) {
+                        let wasDashing = this.isAggroDashing;
+                        let wasSliding = this.isSliding;
+
+                        if (wasDashing) {
                             this.isAggroDashing = false;
                             this.state = 'battling'; // Ready to strike!
                             
-                            // FIX: Actually execute the attack logic!
                             if (typeof this.dashCallback === 'function') {
                                 this.dashCallback();
                                 this.dashCallback = null;
                             }
-                        }
-                        if (this.isSliding) {
+                        } 
+                        else if (wasSliding) {
                             this.isSliding = false;
                         }
                     } else {
@@ -4177,9 +4123,19 @@
                         let nextX = this.x + (dx / distance) * moveSpeed;
                         let nextY = this.y + (dy / distance) * moveSpeed;
                         
-                        // Failsafe: Stop sliding if we somehow clip a wall mid-animation
-                        if (this.isSliding && this.checkCollision && this.checkCollision(maze, nextX, nextY)) {
-                            this.isSliding = false;
+                        if (typeof this.checkCollision === 'function' && this.checkCollision(maze, nextX, nextY)) {
+                            if (this.isSliding) {
+                                this.isSliding = false;
+                            }
+                            if (this.isAggroDashing) {
+                                this.isAggroDashing = false;
+                                this.state = 'battling';
+                                // Hit a wall mid-charge! Stop and execute the attack immediately.
+                                if (typeof this.dashCallback === 'function') {
+                                    this.dashCallback();
+                                    this.dashCallback = null;
+                                }
+                            }
                         } else {
                             this.x = nextX;
                             this.y = nextY;
@@ -4337,9 +4293,9 @@
                     if (maze[fY] !== undefined && maze[fY][fX] !== undefined) {
                         // Check using your actual isWall logic, not just !== 0
                         if (this.isWall(fX, fY)) { 
-                            // Snap them BACK to safety, not deeper into the wall
-                            this.x = prevX-.5;
-                            this.y = prevY-.5;
+                            // FIX: Snap them safely back to their last valid frame!
+                            this.x = prevX;
+                            this.y = prevY;
                         }
                     }
                 
@@ -4432,7 +4388,6 @@
                 else if (spellData.type === 'aoe_knockback' || spellData.type === 'aoe_judgement') {
                     let isJudgement = spellData.type === 'aoe_judgement';
 
-                    // 1. Roll ALL Caster Stats for Judgement
                     let casterTotalStats = 0;
                     if (isJudgement) {
                         let casterCard = new Card(Math.floor(this.type), 0);
@@ -4443,20 +4398,17 @@
 
                     if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX(isJudgement ? 'horn' : 'wind');
 
-                    // 2. Build target list (Include the player!)
                     let targetsToCheck = [...dungeon.npcs];
                     if (typeof this.alignment === 'string' && this.alignment.startsWith('foe')) {
-                        targetsToCheck.push(dungeon); // Add the player to the hit-list
+                        targetsToCheck.push(dungeon); 
                     }
 
-                    // 3. Scan for Enemies in Range
                     targetsToCheck.forEach(target => {
                         if (target !== dungeon) {
                             if (target === this || target.isDead || !target.visible || target.type < 0 || target.type === 99) return;
                             if (target.role === 'dialogue' || target.role === 'shop' || target.role === 'quest_giver') return;
                         }
 
-                        // Friendly Fire Check
                         let isEnemy = false;
                         if (this.alignment === 'ally' || this.alignment === 'defender') {
                             isEnemy = (target !== dungeon && typeof target.alignment === 'string' && target.alignment.startsWith('foe'));
@@ -4467,17 +4419,16 @@
 
                         if (!isEnemy) return;
 
-                        let dx = target.x - this.x;
-                        let dy = target.y - this.y;
-                        let dist = Math.sqrt(dx*dx + dy*dy);
-                        if (dist === 0) { dx = 1; dist = 1; } 
+                        let tDx = target.x - this.x;
+                        let tDy = target.y - this.y;
+                        let tDist = Math.sqrt(tDx*tDx + tDy*tDy);
+                        if (tDist === 0) { tDx = 1; tDist = 1; } 
 
-                        if (dist <= spellData.range) {
+                        if (tDist <= spellData.range) {
                             let resisted = false;
 
-                            // --- COMBAT RESOLUTION ---
                             if (target === dungeon) {
-                                resisted = true; // Player cannot be instakilled in overworld, but WILL be knocked back
+                                resisted = true; 
                             } 
                             else if (isJudgement) {
                                 let targetCard = new Card(Math.floor(target.type), 0);
@@ -4492,41 +4443,47 @@
                                     resisted = true; 
                                 }
                             } else {
-                                resisted = true; // Dragon Wing
+                                resisted = true; 
                             }
 
-                            // --- WALL SLAM PHYSICS ---
                             if (resisted && (target === dungeon || !target.isDead)) { 
-                                let pushX = dx / dist;
-                                let pushY = dy / dist;
-                                let maxPush = 20; 
+                                let knockPower = spellData.knockback || 1.0;
+                                
+                                // FIX: Only normalize the vector, don't multiply it here or math will square
+                                let pushX = tDx / tDist;
+                                let pushY = tDy / tDist;
+                                
+                                let maxPush = Math.floor(knockPower * 4); 
                                 let pushed = 0;
                                 let testX = target.x;
                                 let testY = target.y;
                                 
                                 while (pushed < maxPush) {
-                                    let nextX = testX + pushX * 0.5; 
-                                    let nextY = testY + pushY * 0.5;
-                                    if (dungeon.isWall(Math.floor(nextX), Math.floor(nextY))) break; 
-                                    testX = nextX;
-                                    testY = nextY;
+                                    let nX = testX + pushX * 0.25; 
+                                    let nY = testY + pushY * 0.25;
+                                    let bufX = pushX > 0 ? 0.3 : -0.3;
+                                    let bufY = pushY > 0 ? 0.3 : -0.3;
+                                    
+                                    if (dungeon.isWall(Math.floor(nX + bufX), Math.floor(nY + bufY))) break; 
+                                    testX = nX;
+                                    testY = nY;
                                     pushed++;
                                 }
 
-                                // Apply to Player
                                 if (target === dungeon) {
                                     dungeon.x = testX;
                                     dungeon.y = testY;
-                                    // If it's an enemy hitting the player, yank them into a duel!
                                     if (this.alignment.startsWith('foe')) {
                                         this.triggerInteraction(dungeon);
                                     }
                                 } 
-                                // Apply to NPC
                                 else {
-                                    target.slideTargetX = testX;
-                                    target.slideTargetY = testY;
-                                    target.isSliding = true;
+                                    // FIX: Ignore knockback combining if they are already mid-flight
+                                    if (!target.isSliding) {
+                                        target.slideTargetX = testX;
+                                        target.slideTargetY = testY;
+                                        target.isSliding = true;
+                                    }
                                     target.state = 'chasing';
                                     target.combatCooldown = 13;
                                 }
@@ -4534,7 +4491,6 @@
                         }
                     });
                     
-                    // Visual Blast Ring
                     for(let p = 0; p < 20; p++) {
                         if (typeof spawnParticle !== 'undefined') {
                             spawnParticle(this.x + (Math.random()*6-3), this.y + (Math.random()*6-3), '#ffffff', 'smoke');
@@ -4545,8 +4501,6 @@
                 // NEW: ALLY / FOE ASSASSINATION SPELLS (Charge/Backstab)
                 // ==========================================
                 else if (spellData.type === 'assassination') {
-                    
-                    // 1. Build target list (Include player if caster is a foe)
                     let targetsToCheck = [...dungeon.npcs];
                     if (typeof this.alignment === 'string' && this.alignment.startsWith('foe')) {
                         targetsToCheck.push(dungeon); 
@@ -4555,13 +4509,11 @@
                     let bestTarget = null;
                     let closestDist = Infinity;
 
-                    // 2. Find closest valid target
                     targetsToCheck.forEach(target => {
                         if (target !== dungeon) {
                             if (target === this || target.isDead || !target.visible || target.alignment === this.alignment) return;
                         }
 
-                        // Friendly Fire Check
                         let isEnemy = false;
                         if (this.alignment === 'ally' || this.alignment === 'defender') {
                             isEnemy = (target !== dungeon && typeof target.alignment === 'string' && target.alignment.startsWith('foe'));
@@ -4576,7 +4528,6 @@
                         let dy = target.y - this.y;
                         let dist = Math.sqrt(dx*dx + dy*dy);
 
-                        // If they are in range with Line of Sight, select them!
                         if (dist <= (spellData.range || 5.0) && dist < closestDist && this.hasLineOfSight(dungeon.maze, target.x, target.y)) { 
                             closestDist = dist; 
                             bestTarget = target; 
@@ -4585,17 +4536,14 @@
 
                     if (!bestTarget) return;
 
-                    // 3. Dash Forward (Charge at the target!)
                     let dx = bestTarget.x - this.x;
                     let dy = bestTarget.y - this.y;
                     let dist = Math.sqrt(dx * dx + dy * dy);
                     
-                    // Dash up to their face (leave a 0.5 tile gap so they don't clip entirely inside)
                     let chargeRatio = dist > 0.5 ? ((dist - 0.5) / dist) : 0;
                     let chargeX = this.x + (dx * chargeRatio);
                     let chargeY = this.y + (dy * chargeRatio);
                     
-                    // Wall check to prevent sliding through corners
                     if (dungeon.isWall(Math.floor(chargeX), Math.floor(chargeY))) {
                         chargeX = this.x; 
                         chargeY = this.y;
@@ -4605,30 +4553,22 @@
                     this.dashTargetY = chargeY;
                     this.isAggroDashing = true; 
                     
-                    // Face the target
                     if (Math.abs(dx) > Math.abs(dy)) {
                         this.dir = dx > 0 ? 1 : 3;
                     } else {
                         this.dir = dy > 0 ? 2 : 0;
                     }
 
-                    
-
                     if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('wind');
 
-                    // 4. DELAY THE CLASH UNTIL THE DASH IS COMPLETE
                     this.dashCallback = () => {
-                        // --- THE FIX: DYNAMIC STATTING ---
-                        // Grab the specific stats required by this spell from the registry
-                        let atkStatIndex = spellData.castStat !== undefined ? spellData.castStat : 3; // Default to AGI(3)
-                        let defStatIndex = spellData.defStat !== undefined ? spellData.defStat : 3;   // Default to AGI(3)
+                        let atkStatIndex = spellData.castStat !== undefined ? spellData.castStat : 3; 
+                        let defStatIndex = spellData.defStat !== undefined ? spellData.defStat : 3;   
 
-                        // Prepare Caster Stats
                         let myCardId = (this.owner === null && this.type !== 0) ? Math.floor(this.type) : 91; 
                         let myCard = new Card(myCardId, 0);
                         let myAtkMod = (this.stat && this.stat[atkStatIndex]) ? this.stat[atkStatIndex][2] : 0;
 
-                        // Apply Commander Bonus if it's an Ally
                         if (this.alignment === 'ally' && dungeon.stat && dungeon.stat[atkStatIndex]) {
                             let statSides = dungeon.stat[atkStatIndex][1];
                             if (statSides === 6) myAtkMod += 1;
@@ -4639,7 +4579,6 @@
                         }
                         let myAtk = myCard.rollStat(atkStatIndex) + myAtkMod;
 
-                        // Prepare Defender Stats dynamically
                         let targetDef = 0;
                         if (bestTarget === dungeon) {
                             let pCard = new Card(91, 0, { mastery: dungeon.level });
@@ -4651,9 +4590,6 @@
                             targetDef = tCard.rollStat(defStatIndex) + tDefMod;
                         }
 
-                        // ===========================
-                    // --- COMBAT RESOLUTION ---
-                    // ===========================
                     if (spellData.isSteal) {
                         if (myAtk > targetDef) {
                             if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('chime');
@@ -4667,20 +4603,21 @@
                                 dungeon.actionQueue.unshift(['give_card', { card: stolenCardId, text: `You successfully pickpocketed ${bestTarget.name}!` }]);
                                 if (!dungeon.isProcessingActions) dungeon.processNextAction();
                             } else if (bestTarget === dungeon) {
-                                // FOE STEALS FROM PLAYER (SUCCESS)
-                                dungeon.power -= 5; // Penalty for getting robbed
+                                dungeon.power -= 5; 
                                 dungeon.playerFlashTimer = 3;
                                 
-                                // Bounce them backward so they don't block your movement
                                 this.combatCooldown = 25;
                                 let bX = this.x - dungeon.x; let bY = this.y - dungeon.y;
                                 let bDist = Math.sqrt(bX*bX + bY*bY) || 1;
-                                this.slideTargetX = this.x + (bX/bDist) * 1.5;
-                                this.slideTargetY = this.y + (bY/bDist) * 1.5;
-                                this.isSliding = true;
+                                
+                                // FIX: Prevent compounding knockback
+                                if (!this.isSliding) {
+                                    this.slideTargetX = this.x + (bX/bDist) * 1.5;
+                                    this.slideTargetY = this.y + (bY/bDist) * 1.5;
+                                    this.isSliding = true;
+                                }
                             }
                         } else {
-                            // CAUGHT!
                             if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('cancel');
                             
                             if (bestTarget !== dungeon) {
@@ -4691,21 +4628,22 @@
                                     bestTarget.dirY *= -1;
                                 }
                             } else {
-                                // FOE STEALS FROM PLAYER (FAIL)
-                                this.combatCooldown = 30; // Stun them!
+                                this.combatCooldown = 30; 
                                 this.state = 'wandering';
                                 
-                                // Bounce them backward 1.5 tiles to clear your path
                                 let bX = this.x - dungeon.x; let bY = this.y - dungeon.y;
                                 let bDist = Math.sqrt(bX*bX + bY*bY) || 1;
-                                this.slideTargetX = this.x + (bX/bDist) * 1.5;
-                                this.slideTargetY = this.y + (bY/bDist) * 1.5;
-                                this.isSliding = true;
+                                
+                                // FIX: Prevent compounding knockback
+                                if (!this.isSliding) {
+                                    this.slideTargetX = this.x + (bX/bDist) * 1.5;
+                                    this.slideTargetY = this.y + (bY/bDist) * 1.5;
+                                    this.isSliding = true;
+                                }
                             }
                         }
                     } 
                     else {
-                        // --- ASSASSINATION (CHARGE HIT) ---
                         let damage = myAtk - targetDef;
                         
                         if (damage > 0) {
@@ -4715,38 +4653,41 @@
                                 if (typeof dungeon.absorbHit === 'function' && dungeon.absorbHit(this, spellId)) {
                                     // Ward absorbed
                                 } else {
-                                    dungeon.power -= damage; // Deal HP Damage
+                                    dungeon.power -= damage; 
                                     dungeon.playerFlashTimer = 3;
                                 }
                                 if (!dungeon.isProcessingActions) dungeon.processNextAction();
                                 
-                                // BACKSTAB PLAYER (SUCCESS) -> Bounce away to prevent collision loops
                                 this.combatCooldown = 20;
                                 let bX = this.x - dungeon.x; let bY = this.y - dungeon.y;
                                 let bDist = Math.sqrt(bX*bX + bY*bY) || 1;
-                                this.slideTargetX = this.x + (bX/bDist) * 1.5;
-                                this.slideTargetY = this.y + (bY/bDist) * 1.5;
-                                this.isSliding = true;
                                 
+                                // FIX: Prevent compounding knockback
+                                if (!this.isSliding) {
+                                    this.slideTargetX = this.x + (bX/bDist) * 1.5;
+                                    this.slideTargetY = this.y + (bY/bDist) * 1.5;
+                                    this.isSliding = true;
+                                }
                             } else {
-                                // PLAYER / ALLY HIT AN ENEMY
                                 bestTarget.damageFlashTimer = 3;
                                 dungeon.killNPC(bestTarget, false, 'backstab');
                             }
                         } else {
-                            // BLOCKED!
                             if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('block', bestTarget.x, bestTarget.y, dungeon.x, dungeon.y, dungeon.dir);                        
                             
                             if (bestTarget === dungeon) {
                                 dungeon.playerFlashTimer = 3;
                                 
-                                // BACKSTAB PLAYER (FAIL) -> Bounce away and get stunned
                                 this.combatCooldown = 25; 
                                 let bX = this.x - dungeon.x; let bY = this.y - dungeon.y;
                                 let bDist = Math.sqrt(bX*bX + bY*bY) || 1;
-                                this.slideTargetX = this.x + (bX/bDist) * 1.5;
-                                this.slideTargetY = this.y + (bY/bDist) * 1.5;
-                                this.isSliding = true;
+                                
+                                // FIX: Prevent compounding knockback
+                                if (!this.isSliding) {
+                                    this.slideTargetX = this.x + (bX/bDist) * 1.5;
+                                    this.slideTargetY = this.y + (bY/bDist) * 1.5;
+                                    this.isSliding = true;
+                                }
                             } else {
                                 bestTarget.damageFlashTimer = 3;
                                 bestTarget.dirX *= -1; 
@@ -4767,17 +4708,14 @@
                     let dy = targetY - this.y;
                     let distToTarget = Math.sqrt(dx*dx + dy*dy);
                     
-                    if (distToTarget === 0) return; // Prevent division by zero
+                    if (distToTarget === 0) return; 
                     
                     let fX = dx / distToTarget;
                     let fY = dy / distToTarget;
 
-                    // --- NEW: LUNGE FORWARD ---
-                    // Dash forward 0.6 tiles in the direction of the target to make the attack visual!
                     let lungeX = this.x + (fX * 0.6);
                     let lungeY = this.y + (fY * 0.6);
 
-                    // Check if the lunge pushes them into a wall. If so, limit the lunge.
                     if (dungeon.isWall(Math.floor(lungeX), Math.floor(lungeY))) {
                         lungeX = this.x + (fX * 0.2);
                         lungeY = this.y + (fY * 0.2);
@@ -4793,7 +4731,6 @@
                     
                     if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('wind');
 
-                    // Wrap the attack math in the dash callback so the hit registers AFTER they slide!
                     this.dashCallback = () => {
                         if (typeof MusicEngine !== 'undefined') {
                             MusicEngine.play3DSFX(spellData.name === 'Shield Bash' ? 'block' : 'slash');
@@ -4805,12 +4742,10 @@
                             }
                         }
 
-                        // 1. Prepare Caster Stats (This is an NPC casting!)
                         let myCardId = (this.owner === null && this.type !== 0) ? Math.floor(this.type) : 91;
                         let myCard = new Card(myCardId, 0);
                         let myAtkMod = (this.stat && this.stat[spellData.castStat]) ? this.stat[spellData.castStat][2] : 0;
                         
-                        // Apply Commander Bonus if it's an Ally
                         if (this.alignment === 'ally' && dungeon.stat && dungeon.stat[spellData.castStat]) {
                             let statSides = dungeon.stat[spellData.castStat][1];
                             if (statSides === 6) myAtkMod += 1;
@@ -4821,7 +4756,6 @@
                         }
                         let myAtk = myCard.rollStat(spellData.castStat) + myAtkMod + (this.damage || 0);
 
-                        // 2. Build target list (Include the player if this is an enemy!)
                         let targetsToCheck = [...dungeon.npcs];
                         if (typeof this.alignment === 'string' && this.alignment.startsWith('foe')) {
                             targetsToCheck.push(dungeon);
@@ -4833,7 +4767,6 @@
                                 if (target.role === 'dialogue' || target.role === 'shop' || target.role === 'quest_giver') return;
                             }
 
-                            // Friendly Fire Check
                             let isEnemy = false;
                             if (this.alignment === 'ally' || this.alignment === 'defender') {
                                 isEnemy = (target !== dungeon && typeof target.alignment === 'string' && target.alignment.startsWith('foe'));
@@ -4852,9 +4785,6 @@
                                 let dot = (fX * (tDx/tDist)) + (fY * (tDy/tDist));
                                 
                                 if (dot > (spellData.angle || 0.5)) {
-                                    // HIT CONFIRMED! 
-                                    
-                                    // Calculate Defender Stats
                                     let targetDef = 0;
                                     if (target === dungeon) {
                                         let pCard = new Card(91, 0, { mastery: dungeon.level });
@@ -4871,7 +4801,6 @@
                                     let pushY = (tDy/tDist) * knockPower;
 
                                     if (myAtk > targetDef) {
-                                        // OVERPOWERED! 
                                         let damage = myAtk - targetDef;
                                         
                                         if (target === dungeon) {
@@ -4883,7 +4812,6 @@
                                             }
                                             if (!dungeon.isProcessingActions) dungeon.processNextAction();
                                             
-                                            // Player Knockback
                                             let maxPush = Math.floor(knockPower * 4); 
                                             let pushed = 0, testX = dungeon.x, testY = dungeon.y;
                                             while (pushed < maxPush) {
@@ -4894,7 +4822,6 @@
                                             dungeon.x = testX; 
                                             dungeon.y = testY;
 
-                                            // FIX: Sync the internal grid so the player doesn't ghost-bash!
                                             dungeon.targetMapX = testX;
                                             dungeon.targetMapY = testY;
                                             dungeon.isSlidingToTile = false;
@@ -4904,7 +4831,6 @@
                                             dungeon.killNPC(target, false, 'cone_attack');
                                         }
                                     } else {
-                                        // SURVIVED! Apply Knockback
                                         if (target === dungeon) {
                                             dungeon.playerFlashTimer = 3;
                                             
@@ -4918,7 +4844,6 @@
                                             dungeon.x = testX; 
                                             dungeon.y = testY;
 
-                                            // FIX: Sync the internal grid here too!
                                             dungeon.targetMapX = testX;
                                             dungeon.targetMapY = testY;
                                             dungeon.isSlidingToTile = false;
@@ -4932,9 +4857,13 @@
                                                 if (this.isWall(Math.floor(nX + bufX), Math.floor(nY + bufY))) break;
                                                 testX = nX; testY = nY; pushed++;
                                             }
-                                            target.slideTargetX = testX;
-                                            target.slideTargetY = testY;
-                                            target.isSliding = true;
+                                            
+                                            // FIX: Prevent compounding knockback
+                                            if (!target.isSliding) {
+                                                target.slideTargetX = testX;
+                                                target.slideTargetY = testY;
+                                                target.isSliding = true;
+                                            }
                                             target.state = 'chasing';
                                             target.combatCooldown = 13;
                                         }
@@ -12227,7 +12156,6 @@
                 // ==========================================
                 // PHASE 1: THE BLOCK (Player CON vs NPC STR)
                 // ==========================================
-                // 1. Calculate Player CON Roll (Stat index 1)
                 let pConBase = (this.stat && this.stat[1]) ? this.stat[1][0] : 1;
                 let pConDice = (this.stat && this.stat[1]) ? this.stat[1][1] : 4;
                 let pConMod  = (this.stat && this.stat[1]) ? this.stat[1][2] : 0;
@@ -12237,23 +12165,16 @@
                     pConRoll += Math.floor(Math.random() * pConDice) + 1; 
                 }
 
-                // 2. Calculate NPC STR Roll (Stat index 0)
                 let npcCard = new Card(Math.floor(targetNPC.type), 0);
                 let npcStrRoll = npcCard.rollStat(0);
                 if (targetNPC.stat && targetNPC.stat[0]) npcStrRoll += targetNPC.stat[0][2];
 
-                // 3. Resolve the Block
                 if (pConRoll < npcStrRoll) {
-                    // --- PLAYER LOSES THE BLOCK ---
-                    
-                    // Route the damage through absorbHit (Wards & HP)
                     let absorbed = this.absorbHit(targetNPC);
 
                     if (!absorbed) {
-                        // Wards shattered and HP failed! Trigger the "Empty Deck" death sequence
                         targetNPC.triggerInteraction(this);
                     } else {
-                        // Player survived, but gets violently shoved backward
                         let dx = this.x - targetNPC.x;
                         let dy = this.y - targetNPC.y;
                         let dist = Math.sqrt(dx * dx + dy * dy) || 1;
@@ -12261,7 +12182,6 @@
                         let pushX = (dx / dist) * 1.0;
                         let pushY = (dy / dist) * 1.0;
                         
-                        // Slide the player
                         if (!this.isWall(this.x + pushX, this.y + pushY)) {
                             this.targetMapX = this.x + pushX;
                             this.targetMapY = this.y + pushY;
@@ -12269,7 +12189,7 @@
                             this.y = this.targetMapY;
                             this.isSlidingToTile = false;
                         }
-                        window.activeMoveKey = null; // Interrupt keyboard inputs
+                        window.activeMoveKey = null; 
                     }
                 } 
                 else {
@@ -12280,20 +12200,20 @@
                         MusicEngine.play3DSFX('slash', targetNPC.x, targetNPC.y, this.x, this.y, this.dir);
                     }
 
-                    // Attempt to absorb via Ward Time Pool! (absorbHit rolls the dice for us!)
                     if (targetNPC.absorbHit(this)) {
-                        // WARD ABSORBED IT (Or they Blocked it): Bounce them back and stun them!
                         let dx = targetNPC.x - this.x;
                         let dy = targetNPC.y - this.y;
                         let dist = Math.sqrt(dx * dx + dy * dy) || 1;
 
-                        targetNPC.slideTargetX = targetNPC.x + (dx / dist) * 1.2; 
-                        targetNPC.slideTargetY = targetNPC.y + (dy / dist) * 1.2;
-                        targetNPC.isSliding = true;
+                        // FIX: Prevent compounding knockback 
+                        if (!targetNPC.isSliding) {
+                            targetNPC.slideTargetX = targetNPC.x + (dx / dist) * 1.2; 
+                            targetNPC.slideTargetY = targetNPC.y + (dy / dist) * 1.2;
+                            targetNPC.isSliding = true;
+                        }
                         targetNPC.state = 'chasing';   
                         targetNPC.combatCooldown = 20; 
                     } else {
-                        // NO WARDS LEFT: Crushed!
                         targetNPC.damageFlashTimer = 5;
                         if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('death', targetNPC.x, targetNPC.y, this.x, this.y, this.dir);
                         
@@ -12306,8 +12226,6 @@
                                 );
                             }
                         }
-
-                        // Trigger Death & Loot
                         this.killNPC(targetNPC, targetNPC.isBoss ? true : false, 'melee_combat');
                     }
                 }
@@ -12468,6 +12386,9 @@
                     //Particle BUFFS
                         this.npcs.forEach(npc => {
                             npc.update(this.maze, this.x, this.y, this, dt);
+                            if (npc.playerContactCooldown && npc.playerContactCooldown > 0) {
+                                npc.playerContactCooldown -= (30 * dt);
+                            }
                             if (!npc.isDead && npc.visible && npc.activeBuffs && npc.activeBuffs.length > 0) {
                                 if (this.frame % 3 === 0) { 
                                     npc.activeBuffs.forEach(buff => {
@@ -13651,7 +13572,7 @@
                                 if (!n.isDead && n.visible && typeof n.alignment === 'string' && n.alignment.startsWith('foe')) {
                                     let dSq = (n.x - this.x)*(n.x - this.x) + (n.y - this.y)*(n.y - this.y);
                                     
-                                    if (dSq < 13) {
+                                    if (dSq < 19) {
                                         // 1. Are they actively trying to kill you right now?
                                         let isAggro = (n.state === 'chasing' || n.state === 'attacking');
                                         
@@ -16752,16 +16673,137 @@
                     }
                 }
                 // ==========================================
+                // NEW: ASSASSINATION & STEAL SPELLS (Backstab, Steal)
+                // ==========================================
+                else if (spellData.type === 'assassination') {
+                    let bestTarget = null;
+                    let closestDist = Infinity;
+
+                    this.npcs.forEach(npc => {
+                        if (npc.isDead || !npc.visible || npc.type < 0 || npc.type === 99) return;
+                        if (!spellData.isSteal) {
+                            if (npc.alignment === 'ally') return;
+                            if (typeof npc.alignment === 'string' && !npc.alignment.startsWith('foe')) return;
+                            if (npc.role === 'dialogue' || npc.role === 'shop' || npc.role === 'quest_giver') return;
+                        } else {
+                            if (npc.alignment === 'ally') return; 
+                        }
+
+                        let dx = npc.x - this.x;
+                        let dy = npc.y - this.y;
+                        let dist = Math.sqrt(dx*dx + dy*dy);
+
+                        if (dist <= spellData.range && dist < closestDist && this.checkLineOfSight(npc.x, npc.y)) {
+                            closestDist = dist;
+                            bestTarget = npc;
+                        }
+                    });
+
+                    if (!bestTarget) {
+                        if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('cancel');
+                        return; 
+                    }
+
+                    let targetDir = 2; 
+                    if (bestTarget.dir !== undefined) {
+                        targetDir = bestTarget.dir; 
+                    } else {
+                        if (Math.abs(bestTarget.dirX) > Math.abs(bestTarget.dirY)) {
+                            targetDir = bestTarget.dirX > 0 ? 1 : 3; 
+                        } else {
+                            targetDir = bestTarget.dirY > 0 ? 2 : 0; 
+                        }
+                    }
+
+                    let behindX = bestTarget.x;
+                    let behindY = bestTarget.y;
+
+                    if (targetDir === 0) behindY += 1;     
+                    else if (targetDir === 1) behindX -= 1; 
+                    else if (targetDir === 2) behindY -= 1; 
+                    else if (targetDir === 3) behindX += 1; 
+
+                    if (this.isWall(Math.floor(behindX), Math.floor(behindY))) {
+                        if (typeof MessageBox !== 'undefined') MessageBox.show(0.5, 8, 1, 9, 2, "No room to step behind them!", 'dialogue', 1, 0);
+                        if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('cancel');
+                        return; 
+                    }
+
+                    this.dashTargetX = behindX;
+                    this.dashTargetY = behindY;
+                    this.isAggroDashing = true; 
+                    this.dir = targetDir; 
+
+                    if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('wind');
+
+                    this.dashCallback = () => {
+                        let playerCard = new Card(91, 0, { mastery: this.level });
+                        let targetCard = new Card(Math.floor(bestTarget.type), 0);
+
+                        let playerAgi = playerCard.rollStat(3) + (this.stat[3][2] || 0);
+                        let targetAgiMod = (bestTarget.stat && bestTarget.stat[3]) ? bestTarget.stat[3][2] : 0;
+                        let targetAgi = targetCard.rollStat(3) + targetAgiMod;
+
+                        if (spellData.isSteal) {
+                            if (playerAgi > targetAgi) {
+                                if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('chime');
+                                let stolenCardId = 10; 
+                                if (bestTarget.deck && bestTarget.deck.length > 0) {
+                                    let randIdx = Math.floor(Math.random() * bestTarget.deck.length);
+                                    stolenCardId = typeof bestTarget.deck[randIdx] === 'object' ? bestTarget.deck[randIdx].index : bestTarget.deck[randIdx];
+                                }
+                                this.actionQueue.unshift(['give_card', { card: stolenCardId, text: `You successfully pickpocketed ${bestTarget.name}!` }]);
+                            } else {
+                                if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('cancel');
+                                this.actionQueue.unshift(['notify', { text: `You were caught trying to steal from ${bestTarget.name}!`, endActions: [['close_dialogue', null]] }]);
+                                
+                                if (bestTarget.alignment !== 'foe' && bestTarget.alignment !== 'foe_wave') {
+                                    this.actionQueue.unshift(['transform_npc', { index: bestTarget.index, newAlignment: 'foe', newRole: 'battle', newState: 'chasing' }]);
+                                } else {
+                                    bestTarget.dirX *= -1; 
+                                    bestTarget.dirY *= -1;
+                                }
+                            }
+                        } 
+                        else {
+                            if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('slash');                        
+                            
+                            if (bestTarget.absorbHit(this, spellId)) {
+                                let pushX = this.dir === 1 ? 1 : (this.dir === 3 ? -1 : 0);
+                                let pushY = this.dir === 2 ? 1 : (this.dir === 0 ? -1 : 0);
+                                
+                                // FIX: Prevent compounding knockback
+                                if (!bestTarget.isSliding) {
+                                    bestTarget.slideTargetX = bestTarget.x + (pushX * 0.5);
+                                    bestTarget.slideTargetY = bestTarget.y + (pushY * 0.5);
+                                    bestTarget.isSliding = true;
+                                }
+                                bestTarget.state = 'chasing';
+                            } else {
+                                this.killNPC(bestTarget, false, 'backstab');
+                            }
+                        }
+
+                        this.targetMapX = behindX;
+                        this.targetMapY = behindY;
+                        this.isSlidingToTile = false;
+
+                        window.activeMoveKey = null;
+                        window.activeCtrlKey = false;
+                        if (typeof btnMove !== 'undefined') { btnMove.isPressed = false; btnMove.currentDir = null; }
+                        if (typeof btnMove2 !== 'undefined') { btnMove2.isPressed = false; btnMove2.currentDir = null; }
+                        if (typeof btnTurnL !== 'undefined') { btnTurnL.isPressed = false; btnTurnL.currentDir = null; }
+                        if (typeof btnTurnR !== 'undefined') { btnTurnR.isPressed = false; btnTurnR.currentDir = null; }
+                    };
+                }
+                // ==========================================
                 // NEW: FRONTAL CONE AoE (Slash, Shield Bash)
                 // ==========================================
                 else if (spellData.type === 'cone') {
-                    
-                    // 🧲 1. MAGNETIC MELEE SNAP (Find target before we cast!)
                     if ((this.manualTurnTimer || 0) <= 0) {
                         let bestSnap = null;
                         let bestDist = Infinity;
                         
-                        // 1. PRIMARY: Camera Target
                         if (this.focusTarget && !this.focusTarget.isDead && typeof this.focusTarget.alignment === 'string' && this.focusTarget.alignment.startsWith('foe')) {
                             let dx = this.focusTarget.x - this.x;
                             let dy = this.focusTarget.y - this.y;
@@ -16772,7 +16814,6 @@
                             }
                         }
 
-                        // 2. FALLBACK: Closest Enemy
                         if (!bestSnap) {
                             this.npcs.forEach(npc => {
                                 if (npc.isDead || !npc.visible || npc.alignment === 'ally') return;
@@ -16793,26 +16834,23 @@
                             let dx = bestSnap.x - this.x;
                             let dy = bestSnap.y - this.y;
                             
-                            // Align body to the target
                             if (Math.abs(dx) > Math.abs(dy)) {
                                 this.dir = dx > 0 ? 1 : 3;
                             } else {
                                 this.dir = dy > 0 ? 2 : 0;
                             }
                             
-                            // Instantly unify the camera with the body
                             this.currentAngle = this.dir * (Math.PI / 2);
                             this._cinePan = 0;
                             this.lookPan = 0;
                         }
                     }
 
-                    // 2. NOW get player's facing vector using the updated this.dir
                     let fX = 0, fY = 0;
-                    if (this.dir === 0) fY = -1;      // North
-                    else if (this.dir === 1) fX = 1;  // East
-                    else if (this.dir === 2) fY = 1;  // South
-                    else if (this.dir === 3) fX = -1; // West
+                    if (this.dir === 0) fY = -1;      
+                    else if (this.dir === 1) fX = 1;  
+                    else if (this.dir === 2) fY = 1;  
+                    else if (this.dir === 3) fX = -1; 
 
                     if (typeof MusicEngine !== 'undefined') {
                         MusicEngine.play3DSFX(spellData.name === 'Shield Bash' ? 'block' : 'slash');
@@ -16831,7 +16869,6 @@
 
                     let hitSomething = false;
 
-                    // 3. Check every NPC on the map
                     this.npcs.forEach(npc => {
                         if (npc.isDead || !npc.visible || npc.type < 0 || npc.type === 99 || npc.alignment === 'ally') return;
                         if (typeof npc.alignment === 'string' && !npc.alignment.startsWith('foe')) return;
@@ -16855,28 +16892,26 @@
 
                                if (playerAtk > targetDef) {
                                    if (npc.absorbHit(this, spellId)) {
-                                       // Survived via ward! Add a small knockback so they don't just stand inside the cone.
                                        let knockPower = (spellData.knockback || 1.0) * 0.5;
                                        let pushX = dx / dist;
                                        let pushY = dy / dist;
                                        
-                                       npc.slideTargetX = npc.x + pushX * knockPower;
-                                       npc.slideTargetY = npc.y + pushY * knockPower;
-                                       npc.isSliding = true;
+                                       // FIX: Prevent compounding knockback
+                                       if (!npc.isSliding) {
+                                           npc.slideTargetX = npc.x + pushX * knockPower;
+                                           npc.slideTargetY = npc.y + pushY * knockPower;
+                                           npc.isSliding = true;
+                                       }
                                        npc.state = 'chasing';
                                    } else {
-                                       // OVERPOWERED! Instant Kill.
                                        this.killNPC(npc, false, 'cone_attack');
                                    }
                                } else {
-                                // SURVIVED! Apply Knockback based on spell registry
                                     let knockPower = spellData.knockback || 1.0;
                                     
-                                    // Normalize the push vector
                                     let pushX = dx / dist;
                                     let pushY = dy / dist;
 
-                                    // Break the total knockback distance into small, safe 0.25-tile steps
                                     let maxPushSteps = Math.floor(knockPower * 4); 
                                     let pushed = 0;
                                     
@@ -16887,14 +16922,11 @@
                                         let nextX = testX + pushX * 0.25; 
                                         let nextY = testY + pushY * 0.25;
                                         
-                                        // RADIUS BUFFER: Add 0.3 padding in the direction they are moving.
-                                        // This stops them exactly next to the wall instead of clipping into it!
                                         let bufferX = pushX > 0 ? 0.3 : -0.3;
                                         let bufferY = pushY > 0 ? 0.3 : -0.3;
 
-                                        // Check if the NEXT step (including their fat body radius) hits a wall
                                         if (this.isWall(Math.floor(nextX + bufferX), Math.floor(nextY + bufferY))) {
-                                            break; // Hit a wall, stop calculating!
+                                            break; 
                                         }
                                         
                                         testX = nextX;
@@ -16902,173 +16934,18 @@
                                         pushed++;
                                     }
 
-                                    // Set the destination and trigger your awesome slide animation!
-                                    npc.slideTargetX = testX;
-                                    npc.slideTargetY = testY;
-                                    npc.isSliding = true;
-
-                                    // Aggro the surviving monster
+                                    // FIX: Prevent compounding knockback
+                                    if (!npc.isSliding) {
+                                        npc.slideTargetX = testX;
+                                        npc.slideTargetY = testY;
+                                        npc.isSliding = true;
+                                    }
                                     npc.state = 'chasing';
-                                    npc.combatCooldown = 13; // Stunned while sliding!
-                                }
+                                    npc.combatCooldown = 13;
+                               }
                             }
                         }
                     });
-
-                    // Optional: If you missed entirely, play a "whiff" sound
-                    if (!hitSomething && typeof MusicEngine !== 'undefined') {
-                        // MusicEngine.play3DSFX('miss');
-                    }
-                }
-                // ==========================================
-                // NEW: ASSASSINATION & STEAL SPELLS (Backstab, Steal)
-                // ==========================================
-                else if (spellData.type === 'assassination') {
-                    // 1. Find the closest valid target within range
-                    let bestTarget = null;
-                    let closestDist = Infinity;
-
-                    this.npcs.forEach(npc => {
-                        if (npc.isDead || !npc.visible || npc.type < 0 || npc.type === 99) return;
-                        
-                        // If it's NOT a Steal spell, enforce the "Foe Only" and "No Merchants/Quest Givers" rule
-                        if (!spellData.isSteal) {
-                            if (npc.alignment === 'ally') return;
-                            if (typeof npc.alignment === 'string' && !npc.alignment.startsWith('foe')) return;
-                            if (npc.role === 'dialogue' || npc.role === 'shop' || npc.role === 'quest_giver') return;
-                        } else {
-                            // If it IS Steal, you can't steal from allies. 
-                            if (npc.alignment === 'ally') return; 
-                        }
-
-                        let dx = npc.x - this.x;
-                        let dy = npc.y - this.y;
-                        let dist = Math.sqrt(dx*dx + dy*dy);
-
-                        if (dist <= spellData.range && dist < closestDist && this.checkLineOfSight(npc.x, npc.y)) {
-                            closestDist = dist;
-                            bestTarget = npc;
-                        }
-                    });
-
-                    if (!bestTarget) {
-                        if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('cancel');
-                        return; // No target in range, whiff!
-                    }
-
-                    // --- CALCULATE CARDINAL DIRECTION FROM VECTORS ---
-                    let targetDir = 2; // Default to South
-                    if (bestTarget.dir !== undefined) {
-                        targetDir = bestTarget.dir; 
-                    } else {
-                        // Figure out if they are moving more horizontally or vertically
-                        if (Math.abs(bestTarget.dirX) > Math.abs(bestTarget.dirY)) {
-                            targetDir = bestTarget.dirX > 0 ? 1 : 3; // East or West
-                        } else {
-                            targetDir = bestTarget.dirY > 0 ? 2 : 0; // South or North
-                        }
-                    }
-
-                    // 2. Calculate the Blind Spot (Behind the target)
-                    let behindX = bestTarget.x;
-                    let behindY = bestTarget.y;
-
-                    if (targetDir === 0) behindY += 1;      // Facing North -> Step South
-                    else if (targetDir === 1) behindX -= 1; // Facing East -> Step West
-                    else if (targetDir === 2) behindY -= 1; // Facing South -> Step North
-                    else if (targetDir === 3) behindX += 1; // Facing West -> Step East
-
-                    // 3. Collision Check (Are they against a wall?)
-                    if (this.isWall(Math.floor(behindX), Math.floor(behindY))) {
-                        if (typeof MessageBox !== 'undefined') MessageBox.show(0.5, 8, 1, 9, 2, "No room to step behind them!", 'dialogue', 1, 0);
-                        if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('cancel');
-                        return; 
-                    }
-
-                    // 4. SET THE DASH TARGET (The physics engine will take over)
-                    this.dashTargetX = behindX;
-                    this.dashTargetY = behindY;
-                    this.isAggroDashing = true; 
-                    this.dir = targetDir; 
-
-                    if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('wind');
-
-                    // 5. DELAY THE CLASH UNTIL THE DASH IS COMPLETE
-                    this.dashCallback = () => {
-                        let playerCard = new Card(91, 0, { mastery: this.level });
-                        
-                        // Grab the target's base stats dynamically from the DB
-                        let targetCard = new Card(Math.floor(bestTarget.type), 0);
-
-                        let playerAgi = playerCard.rollStat(3) + (this.stat[3][2] || 0);
-                        let targetAgiMod = (bestTarget.stat && bestTarget.stat[3]) ? bestTarget.stat[3][2] : 0;
-                        let targetAgi = targetCard.rollStat(3) + targetAgiMod;
-
-                        // --- STEAL LOGIC ---
-                        if (spellData.isSteal) {
-                            if (playerAgi > targetAgi) {
-                                if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('chime');
-                                
-                                // Pull a random card from their deck. Default to 10 (Treasure Chest) if they have no deck.
-                                let stolenCardId = 10; 
-                                if (bestTarget.deck && bestTarget.deck.length > 0) {
-                                    let randIdx = Math.floor(Math.random() * bestTarget.deck.length);
-                                    stolenCardId = typeof bestTarget.deck[randIdx] === 'object' ? bestTarget.deck[randIdx].index : bestTarget.deck[randIdx];
-                                    
-                                    // Optional: Remove it from their deck so you can't infinitely rob them!
-                                    // bestTarget.deck.splice(randIdx, 1); 
-                                }
-                                
-                                // Inject into the Action Queue for a nice UI popup
-                                this.actionQueue.unshift(['give_card', { card: stolenCardId, text: `You successfully pickpocketed ${bestTarget.name}!` }]);
-                            } else {
-                                // CAUGHT!
-                                if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('cancel');
-                                this.actionQueue.unshift(['notify', { text: `You were caught trying to steal from ${bestTarget.name}!`, endActions: [['close_dialogue', null]] }]);
-                                
-                                // If they aren't already fighting you, they are now!
-                                if (bestTarget.alignment !== 'foe' && bestTarget.alignment !== 'foe_wave') {
-                                    this.actionQueue.unshift(['transform_npc', { index: bestTarget.index, newAlignment: 'foe', newRole: 'battle', newState: 'chasing' }]);
-                                } else {
-                                    // If they are already a foe, they just turn around and attack
-                                    bestTarget.dirX *= -1; 
-                                    bestTarget.dirY *= -1;
-                                }
-                            }
-                        } 
-                        else {
-                            if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('slash');                        
-                            
-                            // Let absorbHit handle the math!
-                            if (bestTarget.absorbHit(this, spellId)) {
-                                // Survived via ward! Add a small flinch/knockback so they don't clip.
-                                let pushX = this.dir === 1 ? 1 : (this.dir === 3 ? -1 : 0);
-                                let pushY = this.dir === 2 ? 1 : (this.dir === 0 ? -1 : 0);
-                                
-                                bestTarget.slideTargetX = bestTarget.x + (pushX * 0.5);
-                                bestTarget.slideTargetY = bestTarget.y + (pushY * 0.5);
-                                bestTarget.isSliding = true;
-                                bestTarget.state = 'chasing';
-                            } else {
-                                // No ward left, instant kill!
-                                this.killNPC(bestTarget, false, 'backstab');
-                            }
-                        }
-
-                        // --- MOVEMENT & PHYSICS KILL SWITCH ---
-                        // Forget sliding destinations so we don't rubberband across the map!
-                        this.targetMapX = behindX;
-                        this.targetMapY = behindY;
-                        this.isSlidingToTile = false;
-
-                        // Force the player to stop and re-press keys
-                        window.activeMoveKey = null;
-                        window.activeCtrlKey = false;
-                        if (typeof btnMove !== 'undefined') { btnMove.isPressed = false; btnMove.currentDir = null; }
-                        if (typeof btnMove2 !== 'undefined') { btnMove2.isPressed = false; btnMove2.currentDir = null; }
-                        if (typeof btnTurnL !== 'undefined') { btnTurnL.isPressed = false; btnTurnL.currentDir = null; }
-                        if (typeof btnTurnR !== 'undefined') { btnTurnR.isPressed = false; btnTurnR.currentDir = null; }
-                    };
                 }
                 // ==========================================
                 // NEW: CULTIVATE (Stat Point Generation)
@@ -58403,91 +58280,79 @@
                         }
 
                         let hitNPC = null;
-                        if (npcsOnTile.length > 0) {
-                            // Sort to prioritize Loot/Cards over Portals
-                            npcsOnTile.sort((a, b) => {
-                                // Priority 1: Dropped cards / Loot (-27)
-                                if (a.type === -27 && b.type !== -27) return -1;
-                                if (a.type !== -27 && b.type === -27) return 1;
-                                
-                                // Priority 2: Push Portals (99 or <= -29) to the back
-                                let isPortalA = (a.type === 99 || a.type <= -29);
-                                let isPortalB = (b.type === 99 || b.type <= -29);
-                                
-                                if (isPortalA && !isPortalB) return 1;
-                                if (!isPortalA && isPortalB) return -1;
-                                
-                                // Priority 3: Keep original order for everything else
-                                return 0; 
-                            });
+                    if (npcsOnTile.length > 0) {
+                        npcsOnTile.sort((a, b) => {
+                            if (a.type === -27 && b.type !== -27) return -1;
+                            if (a.type !== -27 && b.type === -27) return 1;
                             
-                            // Grab the highest priority entity!
-                            hitNPC = npcsOnTile[0]; 
-                        }
-
-                        if (hitNPC) {
-                            if (movingForward) {
-                                Dungeon.requestSave();
-                                
-                                let isEnemy = (hitNPC.alignment.startsWith('foe') && hitNPC.alignment !== 'foe_coward' && hitNPC.role !== 'summoned_minion') || hitNPC.role === 'battle';
-                                
-                                // --- NEW: NON-MAGE COLLISION ---
-                                if (isEnemy && Dungeon.playerClass !== 'Battle-Mage') {
-                                    Dungeon.shieldBash(hitNPC);
-                                    
-                                    if (typeof socket !== 'undefined') {
-                                        socket.emit("engage_npc", { npcIndex: hitNPC.index, x: hitNPC.x, y: hitNPC.y });
-                                    }
-                                    return; // Stop here!
-                                }
-                                // -------------------------------
-
-                                hitNPC.triggerInteraction(Dungeon);
-                                
-                                if (isEnemy) {
-                                    if (typeof socket !== 'undefined') {
-                                        socket.emit("engage_npc", { npcIndex: hitNPC.index, x: hitNPC.x, y: hitNPC.y });
-                                    }
-                                    return;
-                                }
-                                // Allow talking to ANY of these roles, regardless of if they are 'defender' or 'friendly',
-                                // AS LONG AS they are not actively fleeing in a panic (unless they are surrendering cowards).
-                                else if (['dialogue', 'shop', 'reward', 'quest_giver', 'dropped_card', 'become_ally', 'portal_invite'].includes(hitNPC.role)) {
-                                    if (hitNPC.state !== 'fleeing' || hitNPC.alignment === 'foe_coward') {
-                                        hitNPC.startDialogue(Dungeon);
-                                    }
-                                }
-                            }
+                            let isPortalA = (a.type === 99 || a.type <= -29);
+                            let isPortalB = (b.type === 99 || b.type <= -29);
                             
-                           // --- THE FIX: PASS-THROUGH WHITELIST ---
-                            let canPassThrough = (
-                                hitNPC.role === 'summoned_minion' ||
-                                hitNPC.state === 'fleeing' ||           // 1. Fleeing cowards
-                                hitNPC.isSliding ||                     // 2. Knockback
-                                hitNPC.state === 'following' ||         // 3. Allies/Escorts
-                                hitNPC.role === 'dropped_card' ||       // 4. Loot
-                                hitNPC.role === 'portal' ||             // 5. Portals
-                                hitNPC.role === 'internal_portal'       // 6. Map portals
-                            );
+                            if (isPortalA && !isPortalB) return 1;
+                            if (!isPortalA && isPortalB) return -1;
+                            
+                            return 0; 
+                        });
+                        hitNPC = npcsOnTile[0]; 
+                    }
 
-                            // 7. Custom Map AI (Only pass through if they AREN'T a talkable NPC)
-                            if (Dungeon.mapID === 999 && hitNPC.state === 'stationary') {
-                                if (!['dialogue', 'shop', 'reward', 'quest_giver'].includes(hitNPC.role)) {
-                                    canPassThrough = true;
+                    if (hitNPC) {
+                        if (movingForward) {
+                            Dungeon.requestSave();
+                            
+                            let isEnemy = (hitNPC.alignment.startsWith('foe') && hitNPC.alignment !== 'foe_coward' && hitNPC.role !== 'summoned_minion') || hitNPC.role === 'battle';
+                            
+                            // --- NEW: NON-MAGE COLLISION (RESTORED CHAIN RAMMING!) ---
+                            if (isEnemy && Dungeon.playerClass !== 'Battle-Mage') {
+                                Dungeon.shieldBash(hitNPC);
+                                
+                                if (typeof socket !== 'undefined') {
+                                    socket.emit("engage_npc", { npcIndex: hitNPC.index, x: hitNPC.x, y: hitNPC.y });
                                 }
+                                return; // Stop here! Let the player re-engage next frame!
                             }
+                            // -------------------------------
 
-                            // --- NEW: THE HARD BLOCK ---
-                            // NEVER pass through someone we are trying to talk to!
-                            if (['dialogue', 'shop', 'reward', 'quest_giver', 'become_ally'].includes(hitNPC.role)) {
-                                canPassThrough = false;
+                            hitNPC.triggerInteraction(Dungeon);
+                            
+                            if (isEnemy) {
+                                if (typeof socket !== 'undefined') {
+                                    socket.emit("engage_npc", { npcIndex: hitNPC.index, x: hitNPC.x, y: hitNPC.y });
+                                }
+                                return;
                             }
-
-                            // If they aren't on the whitelist block physical movement!
-                            if (!canPassThrough) { 
-                                return; 
+                            // Allow talking to ANY of these roles...
+                            else if (['dialogue', 'shop', 'reward', 'quest_giver', 'dropped_card', 'become_ally', 'portal_invite'].includes(hitNPC.role)) {
+                                if (hitNPC.state !== 'fleeing' || hitNPC.alignment === 'foe_coward') {
+                                    hitNPC.startDialogue(Dungeon);
+                                }
                             }
                         }
+                        
+                        let canPassThrough = (
+                            hitNPC.role === 'summoned_minion' ||
+                            hitNPC.state === 'fleeing' ||                       
+                            hitNPC.isSliding ||                                    
+                            hitNPC.state === 'following' ||                     
+                            hitNPC.role === 'dropped_card' ||       
+                            hitNPC.role === 'portal' ||                         
+                            hitNPC.role === 'internal_portal'       
+                        );
+
+                        if (Dungeon.mapID === 999 && hitNPC.state === 'stationary') {
+                            if (!['dialogue', 'shop', 'reward', 'quest_giver'].includes(hitNPC.role)) {
+                                canPassThrough = true;
+                            }
+                        }
+
+                        if (['dialogue', 'shop', 'reward', 'quest_giver', 'become_ally'].includes(hitNPC.role)) {
+                            canPassThrough = false;
+                        }
+
+                        if (!canPassThrough) { 
+                            return; 
+                        }
+                    }
 
                 // C. ONLINE PLAYER CHECK
                         if (window.remotePlayers) {
