@@ -208,14 +208,29 @@
                 29: { type: 'buff', name: 'Haste',  cooldown: 450000,  castStat: 2, buffStat: 3, amount: 2, duration: 1800, visual: 'arc', auraColor: 'rgba(0, 0, 255, 0.6)' },
                     
            
+                // Poison (DoT) - Ticks every 30 frames (1s). Rolls defStat vs castStat every tick to try and end early.
+                600: { type: 'debuff', name: 'Poison', cooldown: 10000, castStat: 2, defStat: 1, duration: 300, tickRate: 30, votType: 'dot', votAmount: 1.0, visual: 'aura', auraColor: 'rgba(0,255,0,0.7)' },
 
+                // Rampage (BoT) - Starts at +0 STR. Every second, you gain +1 STR. Ends after 5 seconds.
+                601: { type: 'buff', name: 'Rampage', cooldown: 10000, castStat: 2, buffStat: 0, amount: 0, duration: 150, tickRate: 30, votType: 'bot', votAmount: 1, visual: 'aura', auraColor: 'rgba(255,0,0,0.7)' },
+
+                // Regen (HoT) - Restores 1.0 Ward Time every second for 10 seconds.
+                602: { type: 'buff', name: 'Regen', cooldown: 10000, castStat: 2, duration: 300, tickRate: 30, votType: 'hot', votAmount: 1.0, visual: 'sparkle', auraColor: 'rgba(0,255,255,0.7)' },
+
+                // Electrocute (Stun) - Binds the target for half a second, every 2 seconds.
+                603: { type: 'debuff', name: 'Electrocute', cooldown: 10000, castStat: 2, defStat: 1, duration: 300, tickRate: 60, votType: 'stun', visual: 'chains', auraColor: 'rgba(255,255,0,0.7)' },
                 // --- DEBUFFS (Fired as Projectiles!) ---
-                15: { type: 'debuff', name: 'Curse', cooldown: 90000,castStat: 2, defStat: 0, debuffStat: 'all', duration: 3600, visual: 'aura', auraColor: 'rgba(128, 0, 128, 0.7)', color: [1,0,1], glow: '#800080', model3D: 'd4', isHoming: true },
-                12: { type: 'debuff', name: 'Bind',cooldown: 90000,  castStat: 2, defStat: 3, bind: true, duration: 600, visual: 'chains', auraColor: 'rgba(100, 100, 100, 0.8)', color: [1,1,1], glow: '#888888', model3D: 'd4', isHoming: true },
-                58: { type: 'debuff', name: 'Intimidate',cooldown: 90000,  castStat: 0, defStat: 2,debuffStat: 0, bind: true, duration: 450, visual: 'chains', auraColor: 'rgba(100, 100, 0, 0.8)', color: [1,1,0], glow: '#888888', model3D: 'd4', isHoming: true },
-                18: { type: 'debuff', name: 'Lunacy',cooldown: 90000,  castStat: 0, defStat: 2,debuffStat: 2, bind: true, duration: 450, visual: 'chains', auraColor: 'rgba(100, 100, 0, 0.8)', color: [1,1,0], glow: '#888888', model3D: 'd4', isHoming: true },
+                515: { type: 'debuff', name: 'Curse', cooldown: 90000,castStat: 2, defStat: 0, debuffStat: 'all', duration: 3600, visual: 'aura', auraColor: 'rgba(128, 0, 128, 0.7)', color: [1,0,1], glow: '#800080', model3D: 'd4', isHoming: true },
+                512: { type: 'debuff', name: 'Bind',cooldown: 90000,  castStat: 2, defStat: 3, bind: true, duration: 600, visual: 'chains', auraColor: 'rgba(100, 100, 100, 0.8)', color: [1,1,1], glow: '#888888', model3D: 'd4', isHoming: true },
+                558: { type: 'debuff', name: 'Intimidate',cooldown: 90000,  castStat: 0, defStat: 2,debuffStat: 0, bind: true, duration: 450, visual: 'chains', auraColor: 'rgba(100, 100, 0, 0.8)', color: [1,1,0], glow: '#888888', model3D: 'd4', isHoming: true },
+                518: { type: 'debuff', name: 'Lunacy',cooldown: 90000,  castStat: 0, defStat: 2,debuffStat: 2, bind: true, duration: 450, visual: 'chains', auraColor: 'rgba(100, 100, 0, 0.8)', color: [1,1,0], glow: '#888888', model3D: 'd4', isHoming: true },
                 68: { type: 'debuff', name: 'Bad Luck Charm',cooldown: 450000, castStat: 3, defStat: 2, debuffStat: 0, duration: 3600, visual: 'aura', auraColor: 'rgba(128, 0, 128, 0.7)', color: [1,0,1], glow: '#800080', model3D: 'd4', isHoming: true },
-                
+                //
+                // --- DEBUFF CONES (Frontal AoE) ---
+                15: { type: 'cone', name: 'Curse', cooldown: 90000, castStat: 2, defStat: 0, debuffStat: 'all', duration: 3600, visual: 'aura', auraColor: 'rgba(128, 0, 128, 0.7)', range: 4.0, angle: 0.5 },
+                12: { type: 'cone', name: 'Bind', cooldown: 90000, castStat: 2, defStat: 3, bind: true, duration: 600, visual: 'chains', auraColor: 'rgba(100, 100, 100, 0.8)', range: 4.0, angle: 0.5 },
+                58: { type: 'cone', name: 'Intimidate', cooldown: 90000, castStat: 0, defStat: 2, debuffStat: 0, bind: true, duration: 450, visual: 'chains', auraColor: 'rgba(100, 100, 0, 0.8)', range: 4.0, angle: 0.5 },
+                18: { type: 'cone', name: 'Lunacy', cooldown: 90000, castStat: 0, defStat: 2, debuffStat: 2, bind: true, duration: 450, visual: 'chains', auraColor: 'rgba(100, 100, 0, 0.8)', range: 4.0, angle: 0.5 },
                 // --- CONSUMABLE ITEMS (Static Buffs & Wards) ---
                 50: { type: 'item_buff', name: 'Sword',cooldown: 450000,       buffStat: 0, amount: 1, duration: 1800, visual: 'arc', auraColor: 'rgba(255, 255, 0, 0.6)' },
                 64: { type: 'item_buff', name: 'Shield', cooldown: 450000,     buffStat: 1, amount: 1, duration: 1800, visual: 'arc', auraColor: 'rgba(0, 255, 0, 0.6)' },
@@ -2957,7 +2972,6 @@
             dungeon.cameraMode = 'first_person';
 
             dungeon.currentSpeaker = this;
-            
             // ==========================================
             // --- NPC FACES PLAYER ---
             // ==========================================
@@ -3130,29 +3144,76 @@
                 let isBound = false; // Check if we are frozen!
 
                 for (let i = this.activeBuffs.length - 1; i >= 0; i--) {
+
                     let b = this.activeBuffs[i];
 
                     if (b.type === 'buff' || b.type === 'debuff' || b.type === 'item_buff') {
                         b.duration -= (30 * dt); 
                         
+                        // ==========================================
+                        // --- THE VoT TICK ENGINE (NPC) ---
+                        // ==========================================
+                        if (b.tickRate) {
+                            b.tickTimer += (30 * dt);
+                            if (b.tickTimer >= b.tickRate) {
+                                b.tickTimer -= b.tickRate;
+                                
+                                // 1. DnD RESIST ROLL
+                                if (b.type === 'debuff' && b.defStat !== undefined) {
+                                    let defCard = new Card(Math.floor(this.type), 0);
+                                    let defRoll = defCard.rollStat(b.defStat) + (this.stat[b.defStat] ? this.stat[b.defStat][2] : 0);
+                                    
+                                    if (defRoll > b.resistDC) {
+                                        b.duration = 0; // Shook it off!
+                                        if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('block', this.x, this.y, playerX, playerY, dungeon.dir);
+                                    }
+                                }
+
+                                // 2. APPLY THE TICKS
+                                if (b.duration > 0) {
+                                    if (b.votType === 'dot') {
+                                        if (this.currentWardTime > 0) {
+                                            this.currentWardTime -= b.votAmount;
+                                            if (this.currentWardTime <= 0) { this.currentWardTime = 0; this.wardShatterCooldown = 9.0; }
+                                        } else {
+                                            dungeon.killNPC(this, false, 'dot_damage'); // Let poison kill them!
+                                        }
+                                        this.damageFlashTimer = 3;
+                                    } 
+                                    else if (b.votType === 'hot') {
+                                        this.currentWardTime = Math.min(this.currentWardTime + b.votAmount, this.maxWards * this.timePerWard);
+                                    } 
+                                    else if (b.votType === 'bot' && b.buffStat !== undefined) {
+                                        this.stat[b.buffStat][2] += b.votAmount;
+                                        b.accumulatedVoT += b.votAmount;
+                                    } 
+                                    else if (b.votType === 'stun') {
+                                        this.combatCooldown = 15; // Lock their AI
+                                        this.isSliding = false; // Kill momentum
+                                    }
+                                }
+                            }
+                        }
+
+                        // ==========================================
+                        // --- BUFF EXPIRATION ---
+                        // ==========================================
                         if (b.duration <= 0) {
-                            // Time's up! Revert the stat change. 
                             let statTarget = (b.type === 'buff' || b.type === 'item_buff') ? b.buffStat : b.debuffStat;
+                            let totalToRevert = b.amount + (b.accumulatedVoT || 0);
                             
                             if (statTarget === 'all') {
-                                for (let s = 0; s < 4; s++) this.stat[s][2] -= b.amount;
+                                for (let s = 0; s < 4; s++) this.stat[s][2] -= totalToRevert;
                             } else if (statTarget !== undefined) {
-                                this.stat[statTarget][2] -= b.amount; 
+                                this.stat[statTarget][2] -= totalToRevert; 
                             }
                             this.activeBuffs.splice(i, 1);
                         } else {
-                            // If the duration is still active, check for special status effects!
                             if (b.bind) isBound = true;
                         }
                     }
                     else if (b.type === 'ward') {
                         if (b.hits <= 0) {
-                            // Armor broke!
                             this.activeBuffs.splice(i, 1);
                             MusicEngine.play3DSFX('cancel', this.x, this.y, playerX, playerY, dungeon.dir);
                         }
@@ -3276,7 +3337,7 @@
                 // --- APPLY THE CACHED TARGET ---
                 if (currentPrey) {
                     if (this.alignment.startsWith('ally') || this.alignment.startsWith('defender')) {
-                        let leash = this.state === 'chasing' ? 12.0 : 6.0; 
+                        let leash = this.state === 'chasing' ? 13.0 : 6.0; 
                 
                         if (distToActualPlayer < leash || this.alignment.startsWith('defender')) {
                             targetX = currentPrey.x; targetY = currentPrey.y;
@@ -3477,48 +3538,45 @@
                 }
                 else if (typeof this.alignment === 'string' && this.alignment.startsWith('foe')) {
                     if (isChasingNPC) {
-                        this.state = 'chasing'; this.speed = 1.5;
+                        this.state = 'chasing'; this.speed = 3;
                     } else {
                         let hasLOS = this.hasLineOfSight(dungeon.maze, playerX, playerY);
 
-                        // REPLACE IT WITH THIS:
                         if (this.state === 'chasing') {
-                            // FIX: Hunted/Wave enemies have a massive leash distance so they don't drop aggro instantly upon spawning!
-                            let aggroLeash =  7; 
+                            let aggroLeash = 6; 
                             
-                            // REPLACE IT WITH THIS:
-                            if (distToActualPlayer > aggroLeash || startGame !== 'explore') {
+                            // Safely calculate distance to last seen spot ONLY if we have one
+                            let distToLastSeen = (this.lastSeenX !== null) 
+                                ? Math.sqrt(Math.pow(this.x - this.lastSeenX, 2) + Math.pow(this.y - this.lastSeenY, 2)) 
+                                : Infinity;
+
+                            // 1. DROP AGGRO: Too far, game state changed, OR reached last known spot without finding player
+                            if (distToActualPlayer > aggroLeash || startGame !== 'explore' || (!hasLOS && distToLastSeen < 1.0)) {
                                 this.state = (this.preState === 'chasing') ? 'wandering' : (this.preState || 'wandering');
                                 this.speed = (this.state === 'stationary') ? 0 : 0.5;
                                 this.lastSeenX = null;
                                 this.lastSeenY = null;
                             } 
-                            // FIX: Do not let Hunted mobs drop aggro just because they are stuck behind a wall near you!
-                            else if (!hasLOS && this.lastSeenX !== null) {                            
-                                let distToLastSeen = Math.sqrt(Math.pow(this.x - this.lastSeenX, 2) + Math.pow(this.y - this.lastSeenY, 2));
-                                if (distToLastSeen < 1.0) {
-                                    this.state = (this.preState === 'chasing') ? 'wandering' : (this.preState || 'wandering');
-                                    this.speed = (this.state === 'stationary') ? 0 : 0.5;
-                                    this.lastSeenX = null;
-                                    this.lastSeenY = null;
-                                }
-                                else {
-                                    // --- FIX 1: HIT THE GAS ---
-                                    // Keep speed up while investigating the last place they saw you!
-                                    this.speed = 1.5; 
-                                }
-                            }
-                            else {
-                                // --- FIX 1: HIT THE GAS ---
-                                // Keep speed up while investigating the last place they saw you!
+                            // 2. INVESTIGATE: Lost line of sight, but still moving to where you were last seen
+                            else if (!hasLOS) {
                                 this.speed = 1.5; 
                             }
-                        } else {
-                            if (distToActualPlayer < 4 && hasLOS && startGame === 'explore') {
-                                this.state = 'chasing';
-                                this.speed = 1.5;
+                            // 3. ACTIVE CHASE: Has line of sight, floor it!
+                            else {
+                                this.speed = 3; 
+                                // Optional but recommended: Update last seen while actively chasing so they track you better
                                 this.lastSeenX = playerX; 
                                 this.lastSeenY = playerY;
+                            }
+                            
+                        } else {
+                            // WAKE UP / GAIN AGGRO
+                            if (distToActualPlayer < 6 && hasLOS && startGame === 'explore') {
+                                this.state = 'chasing';
+                                this.speed = 2.0; // Burst of speed upon noticing player
+                                this.lastSeenX = playerX; 
+                                this.lastSeenY = playerY;
+                                
                                 if (typeof MusicEngine !== 'undefined') { 
                                     MusicEngine.play3DSFX('grunt', this.x, this.y, playerX, playerY, dungeon.dir); 
                                 }
@@ -3850,16 +3908,21 @@
                                 if (startGame === 'explore' && !this.isDead) {
                                     // --- WARD INTERCEPTOR ---
                                     if (dungeon.absorbHit(this)) {
+                                        // 1. NO KNOCKBACK! Just stun them in place.
+                                        this.isSliding = false; 
+                                        this.state = 'chasing';
+                                        this.combatCooldown = 25; // Slightly longer stun so the player can react
+                                        
+                                        // 2. Safely push them just outside the hitbox so they don't hit you 30x a second
                                         let dx = this.x - playerX;
                                         let dy = this.y - playerY;
                                         let dist = Math.sqrt(dx*dx + dy*dy) || 1;
                                         
-                                        this.slideTargetX = this.x + (dx/dist) * 0.8; 
-                                        this.slideTargetY = this.y + (dy/dist) * 0.8;
-                                        this.isSliding = true;
-                                        this.state = 'chasing';
-                                        this.combatCooldown = 15; // Stun them so you can run away
-                                    } 
+                                        if (dist < 0.8) {
+                                            this.x = playerX + (dx/dist) * 0.81;
+                                            this.y = playerY + (dy/dist) * 0.81;
+                                        }
+                                    }
                                     else {
                                         this.triggerInteraction(dungeon); 
                                         if (this.role === 'battle') {
@@ -3880,7 +3943,7 @@
             // =========================================================
             // 7. RANGED COMBAT LOGIC
             // =========================================================
-                if (this.state === 'chasing' && this.isRanged && !this.isDead) {
+                if (this.state === 'chasing' && this.isRanged && !this.isDead && !this.isSliding && !this.isAggroDashing) {
                     let dx = targetX - this.x;
                     let dy = targetY - this.y;
                     let distToTarget = Math.sqrt(dx*dx + dy*dy);
@@ -4104,19 +4167,27 @@
                         this.y = destY;
                         
                         let wasDashing = this.isAggroDashing;
-                        let wasSliding = this.isSliding;
+                        let wasSliding = this.isSliding; // <-- Capture this!
+
+                        // Wipe both flags instantly
+                        this.isAggroDashing = false;
+                        this.isSliding = false;
 
                         if (wasDashing) {
-                            this.isAggroDashing = false;
-                            this.state = 'battling'; // Ready to strike!
-                            
+                            this.state = 'battling'; 
                             if (typeof this.dashCallback === 'function') {
                                 this.dashCallback();
                                 this.dashCallback = null;
                             }
                         } 
-                        else if (wasSliding) {
-                            this.isSliding = false;
+                        
+                        // --- NEW: THE SLIDE CALLBACK ---
+                        // Triggers the exact frame a knockback finishes!
+                        if (wasSliding) {
+                            if (typeof this.slideCallback === 'function') {
+                                this.slideCallback();
+                                this.slideCallback = null;
+                            }
                         }
                     } else {
                         // Move towards the target smoothly
@@ -4605,17 +4676,8 @@
                             } else if (bestTarget === dungeon) {
                                 dungeon.power -= 5; 
                                 dungeon.playerFlashTimer = 3;
-                                
                                 this.combatCooldown = 25;
-                                let bX = this.x - dungeon.x; let bY = this.y - dungeon.y;
-                                let bDist = Math.sqrt(bX*bX + bY*bY) || 1;
-                                
-                                // FIX: Prevent compounding knockback
-                                if (!this.isSliding) {
-                                    this.slideTargetX = this.x + (bX/bDist) * 1.5;
-                                    this.slideTargetY = this.y + (bY/bDist) * 1.5;
-                                    this.isSliding = true;
-                                }
+                                // REMOVED: Steal Success Recoil
                             }
                         } else {
                             if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('cancel');
@@ -4630,20 +4692,11 @@
                             } else {
                                 this.combatCooldown = 30; 
                                 this.state = 'wandering';
-                                
-                                let bX = this.x - dungeon.x; let bY = this.y - dungeon.y;
-                                let bDist = Math.sqrt(bX*bX + bY*bY) || 1;
-                                
-                                // FIX: Prevent compounding knockback
-                                if (!this.isSliding) {
-                                    this.slideTargetX = this.x + (bX/bDist) * 1.5;
-                                    this.slideTargetY = this.y + (bY/bDist) * 1.5;
-                                    this.isSliding = true;
-                                }
+                                // REMOVED: Steal Failed Recoil
                             }
                         }
                     } 
-                    else {
+                    else { // Standard Assassination Damage
                         let damage = myAtk - targetDef;
                         
                         if (damage > 0) {
@@ -4659,15 +4712,7 @@
                                 if (!dungeon.isProcessingActions) dungeon.processNextAction();
                                 
                                 this.combatCooldown = 20;
-                                let bX = this.x - dungeon.x; let bY = this.y - dungeon.y;
-                                let bDist = Math.sqrt(bX*bX + bY*bY) || 1;
-                                
-                                // FIX: Prevent compounding knockback
-                                if (!this.isSliding) {
-                                    this.slideTargetX = this.x + (bX/bDist) * 1.5;
-                                    this.slideTargetY = this.y + (bY/bDist) * 1.5;
-                                    this.isSliding = true;
-                                }
+                                // REMOVED: Hit Success Recoil
                             } else {
                                 bestTarget.damageFlashTimer = 3;
                                 dungeon.killNPC(bestTarget, false, 'backstab');
@@ -4677,17 +4722,8 @@
                             
                             if (bestTarget === dungeon) {
                                 dungeon.playerFlashTimer = 3;
-                                
                                 this.combatCooldown = 25; 
-                                let bX = this.x - dungeon.x; let bY = this.y - dungeon.y;
-                                let bDist = Math.sqrt(bX*bX + bY*bY) || 1;
-                                
-                                // FIX: Prevent compounding knockback
-                                if (!this.isSliding) {
-                                    this.slideTargetX = this.x + (bX/bDist) * 1.5;
-                                    this.slideTargetY = this.y + (bY/bDist) * 1.5;
-                                    this.isSliding = true;
-                                }
+                                // REMOVED: Hit Blocked Recoil
                             } else {
                                 bestTarget.damageFlashTimer = 3;
                                 bestTarget.dirX *= -1; 
@@ -4701,7 +4737,7 @@
                     };
                 }
                 // ==========================================
-                // NEW: ALLY/FOE FRONTAL CONE AoE (Shield Bash, Critical Strike)
+                // NEW: ALLY/FOE FRONTAL CONE AoE 
                 // ==========================================
                 else if (spellData.type === 'cone') {
                     let dx = targetX - this.x;
@@ -4733,14 +4769,37 @@
 
                     this.dashCallback = () => {
                         if (typeof MusicEngine !== 'undefined') {
-                            MusicEngine.play3DSFX(spellData.name === 'Shield Bash' ? 'block' : 'slash');
-                        }
+                        MusicEngine.play3DSFX(spellData.name === 'Shield Bash' ? 'block' : (spellData.bind ? 'wind' : 'slash'));
+                    }
 
-                        if (typeof globalParticles !== 'undefined') {
-                            for (let p = 0; p < 12; p++) {
-                                spawnParticle(this.x + (Math.random() - 0.5) * 0.8, this.y + (Math.random() - 0.5) * 0.8, '#00ffff', 'sparkle');
+                    // --- UPGRADE: DYNAMIC CONE PARTICLE SPREAD ---
+                    if (typeof globalParticles !== 'undefined' && typeof spawnParticle !== 'undefined') {
+                        // Grab the spell's color, fallback to white
+                        let pColor = spellData.glow || spellData.auraColor || '#ffffff';
+                        let coneRange = spellData.range || 3.0;
+                        let pType =  'sparkle';
+                        
+                        // Step outward from the caster to the end of the range
+                        for (let dist = 0.5; dist <= coneRange; dist += 0.5) {
+                            
+                            // The further out we go, the wider the cone gets!
+                            let spread = dist * 1.5; 
+                            
+                            // Spawn a burst of particles at this distance tier
+                            for (let p = 0; p < 4; p++) {
+                                // Calculate perpendicular spread (to fan outwards)
+                                let perpX = -fY * (Math.random() - 0.5) * spread;
+                                let perpY = fX * (Math.random() - 0.5) * spread;
+                                
+                                spawnParticle(
+                                    this.x + (fX * dist) + perpX,
+                                    this.y + (fY * dist) + perpY,
+                                    pColor, 
+                                    pType
+                                );
                             }
                         }
+                    }
 
                         let myCardId = (this.owner === null && this.type !== 0) ? Math.floor(this.type) : 91;
                         let myCard = new Card(myCardId, 0);
@@ -4805,65 +4864,37 @@
                                         
                                         if (target === dungeon) {
                                             if (typeof dungeon.absorbHit === 'function' && dungeon.absorbHit(this, spellId)) {
-
+                                                // Ward absorbed the hit
                                             } else {
-                                                dungeon.power -= damage;
-                                                dungeon.playerFlashTimer = 3;
+                                                // --- UPGRADE: CHECK IF THIS IS A DEBUFF CONE ---
+                                                if (spellData.debuffStat !== undefined || spellData.bind) {
+                                                    let magnitude = Math.max(1, damage);
+                                                    dungeon.applySpell(spellId, magnitude);
+                                                    dungeon.playerFlashTimer = 3;
+                                                } else {
+                                                    dungeon.power -= damage;
+                                                    dungeon.playerFlashTimer = 3;
+                                                }
                                             }
                                             if (!dungeon.isProcessingActions) dungeon.processNextAction();
-                                            
-                                            let maxPush = Math.floor(knockPower * 4); 
-                                            let pushed = 0, testX = dungeon.x, testY = dungeon.y;
-                                            while (pushed < maxPush) {
-                                                let nX = testX + pushX * 0.25, nY = testY + pushY * 0.25;
-                                                if (dungeon.isWall(Math.floor(nX), Math.floor(nY))) break; 
-                                                testX = nX; testY = nY; pushed++;
-                                            }
-                                            dungeon.x = testX; 
-                                            dungeon.y = testY;
-
-                                            dungeon.targetMapX = testX;
-                                            dungeon.targetMapY = testY;
-                                            dungeon.isSlidingToTile = false;
-                                            
                                         } else {
                                             target.damageFlashTimer = 3;
-                                            dungeon.killNPC(target, false, 'cone_attack');
+                                            
+                                            // --- UPGRADE: ENEMY HITTING ANOTHER ENEMY WITH A DEBUFF ---
+                                            if (spellData.debuffStat !== undefined || spellData.bind) {
+                                                let magnitude = Math.max(1, damage);
+                                                target.applySpell(spellId, magnitude);
+                                            } else {
+                                                dungeon.killNPC(target, false, 'cone_attack');
+                                            }
                                         }
                                     } else {
                                         if (target === dungeon) {
                                             dungeon.playerFlashTimer = 3;
-                                            
-                                            let maxPush = Math.floor(knockPower * 4); 
-                                            let pushed = 0, testX = dungeon.x, testY = dungeon.y;
-                                            while (pushed < maxPush) {
-                                                let nX = testX + pushX * 0.25, nY = testY + pushY * 0.25;
-                                                if (dungeon.isWall(Math.floor(nX), Math.floor(nY))) break; 
-                                                testX = nX; testY = nY; pushed++;
-                                            }
-                                            dungeon.x = testX; 
-                                            dungeon.y = testY;
-
-                                            dungeon.targetMapX = testX;
-                                            dungeon.targetMapY = testY;
-                                            dungeon.isSlidingToTile = false;
+                                            // REMOVED: Player Knockback Loop
                                         } else {
                                             target.damageFlashTimer = 3;
-                                            let maxPush = Math.floor(knockPower * 4); 
-                                            let pushed = 0, testX = target.x, testY = target.y;
-                                            while (pushed < maxPush) {
-                                                let nX = testX + pushX * 0.25, nY = testY + pushY * 0.25;
-                                                let bufX = pushX > 0 ? 0.3 : -0.3, bufY = pushY > 0 ? 0.3 : -0.3;
-                                                if (this.isWall(Math.floor(nX + bufX), Math.floor(nY + bufY))) break;
-                                                testX = nX; testY = nY; pushed++;
-                                            }
-                                            
-                                            // FIX: Prevent compounding knockback
-                                            if (!target.isSliding) {
-                                                target.slideTargetX = testX;
-                                                target.slideTargetY = testY;
-                                                target.isSliding = true;
-                                            }
+                                            // REMOVED: Target Sliding Knockback
                                             target.state = 'chasing';
                                             target.combatCooldown = 13;
                                         }
@@ -4940,7 +4971,10 @@
                 }
                 this.wardShatterCooldown = 0;
             }
-
+            // --- NEW: VoT TRACKING ---
+                    newEffect.tickTimer = 0;
+                    newEffect.accumulatedVoT = 0; // Tracks stacking stats so we can remove them cleanly
+                    newEffect.resistDC = magnitude; // Save the caster's dice roll! The target must beat this every tick to shake it off.
             this.activeBuffs.push(newEffect);
             }
         summonMinion(dungeon, minionType) {
@@ -4978,11 +5012,11 @@
             if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('arcane');
             
             if (typeof globalParticles !== 'undefined') {
-                for (let p = 0; p < 12; p++) {
+                for (let p = 0; p < 6; p++) {
                     spawnParticle(
                         this.x + (Math.random() - 0.5) * 0.8,
                         this.y + (Math.random() - 0.5) * 0.8,
-                        '#00ffff', 
+                        '#B76E79', 
                         'sparkle'
                     );
                 }
@@ -5028,24 +5062,24 @@
             }
 
             // 2. Attacker Roll
-            let atkRoll = 0;
-            if (attacker) {
-                // Is it the player? (Dungeon/Explore instance)
-                if (attacker.isPlayer || attacker.deck !== undefined) {
-                    let pCard = new Card(91, 0, { mastery: attacker.level || 0 });
-                    atkRoll = pCard.rollStat(atkStat);
-                    if (attacker.stat && attacker.stat[atkStat]) atkRoll += attacker.stat[atkStat][2];
-                    if (attacker.damage) atkRoll += attacker.damage; 
-                } else if (attacker.type !== undefined) {
-                    let atkCardId = attacker.type;
-                    let atkCard = new Card(Math.floor(atkCardId), 0);
-                    atkRoll = atkCard.rollStat(atkStat);
-                    if (attacker.stat && attacker.stat[atkStat]) atkRoll += attacker.stat[atkStat][2];
-                    if (attacker.damage) atkRoll += attacker.damage;
+                let atkRoll = 0;
+                if (attacker) {
+                    // Is it the player? (Dungeon/Explore instance)
+                    if (attacker.isPlayer || attacker.deck !== undefined) {
+                        let pCard = new Card(91, 0, { mastery: attacker.level || 0 });
+                        atkRoll = pCard.rollStat(atkStat);
+                        if (attacker.stat && attacker.stat[atkStat]) atkRoll += attacker.stat[atkStat][2];
+                        if (attacker.damage) atkRoll += attacker.damage; 
+                    } else if (attacker.type !== undefined) {
+                        let atkCardId = attacker.type;
+                        let atkCard = new Card(Math.floor(atkCardId), 0);
+                        atkRoll = atkCard.rollStat(atkStat);
+                        if (attacker.stat && attacker.stat[atkStat]) atkRoll += attacker.stat[atkStat][2];
+                        if (attacker.damage) atkRoll += attacker.damage;
+                    }
+                } else {
+                    atkRoll = Math.floor(Math.random() * 6) + 1; // Fallback
                 }
-            } else {
-                atkRoll = Math.floor(Math.random() * 6) + 1; // Fallback
-            }
 
             // 3. Defender Roll (NPC)
             let defCard = new Card(Math.floor(this.type), 0);
@@ -5063,18 +5097,26 @@
                     legacyWard.hits--;
                 }
                 
-                this.damageFlashTimer = 15; 
+                this.damageFlashTimer = 3; 
                 
                 if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('cancel', this.x, this.y);
 
-                if (typeof globalParticles !== 'undefined' && typeof spawnParticle !== 'undefined') {
-                    for (let p = 0; p < 8; p++) {
-                        spawnParticle(
-                            this.x + (Math.random() - 0.5) * 0.8,
-                            this.y + (Math.random() - 0.5) * 0.8,
-                            '#00ffff', 
-                            'sparkle'
-                        );
+                if (this.isSliding) {
+                    // If they got knocked back, tell them to bleed WHEN THEY STOP sliding!
+                    this.slideCallback = () => {
+                        if (typeof globalParticles !== 'undefined') {
+                            for (let p = 0; p < 9; p++) {
+                                // Because this fires later, target.x and target.y will be their final knocked-back coordinates!
+                                spawnParticle(this.x+ (Math.random() - 0.13), this.y+ (Math.random() - 0.13), '#800000', 'sparkle'); 
+                            }
+                        }
+                    };
+                } else {
+                    // If they hit a wall immediately or didn't get knocked back, bleed right now
+                    if (typeof globalParticles !== 'undefined') {
+                        for (let p = 0; p < 9; p++) {
+                            spawnParticle(this.x+ (Math.random() - 0.5), this.y+ (Math.random() - 0.5), '#800000', 'sparkle'); 
+                        }
                     }
                 }
 
@@ -7833,7 +7875,8 @@
                                     // Suncats roam the whole map
                                     zoneX: centerX, 
                                     zoneY: centerY, 
-                                    radius: maxRadius 
+                                    radius: maxRadius,
+                                    customDialogue:["Yes?"] 
                                 },
                                 {
                                 type: 'tintWolf',
@@ -12129,7 +12172,7 @@
 
                     // --- YOUR PARTICLE SPAWNER ---
                     if (typeof globalParticles !== 'undefined') {
-                        for (let p = 0; p < 12; p++) {
+                        for (let p = 0; p < 3; p++) {
                             spawnParticle(
                                 this.x + (Math.random() - 0.5) * 0.8,
                                 this.y + (Math.random() - 0.5) * 0.8,
@@ -12284,12 +12327,67 @@
                                 let b = this.activeBuffs[i];
                                 if (b.type === 'buff' || b.type === 'debuff' || b.type === 'item_buff') {
                                     b.duration -= (30 * dt); 
+                                    
+                                    // ==========================================
+                                    // --- THE VoT TICK ENGINE ---
+                                    // ==========================================
+                                    if (b.tickRate) {
+                                        b.tickTimer += (30 * dt);
+                                        if (b.tickTimer >= b.tickRate) {
+                                            b.tickTimer -= b.tickRate; // Reset the clock
+                                            
+                                            // 1. DnD RESIST ROLL (Shake off debuffs early!)
+                                            if (b.type === 'debuff' && b.defStat !== undefined) {
+                                                let defCard = new Card(91, 0, { mastery: this.level });
+                                                let defRoll = defCard.rollStat(b.defStat) + (this.stat[b.defStat][2] || 0);
+                                                
+                                                if (defRoll > b.resistDC) {
+                                                    b.duration = 0; // Shook it off!
+                                                    if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('block');
+                                                }
+                                            }
+
+                                            // 2. APPLY THE TICKS (If we didn't shake it off)
+                                            if (b.duration > 0) {
+                                                if (b.votType === 'dot') {
+                                                    if (this.currentWardTime > 0) {
+                                                        this.currentWardTime -= b.votAmount;
+                                                        if (this.currentWardTime <= 0) { this.currentWardTime = 0; this.wardShatterCooldown = 9.0; }
+                                                    } else {
+                                                        this.power -= b.votAmount;
+                                                    }
+                                                    this.playerFlashTimer = 3;
+                                                    if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('hit');
+                                                } 
+                                                else if (b.votType === 'hot') {
+                                                    this.currentWardTime = Math.min(this.currentWardTime + b.votAmount, this.maxWards * this.timePerWard);
+                                                    if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('heal');
+                                                } 
+                                                else if (b.votType === 'bot' && b.buffStat !== undefined) {
+                                                    this.stat[b.buffStat][2] += b.votAmount;
+                                                    b.accumulatedVoT += b.votAmount; // Track it so we can revert it later!
+                                                    if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('buff2');
+                                                } 
+                                                else if (b.votType === 'stun') {
+                                                    window.activeMoveKey = null;
+                                                    this.inputCooldown = 0.5; // Stun the player for half a second
+                                                    if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('cancel');
+                                                }
+                                            }
+                                        }
+                                    }
+                                    
+                                    // ==========================================
+                                    // --- BUFF EXPIRATION ---
+                                    // ==========================================
                                     if (b.duration <= 0) {
                                         let statTarget = (b.type === 'buff' || b.type === 'item_buff') ? b.buffStat : b.debuffStat;
+                                        let totalToRevert = b.amount + (b.accumulatedVoT || 0); // Include VoT stacks!
+                                        
                                         if (statTarget === 'all') {
-                                            for (let s = 0; s < 4; s++) this.stat[s][2] -= b.amount;
+                                            for (let s = 0; s < 4; s++) this.stat[s][2] -= totalToRevert;
                                         } else if (statTarget !== undefined) {
-                                            this.stat[statTarget][2] -= b.amount; 
+                                            this.stat[statTarget][2] -= totalToRevert; 
                                         }
                                         this.activeBuffs.splice(i, 1);
                                     }
@@ -13723,7 +13821,7 @@
                         if (this.frame % 3 === 0) { 
                             npc.activeBuffs.forEach(buff => {
                                 if (typeof globalParticles !== 'undefined') {
-                                    for (let p = 0; p < 12; p++) {
+                                    for (let p = 0; p < 3; p++) {
                                         spawnParticle(
                                             this.x + (Math.random() - 0.5) * 0.8,
                                             this.y + (Math.random() - 0.5) * 0.8,
@@ -16451,7 +16549,7 @@
                         // 5. Visuals and Audio (No UI Notify!)
                         if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('buff2');
                         if (typeof globalParticles !== 'undefined') {
-                            for (let p = 0; p < 15; p++) spawnParticle(this.x, this.y, '#ff4400', 'sparkle');
+                            for (let p = 0; p < 3; p++) spawnParticle(this.x, this.y, '#ff4400', 'sparkle');
                         }
 
                     } else {
@@ -16558,11 +16656,12 @@
                     });
                     
                     if (typeof globalParticles !== 'undefined') {
+                        let pColor = spellData.glow || spellData.auraColor || '#ffffff';
                         for (let p = 0; p < 12; p++) {
                             spawnParticle(
-                                this.x + (Math.random() - 0.5) * 0.8,
-                                this.y + (Math.random() - 0.5) * 0.8,
-                                '#00ffff', 
+                                this.x + (Math.random() - 0.5) * 1.5,
+                                this.y + (Math.random() - 0.5) * 1.5,
+                                pColor, 
                                 'sparkle'
                             );
                         }
@@ -16853,17 +16952,35 @@
                     else if (this.dir === 3) fX = -1; 
 
                     if (typeof MusicEngine !== 'undefined') {
-                        MusicEngine.play3DSFX(spellData.name === 'Shield Bash' ? 'block' : 'slash');
+                        MusicEngine.play3DSFX(spellData.name === 'Shield Bash' ? 'block' : (spellData.bind ? 'wind' : 'slash'));
                     }
 
-                    if (typeof globalParticles !== 'undefined') {
-                        for (let p = 0; p < 12; p++) {
-                            spawnParticle(
-                                this.x + (Math.random() - 0.5) * 0.8,
-                                this.y + (Math.random() - 0.5) * 0.8,
-                                '#00ffff', 
-                                'sparkle'
-                            );
+                    // --- UPGRADE: DYNAMIC CONE PARTICLE SPREAD ---
+                    if (typeof globalParticles !== 'undefined' && typeof spawnParticle !== 'undefined') {
+                        // Grab the spell's color, fallback to white
+                        let pColor = spellData.glow || spellData.auraColor || '#ffffff';
+                        let coneRange = spellData.range || 4.0;
+                        let pType = (spellData.visual === 'chains' || spellData.visual === 'aura') ? 'smoke' : 'sparkle';
+                        
+                        // Step outward from the caster to the end of the range
+                        for (let dist = 0.5; dist <= coneRange; dist += 0.5) {
+                            
+                            // The further out we go, the wider the cone gets!
+                            let spread = dist * 1.5; 
+                            
+                            // Spawn a burst of particles at this distance tier
+                            for (let p = 0; p < 4; p++) {
+                                // Calculate perpendicular spread (to fan outwards)
+                                let perpX = -fY * (Math.random() - 0.5) * spread;
+                                let perpY = fX * (Math.random() - 0.5) * spread;
+                                
+                                spawnParticle(
+                                    this.x + (fX * dist) + perpX,
+                                    this.y + (fY * dist) + perpY,
+                                    pColor, 
+                                    pType
+                                );
+                            }
                         }
                     }
 
@@ -16904,7 +17021,14 @@
                                        }
                                        npc.state = 'chasing';
                                    } else {
-                                       this.killNPC(npc, false, 'cone_attack');
+                                       // --- UPGRADE: CHECK IF THIS IS A DEBUFF CONE ---
+                                       if (spellData.debuffStat !== undefined || spellData.bind) {
+                                           let magnitude = Math.max(1, playerAtk - targetDef);
+                                           npc.applySpell(spellId, magnitude);
+                                           npc.damageFlashTimer = 3;
+                                       } else {
+                                           this.killNPC(npc, false, 'cone_attack');
+                                       }
                                    }
                                } else {
                                     let knockPower = spellData.knockback || 1.0;
@@ -16966,8 +17090,8 @@
                     if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('heal');
                     
                     if (typeof globalParticles !== 'undefined') {
-                        for (let p = 0; p < 15; p++) {
-                            spawnParticle(this.x + (Math.random() - 0.5), this.y + (Math.random() - 0.5), '#ffff00', 'sparkle');
+                        for (let p = 0; p < 9; p++) {
+                            spawnParticle(this.x + (Math.random() - 0.5), this.y + (Math.random() - 0.5), '#009966', 'sparkle');
                         }
                     }
 
@@ -17102,7 +17226,10 @@
                     } else if (newEffect.type === 'debuff' && newEffect.debuffStat !== undefined) {
                         this.stat[newEffect.debuffStat][2] += newEffect.amount;
                     }
-
+                    // --- NEW: VoT TRACKING ---
+                    newEffect.tickTimer = 0;
+                    newEffect.accumulatedVoT = 0; // Tracks stacking stats so we can remove them cleanly
+                    newEffect.resistDC = magnitude; // Save the caster's dice roll! The target must beat this every tick to shake it off.
                     this.activeBuffs.push(newEffect);
                 }
             openBoosterPack(spellId) {
@@ -17544,8 +17671,8 @@
                             spawnParticle(
                                 npc.x + (Math.random() - 0.5) * 0.4,
                                 npc.y + (Math.random() - 0.5) * 0.4,
-                                '#ff0000', 
-                                'smoke' 
+                                '#800000', 
+                                'sparkle' 
                             );
                         }
                     }
@@ -17661,11 +17788,11 @@
                                 minion.x = -999; // Move off map
                                 
                                 if (typeof globalParticles !== 'undefined') {
-                                    for (let p = 0; p < 12; p++) {
+                                    for (let p = 0; p < 3; p++) {
                                         spawnParticle(
                                             this.x + (Math.random() - 0.5) * 0.8,
                                             this.y + (Math.random() - 0.5) * 0.8,
-                                            '#00ffff', 
+                                            '#800000', 
                                             'sparkle'
                                         );
                                     }
@@ -19370,11 +19497,11 @@
                                     let transformPayload = { index: n.index, ...payload };
                                     this.actionQueue.unshift(['transform_npc', transformPayload]);
                                     if (typeof globalParticles !== 'undefined') {
-                                        for (let p = 0; p < 12; p++) {
+                                        for (let p = 0; p < 9; p++) {
                                             spawnParticle(
                                                 this.x + (Math.random() - 0.5) * 0.8,
                                                 this.y + (Math.random() - 0.5) * 0.8,
-                                                '#00ffff', 
+                                                '#A9A9A9', 
                                                 'sparkle'
                                             );
                                         }
@@ -24348,11 +24475,11 @@
                                         this.openTacticsBooster(steppedOn.cardId);
                                         
                                         if (typeof globalParticles !== 'undefined') {
-                                            for (let p = 0; p < 12; p++) {
+                                            for (let p = 0; p < 3; p++) {
                                                 spawnParticle(
                                                     this.x + (Math.random() - 0.5) * 0.8,
                                                     this.y + (Math.random() - 0.5) * 0.8,
-                                                    '#00ffff', 
+                                                    '#B76E79', 
                                                     'sparkle'
                                                 );
                                             }
@@ -24362,11 +24489,11 @@
                                     } else {
                                         // 2. A Foe stepped on it! The loot is stolen/destroyed.
                                         if (typeof globalParticles !== 'undefined') {
-                                            for (let p = 0; p < 12; p++) {
+                                            for (let p = 0; p < 3; p++) {
                                                 spawnParticle(
                                                     this.x + (Math.random() - 0.5) * 0.8,
                                                     this.y + (Math.random() - 0.5) * 0.8,
-                                                    '#00ffff', 
+                                                    '#A9A9A9', 
                                                     'sparkle'
                                                 );
                                             }
@@ -24419,8 +24546,8 @@
                                 Dungeon.maze[wy][wx] = 0; // Shatter the tile!
                                 
                                 if (typeof globalParticles !== 'undefined') {
-                                    for (let p = 0; p < 12; p++) {
-                                        spawnParticle(wx + 0.5 + (Math.random() - 0.5), wy + 0.5 + (Math.random() - 0.5), '#cccccc', 'smoke');
+                                    for (let p = 0; p < 9; p++) {
+                                        spawnParticle(wx + 0.5 + (Math.random() - 0.5), wy + 0.5 + (Math.random() - 0.5), '#A9A9A9', 'smoke');
                                     }
                                 }
                                 if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('block');
@@ -24469,11 +24596,11 @@
                                 Dungeon.maze[currentGridY][currentGridX] = 0;
                                 
                                 if (typeof globalParticles !== 'undefined') {
-                                    for (let p = 0; p < 12; p++) {
+                                    for (let p = 0; p < 9; p++) {
                                         spawnParticle(
                                             this.x + (Math.random() - 0.5) * 0.8,
                                             this.y + (Math.random() - 0.5) * 0.8,
-                                            '#00ffff', 
+                                            '#A9A9A9', 
                                             'sparkle'
                                         );
                                     }
@@ -24587,7 +24714,7 @@
                                 }
 
                                 if (typeof globalParticles !== 'undefined') {
-                                    for (let p = 0; p < 12; p++) {
+                                    for (let p = 0; p < 3; p++) {
                                         spawnParticle(
                                             this.x + (Math.random() - 0.5) * 0.8,
                                             this.y + (Math.random() - 0.5) * 0.8,
@@ -25300,11 +25427,11 @@
                     if (atkCrit > defCrit) {
                         critBonus = atkCrit - defCrit; // The static modifier
                         if (typeof globalParticles !== 'undefined') {
-                            for (let p = 0; p < 12; p++) {
+                            for (let p = 0; p < 9; p++) {
                                 spawnParticle(
                                     this.x + (Math.random() - 0.5) * 0.8,
                                     this.y + (Math.random() - 0.5) * 0.8,
-                                    '#00ffff', 
+                                    '#B76E79', 
                                     'sparkle'
                                 );
                             }
