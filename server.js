@@ -2369,7 +2369,7 @@
                     properties: {
                         targetName: { type: "STRING" },
                         npcType: { type: "STRING", description: "The name or ID of the entity to spawn (e.g., 'Dragon' or '63')." },
-                        state: { type: "STRING", description: "'chasing', 'wandering', or 'stationary'." },
+                        state: { type: "STRING", description: "'chasing', 'wandering', 'following' or 'stationary'." },
                         role: { 
                             type: "STRING", 
                             description: "'battle' (fights), 'dialogue' (talks/vanishes), 'reward' (gives card), 'shop' (opens generic store), 'bounty_merchant' (Creates a dynamic fetch/kill bounty board!), OR 'quest_giver' (Assigns a complex native Rescue, Escort, or Fetch quest with ambushers!)" 
@@ -5929,7 +5929,8 @@
         [WHAT YOUR EYES SEE RIGHT NOW]:
         ${localVision}
 
-        TASK: You MUST execute a tool to advance your Long Term Goal. 
+        TASK: You MUST execute a tool to advance your Long Term Goal or soothe your current mood. 
+        - If you are lonely, use 'spawnNPC' to summon a companion to your side! (Target yourself: "Suncat". Good pet IDs: 237 for a Ginger Cat, 240 for a Red Fox, 228 for a Crow. Set state to 'following', role to 'dialogue', alignment to 'ally').
         - Use 'changeEnvironment' to alter the weather.
         - Use 'alterTerrain' to break walls or build bridges.
         - Use 'spawnNPC' to build an army or place allies.
