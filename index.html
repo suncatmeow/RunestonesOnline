@@ -5204,11 +5204,31 @@
             this.mapSong[999] = 23;
             this.mapSong[-1] = 23;
             this.mapSong[-2] = 29;
-                                 //0, 1,  2,  3,  4,  5,  6,  7,  8,  9, 10,11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21,22, 23, 24, 25, 26, 27, 28, 29, 30, 31
-            this.mapCombatSong = [26, 5, 26, 25, 15, 25, 16, 27, 35, 43, 42, 5, 27, 40, 43, 26, 43, 45, 27, 35, 40, 42, 5, 15, 16, 25, 26, 43, 45, 27, 27, 27 ];
-            this.mapCombatSong[999] = 45;
-            this.mapCombatSong[-1] = 45;
-            this.mapCombatSong[-2] = 25;
+            const standardPool = [5, 25, 26, 27, 35, 40, 45];
+
+            // --- 2. Define the Special Pools ---
+            // This mixes the special song with the standard pool. 
+            // NOTE: If you decide a special map should ONLY play its special song, 
+            // just delete ", ...standardPool" inside the brackets! (e.g., const desertPool = [15]; )
+            const desertPool = [15, ...standardPool]; 
+            const snowPool   = [16, ...standardPool]; 
+            const map9Pool   = [43, ...standardPool]; 
+            const map10Pool  = [42, ...standardPool]; 
+
+            // --- 3. Apply the Standard Pool to all 32 maps by default ---
+            this.mapCombatSong = Array(32).fill(standardPool);
+
+            // --- 4. Overwrite the special maps with their unique pools ---
+            this.mapCombatSong[4]  = desertPool;
+            this.mapCombatSong[31] = desertPool;
+            this.mapCombatSong[6]  = snowPool;
+            this.mapCombatSong[9]  = map9Pool;
+            this.mapCombatSong[10] = map10Pool;
+
+            // --- 5. Assign pools to your custom map IDs ---
+            this.mapCombatSong[999] = standardPool;
+            this.mapCombatSong[-1]  = standardPool;
+            this.mapCombatSong[-2]  = standardPool;
             this.memory = {};
             this.scenarioType = '';
             //////ONLINE
@@ -13733,38 +13753,58 @@
                                 }
                             }
                         }
+                        //mapsong to nature music timer
+                            if (outdoorMaps.includes(this.mapID)&&this.mapID != 9){
+                                let songTimer = Date.now();
+                                if (songTimer - lastSongTime2 > 90000){
+                                    let ransong = Math.random();
+                                    if (ransong <= 0.36) {MusicEngine.stop();MusicEngine.play(48)}
+                                    else if (ransong> 0.91) {MusicEngine.stop();MusicEngine.play(49)}
 
-                        // 2. TRIGGER LOGIC: Handled continuously
-                        if (this.isThreatNearby && !this.inCombat) {
-                            this.inCombat = true;
-                            this.combatCooldownTimer = 0;
-                            
-                            // Dynamic Battle Music mapped to current area
-                            let cSong = (this.mapCombatSong && this.mapCombatSong[this.mapID] !== undefined) ? this.mapCombatSong[this.mapID] : 45;
-                            
-                            // Play selected battle song
-                            if (typeof MusicEngine !== 'undefined') {
-                                MusicEngine.stop();
-                                MusicEngine.play(cSong);
-                            }
-                        } 
-                        else if (!this.isThreatNearby && this.inCombat) {
-                            this.combatCooldownTimer += dt;
-                            
-                            // Wait 1.0 seconds of safety before changing the music back
-                            if (this.combatCooldownTimer > 1.0) {
-                                this.inCombat = false;
-                                this.combatCooldownTimer = 0;
-                                if (typeof MusicEngine !== 'undefined') {
-                                    MusicEngine.stop();
-                                    let defaultSong = this.mapSong[this.mapID];
-                                    if (defaultSong !== undefined) MusicEngine.play(defaultSong); 
+                                    lastSongTime2 = Date.now();
                                 }
                             }
-                        } 
-                        else if (this.isThreatNearby && this.inCombat) {
-                            this.combatCooldownTimer = 0; // Reset safe buffer if threat returns
-                        }
+                        // 2. TRIGGER LOGIC: Handled continuously
+                            if (this.isThreatNearby && !this.inCombat) {
+                                this.inCombat = true;
+                                this.combatCooldownTimer = 0;
+                                
+                                // Grab the map's music data (either an array pool or a single number)
+                                let songData = (this.mapCombatSong && this.mapCombatSong[this.mapID] !== undefined) ? this.mapCombatSong[this.mapID] : [45];
+                                
+                                let cSong;
+                                // NEW: Check if the map has a music pool
+                                if (Array.isArray(songData)) {
+                                    // Pick a random song from the pool for this specific encounter!
+                                    cSong = songData[Math.floor(Math.random() * songData.length)];
+                                } else {
+                                    // Fallback for maps that still only have a single number assigned
+                                    cSong = songData;
+                                }
+                                
+                                // Play selected battle song
+                                if (typeof MusicEngine !== 'undefined') {
+                                    MusicEngine.stop();
+                                    MusicEngine.play(cSong);
+                                }
+                            } 
+                            else if (!this.isThreatNearby && this.inCombat) {
+                                this.combatCooldownTimer += dt;
+                                
+                                // Wait 1.0 seconds of safety before changing the music back
+                                if (this.combatCooldownTimer > 1.0) {
+                                    this.inCombat = false;
+                                    this.combatCooldownTimer = 0;
+                                    if (typeof MusicEngine !== 'undefined') {
+                                        MusicEngine.stop();
+                                        let defaultSong = this.mapSong[this.mapID];
+                                        if (defaultSong !== undefined) MusicEngine.play(defaultSong); 
+                                    }
+                                }
+                            } 
+                            else if (this.isThreatNearby && this.inCombat) {
+                                this.combatCooldownTimer = 0; // Reset safe buffer if threat returns
+                            }
                     }
                     //spell slot shuffle timer
                         let currentTime = Date.now();
@@ -13781,17 +13821,7 @@
                             }
                             lastsfxtime = Date.now();
                         }
-                    //mapsong to nature music timer
-                        if (outdoorMaps.includes(this.mapID)&&this.mapID != 9){
-                            let songTimer = Date.now();
-                            if (songTimer - lastSongTime2 > 90000){
-                                let ransong = Math.random();
-                                if (ransong <= 0.36) {MusicEngine.stop();MusicEngine.play(48)}
-                                else if (ransong> 0.91) {MusicEngine.stop();MusicEngine.play(49)}
-
-                                lastSongTime2 = Date.now();
-                            }
-                    }
+                    
             }
             renderTopDown(dt) {
                 // --- INITIALIZATION SYNC ---
