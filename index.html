@@ -4630,7 +4630,7 @@
                         this.dir = dy > 0 ? 2 : 0;
                     }
 
-                    if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('wind');
+                    //if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('wind');
 
                     this.dashCallback = () => {
                         let atkStatIndex = spellData.castStat !== undefined ? spellData.castStat : 3; 
@@ -4663,7 +4663,7 @@
 
                     if (spellData.isSteal) {
                         if (myAtk > targetDef) {
-                            if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('chime');
+                           // if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('chime');
                             
                             if (this.alignment === 'ally') {
                                 let stolenCardId = 10; 
@@ -4680,7 +4680,7 @@
                                 // REMOVED: Steal Success Recoil
                             }
                         } else {
-                            if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('cancel');
+                            //if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('cancel');
                             
                             if (bestTarget !== dungeon) {
                                 if (bestTarget.alignment !== 'foe' && bestTarget.alignment !== 'foe_wave') {
@@ -4765,7 +4765,7 @@
                     this.dashTargetY = lungeY;
                     this.isAggroDashing = true; 
                     
-                    if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('wind');
+                   // if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('wind');
 
                     this.dashCallback = () => {
                         if (typeof MusicEngine !== 'undefined') {
@@ -5135,6 +5135,47 @@
 
             // We successfully absorbed the hit (preventing immediate death)
             return true; 
+        }
+        getConColor(dungeon) {
+            // 1. Friendly NPCs don't need danger levels
+            if (this.alignment === 'ally') return 'rgba(0, 255, 0, 0.13)'; // Summons are Green
+            if (this.alignment.startsWith('friendly') || this.alignment.startsWith('defender') || this.role === 'shop' || this.role === 'dialogue') return 'rgba(255, 255, 0, 0.03)'; // Neutrals are Yellow
+
+            // 2. Cache the NPC's Power so we don't roll dice thousands of times per second!
+            if (!this.cachedNpcPower) {
+                this.cachedNpcPower = 0;
+                let nCard = new Card(Math.floor(this.type), 0);
+                
+                // To figure out how strong the NPC is, we simulate 5 rolls for each stat and average them out
+                for(let i = 0; i < 4; i++) {
+                    let sum = 0;
+                    for(let r = 0; r < 5; r++) sum += nCard.rollStat(i);
+                    let mod = this.stat && this.stat[i] ? this.stat[i][2] : 0;
+                    this.cachedNpcPower += (sum / 5) + mod;
+                }
+                if (this.isBoss) this.cachedNpcPower *= 1.5; // Bosses are inherently much stronger!
+            }
+
+            // 3. Calculate Player's Current Power
+            let playerPower = 0;
+            if (dungeon.stat) {
+                for (let i = 0; i < 4; i++) {
+                    // Expected average of a polyhedral die is: (Sides + 1) / 2
+                    let expectedRoll = (dungeon.stat[i][1] + 1) / 2;
+                    playerPower += expectedRoll + dungeon.stat[i][2]; // Average Roll + Modifier
+                }
+            } else {
+                playerPower = 13; // Fallback
+            }
+
+            // 4. Determine the Color!
+            let diff = this.cachedNpcPower - playerPower;
+
+            if (diff <= -6) return 'rgba(0, 255, 0, 0.13)';     // GREEN: Trivial, completely safe
+            if (diff < -1)  return 'rgba(0, 150, 255, 0.13)';   // BLUE: Easy, you have the advantage
+            if (diff <= 2)  return 'rgba(255, 255, 255, 0.13)'; // WHITE: Even Match, a fair fight
+            if (diff <= 8)  return 'rgba(255, 200, 0, 0.13)';   // YELLOW: Dangerous, higher level than you
+            return 'rgba(255, 0, 0, 0.13)';                     // RED: Deadly, run away!
         }
         }
     
@@ -5566,6 +5607,7 @@
                 this.isLoading = false; // 3. Turn the flag off once we are done
             //////
         }
+        
         //ONLINE
             get players() {
                 // Convert remotePlayers object to an Array
@@ -13498,7 +13540,7 @@
                     // 5. UI
                         this.drawMinimap(ctx, viewX, viewY, viewW, viewH);
                         // ==========================================
-                        // --- WARD UI (Top Left Screen) ---
+                        // --- WARD UI (Below Minimap) ---
                         // ==========================================
                             let fullWards = Math.floor(this.currentWardTime / this.timePerWard);
                             let partialWardPercent = (this.currentWardTime % this.timePerWard) / this.timePerWard;
@@ -13552,7 +13594,7 @@
                         }
                         btnLook.show(6.875, 6.875, 1.25, 1, 1, '', 'joystick', 1, 0); // Added to right side
                         
-                        btnATK.show(0, 9, 1, 1, 1, 'ATK', 'jrpg_btn', 1, 0);
+                        //btnATK.show(7, 3.6, 1, 1, 1, 'ATK', 'jrpg_btn', 1, 0);
     
                         // --- 2. WARD SCREEN FLASH ---
                             if (this.playerFlashTimer > 0) {
@@ -13564,7 +13606,7 @@
                                 ctx.restore();
                             }
                         // // --- DYNAMIC SPELL SLOTS LAYOUT ---
-                        let maxSlots = 9;
+                        let maxSlots = 6;
 
                         if (this.playerClass === 'Battle-Mage') {
                             const getDiceTier = (sides) => {
@@ -13618,30 +13660,27 @@
                             let evenCount = 0;
                             let oddCount = 0;
 
-                            // 3. Render the buttons
+                            // 3. Render the buttons (GRID LAYOUT)
+                            let buttonsPerRow = 6; // How many buttons before starting a new row above it?
+
                             for (let v = 0; v < this.activeBtnsCache.length; v++) {
                                 let btn = this.activeBtnsCache[v];
                                 
-                                if (v % 2 === 0) {
-                                    // EVEN SLOTS: Stack upwards along the left edge
-                                    let startX = 0;
-                                    let startY = 7.95;
-                                    let calcY = startY - (evenCount * (btnHeight + btnGap));
-                                    
-                                    // FIXED: Passing 'spell_slot' so btn.js knows what to do!
-                                    btn.show(startX, calcY, 1, btnWidth, btnHeight, btn.text, 'jrpg_btn', 1, 'spell');
-                                    evenCount++;
-                                } else {
-                                    // ODD SLOTS: Shift rightwards along the bottom edge
-                                    let startX = 1 + btnGap; 
-                                    let startY = 9;
-                                    let calcX = startX + (oddCount * (btnWidth + btnGap));
-                                    
-                                    // FIXED: Passing 'spell_slot' so btn.js knows what to do!
-                                    btn.show(calcX, startY, 1, btnWidth, btnHeight, btn.text, 'jrpg_btn', 1, 'spell');
-                                    oddCount++;
-                                }
+                                // Calculate the Grid position
+                                let col = v % buttonsPerRow;
+                                let row = Math.floor(v / buttonsPerRow);
+                                
+                                // Start at X = 1.05 to leave room for the ATK button at (0,9)
+                                // Start at Y = 9.0 (Bottom edge)
+                                let startX = 0; 
+                                let startY = 9.0;
+                                
+                                let calcX = startX + (col * (btnWidth + btnGap));
+                                let calcY = startY - (row * (btnHeight + btnGap)); // Subtracting Y moves the row UP the screen
+                                
+                                btn.show(calcX, calcY, 1, btnWidth, btnHeight, btn.text, 'jrpg_btn', 1, 'spell');
                             }
+                            
                         }
                         // //SCREEN BORDERS
                             drawShape('rec', 0, 0, 1, -10, -10, 30, 10, 0,0,0,0, '#000000', 1);
@@ -16320,7 +16359,74 @@
                         const drawStartX = Math.floor(-spriteSize / 2 + spriteScreenX + viewX);
 
                         if (drawStartX >= viewX + viewW || drawStartX + spriteSize <= viewX) continue;
+                        // =========================================================
+                        // --- NEW: EVERQUEST CON & WARD RING (PERFECT ANCHOR) ---
+                        // =========================================================
+                        // 1. Filter for valid combat alignments (Foes, Defenders, Allies)
+                        let hasRingAlignment = typeof sprite.alignment === 'string' && 
+                                               (sprite.alignment.startsWith('foe') || 
+                                                sprite.alignment.startsWith('defender') || 
+                                                sprite.alignment.startsWith('ally'));
 
+                        if (isCenterVisible && hasRingAlignment && !sprite.isDead && sprite.role !== 'dropped_card') {
+                            
+                            let maxWardTime = (sprite.maxWards || 0) * (sprite.timePerWard || 3.0);
+                            let currentWardTime = sprite.currentWardTime || 0;
+
+                            // 2. ONLY draw the ring if they actually have Ward remaining!
+                            if (maxWardTime > 0 && currentWardTime > 0) {
+                                let percent = Math.max(0, Math.min(1, currentWardTime / maxWardTime));
+                                let unitScale = (viewH * this.zScale) / transformY;
+                                
+                                // --- THE PERFECT SHADOW FIX ---
+                                // 1. Start by anchoring the ring to the absolute bottom of the sprite's box
+                                let groundFeetY = drawStartY + spriteSize; 
+
+                                // 2. Because 3D sprites have a little empty transparent space at the bottom 
+                                // of their 128x128 canvas, we bring the ring UP slightly to touch their visual feet.
+                                groundFeetY -= (spriteSize * 0.39); // Tweak this decimal (0.10 to 0.15) if you want it slightly higher/lower!
+
+                                // 3. If it's a FLYING creature (hover is positive), detach the ring 
+                                // and push it back down to the floor so it acts like a true shadow!
+                                if (hover > 0) groundFeetY += (unitScale * hover);
+                                
+                                // 4. Do the same if they are jumping/bobbing in the air
+                                if (sprite.zHeight > 0) groundFeetY += (unitScale * sprite.zHeight);
+
+                                let ringCenterX = viewX + spriteScreenX;
+
+                                // Scales the ring width based on the creature's scale using your custom magic numbers!
+                                let ringRadX = Math.max(6, spriteSize * 0.19);  
+                                let ringRadY = ringRadX * 0.36; // Perspective tilt for floor projection
+
+                                ctx.save();
+                                
+                                // Get the Danger (Con) Color
+                                let alignColor = typeof sprite.getConColor === 'function' ? sprite.getConColor(this) : 'rgba(200, 0, 0, 0.8)';
+                                ctx.strokeStyle = alignColor;
+                                
+                                ctx.globalAlpha = 1.0; 
+                                ctx.globalCompositeOperation = 'lighter'; // Magical glow
+                                ctx.lineWidth = Math.max(1.5, unitScale * 0.04); 
+                                
+                                // Ward loading-bar arc
+                                let startAngle = Math.PI; // Starts at 9 o'clock (left side)
+                                let endAngle = startAngle + (Math.PI * 2 * percent); // Sweeps clockwise
+                                
+                                ctx.beginPath();
+                                if (ctx.ellipse) {
+                                    ctx.ellipse(ringCenterX, groundFeetY, ringRadX, ringRadY, 0, startAngle, endAngle);
+                                } else {
+                                    ctx.scale(1, ringRadY / ringRadX);
+                                    ctx.arc(ringCenterX, groundFeetY / (ringRadY / ringRadX), ringRadX, startAngle, endAngle);
+                                    ctx.scale(1, ringRadX / ringRadY);
+                                }
+                                ctx.stroke();
+                                
+                                ctx.restore();
+                            }
+                        }
+                        // =========================================================
                     // ==========================================
                     // --- 4. FETCH CACHED IMAGE ---
                     // ==========================================
@@ -16474,6 +16580,7 @@
                     ctx.globalAlpha = 1.0; 
                     this.clickInput = null;
             }
+            
         //SPELL RENDERING    
             parseColor(str) {
                 // 1. Handle Hex Codes (e.g. #8b4513)
@@ -39408,12 +39515,12 @@
                                 }
                                 return;
                             }
+                            if(window.gameViewMode === '3d'&&window.settingsControlsMode !== 'touch') {Dungeon.castSpell(9999)}
                     // --- 1. Determine Movement Intention ---
                     let moveX = 0;
                     let moveY = 0;
                     let movingForward = false;
                     if(window.gameViewMode === '3d'){
-                        
 
                         // ==========================================
                         // --- CONTINUOUS TOUCH ZONE TRACKER ---
