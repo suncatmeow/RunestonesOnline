@@ -2480,10 +2480,10 @@
                 this.cachedPrey = null;
                 if (role) {
                     this.role = role;
-                } else if (this.type === -27 || this.type === 99 || this.type < 0||this.role === 'dialogue') {
-                    this.role = 'dialogue'; // Loot and Portals never fight
+                } else if (this.type === -27 || this.type === 99 || this.type < 0 || this.role === 'dialogue') {
+                    this.role = 'dialogue'; 
                     this.alignment = 'friendly';
-                    this.customDialogue = 'What do you want?'
+                    this.customDialogue = ['What do you want?']; // <-- FIX: Wrap in brackets!
                 } else {
                     this.role = 'battle'; // Default monsters to fight
                 }
@@ -2501,10 +2501,10 @@
             //// MOVEMENT
                 this.dirX = Math.random() - 0.5;
                 this.dirY = Math.random() - 0.5;
-                this.speed = .5; 
+                this.speed = 1; 
                 this.xp= getPower(null,this.cards);
             // WARD SYSTEM ---
-                this.maxWards = (this.isBoss) ? 3 : 1; // Bosses get 3 natural wards!
+                this.maxWards = (this.isBoss) ? 9 : 1; // Bosses get 3 natural wards!
                 this.timePerWard = 3.0;
                 this.currentWardTime = this.maxWards * this.timePerWard;
                 this.wardShatterCooldown = 0;
@@ -2962,6 +2962,25 @@
             }
         startDialogue(dungeon) {
             if (this.role === 'portal' || this.role === 'internal_portal') return;
+
+            // --- 1. COMBAT / SPECIAL CASE BYPASS ---
+            // If it's a battle mob with no taunt dialogue, do NOT freeze the game state!
+            if (this.role === 'battle' && (!this.customDialogue || this.customDialogue.length === 0)) {
+                return; 
+            }
+
+            // --- 2. DYNAMIC FALLBACK TEXT ---
+            // If a non-hostile NPC is missing dialogue, assign them a default line based on their alignment
+            if (!this.customDialogue || this.customDialogue.length === 0) {
+                if (this.alignment.startsWith('defender')) {
+                    this.customDialogue = ["I am on guard duty. State your business."];
+                } else if (this.alignment === 'foe_coward') {
+                    this.customDialogue = ["Please, spare me!"];
+                } else {
+                    this.customDialogue = ["..."]; // Catch-all for friendlies who are just standing around
+                }
+            }
+
             dungeon.dCounter = 0;
             // --- SAVE CAMERA STATE ---
             dungeon.savedViewMode = window.gameViewMode; 
@@ -3165,7 +3184,7 @@
                                     
                                     if (defRoll > b.resistDC) {
                                         b.duration = 0; // Shook it off!
-                                        if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('block', this.x, this.y, playerX, playerY, dungeon.dir);
+                                        //if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('block', this.x, this.y, playerX, playerY, dungeon.dir);
                                     }
                                 }
 
@@ -3361,7 +3380,7 @@
                         targetX = this.originx; targetY = this.originy; isChasingNPC = false;
                         let distToHome = Math.sqrt(Math.pow(targetX - this.x, 2) + Math.pow(targetY - this.y, 2));
                         if (distToHome > 2.0) { this.state = 'following'; this.speed = 1.5; } 
-                        else { this.state = 'wandering'; this.speed = 0.5; }
+                        else { this.state = 'wandering'; this.speed = 1; }
                     } else if (this.alignment.startsWith('friendly')) {
                         targetX = (this.alignment === 'friendly_messenger') ? playerX : (this.originx || this.x); 
                         targetY = (this.alignment === 'friendly_messenger') ? playerY : (this.originy || this.y);
@@ -3530,7 +3549,7 @@
                 else if (this.alignment === 'friendly_messenger') {
                     if (distToActualPlayer > 4) {
                         this.state = this.preState || 'wandering';
-                        this.speed = (this.state === 'stationary') ? 0 : 0.5;
+                        this.speed = (this.state === 'stationary') ? 0 : 1;
                     } else {
                         this.state = 'chasing';
                         this.speed = 2.5;
@@ -3553,7 +3572,7 @@
                             // 1. DROP AGGRO: Too far, game state changed, OR reached last known spot without finding player
                             if (distToActualPlayer > aggroLeash || startGame !== 'explore' || (!hasLOS && distToLastSeen < 1.0)) {
                                 this.state = (this.preState === 'chasing') ? 'wandering' : (this.preState || 'wandering');
-                                this.speed = (this.state === 'stationary') ? 0 : 0.5;
+                                this.speed = (this.state === 'stationary') ? 0 : 1;
                                 this.lastSeenX = null;
                                 this.lastSeenY = null;
                             } 
@@ -3585,7 +3604,7 @@
                     }
                 }
                 else {
-                    if (this.state === 'wandering') this.speed = 0.5;
+                    if (this.state === 'wandering') this.speed = 1;
                     if (this.state === 'stationary') {
                         this.speed = 0;
                         
@@ -3671,7 +3690,7 @@
 
                 // --- FIX 1: THE COMBAT ANCHOR ---
                 if (this.combatCooldown > 0) {
-                    this.speed = 0.25; 
+                    this.speed = 0.5; 
                 } 
                 // --- THE DYNAMIC FRICTION ---
                 else if (this.state === 'chasing' && isChasingNPC) {
@@ -4467,7 +4486,7 @@
                         }
                     }
 
-                    if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX(isJudgement ? 'horn' : 'wind');
+                    //if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX(isJudgement ? 'debuff' : 'debuff2');
 
                     let targetsToCheck = [...dungeon.npcs];
                     if (typeof this.alignment === 'string' && this.alignment.startsWith('foe')) {
@@ -4718,7 +4737,7 @@
                                 dungeon.killNPC(bestTarget, false, 'backstab');
                             }
                         } else {
-                            if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('block', bestTarget.x, bestTarget.y, dungeon.x, dungeon.y, dungeon.dir);                        
+                            //if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('block', bestTarget.x, bestTarget.y, dungeon.x, dungeon.y, dungeon.dir);                        
                             
                             if (bestTarget === dungeon) {
                                 dungeon.playerFlashTimer = 3;
@@ -4768,9 +4787,8 @@
                    // if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('wind');
 
                     this.dashCallback = () => {
-                        if (typeof MusicEngine !== 'undefined') {
-                        MusicEngine.play3DSFX(spellData.name === 'Shield Bash' ? 'block' : (spellData.bind ? 'wind' : 'slash'));
-                    }
+                    if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('slash', this.x, this.y, dungeon.x, dungeon.y, dungeon.dir);                        
+
 
                     // --- UPGRADE: DYNAMIC CONE PARTICLE SPREAD ---
                     if (typeof globalParticles !== 'undefined' && typeof spawnParticle !== 'undefined') {
@@ -5130,7 +5148,7 @@
                 }
             } else {
                 // Blocked successfully (Ward holds strong, no time lost!)
-                if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('block', this.x, this.y);
+                //if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('block', this.x, this.y);
             }
 
             // We successfully absorbed the hit (preventing immediate death)
@@ -5153,7 +5171,7 @@
                     let mod = this.stat && this.stat[i] ? this.stat[i][2] : 0;
                     this.cachedNpcPower += (sum / 5) + mod;
                 }
-                if (this.isBoss) this.cachedNpcPower *= 1.5; // Bosses are inherently much stronger!
+                if (this.isBoss) this.cachedNpcPower *= 3; // Bosses are inherently much stronger!
             }
 
             // 3. Calculate Player's Current Power
@@ -6050,7 +6068,12 @@
             }
         //MAP DATA
             loadMap(id) {
-                
+                // 1. Get the player's current rank (Default to 'F' if they haven't joined the guild yet)
+                let playerRank = this.memory['guild_rank'] || 'F';
+
+                // 2. Map the letters to numbers so we can check if they are high enough
+                let rankValues = { 'F':0, 'E':1, 'D':2, 'C':3, 'B':4, 'A':5, 'S':6 };
+                let rankLevel = rankValues[playerRank];
                  let centerX = 0; // Width / 2
                             let centerY = 0;    // Height / 2
 
@@ -6832,7 +6855,7 @@
                         beastTrainer.noActions = [['close_dialogue', null]];
                         this.npcs.push(beastTrainer);
                     let shipToJoy = new NPC(541713, 77.5, 90.5, 243, 'stationary', '#ff0000', [81.5, 8.5, 14,2 ], 'portal', undefined, 'friendly');
-                       if(this.MainQuest < 5){  shipToJoy = new NPC(541713, 77.5, 90.5, 243, 'stationary', '#ff0000', [], 'dialogue', undefined, 'friendly');shipToJoy.customDialogue = ['No stowaways!',"You'll work, you say?","Hmmm, those eyes...","It's as I thought...","A weakling? Get lost!","(Perhaps with more renown you might not have been treated so.)"]}
+                       if(this.MainQuest < 5&& rankLevel < 3){  shipToJoy = new NPC(541713, 77.5, 90.5, 243, 'stationary', '#ff0000', [], 'dialogue', undefined, 'friendly');shipToJoy.customDialogue = ['No stowaways!',"You'll work, you say?","Hmmm, those eyes...","It's as I thought...","A weakling? Get lost!","(Perhaps with more renown you might not have been treated so.)"]}
                         this.npcs.push(shipToJoy);
                     let moorChapel = new NPC(500, 27.5, 82.5, 42, 'stationary', '#00ff00', [42], 'dialogue', false, 'friendly');
 
@@ -7352,7 +7375,7 @@
                    this.npcs = [];
                     // --- NPC SPAWNS ---
                     let shipToDesert = new NPC(541718, 20.5, 8.5, 243, 'stationary', '#ff0000', [27.5, 75.5, 4, 1], 'portal', undefined, 'friendly');
-                        if(this.MainQuest < 5){ shipToDesert = new NPC(541718, 20.5, 8.5, 243, 'stationary', '#ff0000', [27.5, 75.5, 4, 1], 'dialogue', undefined, 'friendly');shipToDesert.customDialogue = ['No stowaways!',"You'll work, you say?","Hmmm, those eyes...","It's as I thought...","A weakling? Get lost!","(Perhaps with more renown you might not have been treated so.)"]}
+                        if(this.MainQuest < 5&& rankLevel < 3){ shipToDesert = new NPC(541718, 20.5, 8.5, 243, 'stationary', '#ff0000', [27.5, 75.5, 4, 1], 'dialogue', undefined, 'friendly');shipToDesert.customDialogue = ['No stowaways!',"You'll work, you say?","Hmmm, those eyes...","It's as I thought...","A weakling? Get lost!","(Perhaps with more renown you might not have been treated so.)"]}
                         this.npcs.push(shipToDesert);
                     //Sky Sea Book
                             let npc_531288 = new NPC(531288, 9.5, 73.5, 31, 'stationary', '#ff0000', [5,12,18,24,30,42], 'dialogue', null, 'friendly');
@@ -7674,13 +7697,11 @@
                             let realEmperor = new NPC(302, 24.5, 29.5, 4, 'stationary', '#00ff00', [4], 'dialogue', false, 'friendly');
                             
                             realEmperor.dialogueFactory = (dungeon) => {
-                                // 1. Check which Bosses are dead globally
-                                // (Swap these memory keys to match the exact Map_Index of your 4 Kings!)
-                                let isDjinnDead  = dungeon.memory["5_11"]  && dungeon.memory["5_11"].permanent;  // Example: Map 5, Boss 11
-                                let isKrakenDead = dungeon.memory["9_1"]   && dungeon.memory["9_1"].permanent;   // Example: Map 9, Boss 1
-                                let isDragonDead = dungeon.memory["12_12"] && dungeon.memory["12_12"].permanent; // Example: Map 12, Boss 12
-                                let isGiantDead  = dungeon.memory["14_14"] && dungeon.memory["14_14"].permanent; // Example: Map 14, Boss 14
-                                
+                                // 1. Check which Bosses are dead globally using our new explicit keys!
+                                let isDjinnDead  = dungeon.memory['djinn_dead']  === true; 
+                                let isKrakenDead = dungeon.memory['kraken_dead'] === true;  
+                                let isDragonDead = dungeon.memory['dragon_dead'] === true; 
+                                let isGiantDead  = dungeon.memory['giant_dead']  === true;
                                 let kingsDead = 0;
                                 if (isDjinnDead) kingsDead++;
                                 if (isKrakenDead) kingsDead++;
@@ -7928,7 +7949,7 @@
                        wildlifeSpawns = [
                             
                             
-                                {
+                            {
                                     type: 'suncat',
                                     count: 1, // How many to spawn
                                     sprite: 237,
@@ -7940,7 +7961,7 @@
                                     radius: maxRadius,
                                     customDialogue:["Yes?"] 
                                 },
-                                {
+                            {
                                 type: 'tintWolf',
                                 count: 3,
                                 sprite: 191,
@@ -8307,52 +8328,55 @@
                     // ==========================================
                     // 4. THE TREASURE SNAKE (Dynamic Evaluator)
                     // ==========================================
-                        let snake = new NPC(2, 3.5, 2.5, 89, 'stationary', '#00ff00', [20,21], 'dialogue', null, 'friendly');
-                        
-                        snake.dialogueFactory = (dungeonInstance) => {
-                            if (dungeonInstance.MainQuest >= 5 && !dungeonInstance.memory['snake_rewarded']) {
-                                return { text: ["yesssss?"], endActions: [['close_dialogue', null]] };
-                            }
-                            let activeEnemies = 0;
-                            
-                            // Check active map state to see if any mobs are still alive
-                            dungeonInstance.npcs.forEach(n => {
-                                if ((n.type === 56 || n.type === 42 || n.type === 23) && n.alignment !== 'ally' && n.index !== 4) {
-                                    if (!n.isDead && n.x !== -999) activeEnemies++;
-                                }
-                            });
+                    let snake = new NPC(2, 3.5, 2.5, 89, 'stationary', '#00ff00', [20,21], 'dialogue', null, 'friendly');
 
-                            if (activeEnemies === 0) {
-                                // VICTORY STATE
-                                return {
-                                    text: [
-                                        "The goblinsss... they used to bring me offeringssss...did something happen?",
-                                        "You sssslayed them all? Take this...."
-                                    ],
-                                    rewardCard: 38, // Triggers card UI and kills snake
-                                    endActions: [
-                                        // Spawn secret portal to Map 4!
-                                        ['spawn_npc', [30, 3, 3.5, 2.5, 99, 'stationary', '#66ccff', [8.5, 19.5, 30, 0], null, null, 'portal', null, null, 'friendly']],
-                                        ['spectate', 'Player finished the Treasure snake request and received the reward.']
-                                    ]
-                                };
-                            } else {
-                                // INCOMPLETE STATE
-                                return {
-                                    text: [
-                                        "The goblinsss... they used to bring me offeringssss...did something happen?",
-                                        "Dead ones you say? Vanquish them and I will give you...ssssomething...",
-                                        "Ssssstuck here you say? I will ssssend you up..."
-                                    ],
-                                    actions: [
-                                        ['spectate', 'Player spoke to the treasure snake but has not cleared the cavern.'],
-                                        ['load_map', 30], // Resets them to map entrance!
-                                        ['play_sfx', 'warp']
-                                    ]
-                                };
+                    snake.dialogueFactory = (dungeonInstance) => {
+                        // FIX 1: Only check if the snake has already given the reward!
+                        if (dungeonInstance.memory['snake_rewarded']) {
+                            return { text: ["yesssss?"], endActions: [['close_dialogue', null]] };
+                        }
+                        
+                        let activeEnemies = 0;
+                        
+                        // Check active map state to see if any mobs are still alive
+                        dungeonInstance.npcs.forEach(n => {
+                            if ((n.type === 56 || n.type === 42 || n.type === 23) && n.alignment !== 'ally' && n.index !== 4) {
+                                if (!n.isDead && n.x !== -999) activeEnemies++;
                             }
-                        };
-                        this.npcs.push(snake);
+                        });
+
+                        if (activeEnemies === 0) {
+                            // VICTORY STATE
+                            return {
+                                text: [
+                                    "The goblinsss... they used to bring me offeringssss...did something happen?",
+                                    "You sssslayed them all? Take this...."
+                                ],
+                                rewardCard: 38, // Triggers card UI and kills snake
+                                endActions: [
+                                    ['set_memory', {key: 'snake_rewarded', value: true}], // Mark as rewarded!
+                                    // Spawn secret portal to Map 4!
+                                    ['spawn_npc', [30, 3, 3.5, 2.5, 99, 'stationary', '#66ccff', [8.5, 19.5, 30, 0], null, null, 'portal', null, null, 'friendly']],
+                                    ['spectate', 'Player finished the Treasure snake request and received the reward.']
+                                ]
+                            };
+                        } else {
+                            // INCOMPLETE STATE
+                            return {
+                                text: [
+                                    "The goblinsss... they used to bring me offeringssss...did something happen?",
+                                    "Dead ones you say? Vanquish them and I will give you...ssssomething...",
+                                    "Ssssstuck here you say? I will ssssend you up..."
+                                ],
+                                endActions: [ // FIX 2: Changed from 'actions' to 'endActions'
+                                    ['spectate', 'Player spoke to the treasure snake but has not cleared the cavern.'],
+                                    ['load_map', 30], // Resets them to map entrance!
+                                    ['play_sfx', 'warp']
+                                ]
+                            };
+                        }
+                    };
+                    this.npcs.push(snake);
 
                    
                     this.dir = 0;
@@ -8545,7 +8569,7 @@
                     
 
                     // --- WORLD STATE CHECK ---
-                    let isDjinnDead = this.memory["5_11"] && this.memory["5_11"].permanent;
+                    let isDjinnDead = this.memory['djinn_dead'] === true;
 
                     // ==========================================
                     // 1. BASE NPCS & PORTALS
@@ -8907,7 +8931,7 @@
                     // 3. THE HERMIT & PIXIE AMBUSH CHAIN
                     // ==========================================
                         // Only spawn the Hermit if he hasn't joined the party yet
-                        let isHermitFound = this.memory["2_1"] && this.memory["2_1"].permanent;
+                        let isHermitFound = this.memory['mq_map2'] === true;
 
                         if (!isHermitFound) {
                             
@@ -9065,7 +9089,10 @@
                                 let djinnDialogue = new NPC(0, 8.5, 2.5, 35.1, 'stationary', '#ff0000', djinnDeck, 'dialogue', true, 'friendly');
                                 djinnDialogue.customDialogue = ["You Dare?", "You're courting death!"];
                                 djinnDialogue.endActions = [
-                                    ['spawn_npc', [31, 11, 'SPEAKER_X', 'SPEAKER_Y', 35.1, 'chasing', '#ff0000', djinnDeck, null, null, 'battle', null, true, 'foe', [], [['set_memory', {key: 'mq_map5', value: true}]]]],
+                                    ['spawn_npc', [31, 11, 'SPEAKER_X', 'SPEAKER_Y', 35.1, 'chasing', '#ff0000', djinnDeck, null, null, 'battle', null, true, 'foe', [], 
+                                        // Add 'djinn_dead' to the deathActions here!
+                                        [['set_memory', {key: 'mq_map5', value: true}], ['set_memory', {key: 'djinn_dead', value: true}]]
+                                    ]],
                                     ['spectate', "Player has confronted the Djinn in the witch queen's castle."],
                                     ['disappear', null]
                                 ];
@@ -9098,8 +9125,7 @@
 
                         wq.dialogueFactory = (dungeon) => {
                             // FIX 1: Catch both the location-based memory AND the battle-based script flag
-                            let isDjinnDead = (dungeon.memory["31_11"] && dungeon.memory["31_11"].permanent) || 
-                                            dungeon.memory["mq_map5"] === true;
+                            let isDjinnDead = dungeon.memory['djinn_dead'] === true;
 
                             // SEQUENCE BREAK: Player arrived before MainQuest 5
                             if (dungeon.MainQuest < 5) {
@@ -9482,7 +9508,7 @@
                     this.mapname = "Boreal Sea";
                     
                     // --- WORLD STATE CHECK ---
-                    let isKrakenDead = this.memory["9_1"] && this.memory["9_1"].permanent;
+                    let isKrakenDead = this.memory['kraken_dead'] === true;
 
                     // Apply dynamic environment based on the Kraken's status
                     if (isKrakenDead) {
@@ -9573,7 +9599,8 @@
                                         1, 1, 'SPEAKER_X', 'SPEAKER_Y', 49.1, 'stationary', '#ff0000', [52,52,52,52,40,40,10,10,58,51,51,58,83,83,83,49], null, null, 'battle', null, true, 'foe',
                                         [], // endActions
                                         [   // deathActions (World-Altering Sequence)
-                                            ['set_memory', {key: 'mq_map9', value: true}], 
+                                            ['set_memory', {key: 'mq_map9', value: true}],
+                                            ['set_memory', {key: 'kraken_dead', value: true}], 
                                             ['spawn_npc', [9,88, 1.5, 6.5, 99, 'stationary', '#66ccff', [33.5, 17.5, 10, 3], null, null, 'portal', null, null, 'friendly']],
                                             ['spawn_npc', [9, 89, 1.5, 7.5, 99, 'stationary', '#66ccff', [33.5, 17.5, 10, 3], null, null, 'portal', null, null, 'friendly']],
                                             ['spawn_npc', [9, 90, 1.5, 8.5, 99, 'stationary', '#66ccff', [33.5, 17.5, 10, 3], null, null, 'portal', null, null, 'friendly']],
@@ -9814,7 +9841,7 @@
                         ];
                     // --- WORLD STATE CHECK ---
                     // Check if the Battle Dragon (Map 12, Index 12) is permanently dead
-                    let isDragonDead = this.memory["12_12"] && this.memory["12_12"].permanent;
+                    let isDragonDead = this.memory['dragon_dead'] === true;
                     // ==========================================
                         // --- S-RANK FIELD LEADER (MAP 10 AVALON) ---
                         // ==========================================
@@ -9874,7 +9901,7 @@
                     this.npcs.push(new NPC(1, 8.5, 48.5, -34, 'stationary', '#66ccff', [12.5, 14.5, 12, 0], 'portal', null, 'friendly')); // To Dragon Lair
                     this.npcs.push(new NPC(2, 48.5, 94.5, -34, 'stationary', '#66ccff', [5.5, 9.5, 13, 0], 'portal', null, 'friendly')); // To Tomb
                     let shipToSea = new NPC(102430, 89.5, 33.5, 243, 'stationary', '#ff0000', [0.5, 7.5, 9, 1], 'portal', undefined, 'friendly');
-                        if(this.MainQuest < 5){ shipToSea = new NPC(102431, 89.5, 33.5, 243, 'stationary', '#ff0000', [ 4, 1], 'dialogue', undefined, 'friendly');shipToSea.customDialogue = ['No stowaways!',"You'll work, you say?","Hmmm, those eyes...","It's as I thought...","A weakling? Get lost!","(Perhaps with more renown you might not have been treated so.)"]}
+                        if(this.MainQuest < 5&& rankLevel < 3){ shipToSea = new NPC(102431, 89.5, 33.5, 243, 'stationary', '#ff0000', [ 4, 1], 'dialogue', undefined, 'friendly');shipToSea.customDialogue = ['No stowaways!',"You'll work, you say?","Hmmm, those eyes...","It's as I thought...","A weakling? Get lost!","(Perhaps with more renown you might not have been treated so.)"]}
                         this.npcs.push(shipToSea);            
                     // The Neophyte Defenders (Become Allies)
                         let neo1 = new NPC(3, 49.5, 6.5, 61.1, 'wandering', '#00ff00', [61], 'become_ally', false, 'friendly');
@@ -9931,7 +9958,7 @@
                     ];
                     
                     // --- WORLD STATE CHECK ---
-                    let isDragonDead = this.memory["12_12"] && this.memory["12_12"].permanent;
+                    let isDragonDead = this.memory['dragon_dead'] === true;
 
                     // Portals
                     this.npcs.push(new NPC(0, 5.5, 9.5, -33, 'stationary', '#66ccff', [48.5, 26.5, 10, 2], 'portal', null, 'friendly')); // Back to Avalon
@@ -9959,7 +9986,7 @@
                                 };
                             }
 
-                            let isDragonDead = dungeon.memory["12_12"] && dungeon.memory["12_12"].permanent;
+                            let isDragonDead = dungeon.memory['dragon_dead'] === true;
                             let hasFairyQueen = dungeon.deck.some(c => c.index === 62) || dungeon.extra.some(c => c.index === 62) || dungeon.hand.some(c => c && c.index === 62);
                             
                             if (isDragonDead) {
@@ -10050,7 +10077,7 @@
 
                         hoard.endActions = [
                             ['set_memory', {key: 'mq_map12', value: true}], // <--- ADD THIS
-                            ['set_flag', {key: 'isDragonDead', value: true}],
+                            ['set_memory', {key: 'dragon_dead', value: true}],
                             ['play_song', 24],
                             ['spawn_npc', fqSpawnArgs]
                         ];
@@ -10070,7 +10097,7 @@
                     // ------------------------------------
                     // THE DRAGON (Boss Spawner)
                     // ------------------------------------
-                        let isDragonDead = this.memory["12_12"] && this.memory["12_12"].permanent;
+                        let isDragonDead = this.memory['dragon_dead'] === true;
                         if (!isDragonDead) {
                             let dragonDeck = [39,39,51,59,58,26,26,28,19,63,63,63];
                             let dragonDialog = new NPC(1, 6.5, 7.5, 63.1, 'stationary', '#ff0000', dragonDeck, 'dialogue', true, 'friendly');
@@ -10093,10 +10120,14 @@
                                     options: ['Draw Weapon'],
                                     yesActions: [
                                         ['play_sfx', 'horn'],
-                                        ['spawn_npc', [12, 12, 'SPEAKER_X','SPEAKER_Y', 63.1, 'chasing', '#ff0000', dragonDeck, null, null, 'battle', null, true, 'foe']],
+                                        ['spawn_npc', [
+                                            12, 12, 'SPEAKER_X','SPEAKER_Y', 63.1, 'chasing', '#ff0000', dragonDeck, null, null, 'battle', null, true, 'foe', 
+                                            [], // endActions
+                                            [['set_memory', {key: 'dragon_dead', value: true}]] // <--- ADD THIS deathAction
+                                        ]],
                                         ['spectate', "Player has encountered the Dragon in his lair. Time to teach this overgrown lizard a lesson. Careful not to get burned..."],
                                         ['disappear', null],
-                                        ['close_dialogue', null], // <--- FIX 1: Closes the UI to unfreeze the engine!
+                                        ['close_dialogue', null], 
                                     ],
                                     noActions: null
                                 };
@@ -10585,6 +10616,7 @@
                                 [], // endActions
                                 [ // deathActions
                                     ['set_flag', {key: 'gd', value: 2}],
+                                    ['set_memory', {key: 'giant_dead', value: true}],
                                     ['spawn_npc', [14, 155, dungeonInstance.x, dungeonInstance.y-1, 77.1, 'chasing', '#00ff00', [], null, null, 'dialogue', null, false, 'friendly_messenger']],
                                     ['inject_dialogue', {
                                         index: 155,
@@ -10691,11 +10723,10 @@
                         this.npcs.push(new NPC(0, 5.5, 9.5, 99, 'stationary', '#66ccff', [17.5, 8.5, 14, 2], 'portal', null, 'friendly')); // Back to Elf Queen
 
                         // --- NEW: THE TOWER GATE CHECK ---
-                        let isDjinnDead  = this.memory["5_11"]  && this.memory["5_11"].permanent;  
-                        let isKrakenDead = this.memory["9_1"]   && this.memory["9_1"].permanent;   
-                        let isDragonDead = this.memory["12_12"] && this.memory["12_12"].permanent; 
-                        let isGiantDead  = this.memory["14_14"] && this.memory["14_14"].permanent; 
-
+                        let isDjinnDead  = this.memory['djinn_dead']  === true;  
+                        let isKrakenDead = this.memory['kraken_dead'] === true;   
+                        let isDragonDead = this.memory['dragon_dead'] === true; 
+                        let isGiantDead  = this.memory['giant_dead']  === true;
                         if (isDjinnDead && isKrakenDead && isDragonDead && isGiantDead) {
                             // All 4 Kings are dead! Spawn the portal to Floor 1
                             this.npcs.push(new NPC(1, 5.5, 1.5, -35, 'stationary', '#66ccff', [17.5, 8.5, 16, 0], 'portal', null, 'friendly')); 
@@ -13733,19 +13764,19 @@
                                 if (!n.isDead && n.visible && typeof n.alignment === 'string' && n.alignment.startsWith('foe')) {
                                     let dSq = (n.x - this.x)*(n.x - this.x) + (n.y - this.y)*(n.y - this.y);
                                     
-                                    if (dSq < 19) {
+                                    if (dSq < 63) {
                                         // 1. Are they actively trying to kill you right now?
-                                        let isAggro = (n.state === 'chasing' || n.state === 'attacking');
+                                        let isAggro = (n.state === 'chasing' );
                                         
                                         // 2. If they are just wandering, can they actually SEE you? (No walls in the way)
                                         let hasLOS = false;
-                                        if (!isAggro && n.role === 'battle') {
+                                        if (isAggro && n.alignment === 'foe') {
                                             // Uses the engine's built-in raycaster to check for walls between you and the NPC
                                             hasLOS = this.checkLineOfSight(n.x, n.y);
                                         }
 
                                         // Trigger ONLY if they are aggro OR they have direct line of sight!
-                                        if (isAggro || hasLOS) {
+                                        if (isAggro && hasLOS) {
                                             this.isThreatNearby = true;
                                             break; // Stop scanning immediately!
                                         }
@@ -14433,19 +14464,19 @@
                                 if (!n.isDead && n.visible && typeof n.alignment === 'string' && n.alignment.startsWith('foe')) {
                                     let dSq = (n.x - this.x)*(n.x - this.x) + (n.y - this.y)*(n.y - this.y);
                                     
-                                    if (dSq < 13) {
+                                    if (dSq < 63) {
                                         // 1. Are they actively trying to kill you right now?
-                                        let isAggro = (n.state === 'chasing' || n.state === 'attacking');
+                                        let isAggro = (n.state === 'chasing' );
                                         
                                         // 2. If they are just wandering, can they actually SEE you? (No walls in the way)
                                         let hasLOS = false;
-                                        if (!isAggro && n.role === 'battle') {
+                                        if (isAggro && n.alignment === 'foe') {
                                             // Uses the engine's built-in raycaster to check for walls between you and the NPC
                                             hasLOS = this.checkLineOfSight(n.x, n.y);
                                         }
 
                                         // Trigger ONLY if they are aggro OR they have direct line of sight!
-                                        if (isAggro || hasLOS) {
+                                        if (isAggro && hasLOS) {
                                             this.isThreatNearby = true;
                                             break; // Stop scanning immediately!
                                         }
@@ -14453,38 +14484,58 @@
                                 }
                             }
                         }
+                        //mapsong to nature music timer
+                            if (outdoorMaps.includes(this.mapID)&&this.mapID != 9){
+                                let songTimer = Date.now();
+                                if (songTimer - lastSongTime2 > 90000){
+                                    let ransong = Math.random();
+                                    if (ransong <= 0.36) {MusicEngine.stop();MusicEngine.play(48)}
+                                    else if (ransong> 0.91) {MusicEngine.stop();MusicEngine.play(49)}
 
-                        // 2. TRIGGER LOGIC: Handled continuously
-                        if (this.isThreatNearby && !this.inCombat) {
-                            this.inCombat = true;
-                            this.combatCooldownTimer = 0;
-                            
-                            // Dynamic Battle Music mapped to current area
-                            let cSong = (this.mapCombatSong && this.mapCombatSong[this.mapID] !== undefined) ? this.mapCombatSong[this.mapID] : 45;
-                            
-                            // Play selected battle song
-                            if (typeof MusicEngine !== 'undefined') {
-                                MusicEngine.stop();
-                                MusicEngine.play(cSong);
-                            }
-                        } 
-                        else if (!this.isThreatNearby && this.inCombat) {
-                            this.combatCooldownTimer += dt;
-                            
-                            // Wait 1.0 seconds of safety before changing the music back
-                            if (this.combatCooldownTimer > 1.0) {
-                                this.inCombat = false;
-                                this.combatCooldownTimer = 0;
-                                if (typeof MusicEngine !== 'undefined') {
-                                    MusicEngine.stop();
-                                    let defaultSong = this.mapSong[this.mapID];
-                                    if (defaultSong !== undefined) MusicEngine.play(defaultSong); 
+                                    lastSongTime2 = Date.now();
                                 }
                             }
-                        } 
-                        else if (this.isThreatNearby && this.inCombat) {
-                            this.combatCooldownTimer = 0; // Reset safe buffer if threat returns
-                        }
+                        // 2. TRIGGER LOGIC: Handled continuously
+                            if (this.isThreatNearby && !this.inCombat) {
+                                this.inCombat = true;
+                                this.combatCooldownTimer = 0;
+                                
+                                // Grab the map's music data (either an array pool or a single number)
+                                let songData = (this.mapCombatSong && this.mapCombatSong[this.mapID] !== undefined) ? this.mapCombatSong[this.mapID] : [45];
+                                
+                                let cSong;
+                                // NEW: Check if the map has a music pool
+                                if (Array.isArray(songData)) {
+                                    // Pick a random song from the pool for this specific encounter!
+                                    cSong = songData[Math.floor(Math.random() * songData.length)];
+                                } else {
+                                    // Fallback for maps that still only have a single number assigned
+                                    cSong = songData;
+                                }
+                                
+                                // Play selected battle song
+                                if (typeof MusicEngine !== 'undefined') {
+                                    MusicEngine.stop();
+                                    MusicEngine.play(cSong);
+                                }
+                            } 
+                            else if (!this.isThreatNearby && this.inCombat) {
+                                this.combatCooldownTimer += dt;
+                                
+                                // Wait 1.0 seconds of safety before changing the music back
+                                if (this.combatCooldownTimer > 1.0) {
+                                    this.inCombat = false;
+                                    this.combatCooldownTimer = 0;
+                                    if (typeof MusicEngine !== 'undefined') {
+                                        MusicEngine.stop();
+                                        let defaultSong = this.mapSong[this.mapID];
+                                        if (defaultSong !== undefined) MusicEngine.play(defaultSong); 
+                                    }
+                                }
+                            } 
+                            else if (this.isThreatNearby && this.inCombat) {
+                                this.combatCooldownTimer = 0; // Reset safe buffer if threat returns
+                            }
                     }
                 //spell slot shuffle timer
                     let currentTime = Date.now();
@@ -18320,58 +18371,58 @@
                     }
                 }
             summonAlly(cardObj, isRestore = false) {
-            // Gracefully handle both new objects and old integer saves
-            let cardID = typeof cardObj === 'object' ? (cardObj.cardId || cardObj.index) : cardObj;
-            let cardUID = (typeof cardObj === 'object' && cardObj.uid) ? cardObj.uid : ('uid_' + Math.random().toString(36).substr(2, 9));
+                // Gracefully handle both new objects and old integer saves
+                let cardID = typeof cardObj === 'object' ? (cardObj.cardId || cardObj.index) : cardObj;
+                let cardUID = (typeof cardObj === 'object' && cardObj.uid) ? cardObj.uid : ('uid_' + Math.random().toString(36).substr(2, 9));
 
-            let uniqueIndex = Math.floor(Math.random() * 100000) + 900000;
-            let spawnX = this.x;
-            let spawnY = this.y;
-                if(cardID == 77){cardID = 77.1}
-                if(cardID == 60){cardID = 60.1}
-                if(cardID == 63){cardID = 63.1}
-                if(cardID == 49){cardID = 49.1}
-            let myAlly = new NPC(
-                uniqueIndex, 
-                spawnX, 
-                spawnY, 
-                cardID,        
-                'following',   
-                '#00ff00',     
-                [cardID],      
-                'battle',      
-                false,         
-                'ally'         
-            );
-            myAlly.activeBuffs = []; 
-            
-            // Let's wipe its base stats too, just in case the template was dirty!
-            myAlly.stat = [
-                [0, 0, 0], // STR
-                [0, 0, 0], // CON
-                [0, 0, 0], // INT
-                [0, 0, 0]  // AGI
-            ];
-            let allyname = new Card(myAlly.type, 0);
-            myAlly.name = playerName + "'s " + allyname.name; 
-            this.npcs.push(myAlly);
-            
-            if (!isRestore) {
-                if (!this.activeSummons) this.activeSummons = [];
-                // Save the exact instance!
-                this.activeSummons.push({ 
-                    cardId: cardID, 
-                    uid: cardUID, 
-                    npcId: uniqueIndex 
-                });
+                let uniqueIndex = Math.floor(Math.random() * 100000) + 900000;
+                let spawnX = this.x;
+                let spawnY = this.y;
+                    if(cardID == 77){cardID = 77.1}
+                    if(cardID == 60){cardID = 60.1}
+                    if(cardID == 63){cardID = 63.1}
+                    if(cardID == 49){cardID = 49.1}
+                let myAlly = new NPC(
+                    uniqueIndex, 
+                    spawnX, 
+                    spawnY, 
+                    cardID,        
+                    'following',   
+                    '#00ff00',     
+                    [cardID],      
+                    'battle',      
+                    false,         
+                    'ally'         
+                );
+                myAlly.activeBuffs = []; 
                 
-                if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('heal'); 
-                if (typeof this.saveGame === 'function') this.requestSave();
-            } else {
-                // If restoring a map, update the old activeSummon with the newly spawned NPC's ID
-                let existingSummon = this.activeSummons.find(s => s.uid === cardUID);
-                if (existingSummon) existingSummon.npcId = uniqueIndex;
-            }
+                // Let's wipe its base stats too, just in case the template was dirty!
+                myAlly.stat = [
+                    [0, 0, 0], // STR
+                    [0, 0, 0], // CON
+                    [0, 0, 0], // INT
+                    [0, 0, 0]  // AGI
+                ];
+                let allyname = new Card(myAlly.type, 0);
+                myAlly.name = playerName + "'s " + allyname.name; 
+                this.npcs.push(myAlly);
+                
+                if (!isRestore) {
+                    if (!this.activeSummons) this.activeSummons = [];
+                    // Save the exact instance!
+                    this.activeSummons.push({ 
+                        cardId: cardID, 
+                        uid: cardUID, 
+                        npcId: uniqueIndex 
+                    });
+                    
+                    if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('heal'); 
+                    if (typeof this.saveGame === 'function') this.requestSave();
+                } else {
+                    // If restoring a map, update the old activeSummon with the newly spawned NPC's ID
+                    let existingSummon = this.activeSummons.find(s => s.uid === cardUID);
+                    if (existingSummon) existingSummon.npcId = uniqueIndex;
+                }
             }
         //NPC Interaction rendering
             tutorial(dt) {
@@ -19300,7 +19351,10 @@
                         this.endDialogue(true, finalActions); 
                         return;
                     }
-
+                    //exit dialogue if no dialogue
+                    else {
+                        this.endDialogue(false);
+                    }
                 }
             endDialogue(killSpeaker = false, actions = []) {
                 this.dCounter = 0; 
@@ -20761,7 +20815,19 @@
                         status: isExamDone ? 'completed' : (rep >= 3 ? 'available' : 'locked'), lockReason: "Requires 3 Reputation.",
                         generateBlueprint: () => {
                             let setup = getQuestSetup();
-                            let examWinActions = [['set_memory', { key: 'guild_rank', value: 'E' }], ['set_memory', { key: 'guild_quest', value: { state: 0 } }], ['give_card', { card: 71, text: "You earned your E-Rank License!" }], ['play_sfx', 'chime'], ['notify', "Congratulations! You are now an E-Rank Adventurer!"]];
+                            // FIX 1: Chain give_card INSIDE the endActions of the notification so the UI doesn't clash!
+                            let examWinActions = [
+                                ['set_memory', { key: 'guild_rank', value: 'E' }], 
+                                ['set_memory', { key: 'guild_quest', value: { state: 0 } }], 
+                                ['play_sfx', 'chime'], 
+                                ['notify', {
+                                    text: "Congratulations! You survived the Crucible and passed the exam!",
+                                    endActions: [
+                                        ['give_card', { card: 71, text: "You earned your E-Rank License!" }],
+                                        ['close_dialogue', null]
+                                    ]
+                                }]
+                            ];
                             let spawnBoss = ['spawn_ephemeral_npc', { index: setup.id, x: -999, y: -999, sprite: 249, state: 'stationary', role: 'battle', alignment: 'foe', color: '#ff0000', deck: [246, 240, 222, 225], isBoss: true, isTarget: true, deathActions: examWinActions }];
                             return { state: 0, type: 'exam', tName: 'Promotion Exam', qRank: 'F', targetMap: this.mapID, spawnActions: [spawnBoss, ['start_tactics', { id: setup.id, stakes: 'exam' }]] };
                         }
@@ -20823,7 +20889,18 @@
                         status: isExamDone ? 'completed' : (rep >= 6 ? 'available' : 'locked'), lockReason: "Requires 6 Reputation.",
                         generateBlueprint: () => {
                             let setup = getQuestSetup();
-                            let examWinActions = [['set_memory', { key: 'guild_rank', value: 'D' }], ['set_memory', { key: 'guild_quest', value: { state: 0 } }], ['give_card', { card: 71, text: "You earned your D-Rank License!" }], ['play_sfx', 'chime'], ['notify', "Congratulations! You are now a D-Rank Adventurer!"]];
+                            let examWinActions = [
+                                ['set_memory', { key: 'guild_rank', value: 'D' }], 
+                                ['set_memory', { key: 'guild_quest', value: { state: 0 } }], 
+                                ['play_sfx', 'chime'], 
+                                ['notify', {
+                                    text: "Congratulations! You are now a D-Rank Adventurer!",
+                                    endActions: [
+                                        ['give_card', { card: 71, text: "You earned your D-Rank License!" }],
+                                        ['close_dialogue', null]
+                                    ]
+                                }]
+                            ];
                             let spawnBoss = ['spawn_ephemeral_npc', { index: setup.id, x: -999, y: -999, sprite: 5, state: 'stationary', role: 'battle', alignment: 'foe', color: '#ff0000', deck: [249, 188, 191,194], isBoss: true, isTarget: true, deathActions: examWinActions }];
                             return { state: 0, type: 'exam', tName: 'Promotion Exam', qRank: 'E', targetMap: this.mapID, spawnActions: [spawnBoss, ['start_tactics', { id: setup.id, stakes: 'exam' }]] };
                         }
@@ -20909,7 +20986,18 @@
                         status: isExamDone ? 'completed' : (rep >= 9 ? 'available' : 'locked'), lockReason: "Requires 9 Reputation.",
                         generateBlueprint: () => {
                             let setup = getQuestSetup();
-                            let examWinActions = [['set_memory', { key: 'guild_rank', value: 'C' }], ['set_memory', { key: 'guild_quest', value: { state: 0 } }], ['give_card', { card: 71, text: "You earned your C-Rank License!" }], ['play_sfx', 'chime'], ['notify', "Congratulations! You are now a C-Rank Veteran!"]];
+                            let examWinActions = [
+                                ['set_memory', { key: 'guild_rank', value: 'C' }], 
+                                ['set_memory', { key: 'guild_quest', value: { state: 0 } }], 
+                                ['play_sfx', 'chime'], 
+                                ['notify', {
+                                    text: "Congratulations! You are now a C-Rank Veteran!",
+                                    endActions: [
+                                        ['give_card', { card: 71, text: "You earned your C-Rank License!" }],
+                                        ['close_dialogue', null]
+                                    ]
+                                }]
+                            ];
                             let spawnBoss = ['spawn_ephemeral_npc', { index: setup.id, x: -999, y: -999, sprite: 249, state: 'stationary', role: 'battle', alignment: 'foe', color: '#ff0000', deck: [249,56,54,56,54], isBoss: true, isTarget: true, deathActions: examWinActions }];
                             return { state: 0, type: 'exam', tName: 'Promotion Exam', qRank: 'D', targetMap: this.mapID, spawnActions: [spawnBoss, ['start_tactics', { id: setup.id, stakes: 'exam' }]] };
                         }
@@ -20942,12 +21030,12 @@
                                         yesActions: [
                                             ['set_memory', { key: 'guild_quest', value: { state: 2, type: 'infestation', tName: 'Infestation', qRank: 'D', bribeTaken: true } }], 
                                             ['disappear', setup.id],
-                                            ['give_card', { card: 10, text: "You accepted the bribe." }] 
+                                            ['notify', { text: "You accepted the bribe.", endActions: [['give_card', { card: 10, text: "Gold Acquired" }], ['close_dialogue', null]] }] 
                                         ], 
                                         noActions: [
                                             ['set_memory', { key: 'guild_quest', value: { state: 2, type: 'infestation', tName: 'Infestation', qRank: 'D', bribeTaken: false } }], 
-                                            ['close_dialogue', null],
                                             ['disappear', setup.id],
+                                            ['close_dialogue', null]
                                         ] 
                                     }], 
                                     ['trigger_dialogue', setup.id]
@@ -20968,7 +21056,6 @@
                                     ['inject_dialogue', { 
                                         index: setup.id, 
                                         text: ["THEY'RE HERE! AHHHHH!!!!"], 
-                                        
                                     }], 
                                     ['spawn_ephemeral_npc', { index: bossId, x: pos1.x, y: pos1.y, sprite: 54, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', isTarget: true, isBoss: true, deathActions: [killPayload] }], 
                                     ['spawn_ephemeral_npc', { index: bossId+1, x: pos2.x, y: pos2.y, sprite: 54, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', deathActions: [killPayload] }], 
@@ -20987,9 +21074,29 @@
                         id: 'd_reinforce_1', title: "C-Rank Rescue", desc: "A veteran squad is trapped behind enemy lines. Break the siege.", isStory: false, status: 'available',
                         generateBlueprint: () => {
                             let setup = getQuestSetup(); let bossId = setup.id + 1;
-                            let spawnLeader = ['spawn_ephemeral_npc', { index: setup.id, x: setup.pos.x, y: setup.pos.y, sprite: 258, state: 'stationary', role: 'dialogue', alignment: 'friendly', color: '#00ff00', 
-                            customDialogue: ["We're pinned down! Join our squad and help us break through!"], options: ['Join Squad', 'Leave'], isTarget: true, isBoss: false, 
-                            yesActions: [['become_ally', 42], ['disappear', setup.id], ['spawn_ephemeral_npc', { index: bossId, x: this.x, y: this.y, sprite: 5, state: 'stationary', role: 'battle', alignment: 'foe', color: '#ff0000', isBoss: true, deck: [42, 56, 56, 56], deathActions: [['update_quest_state', { key: 'guild_quest', state: 2 }], ['cleanup_quest_npcs', null], ['notify', { text: "Ambush cleared! The squad is safe. Return to the guild.", endActions: [['close_dialogue', null]] }]] }], ['start_tactics', bossId], ['close_dialogue', null]], noActions: [['close_dialogue', null]] }];
+                            
+                            // FIX 2: Disappear logic is now handled in the boss's deathActions!
+                            let spawnLeader = ['spawn_ephemeral_npc', { 
+                                index: setup.id, x: setup.pos.x, y: setup.pos.y, sprite: 258, state: 'stationary', role: 'dialogue', alignment: 'friendly', color: '#00ff00', 
+                                customDialogue: ["We're pinned down! Join our squad and help us break through!"], 
+                                options: ['Join Squad', 'Leave'], isTarget: true, isBoss: false, 
+                                yesActions: [
+                                    ['close_dialogue', null],
+                                    ['set_dialogue', { text: ["They're still out there! We have to break through!"], endActions: [['close_dialogue', null]]}],
+                                    ['become_ally', 42], 
+                                    ['spawn_ephemeral_npc', { 
+                                        index: bossId, x: 'PLAYER_X', y: 'PLAYER_Y', sprite: 5, state: 'stationary', role: 'battle', alignment: 'foe', color: '#ff0000', isBoss: true, deck: [42, 56, 56, 56], 
+                                        deathActions: [
+                                            ['update_quest_state', { key: 'guild_quest', state: 2 }], 
+                                            ['disappear', setup.id], // Clears them from the map permanently
+                                            ['cleanup_quest_npcs', null], 
+                                            ['notify', { text: "Ambush cleared! The squad is safe. Return to the guild.", endActions: [['close_dialogue', null]] }]
+                                        ] 
+                                    }], 
+                                    ['start_tactics', bossId]
+                                ], 
+                                noActions: [['close_dialogue', null]] 
+                            }];
                             
                             return { state: 1, type: 'reinforcement', tName: 'C-Rank Rescue', qRank: 'D', targetMap: this.mapID, targetX: Math.floor(setup.pos.x), targetY: Math.floor(setup.pos.y), spawnActions: [spawnLeader] };
                         }
@@ -21025,6 +21132,7 @@
                 // C-RANK BOUNTIES (STORY CAMPAIGN & EXTRAS)
                 // ==========================================
                 else if (rankToView === 'C') {
+                    let isExamDone = pRankVal >= 4; 
                     
                     quests.push({
                         id: 'c_story_1', 
@@ -21113,8 +21221,8 @@
                                     ['disappear', setup.id],   
                                     ['play_sfx', 'buff2'], 
                                     spawnLeader,                
-                                    spawnMinion1,              
-                                    spawnMinion2,              
+                                    spawnMinion1,               
+                                    spawnMinion2,               
                                     ['notify', {
                                         text: "The Double Agent joined your party! Confront the Cult Leader!", 
                                         endActions: [['close_dialogue', null]]
@@ -21153,8 +21261,18 @@
                         generateBlueprint: () => {
                             let setup = getQuestSetup(); let monsterId = setup.id + 1;
                             
+                            // FIX 3: Make sure the Corrupt Client (setup.id) disappears when the choice is completed!
                             let slayActions = [
-                                ['transform_npc', { index: monsterId, newAlignment: 'foe', newRole: 'battle', newState: 'chasing', clearDialogue: true, newIsTarget: true, newIsBoss: true, newDeathActions: [['update_quest_state', {key: 'guild_quest', state: 2}], ['set_memory', {key: 'c_rank_dilemma_choice', value: 'monster'}], ['play_sfx', 'chime'], ['notify', "The beast is dead. Return to the Guild."]] }], 
+                                ['transform_npc', { 
+                                    index: monsterId, newAlignment: 'foe', newRole: 'battle', newState: 'chasing', clearDialogue: true, newIsTarget: true, newIsBoss: true, 
+                                    newDeathActions: [
+                                        ['update_quest_state', {key: 'guild_quest', state: 2}], 
+                                        ['set_memory', {key: 'c_rank_dilemma_choice', value: 'monster'}], 
+                                        ['disappear', setup.id], // The client leaves after you do his dirty work
+                                        ['play_sfx', 'chime'], 
+                                        ['notify', { text: "The beast is dead. Return to the Guild.", endActions: [['close_dialogue', null]] }]
+                                    ] 
+                                }], 
                                 ['close_dialogue', null]
                             ];
                             
@@ -21165,7 +21283,15 @@
                                 ['notify', { 
                                     text: "You freed the beast! The corrupt client attacks you in a rage!", 
                                     endActions: [
-                                        ['transform_npc', { index: setup.id, newAlignment: 'foe', newRole: 'battle', newState: 'chasing', clearDialogue: true, newIsTarget: true, newIsBoss: true, newDeathActions: [['update_quest_state', {key: 'guild_quest', state: 2}], ['set_memory', {key: 'c_rank_dilemma_choice', value: 'client'}], ['play_sfx', 'chime'], ['notify', "The corrupt client is dead. Return to the Guild."]] }], 
+                                        ['transform_npc', { 
+                                            index: setup.id, newAlignment: 'foe', newRole: 'battle', newState: 'chasing', clearDialogue: true, newIsTarget: true, newIsBoss: true, 
+                                            newDeathActions: [
+                                                ['update_quest_state', {key: 'guild_quest', state: 2}], 
+                                                ['set_memory', {key: 'c_rank_dilemma_choice', value: 'client'}], 
+                                                ['play_sfx', 'chime'], 
+                                                ['notify', { text: "The corrupt client is dead. Return to the Guild.", endActions: [['close_dialogue', null]] }]
+                                            ] 
+                                        }], 
                                         ['close_dialogue', null]
                                     ] 
                                 }]
@@ -21186,7 +21312,7 @@
                         status: cProgress > 2 ? 'completed' : (cProgress === 2 ? 'available' : 'locked'), lockReason: "Complete 'Beast Dilemma' first.",
                         generateBlueprint: () => {
                             let setup = getQuestSetup(); let bossId = setup.id + 1;
-                            let idolYes = [['disappear', setup.id], ['play_sfx', 'horn'], ['spawn_ephemeral_npc', { index: bossId, x: setup.pos.x, y: setup.pos.y, sprite: 294, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', isBoss: true, isTarget: true, deathActions: [['update_quest_state', { key: 'guild_quest', state: 2 }], ['play_sfx', 'chime'], ['notify', "The boss falls and the evil idol shatters into dust! Return to the Guild."]] }], ['notify', { text: "The idol erupts with dark magic! A monster appears!", endActions: [['close_dialogue', null]] }]];
+                            let idolYes = [['disappear', setup.id], ['play_sfx', 'horn'], ['spawn_ephemeral_npc', { index: bossId, x: setup.pos.x, y: setup.pos.y, sprite: 294, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', isBoss: true, isTarget: true, deathActions: [['update_quest_state', { key: 'guild_quest', state: 2 }], ['play_sfx', 'chime'], ['notify', { text: "The boss falls and the evil idol shatters into dust! Return to the Guild.", endActions: [['close_dialogue', null]] }]] }], ['notify', { text: "The idol erupts with dark magic! A monster appears!", endActions: [['close_dialogue', null]] }]];
                             let spawnIdol = ['spawn_ephemeral_npc', { index: setup.id, x: setup.pos.x, y: setup.pos.y, sprite: 13, state: 'stationary', role: 'dialogue', alignment: 'friendly', color: '#ffff00', isTarget: true, isBoss: false, customDialogue: ["*An unsettling, dark aura emanates from this twisted idol.*"], options: ['Take the Idol', 'Leave'], yesActions: idolYes, noActions: [['close_dialogue', null]] }];
                             return { state: 1, type: 'idol', tName: 'Shipment Intercept', qRank: 'C', targetMap: this.mapID, targetX: Math.floor(setup.pos.x), targetY: Math.floor(setup.pos.y), spawnActions: [spawnIdol] };
                         }
@@ -21199,7 +21325,22 @@
                             let setup = getQuestSetup(); let bossId = setup.id; let invasionSpawns = [];
                             
                             let bossPos = this.getSafeSpawn(15, 15, 2);
-                            invasionSpawns.push(['spawn_ephemeral_npc', { index: bossId, x: bossPos.x, y: bossPos.y, sprite: 5, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', isBoss: true, isTarget: true, deck: [5, 56, 56, 54], deathActions: [['update_quest_state', { key: 'guild_quest', state: 2 }], ['play_song', 8], ['spawn_npc', [22, bossId+99, 'PLAYER_X', 'PLAYER_Y', 42, 'stationary', '#00ff00', [42], ["The Commander is dead! Great work!", "Go back to the Guild and report this. We'll handle the cleanup!"], null, 'dialogue', null, false, 'friendly', [['close_dialogue', null]]]], ['trigger_dialogue', bossId+99]] }]);
+                            
+                            // FIX 4: Use spawn_ephemeral_npc so the map doesn't get permanently corrupted
+                            invasionSpawns.push(['spawn_ephemeral_npc', { 
+                                index: bossId, x: bossPos.x, y: bossPos.y, sprite: 5, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', isBoss: true, isTarget: true, deck: [5, 56, 56, 54], 
+                                deathActions: [
+                                    ['update_quest_state', { key: 'guild_quest', state: 2 }], 
+                                    ['play_song', 8], 
+                                    ['spawn_ephemeral_npc', { 
+                                        index: bossId+99, x: 'PLAYER_X', y: 'PLAYER_Y', sprite: 42, state: 'stationary', role: 'dialogue', alignment: 'friendly', color: '#00ff00', 
+                                        customDialogue: ["The Commander is dead! Great work!", "Go back to the Guild and report this. We'll handle the cleanup!"], 
+                                        options: ['Acknowledge'], 
+                                        yesActions: [['disappear', bossId+99], ['close_dialogue', null]] 
+                                    }], 
+                                    ['trigger_dialogue', bossId+99]
+                                ] 
+                            }]);
                             
                             for (let i = 1; i <= 10; i++) {
                                 let invaderPos = this.getSafeSpawn(bossPos.x, bossPos.y, 6);
@@ -21215,10 +21356,23 @@
 
                     quests.push({
                         id: 'c_exam', title: "PROMOTION EXAM: B-RANK", desc: "The guild has noticed your heroics. Take the exam.", isStory: true,
-                        status: pRankVal >= 4 ? 'completed' : (cProgress === 4 ? 'available' : 'locked'), lockReason: "Complete 'Town Assault' first.",
+                        status: isExamDone ? 'completed' : (cProgress === 4 ? 'available' : 'locked'), lockReason: "Complete 'Town Assault' first.",
                         generateBlueprint: () => {
                             let setup = getQuestSetup();
-                            let examWinActions = [['set_memory', { key: 'guild_rank', value: 'B' }], ['set_memory', { key: 'c_rank_progress', value: 5 }], ['set_memory', { key: 'guild_quest', value: { state: 0 } }], ['give_card', { card: 71, text: "You earned your B-Rank License!" }], ['play_song', 23], ['play_sfx', 'chime'], ['notify', "Congratulations! You survived the ambush and earned your B-Rank!"]];
+                            let examWinActions = [
+                                ['set_memory', { key: 'guild_rank', value: 'B' }], 
+                                ['set_memory', { key: 'c_rank_progress', value: 5 }], 
+                                ['set_memory', { key: 'guild_quest', value: { state: 0 } }], 
+                                ['play_song', 23], 
+                                ['play_sfx', 'chime'], 
+                                ['notify', {
+                                    text: "Congratulations! You survived the ambush and earned your B-Rank!",
+                                    endActions: [
+                                        ['give_card', { card: 71, text: "You earned your B-Rank License!" }],
+                                        ['close_dialogue', null]
+                                    ]
+                                }]
+                            ];
                             let spawnBoss = ['spawn_ephemeral_npc', { index: setup.id, x: -999, y: -999, sprite: 249, state: 'stationary', role: 'battle', alignment: 'foe', color: '#ff0000', deck: [249, 252, 255,258,261], isBoss: true, isTarget: true, deathActions: examWinActions }];
                             return { state: 0, type: 'exam', tName: 'Promotion Exam', qRank: 'C', targetMap: this.mapID, spawnActions: [spawnBoss, ['start_tactics', { id: setup.id, isExam: true, stakes: 'real' }]] };
                         }
@@ -21237,13 +21391,13 @@
                             let setup = getQuestSetup();
                             let validTargets = [{ sprite: 80, name: "Frost Wyrm" }, { sprite: 83, name: "Abyssal Tentacle" }];
                             let target = validTargets[Math.floor(Math.random() * validTargets.length)];
-                            let deathAct = [['update_quest_state', { key: 'guild_quest', state: 2 }], ['play_sfx', 'chime'], ['notify', "The Deep Terror is dead! Return to the Guild."]];
+                            let deathAct = [['update_quest_state', { key: 'guild_quest', state: 2 }], ['play_sfx', 'chime'], ['notify', { text: "The Deep Terror is dead! Return to the Guild.", endActions: [['close_dialogue', null]] }]];
                             let spawnAction = ['spawn_ephemeral_npc', { index: setup.id, x: setup.pos.x, y: setup.pos.y, sprite: target.sprite, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', isTarget: true, isBoss: true, deathActions: deathAct }];
                             return { state: 1, type: 'bounty', tName: target.name, qRank: 'B', targetMap: this.mapID, targetX: Math.floor(setup.pos.x), targetY: Math.floor(setup.pos.y), spawnActions: [spawnAction] };
                         }
                     });
 
-                   quests.push({
+                quests.push({
                         id: 'b_ritual_1', title: "Apocalyptic Ritual", desc: "The Cult awakens a forgotten god. Shatter their monoliths.", isStory: false, status: 'available',
                         generateBlueprint: () => {
                             let setup = getQuestSetup(); let p2 = setup.id+1; let p3 = setup.id+2; let bossId = setup.id+3;
@@ -21252,7 +21406,7 @@
                                 ['change_sky', '#8a2500'], 
                                 ['change_weather', 'inferno'], 
                                 ['play_song', 8], 
-                                ['notify', "The ritual shattered! The Apex has been forcibly dragged into this realm!"], 
+                                ['notify', { text: "The ritual shattered! The Apex has been forcibly dragged into this realm!", endActions: [['close_dialogue', null]] }], 
                                 ['spawn_ephemeral_npc', { 
                                     index: bossId, x: 'PLAYER_X', y: 'PLAYER_Y-1', sprite: 63.1, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', isBoss: true, isTarget: true, deck: [63, 63, 60, 56], 
                                     deathActions: [
@@ -21261,10 +21415,9 @@
                                         ['change_weather', 'clear'], 
                                         ['restore_map_song', this.mapID], 
                                         ['play_sfx', 'chime'], 
-                                        ['notify', "The Apex has fallen! The sky is clearing. Return to the Guild."]
+                                        ['notify', { text: "The Apex has fallen! The sky is clearing. Return to the Guild.", endActions: [['close_dialogue', null]] }]
                                     ] 
-                                }], 
-                                ['close_dialogue', null] 
+                                }]
                             ];
                             
                             let p1Pos = this.getSafeSpawn(setup.pos.x, setup.pos.y, 2);
@@ -21282,7 +21435,7 @@
                         generateBlueprint: () => {
                             let setup = getQuestSetup(); let portalId = setup.id+1;
                             
-                            let portalPos = this.getSafeSpawn(setup.pos.x, setup.pos.y, 10); // Far away
+                            let portalPos = this.getSafeSpawn(setup.pos.x, setup.pos.y, 10); 
                             
                             let portalYes = [['stop_hunted', null], ['change_sky', 'rgba(255,255,255,1)'], ['change_weather', 'clear'], ['restore_map_song', this.mapID], ['disappear', setup.id], ['disappear', portalId], ['update_quest_state', { key: 'guild_quest', state: 2 }], ['play_sfx', 'chime'], ['notify', { text: "Target secured. The lockdown is lifted.", endActions: [['close_dialogue', null]] }]];
                             
@@ -21290,14 +21443,13 @@
                                 ['become_ally', 5], ['disappear', setup.id], ['change_sky', '#000000'], ['change_weather', 'space'], ['play_song', 25], 
                                 ['start_hunted', { waves: 10, interval: 150, mobs: [{sprite: 74, isBoss: true}, {sprite: 42, isBoss: true}] }], 
                                 ['play_sfx', 'horn'], 
-                                // THE FIX: Portal drops during dialogue, so you have to run to it!
                                 ['spawn_ephemeral_npc', { index: portalId, x: portalPos.x, y: portalPos.y, sprite: 99, state: 'stationary', role: 'dialogue', alignment: 'friendly', color: '#ffff00', isTarget: true, isBoss: false, customDialogue: ["*Extraction Portal Active*"], options: ['Secure VIP'], yesActions: portalYes }],
                                 ['notify', { text: "ALARM TRIPPED! Run to the Extraction Portal marked on your map!", endActions: [['close_dialogue', null]] }]
                             ];
                             
                             let spawnVip = ['spawn_ephemeral_npc', { index: setup.id, x: setup.pos.x, y: setup.pos.y, sprite: 5, state: 'stationary', role: 'dialogue', alignment: 'friendly', color: '#00ff00', isTarget: true, isBoss: false, customDialogue: ["You're from the Guild? Finally! Get me out of here!"], options: ['Extract VIP'], yesActions: vipYes }];
                             
-                            return { state: 1, type: 'extraction', tName: 'Black-Site Rescue', qRank: 'B', targetMap: this.mapID, targetX: Math.floor(setup.pos.x), targetY: Math.floor(setup.pos.y), spawnActions: [spawnVip] }; // Portal removed from array
+                            return { state: 1, type: 'extraction', tName: 'Black-Site Rescue', qRank: 'B', targetMap: this.mapID, targetX: Math.floor(setup.pos.x), targetY: Math.floor(setup.pos.y), spawnActions: [spawnVip] }; 
                         }
                     });
 
@@ -21305,10 +21457,10 @@
                         id: 'b_apex_1', title: "Bioweapon Raid", desc: "A mutating abomination multiplies in the dark. Burn every last cell.", isStory: false, status: 'available',
                         generateBlueprint: () => {
                             let setup = getQuestSetup();
-                            let p3Death = [['update_quest_count', { key: 'guild_quest', onComplete: [['update_quest_state', { key: 'guild_quest', state: 2 }], ['play_sfx', 'chime'], ['notify', "The bioweapon has been eradicated! Return to the Guild."]] }]];
-                            let p2ADeath = [['notify', "The monster split again!"], ['play_sfx', 'horn'], ['spawn_ephemeral_npc', { index: setup.id+4, x: 'PLAYER_X', y: 'PLAYER_Y', sprite: 246, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', isBoss: true, isTarget: true, deathActions: p3Death }], ['spawn_ephemeral_npc', { index: setup.id+5, x: 'PLAYER_X-1', y: 'PLAYER_Y', sprite: 210, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', isBoss: true, isTarget: true, deathActions: p3Death }]];
-                            let p2BDeath = [['notify', "The monster split again!"], ['play_sfx', 'horn'], ['spawn_ephemeral_npc', { index: setup.id+6, x: 'PLAYER_X', y: 'PLAYER_Y', sprite: 210, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', isBoss: true, isTarget: true, deathActions: p3Death }], ['spawn_ephemeral_npc', { index: setup.id+7, x: 'PLAYER_X+1', y: 'PLAYER_Y', sprite: 246, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', isBoss: true, isTarget: true, deathActions: p3Death }]];
-                            let p1Death = [['notify', "The Apex has split into two!"], ['play_sfx', 'horn'], ['spawn_ephemeral_npc', { index: setup.id+2, x: 'PLAYER_X', y: 'PLAYER_Y', sprite: 206, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', isBoss: true, isTarget: true, deathActions: p2ADeath }], ['spawn_ephemeral_npc', { index: setup.id+3, x: 'PLAYER_X-1', y: 'PLAYER_Y-1', sprite: 206, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', isBoss: true, isTarget: true, deathActions: p2BDeath }]];
+                            let p3Death = [['update_quest_count', { key: 'guild_quest', onComplete: [['update_quest_state', { key: 'guild_quest', state: 2 }], ['play_sfx', 'chime'], ['notify', { text: "The bioweapon has been eradicated! Return to the Guild.", endActions: [['close_dialogue', null]] }]] }]];
+                            let p2ADeath = [['notify', { text: "The monster split again!", endActions: [['close_dialogue', null]] }], ['play_sfx', 'horn'], ['spawn_ephemeral_npc', { index: setup.id+4, x: 'PLAYER_X', y: 'PLAYER_Y', sprite: 246, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', isBoss: true, isTarget: true, deathActions: p3Death }], ['spawn_ephemeral_npc', { index: setup.id+5, x: 'PLAYER_X-1', y: 'PLAYER_Y', sprite: 210, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', isBoss: true, isTarget: true, deathActions: p3Death }]];
+                            let p2BDeath = [['notify', { text: "The monster split again!", endActions: [['close_dialogue', null]] }], ['play_sfx', 'horn'], ['spawn_ephemeral_npc', { index: setup.id+6, x: 'PLAYER_X', y: 'PLAYER_Y', sprite: 210, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', isBoss: true, isTarget: true, deathActions: p3Death }], ['spawn_ephemeral_npc', { index: setup.id+7, x: 'PLAYER_X+1', y: 'PLAYER_Y', sprite: 246, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', isBoss: true, isTarget: true, deathActions: p3Death }]];
+                            let p1Death = [['notify', { text: "The Apex has split into two!", endActions: [['close_dialogue', null]] }], ['play_sfx', 'horn'], ['spawn_ephemeral_npc', { index: setup.id+2, x: 'PLAYER_X', y: 'PLAYER_Y', sprite: 206, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', isBoss: true, isTarget: true, deathActions: p2ADeath }], ['spawn_ephemeral_npc', { index: setup.id+3, x: 'PLAYER_X-1', y: 'PLAYER_Y-1', sprite: 206, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', isBoss: true, isTarget: true, deathActions: p2BDeath }]];
                             let spawnApex = ['spawn_ephemeral_npc', { index: setup.id, x: setup.pos.x, y: setup.pos.y, sprite: 270, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', isBoss: true, isTarget: true, deck: [77, 77, 77], deathActions: p1Death }];
                             
                             return { state: 1, type: 'apex', tName: 'Bioweapon Raid', qRank: 'B', count: 0, max: 4, targetMap: this.mapID, targetX: Math.floor(setup.pos.x), targetY: Math.floor(setup.pos.y), spawnActions: [spawnApex] };
@@ -21319,7 +21471,6 @@
                         id: 'b_exam', title: "PROMOTION EXAM: A-RANK", desc: "Speak to the Expert Clerk to begin.", isStory: true,
                         status: isExamDone ? 'completed' : (rep >= 30 ? 'available' : 'locked'), lockReason: "Requires 30 Reputation.",
                         generateBlueprint: () => {
-                            // Points the player to talk to the B-Rank Clerk
                             return { state: 0, type: 'info', tName: 'A-Rank Promotion', qRank: 'B', targetMap: 0 }; 
                         }
                     });
@@ -21336,7 +21487,7 @@
                             let setup = getQuestSetup();
                             let validTargets = [{ sprite: 46, name: "Sea Serpent" }, { sprite: 47, name: "Undine" }];
                             let target = validTargets[Math.floor(Math.random() * validTargets.length)];
-                            let deathAct = [['update_quest_state', { key: 'guild_quest', state: 2 }], ['play_sfx', 'chime'], ['notify', "The Mythic beast is dead! Return to the Guild."]];
+                            let deathAct = [['update_quest_state', { key: 'guild_quest', state: 2 }], ['play_sfx', 'chime'], ['notify', { text: "The Mythic beast is dead! Return to the Guild.", endActions: [['close_dialogue', null]] }]];
                             let spawnAction = ['spawn_ephemeral_npc', { index: setup.id, x: setup.pos.x, y: setup.pos.y, sprite: target.sprite, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', isBoss: true, isTarget: true, deathActions: deathAct }];
                             return { state: 1, type: 'bounty', tName: target.name, qRank: 'A', targetMap: this.mapID, targetX: Math.floor(setup.pos.x), targetY: Math.floor(setup.pos.y), spawnActions: [spawnAction] };
                         }
@@ -21351,7 +21502,7 @@
                                 ['play_sfx', 'horn'], 
                                 ['disappear', setup.id], 
                                 ['change_weather', 'space'], 
-                                ['spawn_ephemeral_npc', { index: inqId, x: setup.pos.x, y: setup.pos.y, sprite: 5, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', isBoss: true, isTarget: true, deck: [5, 29, 29, 92], deathActions: [['update_quest_state', { key: 'guild_quest', state: 2 }], ['change_weather', 'clear'], ['play_sfx', 'chime'], ['notify', "The Inquisitor is dead! Return to base!"]] }], 
+                                ['spawn_ephemeral_npc', { index: inqId, x: setup.pos.x, y: setup.pos.y, sprite: 5, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', isBoss: true, isTarget: true, deck: [5, 29, 29, 92], deathActions: [['update_quest_state', { key: 'guild_quest', state: 2 }], ['change_weather', 'clear'], ['play_sfx', 'chime'], ['notify', { text: "The Inquisitor is dead! Return to base!", endActions: [['close_dialogue', null]] }]] }], 
                                 ['spawn_ephemeral_npc', { index: inqId+1, x: setup.pos.x, y: setup.pos.y, sprite: 77.1, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', isBoss: true }], 
                                 ['spawn_ephemeral_npc', { index: inqId+2, x: setup.pos.x, y: setup.pos.y, sprite: 77.1, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', isBoss: true }], 
                                 ['notify', { text: "Grand Inquisitor: You killed the Elder. For that, you will suffer!", endActions: [['close_dialogue', null]] }]
@@ -21366,7 +21517,7 @@
                         status: aProgress > 1 ? 'completed' : (aProgress === 1 ? 'available' : 'locked'), lockReason: "Complete 'Abyssal Hunt' first.",
                         generateBlueprint: () => {
                             let setup = getQuestSetup(); let bossId = setup.id+1; let spawnList = [];
-                            let artifactPickup = [['disappear', setup.id], ['play_sfx', 'horn'], ['spawn_ephemeral_npc', { index: bossId, x: setup.pos.x , y: setup.pos.y, sprite: 35, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', isBoss: true, isTarget: true, deck: [35, 93, 12], deathActions: [['update_quest_state', { key: 'guild_quest', state: 2 }], ['play_sfx', 'chime'], ['notify', "The Cult forces have been routed! The artifact is secure!"]] }], ['spawn_ephemeral_npc', { index: bossId+1, x: setup.pos.x , y: setup.pos.y, sprite: 56, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', isBoss: true }], ['spawn_ephemeral_npc', { index: bossId+2, x: setup.pos.x , y: setup.pos.y, sprite: 56, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', isBoss: true }], ['notify', { text: "Cult Strike Leader: Fool! We'll pry that artifact from your cold, dead hands!", endActions: [['close_dialogue', null]] }]];
+                            let artifactPickup = [['disappear', setup.id], ['play_sfx', 'horn'], ['spawn_ephemeral_npc', { index: bossId, x: setup.pos.x , y: setup.pos.y, sprite: 35, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', isBoss: true, isTarget: true, deck: [35, 93, 12], deathActions: [['update_quest_state', { key: 'guild_quest', state: 2 }], ['play_sfx', 'chime'], ['notify', { text: "The Cult forces have been routed! The artifact is secure!", endActions: [['close_dialogue', null]] }]] }], ['spawn_ephemeral_npc', { index: bossId+1, x: setup.pos.x , y: setup.pos.y, sprite: 56, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', isBoss: true }], ['spawn_ephemeral_npc', { index: bossId+2, x: setup.pos.x , y: setup.pos.y, sprite: 56, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', isBoss: true }], ['notify', { text: "Cult Strike Leader: Fool! We'll pry that artifact from your cold, dead hands!", endActions: [['close_dialogue', null]] }]];
                             spawnList.push(['spawn_ephemeral_npc', { index: setup.id, x: setup.pos.x, y: setup.pos.y, sprite: 10, state: 'stationary', role: 'dialogue', alignment: 'friendly', color: '#ffff00', isTarget: true, isBoss: false, customDialogue: ["*An ancient, glowing artifact.*"], options: ['Secure Artifact'], yesActions: artifactPickup }]);
 
                             for (let i=1; i<=3; i++) {
@@ -21386,7 +21537,7 @@
                         status: aProgress >= 2 ? 'available' : 'locked', lockReason: "Complete Vanguard training operations first.",
                         generateBlueprint: () => {
                             let setup = getQuestSetup(); let spawnList = [];
-                            spawnList.push(['spawn_ephemeral_npc', { index: setup.id, x: setup.pos.x, y: setup.pos.y, sprite: 5, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', isBoss: true, isTarget: true, deck: [5, 66, 66, 26, 92], deathActions: [['update_quest_state', { key: 'guild_quest', state: 2 }], ['play_sfx', 'chime'], ['notify', "The Stronghold Commander is dead. The base is ours!"]] }]);
+                            spawnList.push(['spawn_ephemeral_npc', { index: setup.id, x: setup.pos.x, y: setup.pos.y, sprite: 5, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', isBoss: true, isTarget: true, deck: [5, 66, 66, 26, 92], deathActions: [['update_quest_state', { key: 'guild_quest', state: 2 }], ['play_sfx', 'chime'], ['notify', { text: "The Stronghold Commander is dead. The base is ours!", endActions: [['close_dialogue', null]] }]] }]);
 
                             for (let i=1; i<=4; i++) {
                                 let minionPos = this.getSafeSpawn(setup.pos.x, setup.pos.y, 3);
@@ -21422,7 +21573,7 @@
                         isStory: false, status: 'available',
                         generateBlueprint: () => {
                             let setup = getQuestSetup();
-                            let spawnAction = ['spawn_ephemeral_npc', { index: setup.id, x: setup.pos.x, y: setup.pos.y, sprite: 74, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', isBoss: true, isTarget: true, deathActions: [['update_quest_state', { key: 'guild_quest', state: 2 }], ['play_sfx', 'chime'], ['notify', "Target eliminated! Return to any Guild Clerk."]] }];
+                            let spawnAction = ['spawn_ephemeral_npc', { index: setup.id, x: setup.pos.x, y: setup.pos.y, sprite: 74, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', isBoss: true, isTarget: true, deathActions: [['update_quest_state', { key: 'guild_quest', state: 2 }], ['play_sfx', 'chime'], ['notify', { text: "Target eliminated! Return to any Guild Clerk.", endActions: [['close_dialogue', null]] }]] }];
                             return { state: 1, type: 'bounty', tName: 'Continental Threat', qRank: 'S', targetMap: this.mapID, targetX: Math.floor(setup.pos.x), targetY: Math.floor(setup.pos.y), spawnActions: [spawnAction] };
                         }
                     });
@@ -21438,8 +21589,7 @@
                             isStory: false, status: 'available',
                             generateBlueprint: () => {
                                 let setup = getQuestSetup();
-                                // Just an example boss setup for the Moors
-                                let spawnAction = ['spawn_ephemeral_npc', { index: setup.id, x: setup.pos.x, y: setup.pos.y, sprite: 5, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', isBoss: true, isTarget: true, deck: [5, 56, 56], deathActions: [['update_quest_state', { key: 'guild_quest', state: 2 }], ['play_sfx', 'chime'], ['notify', "The Moors are safe!"]] }];
+                                let spawnAction = ['spawn_ephemeral_npc', { index: setup.id, x: setup.pos.x, y: setup.pos.y, sprite: 5, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', isBoss: true, isTarget: true, deck: [5, 56, 56], deathActions: [['update_quest_state', { key: 'guild_quest', state: 2 }], ['play_sfx', 'chime'], ['notify', { text: "The Moors are safe!", endActions: [['close_dialogue', null]] }]] }];
                                 return { state: 1, type: 'bounty', tName: 'Moors Siege', qRank: 'S', targetMap: 0, targetX: Math.floor(setup.pos.x), targetY: Math.floor(setup.pos.y), spawnActions: [spawnAction] };
                             }
                         });
@@ -21464,7 +21614,22 @@
                             isStory: false, status: 'available',
                             generateBlueprint: () => {
                                 let setup = getQuestSetup();
-                                let bossDeath = [ ['update_quest_state', { key: 'guild_quest', state: 2 }], ['play_sfx', 'chime'], ['change_weather', 'clear'], ['restore_map_song', hazardMapId], ['notify', `The ${bossName} has been eradicated. Return to Avalon.`] ];
+                                
+                                // FIX 5: Use an auto-extraction load_map so the player doesn't get trapped in the hazard map!
+                                let bossDeath = [ 
+                                    ['update_quest_state', { key: 'guild_quest', state: 2 }], 
+                                    ['play_sfx', 'chime'], 
+                                    ['change_weather', 'clear'], 
+                                    ['notify', {
+                                        text: `The ${bossName} has been eradicated. Teleporting back to Avalon...`,
+                                        endActions: [
+                                            ['load_map', 10],
+                                            ['restore_map_song', 10],
+                                            ['close_dialogue', null]
+                                        ]
+                                    }] 
+                                ];
+                                
                                 let spawnApex = ['spawn_ephemeral_npc', { index: setup.id, x: 10.5, y: 10.5, sprite: bossSprite, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', isBoss: true, isTarget: true, deck: [bossSprite, bossSprite, 93], deathActions: bossDeath }];
                                 let warpActions = [ ['change_weather', weatherEffect], ['load_map', hazardMapId], ['play_sfx', 'warp'] ];
                                 
@@ -21487,7 +21652,7 @@
                         isStory: false, status: 'available',
                         generateBlueprint: () => {
                             let setup = getQuestSetup();
-                            let spawnAction = ['spawn_ephemeral_npc', { index: setup.id, x: setup.pos.x, y: setup.pos.y, sprite: 74, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', isBoss: true, isTarget: true, deathActions: [['update_quest_state', { key: 'guild_quest', state: 2 }], ['play_sfx', 'chime'], ['notify', "Target eliminated! Return to any Guild Clerk."]] }];
+                            let spawnAction = ['spawn_ephemeral_npc', { index: setup.id, x: setup.pos.x, y: setup.pos.y, sprite: 74, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', isBoss: true, isTarget: true, deathActions: [['update_quest_state', { key: 'guild_quest', state: 2 }], ['play_sfx', 'chime'], ['notify', { text: "Target eliminated! Return to any Guild Clerk.", endActions: [['close_dialogue', null]] }]] }];
                             return { state: 1, type: 'bounty', tName: 'Global Anomaly', qRank: 'S', targetMap: this.mapID, targetX: Math.floor(setup.pos.x), targetY: Math.floor(setup.pos.y), spawnActions: [spawnAction] };
                         }
                     });
@@ -21508,28 +21673,28 @@
                         isStory: false, status: 'available',
                         generateBlueprint: () => {
                             let setup = getQuestSetup();
-                            let bossDeath = [ ['update_quest_state', { key: 'guild_quest', state: 2 }], ['play_sfx', 'chime'], ['change_weather', 'clear'], ['restore_map_song', hazardMapId], ['notify', `The ${bossName} has been eradicated. Return to Avalon.`] ];
+                            
+                            // FIX 6: Same auto-extract logic here!
+                            let bossDeath = [ 
+                                ['update_quest_state', { key: 'guild_quest', state: 2 }], 
+                                ['play_sfx', 'chime'], 
+                                ['change_weather', 'clear'], 
+                                ['notify', {
+                                    text: `The ${bossName} has been eradicated. Teleporting back to Avalon...`,
+                                    endActions: [
+                                        ['load_map', 10],
+                                        ['restore_map_song', 10],
+                                        ['close_dialogue', null]
+                                    ]
+                                }] 
+                            ];
+                            
                             let spawnApex = ['spawn_ephemeral_npc', { index: setup.id, x: 10.5, y: 10.5, sprite: bossSprite, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', isBoss: true, isTarget: true, deck: [bossSprite, bossSprite, 93], deathActions: bossDeath }];
                             let warpActions = [ ['change_weather', weatherEffect], ['load_map', hazardMapId], ['play_sfx', 'warp'] ];
                             
                             return { state: 1, type: 'apex_hunt', tName: bossName, qRank: 'S', targetMap: hazardMapId, spawnActions: [spawnApex, ...warpActions] };
                         }
                     });
-                }
-
-                // ==========================================
-                // EXAMPLE: HOW TO ADD BRANCH-EXCLUSIVE QUESTS FOR LOWER RANKS
-                // ==========================================
-                if (rankToView === 'E') {
-                    if (window.currentGuildBranch === 'desert') {
-                        quests.push({
-                            id: 'e_desert_exclusive',
-                            title: "Desert Caravan Escort",
-                            desc: "Guard a merchant crossing the burning sands.",
-                            isStory: false, status: 'available',
-                            generateBlueprint: () => { /* Desert setup */ }
-                        });
-                    }
                 }
 
                 return quests;
@@ -37899,10 +38064,10 @@
                                 if (pClass === 'rogue' && statIndex === 3) isBonus = true;
                                 if (pClass === 'mage' && statIndex === 2) isBonus = true;
                                 if (pClass === 'priest' && (statIndex === 1 || statIndex === 2)) isBonus = true;
-                                if (Dungeon.playerClass === 'Battle-Mage') isBonus = true;
-
+                                
                                // 2. Assign the points (+2 for specialists, +1 for normal)
                                 let increment = isBonus ? 2 : 1;
+                                if (Dungeon.playerClass === 'Battle-Mage') increment = 3;
 
                                 // Add strictly to the permanent tracker
                                 Dungeon.statProgress[statIndex] += increment;
