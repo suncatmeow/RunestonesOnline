@@ -21575,30 +21575,35 @@
                 // ==========================================
                 // S-RANK BOUNTIES (SHARED, MOORS, & AVALON)
                 // ==========================================
-                else if (rankToView === 'S') {
-                    let sRankTier = this.memory['s_class_rank'] || 0;
-                    let avalonRanks = ['COPPER', 'SILVER', 'GOLD', 'MITHRIL'];
-                    let currentSubRank = avalonRanks[sRankTier] || 'COPPER';
+                else if (rankToView === 'S' || ['COPPER', 'SILVER', 'GOLD', 'MITHRIL'].includes(rankToView)) {
+                    
+                    let isAvalonRank = ['COPPER', 'SILVER', 'GOLD', 'MITHRIL'].includes(rankToView);
 
                     // ----------------------------------------------------
                     // 1. GENERAL S-RANK QUESTS (Available at ANY branch)
                     // ----------------------------------------------------
-                    quests.push({
-                        id: 's_general_1', 
-                        title: "Continental Threat", 
-                        desc: "A massive anomaly detected. Any branch can dispatch you.", 
-                        isStory: false, status: 'available',
-                        generateBlueprint: () => {
-                            let setup = getQuestSetup();
-                            let spawnAction = ['spawn_ephemeral_npc', { index: setup.id, x: setup.pos.x, y: setup.pos.y, sprite: 74, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', isBoss: true, isTarget: true, deathActions: [['update_quest_state', { key: 'guild_quest', state: 2 }], ['play_sfx', 'chime'], ['notify', { text: "Target eliminated! Return to any Guild Clerk.", endActions: [['close_dialogue', null]] }]] }];
-                            return { state: 1, type: 'bounty', tName: 'Continental Threat', qRank: 'S', targetMap: this.mapID, targetX: Math.floor(setup.pos.x), targetY: Math.floor(setup.pos.y), spawnActions: [spawnAction] };
-                        }
-                    });
+                    if (rankToView === 'S' || rankToView === 'COPPER') {
+                        quests.push({
+                            id: 's_general_1', 
+                            title: "Continental Threat", 
+                            desc: "A massive anomaly detected. Any branch can dispatch you.", 
+                            isStory: false, status: 'available',
+                            generateBlueprint: () => {
+                                let setup = getQuestSetup();
+                                let spawnAction = ['spawn_ephemeral_npc', { 
+                                    index: setup.id, x: setup.pos.x, y: setup.pos.y, 
+                                    sprite: 74, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', isBoss: true, isTarget: true, deck: [74, 56, 56],
+                                    deathActions: [['update_quest_state', { key: 'guild_quest', state: 2 }], ['play_sfx', 'chime'], ['notify', { text: "Target eliminated! Return to any Guild Clerk.", endActions: [['close_dialogue', null]] }]] 
+                                }];
+                                return { state: 1, type: 'bounty', tName: 'Continental Threat', qRank: 'S', targetMap: this.mapID, spawnActions: [spawnAction] };
+                            }
+                        });
+                    }
 
                     // ----------------------------------------------------
                     // 2. MOORS-EXCLUSIVE S-RANK QUESTS
                     // ----------------------------------------------------
-                    if (window.currentGuildBranch === 'moors') {
+                    if (window.currentGuildBranch === 'moors' && rankToView === 'S') {
                         quests.push({
                             id: 's_moors_1', 
                             title: "Defend The Moors", 
@@ -21606,112 +21611,177 @@
                             isStory: false, status: 'available',
                             generateBlueprint: () => {
                                 let setup = getQuestSetup();
-                                let spawnAction = ['spawn_ephemeral_npc', { index: setup.id, x: setup.pos.x, y: setup.pos.y, sprite: 5, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', isBoss: true, isTarget: true, deck: [5, 56, 56], deathActions: [['update_quest_state', { key: 'guild_quest', state: 2 }], ['play_sfx', 'chime'], ['notify', { text: "The Moors are safe!", endActions: [['close_dialogue', null]] }]] }];
-                                return { state: 1, type: 'bounty', tName: 'Moors Siege', qRank: 'S', targetMap: 0, targetX: Math.floor(setup.pos.x), targetY: Math.floor(setup.pos.y), spawnActions: [spawnAction] };
+                                let spawnAction = ['spawn_ephemeral_npc', { index: 800999, x: setup.pos.x, y: setup.pos.y, sprite: 5, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', isBoss: true, isTarget: true, deck: [5, 56, 56], deathActions: [['update_quest_state', { key: 'guild_quest', state: 2 }], ['play_sfx', 'chime'], ['notify', { text: "The Moors are safe!", endActions: [['close_dialogue', null]] }]] }];
+                                return { state: 1, type: 'bounty', tName: 'Moors Siege', qRank: 'S', targetMap: this.mapID, spawnActions: [spawnAction] };
                             }
                         });
                     }
 
                     // ----------------------------------------------------
-                    // 3. AVALON-EXCLUSIVE S-RANK QUESTS (Your Sub-Rank Bosses)
+                    // 3. AVALON-EXCLUSIVE S-RANK QUESTS (Map 10 Only!)
                     // ----------------------------------------------------
-                    if (window.currentGuildBranch === 'avalon') {
-                        let bossSprite, bossName, hazardMapId, weatherEffect;
-                        switch(currentSubRank) {
-                            case 'COPPER': bossSprite = Math.random() > 0.5 ? 94 : 91; bossName = bossSprite === 94 ? "Ancient Dragon" : "Demon Lord"; hazardMapId = 12; weatherEffect = 'storm'; break;
-                            case 'SILVER': bossSprite = 83; bossName = "Void Incursion"; hazardMapId = 22; weatherEffect = 'space'; break;
-                            case 'GOLD': bossSprite = 46; bossName = "World-Serpent Anomaly"; hazardMapId = 9; weatherEffect = 'apocalypse'; break;
-                            case 'MITHRIL': bossSprite = 999; bossName = "Avatar of Destruction"; hazardMapId = -1; weatherEffect = 'inferno'; break;
-                        }
+                    if (window.currentGuildBranch === 'avalon' && isAvalonRank) {
                         
                         quests.push({
-                            id: `s_${currentSubRank.toLowerCase()}`, 
-                            title: `${currentSubRank}-TIER EXTERMINATION`, 
-                            desc: "A world-ending threat darkens the horizon. Stand against oblivion.", 
+                            id: `s_avalon_${rankToView.toLowerCase()}`, 
+                            title: `${rankToView}-TIER GAUNTLET`, 
+                            desc: "An elite, multi-stage assassination mission.", 
                             isStory: false, status: 'available',
                             generateBlueprint: () => {
-                                let setup = getQuestSetup();
+                                let spawnActions = [];
+                                let setup = getQuestSetup(); // Guarantee safe spawn on Map 10
+                                let bossID = 800999;
                                 
-                                // FIX 5: Use an auto-extraction load_map so the player doesn't get trapped in the hazard map!
+                                // NO MORE TELEPORTING! Just close the dialogue on death.
                                 let bossDeath = [ 
                                     ['update_quest_state', { key: 'guild_quest', state: 2 }], 
-                                    ['play_sfx', 'chime'], 
+                                    ['play_sfx', 'heal'], 
                                     ['change_weather', 'clear'], 
                                     ['notify', {
-                                        text: `The ${bossName} has been eradicated. Teleporting back to Avalon...`,
-                                        endActions: [
-                                            ['load_map', 10],
-                                            ['restore_map_song', 10],
-                                            ['close_dialogue', null]
-                                        ]
+                                        text: `The target has been eradicated. The anomaly is sealed.`,
+                                        endActions: [['close_dialogue', null]]
                                     }] 
                                 ];
-                                
-                                let spawnApex = ['spawn_ephemeral_npc', { index: setup.id, x: 10.5, y: 10.5, sprite: bossSprite, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', isBoss: true, isTarget: true, deck: [bossSprite, bossSprite, 93], deathActions: bossDeath }];
-                                let warpActions = [ ['change_weather', weatherEffect], ['load_map', hazardMapId], ['play_sfx', 'warp'] ];
-                                
-                                return { state: 1, type: 'apex_hunt', tName: bossName, qRank: 'S', targetMap: hazardMapId, spawnActions: [spawnApex, ...warpActions] };
+
+                                // ----------------------------------------------------
+                                // COPPER RANK: The Chained Avatar
+                                // ----------------------------------------------------
+                                if (rankToView === 'COPPER') {
+                                    let guardDeath = [
+                                        ['play_sfx', 'chime'],
+                                        ['update_quest_count', { 
+                                            key: 'copper_seals', 
+                                            onComplete: [
+                                                ['play_sfx', 'horn'],
+                                                ['change_weather', 'storm'],
+                                                ['notify', { text: "The final seal breaks! The Dragon awakens!", endActions: [['close_dialogue', null]] }],
+                                                ['transform_npc', { index: bossID, newAlignment: 'foe', newRole: 'battle', newState: 'chasing', clearDialogue: true, newIsBoss: true }]
+                                            ]
+                                        }]
+                                    ];
+
+                                    // Safely find nearby spots for the guards
+                                    let g1 = this.getSafeSpawn(setup.pos.x, setup.pos.y, 3);
+                                    let g2 = this.getSafeSpawn(setup.pos.x, setup.pos.y, 3);
+
+                                    spawnActions.push(['set_memory', { key: 'copper_seals', value: { count: 0, max: 2, state: 1 } }]);
+                                    
+                                    // 2. Spawn the Dormant Boss exactly at the safe anchor
+                                    spawnActions.push(['spawn_ephemeral_npc', { 
+                                        index: bossID, x: setup.pos.x, y: setup.pos.y, sprite: 94, state: 'stationary', role: 'dialogue', alignment: 'defender', color: '#8800ff', 
+                                        deck: [94, 94, 93], deathActions: bossDeath,
+                                        customDialogue: ["*The Ancient Dragon is chained to the floor.*", "Slay its two Keepers to break the chains."],
+                                        options: ['Awaken Keepers', 'Step Back'],
+                                        yesActions: [
+                                            ['play_sfx', 'buff2'],
+                                            ['transform_npc', { index: bossID, clearDialogue: true }], // Lock dialogue
+                                            ['notify', { text: "The Keepers arrive!", endActions:[['close_dialogue', null]]}],
+                                            ['spawn_ephemeral_npc', { index: 80001, x: g1.x, y: g1.y, sprite: 56, state: 'chasing', role: 'battle', alignment: 'foe', deck:[56], deathActions: guardDeath }],
+                                            ['spawn_ephemeral_npc', { index: 80002, x: g2.x, y: g2.y, sprite: 56, state: 'chasing', role: 'battle', alignment: 'foe', deck:[56], deathActions: guardDeath }]
+                                        ],
+                                        noActions: [['close_dialogue', null]]
+                                    }]);
+                                }
+
+                                // ----------------------------------------------------
+                                // SILVER RANK: The Mad Arena Master
+                                // ----------------------------------------------------
+                                else if (rankToView === 'SILVER') {
+                                    let petPos = this.getSafeSpawn(setup.pos.x, setup.pos.y, 3);
+
+                                    spawnActions.push(['spawn_ephemeral_npc', { 
+                                        index: bossID, x: setup.pos.x, y: setup.pos.y, sprite: 0, state: 'stationary', role: 'dialogue', alignment: 'friendly', color: '#ffff00', 
+                                        deck: [203, 66, 50], deathActions: bossDeath,
+                                        customDialogue: ["Welcome to my game, traveler!", "I've brought a friend to play with you. Survive him, and I'll fight you myself!"],
+                                        options: ['Fight!', 'Coward'],
+                                        yesActions: [
+                                            ['play_sfx', 'chime'],
+                                            ['transform_npc', { index: bossID, clearDialogue: true, customDialogue: ["Hahaha! Watch him bleed!"] }], 
+                                            ['spawn_ephemeral_npc', { 
+                                                index: 80003, x: petPos.x, y: petPos.y, sprite: 77, state: 'chasing', role: 'battle', alignment: 'foe', deck: [77],
+                                                deathActions: [
+                                                    ['play_sfx', 'horn'],
+                                                    ['inject_dialogue', { index: bossID, text: ["Fine! I'll do it myself! Die!"], endActions:[['close_dialogue', null]] }],
+                                                    ['transform_npc', { index: bossID, newType: 203, newAlignment: 'foe', newRole: 'battle', newState: 'chasing', clearDialogue: true, newIsBoss: true }]
+                                                ]
+                                            }],
+                                            ['close_dialogue', null]
+                                        ],
+                                        noActions: [['close_dialogue', null]]
+                                    }]);
+                                }
+
+                                // ----------------------------------------------------
+                                // GOLD RANK: The Paranoia Prop-Hunt
+                                // ----------------------------------------------------
+                                else if (rankToView === 'GOLD') {
+                                    // The Invincible Demon Lord waiting for the shield to drop
+                                    spawnActions.push(['spawn_ephemeral_npc', { 
+                                        index: bossID, x: setup.pos.x, y: setup.pos.y, sprite: 91, state: 'stationary', role: 'dialogue', alignment: 'defender', color: '#ff00ff', 
+                                        deck: [91, 56, 42], deathActions: bossDeath,
+                                        customDialogue: ["*The Demon Lord is shielded. You must find the true Survivor hiding nearby to break it.*"],
+                                        endActions: [['close_dialogue', null]]
+                                    }]);
+
+                                    // Spawn 3 Mimics safely around the player
+                                    for(let i=0; i<3; i++) {
+                                        let fPos = this.getSafeSpawn(setup.pos.x, setup.pos.y, 8);
+                                        spawnActions.push(['spawn_ephemeral_npc', { 
+                                            index: 800100 + i, x: fPos.x, y: fPos.y, sprite: 32, state: 'fleeing', role: 'dialogue', alignment: 'friendly', 
+                                            customDialogue: ["Please! Help me!"], options: ['Help', 'Ignore'],
+                                            yesActions: [
+                                                ['play_sfx', 'cancel'],
+                                                ['notify', {text: "It was a demon in disguise!", endActions:[['close_dialogue',null]]}], 
+                                                ['transform_npc', {index: 800100 + i, newType: 42, newAlignment: 'foe', newRole: 'battle', newState: 'chasing', clearDialogue: true}]
+                                            ],
+                                            noActions: [['close_dialogue', null]]
+                                        }]);
+                                    }
+                                    
+                                    // Spawn the 1 REAL Survivor
+                                    let tPos = this.getSafeSpawn(setup.pos.x, setup.pos.y, 8);
+                                    spawnActions.push(['spawn_ephemeral_npc', { 
+                                        index: 800200, x: tPos.x, y: tPos.y, sprite: 32, state: 'fleeing', role: 'dialogue', alignment: 'friendly', color: '#00ff00',
+                                        customDialogue: ["Take this holy relic! It will shatter the Demon's shield!"], options: ['Take Relic'],
+                                        yesActions: [
+                                            ['play_sfx', 'chime'],
+                                            ['disappear', 800200], // Survivor escapes
+                                            ['transform_npc', { index: bossID, newAlignment: 'foe', newRole: 'battle', newState: 'chasing', clearDialogue: true, newIsBoss: true }],
+                                            ['notify', {text: "The Demon's shield shatters! He approaches!", endActions:[['close_dialogue',null]]}]
+                                        ],
+                                        noActions: [['close_dialogue', null]]
+                                    }]);
+                                }
+
+                                // ----------------------------------------------------
+                                // MITHRIL RANK: The Assassin's Ambush
+                                // ----------------------------------------------------
+                                else if (rankToView === 'MITHRIL') {
+                                    // The setup: An empty room with a chest.
+                                    spawnActions.push(['spawn_ephemeral_npc', { 
+                                        index: 800300, x: setup.pos.x, y: setup.pos.y, sprite: 10, state: 'stationary', role: 'dialogue', alignment: 'friendly', color: '#ffff00',
+                                        customDialogue: ["*An ornate treasure chest sits in the open.*"], options: ['Open Chest', 'Leave'],
+                                        yesActions: [
+                                            ['play_sfx', 'horn'],
+                                            ['disappear', 800300], // Chest vanishes
+                                            ['change_weather', 'space'], // Room goes dark!
+                                            ['notify', {text: "It's an ambush! The Avatar of Destruction descends!", endActions:[['close_dialogue',null]]}],
+                                            ['spawn_ephemeral_npc', { 
+                                                index: bossID, x: setup.pos.x, y: setup.pos.y, sprite: 999, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff00ff', 
+                                                isBoss: true, deck: [999, 56, 42], deathActions: bossDeath 
+                                            }]
+                                        ],
+                                        noActions: [['close_dialogue', null]]
+                                    }]);
+                                }
+
+                                return { 
+                                    state: 1, type: 'apex_hunt', tName: `${rankToView} Target`, qRank: 'S', 
+                                    targetMap: this.mapID, spawnActions: spawnActions 
+                                };
                             }
                         });
                     }
-                }
-                // ==========================================
-                // AVALON S-CLASS ANOMALY BOUNTIES
-                // ==========================================
-                let avalonRanks = ['COPPER', 'SILVER', 'GOLD', 'MITHRIL'];
-                if (avalonRanks.includes(rankToView)) {
-
-                    // 1. REPEATABLE S-CLASS QUEST (Shared across all S-Class boards)
-                    quests.push({
-                        id: `s_shared_${rankToView.toLowerCase()}`, 
-                        title: `Global Anomaly (${rankToView})`, 
-                        desc: "A continental crisis broadcasted to all S-Class posts.", 
-                        isStory: false, status: 'available',
-                        generateBlueprint: () => {
-                            let setup = getQuestSetup();
-                            let spawnAction = ['spawn_ephemeral_npc', { index: setup.id, x: setup.pos.x, y: setup.pos.y, sprite: 74, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', isBoss: true, isTarget: true, deathActions: [['update_quest_state', { key: 'guild_quest', state: 2 }], ['play_sfx', 'chime'], ['notify', { text: "Target eliminated! Return to any Guild Clerk.", endActions: [['close_dialogue', null]] }]] }];
-                            return { state: 1, type: 'bounty', tName: 'Global Anomaly', qRank: 'S', targetMap: this.mapID, targetX: Math.floor(setup.pos.x), targetY: Math.floor(setup.pos.y), spawnActions: [spawnAction] };
-                        }
-                    });
-
-                    // 2. AVALON EXCLUSIVE TIER BOSS
-                    let bossSprite, bossName, hazardMapId, weatherEffect;
-                    switch(rankToView) {
-                        case 'COPPER': bossSprite = Math.random() > 0.5 ? 94 : 91; bossName = bossSprite === 94 ? "Ancient Dragon" : "Demon Lord"; hazardMapId = 12; weatherEffect = 'storm'; break;
-                        case 'SILVER': bossSprite = 83; bossName = "Void Incursion"; hazardMapId = 22; weatherEffect = 'space'; break;
-                        case 'GOLD': bossSprite = 46; bossName = "World-Serpent Anomaly"; hazardMapId = 9; weatherEffect = 'apocalypse'; break;
-                        case 'MITHRIL': bossSprite = 999; bossName = "Avatar of Destruction"; hazardMapId = -1; weatherEffect = 'inferno'; break;
-                    }
-                    
-                    quests.push({
-                        id: `s_avalon_${rankToView.toLowerCase()}`, 
-                        title: `${rankToView}-TIER EXTERMINATION`, 
-                        desc: "A world-ending threat darkens the horizon. Stand against oblivion.", 
-                        isStory: false, status: 'available',
-                        generateBlueprint: () => {
-                            let setup = getQuestSetup();
-                            
-                            // FIX 6: Same auto-extract logic here!
-                            let bossDeath = [ 
-                                ['update_quest_state', { key: 'guild_quest', state: 2 }], 
-                                ['play_sfx', 'chime'], 
-                                ['change_weather', 'clear'], 
-                                ['notify', {
-                                    text: `The ${bossName} has been eradicated. Teleporting back to Avalon...`,
-                                    endActions: [
-                                        ['load_map', 10],
-                                        ['restore_map_song', 10],
-                                        ['close_dialogue', null]
-                                    ]
-                                }] 
-                            ];
-                            
-                            let spawnApex = ['spawn_ephemeral_npc', { index: setup.id, x: 10.5, y: 10.5, sprite: bossSprite, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', isBoss: true, isTarget: true, deck: [bossSprite, bossSprite, 93], deathActions: bossDeath }];
-                            let warpActions = [ ['change_weather', weatherEffect], ['load_map', hazardMapId], ['play_sfx', 'warp'] ];
-                            
-                            return { state: 1, type: 'apex_hunt', tName: bossName, qRank: 'S', targetMap: hazardMapId, spawnActions: [spawnApex, ...warpActions] };
-                        }
-                    });
                 }
 
                 return quests;
