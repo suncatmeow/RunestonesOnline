@@ -14240,7 +14240,23 @@
                                 if (p.spellId && typeof SPELL_REGISTRY !== 'undefined' && SPELL_REGISTRY[p.spellId]) {
                                     projSprite = SPELL_REGISTRY[p.spellId].sprite2D || -37;
                                 }
-                                drawPortrait(projSprite, 0, 0, 1); 
+                                if (p.spellId === 9999){
+                                    let drawX2 = 0;
+                                    let drawY2 = 0;
+                                    let drawScale2 = 1;
+                                    let pSZ = 2.5
+                                    let offset2 = (pSZ - 1) / 2;
+                                    drawX2 -= offset2 * 10;
+                                    drawY2 -= offset2 * 10;
+                                    drawScale2 *= pSZ;
+                                
+                                    ctx.imageSmoothingEnabled = true; // <--- TURN ON
+                                    drawPortrait(316, drawX2, drawY2, drawScale2);
+                                    ctx.imageSmoothingEnabled = false; // <--- TURN OFF
+                                        
+                                }else{
+                                    drawPortrait(projSprite, 0, 0, 1);
+                                }
                             }
                             
                             // Restore Globals so the rest of the map draws correctly
@@ -14484,6 +14500,7 @@
                                 }
                             }
                         }
+                        let outdoorMaps = [-2,0,2,4,5,10,14,999]
                         //mapsong to nature music timer
                             if (outdoorMaps.includes(this.mapID)&&this.mapID != 9){
                                 let songTimer = Date.now();
@@ -14578,7 +14595,7 @@
                             drawShape('arc', tx, ty, 1, s*0.5, s*0.7, s*0.4, 0, 1, 0,0,0, 'rgba(255,255,255,0.2)', 0);
                         }
                         // D. SNOW & ICE (Cairn Gorm, Ice Cave, Ice Castle)
-                        else if ([2,14,22].includes(this.mapID)) {
+                        else if ([-2,0,2,3,30,14,22].includes(this.mapID)) {
                             // Soft snowdrifts and sparkles
                             drawShape('arc', tx, ty, 1, s*0.3, s*0.3, s*0.1, 0, 2, 0,0,0, 'rgba(0,0,0,0.05)', 1);
                             drawShape('arc', tx, ty, 1, s*0.7, s*0.8, s*0.05, 0, 2, 0,0,0, 'rgba(0,0,0,0.08)', 1);
@@ -14591,7 +14608,7 @@
                             drawShape('arc', tx, ty, 1, s*0.7, s*0.7, s*0.15, 0, 1, 0,0,0, 'rgba(255,255,255,0.2)', 0);
                         }
                         // F. CASTLE FLOORS (Witch Castle, Fairy Castle)
-                        else if ([5, 11,8,6].includes(this.mapID)) {
+                        else if ([11,8,6,31].includes(this.mapID)) {
                             // Clean diagonal marble/tile sheen
                             drawShape('qua', tx, ty, 1, 0, s*0.2, s*0.8, s, s, s, s*0.2, 0, 'rgba(255,255,255,0.1)', 1);
                         }
