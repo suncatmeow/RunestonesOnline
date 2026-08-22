@@ -832,6 +832,50 @@
                     }
                 }
             });
+            // --- CATCH SUNCAT'S FIREBALL COMMAND FROM THE SERVER ---
+            socket.on("suncat_fires_projectile", (data) => {
+                if (typeof Dungeon !== 'undefined' && Dungeon.mapID === data.mapID) {
+                    let suncatObj = window.remotePlayers ? Object.values(window.remotePlayers).find(p => p.name === 'Suncat') : null;
+                    
+                    if (suncatObj) {
+                        let spellId = data.spellId || 9999;
+                        let spellData = (typeof SPELL_REGISTRY !== 'undefined') ? SPELL_REGISTRY[spellId] : null;
+
+                        let missile = new Projectile(
+                            data.startX, 
+                            data.startY, 
+                            data.dirX, 
+                            data.dirY, 
+                            6.0, 
+                            data.damage || 5, 
+                            suncatObj,
+                            spellData ? spellData.isHoming : false,
+                            spellId
+                        );
+
+                        // Sprite and Target Type handling
+                        if (spellId === 9999) {
+                            missile.type = 9999; // Basic slash / physical projectile
+                        } else {
+                            missile.type = (spellData && spellData.sprite2D) ? spellData.sprite2D : 99;
+                        }
+                        missile.targetType = data.targetType || 'all';
+
+                        Dungeon.projectiles.push(missile);
+                        
+                        // Trigger audio based on spell
+                        if (typeof MusicEngine !== 'undefined') {
+                            if (spellId === 9999) {
+                                MusicEngine.play3DSFX('slash', data.startX, data.startY, Dungeon.x, Dungeon.y, Dungeon.dir);
+                            } else if (spellData && spellData.type === 'projectile') {
+                                MusicEngine.play3DSFX('fire2', data.startX, data.startY, Dungeon.x, Dungeon.y, Dungeon.dir);
+                            } else {
+                                MusicEngine.play3DSFX('arcane3', data.startX, data.startY, Dungeon.x, Dungeon.y, Dungeon.dir);
+                            }
+                        }
+                    }
+                }
+            });
             // 1. CATCH THE AGGRO STATE (When war is declared)
             socket.on("pvp_aggro_update", (data) => {
                 if (typeof Dungeon !== 'undefined') {
@@ -864,16 +908,30 @@
                         
                         let survived = Dungeon.absorbHit(fakeAttacker, payload.spellId);
                         
+                        // ---> NEW: PVP KNOCKBACK APPLIED HERE <---
+                        if (survived && payload.x !== undefined && payload.y !== undefined) {
+                            // Calculate direction AWAY from the attacker
+                            let dx = Dungeon.x - payload.x;
+                            let dy = Dungeon.y - payload.y;
+                            let dist = Math.sqrt(dx * dx + dy * dy);
+                            
+                            if (dist > 0) {
+                                let pushX = dx / dist;
+                                let pushY = dy / dist;
+                                
+                                let spellData = (payload.spellId && typeof SPELL_REGISTRY !== 'undefined') ? SPELL_REGISTRY[payload.spellId] : null;
+                                let kbPower = spellData && spellData.knockback !== undefined ? spellData.knockback : 0.5;
+                                
+                                Dungeon.applyKnockback(pushX, pushY, kbPower);
+                            }
+                        }
+                        
                         if (!survived) {
                             console.log("You were killed by another player!");
                             if (typeof MessageBox !== 'undefined') {
                                 MessageBox.show(0.5, 8, 1, 9, 2, 'You were slain by another player!', 'dialogue', 1, 0);
                             }
-                            
-                            // Wait 2 seconds so they can read the message, then force reload
-                            setTimeout(() => {
-                                window.location.reload(); 
-                            }, 2000); 
+                            setTimeout(() => { window.location.reload(); }, 2000); 
                         }
                         break;
 
@@ -3487,7 +3545,16 @@
                     else if (typeof this.alignment === 'string' && this.alignment.startsWith('foe')) {
                         let distToPlayerSq = Math.pow(playerX - this.x, 2) + Math.pow(playerY - this.y, 2);
                         let closestDistSq = distToPlayerSq; // Player is the default target
-
+                        // NEW: Check if Suncat is nearby to attack HIM instead!
+                        let sCat = window.remotePlayers ? Object.values(window.remotePlayers).find(p => p.name === 'Suncat') : null;
+                        if (sCat && sCat.mapID === dungeon.mapID) {
+                            let scSq = Math.pow(sCat.x - this.x, 2) + Math.pow(sCat.y - this.y, 2);
+                            if (scSq < 36 && scSq < closestDistSq && this.hasLineOfSight(maze, sCat.x, sCat.y)) {
+                                closestDistSq = scSq;
+                                // Create a mock prey object for Suncat
+                                currentPrey = { isSuncat: true, socketId: "NPC_SUNCAT", x: sCat.x, y: sCat.y, radius: 0.25 };
+                            }
+                        }
                         for (let other of dungeon.npcs) {
                             if (other === this || other.isDead || !other.visible) continue;
                             if (other.role === 'dropped_card' || other.role.includes('portal')) continue;
@@ -3869,6 +3936,26 @@
                     // SCENARIO A: NPC CAUGHT AN ENEMY NPC
                     if (isChasingNPC && currentPrey) {
                         if (distToTarget < 1.5) {
+                            // --- NEW: SUNCAT CLASH ---
+                                if (currentPrey.isSuncat) {
+                                    this.dirX = -toTargetX; 
+                                    this.dirY = -toTargetY;
+                                    this.damageFlashTimer = 3;
+                                    this.combatCooldown = 13;
+                                    this.isSliding = false;
+                                    
+                                    if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('slash', this.x, this.y, playerX, playerY, dungeon.dir);
+                                    
+                                    // Tell the server Suncat just got punched!
+                                    if (typeof socket !== 'undefined') {
+                                        socket.emit("battle_action", { 
+                                            targetId: "NPC_SUNCAT", 
+                                            actionType: "SUNCAT_HIT", 
+                                            payload: { damage: this.damage || 5 } 
+                                        });
+                                    }
+                                    return;
+                                }
                             // --- NEW: REMOTE PLAYER/SUMMON CLASH ---
                                 if (currentPrey.isRemotePlayer || currentPrey.isRemoteSummon) {
                                     this.dirX = -toTargetX; 
@@ -12658,6 +12745,39 @@
                 // Return the exact calculated speed for this specific frame
                 return this.currentCooldown;
             }
+            // Add this inside the Explore class
+        applyKnockback(pushX, pushY, power = 0.5) {
+            let maxPushSteps = Math.floor(power * 4); 
+            let pushed = 0;
+            let testX = this.x;
+            let testY = this.y;
+
+            while (pushed < maxPushSteps) {
+                let nextX = testX + pushX * 0.25; 
+                let nextY = testY + pushY * 0.25;
+                
+                let bufferX = pushX > 0 ? 0.3 : (pushX < 0 ? -0.3 : 0);
+                let bufferY = pushY > 0 ? 0.3 : (pushY < 0 ? -0.3 : 0);
+
+                if (this.isWall(Math.floor(nextX + bufferX), Math.floor(nextY + bufferY))) {
+                    break; 
+                }
+                
+                testX = nextX; 
+                testY = nextY; 
+                pushed++;
+            }
+
+            // Apply it to the player's sliding variables
+            this.targetMapX = testX;
+            this.targetMapY = testY;
+            this.isSlidingToTile = true;
+            
+            // Stun the player briefly so they can't walk against the knockback momentum
+            window.activeMoveKey = null;
+            if (typeof btnMove !== 'undefined') btnMove.isPressed = false;
+            this.inputCooldown = 0.3; // 0.3 second stun
+        }
         //MAP RENDERING
             render(dt) {
                 // ==========================================
@@ -12799,25 +12919,35 @@
                     for (let i = 0; i < PARTICLE_POOL_SIZE; i++) {
                         globalParticles[i].update(dt);
                     }
-                    //Suncat Check
+                    //Suncat Check (Universal Radar)
                         let suncat = null;
-                            if (window.remotePlayers) suncat = Object.values(window.remotePlayers).find(p => p.name === 'Suncat');
+                        if (window.remotePlayers) suncat = Object.values(window.remotePlayers).find(p => p.name === 'Suncat');
+
+                        // Always scan for enemies near Suncat every 15 frames
+                        if (suncat && this.frame % 15 === 0) {
+                            let closestEnemy = null;
+                            let closestDistSq = Infinity;
                             
-                            if (suncat && suncat.state === 'protecting' && this.frame % 15 === 0) {
-                                let closestEnemy = null;
-                                let closestDistSq = Infinity;
-                                for (let other of this.npcs) {
-                                    if (other.isDead || !other.visible || other.type === 99 || other.type === -27 || other.role === 'dialogue' || other.role === 'shop') continue;
-                                    let dSq = Math.pow(other.x - this.x, 2) + Math.pow(other.y - this.y, 2);
-                                    if (dSq < 100 && dSq < closestDistSq) { 
-                                        closestDistSq = dSq;
-                                        closestEnemy = other;
-                                    }
-                                }
-                                if (closestEnemy && typeof socket !== 'undefined') {
-                                    socket.emit("suncat_radar_ping", { targetX: closestEnemy.x, targetY: closestEnemy.y, playerX: this.x, playerY: this.y, mapID: this.mapID });
+                            for (let other of this.npcs) {
+                                if (other.isDead || !other.visible || other.type === 99 || other.type === -27 || other.role === 'dialogue' || other.role === 'shop' || other.alignment === 'ally') continue;
+                                
+                                let dSq = Math.pow(other.x - suncat.x, 2) + Math.pow(other.y - suncat.y, 2);
+                                
+                                // 10 tile radar range
+                                if (dSq < 100 && dSq < closestDistSq) { 
+                                    closestDistSq = dSq;
+                                    closestEnemy = other;
                                 }
                             }
+                            
+                            // Always ping the server! Let the Server decide if Suncat is hunting or protecting.
+                            if (closestEnemy && typeof socket !== 'undefined') {
+                                socket.emit("suncat_radar_ping", { 
+                                    targetX: closestEnemy.x, targetY: closestEnemy.y, 
+                                    playerX: this.x, playerY: this.y, mapID: this.mapID 
+                                });
+                            }
+                        }
                     //Flow Field
                         if (this.frame % 15 === 0) this.generateFlowField(this.x, this.y);
                     //ALLY FORMATIONS        
@@ -22813,8 +22943,28 @@
                         if (Math.sqrt(dx * dx + dy * dy) < this.radius + 0.3) {
                             this.triggerExplosion();
                             if (this.owner && typeof startGame !== 'undefined' && startGame === 'explore') {
-                                if (!exploreRef.absorbHit(this.owner, this.spellId)) {
-                                    this.owner.triggerInteraction(exploreRef);
+                                
+                                // NEW: We check IF we survived the hit, apply knockback. If not, trigger death!
+                                if (exploreRef.absorbHit(this.owner, this.spellId)) {
+                                    
+                                    // ---> NEW: NPC PROJECTILE KNOCKBACK TO PLAYER <---
+                                    let spellData = typeof SPELL_REGISTRY !== 'undefined' && SPELL_REGISTRY[this.spellId] ? SPELL_REGISTRY[this.spellId] : {};
+                                    let kbPower = spellData.knockback !== undefined ? spellData.knockback : 0.5;
+                                    
+                                    // Calculate the vector of the projectile so it pushes the player backward
+                                    let pushX = this.vx / this.baseSpeed;
+                                    let pushY = this.vy / this.baseSpeed;
+                                    
+                                    if (typeof exploreRef.applyKnockback === 'function') {
+                                        exploreRef.applyKnockback(pushX, pushY, kbPower);
+                                    }
+                                    
+                                } else {
+                                    // Player died to an offline NPC spell!
+                                    if (typeof MessageBox !== 'undefined') {
+                                        MessageBox.show(0.5, 8, 1, 9, 2, 'You were slain by a spell!', 'dialogue', 1, 0);
+                                    }
+                                    setTimeout(() => { window.location.reload(); }, 2000); 
                                 }
                             }
                             return;
@@ -22966,14 +23116,26 @@
                                 
                                 if (typeof socket !== 'undefined') {
                                     if (p.socketId === "NPC_SUNCAT") {
-                                        socket.emit("battle_action", { targetId: p.socketId, actionType: "SUNCAT_HIT" });
+                                        socket.emit("battle_action", { targetId: p.socketId, actionType: "SUNCAT_HIT", payload: { damage: this.damage || 5 } });
                                     } else {
-                                        // Bundle our stats + spell damage to send to the victim
                                         let myStats = { level: exploreRef.level, stat: exploreRef.stat, damage: this.damage };
+                                        
+                                        // ---> NEW: PVP PROJECTILE KNOCKBACK SYNC <---
+                                        // Reverse engineer the trajectory of the projectile
+                                        let dirX = this.vx / this.baseSpeed;
+                                        let dirY = this.vy / this.baseSpeed;
+
+                                        // We send the 'source' coordinates as slightly BEHIND the projectile,
+                                        // This ensures the victim's client pushes them smoothly away from the blast!
                                         socket.emit("battle_action", { 
                                             targetId: p.socketId, 
                                             actionType: "OVERWORLD_HIT", 
-                                            payload: { attackerStats: myStats, spellId: this.spellId } 
+                                            payload: { 
+                                                attackerStats: myStats, 
+                                                spellId: this.spellId,
+                                                x: this.x - dirX,
+                                                y: this.y - dirY
+                                            } 
                                         });
                                     }
                                 }
