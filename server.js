@@ -72,14 +72,6 @@
         let suncatDaoName = null;
         let suncatStorySoFar = "I am awake!."; 
         let suncatProfile = "An unpredicatable wanderer stepping into the unknown";
-        // --- NEW: SUNCAT'S CHARACTER SHEET ---
-        players[SUNCAT_ID] = players[SUNCAT_ID] || {};
-        players[SUNCAT_ID].level = data.worldState?.suncatLevel || 1;
-        players[SUNCAT_ID].xp = data.worldState?.suncatXp || 0;
-        players[SUNCAT_ID].suncatClass = data.worldState?.suncatClass || "Wandering Spirit";
-        players[SUNCAT_ID].hp = data.worldState?.suncatHp || 100;
-        // Default: 1d4 for all stats, 0 modifier
-        players[SUNCAT_ID].stat = data.worldState?.suncatStat || [[1,4,0], [1,4,0], [1,4,0], [1,4,0]];
         let suncatLongTermGoal = null;
         let autonomousTick = 0; 
         let suncatJournal = "I have awoken!";           
@@ -89,18 +81,21 @@
         let currentStoryIndex = 0;
     //SUNCAT CONSTANTS
         const SUNCAT_ID = "NPC_SUNCAT"; // Special ID
-        const SUNCAT_SPRITE = 61391; // Or whatever sprite ID you want (e.g., 'skeleton', 'hero')
+        const SUNCAT_SPRITE = 61391; 
         const NPC_NAME = "Suncat";
+
         players[SUNCAT_ID] = {
             id: SUNCAT_ID,
             name: "Suncat",
-            x: 5.5,           // Starting X
-            y: 5.5,           // Starting Y
-            mapID: 22,       // Starting Map
+            x: 5.5, y: 5.5, mapID: 22,
             type: SUNCAT_SPRITE,
             direction: "down",
-            isNPC: true     // Flag for client (optional)
-            };
+            isNPC: true,
+            level: 1, xp: 0, suncatClass: "Wandering Spirit", hp: 100,
+            stat: [[1,4,0], [1,4,0], [1,4,0], [1,4,0]],
+            learnedSpells: [9999, 26],
+            aggroList: new Set()
+        };
 
 
 
@@ -7273,7 +7268,8 @@ io.on("connection", (socket) => {
 
                 if (suncat) {
                     suncat.hp = (suncat.hp || 100) - (data.payload?.damage || 5);
-
+                    let incomingDamage = data.payload?.damage || data.payload?.attackerStats?.damage || 5;
+                    suncat.hp = (suncat.hp || 100) - incomingDamage;
                     // 1. SUNCAT KNOCKBACK MATH
                     if (data.payload?.x !== undefined && data.payload?.y !== undefined) {
                         let dx = suncat.x - data.payload.x;
