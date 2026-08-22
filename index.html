@@ -807,11 +807,28 @@
             if (typeof Dungeon !== 'undefined' && !Dungeon.hostilePlayers) {
                 Dungeon.hostilePlayers = new Set();
             }
+            socket.on("remote_npc_flash", (data) => {
+                if (window.remotePlayers && window.remotePlayers[data.id]) {
+                    window.remotePlayers[data.id].damageFlashTimer = 15; // Flashes red
+                }
+            });
             // Catch Visual Ghost Projectiles
             socket.on("player_fires_projectile", (data) => {
                 // Only render it if we are on the exact same map!
                 if (typeof Dungeon !== 'undefined' && Dungeon.mapID === data.mapID) {
                     
+                    // ---> NEW: TRIGGER ATTACK ANIMATION FOR THE SHOOTER <---
+                    if (window.remotePlayers) {
+                        // Suncat usually doesn't send a sourcePlayerID, so we fall back to searching for his name
+                        let shooter = data.sourcePlayerID 
+                            ? window.remotePlayers[data.sourcePlayerID] 
+                            : Object.values(window.remotePlayers).find(p => p.name === 'Suncat');
+                            
+                        if (shooter) {
+                            shooter.attackAnimTimer = 15; // Make them lunge forward!
+                        }
+                    }
+
                     let visualProj = new Projectile(
                         data.startX, data.startY, 
                         data.dirX, data.dirY, 
@@ -16656,269 +16673,307 @@
                             //if (imageIndex === 63 || imageIndex === 63.1) imageIndex = 206; // Upgrade Fairy Queen!
                             if (imageIndex === 106&&this.mapID === 9) {imageIndex = 243;} // Upgrade Fairy Queen!
                             else if(imageIndex === 91) {imageIndex = 106;}
-                    // ==========================================
+                   // ==========================================
                     // --- 2. 3D SPRITE FRAMES ---
                     // ==========================================
                     let currentDir = 2; // Default South
                     if (imageIndex >= 100) {
                         
-                        let isAttacking = sprite.isPlayer ? (this.playerAttackTimer > 0) : (sprite.combatCooldown > 0 || sprite.damageFlashTimer > 0);
-                        let isMoving = sprite.isPlayer ? this.isSlidingToTile : (sprite.speed > 0 && sprite.state !== 'stationary');
-                        //3D UPDATE
+                        // --- THE FIX: ACCURATE ANIMATION FLAGS ---
+                        let isRemotePlayer = (sprite.socketId !== undefined);
+
+                        // 1. Attack Animation Logic
+                        let isAttacking = false;
+                        if (sprite.isPlayer) isAttacking = (this.playerAttackTimer > 0);
+                        else if (isRemotePlayer) isAttacking = (sprite.attackAnimTimer > 0);
+                        else isAttacking = (sprite.combatCooldown > 0); // Removed damageFlashTimer so they don't attack when hurt
+
+                        // 2. Movement & Bobbing Logic
+                        let isMoving = false;
+                        if (sprite.isPlayer) {
+                            isMoving = this.isSlidingToTile;
+                        } else if (isRemotePlayer) {
+                            // Check if their network coordinates changed since last frame!
+                            let distMoved = Math.abs(sprite.x - (sprite.lastX || sprite.x)) + Math.abs(sprite.y - (sprite.lastY || sprite.y));
+                            if (distMoved > 0.02) {
+                                isMoving = true;
+                                sprite.zHeight = Math.sin(Date.now() * 0.01) * 0.15; // Make them bob up and down!
+                            } else {
+                                sprite.zHeight = 0; // Stand still
+                            }
+                            sprite.lastX = sprite.x;
+                            sprite.lastY = sprite.y;
+                            
+                            // Make them physically dip forward when attacking
+                            if (isAttacking) sprite.zHeight -= 0.2; 
+                        } else {
+                            isMoving = (sprite.speed > 0 && sprite.state !== 'stationary');
+                        }
+
                         // Sift into the correct animation block
-                            if (imageIndex >= 104 && imageIndex <= 106) { // MECH
-                                if (isAttacking) imageIndex = 105;
-                                else if (isMoving) imageIndex = 104;
-                                else imageIndex = 106;
-                            } 
-                            else if (imageIndex >= 108 && imageIndex <= 110) { // WISP
-                                
-                                if (isAttacking) imageIndex = 110;
-                                else if (isMoving) imageIndex = 109;
-                                else imageIndex = 108;
-                            }
-                            else if (imageIndex >= 111 && imageIndex <= 113) { // GOBLIN
-                                if (isAttacking) imageIndex = 113;
-                                else if (isMoving) imageIndex = 112;
-                                else imageIndex = 111;
-                            }
-                            else if (imageIndex >= 114 && imageIndex <= 116) { // SPIDER
-                                if (isAttacking) imageIndex = 116; else if (isMoving) imageIndex = 115; else imageIndex = 114;
-                            }
-                            else if (imageIndex >= 117 && imageIndex <= 119) { // IMP
-                                if (isAttacking) imageIndex = 119; else if (isMoving) imageIndex = 118; else imageIndex = 117;
-                            }
-                            else if (imageIndex >= 120 && imageIndex <= 122) { // ICE GOLEM
-                                if (isAttacking) imageIndex = 122; else if (isMoving) imageIndex = 121; else imageIndex = 120;
-                            }
-                            else if (imageIndex >= 123 && imageIndex <= 125) { // SKELETON
-                                if (isAttacking) imageIndex = 125; else if (isMoving) imageIndex = 124; else imageIndex = 123;
-                            }
-                            else if (imageIndex >= 126 && imageIndex <= 128) { // DARK SYLPH
-                                if (isAttacking) imageIndex = 128; else if (isMoving) imageIndex = 127; else imageIndex = 126;
-                            }
-                            else if (imageIndex >= 129 && imageIndex <= 130) { //SALAMANDER
-                                if (isAttacking) imageIndex = 130; else if (isMoving) imageIndex = 130; else imageIndex = 129;
-                            }
-                            else if (imageIndex >= 131 && imageIndex <= 133) { //SALAMANDER
-                                if (isAttacking) imageIndex = 133; else if (isMoving) imageIndex = 132; else imageIndex = 131;
-                            }
-                            else if (imageIndex >= 134 && imageIndex <= 136) { //SALAMANDER
-                                if (isAttacking) imageIndex = 136; else if (isMoving) imageIndex = 135; else imageIndex = 134;
-                            }
-                            else if (imageIndex >= 137 && imageIndex <= 139) { //SEA SERPENT
-                                if (isAttacking) imageIndex = 139; else if (isMoving) imageIndex = 138; else imageIndex = 137;
-                            }
-                            else if (imageIndex >= 140 && imageIndex <= 142) { // MIRAGE
-                                if (isAttacking) imageIndex = 142; else if (isMoving) imageIndex = 141; else imageIndex = 140;
-                            }
-                            else if (imageIndex >= 143 && imageIndex <= 145) { // FIRE IMP
-                                if (isAttacking) imageIndex = 145; else if (isMoving) imageIndex = 144; else imageIndex = 143;
-                            }
-                            else if (imageIndex >= 146 && imageIndex <= 148) { // GNOME
-                                if (isAttacking) imageIndex = 148; else if (isMoving) imageIndex = 147; else imageIndex = 146;
-                            }
-                            else if (imageIndex >= 149 && imageIndex <= 151) { // LIGHT SYLPH
-                                if (isAttacking) imageIndex = 151; else if (isMoving) imageIndex = 150; else imageIndex = 149;
-                            }
-                            else if (imageIndex >= 152 && imageIndex <= 154) { // DJINN
-                                if (isAttacking) imageIndex = 154; else if (isMoving) imageIndex = 153; else imageIndex = 152;
-                            }
-                            else if (imageIndex >= 155 && imageIndex <= 157) { // SHADE
-                                if (isAttacking) imageIndex = 157; else if (isMoving) imageIndex = 156; else imageIndex = 155;
-                            }
-                            else if (imageIndex >= 158 && imageIndex <= 160) { // KNIGHT
-                                if (isAttacking) imageIndex = 160; else if (isMoving) imageIndex = 159; else imageIndex = 158;
-                            }
-                            else if (imageIndex >= 161 && imageIndex <= 163) { // BROWN KNIGHT
-                                if (isAttacking) imageIndex = 163; else if (isMoving) imageIndex = 162; else imageIndex = 161;
-                            }
-                            else if (imageIndex >= 164 && imageIndex <= 166) { // GHOST KNIGHT
-                                if (isAttacking) imageIndex = 166; else if (isMoving) imageIndex = 165; else imageIndex = 164;
-                            }
-                            else if (imageIndex >= 167 && imageIndex <= 169) { // KRAKEN KING
-                                if (isAttacking) imageIndex = 169; else if (isMoving) imageIndex = 168; else imageIndex = 167;
-                            }
-                            else if (imageIndex >= 170 && imageIndex <= 172) { // APPRENTICE
-                                if (isAttacking) imageIndex = 172; else if (isMoving) imageIndex = 171; else imageIndex = 170;
-                            }
-                            else if (imageIndex >= 173 && imageIndex <= 175) { // FAIRY QUEEN
-                                if (isAttacking) imageIndex = 175; else if (isMoving) imageIndex = 174; else imageIndex = 173;
-                            }
-                            else if (imageIndex >= 176 && imageIndex <= 178) { // FAIRY green
-                                if (isAttacking) imageIndex = 178; else if (isMoving) imageIndex = 177; else imageIndex = 176;
-                            }
-                            else if (imageIndex >= 179 && imageIndex <= 181) { // FAIRY blue
-                                if (isAttacking) imageIndex = 181; else if (isMoving) imageIndex = 180; else imageIndex = 179;
-                            }
-                            else if (imageIndex >= 182 && imageIndex <= 184) { // FAIRY reb
-                                if (isAttacking) imageIndex = 184; else if (isMoving) imageIndex = 183; else imageIndex = 182;
-                            }
-                            else if (imageIndex >= 185 && imageIndex <= 187) { // FAIRY black
-                                if (isAttacking) imageIndex = 187; else if (isMoving) imageIndex = 185; else imageIndex = 185;
-                            }
-                            else if (imageIndex >= 188 && imageIndex <= 190) { // bear
-                                if (isAttacking) imageIndex = 190; else if (isMoving) imageIndex = 189; else imageIndex = 188;
-                            }
-                            else if (imageIndex >= 191 && imageIndex <= 193) { // wolf
-                                if (isAttacking) imageIndex = 193; else if (isMoving) imageIndex = 192; else imageIndex = 191;
-                            }
-                            else if (imageIndex >= 194 && imageIndex <= 196) { // boar
-                                if (isAttacking) imageIndex = 196; else if (isMoving) imageIndex = 195; else imageIndex = 194;
-                            }
-                            else if (imageIndex >= 197 && imageIndex <= 199) { // vampire
-                                if (isAttacking) imageIndex = 199; else if (isMoving) imageIndex = 198; else imageIndex = 197;
-                            }
-                            else if (imageIndex >= 200 && imageIndex <= 202) { // spriggan
-                                if (isAttacking) imageIndex = 202; else if (isMoving) imageIndex = 201; else imageIndex = 200;
-                            }
-                            else if (imageIndex >= 203 && imageIndex <= 205) { // dullahan
-                                if (isAttacking) imageIndex = 205; else if (isMoving) imageIndex = 204; else imageIndex = 203;
-                            }
-                            //dragon 206-209
-                            //3D Sprite Frames
-                            else if (imageIndex >= 210 && imageIndex <= 212) { // scorpion
-                                if (isAttacking) imageIndex = 212; else if (isMoving) imageIndex = 211; else imageIndex = 210;
-                            }
-                            else if (imageIndex >= 213 && imageIndex <= 215) { // wasp
-                                if (isAttacking) imageIndex = 215; else if (isMoving) imageIndex = 214; else imageIndex = 213;
-                            }
-                            else if (imageIndex >= 216 && imageIndex <= 218) { // ant
-                                if (isAttacking) imageIndex = 218; else if (isMoving) imageIndex = 217; else imageIndex = 216;
-                            }
-                            else if (imageIndex >= 219 && imageIndex <= 221) { // rat
-                                if (isAttacking) imageIndex = 221; else if (isMoving) imageIndex = 220; else imageIndex = 219;
-                            }
-                            else if (imageIndex >= 222 && imageIndex <= 224) { // slime
-                                if (isAttacking) imageIndex = 224; else if (isMoving) imageIndex = 223; else imageIndex = 222;
-                            }
-                            else if (imageIndex >= 225 && imageIndex <= 227) { //rabbit
-                                if (isAttacking) imageIndex = 227; else if (isMoving) imageIndex = 226; else imageIndex = 225;
-                            }
-                            else if (imageIndex >= 228 && imageIndex <= 230) { // bird
-                                if (isAttacking) imageIndex = 230; else if (isMoving) imageIndex = 229; else imageIndex = 228;
-                            }
-                            else if (imageIndex >= 231 && imageIndex <= 233) { // ram
-                                if (isAttacking) imageIndex = 231; else if (isMoving) imageIndex = 232; else imageIndex = 231;
-                            }
-                            else if (imageIndex >= 234 && imageIndex <= 236) { // squirrel
-                                if (isAttacking) imageIndex = 236; else if (isMoving) imageIndex = 235; else imageIndex = 234;
-                            }
-                            else if (imageIndex >= 237 && imageIndex <= 239) { // cat
-                                if (isAttacking) imageIndex = 239; else if (isMoving) imageIndex = 238; else imageIndex = 237;
-                            }
-                            else if (imageIndex >= 240 && imageIndex <= 242) { // fox
-                                if (isAttacking) imageIndex = 242; else if (isMoving) imageIndex = 241; else imageIndex = 240;
-                            }
-                            else if (imageIndex >= 243 && imageIndex <= 245) { // boat
-                                if (isAttacking) imageIndex = 245; else if (isMoving) imageIndex = 244; else imageIndex = 243;
-                            }
-                            else if (imageIndex >= 246 && imageIndex <= 248) { // auroch
-                                if (isAttacking) imageIndex = 248; else if (isMoving) imageIndex = 247; else imageIndex = 246;
-                            }
-                            else if (imageIndex >= 249 && imageIndex <= 251) { // dancer
-                                if (isAttacking) imageIndex = 251; else if (isMoving) imageIndex = 250; else imageIndex = 249;
-                            }
-                            else if (imageIndex >= 252 && imageIndex <= 254) { // warrior
-                                if (isAttacking) imageIndex = 254; else if (isMoving) imageIndex = 253; else imageIndex = 252;
-                            }
-                            else if (imageIndex >= 255 && imageIndex <= 257) { // desert villager
-                                if (isAttacking) imageIndex = 257; else if (isMoving) imageIndex = 256; else imageIndex = 255;
-                            }
-                            else if (imageIndex >= 258 && imageIndex <= 260) { // assassin
-                                if (isAttacking) imageIndex = 260; else if (isMoving) imageIndex = 259; else imageIndex = 258;
-                            }
-                            else if (imageIndex >= 261 && imageIndex <= 263) { // magician
-                                if (isAttacking) imageIndex = 263; else if (isMoving) imageIndex = 262; else imageIndex = 261;
-                            }
-                            else if (imageIndex >= 264 && imageIndex <= 266) { // hunter
-                                if (isAttacking) imageIndex = 266; else if (isMoving) imageIndex = 265; else imageIndex = 264;
-                            }
-                            else if (imageIndex >= 267 && imageIndex <= 269) { // bat
-                                if (isAttacking) imageIndex = 269; else if (isMoving) imageIndex = 268; else imageIndex = 267;
-                            }
-
-                            else if (imageIndex >= 270 && imageIndex <= 272) { // questing beast
-                                if (isAttacking) imageIndex = 272; else if (isMoving) imageIndex = 271; else imageIndex = 270;
-                            }
-                            else if (imageIndex >= 273 && imageIndex <= 275) { // magma warrior
-                                if (isAttacking) imageIndex = 275; else if (isMoving) imageIndex = 274; else imageIndex = 273;
-                            }
-                            else if (imageIndex >= 276 && imageIndex <= 278) { // skeleton warrior
-                                if (isAttacking) imageIndex = 278; else if (isMoving) imageIndex = 277; else imageIndex = 276;
-                            }
-                            else if (imageIndex >= 279 && imageIndex <= 281) { // frog
-                                if (isAttacking) imageIndex = 281; else if (isMoving) imageIndex = 280; else imageIndex = 279;
-                            }
-                            else if (imageIndex >= 282 && imageIndex <= 284) { // wolfman
-                                if (isAttacking) imageIndex = 284; else if (isMoving) imageIndex = 283; else imageIndex = 282;
-                            }
-                            else if (imageIndex >= 285 && imageIndex <= 287) { // bear man
-                                if (isAttacking) imageIndex = 287; else if (isMoving) imageIndex = 286; else imageIndex = 285;
-                            }
-                            else if (imageIndex >= 288 && imageIndex <= 290) { // boar man
-                                if (isAttacking) imageIndex = 290; else if (isMoving) imageIndex = 289; else imageIndex = 288;
-                            }
-                            else if (imageIndex >= 291 && imageIndex <= 293) { // lizard man
-                                if (isAttacking) imageIndex = 293; else if (isMoving) imageIndex = 292; else imageIndex = 291;
-                            }
-                            else if (imageIndex >= 294 && imageIndex <= 296) { // cyclops
-                                if (isAttacking) imageIndex = 296; else if (isMoving) imageIndex = 295; else imageIndex = 294;
-                            }
-                            else if (imageIndex >= 297 && imageIndex <= 299) { // drunk 
-                                if (isAttacking) imageIndex = 299; else if (isMoving) imageIndex = 298; else imageIndex = 297;
-                            }
-                            else if (imageIndex >= 300 && imageIndex <= 302) { // buck
-                                if (isAttacking) imageIndex = 302; else if (isMoving) imageIndex = 301; else imageIndex = 300;
-                            }
-                            else if (imageIndex >= 303 && imageIndex <= 305) { // doe 
-                                if (isAttacking) imageIndex = 305; else if (isMoving) imageIndex = 304; else imageIndex = 303;
-                            }
-                            else if (imageIndex >= 306 && imageIndex <= 308) { // mounted knight
-                                if (isAttacking) imageIndex = 308; else if (isMoving) imageIndex = 307; else imageIndex = 306;
-                            }
-                            else if (imageIndex >= 309 && imageIndex <= 311) { // king 
-                                if (isAttacking) imageIndex = 311; else if (isMoving) imageIndex = 310; else imageIndex = 309;
-                            }
-                            else if (imageIndex >= 312 && imageIndex <= 314) { // queen 
-                                if (isAttacking) imageIndex = 314; else if (isMoving) imageIndex = 313; else imageIndex = 312;
-                            }
-                            else if (imageIndex >= 315 && imageIndex <= 317) { // flying sword
-                                if (isAttacking) imageIndex = 317; else if (isMoving) imageIndex = 316; else imageIndex = 315;
-                            }
-                            else if (imageIndex >= 318 && imageIndex <= 320) { // ghoul 
-                                if (isAttacking) imageIndex = 320; else if (isMoving) imageIndex = 319; else imageIndex = 318;
-                            }
-                            else if (imageIndex >= 321 && imageIndex <= 323) { // chest man
-                                if (isAttacking) imageIndex = 323; else if (isMoving) imageIndex = 322; else imageIndex = 321;
-                            }
-
+                        if (imageIndex >= 104 && imageIndex <= 106) { // MECH
+                            if (isAttacking) imageIndex = 105;
+                            else if (isMoving) imageIndex = 104;
+                            else imageIndex = 106;
+                        } 
+                        else if (imageIndex >= 108 && imageIndex <= 110) { // WISP
+                            if (isAttacking) imageIndex = 110;
+                            else if (isMoving) imageIndex = 109;
+                            else imageIndex = 108;
+                        }
+                        else if (imageIndex >= 111 && imageIndex <= 113) { // GOBLIN
+                            if (isAttacking) imageIndex = 113;
+                            else if (isMoving) imageIndex = 112;
+                            else imageIndex = 111;
+                        }
+                        else if (imageIndex >= 114 && imageIndex <= 116) { // SPIDER
+                            if (isAttacking) imageIndex = 116; else if (isMoving) imageIndex = 115; else imageIndex = 114;
+                        }
+                        else if (imageIndex >= 117 && imageIndex <= 119) { // IMP
+                            if (isAttacking) imageIndex = 119; else if (isMoving) imageIndex = 118; else imageIndex = 117;
+                        }
+                        else if (imageIndex >= 120 && imageIndex <= 122) { // ICE GOLEM
+                            if (isAttacking) imageIndex = 122; else if (isMoving) imageIndex = 121; else imageIndex = 120;
+                        }
+                        else if (imageIndex >= 123 && imageIndex <= 125) { // SKELETON
+                            if (isAttacking) imageIndex = 125; else if (isMoving) imageIndex = 124; else imageIndex = 123;
+                        }
+                        else if (imageIndex >= 126 && imageIndex <= 128) { // DARK SYLPH
+                            if (isAttacking) imageIndex = 128; else if (isMoving) imageIndex = 127; else imageIndex = 126;
+                        }
+                        else if (imageIndex >= 129 && imageIndex <= 130) { // SALAMANDER
+                            if (isAttacking) imageIndex = 130; else if (isMoving) imageIndex = 130; else imageIndex = 129;
+                        }
+                        else if (imageIndex >= 131 && imageIndex <= 133) { // SALAMANDER 2
+                            if (isAttacking) imageIndex = 133; else if (isMoving) imageIndex = 132; else imageIndex = 131;
+                        }
+                        else if (imageIndex >= 134 && imageIndex <= 136) { // SALAMANDER 3
+                            if (isAttacking) imageIndex = 136; else if (isMoving) imageIndex = 135; else imageIndex = 134;
+                        }
+                        else if (imageIndex >= 137 && imageIndex <= 139) { // SEA SERPENT
+                            if (isAttacking) imageIndex = 139; else if (isMoving) imageIndex = 138; else imageIndex = 137;
+                        }
+                        else if (imageIndex >= 140 && imageIndex <= 142) { // MIRAGE
+                            if (isAttacking) imageIndex = 142; else if (isMoving) imageIndex = 141; else imageIndex = 140;
+                        }
+                        else if (imageIndex >= 143 && imageIndex <= 145) { // FIRE IMP
+                            if (isAttacking) imageIndex = 145; else if (isMoving) imageIndex = 144; else imageIndex = 143;
+                        }
+                        else if (imageIndex >= 146 && imageIndex <= 148) { // GNOME
+                            if (isAttacking) imageIndex = 148; else if (isMoving) imageIndex = 147; else imageIndex = 146;
+                        }
+                        else if (imageIndex >= 149 && imageIndex <= 151) { // LIGHT SYLPH
+                            if (isAttacking) imageIndex = 151; else if (isMoving) imageIndex = 150; else imageIndex = 149;
+                        }
+                        else if (imageIndex >= 152 && imageIndex <= 154) { // DJINN
+                            if (isAttacking) imageIndex = 154; else if (isMoving) imageIndex = 153; else imageIndex = 152;
+                        }
+                        else if (imageIndex >= 155 && imageIndex <= 157) { // SHADE
+                            if (isAttacking) imageIndex = 157; else if (isMoving) imageIndex = 156; else imageIndex = 155;
+                        }
+                        else if (imageIndex >= 158 && imageIndex <= 160) { // KNIGHT
+                            if (isAttacking) imageIndex = 160; else if (isMoving) imageIndex = 159; else imageIndex = 158;
+                        }
+                        else if (imageIndex >= 161 && imageIndex <= 163) { // BROWN KNIGHT
+                            if (isAttacking) imageIndex = 163; else if (isMoving) imageIndex = 162; else imageIndex = 161;
+                        }
+                        else if (imageIndex >= 164 && imageIndex <= 166) { // GHOST KNIGHT
+                            if (isAttacking) imageIndex = 166; else if (isMoving) imageIndex = 165; else imageIndex = 164;
+                        }
+                        else if (imageIndex >= 167 && imageIndex <= 169) { // KRAKEN KING
+                            if (isAttacking) imageIndex = 169; else if (isMoving) imageIndex = 168; else imageIndex = 167;
+                        }
+                        else if (imageIndex >= 170 && imageIndex <= 172) { // APPRENTICE
+                            if (isAttacking) imageIndex = 172; else if (isMoving) imageIndex = 171; else imageIndex = 170;
+                        }
+                        else if (imageIndex >= 173 && imageIndex <= 175) { // FAIRY QUEEN
+                            if (isAttacking) imageIndex = 175; else if (isMoving) imageIndex = 174; else imageIndex = 173;
+                        }
+                        else if (imageIndex >= 176 && imageIndex <= 178) { // FAIRY green
+                            if (isAttacking) imageIndex = 178; else if (isMoving) imageIndex = 177; else imageIndex = 176;
+                        }
+                        else if (imageIndex >= 179 && imageIndex <= 181) { // FAIRY blue
+                            if (isAttacking) imageIndex = 181; else if (isMoving) imageIndex = 180; else imageIndex = 179;
+                        }
+                        else if (imageIndex >= 182 && imageIndex <= 184) { // FAIRY red
+                            if (isAttacking) imageIndex = 184; else if (isMoving) imageIndex = 183; else imageIndex = 182;
+                        }
+                        else if (imageIndex >= 185 && imageIndex <= 187) { // FAIRY black
+                            if (isAttacking) imageIndex = 187; else if (isMoving) imageIndex = 185; else imageIndex = 185;
+                        }
+                        else if (imageIndex >= 188 && imageIndex <= 190) { // bear
+                            if (isAttacking) imageIndex = 190; else if (isMoving) imageIndex = 189; else imageIndex = 188;
+                        }
+                        else if (imageIndex >= 191 && imageIndex <= 193) { // wolf
+                            if (isAttacking) imageIndex = 193; else if (isMoving) imageIndex = 192; else imageIndex = 191;
+                        }
+                        else if (imageIndex >= 194 && imageIndex <= 196) { // boar
+                            if (isAttacking) imageIndex = 196; else if (isMoving) imageIndex = 195; else imageIndex = 194;
+                        }
+                        else if (imageIndex >= 197 && imageIndex <= 199) { // vampire
+                            if (isAttacking) imageIndex = 199; else if (isMoving) imageIndex = 198; else imageIndex = 197;
+                        }
+                        else if (imageIndex >= 200 && imageIndex <= 202) { // spriggan
+                            if (isAttacking) imageIndex = 202; else if (isMoving) imageIndex = 201; else imageIndex = 200;
+                        }
+                        else if (imageIndex >= 203 && imageIndex <= 205) { // dullahan
+                            if (isAttacking) imageIndex = 205; else if (isMoving) imageIndex = 204; else imageIndex = 203;
+                        }
+                        else if (imageIndex >= 210 && imageIndex <= 212) { // scorpion
+                            if (isAttacking) imageIndex = 212; else if (isMoving) imageIndex = 211; else imageIndex = 210;
+                        }
+                        else if (imageIndex >= 213 && imageIndex <= 215) { // wasp
+                            if (isAttacking) imageIndex = 215; else if (isMoving) imageIndex = 214; else imageIndex = 213;
+                        }
+                        else if (imageIndex >= 216 && imageIndex <= 218) { // ant
+                            if (isAttacking) imageIndex = 218; else if (isMoving) imageIndex = 217; else imageIndex = 216;
+                        }
+                        else if (imageIndex >= 219 && imageIndex <= 221) { // rat
+                            if (isAttacking) imageIndex = 221; else if (isMoving) imageIndex = 220; else imageIndex = 219;
+                        }
+                        else if (imageIndex >= 222 && imageIndex <= 224) { // slime
+                            if (isAttacking) imageIndex = 224; else if (isMoving) imageIndex = 223; else imageIndex = 222;
+                        }
+                        else if (imageIndex >= 225 && imageIndex <= 227) { // rabbit
+                            if (isAttacking) imageIndex = 227; else if (isMoving) imageIndex = 226; else imageIndex = 225;
+                        }
+                        else if (imageIndex >= 228 && imageIndex <= 230) { // bird
+                            if (isAttacking) imageIndex = 230; else if (isMoving) imageIndex = 229; else imageIndex = 228;
+                        }
+                        else if (imageIndex >= 231 && imageIndex <= 233) { // ram
+                            if (isAttacking) imageIndex = 231; else if (isMoving) imageIndex = 232; else imageIndex = 231;
+                        }
+                        else if (imageIndex >= 234 && imageIndex <= 236) { // squirrel
+                            if (isAttacking) imageIndex = 236; else if (isMoving) imageIndex = 235; else imageIndex = 234;
+                        }
+                        else if (imageIndex >= 237 && imageIndex <= 239) { // cat
+                            if (isAttacking) imageIndex = 239; else if (isMoving) imageIndex = 238; else imageIndex = 237;
+                        }
+                        else if (imageIndex >= 240 && imageIndex <= 242) { // fox
+                            if (isAttacking) imageIndex = 242; else if (isMoving) imageIndex = 241; else imageIndex = 240;
+                        }
+                        else if (imageIndex >= 243 && imageIndex <= 245) { // boat
+                            if (isAttacking) imageIndex = 245; else if (isMoving) imageIndex = 244; else imageIndex = 243;
+                        }
+                        else if (imageIndex >= 246 && imageIndex <= 248) { // auroch
+                            if (isAttacking) imageIndex = 248; else if (isMoving) imageIndex = 247; else imageIndex = 246;
+                        }
+                        else if (imageIndex >= 249 && imageIndex <= 251) { // dancer
+                            if (isAttacking) imageIndex = 251; else if (isMoving) imageIndex = 250; else imageIndex = 249;
+                        }
+                        else if (imageIndex >= 252 && imageIndex <= 254) { // warrior
+                            if (isAttacking) imageIndex = 254; else if (isMoving) imageIndex = 253; else imageIndex = 252;
+                        }
+                        else if (imageIndex >= 255 && imageIndex <= 257) { // desert villager
+                            if (isAttacking) imageIndex = 257; else if (isMoving) imageIndex = 256; else imageIndex = 255;
+                        }
+                        else if (imageIndex >= 258 && imageIndex <= 260) { // assassin
+                            if (isAttacking) imageIndex = 260; else if (isMoving) imageIndex = 259; else imageIndex = 258;
+                        }
+                        else if (imageIndex >= 261 && imageIndex <= 263) { // magician
+                            if (isAttacking) imageIndex = 263; else if (isMoving) imageIndex = 262; else imageIndex = 261;
+                        }
+                        else if (imageIndex >= 264 && imageIndex <= 266) { // hunter
+                            if (isAttacking) imageIndex = 266; else if (isMoving) imageIndex = 265; else imageIndex = 264;
+                        }
+                        else if (imageIndex >= 267 && imageIndex <= 269) { // bat
+                            if (isAttacking) imageIndex = 269; else if (isMoving) imageIndex = 268; else imageIndex = 267;
+                        }
+                        else if (imageIndex >= 270 && imageIndex <= 272) { // questing beast
+                            if (isAttacking) imageIndex = 272; else if (isMoving) imageIndex = 271; else imageIndex = 270;
+                        }
+                        else if (imageIndex >= 273 && imageIndex <= 275) { // magma warrior
+                            if (isAttacking) imageIndex = 275; else if (isMoving) imageIndex = 274; else imageIndex = 273;
+                        }
+                        else if (imageIndex >= 276 && imageIndex <= 278) { // skeleton warrior
+                            if (isAttacking) imageIndex = 278; else if (isMoving) imageIndex = 277; else imageIndex = 276;
+                        }
+                        else if (imageIndex >= 279 && imageIndex <= 281) { // frog
+                            if (isAttacking) imageIndex = 281; else if (isMoving) imageIndex = 280; else imageIndex = 279;
+                        }
+                        else if (imageIndex >= 282 && imageIndex <= 284) { // wolfman
+                            if (isAttacking) imageIndex = 284; else if (isMoving) imageIndex = 283; else imageIndex = 282;
+                        }
+                        else if (imageIndex >= 285 && imageIndex <= 287) { // bear man
+                            if (isAttacking) imageIndex = 287; else if (isMoving) imageIndex = 286; else imageIndex = 285;
+                        }
+                        else if (imageIndex >= 288 && imageIndex <= 290) { // boar man
+                            if (isAttacking) imageIndex = 290; else if (isMoving) imageIndex = 289; else imageIndex = 288;
+                        }
+                        else if (imageIndex >= 291 && imageIndex <= 293) { // lizard man
+                            if (isAttacking) imageIndex = 293; else if (isMoving) imageIndex = 292; else imageIndex = 291;
+                        }
+                        else if (imageIndex >= 294 && imageIndex <= 296) { // cyclops
+                            if (isAttacking) imageIndex = 296; else if (isMoving) imageIndex = 295; else imageIndex = 294;
+                        }
+                        else if (imageIndex >= 297 && imageIndex <= 299) { // drunk 
+                            if (isAttacking) imageIndex = 299; else if (isMoving) imageIndex = 298; else imageIndex = 297;
+                        }
+                        else if (imageIndex >= 300 && imageIndex <= 302) { // buck
+                            if (isAttacking) imageIndex = 302; else if (isMoving) imageIndex = 301; else imageIndex = 300;
+                        }
+                        else if (imageIndex >= 303 && imageIndex <= 305) { // doe 
+                            if (isAttacking) imageIndex = 305; else if (isMoving) imageIndex = 304; else imageIndex = 303;
+                        }
+                        else if (imageIndex >= 306 && imageIndex <= 308) { // mounted knight
+                            if (isAttacking) imageIndex = 308; else if (isMoving) imageIndex = 307; else imageIndex = 306;
+                        }
+                        else if (imageIndex >= 309 && imageIndex <= 311) { // king 
+                            if (isAttacking) imageIndex = 311; else if (isMoving) imageIndex = 310; else imageIndex = 309;
+                        }
+                        else if (imageIndex >= 312 && imageIndex <= 314) { // queen 
+                            if (isAttacking) imageIndex = 314; else if (isMoving) imageIndex = 313; else imageIndex = 312;
+                        }
+                        else if (imageIndex >= 315 && imageIndex <= 317) { // flying sword
+                            if (isAttacking) imageIndex = 317; else if (isMoving) imageIndex = 316; else imageIndex = 315;
+                        }
+                        else if (imageIndex >= 318 && imageIndex <= 320) { // ghoul 
+                            if (isAttacking) imageIndex = 320; else if (isMoving) imageIndex = 319; else imageIndex = 318;
+                        }
+                        else if (imageIndex >= 321 && imageIndex <= 323) { // chest man
+                            if (isAttacking) imageIndex = 323; else if (isMoving) imageIndex = 322; else imageIndex = 321;
+                        }
 
                         // --- 1. HANDLE EXCEPTIONS ---
-                            if (imageIndex >= 206 && imageIndex <= 209) { // DRAGON (4 Frames)
+                        if (imageIndex >= 206 && imageIndex <= 209) { // DRAGON (4 Frames)
                             if (isAttacking) {
                                 // Alternate between Bite (108) and Fire (109) every 2 seconds
                                 let useFireBreath = Math.floor(Date.now() / 2000) % 2 === 0;
                                 imageIndex = useFireBreath ? 209 : 208;
                             }
-                                else if (isMoving) imageIndex = 207;
-                                else imageIndex = 206;
-                            }
-                        // Calculate Relative 3D Direction
-                            if (sprite.isPlayer) {
-                                currentDir = 0; // Always see the player's back
-                            } else if (sprite.dirX !== undefined && sprite.dirY !== undefined) {
-                                let npcAngle = Math.atan2(sprite.dirY, sprite.dirX);
-                                let camAngle = this.currentAngle + (this.lookPan || 0); 
-                                let relativeAngle = npcAngle - camAngle - (Math.PI / 2);
-                                
-                                while (relativeAngle < 0) relativeAngle += Math.PI * 2;
-                                while (relativeAngle >= Math.PI * 2) relativeAngle -= Math.PI * 2;
-                                
-                                let sector = Math.floor((relativeAngle + Math.PI / 8) / (Math.PI / 4));
-                                currentDir = sector % 8;
-                            }
+                            else if (isMoving) imageIndex = 207;
+                            else imageIndex = 206;
                         }
+
+                        // ---> THE FIX: ACCURATE CAMERA DIRECTION MATH <---
+                        if (sprite.isPlayer) {
+                            currentDir = 0; // Always see the player's back
+                        } 
+                        else if (isRemotePlayer && sprite.dir !== undefined) {
+                            // Remote players are synced with dir 0(N), 1(E), 2(S), 3(W).
+                            // this.dir is the camera's direction.
+                            let relativeDir = (sprite.dir - this.dir + 4) % 4;
+                            
+                            // Map relative 4-way direction to the 8-way sprite sheet:
+                            // 0=Left, 2=Front, 4=Right, 6=Back
+                            if (relativeDir === 0) currentDir = 6; // Back
+                            else if (relativeDir === 1) currentDir = 4; // Right Side
+                            else if (relativeDir === 2) currentDir = 2; // Front
+                            else if (relativeDir === 3) currentDir = 0; // Left Side
+                        } 
+                        else if (sprite.dirX !== undefined && sprite.dirY !== undefined) {
+                            // Standard Offline NPC Angle Math
+                            let npcAngle = Math.atan2(sprite.dirY, sprite.dirX);
+                            let camAngle = this.currentAngle + (this.lookPan || 0); 
+                            let relativeAngle = npcAngle - camAngle - (Math.PI / 2);
+                            
+                            while (relativeAngle < 0) relativeAngle += Math.PI * 2;
+                            while (relativeAngle >= Math.PI * 2) relativeAngle -= Math.PI * 2;
+                            
+                            let sector = Math.floor((relativeAngle + Math.PI / 8) / (Math.PI / 4));
+                            currentDir = sector % 8;
+                        }
+                    }
 
                     // ==========================================
                     // --- 3. CALCULATE SIZE & HOVER ---
@@ -23115,8 +23170,16 @@
                                 this.triggerExplosion();
                                 
                                 if (typeof socket !== 'undefined') {
+                                    let dirX = this.vx / this.baseSpeed;
+                                    let dirY = this.vy / this.baseSpeed;
+
                                     if (p.socketId === "NPC_SUNCAT") {
-                                        socket.emit("battle_action", { targetId: p.socketId, actionType: "SUNCAT_HIT", payload: { damage: this.damage || 5 } });
+                                        socket.emit("battle_action", { 
+                                            targetId: p.socketId, 
+                                            actionType: "SUNCAT_HIT", 
+                                            // ---> NEW: Send the coordinates so the server can push him!
+                                            payload: { damage: this.damage || 5, x: this.x - dirX, y: this.y - dirY } 
+                                        });
                                     } else {
                                         let myStats = { level: exploreRef.level, stat: exploreRef.stat, damage: this.damage };
                                         
