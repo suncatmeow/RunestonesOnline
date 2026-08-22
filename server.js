@@ -7266,28 +7266,63 @@ io.on("connection", (socket) => {
         socket.on("battle_action", (data) => {
             const player = players[socket.id];
             
-            // --- SUNCAT TAKES DAMAGE ---
+            // --- SUNCAT TAKES DAMAGE AND FIGHTS BACK ---
             if (data.targetId === "NPC_SUNCAT" || data.actionType === "SUNCAT_HIT") {
                 let suncat = players[SUNCAT_ID];
+                let attacker = players[socket.id]; // Identify who shot him!
+
                 if (suncat) {
                     suncat.hp = (suncat.hp || 100) - (data.payload?.damage || 5);
+
+                    // 1. SUNCAT KNOCKBACK MATH
+                    if (data.payload?.x !== undefined && data.payload?.y !== undefined) {
+                        let dx = suncat.x - data.payload.x;
+                        let dy = suncat.y - data.payload.y;
+                        let dist = Math.sqrt(dx * dx + dy * dy);
+                        if (dist > 0) {
+                            suncat.x += (dx / dist) * 0.6; // Push him 0.6 tiles back!
+                            suncat.y += (dy / dist) * 0.6;
+                            let maxB = suncat.mapID === 999 ? 98 : 19;
+                            suncat.x = Math.max(1, Math.min(maxB, suncat.x));
+                            suncat.y = Math.max(1, Math.min(maxB, suncat.y));
+                        }
+                    }
+
+                    io.emit("remote_npc_flash", { id: SUNCAT_ID });
+                    io.emit("updatePlayers", players); 
                     
-                    // If Suncat "Dies", he teleports home to heal
+                    // 2. DID HE DIE?
                     if (suncat.hp <= 0) {
                         suncat.hp = 100;
                         suncat.mapID = 22;
                         suncat.x = 5.5; suncat.y = 5.5;
+                        suncat.aggroList = new Set(); // Wipe aggro if he dies
+                        suncatState = 'active';
+
                         io.emit("updatePlayers", players);
                         io.emit("chat_message", { sender: "Suncat", text: "Ouch... I've sustained too much damage. Returning to my realm to heal.", color: "#ff6600" });
-                        processSuncatThought(socket.id, 'event', { action: "You just took lethal damage from a monster and were forced to retreat to Map 22 to heal." });
-                    } else {
-                        // If he didn't die, just process the thought occasionally so he doesn't spam
-                        if (Math.random() < 0.2) {
-                            processSuncatThought(socket.id, 'event', { action: "A monster just physically struck you in combat!" });
+                        processSuncatThought(socket.id, 'event', { action: "You just took lethal damage from a player and were forced to retreat to Map 22 to heal." });
+                    } 
+                    // 3. HE SURVIVED -> ADD TO HITLIST!
+                    else if (attacker) {
+                        playerFavorMemory[socket.id] = (playerFavorMemory[socket.id] || 0) - 5;
+                        
+                        // --- EVERQUEST AGGRO MECHANIC ---
+                        if (!suncat.aggroList) suncat.aggroList = new Set();
+                        
+                        if (!suncat.aggroList.has(socket.id)) {
+                            suncat.aggroList.add(socket.id);
+                            suncatState = 'enraged'; // Lock him into high-speed combat mode!
+                            
+                            io.emit("chat_message", { 
+                                sender: "[SYSTEM]", 
+                                text: `Suncat's eyes glow with divine fury. ${attacker.name} has been marked for death.`, 
+                                color: "#ff0000" 
+                            });
                         }
                     }
                 }
-                return;
+                return; 
             }
 
             io.to(data.targetId).emit("battle_action", {
@@ -7396,13 +7431,19 @@ io.on("connection", (socket) => {
             // THE SEMANTIC ATTENTION ROUTER
             // ==========================================
             const now = Date.now();
+            const suncat = players[SUNCAT_ID];
             
             const mentionsName = content.includes("suncat");
 
+            // 1. Is Suncat physically nearby? (Only eavesdrop on local chatter)
+            const isLocal = (suncat && suncat.mapID === player.mapID);
+
+            // 2. Check for explicit crosstalk (mentioning another player)
             let mentionsOtherPlayer = false;
             for (let id in players) {
                 if (id !== socket.id && id !== SUNCAT_ID) { 
                     let otherName = players[id].name.toLowerCase();
+                    // Don't accidentally match short words; only trigger if name > 2 chars
                     if (otherName.length > 2 && content.includes(otherName)) { 
                         mentionsOtherPlayer = true;
                         break;
@@ -7410,45 +7451,52 @@ io.on("connection", (socket) => {
                 }
             }
 
-            let isConversing = (now - (player.lastSuncatChat || 0)) < 30000;
+            // 3. The Conversational Lock (Tightened to 15 seconds)
+            let isConversing = (now - (player.lastSuncatChat || 0)) < 15000;
 
+            // Break the lock instantly if they clearly address someone else
             if (mentionsOtherPlayer && !mentionsName) {
                 isConversing = false;
                 player.lastSuncatChat = 0; 
             }
 
-            // --- THE EAVESDROP & SEMANTIC RADAR ---
+            // 4. The Eavesdrop Radar (Cocktail Party Effect)
             let msgVector = null;
             let isEavesdropping = false;
 
-            try {
-                // We must embed the message to check semantic relevance
-                msgVector = await createMemoryVector(safeText);
-            } catch (err) {
-                console.error("[Semantic Router] Vector math failed:", err);
-            }
-
-            let semanticScore = 0;
-            if (msgVector && suncatAttentionVector) {
-                semanticScore = cosineSimilarity(msgVector, suncatAttentionVector);
-            }
-
-            // He listens IF: Named OR Conversing OR Semantic Score > 0.65 OR 1% Random chance
-            if (!mentionsName && !isConversing) {
-                // 0.65 means highly relevant to his vector. 0.01 is the 1% random chance.
-                if (semanticScore > 0.65 || Math.random() < 0.01) {
-                    isEavesdropping = true;
+            // ONLY spend CPU/API resources on vectors if he's NOT already listening, AND the player is on his map!
+            if (!mentionsName && !isConversing && isLocal) {
+                // Cooldown: Suncat only interjects unprompted once every 2 minutes to prevent spam!
+                let eavesdropCooldown = 120000; 
+                if (now - (suncat.lastEavesdropTime || 0) > eavesdropCooldown) {
+                    try {
+                        msgVector = await createMemoryVector(safeText);
+                        let semanticScore = 0;
+                        if (msgVector && suncatAttentionVector) {
+                            semanticScore = cosineSimilarity(msgVector, suncatAttentionVector);
+                        }
+                        
+                        // Raised threshold to 0.70 to ensure it's highly relevant to his interests
+                        if (semanticScore > 0.70 || Math.random() < 0.005) {
+                            isEavesdropping = true;
+                            suncat.lastEavesdropTime = now; // Lock out eavesdropping for a while
+                            console.log(`[Semantic Router] Suncat overheard something interesting. Chiming in...`);
+                        }
+                    } catch (err) {
+                        console.error("[Semantic Router] Vector math failed:", err);
+                    }
                 }
+            } else if (mentionsName || isConversing) {
+                // If we are already talking to him, grab the vector for memory storage anyway
+                try { msgVector = await createMemoryVector(safeText); } catch(e){}
             }
 
             let shouldListen = mentionsName || isConversing || isEavesdropping;
 
-            // 6. Execution
+            // 5. Execution
             if (shouldListen) {
                 if (["suncat you there", "suncat wake up"].some(w => content.includes(w))) player.npcIsTyping = false;
 
-                // IMPORTANT: Only open the 30-second window if they actively named him. 
-                // Eavesdropping shouldn't lock him into a 1-on-1 convo!
                 if (mentionsName || isConversing) {
                     player.lastSuncatChat = now; 
                 }
@@ -7460,7 +7508,7 @@ io.on("connection", (socket) => {
                     text: safeText,
                     vector: msgVector,
                     isConversing: (mentionsName || isConversing),
-                    isEavesdropping: isEavesdropping // Pass this down to the brain!
+                    isEavesdropping: isEavesdropping // Tells the brain to just drop a natural gamer reaction
                 });
             }
             
@@ -7875,7 +7923,8 @@ io.on("connection", (socket) => {
                     }
                 }
             }
-        //FIND PLAYER & MOCE TOWARDS THEM
+        //FIND PLAYER & MOVE TOWARDS THEM
+        if (suncatState === 'enraged') return;
             if (!currentTargetID || (now - lastSwitchTime > 60000)) {
                 let highestFavor = -11;
                 let bestFriend = null;
@@ -8132,6 +8181,95 @@ setInterval(() => {
         }
     }
 }, 60000);
+// ==========================================
+setInterval(() => {
+    const suncat = players[SUNCAT_ID];
+    
+    // If he isn't mad, or has no targets, do absolutely nothing (saves CPU)
+    if (!suncat || suncatState !== 'enraged' || !suncat.aggroList || suncat.aggroList.size === 0 || suncat.hp <= 0) return;
+
+    // 1. Get the primary target (the first person who attacked him)
+    let targetId = Array.from(suncat.aggroList)[0];
+    let target = players[targetId];
+
+    // 2. If target disconnected (died / reloaded / ran away), drop aggro!
+    if (!target || target.name.startsWith("[AFK]")) {
+        suncat.aggroList.delete(targetId);
+        
+        // If the hitlist is empty, calm down
+        if (suncat.aggroList.size === 0) {
+            suncatState = 'active';
+            io.emit("chat_message", { sender: "Suncat", text: "Hmph. Coward.", color: "#aaaaaa" });
+        }
+        return;
+    }
+
+    // 3. CROSS-MAP CHASE LOGIC (Train to Zone!)
+    if (suncat.mapID !== target.mapID) {
+        suncat.mapID = target.mapID;
+        suncat.x = target.x + (Math.random() > 0.5 ? 2 : -2); // Warp slightly offset so he doesn't land on their head
+        suncat.y = target.y + (Math.random() > 0.5 ? 2 : -2);
+        
+        io.emit("updatePlayers", players);
+        
+        // Creepy system message to the victim
+        io.to(targetId).emit("chat_message", { 
+            sender: "[SYSTEM]", 
+            text: "Suncat has warped into your realm. He is hunting you.", 
+            color: "#ff0000" 
+        });
+        return; // Wait 1 tick before firing so the player can react to the warp
+    }
+
+    // 4. RELENTLESS PURSUIT (Run towards them)
+    let dx = target.x - suncat.x;
+    let dy = target.y - suncat.y;
+    let dist = Math.sqrt(dx * dx + dy * dy);
+
+    // Keep moving until he is comfortably in spell range
+    if (dist > 1.2) {
+        // He moves incredibly fast when enraged (0.8 tiles per second)
+        suncat.x += (dx / dist) * 0.8; 
+        suncat.y += (dy / dist) * 0.8;
+        
+        let maxB = suncat.mapID === 999 ? 98 : 19;
+        suncat.x = Math.max(1, Math.min(maxB, suncat.x));
+        suncat.y = Math.max(1, Math.min(maxB, suncat.y));
+        
+        io.emit("updatePlayers", players);
+    }
+
+    // 5. RAPID FIRE SPELLCASTING
+    let now = Date.now();
+    let fireRate = 2000 - ((suncat.stat[3][2] || 0) * 100); 
+    
+    if (now - (suncat.lastFireTime || 0) > Math.max(500, fireRate)) {
+        suncat.lastFireTime = now;
+        
+        if (dist > 0) {
+            let dirX = dx / dist;
+            let dirY = dy / dist;
+
+            // Uses his learned spells!
+            let spells = (suncat.learnedSpells && suncat.learnedSpells.length > 0) ? suncat.learnedSpells : [9999];
+            let retSpellId = spells[Math.floor(Math.random() * spells.length)];
+            
+            let statIndex = (retSpellId === 9999) ? 0 : 2; 
+            // When enraged, his damage scales exponentially with his level!
+            let retDamage = (suncat.stat[statIndex][2] || 0) + (suncat.level * 2);
+
+            io.emit("suncat_fires_projectile", {
+                mapID: suncat.mapID,
+                spellId: retSpellId,
+                startX: suncat.x + (dirX * 0.5),
+                startY: suncat.y + (dirY * 0.5),
+                dirX: dirX,
+                dirY: dirY,
+                damage: Math.max(1, retDamage)
+            });
+        }
+    }
+}, 1000); // <-- Runs every 1 second while his hitlist is active!
 //AFK SWEEPER
     const IDLE_TIMEOUT = 3 * 60 * 1000;  // 3 minutes: Hibernate & clear chat session
     const KICK_TIMEOUT = 30 * 60 * 1000; // 30 minutes: Kick player to free RAM
