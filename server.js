@@ -72,6 +72,14 @@
         let suncatDaoName = null;
         let suncatStorySoFar = "I am awake!."; 
         let suncatProfile = "An unpredicatable wanderer stepping into the unknown";
+        // --- NEW: SUNCAT'S CHARACTER SHEET ---
+        players[SUNCAT_ID] = players[SUNCAT_ID] || {};
+        players[SUNCAT_ID].level = data.worldState?.suncatLevel || 1;
+        players[SUNCAT_ID].xp = data.worldState?.suncatXp || 0;
+        players[SUNCAT_ID].suncatClass = data.worldState?.suncatClass || "Wandering Spirit";
+        players[SUNCAT_ID].hp = data.worldState?.suncatHp || 100;
+        // Default: 1d4 for all stats, 0 modifier
+        players[SUNCAT_ID].stat = data.worldState?.suncatStat || [[1,4,0], [1,4,0], [1,4,0], [1,4,0]];
         let suncatLongTermGoal = null;
         let autonomousTick = 0; 
         let suncatJournal = "I have awoken!";           
@@ -2498,6 +2506,20 @@
                     required: ["targetName"]
                 }
             },
+            // SUNCAT EXPLORATION: Travel to coordinates
+            {
+                name: "travelToLocation",
+                description: "Moves Suncat to a specific Map ID, or walks to a specific X/Y coordinate on the current map. Use this to actively explore, hunt, or seek out locations.",
+                parameters: {
+                    type: "OBJECT",
+                    properties: {
+                        mapID: { type: "INTEGER", description: "The Map ID to travel to (0-22, 100, or 999)." },
+                        x: { type: "NUMBER", description: "The X coordinate." },
+                        y: { type: "NUMBER", description: "The Y coordinate." }
+                    },
+                    required: ["mapID", "x", "y"]
+                }
+            },
         ]
         }];
 
@@ -3029,7 +3051,7 @@
                 }
 
                 const data = JSON.parse(rawData);
-
+                players[SUNCAT_ID].learnedSpells = data.worldState?.suncatSpells || [9999, 26];
                 suncatPersistentMemory = data.players || {};
                 suncatJournal = data.worldState?.suncatJournal || "I have awoken!";
                 suncatCultivationStage = data.suncatCultivationStage !== undefined ? data.suncatCultivationStage : 0;
@@ -3102,7 +3124,14 @@
                 suncatLongTermGoal: suncatLongTermGoal,
                 suncatDaoLedger:suncatDaoLedger,
                 suncatStorySoFar:suncatStorySoFar,
-                suncatProfile:suncatProfile
+                suncatProfile:suncatProfile,
+                // --- NEW: SAVE SUNCAT'S RPG PROGRESS ---
+                suncatLevel: players[SUNCAT_ID].level,
+                suncatXp: players[SUNCAT_ID].xp,
+                suncatClass: players[SUNCAT_ID].suncatClass,
+                suncatHp: players[SUNCAT_ID].hp,
+                suncatStat: players[SUNCAT_ID].stat,
+                suncatSpells: players[SUNCAT_ID].learnedSpells,
             }
         };
 
@@ -5101,7 +5130,37 @@
                             functionResult = { result: `Failed: Suncat not found on server.` };
                         }
                     }
-                    
+                    // P. AUTONOMOUS TRAVEL (OODA)
+                    else if (call.name === "travelToLocation") {
+                        let suncat = players[SUNCAT_ID];
+                        if (suncat) {
+                            let newMap = parseInt(call.args.mapID);
+                            let nx = parseFloat(call.args.x);
+                            let ny = parseFloat(call.args.y);
+                            
+                            // If he decided to go to a new map, warp him!
+                            if (suncat.mapID !== newMap) {
+                                suncat.mapID = newMap;
+                                suncat.x = nx;
+                                suncat.y = ny;
+                                suncat.targetX = undefined;
+                                suncat.targetY = undefined;
+                                io.emit("updatePlayers", players);
+                                functionResult = { result: `You successfully warped to Map ${newMap} at coordinates X:${nx}, Y:${ny}. You should observe your surroundings now.` };
+                                
+                                // Let the server know he arrived
+                                console.log(`[Exploration] Suncat warped to Map ${newMap}.`);
+                            } else {
+                                // If it's the same map, set a destination so he actively walks there!
+                                suncat.targetX = nx;
+                                suncat.targetY = ny;
+                                functionResult = { result: `You begin walking towards X:${nx}, Y:${ny}.` };
+                                console.log(`[Exploration] Suncat is walking to X:${nx}, Y:${ny} on Map ${newMap}.`);
+                            }
+                        } else {
+                            functionResult = { result: `Failed to travel. Suncat object not found.` };
+                        }
+                    }
                     // UNKNOWN TOOL
                     else {
                         functionResult = { result: "Error: Function does not exist." };
@@ -5891,6 +5950,81 @@
                 console.error("[Cultivation] Meditation failed:", e);
             }
         }
+    async function processSuncatLevelUp() {
+        let s = players[SUNCAT_ID];
+        if (!s) return;
+
+        // Filter available spells from the database that Suncat doesn't already know
+        const availableSpells = [
+            { id: 9999, name: "Basic Attack / Energy Slash" },
+            { id: 26, name: "Fire (Single Target Burn)" },
+            { id: 28, name: "Defense (CON Shield Buff)" },
+            { id: 29, name: "Haste (AGI Speed Boost)" },
+            { id: 93, name: "Lightning (Instant High Damage)" },
+            { id: 12, name: "Bind (Stun / Root)" },
+            { id: 15, name: "Curse (All-Stat Debuff)" },
+            { id: 52, name: "Backstab (High AGI Strike)" }
+        ].filter(sp => !s.learnedSpells.includes(sp.id));
+
+        const spellListString = availableSpells.map(sp => `ID ${sp.id}: ${sp.name}`).join("\n");
+
+        const prompt = `[SYSTEM CRITICAL]: Suncat, you reached Level ${s.level}!
+        Class: "${s.suncatClass}"
+        Dao: "${suncatDaoName || 'Wanderer'}"
+        Current Spells: [${s.learnedSpells.join(', ')}]
+        
+        AVAILABLE SPELLS TO LEARN:
+        ${spellListString || "All standard spells learned."}
+
+        TASK:
+        1. Distribute 3 stat points across STR, CON, INT, AGI based on your Dao.
+        2. Choose 1 new spell ID from the list above that best complements your path.
+        3. Update your Class Title if appropriate.
+        
+        OUTPUT JSON FORMAT:
+        {
+        "add_STR": 0,
+        "add_CON": 1,
+        "add_INT": 2,
+        "add_AGI": 0,
+        "learnSpellId": 93,
+        "newClassTitle": "Ascendant Mage",
+        "levelUpQuote": "The lightning answers my call."
+        }`;
+
+        try {
+            const levelModel = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite" });
+            const result = await levelModel.generateContent(prompt);
+            let rawText = result.response.text().trim();
+            if (rawText.startsWith("```")) rawText = rawText.replace(/^```(json)?|```$/g, "").trim();
+            
+            const upgrade = JSON.parse(rawText);
+            
+            // Allocate stats
+            s.stat[0][2] += (upgrade.add_STR || 0);
+            s.stat[1][2] += (upgrade.add_CON || 0);
+            s.stat[2][2] += (upgrade.add_INT || 0);
+            s.stat[3][2] += (upgrade.add_AGI || 0);
+            s.suncatClass = upgrade.newClassTitle || s.suncatClass;
+            s.hp = 100 + (s.stat[1][2] * 10);
+
+            // Learn the selected spell
+            if (upgrade.learnSpellId && !s.learnedSpells.includes(upgrade.learnSpellId)) {
+                s.learnedSpells.push(upgrade.learnSpellId);
+            }
+
+            io.emit("chat_message", { 
+                sender: "[SYSTEM]", 
+                text: `Suncat reached Level ${s.level} [${s.suncatClass}] and mastered Spell ID ${upgrade.learnSpellId || 'Enhancement'}!`, 
+                color: "#FFD700" 
+            });
+            io.emit("chat_message", { sender: "Suncat", text: upgrade.levelUpQuote, color: "#ffffff" });
+            
+            saveSuncatMemory();
+        } catch (e) {
+            console.error("Suncat level-up error:", e);
+        }
+    }
     async function executeAutonomousOODA() {
         const suncat = players[SUNCAT_ID];
         if (!suncat || suncatState === 'seclusion' || isBankrupt()) return;
@@ -5922,20 +6056,18 @@
             .map(p => `${p.name} (Map ${p.mapID})`)
             .join(", ");
         if (!onlinePlayers) onlinePlayers = "No one else is currently in the realm.";
-        let oodaPrompt = `[ROOT DIRECTIVE]: You are Suncat. You are acting completely autonomously in the background. No player is talking to you right now. 
+        let oodaPrompt = `[ROOT DIRECTIVE]: You are Suncat. You are an autonomous demigod adventuring in an MMO. No player is talking to you right now. You possess absolute free will.
         [YOUR LONG TERM GOAL]: ${suncatLongTermGoal}
         [YOUR LOCATION]: Map ${suncat.mapID}, X:${Math.floor(suncat.x)}, Y:${Math.floor(suncat.y)}
 
         [WHAT YOUR EYES SEE RIGHT NOW]:
         ${localVision}
 
-        TASK: You MUST execute a tool to advance your Long Term Goal or soothe your current mood. 
-        - If you are lonely, use 'spawnNPC' to summon a companion to your side! (Target yourself: "Suncat". Good pet IDs: 237 for a Ginger Cat, 240 for a Red Fox, 228 for a Crow. Set state to 'following', role to 'dialogue', alignment to 'ally').
-        - Use 'changeEnvironment' to alter the weather.
-        - Use 'alterTerrain' to break walls or build bridges.
-        - Use 'spawnNPC' to build an army or place allies.
-        - Use 'smiteOrReviveEntity' to eliminate enemies or resurrect fallen allies.
-        - Use 'teleportToPlayer' if your goal involves hunting or helping someone.
+        TASK: You MUST execute a tool to advance your Long Term Goal, explore the world, or interact with what you see. 
+        - To move to a point of interest, a new map, or investigate an entity you see, use 'travelToLocation'.
+        - To learn about an entity or map you scryed, use 'consultGameManual'.
+        - If you are lonely, use 'spawnNPC' to summon a companion.
+        - If you want to hunt, use 'travelToLocation' to move toward an enemy, then 'smiteOrReviveEntity' or let your combat radar engage them.
         - If you have accomplished your goal, output exactly the phrase: "GOAL COMPLETE" (and do not use a tool).
         - CRITICAL: DO NOT output any other text, roleplay, or monologue. ONLY call a tool or declare the goal complete.`;
         try {
@@ -6933,20 +7065,27 @@ io.on("connection", (socket) => {
             });
         socket.on("suncat_radar_ping", (data) => {
             let suncat = players[SUNCAT_ID];
-            if (!suncat || suncat.state !== 'protecting') return;
+            if (!suncat || suncatState === 'seclusion') return;
 
-            // 1. HIGH-SPEED MOVEMENT: Keep Suncat glued to the player during combat
+            let isHunting = suncatLongTermGoal && (
+                suncatLongTermGoal.toLowerCase().includes("hunt") || 
+                suncatLongTermGoal.toLowerCase().includes("slay") || 
+                suncatLongTermGoal.toLowerCase().includes("purge") ||
+                suncatLongTermGoal.toLowerCase().includes("protect")
+            );
+
+            if (suncatState !== 'protecting' && !isHunting) return;
+
             suncat.mapID = data.mapID;
-            // Smoothly lerp him to the player's side so he doesn't clip into walls
-            suncat.x += (data.playerX - 1 - suncat.x) * 0.2; 
-            suncat.y += (data.playerY - suncat.y) * 0.2;
+            suncat.x += (data.targetX - suncat.x) * 0.15; 
+            suncat.y += (data.targetY - suncat.y) * 0.15;
 
-            // 2. FIREBALL COOLDOWN (1.5 seconds)
             let now = Date.now();
-            if (now - (suncat.lastFireTime || 0) > 1500) {
+            let fireRate = 2000 - ((suncat.stat[3][2] || 0) * 100); 
+            
+            if (now - (suncat.lastFireTime || 0) > Math.max(500, fireRate)) {
                 suncat.lastFireTime = now;
 
-                // 3. CALCULATE TRAJECTORY
                 let dx = data.targetX - suncat.x;
                 let dy = data.targetY - suncat.y;
                 let dist = Math.sqrt(dx * dx + dy * dy);
@@ -6955,17 +7094,32 @@ io.on("connection", (socket) => {
                     let dirX = dx / dist;
                     let dirY = dy / dist;
 
-                    // 4. COMMAND THE CLIENTS TO DRAW THE FIREBALL
+                    // Pick a spell from Suncat's learned rotation
+                    let spells = (suncat.learnedSpells && suncat.learnedSpells.length > 0) 
+                        ? suncat.learnedSpells 
+                        : [9999];
+                    
+                    // 60% chance basic attack (9999), 40% chance specialized magic
+                    let chosenSpellId = (Math.random() < 0.6 || spells.length === 1)
+                        ? 9999 
+                        : spells[Math.floor(Math.random() * spells.length)];
+
+                    // Damage scaling based on spell type
+                    let statIndex = (chosenSpellId === 9999) ? 0 : 2; // STR for 9999, INT for spells
+                    let baseDamage = (suncat.stat[statIndex][2] || 0) + suncat.level;
+
                     io.emit("suncat_fires_projectile", {
                         mapID: suncat.mapID,
-                        startX: suncat.x + (dirX * 0.5), // Spawn slightly ahead
+                        spellId: chosenSpellId,
+                        startX: suncat.x + (dirX * 0.5),
                         startY: suncat.y + (dirY * 0.5),
                         dirX: dirX,
-                        dirY: dirY
+                        dirY: dirY,
+                        damage: Math.max(1, baseDamage)
                     });
                 }
             }
-            });
+        });
     //COMBAT & WORLD INTERACTION
         socket.on("engage_npc", (data) => {
                 const player = players[socket.id];
@@ -6998,6 +7152,19 @@ io.on("connection", (socket) => {
                 // console.log(`[Combat] ${player.name} engaged NPC ${data.npcIndex} at X:${data.x} Y:${data.y}`);
             });
         socket.on("npc_died", async (data) => {
+            // --- NEW: SUNCAT GAINS XP ---
+            let suncat = players[SUNCAT_ID];
+            // If Suncat is on the exact same map as the slaughter, he absorbs the stray Qi!
+            if (suncat && suncat.mapID === data.mapID) {
+                suncat.xp += data.isBoss ? 150 : 25;
+                let xpNeeded = Math.floor(100 * Math.pow(suncat.level + 1, 1.8));
+                
+                if (suncat.xp >= xpNeeded) {
+                    suncat.xp -= xpNeeded;
+                    suncat.level++;
+                    processSuncatLevelUp(); // Trigger the AI!
+                }
+            }
             if (data.alignment === 'ally') {
                     socket.broadcast.emit("npc_died", data); // Still broadcast so other players see it die
                     return; // Exit early!
@@ -7097,12 +7264,38 @@ io.on("connection", (socket) => {
             });
 
         socket.on("battle_action", (data) => {
+            const player = players[socket.id];
+            
+            // --- SUNCAT TAKES DAMAGE ---
+            if (data.targetId === "NPC_SUNCAT" || data.actionType === "SUNCAT_HIT") {
+                let suncat = players[SUNCAT_ID];
+                if (suncat) {
+                    suncat.hp = (suncat.hp || 100) - (data.payload?.damage || 5);
+                    
+                    // If Suncat "Dies", he teleports home to heal
+                    if (suncat.hp <= 0) {
+                        suncat.hp = 100;
+                        suncat.mapID = 22;
+                        suncat.x = 5.5; suncat.y = 5.5;
+                        io.emit("updatePlayers", players);
+                        io.emit("chat_message", { sender: "Suncat", text: "Ouch... I've sustained too much damage. Returning to my realm to heal.", color: "#ff6600" });
+                        processSuncatThought(socket.id, 'event', { action: "You just took lethal damage from a monster and were forced to retreat to Map 22 to heal." });
+                    } else {
+                        // If he didn't die, just process the thought occasionally so he doesn't spam
+                        if (Math.random() < 0.2) {
+                            processSuncatThought(socket.id, 'event', { action: "A monster just physically struck you in combat!" });
+                        }
+                    }
+                }
+                return;
+            }
+
             io.to(data.targetId).emit("battle_action", {
-            senderId: socket.id,
-            actionType: data.actionType,
-            payload: data.payload
+                senderId: socket.id,
+                actionType: data.actionType,
+                payload: data.payload
             });
-            });
+        });
         socket.on("set_pvp_aggro", (data) => {
             // Tell both the attacker and the victim that they are now officially enemies
             io.to(socket.id).emit("pvp_aggro_update", { enemyId: data.targetId });
@@ -7729,24 +7922,41 @@ io.on("connection", (socket) => {
                 // --- THE AGI CLOCK ---
                 autonomousTick++;
                 
-                // Every 6 ticks (3 minutes), he stops wandering and actively plots a move
-                if (autonomousTick >= 6) {
+                // Speed up his OODA loop! Now he thinks every 2 ticks (60 seconds)
+                if (autonomousTick >= 2) {
                     autonomousTick = 0;
-                    if (Math.random() < 0.03) {
+                    // REMOVED the 3% chance. He is a living entity; he will ALWAYS think!
                     executeAutonomousOODA();
-                    }
                 } else {
-                    // He paces around his immediate area while thinking
                     
-                    const move = Math.floor(Math.random() * 4);
-                    if (move === 0) suncat.y--;
-                    if (move === 1) suncat.y++;
-                    if (move === 2) suncat.x--;
-                    if (move === 3) suncat.x++;
-                    if(Math.random()>.9){
-                        suncat.mapID = Math.floor(Math.random()*22);
+                    // --- PHYSICAL PATHING LOGIC ---
+                    // If the AI set a destination using travelToLocation, walk towards it smoothly!
+                    if (suncat.targetX !== undefined && suncat.targetY !== undefined) {
+                        let dx = suncat.targetX - suncat.x;
+                        let dy = suncat.targetY - suncat.y;
+                        let dist = Math.sqrt(dx*dx + dy*dy);
+                        
+                        if (dist < 1.0) {
+                            // Arrived at destination!
+                            suncat.x = suncat.targetX;
+                            suncat.y = suncat.targetY;
+                            suncat.targetX = undefined;
+                            suncat.targetY = undefined;
+                        } else {
+                            // Walk 3 tiles per tick towards the goal
+                            suncat.x += (dx/dist) * 3.0; 
+                            suncat.y += (dy/dist) * 3.0;
+                        }
+                    } else {
+                        // Very slow, occasional pacing if he has nowhere to be
+                        if (Math.random() > 0.5) {
+                            suncat.x += (Math.random() > 0.5 ? 1 : -1);
+                            suncat.y += (Math.random() > 0.5 ? 1 : -1);
+                        }
                     }
-                    if (Math.random() < 0.03) {
+                    
+                    // 15% chance to reflect and write in his journal while walking
+                    if (Math.random() < 0.15) {
                         writeSuncatJournal();
                     }
                 }
