@@ -89,7 +89,7 @@
             name: "Suncat",
             x: 5.5, y: 5.5, mapID: 22,
             type: SUNCAT_SPRITE,
-            direction: "down",
+            dir: 0,
             isNPC: true,
             level: 1, xp: 0, suncatClass: "Wandering Spirit", hp: 100,
             stat: [[1,4,0], [1,4,0], [1,4,0], [1,4,0]],
@@ -7021,7 +7021,7 @@ io.on("connection", (socket) => {
                     x: data.x, 
                     y: data.y,
                     mapID: data.mapID, // <-- ADD THIS so clients know what map they are on
-                    direction: data.dir,
+                    dir: data.dir,
                     summons: data.summons
                 });
                 }
