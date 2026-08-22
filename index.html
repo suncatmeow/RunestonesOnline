@@ -804,17 +804,110 @@
                     payload: matchData
                 });
             });
+            if (typeof Dungeon !== 'undefined' && !Dungeon.hostilePlayers) {
+                Dungeon.hostilePlayers = new Set();
+            }
+            // Catch Visual Ghost Projectiles
+            socket.on("player_fires_projectile", (data) => {
+                // Only render it if we are on the exact same map!
+                if (typeof Dungeon !== 'undefined' && Dungeon.mapID === data.mapID) {
+                    
+                    let visualProj = new Projectile(
+                        data.startX, data.startY, 
+                        data.dirX, data.dirY, 
+                        data.speed, 
+                        0, // Damage is 0! The shooter handles the math.
+                        'network', 
+                        false, 
+                        data.spellId
+                    );
+                    
+                    Dungeon.projectiles.push(visualProj);
+                    
+                    // Play the sound locally so we hear the spell cast!
+                    if (typeof MusicEngine !== 'undefined') {
+                        let spellData = SPELL_REGISTRY[data.spellId];
+                        let sfx = (spellData && spellData.type === 'projectile') ? 'fire2' : 'arcane3';
+                        MusicEngine.play3DSFX(sfx, data.startX, data.startY, Dungeon.x, Dungeon.y, Dungeon.dir);
+                    }
+                }
+            });
+            // 1. CATCH THE AGGRO STATE (When war is declared)
+            socket.on("pvp_aggro_update", (data) => {
+                if (typeof Dungeon !== 'undefined') {
+                    Dungeon.hostilePlayers.add(data.enemyId);
+                    console.log(`PvP Aggro Activated! Player ${data.enemyId} is now hostile!`);
+                    Dungeon.playerFlashTimer = 5; // Flash the screen to warn them!
+                }
+            });
+                        // 2. CATCH INCOMING BATTLE ACTIONS
             socket.on("battle_action", (data) => {
                 console.log("[battle_action] Received:", data.actionType, "from:", data.senderId);
-
-            
-                // 2. DEFINE PAYLOAD (Critical Fix)
-                // You were using 'payload' in your switch cases, but it wasn't defined!
                 const payload = data.payload; 
 
-            
+                if (typeof Dungeon === 'undefined') return;
+
+                // Trigger Aggro automatically if someone hits us first!
+                if (data.senderId && !Dungeon.hostilePlayers.has(data.senderId)) {
+                    Dungeon.hostilePlayers.add(data.senderId);
+                    socket.emit("set_pvp_aggro", { targetId: data.senderId });
+                }
 
                 switch (data.actionType) {
+                    case 'OVERWORLD_HIT':
+                        let fakeAttacker = {
+                            isPlayer: true,
+                            level: payload.attackerStats.level,
+                            stat: payload.attackerStats.stat,
+                            damage: payload.attackerStats.damage
+                        };
+                        
+                        let survived = Dungeon.absorbHit(fakeAttacker, payload.spellId);
+                        
+                        if (!survived) {
+                            console.log("You were killed by another player!");
+                            if (typeof MessageBox !== 'undefined') {
+                                MessageBox.show(0.5, 8, 1, 9, 2, 'You were slain by another player!', 'dialogue', 1, 0);
+                            }
+                            
+                            // Wait 2 seconds so they can read the message, then force reload
+                            setTimeout(() => {
+                                window.location.reload(); 
+                            }, 2000); 
+                        }
+                        break;
+
+                    case 'OVERWORLD_HIT_SUMMON':
+                        let summonToHit = Dungeon.npcs.find(n => n.index === payload.summonId && n.alignment === 'ally');
+                        if (summonToHit) {
+                            let fakeAttacker = { isPlayer: true, level: payload.attackerStats.level, stat: payload.attackerStats.stat, damage: payload.attackerStats.damage };
+                            let summonSurvived = summonToHit.absorbHit(fakeAttacker, payload.spellId);
+                            if (!summonSurvived) Dungeon.killNPC(summonToHit, false, 'pvp_combat');
+                        }
+                        break;
+
+                    case 'OVERWORLD_SPELL':
+                        Dungeon.applySpell(payload.spellId, payload.magnitude);
+                        
+                        if (payload.knockX || payload.knockY) {
+                            let nextX = Dungeon.x + payload.knockX;
+                            let nextY = Dungeon.y + payload.knockY;
+                            if (!Dungeon.isWall(Math.floor(nextX), Math.floor(nextY))) {
+                                Dungeon.targetMapX = nextX;
+                                Dungeon.targetMapY = nextY;
+                                Dungeon.isSlidingToTile = true;
+                                window.activeMoveKey = null; 
+                                Dungeon.inputCooldown = 0.5; 
+                            }
+                        }
+                        Dungeon.playerFlashTimer = 3;
+                        if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('debuff');
+                        
+                        // Failsafe: Did the spell/DoT outright kill them?
+                        if (Dungeon.power <= 0 && Dungeon.currentWardTime <= 0) {
+                            setTimeout(() => { window.location.reload(); }, 2000);
+                        }
+                        break;
                     // --- RUNE PICK (The Mirror Logic) ---
                     case 'RUNE_PICK':
                     // 1. Debug: Check if we are reading the data correctly
@@ -1582,7 +1675,7 @@
                     
                     // Your engine uses 'dir' for facing direction
                     if (data.direction !== undefined) {
-                        window.remotePlayers[data.id].dir = data.direction;
+                        window.remotePlayers[data.id].dir = data.dir;
                     }
                     
                 } else {
@@ -3335,20 +3428,48 @@
                     currentPrey = null; // Reset to find a new target
 
                     // --- ALLY & ESCORT LOGIC ---
-                    if (this.alignment === 'ally' || this.alignment === 'escort' || this.alignment === 'escort_combat') {
-                        let closestDistSq = Infinity;
-                        let aggroRadiusSq = 36; 
-                        
-                        if (this.alignment !== 'escort') {
-                            for (let other of dungeon.npcs) {
-                                if (other === this || other.isDead || !other.visible || !other.alignment.startsWith('foe')|| other.alignment === 'foe_coward') continue;
-                                let dSq = Math.pow(other.x - this.x, 2) + Math.pow(other.y - this.y, 2);
-                                if (dSq < aggroRadiusSq && dSq < closestDistSq && this.hasLineOfSight(maze, other.x, other.y)) { 
-                                    closestDistSq = dSq; currentPrey = other;
+                        if (this.alignment === 'ally' || this.alignment === 'escort' || this.alignment === 'escort_combat') {
+                            let closestDistSq = Infinity;
+                            let aggroRadiusSq = 36; 
+                            
+                            // 1. Scan Local NPCs (Native Monsters)
+                            if (this.alignment !== 'escort') {
+                                for (let other of dungeon.npcs) {
+                                    if (other === this || other.isDead || !other.visible || !other.alignment.startsWith('foe') || other.alignment === 'foe_coward') continue;
+                                    let dSq = Math.pow(other.x - this.x, 2) + Math.pow(other.y - this.y, 2);
+                                    if (dSq < aggroRadiusSq && dSq < closestDistSq && this.hasLineOfSight(maze, other.x, other.y)) { 
+                                        closestDistSq = dSq; currentPrey = other;
+                                    }
+                                }
+                            }
+
+                            // 2. Scan Network (Hostile Players & Their Summons)
+                            if (dungeon.hostilePlayers && window.remotePlayers) {
+                                for (let id of dungeon.hostilePlayers) {
+                                    let rp = window.remotePlayers[id];
+                                    if (!rp || rp.mapID !== dungeon.mapID || rp.isDead) continue;
+                                    
+                                    // A. Target the Hostile Player
+                                    let pdSq = Math.pow(rp.x - this.x, 2) + Math.pow(rp.y - this.y, 2);
+                                    if (pdSq < aggroRadiusSq && pdSq < closestDistSq && this.hasLineOfSight(maze, rp.x, rp.y)) {
+                                        closestDistSq = pdSq; 
+                                        // Create a mock object so the rest of your AI logic works seamlessly!
+                                        currentPrey = { isRemotePlayer: true, socketId: id, x: rp.x, y: rp.y, radius: 0.25, type: 91 };
+                                    }
+                                    
+                                    // B. Target the Hostile Player's Summons
+                                    if (rp.summons) {
+                                        for (let rs of rp.summons) {
+                                            let sdSq = Math.pow(rs.x - this.x, 2) + Math.pow(rs.y - this.y, 2);
+                                            if (sdSq < aggroRadiusSq && sdSq < closestDistSq && this.hasLineOfSight(maze, rs.x, rs.y)) {
+                                                closestDistSq = sdSq; 
+                                                currentPrey = { isRemoteSummon: true, socketId: id, summonId: rs.id, x: rs.x, y: rs.y, radius: 0.25, type: rs.type };
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
-                    }
                     
                     // --- DEFENDER LOGIC (The Guards) ---
                     else if (this.alignment.startsWith('defender')) {
@@ -3748,6 +3869,36 @@
                     // SCENARIO A: NPC CAUGHT AN ENEMY NPC
                     if (isChasingNPC && currentPrey) {
                         if (distToTarget < 1.5) {
+                            // --- NEW: REMOTE PLAYER/SUMMON CLASH ---
+                                if (currentPrey.isRemotePlayer || currentPrey.isRemoteSummon) {
+                                    this.dirX = -toTargetX; 
+                                    this.dirY = -toTargetY;
+                                    this.damageFlashTimer = 3;
+                                    this.combatCooldown = 13; // Put the summon on cooldown
+                                    this.isSliding = false; // Kill momentum
+                                    
+                                    if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('slash', this.x, this.y, playerX, playerY, dungeon.dir);
+                                    
+                                    // Emulate the damage and send it over the network
+                                    if (typeof socket !== 'undefined') {
+                                        let myStats = { level: dungeon.level, stat: this.stat, damage: this.damage || 0 };
+                                        
+                                        if (currentPrey.isRemotePlayer) {
+                                            socket.emit("battle_action", { 
+                                                targetId: currentPrey.socketId, 
+                                                actionType: "OVERWORLD_HIT", 
+                                                payload: { attackerStats: myStats, spellId: null } 
+                                            });
+                                        } else {
+                                            socket.emit("battle_action", { 
+                                                targetId: currentPrey.socketId, 
+                                                actionType: "OVERWORLD_HIT_SUMMON", 
+                                                payload: { summonId: currentPrey.summonId, attackerStats: myStats, spellId: null } 
+                                            });
+                                        }
+                                    }
+                                    return; // Skip the rest of the local NPC vs NPC collision math!
+                                }
                             if (currentPrey.cachedPrey !== this) {
                                 currentPrey.cachedPrey = this;     
                                 currentPrey.state = 'chasing';     
@@ -4526,6 +4677,21 @@
                     //if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX(isJudgement ? 'debuff' : 'debuff2');
 
                     let targetsToCheck = [...dungeon.npcs];
+                    // --- PVP INJECTION: Add Network Players to the AoE crosshairs ---
+                        if (window.remotePlayers) {
+                            for (let id in window.remotePlayers) {
+                                let rp = window.remotePlayers[id];
+                                if (rp.mapID === this.mapID && rp.x !== undefined && !rp.isDead) {
+                                    targetsToCheck.push({
+                                        isRemotePlayer: true,
+                                        socketId: rp.socketId,
+                                        x: rp.x, y: rp.y,
+                                        alignment: 'foe', // Treat other players as foes for the targeting math
+                                        stat: [[1,4,0],[1,4,0],[1,4,0],[1,4,0]] // Fallback stats for Judgement checks
+                                    });
+                                }
+                            }
+                        }
                     if (typeof this.alignment === 'string' && this.alignment.startsWith('foe')) {
                         targetsToCheck.push(dungeon); 
                     }
@@ -4629,6 +4795,21 @@
                 // ==========================================
                 else if (spellData.type === 'assassination') {
                     let targetsToCheck = [...dungeon.npcs];
+                    // --- PVP INJECTION: Add Network Players to the AoE crosshairs ---
+                        if (window.remotePlayers) {
+                            for (let id in window.remotePlayers) {
+                                let rp = window.remotePlayers[id];
+                                if (rp.mapID === this.mapID && rp.x !== undefined && !rp.isDead) {
+                                    targetsToCheck.push({
+                                        isRemotePlayer: true,
+                                        socketId: rp.socketId,
+                                        x: rp.x, y: rp.y,
+                                        alignment: 'foe', // Treat other players as foes for the targeting math
+                                        stat: [[1,4,0],[1,4,0],[1,4,0],[1,4,0]] // Fallback stats for Judgement checks
+                                    });
+                                }
+                            }
+                        }
                     if (typeof this.alignment === 'string' && this.alignment.startsWith('foe')) {
                         targetsToCheck.push(dungeon); 
                     }
@@ -4890,6 +5071,21 @@
                         let myAtk = myCard.rollStat(spellData.castStat) + myAtkMod + (this.damage || 0);
 
                         let targetsToCheck = [...dungeon.npcs];
+                        // --- PVP INJECTION: Add Network Players to the AoE crosshairs ---
+                            if (window.remotePlayers) {
+                                for (let id in window.remotePlayers) {
+                                    let rp = window.remotePlayers[id];
+                                    if (rp.mapID === this.mapID && rp.x !== undefined && !rp.isDead) {
+                                        targetsToCheck.push({
+                                            isRemotePlayer: true,
+                                            socketId: rp.socketId,
+                                            x: rp.x, y: rp.y,
+                                            alignment: 'foe', // Treat other players as foes for the targeting math
+                                            stat: [[1,4,0],[1,4,0],[1,4,0],[1,4,0]] // Fallback stats for Judgement checks
+                                        });
+                                    }
+                                }
+                            }
                         if (typeof this.alignment === 'string' && this.alignment.startsWith('foe')) {
                             targetsToCheck.push(dungeon);
                         }
@@ -9627,9 +9823,6 @@
                                 this.npcs.push(new NPC(3, 21.5, 12.5, 83, 'wandering', '#ff0000', [59,52,40,83], 'battle', false, 'foe'));
                                 this.npcs.push(new NPC(4, 26.5, 2.5, 83, 'wandering', '#ff0000', [59,52,40,83], 'battle', false, 'foe'));
                                 
-                                // The Boss (Dialogue Trigger)
-                                let krakenDialog = new NPC(1, 6.5, 7.5, 49.1, 'stationary', '#ff0000', [52], 'dialogue', true, 'foe');
-                                
                                 // Ice Queen Spawn Args (Unchanged)
                                 let iqSpawnArgs = [
                                     this.mapID, 9, 'SPEAKER_X', 'SPEAKER_Y', 48, 'chasing', '#00ff00', [48], null, null, 'dialogue', null, false, 'friendly_messenger',
@@ -9643,48 +9836,40 @@
                                     }
                                 ];
 
-                                krakenDialog.dialogueFactory = (dungeon) => {
-                                    // SEQUENCE BREAK: Player arrived before MainQuest 4
-                                    if (dungeon.MainQuest < 5) {
-                                        return {
-                                            text: [
-                                                "*The massive beast ignores you, deeming you unworthy of its wrath.*", 
-                                                "*A massive tidal wave sweeps you away!*"
-                                            ],
-                                            endActions: [['play_sfx', 'wind'], ['load_map', 9]] // Washes them back to the start!
-                                        };
-                                    }
-
-                                    // NORMAL QUEST STATE: The True Battle
-                                    return {
-                                        text: ["*The Kraken emerges from the depths, furious!*"],
-                                        options: ['Fight!'],
-                                        yesActions: [
-                                            ['play_sfx', 'horn'],
-                                            ['spawn_npc', [
-                                                1, 1, 'SPEAKER_X', 'SPEAKER_Y', 49.1, 'stationary', '#ff0000', [52,52,52,52,40,40,10,10,58,51,51,58,83,83,83,49], null, null, 'battle', null, true, 'foe',
-                                                [], // endActions
-                                                [   // deathActions (World-Altering Sequence)
-                                                    ['set_memory', {key: 'mq_map9', value: true}],
-                                                    ['set_memory', {key: 'kraken_dead', value: true}], 
-                                                    ['spawn_npc', [9,88, 1.5, 6.5, 99, 'stationary', '#66ccff', [33.5, 17.5, 10, 3], null, null, 'portal', null, null, 'friendly']],
-                                                    ['spawn_npc', [9, 89, 1.5, 7.5, 99, 'stationary', '#66ccff', [33.5, 17.5, 10, 3], null, null, 'portal', null, null, 'friendly']],
-                                                    ['spawn_npc', [9, 90, 1.5, 8.5, 99, 'stationary', '#66ccff', [33.5, 17.5, 10, 3], null, null, 'portal', null, null, 'friendly']],
-                                                    ['kill_type', 83], 
-                                                    ['change_weather', 'clear'],
-                                                    ['change_sky', 'rgba(0,0,255,1)'],
-                                                    ['set_map_song', { mapID: 9, songID: 3 }],
-                                                    ['spawn_npc', iqSpawnArgs], 
-                                                    ['spectate', 'Player defeated the Kraken! The storm clears.']
-                                                ]
-                                            ]],
-                                            ['disappear', 1] // The dialogue NPC vanishes, replaced by the battle one
-                                        ],
-                                        noActions: null
-                                    };
-                                };
-                                
-                                this.npcs.push(krakenDialog);
+                                // 1. NOT ON MAIN QUEST: Wash the player away
+                                if (this.MainQuest < 5) {
+                                    let krakenNPC = new NPC(1, 6.5, 7.5, 49.1, 'stationary', '#ff0000', [52], 'dialogue', true, 'foe');
+                                    krakenNPC.customDialogue = [
+                                        "*The massive beast ignores you, deeming you unworthy of its wrath.*",
+                                        "*A massive tidal wave sweeps you away!*"
+                                    ];
+                                    krakenNPC.endActions = [['play_sfx', 'wind'], ['load_map', 9]];
+                                    this.npcs.push(krakenNPC);
+                                } 
+                                // 2. ON MAIN QUEST: Pure hostile boss encounter!
+                                else {
+                                    let krakenDeck = [52,52,52,52,40,40,10,10,58,51,51,58,83,83,83,49];
+                                    
+                                    // Spawn straight into 'battle' role and 'chasing' state so it attacks on sight!
+                                    let krakenNPC = new NPC(1, 6.5, 7.5, 49.1, 'chasing', '#ff0000', krakenDeck, 'battle', true, 'foe');
+                                    
+                                    // Attach the world-altering sequence directly to its deathActions
+                                    krakenNPC.deathActions = [
+                                        ['set_memory', {key: 'mq_map9', value: true}],
+                                        ['set_memory', {key: 'kraken_dead', value: true}], 
+                                        ['spawn_npc', [9,88, 1.5, 6.5, 99, 'stationary', '#66ccff', [33.5, 17.5, 10, 3], null, null, 'portal', null, null, 'friendly']],
+                                        ['spawn_npc', [9, 89, 1.5, 7.5, 99, 'stationary', '#66ccff', [33.5, 17.5, 10, 3], null, null, 'portal', null, null, 'friendly']],
+                                        ['spawn_npc', [9, 90, 1.5, 8.5, 99, 'stationary', '#66ccff', [33.5, 17.5, 10, 3], null, null, 'portal', null, null, 'friendly']],
+                                        ['kill_type', 83], 
+                                        ['change_weather', 'clear'],
+                                        ['change_sky', 'rgba(0,0,255,1)'],
+                                        ['set_map_song', { mapID: 9, songID: 3 }],
+                                        ['spawn_npc', iqSpawnArgs], 
+                                        ['spectate', 'Player defeated the Kraken! The storm clears.']
+                                    ];
+                                    
+                                    this.npcs.push(krakenNPC);
+                                }
                             }
                         // ==========================================
                         // 3. POST-KRAKEN STATE (Dead State)
@@ -13149,8 +13334,10 @@
                             
                             let viewH = (typeof tH !== 'undefined' && tH > 0) ? tH : 400;
                             let zScale = this.zScale || 1.0;
-                            let exactCenterPitch = (zDiff / dist) * viewH * zScale;
-                            let uiFramingOffset = -(viewH * 0.15); 
+                            // PREVENT DIVISION EXPLOSION: Clamp the distance to a minimum of 0.8 tiles
+                            let safeDist = Math.max(0.8, dist); 
+                            let exactCenterPitch = (zDiff / safeDist) * viewH * zScale;
+                            let uiFramingOffset = -(viewH * 0.15);
                             
                             // --- THE FIX: SOFT LOOK FOR ALLIES ---
                             // Dampen the up/down movement so we don't stare at the floor when they stand next to us
@@ -13588,7 +13775,18 @@
                     this.weather.draw(ctx, tX, tY);
 
                     if (this.frame % 3 === 0) { 
-                        socket.emit("move", { x: this.x, y: this.y, dir: this.dir, mapID: this.mapID, status: this.status, type: playerSprite, name: playerName });
+                        // Gather all living allied summons to send over the network
+                        let mySummons = this.npcs
+                            .filter(n => n.alignment === 'ally' && !n.isDead)
+                            .map(n => ({ id: n.index, x: n.x, y: n.y, type: n.type, dir: n.dir }));
+
+                        if (typeof socket !== 'undefined') {
+                            socket.emit("move", {
+                                x: this.x, y: this.y, dir: this.dir, mapID: this.mapID, 
+                                status: this.status, type: playerSprite, name: playerName,
+                                summons: mySummons // <--- INCLUDE SUMMONS IN THE PAYLOAD
+                            });
+                        }
                     }
                     
                 // ==========================================
@@ -13645,14 +13843,35 @@
                             this.renderList.push(this.playerRenderObj);
                         }
 
-                    // 4. REMOTE PLAYERS & SUNCAT
+                    // 4. REMOTE PLAYERS & THEIR SUMMONS
                         if (window.remotePlayers) {
                             for (let id in window.remotePlayers) {
                                 let rp = window.remotePlayers[id];
                                 if (rp && rp.mapID === this.mapID && !rp.isDead && rp.visible !== false) {
+                                    
+                                    // Render the Remote Player
                                     let dSq = (rp.x - camX) * (rp.x - camX) + (rp.y - camY) * (rp.y - camY);
                                     if (dSq <= cullDistSq) {
                                         this.renderList.push(rp);
+                                    }
+                                    
+                                    // Render the Remote Player's Summons!
+                                    if (rp.summons && rp.summons.length > 0) {
+                                        rp.summons.forEach(summon => {
+                                            let sdSq = (summon.x - camX) * (summon.x - camX) + (summon.y - camY) * (summon.y - camY);
+                                            if (sdSq <= cullDistSq) {
+                                                // Push a mock object so your renderer draws it just like an NPC
+                                                this.renderList.push({
+                                                    x: summon.x,
+                                                    y: summon.y,
+                                                    type: summon.type,
+                                                    dir: summon.dir,
+                                                    isRemoteSummon: true, // Tag it so we know what it is
+                                                    ownerName: rp.name,
+                                                    alignment: (this.hostilePlayers && this.hostilePlayers.has(id)) ? 'foe' : 'ally'
+                                                });
+                                            }
+                                        });
                                     }
                                 }
                             }
@@ -14236,14 +14455,21 @@
                         for (let id in window.remotePlayers) {
                             let p = window.remotePlayers[id];
                             if (p.mapID === this.mapID && p.x !== undefined && p.y !== undefined) {
-                                const diffX = p.x - this.x-.5;
-                                const diffY = p.y - this.y-.5;
+                                
+                                // ==========================================
+                                // A. RENDER THE REMOTE PLAYER
+                                // ==========================================
+                                const diffX = p.x - this.x - .5;
+                                const diffY = p.y - this.y - .5;
                                 const dist = Math.sqrt(diffX*diffX + diffY*diffY);
 
                                 if (Math.abs(diffX) <= range + 1 && Math.abs(diffY) <= range + 1) {
-                                        let canSee = (this.dSense > 0 && dist <= this.dSense) && this.checkLineOfSight(p.x, p.y);                            if (canSee) {
+                                    let canSee = (this.dSense > 0 && dist <= this.dSense) && this.checkLineOfSight(p.x, p.y);                            
+                                    
+                                    if (canSee) {
                                         let tx = centerScreenX + (diffX * cellSize) - (cellSize / 2);
                                         let ty = centerScreenY + (diffY * cellSize) - (cellSize / 2);
+                                        
                                         // --- HIJACK GLOBALS ---
                                         const oldTX = tX; const oldTY = tY; const oldTL = tL; const oldTH = tH;
                                         let pxX = oldTX + (oldTL / 10) * tx;
@@ -14261,13 +14487,62 @@
                                             
                                             // Draw Name Tag
                                             tX = oldTX; tY = oldTY; tL = oldTL; tH = oldTH;
-                                            let nameColor = (p.name && p.name.toLowerCase().includes('suncat')) ? '#ff6600' : '#00ffff';
+                                            
+                                            // If PvP Aggro is active, turn their name red!
+                                            let isHostile = (this.hostilePlayers && this.hostilePlayers.has(id));
+                                            let nameColor = isHostile ? '#ff0000' : ((p.name && p.name.toLowerCase().includes('suncat')) ? '#ff6600' : '#00ffff');
+                                            
                                             drawText(tx + (cellSize/2)-1, ty + cellSize, cellSize * 2, 0.4, ''+p.name, nameColor, 1, 'center');
                                         }
 
                                         // Restore Globals
                                         tX = oldTX; tY = oldTY; tL = oldTL; tH = oldTH;
                                     }
+                                }
+
+                                // ==========================================
+                                // B. RENDER THEIR SUMMONS!
+                                // ==========================================
+                                if (p.summons && p.summons.length > 0) {
+                                    p.summons.forEach(summon => {
+                                        const sDiffX = summon.x - this.x - .5;
+                                        const sDiffY = summon.y - this.y - .5;
+                                        const sDist = Math.sqrt(sDiffX*sDiffX + sDiffY*sDiffY);
+
+                                        if (Math.abs(sDiffX) <= range + 1 && Math.abs(sDiffY) <= range + 1) {
+                                            let canSeeSummon = (this.dSense > 0 && sDist <= this.dSense) && this.checkLineOfSight(summon.x, summon.y);
+                                            
+                                            if (canSeeSummon) {
+                                                let tx = centerScreenX + (sDiffX * cellSize) - (cellSize / 2);
+                                                let ty = centerScreenY + (sDiffY * cellSize) - (cellSize / 2);
+                                                
+                                                // --- HIJACK GLOBALS ---
+                                                const oldTX = tX; const oldTY = tY; const oldTL = tL; const oldTH = tH;
+                                                let pxX = oldTX + (oldTL / 10) * tx;
+                                                let pxY = oldTY + (oldTH / 10) * ty;
+                                                let pixelSpriteSize = (oldTL / 10) * cellSize; 
+                                                
+                                                tX = pxX; 
+                                                tY = pxY; 
+                                                tL = pixelSpriteSize/10; 
+                                                tH = pixelSpriteSize/10;
+
+                                                if (typeof drawPortrait === 'function') {
+                                                    let imageToDraw = (summon.type !== undefined) ? summon.type : 0;
+                                                    drawPortrait(imageToDraw, 0, 0, 1*10);
+                                                    
+                                                    // Draw Name Tag for the Summon
+                                                    tX = oldTX; tY = oldTY; tL = oldTL; tH = oldTH;
+                                                    let isHostile = (this.hostilePlayers && this.hostilePlayers.has(id));
+                                                    let nameColor = isHostile ? '#ff0000' : '#00ff00'; // Red if fighting you, Green if peaceful
+                                                    drawText(tx + (cellSize/2)-1, ty + cellSize, cellSize * 2, 0.4, ''+p.name, nameColor, 1, 'center');
+                                                }
+
+                                                // Restore Globals
+                                                tX = oldTX; tY = oldTY; tL = oldTL; tH = oldTH;
+                                            }
+                                        }
+                                    });
                                 }
                             }
                         }
@@ -14453,10 +14728,18 @@
                     drawShape('rec', 0, 0, 1, 10, 0, 10, 10, 0,0,0,0, '#000000', 1);
                 // ---------------------------------------------------------
                 if (this.frame % 3 === 0) { 
-                    socket.emit("move", {
-                        x: this.x, y: this.y, dir: this.dir, mapID: this.mapID, 
-                        status: this.status, type: playerSprite, name: playerName 
-                    });
+                    // Gather all living allied summons to send over the network
+                    let mySummons = this.npcs
+                        .filter(n => n.alignment === 'ally' && !n.isDead)
+                        .map(n => ({ id: n.index, x: n.x, y: n.y, type: n.type, dir: n.dir }));
+
+                    if (typeof socket !== 'undefined') {
+                        socket.emit("move", {
+                            x: this.x, y: this.y, dir: this.dir, mapID: this.mapID, 
+                            status: this.status, type: playerSprite, name: playerName,
+                            summons: mySummons // <--- INCLUDE SUMMONS IN THE PAYLOAD
+                        });
+                    }
                 }
                 const viewW = (typeof tL !== 'undefined' && tL > 0) ? tL : window.innerWidth;
                 const viewH = (typeof tH !== 'undefined' && tH > 0) ? tH : window.innerHeight;
@@ -16781,198 +17064,218 @@
             castSpell(spellId) {
                 let spellData = SPELL_REGISTRY[spellId];
 
-                // --- INSTANT BUFFS & WARDS ---
+                // ==========================================
+                // 1. INSTANT BUFFS & WARDS (Network Synced)
+                // ==========================================
                 if (spellData.type === 'buff' || spellData.type === 'ward') {
                     let statToCast = spellData.castStat !== undefined ? spellData.castStat : 2;
                     let playerCard = new Card(91, 0, { mastery: this.level }); 
                     let magnitude = playerCard.rollStat(statToCast);
                     
-                    // 1. Apply to nearby allies
+                    // A. Apply to nearby allied NPCs
                     this.npcs.forEach(npc => {
                         if (!npc.isDead && npc.alignment === 'ally') {
                             npc.applySpell(spellId, magnitude); 
                         }
                     });
 
-                    // 2. APPLY TO THE PLAYER
+                    // B. Apply to nearby friendly Network Players (5-Tile Radius)
+                    if (window.remotePlayers && typeof socket !== 'undefined') {
+                        for (let id in window.remotePlayers) {
+                            let rp = window.remotePlayers[id];
+                            // Only buff players on the same map who are NOT hostile
+                            if (rp.mapID === this.mapID && !rp.isDead && (!this.hostilePlayers || !this.hostilePlayers.has(id))) {
+                                let distSq = Math.pow(rp.x - this.x, 2) + Math.pow(rp.y - this.y, 2);
+                                if (distSq < 25) { 
+                                    socket.emit("battle_action", {
+                                        targetId: id, actionType: "OVERWORLD_SPELL",
+                                        payload: { spellId: spellId, magnitude: magnitude, knockX: 0, knockY: 0 }
+                                    });
+                                }
+                            }
+                        }
+                    }
+
+                    // C. Apply to the Player
                     this.applySpell(spellId, magnitude); 
-                    
                     if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('arcane');
                 }
                 // ==========================================
-                // NEW: IMBUEMENT MAGIC (Pooled INT Damage)
+                // 2. IMBUEMENT MAGIC
                 // ==========================================
                 else if (spellData.type === 'imbue') {
-                    let requiredSpellId = spellData.consume; // 26 (Fire)
+                    let requiredSpellId = spellData.consume; 
                     
-                    // Check if player has the required spell in hand (Battle-Mage) OR learned (Skill)
                     let handIndex = -1;
-                    if (this.hand) {
-                        handIndex = this.hand.findIndex(c => c !== null && c.index === requiredSpellId);
-                    }
+                    if (this.hand) handIndex = this.hand.findIndex(c => c !== null && c.index === requiredSpellId);
                     let isSkillReady = this.spellsLearned && this.spellsLearned[requiredSpellId] && !((this.skillCooldowns[requiredSpellId] || 0) > Date.now());
 
                     if (handIndex !== -1 || isSkillReady) {
-                        // 1. CONSUME THE SECONDARY SPELL (Fire)
                         if (handIndex !== -1) {
-                            this.hand[handIndex] = null; // Consume Fire from hand
-                            if (typeof this.shuffleSpells === 'function') this.shuffleSpells(); // Re-draw
+                            this.hand[handIndex] = null; 
+                            if (typeof this.shuffleSpells === 'function') this.shuffleSpells(); 
                         } else {
-                            // Put Fire skill on its normal cooldown
                             let reqCooldown = (SPELL_REGISTRY[requiredSpellId] && SPELL_REGISTRY[requiredSpellId].cooldown) ? SPELL_REGISTRY[requiredSpellId].cooldown : 6000;
                             this.skillCooldowns[requiredSpellId] = Date.now() + reqCooldown;
                         }
 
-                        // 2. PUT IMBUE FIRE ON ITS OWN LONGER COOLDOWN
-                        // You can adjust this 15000 (15 seconds) to whatever you prefer!
                         let imbueCooldown = spellData.cooldown || 15000; 
                         this.skillCooldowns[spellId] = Date.now() + imbueCooldown;
                         
-                        // 3. ROLL INT DIRECTLY FROM PLAYER STATS
                         let intDiceCount = this.stat[2][0] || 1;
                         let intDiceSides = this.stat[2][1] || 4;
                         let intDiceMod = this.stat[2][2] || 0;
                         
                         let intRoll = 0;
-                        for (let r = 0; r < intDiceCount; r++) {
-                            intRoll += Math.floor(Math.random() * intDiceSides) + 1;
-                        }
+                        for (let r = 0; r < intDiceCount; r++) { intRoll += Math.floor(Math.random() * intDiceSides) + 1; }
                         intRoll += intDiceMod;
                         
-                        // 4. Add to the cumulative damage pool
                         this.imbuedFireDamage = (this.imbuedFireDamage || 0) + intRoll;
                         
-                        // 5. Visuals and Audio (No UI Notify!)
                         if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('buff2');
                         if (typeof globalParticles !== 'undefined') {
                             for (let p = 0; p < 3; p++) spawnParticle(this.x, this.y, '#ff4400', 'sparkle');
                         }
-
                     } else {
-                        // FAILS TO CAST (Missing Fire spell)
                         if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('cancel');
-                        
-                        // Put Imbue Fire on a minor 1-second penalty cooldown to prevent spamming
                         this.skillCooldowns[spellId] = Date.now() + 1000;
                     }
-                    
                     if (typeof this.updateSkills === 'function') this.updateSkills();
                 }
                 // ==========================================
-                // NEW: AOE WALL-SLAM & JUDGEMENT
+                // 3. AOE WALL-SLAM & JUDGEMENT (Network Synced)
                 // ==========================================
                 else if (spellData.type === 'aoe_knockback' || spellData.type === 'aoe_judgement') {
                     let isJudgement = spellData.type === 'aoe_judgement';
-
-                    // 1. Roll ALL Player Stats for Judgement
                     let playerTotalStats = 0;
+
                     if (isJudgement) {
                         let playerCard = new Card(91, 0, { mastery: this.level });
-                        for(let s = 0; s < 4; s++) {
-                            playerTotalStats += playerCard.rollStat(s) + (this.stat[s][2] || 0);
-                        }
+                        for(let s = 0; s < 4; s++) playerTotalStats += playerCard.rollStat(s) + (this.stat[s][2] || 0);
                     }
 
                     if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX(isJudgement ? 'horn' : 'wind');
 
-                    // 2. Scan for Enemies in Range
-                    this.npcs.forEach(npc => {
-                        // Ignore dead, invisible, or allied NPCs
-                        if (npc.isDead || !npc.visible || npc.alignment === 'ally') return;
-                        
-                        // Only target foes (allows friendly fire if the player casts it, but ignores friendly_messengers)
-                        if (typeof npc.alignment === 'string' && !npc.alignment.startsWith('foe')) return;
+                    // --- BUILD UNIFIED TARGET LIST (NPCs + Network Players) ---
+                    let targetsToCheck = [...this.npcs];
+                    if (window.remotePlayers) {
+                        for (let id in window.remotePlayers) {
+                            let rp = window.remotePlayers[id];
+                            if (rp.mapID === this.mapID && !rp.isDead && rp.x !== undefined) {
+                                targetsToCheck.push({
+                                    isRemotePlayer: true, socketId: id, name: rp.name,
+                                    x: rp.x, y: rp.y,
+                                    alignment: (this.hostilePlayers && this.hostilePlayers.has(id)) ? 'foe' : 'ally',
+                                    stat: [[1,4,0],[1,4,0],[1,4,0],[1,4,0]], type: 91
+                                });
+                            }
+                        }
+                    }
 
-                        let dx = npc.x - this.x;
-                        let dy = npc.y - this.y;
+                    targetsToCheck.forEach(target => {
+                        if (target.isDead || !target.visible || target.alignment === 'ally') return;
+                        if (typeof target.alignment === 'string' && !target.alignment.startsWith('foe')) return;
+
+                        let dx = target.x - this.x; let dy = target.y - this.y;
                         let dist = Math.sqrt(dx*dx + dy*dy);
-                        
-                        // Prevent division by zero if they are directly on top of the player
                         if (dist === 0) { dx = 1; dist = 1; } 
 
                         if (dist <= spellData.range) {
                             let resisted = false;
 
-                            // 3. The Judgement Check
                             if (isJudgement) {
-                                let targetCard = new Card(Math.floor(npc.type), 0);
+                                let targetCard = new Card(Math.floor(target.type), 0);
                                 let targetTotalStats = 0;
-                                
-                                // Roll all 4 stats for the monster, including any active buffs/debuffs
-                                for(let s = 0; s < 4; s++) {
-                                    targetTotalStats += targetCard.rollStat(s) + (npc.stat[s] ? npc.stat[s][2] : 0);
-                                }
+                                for(let s = 0; s < 4; s++) targetTotalStats += targetCard.rollStat(s) + (target.stat[s] ? target.stat[s][2] : 0);
 
-                                // If the player rolled higher, it's an instant kill
                                 if (playerTotalStats > targetTotalStats) {
-                                    this.killNPC(npc, false, 'judgement');
-                                } else {
-                                    resisted = true; // Target survived the death effect!
+                                    if (target.isRemotePlayer) {
+                                        // INSTANT KILL NETWORK PACKET
+                                        let myStats = { level: 99, stat: this.stat, damage: 9999 };
+                                        if (typeof socket !== 'undefined') socket.emit("battle_action", { targetId: target.socketId, actionType: "OVERWORLD_HIT", payload: { attackerStats: myStats, spellId: spellId }});
+                                        return;
+                                    } else {
+                                        this.killNPC(target, false, 'judgement');
+                                    }
+                                } else { resisted = true; }
+                            } else { resisted = true; }
+
+                            if (resisted && !target.isDead) { 
+                                let knockPower = spellData.knockback || 1.0;
+                                let pushX = dx / dist; let pushY = dy / dist;
+
+                                if (target.isRemotePlayer) {
+                                    // NETWORK KNOCKBACK PACKET
+                                    if (typeof socket !== 'undefined') {
+                                        socket.emit("battle_action", {
+                                            targetId: target.socketId, actionType: "OVERWORLD_SPELL",
+                                            payload: { spellId: spellId, magnitude: 1, knockX: pushX * knockPower, knockY: pushY * knockPower }
+                                        });
+                                    }
+                                    return; // Skip NPC physics math
                                 }
-                            } else {
-                                resisted = true; // Dragon Wing doesn't kill, it always "resists" to trigger knockback
-                            }
 
-                            // 4. The Wall-Slam Knockback (SMOOTH ANIMATION)
-                            if (resisted && !npc.isDead) { 
-                                let pushX = dx / dist;
-                                let pushY = dy / dist;
-
-                                let maxPush = 20; 
-                                let pushed = 0;
-                                
-                                // Use temporary variables to test the path
-                                let testX = npc.x;
-                                let testY = npc.y;
+                                // NPC Physics Math
+                                let maxPush = 20; let pushed = 0;
+                                let testX = target.x; let testY = target.y;
                                 
                                 while (pushed < maxPush) {
                                     let nextX = testX + pushX * 0.5; 
                                     let nextY = testY + pushY * 0.5;
-                                    
-                                    // Check if the NEXT step hits a wall
-                                    if (this.isWall(Math.floor(nextX), Math.floor(nextY))) {
-                                        break; 
-                                    }
-                                    
-                                    testX = nextX;
-                                    testY = nextY;
-                                    pushed++;
+                                    if (this.isWall(Math.floor(nextX), Math.floor(nextY))) break; 
+                                    testX = nextX; testY = nextY; pushed++;
                                 }
 
-                                // Set the destination and trigger the slide!
-                                npc.slideTargetX = testX;
-                                npc.slideTargetY = testY;
-                                npc.isSliding = true;
-
-                                // Apply Stun and Aggro
-                                npc.state = 'chasing';
-                                npc.combatCooldown = 13; // Stunned while sliding!
+                                if (!target.isSliding) {
+                                    target.slideTargetX = testX; target.slideTargetY = testY;
+                                    target.isSliding = true;
+                                }
+                                target.state = 'chasing';
+                                target.combatCooldown = 13;
                             }
                         }
                     });
                     
                     if (typeof globalParticles !== 'undefined') {
                         let pColor = spellData.glow || spellData.auraColor || '#ffffff';
-                        for (let p = 0; p < 12; p++) {
-                            spawnParticle(
-                                this.x + (Math.random() - 0.5) * 1.5,
-                                this.y + (Math.random() - 0.5) * 1.5,
-                                pColor, 
-                                'sparkle'
-                            );
-                        }
+                        for (let p = 0; p < 12; p++) spawnParticle(this.x + (Math.random() - 0.5) * 1.5, this.y + (Math.random() - 0.5) * 1.5, pColor, 'sparkle');
                     }
                 }
                 // ==========================================
-                // NEW: BOOSTER PACKS (Loot, Chests, Rewards)
+                // 4. BOOSTER PACKS & UTILITY
                 // ==========================================
-                // Inside castSpell...
                 else if (spellData.type === 'item_booster') {
-                    this.openBoosterPack(spellId); // Pass the ID instead of the amount!
+                    this.openBoosterPack(spellId); 
                     if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('chime'); 
                 }
+                else if (spellData.type === 'item_teleport') {
+                    if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('warp');
+                    if (this.mapID === -1) this.loadMap(this.prevMap); 
+                    else this.loadMap(-1); 
+                }
+                else if (spellData.type === 'item_chariot') {
+                    this.ghost = true;
+                }
+                else if (spellData.type === 'cultivate') {
+                    let playerCard = new Card(91, 0, { mastery: this.level });
+                    let baseCon = (this.stat && this.stat[spellData.castStat]) ? this.stat[spellData.castStat][0] : 1;
+                    let modCon = (this.stat && this.stat[spellData.castStat]) ? this.stat[spellData.castStat][2] : 0;
+                    let statRoll = playerCard.rollStat(spellData.castStat) + modCon;
+                    
+                    if (this.statPoints === undefined) this.statPoints = 0;
+                    this.statPoints += statRoll;
+
+                    if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('heal');
+                    if (typeof globalParticles !== 'undefined') {
+                        for (let p = 0; p < 9; p++) spawnParticle(this.x + (Math.random() - 0.5), this.y + (Math.random() - 0.5), '#009966', 'sparkle');
+                    }
+                    this.actionQueue.unshift(['notify', { 
+                        text: `You meditated and gained ${statRoll} Stat Points! Open your character menu to distribute them.`, 
+                        endActions: [['close_dialogue', null]] 
+                    }]);
+                }
                 // ==========================================
-                // PROJECTILES & RANGED DEBUFFS
+                // 5. PROJECTILES (Network Broadcasted)
                 // ==========================================
                 else if (spellData.type === 'projectile' || spellData.type === 'debuff') {
                     let baseDirX = 0; let baseDirY = 0;
@@ -16983,27 +17286,32 @@
 
                     let finalDirX = baseDirX; let finalDirY = baseDirY;
 
-                    // --- MAGNETIC AIM ASSIST (Basic Attack) ---
+                    // --- MAGNETIC AIM ASSIST ---
                     if (this.cameraMode !== undefined && (spellId === 9999 || !spellData.isHoming)) { 
                         let bestTarget = null;
                         let closestDist = Infinity;
                         let maxScanRange = spellData.range !== undefined ? spellData.range : 5.0;
 
-                        // 1. PRIMARY: If camera is tracking a foe, target them immediately!
-                        if (this.focusTarget && !this.focusTarget.isDead && typeof this.focusTarget.alignment === 'string' && this.focusTarget.alignment.startsWith('foe')) {
-                            let dx = this.focusTarget.x - this.x;
-                            let dy = this.focusTarget.y - this.y;
-                            let dist = Math.sqrt(dx*dx + dy*dy);
-                            if (dist <= maxScanRange + 0.5) {
-                                bestTarget = this.focusTarget;
-                                closestDist = dist;
+                        // Build a combined list of enemies to snap to
+                        let potentialTargets = [...this.npcs];
+                        if (window.remotePlayers) {
+                            for (let id in window.remotePlayers) {
+                                let rp = window.remotePlayers[id];
+                                if (rp.mapID === this.mapID && !rp.isDead && this.hostilePlayers && this.hostilePlayers.has(id)) {
+                                    potentialTargets.push({ x: rp.x, y: rp.y, alignment: 'foe' });
+                                }
                             }
                         }
 
-                        // 2. FALLBACK: Scan for closest valid target in front of player
+                        if (this.focusTarget && !this.focusTarget.isDead && typeof this.focusTarget.alignment === 'string' && this.focusTarget.alignment.startsWith('foe')) {
+                            let dx = this.focusTarget.x - this.x; let dy = this.focusTarget.y - this.y;
+                            let dist = Math.sqrt(dx*dx + dy*dy);
+                            if (dist <= maxScanRange + 0.5) { bestTarget = this.focusTarget; closestDist = dist; }
+                        }
+
                         if (!bestTarget) {
-                            this.npcs.forEach(npc => {
-                                if (npc.isDead || !npc.visible || npc.type < 0 || npc.type === 99 || npc.alignment === 'ally') return;
+                            potentialTargets.forEach(npc => {
+                                if (npc.isDead || !npc.visible || npc.alignment === 'ally') return;
                                 if (typeof npc.alignment === 'string' && !npc.alignment.startsWith('foe')) return;
 
                                 let dx = npc.x - this.x; let dy = npc.y - this.y;
@@ -17011,10 +17319,7 @@
 
                                 if (dist > 0 && dist <= maxScanRange + 0.5) {
                                     let dot = (baseDirX * (dx/dist)) + (baseDirY * (dy/dist));
-                                    if (dot > 0.707 && dist < closestDist) {
-                                        closestDist = dist;
-                                        bestTarget = npc;
-                                    }
+                                    if (dot > 0.707 && dist < closestDist) { closestDist = dist; bestTarget = npc; }
                                 }
                             });
                         }
@@ -17023,40 +17328,37 @@
                             finalDirX = (bestTarget.x - this.x) / closestDist;
                             finalDirY = (bestTarget.y - this.y) / closestDist;
 
-                            // Auto-turn player body to face the locked-on target
                             if ((this.manualTurnTimer || 0) <= 0) {
-                                if (Math.abs(finalDirX) > Math.abs(finalDirY)) {
-                                    this.dir = finalDirX > 0 ? 1 : 3;
-                                } else {
-                                    this.dir = finalDirY > 0 ? 2 : 0;
-                                }
+                                if (Math.abs(finalDirX) > Math.abs(finalDirY)) this.dir = finalDirX > 0 ? 1 : 3;
+                                else this.dir = finalDirY > 0 ? 2 : 0;
 
                                 this.currentAngle = this.dir * (Math.PI / 2);
-                                this._cinePan = 0; 
-                                this.lookPan = 0;
+                                this._cinePan = 0; this.lookPan = 0;
                             }
                         }
                     }
 
                     const startX = this.x + (finalDirX * 0.5);
                     const startY = this.y + (finalDirY * 0.5);
-
                     let finalSpellId = spellId;
                     let finalDamage = 0;
 
-                    // --- THE FIX: RELEASE THE ACCUMULATED DAMAGE POOL ---
                     if ((spellId === 9999 || spellId === 26) && this.imbuedFireDamage > 0) {
                         finalSpellId = (spellId === 9999) ? 9998 : 26; 
-                        
-                        // Pass the EXACT INT damage we pooled up into the projectile
                         finalDamage = this.imbuedFireDamage; 
-                        
-                        // Empty the pool so it doesn't apply to the next attack
                         this.imbuedFireDamage = 0; 
                     }
 
-                    // Now push it with the updated variables!
                     this.projectiles.push(new Projectile(startX, startY, finalDirX, finalDirY, 6.0, finalDamage, null, SPELL_REGISTRY[finalSpellId].isHoming, finalSpellId));        
+                    
+                    // --- NETWORK BROADCAST: Let other players render the fireball! ---
+                    if (typeof socket !== 'undefined') {
+                        socket.emit("player_fires_projectile", {
+                            mapID: this.mapID, spellId: finalSpellId,
+                            startX: startX, startY: startY, dirX: finalDirX, dirY: finalDirY, speed: 6.0
+                        });
+                    }
+
                     this.playerAttackTimer = 15;
                     
                     if (finalSpellId === 9999 || finalSpellId === 9998) {
@@ -17068,29 +17370,42 @@
                     }
                 }
                 // ==========================================
-                // NEW: ASSASSINATION & STEAL SPELLS (Backstab, Steal)
+                // 6. ASSASSINATION (Network Synced)
                 // ==========================================
                 else if (spellData.type === 'assassination') {
                     let bestTarget = null;
                     let closestDist = Infinity;
 
-                    this.npcs.forEach(npc => {
-                        if (npc.isDead || !npc.visible || npc.type < 0 || npc.type === 99) return;
+                    let targetsToCheck = [...this.npcs];
+                    if (window.remotePlayers) {
+                        for (let id in window.remotePlayers) {
+                            let rp = window.remotePlayers[id];
+                            if (rp.mapID === this.mapID && !rp.isDead && rp.x !== undefined) {
+                                targetsToCheck.push({
+                                    isRemotePlayer: true, socketId: id, name: rp.name,
+                                    x: rp.x, y: rp.y, dir: rp.direction === 'up' ? 0 : (rp.direction === 'down' ? 2 : (rp.direction === 'left' ? 3 : 1)),
+                                    alignment: (this.hostilePlayers && this.hostilePlayers.has(id)) ? 'foe' : 'ally',
+                                    stat: [[1,4,0],[1,4,0],[1,4,0],[1,4,0]], type: 91
+                                });
+                            }
+                        }
+                    }
+
+                    targetsToCheck.forEach(target => {
+                        if (target.isDead || !target.visible || target.type < 0 || target.type === 99) return;
                         if (!spellData.isSteal) {
-                            if (npc.alignment === 'ally') return;
-                            if (typeof npc.alignment === 'string' && !npc.alignment.startsWith('foe')) return;
-                            if (npc.role === 'dialogue' || npc.role === 'shop' || npc.role === 'quest_giver') return;
+                            if (target.alignment === 'ally') return;
+                            if (typeof target.alignment === 'string' && !target.alignment.startsWith('foe')) return;
+                            if (target.role === 'dialogue' || target.role === 'shop' || target.role === 'quest_giver') return;
                         } else {
-                            if (npc.alignment === 'ally') return; 
+                            if (target.alignment === 'ally') return; 
                         }
 
-                        let dx = npc.x - this.x;
-                        let dy = npc.y - this.y;
+                        let dx = target.x - this.x; let dy = target.y - this.y;
                         let dist = Math.sqrt(dx*dx + dy*dy);
 
-                        if (dist <= spellData.range && dist < closestDist && this.checkLineOfSight(npc.x, npc.y)) {
-                            closestDist = dist;
-                            bestTarget = npc;
+                        if (dist <= spellData.range && dist < closestDist && this.checkLineOfSight(target.x, target.y)) {
+                            closestDist = dist; bestTarget = target;
                         }
                     });
 
@@ -17100,19 +17415,13 @@
                     }
 
                     let targetDir = 2; 
-                    if (bestTarget.dir !== undefined) {
-                        targetDir = bestTarget.dir; 
-                    } else {
-                        if (Math.abs(bestTarget.dirX) > Math.abs(bestTarget.dirY)) {
-                            targetDir = bestTarget.dirX > 0 ? 1 : 3; 
-                        } else {
-                            targetDir = bestTarget.dirY > 0 ? 2 : 0; 
-                        }
+                    if (bestTarget.dir !== undefined) targetDir = bestTarget.dir; 
+                    else if (bestTarget.dirX !== undefined) {
+                        if (Math.abs(bestTarget.dirX) > Math.abs(bestTarget.dirY)) targetDir = bestTarget.dirX > 0 ? 1 : 3; 
+                        else targetDir = bestTarget.dirY > 0 ? 2 : 0; 
                     }
 
-                    let behindX = bestTarget.x;
-                    let behindY = bestTarget.y;
-
+                    let behindX = bestTarget.x; let behindY = bestTarget.y;
                     if (targetDir === 0) behindY += 1;     
                     else if (targetDir === 1) behindX -= 1; 
                     else if (targetDir === 2) behindY -= 1; 
@@ -17124,10 +17433,8 @@
                         return; 
                     }
 
-                    this.dashTargetX = behindX;
-                    this.dashTargetY = behindY;
-                    this.isAggroDashing = true; 
-                    this.dir = targetDir; 
+                    this.dashTargetX = behindX; this.dashTargetY = behindY;
+                    this.isAggroDashing = true; this.dir = targetDir; 
 
                     if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('wind');
 
@@ -17142,49 +17449,59 @@
                         if (spellData.isSteal) {
                             if (playerAgi > targetAgi) {
                                 if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('chime');
-                                let stolenCardId = 10; 
-                                if (bestTarget.deck && bestTarget.deck.length > 0) {
-                                    let randIdx = Math.floor(Math.random() * bestTarget.deck.length);
-                                    stolenCardId = typeof bestTarget.deck[randIdx] === 'object' ? bestTarget.deck[randIdx].index : bestTarget.deck[randIdx];
+                                
+                                if (bestTarget.isRemotePlayer) {
+                                    // Hit them instead of stealing for now so they take damage
+                                    let myStats = { level: this.level, stat: this.stat, damage: this.damage || 0 };
+                                    if (typeof socket !== 'undefined') socket.emit("battle_action", { targetId: bestTarget.socketId, actionType: "OVERWORLD_HIT", payload: { attackerStats: myStats, spellId: spellId }});
+                                    this.actionQueue.unshift(['notify', { text: `You mugged ${bestTarget.name}!`, endActions: [['close_dialogue', null]] }]);
+                                } else {
+                                    let stolenCardId = 10; 
+                                    if (bestTarget.deck && bestTarget.deck.length > 0) {
+                                        let randIdx = Math.floor(Math.random() * bestTarget.deck.length);
+                                        stolenCardId = typeof bestTarget.deck[randIdx] === 'object' ? bestTarget.deck[randIdx].index : bestTarget.deck[randIdx];
+                                    }
+                                    this.actionQueue.unshift(['give_card', { card: stolenCardId, text: `You successfully pickpocketed ${bestTarget.name}!` }]);
                                 }
-                                this.actionQueue.unshift(['give_card', { card: stolenCardId, text: `You successfully pickpocketed ${bestTarget.name}!` }]);
                             } else {
                                 if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('cancel');
                                 this.actionQueue.unshift(['notify', { text: `You were caught trying to steal from ${bestTarget.name}!`, endActions: [['close_dialogue', null]] }]);
                                 
-                                if (bestTarget.alignment !== 'foe' && bestTarget.alignment !== 'foe_wave') {
-                                    this.actionQueue.unshift(['transform_npc', { index: bestTarget.index, newAlignment: 'foe', newRole: 'battle', newState: 'chasing' }]);
-                                } else {
-                                    bestTarget.dirX *= -1; 
-                                    bestTarget.dirY *= -1;
+                                if (!bestTarget.isRemotePlayer) {
+                                    if (bestTarget.alignment !== 'foe' && bestTarget.alignment !== 'foe_wave') {
+                                        this.actionQueue.unshift(['transform_npc', { index: bestTarget.index, newAlignment: 'foe', newRole: 'battle', newState: 'chasing' }]);
+                                    } else {
+                                        bestTarget.dirX *= -1;  bestTarget.dirY *= -1;
+                                    }
                                 }
                             }
                         } 
                         else {
                             if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('slash');                        
                             
-                            if (bestTarget.absorbHit(this, spellId)) {
-                                let pushX = this.dir === 1 ? 1 : (this.dir === 3 ? -1 : 0);
-                                let pushY = this.dir === 2 ? 1 : (this.dir === 0 ? -1 : 0);
-                                
-                                // FIX: Prevent compounding knockback
-                                if (!bestTarget.isSliding) {
-                                    bestTarget.slideTargetX = bestTarget.x + (pushX * 0.5);
-                                    bestTarget.slideTargetY = bestTarget.y + (pushY * 0.5);
-                                    bestTarget.isSliding = true;
-                                }
-                                bestTarget.state = 'chasing';
+                            if (bestTarget.isRemotePlayer) {
+                                let myStats = { level: this.level, stat: this.stat, damage: this.damage || 0 };
+                                if (typeof socket !== 'undefined') socket.emit("battle_action", { targetId: bestTarget.socketId, actionType: "OVERWORLD_HIT", payload: { attackerStats: myStats, spellId: spellId }});
                             } else {
-                                this.killNPC(bestTarget, false, 'backstab');
+                                if (bestTarget.absorbHit(this, spellId)) {
+                                    let pushX = this.dir === 1 ? 1 : (this.dir === 3 ? -1 : 0);
+                                    let pushY = this.dir === 2 ? 1 : (this.dir === 0 ? -1 : 0);
+                                    
+                                    if (!bestTarget.isSliding) {
+                                        bestTarget.slideTargetX = bestTarget.x + (pushX * 0.5);
+                                        bestTarget.slideTargetY = bestTarget.y + (pushY * 0.5);
+                                        bestTarget.isSliding = true;
+                                    }
+                                    bestTarget.state = 'chasing';
+                                } else {
+                                    this.killNPC(bestTarget, false, 'backstab');
+                                }
                             }
                         }
 
-                        this.targetMapX = behindX;
-                        this.targetMapY = behindY;
+                        this.targetMapX = behindX; this.targetMapY = behindY;
                         this.isSlidingToTile = false;
-
-                        window.activeMoveKey = null;
-                        window.activeCtrlKey = false;
+                        window.activeMoveKey = null; window.activeCtrlKey = false;
                         if (typeof btnMove !== 'undefined') { btnMove.isPressed = false; btnMove.currentDir = null; }
                         if (typeof btnMove2 !== 'undefined') { btnMove2.isPressed = false; btnMove2.currentDir = null; }
                         if (typeof btnTurnL !== 'undefined') { btnTurnL.isPressed = false; btnTurnL.currentDir = null; }
@@ -17192,52 +17509,49 @@
                     };
                 }
                 // ==========================================
-                // NEW: FRONTAL CONE AoE (Slash, Shield Bash)
+                // 7. FRONTAL CONE AOE (Network Synced)
                 // ==========================================
                 else if (spellData.type === 'cone') {
                     if ((this.manualTurnTimer || 0) <= 0) {
-                        let bestSnap = null;
-                        let bestDist = Infinity;
-                        
-                        if (this.focusTarget && !this.focusTarget.isDead && typeof this.focusTarget.alignment === 'string' && this.focusTarget.alignment.startsWith('foe')) {
-                            let dx = this.focusTarget.x - this.x;
-                            let dy = this.focusTarget.y - this.y;
-                            let dist = Math.sqrt(dx*dx + dy*dy);
-                            if (dist <= spellData.range) {
-                                bestDist = dist;
-                                bestSnap = this.focusTarget;
+                        let bestSnap = null; let bestDist = Infinity;
+
+                        let targetsToCheck = [...this.npcs];
+                        if (window.remotePlayers) {
+                            for (let id in window.remotePlayers) {
+                                let rp = window.remotePlayers[id];
+                                if (rp.mapID === this.mapID && !rp.isDead && rp.x !== undefined) {
+                                    targetsToCheck.push({
+                                        isRemotePlayer: true, socketId: id, name: rp.name, x: rp.x, y: rp.y,
+                                        alignment: (this.hostilePlayers && this.hostilePlayers.has(id)) ? 'foe' : 'ally',
+                                        stat: [[1,4,0],[1,4,0],[1,4,0],[1,4,0]], type: 91
+                                    });
+                                }
                             }
                         }
 
+                        if (this.focusTarget && !this.focusTarget.isDead && typeof this.focusTarget.alignment === 'string' && this.focusTarget.alignment.startsWith('foe')) {
+                            let dx = this.focusTarget.x - this.x; let dy = this.focusTarget.y - this.y;
+                            let dist = Math.sqrt(dx*dx + dy*dy);
+                            if (dist <= spellData.range) { bestDist = dist; bestSnap = this.focusTarget; }
+                        }
+
                         if (!bestSnap) {
-                            this.npcs.forEach(npc => {
+                            targetsToCheck.forEach(npc => {
                                 if (npc.isDead || !npc.visible || npc.alignment === 'ally') return;
                                 if (typeof npc.alignment === 'string' && !npc.alignment.startsWith('foe')) return;
 
-                                let dx = npc.x - this.x;
-                                let dy = npc.y - this.y;
+                                let dx = npc.x - this.x; let dy = npc.y - this.y;
                                 let dist = Math.sqrt(dx*dx + dy*dy);
-                                
-                                if (dist <= spellData.range && dist < bestDist) {
-                                    bestDist = dist;
-                                    bestSnap = npc;
-                                }
+                                if (dist <= spellData.range && dist < bestDist) { bestDist = dist; bestSnap = npc; }
                             });
                         }
 
                         if (bestSnap) {
-                            let dx = bestSnap.x - this.x;
-                            let dy = bestSnap.y - this.y;
-                            
-                            if (Math.abs(dx) > Math.abs(dy)) {
-                                this.dir = dx > 0 ? 1 : 3;
-                            } else {
-                                this.dir = dy > 0 ? 2 : 0;
-                            }
-                            
+                            let dx = bestSnap.x - this.x; let dy = bestSnap.y - this.y;
+                            if (Math.abs(dx) > Math.abs(dy)) this.dir = dx > 0 ? 1 : 3;
+                            else this.dir = dy > 0 ? 2 : 0;
                             this.currentAngle = this.dir * (Math.PI / 2);
-                            this._cinePan = 0;
-                            this.lookPan = 0;
+                            this._cinePan = 0; this.lookPan = 0;
                         }
                     }
 
@@ -17251,176 +17565,143 @@
                         MusicEngine.play3DSFX(spellData.name === 'Shield Bash' ? 'block' : (spellData.bind ? 'wind' : 'slash'));
                     }
 
-                    // --- UPGRADE: DYNAMIC CONE PARTICLE SPREAD ---
                     if (typeof globalParticles !== 'undefined' && typeof spawnParticle !== 'undefined') {
-                        // Grab the spell's color, fallback to white
                         let pColor = spellData.glow || spellData.auraColor || '#ffffff';
                         let coneRange = spellData.range || 4.0;
                         let pType = (spellData.visual === 'chains' || spellData.visual === 'aura') ? 'smoke' : 'sparkle';
                         
-                        // Step outward from the caster to the end of the range
                         for (let dist = 0.5; dist <= coneRange; dist += 0.5) {
-                            
-                            // The further out we go, the wider the cone gets!
                             let spread = dist * 1.5; 
-                            
-                            // Spawn a burst of particles at this distance tier
                             for (let p = 0; p < 4; p++) {
-                                // Calculate perpendicular spread (to fan outwards)
                                 let perpX = -fY * (Math.random() - 0.5) * spread;
                                 let perpY = fX * (Math.random() - 0.5) * spread;
-                                
-                                spawnParticle(
-                                    this.x + (fX * dist) + perpX,
-                                    this.y + (fY * dist) + perpY,
-                                    pColor, 
-                                    pType
-                                );
+                                spawnParticle(this.x + (fX * dist) + perpX, this.y + (fY * dist) + perpY, pColor, pType);
                             }
                         }
                     }
 
                     let hitSomething = false;
 
-                    this.npcs.forEach(npc => {
-                        if (npc.isDead || !npc.visible || npc.type < 0 || npc.type === 99 || npc.alignment === 'ally') return;
-                        if (typeof npc.alignment === 'string' && !npc.alignment.startsWith('foe')) return;
+                    let targetsToCheck = [...this.npcs];
+                    if (window.remotePlayers) {
+                        for (let id in window.remotePlayers) {
+                            let rp = window.remotePlayers[id];
+                            if (rp.mapID === this.mapID && !rp.isDead && rp.x !== undefined) {
+                                targetsToCheck.push({
+                                    isRemotePlayer: true, socketId: id, name: rp.name, x: rp.x, y: rp.y,
+                                    alignment: (this.hostilePlayers && this.hostilePlayers.has(id)) ? 'foe' : 'ally',
+                                    stat: [[1,4,0],[1,4,0],[1,4,0],[1,4,0]], type: 91
+                                });
+                            }
+                        }
+                    }
 
-                        let dx = npc.x - this.x;
-                        let dy = npc.y - this.y;
+                    targetsToCheck.forEach(target => {
+                        if (target.isDead || !target.visible || target.type < 0 || target.type === 99 || target.alignment === 'ally') return;
+                        if (typeof target.alignment === 'string' && !target.alignment.startsWith('foe')) return;
+
+                        let dx = target.x - this.x;
+                        let dy = target.y - this.y;
                         let dist = Math.sqrt(dx*dx + dy*dy);
 
                         if (dist > 0 && dist <= spellData.range) {
-                            
                             let dot = (fX * (dx/dist)) + (fY * (dy/dist));
                             
                             if (dot > spellData.angle) {
                                 hitSomething = true;
+                                let playerCard = new Card(91, 0, { mastery: this.level }); 
+                                let targetCard = new Card(Math.floor(target.type), 0);
 
-                               let playerCard = new Card(91, 0, { mastery: this.level }); 
-                               let targetCard = new Card(Math.floor(npc.type), 0);
+                                let playerAtk = playerCard.rollStat(spellData.castStat) + (this.stat[spellData.castStat][2] || 0) + this.damage;
+                                let targetDef = targetCard.rollStat(spellData.defStat) + (target.stat[spellData.defStat] ? target.stat[spellData.defStat][2] : 0);
 
-                               let playerAtk = playerCard.rollStat(spellData.castStat) + (this.stat[spellData.castStat][2] || 0) + this.damage;
-                               let targetDef = targetCard.rollStat(spellData.defStat) + (npc.stat[spellData.defStat] ? npc.stat[spellData.defStat][2] : 0);
+                                if (playerAtk > targetDef) {
+                                    if (target.isRemotePlayer) {
+                                        let knockPower = (spellData.knockback || 1.0) * 0.5;
+                                        let pushX = (dx / dist) * knockPower;
+                                        let pushY = (dy / dist) * knockPower;
 
-                               if (playerAtk > targetDef) {
-                                   if (npc.absorbHit(this, spellId)) {
-                                       let knockPower = (spellData.knockback || 1.0) * 0.5;
-                                       let pushX = dx / dist;
-                                       let pushY = dy / dist;
-                                       
-                                       // FIX: Prevent compounding knockback
-                                       if (!npc.isSliding) {
-                                           npc.slideTargetX = npc.x + pushX * knockPower;
-                                           npc.slideTargetY = npc.y + pushY * knockPower;
-                                           npc.isSliding = true;
-                                       }
-                                       npc.state = 'chasing';
-                                   } else {
-                                       // --- UPGRADE: CHECK IF THIS IS A DEBUFF CONE ---
-                                       if (spellData.debuffStat !== undefined || spellData.bind) {
-                                           let magnitude = Math.max(1, playerAtk - targetDef);
-                                           npc.applySpell(spellId, magnitude);
-                                           npc.damageFlashTimer = 3;
-                                       } else {
-                                           this.killNPC(npc, false, 'cone_attack');
-                                       }
-                                   }
-                               } else {
+                                        if (typeof socket !== 'undefined') {
+                                            if (spellData.debuffStat !== undefined || spellData.bind) {
+                                                socket.emit("battle_action", {
+                                                    targetId: target.socketId, actionType: "OVERWORLD_SPELL",
+                                                    payload: { spellId: spellId, magnitude: Math.max(1, playerAtk - targetDef), knockX: pushX, knockY: pushY }
+                                                });
+                                            } else {
+                                                let myStats = { level: this.level, stat: this.stat, damage: this.damage || 0 };
+                                                socket.emit("battle_action", {
+                                                    targetId: target.socketId, actionType: "OVERWORLD_HIT",
+                                                    payload: { attackerStats: myStats, spellId: spellId }
+                                                });
+                                            }
+                                        }
+                                        return; // Skip NPC knockback math
+                                    }
+
+                                    if (target.absorbHit(this, spellId)) {
+                                        let knockPower = (spellData.knockback || 1.0) * 0.5;
+                                        let pushX = dx / dist; let pushY = dy / dist;
+                                        
+                                        if (!target.isSliding) {
+                                            target.slideTargetX = target.x + pushX * knockPower;
+                                            target.slideTargetY = target.y + pushY * knockPower;
+                                            target.isSliding = true;
+                                        }
+                                        target.state = 'chasing';
+                                    } else {
+                                        if (spellData.debuffStat !== undefined || spellData.bind) {
+                                            let magnitude = Math.max(1, playerAtk - targetDef);
+                                            target.applySpell(spellId, magnitude);
+                                            target.damageFlashTimer = 3;
+                                        } else {
+                                            this.killNPC(target, false, 'cone_attack');
+                                        }
+                                    }
+                                } else {
+                                    if (target.isRemotePlayer) return; // Players don't take knockback on resist
+
                                     let knockPower = spellData.knockback || 1.0;
-                                    
-                                    let pushX = dx / dist;
-                                    let pushY = dy / dist;
-
+                                    let pushX = dx / dist; let pushY = dy / dist;
                                     let maxPushSteps = Math.floor(knockPower * 4); 
                                     let pushed = 0;
-                                    
-                                    let testX = npc.x;
-                                    let testY = npc.y;
+                                    let testX = target.x; let testY = target.y;
                                     
                                     while (pushed < maxPushSteps) {
                                         let nextX = testX + pushX * 0.25; 
                                         let nextY = testY + pushY * 0.25;
-                                        
                                         let bufferX = pushX > 0 ? 0.3 : -0.3;
                                         let bufferY = pushY > 0 ? 0.3 : -0.3;
 
-                                        if (this.isWall(Math.floor(nextX + bufferX), Math.floor(nextY + bufferY))) {
-                                            break; 
-                                        }
-                                        
-                                        testX = nextX;
-                                        testY = nextY;
-                                        pushed++;
+                                        if (this.isWall(Math.floor(nextX + bufferX), Math.floor(nextY + bufferY))) break; 
+                                        testX = nextX; testY = nextY; pushed++;
                                     }
 
-                                    // FIX: Prevent compounding knockback
-                                    if (!npc.isSliding) {
-                                        npc.slideTargetX = testX;
-                                        npc.slideTargetY = testY;
-                                        npc.isSliding = true;
+                                    if (!target.isSliding) {
+                                        target.slideTargetX = testX; target.slideTargetY = testY;
+                                        target.isSliding = true;
                                     }
-                                    npc.state = 'chasing';
-                                    npc.combatCooldown = 13;
-                               }
+                                    target.state = 'chasing'; target.combatCooldown = 13;
+                                }
                             }
                         }
                     });
                 }
                 // ==========================================
-                // NEW: CULTIVATE (Stat Point Generation)
-                // ==========================================
-                else if (spellData.type === 'cultivate') {
-                    let playerCard = new Card(91, 0, { mastery: this.level });
-                    
-                    // Roll CON (Base + Mod)
-                    let baseCon = (this.stat && this.stat[spellData.castStat]) ? this.stat[spellData.castStat][0] : 1;
-                    let modCon = (this.stat && this.stat[spellData.castStat]) ? this.stat[spellData.castStat][2] : 0;
-                    
-                    let statRoll = playerCard.rollStat(spellData.castStat) + modCon;
-                    
-                    // Add to the player's unspent stat points!
-                    if (this.statPoints === undefined) this.statPoints = 0;
-                    this.statPoints += statRoll;
-
-                    if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('heal');
-                    
-                    if (typeof globalParticles !== 'undefined') {
-                        for (let p = 0; p < 9; p++) {
-                            spawnParticle(this.x + (Math.random() - 0.5), this.y + (Math.random() - 0.5), '#009966', 'sparkle');
-                        }
-                    }
-
-                    // Tell the player they gained points
-                    this.actionQueue.unshift(['notify', { 
-                        text: `You meditated and gained ${statRoll} Stat Points! Open your character menu to distribute them.`, 
-                        endActions: [['close_dialogue', null]] 
-                    }]);
-                }
-                // ==========================================
-                // NEW: CONSUMABLE ITEMS
+                // 8. CONSUMABLE ITEMS (Item Buff / Ward)
                 // ==========================================
                 else if (spellData.type === 'item_buff' || spellData.type === 'item_ward') {
-                    // Items use their fixed magnitude, defaulting to 1 for wards
                     let magnitude = spellData.amount || 1; 
                     
                     // --- THE ELIXIR OVERRIDE (ID 25) ---
                     if (spellId === 25 || spellData.name === 'Elixer') {
-                        
-                        // 1. Restore the Player's Intrinsic Wards
                         if (this.currentWards !== undefined && this.maxWards !== undefined) {
                             this.currentWards = this.maxWards;
                         }
 
-                        // 2. The Universal Cleanse Function (For Player & Allies)
                         const cleanseAndRestore = (entity) => {
                             if (!entity.activeBuffs) return;
-                            
-                            // Loop backwards because we are splicing items out of the array
                             for (let i = entity.activeBuffs.length - 1; i >= 0; i--) {
                                 let b = entity.activeBuffs[i];
-                                
-                                // Cleanse Debuffs (and revert their stat penalties!)
                                 if (b.type === 'debuff') {
                                     if (b.debuffStat === 'all') {
                                         for (let s = 0; s < 4; s++) {
@@ -17431,58 +17712,46 @@
                                     }
                                     entity.activeBuffs.splice(i, 1);
                                 }
-                                
-                                // Restore NPC Wards (Find original max hits from the registry)
                                 else if (b.type === 'ward' || b.type === 'item_ward') {
                                     let originalSpell = Object.values(SPELL_REGISTRY).find(s => s.name === b.name);
-                                    if (originalSpell && originalSpell.hits) {
-                                        b.hits = originalSpell.hits;
-                                    }
+                                    if (originalSpell && originalSpell.hits) b.hits = originalSpell.hits;
                                 }
                             }
                         };
 
-                        // Run the cleanse on the Player and all active Allies
                         cleanseAndRestore(this);
                         this.npcs.forEach(npc => {
                             if (!npc.isDead && npc.alignment === 'ally') cleanseAndRestore(npc);
                         });
                     }
-                    // -----------------------------------
 
-                    // THE BUG FIX: Actually apply the item stats to the Player!
                     this.applySpell(spellId, magnitude); 
                     
-                    // Apply to all friendly summons currently on the map
                     this.npcs.forEach(npc => {
                         if (!npc.isDead && npc.alignment === 'ally') {
                             npc.applySpell(spellId, magnitude); 
                         }
                     });
                     
+                    // Broadcast to friendly network players
+                    if (window.remotePlayers && typeof socket !== 'undefined') {
+                        for (let id in window.remotePlayers) {
+                            let rp = window.remotePlayers[id];
+                            if (rp.mapID === this.mapID && !rp.isDead && (!this.hostilePlayers || !this.hostilePlayers.has(id))) {
+                                let distSq = Math.pow(rp.x - this.x, 2) + Math.pow(rp.y - this.y, 2);
+                                if (distSq < 25) { // 5 tile radius
+                                    socket.emit("battle_action", {
+                                        targetId: id, actionType: "OVERWORLD_SPELL",
+                                        payload: { spellId: spellId, magnitude: magnitude, knockX: 0, knockY: 0 }
+                                    });
+                                }
+                            }
+                        }
+                    }
+
                     if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('heal'); 
                 }
-                // ==========================================
-                // NEW: UTILITY ITEMS (Teleportation)
-                // ==========================================
-                else if (spellData.type === 'item_teleport') {
-                    if (this.mapID === -1) {
-                        // If they use it while ALREADY in the hub, maybe it acts as a "Return" 
-                        // spell to send them back to the dungeon they were just in!
-                        if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('warp');
-                        this.loadMap(this.prevMap); 
-                    } else {
-                        // Zap them to the Portal Hub
-                        if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('warp');
-                        this.loadMap(-1); 
-                    
-                    }
-                }
-                else if (spellData.type === 'item_chariot') {
-                    this.ghost = true;
-                }
-                }
-            
+            }
             applySpell(spellId, magnitude = 1) {
                     let spell = SPELL_REGISTRY[spellId];
                     if (!spell) return;
@@ -20271,7 +20540,7 @@
                                     { id: 59, name: "Critical Strike", reqs: {
                                         'warrior': { lvl: 13, stats: { 0: 12 } }, 
                                         'knight':  { lvl: 13, stats: { 0: 12 } },
-                                        'rogue':   { lvl: 13, stats: { 0: 12 } },
+                                        'rogue':   { lvl: 13, stats: { 3: 12 } },
                                         'hunter':  { lvl: 13, stats: { 1: 12 } }, 
                                         'all':     { lvl: 13, stats: { 0: 20} }
                                     }}
@@ -20344,7 +20613,7 @@
                                     }},
                                     // 63: Dragon (MONSTER SUMMON - Mages commune with Dragons!)
                                     { id: 63, name: "Dragon", reqs: {
-                                        'all':    { lvl: 13, stats: { 2: 20 } } // Requires legendary INT (d20)
+                                        'mage':    { lvl: 13, stats: { 2: 20 } } // Requires legendary INT (d20)
                                     }},
                                     // 70: Cultivate (The absolute limit break)
                                     { id: 70, name: "Cultivate", reqs: {
@@ -20370,17 +20639,17 @@
                                     { id: 82, name: "Skeleton", reqs: {
                                         'priest':  { lvl: 3, stats: { 2: 6 } }, 
                                         'mage':    { lvl: 9, stats: { 2: 12} },
+                                        'knight': { lvl: 6, stats: { 2: 8} },
                                     }},
                                     // 28: Defense (Holy Armor)
                                     { id: 28, name: "Defense", reqs: {
                                         'priest':  { lvl: 6, stats: { 2: 8} }, 
-                                        'knight':  { lvl: 6, stats: { 2: 8} }, 
+                                        'knight':  { lvl: 7, stats: { 2: 10} }, 
                                         'mage':    { lvl: 9, stats: { 2: 12} },
                                     }},
                                     // 94: Lich (MONSTER SUMMON - High level Necromancy)
                                     { id: 94, name: "Lich", reqs: {
                                         'priest':  { lvl: 9, stats: { 2: 12 } }, 
-                                        'mage':    { lvl: 13, stats: { 2: 20 } },
                                     }},
                                     // 20: Judgement (Massive AoE)
                                     { id: 20, name: "Judgement", reqs: { 
@@ -22687,27 +22956,31 @@
             }
             
             // 3. PVP Collision (If Player fired it)
-            if (this.owner === null && window.remotePlayers) {
-                for (let id in window.remotePlayers) {
-                    let p = window.remotePlayers[id];
-                    if (p.mapID === exploreRef.mapID && p.x !== undefined) {
-                        let dist = Math.sqrt(Math.pow(this.x - p.x, 2) + Math.pow(this.y - p.y, 2));
-                        if (dist < this.radius + 0.3) {
-                            this.triggerExplosion();
-                            if (typeof socket !== 'undefined' && exploreRef.status !== 'dueling') {
-                                let mySimpleDeck = exploreRef.deck.map(c => c.index);
-                                socket.emit("challenge_request", { targetId: p.socketId, deck: mySimpleDeck });
-                                exploreRef.currentSpeaker = p;
-                                exploreRef.status = 'dueling';
-                                exploreRef.isChallenger = true;
-                                if (typeof startGame !== 'undefined') startGame = 'dialogue';
-                                if (typeof MessageBox !== 'undefined') MessageBox.show(0.5, 8, 1, 9, 2, 'You hit ' + p.name + '! Challenge sent!', 'dialogue', 1, 0);
+                if (this.owner === null && window.remotePlayers) {
+                    for (let id in window.remotePlayers) {
+                        let p = window.remotePlayers[id];
+                        if (p.mapID === exploreRef.mapID && p.x !== undefined) {
+                            let dist = Math.sqrt(Math.pow(this.x - p.x, 2) + Math.pow(this.y - p.y, 2));
+                            if (dist < this.radius + 0.3) {
+                                this.triggerExplosion();
+                                
+                                if (typeof socket !== 'undefined') {
+                                    if (p.socketId === "NPC_SUNCAT") {
+                                        socket.emit("battle_action", { targetId: p.socketId, actionType: "SUNCAT_HIT" });
+                                    } else {
+                                        // Bundle our stats + spell damage to send to the victim
+                                        let myStats = { level: exploreRef.level, stat: exploreRef.stat, damage: this.damage };
+                                        socket.emit("battle_action", { 
+                                            targetId: p.socketId, 
+                                            actionType: "OVERWORLD_HIT", 
+                                            payload: { attackerStats: myStats, spellId: this.spellId } 
+                                        });
+                                    }
+                                }
                             }
                         }
                     }
                 }
-            
-            }
         }
 
         triggerExplosion() {
@@ -59192,38 +59465,41 @@
                     }
 
                 // C. ONLINE PLAYER CHECK
-                        if (window.remotePlayers) {
-                            for (let id in window.remotePlayers) {
-                                let p = window.remotePlayers[id];
-                                if (p.mapID !== Dungeon.mapID) continue;
-                                
-                                if (Math.floor(p.x) === targetX && Math.floor(p.y) === targetY) {                       
-                                    if (movingForward) {
-                                        if (p.status === 'dueling') {
-                                            MessageBox.show(0.5, 8, 1, 9, 2, 'That player is busy fighting!', 'dialogue', 1, 0);    
-                                        } else {
-                                            let mySimpleDeck = Dungeon.deck.map(c => c.index);
-                                            socket.emit("challenge_request", { targetId: p.socketId, deck: mySimpleDeck });                            
-                                            
-                                            Dungeon.currentSpeaker = p; 
-                                            Dungeon.dCounter = 0; 
-                                            Dungeon.status = 'dueling'; 
-                                            Dungeon.isChallenger = true; 
-                                            startGame = 'dialogue';  
-                                            MessageBox.show(0.5, 8, 1, 9, 2, 'Challenge sent!', 'dialogue', 1, 0);
+                    if (window.remotePlayers) {
+                        for (let id in window.remotePlayers) {
+                            let p = window.remotePlayers[id];
+                            if (p.mapID !== Dungeon.mapID) continue;
+                            
+                            if (Math.floor(p.x) === targetX && Math.floor(p.y) === targetY) {                       
+                                if (movingForward) {
+                                    // 1. SUNCAT COLLISION
+                                    if (p.socketId === "NPC_SUNCAT") {
+                                        if (typeof socket !== 'undefined') socket.emit("battle_action", { targetId: p.socketId, actionType: "SUNCAT_HIT" });
+                                        if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('slash');
+                                    } 
+                                    // 2. PLAYER PVP COLLISION
+                                    else {
+                                        // Bundle our stats to send to the victim so their client can roll defense
+                                        let myStats = { level: Dungeon.level, stat: Dungeon.stat, damage: 0 };
+                                        if (typeof socket !== 'undefined') {
+                                            socket.emit("battle_action", { 
+                                                targetId: p.socketId, 
+                                                actionType: "OVERWORLD_HIT", 
+                                                payload: { attackerStats: myStats, spellId: null } 
+                                            });
                                         }
-                                        if (p.socketId === "NPC_SUNCAT"){
-                                            Dungeon.currentSpeaker = p; 
-                                            startGame = 'dialogue';
-                                            Dungeon.status = 'dueling';
-                                            Dungeon.isChallenger = true; 
-                                            Dungeon.dCounter = 0;
-                                            socket.emit('suncat_spectate', `${playerName} has challenged you to a game of Stones. Do YOU have the stones to play?`); 
-                                        }
-                                    }        
+                                        if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('slash');
+                                    }
+                                    
+                                    // Bounce the player back slightly so they don't clip through the target
+                                    Dungeon.targetMapX = Dungeon.x;
+                                    Dungeon.targetMapY = Dungeon.y;
+                                    Dungeon.isSlidingToTile = false;
+                                    return;
                                 }
                             }
                         }
+                    }
 
                 // D. FINALIZE MOVEMENT
                     Dungeon.targetMapX = targetX + 0.5;
