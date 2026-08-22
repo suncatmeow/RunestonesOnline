@@ -6879,6 +6879,7 @@ io.on("connection", (socket) => {
 
                 let update = { ...players[socket.id], ...data };
                 if (!data.name) update.name = players[socket.id].name;
+                if (data.summons) update.summons = data.summons;
                 players[socket.id] = update;
                 players[socket.id].lastActive = Date.now();
                 
@@ -6893,7 +6894,8 @@ io.on("connection", (socket) => {
                     x: data.x, 
                     y: data.y,
                     mapID: data.mapID, // <-- ADD THIS so clients know what map they are on
-                    direction: data.direction 
+                    direction: data.dir,
+                    summons: data.summons
                 });
                 }
             }
@@ -7101,6 +7103,23 @@ io.on("connection", (socket) => {
             payload: data.payload
             });
             });
+        socket.on("set_pvp_aggro", (data) => {
+            // Tell both the attacker and the victim that they are now officially enemies
+            io.to(socket.id).emit("pvp_aggro_update", { enemyId: data.targetId });
+            io.to(data.targetId).emit("pvp_aggro_update", { enemyId: socket.id });
+            
+            // Suncat spectates the betrayal
+            let attackerName = players[socket.id] ? players[socket.id].name : "Someone";
+            let victimName = players[data.targetId] ? players[data.targetId].name : "someone";
+            
+            if (typeof processSuncatThought === 'function') {
+                processSuncatThought(socket.id, 'spectate', { action: `${attackerName} just attacked ${victimName} in the overworld! They are now locked in PvP combat.` });
+            }
+        });
+        // Broadcasts visual projectiles to everyone else on the map
+        socket.on("player_fires_projectile", (data) => {
+            socket.broadcast.emit("player_fires_projectile", data);
+        });
         socket.on('tile_destroyed', (data) => {
             
             // 'socket.broadcast.emit' sends the data to EVERYONE connected to the server
