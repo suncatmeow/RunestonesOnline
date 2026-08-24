@@ -2255,11 +2255,12 @@
             //consult manual
             {
                 name: "consultGameManual",
-                    description: "REQUIRED: Search your memories or the physical grimoire for card info, world lore, rules, your in-game life, AND your REAL WORLD past life. If asked about your real life, use broad category keywords. For family/relationships/gender, search 'BIOGRAPHY'. For school/jobs/military/dreams, search 'EDUCATION'. For martial arts/magic/bazi, search 'COMBAT'. For music/food/movies/books, search 'TASTES'. Can search multiple terms at once.",           
+                    description: "REQUIRED: Search your memories or the physical grimoire for card info, world lore, rules, your in-game life, AND your REAL WORLD past life. If asked about your real life, use broad category keywords. For family/relationships/gender, search 'BIOGRAPHY'. For school/jobs/military/dreams, search 'EDUCATION'. For martial arts/magic/bazi, search 'COMBAT'. For music/food/movies/books, search 'TASTES'. Can search multiple terms at once.",            
                     parameters: {
                     type: "OBJECT",
-                    properties: { searchQueries: { type: "ARRAY", items: { type: "STRING" } } },
-                    required: ["searchQueries"]
+                    // ---> THE FIX: Change from ARRAY to STRING so the LLM doesn't get confused! <---
+                    properties: { query: { type: "STRING", description: "The search query." } },
+                    required: ["query"]
                 }
             },
             // Search Player History
@@ -4200,7 +4201,7 @@
                     }
                     // D. CONSULT MANUAL
                     else if (call.name === "consultGameManual") {
-                        const queries = call.args.searchQueries || [];
+                        const queries = call.args.query ? [call.args.query] : [];
                         let combinedResults = [];
 
                         queries.forEach(query => {
@@ -6414,7 +6415,8 @@
             else if (asksPersonal || asksHistory) { 
                 useBigBrain = true;
                 needsDM = true; 
-                systemOverride += `\n[MEMORY OVERRIDE]: The player is asking about the past. If they ask about YOUR past/identity, execute 'consultGameManual'. If they ask about THEIR past/adventures, execute 'searchPlayerMemories'!`;
+                // ---> THE FIX: Explicitly forbid raw code and force the API tool <---
+                systemOverride += `\n[MEMORY OVERRIDE]: The player is asking about the past. You MUST use the built-in function call tool 'consultGameManual' if they ask about you, or 'searchPlayerMemories' for player history. NEVER write raw Python code or 'tool_code'. Use the structured JSON API tool.`;
             }
              else {
                 useBigBrain = isDirectCommand || useBigBrain; 
@@ -7307,7 +7309,9 @@ io.on("connection", (socket) => {
             if (data.targetId === "NPC_SUNCAT" || data.actionType === "SUNCAT_HIT") {
                 let suncat = players[SUNCAT_ID];
                 let attacker = players[socket.id]; // Identify who shot him!
-
+                if (data.actionType === "SUNCAT_HIT") {
+                    attacker = null; 
+                }
                 if (suncat) {
                     suncat.hp = (suncat.hp || 100) - (data.payload?.damage || 5);
                     let incomingDamage = data.payload?.damage || data.payload?.attackerStats?.damage || 5;
