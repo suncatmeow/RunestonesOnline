@@ -691,27 +691,25 @@
 
                     // Create Sprite if it doesn't exist
                     if (!window.remotePlayers[id]) {
-                        // Default to Map 0 if undefined so they aren't invisible
                         let spawnMap = data.mapID || 0; 
-                        
-                        // Only spawn if they are somewhat near (optional optimization)
-                        window.remotePlayers[id] = new NPC(0, data.x, data.y, 1.1, 'wandering');
+                        window.remotePlayers[id] = new NPC(0, data.x, data.y, data.type || 0, 'wandering');
                         window.remotePlayers[id].socketId = id;
                         window.remotePlayers[id].mapID = spawnMap;
-                        window.remotePlayers[id].type = data.type; // <--- Ensure it's set
+                        window.remotePlayers[id].type = data.type;
                         window.remotePlayers[id].name = data.name;
+                        window.remotePlayers[id].summons = data.summons || []; // <--- 1. Initialize summons
                     }
 
-                    // Update Position
+                    // Update Position & State
                     if (window.remotePlayers[id]) {
                         window.remotePlayers[id].x = data.x;
                         window.remotePlayers[id].y = data.y;
                         window.remotePlayers[id].dir = data.dir;
                         window.remotePlayers[id].status = data.status;
                         if (data.type !== undefined) window.remotePlayers[id].type = data.type;
-                        // Update Map ID so they fade when changing rooms
                         if (data.mapID !== undefined) window.remotePlayers[id].mapID = data.mapID;
-                    if (data.name) window.remotePlayers[id].name = data.name;
+                        if (data.name) window.remotePlayers[id].name = data.name;
+                        if (data.summons) window.remotePlayers[id].summons = data.summons; // <--- 2. Update summons!
                     }
                 }
 
@@ -1748,8 +1746,10 @@
             
             if (mob) {
                 mob.isAggroDashing = true;
-                mob.targetX = data.targetX;
-                mob.targetY = data.targetY;
+                
+                // ---> THE FIX: These must be dashTargetX and dashTargetY! <---
+                mob.dashTargetX = data.targetX; 
+                mob.dashTargetY = data.targetY;
             }
             });
             
@@ -1777,6 +1777,11 @@
                         if (data.dir !== undefined) {
                             window.remotePlayers[data.id].dir = data.dir;
                         }
+
+                        // ---> THE FIX: Update their summons on every move packet! <---
+                        if (data.summons) {
+                            window.remotePlayers[data.id].summons = data.summons;
+                        }
                         
                         // ---> THE "NO SPECIAL CASE" ANIMATION FIX <---
                         // Fake their 'speed' so the renderer naturally triggers their walking animation!
@@ -1796,11 +1801,21 @@
 
                     } else {
                         // EDGE CASE: They just walked into our map, spawn them instantly!
-                        window.remotePlayers[data.id] = new NPC(0, data.x, data.y, 1.1, 'wandering');
+                        
+                        // ---> THE FIX: Use data.type or fallback to 0 (The Fool), not 1.1 <---
+                        window.remotePlayers[data.id] = new NPC(0, data.x, data.y, data.type || 0, 'wandering');
                         window.remotePlayers[data.id].socketId = data.id;
                         window.remotePlayers[data.id].mapID = data.mapID;
-                        if (data.dir !== undefined) {
-                            window.remotePlayers[data.id].dir = data.direction;
+                        window.remotePlayers[data.id].type = data.type || 0; // Ensure type is tracked!
+                        
+                        // ---> THE FIX: Initialize summons if they just walked in! <---
+                        window.remotePlayers[data.id].summons = data.summons || [];
+
+                        // Fixed the dir vs direction property mapping
+                        if (data.direction !== undefined) {
+                            window.remotePlayers[data.id].dir = data.direction; 
+                        } else if (data.dir !== undefined) {
+                            window.remotePlayers[data.id].dir = data.dir; 
                         }
                     }
                 } else {
@@ -5508,8 +5523,25 @@
                 }
                 
                 this.damageFlashTimer = 3; 
-                
-                if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('cancel', this.x, this.y);
+                // ---> THE FIX: Throttled Overworld Dash Broadcast <---
+                if (attacker && (attacker.isPlayer || attacker.deck !== undefined)) {
+                    if (typeof socket !== 'undefined' && typeof dungeon !== 'undefined') {
+                        let now = Date.now();
+                        
+                        // Only send the dash packet once every 3 seconds!
+                        if (!this.lastEngageEmit || now - this.lastEngageEmit > 3000) {
+                            this.lastEngageEmit = now;
+                            
+                            // Tell all other clients that this NPC is now rushing you!
+                            socket.emit("engage_npc", { 
+                                npcIndex: this.index, 
+                                x: dungeon.x, 
+                                y: dungeon.y 
+                            });
+                        }
+                    }
+                }
+                //if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('cancel', this.x, this.y);
 
                 if (this.isSliding) {
                     // If they got knocked back, tell them to bleed WHEN THEY STOP sliding!
@@ -13961,13 +13993,21 @@
                         // Gather all living allied summons to send over the network
                         let mySummons = this.npcs
                             .filter(n => n.alignment === 'ally' && !n.isDead)
-                            .map(n => ({ id: n.index, x: n.x, y: n.y, type: n.type, dir: n.dir }));
+                            .map(n => ({ 
+                                id: n.index, 
+                                x: n.x, 
+                                y: n.y, 
+                                type: n.type, 
+                                dirX: n.dirX,
+                                dirY: n.dirY,
+                                dir: n.dir !== undefined ? n.dir : ((Math.round(Math.atan2(n.dirX || 0, -(n.dirY || 1)) / (Math.PI / 2)) + 4) % 4)
+                            }));
 
                         if (typeof socket !== 'undefined') {
                             socket.emit("move", {
                                 x: this.x, y: this.y, dir: this.dir, mapID: this.mapID, 
                                 status: this.status, type: playerSprite, name: playerName,
-                                summons: mySummons // <--- INCLUDE SUMMONS IN THE PAYLOAD
+                                summons: mySummons
                             });
                         }
                     }
@@ -14043,15 +14083,18 @@
                                         rp.summons.forEach(summon => {
                                             let sdSq = (summon.x - camX) * (summon.x - camX) + (summon.y - camY) * (summon.y - camY);
                                             if (sdSq <= cullDistSq) {
-                                                // Push a mock object so your renderer draws it just like an NPC
                                                 this.renderList.push({
                                                     x: summon.x,
                                                     y: summon.y,
                                                     type: summon.type,
                                                     dir: summon.dir,
-                                                    isRemoteSummon: true, // Tag it so we know what it is
+                                                    dirX: summon.dirX,
+                                                    dirY: summon.dirY,
+                                                    isRemoteSummon: true,
                                                     ownerName: rp.name,
-                                                    alignment: (this.hostilePlayers && this.hostilePlayers.has(id)) ? 'foe' : 'ally'
+                                                    socketId: id,
+                                                    summonId: summon.id,
+                                                    alignment: 'foe'
                                                 });
                                             }
                                         });
@@ -16364,7 +16407,10 @@
                 let hover = -.13;
                 let faceZ = 0.70; // 70% up the sprite's height
                 let facePan = 0.0; // Dead center
-                const type = overrideType !== undefined ? overrideType : Number(sprite.type);            
+                let type = overrideType !== undefined ? overrideType : Number(sprite.type);            
+                if (isNaN(type) || type === null) {
+                    type = 203; // Force them to render as a Shade!
+                }           
                 //3D UPDATE
                 // 0. 3D Base Scale & Hover
                     if (type >= 140 && type <= 142) { scale = 1.0; hover = 0; } // 3D Wisp 
