@@ -6616,12 +6616,18 @@
         }
 
         const activeModel = genAI.getGenerativeModel(modelConfig);
-        let activeSession = activeModel.startChat({ history: currentHistory });
         
-        // Save the session early so it isn't lost if an error occurs
-        chatSessions[socketId] = activeSession; 
+        let activeSession;
+        // ---> THE FIX: Only load massive chat history if they are actually talking! <---
+        if (triggerType === 'chat' || useBigBrain) {
+            activeSession = activeModel.startChat({ history: currentHistory });
+            chatSessions[socketId] = activeSession; 
+        } else {
+            // For cheap background narrations (kills, exploring), use an isolated blank session!
+            activeSession = activeModel.startChat({ history: [] });
+        }
 
-        // 1. Send the prompt! Suncat will generate his [SOUL] thought, and optionally call a tool.
+        // 1. Send the prompt!
         let result = await activeSession.sendMessage(prompt);
         
        // 2. If he decided to use a tool, run it through the executor! 
@@ -6718,12 +6724,15 @@
             }
         }
 
-        let updatedHistory = await activeSession.getHistory(); 
-        chatSessions[socketId] = voiceModel.startChat({ history: scrubAIHistory(updatedHistory) });
-        await manageHistorySize(socketId);
+        // ---> THE FIX: Wrap the history save so background events don't bloat the memory! <---
+        if (triggerType === 'chat' || useBigBrain) {
+            let updatedHistory = await activeSession.getHistory(); 
+            chatSessions[socketId] = voiceModel.startChat({ history: scrubAIHistory(updatedHistory) });
+            await manageHistorySize(socketId);
+        }
         
-        } catch (e) {
-            console.error("Nervous System Error:", e);
+    } catch (e) {
+        console.error("Nervous System Error:", e);
         } finally {
             clearTimeout(typingFailSafe); 
             player.npcIsTyping = false;
@@ -7177,7 +7186,7 @@ io.on("connection", (socket) => {
             if (!player) return;
 
             const now = Date.now();
-            if (!data.isBoss && player.lastKillReaction && (now - player.lastKillReaction < 5000)) return; 
+            if (!data.isBoss && player.lastKillReaction && (now - player.lastKillReaction < 45000)) return; 
             player.lastKillReaction = now;
 
             let baseID = Math.floor(parseFloat(data.type));
@@ -7243,6 +7252,37 @@ io.on("connection", (socket) => {
                     prevMap:prevMap
                     });
             });
+        socket.on("player_died", (data) => {
+            const victim = players[socket.id];
+            const killer = players[data.killerId];
+
+            if (victim) {
+                // Mark them dead on the server instantly
+                victim.isDead = true; 
+                
+                let killerName = killer ? killer.name : "an unknown force";
+                
+                // 1. Announce the glorious victory to the whole server!
+                io.emit("chat_message", {
+                    sender: "[SYSTEM]",
+                    text: `${victim.name} was slain in combat by ${killerName}!`,
+                    color: "#ff0000"
+                });
+
+                // 2. Tell Suncat so he can react / mock the loser
+                if (typeof processSuncatThought === 'function') {
+                    processSuncatThought(socket.id, 'spectate', { 
+                        action: `${victim.name} was brutally murdered in PvP combat by ${killerName}!` 
+                    });
+                }
+
+                // 3. Tell all other clients to instantly hide the victim's ghost
+                socket.broadcast.emit("remote_player_died", { id: socket.id });
+                
+                // Push the updated state
+                io.emit("updatePlayers", players);
+            }
+        });
         socket.on("challenge_request", (data) => {
                 io.to(data.targetId).emit("challenge_received", {
                     id: socket.id,
