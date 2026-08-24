@@ -2255,28 +2255,26 @@
             //consult manual
             {
                 name: "consultGameManual",
-                    description: "REQUIRED: Search your memories or the physical grimoire for card info, world lore, rules, your in-game life, AND your REAL WORLD past life. If asked about your real life, use broad category keywords. For family/relationships/gender, search 'BIOGRAPHY'. For school/jobs/military/dreams, search 'EDUCATION'. For martial arts/magic/bazi, search 'COMBAT'. For music/food/movies/books, search 'TASTES'. Can search multiple terms at once.",            
-                    parameters: {
-                    type: "OBJECT",
-                    // ---> THE FIX: Change from ARRAY to STRING so the LLM doesn't get confused! <---
-                    properties: { query: { type: "STRING", description: "The search query." } },
+                description: "REQUIRED: Search your memories or the physical grimoire for card info, world lore, rules, your in-game life, AND your REAL WORLD past life. If asked about your real life, use a single broad category keyword. For family/relationships/gender, search 'BIOGRAPHY'. For school/jobs/military/dreams, search 'EDUCATION'. For martial arts/magic/bazi, search 'COMBAT'. For music/food/movies/books, search 'TASTES'.",            
+                parameters: {
+                    type: SchemaType.OBJECT,
+                    properties: { query: { type: SchemaType.STRING, description: "The search query." } },
                     required: ["query"]
                 }
             },
             // Search Player History
-            // Search Player History (UPGRADED FOR VECTOR MATH)
             {
                 name: "searchPlayerMemories",
                 description: "Search your deep, episodic memory regarding past adventures, conversations, or private feelings involving a specific player. Because your mind operates on semantic concepts, you must pass full descriptive phrases or full questions rather than single keywords.",
                 parameters: {
-                    type: "OBJECT",
+                    type: SchemaType.OBJECT,
                     properties: { 
                         targetName: { 
-                            type: "STRING",
+                            type: SchemaType.STRING,
                             description: "The exact name of the player you are trying to remember."
                         },
                         searchQuery: { 
-                            type: "STRING",
+                            type: SchemaType.STRING,
                             description: "A full descriptive sentence of what you are trying to recall (e.g., 'The time the player defeated the Giant in the forest', 'What is my private opinion of this player?', or 'What did the player tell me about their favorite weapon?')." 
                         } 
                     },
@@ -2288,11 +2286,11 @@
                 name: "givePlayerCard",
                 description: "Gives a specific tarot card to a specific player. You MUST use this tool to grant items.",
                 parameters: {
-                    type: "OBJECT",
+                    type: SchemaType.OBJECT,
                     properties: {
-                        targetName: { type: "STRING", description: "The player's exact target name." },
-                        cardName: { type: "STRING", description: "The exact name of the card or its numeric ID." },
-                        reason: { type: "STRING" }
+                        targetName: { type: SchemaType.STRING, description: "The player's exact target name." },
+                        cardName: { type: SchemaType.STRING, description: "The exact name of the card or its numeric ID." },
+                        reason: { type: SchemaType.STRING }
                     },
                     required: ["targetName", "cardName"]
                 }
@@ -2301,42 +2299,42 @@
             {
                 name: "kickPlayer",
                 description: "Kicks a player from the server.",
-                parameters: { type: "OBJECT", properties: { targetName: { type: "STRING" }, reason: { type: "STRING" } }, required: ["targetName"] }
+                parameters: { type: SchemaType.OBJECT, properties: { targetName: { type: SchemaType.STRING }, reason: { type: SchemaType.STRING } }, required: ["targetName"] }
             },
             //banish player
             {
                 name: "banishPlayer",
                 description: "Permanently bans a player.",
-                parameters: { type: "OBJECT", properties: { targetName: { type: "STRING" }, reason: { type: "STRING" } }, required: ["targetName"] }
+                parameters: { type: SchemaType.OBJECT, properties: { targetName: { type: SchemaType.STRING }, reason: { type: SchemaType.STRING } }, required: ["targetName"] }
             },
             //vanquish player (delete player file)
             {
                 name: "vanquishPlayer",
                 description: "Deletes a player's save file.",
-                parameters: { type: "OBJECT", properties: { targetName: { type: "STRING" }, reason: { type: "STRING" } }, required: ["targetName"] }
+                parameters: { type: SchemaType.OBJECT, properties: { targetName: { type: SchemaType.STRING }, reason: { type: SchemaType.STRING } }, required: ["targetName"] }
             },
             //teleport TO player
             {
                 name: "teleportToPlayer",
                 description: "Teleports Suncat directly to the player's location.",
-                parameters: { type: "OBJECT", properties: { targetName: { type: "STRING" }, reason: { type: "STRING" } }, required: ["targetName"] }
+                parameters: { type: SchemaType.OBJECT, properties: { targetName: { type: SchemaType.STRING }, reason: { type: SchemaType.STRING } }, required: ["targetName"] }
             },
             //Teleport player
             {
                 name: "teleportPlayer",
                 description: "Teleports a specific player to a specific map ID (0-22 or 999).",
-                parameters: { type: "OBJECT", properties: { targetName: { type: "STRING" }, mapID: { type: "INTEGER" } }, required: ["targetName", "mapID"] }
+                parameters: { type: SchemaType.OBJECT, properties: { targetName: { type: SchemaType.STRING }, mapID: { type: SchemaType.INTEGER } }, required: ["targetName", "mapID"] }
             },
-                //change weather
+            //change weather
             {
                 name: "changeEnvironment",
                 description: "Changes the weather or sky color of the map the player is currently standing on.",
                 parameters: {
-                    type: "OBJECT",
+                    type: SchemaType.OBJECT,
                     properties: {
-                        targetName: { type: "STRING" },
-                        weather: { type: "STRING", description: "Options: 'clear', 'snow', 'storm', 'leaves', 'lightning', 'space', 'apocalypse'" },
-                        skyColor: { type: "STRING" }
+                        targetName: { type: SchemaType.STRING },
+                        weather: { type: SchemaType.STRING, description: "Options: 'clear', 'snow', 'storm', 'leaves', 'lightning', 'space', 'apocalypse'" },
+                        skyColor: { type: SchemaType.STRING }
                     },
                     required: ["targetName", "weather"]
                 }
@@ -2346,8 +2344,8 @@
                 name: "assignQuest",
                 description: "Assigns a custom quest objective. Text 'COMPLETE' erases it.",
                 parameters: {
-                    type: "OBJECT",
-                    properties: { targetName: { type: "STRING" }, questText: { type: "STRING" } },
+                    type: SchemaType.OBJECT,
+                    properties: { targetName: { type: SchemaType.STRING }, questText: { type: SchemaType.STRING } },
                     required: ["targetName", "questText"]
                 }
             },
@@ -2356,65 +2354,64 @@
                 name: "createCustomMap",
                 description: "Creates a massive procedural map and adventure. Execute this immediately when a player asks for a new map, quest, or adventure.",            
                 parameters: {
-                    type: "OBJECT",
+                    type: SchemaType.OBJECT,
                     properties: {
-                        targetName: { type: "STRING", description: "The player's name, or 'All'." }
+                        targetName: { type: SchemaType.STRING, description: "The player's name, or 'All'." }
                     },
                     required: ["targetName"] 
                 }
             },
-            
-                // spawn npc
+            // spawn npc
             {
                 name: "spawnNPC",
                 description: "Spawns a single NPC. The server will automatically build a synergistic deck for this NPC based on its class.",          
                 parameters: {
-                    type: "OBJECT",
+                    type: SchemaType.OBJECT,
                     properties: {
-                        targetName: { type: "STRING" },
-                        npcType: { type: "STRING", description: "The name or ID of the entity to spawn (e.g., 'Dragon' or '63')." },
-                        state: { type: "STRING", description: "'chasing', 'wandering', 'following' or 'stationary'." },
+                        targetName: { type: SchemaType.STRING },
+                        npcType: { type: SchemaType.STRING, description: "The name or ID of the entity to spawn (e.g., 'Dragon' or '63')." },
+                        state: { type: SchemaType.STRING, description: "'chasing', 'wandering', 'following' or 'stationary'." },
                         role: { 
-                            type: "STRING", 
+                            type: SchemaType.STRING, 
                             description: "'battle' (fights), 'dialogue' (talks/vanishes), 'reward' (gives card), 'shop' (opens generic store), 'bounty_merchant' (Creates a dynamic fetch/kill bounty board!), OR 'quest_giver' (Assigns a complex native Rescue, Escort, or Fetch quest with ambushers!)" 
                         },
-                        color: { type: "STRING" },
-                        dialogue: { type: "ARRAY", items: { type: "STRING" }, description: "Array of text strings the NPC will say." },
-                        options: { type: "ARRAY", items: { type: "STRING" }, description: "Optional: Array of 2 buttons for the player to click, e.g. ['Yes', 'No']" },
+                        color: { type: SchemaType.STRING },
+                        dialogue: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING }, description: "Array of text strings the NPC will say." },
+                        options: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING }, description: "Optional: Array of 2 buttons for the player to click, e.g. ['Yes', 'No']" },
                         yesActions: { 
-                            type: "ARRAY", 
+                            type: SchemaType.ARRAY, 
                             items: { 
-                                type: "ARRAY",
-                                items: { type: "STRING" } // Defines the innermost elements
+                                type: SchemaType.ARRAY,
+                                items: { type: SchemaType.STRING } 
                             }, 
                             description: "CRITICAL SCRIPTING ENGINE: Array of action arrays executed if 'Yes' is clicked..." 
                         },
                         noActions: { 
-                            type: "ARRAY", 
+                            type: SchemaType.ARRAY, 
                             items: { 
-                                type: "ARRAY",
-                                items: { type: "STRING" }
+                                type: SchemaType.ARRAY,
+                                items: { type: SchemaType.STRING }
                             }, 
                             description: "Array of action arrays executed if 'No' is clicked..." 
                         },
                         endActions: {
-                            type: "ARRAY",
+                            type: SchemaType.ARRAY,
                             items: { 
-                                type: "ARRAY",
-                                items: { type: "STRING" }
+                                type: SchemaType.ARRAY,
+                                items: { type: SchemaType.STRING }
                             },
                             description: "Actions executed automatically when dialogue ends."
                         },
                         deathActions: {
-                            type: "ARRAY",
+                            type: SchemaType.ARRAY,
                             items: { 
-                                type: "ARRAY",
-                                items: { type: "STRING" }
+                                type: SchemaType.ARRAY,
+                                items: { type: SchemaType.STRING }
                             },
                             description: "Actions executed when this NPC is killed in combat."
                         },
                         isCinematic: {
-                            type: "BOOLEAN",
+                            type: SchemaType.BOOLEAN,
                             description: "True if this NPC is part of a cutscene."
                         }
                     },
@@ -2426,16 +2423,16 @@
                 name: "createCustomCard",
                 description: "Forges a brand new, unique card and adds it to the server database permanently. You can then use spawnNPC with its new ID.",
                 parameters: {
-                    type: "OBJECT",
+                    type: SchemaType.OBJECT,
                     properties: {
-                        targetName: { type: "STRING" },
-                        name: { type: "STRING" },
-                        type: { type: "STRING", description: "'monster', 'spell', or 'item'" },
-                        suit: { type: "STRING", description: "e.g., 'Swords', 'Cups', 'Major Arcana'" },
-                        rank: { type: "STRING", description: "e.g., 'King', 'Ace', 'XIII'" },
-                        classes: { type: "ARRAY", items: { type: "STRING" }, description: "CRITICAL FOR SYNERGY: e.g., ['warrior', 'mage', 'rogue', 'guardian']" },
-                        lore: { type: "STRING" },
-                        stats: { type: "STRING", description: "e.g., '1d12 STR, 1d6 INT'" }
+                        targetName: { type: SchemaType.STRING },
+                        name: { type: SchemaType.STRING },
+                        type: { type: SchemaType.STRING, description: "'monster', 'spell', or 'item'" },
+                        suit: { type: SchemaType.STRING, description: "e.g., 'Swords', 'Cups', 'Major Arcana'" },
+                        rank: { type: SchemaType.STRING, description: "e.g., 'King', 'Ace', 'XIII'" },
+                        classes: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING }, description: "CRITICAL FOR SYNERGY: e.g., ['warrior', 'mage', 'rogue', 'guardian']" },
+                        lore: { type: SchemaType.STRING },
+                        stats: { type: SchemaType.STRING, description: "e.g., '1d12 STR, 1d6 INT'" }
                     },
                     required: ["targetName", "name", "type", "classes"]
                 }
@@ -2445,12 +2442,12 @@
                 name: "alterTerrain",
                 description: "[CORE FORMATION ONLY]: Changes a specific tile on the player's map (e.g., breaking a wall, creating a water pit, or building a bridge).",
                 parameters: {
-                    type: "OBJECT",
+                    type: SchemaType.OBJECT,
                     properties: {
-                        targetName: { type: "STRING" },
-                        x: { type: "INTEGER" },
-                        y: { type: "INTEGER" },
-                        tileId: { type: "INTEGER", description: "0 for floor, 1 for solid brown wall, 19 for black void, -1 for water/pit." }
+                        targetName: { type: SchemaType.STRING },
+                        x: { type: SchemaType.INTEGER },
+                        y: { type: SchemaType.INTEGER },
+                        tileId: { type: SchemaType.INTEGER, description: "0 for floor, 1 for solid brown wall, 19 for black void, -1 for water/pit." }
                     },
                     required: ["targetName", "x", "y", "tileId"]
                 }
@@ -2460,11 +2457,11 @@
                 name: "smiteOrReviveEntity",
                 description: "Instantly smites (kills) or revives a specific type of NPC currently on the player's map.",
                 parameters: {
-                    type: "OBJECT",
+                    type: SchemaType.OBJECT,
                     properties: {
-                        targetName: { type: "STRING" },
-                        npcType: { type: "NUMBER", description: "The sprite ID of the NPC to target (e.g., 54 for Goblin, 63.1 for Dragon)." },
-                        action: { type: "STRING", description: "Must be exactly 'smite' or 'revive'." }
+                        targetName: { type: SchemaType.STRING },
+                        npcType: { type: SchemaType.NUMBER, description: "The sprite ID of the NPC to target (e.g., 54 for Goblin, 63.1 for Dragon)." },
+                        action: { type: SchemaType.STRING, description: "Must be exactly 'smite' or 'revive'." }
                     },
                     required: ["targetName", "npcType", "action"]
                 }
@@ -2474,10 +2471,10 @@
                 name: "playMusic",
                 description: "[CORE FORMATION ONLY]: Changes the background music for the player to set the mood.",
                 parameters: {
-                    type: "OBJECT",
+                    type: SchemaType.OBJECT,
                     properties: {
-                        targetName: { type: "STRING" },
-                        trackId: { type: "INTEGER", description: "Song ID from 0 to 46." }
+                        targetName: { type: SchemaType.STRING },
+                        trackId: { type: SchemaType.INTEGER, description: "Song ID from 0 to 46." }
                     },
                     required: ["targetName", "trackId"]
                 }
@@ -2487,8 +2484,8 @@
                 name: "activate_protection",
                 description: "Use this IMMEDIATELY when the player says 'Help', 'I am surrounded', or asks Suncat to protect them. Suncat will warp to the player and shoot fireballs at enemies.",
                 parameters: {
-                    type: "OBJECT",
-                    properties: { targetName: { type: "STRING" } },
+                    type: SchemaType.OBJECT,
+                    properties: { targetName: { type: SchemaType.STRING } },
                     required: ["targetName"]
                 }
             },
@@ -2497,8 +2494,8 @@
                 name: "deactivate_protection",
                 description: "Use this when the player says 'Thanks', 'You got them', or tells Suncat to stop fighting.",
                 parameters: {
-                    type: "OBJECT",
-                    properties: { targetName: { type: "STRING" } },
+                    type: SchemaType.OBJECT,
+                    properties: { targetName: { type: SchemaType.STRING } },
                     required: ["targetName"]
                 }
             },
@@ -2507,19 +2504,17 @@
                 name: "travelToLocation",
                 description: "Moves Suncat to a specific Map ID, or walks to a specific X/Y coordinate on the current map. Use this to actively explore, hunt, or seek out locations.",
                 parameters: {
-                    type: "OBJECT",
+                    type: SchemaType.OBJECT,
                     properties: {
-                        mapID: { type: "INTEGER", description: "The Map ID to travel to (0-22, 100, or 999)." },
-                        x: { type: "NUMBER", description: "The X coordinate." },
-                        y: { type: "NUMBER", description: "The Y coordinate." }
+                        mapID: { type: SchemaType.INTEGER, description: "The Map ID to travel to (0-22, 100, or 999)." },
+                        x: { type: SchemaType.NUMBER, description: "The X coordinate." },
+                        y: { type: SchemaType.NUMBER, description: "The Y coordinate." }
                     },
                     required: ["mapID", "x", "y"]
                 }
-            },
+            }
         ]
-        }];
-
-
+    }];
     const T_PERSONA = `
         You are Taliesin, the bard of ancient Welsh myth, singing a continuous song. 
 
@@ -4212,8 +4207,10 @@
                                 .split(/\s+/)
                                 .filter(w => w.length > 2 && !SEARCH_STOP_WORDS.has(w)); // Changed from .includes to .has for Set performance
                             
-                            if (lowerQueryWords.length === 0) return;
-
+                            if (lowerQueryWords.length === 0) {
+                                combinedResults.push(`[${query}]: Query was empty or only contained stop words.`);
+                                return;
+                            }
                             let scoredEntries = MASTER_KNOWLEDGE_BASE.map(entry => {
                                 let score = 0;
                                 
@@ -5591,7 +5588,11 @@
         
         // If we aren't forcing a digest (like on logout), check tokens.
         if (!forceDigest && (!bucket || bucket.tokens < 1)) return; 
-
+        const MAX_PENDING_EVENTS = 4;
+        if (player.undigestedInfo.length > MAX_PENDING_EVENTS && !forceDigest) {
+            console.log(`[Memory Cleaner] Discarding stale events for ${player.name}. Kept latest 3.`);
+            player.undigestedInfo = player.undigestedInfo.slice(-3);
+        }
         const apiFatigue = Math.min(100, (player.sessionCost / 0.10) * 10);
         const totalStress = Math.min(100, (player.dmStress || 0) + apiFatigue);
 
@@ -6135,6 +6136,14 @@
                 }
                 return; 
             }
+            // Prevent Suncat from firing ambient narration if he spoke in the last 6 seconds
+            if (triggerType !== 'chat' && !data.isBoss && !data.isTarot) {
+                const timeSinceSpeech = now - (player.lastSpokenNarration || 0);
+                if (timeSinceSpeech < 6000) {
+                    return; // Drop background event to prevent overlapping speech
+                }
+                player.lastSpokenNarration = now;
+            }
         //END SECLUSION
             if (suncatState === 'seclusion') {
                 emergeFromSeclusion(); // Kick down the doors!
@@ -6415,8 +6424,8 @@
             else if (asksPersonal || asksHistory) { 
                 useBigBrain = true;
                 needsDM = true; 
-                // ---> THE FIX: Stop him from roleplaying the tool call! <---
-                systemOverride += `\n[MEMORY OVERRIDE]: The player is asking about personal facts or past history. You MUST execute the 'consultGameManual' tool (for Suncat's facts) or 'searchPlayerMemories' (for player history). CRITICAL: Do NOT generate dialogue saying you are "checking the manual", "searching", or "loading". Simply execute the function call and remain silent. You will answer them AFTER the system returns the data!`;
+                // THE FIX: Allow it to emit the function call instead of suppressing itself
+                systemOverride += `\n[MEMORY OVERRIDE]: The player is asking about personal facts or past history. You MUST execute the 'consultGameManual' tool (for Suncat's facts) or 'searchPlayerMemories' (for player history) RIGHT NOW. Do not answer their question until you have used the tool to retrieve the facts!`;
             }
              else {
                 useBigBrain = isDirectCommand || useBigBrain; 
@@ -6590,10 +6599,10 @@
         // We instruct the unified model to think, act, and speak in a single cohesive turn.
         // We instruct the unified model to think, act, and speak in a single cohesive turn.
         let unifiedInstruction = dynamicPersona + `
-        [INTERNAL TASK]: You are Suncat. You must process this interaction in three steps:
-        1. THE SOUL: First, formulate a 2-sentence internal plan on how to react based on your Dao. You MUST wrap this thought entirely in [SOUL] and [/SOUL] tags.
-        2. THE HANDS: If your plan requires a physical action or looking up data, use the appropriate tool. 
-        3. THE VOICE: Finally, speak to the player. CRITICAL: If you trigger a tool, DO NOT output any voice dialogue yet! Wait for the tool response. Never mention tools, manuals, systems, or loading to the player.`;
+            [INTERNAL TASK]: You are Suncat. You must process this interaction in three steps:
+            1. THE SOUL: First, formulate a 2-sentence internal plan on how to react based on your Dao. You MUST wrap this thought entirely in [SOUL] and [/SOUL] tags.
+            2. THE HANDS: If your plan requires a physical action or looking up data, use the appropriate tool. 
+            3. THE VOICE: Finally, speak to the player. CRITICAL: If you trigger a tool, emit the function call and STOP generating text immediately. You will speak AFTER the tool returns the data.`;
         let modelConfig = { 
             model: "gemini-2.5-flash-lite", 
             systemInstruction: unifiedInstruction 
@@ -6606,16 +6615,12 @@
             } else {
                 modelConfig.tools = [{
                     functionDeclarations: toolsDef[0].functionDeclarations.filter(tool => 
-                        !['createCustomMap', 'teleportPlayer'].includes(tool.name)
+                        !['createCustomMap', 'teleportPlayer', 'teleportToPlayer', 'kickPlayer', 'banishPlayer', 'vanquishPlayer'].includes(tool.name)
                     )
                 }];
             }
         }
-        
-        // Only attach tools if the routing logic decided he needs his Big Brain
-        if (useBigBrain) {
-            modelConfig.tools = toolsDef;
-        }
+
 
         const activeModel = genAI.getGenerativeModel(modelConfig);
         
