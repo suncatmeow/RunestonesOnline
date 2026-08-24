@@ -942,6 +942,12 @@
                         
                         if (!survived) {
                             console.log("You were killed by another player!");
+                            
+                            // ---> NEW: Instantly report our death to the server before we reload! <---
+                            if (typeof socket !== 'undefined') {
+                                socket.emit("player_died", { killerId: data.senderId });
+                            }
+                            
                             if (typeof MessageBox !== 'undefined') {
                                 MessageBox.show(0.5, 8, 1, 9, 2, 'You were slain by another player!', 'dialogue', 1, 0);
                             }
@@ -1399,6 +1405,28 @@
                             npc.visible = false;
                         }
                     });
+                }
+            });
+            socket.on("remote_player_died", (data) => {
+                if (window.remotePlayers && window.remotePlayers[data.id]) {
+                    let deadPlayer = window.remotePlayers[data.id];
+                    
+                    // Mark them dead so the renderer ignores them
+                    deadPlayer.isDead = true;
+                    deadPlayer.visible = false;
+                    deadPlayer.x = -999; // Yeet them into the void just to be safe
+                    
+                    // Optional: Spawn a blood/smoke explosion where they died!
+                    if (typeof spawnParticle !== 'undefined') {
+                        for(let p = 0; p < 15; p++) {
+                            spawnParticle(
+                                deadPlayer.x + (Math.random() - 0.5), 
+                                deadPlayer.y + (Math.random() - 0.5), 
+                                '#ff0000', 
+                                'smoke'
+                            );
+                        }
+                    }
                 }
             });
             socket.on("npc_died", (data) => {
@@ -16965,10 +16993,10 @@
                             let relativeDir = (sprite.dir - this.dir + 4) % 4;
                             
                             // Map relative 4-way direction to the 8-way sprite sheet:
-                            if (relativeDir === 0) currentDir = 6;      // Facing same way -> See their Back
-                            else if (relativeDir === 1) currentDir = 0; // Turned 90 deg clockwise -> See their Right Side
-                            else if (relativeDir === 2) currentDir = 2; // Facing opposite -> See their Front
-                            else if (relativeDir === 3) currentDir = 4; // Turned 90 deg counter-clockwise -> See their Left Side
+                            if (relativeDir === 0) currentDir = 0;      // Facing same way -> See their Back
+                            else if (relativeDir === 1) currentDir = 6; // Turned 90 deg clockwise -> See their Right Side
+                            else if (relativeDir === 2) currentDir = 4; // Facing opposite -> See their Front
+                            else if (relativeDir === 3) currentDir = 2; // Turned 90 deg counter-clockwise -> See their Left Side
                         }
                         else if (sprite.dirX !== undefined && sprite.dirY !== undefined) {
                             // Standard Offline NPC Angle Math
@@ -59607,7 +59635,14 @@
                             if (!smashedThrough) {
                                 if (typeof MusicEngine !== 'undefined') { 
                                     MusicEngine.play3DSFX('cancel');
-                                    if (typeof socket !== 'undefined') socket.emit('suncat_spectate', `player has crashed into a wall.`);
+                                    
+                                    // ---> THE FIX: Throttle the network emit! <---
+                                    if (typeof socket !== 'undefined') {
+                                        if (!window.lastWallCrashTime || Date.now() - window.lastWallCrashTime > 5000) {
+                                            socket.emit('suncat_spectate', `player has crashed into a wall.`);
+                                            window.lastWallCrashTime = Date.now();
+                                        }
+                                    }
                                 }
                                 return; // Stop the movement!
                             }
