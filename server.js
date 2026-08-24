@@ -7256,8 +7256,10 @@ io.on("connection", (socket) => {
             const victim = players[socket.id];
             const killer = players[data.killerId];
 
-            if (victim) {
-                // Mark them dead on the server instantly
+            // ---> THE FIX: Only process the death if they aren't already dead! <---
+            if (victim && !victim.isDead) {
+                
+                // Mark them dead on the server instantly so subsequent hits are ignored
                 victim.isDead = true; 
                 
                 let killerName = killer ? killer.name : "an unknown force";
