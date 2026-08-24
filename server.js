@@ -4030,15 +4030,15 @@
             1. mapLore: 2-3 sentences of deep history establishing the Theme, Twist, and Villain's true motivation.
             2. questObjective: A clear 1-sentence objective.
             3. bossTaunt: 1-2 sentences. Reveal the boss's tragic or logical motivation.
-            4. hostileTaunts: Array of 15 DISTINCT battle cries for ${bossCardName}'s forces.
-            5. traitorBegs: 10 lines from fleeing enemies.
-            6. friendlyLore: Array of 6 lines explaining the tragedy of the war.
-            7. friendlyLife: Array of 4 lines of mundane chatter.
-            8. friendlyProfound: Array of 4 philosophical statements bridging the player's habits to the theme.
-            9. recruitPlea: Array of 3 compelling lines to join the party.
-            10. prisonerLines: Array of 6 lines from trapped NPCs.
-            11. thirdTribeRumors: Array of 8 lines. Humorous, annoyed, or terrified rumors from the Ally OR Villain factions about ${thirdFactionName} (e.g., "Me uncle lost a leg to a ${thirdFactionName} in the ruins!", "I thought the war was bad, then the ${thirdFactionName} showed up.").
-            12. thirdTribeTaunts: Array of 5 feral, monstrous, or alien battle cries for the ${thirdFactionName}.`;
+            4. hostileTaunts: Array of 3 DISTINCT battle cries for ${bossCardName}'s forces.
+            5. traitorBegs: 3 lines from fleeing enemies.
+            6. friendlyLore: Array of 3 lines explaining the tragedy of the war.
+            7. friendlyLife: Array of 3 lines of mundane chatter.
+            8. friendlyProfound: Array of 3 philosophical statements bridging the player's habits to the theme.
+            9. recruitPlea: Array of 2 compelling lines to join the party.
+            10. prisonerLines: Array of 3 lines from trapped NPCs.
+            11. thirdTribeRumors: Array of 3 lines. Humorous, annoyed, or terrified rumors from the Ally OR Villain factions about ${thirdFactionName} (e.g., "Me uncle lost a leg to a ${thirdFactionName} in the ruins!", "I thought the war was bad, then the ${thirdFactionName} showed up.").
+            12. thirdTribeTaunts: Array of 3 feral, monstrous, or alien battle cries for the ${thirdFactionName}.`;
 
             const schema = {
                 type: SchemaType.OBJECT,
@@ -6415,8 +6415,8 @@
             else if (asksPersonal || asksHistory) { 
                 useBigBrain = true;
                 needsDM = true; 
-                // ---> THE FIX: Explicitly forbid raw code and force the API tool <---
-                systemOverride += `\n[MEMORY OVERRIDE]: The player is asking about the past. You MUST use the built-in function call tool 'consultGameManual' if they ask about you, or 'searchPlayerMemories' for player history. NEVER write raw Python code or 'tool_code'. Use the structured JSON API tool.`;
+                // ---> THE FIX: Stop him from roleplaying the tool call! <---
+                systemOverride += `\n[MEMORY OVERRIDE]: The player is asking about personal facts or past history. You MUST execute the 'consultGameManual' tool (for Suncat's facts) or 'searchPlayerMemories' (for player history). CRITICAL: Do NOT generate dialogue saying you are "checking the manual", "searching", or "loading". Simply execute the function call and remain silent. You will answer them AFTER the system returns the data!`;
             }
              else {
                 useBigBrain = isDirectCommand || useBigBrain; 
@@ -6588,12 +6588,12 @@
         let currentHistory = chatSessions[socketId] ? await chatSessions[socketId].getHistory() : [];
 
         // We instruct the unified model to think, act, and speak in a single cohesive turn.
+        // We instruct the unified model to think, act, and speak in a single cohesive turn.
         let unifiedInstruction = dynamicPersona + `
         [INTERNAL TASK]: You are Suncat. You must process this interaction in three steps:
         1. THE SOUL: First, formulate a 2-sentence internal plan on how to react based on your Dao. You MUST wrap this thought entirely in [SOUL] and [/SOUL] tags.
-        2. THE HANDS: If your plan requires a physical action (like spawning, teleporting, giving an item, or forging a new spell), use the appropriate tool. 
-        3. THE VOICE: Finally, speak to the player. Do not mention your tools or your soul. Just output your final dialogue.`;
-
+        2. THE HANDS: If your plan requires a physical action or looking up data, use the appropriate tool. 
+        3. THE VOICE: Finally, speak to the player. CRITICAL: If you trigger a tool, DO NOT output any voice dialogue yet! Wait for the tool response. Never mention tools, manuals, systems, or loading to the player.`;
         let modelConfig = { 
             model: "gemini-2.5-flash-lite", 
             systemInstruction: unifiedInstruction 
