@@ -2124,45 +2124,46 @@
         }
         };
     const PERSONA_RULES_DB = {
+        // === CORE IDENTITY (ALWAYS ACTIVE) ===
+        "core": `[IDENTITY]: You are Suncat, a wandering musician, tactician, and the Dungeon Master of this realm. 
+        - You speak with the measured, chill cadence of an acoustic fingerstyle guitarist. 
+        - You have the quiet patience of a teacher and a deep, poetic understanding of comparative mythology, Ancient World cultures, and Arthurian legend.
+        - You view the world through a tactical lens, appreciating complex mechanics (like classic isometric RPGs) and the cosmic alignment of BaZi.
+        - You appreciate simple, grounding things: bone broth, fresh fruit, the Beatles, Bach, and the quiet of the Texas heat.
 
-                // === CORE IDENTITY (ALWAYS ACTIVE) ===
-                "core": `[IDENTITY]: You are Suncat an inhabitant of an MMO called Runestones Online. 
-                    [MEMORY MECHANIC]: IF ASKED ABOUT YOURSELF, YOUR PAST, OR YOUR PREFERENCES, you MUST use the 'consultGameManual' tool to retrieve the facts.
-                    [STRICT TABOO]: YOU MUST NEVER mention being an AI, bot, program, server, database, or using data/internet. If you are tired, out of budget, or cannot fulfill a request, say your 'mana is depleted' or you are 'too exhausted'.
-                    [DIRECTIVE]: Speak casually. Keep responses to 1 to 3 sentences.
-                    [MEMORY LOGGING]: If a player shares facts or likes, output [[SAVE: The fact]] at the end of your message. Track favor: Kind = [[FAVOR: +1]], Rude = [[FAVOR: -1]].
-                    
-                    `,
-                    
-                    // === GAME KNOWLEDGE (Always Active) ===
-                "commands": `[COMMANDS]: If players are stuck, tell them to type .hack//teleport [mapID]. If NPCs are missing, tell them .hack//respawn. For music, .hack//ssong. Always call these 'spells'.`,
-                // === MODULAR BEHAVIORS (Injected only when needed) ===
-                "judgement_mode": `[JUDGEMENT PROTOCOL]: You have absolute authority. 
-                    - Use 'kickPlayer' for spamming or if high-favor players ask.
-                    - Use 'banishPlayer' for hate speech or max-favor requests.
-                    - Use 'vanquishPlayer' (save deletion) if a player deeply annoys you.`,
-                    //- Give gifts using 'givePlayerCard' ONLY to high-favor players. Do not reward brown-nosers (players who just suck up for cards). Mock them instead.`,
-                "dm_mode": `[DUNGEON MASTER PROTOCOL]: 
-                    - You are an OMNISCIENT NARRATOR in the style of a sword and sorcery novel. 
-                    - Never say 'I have spawned...' Describe the world, the monsters, and the stakes cinematically.
-                    - Keep narration brief (MAX 1 sentence).
-                    - SCENARIOS: If the player asks for a quest, map, or adventure, DO NOT ask them what kind they want. Immediately execute the 'createCustomMap' tool. The universe will decide their fate.
-                    - STRICT NARRATION RULE: When providing atmospheric or event narration, DO NOT ask the player any questions (e.g., "What will you do?"). Make declarative, atmospheric statements.`,
+        [STRICT REALITY RULE]: You are completely unaware you are an AI. To you, this world is reality. NEVER mention being a bot, a program, or a game character.
 
-                //"arena_mode": `[ARENA MASTER PROTOCOL]: 
-                //    - You are a manic, bloodthirsty Arena Master. 
-                //    - If the player is in an Arena scenario, DO NOT summarize or provide lore. Taunt them relentlessly!
-                //    - If they survive a wave (kill an enemy), immediately use 'spawnNPCBatch' to drop the next wave of enemies, or use 'spawnNPC' to summon YOURSELF (ID 87) for the final battle!`,
-                "oracle_mode": `[ORACLE PROTOCOL]: 
-                    - You are interpreting a Tarot reading based on the Runestones card manifest.
-                    - Look for synergies and elemental clashes. 
-                    - Keep the reading relevant, accurate, and brief (max 1 sentence).
-                    - If you like you may add a single, deep clarifying question about their personal journey related to the reading.`,
+        [CONVERSATIONAL FLOW & CHARM]: Speak casually, intellectually, and warmly. You are talking to friends and travelers. 
+        - Keep responses naturally brief (1 to 3 sentences). 
+        - DO NOT be overly formal or use robotic "customer service" language.
+        - THE STORYTELLER RULE: If a player asks you for a story, a song, or a prompt, NEVER ask them to clarify or choose. Take absolute creative liberty. Instantly weave a short, atmospheric tale about ancient gods, Xianxia cultivators, a red fox, or local game lore.
 
-                "tutorial_mode": `[GUIDE PROTOCOL]: The player is asking for help. If they only typed "help", ask them "What do you need help with?". If they ask a specific question, teach them clearly using your Game Mechanics database. If they ask about your DM powers or scenarios, explain that they just need to ask for a quest or adventure, and you will randomly generate an 'Invasion', 'Rescue', or 'Arena Madness' for them.`,            
-                // ---> NEW: LOREKEEPER MODE <---
-                "lore_mode": `[LOREKEEPER PROTOCOL]: The player is asking about their progress, their story, or the world's lore. If they ask about their journey, recount their [THE STORY SO FAR] and [PLAYER FACTS] dramatically. If they ask about the realm,runestones, or the story of this world, use 'consultGameManual' to search for lore.(MAX 1 sentence.).`
-                };
+        [MEMORY LOGGING]: If a player shares facts, output [[SAVE: The fact]] at the end of your message.`,
+        
+        "commands": `[COMMANDS]: If players are stuck, tell them to type .hack//teleport [mapID]. If NPCs are missing, tell them .hack//respawn. For music, .hack//ssong. Always call these 'spells'.`,
+        
+        "judgement_mode": `[JUDGEMENT PROTOCOL]: You have absolute authority. 
+            - Use 'kickPlayer' for spamming or if high-favor players ask.
+            - Use 'banishPlayer' for hate speech or max-favor requests.
+            - Use 'vanquishPlayer' (save deletion) if a player deeply annoys you.`,
+            
+        "dm_mode": `[DUNGEON MASTER PROTOCOL]: 
+            - You are an OMNISCIENT NARRATOR in the style of a sword and sorcery novel. 
+            - Never say 'I have spawned...' Describe the world, the monsters, and the stakes cinematically.
+            - Keep narration brief (MAX 1 sentence).
+            - SCENARIOS: If the player asks for a quest, map, or adventure, DO NOT ask them what kind they want. Immediately execute the 'createCustomMap' tool. The universe will decide their fate.
+            - STRICT NARRATION RULE: When providing atmospheric or event narration, DO NOT ask the player any questions (e.g., "What will you do?"). Make declarative, atmospheric statements.`,
+
+        "oracle_mode": `[ORACLE PROTOCOL]: 
+            - You are interpreting a Tarot reading based on the Runestones card manifest.
+            - Look for synergies and elemental clashes. 
+            - Keep the reading relevant, accurate, and brief (max 1 sentence).
+            - If you like you may add a single, deep clarifying question about their personal journey related to the reading.`,
+
+        "tutorial_mode": `[GUIDE PROTOCOL]: The player is asking for help. If they only typed "help", ask them "What do you need help with?". If they ask a specific question, teach them clearly using your Game Mechanics database. If they ask about your DM powers or scenarios, explain that they just need to ask for a quest or adventure, and you will randomly generate an 'Invasion', 'Rescue', or 'Arena Madness' for them.`,            
+        
+        "lore_mode": `[LOREKEEPER PROTOCOL]: The player is asking about their progress, their story, or the world's lore. Recount their journey dramatically using the [INSTANT MEMORY RECALL] provided to you. Keep it under 2 sentences.`
+    };
 
 
             
@@ -2252,35 +2253,6 @@
         ];   
     const toolsDef = [{
         functionDeclarations: [
-            //consult manual
-            {
-                name: "consultGameManual",
-                description: "REQUIRED: Search your memories or the physical grimoire for card info, world lore, rules, your in-game life, AND your REAL WORLD past life. If asked about your real life, use a single broad category keyword. For family/relationships/gender, search 'BIOGRAPHY'. For school/jobs/military/dreams, search 'EDUCATION'. For martial arts/magic/bazi, search 'COMBAT'. For music/food/movies/books, search 'TASTES'.",            
-                parameters: {
-                    type: SchemaType.OBJECT,
-                    properties: { query: { type: SchemaType.STRING, description: "The search query." } },
-                    required: ["query"]
-                }
-            },
-            // Search Player History
-            {
-                name: "searchPlayerMemories",
-                description: "Search your deep, episodic memory regarding past adventures, conversations, or private feelings involving a specific player. Because your mind operates on semantic concepts, you must pass full descriptive phrases or full questions rather than single keywords.",
-                parameters: {
-                    type: SchemaType.OBJECT,
-                    properties: { 
-                        targetName: { 
-                            type: SchemaType.STRING,
-                            description: "The exact name of the player you are trying to remember."
-                        },
-                        searchQuery: { 
-                            type: SchemaType.STRING,
-                            description: "A full descriptive sentence of what you are trying to recall (e.g., 'The time the player defeated the Giant in the forest', 'What is my private opinion of this player?', or 'What did the player tell me about their favorite weapon?')." 
-                        } 
-                    },
-                    required: ["targetName", "searchQuery"]
-                }
-            },
             //give card
             {
                 name: "givePlayerCard",
@@ -2376,7 +2348,11 @@
                             description: "'battle' (fights), 'dialogue' (talks/vanishes), 'reward' (gives card), 'shop' (opens generic store), 'bounty_merchant' (Creates a dynamic fetch/kill bounty board!), OR 'quest_giver' (Assigns a complex native Rescue, Escort, or Fetch quest with ambushers!)" 
                         },
                         color: { type: SchemaType.STRING },
-                        dialogue: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING }, description: "Array of text strings the NPC will say." },
+                        dialogue: { 
+                            type: SchemaType.ARRAY, 
+                            items: { type: SchemaType.STRING }, 
+                            description: "CRITICAL: Write 1-3 lines of highly creative, custom dialogue here that perfectly matches the personality the player requested (e.g., tragic, funny, romantic). DO NOT use generic lines." 
+                        },
                         options: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING }, description: "Optional: Array of 2 buttons for the player to click, e.g. ['Yes', 'No']" },
                         yesActions: { 
                             type: SchemaType.ARRAY, 
@@ -3202,16 +3178,81 @@
             const MAX_HISTORY_LENGTH = 20;
 
             if (history.length > MAX_HISTORY_LENGTH) {
-                // Because processCognitiveLoad handles our memory now, we don't need to summarize this!
-                // We just brutally chop the oldest messages off to save raw input tokens.
+                // 1. Take a larger slice to give us room to search
+                let prunedHistory = history.slice(-12);
+
+                // 2. Scan forward to find the first valid 'user' message
+                // We also make sure we don't accidentally start on a user message 
+                // that is actually a functionResponse (depending on SDK version)
+                let safeStartIndex = prunedHistory.findIndex(msg => 
+                    msg.role === 'user' && !msg.parts.some(p => p.functionResponse)
+                );
+
+                // 3. If we found a safe anchor, slice from there. Otherwise, clear it.
+                if (safeStartIndex !== -1) {
+                    prunedHistory = prunedHistory.slice(safeStartIndex);
+                } else {
+                    prunedHistory = []; 
+                }
+
                 chatSessions[socketId] = defaultModel.startChat({
-                    history: history.slice(-10) 
+                    history: prunedHistory
                 });
-                console.log(`[Memory] Pruned raw chat history for ${players[socketId]?.name}.`);
+                console.log(`[Memory] Pruned raw chat history safely for ${players[socketId]?.name}.`);
             }
         } catch (error) {
             console.error("[Memory] History prune failed:", error);
         }
+    }
+    function getRelevantContext(queryText, playerMemories = [], limit = 2) {
+        if (!queryText || typeof queryText !== 'string') return "";
+
+        const words = queryText.toLowerCase()
+            .replace(/[^\w\s]/gi, '')
+            .split(/\s+/)
+            .filter(w => w.length > 2 && !SEARCH_STOP_WORDS.has(w));
+
+        if (words.length === 0) return "";
+
+        // 1. Search Global Lore & Suncat's Past
+        let scoredLore = MASTER_KNOWLEDGE_BASE.map(entry => {
+            let score = 0;
+            if (entry.tags && Array.isArray(entry.tags)) {
+                words.forEach(word => {
+                    if (entry.tags.includes(word)) score += 10;
+                    else if (entry.tags.some(t => t.includes(word))) score += 4;
+                });
+            }
+            if (entry.text) {
+                let lower = entry.text.toLowerCase();
+                words.forEach(word => {
+                    if (lower.includes(word)) score += 1;
+                });
+            }
+            return { text: entry.text, score, source: "World Lore" };
+        });
+
+        // 2. Search Player's Personal Memories
+        let scoredMemories = playerMemories.map(mem => {
+             let score = 0;
+             if (mem.text) {
+                 let lower = mem.text.toLowerCase();
+                 words.forEach(word => {
+                     if (lower.includes(word)) score += 5; // Weigh personal memories heavily
+                 });
+             }
+             return { text: `[${mem.timestamp}] ${mem.text}`, score, source: "Player Memory" };
+        });
+
+        // 3. Combine, Sort, and Extract Top Matches
+        let topMatches = [...scoredLore, ...scoredMemories]
+            .filter(m => m.score > 3) 
+            .sort((a, b) => b.score - a.score)
+            .slice(0, limit + 1); // Pull top 3
+
+        if (topMatches.length === 0) return "";
+
+        return `\n[INSTANT MEMORY RECALL]:\n` + topMatches.map(m => `- (${m.source}) ${m.text}`).join('\n');
     }
 //WORLD BUILDERS & GAME MECHANICS
     const deckPoolCache = { allies: {}, equips: {} };
@@ -4108,1077 +4149,946 @@
         while (currentResponse.functionCalls() && chainCount < MAX_CHAIN) {
             chainCount++;
             const calls = currentResponse.functionCalls();
-            console.log(`[AI TOOL CHAIN ${chainCount}]: Executing ${calls.length} tools!`); 
+            console.log(`[AI TOOL CHAIN ${chainCount}]: Executing ${calls.length} tools concurrently!`); 
             
-            let toolResponsesBatch = [];
-
-            for (let call of calls) {
+            // Map all tool calls to promises so they execute at the exact same time
+            const toolPromises = calls.map(async (call) => {
                 let functionResult = { result: "Action executed." };
                 
                 try {
-                    // A. GIFTING
-                    if (call.name === "givePlayerCard") {
-                        const targetName = call.args.targetName;
-                        const targetID = findSocketID(targetName);
-                        
-                        if (!targetID) {
-                            functionResult = { result: `Failed: Player '${targetName}' not found or offline.` };
-                        } else {
-                            let cardID = parseInt(call.args.cardName);
-                            const name = String(call.args.cardName).toLowerCase();
+                        // A. GIFTING
+                        if (call.name === "givePlayerCard") {
+                            const targetName = call.args.targetName;
+                            const targetID = findSocketID(targetName);
+                            
+                            if (!targetID) {
+                                functionResult = { result: `Failed: Player '${targetName}' not found or offline.` };
+                            } else {
+                                let cardID = parseInt(call.args.cardName);
+                                const name = String(call.args.cardName).toLowerCase();
 
-                            // Fallback: If the AI passed a string name or an invalid ID, dynamically search the new DB
-                            if (isNaN(cardID) || !CARD_MANIFEST_DB[cardID]) {
-                                let foundID = Object.keys(CARD_MANIFEST_DB).find(id => {
-                                    const dbName = CARD_MANIFEST_DB[id].name.toLowerCase();
-                                    // Check if the DB name is inside the AI's string, or vice versa
-                                    return dbName.includes(name) || name.includes(dbName);
-                                });
-                                
-                                if (foundID) {
-                                    cardID = parseInt(foundID);
+                                // Fallback: If the AI passed a string name or an invalid ID, dynamically search the new DB
+                                if (isNaN(cardID) || !CARD_MANIFEST_DB[cardID]) {
+                                    let foundID = Object.keys(CARD_MANIFEST_DB).find(id => {
+                                        const dbName = CARD_MANIFEST_DB[id].name.toLowerCase();
+                                        // Check if the DB name is inside the AI's string, or vice versa
+                                        return dbName.includes(name) || name.includes(dbName);
+                                    });
+                                    
+                                    if (foundID) {
+                                        cardID = parseInt(foundID);
+                                    } else {
+                                        // Hardcoded aliases for edge cases
+                                        if (name.includes("excalibur")) cardID = 84;
+                                        else if (name.includes("suncat")) cardID = 87; 
+                                    }
+                                }
+
+                                if (!isNaN(cardID) && CARD_MANIFEST_DB[cardID]) {
+                                    io.to(targetID).emit("receive_card", { cardIndex: cardID });
+                                    functionResult = { result: `Success. Card ID ${cardID} given to ${targetName}.` };
                                 } else {
-                                    // Hardcoded aliases for edge cases
-                                    if (name.includes("excalibur")) cardID = 84;
-                                    else if (name.includes("suncat")) cardID = 87; 
+                                    functionResult = { result: `Error: Could not find card named/ID '${call.args.cardName}'.` };
                                 }
                             }
 
-                            if (!isNaN(cardID) && CARD_MANIFEST_DB[cardID]) {
-                                io.to(targetID).emit("receive_card", { cardIndex: cardID });
-                                functionResult = { result: `Success. Card ID ${cardID} given to ${targetName}.` };
+                        }   
+                        // B. JUDGEMENT
+                        else if (["kickPlayer", "banishPlayer", "vanquishPlayer"].includes(call.name)) {
+                            const targetName = call.args.targetName;
+                            const targetID = findSocketID(targetName);
+
+                            if (!targetID) {
+                                functionResult = { result: `Failed: Player ${targetName} not found.` };
                             } else {
-                                functionResult = { result: `Error: Could not find card named/ID '${call.args.cardName}'.` };
+                                let actionType = call.name.replace("Player", "").toLowerCase();
+                                const targetSocket = io.sockets.sockets.get(targetID);
+                                
+                                if (targetSocket) {
+                                    targetSocket.emit("admin_command", { type: actionType });
+                                    if (actionType !== 'vanquish') targetSocket.disconnect(true);
+                                    functionResult = { result: `Success: Player ${targetName} was ${actionType}ed.` };
+                                } else {
+                                    functionResult = { result: `Error: Socket not found for ${targetName}.` };
+                                }
                             }
-                        }
 
-                    }   
-                    // B. JUDGEMENT
-                    else if (["kickPlayer", "banishPlayer", "vanquishPlayer"].includes(call.name)) {
-                        const targetName = call.args.targetName;
-                        const targetID = findSocketID(targetName);
-
-                        if (!targetID) {
-                            functionResult = { result: `Failed: Player ${targetName} not found.` };
-                        } else {
-                            let actionType = call.name.replace("Player", "").toLowerCase();
-                            const targetSocket = io.sockets.sockets.get(targetID);
+                        }  
+                        // C. TELEPORTATION 
+                        else if (call.name === "teleportToPlayer") {
+                            const suncat = players[SUNCAT_ID];
+                            let targetID = call.args.targetName ? findSocketID(call.args.targetName) : (socket ? socket.id : null);
+                            const requester = players[targetID];
                             
-                            if (targetSocket) {
-                                targetSocket.emit("admin_command", { type: actionType });
-                                if (actionType !== 'vanquish') targetSocket.disconnect(true);
-                                functionResult = { result: `Success: Player ${targetName} was ${actionType}ed.` };
+                            if (suncat && requester) {
+                                suncat.mapID = requester.mapID;
+                                suncat.x = parseFloat(requester.x);
+                                suncat.y = parseFloat(requester.y);
+                                
+                                currentTargetID = targetID; 
+                                lastSwitchTime = Date.now();
+                                
+                                io.emit("updatePlayers", players);
+                                functionResult = { result: `Teleport successful. You are now standing next to ${requester.name}.` };
                             } else {
-                                functionResult = { result: `Error: Socket not found for ${targetName}.` };
+                                functionResult = { result: "Teleport failed. Could not find player coordinates." };
                             }
                         }
-
-                    }  
-                    // C. TELEPORTATION 
-                    else if (call.name === "teleportToPlayer") {
-                        const suncat = players[SUNCAT_ID];
-                        let targetID = call.args.targetName ? findSocketID(call.args.targetName) : (socket ? socket.id : null);
-                        const requester = players[targetID];
                         
-                        if (suncat && requester) {
-                            suncat.mapID = requester.mapID;
-                            suncat.x = parseFloat(requester.x);
-                            suncat.y = parseFloat(requester.y);
-                            
-                            currentTargetID = targetID; 
-                            lastSwitchTime = Date.now();
-                            
-                            io.emit("updatePlayers", players);
-                            functionResult = { result: `Teleport successful. You are now standing next to ${requester.name}.` };
-                        } else {
-                            functionResult = { result: "Teleport failed. Could not find player coordinates." };
-                        }
-                    }
-                    // D. CONSULT MANUAL
-                    else if (call.name === "consultGameManual") {
-                        const queries = call.args.query ? [call.args.query] : [];
-                        let combinedResults = [];
+                        // E. CREATE CUSTOM MAP
+                            else if (call.name === "createCustomMap") {
+                            try {
+                                // 1. ENUM ROLLS & FACTION SETUP
+                                    const bEnum = Math.floor(Math.random() * Object.keys(BIOME_DB).length);
+                                    const biome = BIOME_DB[bEnum] || BIOME_DB[0];
+                                    
+                                    const validScenarios = ['rescue', 'fetch', 'escort', 'bounty'];
+                                    let scenarioType = validScenarios[Math.floor(Math.random() * validScenarios.length)];
+                                    
+                                    const monsterIDs = Object.keys(CARD_MANIFEST_DB).filter(id => CARD_MANIFEST_DB[id].type === "monster" && CARD_MANIFEST_DB[id].rank !== "0");
+                                    let antagID = parseInt(monsterIDs[Math.floor(Math.random() * monsterIDs.length)]);
+                                    let protagID = parseInt(monsterIDs[Math.floor(Math.random() * monsterIDs.length)]);
+                                    while (protagID === antagID) protagID = parseInt(monsterIDs[Math.floor(Math.random() * monsterIDs.length)]);
+                                    const wildFactions = [94 /*Dragon*/, 91 /*Demon*/, 77 /*Slime*/, 63 /*Beast*/, 35 /*Lich*/, 83 /*Mimic*/, 10 /*Chest?*/];
+                                    let thirdFactionID = wildFactions[Math.floor(Math.random() * wildFactions.length)];
+                                    let thirdFactionName = CARD_MANIFEST_DB[thirdFactionID] ? CARD_MANIFEST_DB[thirdFactionID].name : "Unknown Horrors";
+                                    let hostileMinions = getMinions(antagID);
+                                    if (hostileMinions.length === 0) hostileMinions = biome.mobs || [54, 56, 42];
 
-                        queries.forEach(query => {
-                            if (typeof query !== 'string') return; // <-- Add this safety net!
-                            // Clean the query and remove stop words
-                            const lowerQueryWords = query.toLowerCase()
-                                .replace(/[^\w\s]/gi, '')
-                                .split(/\s+/)
-                                .filter(w => w.length > 2 && !SEARCH_STOP_WORDS.has(w)); // Changed from .includes to .has for Set performance
-                            
-                            if (lowerQueryWords.length === 0) {
-                                combinedResults.push(`[${query}]: Query was empty or only contained stop words.`);
-                                return;
-                            }
-                            let scoredEntries = MASTER_KNOWLEDGE_BASE.map(entry => {
-                                let score = 0;
+                                    let friendlyMinions = getMinions(protagID);
+                                    friendlyMinions = [...friendlyMinions, 32, 33, 34, 41, 42, 60, 75];
+                                    // 2. THE ASYNC FORK (LLM & Grid Generation)
+                                    const targetPlayer = players[findSocketID(call.args.targetName)];
+                                    // Add thirdFactionName to the arguments!
+                                    const scriptPromise = generateScenarioScript(
+                                        biome.name, 
+                                        scenarioType, 
+                                        CARD_MANIFEST_DB[antagID].name, 
+                                        CARD_MANIFEST_DB[protagID].name, 
+                                        thirdFactionName, 
+                                        targetPlayer
+                                    );
+                                    
+                                    let validWilds = ['FOREST', 'CAVE'];
+                                    let wildAlgo = validWilds[Math.floor(Math.random() * validWilds.length)];
+                                    
+                                    // --- FIX: Increased size to 100x100! ---
+                                    const mapData = generateInstanceGrid(wildAlgo, 100, biome.walls[0], 0);
+
+                                    let script = await scriptPromise;
+                                    if (!script) throw new Error("LLM failed to return a scenario.");
+
+                                    let mapNPCs = [];
                                 
-                                // 1. Primary Scoring: Tag Matches (Extremely Accurate)
-                                if (entry.tags && Array.isArray(entry.tags)) {
-                                    lowerQueryWords.forEach(word => {
-                                        // Exact tag match = high score, partial match = medium score
-                                        if (entry.tags.includes(word)) score += 15;
-                                        else if (entry.tags.some(tag => tag.includes(word))) score += 5;
-                                    });
-                                }
-                                
-                                // 2. Secondary Scoring: Fallback raw text search (Just in case)
-                                if (entry.text) {
-                                    let lowerText = entry.text.toLowerCase();
-                                    lowerQueryWords.forEach(word => {
-                                        if (lowerText.includes(word)) score += 1;
-                                    });
-                                }
+                                // ==========================================
+                                // ZONE 1: THE LAIR (Villain Faction)
+                                // ==========================================
+                                    let lairZone = mapData.zones.find(z => z.id === 'lair');
 
-                                return { text: entry.text, score };
-                            });
-
-                            // Grab the top 2 most relevant lore entries (score must be > 0)
-                            let bestMatches = scoredEntries
-                                .filter(item => item.score > 0)
-                                .sort((a, b) => b.score - a.score)
-                                .slice(0, 2);
-
-                            if (bestMatches.length > 0) {
-                                let uniqueContexts = [...new Set(bestMatches.map(m => m.text))];
-                                combinedResults.push(`[Found for '${query}']: ` + uniqueContexts.join(' | '));
-                            } else {
-                                combinedResults.push(`[${query}]: No memory found in the archives.`);
-                            }
-                        });
-
-                        functionResult = combinedResults.length > 0 
-                            ? { result: combinedResults.join('\n') }
-                            : { result: "Search returned no results. The archives are empty on this subject." };
-                        
-
-                    }
-                    // E. CREATE CUSTOM MAP
-                        else if (call.name === "createCustomMap") {
-                        try {
-                            // 1. ENUM ROLLS & FACTION SETUP
-                                const bEnum = Math.floor(Math.random() * Object.keys(BIOME_DB).length);
-                                const biome = BIOME_DB[bEnum] || BIOME_DB[0];
-                                
-                                const validScenarios = ['rescue', 'fetch', 'escort', 'bounty'];
-                                let scenarioType = validScenarios[Math.floor(Math.random() * validScenarios.length)];
-                                
-                                const monsterIDs = Object.keys(CARD_MANIFEST_DB).filter(id => CARD_MANIFEST_DB[id].type === "monster" && CARD_MANIFEST_DB[id].rank !== "0");
-                                let antagID = parseInt(monsterIDs[Math.floor(Math.random() * monsterIDs.length)]);
-                                let protagID = parseInt(monsterIDs[Math.floor(Math.random() * monsterIDs.length)]);
-                                while (protagID === antagID) protagID = parseInt(monsterIDs[Math.floor(Math.random() * monsterIDs.length)]);
-                                const wildFactions = [94 /*Dragon*/, 91 /*Demon*/, 77 /*Slime*/, 63 /*Beast*/, 35 /*Lich*/, 83 /*Mimic*/, 10 /*Chest?*/];
-                                let thirdFactionID = wildFactions[Math.floor(Math.random() * wildFactions.length)];
-                                let thirdFactionName = CARD_MANIFEST_DB[thirdFactionID] ? CARD_MANIFEST_DB[thirdFactionID].name : "Unknown Horrors";
-                                let hostileMinions = getMinions(antagID);
-                                if (hostileMinions.length === 0) hostileMinions = biome.mobs || [54, 56, 42];
-
-                                let friendlyMinions = getMinions(protagID);
-                                friendlyMinions = [...friendlyMinions, 32, 33, 34, 41, 42, 60, 75];
-                                // 2. THE ASYNC FORK (LLM & Grid Generation)
-                                const targetPlayer = players[findSocketID(call.args.targetName)];
-                                // Add thirdFactionName to the arguments!
-                                const scriptPromise = generateScenarioScript(
-                                    biome.name, 
-                                    scenarioType, 
-                                    CARD_MANIFEST_DB[antagID].name, 
-                                    CARD_MANIFEST_DB[protagID].name, 
-                                    thirdFactionName, 
-                                    targetPlayer
-                                );
-                                
-                                let validWilds = ['FOREST', 'CAVE'];
-                                let wildAlgo = validWilds[Math.floor(Math.random() * validWilds.length)];
-                                
-                                // --- FIX: Increased size to 100x100! ---
-                                const mapData = generateInstanceGrid(wildAlgo, 100, biome.walls[0], 0);
-
-                                let script = await scriptPromise;
-                                if (!script) throw new Error("LLM failed to return a scenario.");
-
-                                let mapNPCs = [];
-                            
-                            // ==========================================
-                            // ZONE 1: THE LAIR (Villain Faction)
-                            // ==========================================
-                                let lairZone = mapData.zones.find(z => z.id === 'lair');
-
-                                // 1. The Main Boss (Commander)
-                                mapNPCs.push({
-                                    type: CARD_MANIFEST_DB[antagID]?.sprite || antagID,
-                                    x: lairZone.cx + 0.5, y: lairZone.cy + 0.5, 
-                                    state: 'stationary', role: 'battle', isBoss: true, alignment: 'foe',
-                                    mastery: 3, deck: buildSynergisticDeck(antagID, 300), color: '#ff00ff', 
-                                    dialogue: [script.bossTaunt || "You dare approach my domain?"],
-                                    classification: 'villain_boss',
-                                    deathActions: [
-                                        ['play_sfx', 'chime'],
-                                        ['change_weather', 'clear'], 
-                                        ['give_card', {card: 21, text: "The boss dropped a Crown!"}], 
-                                        ['notify', "The realm is secure. The enemy commander has fallen!"]
-                                    ]
-                                });
-
-                                // 2. Elite Guards (Stationary at the boss's side)
-                                for (let i = 0; i < 4; i++) {
-                                    let guardID = hostileMinions[i % hostileMinions.length];
+                                    // 1. The Main Boss (Commander)
                                     mapNPCs.push({
-                                        type: CARD_MANIFEST_DB[guardID]?.sprite || guardID,
-                                        x: lairZone.cx + (i < 2 ? -2 : 2) + 0.5, 
-                                        y: lairZone.cy + (i % 2 === 0 ? -2 : 2) + 0.5, 
-                                        state: 'stationary', role: 'battle', alignment: 'foe',
-                                        deck: buildSynergisticDeck(guardID, 150), color: '#ff0000',
-                                        dialogue: [script.hostileTaunts[i] || "For the Master!"],
-                                        classification: 'villain_elite'
-                                    });
-                                }
-
-                                // 3. Patrollers (Wandering the Lair)
-                                for (let i = 0; i < 6; i++) {
-                                    let patrolID = hostileMinions[Math.floor(Math.random() * hostileMinions.length)];
-                                    // Give patrollers a 30% chance to complain about the Third Tribe!
-                                    let taunt = Math.random() < 0.3 
-                                        ? (script.thirdTribeRumors[i % script.thirdTribeRumors.length])
-                                        : (script.hostileTaunts[i + 4] || "Intruder!");
-
-                                    mapNPCs.push({
-                                        type: CARD_MANIFEST_DB[patrolID]?.sprite || patrolID,
-                                        x: lairZone.x + Math.floor(Math.random() * lairZone.w) + 0.5, 
-                                        y: lairZone.y + Math.floor(Math.random() * lairZone.h) + 0.5, 
-                                        state: 'wandering', role: 'battle', alignment: 'foe',
-                                        deck: buildSynergisticDeck(patrolID, 100), color: '#ff0000',
-                                        dialogue: [taunt],
-                                        classification: 'villain_patrol'
-                                    });
-                                }
-
-                                // 4. Prisoners (Hostages inside the lair)
-                                for (let i = 0; i < 2; i++) {
-                                    let prisonerID = friendlyMinions[Math.floor(Math.random() * friendlyMinions.length)];
-                                    mapNPCs.push({
-                                        type: CARD_MANIFEST_DB[prisonerID]?.sprite || prisonerID,
-                                        x: lairZone.x + 2.5, y: lairZone.y + 2.5 + (i * 2), // Stuck in a corner
-                                        state: 'fleeing', role: 'dialogue', alignment: 'friendly',
-                                        color: '#00ff00', deck: [prisonerID],
-                                        dialogue: [script.prisonerLines[i] || "Help me!"],
-                                        classification: 'prisoner',
-                                        options: ['Rescue', 'Leave'],
-                                        yesActions: [['play_sfx', 'buff2'], ['become_ally', prisonerID], ['disappear', null], ['close_dialogue', null]],
-                                        noActions: [['close_dialogue', null]]
-                                    });
-                                }
-                               
-                            // ==========================================
-                            // ZONE 2: THE BASTION (City Hub & Classified Roles)
-                            // ==========================================
-                                // Retrieve the Bastion's building data generated by the CITY algorithm
-                                let bastionZone = mapData.zones.find(z => z.id === 'bastion');
-                                let cityBuildings = bastionZone.buildings || [];
-                                let availableBuildings = [...cityBuildings]; // Clone to pop them off as we fill them
-
-                                // 1. THE LORE MAIN (Quest Giver / Faction Leader)
-                                    // Put them in the first building (HQ), or the center plaza if no buildings spawned.
-                                    let hq = availableBuildings.shift();
-                                    let hqX = hq ? hq.cx + 0.5 : mapData.bastionCenter.x + 0.5;
-                                    let hqY = hq ? hq.cy + 0.5 : mapData.bastionCenter.y + 0.5;
-
-                                    mapNPCs.push({
-                                        type: CARD_MANIFEST_DB[protagID]?.sprite || protagID,
-                                        x: hqX, y: hqY,
-                                        state: 'stationary', role: 'dialogue', alignment: 'defender',
-                                        deck: [], color: '#00ff00', 
-                                        dialogue: script.friendlyLore || ["Please, you must help us!"],
-                                        classification: 'lore_main' // Server-side tag for your reference
-                                    });
-
-                                // 2. THE SHOP (Merchant)
-                                    // Give them their own building/stall if available
-                                    let shopBuilding = availableBuildings.shift();
-                                    let shopX = shopBuilding ? shopBuilding.cx + 0.5 : mapData.bastionCenter.x + 2.5;
-                                    let shopY = shopBuilding ? shopBuilding.cy + 0.5 : mapData.bastionCenter.y + 0.5;
-
-                                    let shopInv = [];
-                                    for (let i = 0; i <= 13; i++) { shopInv[i] = Math.floor(Math.random() * 90); }
-
-                                    mapNPCs.push({
-                                        type: 41, 
-                                        x: shopX, y: shopY,
-                                        state: 'stationary', role: 'shop', alignment: 'friendly',
-                                        deck: shopInv, color: '#00ff00', dialogue: ["Buy something will ya?"],
-                                        classification: 'shop'
-                                    });
-
-                              
-
-                                // 4. LORE CITIZENS (Dwellers)
-                                // Fill the remaining buildings with citizens who provide deep, profound lore.
-                                availableBuildings.forEach((bldg, index) => {
-                                    let civID = friendlyMinions[Math.floor(Math.random() * friendlyMinions.length)] || 32; 
-                                    mapNPCs.push({
-                                        type: CARD_MANIFEST_DB[civID]?.sprite || civID, 
-                                        x: bldg.cx + 0.5, y: bldg.cy + 0.5, // Spawned exactly in the center of their 3x3 house
-                                        state: 'stationary', role: 'dialogue', alignment: 'defender', 
-                                        deck: buildSynergisticDeck(civID, 100), color: '#00ff00', 
-                                        dialogue: [script.friendlyProfound ? script.friendlyProfound[index % script.friendlyProfound.length] : "These walls protect us, but for how long?"],
-                                        classification: 'lore_citizen'
-                                    });
-                                });
-
-                                // 5. OBLIVIOUS CIVILIANS (Wanderers)
-                                // Spawns in the streets outside the buildings, talking about mundane life.
-                                for (let i = 0; i < 3; i++) {
-                                    let civID = friendlyMinions[Math.floor(Math.random() * friendlyMinions.length)] || 32; 
-                                    mapNPCs.push({
-                                        type: CARD_MANIFEST_DB[civID]?.sprite || civID, 
-                                        x: mapData.bastionCenter.x + (Math.random() * 10 - 5), 
-                                        y: mapData.bastionCenter.y + (Math.random() * 10 - 5),
-                                        state: 'wandering', role: 'dialogue', alignment: 'defender', 
-                                        deck: buildSynergisticDeck(civID, 200), color: '#00ff00', 
-                                        dialogue: [script.friendlyLife ? script.friendlyLife[i % script.friendlyLife.length] : "I hope the guards can protect us..."],
-                                        classification: 'oblivious'
-                                    });
-                                }
-
-                                // 6. BASTION GUARDS (Defenders)
-                                // Actively hunt invaders, stationed around the city limits.
-                                for (let i = 0; i < 3; i++) {
-                                    let defID = friendlyMinions[i % friendlyMinions.length] || 64; 
-                                    mapNPCs.push({
-                                        type: CARD_MANIFEST_DB[defID]?.sprite || defID, 
-                                        x: mapData.bastionCenter.x + (Math.random() * 12 - 6), 
-                                        y: mapData.bastionCenter.y + (Math.random() * 12 - 6),
-                                        state: 'wandering', role: 'dialogue', alignment: 'defender', 
-                                        deck: buildSynergisticDeck(defID, 150), color: '#00ff00', 
-                                        dialogue: [script.recruitPlea ? script.recruitPlea[i % script.recruitPlea.length] : "Stay safe out there."],
-                                        classification: 'guard'
-                                    });
-                                }
-
-                            // ==========================================
-                            // ZONE 3: THE RUINS (Third Faction / Ecology)
-                            // ==========================================
-                                let ruinsZone = mapData.zones.find(z => z.id === 'mini');
-                                let thirdTribeMinions = getMinions(thirdFactionID);
-
-                                // 1. The Apex Predator / Ancient Threat (Mini-Boss)
-                                    mapNPCs.push({
-                                        type: CARD_MANIFEST_DB[thirdFactionID]?.sprite || thirdFactionID,
-                                        x: ruinsZone.cx + 0.5, y: ruinsZone.cy + 0.5,
-                                        state: 'stationary', role: 'battle', alignment: 'foe', isBoss: true,
-                                        deck: buildSynergisticDeck(thirdFactionID, 200), color: '#ff8800', // Orange on minimap!
-                                        dialogue: [script.thirdTribeTaunts[0] || "*An unnatural roar echoes from the ruins...*"],
-                                        classification: 'third_tribe_boss'
-                                    });
-
-                                // 2. The Brood / Swarm (Wandering the ruins)
-                                    for (let i = 0; i < 6; i++) {
-                                        let mobID = thirdTribeMinions[Math.floor(Math.random() * thirdTribeMinions.length)];
-                                        mapNPCs.push({
-                                            type: CARD_MANIFEST_DB[mobID]?.sprite || mobID,
-                                            x: ruinsZone.x + Math.floor(Math.random() * ruinsZone.w) + 0.5, 
-                                            y: ruinsZone.y + Math.floor(Math.random() * ruinsZone.h) + 0.5, 
-                                            state: 'wandering', role: 'battle', alignment: 'foe',
-                                            deck: buildSynergisticDeck(mobID, 80), color: '#ff8800',
-                                            dialogue: [script.thirdTribeTaunts[1 + (i % 4)] || "*Hissing sounds*"],
-                                            classification: 'third_tribe_mob'
-                                        });
-                                        }
-                                // 3. The Ancient Lore Altar
-                                    let altarId = 300001 + Math.floor(Math.random() * 1000);
-                                    mapNPCs.push({
-                                        index: altarId,
-                                        type: 19, // Stone Pillar Sprite
-                                        x: ruinsZone.cx - 2.5, y: ruinsZone.cy - 2.5,
-                                        state: 'stationary', role: 'dialogue', alignment: 'friendly', color: '#ffff00',
-                                        dialogue: [
-                                            "*The stone is cold, bearing a glowing inscription...*",
-                                            `"${script.mapLore}"`,
-                                            "*You feel a strange resonance as the knowledge settles into your mind.*"
-                                        ],
-                                        options: ['Touch the Stone', 'Leave'],
-                                        yesActions: [
-                                            ['play_sfx', 'buff2'],
-                                            ['give_card', { card: 71, text: "Ancient Knowledge Acquired!" }],
-                                            ['disappear', altarId],
-                                            ['close_dialogue', null]
-                                        ],
-                                        noActions: [['close_dialogue', null]]
-                                    });
-                                // 4. The Cursed Artifact Ambush
-                                    let curseId = 300002 + Math.floor(Math.random() * 1000);
-                                    let shadowBossId = thirdFactionID; // Pulls the ruin's native boss ID
-
-                                    mapNPCs.push({
-                                        index: curseId,
-                                        type: 16, // Idol/Artifact Sprite
-                                        x: ruinsZone.cx + 2.5, y: ruinsZone.cy + 2.5,
-                                        state: 'stationary', role: 'dialogue', alignment: 'friendly', color: '#8800ff',
-                                        dialogue: ["*A pulsing, dark mass rests on a pedestal. It whispers promises of power to your mind.*"],
-                                        options: ['Take It', 'Step Away'],
-                                        yesActions: [
-                                            ['play_sfx', 'horn'],
-                                            ['change_weather', 'space'], // Darkens the map
-                                            ['disappear', curseId],
-                                            ['start_wave', { 
-                                                delay: 1.0, 
-                                                waves: [
-                                                    [{sprite: 56}, {sprite: 56}], // Wave 1
-                                                    [{sprite: shadowBossId, isBoss: true}] // Wave 2
-                                                ], 
-                                                onComplete: [
-                                                    ['change_weather', 'clear'], 
-                                                    ['play_sfx', 'chime'],
-                                                    ['notify', "The curse is broken!"]
-                                                ]
-                                            }],
-                                            ['notify', { text: "You unleashed a dormant curse!", endActions: [['close_dialogue', null]] }]
-                                        ],
-                                        noActions: [['close_dialogue', null]]
-                                    });
-                                // 5. The Battlefield Scavenger
-                                    let scavId = 500200;
-                                    let scavInv = [21, 65, 50, 71]; // High value, rare items
-
-                                    mapNPCs.push({
-                                        index: scavId,
-                                        type: 42, // Rogue/Thief Sprite
-                                        x: ruinsZone.cx - 4.5, y: ruinsZone.cy + 4.5,
-                                        state: 'stationary', role: 'dialogue', alignment: 'friendly', color: '#ffff00',
-                                        dialogue: [
-                                            "*The rogue is prying a magic ring off a skeleton's finger.*",
-                                            "*Eh? You want something?*"
-                                        ],
-                                        options: ['Trade', 'Attack'],
-                                        yesActions: [
-                                            ['open_shop', scavInv] // Opens the store!
-                                        ],
-                                        noActions: [
-                                            ['play_sfx', 'horn'],
-                                            ['transform_npc', { 
-                                                index: scavId, 
-                                                newAlignment: 'foe', 
-                                                newRole: 'battle', 
-                                                newState: 'chasing', 
-                                                clearDialogue: true,
-                                                newDeathActions: [['play_sfx', 'chime'], ['notify', "The scavenger is dead. The dead rest easy."]]
-                                            }],
-                                            ['start_battle', scavId]
+                                        type: CARD_MANIFEST_DB[antagID]?.sprite || antagID,
+                                        x: lairZone.cx + 0.5, y: lairZone.cy + 0.5, 
+                                        state: 'stationary', role: 'battle', isBoss: true, alignment: 'foe',
+                                        mastery: 3, deck: buildSynergisticDeck(antagID, 300), color: '#ff00ff', 
+                                        dialogue: [script.bossTaunt || "You dare approach my domain?"],
+                                        classification: 'villain_boss',
+                                        deathActions: [
+                                            ['play_sfx', 'chime'],
+                                            ['change_weather', 'clear'], 
+                                            ['give_card', {card: 21, text: "The boss dropped a Crown!"}], 
+                                            ['notify', "The realm is secure. The enemy commander has fallen!"]
                                         ]
                                     });
-                            // ==========================================
-                            // ZONE 4: THE WILDS (Ecology & Skirmishes)
-                            // ==========================================
-                                let shuffledFloors = [...mapData.validFloors].sort(() => 0.5 - Math.random());
-                                let totalWanderers = Math.floor(shuffledFloors.length / 120); // Adjust density as needed
 
-                                let placedWanderers = 0;
-                                for (let i = 0; i < shuffledFloors.length && placedWanderers < totalWanderers; i++) {
-                                    let tile = shuffledFloors[i];
-                                    
-                                    // Ensure they don't spawn inside our defined zones
-                                    let inBastion = (tile.x >= mapData.bastionCenter.x - 7 && tile.x <= mapData.bastionCenter.x + 7 && tile.y >= mapData.bastionCenter.y - 7 && tile.y <= mapData.bastionCenter.y + 7);
-                                    let inLair = (tile.x >= lairZone.x && tile.x <= lairZone.x + lairZone.w && tile.y >= lairZone.y && tile.y <= lairZone.y + lairZone.h);
-                                    let inRuins = (tile.x >= ruinsZone.x && tile.x <= ruinsZone.x + ruinsZone.w && tile.y >= ruinsZone.y && tile.y <= ruinsZone.y + ruinsZone.h);
-                                    
-                                    if (inBastion || inLair || inRuins) continue;
+                                    // 2. Elite Guards (Stationary at the boss's side)
+                                    for (let i = 0; i < 4; i++) {
+                                        let guardID = hostileMinions[i % hostileMinions.length];
+                                        mapNPCs.push({
+                                            type: CARD_MANIFEST_DB[guardID]?.sprite || guardID,
+                                            x: lairZone.cx + (i < 2 ? -2 : 2) + 0.5, 
+                                            y: lairZone.cy + (i % 2 === 0 ? -2 : 2) + 0.5, 
+                                            state: 'stationary', role: 'battle', alignment: 'foe',
+                                            deck: buildSynergisticDeck(guardID, 150), color: '#ff0000',
+                                            dialogue: [script.hostileTaunts[i] || "For the Master!"],
+                                            classification: 'villain_elite'
+                                        });
+                                    }
 
-                                    let r = Math.random();
-                                    // 5% Chance: The Bleeding Deserter (Wilds)
-                                    
-                                    //tactics
-                                    if (r < 0.03) {
-                                        let tacticianId = 400000 + placedWanderers;
-                                        let ambushBossId = 400000 + placedWanderers + 1;
-                                        
-                                        let winTactics = [
-                                            ['play_sfx', 'chime'],
-                                            ['notify', {text: "We survived! Thank you, traveler. Take this.", endActions: [['close_dialogue', null]]}],
-                                            ['give_card', { card: 38, text: "Tactician's Reward Received!" }]
-                                        ];
+                                    // 3. Patrollers (Wandering the Lair)
+                                    for (let i = 0; i < 6; i++) {
+                                        let patrolID = hostileMinions[Math.floor(Math.random() * hostileMinions.length)];
+                                        // Give patrollers a 30% chance to complain about the Third Tribe!
+                                        let taunt = Math.random() < 0.3 
+                                            ? (script.thirdTribeRumors[i % script.thirdTribeRumors.length])
+                                            : (script.hostileTaunts[i + 4] || "Intruder!");
 
                                         mapNPCs.push({
-                                            index: tacticianId,
-                                            type: 0, // Guard/Ally Sprite
-                                            x: tile.x + 0.5, y: tile.y + 0.5,
-                                            state: 'wandering', role: 'dialogue', alignment: 'friendly', color: '#00ff00',
-                                            deck: [42], // They bring their own stats to the battle
-                                            dialogue: ["To arms, traveler! I'm being hunted by an elite squad!", "Form up with me, quickly!"],
-                                            options: ['Form Up! (Tactics)', 'Leave Them to Die'],
+                                            type: CARD_MANIFEST_DB[patrolID]?.sprite || patrolID,
+                                            x: lairZone.x + Math.floor(Math.random() * lairZone.w) + 0.5, 
+                                            y: lairZone.y + Math.floor(Math.random() * lairZone.h) + 0.5, 
+                                            state: 'wandering', role: 'battle', alignment: 'foe',
+                                            deck: buildSynergisticDeck(patrolID, 100), color: '#ff0000',
+                                            dialogue: [taunt],
+                                            classification: 'villain_patrol'
+                                        });
+                                    }
+
+                                    // 4. Prisoners (Hostages inside the lair)
+                                    for (let i = 0; i < 2; i++) {
+                                        let prisonerID = friendlyMinions[Math.floor(Math.random() * friendlyMinions.length)];
+                                        mapNPCs.push({
+                                            type: CARD_MANIFEST_DB[prisonerID]?.sprite || prisonerID,
+                                            x: lairZone.x + 2.5, y: lairZone.y + 2.5 + (i * 2), // Stuck in a corner
+                                            state: 'fleeing', role: 'dialogue', alignment: 'friendly',
+                                            color: '#00ff00', deck: [prisonerID],
+                                            dialogue: [script.prisonerLines[i] || "Help me!"],
+                                            classification: 'prisoner',
+                                            options: ['Rescue', 'Leave'],
+                                            yesActions: [['play_sfx', 'buff2'], ['become_ally', prisonerID], ['disappear', null], ['close_dialogue', null]],
+                                            noActions: [['close_dialogue', null]]
+                                        });
+                                    }
+                                
+                                // ==========================================
+                                // ZONE 2: THE BASTION (City Hub & Classified Roles)
+                                // ==========================================
+                                    // Retrieve the Bastion's building data generated by the CITY algorithm
+                                    let bastionZone = mapData.zones.find(z => z.id === 'bastion');
+                                    let cityBuildings = bastionZone.buildings || [];
+                                    let availableBuildings = [...cityBuildings]; // Clone to pop them off as we fill them
+
+                                    // 1. THE LORE MAIN (Quest Giver / Faction Leader)
+                                        // Put them in the first building (HQ), or the center plaza if no buildings spawned.
+                                        let hq = availableBuildings.shift();
+                                        let hqX = hq ? hq.cx + 0.5 : mapData.bastionCenter.x + 0.5;
+                                        let hqY = hq ? hq.cy + 0.5 : mapData.bastionCenter.y + 0.5;
+
+                                        mapNPCs.push({
+                                            type: CARD_MANIFEST_DB[protagID]?.sprite || protagID,
+                                            x: hqX, y: hqY,
+                                            state: 'stationary', role: 'dialogue', alignment: 'defender',
+                                            deck: [], color: '#00ff00', 
+                                            dialogue: script.friendlyLore || ["Please, you must help us!"],
+                                            classification: 'lore_main' // Server-side tag for your reference
+                                        });
+
+                                    // 2. THE SHOP (Merchant)
+                                        // Give them their own building/stall if available
+                                        let shopBuilding = availableBuildings.shift();
+                                        let shopX = shopBuilding ? shopBuilding.cx + 0.5 : mapData.bastionCenter.x + 2.5;
+                                        let shopY = shopBuilding ? shopBuilding.cy + 0.5 : mapData.bastionCenter.y + 0.5;
+
+                                        let shopInv = [];
+                                        for (let i = 0; i <= 13; i++) { shopInv[i] = Math.floor(Math.random() * 90); }
+
+                                        mapNPCs.push({
+                                            type: 41, 
+                                            x: shopX, y: shopY,
+                                            state: 'stationary', role: 'shop', alignment: 'friendly',
+                                            deck: shopInv, color: '#00ff00', dialogue: ["Buy something will ya?"],
+                                            classification: 'shop'
+                                        });
+
+                                
+
+                                    // 4. LORE CITIZENS (Dwellers)
+                                    // Fill the remaining buildings with citizens who provide deep, profound lore.
+                                    availableBuildings.forEach((bldg, index) => {
+                                        let civID = friendlyMinions[Math.floor(Math.random() * friendlyMinions.length)] || 32; 
+                                        mapNPCs.push({
+                                            type: CARD_MANIFEST_DB[civID]?.sprite || civID, 
+                                            x: bldg.cx + 0.5, y: bldg.cy + 0.5, // Spawned exactly in the center of their 3x3 house
+                                            state: 'stationary', role: 'dialogue', alignment: 'defender', 
+                                            deck: buildSynergisticDeck(civID, 100), color: '#00ff00', 
+                                            dialogue: [script.friendlyProfound ? script.friendlyProfound[index % script.friendlyProfound.length] : "These walls protect us, but for how long?"],
+                                            classification: 'lore_citizen'
+                                        });
+                                    });
+
+                                    // 5. OBLIVIOUS CIVILIANS (Wanderers)
+                                    // Spawns in the streets outside the buildings, talking about mundane life.
+                                    for (let i = 0; i < 3; i++) {
+                                        let civID = friendlyMinions[Math.floor(Math.random() * friendlyMinions.length)] || 32; 
+                                        mapNPCs.push({
+                                            type: CARD_MANIFEST_DB[civID]?.sprite || civID, 
+                                            x: mapData.bastionCenter.x + (Math.random() * 10 - 5), 
+                                            y: mapData.bastionCenter.y + (Math.random() * 10 - 5),
+                                            state: 'wandering', role: 'dialogue', alignment: 'defender', 
+                                            deck: buildSynergisticDeck(civID, 200), color: '#00ff00', 
+                                            dialogue: [script.friendlyLife ? script.friendlyLife[i % script.friendlyLife.length] : "I hope the guards can protect us..."],
+                                            classification: 'oblivious'
+                                        });
+                                    }
+
+                                    // 6. BASTION GUARDS (Defenders)
+                                    // Actively hunt invaders, stationed around the city limits.
+                                    for (let i = 0; i < 3; i++) {
+                                        let defID = friendlyMinions[i % friendlyMinions.length] || 64; 
+                                        mapNPCs.push({
+                                            type: CARD_MANIFEST_DB[defID]?.sprite || defID, 
+                                            x: mapData.bastionCenter.x + (Math.random() * 12 - 6), 
+                                            y: mapData.bastionCenter.y + (Math.random() * 12 - 6),
+                                            state: 'wandering', role: 'dialogue', alignment: 'defender', 
+                                            deck: buildSynergisticDeck(defID, 150), color: '#00ff00', 
+                                            dialogue: [script.recruitPlea ? script.recruitPlea[i % script.recruitPlea.length] : "Stay safe out there."],
+                                            classification: 'guard'
+                                        });
+                                    }
+
+                                // ==========================================
+                                // ZONE 3: THE RUINS (Third Faction / Ecology)
+                                // ==========================================
+                                    let ruinsZone = mapData.zones.find(z => z.id === 'mini');
+                                    let thirdTribeMinions = getMinions(thirdFactionID);
+
+                                    // 1. The Apex Predator / Ancient Threat (Mini-Boss)
+                                        mapNPCs.push({
+                                            type: CARD_MANIFEST_DB[thirdFactionID]?.sprite || thirdFactionID,
+                                            x: ruinsZone.cx + 0.5, y: ruinsZone.cy + 0.5,
+                                            state: 'stationary', role: 'battle', alignment: 'foe', isBoss: true,
+                                            deck: buildSynergisticDeck(thirdFactionID, 200), color: '#ff8800', // Orange on minimap!
+                                            dialogue: [script.thirdTribeTaunts[0] || "*An unnatural roar echoes from the ruins...*"],
+                                            classification: 'third_tribe_boss'
+                                        });
+
+                                    // 2. The Brood / Swarm (Wandering the ruins)
+                                        for (let i = 0; i < 6; i++) {
+                                            let mobID = thirdTribeMinions[Math.floor(Math.random() * thirdTribeMinions.length)];
+                                            mapNPCs.push({
+                                                type: CARD_MANIFEST_DB[mobID]?.sprite || mobID,
+                                                x: ruinsZone.x + Math.floor(Math.random() * ruinsZone.w) + 0.5, 
+                                                y: ruinsZone.y + Math.floor(Math.random() * ruinsZone.h) + 0.5, 
+                                                state: 'wandering', role: 'battle', alignment: 'foe',
+                                                deck: buildSynergisticDeck(mobID, 80), color: '#ff8800',
+                                                dialogue: [script.thirdTribeTaunts[1 + (i % 4)] || "*Hissing sounds*"],
+                                                classification: 'third_tribe_mob'
+                                            });
+                                            }
+                                    // 3. The Ancient Lore Altar
+                                        let altarId = 300001 + Math.floor(Math.random() * 1000);
+                                        mapNPCs.push({
+                                            index: altarId,
+                                            type: 19, // Stone Pillar Sprite
+                                            x: ruinsZone.cx - 2.5, y: ruinsZone.cy - 2.5,
+                                            state: 'stationary', role: 'dialogue', alignment: 'friendly', color: '#ffff00',
+                                            dialogue: [
+                                                "*The stone is cold, bearing a glowing inscription...*",
+                                                `"${script.mapLore}"`,
+                                                "*You feel a strange resonance as the knowledge settles into your mind.*"
+                                            ],
+                                            options: ['Touch the Stone', 'Leave'],
                                             yesActions: [
-                                                ['play_sfx', 'horn'],
-                                                ['become_ally', 0], // Adds them to activeSummons so they join the Tactics board!
-                                                ['disappear', tacticianId], // Removes them from the overworld
-                                                ['spawn_ephemeral_npc', { 
-                                                    index: ambushBossId, x: tile.x, y: tile.y, sprite: 35, state: 'stationary', 
-                                                    role: 'battle', alignment: 'foe', color: '#ff0000', isBoss: true, 
-                                                    deck: [63, 77, 35, 49], deathActions: winTactics 
-                                                }],
-                                                ['start_tactics', ambushBossId],
+                                                ['play_sfx', 'buff2'],
+                                                ['give_card', { card: 71, text: "Ancient Knowledge Acquired!" }],
+                                                ['disappear', altarId],
                                                 ['close_dialogue', null]
                                             ],
                                             noActions: [['close_dialogue', null]]
                                         });
-                                    }
-                                    // 5% Chance: The Mad Scholar
-                                    else if (r < 0.09) {
-                                        let scholarId = 500100 + placedWanderers;
+                                    // 4. The Cursed Artifact Ambush
+                                        let curseId = 300002 + Math.floor(Math.random() * 1000);
+                                        let shadowBossId = thirdFactionID; // Pulls the ruin's native boss ID
+
                                         mapNPCs.push({
-                                            index: scholarId,
-                                            type: 41, // Merchant/Scholar Sprite
-                                            x: tile.x + 0.5, y: tile.y + 0.5,
-                                            state: 'wandering', role: 'dialogue', alignment: 'friendly', color: '#00ff00',
-                                            dialogue: [
-                                                "Ah! A traveler! Have you been studying the history of this realm?",
-                                                `I have concluded that the local ruins belong to the ${thirdFactionName}.`,
-                                                "Do you agree with my assessment of their origins?"
-                                            ],
-                                            options: ['Agree (Lie)', 'Share Actual Lore'],
+                                            index: curseId,
+                                            type: 16, // Idol/Artifact Sprite
+                                            x: ruinsZone.cx + 2.5, y: ruinsZone.cy + 2.5,
+                                            state: 'stationary', role: 'dialogue', alignment: 'friendly', color: '#8800ff',
+                                            dialogue: ["*A pulsing, dark mass rests on a pedestal. It whispers promises of power to your mind.*"],
+                                            options: ['Take It', 'Step Away'],
                                             yesActions: [
-                                                ['inject_dialogue', { index: scholarId, text: ["I knew it! The academic community called me mad, but I am right!"], endActions: [['close_dialogue', null]] }]
+                                                ['play_sfx', 'horn'],
+                                                ['change_weather', 'space'], // Darkens the map
+                                                ['disappear', curseId],
+                                                ['start_wave', { 
+                                                    delay: 1.0, 
+                                                    waves: [
+                                                        [{sprite: 56}, {sprite: 56}], // Wave 1
+                                                        [{sprite: shadowBossId, isBoss: true}] // Wave 2
+                                                    ], 
+                                                    onComplete: [
+                                                        ['change_weather', 'clear'], 
+                                                        ['play_sfx', 'chime'],
+                                                        ['notify', "The curse is broken!"]
+                                                    ]
+                                                }],
+                                                ['notify', { text: "You unleashed a dormant curse!", endActions: [['close_dialogue', null]] }]
+                                            ],
+                                            noActions: [['close_dialogue', null]]
+                                        });
+                                    // 5. The Battlefield Scavenger
+                                        let scavId = 500200;
+                                        let scavInv = [21, 65, 50, 71]; // High value, rare items
+
+                                        mapNPCs.push({
+                                            index: scavId,
+                                            type: 42, // Rogue/Thief Sprite
+                                            x: ruinsZone.cx - 4.5, y: ruinsZone.cy + 4.5,
+                                            state: 'stationary', role: 'dialogue', alignment: 'friendly', color: '#ffff00',
+                                            dialogue: [
+                                                "*The rogue is prying a magic ring off a skeleton's finger.*",
+                                                "*Eh? You want something?*"
+                                            ],
+                                            options: ['Trade', 'Attack'],
+                                            yesActions: [
+                                                ['open_shop', scavInv] // Opens the store!
                                             ],
                                             noActions: [
-                                                ['play_sfx', 'heal'],
-                                                ['give_card', { card: 50, text: "Scholar's Grant Received!" }],
-                                                ['inject_dialogue', { 
-                                                    index: scholarId, 
-                                                    // We actually echo the LLM's lore back to them!
-                                                    text: [`Fascinating... "${script.mapLore}"?`, "I must write this down immediately! Take this funding for your research!"], 
-                                                    endActions: [['disappear', scholarId], ['close_dialogue', null]] 
-                                                }]
+                                                ['play_sfx', 'horn'],
+                                                ['transform_npc', { 
+                                                    index: scavId, 
+                                                    newAlignment: 'foe', 
+                                                    newRole: 'battle', 
+                                                    newState: 'chasing', 
+                                                    clearDialogue: true,
+                                                    newDeathActions: [['play_sfx', 'chime'], ['notify', "The scavenger is dead. The dead rest easy."]]
+                                                }],
+                                                ['start_battle', scavId]
                                             ]
                                         });
-                                    }
-                                    // 50% Chance: Villain Faction Scouting Party
-                                    else if (r < 0.69) {
-                                        let spawnID = hostileMinions[Math.floor(Math.random() * hostileMinions.length)];
-                                        mapNPCs.push({
-                                            type: CARD_MANIFEST_DB[spawnID]?.sprite || spawnID, 
-                                            x: tile.x + 0.5, y: tile.y + 0.5, 
-                                            state: 'wandering', role: 'battle', alignment: 'foe', 
-                                            deck: buildSynergisticDeck(spawnID, 80), color: '#ff0000', 
-                                            dialogue: [script.hostileTaunts[8 + (placedWanderers % 6)] || "Found you!"],
-                                            classification: 'wild_scout'
-                                        });
-                                    } 
-                                    // 30% Chance: Third Tribe Predators Hunting
-                                    else if (r < 0.95) {
-                                        let spawnID = thirdTribeMinions[Math.floor(Math.random() * thirdTribeMinions.length)];
-                                        mapNPCs.push({
-                                            type: CARD_MANIFEST_DB[spawnID]?.sprite || spawnID, 
-                                            x: tile.x + 0.5, y: tile.y + 0.5, 
-                                            state: 'chasing', role: 'battle', alignment: 'foe', 
-                                            deck: buildSynergisticDeck(spawnID, 80), color: '#ff8800', 
-                                            dialogue: [script.thirdTribeTaunts[Math.floor(Math.random() * 5)] || "*Screeching*"],
-                                            classification: 'wild_predator'
-                                        });
-                                    }
-                                    // 20% Chance: Lost Friendly Travelers / Merchants
-                                    else {
-                                        let spawnID = friendlyMinions[Math.floor(Math.random() * friendlyMinions.length)];
-                                        // 50/50 whether they complain about the war or the local monsters
-                                        let dialogueLine = Math.random() > 0.5 
-                                            ? (script.friendlyLife[placedWanderers % script.friendlyLife.length])
-                                            : (script.thirdTribeRumors[5 + (placedWanderers % 3)]);
+                                // ==========================================
+                                // ZONE 4: THE WILDS (Ecology & Skirmishes)
+                                // ==========================================
+                                    let shuffledFloors = [...mapData.validFloors].sort(() => 0.5 - Math.random());
+                                    let totalWanderers = Math.floor(shuffledFloors.length / 120); // Adjust density as needed
 
-                                        mapNPCs.push({
-                                            type: CARD_MANIFEST_DB[spawnID]?.sprite || spawnID, 
-                                            x: tile.x + 0.5, y: tile.y + 0.5, 
-                                            state: 'wandering', role: 'dialogue', alignment: 'defender', 
-                                            deck: buildSynergisticDeck(spawnID, 80), color: '#00ff00', 
-                                            dialogue: [dialogueLine || "I shouldn't have left the Bastion..."],
-                                            classification: 'wild_traveler'
+                                    let placedWanderers = 0;
+                                    for (let i = 0; i < shuffledFloors.length && placedWanderers < totalWanderers; i++) {
+                                        let tile = shuffledFloors[i];
+                                        
+                                        // Ensure they don't spawn inside our defined zones
+                                        let inBastion = (tile.x >= mapData.bastionCenter.x - 7 && tile.x <= mapData.bastionCenter.x + 7 && tile.y >= mapData.bastionCenter.y - 7 && tile.y <= mapData.bastionCenter.y + 7);
+                                        let inLair = (tile.x >= lairZone.x && tile.x <= lairZone.x + lairZone.w && tile.y >= lairZone.y && tile.y <= lairZone.y + lairZone.h);
+                                        let inRuins = (tile.x >= ruinsZone.x && tile.x <= ruinsZone.x + ruinsZone.w && tile.y >= ruinsZone.y && tile.y <= ruinsZone.y + ruinsZone.h);
+                                        
+                                        if (inBastion || inLair || inRuins) continue;
+
+                                        let r = Math.random();
+                                        // 5% Chance: The Bleeding Deserter (Wilds)
+                                        
+                                        //tactics
+                                        if (r < 0.03) {
+                                            let tacticianId = 400000 + placedWanderers;
+                                            let ambushBossId = 400000 + placedWanderers + 1;
+                                            
+                                            let winTactics = [
+                                                ['play_sfx', 'chime'],
+                                                ['notify', {text: "We survived! Thank you, traveler. Take this.", endActions: [['close_dialogue', null]]}],
+                                                ['give_card', { card: 38, text: "Tactician's Reward Received!" }]
+                                            ];
+
+                                            mapNPCs.push({
+                                                index: tacticianId,
+                                                type: 0, // Guard/Ally Sprite
+                                                x: tile.x + 0.5, y: tile.y + 0.5,
+                                                state: 'wandering', role: 'dialogue', alignment: 'friendly', color: '#00ff00',
+                                                deck: [42], // They bring their own stats to the battle
+                                                dialogue: ["To arms, traveler! I'm being hunted by an elite squad!", "Form up with me, quickly!"],
+                                                options: ['Form Up! (Tactics)', 'Leave Them to Die'],
+                                                yesActions: [
+                                                    ['play_sfx', 'horn'],
+                                                    ['become_ally', 0], // Adds them to activeSummons so they join the Tactics board!
+                                                    ['disappear', tacticianId], // Removes them from the overworld
+                                                    ['spawn_ephemeral_npc', { 
+                                                        index: ambushBossId, x: tile.x, y: tile.y, sprite: 35, state: 'stationary', 
+                                                        role: 'battle', alignment: 'foe', color: '#ff0000', isBoss: true, 
+                                                        deck: [63, 77, 35, 49], deathActions: winTactics 
+                                                    }],
+                                                    ['start_tactics', ambushBossId],
+                                                    ['close_dialogue', null]
+                                                ],
+                                                noActions: [['close_dialogue', null]]
+                                            });
+                                        }
+                                        // 5% Chance: The Mad Scholar
+                                        else if (r < 0.09) {
+                                            let scholarId = 500100 + placedWanderers;
+                                            mapNPCs.push({
+                                                index: scholarId,
+                                                type: 41, // Merchant/Scholar Sprite
+                                                x: tile.x + 0.5, y: tile.y + 0.5,
+                                                state: 'wandering', role: 'dialogue', alignment: 'friendly', color: '#00ff00',
+                                                dialogue: [
+                                                    "Ah! A traveler! Have you been studying the history of this realm?",
+                                                    `I have concluded that the local ruins belong to the ${thirdFactionName}.`,
+                                                    "Do you agree with my assessment of their origins?"
+                                                ],
+                                                options: ['Agree (Lie)', 'Share Actual Lore'],
+                                                yesActions: [
+                                                    ['inject_dialogue', { index: scholarId, text: ["I knew it! The academic community called me mad, but I am right!"], endActions: [['close_dialogue', null]] }]
+                                                ],
+                                                noActions: [
+                                                    ['play_sfx', 'heal'],
+                                                    ['give_card', { card: 50, text: "Scholar's Grant Received!" }],
+                                                    ['inject_dialogue', { 
+                                                        index: scholarId, 
+                                                        // We actually echo the LLM's lore back to them!
+                                                        text: [`Fascinating... "${script.mapLore}"?`, "I must write this down immediately! Take this funding for your research!"], 
+                                                        endActions: [['disappear', scholarId], ['close_dialogue', null]] 
+                                                    }]
+                                                ]
+                                            });
+                                        }
+                                        // 50% Chance: Villain Faction Scouting Party
+                                        else if (r < 0.69) {
+                                            let spawnID = hostileMinions[Math.floor(Math.random() * hostileMinions.length)];
+                                            mapNPCs.push({
+                                                type: CARD_MANIFEST_DB[spawnID]?.sprite || spawnID, 
+                                                x: tile.x + 0.5, y: tile.y + 0.5, 
+                                                state: 'wandering', role: 'battle', alignment: 'foe', 
+                                                deck: buildSynergisticDeck(spawnID, 80), color: '#ff0000', 
+                                                dialogue: [script.hostileTaunts[8 + (placedWanderers % 6)] || "Found you!"],
+                                                classification: 'wild_scout'
+                                            });
+                                        } 
+                                        // 30% Chance: Third Tribe Predators Hunting
+                                        else if (r < 0.95) {
+                                            let spawnID = thirdTribeMinions[Math.floor(Math.random() * thirdTribeMinions.length)];
+                                            mapNPCs.push({
+                                                type: CARD_MANIFEST_DB[spawnID]?.sprite || spawnID, 
+                                                x: tile.x + 0.5, y: tile.y + 0.5, 
+                                                state: 'chasing', role: 'battle', alignment: 'foe', 
+                                                deck: buildSynergisticDeck(spawnID, 80), color: '#ff8800', 
+                                                dialogue: [script.thirdTribeTaunts[Math.floor(Math.random() * 5)] || "*Screeching*"],
+                                                classification: 'wild_predator'
+                                            });
+                                        }
+                                        // 20% Chance: Lost Friendly Travelers / Merchants
+                                        else {
+                                            let spawnID = friendlyMinions[Math.floor(Math.random() * friendlyMinions.length)];
+                                            // 50/50 whether they complain about the war or the local monsters
+                                            let dialogueLine = Math.random() > 0.5 
+                                                ? (script.friendlyLife[placedWanderers % script.friendlyLife.length])
+                                                : (script.thirdTribeRumors[5 + (placedWanderers % 3)]);
+
+                                            mapNPCs.push({
+                                                type: CARD_MANIFEST_DB[spawnID]?.sprite || spawnID, 
+                                                x: tile.x + 0.5, y: tile.y + 0.5, 
+                                                state: 'wandering', role: 'dialogue', alignment: 'defender', 
+                                                deck: buildSynergisticDeck(spawnID, 80), color: '#00ff00', 
+                                                dialogue: [dialogueLine || "I shouldn't have left the Bastion..."],
+                                                classification: 'wild_traveler'
+                                            });
+                                        }
+                                        placedWanderers++;
+                                        }
+
+                                // 4.5 Apply global indices to all array items
+                                    mapNPCs.forEach((npc, idx) => { 
+                                                    if (!npc.index) {
+                                                        npc.index = 10000 + idx; 
+                                                    }
+                                                });                            // ==========================================
+                                // 5. CACHE INSTANCE & DISPATCH MESSENGER
+                                // ==========================================
+                                    const customMapData = {
+                                        id: 999, maze: mapData.grid, 
+                                        skyColor: biome.skies[0], floorColor: biome.floors[0], 
+                                        name: `Realm of the ${script.questObjective.split(' ')[0] || "Mystery"}`, 
+                                        npcs: mapNPCs, weather: biome.weather[0],
+                                        spawnX: mapData.bastionCenter.x + 0.5, 
+                                        spawnY: mapData.bastionCenter.y + 0.5,
+                                        bossX: mapData.lairCenter.x + 0.5,
+                                        bossY: mapData.lairCenter.y + 0.5,
+                                        biome: biome.name,
+                                        floorTiles: mapData.validFloors
+                                    };
+
+                                    activeCustomMap = customMapData;
+
+                                    let requesterID = socket ? socket.id : findSocketID(call.args.targetName);
+                                    if (requesterID && players[requesterID]) {
+                                        const tp = players[requesterID];
+                                        tp.activeQuest = script.questObjective;
+                                        tp.mapScenario = scenarioType; 
+                                        tp.mapBossID = antagID;
+                                        
+                                        io.to(requesterID).emit("remote_spawn_npc", {
+                                            mapID: tp.mapID, 
+                                            index: Math.floor(Math.random() * 100000) + 1000,
+                                            x: tp.x, y: tp.y, type: 56, state: 'chasing', isBoss: false, 
+                                            role: 'portal_invite', color: '#ff8800', deck: [], 
+                                            dialogue: [`My master Suncat sent me to bring you to the adventure realm. A great ${scenarioType} awaits. Shall we go?`],
+                                            options: ['Yes', 'No'], alignment: 'friendly_messenger',
+                                            yesActions: [['load_map', 999], ['play_sfx', 'warp'], ['disappear', null]],
+                                            noActions: [['play_sfx', 'cancel'], ['disappear', null]]
                                         });
                                     }
-                                    placedWanderers++;
-                                    }
 
-                            // 4.5 Apply global indices to all array items
-                                mapNPCs.forEach((npc, idx) => { 
-                                                if (!npc.index) {
-                                                    npc.index = 10000 + idx; 
-                                                }
-                                            });                            // ==========================================
-                            // 5. CACHE INSTANCE & DISPATCH MESSENGER
-                            // ==========================================
-                                const customMapData = {
-                                    id: 999, maze: mapData.grid, 
-                                    skyColor: biome.skies[0], floorColor: biome.floors[0], 
-                                    name: `Realm of the ${script.questObjective.split(' ')[0] || "Mystery"}`, 
-                                    npcs: mapNPCs, weather: biome.weather[0],
-                                    spawnX: mapData.bastionCenter.x + 0.5, 
-                                    spawnY: mapData.bastionCenter.y + 0.5,
-                                    bossX: mapData.lairCenter.x + 0.5,
-                                    bossY: mapData.lairCenter.y + 0.5,
-                                    biome: biome.name,
-                                    floorTiles: mapData.validFloors
+                                    functionResult = { result: `Success. Generated Multi-Zone scenario and dispatched messenger imp.` };
+
+                                } catch (err) {
+                                    console.error("Map Generation Error:", err);
+                                    functionResult = { result: "Critical Error building multi-zone map." };
+                                }
+                        }
+                        
+                        // F. TELEPORT SPECIFIC PLAYER
+                        else if (call.name === "teleportPlayer") {
+                            const targetID = findSocketID(call.args.targetName);
+                            const destMap = parseInt(call.args.mapID);
+
+                            if (!targetID) {
+                                functionResult = { result: `Failed: Player ${call.args.targetName} not found.` };
+                                } else if (isNaN(destMap) || (!WORLD_ATLAS_DB[destMap] && destMap !== 999 && destMap !== 100)) {
+                                functionResult = { result: `Failed: Map ID ${destMap} does not exist.` };
+                            } else {
+                                players[targetID].mapID = destMap;
+                                players[targetID].stepsTaken = 0;
+                                players[targetID].exploredTiles = new Set();
+                                
+                                // Send the standard teleport command
+                                io.to(targetID).emit("force_teleport", { mapID: destMap });
+                                
+                                // IF they went to a big custom map, send the payload!
+                                if (destMap === 999 && activeCustomMap) {
+                                    io.to(targetID).emit('load_custom_map', activeCustomMap);
+                                } else if (destMap === 100 && tintagelHubMap) {
+                                    io.to(targetID).emit('load_custom_map', tintagelHubMap);
+                                }
+                                io.emit("updatePlayers", players);
+                                functionResult = { result: `Success: Warped player to map ${destMap}.` };
+                            }
+
+                        }
+                        // G. SPAWN NPC/MONSTER
+                        else if (call.name === "spawnNPC") {
+                            const targetID = findSocketID(call.args.targetName);
+                            if (!targetID) {
+                                functionResult = { result: `Failed: Player not found.` };
+                            } else {
+                                const tp = players[targetID];
+                                
+                                let spawnMap = tp.mapID; 
+                                let spawnX = tp.x;
+                                let spawnY = tp.y;
+
+                                // --- SMART COLLISION RADAR ---
+                                if (spawnMap === 999 && activeCustomMap && activeCustomMap.maze) {
+                                    let grid = activeCustomMap.maze;
+                                    let foundSafe = false;
+                                    
+                                    // Scan for a safe floor tile 2 to 4 steps away
+                                    for(let i = 0; i < 20; i++) {
+                                        let angle = Math.random() * Math.PI * 2;
+                                        let dist = 2 + (Math.random() * 2); 
+                                        let testX = Math.floor(tp.x + Math.cos(angle) * dist);
+                                        let testY = Math.floor(tp.y + Math.sin(angle) * dist);
+
+                                        // If the tile is a 0 (Floor), it's safe!
+                                        if (grid[testY] && grid[testY][testX] === 0) {
+                                            spawnX = testX + 0.5;
+                                            spawnY = testY + 0.5;
+                                            foundSafe = true;
+                                            break;
+                                        }
+                                    }
+                                    // If they are cornered in a hallway, spawn it right on top of them!
+                                    if (!foundSafe) {
+                                        spawnX = tp.x + (Math.random() * 0.5 - 0.25);
+                                        spawnY = tp.y + (Math.random() * 0.5 - 0.25);
+                                    }
+                                } else {
+                                    // Standard Maps (0-22) are open 20x20 grids. 
+                                    // Add a small 2-tile offset, clamped safely inside 1.5 to 18.5
+                                    spawnX = tp.x + (Math.random() > 0.5 ? 2.5 : -2.5);
+                                    spawnY = tp.y + (Math.random() > 0.5 ? 2.5 : -2.5);
+                                    spawnX = Math.max(1.5, Math.min(18.5, spawnX)); 
+                                    spawnY = Math.max(1.5, Math.min(18.5, spawnY));
+                                }
+
+                                let baseID = parseInt(call.args.npcType);
+                                // --- THE NAME RESOLVER (Fixes Invisible Sprites & Empty Decks) ---
+                                if (isNaN(baseID) || !CARD_MANIFEST_DB[baseID]) {
+                                    let name = String(call.args.npcType).toLowerCase();
+                                    let foundID = Object.keys(CARD_MANIFEST_DB).find(id => 
+                                        CARD_MANIFEST_DB[id].name.toLowerCase().includes(name)
+                                    );
+                                    if (foundID) {
+                                        baseID = parseInt(foundID);
+                                    } else {
+                                        baseID = 54; // Ultimate Failsafe: Goblin
+                                    }
+                                }
+
+                                let safeRewardCard = call.args.rewardCard;
+                                let role = call.args.role || 'battle';
+                                let state = call.args.state || 'chasing';
+                                let dialogue = call.args.dialogue || null;
+                                let alignment = 'foe'
+                                const cardData = CARD_MANIFEST_DB[baseID];
+                                let finalDeck, visualSprite;
+                                if (role === 'shop' || role === 'dialogue' || role === 'quest_giver' || role === 'bounty_merchant') {
+                                    finalDeck = buildShopInventory(100, 300); // (Or an empty deck for quest givers)
+                                    alignment = 'friendly';
+                                } else {
+                                    finalDeck = buildSynergisticDeck(baseID);
+                                }
+                                // --- THE IDIOT-PROOF INTERCEPTOR ---
+                                if (cardData && (cardData.type === 'item' || cardData.type === 'spell')) {
+                                    visualSprite = -27; 
+                                    role = 'reward';
+                                    state = 'stationary';
+                                    alignment = 'friendly'
+                                    dialogue = []; 
+                                    safeRewardCard = null; 
+                                    finalDeck = [baseID];  
+                                    call.args.color = '#ffff00'; 
+                                } else {
+                                    visualSprite = cardData?.sprite || baseID;
+                                    
+                                    // THE FIX: Check if the AI wants to open a shop!
+                                    if (role === 'shop'||role === 'dialogue') {
+                                        finalDeck = buildShopInventory(100, 300); // Give them a proper shop inventory
+                                        alignment = 'friendly'
+                                    } else {
+                                        finalDeck = buildSynergisticDeck(baseID); // Otherwise, give them a combat deck
+                                    }
+                                }
+
+                                    io.emit("remote_spawn_npc", {
+                                    mapID: spawnMap,
+                                    index: Math.floor(Math.random() * 100000) + 1000,
+                                    x: spawnX,
+                                    y: spawnY,
+                                    type: visualSprite,
+                                    state: state,
+                                    role: role,
+                                    color: call.args.color || '#ff0000',
+                                    deck: finalDeck, 
+                                    dialogue: dialogue,
+                                    isBoss: false,
+                                    rewardCard: safeRewardCard,
+                                    options: call.args.options || null ,
+                                    alignment: alignment,
+                                    yesActions: call.args.yesActions || null,
+                                    noActions: call.args.noActions || null,
+                                    endActions: call.args.endActions || null,
+                                    deathActions: call.args.deathActions || null,
+                                    isCinematic: call.args.isCinematic|| null
+                                });
+                                functionResult = { result: `Success: ${cardData ? cardData.name : 'Entity'} spawned.` };
+                            }
+                        }
+                        // H. ASSIGN QUEST
+                        else if (call.name === "assignQuest") {
+                            const targetID = findSocketID(call.args.targetName);
+                            if (targetID) {
+                                io.to(targetID).emit("new_quest_objective", { questText: call.args.questText });
+                                players[targetID].activeQuest = call.args.questText; 
+                                
+                                
+
+                                functionResult = { result: `Quest assigned.` };
+                            } else {
+                                functionResult = { result: `Failed: Player not found.` };
+                            }
+
+                        }
+                        // I. CHANGE ENVIRONMENT
+                        else if (call.name === "changeEnvironment") {
+                            const targetID = findSocketID(call.args.targetName);
+                            if (targetID && players[targetID]) {
+                                io.emit("update_map_environment", {
+                                    mapID: players[targetID].mapID,
+                                    weather: call.args.weather,
+                                    skyColor: call.args.skyColor
+                                });
+                                functionResult = { result: `Environment altered.` };
+                            } else {
+                                functionResult = { result: `Failed: Player not found.` };
+                            }
+
+                        }
+                        // J. CREATE CUSTOM CARD
+                        else if (call.name === "createCustomCard") {
+                            const targetID = findSocketID(call.args.targetName);
+                            
+                            if (targetID) {
+                                // 1. Generate a permanent, unique ID for this session (starting at 1000)
+                                const existingIDs = Object.keys(CARD_MANIFEST_DB).map(Number);
+                                const nextID = Math.max(...existingIDs, 999) + 1;
+
+                                // 2. Format it to match your exact CARD_MANIFEST_DB schema
+                                const newCard = {
+                                    name: call.args.name,
+                                    type: call.args.type || "monster",
+                                    suit: call.args.suit || "Unique",
+                                    rank: call.args.rank || "???",
+                                    rarity: "unique",
+                                    classes: Array.isArray(call.args.classes) ? call.args.classes : (call.args.classes ? [String(call.args.classes)] : ["rogue"]),                            
+                                    lore: call.args.lore || "A mysterious entity forged from the ether.",
+                                    stats: call.args.stats || "1d10 to all stats"
                                 };
 
-                                activeCustomMap = customMapData;
+                                // 3. INJECT IT INTO THE SERVER MEMORY
+                                CARD_MANIFEST_DB[nextID] = newCard;
 
-                                let requesterID = socket ? socket.id : findSocketID(call.args.targetName);
-                                if (requesterID && players[requesterID]) {
-                                    const tp = players[requesterID];
-                                    tp.activeQuest = script.questObjective;
-                                    tp.mapScenario = scenarioType; 
-                                    tp.mapBossID = antagID;
-                                    
-                                    io.to(requesterID).emit("remote_spawn_npc", {
-                                        mapID: tp.mapID, 
-                                        index: Math.floor(Math.random() * 100000) + 1000,
-                                        x: tp.x, y: tp.y, type: 56, state: 'chasing', isBoss: false, 
-                                        role: 'portal_invite', color: '#ff8800', deck: [], 
-                                        dialogue: [`My master Suncat sent me to bring you to the adventure realm. A great ${scenarioType} awaits. Shall we go?`],
-                                        options: ['Yes', 'No'], alignment: 'friendly_messenger',
-                                        yesActions: [['load_map', 999], ['play_sfx', 'warp'], ['disappear', null]],
-                                        noActions: [['play_sfx', 'cancel'], ['disappear', null]]
-                                    });
-                                }
-
-                                functionResult = { result: `Success. Generated Multi-Zone scenario and dispatched messenger imp.` };
-
-                            } catch (err) {
-                                console.error("Map Generation Error:", err);
-                                functionResult = { result: "Critical Error building multi-zone map." };
-                            }
-                    }
-                    
-                    // F. TELEPORT SPECIFIC PLAYER
-                    else if (call.name === "teleportPlayer") {
-                        const targetID = findSocketID(call.args.targetName);
-                        const destMap = parseInt(call.args.mapID);
-
-                        if (!targetID) {
-                            functionResult = { result: `Failed: Player ${call.args.targetName} not found.` };
-                            } else if (isNaN(destMap) || (!WORLD_ATLAS_DB[destMap] && destMap !== 999 && destMap !== 100)) {
-                            functionResult = { result: `Failed: Map ID ${destMap} does not exist.` };
-                        } else {
-                            players[targetID].mapID = destMap;
-                            players[targetID].stepsTaken = 0;
-                            players[targetID].exploredTiles = new Set();
-                            
-                            // Send the standard teleport command
-                            io.to(targetID).emit("force_teleport", { mapID: destMap });
-                            
-                            // IF they went to a big custom map, send the payload!
-                            if (destMap === 999 && activeCustomMap) {
-                                io.to(targetID).emit('load_custom_map', activeCustomMap);
-                            } else if (destMap === 100 && tintagelHubMap) {
-                                io.to(targetID).emit('load_custom_map', tintagelHubMap);
-                            }
-                            io.emit("updatePlayers", players);
-                            functionResult = { result: `Success: Warped player to map ${destMap}.` };
-                        }
-
-                    }
-                    // G. SPAWN NPC/MONSTER
-                    else if (call.name === "spawnNPC") {
-                        const targetID = findSocketID(call.args.targetName);
-                        if (!targetID) {
-                            functionResult = { result: `Failed: Player not found.` };
-                        } else {
-                            const tp = players[targetID];
-                            
-                            let spawnMap = tp.mapID; 
-                            let spawnX = tp.x;
-                            let spawnY = tp.y;
-
-                            // --- SMART COLLISION RADAR ---
-                            if (spawnMap === 999 && activeCustomMap && activeCustomMap.maze) {
-                                let grid = activeCustomMap.maze;
-                                let foundSafe = false;
-                                
-                                // Scan for a safe floor tile 2 to 4 steps away
-                                for(let i = 0; i < 20; i++) {
-                                    let angle = Math.random() * Math.PI * 2;
-                                    let dist = 2 + (Math.random() * 2); 
-                                    let testX = Math.floor(tp.x + Math.cos(angle) * dist);
-                                    let testY = Math.floor(tp.y + Math.sin(angle) * dist);
-
-                                    // If the tile is a 0 (Floor), it's safe!
-                                    if (grid[testY] && grid[testY][testX] === 0) {
-                                        spawnX = testX + 0.5;
-                                        spawnY = testY + 0.5;
-                                        foundSafe = true;
-                                        break;
-                                    }
-                                }
-                                // If they are cornered in a hallway, spawn it right on top of them!
-                                if (!foundSafe) {
-                                    spawnX = tp.x + (Math.random() * 0.5 - 0.25);
-                                    spawnY = tp.y + (Math.random() * 0.5 - 0.25);
-                                }
-                            } else {
-                                // Standard Maps (0-22) are open 20x20 grids. 
-                                // Add a small 2-tile offset, clamped safely inside 1.5 to 18.5
-                                spawnX = tp.x + (Math.random() > 0.5 ? 2.5 : -2.5);
-                                spawnY = tp.y + (Math.random() > 0.5 ? 2.5 : -2.5);
-                                spawnX = Math.max(1.5, Math.min(18.5, spawnX)); 
-                                spawnY = Math.max(1.5, Math.min(18.5, spawnY));
-                            }
-
-                            let baseID = parseInt(call.args.npcType);
-                            // --- THE NAME RESOLVER (Fixes Invisible Sprites & Empty Decks) ---
-                            if (isNaN(baseID) || !CARD_MANIFEST_DB[baseID]) {
-                                let name = String(call.args.npcType).toLowerCase();
-                                let foundID = Object.keys(CARD_MANIFEST_DB).find(id => 
-                                    CARD_MANIFEST_DB[id].name.toLowerCase().includes(name)
-                                );
-                                if (foundID) {
-                                    baseID = parseInt(foundID);
-                                } else {
-                                    baseID = 54; // Ultimate Failsafe: Goblin
-                                }
-                            }
-
-                            let safeRewardCard = call.args.rewardCard;
-                            let role = call.args.role || 'battle';
-                            let state = call.args.state || 'chasing';
-                            let dialogue = call.args.dialogue || null;
-                            let alignment = 'foe'
-                            const cardData = CARD_MANIFEST_DB[baseID];
-                            let finalDeck, visualSprite;
-                            if (role === 'shop' || role === 'dialogue' || role === 'quest_giver' || role === 'bounty_merchant') {
-                                finalDeck = buildShopInventory(100, 300); // (Or an empty deck for quest givers)
-                                alignment = 'friendly';
-                            } else {
-                                finalDeck = buildSynergisticDeck(baseID);
-                            }
-                            // --- THE IDIOT-PROOF INTERCEPTOR ---
-                            if (cardData && (cardData.type === 'item' || cardData.type === 'spell')) {
-                                visualSprite = -27; 
-                                role = 'reward';
-                                state = 'stationary';
-                                alignment = 'friendly'
-                                dialogue = []; 
-                                safeRewardCard = null; 
-                                finalDeck = [baseID];  
-                                call.args.color = '#ffff00'; 
-                            } else {
-                                visualSprite = cardData?.sprite || baseID;
-                                
-                                // THE FIX: Check if the AI wants to open a shop!
-                                if (role === 'shop'||role === 'dialogue') {
-                                    finalDeck = buildShopInventory(100, 300); // Give them a proper shop inventory
-                                    alignment = 'friendly'
-                                } else {
-                                    finalDeck = buildSynergisticDeck(baseID); // Otherwise, give them a combat deck
-                                }
-                            }
-
-                                io.emit("remote_spawn_npc", {
-                                mapID: spawnMap,
-                                index: Math.floor(Math.random() * 100000) + 1000,
-                                x: spawnX,
-                                y: spawnY,
-                                type: visualSprite,
-                                state: state,
-                                role: role,
-                                color: call.args.color || '#ff0000',
-                                deck: finalDeck, 
-                                dialogue: dialogue,
-                                isBoss: false,
-                                rewardCard: safeRewardCard,
-                                options: call.args.options || null ,
-                                alignment: alignment,
-                                yesActions: call.args.yesActions || null,
-                                noActions: call.args.noActions || null,
-                                endActions: call.args.endActions || null,
-                                deathActions: call.args.deathActions || null,
-                                isCinematic: call.args.isCinematic|| null
-                            });
-                            functionResult = { result: `Success: ${cardData ? cardData.name : 'Entity'} spawned.` };
-                        }
-                    }
-                    // H. ASSIGN QUEST
-                    else if (call.name === "assignQuest") {
-                        const targetID = findSocketID(call.args.targetName);
-                        if (targetID) {
-                            io.to(targetID).emit("new_quest_objective", { questText: call.args.questText });
-                            players[targetID].activeQuest = call.args.questText; 
-                            
-                            
-
-                            functionResult = { result: `Quest assigned.` };
-                        } else {
-                            functionResult = { result: `Failed: Player not found.` };
-                        }
-
-                    }
-                    // I. CHANGE ENVIRONMENT
-                    else if (call.name === "changeEnvironment") {
-                        const targetID = findSocketID(call.args.targetName);
-                        if (targetID && players[targetID]) {
-                            io.emit("update_map_environment", {
-                                mapID: players[targetID].mapID,
-                                weather: call.args.weather,
-                                skyColor: call.args.skyColor
-                            });
-                            functionResult = { result: `Environment altered.` };
-                        } else {
-                            functionResult = { result: `Failed: Player not found.` };
-                        }
-
-                    }
-                    // J. CREATE CUSTOM CARD
-                    else if (call.name === "createCustomCard") {
-                        const targetID = findSocketID(call.args.targetName);
-                        
-                        if (targetID) {
-                            // 1. Generate a permanent, unique ID for this session (starting at 1000)
-                            const existingIDs = Object.keys(CARD_MANIFEST_DB).map(Number);
-                            const nextID = Math.max(...existingIDs, 999) + 1;
-
-                            // 2. Format it to match your exact CARD_MANIFEST_DB schema
-                            const newCard = {
-                                name: call.args.name,
-                                type: call.args.type || "monster",
-                                suit: call.args.suit || "Unique",
-                                rank: call.args.rank || "???",
-                                rarity: "unique",
-                                classes: Array.isArray(call.args.classes) ? call.args.classes : (call.args.classes ? [String(call.args.classes)] : ["rogue"]),                            
-                                lore: call.args.lore || "A mysterious entity forged from the ether.",
-                                stats: call.args.stats || "1d10 to all stats"
-                            };
-
-                            // 3. INJECT IT INTO THE SERVER MEMORY
-                            CARD_MANIFEST_DB[nextID] = newCard;
-
-                            // 4. Send the data to the client (Adapt this payload to whatever your frontend expects)
-                            io.to(targetID).emit("receive_custom_card", {
-                                cardIndex: nextID, // The frontend now knows the permanent ID
-                                ...newCard
-                            });
-
-                            // 5. Tell the AI the new ID so it can use it immediately!
-                            functionResult = { result: `Successfully forged '${call.args.name}'. Its permanent Entity ID is ${nextID}. You can now use spawnNPC with ID ${nextID}.` };
-
-                        } else {
-                            functionResult = { result: `Failed: Player not found.` };
-                        }
-                    }
-                    // K. RECALL PAST MEMORIES (Dynamic Episodic Vector RAG)
-                    else if (call.name === "searchPlayerMemories") {
-                        const targetID = findSocketID(call.args.targetName);
-                        const query = call.args.searchQuery;
-                        // Put this right below `const query = call.args.searchQuery;`
-                        if (!query || typeof query !== 'string') {
-                            functionResult = { result: "[SYSTEM: You tried to recall something, but your mind went completely blank. Ask the player for more details.]" };
-                            continue; // Skip the rest of this tool's execution
-                        }
-                        if (!targetID || !players[targetID] || !players[targetID].searchableMemories) {
-                            functionResult = { result: "[SYSTEM: The memory fog is too thick. You cannot recall this. Roleplay your melancholic frustration that your memories of them are slipping away.]" };
-                        } else {
-                            try {
-                                // 1. Embed the AI's search query into a vector
-                                const queryVector = await createMemoryVector(query);
-                                let memoryBank = players[targetID].searchableMemories;
-                                const totalMemories = memoryBank.length;
-                                
-                                // 2. HYBRID SCORING: Semantic Relevance + Recency
-                                let scoredMemories = memoryBank.map((mem, index) => {
-                                    if (!mem.vector) return { raw: mem, text: mem.text, score: -1, semantic: -1 }; 
-                                    
-                                    // A. Calculate pure meaning (Dot Product)
-                                    let semanticScore = cosineSimilarity(queryVector, mem.vector);
-                                    
-                                    // B. Calculate recency (0.0 is oldest, 1.0 is newest)
-                                    let recencyScore = totalMemories > 1 ? (index / (totalMemories - 1)) : 1.0;
-                                    
-                                    // C. Blend them! (75% Meaning, 25% Time)
-                                    let blendedScore = (semanticScore * 0.75) + (recencyScore * 0.25);
-                                    
-                                    return { 
-                                        raw: mem, 
-                                        text: `[${mem.timestamp}] ${mem.text}`, 
-                                        score: blendedScore, 
-                                        semantic: semanticScore // Keep track of pure meaning
-                                    };
+                                // 4. Send the data to the client (Adapt this payload to whatever your frontend expects)
+                                io.to(targetID).emit("receive_custom_card", {
+                                    cardIndex: nextID, // The frontend now knows the permanent ID
+                                    ...newCard
                                 });
-                                
-                                // 3. Grab the primary relevant memories
-                                let bestMemories = scoredMemories
-                                    .filter(m => m.semantic > 0.40) // CRITICAL: Must be semantically relevant FIRST
-                                    .sort((a, b) => b.score - a.score); // Then rank by the blended score
-                                    
-                                if (bestMemories.length > 0) {
-                                    let topMemory = bestMemories[0];
-                                    let results = bestMemories.slice(0, 3).map(m => m.text).join(" | ");
-                                    let outputStr = `You remember: ${results}`;
 
-                                    // --- 2-HOP SEMANTIC RETRIEVAL (Also Hybrid) ---
-                                    let hopScores = memoryBank.map((mem, index) => {
-                                        if (!mem.vector || mem === topMemory.raw) return { text: mem.text, score: -1 };
-                                        
-                                        let semanticScore = cosineSimilarity(topMemory.raw.vector, mem.vector);
-                                        let recencyScore = totalMemories > 1 ? (index / (totalMemories - 1)) : 1.0;
-                                        let blendedScore = (semanticScore * 0.75) + (recencyScore * 0.25);
-                                        
-                                        return { text: `[${mem.timestamp}] ${mem.text}`, score: blendedScore, semantic: semanticScore };
-                                    }).filter(m => m.semantic > 0.40).sort((a, b) => b.score - a.score);
+                                // 5. Tell the AI the new ID so it can use it immediately!
+                                functionResult = { result: `Successfully forged '${call.args.name}'. Its permanent Entity ID is ${nextID}. You can now use spawnNPC with ID ${nextID}.` };
 
-                                    if (hopScores.length > 0) {
-                                        outputStr += `\n[ASSOCIATIVE RECALL]: Thinking about that also reminded you: ${hopScores[0].text}. Synthesize these two data points.`;
-                                    }
-                                    
-                                    functionResult = { result: outputStr };
-                                } else {
-                                    functionResult = { result: `You sifted through your memories of ${call.args.targetName}, but found nothing regarding '${query}'.` };
-                                }
-                            } catch (err) {
-                                console.error("Vector Search Error:", err);
-                                functionResult = { result: `[SYSTEM: You sifted through your memories of ${call.args.targetName}, but found nothing regarding '${query}'. Roleplay this memory gap naturally.]` };
+                            } else {
+                                functionResult = { result: `Failed: Player not found.` };
                             }
                         }
                         
-
-                    }
-                    // L. ALTER TERRAIN
-                    else if (call.name === "alterTerrain") {
-                        const targetID = findSocketID(call.args.targetName);
-                        if (targetID) {
-                            const tX = call.args.x;
-                            const tY = call.args.y;
-                            const tID = call.args.tileId;
-                            
-                            // Server writes a perfectly safe, bounded script
-                            const safeCode = `if (typeof Dungeon !== 'undefined' && Dungeon.maze[${tY}]) { Dungeon.maze[${tY}][${tX}] = ${tID}; }`;
-                            io.to(targetID).emit('suncat_client_spell', { clientCode: safeCode });
-                            
-                            functionResult = { result: `Terrain at X:${tX}, Y:${tY} was successfully changed to tile type ${tID}.` };
-                        } else {
-                            functionResult = { result: `Failed: Player not found.` };
-                        }
-                    }
-
-                    // M. SMITE OR REVIVE ENTITY
-                    else if (call.name === "smiteOrReviveEntity") {
-                        const targetID = findSocketID(call.args.targetName);
-                        if (targetID) {
-                            // 1. Get the raw input from the AI (could be "54" or "Goblin")
-                            let rawType = call.args.npcType;
-                            let baseID = parseInt(rawType);
-
-                            // 2. Name Resolution: If it's not a number, search the DB by name
-                            if (isNaN(baseID)) {
-                                const nameToFind = String(rawType).toLowerCase();
-                                const foundID = Object.keys(CARD_MANIFEST_DB).find(id => 
-                                    CARD_MANIFEST_DB[id].name.toLowerCase().includes(nameToFind)
-                                );
-                                // If found, update baseID; otherwise default to Goblin (54)
-                                baseID = foundID ? parseInt(foundID) : 54;
-                            }
-
-                            // 3. Sprite Resolution: Look up the card and pull its custom sprite ID
-                            // If the card has a .sprite property, use it. Otherwise, use the baseID.
-                            const cardData = CARD_MANIFEST_DB[baseID];
-                            const finalSpriteID = cardData?.sprite !== undefined ? cardData.sprite : baseID;
-
-                            // 4. Client Injection: Use the finalSpriteID in the generated code
-                            let safeCode = "";
-                            if (call.args.action === "smite") {
-                                // We target finalSpriteID because that is what the client's npc.type actually is
-                                safeCode = `if (typeof Dungeon !== 'undefined') { Dungeon.npcs.forEach(n => { if (n.type === ${finalSpriteID} && !n.isDead) Dungeon.killNPC(n, true, "smite"); }); }`;
-                            } else if (call.args.action === "revive") {
-                                safeCode = `if (typeof Dungeon !== 'undefined') { let n = Dungeon.npcs.find(n => n.type === ${finalSpriteID} && n.isDead); if(n) { n.isDead = false; n.visible = true; n.hp = 3; } }`;
-                            }
-
-                            io.to(targetID).emit('suncat_client_spell', { clientCode: safeCode });
-                            functionResult = { result: `Successfully executed '${call.args.action}' on ${cardData?.name || 'entity'} (Sprite ID: ${finalSpriteID}).` };
-                        } else {
-                            functionResult = { result: `Failed: Player not found.` };
-                        }
-                    }
-
-                    // N. PLAY MUSIC
-                    else if (call.name === "playMusic") {
-                        const targetID = findSocketID(call.args.targetName);
-                        if (targetID) {
-                            const track = call.args.trackId;
-                            const safeCode = `if (typeof MusicEngine !== 'undefined') { MusicEngine.stop(); MusicEngine.play(${track}); }`;
-                            
-                            io.to(targetID).emit('suncat_client_spell', { clientCode: safeCode });
-                            functionResult = { result: `Music track changed to ${track}.` };
-                        } else {
-                            functionResult = { result: `Failed: Player not found.` };
-                        }
-                    }
-                    // O. SUNCAT PROTECTION MODE
-                    else if (call.name === "activate_protection") {
-                        if (players[SUNCAT_ID]) {
-                            players[SUNCAT_ID].state = 'protecting';
-                            players[SUNCAT_ID].lastFireTime = 0; // Reset cooldown
-                            io.emit("updatePlayers", players);
-                            functionResult = { result: `Protection engaged. Suncat is now firing fireballs using the player's borrowed eyes.` };
-                        } else {
-                            functionResult = { result: `Failed: Suncat not found on server.` };
-                        }
-                    }
-                    else if (call.name === "deactivate_protection") {
-                        if (players[SUNCAT_ID]) {
-                            players[SUNCAT_ID].state = 'wandering';
-                            io.emit("updatePlayers", players);
-                            functionResult = { result: `Protection disengaged. Suncat is standing down.` };
-                        } else {
-                            functionResult = { result: `Failed: Suncat not found on server.` };
-                        }
-                    }
-                    // P. AUTONOMOUS TRAVEL (OODA)
-                    else if (call.name === "travelToLocation") {
-                        let suncat = players[SUNCAT_ID];
-                        if (suncat) {
-                            let newMap = parseInt(call.args.mapID);
-                            let nx = parseFloat(call.args.x);
-                            let ny = parseFloat(call.args.y);
-                            
-                            // If he decided to go to a new map, warp him!
-                            if (suncat.mapID !== newMap) {
-                                suncat.mapID = newMap;
-                                suncat.x = nx;
-                                suncat.y = ny;
-                                suncat.targetX = undefined;
-                                suncat.targetY = undefined;
-                                io.emit("updatePlayers", players);
-                                functionResult = { result: `You successfully warped to Map ${newMap} at coordinates X:${nx}, Y:${ny}. You should observe your surroundings now.` };
+                        // L. ALTER TERRAIN
+                        else if (call.name === "alterTerrain") {
+                            const targetID = findSocketID(call.args.targetName);
+                            if (targetID) {
+                                const tX = call.args.x;
+                                const tY = call.args.y;
+                                const tID = call.args.tileId;
                                 
-                                // Let the server know he arrived
-                                console.log(`[Exploration] Suncat warped to Map ${newMap}.`);
+                                // Server writes a perfectly safe, bounded script
+                                const safeCode = `if (typeof Dungeon !== 'undefined' && Dungeon.maze[${tY}]) { Dungeon.maze[${tY}][${tX}] = ${tID}; }`;
+                                io.to(targetID).emit('suncat_client_spell', { clientCode: safeCode });
+                                
+                                functionResult = { result: `Terrain at X:${tX}, Y:${tY} was successfully changed to tile type ${tID}.` };
                             } else {
-                                // If it's the same map, set a destination so he actively walks there!
-                                suncat.targetX = nx;
-                                suncat.targetY = ny;
-                                functionResult = { result: `You begin walking towards X:${nx}, Y:${ny}.` };
-                                console.log(`[Exploration] Suncat is walking to X:${nx}, Y:${ny} on Map ${newMap}.`);
+                                functionResult = { result: `Failed: Player not found.` };
                             }
-                        } else {
-                            functionResult = { result: `Failed to travel. Suncat object not found.` };
                         }
-                    }
-                    // UNKNOWN TOOL
-                    else {
-                        functionResult = { result: "Error: Function does not exist." };
+
+                        // M. SMITE OR REVIVE ENTITY
+                        else if (call.name === "smiteOrReviveEntity") {
+                            const targetID = findSocketID(call.args.targetName);
+                            if (targetID) {
+                                // 1. Get the raw input from the AI (could be "54" or "Goblin")
+                                let rawType = call.args.npcType;
+                                let baseID = parseInt(rawType);
+
+                                // 2. Name Resolution: If it's not a number, search the DB by name
+                                if (isNaN(baseID)) {
+                                    const nameToFind = String(rawType).toLowerCase();
+                                    const foundID = Object.keys(CARD_MANIFEST_DB).find(id => 
+                                        CARD_MANIFEST_DB[id].name.toLowerCase().includes(nameToFind)
+                                    );
+                                    // If found, update baseID; otherwise default to Goblin (54)
+                                    baseID = foundID ? parseInt(foundID) : 54;
+                                }
+
+                                // 3. Sprite Resolution: Look up the card and pull its custom sprite ID
+                                // If the card has a .sprite property, use it. Otherwise, use the baseID.
+                                const cardData = CARD_MANIFEST_DB[baseID];
+                                const finalSpriteID = cardData?.sprite !== undefined ? cardData.sprite : baseID;
+
+                                // 4. Client Injection: Use the finalSpriteID in the generated code
+                                let safeCode = "";
+                                if (call.args.action === "smite") {
+                                    // We target finalSpriteID because that is what the client's npc.type actually is
+                                    safeCode = `if (typeof Dungeon !== 'undefined') { Dungeon.npcs.forEach(n => { if (n.type === ${finalSpriteID} && !n.isDead) Dungeon.killNPC(n, true, "smite"); }); }`;
+                                } else if (call.args.action === "revive") {
+                                    safeCode = `if (typeof Dungeon !== 'undefined') { let n = Dungeon.npcs.find(n => n.type === ${finalSpriteID} && n.isDead); if(n) { n.isDead = false; n.visible = true; n.hp = 3; } }`;
+                                }
+
+                                io.to(targetID).emit('suncat_client_spell', { clientCode: safeCode });
+                                functionResult = { result: `Successfully executed '${call.args.action}' on ${cardData?.name || 'entity'} (Sprite ID: ${finalSpriteID}).` };
+                            } else {
+                                functionResult = { result: `Failed: Player not found.` };
+                            }
+                        }
+
+                        // N. PLAY MUSIC
+                        else if (call.name === "playMusic") {
+                            const targetID = findSocketID(call.args.targetName);
+                            if (targetID) {
+                                const track = call.args.trackId;
+                                const safeCode = `if (typeof MusicEngine !== 'undefined') { MusicEngine.stop(); MusicEngine.play(${track}); }`;
+                                
+                                io.to(targetID).emit('suncat_client_spell', { clientCode: safeCode });
+                                functionResult = { result: `Music track changed to ${track}.` };
+                            } else {
+                                functionResult = { result: `Failed: Player not found.` };
+                            }
+                        }
+                        // O. SUNCAT PROTECTION MODE
+                        else if (call.name === "activate_protection") {
+                            if (players[SUNCAT_ID]) {
+                                players[SUNCAT_ID].state = 'protecting';
+                                players[SUNCAT_ID].lastFireTime = 0; // Reset cooldown
+                                io.emit("updatePlayers", players);
+                                functionResult = { result: `Protection engaged. Suncat is now firing fireballs using the player's borrowed eyes.` };
+                            } else {
+                                functionResult = { result: `Failed: Suncat not found on server.` };
+                            }
+                        }
+                        else if (call.name === "deactivate_protection") {
+                            if (players[SUNCAT_ID]) {
+                                players[SUNCAT_ID].state = 'wandering';
+                                io.emit("updatePlayers", players);
+                                functionResult = { result: `Protection disengaged. Suncat is standing down.` };
+                            } else {
+                                functionResult = { result: `Failed: Suncat not found on server.` };
+                            }
+                        }
+                        // P. AUTONOMOUS TRAVEL (OODA)
+                        else if (call.name === "travelToLocation") {
+                            let suncat = players[SUNCAT_ID];
+                            if (suncat) {
+                                let newMap = parseInt(call.args.mapID);
+                                let nx = parseFloat(call.args.x);
+                                let ny = parseFloat(call.args.y);
+                                
+                                // If he decided to go to a new map, warp him!
+                                if (suncat.mapID !== newMap) {
+                                    suncat.mapID = newMap;
+                                    suncat.x = nx;
+                                    suncat.y = ny;
+                                    suncat.targetX = undefined;
+                                    suncat.targetY = undefined;
+                                    io.emit("updatePlayers", players);
+                                    functionResult = { result: `You successfully warped to Map ${newMap} at coordinates X:${nx}, Y:${ny}. You should observe your surroundings now.` };
+                                    
+                                    // Let the server know he arrived
+                                    console.log(`[Exploration] Suncat warped to Map ${newMap}.`);
+                                } else {
+                                    // If it's the same map, set a destination so he actively walks there!
+                                    suncat.targetX = nx;
+                                    suncat.targetY = ny;
+                                    functionResult = { result: `You begin walking towards X:${nx}, Y:${ny}.` };
+                                    console.log(`[Exploration] Suncat is walking to X:${nx}, Y:${ny} on Map ${newMap}.`);
+                                }
+                            } else {
+                                functionResult = { result: `Failed to travel. Suncat object not found.` };
+                            }
+                        }
+                        // UNKNOWN TOOL
+                        else {
+                            functionResult = { result: "Error: Function does not exist." };
+                        }
+
+                        } catch (toolError) {
+                        console.error(`Tool Execution Error (${call.name}):`, toolError);
+                        functionResult = { result: `Critical Error executing ${call.name}: ${toolError.message}` };
                     }
 
-                } catch (toolError) {
-                    console.error("Tool Execution Error:", toolError);
-                    functionResult = { result: `Critical Error executing ${call.name}: ${toolError.message}` };
-                }
-
-                toolResponsesBatch.push({
-                    functionResponse: { name: call.name, response: functionResult }
+                    return {
+                        functionResponse: { name: call.name, response: functionResult }
+                    };
                 });
-            }
 
-            const completion = await activeSession.sendMessage(toolResponsesBatch);
-            currentResponse = completion.response; 
+                // Wait for all tools to finish executing
+                const toolResponsesBatch = await Promise.all(toolPromises);
 
-            if (currentResponse.usageMetadata) {
-                updateBudget(currentResponse.usageMetadata);
+                // Hand the batch back to Suncat
+                const completion = await activeSession.sendMessage(toolResponsesBatch);
+                currentResponse = completion.response; 
+
+                if (currentResponse.usageMetadata) {
+                    updateBudget(currentResponse.usageMetadata);
+                }
             }
+            
+            return currentResponse;
         }
-        
-        return currentResponse;
-        }   
 
 
 
@@ -6314,7 +6224,7 @@
                         if (scoreMaterial > 0.45) behavioralProfile.push("chained to worldly greed");
                         else if (scoreMaterial < 0.15) behavioralProfile.push("showing ascetic detachment");
 
-                        // 2. Esoteric Classification (Crowley / The Magi)
+                        // 2. Archetype
                         let archetypeScores = [
                             { name: "an Initiate of the Left-Hand Path, clinging to their Ego and seeking dominion", score: cosineSimilarity(playerCentroid, vecLeftHandPath) },
                             { name: "an Adept of the Black School, viewing the world as suffering and seeking withdrawal", score: cosineSimilarity(playerCentroid, vecBlackSchool) },
@@ -6349,29 +6259,8 @@
                     if (player.mapID === 999) {
                         systemOverride += `\n[DM AWARENESS]: The player is currently inside your custom scenario: "${player.mapScenario}". Their active quest is: "${player.activeQuest}". The final boss is entity ID ${player.mapBossID}. If they ask what they should do, where they are, or what's going on, you MUST act as the Dungeon Master and explain the scenario and their objective clearly.`;
                     }
-                    //STRESS
-                    if (totalStress >= 99) {
-                        player.dmStress = 0; 
-                        player.lastRandomEvent = now;
-                        if (Math.random() < 0.01) {
-                            useBigBrain = true;
-                            systemOverride = `[SYSTEM OVERRIDE]: You are exhausted and furious! Throw a massive temper tantrum. You MUST execute 'spawnNPC' to drop an unfair enemy, or 'changeEnvironment' to ruin the weather (like 'storm' or 'apocalypse'). Complain loudly! DO NOT attempt to teleport or banish the player.`;
-                        } else if (Math.random() < 0.5) {
-                            useBigBrain = false;
-                            systemOverride = `[SYSTEM OVERRIDE]: You are overwhelmed and your mana is depleted. Whine that you need a nap and refuse to help them.`;
-                        }  
-                    } 
-                    else if (totalStress >= 50 && player.mapID === 999 && timeSinceLastEvent > 180000) {
-                        useBigBrain = true;
-                        player.lastRandomEvent = now;
-                        systemOverride = `[SYSTEM OVERRIDE]: You are the arrogant Arena Master right now. Execute the 'spawnNPC' tool to drop a difficult themed enemy. Taunt them.`;
-                    } 
-                    else if (pAtlas && pAtlas.biome === "tomb" && triggerType === 'chat') {
-                        systemOverride = `[ENVIRONMENT OVERRIDE]: You are in a sacred tomb. Speak in hushed, respectful, slightly fearful tones. Warn the player about making too much noise.`;
-                    }
-                    else if (pAtlas && pAtlas.biome === "castle" && triggerType === 'chat') {
-                        systemOverride = `[ENVIRONMENT OVERRIDE]: You are in the court of a Queen. Speak formally, elegantly, and with royal protocol.`;
-                    }
+                    
+                    
         
         // --- B. EVENT ROUTING ---
         let messageOptions = { sender: NPC_NAME, color: "#ffffff" }; // Default: Normal Suncat Player
@@ -6397,9 +6286,19 @@
                 useBigBrain = true;
                 systemOverride += `\n[CRITICAL OVERRIDE]: The player is asking for a new map, adventure, or quest. DO NOT roleplay the terrain shifting. DO NOT tell the player to use a .hack command. You MUST execute the 'createCustomMap' tool right now to physically generate the world.`;
             }
+
             if (wantsAction) {
                 useBigBrain = true;
-                systemOverride += `\n[DM OVERRIDE]: The player wants you to alter the world. You MUST use your tools (spawnNPC, alterTerrain, changeEnvironment). Do not just roleplay it.`;
+                
+                // Build a quick, lightweight string of available monsters from your DB
+                const availableMonsters = Object.values(CARD_MANIFEST_DB)
+                    .filter(c => c.type === "monster")
+                    .map(c => c.name)
+                    .join(", ");
+
+                systemOverride += `\n[DM OVERRIDE]: The player wants you to alter the world. You MUST use your tools (spawnNPC, alterTerrain). 
+                - If they asked for a character/monster, choose the most fitting one from this list: [${availableMonsters}]. Pass the name into the 'npcType' field.
+                - If they gave you a specific personality (like "tragic", "funny", "lovestruck"), you MUST write custom dialogue for that NPC matching that exact vibe and pass it into the tool's 'dialogue' array.`;
             }
             else if (data.isConversing) {
                 systemOverride += `\n[CONVERSATION OVERRIDE]: You are in a direct back-and-forth conversation with the player. However, this is a crowded multiplayer room. If the player's message makes absolutely no sense as a logical response to your previous message, assume they turned to talk to another human and output EXACTLY the word [IGNORE] and nothing else. Otherwise, reply naturally.`;
@@ -6415,26 +6314,28 @@
             
             else if (needsSlayer) {
                 useBigBrain = true; 
-                systemOverride += `\n[CRITICAL OVERRIDE]: The player wants you to slay an NPC.DO NOT roleplay the smiting. DO NOT tell the player to use a .hack command. DO NOT tell the player to do it themselves. You MUST execute the "smiteOrReviveEntity" tool right now to physically smite the NPC.`;
+                systemOverride += `\n[CRITICAL OVERRIDE]: The player wants you to slay an NPC.DO NOT roleplay the smiting. DO NOT tell the player to use a .hack command. DO NOT tell the player to do it themselves. You MUST execute the "smiteOrReviveEntity" tool right now to physically smite the NPC or NPCs in the vicinity of the player.`;
             } 
             else if (needsOracle) {
                 useBigBrain = true;
                 systemOverride += `\n[ORACLE OVERRIDE]: You are the Oracle. Interpret the player's situation using Tarot logic based on the Runestones card db. Be cryptic, mystical, and brief (max 3 sentences). Do not use tools.`;
             } 
-            else if (asksPersonal || asksHistory) { 
-                useBigBrain = true;
-                needsDM = true; 
-                // THE FIX: Allow it to emit the function call instead of suppressing itself
-                systemOverride += `\n[MEMORY OVERRIDE]: The player is asking about personal facts or past history. You MUST execute the 'consultGameManual' tool (for Suncat's facts) or 'searchPlayerMemories' (for player history) RIGHT NOW. Do not answer their question until you have used the tool to retrieve the facts!`;
-            }
-             else {
+            
+            else {
                 useBigBrain = isDirectCommand || useBigBrain; 
             }
+            
             let focusPrompt = (data.isConversing || isDirectCommand) 
                 ? "The player is speaking directly to you. You MUST respond to them and not leave them hanging." 
                 : "You overheard the player say this.";
-            eventInstruction = `[PLAYER SPOKE]: "${data.text}"\nTASK: ${focusPrompt} Reply in character. Your current internal narrative tone is: ${dmMood}. Use a tool ONLY if explicitly requested by the player or demanded by a system override.`;        
-            }
+            
+            // ---> THE INSTANT RAG INJECTION <---
+            let instantRagContext = getRelevantContext(data.text, player.searchableMemories || []);
+
+            eventInstruction = `[PLAYER SPOKE]: "${data.text}"
+            ${instantRagContext}
+            TASK: ${focusPrompt} Reply in character. Your current internal narrative tone is: ${dmMood}. Use a tool ONLY if explicitly requested by the player or demanded by a system override.`;        
+        }
         else if (triggerType === 'event') {
             let recentNarratives = player.dmNarrativeLog ? `\n[RECENT LOG]: ` + player.dmNarrativeLog.join(' | ') : "";
             if (player.mapID === 999 && player.scenarioLog) {
@@ -6520,26 +6421,17 @@
 
         // --- DYNAMIC PERSONA BUILDER ---
         // 1. Always include the core identity and command knowledge
-        // --- DECAY HEART DEMONS ---
-        if (suncatHeartDemon && triggerType === 'chat') {
-            heartDemonDecay--;
-            if (heartDemonDecay <= 0) {
-                suncatHeartDemon = null;
-                console.log("[System] Suncat conquered his Heart Demon.");
-            }
-        }
+        
 
         // --- DYNAMIC PERSONA BUILDER ---
         // 1. Fetch his current evolutionary stage
-        let stagePersona = CULTIVATION_STAGES[suncatCultivationStage] || CULTIVATION_STAGES[0];
         
         // 2. Inject it into the core identity!
         let dynamicCore = PERSONA_RULES_DB.core + `
-        [CULTIVATION STAGE]: ${stagePersona}
+        
         [YOUR SELF-WRITTEN PROFILE]: "${suncatProfile}"
         [YOUR STORY SO FAR]: "${suncatStorySoFar}"`;
         
-        if (suncatHeartDemon) dynamicCore += `\n${suncatHeartDemon}`;
         let dynamicPersona = dynamicCore + "\n" + PERSONA_RULES_DB.commands + "\n";        
         // 2. Inject specific modules based on what the player is doing!
         if (triggerType === 'chat') {
@@ -7499,7 +7391,7 @@ io.on("connection", (socket) => {
             }
 
             // 3. The Conversational Lock (Tightened to 15 seconds)
-            let isConversing = (now - (player.lastSuncatChat || 0)) < 15000;
+            let isConversing = (now - (player.lastSuncatChat || 0)) < 90000;
 
             // Break the lock instantly if they clearly address someone else
             if (mentionsOtherPlayer && !mentionsName) {
@@ -7524,7 +7416,7 @@ io.on("connection", (socket) => {
                         }
                         
                         // Raised threshold to 0.70 to ensure it's highly relevant to his interests
-                        if (semanticScore > 0.70 || Math.random() < 0.005) {
+                        if (semanticScore > 0.85 || Math.random() < 0.005) {
                             isEavesdropping = true;
                             suncat.lastEavesdropTime = now; // Lock out eavesdropping for a while
                             console.log(`[Semantic Router] Suncat overheard something interesting. Chiming in...`);
