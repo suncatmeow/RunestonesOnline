@@ -4165,15 +4165,23 @@
                                 functionResult = { result: `Failed: Player '${targetName}' not found or offline.` };
                             } else {
                                 let cardID = parseInt(call.args.cardName);
-                                const name = String(call.args.cardName).toLowerCase();
+                                const name = String(call.args.cardName).toLowerCase().trim();
 
-                                // Fallback: If the AI passed a string name or an invalid ID, dynamically search the new DB
+                                // Fallback: If the AI passed a string name or an invalid ID, dynamically search the DB
                                 if (isNaN(cardID) || !CARD_MANIFEST_DB[cardID]) {
-                                    let foundID = Object.keys(CARD_MANIFEST_DB).find(id => {
-                                        const dbName = CARD_MANIFEST_DB[id].name.toLowerCase();
-                                        // Check if the DB name is inside the AI's string, or vice versa
-                                        return dbName.includes(name) || name.includes(dbName);
-                                    });
+                                    
+                                    // 1. EXACT MATCH FIRST (Fixes the Dragon vs Dragon Wing overlap)
+                                    let foundID = Object.keys(CARD_MANIFEST_DB).find(id => 
+                                        CARD_MANIFEST_DB[id].name.toLowerCase() === name
+                                    );
+                                    
+                                    // 2. INCLUDES MATCH (Fallback)
+                                    if (!foundID) {
+                                        foundID = Object.keys(CARD_MANIFEST_DB).find(id => {
+                                            const dbName = CARD_MANIFEST_DB[id].name.toLowerCase();
+                                            return dbName.includes(name) || name.includes(dbName);
+                                        });
+                                    }
                                     
                                     if (foundID) {
                                         cardID = parseInt(foundID);
@@ -4191,8 +4199,7 @@
                                     functionResult = { result: `Error: Could not find card named/ID '${call.args.cardName}'.` };
                                 }
                             }
-
-                        }   
+                        }
                         // B. JUDGEMENT
                         else if (["kickPlayer", "banishPlayer", "vanquishPlayer"].includes(call.name)) {
                             const targetName = call.args.targetName;
@@ -4769,14 +4776,12 @@
                                     let grid = activeCustomMap.maze;
                                     let foundSafe = false;
                                     
-                                    // Scan for a safe floor tile 2 to 4 steps away
                                     for(let i = 0; i < 20; i++) {
                                         let angle = Math.random() * Math.PI * 2;
                                         let dist = 2 + (Math.random() * 2); 
                                         let testX = Math.floor(tp.x + Math.cos(angle) * dist);
                                         let testY = Math.floor(tp.y + Math.sin(angle) * dist);
 
-                                        // If the tile is a 0 (Floor), it's safe!
                                         if (grid[testY] && grid[testY][testX] === 0) {
                                             spawnX = testX + 0.5;
                                             spawnY = testY + 0.5;
@@ -4784,14 +4789,11 @@
                                             break;
                                         }
                                     }
-                                    // If they are cornered in a hallway, spawn it right on top of them!
                                     if (!foundSafe) {
                                         spawnX = tp.x + (Math.random() * 0.5 - 0.25);
                                         spawnY = tp.y + (Math.random() * 0.5 - 0.25);
                                     }
                                 } else {
-                                    // Standard Maps (0-22) are open 20x20 grids. 
-                                    // Add a small 2-tile offset, clamped safely inside 1.5 to 18.5
                                     spawnX = tp.x + (Math.random() > 0.5 ? 2.5 : -2.5);
                                     spawnY = tp.y + (Math.random() > 0.5 ? 2.5 : -2.5);
                                     spawnX = Math.max(1.5, Math.min(18.5, spawnX)); 
@@ -4799,38 +4801,70 @@
                                 }
 
                                 let baseID = parseInt(call.args.npcType);
-                                // --- THE NAME RESOLVER (Fixes Invisible Sprites & Empty Decks) ---
+                                let name = String(call.args.npcType).toLowerCase().trim();
+
+                                // --- THE NAME RESOLVER (Fixes Invisible Sprites, Dragon Wing overlap & Generic NPCs) ---
                                 if (isNaN(baseID) || !CARD_MANIFEST_DB[baseID]) {
-                                    let name = String(call.args.npcType).toLowerCase();
-                                    let foundID = Object.keys(CARD_MANIFEST_DB).find(id => 
-                                        CARD_MANIFEST_DB[id].name.toLowerCase().includes(name)
-                                    );
-                                    if (foundID) {
-                                        baseID = parseInt(foundID);
+                                    
+                                    // 1. Catch generic phrases the LLM uses when the player asks for a "random npc"
+                                    if (["npc", "random", "monster", "any"].includes(name)) {
+                                        const mIDs = Object.keys(CARD_MANIFEST_DB).filter(i => CARD_MANIFEST_DB[i].type === "monster");
+                                        baseID = parseInt(mIDs[Math.floor(Math.random() * mIDs.length)]);
                                     } else {
-                                        baseID = 54; // Ultimate Failsafe: Goblin
+                                        // 2. Exact match (Fixes "Dragon" giving "Dragon Wing")
+                                        let foundID = Object.keys(CARD_MANIFEST_DB).find(id => 
+                                            CARD_MANIFEST_DB[id].name.toLowerCase() === name
+                                        );
+                                        
+                                        // 3. Includes match, but prioritize MONSTERS 
+                                        if (!foundID) {
+                                            foundID = Object.keys(CARD_MANIFEST_DB).find(id => 
+                                                CARD_MANIFEST_DB[id].type === "monster" && 
+                                                CARD_MANIFEST_DB[id].name.toLowerCase().includes(name)
+                                            );
+                                        }
+                                        
+                                        // 4. Fallback includes for anything else
+                                        if (!foundID) {
+                                            foundID = Object.keys(CARD_MANIFEST_DB).find(id => 
+                                                CARD_MANIFEST_DB[id].name.toLowerCase().includes(name)
+                                            );
+                                        }
+
+                                        if (foundID) {
+                                            baseID = parseInt(foundID);
+                                        } else {
+                                            baseID = 54; // Ultimate Failsafe: Goblin
+                                        }
                                     }
                                 }
 
                                 let safeRewardCard = call.args.rewardCard;
                                 let role = call.args.role || 'battle';
                                 let state = call.args.state || 'chasing';
-                                let dialogue = call.args.dialogue || null;
-                                let alignment = 'foe'
+                                let alignment = 'foe';
                                 const cardData = CARD_MANIFEST_DB[baseID];
+                                
+                                // FIX FOR MISSING DIALOGUE CRASH: Give it a fallback using the card's lore!
+                                let dialogue = (call.args.dialogue && Array.isArray(call.args.dialogue) && call.args.dialogue.length > 0)
+                                    ? call.args.dialogue 
+                                    : [cardData ? cardData.lore : "*A mysterious entity appears.*"];
+                                
                                 let finalDeck, visualSprite;
+                                
                                 if (role === 'shop' || role === 'dialogue' || role === 'quest_giver' || role === 'bounty_merchant') {
-                                    finalDeck = buildShopInventory(100, 300); // (Or an empty deck for quest givers)
+                                    finalDeck = buildShopInventory(100, 300);
                                     alignment = 'friendly';
                                 } else {
                                     finalDeck = buildSynergisticDeck(baseID);
                                 }
+                                
                                 // --- THE IDIOT-PROOF INTERCEPTOR ---
                                 if (cardData && (cardData.type === 'item' || cardData.type === 'spell')) {
                                     visualSprite = -27; 
                                     role = 'reward';
                                     state = 'stationary';
-                                    alignment = 'friendly'
+                                    alignment = 'friendly';
                                     dialogue = []; 
                                     safeRewardCard = null; 
                                     finalDeck = [baseID];  
@@ -4838,16 +4872,15 @@
                                 } else {
                                     visualSprite = cardData?.sprite || baseID;
                                     
-                                    // THE FIX: Check if the AI wants to open a shop!
-                                    if (role === 'shop'||role === 'dialogue') {
-                                        finalDeck = buildShopInventory(100, 300); // Give them a proper shop inventory
-                                        alignment = 'friendly'
+                                    if (role === 'shop' || role === 'dialogue') {
+                                        finalDeck = buildShopInventory(100, 300);
+                                        alignment = 'friendly';
                                     } else {
-                                        finalDeck = buildSynergisticDeck(baseID); // Otherwise, give them a combat deck
+                                        finalDeck = buildSynergisticDeck(baseID);
                                     }
                                 }
 
-                                    io.emit("remote_spawn_npc", {
+                                io.emit("remote_spawn_npc", {
                                     mapID: spawnMap,
                                     index: Math.floor(Math.random() * 100000) + 1000,
                                     x: spawnX,
@@ -7377,21 +7410,33 @@ io.on("connection", (socket) => {
             // 1. Is Suncat physically nearby? (Only eavesdrop on local chatter)
             const isLocal = (suncat && suncat.mapID === player.mapID);
 
-            // 2. Check for explicit crosstalk (mentioning another player)
+            // 2. Check for explicit crosstalk and map population
             let mentionsOtherPlayer = false;
+            let otherPlayersOnMap = false;
+            
             for (let id in players) {
                 if (id !== socket.id && id !== SUNCAT_ID) { 
                     let otherName = players[id].name.toLowerCase();
-                    // Don't accidentally match short words; only trigger if name > 2 chars
+                    
+                    // Did the player mention another human's name?
                     if (otherName.length > 2 && content.includes(otherName)) { 
                         mentionsOtherPlayer = true;
-                        break;
+                    }
+                    
+                    // Is there another active human standing on this map?
+                    if (players[id].mapID === player.mapID && !players[id].name.startsWith("[AFK]")) {
+                        otherPlayersOnMap = true;
                     }
                 }
             }
 
-            // 3. The Conversational Lock (Tightened to 15 seconds)
-            let isConversing = (now - (player.lastSuncatChat || 0)) < 90000;
+            // 3. The Conversational Lock (Extended to 5 minutes / 300,000ms)
+            let isConversing = (now - (player.lastSuncatChat || 0)) < 300000;
+
+            // NEW: If you are the ONLY active human on the map, Suncat assumes you are talking to him!
+            if (!otherPlayersOnMap && !mentionsOtherPlayer) {
+                isConversing = true;
+            }
 
             // Break the lock instantly if they clearly address someone else
             if (mentionsOtherPlayer && !mentionsName) {
