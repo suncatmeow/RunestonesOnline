@@ -860,16 +860,40 @@
                         { index: 583440, x: 47.5, y: 10.5, sprite: 61, role: 'dialogue', deck: [61], alignment: 'defender', customDialogue: ["Be careful out there, traveler."] },
                         { index: 527661, x: 64.5, y: 28.5, sprite: 61, role: 'dialogue', deck: [61], alignment: 'defender', customDialogue: ["Be careful out there, traveler."] },
                         { index: 571494, x: 52.5, y: 32.5, sprite: 62, role: 'dialogue', deck: [62], alignment: 'defender', customDialogue: ["Monsters roam the land."] },
+                        // -----------------------------------------
+                        // THE IMPOSTER AMBUSH (Spawns if the Fake Emperor is alive)
+                        // -----------------------------------------
                         { index: 301, x: 24.5, y: 29.5, sprite: 4, role: 'dialogue', deck: [56], alignment: 'friendly',
                             spawnCondition: (d) => !d.memory['fake_emperor_dead'],
                             dialogueFactory: (d) => {
-                                if (d.MainQuest < 2) return { text: ["*Giggle* Why yes, keekee! I am the Emperor!"], endActions: [['close_dialogue', null]] };
+                                if (d.MainQuest < 2) return { text: ["*Giggle* Why yes, keekee! I am the Emperor!", "My royal court and I are very busy!"], endActions: [['close_dialogue', null]] };
                                 return {
-                                    text: ["What?! You helped them escape?", "Grrr... The disguise is ruined! DIE!"], options: ['Imposter!'],
-                                    yesActions: [['play_sfx', 'horn'], ['transform_npc', { index: 301, newType: 56, newAlignment: 'foe', newRole: 'battle', newState: 'chasing', clearDialogue: true, isBoss: true, newDeathActions: [['set_memory', {key: 'fake_emperor_dead', value: true}], ['play_sfx', 'chime'], ['notify', "The imposters are dead! The real Emperor can now return to the throne."]] }], ['close_dialogue', null]]
+                                    text: ["What?! You helped them escape?", "Grrr... The disguise is ruined! Get him, boys!"], options: ['Imposters!'],
+                                    yesActions: [
+                                        ['play_sfx', 'horn'], 
+                                        // 1. Transform the Fake Emperor into the Imp Boss!
+                                        ['transform_npc', { index: 301, newType: 56, newAlignment: 'foe', newRole: 'battle', newState: 'chasing', clearDialogue: true, isBoss: true, newDeathActions: [['set_memory', {key: 'fake_emperor_dead', value: true}], ['play_sfx', 'chime'], ['notify', "The imposters are dead! The real Emperor can now return to the throne."]] }], 
+                                        // 2. Transform the rest of the fake royal court into Fire Imps (Sprite 79)
+                                        ['transform_npc', { index: 310, newType: 79, newAlignment: 'foe', newRole: 'battle', newState: 'chasing', clearDialogue: true }],
+                                        ['transform_npc', { index: 311, newType: 79, newAlignment: 'foe', newRole: 'battle', newState: 'chasing', clearDialogue: true }],
+                                        ['transform_npc', { index: 312, newType: 79, newAlignment: 'foe', newRole: 'battle', newState: 'chasing', clearDialogue: true }],
+                                        ['transform_npc', { index: 313, newType: 79, newAlignment: 'foe', newRole: 'battle', newState: 'chasing', clearDialogue: true }],
+                                        ['transform_npc', { index: 315, newType: 79, newAlignment: 'foe', newRole: 'battle', newState: 'chasing', clearDialogue: true }],
+                                        ['close_dialogue', null]
+                                    ]
                                 };
                             }
                         },
+                        
+                        // The Fake Court (Spawns alongside the Fake Emperor)
+                        { index: 313, x: 23.5, y: 29.5, sprite: 3, role: 'dialogue', alignment: 'friendly', spawnCondition: (d) => !d.memory['fake_emperor_dead'], customDialogue: ["I am the Empress! Give me all your shiny rocks! Kee hee!"] },
+                        { index: 312, x: 26.5, y: 34.5, sprite: 2, role: 'dialogue', alignment: 'friendly', spawnCondition: (d) => !d.memory['fake_emperor_dead'], customDialogue: ["The future says... you look tasty! Wait, I mean, bright!"] },
+                        { index: 315, x: 21.5, y: 34.5, sprite: 5, role: 'dialogue', alignment: 'friendly', spawnCondition: (d) => !d.memory['fake_emperor_dead'], customDialogue: ["Repent your sins! Especially if you don't like Imps!"] },
+                        { index: 311, x: 26.5, y: 28.5, sprite: 1, role: 'dialogue', alignment: 'friendly', spawnCondition: (d) => !d.memory['fake_emperor_dead'], customDialogue: ["I love doing magic! Fire is the best!"] },
+                        { index: 310, x: 24.5, y: 30.5, sprite: 0, role: 'dialogue', alignment: 'friendly', spawnCondition: (d) => !d.memory['fake_emperor_dead'], customDialogue: ["*Giggle* Yes, I am the Fool! Nothing to see here!"] },
+                        // -----------------------------------------
+                        // THE REAL COURT (Spawns ONLY after the Imps are dead)
+                        // -----------------------------------------
                         { index: 302, x: 24.5, y: 29.5, sprite: 4, role: 'dialogue', deck: [4], alignment: 'friendly',
                             spawnCondition: (d) => d.memory['fake_emperor_dead'],
                             dialogueFactory: (d) => {
@@ -897,11 +921,13 @@
                                 return { text: guideText, endActions: [['close_dialogue', null]] };
                             }
                         },
-                        { index: 232, x: 23.5, y: 29.5, sprite: 3, role: 'dialogue', deck: [3], alignment: 'friendly', customDialogue: ["Do not lose hope."] },
-                        { index: 222, x: 26.5, y: 34.5, sprite: 2, role: 'dialogue', deck: [2], alignment: 'friendly', customDialogue: ["Trust your intuition."] },
-                        { index: 252, x: 21.5, y: 34.5, sprite: 5, role: 'dialogue', deck: [5], alignment: 'friendly', customDialogue: ["Learn from the past."] },
-                        { index: 212, x: 6.5, y: 9.5, sprite: 1, role: 'dialogue', deck: [1], alignment: 'friendly', customDialogue: ["Follow your heart."] },
-                        { index: 202, x: 24.5, y: 30.5, sprite: 0, role: 'dialogue', deck: [0], alignment: 'friendly', customDialogue: ["When you face off against the Dark Emperor, I'll be standing right there with you!"] },
+                        
+                        // The Real Companions waiting by the Emperor
+                        { index: 232, x: 23.5, y: 29.5, sprite: 3, role: 'dialogue', deck: [3], alignment: 'friendly', spawnCondition: (d) => d.memory['fake_emperor_dead'], customDialogue: ["Do not lose hope."] },
+                        { index: 222, x: 26.5, y: 34.5, sprite: 2, role: 'dialogue', deck: [2], alignment: 'friendly', spawnCondition: (d) => d.memory['fake_emperor_dead'], customDialogue: ["Trust your intuition."] },
+                        { index: 252, x: 21.5, y: 34.5, sprite: 5, role: 'dialogue', deck: [5], alignment: 'friendly', spawnCondition: (d) => d.memory['fake_emperor_dead'], customDialogue: ["Learn from the past."] },
+                        { index: 212, x: 6.5, y: 9.5,  sprite: 1, role: 'dialogue', deck: [1], alignment: 'friendly', spawnCondition: (d) => d.memory['fake_emperor_dead'], customDialogue: ["Follow your heart."] },
+                        { index: 202, x: 24.5, y: 30.5, sprite: 0, role: 'dialogue', deck: [0], alignment: 'friendly', spawnCondition: (d) => d.memory['fake_emperor_dead'], customDialogue: ["When you face off against the Dark Emperor, I'll be standing right there with you!"] },
                         { index: 100, x: 26.5, y: 29.5, sprite: 0, role: 'dialogue', deck: [0], alignment: 'friendly',
                             spawnCondition: (d) => d.MainQuest === 0,
                             dialogueFactory: (d) => {
