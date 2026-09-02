@@ -8864,7 +8864,6 @@
                 let centerX = this.maze[0] ? this.maze[0].length / 2 : 0;
                 let centerY = this.maze.length / 2;
                 let maxRadius = Math.max(this.maze.length, this.maze[0] ? this.maze[0].length : 0);
-
                 // =====================================================
                 // --- 4. DYNAMIC NPC SPAWNER ---
                 // =====================================================
@@ -8875,10 +8874,11 @@
                             let spriteStr = config.sprite.toString().replace('.', '');
                             let uniqueSpawnId = parseInt(`${id}${spriteStr}${i}`); 
 
+                            // FIX 1: The Wildlife loop uses 'config' and 'safePOS'
                             let newNPC = new NPC(
-                                n.index, n.x, n.y, n.sprite, n.state || 'stationary', n.color || '#66ccff', 
-                                n.deck || [], n.role || 'dialogue', n.isBoss || false, n.alignment || 'friendly', 
-                                n.level || 0 // <--- ADD THIS HERE!
+                                uniqueSpawnId, safePOS.x, safePOS.y, config.sprite, 'wandering', '#ff0000', 
+                                [config.sprite], config.interaction, null, config.alignment,
+                                config.level || 0 // (Added level support for wildlife too!)
                             );
                             newNPC.customDialogue = config.customDialogue;
                             this.npcs.push(newNPC);
@@ -8891,9 +8891,11 @@
                         // Check if this NPC is blocked by a Story Quest flag
                         if (n.spawnCondition && !n.spawnCondition(this)) return;
 
+                        // FIX 2: The standard NPC loop uses 'n'
                         let newNPC = new NPC(
                             n.index, n.x, n.y, n.sprite, n.state || 'stationary', n.color || '#66ccff', 
-                            n.deck || [], n.role || 'dialogue', n.isBoss || false, n.alignment || 'friendly'
+                            n.deck || [], n.role || 'dialogue', n.isBoss || false, n.alignment || 'friendly',
+                            n.level || 0 // <--- THIS is where n.level goes!
                         );
                         
                         if (n.customDialogue) newNPC.customDialogue = n.customDialogue;
@@ -8911,7 +8913,6 @@
                         this.npcs.push(newNPC);
                     });
                 }
-
                 // =====================================================
                 // --- 5. PLAYER SPAWN RESOLUTION ---
                 // =====================================================
