@@ -828,11 +828,9 @@
                                         // 1. Transform the Fake Emperor into the Imp Boss!
                                         ['transform_npc', { index: 301, newType: 56, newAlignment: 'foe', newRole: 'battle', newState: 'chasing', clearDialogue: true, isBoss: true, newDeathActions: [['set_memory', {key: 'fake_emperor_dead', value: true}], ['play_sfx', 'chime'], ['notify', "The imposters are dead! The real Emperor can now return to the throne."]] }], 
                                         // 2. Transform the rest of the fake royal court into Fire Imps (Sprite 79)
-                                        ['transform_npc', { index: 310, newType: 79, newAlignment: 'foe', newRole: 'battle', newState: 'chasing', clearDialogue: true }],
-                                        ['transform_npc', { index: 311, newType: 79, newAlignment: 'foe', newRole: 'battle', newState: 'chasing', clearDialogue: true }],
-                                        ['transform_npc', { index: 312, newType: 79, newAlignment: 'foe', newRole: 'battle', newState: 'chasing', clearDialogue: true }],
-                                        ['transform_npc', { index: 313, newType: 79, newAlignment: 'foe', newRole: 'battle', newState: 'chasing', clearDialogue: true }],
-                                        ['transform_npc', { index: 315, newType: 79, newAlignment: 'foe', newRole: 'battle', newState: 'chasing', clearDialogue: true }],
+                                        ['transform_npc', { index: 312, newType: 56, newAlignment: 'foe', newRole: 'battle', newState: 'chasing', clearDialogue: true }],
+                                        ['transform_npc', { index: 313, newType: 56, newAlignment: 'foe', newRole: 'battle', newState: 'chasing', clearDialogue: true }],
+                                        ['transform_npc', { index: 315, newType: 56, newAlignment: 'foe', newRole: 'battle', newState: 'chasing', clearDialogue: true }],
                                         ['close_dialogue', null]
                                     ]
                                 };
@@ -843,8 +841,6 @@
                         { index: 313, x: 23.5, y: 29.5, sprite: 3, role: 'dialogue', alignment: 'friendly', spawnCondition: (d) => !d.memory['fake_emperor_dead'], customDialogue: ["I am the Empress! Give me all your shiny rocks! Kee hee!"] },
                         { index: 312, x: 26.5, y: 34.5, sprite: 2, role: 'dialogue', alignment: 'friendly', spawnCondition: (d) => !d.memory['fake_emperor_dead'], customDialogue: ["The future says... you look tasty! Wait, I mean, bright!"] },
                         { index: 315, x: 21.5, y: 34.5, sprite: 5, role: 'dialogue', alignment: 'friendly', spawnCondition: (d) => !d.memory['fake_emperor_dead'], customDialogue: ["Repent your sins! Especially if you don't like Imps!"] },
-                        { index: 311, x: 26.5, y: 28.5, sprite: 1, role: 'dialogue', alignment: 'friendly', spawnCondition: (d) => !d.memory['fake_emperor_dead'], customDialogue: ["I love doing magic! Fire is the best!"] },
-                        { index: 310, x: 24.5, y: 30.5, sprite: 0, role: 'dialogue', alignment: 'friendly', spawnCondition: (d) => !d.memory['fake_emperor_dead'], customDialogue: ["*Giggle* Yes, I am the Fool! Nothing to see here!"] },
                         // -----------------------------------------
                         // THE REAL COURT (Spawns ONLY after the Imps are dead)
                         // -----------------------------------------
@@ -882,6 +878,7 @@
                         { index: 252, x: 21.5, y: 34.5, sprite: 5, role: 'dialogue', deck: [5], alignment: 'friendly', spawnCondition: (d) => d.memory['fake_emperor_dead'], customDialogue: ["Learn from the past."] },
                         { index: 212, x: 6.5, y: 9.5,  sprite: 1, role: 'dialogue', deck: [1], alignment: 'friendly', spawnCondition: (d) => d.memory['fake_emperor_dead'], customDialogue: ["Follow your heart."] },
                         { index: 202, x: 24.5, y: 30.5, sprite: 0, role: 'dialogue', deck: [0], alignment: 'friendly', spawnCondition: (d) => d.memory['fake_emperor_dead'], customDialogue: ["When you face off against the Dark Emperor, I'll be standing right there with you!"] },
+                        //FOOL MAIN QUEST START
                         { index: 100, x: 26.5, y: 29.5, sprite: 0, role: 'dialogue', deck: [0], alignment: 'friendly',
                             spawnCondition: (d) => d.MainQuest === 0,
                             dialogueFactory: (d) => {
@@ -895,6 +892,7 @@
                                 };
                             }
                         },
+                        //LOCKED UP EMPERORS COURT
                         { index: 0, x: 28.5, y: 24.5, sprite: 2, role: 'dialogue', deck: [2], alignment: 'friendly',
                             dialogueFactory: (d) => {
                                 if (!d.memory['fool_joined']) return { text: ["... hmm...", "*Her eyes penetrate deep into your soul.*"], endActions: [['close_dialogue', null]] };
@@ -2391,7 +2389,10 @@
                         { index: 0, x: 3.5, y: 1.5, sprite: 99, role: 'portal', deck: [5.5, 5.5, 0, 0], alignment: 'friendly_shy' },
                         { index: 1, x: 9.5, y: 13.5, sprite: 99, role: 'portal', deck: [9.5, 12.5, 2, 0], alignment: 'friendly_shy' },
                         { index: 2, x: 13.5, y: 6.5, sprite: 99, role: 'portal', deck: [8.5, 22.5, 4, 0], alignment: 'friendly_shy' },
-                        { index: 3, x: 13.5, y: 13.5, sprite: 99, role: 'portal', deck: [2.5, 6.5, 17, 0], alignment: 'friendly' },
+                        
+                        // The Wandering Portal
+                        { index: 3, x: 13.5, y: 13.5, sprite: 99, role: 'portal', state: 'wandering', deck: [2.5, 6.5, 17, 0], alignment: 'friendly' },
+                        
                         { index: 4, x: 30.5, y: 16.5, sprite: 99, role: 'portal', deck: [8.5, 22.5, 6, 0], alignment: 'friendly_shy' },
                         { index: 5, x: 12.5, y: 11.5, sprite: 99, role: 'portal', deck: [33.5, 7.5, 9, 3], alignment: 'friendly_shy' },
                         { index: 6, x: 3.5, y: 11.5, sprite: 99, role: 'portal', deck: [12.5, 17.5, 11, 0], alignment: 'friendly_shy' },
@@ -5276,11 +5277,11 @@
                 this.role = role || 'battle';
 
                 // --- 2. HARD OVERRIDES (The True Failsafe) ---
-                // If it's a negative sprite (like items/portals), or 99 (magic missile), 
-                // it MUST be friendly/dialogue, regardless of what the server passed!
                 if (this.type === -27 || this.type === 99 || this.type < 0) {
-                    this.role = 'dialogue'; 
-                    this.alignment = 'friendly';
+                    if (this.role !== 'portal') this.role = 'dialogue'; 
+                    
+                    // Allow 'friendly_shy' to persist so they can flee!
+                    if (this.alignment !== 'friendly_shy') this.alignment = 'friendly';
                 }
 
                 // --- 3. BOOLEAN CLEANUP ---
@@ -8875,8 +8876,9 @@
                             let uniqueSpawnId = parseInt(`${id}${spriteStr}${i}`); 
 
                             let newNPC = new NPC(
-                                uniqueSpawnId, safePOS.x, safePOS.y, config.sprite, 'wandering', '#ff0000', 
-                                [config.sprite], config.interaction, null, config.alignment
+                                n.index, n.x, n.y, n.sprite, n.state || 'stationary', n.color || '#66ccff', 
+                                n.deck || [], n.role || 'dialogue', n.isBoss || false, n.alignment || 'friendly', 
+                                n.level || 0 // <--- ADD THIS HERE!
                             );
                             newNPC.customDialogue = config.customDialogue;
                             this.npcs.push(newNPC);
