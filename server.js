@@ -6703,18 +6703,47 @@ io.on("connection", (socket) => {
 
         socket.on("join_game", (data) => {
             let name = (typeof data === 'object') ? data.name : data;
-            const nameKey = name.toLowerCase(); // <-- Define this first!
-            let savedData = suncatPersistentMemory[nameKey];
+            const nameKey = name.toLowerCase(); 
+            
+            // 1. Extract the persistent ID (fallback to nameKey for older saves/clients)
+            let persistentId = (typeof data === 'object' && data.persistentId) 
+                ? data.persistentId 
+                : nameKey;
+
+            // ==========================================
+            // GHOST EVICTION: Kill lingering duplicate sessions by ID
+            // ==========================================
+            for (let existingId in players) {
+                if (existingId !== socket.id && existingId !== SUNCAT_ID) {
+                    if (players[existingId].persistentId === persistentId) {
+                        console.log(`[Eviction] Found lingering ghost of ${name}. Purging...`);
+                        
+                        const oldSocket = io.sockets.sockets.get(existingId);
+                        if (oldSocket) oldSocket.disconnect(true);
+
+                        delete players[existingId];
+                        delete playerFavorMemory[existingId];
+                        delete playerAITokens[existingId];
+                        if (chatSessions[existingId]) delete chatSessions[existingId];
+
+                        io.emit("player_disconnected", { id: existingId });
+                    }
+                }
+            }
+            // ==========================================
+
+            // 2. LOAD DATA USING THE PERSISTENT ID!
+            let savedData = suncatPersistentMemory[persistentId];
+            
             let rawHistory = (typeof data === 'object') ? data.aiHistory : [];
             let defaultProfile = { combatStyle: "Unknown", alliances: "Unknown", tastes: "Unknown", personality: "Unknown" };
             let playerProfile = savedData ? (savedData.playerProfile || defaultProfile) : defaultProfile;
             let favor = savedData ? (savedData.favor || 0) : 0;
             let activeQuest = savedData ? savedData.activeQuest : null;
-            let loadedStory = savedData ? savedData.storySoFar : ""; // <--- NEW
+            let loadedStory = savedData ? savedData.storySoFar : ""; 
             let loadedMemories = savedData ? (savedData.searchableMemories || []) : [];
             playerFavorMemory[socket.id] = favor;
             let perception = savedData ? (savedData.suncatPerception || "An unpredictable wanderer stepping into the unknown.") : "An unpredictable wanderer stepping into the unknown.";
-            
                 // --- SANITIZATION STEP ---
             // This fixes the "Starting an object on a scalar field" error
             // AND fixes the "Each Content should have at least one part" error.
@@ -6766,6 +6795,7 @@ io.on("connection", (socket) => {
 
             if (players[socket.id]) {
                 players[socket.id].name = name;
+                players[socket.id].persistentId = persistentId;
                 players[socket.id].activeQuest = activeQuest; 
                 players[socket.id].storySoFar = loadedStory;
                 players[socket.id].playerProfile = playerProfile; 
@@ -6834,22 +6864,46 @@ io.on("connection", (socket) => {
             console.log(`Player disconnected: ${socket.id}`);
             
             const me = players[socket.id];
-            
-            // --- NEW: SAVE SUNCAT'S MEMORY BEFORE DELETING ---
+            const oldSocketId = socket.id;
+
+            // --- INSTANT REMOVAL (Fixes the visual ghost bug) ---
+            if (me && me.battleOpponent) {
+                const opponentId = me.battleOpponent;
+                io.to(opponentId).emit("battle_opponent_disconnected", { id: oldSocketId });
+                if (players[opponentId]) players[opponentId].battleOpponent = null;
+            }
+
+            // Instantly delete from server RAM so they disappear for others
+            delete players[oldSocketId];
+            delete playerFavorMemory[oldSocketId];
+            delete playerAITokens[oldSocketId];
+
+            io.emit("updatePlayers", players);
+            io.emit("player_disconnected", { id: oldSocketId }); // Tell clients to erase the sprite
+
             if (me && me.name !== "Unknown") {
-                
-                // 1. FORCE THE STOMACH TO EMPTY ALL REMAINING FOOD (Safely!)
+                io.emit("chat_message", {
+                    sender: "[SYSTEM]",
+                    text: `${me.name} has logged out.`
+                });
+            }
+
+            // --- BACKGROUND AI DIGESTION & SAVE ---
+            if (me && me.name !== "Unknown") {
                 try {
-                    await processCognitiveLoad(socket.id, true); 
+                    // Empty the stomach safely in the background
+                    await processCognitiveLoad(oldSocketId, true); 
                 } catch (err) {
                     console.error(`[Disconnect] Failed to digest final memories for ${me.name}:`, err);
                 }
-                const playerNameKey = me.name.toLowerCase();
-                let currentHistory = chatSessions[socket.id] ? await chatSessions[socket.id].getHistory() : [];
 
-                suncatPersistentMemory[playerNameKey] = {
-                    favor: playerFavorMemory[socket.id] || 0,
-                    playerProfile: me.playerProfile || { combatStyle: "Unknown", alliances: "Unknown", tastes: "Unknown", personality: "Unknown" }, 
+                // USE THE PERSISTENT ID TO SAVE
+                const memoryKey = me.persistentId || me.name.toLowerCase();
+                let currentHistory = chatSessions[oldSocketId] ? await chatSessions[oldSocketId].getHistory() : [];
+
+                suncatPersistentMemory[memoryKey] = {
+                    favor: playerFavorMemory[oldSocketId] || 0, // Fallback to 0 if deleted above
+                    playerProfile: me.playerProfile || { combatStyle: "Unknown", alliances: "Unknown", tastes: "Unknown", personality: "Unknown" },
                     activeQuest: me.activeQuest || null,
                     storySoFar: me.storySoFar || "",
                     aiHistory: currentHistory,
@@ -6860,32 +6914,16 @@ io.on("connection", (socket) => {
 
                 saveSuncatMemory();
             }
-            // ------------------------------------------------
 
-            if (chatSessions[socket.id]) {
-                delete chatSessions[socket.id];
+            if (chatSessions[oldSocketId]) {
+                delete chatSessions[oldSocketId];
             }
-            
-            io.emit("chat_message", {
-                sender: "[SYSTEM]",
-                text: `${me ? me.name : 'A player'} has logged out.`
-            });
-            
-            if (me && me.battleOpponent) {
-                const opponentId = me.battleOpponent;
-                io.to(opponentId).emit("battle_opponent_disconnected", { id: socket.id });
-                if (players[opponentId]) players[opponentId].battleOpponent = null;
-            }
-            
-            delete players[socket.id];
-            delete playerFavorMemory[socket.id];
-            delete playerAITokens[socket.id];
-            io.emit("updatePlayers", players);
+
             setTimeout(() => {
                 const isMapEmpty = !Object.values(players).some(p => p.mapID === 999 && p.id !== SUNCAT_ID);
                 if (isMapEmpty) activeCustomMap = null;
             }, 500);
-            });
+        });
         socket.on('toggle_narration', (isEnabled) => {
             if (players[socket.id]) {
                 players[socket.id].narrationEnabled = isEnabled;
