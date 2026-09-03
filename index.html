@@ -8609,13 +8609,21 @@
                     this.dir = data.dir;
                     
                     this.isLoading = false; // We are done loading!
+                    let myPersistentId = localStorage.getItem("runestones_player_id");
 
+                    // If they are a new player, generate a random ID
+                    if (!myPersistentId) {
+                        // Creates something like "player_x8f9q2m_1693000000000"
+                        myPersistentId = "player_" + Math.random().toString(36).substr(2, 9) + "_" + Date.now();
+                        localStorage.setItem("runestones_player_id", myPersistentId);
+                    }
                     // 6. Update Server
                     if (typeof socket !== 'undefined') {
                         // A. ANNOUNCE ARRIVAL & UPLOAD BRAIN
                         socket.emit("join_game", {
-                        name: playerName,
-                        playerChronicle: playerChronicle 
+                            name: playerName,
+                            persistentId: myPersistentId, // <--- ADD THIS HERE!
+                            playerChronicle: typeof playerChronicle !== 'undefined' ? playerChronicle : "" 
                         });
 
                         // B. Sync Position
