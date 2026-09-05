@@ -2054,7 +2054,11 @@
             floors: ["#2d4c1e", "#3a5f25"], 
             skies: ["rgba(15,30,15,1)", "rgba(200,180,50,1)"], 
             weather: ["leaves", "clear"], 
-            mobs: [54, 57, 60, 75] // Goblin, Spider, Pixie, Gnome
+            // Old: [54, 57, 60, 75]
+            // New: Added Bear, Wolf, Boar, Spriggan, Fox
+            mobs: [54, 57, 60, 75, 188, 191, 194, 200, 240], 
+            waterTile: 93, // Blue water
+            cliffTile: 97   // Brown dirt cliff
         },
         1: { 
             name: "Ruins", 
@@ -2062,7 +2066,11 @@
             floors: ["#333333", "#443322"], 
             skies: ["rgba(0,0,0,1)", "rgba(20,20,30,1)"], 
             weather: ["clear", "storm"], 
-            mobs: [23, 42, 56, 82] // Wisp, Shade, Imp, Skeleton
+            // Old: [23, 42, 56, 82]
+            // New: Added Rat, Giant Bat, Skeleton Warrior, Ghoul
+            mobs: [23, 42, 56, 82, 219, 267, 276, 318], 
+            waterTile: 99,  // Shallow water
+            cliffTile: 97  // Gray stone cliff
         },
         2: { 
             name: "Desert", 
@@ -2070,7 +2078,11 @@
             floors: ["#c2b280", "#d4c492"], 
             skies: ["rgba(40,80,150,1)", "rgba(150,50,20,1)"], 
             weather: ["clear", "storm"], 
-            mobs: [33, 56] // Salamander, Imp
+            // Old: [33, 56]
+            // New: Added Scorpion, Ant, Wyvern, Cyclops
+            mobs: [33, 56, 210, 216, 206, 294], 
+            waterTile: 93, // Oasis water
+            cliffTile: 97   // Light brown sand cliff
         },
         3: { 
             name: "Snow", 
@@ -2078,7 +2090,11 @@
             floors: ["#eeeeee", "#ddddff"], 
             skies: ["rgba(200,200,220,1)", "rgba(20,20,40,1)"], 
             weather: ["snow", "clear"], 
-            mobs: [47, 82] // Undine, Skeleton
+            // Old: [47, 82]
+            // New: Added Frost Wyrm, Ice Golem, Wolf (Snow Wolf), Bear (Polar Bear)
+            mobs: [47, 82, 80, 81, 191, 188], 
+            waterTile: 93, // Freezing blue water
+            cliffTile: 97  // White snow cliff
         },
         4: { 
             name: "Void", 
@@ -2086,16 +2102,23 @@
             floors: ["#050505", "#111111"], 
             skies: ["rgba(0,0,0,1)"], 
             weather: ["space", "lightning"], 
-            mobs: [35, 49, 63, 77] // Djinn, Kraken, Dragon, Giant
+            // Old: [35, 49, 63, 77]
+            // New: Added Vampire, Dullahan, Questing Beast
+            mobs: [35, 49, 63, 77, 197, 203, 270], 
+            waterTile: 99,  // Black void/tar water
+            cliffTile: 97  // Black void cliff
         },
-        // ... [existing 0 to 4] ...
         5: { 
             name: "Sea", 
             walls: [19, 9], // Void/Black, Blue
             floors: ["#001a33", "#003366"], 
             skies: ["rgba(10,10,20,1)"], 
             weather: ["storm", "lightning"], 
-            mobs: [37, 46, 49, 83] // Siren, Sea Serpent, Kraken, Tentacle
+            // Old: [37, 46, 49, 83]
+            // New: Added Giant Frog, Slime
+            mobs: [37, 46, 49, 83, 279, 222], 
+            waterTile: 93, // Deep sea blue water
+            cliffTile: 97  // Deep sea blue cliff
         },
         6: { 
             name: "Castle", 
@@ -2103,7 +2126,11 @@
             floors: ["#aa2222", "#2222aa", "#aaaaaa"], 
             skies: ["rgba(50,10,10,1)", "rgba(10,10,50,1)"], 
             weather: ["clear"], 
-            mobs: [34, 48, 62] // Witch Queen, Ice Queen, Fairy Queen
+            // Old: [34, 48, 62]
+            // New: Added Vampire, Dullahan, Flying Sword, Skeleton Warrior, Mounted Knight
+            mobs: [34, 48, 62, 197, 203, 315, 276, 306], 
+            waterTile: 93,  // Castle Moat
+            cliffTile: 97  // Gray stone brick cliff
         },
         7: { 
             name: "Otherworld", 
@@ -2111,7 +2138,11 @@
             floors: ["#4a1e4c", "#2d4c1e"], 
             skies: ["rgba(80,20,80,1)"], 
             weather: ["leaves", "clear"], 
-            mobs: [57, 60, 61] // Spider, Pixie, Sylph
+            // Old: [57, 60, 61]
+            // New: Added Spriggan, Slime, Questing Beast, Wisp
+            mobs: [57, 60, 61, 200, 222, 270, 23], 
+            waterTile: 93,  // Black magical water
+            cliffTile: 97  // Purple mystical cliff
         },
         8: { 
             name: "Tomb", 
@@ -2119,9 +2150,13 @@
             floors: ["#222222", "#111111"], 
             skies: ["rgba(0,0,0,1)"], 
             weather: ["clear"], 
-            mobs: [42, 82, 85] // Shade, Skeleton, Arthur
+            // Old: [42, 82, 85]
+            // New: Added Vampire, Dullahan, Giant Bat, Ghoul, Skeleton Warrior
+            mobs: [42, 82, 85, 197, 203, 267, 318, 276], 
+            waterTile: 99,  // Pitch black tar pit
+            cliffTile: 97  // Gray stone cliff
         }
-        };
+};
     const PERSONA_RULES_DB = {
         // === CORE IDENTITY (ALWAYS ACTIVE) ===
         "core": `[IDENTITY]: You are Suncat, a wandering musician, tactician, and the Dungeon Master of this realm. 
@@ -3755,12 +3790,10 @@
                 miniCenter: { x: mini.cx, y: mini.cy }
             };
     }
-    function generateActorDrivenMap(size, wallType, floorType = 0) {
+    function generateActorDrivenMap(size, wallType, floorType = 0, waterTile = null, cliffTile = null) {
         // 1. Start with a solid block of walls
         let grid = Array(size).fill().map(() => Array(size).fill(wallType));
 
-        // 2. Define the Narrative Nodes (Dynamic quadrants)
-        // We scatter them to ensure they aren't on top of each other
         let nodes = {
             start:     { x: 10 + Math.floor(Math.random() * 10), y: 10 + Math.floor(Math.random() * 10), type: 'Start' },
             allyCamp:  { x: Math.floor(size / 2) + (Math.random() * 10 - 5), y: Math.floor(size / 2) + (Math.random() * 10 - 5), type: 'Ally' },
@@ -3769,13 +3802,42 @@
             bossLair:  { x: size - 20 + Math.floor(Math.random() * 10), y: size - 20 + Math.floor(Math.random() * 10), type: 'Boss' }
         };
 
-        // 3. Carve the Rooms
+        // --- NEW: CARVE LAKES AND CLIFFS! ---
+        // If the biome passed in water/cliff tiles, generate a random body of water!
+        let hasWaterFeature = false;
+        if (waterTile !== null && cliffTile !== null) {
+            hasWaterFeature = true;
+            let lakeX = Math.floor(size / 2) + (Math.random() * 20 - 10);
+            let lakeY = Math.floor(size / 2) + (Math.random() * 20 - 10);
+            let lakeRadius = 8 + Math.floor(Math.random() * 6);
+
+            for (let y = lakeY - lakeRadius; y <= lakeY + lakeRadius; y++) {
+                for (let x = lakeX - lakeRadius; x <= lakeX + lakeRadius; x++) {
+                    if (y > 2 && y < size - 2 && x > 2 && x < size - 2) {
+                        let distSq = Math.pow(x - lakeX, 2) + Math.pow(y - lakeY, 2);
+                        
+                        // The deep center is Water (Tile 93)
+                        if (distSq <= (lakeRadius - 2) * (lakeRadius - 2)) {
+                            grid[y][x] = waterTile; 
+                        } 
+                        // The outer edge is Cliffs (Tile 94/95)
+                        else if (distSq <= lakeRadius * lakeRadius) {
+                            // Add some noise so the cliffs look natural, not a perfect circle
+                            if (Math.random() > 0.3) grid[y][x] = cliffTile;
+                        }
+                    }
+                }
+            }
+        }
+
         const carveRoom = (cx, cy, radius, isOrganic) => {
             cx = Math.floor(cx); cy = Math.floor(cy);
             for (let y = cy - radius; y <= cy + radius; y++) {
                 for (let x = cx - radius; x <= cx + radius; x++) {
                     if (y > 0 && y < size - 1 && x > 0 && x < size - 1) {
-                        // Organic rooms (caves/forests) are circles. Bastions/Lairs are squares.
+                        // Don't overwrite the water we just placed!
+                        if (grid[y][x] === waterTile || grid[y][x] === cliffTile) continue;
+
                         if (isOrganic) {
                             if (Math.pow(x - cx, 2) + Math.pow(y - cy, 2) <= radius * radius) grid[y][x] = floorType;
                         } else {
@@ -3786,29 +3848,26 @@
             }
         };
 
-        // Decide room shapes based on your needs (true = circular, false = square)
         carveRoom(nodes.start.x, nodes.start.y, 4, true);
-        carveRoom(nodes.allyCamp.x, nodes.allyCamp.y, 6, false); // A structured camp
+        carveRoom(nodes.allyCamp.x, nodes.allyCamp.y, 6, false); 
         carveRoom(nodes.ambush1.x, nodes.ambush1.y, 5, true);
         carveRoom(nodes.ambush2.x, nodes.ambush2.y, 5, true);
-        carveRoom(nodes.bossLair.x, nodes.bossLair.y, 8, false); // Massive boss arena
+        carveRoom(nodes.bossLair.x, nodes.bossLair.y, 8, false);
 
-        // 4. Carve the Connecting Paths (L-Shaped Corridors)
         const carvePath = (nodeA, nodeB) => {
             let currX = Math.floor(nodeA.x);
             let currY = Math.floor(nodeA.y);
             let destX = Math.floor(nodeB.x);
             let destY = Math.floor(nodeB.y);
 
-            // Carve Horizontal
             while (currX !== destX) {
                 if (currY > 0 && currY < size - 1) {
+                    // If the path hits water, drop a floor tile to act as a "bridge" over the water
                     grid[currY][currX] = floorType;
-                    grid[currY + 1][currX] = floorType; // 2-tiles wide so NPCs don't get stuck
+                    grid[currY + 1][currX] = floorType; 
                 }
                 currX += Math.sign(destX - currX);
             }
-            // Carve Vertical
             while (currY !== destY) {
                 if (currX > 0 && currX < size - 1) {
                     grid[currY][currX] = floorType;
@@ -3818,14 +3877,12 @@
             }
         };
 
-        // 5. Connect the narrative flow: Start -> Camp -> Ambushes -> Boss
         carvePath(nodes.start, nodes.allyCamp);
         carvePath(nodes.allyCamp, nodes.ambush1);
         carvePath(nodes.allyCamp, nodes.ambush2);
         carvePath(nodes.ambush1, nodes.bossLair);
         carvePath(nodes.ambush2, nodes.bossLair);
 
-        // Collect all valid floors for random wandering NPCs later
         let validFloors = [];
         for (let r = 1; r < size - 1; r++) {
             for (let c = 1; c < size - 1; c++) {
@@ -3833,7 +3890,7 @@
             }
         }
 
-        return { grid, nodes, validFloors };
+        return { grid, nodes, validFloors, hasWaterFeature };
     }
     function generateTintagelHub() {
         let maxR = 99, maxC = 99; 
@@ -4072,7 +4129,7 @@
 
         return profileTraits.join(", ");
         }
-    async function generateScenarioScript(biomeName, scenarioType, bossCardName, questGiverName, thirdFactionName, targetPlayer,spatialLayout) {        
+    async function generateScenarioScript(biomeName, scenarioType, bossCardName, questGiverName, thirdFactionName, targetPlayer, spatialLayout) {        
         let currentVibe = "Peace.";
         let shadowVibe = "Chaos.";
 
@@ -4154,8 +4211,17 @@
             9. recruitPlea: Array of 2 compelling lines to join the party.
             10. prisonerLines: Array of 3 lines from trapped NPCs.
             11. thirdTribeRumors: Array of 3 lines. Humorous, annoyed, or terrified rumors from the Ally OR Villain factions about ${thirdFactionName} (e.g., "Me uncle lost a leg to a ${thirdFactionName} in the ruins!", "I thought the war was bad, then the ${thirdFactionName} showed up.").
-            12. thirdTribeTaunts: Array of 3 feral, monstrous, or alien battle cries for the ${thirdFactionName}.`;
+            12. thirdTribeTaunts: Array of 3 feral, monstrous, or alien battle cries for the ${thirdFactionName}.
 
+            [WILDERNESS POI DIALOGUE]:
+            Also generate 5 quirky, completely unrelated lines of dialogue for random NPCs wandering the map. Make them funny, weird, or intriguing to add flavor to the world.
+            13. narcissistDialogue: 1 sentence of an arrogant NPC bragging about defeating something completely pathetic.
+            14. lunchBreakDialogue: 1 sentence of a terrifying monster complaining about their job, their boss, or taking a union-mandated break.
+            15. grudgeDialogue: 1 sentence of someone whispering from a bush, plotting vengeance against something entirely mundane (like a cabbage or a squirrel).
+            16. curseDialogue: 1 sentence of an NPC panicking about a highly specific, embarrassing curse they are suffering from.
+            17. lovelornDialogue: 1 sentence of an NPC agonizing over their forbidden romance with a completely inanimate object or ridiculous monster.
+            `;
+        
             const schema = {
                 type: SchemaType.OBJECT,
                 properties: {
@@ -4169,10 +4235,22 @@
                     friendlyProfound: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
                     recruitPlea: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
                     prisonerLines: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
-                    thirdTribeRumors: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } }, // <-- NEW
-                    thirdTribeTaunts: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } }  // <-- NEW
+                    thirdTribeRumors: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } }, 
+                    thirdTribeTaunts: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
+                    // NEW FIELDS FOR POIs
+                    narcissistDialogue: { type: SchemaType.STRING },
+                    lunchBreakDialogue: { type: SchemaType.STRING },
+                    grudgeDialogue: { type: SchemaType.STRING },
+                    curseDialogue: { type: SchemaType.STRING },
+                    lovelornDialogue: { type: SchemaType.STRING }
                 },
-                required: ["mapLore", "questObjective", "bossTaunt", "hostileTaunts", "traitorBegs", "friendlyLore", "friendlyLife", "friendlyProfound", "recruitPlea", "prisonerLines", "thirdTribeRumors", "thirdTribeTaunts"]
+                required: [
+                    "mapLore", "questObjective", "bossTaunt", "hostileTaunts", "traitorBegs", 
+                    "friendlyLore", "friendlyLife", "friendlyProfound", "recruitPlea", 
+                    "prisonerLines", "thirdTribeRumors", "thirdTribeTaunts",
+                    // REQUIRE THE NEW FIELDS
+                    "narcissistDialogue", "lunchBreakDialogue", "grudgeDialogue", "curseDialogue", "lovelornDialogue"
+                ]
             };
 
         try {
@@ -4189,7 +4267,7 @@
             console.error("Script Generation Failed:", e);
             return null; 
         }
-        }
+    }
     function cacheScriptLines(biomeName, script) {
         if (!GLOBAL_LORE_CACHE[biomeName]) {
             GLOBAL_LORE_CACHE[biomeName] = {
@@ -4352,16 +4430,26 @@
                                 // ==========================================
                                 // 2. GENERATE THE PHYSICAL MAP FIRST
                                 // ==========================================
-                                const mapData = generateActorDrivenMap(100, biome.walls[0], 0);
+                                    // Extract the water/cliff tiles from the selected biome (or default to null if it has none)
+                                    let wTile = biome.waterTile || null;
+                                    let cTile = biome.cliffTile || null;
 
-                                // Build a spatial layout string to feed the LLM
-                                const spatialLayout = `
-                                [SPATIAL MAP LAYOUT]:
-                                - Player Start Point: X:${mapData.nodes.start.x}, Y:${mapData.nodes.start.y}
-                                - Ally Camp: X:${mapData.nodes.allyCamp.x}, Y:${mapData.nodes.allyCamp.y}
-                                - Ambush Chokepoints: X:${mapData.nodes.ambush1.x}, Y:${mapData.nodes.ambush1.y} and X:${mapData.nodes.ambush2.x}, Y:${mapData.nodes.ambush2.y}
-                                - Boss Lair: X:${mapData.nodes.bossLair.x}, Y:${mapData.nodes.bossLair.y}
-                                `;
+                                    // Pass them into the updated generator!
+                                    const mapData = generateActorDrivenMap(100, biome.walls[0], 0, wTile, cTile);
+
+                                    // Build a spatial layout string to feed the LLM
+                                    let spatialLayout = `
+                                    [SPATIAL MAP LAYOUT]:
+                                    - Player Start Point: X:${mapData.nodes.start.x}, Y:${mapData.nodes.start.y}
+                                    - Ally Camp: X:${mapData.nodes.allyCamp.x}, Y:${mapData.nodes.allyCamp.y}
+                                    - Ambush Chokepoints: X:${mapData.nodes.ambush1.x}, Y:${mapData.nodes.ambush1.y} and X:${mapData.nodes.ambush2.x}, Y:${mapData.nodes.ambush2.y}
+                                    - Boss Lair: X:${mapData.nodes.bossLair.x}, Y:${mapData.nodes.bossLair.y}
+                                    `;
+
+                                    // ---> NEW: IF WATER GENERATED, TELL THE AI! <---
+                                    if (mapData.hasWaterFeature) {
+                                        spatialLayout += `- GEOGRAPHY: This map features deep bodies of water and impassable cliffs. The AI characters should reference the water, drowning, bridges, or the cliffs in their dialogue!\n`;
+                                    }
 
                                 // ==========================================
                                 // 3. GENERATE THE NARRATIVE SCRIPT
@@ -4527,7 +4615,14 @@
                                     miniY: mapData.nodes.allyCamp.y + 0.5,
                                     
                                     biome: biome.name,
-                                    floorTiles: mapData.validFloors
+                                    floorTiles: mapData.validFloors,
+                                    poiScripts: {
+                                        narcissist: script.narcissistDialogue,
+                                        lunchBreak: script.lunchBreakDialogue,
+                                        grudge: script.grudgeDialogue,
+                                        curse: script.curseDialogue,
+                                        lovelorn: script.lovelornDialogue
+                                    }
                                 };
 
                                 activeCustomMap = customMapData;
