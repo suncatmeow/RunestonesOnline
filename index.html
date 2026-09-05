@@ -11956,7 +11956,7 @@
                                     if (npc.type == -27){
                                         let cardID = npc.deck ? npc.deck[0] : 0;
                                         
-                                        ctx.imageSmoothingEnabled = false; // <--- TURN ON
+                                        ctx.imageSmoothingEnabled = true; // <--- TURN ON
                                         drawPortrait(-27, 0, 0, 1, cardID); 
                                         ctx.imageSmoothingEnabled = false; // <--- TURN OFF
                                         
@@ -12001,7 +12001,7 @@
                                             drawScale *= zoomMult;
                                         }
 
-                                        ctx.imageSmoothingEnabled = false; // <--- TURN ON
+                                        ctx.imageSmoothingEnabled = true; // <--- TURN ON
                                         drawPortrait(imageToDraw, drawX, drawY, drawScale);
                                         ctx.imageSmoothingEnabled = false; // <--- TURN OFF
                                         
@@ -12166,7 +12166,7 @@
                                     drawY2 -= offset2 * 10;
                                     drawScale2 *= pSZ;
                                 
-                                    ctx.imageSmoothingEnabled = false; // <--- TURN ON
+                                    ctx.imageSmoothingEnabled = true; // <--- TURN ON
                                     drawPortrait(316, drawX2, drawY2, drawScale2);
                                     ctx.imageSmoothingEnabled = false; // <--- TURN OFF
                                         
@@ -13901,7 +13901,7 @@
 
                 // 3. Draw the dynamic card and portrait
                 let cardID = npc.deck ? npc.deck[0] : 0;
-                ctx.imageSmoothingEnabled = false; 
+                ctx.imageSmoothingEnabled = true; 
                 drawPortrait(-27, 0, 0, 1, cardID); 
                 ctx.imageSmoothingEnabled = false;
                 
@@ -14347,7 +14347,7 @@
 
                         let previousBlend = ctx.globalCompositeOperation;
                         if (imageIndex === 99) ctx.globalCompositeOperation = 'lighter';
-                        ctx.imageSmoothingEnabled = false;
+                        ctx.imageSmoothingEnabled = true;
 
                         // HOIST INVARIANTS OUTSIDE THE LOOP!
                         const textureRatio = cacheSize / spriteSize;
@@ -33825,17 +33825,24 @@
                 let p1 = activePointers[pointerKeys[0]];
                 let p2 = activePointers[pointerKeys[1]];
                 
-                let dx = p1.clientX - p2.clientX;
-                let dy = p1.clientY - p2.clientY;
-                
-                touchStart.pinchDist = Math.sqrt(dx*dx + dy*dy);
-                touchStart.panX = (p1.clientX + p2.clientX) / 2;
-                touchStart.panY = (p1.clientY + p2.clientY) / 2; // <--- NEW
-                
-                touchStart.camDist = Dungeon.camDist;
-                touchStart.lookPan = Dungeon.lookPan || 0;
-                touchStart.lookPitch = Dungeon.lookPitch || 0;   // <--- NEW
-                return; 
+                // NEW CHECK: Are either of these touches on the bottom UI area (bottom 30% of screen)?
+                let isUI_1 = p1.clientY > window.innerHeight * 0.70;
+                let isUI_2 = p2.clientY > window.innerHeight * 0.70;
+
+                // ONLY hijack for camera panning if BOTH fingers are touching the 3D game view!
+                if (!isUI_1 && !isUI_2) {
+                    let dx = p1.clientX - p2.clientX;
+                    let dy = p1.clientY - p2.clientY;
+                    
+                    touchStart.pinchDist = Math.sqrt(dx*dx + dy*dy);
+                    touchStart.panX = (p1.clientX + p2.clientX) / 2;
+                    touchStart.panY = (p1.clientY + p2.clientY) / 2; 
+                    
+                    touchStart.camDist = Dungeon.camDist;
+                    touchStart.lookPan = Dungeon.lookPan || 0;
+                    touchStart.lookPitch = Dungeon.lookPitch || 0;   
+                    return; 
+                }
             }
 
             if (e.pointerType === 'mouse' && e.button === 2) {
@@ -33891,7 +33898,7 @@
             if (pointerKeys.length === 2 && touchStart.pinchDist !== null && typeof Dungeon !== 'undefined') {
                 let p1 = activePointers[pointerKeys[0]];
                 let p2 = activePointers[pointerKeys[1]];
-                
+                if (p1.clientY > window.innerHeight * 0.70 || p2.clientY > window.innerHeight * 0.70) return;
                 // --- ZOOM ---
                 let dx = p1.clientX - p2.clientX;
                 let dy = p1.clientY - p2.clientY;
@@ -40590,7 +40597,7 @@
                     let finalH = (tH / 10) * (3.5 * drawZ);
 
                     // Stamp the image!
-                    ctx.imageSmoothingEnabled = false;
+                    ctx.imageSmoothingEnabled = true;
                     ctx.drawImage(window.cardCache[card], finalX, finalY, finalW, finalH);
                     ctx.imageSmoothingEnabled = false;
                     break;
@@ -82072,7 +82079,7 @@
                         drawShape('rec', cX, cY, 1, 0, 0, 1.1, 1.1, 0,0,0,0, '#222233', 1);
                         
                         // --- THE SILENT CRASH FIX ---
-                        ctx.imageSmoothingEnabled = false;
+                        ctx.imageSmoothingEnabled = true;
                         ctx.save(); // Protects canvas state
                         try {
                             if (isDeck) drawPortrait(-27, cX, cY, 0.13, id); 
