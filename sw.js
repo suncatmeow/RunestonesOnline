@@ -7,7 +7,8 @@ const urlsToCache = [
   // Add your CSS, JS, and image files below:
   // './style.css',
   // './game.js',
-  // './icon-192.png'
+  './icon-192.png'
+  './icon-512.png'
 ];
 
 // Install the worker and cache the files
