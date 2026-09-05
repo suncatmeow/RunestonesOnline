@@ -1129,6 +1129,51 @@
                     lore: "Seeks security in love and family.",
                     stats: "1d12 INT, 1d10 CON, 1d4 STR/AGI"
             },
+        // --- Combo Cards ---
+            95: { name: "Flurry", type: "spell", suit: "Swords", rank: "Ace", tribe: "none", rarity: "uncommon", classes: ["rogue", "hunter", "warrior"], lore: "A rapid succession of strikes.", stats: "none" },
+            96: { name: "Outlast", type: "spell", suit: "Pentacles", rank: "Ace", tribe: "none", rarity: "uncommon", classes: ["knight", "warrior", "priest"], lore: "Steadfast defense against overwhelming odds.", stats: "none" },
+            97: { name: "Gravity", type: "spell", suit: "Wands", rank: "Ace", tribe: "none", rarity: "rare", classes: ["mage", "druid"], lore: "Crush foes with the weight of the world.", stats: "none" },
+
+        // --- 3D Cards & Extra Monsters ---
+            170: { name: "Merchant", type: "monster", suit: "Pentacles", rank: "Page", tribe: "human", rarity: "common", classes: ["rogue", "mage"], lore: "Always looking for a good trade.", stats: "1d6 INT/AGI" },
+            188: { name: "Bear", type: "monster", suit: "Swords", rank: "8", tribe: "beast", rarity: "uncommon", classes: ["warrior", "knight"], lore: "A ferocious guardian of the woods.", stats: "1d10 STR, 1d12 CON" },
+            191: { name: "Wolf", type: "monster", suit: "Swords", rank: "18", tribe: "beast", rarity: "common", classes: ["knight", "warrior"], lore: "Hunts effectively in packs.", stats: "1d8 STR, 1d10 AGI" },
+            194: { name: "Boar", type: "monster", suit: "Pentacles", rank: "7", tribe: "beast", rarity: "common", classes: ["warrior", "knight"], lore: "Charges blindly at any threat.", stats: "1d8 STR/CON" },
+            197: { name: "Vampire", type: "monster", suit: "Cups", rank: "XV", tribe: "undead", rarity: "rare", classes: ["mage", "rogue", "knight"], lore: "A nobleman cursed to drain the life of others.", stats: "1d10 STR/AGI/INT" },
+            200: { name: "Spriggan", type: "monster", suit: "Wands", rank: "7", tribe: "cryptid", rarity: "uncommon", classes: ["mage", "druid"], lore: "A hostile manifestation of nature's wrath.", stats: "1d6 INT, 1d8 AGI" },
+            203: { name: "Dullahan", type: "monster", suit: "Swords", rank: "Knight", tribe: "undead", rarity: "rare", classes: ["warrior", "knight"], lore: "The headless rider forecasting doom.", stats: "1d12 STR, 1d10 CON" },
+            206: { name: "Wyvern", type: "monster", suit: "Swords", rank: "9", tribe: "beast", rarity: "rare", classes: ["warrior", "hunter", "rogue"], lore: "A lesser dragon with a venomous tail.", stats: "1d10 AGI/STR" },
+            210: { name: "Scorpion", type: "monster", suit: "Pentacles", rank: "5", tribe: "beast", rarity: "common", classes: ["rogue", "hunter"], lore: "A desert dweller with a lethal sting.", stats: "1d6 STR/AGI" },
+            213: { name: "Wasp", type: "monster", suit: "Swords", rank: "5", tribe: "beast", rarity: "common", classes: ["rogue", "hunter", "druid"], lore: "Aggressive and highly territorial.", stats: "1d8 AGI" },
+            216: { name: "Ant", type: "monster", suit: "Pentacles", rank: "3", tribe: "beast", rarity: "common", classes: ["warrior", "druid"], lore: "A tireless worker in the colony.", stats: "1d4 STR/CON" },
+            219: { name: "Rat", type: "monster", suit: "Cups", rank: "5", tribe: "beast", rarity: "common", classes: ["rogue"], lore: "A scavenger of the dark.", stats: "1d4 AGI" },
+            222: { name: "Slime", type: "monster", suit: "Cups", rank: "4", tribe: "cryptid", rarity: "common", classes: ["mage", "druid"], lore: "A highly acidic blob.", stats: "1d6 CON" },
+            225: { name: "Rabbit", type: "monster", suit: "Pentacles", rank: "8", tribe: "beast", rarity: "common", classes: ["warrior"], lore: "A swift prey animal.", stats: "1d6 AGI" },
+            228: { name: "Bird", type: "monster", suit: "Wands", rank: "9", tribe: "beast", rarity: "common", classes: ["hunter", "druid", "mage"], lore: "Scouts the skies for danger.", stats: "1d8 AGI" },
+            231: { name: "Hart", type: "monster", suit: "Wands", rank: "King", tribe: "beast", rarity: "uncommon", classes: ["knight", "druid", "hunter"], lore: "The majestic lord of the forest.", stats: "1d8 STR/AGI" },
+            234: { name: "Squirrel", type: "monster", suit: "Pentacles", rank: "4", tribe: "beast", rarity: "common", classes: ["rogue"], lore: "A frantic hoarder of nuts.", stats: "1d6 AGI" },
+            237: { name: "Suncat", type: "monster", suit: "Major Arcana", rank: "0", tribe: "human", rarity: "unique", classes: ["rogue", "mage", "hunter", "druid"], lore: "A wandering creator of tunes and tales.", stats: "1d12 AGI/INT" },
+            240: { name: "Fox", type: "monster", suit: "Wands", rank: "7", tribe: "beast", rarity: "common", classes: ["rogue", "hunter", "mage"], lore: "Cunning and elusive.", stats: "1d8 AGI, 1d6 INT" },
+            246: { name: "Auroch", type: "monster", suit: "Pentacles", rank: "7", tribe: "beast", rarity: "uncommon", classes: ["warrior", "knight"], lore: "A massive beast of burden.", stats: "1d10 STR, 1d8 CON" },
+            249: { name: "Dancer", type: "monster", suit: "Cups", rank: "Knight", tribe: "human", rarity: "uncommon", classes: ["priest", "mage", "rogue"], lore: "Moves with the grace of the wind.", stats: "1d10 AGI" },
+            252: { name: "Warrior", type: "monster", suit: "Swords", rank: "Page", tribe: "human", rarity: "common", classes: ["warrior"], lore: "A trained combatant seeking glory.", stats: "1d8 STR/CON" },
+            255: { name: "Priest", type: "monster", suit: "Cups", rank: "Knight", tribe: "human", rarity: "common", classes: ["priest"], lore: "A devout healer of the light.", stats: "1d8 INT/CON" },
+            258: { name: "Rogue", type: "monster", suit: "Swords", rank: "Page", tribe: "human", rarity: "common", classes: ["rogue"], lore: "A master of the shadows.", stats: "1d10 AGI" },
+            261: { name: "Mage", type: "monster", suit: "Wands", rank: "Page", tribe: "human", rarity: "common", classes: ["mage"], lore: "A scholar of the arcane arts.", stats: "1d10 INT" },
+            264: { name: "Hunter", type: "monster", suit: "Wands", rank: "Knight", tribe: "human", rarity: "common", classes: ["hunter", "rogue"], lore: "A tracker of beasts and men.", stats: "1d8 AGI/STR" },
+            267: { name: "Giant Bat", type: "monster", suit: "Cups", rank: "5", tribe: "beast", rarity: "common", classes: ["rogue", "hunter", "druid"], lore: "Swarms from the darkness.", stats: "1d6 AGI" },
+            270: { name: "Questing Beast", type: "monster", suit: "Major Arcana", rank: "0", tribe: "myth", rarity: "rare", classes: ["warrior", "knight", "mage", "druid", "hunter"], lore: "An elusive mythological chimera.", stats: "1d12 AGI/CON" },
+            273: { name: "Magma Warrior", type: "monster", suit: "Wands", rank: "King", tribe: "cryptid", rarity: "rare", classes: ["warrior", "knight", "mage"], lore: "A soldier forged in volcanic heat.", stats: "1d12 STR, 1d10 CON" },
+            276: { name: "Skeleton Warrior", type: "monster", suit: "Swords", rank: "7", tribe: "undead", rarity: "uncommon", classes: ["warrior", "knight"], lore: "An animated husk still clutching its sword.", stats: "1d8 STR/CON" },
+            279: { name: "Giant Frog", type: "monster", suit: "Cups", rank: "4", tribe: "beast", rarity: "common", classes: ["hunter", "druid"], lore: "Lurks in the swamps.", stats: "1d6 CON/AGI" },
+            282: { name: "Beast-Man", type: "monster", suit: "Swords", rank: "8", tribe: "human", rarity: "uncommon", classes: ["warrior", "hunter", "rogue"], lore: "A cursed hybrid driven by instinct.", stats: "1d10 STR, 1d8 AGI" },
+            294: { name: "Cyclops", type: "monster", suit: "Pentacles", rank: "King", tribe: "myth", rarity: "rare", classes: ["warrior", "knight", "druid"], lore: "A towering giant with a single eye.", stats: "1d12 STR, 1d10 CON" },
+            297: { name: "Drunken Man", type: "monster", suit: "Cups", rank: "Page", tribe: "human", rarity: "common", classes: ["rogue", "warrior"], lore: "Lost in the ale.", stats: "1d6 CON" },
+            300: { name: "Buck", type: "monster", suit: "Pentacles", rank: "Knight", tribe: "beast", rarity: "common", classes: ["druid", "hunter", "knight"], lore: "A sturdy deer of the forest.", stats: "1d6 STR/AGI" },
+            306: { name: "Mounted Knight", type: "monster", suit: "Swords", rank: "King", tribe: "human", rarity: "uncommon", classes: ["knight", "warrior"], lore: "A heavily armored cavalry rider.", stats: "1d10 STR/CON/AGI" },
+            309: { name: "King", type: "monster", suit: "Major Arcana", rank: "IV", tribe: "human", rarity: "rare", classes: ["knight", "warrior", "priest"], lore: "A monarch leading his subjects.", stats: "1d12 STR/INT" },
+            315: { name: "Flying Sword", type: "monster", suit: "Swords", rank: "Ace", tribe: "cryptid", rarity: "uncommon", classes: ["mage", "knight", "warrior"], lore: "An enchanted blade fighting on its own.", stats: "1d10 STR/AGI" },
+            318: { name: "Ghoul", type: "monster", suit: "Cups", rank: "6", tribe: "undead", rarity: "common", classes: ["rogue", "warrior", "mage"], lore: "A ravenous eater of the dead.", stats: "1d6 STR/CON" },
             999: {
                     name: "Suncat",
                     type: "monster",
@@ -1142,109 +1187,90 @@
                 },
         };
     const WORLD_ATLAS_DB = {
-        0: {
-            name: "Inner Dungeon",
+        "-2": {
+            name: "Gibraltar",
             biome: "ruins", 
-            description: "Dark prison within a cavern-like dungeon. The Magician's escape portal still hums with power.",
-            lore: "High Priestess, Empress, Emperor, and Hierophant are held captive here.",
+            description: "A dark, ancient pathway guarded by forgotten beasts and monstrous wildlife.",
+            lore: "The legendary edge of the known world.",
             storyKey: "the_awakening",
+            spawns: { hostiles: [228, 246, 206, 216], friendlies: [], uniques: [], pickups: [] }
+        },
+        "-1": {
+            name: "Portal Room",
+            biome: "void",
+            description: "A starry nexus linking the fabric of the realms together.",
+            lore: "A crossroads between the dimensions.",
+            storyKey: "the_awakening",
+            spawns: { hostiles: [], friendlies: [], uniques: [], pickups: [] }
+        },
+        0: {
+            name: "Moors",
+            biome: "plains",
+            description: "The sweeping green moors outside the Adventurer's Guild. Sages, drunkards, and beasts roam the expanse.",
+            lore: "The Adventurer's Guild operates here, dispatching heroes to handle world-ending threats.",
+            storyKey: "guild_initiate",
             spawns: {
-                hostiles: [],       
-                friendlies: [], 
-                uniques: [2, 3, 4, 5], // High Priestess, Empress, Emperor, Hierophant
+                hostiles: [57, 222, 194, 240, 219], // Spider, Slime, Boar, Fox, Rat
+                friendlies: [300, 297, 252, 258, 261, 255, 306, 264], // Deer, Drunk, Guild Trainers
+                uniques: [205, 206, 207], // Traitor Elder, Vanguard, Guildmaster
                 pickups: [] 
             }
         },
         1: {
             name: "Outer Dungeon",
             biome: "ruins",
-            description: "Dark cavern-like area humming with residual portal magic. Signs of battle scar the passageways. Spent and torn cards are scattered about. A ghostly wail echoes in the background.",
+            description: "Dark cavern-like area humming with residual portal magic. Signs of battle scar the passageways.",
             lore: "The defeated Magician scattered his artifacts here while fleeing the Four Kings.",
             storyKey: "the_fallen_magician",
-            spawns: {
-                hostiles: [23],       // Wisp
-                friendlies: [], 
-                uniques: [1],         // The Magician
-                pickups: [22, 36, 50, 64] // Wand, Hourglass, Sword, Shield
-            }
+            spawns: { hostiles: [219], friendlies: [], uniques: [1], pickups: [22, 36, 50, 64] }
         },
         2: {
-            name: "Tintagel Forest",
+            name: "Tintagel",
             biome: "sylvan",
-            description: "Dark green sky, dark forest floor. Eerie dark forest, no longer peaceful.",
-            lore: "Home to the Hermit and displaced Goblin tribes fleeing the caverns.",
-            storyKey:"tintagel_forest_plot",
-            spawns: {
-                hostiles: [54, 57, 60],   // Goblin, Spider, Pixie
-                friendlies: [],
-                uniques: [9],             // The Hermit
-                pickups: [6, 12, 18, 53]  // Lovers, Bind, Lunacy, Camp
-            }
+            description: "Dark green sky, dark forest floor. A mysterious crucible and hidden sanctuaries await.",
+            lore: "Home to the Hermit and various fey tricksters. The Fake Emperor's court set a trap here.",
+            storyKey: "tintagel_forest_plot",
+            spawns: { hostiles: [191, 240, 225, 57], friendlies: [31, 74, 47, 73, 75], uniques: [4], pickups: [] }
         },
         3: {
-            name: "Goblin Caverns",
+            name: "Hadrian's Wall",
             biome: "ruins",
-            description: "Black sky, dark brown floor. Underground tunnels.",
-            lore: "Former home of the goblins. The Treasure Snake wonders about their fate. Infested with Imps and Shades. Imps hold The Apprentice captive.",
-            storyKey: "apprentice_tale",
-            spawns: {
-                hostiles: [23, 42, 56],   // Wisp, Shade, Imp
-                friendlies: [89],           //treasure snake
-                uniques: [32],            // The Apprentice (Note: ID check needed)
-                pickups: [30, 40, 41, 58] // Protect Orb, Steal, Intimidate, Loot
-            }
+            description: "An ancient barrier constructed to hold back the untamed wilds.",
+            lore: "Monstrous wildlife rules the other side of this wall.",
+            storyKey: "tintagel_forest_plot",
+            spawns: { hostiles: [231, 188, 191, 240, 225], friendlies: [], uniques: [], pickups: [] }
         },
         4: {
             name: "Realm of the Witch Queen (Desert)",
             biome: "desert",
             description: "Desert sands under a deep blue sky. Scorching heat, Mirages, Fire Imps, and Salamanders.",
-            lore: "Mirages lead travelers astray. Salamanders avoid travelers. The forces of the King of Wands block the way to the Witch Queen's castle.",
+            lore: "The forces of the King of Wands block the way to the Witch Queen's castle.",
             storyKey: "wands_faction",
-            spawns: {
-                hostiles: [23, 33, 56],   // Wisp, Salamander, Imp
-                friendlies: [88], //mirages teleport you back to start of map no combat
-                uniques: [],             
-                pickups: [19, 25, 29]     // Solar Rite, Elixir, Haste
-            }
+            spawns: { hostiles: [210, 216, 33, 88, 79], friendlies: [], uniques: [], pickups: [19, 25, 29] }
         },
         5: {
-            name: "Witch Queen's Castle",
-            biome: "castle",
-            description: "Crimson sky, pink marble floors. Fiery red walls. A hallway with two side corridors featuring altars. Straight ahead is the throne room.",
-            lore: "Home to the Witch Queen. Holds the Tome and Amulet. Assaulted by the forces of the King of Wands (Djinn).",
-            storyKey: "wands_faction",
-            spawns: {
-                hostiles: [35, 56],       // Mirages (Check sprite index!), Imp
-                friendlies: [],
-                uniques: [34],            // Witch Queen
-                pickups: [27, 31]         // Tome, Amulet
-            }
+            name: "Savage Forest",
+            biome: "sylvan",
+            description: "A dark and untamed woodland crawling with hostile wildlife.",
+            lore: "Displaced goblins try to claim this forest as their own after being driven from the caverns.",
+            storyKey: "tintagel_forest_plot",
+            spawns: { hostiles: [54, 234, 194, 240, 191, 225, 188, 60, 23], friendlies: [], uniques: [], pickups: [] }
         },
         6: {
             name: "Realm of the Ice Queen (Cairn Gorm)",
             biome: "snow",
-            description: "Snow-covered floor. Light gray sky. A mountain pass leading up to the peak. It is always snowing.",
-            lore: "Home to Ice Golems and Undines. Contains the Lucky Charm. The Ice Queen's castle rests on the peak.",
+            description: "Snow-covered floor. Light gray sky. A mountain pass leading up to the peak.",
+            lore: "Home to Ice Golems and Undines. The Ice Queen's castle rests on the peak.",
             storyKey: "cups_faction",
-            spawns: {
-                hostiles: [47,81],           // Undine (Ice Golems sprite check needed)
-                friendlies: [],
-                uniques: [],            // 
-                pickups: [6, 28, 45]      // Lovers, Defense, Lucky Charm
-            }
+            spawns: { hostiles: [231, 81, 194, 188, 47], friendlies: [41], uniques: [], pickups: [6, 28, 45] }
         },
         7: {
             name: "Ice Cave",
             biome: "cave",
             description: "Deep blue frozen cavern. Black sky. The chilling cold bites at your soul.",
-            lore: "The spirits of those who can't let go linger here. Home to Skeletons, a Shade, and the Death card.",
+            lore: "The spirits of those who can't let go linger here. The Death card can be found within.",
             storyKey: "cups_faction",
-            spawns: {
-                hostiles: [42, 82],       // Shade, Skeleton
-                friendlies: [],
-                uniques: [],       
-                pickups: [13]             // Death
-            }
+            spawns: { hostiles: [42, 82], friendlies: [], uniques: [], pickups: [13] }
         },
         8: {
             name: "Ice Queen's Castle",
@@ -1252,90 +1278,55 @@
             description: "Blue floors, Sapphire walls, dark Blue ceiling. You enter the throne room.",
             lore: "Home to the Ice Queen. Holds the Charity and Teleport Crystal cards.",
             storyKey: "cups_faction",
-            spawns: {
-                hostiles: [], 
-                friendlies: [],
-                uniques: [48, 55],        // Ice Queen, Sailboat
-                pickups: [43, 69]         // Charity, Teleport Crystal
-            }
+            spawns: { hostiles: [], friendlies: [], uniques: [48], pickups: [43, 69] }
         },
         9: {
             name: "Boreal Sea",
             biome: "sea",
-            description: "Stormy sea, black sky, blue floor, black walls. Shipwreckage floats on the water. A melody sounds amidst the roaring winds.",
-            lore: "Adventurers report all ships to and from the Ice Queen's realm have been destroyed by the Kraken. Sea Serpents, Sirens, and the Kraken roam here.",
+            description: "Stormy sea, black sky, blue floor. Shipwreckage floats on the water.",
+            lore: "Adventurers report all ships to and from the Ice Queen's realm have been destroyed by the Kraken.",
             storyKey: "cups_faction",
-            spawns: {
-                hostiles: [37, 46, 49, 83], // Siren, Sea Serpent, Kraken, Tentacles
-                friendlies: [],
-                uniques: [], 
-                pickups: [] 
-            }
+            spawns: { hostiles: [37, 46, 47, 83], friendlies: [], uniques: [49], pickups: [] }
         },
         10: {
             name: "Realm of the Fairy Queen (Avalon)",
             biome: "otherworld",
-            description: "Purple sky, lush green floor. Otherworldly mist. Charred trees and a dragon's lair to the west. A golden castle to the north.",
-            lore: "Pixies and Spiders roam freely. The Sleeping King resides here somewhere. Home to the Fairy Queen and Sylphs.",
+            description: "Purple sky, lush green floor. Otherworldly mist.",
+            lore: "Pixies and Spiders roam freely. The Sleeping King resides here somewhere.",
             storyKey: "swords_faction",
-            spawns: {
-                hostiles: [57, 60],       // Pixie, Spider
-                friendlies: [61],         // Sylphs (friendly, wandering)
-                uniques: [], 
-                pickups: []
-            }
+            spawns: { hostiles: [60, 57, 222, 86, 100, 97, 103], friendlies: [61], uniques: [], pickups: [] }
         },
         11: {
             name: "Fairy Queen's Castle",
             biome: "castle",
             description: "Golden sky, floor, and walls. Otherworldly mist.",
-            lore: "Adventurers report golden walls proudly displaying 'Strength' and 'Winged Boots'. The mighty Fairy Queen watches with piercing eyes.",
+            lore: "Adventurers report golden walls proudly displaying 'Strength' and 'Winged Boots'.",
             storyKey: "swords_faction",
-            spawns: {
-                hostiles: [], 
-                friendlies: [], 
-                uniques: [62],            // Fairy Queen
-                pickups: [7, 8]           // Winged Boots, Strength
-            }
+            spawns: { hostiles: [60, 57, 86], friendlies: [61], uniques: [62], pickups: [7, 8] }
         },
         12: {
             name: "Dragon's Lair",
             biome: "ruins",
-            description: "Winding cavernous passageways leading to the center of the lair. Smoke and darkness fill the corridors. The clang of steel and dragon roars echo.",
-            lore: "Home to the Dragon. Corrupt Sylphs guard the lair. The Dragon sits upon his Hoard. No adventurer has returned alive.",
+            description: "Winding cavernous passageways leading to the center of the lair. Smoke and darkness.",
+            lore: "Home to the Dragon. Corrupt Sylphs guard the lair. No adventurer has returned alive.",
             storyKey: "swords_faction",
-            spawns: {
-                hostiles: [63,86],           // Dragon (Dark Sylphs check needed)
-                friendlies: [], 
-                uniques: [67],            // Dragon's Hoard
-                pickups: [] 
-            }
+            spawns: { hostiles: [86, 63], friendlies: [], uniques: [], pickups: [] }
         },
         13: {
             name: "Tomb of the Sleeping King",
             biome: "tomb",
             description: "Sanctified, hallowed ground.",
-            lore: "King Arthur sleeps here with the legendary sword Excalibur. Ghostly knights attack trespassers for 'being too loud.'",
+            lore: "King Arthur sleeps here with the legendary sword Excalibur.",
             storyKey: "the_sleeping_king",
-            spawns: {
-                hostiles: [85],           // Arthur / Ghostly Knight
-                friendlies: [], 
-                uniques: [84],            // Excalibur
-                pickups: []
-            }
+            spawns: { hostiles: [85], friendlies: [], uniques: [84], pickups: [] }
         },
         14: {
             name: "Realm of the Elf Queen (Forest)",
             biome: "sylvan",
             description: "A forest of Goldenrod sky, Green floors, falling leaves.",
-            lore: "Home to the Elf Queen, Gnomes, and Gargoyles. The Giant and his daughter reside here. A strange glowing man occasionally smiles and vanishes.",
+            lore: "Home to the Elf Queen, Gnomes, and Gargoyles. The Giant and his daughter reside here.",
             storyKey: "pentacles_faction",
-            spawns: {
-                hostiles: [74, 77],       // Gargoyle, Giant
-                friendlies: [75,90],         // Gnome,giants daughter
-                uniques: [70, 76],        // Cultivator, Elf Queen
-                pickups: [66,71]             // Armor, Forge
-            }
+            spawns: { hostiles: [213, 188, 191, 240, 225, 74, 77], friendlies: [41, 75, 70, 90], uniques: [76], pickups: [66, 71] }
         },
         15: {
             name: "The Dark Bridge",
@@ -1343,25 +1334,15 @@
             description: "A dark bridge over a pitch-black void. Thunderclouds gather above a misty dark tower.",
             lore: "Adventurers report seeing a strange snake dragging a pile of gold along the cliffside.",
             storyKey: "the_dark_tower_truth",
-            spawns: {
-                hostiles: [], 
-                friendlies: [89],           // Treasure Snake (sprite map check needed)
-                uniques: [], 
-                pickups: []
-            }
+            spawns: { hostiles: [], friendlies: [89], uniques: [], pickups: [] }
         },
         16: {
             name: "The Dark Tower 1F",
             biome: "void",
             description: "Pitch black room like outer space. Twinkling stars and the glow of distant portals.",
-            lore: "Portals bounce around as if alive, retreating from those who approach. One portal seems particularly lazy...",
+            lore: "Portals bounce around as if alive, retreating from those who approach.",
             storyKey: "the_dark_tower_truth",
-            spawns: {
-                hostiles: [], 
-                friendlies: [],
-                uniques: [], 
-                pickups: [11]             // Scales of Justice
-            }
+            spawns: { hostiles: [], friendlies: [], uniques: [], pickups: [11] }
         },
         17: {
             name: "The Dark Tower 2F (Djinn Room)",
@@ -1369,12 +1350,7 @@
             description: "Pitch black astral space. A menacing fiery figure looms.",
             lore: "The shade of the Djinn lingers here, forced to do its master's bidding.",
             storyKey: "the_dark_tower_truth",
-            spawns: {
-                hostiles: [35],           // Djinn Shade
-                friendlies: [],
-                uniques: [], 
-                pickups: [] 
-            }
+            spawns: { hostiles: [35], friendlies: [], uniques: [], pickups: [] }
         },
         18: {
             name: "The Dark Tower 3F (Kraken Room)",
@@ -1382,12 +1358,7 @@
             description: "Pitch black astral space. A massive, tentacled shadow looms.",
             lore: "The shade of the Kraken lingers here, forced to do its master's bidding.",
             storyKey: "the_dark_tower_truth",
-            spawns: {
-                hostiles: [49],           // Kraken Shade
-                friendlies: [],
-                uniques: [], 
-                pickups: [] 
-            }
+            spawns: { hostiles: [49], friendlies: [], uniques: [], pickups: [] }
         },
         19: {
             name: "The Dark Tower 4F (Dragon Room)",
@@ -1395,12 +1366,7 @@
             description: "Pitch black astral space. A winged, smoky shadow looms.",
             lore: "The shade of the Dragon lingers here, forced to do its master's bidding.",
             storyKey: "the_dark_tower_truth",
-            spawns: {
-                hostiles: [63],           // Dragon Shade
-                friendlies: [],
-                uniques: [], 
-                pickups: [] 
-            }
+            spawns: { hostiles: [63], friendlies: [], uniques: [], pickups: [] }
         },
         20: {
             name: "The Dark Tower 5F (Giant Room)",
@@ -1408,12 +1374,7 @@
             description: "Pitch black astral space. A towering figure guards the passage upward.",
             lore: "The shade of the Giant lingers here, guarding the way to the top floor.",
             storyKey: "the_dark_tower_truth",
-            spawns: {
-                hostiles: [77],           // Giant Shade
-                friendlies: [],
-                uniques: [], 
-                pickups: [14]             // Alchemy
-            }
+            spawns: { hostiles: [77], friendlies: [], uniques: [], pickups: [14] }
         },
         21: {
             name: "The Dark Tower 6F (Top of Tower)",
@@ -1421,27 +1382,49 @@
             description: "Dark gray floor, pitch black sky, black walls. The sky thunders violently.",
             lore: "As you ascend to face the Dark Emperor, you see... The Fool?",
             storyKey: "the_dark_tower_truth",
-            spawns: {
-                hostiles: [0],            // The Fool / Dark Emperor
-                friendlies: [], 
-                uniques: [],
-                pickups: []
-            }
+            spawns: { hostiles: [0], friendlies: [], uniques: [], pickups: [] }
         },
         22: {
             name: "Suncat's Realm",
             biome: "sylvan",
             description: "Peaceful autumn forest with falling leaves.",
-            lore: "A peaceful realm where Suncat sleeps. No monsters spawn naturally, but Suncat occasionally summons them for company.",
+            lore: "A peaceful realm where Suncat sleeps. No monsters spawn naturally.",
             storyKey: "opinion_misc",
-            spawns: {
-                hostiles: [], 
-                friendlies: [87], 
-                uniques: [],
-                pickups: [] 
-            }
+            spawns: { hostiles: [], friendlies: [41, 87], uniques: [], pickups: [] }
+        },
+        30: {
+            name: "Goblin Caverns",
+            biome: "ruins",
+            description: "Black sky, dark brown floor. Underground tunnels.",
+            lore: "Former home of the goblins. Infested with Imps and Shades. The Apprentice is held captive here.",
+            storyKey: "apprentice_tale",
+            spawns: { hostiles: [23, 42, 56], friendlies: [89], uniques: [32], pickups: [30, 40, 41, 52, 58] }
+        },
+        31: {
+            name: "Witch Queen's Castle",
+            biome: "castle",
+            description: "Crimson sky, pink marble floors. Fiery red walls. The throne room is under siege.",
+            lore: "Home to the Witch Queen. Assaulted by the forces of the King of Wands (Djinn).",
+            storyKey: "wands_faction",
+            spawns: { hostiles: [79, 35], friendlies: [78], uniques: [34], pickups: [27, 31] }
+        },
+        888: {
+            name: "Battlefield",
+            biome: "void",
+            description: "The tactical plane of combat.",
+            lore: "Where lines of code resolve life and death.",
+            storyKey: "guild_initiate",
+            spawns: { hostiles: [], friendlies: [], uniques: [], pickups: [] }
+        },
+        999: {
+            name: "Celliwig",
+            biome: "void",
+            description: "A dark server-side realm.",
+            lore: "An infinite grid.",
+            storyKey: "guild_initiate",
+            spawns: { hostiles: [], friendlies: [], uniques: [], pickups: [] }
         }
-        };
+    };
 
     const WORLD_LORE_DB = {
         "the_awakening": {
@@ -1495,6 +1478,22 @@
         "opinion_misc": {
             tags: ["goblins", "mirages", "treasure snake", "dark emperor", "opinion"],
             text: "Suncat's thoughts: Goblins aren't evil, just scared. Mirages are annoying. The Treasure Snake is greedy, ancient, and honest. The Dark Emperor's impulsive naivety endangers many."
+        },
+        "guild_initiate": {
+            tags: ["adventurers guild", "moors", "f-rank", "e-rank", "tactics", "recruit"],
+            text: "The Adventurer's Guild operates on the Moors. Initiates learn the brutal geometry of combat here, mastering wards, orthogonal line-of-sight, and measuring victories in action points conserved."
+        },
+        "the_left_hand_path": {
+            tags: ["cult", "elder", "d-rank", "c-rank", "moors", "left hand path"],
+            text: "A sinister cult known as the Left Hand Path manipulates local monsters and launches port sieges. The Guild pushes back, uncovering deep-rooted corruption within their own ranks."
+        },
+        "the_elite_vanguard": {
+            tags: ["b-rank", "a-rank", "elder traitor", "assassin", "vanguard"],
+            text: "An Elder of the Left Hand Path infiltrated the Guild as a clerk, assigning suicide missions to wipe out promising recruits. The Elite Vanguard struck back without mercy, hunting the hunters."
+        },
+        "the_mastermind": {
+            tags: ["s-rank", "mastermind", "glitch", "stronghold", "clones"],
+            text: "The leader of the Left Hand Path is a dark mirror to the hero—a min-maxing anomaly who exploits collision meshes, frame-data cancels, and 8-bit integer array limits. Only flawless mechanics can defeat them."
         }
         };
 
@@ -3756,6 +3755,86 @@
                 miniCenter: { x: mini.cx, y: mini.cy }
             };
     }
+    function generateActorDrivenMap(size, wallType, floorType = 0) {
+        // 1. Start with a solid block of walls
+        let grid = Array(size).fill().map(() => Array(size).fill(wallType));
+
+        // 2. Define the Narrative Nodes (Dynamic quadrants)
+        // We scatter them to ensure they aren't on top of each other
+        let nodes = {
+            start:     { x: 10 + Math.floor(Math.random() * 10), y: 10 + Math.floor(Math.random() * 10), type: 'Start' },
+            allyCamp:  { x: Math.floor(size / 2) + (Math.random() * 10 - 5), y: Math.floor(size / 2) + (Math.random() * 10 - 5), type: 'Ally' },
+            ambush1:   { x: 20 + Math.floor(Math.random() * 10), y: size - 30 + Math.floor(Math.random() * 10), type: 'Ambush' },
+            ambush2:   { x: size - 30 + Math.floor(Math.random() * 10), y: 20 + Math.floor(Math.random() * 10), type: 'Ambush' },
+            bossLair:  { x: size - 20 + Math.floor(Math.random() * 10), y: size - 20 + Math.floor(Math.random() * 10), type: 'Boss' }
+        };
+
+        // 3. Carve the Rooms
+        const carveRoom = (cx, cy, radius, isOrganic) => {
+            cx = Math.floor(cx); cy = Math.floor(cy);
+            for (let y = cy - radius; y <= cy + radius; y++) {
+                for (let x = cx - radius; x <= cx + radius; x++) {
+                    if (y > 0 && y < size - 1 && x > 0 && x < size - 1) {
+                        // Organic rooms (caves/forests) are circles. Bastions/Lairs are squares.
+                        if (isOrganic) {
+                            if (Math.pow(x - cx, 2) + Math.pow(y - cy, 2) <= radius * radius) grid[y][x] = floorType;
+                        } else {
+                            grid[y][x] = floorType;
+                        }
+                    }
+                }
+            }
+        };
+
+        // Decide room shapes based on your needs (true = circular, false = square)
+        carveRoom(nodes.start.x, nodes.start.y, 4, true);
+        carveRoom(nodes.allyCamp.x, nodes.allyCamp.y, 6, false); // A structured camp
+        carveRoom(nodes.ambush1.x, nodes.ambush1.y, 5, true);
+        carveRoom(nodes.ambush2.x, nodes.ambush2.y, 5, true);
+        carveRoom(nodes.bossLair.x, nodes.bossLair.y, 8, false); // Massive boss arena
+
+        // 4. Carve the Connecting Paths (L-Shaped Corridors)
+        const carvePath = (nodeA, nodeB) => {
+            let currX = Math.floor(nodeA.x);
+            let currY = Math.floor(nodeA.y);
+            let destX = Math.floor(nodeB.x);
+            let destY = Math.floor(nodeB.y);
+
+            // Carve Horizontal
+            while (currX !== destX) {
+                if (currY > 0 && currY < size - 1) {
+                    grid[currY][currX] = floorType;
+                    grid[currY + 1][currX] = floorType; // 2-tiles wide so NPCs don't get stuck
+                }
+                currX += Math.sign(destX - currX);
+            }
+            // Carve Vertical
+            while (currY !== destY) {
+                if (currX > 0 && currX < size - 1) {
+                    grid[currY][currX] = floorType;
+                    grid[currY][currX + 1] = floorType; 
+                }
+                currY += Math.sign(destY - currY);
+            }
+        };
+
+        // 5. Connect the narrative flow: Start -> Camp -> Ambushes -> Boss
+        carvePath(nodes.start, nodes.allyCamp);
+        carvePath(nodes.allyCamp, nodes.ambush1);
+        carvePath(nodes.allyCamp, nodes.ambush2);
+        carvePath(nodes.ambush1, nodes.bossLair);
+        carvePath(nodes.ambush2, nodes.bossLair);
+
+        // Collect all valid floors for random wandering NPCs later
+        let validFloors = [];
+        for (let r = 1; r < size - 1; r++) {
+            for (let c = 1; c < size - 1; c++) {
+                if (grid[r][c] === floorType) validFloors.push({ x: c, y: r });
+            }
+        }
+
+        return { grid, nodes, validFloors };
+    }
     function generateTintagelHub() {
         let maxR = 99, maxC = 99; 
         let grid = Array(maxR).fill().map(() => Array(maxC).fill(0));
@@ -3993,7 +4072,7 @@
 
         return profileTraits.join(", ");
         }
-    async function generateScenarioScript(biomeName, scenarioType, bossCardName, questGiverName, thirdFactionName, targetPlayer) {        
+    async function generateScenarioScript(biomeName, scenarioType, bossCardName, questGiverName, thirdFactionName, targetPlayer,spatialLayout) {        
         let currentVibe = "Peace.";
         let shadowVibe = "Chaos.";
 
@@ -4057,6 +4136,7 @@
 
             [NARRATIVE TASK]: 
             Write a deeply compelling, morally ambiguous scenario. 
+            - Use the [SPATIAL MAP LAYOUT] to accurately describe where the factions are positioned in your 'mapLore'.
             - THEME: ${randomTheme}
             - PLOT TWIST: ${randomTwist}
 
@@ -4243,492 +4323,240 @@
                         }
                         
                         // E. CREATE CUSTOM MAP
-                            else if (call.name === "createCustomMap") {
+                        else if (call.name === "createCustomMap") {
                             try {
                                 // 1. ENUM ROLLS & FACTION SETUP
-                                    const bEnum = Math.floor(Math.random() * Object.keys(BIOME_DB).length);
-                                    const biome = BIOME_DB[bEnum] || BIOME_DB[0];
-                                    
-                                    const validScenarios = ['rescue', 'fetch', 'escort', 'bounty'];
-                                    let scenarioType = validScenarios[Math.floor(Math.random() * validScenarios.length)];
-                                    
-                                    const monsterIDs = Object.keys(CARD_MANIFEST_DB).filter(id => CARD_MANIFEST_DB[id].type === "monster" && CARD_MANIFEST_DB[id].rank !== "0");
-                                    let antagID = parseInt(monsterIDs[Math.floor(Math.random() * monsterIDs.length)]);
-                                    let protagID = parseInt(monsterIDs[Math.floor(Math.random() * monsterIDs.length)]);
-                                    while (protagID === antagID) protagID = parseInt(monsterIDs[Math.floor(Math.random() * monsterIDs.length)]);
-                                    const wildFactions = [94 /*Dragon*/, 91 /*Demon*/, 77 /*Slime*/, 63 /*Beast*/, 35 /*Lich*/, 83 /*Mimic*/, 10 /*Chest?*/];
-                                    let thirdFactionID = wildFactions[Math.floor(Math.random() * wildFactions.length)];
-                                    let thirdFactionName = CARD_MANIFEST_DB[thirdFactionID] ? CARD_MANIFEST_DB[thirdFactionID].name : "Unknown Horrors";
-                                    let hostileMinions = getMinions(antagID);
-                                    if (hostileMinions.length === 0) hostileMinions = biome.mobs || [54, 56, 42];
-
-                                    let friendlyMinions = getMinions(protagID);
-                                    friendlyMinions = [...friendlyMinions, 32, 33, 34, 41, 42, 60, 75];
-                                    // 2. THE ASYNC FORK (LLM & Grid Generation)
-                                    const targetPlayer = players[findSocketID(call.args.targetName)];
-                                    // Add thirdFactionName to the arguments!
-                                    const scriptPromise = generateScenarioScript(
-                                        biome.name, 
-                                        scenarioType, 
-                                        CARD_MANIFEST_DB[antagID].name, 
-                                        CARD_MANIFEST_DB[protagID].name, 
-                                        thirdFactionName, 
-                                        targetPlayer
-                                    );
-                                    
-                                    let validWilds = ['FOREST', 'CAVE'];
-                                    let wildAlgo = validWilds[Math.floor(Math.random() * validWilds.length)];
-                                    
-                                    // --- FIX: Increased size to 100x100! ---
-                                    const mapData = generateInstanceGrid(wildAlgo, 100, biome.walls[0], 0);
-
-                                    let script = await scriptPromise;
-                                    if (!script) throw new Error("LLM failed to return a scenario.");
-
-                                    let mapNPCs = [];
+                                const bEnum = Math.floor(Math.random() * Object.keys(BIOME_DB).length);
+                                const biome = BIOME_DB[bEnum] || BIOME_DB[0];
                                 
-                                // ==========================================
-                                // ZONE 1: THE LAIR (Villain Faction)
-                                // ==========================================
-                                    let lairZone = mapData.zones.find(z => z.id === 'lair');
+                                const validScenarios = ['rescue', 'fetch', 'escort', 'bounty'];
+                                let scenarioType = validScenarios[Math.floor(Math.random() * validScenarios.length)];
+                                
+                                const monsterIDs = Object.keys(CARD_MANIFEST_DB).filter(id => CARD_MANIFEST_DB[id].type === "monster" && CARD_MANIFEST_DB[id].rank !== "0");
+                                let antagID = parseInt(monsterIDs[Math.floor(Math.random() * monsterIDs.length)]);
+                                let protagID = parseInt(monsterIDs[Math.floor(Math.random() * monsterIDs.length)]);
+                                while (protagID === antagID) protagID = parseInt(monsterIDs[Math.floor(Math.random() * monsterIDs.length)]);
+                                
+                                const wildFactions = [94 /*Dragon*/, 91 /*Demon*/, 77 /*Slime*/, 63 /*Beast*/, 35 /*Lich*/, 83 /*Mimic*/, 10 /*Chest?*/];
+                                let thirdFactionID = wildFactions[Math.floor(Math.random() * wildFactions.length)];
+                                let thirdFactionName = CARD_MANIFEST_DB[thirdFactionID] ? CARD_MANIFEST_DB[thirdFactionID].name : "Unknown Horrors";
+                                
+                                let hostileMinions = getMinions(antagID);
+                                if (hostileMinions.length === 0) hostileMinions = biome.mobs || [54, 56, 42];
 
-                                    // 1. The Main Boss (Commander)
+                                let friendlyMinions = getMinions(protagID);
+                                friendlyMinions = [...friendlyMinions, 32, 33, 34, 41, 42, 60, 75];
+                                
+                                const targetPlayer = players[findSocketID(call.args.targetName)];
+
+                                // ==========================================
+                                // 2. GENERATE THE PHYSICAL MAP FIRST
+                                // ==========================================
+                                const mapData = generateActorDrivenMap(100, biome.walls[0], 0);
+
+                                // Build a spatial layout string to feed the LLM
+                                const spatialLayout = `
+                                [SPATIAL MAP LAYOUT]:
+                                - Player Start Point: X:${mapData.nodes.start.x}, Y:${mapData.nodes.start.y}
+                                - Ally Camp: X:${mapData.nodes.allyCamp.x}, Y:${mapData.nodes.allyCamp.y}
+                                - Ambush Chokepoints: X:${mapData.nodes.ambush1.x}, Y:${mapData.nodes.ambush1.y} and X:${mapData.nodes.ambush2.x}, Y:${mapData.nodes.ambush2.y}
+                                - Boss Lair: X:${mapData.nodes.bossLair.x}, Y:${mapData.nodes.bossLair.y}
+                                `;
+
+                                // ==========================================
+                                // 3. GENERATE THE NARRATIVE SCRIPT
+                                // ==========================================
+                                const script = await generateScenarioScript(
+                                    biome.name, 
+                                    scenarioType, 
+                                    CARD_MANIFEST_DB[antagID].name, 
+                                    CARD_MANIFEST_DB[protagID].name, 
+                                    thirdFactionName, 
+                                    targetPlayer,
+                                    spatialLayout // <--- Inject the layout!
+                                );
+                                
+                                if (!script) throw new Error("LLM failed to return a scenario.");
+
+                                let mapNPCs = [];
+
+                                // ==========================================
+                                // 4. POPULATE THE NODES
+                                // ==========================================
+
+                                // --- A. THE BOSS LAIR ---
+                                mapNPCs.push({
+                                    type: CARD_MANIFEST_DB[antagID]?.sprite || antagID,
+                                    x: mapData.nodes.bossLair.x + 0.5, y: mapData.nodes.bossLair.y + 0.5, 
+                                    state: 'stationary', role: 'battle', isBoss: true, alignment: 'foe',
+                                    mastery: 3, deck: buildSynergisticDeck(antagID, 300), color: '#ff00ff', 
+                                    dialogue: [script.bossTaunt || "You dare approach my domain?"],
+                                    classification: 'villain_boss',
+                                    deathActions: [
+                                        ['play_sfx', 'chime'],
+                                        ['change_weather', 'clear'], 
+                                        ['give_card', {card: 21, text: "The boss dropped a Crown!"}], 
+                                        ['notify', "The realm is secure. The enemy commander has fallen!"]
+                                    ]
+                                });
+
+                                // Elite Guards scattered around the boss
+                                for (let i = 0; i < 4; i++) {
+                                    let guardID = hostileMinions[i % hostileMinions.length];
                                     mapNPCs.push({
-                                        type: CARD_MANIFEST_DB[antagID]?.sprite || antagID,
-                                        x: lairZone.cx + 0.5, y: lairZone.cy + 0.5, 
-                                        state: 'stationary', role: 'battle', isBoss: true, alignment: 'foe',
-                                        mastery: 3, deck: buildSynergisticDeck(antagID, 300), color: '#ff00ff', 
-                                        dialogue: [script.bossTaunt || "You dare approach my domain?"],
-                                        classification: 'villain_boss',
-                                        deathActions: [
-                                            ['play_sfx', 'chime'],
-                                            ['change_weather', 'clear'], 
-                                            ['give_card', {card: 21, text: "The boss dropped a Crown!"}], 
-                                            ['notify', "The realm is secure. The enemy commander has fallen!"]
-                                        ]
+                                        type: CARD_MANIFEST_DB[guardID]?.sprite || guardID,
+                                        x: mapData.nodes.bossLair.x + (i < 2 ? -2 : 2) + 0.5, 
+                                        y: mapData.nodes.bossLair.y + (i % 2 === 0 ? -2 : 2) + 0.5, 
+                                        state: 'stationary', role: 'battle', alignment: 'foe',
+                                        deck: buildSynergisticDeck(guardID, 150), color: '#ff0000',
+                                        dialogue: [script.hostileTaunts[i] || "For the Master!"],
+                                        classification: 'villain_elite'
                                     });
+                                }
 
-                                    // 2. Elite Guards (Stationary at the boss's side)
-                                    for (let i = 0; i < 4; i++) {
-                                        let guardID = hostileMinions[i % hostileMinions.length];
-                                        mapNPCs.push({
-                                            type: CARD_MANIFEST_DB[guardID]?.sprite || guardID,
-                                            x: lairZone.cx + (i < 2 ? -2 : 2) + 0.5, 
-                                            y: lairZone.cy + (i % 2 === 0 ? -2 : 2) + 0.5, 
-                                            state: 'stationary', role: 'battle', alignment: 'foe',
-                                            deck: buildSynergisticDeck(guardID, 150), color: '#ff0000',
-                                            dialogue: [script.hostileTaunts[i] || "For the Master!"],
-                                            classification: 'villain_elite'
-                                        });
-                                    }
+                                // --- B. THE ALLY CAMP ---
+                                // 1. Lore Main (Quest Giver)
+                                mapNPCs.push({
+                                    type: CARD_MANIFEST_DB[protagID]?.sprite || protagID,
+                                    x: mapData.nodes.allyCamp.x + 0.5, y: mapData.nodes.allyCamp.y + 0.5,
+                                    state: 'stationary', role: 'dialogue', alignment: 'defender',
+                                    deck: [], color: '#00ff00', 
+                                    dialogue: script.friendlyLore || ["Please, you must help us!"],
+                                    classification: 'lore_main'
+                                });
 
-                                    // 3. Patrollers (Wandering the Lair)
-                                    for (let i = 0; i < 6; i++) {
-                                        let patrolID = hostileMinions[Math.floor(Math.random() * hostileMinions.length)];
-                                        // Give patrollers a 30% chance to complain about the Third Tribe!
-                                        let taunt = Math.random() < 0.3 
-                                            ? (script.thirdTribeRumors[i % script.thirdTribeRumors.length])
-                                            : (script.hostileTaunts[i + 4] || "Intruder!");
+                                // 2. The Shop
+                                let shopInv = [];
+                                for (let i = 0; i <= 13; i++) { shopInv.push(Math.floor(Math.random() * 90)); }
+                                mapNPCs.push({
+                                    type: 41, 
+                                    x: mapData.nodes.allyCamp.x + 2.5, y: mapData.nodes.allyCamp.y + 0.5,
+                                    state: 'stationary', role: 'shop', alignment: 'friendly',
+                                    deck: shopInv, color: '#00ff00', dialogue: ["Buy something will ya?"],
+                                    classification: 'shop'
+                                });
 
-                                        mapNPCs.push({
-                                            type: CARD_MANIFEST_DB[patrolID]?.sprite || patrolID,
-                                            x: lairZone.x + Math.floor(Math.random() * lairZone.w) + 0.5, 
-                                            y: lairZone.y + Math.floor(Math.random() * lairZone.h) + 0.5, 
-                                            state: 'wandering', role: 'battle', alignment: 'foe',
-                                            deck: buildSynergisticDeck(patrolID, 100), color: '#ff0000',
-                                            dialogue: [taunt],
-                                            classification: 'villain_patrol'
-                                        });
-                                    }
-
-                                    // 4. Prisoners (Hostages inside the lair)
-                                    for (let i = 0; i < 2; i++) {
-                                        let prisonerID = friendlyMinions[Math.floor(Math.random() * friendlyMinions.length)];
-                                        mapNPCs.push({
-                                            type: CARD_MANIFEST_DB[prisonerID]?.sprite || prisonerID,
-                                            x: lairZone.x + 2.5, y: lairZone.y + 2.5 + (i * 2), // Stuck in a corner
-                                            state: 'fleeing', role: 'dialogue', alignment: 'friendly',
-                                            color: '#00ff00', deck: [prisonerID],
-                                            dialogue: [script.prisonerLines[i] || "Help me!"],
-                                            classification: 'prisoner',
-                                            options: ['Rescue', 'Leave'],
-                                            yesActions: [['play_sfx', 'buff2'], ['become_ally', prisonerID], ['disappear', null], ['close_dialogue', null]],
-                                            noActions: [['close_dialogue', null]]
-                                        });
-                                    }
-                                
-                                // ==========================================
-                                // ZONE 2: THE BASTION (City Hub & Classified Roles)
-                                // ==========================================
-                                    // Retrieve the Bastion's building data generated by the CITY algorithm
-                                    let bastionZone = mapData.zones.find(z => z.id === 'bastion');
-                                    let cityBuildings = bastionZone.buildings || [];
-                                    let availableBuildings = [...cityBuildings]; // Clone to pop them off as we fill them
-
-                                    // 1. THE LORE MAIN (Quest Giver / Faction Leader)
-                                        // Put them in the first building (HQ), or the center plaza if no buildings spawned.
-                                        let hq = availableBuildings.shift();
-                                        let hqX = hq ? hq.cx + 0.5 : mapData.bastionCenter.x + 0.5;
-                                        let hqY = hq ? hq.cy + 0.5 : mapData.bastionCenter.y + 0.5;
-
-                                        mapNPCs.push({
-                                            type: CARD_MANIFEST_DB[protagID]?.sprite || protagID,
-                                            x: hqX, y: hqY,
-                                            state: 'stationary', role: 'dialogue', alignment: 'defender',
-                                            deck: [], color: '#00ff00', 
-                                            dialogue: script.friendlyLore || ["Please, you must help us!"],
-                                            classification: 'lore_main' // Server-side tag for your reference
-                                        });
-
-                                    // 2. THE SHOP (Merchant)
-                                        // Give them their own building/stall if available
-                                        let shopBuilding = availableBuildings.shift();
-                                        let shopX = shopBuilding ? shopBuilding.cx + 0.5 : mapData.bastionCenter.x + 2.5;
-                                        let shopY = shopBuilding ? shopBuilding.cy + 0.5 : mapData.bastionCenter.y + 0.5;
-
-                                        let shopInv = [];
-                                        for (let i = 0; i <= 13; i++) { shopInv[i] = Math.floor(Math.random() * 90); }
-
-                                        mapNPCs.push({
-                                            type: 41, 
-                                            x: shopX, y: shopY,
-                                            state: 'stationary', role: 'shop', alignment: 'friendly',
-                                            deck: shopInv, color: '#00ff00', dialogue: ["Buy something will ya?"],
-                                            classification: 'shop'
-                                        });
-
-                                
-
-                                    // 4. LORE CITIZENS (Dwellers)
-                                    // Fill the remaining buildings with citizens who provide deep, profound lore.
-                                    availableBuildings.forEach((bldg, index) => {
-                                        let civID = friendlyMinions[Math.floor(Math.random() * friendlyMinions.length)] || 32; 
-                                        mapNPCs.push({
-                                            type: CARD_MANIFEST_DB[civID]?.sprite || civID, 
-                                            x: bldg.cx + 0.5, y: bldg.cy + 0.5, // Spawned exactly in the center of their 3x3 house
-                                            state: 'stationary', role: 'dialogue', alignment: 'defender', 
-                                            deck: buildSynergisticDeck(civID, 100), color: '#00ff00', 
-                                            dialogue: [script.friendlyProfound ? script.friendlyProfound[index % script.friendlyProfound.length] : "These walls protect us, but for how long?"],
-                                            classification: 'lore_citizen'
-                                        });
+                                // 3. Camp Defenders
+                                for (let i = 0; i < 3; i++) {
+                                    let defID = friendlyMinions[i % friendlyMinions.length] || 64; 
+                                    mapNPCs.push({
+                                        type: CARD_MANIFEST_DB[defID]?.sprite || defID, 
+                                        x: mapData.nodes.allyCamp.x + (Math.random() * 6 - 3), 
+                                        y: mapData.nodes.allyCamp.y + (Math.random() * 6 - 3),
+                                        state: 'wandering', role: 'dialogue', alignment: 'defender', 
+                                        deck: buildSynergisticDeck(defID, 150), color: '#00ff00', 
+                                        dialogue: [script.recruitPlea ? script.recruitPlea[i % script.recruitPlea.length] : "Stay safe out there."],
+                                        classification: 'guard'
                                     });
+                                }
 
-                                    // 5. OBLIVIOUS CIVILIANS (Wanderers)
-                                    // Spawns in the streets outside the buildings, talking about mundane life.
-                                    for (let i = 0; i < 3; i++) {
-                                        let civID = friendlyMinions[Math.floor(Math.random() * friendlyMinions.length)] || 32; 
-                                        mapNPCs.push({
-                                            type: CARD_MANIFEST_DB[civID]?.sprite || civID, 
-                                            x: mapData.bastionCenter.x + (Math.random() * 10 - 5), 
-                                            y: mapData.bastionCenter.y + (Math.random() * 10 - 5),
-                                            state: 'wandering', role: 'dialogue', alignment: 'defender', 
-                                            deck: buildSynergisticDeck(civID, 200), color: '#00ff00', 
-                                            dialogue: [script.friendlyLife ? script.friendlyLife[i % script.friendlyLife.length] : "I hope the guards can protect us..."],
-                                            classification: 'oblivious'
-                                        });
-                                    }
+                                // --- C. THE AMBUSH CHOKEPOINTS ---
+                                // Ambush 1
+                                for (let i = 0; i < 3; i++) {
+                                    let mobID = wildFactions[Math.floor(Math.random() * wildFactions.length)];
+                                    mapNPCs.push({
+                                        type: CARD_MANIFEST_DB[mobID]?.sprite || mobID,
+                                        x: mapData.nodes.ambush1.x + (Math.random() * 4 - 2), 
+                                        y: mapData.nodes.ambush1.y + (Math.random() * 4 - 2), 
+                                        state: 'chasing', role: 'battle', alignment: 'foe',
+                                        deck: buildSynergisticDeck(mobID, 80), color: '#ff8800',
+                                        dialogue: [script.thirdTribeTaunts[0] || "*Hissing sounds*"],
+                                        classification: 'third_tribe_mob'
+                                    });
+                                }
+                                // Ambush 2
+                                for (let i = 0; i < 3; i++) {
+                                    let mobID = hostileMinions[Math.floor(Math.random() * hostileMinions.length)];
+                                    mapNPCs.push({
+                                        type: CARD_MANIFEST_DB[mobID]?.sprite || mobID,
+                                        x: mapData.nodes.ambush2.x + (Math.random() * 4 - 2), 
+                                        y: mapData.nodes.ambush2.y + (Math.random() * 4 - 2), 
+                                        state: 'chasing', role: 'battle', alignment: 'foe',
+                                        deck: buildSynergisticDeck(mobID, 80), color: '#ff0000',
+                                        dialogue: [script.hostileTaunts[0] || "Found you!"],
+                                        classification: 'villain_patrol'
+                                    });
+                                }
 
-                                    // 6. BASTION GUARDS (Defenders)
-                                    // Actively hunt invaders, stationed around the city limits.
-                                    for (let i = 0; i < 3; i++) {
-                                        let defID = friendlyMinions[i % friendlyMinions.length] || 64; 
-                                        mapNPCs.push({
-                                            type: CARD_MANIFEST_DB[defID]?.sprite || defID, 
-                                            x: mapData.bastionCenter.x + (Math.random() * 12 - 6), 
-                                            y: mapData.bastionCenter.y + (Math.random() * 12 - 6),
-                                            state: 'wandering', role: 'dialogue', alignment: 'defender', 
-                                            deck: buildSynergisticDeck(defID, 150), color: '#00ff00', 
-                                            dialogue: [script.recruitPlea ? script.recruitPlea[i % script.recruitPlea.length] : "Stay safe out there."],
-                                            classification: 'guard'
-                                        });
-                                    }
+                                // --- D. SCATTER WANDERERS ON VALID FLOORS ---
+                                let shuffledFloors = [...mapData.validFloors].sort(() => 0.5 - Math.random());
+                                let placedWanderers = 0;
+                                let totalWanderers = 15; // Set a fixed number of extra wanderers
+                                
+                                for (let i = 0; i < shuffledFloors.length && placedWanderers < totalWanderers; i++) {
+                                    let tile = shuffledFloors[i];
+                                    
+                                    // Skip if it's too close to a node (we don't want them spawning inside the boss)
+                                    let isNearNode = Object.values(mapData.nodes).some(n => Math.abs(n.x - tile.x) < 5 && Math.abs(n.y - tile.y) < 5);
+                                    if (isNearNode) continue;
+
+                                    let spawnID = hostileMinions[Math.floor(Math.random() * hostileMinions.length)];
+                                    mapNPCs.push({
+                                        type: CARD_MANIFEST_DB[spawnID]?.sprite || spawnID, 
+                                        x: tile.x + 0.5, y: tile.y + 0.5, 
+                                        state: 'wandering', role: 'battle', alignment: 'foe', 
+                                        deck: buildSynergisticDeck(spawnID, 80), color: '#ff0000', 
+                                        dialogue: [script.hostileTaunts[placedWanderers % script.hostileTaunts.length] || "Die!"],
+                                        classification: 'wild_scout'
+                                    });
+                                    placedWanderers++;
+                                }
+
+                                // Apply global indices to all array items
+                                mapNPCs.forEach((npc, idx) => { 
+                                    if (!npc.index) npc.index = 10000 + idx; 
+                                });                            
 
                                 // ==========================================
-                                // ZONE 3: THE RUINS (Third Faction / Ecology)
-                                // ==========================================
-                                    let ruinsZone = mapData.zones.find(z => z.id === 'mini');
-                                    let thirdTribeMinions = getMinions(thirdFactionID);
-
-                                    // 1. The Apex Predator / Ancient Threat (Mini-Boss)
-                                        mapNPCs.push({
-                                            type: CARD_MANIFEST_DB[thirdFactionID]?.sprite || thirdFactionID,
-                                            x: ruinsZone.cx + 0.5, y: ruinsZone.cy + 0.5,
-                                            state: 'stationary', role: 'battle', alignment: 'foe', isBoss: true,
-                                            deck: buildSynergisticDeck(thirdFactionID, 200), color: '#ff8800', // Orange on minimap!
-                                            dialogue: [script.thirdTribeTaunts[0] || "*An unnatural roar echoes from the ruins...*"],
-                                            classification: 'third_tribe_boss'
-                                        });
-
-                                    // 2. The Brood / Swarm (Wandering the ruins)
-                                        for (let i = 0; i < 6; i++) {
-                                            let mobID = thirdTribeMinions[Math.floor(Math.random() * thirdTribeMinions.length)];
-                                            mapNPCs.push({
-                                                type: CARD_MANIFEST_DB[mobID]?.sprite || mobID,
-                                                x: ruinsZone.x + Math.floor(Math.random() * ruinsZone.w) + 0.5, 
-                                                y: ruinsZone.y + Math.floor(Math.random() * ruinsZone.h) + 0.5, 
-                                                state: 'wandering', role: 'battle', alignment: 'foe',
-                                                deck: buildSynergisticDeck(mobID, 80), color: '#ff8800',
-                                                dialogue: [script.thirdTribeTaunts[1 + (i % 4)] || "*Hissing sounds*"],
-                                                classification: 'third_tribe_mob'
-                                            });
-                                            }
-                                    // 3. The Ancient Lore Altar
-                                        let altarId = 300001 + Math.floor(Math.random() * 1000);
-                                        mapNPCs.push({
-                                            index: altarId,
-                                            type: 19, // Stone Pillar Sprite
-                                            x: ruinsZone.cx - 2.5, y: ruinsZone.cy - 2.5,
-                                            state: 'stationary', role: 'dialogue', alignment: 'friendly', color: '#ffff00',
-                                            dialogue: [
-                                                "*The stone is cold, bearing a glowing inscription...*",
-                                                `"${script.mapLore}"`,
-                                                "*You feel a strange resonance as the knowledge settles into your mind.*"
-                                            ],
-                                            options: ['Touch the Stone', 'Leave'],
-                                            yesActions: [
-                                                ['play_sfx', 'buff2'],
-                                                ['give_card', { card: 71, text: "Ancient Knowledge Acquired!" }],
-                                                ['disappear', altarId],
-                                                ['close_dialogue', null]
-                                            ],
-                                            noActions: [['close_dialogue', null]]
-                                        });
-                                    // 4. The Cursed Artifact Ambush
-                                        let curseId = 300002 + Math.floor(Math.random() * 1000);
-                                        let shadowBossId = thirdFactionID; // Pulls the ruin's native boss ID
-
-                                        mapNPCs.push({
-                                            index: curseId,
-                                            type: 16, // Idol/Artifact Sprite
-                                            x: ruinsZone.cx + 2.5, y: ruinsZone.cy + 2.5,
-                                            state: 'stationary', role: 'dialogue', alignment: 'friendly', color: '#8800ff',
-                                            dialogue: ["*A pulsing, dark mass rests on a pedestal. It whispers promises of power to your mind.*"],
-                                            options: ['Take It', 'Step Away'],
-                                            yesActions: [
-                                                ['play_sfx', 'horn'],
-                                                ['change_weather', 'space'], // Darkens the map
-                                                ['disappear', curseId],
-                                                ['start_wave', { 
-                                                    delay: 1.0, 
-                                                    waves: [
-                                                        [{sprite: 56}, {sprite: 56}], // Wave 1
-                                                        [{sprite: shadowBossId, isBoss: true}] // Wave 2
-                                                    ], 
-                                                    onComplete: [
-                                                        ['change_weather', 'clear'], 
-                                                        ['play_sfx', 'chime'],
-                                                        ['notify', "The curse is broken!"]
-                                                    ]
-                                                }],
-                                                ['notify', { text: "You unleashed a dormant curse!", endActions: [['close_dialogue', null]] }]
-                                            ],
-                                            noActions: [['close_dialogue', null]]
-                                        });
-                                    // 5. The Battlefield Scavenger
-                                        let scavId = 500200;
-                                        let scavInv = [21, 65, 50, 71]; // High value, rare items
-
-                                        mapNPCs.push({
-                                            index: scavId,
-                                            type: 42, // Rogue/Thief Sprite
-                                            x: ruinsZone.cx - 4.5, y: ruinsZone.cy + 4.5,
-                                            state: 'stationary', role: 'dialogue', alignment: 'friendly', color: '#ffff00',
-                                            dialogue: [
-                                                "*The rogue is prying a magic ring off a skeleton's finger.*",
-                                                "*Eh? You want something?*"
-                                            ],
-                                            options: ['Trade', 'Attack'],
-                                            yesActions: [
-                                                ['open_shop', scavInv] // Opens the store!
-                                            ],
-                                            noActions: [
-                                                ['play_sfx', 'horn'],
-                                                ['transform_npc', { 
-                                                    index: scavId, 
-                                                    newAlignment: 'foe', 
-                                                    newRole: 'battle', 
-                                                    newState: 'chasing', 
-                                                    clearDialogue: true,
-                                                    newDeathActions: [['play_sfx', 'chime'], ['notify', "The scavenger is dead. The dead rest easy."]]
-                                                }],
-                                                ['start_battle', scavId]
-                                            ]
-                                        });
-                                // ==========================================
-                                // ZONE 4: THE WILDS (Ecology & Skirmishes)
-                                // ==========================================
-                                    let shuffledFloors = [...mapData.validFloors].sort(() => 0.5 - Math.random());
-                                    let totalWanderers = Math.floor(shuffledFloors.length / 120); // Adjust density as needed
-
-                                    let placedWanderers = 0;
-                                    for (let i = 0; i < shuffledFloors.length && placedWanderers < totalWanderers; i++) {
-                                        let tile = shuffledFloors[i];
-                                        
-                                        // Ensure they don't spawn inside our defined zones
-                                        let inBastion = (tile.x >= mapData.bastionCenter.x - 7 && tile.x <= mapData.bastionCenter.x + 7 && tile.y >= mapData.bastionCenter.y - 7 && tile.y <= mapData.bastionCenter.y + 7);
-                                        let inLair = (tile.x >= lairZone.x && tile.x <= lairZone.x + lairZone.w && tile.y >= lairZone.y && tile.y <= lairZone.y + lairZone.h);
-                                        let inRuins = (tile.x >= ruinsZone.x && tile.x <= ruinsZone.x + ruinsZone.w && tile.y >= ruinsZone.y && tile.y <= ruinsZone.y + ruinsZone.h);
-                                        
-                                        if (inBastion || inLair || inRuins) continue;
-
-                                        let r = Math.random();
-                                        // 5% Chance: The Bleeding Deserter (Wilds)
-                                        
-                                        //tactics
-                                        if (r < 0.03) {
-                                            let tacticianId = 400000 + placedWanderers;
-                                            let ambushBossId = 400000 + placedWanderers + 1;
-                                            
-                                            let winTactics = [
-                                                ['play_sfx', 'chime'],
-                                                ['notify', {text: "We survived! Thank you, traveler. Take this.", endActions: [['close_dialogue', null]]}],
-                                                ['give_card', { card: 38, text: "Tactician's Reward Received!" }]
-                                            ];
-
-                                            mapNPCs.push({
-                                                index: tacticianId,
-                                                type: 0, // Guard/Ally Sprite
-                                                x: tile.x + 0.5, y: tile.y + 0.5,
-                                                state: 'wandering', role: 'dialogue', alignment: 'friendly', color: '#00ff00',
-                                                deck: [42], // They bring their own stats to the battle
-                                                dialogue: ["To arms, traveler! I'm being hunted by an elite squad!", "Form up with me, quickly!"],
-                                                options: ['Form Up! (Tactics)', 'Leave Them to Die'],
-                                                yesActions: [
-                                                    ['play_sfx', 'horn'],
-                                                    ['become_ally', 0], // Adds them to activeSummons so they join the Tactics board!
-                                                    ['disappear', tacticianId], // Removes them from the overworld
-                                                    ['spawn_ephemeral_npc', { 
-                                                        index: ambushBossId, x: tile.x, y: tile.y, sprite: 35, state: 'stationary', 
-                                                        role: 'battle', alignment: 'foe', color: '#ff0000', isBoss: true, 
-                                                        deck: [63, 77, 35, 49], deathActions: winTactics 
-                                                    }],
-                                                    ['start_tactics', ambushBossId],
-                                                    ['close_dialogue', null]
-                                                ],
-                                                noActions: [['close_dialogue', null]]
-                                            });
-                                        }
-                                        // 5% Chance: The Mad Scholar
-                                        else if (r < 0.09) {
-                                            let scholarId = 500100 + placedWanderers;
-                                            mapNPCs.push({
-                                                index: scholarId,
-                                                type: 41, // Merchant/Scholar Sprite
-                                                x: tile.x + 0.5, y: tile.y + 0.5,
-                                                state: 'wandering', role: 'dialogue', alignment: 'friendly', color: '#00ff00',
-                                                dialogue: [
-                                                    "Ah! A traveler! Have you been studying the history of this realm?",
-                                                    `I have concluded that the local ruins belong to the ${thirdFactionName}.`,
-                                                    "Do you agree with my assessment of their origins?"
-                                                ],
-                                                options: ['Agree (Lie)', 'Share Actual Lore'],
-                                                yesActions: [
-                                                    ['inject_dialogue', { index: scholarId, text: ["I knew it! The academic community called me mad, but I am right!"], endActions: [['close_dialogue', null]] }]
-                                                ],
-                                                noActions: [
-                                                    ['play_sfx', 'heal'],
-                                                    ['give_card', { card: 50, text: "Scholar's Grant Received!" }],
-                                                    ['inject_dialogue', { 
-                                                        index: scholarId, 
-                                                        // We actually echo the LLM's lore back to them!
-                                                        text: [`Fascinating... "${script.mapLore}"?`, "I must write this down immediately! Take this funding for your research!"], 
-                                                        endActions: [['disappear', scholarId], ['close_dialogue', null]] 
-                                                    }]
-                                                ]
-                                            });
-                                        }
-                                        // 50% Chance: Villain Faction Scouting Party
-                                        else if (r < 0.69) {
-                                            let spawnID = hostileMinions[Math.floor(Math.random() * hostileMinions.length)];
-                                            mapNPCs.push({
-                                                type: CARD_MANIFEST_DB[spawnID]?.sprite || spawnID, 
-                                                x: tile.x + 0.5, y: tile.y + 0.5, 
-                                                state: 'wandering', role: 'battle', alignment: 'foe', 
-                                                deck: buildSynergisticDeck(spawnID, 80), color: '#ff0000', 
-                                                dialogue: [script.hostileTaunts[8 + (placedWanderers % 6)] || "Found you!"],
-                                                classification: 'wild_scout'
-                                            });
-                                        } 
-                                        // 30% Chance: Third Tribe Predators Hunting
-                                        else if (r < 0.95) {
-                                            let spawnID = thirdTribeMinions[Math.floor(Math.random() * thirdTribeMinions.length)];
-                                            mapNPCs.push({
-                                                type: CARD_MANIFEST_DB[spawnID]?.sprite || spawnID, 
-                                                x: tile.x + 0.5, y: tile.y + 0.5, 
-                                                state: 'chasing', role: 'battle', alignment: 'foe', 
-                                                deck: buildSynergisticDeck(spawnID, 80), color: '#ff8800', 
-                                                dialogue: [script.thirdTribeTaunts[Math.floor(Math.random() * 5)] || "*Screeching*"],
-                                                classification: 'wild_predator'
-                                            });
-                                        }
-                                        // 20% Chance: Lost Friendly Travelers / Merchants
-                                        else {
-                                            let spawnID = friendlyMinions[Math.floor(Math.random() * friendlyMinions.length)];
-                                            // 50/50 whether they complain about the war or the local monsters
-                                            let dialogueLine = Math.random() > 0.5 
-                                                ? (script.friendlyLife[placedWanderers % script.friendlyLife.length])
-                                                : (script.thirdTribeRumors[5 + (placedWanderers % 3)]);
-
-                                            mapNPCs.push({
-                                                type: CARD_MANIFEST_DB[spawnID]?.sprite || spawnID, 
-                                                x: tile.x + 0.5, y: tile.y + 0.5, 
-                                                state: 'wandering', role: 'dialogue', alignment: 'defender', 
-                                                deck: buildSynergisticDeck(spawnID, 80), color: '#00ff00', 
-                                                dialogue: [dialogueLine || "I shouldn't have left the Bastion..."],
-                                                classification: 'wild_traveler'
-                                            });
-                                        }
-                                        placedWanderers++;
-                                        }
-
-                                // 4.5 Apply global indices to all array items
-                                    mapNPCs.forEach((npc, idx) => { 
-                                                    if (!npc.index) {
-                                                        npc.index = 10000 + idx; 
-                                                    }
-                                                });                            // ==========================================
                                 // 5. CACHE INSTANCE & DISPATCH MESSENGER
                                 // ==========================================
-                                    const customMapData = {
-                                        id: 999, maze: mapData.grid, 
-                                        skyColor: biome.skies[0], floorColor: biome.floors[0], 
-                                        name: `Realm of the ${script.questObjective.split(' ')[0] || "Mystery"}`, 
-                                        npcs: mapNPCs, weather: biome.weather[0],
-                                        spawnX: mapData.bastionCenter.x + 0.5, 
-                                        spawnY: mapData.bastionCenter.y + 0.5,
-                                        bossX: mapData.lairCenter.x + 0.5,
-                                        bossY: mapData.lairCenter.y + 0.5,
-                                        biome: biome.name,
-                                        floorTiles: mapData.validFloors
-                                    };
+                                const customMapData = {
+                                    id: 999, maze: mapData.grid, 
+                                    skyColor: biome.skies[0], floorColor: biome.floors[0], 
+                                    name: `Realm of the ${script.questObjective.split(' ')[0] || "Mystery"}`, 
+                                    npcs: mapNPCs, weather: biome.weather[0],
+                                    
+                                    // Link the physical radar names to the nodes we just created!
+                                    spawnX: mapData.nodes.start.x + 0.5, 
+                                    spawnY: mapData.nodes.start.y + 0.5,
+                                    bossX: mapData.nodes.bossLair.x + 0.5,
+                                    bossY: mapData.nodes.bossLair.y + 0.5,
+                                    arenaX: mapData.nodes.ambush1.x + 0.5, // Fallbacks for radar naming
+                                    arenaY: mapData.nodes.ambush1.y + 0.5,
+                                    miniX: mapData.nodes.allyCamp.x + 0.5,
+                                    miniY: mapData.nodes.allyCamp.y + 0.5,
+                                    
+                                    biome: biome.name,
+                                    floorTiles: mapData.validFloors
+                                };
 
-                                    activeCustomMap = customMapData;
+                                activeCustomMap = customMapData;
 
-                                    let requesterID = socket ? socket.id : findSocketID(call.args.targetName);
-                                    if (requesterID && players[requesterID]) {
-                                        const tp = players[requesterID];
-                                        tp.activeQuest = script.questObjective;
-                                        tp.mapScenario = scenarioType; 
-                                        tp.mapBossID = antagID;
-                                        
-                                        io.to(requesterID).emit("remote_spawn_npc", {
-                                            mapID: tp.mapID, 
-                                            index: Math.floor(Math.random() * 100000) + 1000,
-                                            x: tp.x, y: tp.y, type: 56, state: 'chasing', isBoss: false, 
-                                            role: 'portal_invite', color: '#ff8800', deck: [], 
-                                            dialogue: [`My master Suncat sent me to bring you to the adventure realm. A great ${scenarioType} awaits. Shall we go?`],
-                                            options: ['Yes', 'No'], alignment: 'friendly_messenger',
-                                            yesActions: [['load_map', 999], ['play_sfx', 'warp'], ['disappear', null]],
-                                            noActions: [['play_sfx', 'cancel'], ['disappear', null]]
-                                        });
-                                    }
-
-                                    functionResult = { result: `Success. Generated Multi-Zone scenario and dispatched messenger imp.` };
-
-                                } catch (err) {
-                                    console.error("Map Generation Error:", err);
-                                    functionResult = { result: "Critical Error building multi-zone map." };
+                                let requesterID = socket ? socket.id : findSocketID(call.args.targetName);
+                                if (requesterID && players[requesterID]) {
+                                    const tp = players[requesterID];
+                                    tp.activeQuest = script.questObjective;
+                                    tp.mapScenario = scenarioType; 
+                                    tp.mapBossID = antagID;
+                                    
+                                    io.to(requesterID).emit("remote_spawn_npc", {
+                                        mapID: tp.mapID, 
+                                        index: Math.floor(Math.random() * 100000) + 1000,
+                                        x: tp.x, y: tp.y, type: 56, state: 'chasing', isBoss: false, 
+                                        role: 'portal_invite', color: '#ff8800', deck: [], 
+                                        dialogue: [`My master Suncat sent me to bring you to the adventure realm. A great ${scenarioType} awaits. Shall we go?`],
+                                        options: ['Yes', 'No'], alignment: 'friendly_messenger',
+                                        yesActions: [['load_map', 999], ['play_sfx', 'warp'], ['disappear', null]],
+                                        noActions: [['play_sfx', 'cancel'], ['disappear', null]]
+                                    });
                                 }
+
+                                functionResult = { result: `Success. Generated Multi-Zone scenario and dispatched messenger imp.` };
+
+                            } catch (err) {
+                                console.error("Map Generation Error:", err);
+                                functionResult = { result: "Critical Error building multi-zone map." };
+                            }
                         }
                         
                         // F. TELEPORT SPECIFIC PLAYER
