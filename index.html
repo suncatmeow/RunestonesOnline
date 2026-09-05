@@ -485,13 +485,13 @@
                         
                     ],
                     wildlife: [
-                        { type: 'moorSpider', count: 1, sprite: 57, interaction: 'battle', alignment: 'foe', zoneX: 0.75, zoneY: 1.0, radius: 0.3 },
+                        { type: 'moorSpider', count: 1, sprite: 57, interaction: 'battle', alignment: 'foe', zoneX: 0.9, zoneY: 0.1, radius: 0.3 },
                         { type: 'moorSlime', count: 3, sprite: 222, interaction: 'battle', alignment: 'foe', zoneX: 0.5, zoneY: 0.5, radius: 0.3 },
-                        { type: 'moorBoar', count: 6, sprite: 194, interaction: 'battle', alignment: 'foe', zoneX: 0.63, zoneY: 1.0, radius: 0.3 },
-                        { type: 'moorFox', count: 1, sprite: 240, interaction: 'battle', alignment: 'foe', zoneX: 0.75, zoneY: 1.0, radius: 0.3 },
+                        { type: 'moorBoar', count: 6, sprite: 194, interaction: 'battle', alignment: 'foe', zoneX: 0.8, zoneY: 0.1, radius: 0.3 },
+                        { type: 'moorFox', count: 1, sprite: 240, interaction: 'battle', alignment: 'foe', zoneX: 0.75, zoneY: 6.0, radius: 0.3 },
                         { type: 'moorRat', count: 1, sprite: 219, interaction: 'battle', alignment: 'foe', zoneX: 0.5, zoneY: 0.5, radius: 0.5 },
-                        { type: 'moorDeer', count: 1, sprite: 300, interaction: 'dialogue', alignment: 'friendly', zoneX: 0.5, zoneY: 0.5, radius: 0.5, customDialogue: ['*It eyes you apathetically.*'] },
-                        { type: 'moorDrunk', count: 1, sprite: 297, interaction: 'dialogue', alignment: 'friendly', zoneX: 0.53, zoneY: 0.27, radius: 0.05, customDialogue: ["Experts come here to hunt and discuss ideas.","I come for the cheap ale.","*burp*"] }
+                        { type: 'moorDeer', count: 1, sprite: 300, interaction: 'dialogue', alignment: 'defender', zoneX: 0.5, zoneY: 0.5, radius: 0.5, customDialogue: ['*It eyes you apathetically.*'] },
+                        { type: 'moorDrunk', count: 1, sprite: 297, interaction: 'dialogue', alignment: 'defender', zoneX: 0.53, zoneY: 0.27, radius: 0.05, customDialogue: ["Experts come here to hunt and discuss ideas.","I come for the cheap ale.","*burp*"] }
                     ],
                     npcs: [
                         { index: 8001, x: 47.5, y: 23.5, sprite: 252, role: 'dialogue', deck: [50, 51, 58, 59], alignment: 'friendly', customDialogue: ["Those without power fall prey to those with power.","You must get stronger!"], options: ["Listen", "Leave"], yesActions: [['train', 'warrior_trainer']], noActions: [['close_dialogue', null]] },
@@ -583,8 +583,7 @@
                                 return { text: ["I am the Guildmaster. Speak to the Clerk for your assignments."], endActions: [['close_dialogue', null]] };
                             }
                         },
-                        { index: 595418, x: 12.5, y: 44.5, sprite: 44, role: 'dialogue', deck: [26,26,26,33,35,33], alignment: 'friendly', customDialogue: ["*You sense a dark aura*"], endActions: [["start_hunted",{"waves":3,"interval":300,"mobs":[{"sprite":23}]}],["give_card",{"card":72,"text":"*You hear a ghostly voice calling*"}],["disappear",null],["close_dialogue",null]] },
-                        { index: 516330, x: 73.5, y: 92.5, sprite: 72, role: 'dialogue', deck: [26,26,26,33,35,33], alignment: 'friendly', customDialogue: ["*You sense a dark aura*"], endActions: [["start_hunted",{"waves":3,"interval":300,"mobs":[{"sprite":23}]}],["give_card",{"card":72,"text":"*You hear a ghostly voice calling*"}],["disappear",null],["close_dialogue",null]] }
+                        { index: 516330, x: 85.5, y:85.5, sprite: 72, role: 'dialogue', deck: [26,26,26,33,35,33], alignment: 'friendly', customDialogue: ["*You sense a dark aura*"], endActions: [["start_hunted",{"waves":3,"interval":300,"mobs":[{"sprite":23}]}],["give_card",{"card":72,"text":"*You hear a ghostly voice calling*"}],["disappear",null],["close_dialogue",null]] },
                     ]
                 },
 
@@ -1268,6 +1267,8 @@
                         { index: 13, x: 15.5, y: 19.5, sprite: -27, role: 'dialogue', deck: [29], alignment: 'friendly' },
                         { index: 14, x: 1.5, y: 21.5, sprite: -27, role: 'dialogue', deck: [19], alignment: 'friendly' },
                         { index: 15, x: 1.5, y: 11.5, sprite: -27, role: 'dialogue', deck: [25], alignment: 'friendly' },
+                        
+                        { index: 595418, x: 69.5, y: 33.5, sprite: 44, role: 'dialogue', deck: [26,26,26,33,35,33], alignment: 'friendly', customDialogue: ["*You sense a dark aura*"], endActions: [["start_hunted",{"waves":3,"interval":300,"mobs":[{"sprite":23}]}],["give_card",{"card":72,"text":"*You hear a ghostly voice calling*"}],["disappear",null],["close_dialogue",null]] },
                         // Invasion State (Spawn only if Djinn is alive)
                         { index: 6, x: 76.5, y: 78.5, sprite: 79, role: 'battle', deck: [79,68,52,40,26,26,15,16], alignment: 'foe', spawnCondition: (d) => !d.memory['djinn_dead'], customDialogue: ["The King of Wands claims this desert!"] },
                         { index: 7, x: 78.5, y: 78.5, sprite: 79, role: 'battle', deck: [79,68,52,40,26,26,15,16], alignment: 'foe', spawnCondition: (d) => !d.memory['djinn_dead'], customDialogue: ["Burn the Queen's sanctuary to ash! Kee hee!"] },
@@ -2267,9 +2268,9 @@
                     npcs: [
                         { index: 541713, x: 81.5, y: 7.5, sprite: 243, role: 'portal', deck: [77.5, 89.5, 0, 0], alignment: 'friendly' },
                         { index: 18, x: 77.5, y: 9.5, sprite: 41, role: 'shop', deck: [64,65,66,67,68,69,70,71,72,73,74,75,76,77], alignment: 'friendly', customDialogue: ['I got some goooood stuff!', 'You buy it?'] },
-                        { index: 10, x: 77.5, y: 9.5, sprite: 75.1, role: 'dialogue', deck: [75], alignment: 'friendly', customDialogue: ["They say an immortal has entered seculsion somewhere in this forest."], endActions: [['spectate', "The player has spoken to a gnome in the Elf Queen's forest that hinted of an immortal living in the forest."], ['open_shop', [64,65,66,67,68,69,70,71,72,73,74,75,76,77]]] },
-                        { index: 11, x: 89.5, y: 25.5, sprite: 75.1, role: 'dialogue', deck: [75], alignment: 'friendly', customDialogue: ["I heard yelling... I think someone tried to rob the fortress."], endActions: [['spectate', "Player has spoken to A gnome who hints about an attempted robbery."], ['open_shop', [64,65,66,67,68,69,70,71,72,73,74,75,76,77]]] },
-                        { index: 12, x: 95.5, y: 17.5, sprite: 75.1, role: 'dialogue', deck: [75], alignment: 'friendly', customDialogue: ["Feel free to use my forge anytime."], endActions: [['spectate', "player has spoken with a gnome blacksmith"], ['open_shop', [64,65,66,67,68,69,70,71,72,73,74,75,76,77]]] },
+                        { index: 10, x: 77.5, y: 9.5, sprite: 75.1, role: 'dialogue', deck: [75], alignment: 'defender', customDialogue: ["They say an immortal has entered seculsion somewhere in this forest."], endActions: [['spectate', "The player has spoken to a gnome in the Elf Queen's forest that hinted of an immortal living in the forest."], ['open_shop', [64,65,66,67,68,69,70,71,72,73,74,75,76,77]]] },
+                        { index: 11, x: 89.5, y: 25.5, sprite: 75.1, role: 'dialogue', deck: [75], alignment: 'defender', customDialogue: ["I heard yelling... I think someone tried to rob the fortress."], endActions: [['spectate', "Player has spoken to A gnome who hints about an attempted robbery."], ['open_shop', [64,65,66,67,68,69,70,71,72,73,74,75,76,77]]] },
+                        { index: 12, x: 95.5, y: 17.5, sprite: 75.1, role: 'dialogue', deck: [75], alignment: 'defender', customDialogue: ["Feel free to use my forge anytime."], endActions: [['spectate', "player has spoken with a gnome blacksmith"], ['open_shop', [64,65,66,67,68,69,70,71,72,73,74,75,76,77]]] },
                         { index: 17, x: 69.5, y: 93.5, sprite: 70.1, role: 'dialogue', deck: [70], alignment: 'friendly', customDialogue: ["The glowing man smiles bashfully."], rewardCard: 70, endActions: [['spectate', "Players have encountered the glowing man and obtained the Cultivate card."]] },
                         
                         // Giant's Daughter & Gargoyle logic
@@ -5982,508 +5983,506 @@
             if (this.role === 'sign') return;
 
             // =========================================================
-            // --- NEW: UNIVERSAL STAT MULTIPLIERS (The Biological Engine) ---
+            // STAT MODS
             // =========================================================
-            const getStatScore = (statIdx) => {
-                let d = this.getEffectiveDice(statIdx);
-                return (d.numDice * d.diceSides) + d.flatMod;
-            };
+                const getStatScore = (statIdx) => {
+                    let d = this.getEffectiveDice(statIdx);
+                    return (d.numDice * d.diceSides) + d.flatMod;
+                };
 
-            // CON: Governs Ward Regen & Debuff Metabolism
-            let conScore = getStatScore(1);
-            let conMultiplier = Math.max(0.2, 1.0 + ((conScore - 4) * 0.05)); 
-            
-            // INT: Governs Memory (Object Permanence)
-            let intScore = getStatScore(2);
-            let intMultiplier = Math.max(0.2, 1.0 + ((intScore - 4) * 0.05)); 
+                // CON: Governs Ward Regen & Debuff Metabolism
+                let conScore = getStatScore(1);
+                let conMultiplier = Math.max(0.2, 1.0 + ((conScore - 4) * 0.05)); 
+                
+                // INT: Governs Memory (Object Permanence)
+                let intScore = getStatScore(2);
+                let intMultiplier = Math.max(0.2, 1.0 + ((intScore - 4) * 0.05)); 
 
-            // AGI: Governs Movement, Reaction Time, and Radar Sight
-            let agiScore = getStatScore(3);
-            let agiMultiplier = Math.max(0.2, 1.0 + ((agiScore - 4) * 0.05)); 
+                // AGI: Governs Movement, Reaction Time, and Radar Sight
+                let agiScore = getStatScore(3);
+                let agiMultiplier = Math.max(0.2, 1.0 + ((agiScore - 4) * 0.05)); 
 
             // =========================================================
-            // 1. NPC WARD REGENERATION (Using CON)
+            // 1. NPC CON BASED WARD REGEN
             // =========================================================
-            if (this.wardShatterCooldown > 0) {
-                this.wardShatterCooldown -= dt;
-            } else if (this.maxWards > 0 && this.currentWardTime < this.maxWards * this.timePerWard) {
-                // Baseline safety net to ensure they always regen at least a little bit
-                let safeCon = Math.max(1, conScore);
-                let regenAmount = (safeCon * 0.0613) * dt; 
-                this.currentWardTime += regenAmount;
+                if (this.wardShatterCooldown > 0) {
+                    this.wardShatterCooldown -= dt;
+                } else if (this.maxWards > 0 && this.currentWardTime < this.maxWards * this.timePerWard) {
+                    // Baseline safety net to ensure they always regen at least a little bit
+                    let safeCon = Math.max(1, conScore);
+                    let regenAmount = (safeCon * 0.0613) * dt; 
+                    this.currentWardTime += regenAmount;
 
-                if (this.currentWardTime > this.maxWards * this.timePerWard) {
-                    this.currentWardTime = this.maxWards * this.timePerWard;
+                    if (this.currentWardTime > this.maxWards * this.timePerWard) {
+                        this.currentWardTime = this.maxWards * this.timePerWard;
+                    }
                 }
-            }
 
             // =========================================================
             // 2. BUFF & WARD MANAGER
             // =========================================================
-            let isBound = false; 
+                let isBound = false; 
 
-            for (let i = this.activeBuffs.length - 1; i >= 0; i--) {
-                let b = this.activeBuffs[i];
+                for (let i = this.activeBuffs.length - 1; i >= 0; i--) {
+                    let b = this.activeBuffs[i];
 
-                if (b.type === 'buff' || b.type === 'debuff' || b.type === 'item_buff') {
-                    
-                    // --- NEW: CON METABOLISM! ---
-                    // High CON burns through negative effects faster!
-                    if (b.type === 'debuff') {
-                        b.duration -= (30 * dt) * conMultiplier; 
-                    } else {
-                        b.duration -= (30 * dt); 
-                    }
-                    
-                    // --- THE VoT TICK ENGINE ---
-                    if (b.tickRate) {
-                        b.tickTimer += (30 * dt);
-                        if (b.tickTimer >= b.tickRate) {
-                            b.tickTimer -= b.tickRate; 
-                            
-                            // A. DnD RESIST ROLL
-                            if (b.type === 'debuff' && b.defStat !== undefined) {
-                                let defDice = this.getEffectiveDice(b.defStat);
-                                let defRoll = defDice.flatMod;
-                                for (let r = 0; r < defDice.numDice; r++) defRoll += Math.floor(Math.random() * defDice.diceSides) + 1;
-                                if (defRoll > b.resistDC) b.duration = 0; // Shook it off!
-                            }
+                    if (b.type === 'buff' || b.type === 'debuff' || b.type === 'item_buff') {
+                        
+                        // --- NEW: CON METABOLISM! ---
+                        // High CON burns through negative effects faster!
+                        if (b.type === 'debuff') {
+                            b.duration -= (30 * dt) * conMultiplier; 
+                        } else {
+                            b.duration -= (30 * dt); 
+                        }
+                        
+                        // --- THE VoT TICK ENGINE ---
+                        if (b.tickRate) {
+                            b.tickTimer += (30 * dt);
+                            if (b.tickTimer >= b.tickRate) {
+                                b.tickTimer -= b.tickRate; 
+                                
+                                // A. DnD RESIST ROLL
+                                if (b.type === 'debuff' && b.defStat !== undefined) {
+                                    let defDice = this.getEffectiveDice(b.defStat);
+                                    let defRoll = defDice.flatMod;
+                                    for (let r = 0; r < defDice.numDice; r++) defRoll += Math.floor(Math.random() * defDice.diceSides) + 1;
+                                    if (defRoll > b.resistDC) b.duration = 0; // Shook it off!
+                                }
 
-                            // B. APPLY THE TICKS
-                            if (b.duration > 0) {
-                                if (b.votType === 'dot') {
-                                    if (this.currentWardTime > 0) {
-                                        this.currentWardTime -= b.votAmount;
-                                        if (this.currentWardTime <= 0) { 
-                                            this.currentWardTime = 0; 
-                                            // Base 9 seconds. High CON reduces the shatter penalty!
-                                            this.wardShatterCooldown = Math.max(2.0, 9.0 - ((conScore - 4) * 0.2)); 
+                                // B. APPLY THE TICKS
+                                if (b.duration > 0) {
+                                    if (b.votType === 'dot') {
+                                        if (this.currentWardTime > 0) {
+                                            this.currentWardTime -= b.votAmount;
+                                            if (this.currentWardTime <= 0) { 
+                                                this.currentWardTime = 0; 
+                                                // Base 9 seconds. High CON reduces the shatter penalty!
+                                                this.wardShatterCooldown = Math.max(2.0, 9.0 - ((conScore - 4) * 0.2)); 
+                                            }
+                                        } else {
+                                            dungeon.killNPC(this, false, 'dot_damage'); 
                                         }
-                                    } else {
-                                        dungeon.killNPC(this, false, 'dot_damage'); 
+                                        this.damageFlashTimer = 3;
+                                    } 
+                                    else if (b.votType === 'hot') {
+                                        this.currentWardTime = Math.min(this.currentWardTime + b.votAmount, this.maxWards * this.timePerWard);
+                                    } 
+                                    else if (b.votType === 'bot' && b.buffStat !== undefined) {
+                                        b.amount += b.votAmount;
+                                    } 
+                                    else if (b.votType === 'stun') {
+                                        this.combatCooldown = 15; 
+                                        this.isSliding = false; 
                                     }
-                                    this.damageFlashTimer = 3;
-                                } 
-                                else if (b.votType === 'hot') {
-                                    this.currentWardTime = Math.min(this.currentWardTime + b.votAmount, this.maxWards * this.timePerWard);
-                                } 
-                                else if (b.votType === 'bot' && b.buffStat !== undefined) {
-                                    b.amount += b.votAmount;
-                                } 
-                                else if (b.votType === 'stun') {
-                                    this.combatCooldown = 15; 
-                                    this.isSliding = false; 
                                 }
                             }
                         }
-                    }
 
-                    // --- BUFF EXPIRATION ---
-                    if (b.duration <= 0) {
-                        this.activeBuffs.splice(i, 1);
-                    } else {
-                        if (b.bind) isBound = true;
+                        // --- BUFF EXPIRATION ---
+                        if (b.duration <= 0) {
+                            this.activeBuffs.splice(i, 1);
+                        } else {
+                            if (b.bind) isBound = true;
+                        }
                     }
-                }
-                else if (b.type === 'ward') {
-                    if (b.hits <= 0) {
-                        this.activeBuffs.splice(i, 1);
-                        if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('cancel', this.x, this.y, playerX, playerY, dungeon.dir);
+                    else if (b.type === 'ward') {
+                        if (b.hits <= 0) {
+                            this.activeBuffs.splice(i, 1);
+                            if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('cancel', this.x, this.y, playerX, playerY, dungeon.dir);
+                        }
                     }
-                }
-            } 
+                } 
 
-            if (isBound) {
-                this.speed = 0; 
-                return;  
-            }
-            
+                if (isBound) {
+                    this.speed = 0; 
+                    return;  
+                }
+                
             // =========================================================
             // 3. EXPIRING LOOT LOGIC
             // =========================================================
-            if (this.role === 'dropped_card') {
-                this.lifespan -= (30 * dt); 
-                if (this.lifespan < 180) {
-                    let blinkRate = this.lifespan < 60 ? 5 : 10; 
-                    this.visible = (Math.floor(this.lifespan) % blinkRate < (blinkRate / 2));
-                } else {
-                    this.visible = true; 
+                if (this.role === 'dropped_card') {
+                    this.lifespan -= (30 * dt); 
+                    if (this.lifespan < 180) {
+                        let blinkRate = this.lifespan < 60 ? 5 : 10; 
+                        this.visible = (Math.floor(this.lifespan) % blinkRate < (blinkRate / 2));
+                    } else {
+                        this.visible = true; 
+                    }
+                    
+                    if (this.lifespan <= 0) {
+                        this.isDead = true; this.visible = false; this.x = -999; 
+                    }
+                    return; 
                 }
-                
-                if (this.lifespan <= 0) {
-                    this.isDead = true; this.visible = false; this.x = -999; 
-                }
-                return; 
-            }
             
             // =========================================================
             // 4. CHECK RESPAWN & AGI NERVOUS SYSTEM
             // =========================================================
-            if (this.isDead) {
-                if (Date.now() > this.respawnTime) {
-                    this.isDead = false; this.visible = true;
+                if (this.isDead) {
+                    if (Date.now() > this.respawnTime) {
+                        this.isDead = false; this.visible = true;
+                    }
+                    return;
                 }
-                return;
-            }
-            
-            if (this.combatCooldown > 0) this.combatCooldown -= agiMultiplier;
-            if (this.rangedCooldown > 0) this.rangedCooldown -= agiMultiplier;
-            if (this.talkCooldown > 0 && typeof startGame !== 'undefined' && startGame === 'explore') this.talkCooldown -= 1;
-            if (this.damageFlashTimer > 0) this.damageFlashTimer -= 1;
+                
+                if (this.combatCooldown > 0) this.combatCooldown -= agiMultiplier;
+                if (this.rangedCooldown > 0) this.rangedCooldown -= agiMultiplier;
+                if (this.talkCooldown > 0 && typeof startGame !== 'undefined' && startGame === 'explore') this.talkCooldown -= 1;
+                if (this.damageFlashTimer > 0) this.damageFlashTimer -= 1;
 
             // =========================================================
             // 5. DYNAMIC TARGET SELECTION (The Universal Radar)
             // =========================================================
-            let targetX = playerX;
-            let targetY = playerY;
-            let isChasingNPC = false; 
-            let currentPrey = this.cachedPrey; 
-            let distToActualPlayer = Math.sqrt(Math.pow(playerX - this.x, 2) + Math.pow(playerY - this.y, 2));        
+                let targetX = playerX;
+                let targetY = playerY;
+                let isChasingNPC = false; 
+                let currentPrey = this.cachedPrey; 
+                let distToActualPlayer = Math.sqrt(Math.pow(playerX - this.x, 2) + Math.pow(playerY - this.y, 2));        
 
-            if (!dungeon.frame || dungeon.frame % 15 === (this.index % 15)) {
-                currentPrey = null; 
+                if (!dungeon.frame || dungeon.frame % 15 === (this.index % 15)) {
+                    currentPrey = null; 
 
-                // --- ALLY & ESCORT LOGIC ---
-                if (this.alignment === 'ally' || this.alignment === 'escort' || this.alignment === 'escort_combat') {
-                    let closestDistSq = Infinity;
-                    let aggroRadiusSq = 36 * agiMultiplier; // Radar scales with AGI
-                    
-                    if (this.alignment !== 'escort') {
-                        for (let other of dungeon.npcs) {
-                            if (other === this || other.isDead || !other.visible || !other.alignment.startsWith('foe') || other.alignment === 'foe_coward') continue;
-                            let dSq = Math.pow(other.x - this.x, 2) + Math.pow(other.y - this.y, 2);
-                            if (dSq < aggroRadiusSq && dSq < closestDistSq && this.hasLineOfSight(maze, other.x, other.y)) { 
-                                closestDistSq = dSq; currentPrey = other;
+                    // --- ALLY & ESCORT LOGIC ---
+                    if (this.alignment === 'ally' || this.alignment === 'escort' || this.alignment === 'escort_combat') {
+                        let closestDistSq = Infinity;
+                        let aggroRadiusSq = 36 * agiMultiplier; // Radar scales with AGI
+                        
+                        if (this.alignment !== 'escort') {
+                            for (let other of dungeon.npcs) {
+                                if (other === this || other.isDead || !other.visible || !other.alignment.startsWith('foe') || other.alignment === 'foe_coward') continue;
+                                let dSq = Math.pow(other.x - this.x, 2) + Math.pow(other.y - this.y, 2);
+                                if (dSq < aggroRadiusSq && dSq < closestDistSq && this.hasLineOfSight(maze, other.x, other.y)) { 
+                                    closestDistSq = dSq; currentPrey = other;
+                                }
                             }
                         }
-                    }
 
-                    if (dungeon.hostilePlayers && window.remotePlayers) {
-                        for (let id of dungeon.hostilePlayers) {
-                            let rp = window.remotePlayers[id];
-                            if (!rp || rp.mapID !== dungeon.mapID || rp.isDead) continue;
-                            
-                            let pdSq = Math.pow(rp.x - this.x, 2) + Math.pow(rp.y - this.y, 2);
-                            if (pdSq < aggroRadiusSq && pdSq < closestDistSq && this.hasLineOfSight(maze, rp.x, rp.y)) {
-                                closestDistSq = pdSq; 
-                                currentPrey = { isRemotePlayer: true, socketId: id, x: rp.x, y: rp.y, radius: 0.25, type: 91 };
-                            }
-                            
-                            if (rp.summons) {
-                                for (let rs of rp.summons) {
-                                    let sdSq = Math.pow(rs.x - this.x, 2) + Math.pow(rs.y - this.y, 2);
-                                    if (sdSq < aggroRadiusSq && sdSq < closestDistSq && this.hasLineOfSight(maze, rs.x, rs.y)) {
-                                        closestDistSq = sdSq; 
-                                        currentPrey = { isRemoteSummon: true, socketId: id, summonId: rs.id, x: rs.x, y: rs.y, radius: 0.25, type: rs.type };
+                        if (dungeon.hostilePlayers && window.remotePlayers) {
+                            for (let id of dungeon.hostilePlayers) {
+                                let rp = window.remotePlayers[id];
+                                if (!rp || rp.mapID !== dungeon.mapID || rp.isDead) continue;
+                                
+                                let pdSq = Math.pow(rp.x - this.x, 2) + Math.pow(rp.y - this.y, 2);
+                                if (pdSq < aggroRadiusSq && pdSq < closestDistSq && this.hasLineOfSight(maze, rp.x, rp.y)) {
+                                    closestDistSq = pdSq; 
+                                    currentPrey = { isRemotePlayer: true, socketId: id, x: rp.x, y: rp.y, radius: 0.25, type: 91 };
+                                }
+                                
+                                if (rp.summons) {
+                                    for (let rs of rp.summons) {
+                                        let sdSq = Math.pow(rs.x - this.x, 2) + Math.pow(rs.y - this.y, 2);
+                                        if (sdSq < aggroRadiusSq && sdSq < closestDistSq && this.hasLineOfSight(maze, rs.x, rs.y)) {
+                                            closestDistSq = sdSq; 
+                                            currentPrey = { isRemoteSummon: true, socketId: id, summonId: rs.id, x: rs.x, y: rs.y, radius: 0.25, type: rs.type };
+                                        }
                                     }
                                 }
                             }
                         }
                     }
-                }
-                
-                // --- DEFENDER LOGIC ---
-                else if (this.alignment.startsWith('defender')) {
-                    let closestDistSq = Infinity;
-                    let defendRadiusSq = 64 * agiMultiplier; 
-
-                    for (let other of dungeon.npcs) {
-                        if (other === this || other.isDead || !other.visible || !other.alignment.startsWith('foe')|| other.alignment === 'foe_coward') continue;
-                        let dSq = Math.pow(other.x - this.x, 2) + Math.pow(other.y - this.y, 2);
-                        if (dSq < defendRadiusSq && dSq < closestDistSq && this.hasLineOfSight(maze, other.x, other.y)) {  
-                            closestDistSq = dSq; currentPrey = other;
-                        }
-                    }
-                }
-                
-                // --- FOE LOGIC ---
-                else if (typeof this.alignment === 'string' && this.alignment.startsWith('foe')) {
-                    let distToPlayerSq = Math.pow(playerX - this.x, 2) + Math.pow(playerY - this.y, 2);
-                    let closestDistSq = distToPlayerSq; 
-                    let foeRadiusSq = 36 * agiMultiplier; 
                     
-                    let sCat = window.remotePlayers ? Object.values(window.remotePlayers).find(p => p.name === 'Suncat') : null;
-                    if (sCat && sCat.mapID === dungeon.mapID) {
-                        let scSq = Math.pow(sCat.x - this.x, 2) + Math.pow(sCat.y - this.y, 2);
-                        if (scSq < foeRadiusSq && scSq < closestDistSq && this.hasLineOfSight(maze, sCat.x, sCat.y)) {
-                            closestDistSq = scSq;
-                            currentPrey = { isSuncat: true, socketId: "NPC_SUNCAT", x: sCat.x, y: sCat.y, radius: 0.25 };
+                    // --- DEFENDER LOGIC ---
+                    else if (this.alignment.startsWith('defender')) {
+                        let closestDistSq = Infinity;
+                        let defendRadiusSq = 64 * agiMultiplier; 
+
+                        for (let other of dungeon.npcs) {
+                            if (other === this || other.isDead || !other.visible || !other.alignment.startsWith('foe')|| other.alignment === 'foe_coward') continue;
+                            let dSq = Math.pow(other.x - this.x, 2) + Math.pow(other.y - this.y, 2);
+                            if (dSq < defendRadiusSq && dSq < closestDistSq && this.hasLineOfSight(maze, other.x, other.y)) {  
+                                closestDistSq = dSq; currentPrey = other;
+                            }
                         }
                     }
-                    for (let other of dungeon.npcs) {
-                        if (other === this || other.isDead || !other.visible) continue;
-                        if (other.role === 'dropped_card' || other.role.includes('portal')) continue;
+                    
+                    // --- FOE LOGIC ---
+                    else if (typeof this.alignment === 'string' && this.alignment.startsWith('foe')) {
+                        let distToPlayerSq = Math.pow(playerX - this.x, 2) + Math.pow(playerY - this.y, 2);
+                        let closestDistSq = distToPlayerSq; 
+                        let foeRadiusSq = 36 * agiMultiplier; 
                         
-                        let isEnemyFaction = !other.alignment.startsWith('foe') && other.alignment !== 'neutral'&& other.role !== 'shop' && !other.alignment.startsWith('friendly');
-                        if (!isEnemyFaction) continue;
-                        
-                        let dSq = Math.pow(other.x - this.x, 2) + Math.pow(other.y - this.y, 2);
-                        if (dSq < foeRadiusSq && dSq < closestDistSq && this.hasLineOfSight(maze, other.x, other.y)) { 
-                            closestDistSq = dSq; currentPrey = other;
+                        let sCat = window.remotePlayers ? Object.values(window.remotePlayers).find(p => p.name === 'Suncat') : null;
+                        if (sCat && sCat.mapID === dungeon.mapID) {
+                            let scSq = Math.pow(sCat.x - this.x, 2) + Math.pow(sCat.y - this.y, 2);
+                            if (scSq < foeRadiusSq && scSq < closestDistSq && this.hasLineOfSight(maze, sCat.x, sCat.y)) {
+                                closestDistSq = scSq;
+                                currentPrey = { isSuncat: true, socketId: "NPC_SUNCAT", x: sCat.x, y: sCat.y, radius: 0.25 };
+                            }
+                        }
+                        for (let other of dungeon.npcs) {
+                            if (other === this || other.isDead || !other.visible) continue;
+                            if (other.role === 'dropped_card' || other.role.includes('portal')) continue;
+                            
+                            let isEnemyFaction = !other.alignment.startsWith('foe') && other.alignment !== 'neutral'&& other.role !== 'shop' && !other.alignment.startsWith('friendly');
+                            if (!isEnemyFaction) continue;
+                            
+                            let dSq = Math.pow(other.x - this.x, 2) + Math.pow(other.y - this.y, 2);
+                            if (dSq < foeRadiusSq && dSq < closestDistSq && this.hasLineOfSight(maze, other.x, other.y)) { 
+                                closestDistSq = dSq; currentPrey = other;
+                            }
+                        }
+
+                        // --- NEW: OBJECT PERMANENCE TRACKER ---
+                        let hasLOS = this.hasLineOfSight(maze, playerX, playerY);
+                        if (hasLOS) { 
+                            this.lastSeenX = playerX; 
+                            this.lastSeenY = playerY;
+                            // Base 150 frames (5 sec) memory. Multiplied by INT!
+                            this.searchTimer = 150 * intMultiplier; 
+                        } else if (this.searchTimer > 0) {
+                            this.searchTimer -= (30 * dt);
                         }
                     }
 
-                    // --- NEW: OBJECT PERMANENCE TRACKER ---
-                    let hasLOS = this.hasLineOfSight(maze, playerX, playerY);
-                    if (hasLOS) { 
-                        this.lastSeenX = playerX; 
-                        this.lastSeenY = playerY;
-                        // Base 150 frames (5 sec) memory. Multiplied by INT!
-                        this.searchTimer = 150 * intMultiplier; 
-                    } else if (this.searchTimer > 0) {
-                        this.searchTimer -= (30 * dt);
-                    }
+                    this.cachedPrey = currentPrey; 
                 }
 
-                this.cachedPrey = currentPrey; 
-            }
-
-            // --- APPLY CACHED TARGET ---
-            if (currentPrey) {
-                if (this.alignment.startsWith('ally') || this.alignment.startsWith('defender')) {
-                    let leash = this.state === 'chasing' ? 13.0 : 6.0; 
-            
-                    if (distToActualPlayer < leash || this.alignment.startsWith('defender')) {
-                        targetX = currentPrey.x; targetY = currentPrey.y;
-                        isChasingNPC = true; this.state = 'chasing'; 
-                        this.speed = this.alignment.startsWith('defender') ? 2.5 : 2.5; 
+                // --- APPLY CACHED TARGET ---
+                if (currentPrey) {
+                    if (this.alignment.startsWith('ally') || this.alignment.startsWith('defender')) {
+                        let leash = this.state === 'chasing' ? 13.0 : 6.0; 
+                
+                        if (distToActualPlayer < leash || this.alignment.startsWith('defender')) {
+                            targetX = currentPrey.x; targetY = currentPrey.y;
+                            isChasingNPC = true; this.state = 'chasing'; 
+                            this.speed = this.alignment.startsWith('defender') ? 2.5 : 2.5; 
+                        }
+                    } else if (this.alignment.startsWith('foe')) {
+                        targetX = currentPrey.x; targetY = currentPrey.y; isChasingNPC = true;
                     }
-                } else if (this.alignment.startsWith('foe')) {
-                    targetX = currentPrey.x; targetY = currentPrey.y; isChasingNPC = true;
-                }
-            } else {
-                if (this.alignment.startsWith('foe')) {
-                    let hasLOS = this.hasLineOfSight(maze, playerX, playerY);
-                    if (!hasLOS && this.lastSeenX !== null && this.state === 'chasing') {
-                        targetX = this.lastSeenX; targetY = this.lastSeenY;
-                    } else {
-                        targetX = playerX; targetY = playerY;
-                    }
-                    isChasingNPC = false; 
-                } else if (this.alignment.startsWith('defender')) {
-                    targetX = this.originx; targetY = this.originy; isChasingNPC = false;
-                    let distToHome = Math.sqrt(Math.pow(targetX - this.x, 2) + Math.pow(targetY - this.y, 2));
-                    if (distToHome > 2.0) { this.state = 'following'; this.speed = 1.5; } 
-                    else { this.state = 'wandering'; this.speed = 1; }
-                } else if (this.alignment.startsWith('friendly')) {
-                    targetX = (this.alignment === 'friendly_messenger') ? playerX : (this.originx || this.x); 
-                    targetY = (this.alignment === 'friendly_messenger') ? playerY : (this.originy || this.y);
-                    isChasingNPC = false;
                 } else {
-                    targetX = playerX; targetY = playerY; isChasingNPC = false;
-                    this.state = 'following';
-                    if (distToActualPlayer > 1.5) this.speed = distToActualPlayer > 5 ? 4.0 : 2.0; 
-                    else this.speed = 0;
+                    if (this.alignment.startsWith('foe')) {
+                        let hasLOS = this.hasLineOfSight(maze, playerX, playerY);
+                        if (!hasLOS && this.lastSeenX !== null && this.state === 'chasing') {
+                            targetX = this.lastSeenX; targetY = this.lastSeenY;
+                        } else {
+                            targetX = playerX; targetY = playerY;
+                        }
+                        isChasingNPC = false; 
+                    } else if (this.alignment.startsWith('defender')) {
+                        targetX = this.originx; targetY = this.originy; isChasingNPC = false;
+                        let distToHome = Math.sqrt(Math.pow(targetX - this.x, 2) + Math.pow(targetY - this.y, 2));
+                        if (distToHome > 2.0) { this.state = 'following'; this.speed = 1.5; } 
+                        else { this.state = 'wandering'; this.speed = 1; }
+                    } else if (this.alignment.startsWith('friendly')) {
+                        targetX = (this.alignment === 'friendly_messenger') ? playerX : (this.originx || this.x); 
+                        targetY = (this.alignment === 'friendly_messenger') ? playerY : (this.originy || this.y);
+                        isChasingNPC = false;
+                    } else {
+                        targetX = playerX; targetY = playerY; isChasingNPC = false;
+                        this.state = 'following';
+                        if (distToActualPlayer > 1.5) this.speed = distToActualPlayer > 5 ? 4.0 : 2.0; 
+                        else this.speed = 0;
+                    }
                 }
-            }
 
-            this.chasing = isChasingNPC;
-            const diffPlayerX = targetX - this.x;
-            const diffPlayerY = targetY - this.y;
-            const distToPlayer = Math.sqrt((diffPlayerX * diffPlayerX) + (diffPlayerY * diffPlayerY));
-            
+                this.chasing = isChasingNPC;
+                const diffPlayerX = targetX - this.x;
+                const diffPlayerY = targetY - this.y;
+                const distToPlayer = Math.sqrt((diffPlayerX * diffPlayerX) + (diffPlayerY * diffPlayerY));
+                
             // =========================================================
             // 6. READ THE FLOW FIELD / PATHFINDING
             // =========================================================
-            let moveTargetX = targetX; 
-            let moveTargetY = targetY;
+                let moveTargetX = targetX; 
+                let moveTargetY = targetY;
 
-            if (this.state === 'following' && (this.alignment === 'ally' || this.alignment === 'friendly_messenger')) {
-                let mapX = Math.floor(this.x); let mapY = Math.floor(this.y);
-                if (dungeon.flowField && dungeon.flowField[mapY] && dungeon.flowField[mapY][mapX]) {
-                    let flowDir = dungeon.flowField[mapY][mapX];
-                    if (flowDir.x !== 0 || flowDir.y !== 0) {
-                        moveTargetX = (mapX + 0.5) + flowDir.x; moveTargetY = (mapY + 0.5) + flowDir.y;
-                    }
-                }
-            } 
-            else if (this.state === 'chasing' && (this.alignment === 'ally' || this.alignment === 'friendly_messenger')) {
-                let hasLOS = this.hasLineOfSight(dungeon.maze, targetX, targetY);
-
-                if (hasLOS || distToPlayer < 1.5) { 
-                    moveTargetX = targetX; moveTargetY = targetY; 
-                } else {
-                        if (this.pathTimer <= 0) {
-                            this.cachedPath = dungeon.findPath(this.x, this.y, targetX, targetY);
-                            this.pathTimer = 15 + Math.floor(Math.random() * 5); 
-                        } else {
-                            this.pathTimer -= agiMultiplier; 
+                if (this.state === 'following' && (this.alignment === 'ally' || this.alignment === 'friendly_messenger')) {
+                    let mapX = Math.floor(this.x); let mapY = Math.floor(this.y);
+                    if (dungeon.flowField && dungeon.flowField[mapY] && dungeon.flowField[mapY][mapX]) {
+                        let flowDir = dungeon.flowField[mapY][mapX];
+                        if (flowDir.x !== 0 || flowDir.y !== 0) {
+                            moveTargetX = (mapX + 0.5) + flowDir.x; moveTargetY = (mapY + 0.5) + flowDir.y;
                         }
+                    }
+                } 
+                else if (this.state === 'chasing' && (this.alignment === 'ally' || this.alignment === 'friendly_messenger')) {
+                    let hasLOS = this.hasLineOfSight(dungeon.maze, targetX, targetY);
 
-                    let path = this.cachedPath;
-                    if (path && path.length > 0) {
-                        let nextStep = path[0];
-                        let distToNode = Math.sqrt(Math.pow(nextStep.x - this.x, 2) + Math.pow(nextStep.y - this.y, 2));
-                        if (distToNode < 0.5 && path.length > 1) nextStep = path[1];
-                        moveTargetX = nextStep.x; moveTargetY = nextStep.y;
+                    if (hasLOS || distToPlayer < 1.5) { 
+                        moveTargetX = targetX; moveTargetY = targetY; 
                     } else {
-                        moveTargetX = targetX; moveTargetY = targetY;
-                    }
-                }
-            }
-            else if (this.state === 'chasing' && typeof this.alignment === 'string' && this.alignment.startsWith('foe')) {
-                if (!isChasingNPC) {
-                    let hasLOS = this.hasLineOfSight(dungeon.maze, playerX, playerY);
-                    
-                    if (hasLOS) {
-                        let mapX = Math.floor(this.x); let mapY = Math.floor(this.y);
-                        if (dungeon.flowField && dungeon.flowField[mapY] && dungeon.flowField[mapY][mapX]) {
-                            let flowDir = dungeon.flowField[mapY][mapX];
-                            if (flowDir.x === 0 && flowDir.y === 0) {
-                                moveTargetX = this.x; moveTargetY = this.y;
+                            if (this.pathTimer <= 0) {
+                                this.cachedPath = dungeon.findPath(this.x, this.y, targetX, targetY);
+                                this.pathTimer = 15 + Math.floor(Math.random() * 5); 
                             } else {
-                                moveTargetX = (mapX + 0.5) + flowDir.x; moveTargetY = (mapY + 0.5) + flowDir.y;
+                                this.pathTimer -= agiMultiplier; 
                             }
-                        }
-                    } 
-                    else if (this.lastSeenX !== null && this.lastSeenY !== null) {
-                        if (this.pathTimer <= 0) {
-                            this.cachedPath = dungeon.findPath(this.x, this.y, this.lastSeenX, this.lastSeenY);
-                            this.pathTimer = 15 + Math.floor(Math.random() * 5);
-                        } else {
-                            this.pathTimer -= agiMultiplier; 
-                        }
 
                         let path = this.cachedPath;
                         if (path && path.length > 0) {
                             let nextStep = path[0];
                             let distToNode = Math.sqrt(Math.pow(nextStep.x - this.x, 2) + Math.pow(nextStep.y - this.y, 2));
-                            
-                            if (distToNode < 0.5 && path.length > 1) {
-                                nextStep = path[1];
-                            }
-                            
+                            if (distToNode < 0.5 && path.length > 1) nextStep = path[1];
                             moveTargetX = nextStep.x; moveTargetY = nextStep.y;
                         } else {
-                            moveTargetX = this.lastSeenX; moveTargetY = this.lastSeenY;
-                        }
-                    } else {
-                        moveTargetX = targetX; moveTargetY = targetY;
-                    }
-                }
-            }
-            else if (this.state === 'patrolling' && this.patrolPath && this.patrolPath.length > 0) {
-                if (this.patrolIndex === undefined) this.patrolIndex = 0;
-                let targetNode = this.patrolPath[this.patrolIndex];
-                
-                let path = dungeon.findPath(this.x, this.y, targetNode.x, targetNode.y);
-                
-                if (path && path.length > 0) {
-                    let nextStep = path[0];
-                    let distToNode = Math.sqrt(Math.pow(nextStep.x - this.x, 2) + Math.pow(nextStep.y - this.y, 2));
-                    
-                    if (distToNode < 0.5) {
-                        if (path.length > 1) {
-                            nextStep = path[1];
-                        } else {
-                            this.patrolIndex = (this.patrolIndex + 1) % this.patrolPath.length;
+                            moveTargetX = targetX; moveTargetY = targetY;
                         }
                     }
-                    moveTargetX = nextStep.x; moveTargetY = nextStep.y;
-                } else {
-                    this.patrolIndex = (this.patrolIndex + 1) % this.patrolPath.length;
-                    moveTargetX = this.x; moveTargetY = this.y;
                 }
-                this.speed = 1.0; 
-            }
+                else if (this.state === 'chasing' && typeof this.alignment === 'string' && this.alignment.startsWith('foe')) {
+                    if (!isChasingNPC) {
+                        let hasLOS = this.hasLineOfSight(dungeon.maze, playerX, playerY);
+                        
+                        if (hasLOS) {
+                            let mapX = Math.floor(this.x); let mapY = Math.floor(this.y);
+                            if (dungeon.flowField && dungeon.flowField[mapY] && dungeon.flowField[mapY][mapX]) {
+                                let flowDir = dungeon.flowField[mapY][mapX];
+                                if (flowDir.x === 0 && flowDir.y === 0) {
+                                    moveTargetX = this.x; moveTargetY = this.y;
+                                } else {
+                                    moveTargetX = (mapX + 0.5) + flowDir.x; moveTargetY = (mapY + 0.5) + flowDir.y;
+                                }
+                            }
+                        } 
+                        else if (this.lastSeenX !== null && this.lastSeenY !== null) {
+                            if (this.pathTimer <= 0) {
+                                this.cachedPath = dungeon.findPath(this.x, this.y, this.lastSeenX, this.lastSeenY);
+                                this.pathTimer = 15 + Math.floor(Math.random() * 5);
+                            } else {
+                                this.pathTimer -= agiMultiplier; 
+                            }
 
-            const diffX = moveTargetX - this.x;
-            const diffY = moveTargetY - this.y;
-            const distToWaypoint = Math.sqrt((diffX * diffX) + (diffY * diffY)); 
-            
-            if (startGame === 'explore' && !this.isDead) this.visible = true;
-            
-            let toTargetX = 0, toTargetY = 0;
-            if (distToWaypoint > 0) {
-                toTargetX = diffX / distToWaypoint; 
-                toTargetY = diffY / distToWaypoint;
-                
-                if (this.state === 'chasing' || this.state === 'following'|| this.alignment === 'friendly_messenger') {
-                    // --- NEW: AGI dictates how fast they can turn/corner! ---
-                    const turnSpeed = 13.0 * agiMultiplier; 
-                    this.dirX += (toTargetX - this.dirX) * turnSpeed * dt;
-                    this.dirY += (toTargetY - this.dirY) * turnSpeed * dt;
+                            let path = this.cachedPath;
+                            if (path && path.length > 0) {
+                                let nextStep = path[0];
+                                let distToNode = Math.sqrt(Math.pow(nextStep.x - this.x, 2) + Math.pow(nextStep.y - this.y, 2));
+                                
+                                if (distToNode < 0.5 && path.length > 1) {
+                                    nextStep = path[1];
+                                }
+                                
+                                moveTargetX = nextStep.x; moveTargetY = nextStep.y;
+                            } else {
+                                moveTargetX = this.lastSeenX; moveTargetY = this.lastSeenY;
+                            }
+                        } else {
+                            moveTargetX = targetX; moveTargetY = targetY;
+                        }
+                    }
                 }
-            }
+                else if (this.state === 'patrolling' && this.patrolPath && this.patrolPath.length > 0) {
+                    if (this.patrolIndex === undefined) this.patrolIndex = 0;
+                    let targetNode = this.patrolPath[this.patrolIndex];
+                    
+                    let path = dungeon.findPath(this.x, this.y, targetNode.x, targetNode.y);
+                    
+                    if (path && path.length > 0) {
+                        let nextStep = path[0];
+                        let distToNode = Math.sqrt(Math.pow(nextStep.x - this.x, 2) + Math.pow(nextStep.y - this.y, 2));
+                        
+                        if (distToNode < 0.5) {
+                            if (path.length > 1) {
+                                nextStep = path[1];
+                            } else {
+                                this.patrolIndex = (this.patrolIndex + 1) % this.patrolPath.length;
+                            }
+                        }
+                        moveTargetX = nextStep.x; moveTargetY = nextStep.y;
+                    } else {
+                        this.patrolIndex = (this.patrolIndex + 1) % this.patrolPath.length;
+                        moveTargetX = this.x; moveTargetY = this.y;
+                    }
+                    this.speed = 1.0; 
+                }
+                //add dancing
+                const diffX = moveTargetX - this.x;
+                const diffY = moveTargetY - this.y;
+                const distToWaypoint = Math.sqrt((diffX * diffX) + (diffY * diffY)); 
+                
+                if (startGame === 'explore' && !this.isDead) this.visible = true;
+                
+                let toTargetX = 0, toTargetY = 0;
+                if (distToWaypoint > 0) {
+                    toTargetX = diffX / distToWaypoint; 
+                    toTargetY = diffY / distToWaypoint;
+                    
+                    if (this.state === 'chasing' || this.state === 'following'|| this.alignment === 'friendly_messenger') {
+                        // --- NEW: AGI dictates how fast they can turn/corner! ---
+                        const turnSpeed = 13.0 * agiMultiplier; 
+                        this.dirX += (toTargetX - this.dirX) * turnSpeed * dt;
+                        this.dirY += (toTargetY - this.dirY) * turnSpeed * dt;
+                    }
+                }
 
             // =========================================================
             // 7. STATE TRANSITIONS (Personality & Aggro)
             // =========================================================
-            if (this.alignment === 'foe_coward' || this.alignment === 'friendly_shy') {
-                    this.state = 'fleeing'; 
-                    this.speed = 4.0;
-            }
-            else if (this.alignment === 'friendly_messenger') {
-                if (distToActualPlayer > 4) {
-                    this.state = this.preState || 'wandering';
-                    this.speed = (this.state === 'stationary') ? 0 : 1;
-                } else {
-                    this.state = 'chasing';
-                    this.speed = 2.5;
+                if (this.alignment === 'foe_coward' || this.alignment === 'friendly_shy') {
+                        this.state = 'fleeing'; 
+                        this.speed = 4.0;
                 }
-            }
-            else if (typeof this.alignment === 'string' && this.alignment.startsWith('foe')) {
-                if (isChasingNPC) {
-                    this.state = 'chasing'; this.speed = 3;
-                } else {
-                    let hasLOS = this.hasLineOfSight(dungeon.maze, playerX, playerY);
+                else if (this.alignment === 'friendly_messenger') {
+                    if (distToActualPlayer > 4) {
+                        this.state = this.preState || 'wandering';
+                        this.speed = (this.state === 'stationary') ? 0 : 1;
+                    } else {
+                        this.state = 'chasing';
+                        this.speed = 2.5;
+                    }
+                }
+                else if (typeof this.alignment === 'string' && this.alignment.startsWith('foe')) {
+                    if (isChasingNPC) {
+                        this.state = 'chasing'; this.speed = 3;
+                    } else {
+                        let hasLOS = this.hasLineOfSight(dungeon.maze, playerX, playerY);
 
-                    if (this.state === 'chasing') {
-                        let aggroLeash = 6 * Math.sqrt(agiMultiplier); 
-                        
-                        let distToLastSeen = (this.lastSeenX !== null) 
-                            ? Math.sqrt(Math.pow(this.x - this.lastSeenX, 2) + Math.pow(this.y - this.lastSeenY, 2)) 
-                            : Infinity;
+                        if (this.state === 'chasing') {
+                            let aggroLeash = 6 * Math.sqrt(agiMultiplier); 
+                            
+                            let distToLastSeen = (this.lastSeenX !== null) 
+                                ? Math.sqrt(Math.pow(this.x - this.lastSeenX, 2) + Math.pow(this.y - this.lastSeenY, 2)) 
+                                : Infinity;
 
-                        // --- NEW: INT MEMORY EVALUATION ---
-                        // Drop aggro if: The player outran them OR they reached the last known spot AND forgot you.
-                        if (distToActualPlayer > aggroLeash || startGame !== 'explore' || (!hasLOS && distToLastSeen < 1.0 && this.searchTimer <= 0)) {
-                            this.state = (this.preState === 'chasing') ? 'wandering' : (this.preState || 'wandering');
-                            this.speed = (this.state === 'stationary') ? 0 : 1;
-                            this.lastSeenX = null;
-                            this.lastSeenY = null;
-                        } 
-                        else if (!hasLOS) {
-                            // If they reached the bush you hid in, but STILL have memory left, pace around and look for you!
-                            if (distToLastSeen < 1.0) {
-                                this.speed = 0; // Wait and watch
-                            } else {
-                                this.speed = 1.5; // Walk to the last known spot
+                            // --- NEW: INT MEMORY EVALUATION ---
+                            // Drop aggro if: The player outran them OR they reached the last known spot AND forgot you.
+                            if (distToActualPlayer > aggroLeash || startGame !== 'explore' || (!hasLOS && distToLastSeen < 1.0 && this.searchTimer <= 0)) {
+                                this.state = (this.preState === 'chasing') ? 'wandering' : (this.preState || 'wandering');
+                                this.speed = (this.state === 'stationary') ? 0 : 1;
+                                this.lastSeenX = null;
+                                this.lastSeenY = null;
+                            } 
+                            else if (!hasLOS) {
+                                // If they reached the bush you hid in, but STILL have memory left, pace around and look for you!
+                                if (distToLastSeen < 1.0) {
+                                    this.speed = 0; // Wait and watch
+                                } else {
+                                    this.speed = 1.5; // Walk to the last known spot
+                                }
+                            }
+                            else {
+                                this.speed = 3; 
+                            }
+                        } else {
+                            let wakeDistance = 6 * Math.sqrt(agiMultiplier);
+                            if (distToActualPlayer < wakeDistance && hasLOS && startGame === 'explore') {
+                                this.state = 'chasing';
+                                this.speed = 2.0; 
+                                this.lastSeenX = playerX; 
+                                this.lastSeenY = playerY;
+                                
+                                if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('grunt', this.x, this.y, playerX, playerY, dungeon.dir); 
                             }
                         }
-                        else {
-                            this.speed = 3; 
-                        }
-                    } else {
-                        let wakeDistance = 6 * Math.sqrt(agiMultiplier);
-                        if (distToActualPlayer < wakeDistance && hasLOS && startGame === 'explore') {
-                            this.state = 'chasing';
-                            this.speed = 2.0; 
-                            this.lastSeenX = playerX; 
-                            this.lastSeenY = playerY;
-                            
-                            if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('grunt', this.x, this.y, playerX, playerY, dungeon.dir); 
+                    }
+                }
+                else {
+                    if (this.state === 'wandering') this.speed = 1;
+                    if (this.state === 'stationary') {
+                        this.speed = 0;
+                        if (distToActualPlayer < 3.0 && distToActualPlayer > 0) {
+                            this.dirX = (playerX - this.x) / distToActualPlayer;
+                            this.dirY = (playerY - this.y) / distToActualPlayer;
                         }
                     }
                 }
-            }
-            else {
-                if (this.state === 'wandering') this.speed = 1;
-                if (this.state === 'stationary') {
-                    this.speed = 0;
-                    if (distToActualPlayer < 3.0 && distToActualPlayer > 0) {
-                        this.dirX = (playerX - this.x) / distToActualPlayer;
-                        this.dirY = (playerY - this.y) / distToActualPlayer;
-                    }
-                }
-            }
-            
+                
             // =========================================================
             // 8. MOVEMENT APPLICATION & COLLISION RESOLUTION
             // =========================================================
-                if(this.alignment ==='foe_wave'){
-                    this.speed = 2.5
-                }
+                if(this.alignment ==='foe_wave'){this.speed = 3}
                 if (this.state === 'fleeing') {
                     this.speed = 3; 
                     
@@ -6540,14 +6539,14 @@
                 let distToTarget = Math.sqrt(Math.pow(targetX - this.x, 2) + Math.pow(targetY - this.y, 2));
 
                 if (this.combatCooldown > 0) {
-                    this.speed = 0.5; 
+                    this.speed = 1; 
                 } 
                 else if (this.state === 'chasing' && isChasingNPC) {
-                    let strikeRange = 1.5;  
+                    let strikeRange = 1.3;  
                     if (distToTarget <= strikeRange) {
-                        this.speed = 2.5; 
-                    } else if (distToTarget < 2.0) {
-                        this.speed = 2.75; 
+                        this.speed = 3; 
+                    } else if (distToTarget < 3.0) {
+                        this.speed = 3.3; 
                     }
                 }
 
@@ -6555,7 +6554,7 @@
 
                     // SCENARIO A: NPC CAUGHT AN ENEMY NPC
                         if (isChasingNPC && currentPrey) {
-                            if (distToTarget < 1.5) {
+                            if (distToTarget < 1.3) {
                                 
                                 // 1. Clash Logic (Network Players / Suncat / Other NPCs)
                                     if (currentPrey.isSuncat || currentPrey.isRemotePlayer || currentPrey.isRemoteSummon) {
@@ -6589,7 +6588,7 @@
                                     this.dirX = -toTargetX; 
                                     this.dirY = -toTargetY;
                                     
-                                    if (this.clashCount < 3) {
+                                    if (this.clashCount < 0) {
                                         MusicEngine.play3DSFX('slash', this.x, this.y, playerX, playerY, dungeon.dir);
                                         let myNewX = this.x - toTargetX * 0.3;
                                         let myNewY = this.y - toTargetY * 0.3;
@@ -6834,377 +6833,377 @@
             // =========================================================
             // 9. RANGED COMBAT LOGIC
             // =========================================================
-            if (this.state === 'chasing' && this.isRanged && !this.isDead && !this.isSliding && !this.isAggroDashing) {
-                let dx = targetX - this.x;
-                let dy = targetY - this.y;
-                let distToTarget = Math.sqrt(dx*dx + dy*dy);
-                
-                let isAligned = Math.abs(dx) < 0.75 || Math.abs(dy) < 0.75;
-                
-                let maxCastRange = 8 * intMultiplier; 
-                if (isAligned && distToTarget < maxCastRange && this.rangedCooldown <= 0) {
-                    let wallInWay = false;
-                    let stepX = Math.sign(dx);
-                    let stepY = Math.sign(dy);
+                if (this.state === 'chasing' && this.isRanged && !this.isDead && !this.isSliding && !this.isAggroDashing) {
+                    let dx = targetX - this.x;
+                    let dy = targetY - this.y;
+                    let distToTarget = Math.sqrt(dx*dx + dy*dy);
                     
-                    let currX = Math.floor(this.x);
-                    let currY = Math.floor(this.y);
-                    let tgtX = Math.floor(targetX);
-                    let tgtY = Math.floor(targetY);
+                    let isAligned = Math.abs(dx) < 0.75 || Math.abs(dy) < 0.75;
                     
-                    let safeLoop = 0; 
-                    while((currX !== tgtX || currY !== tgtY) && safeLoop < 15) {
-                        if (Math.abs(dx) > Math.abs(dy)) currX += stepX;
-                        else currY += stepY;
+                    let maxCastRange = 8 * intMultiplier; 
+                    if (isAligned && distToTarget < maxCastRange && this.rangedCooldown <= 0) {
+                        let wallInWay = false;
+                        let stepX = Math.sign(dx);
+                        let stepY = Math.sign(dy);
                         
-                        if (dungeon.isWall(currX, currY)) {
-                            wallInWay = true;
-                            break;
-                        }
-                        safeLoop++;
-                    }
-                    
-                    if (!wallInWay) {
-                        let validSpells = [];
-
-                        for (let i = 0; i < this.innateSpells.length; i++) {
-                            let checkSpellId = this.innateSpells[i];
-                            let spellData = SPELL_REGISTRY[checkSpellId];
+                        let currX = Math.floor(this.x);
+                        let currY = Math.floor(this.y);
+                        let tgtX = Math.floor(targetX);
+                        let tgtY = Math.floor(targetY);
+                        
+                        let safeLoop = 0; 
+                        while((currX !== tgtX || currY !== tgtY) && safeLoop < 15) {
+                            if (Math.abs(dx) > Math.abs(dy)) currX += stepX;
+                            else currY += stepY;
                             
-                            if (!spellData) continue;
-
-                            if (spellData.type === 'buff' || spellData.type === 'ward') {
-                                let alreadyBuffed = this.activeBuffs.some(b => b.name === spellData.name);
-                                if (!alreadyBuffed) validSpells.push(checkSpellId);
+                            if (dungeon.isWall(currX, currY)) {
+                                wallInWay = true;
+                                break;
                             }
-                            else if (spellData.type === 'summon') {
-                                let currentMinions = dungeon.npcs.filter(n => !n.isDead && n.summonerId === this.index).length;
-                                let maxAllowed = spellData.maxMinions || 3;
-                                if (currentMinions < maxAllowed) validSpells.push(checkSpellId);
-                            }
-                            else {
-                                validSpells.push(checkSpellId);
-                            }
+                            safeLoop++;
                         }
-
-                        let spellToCast;
-                        if (validSpells.length > 0) {
-                            spellToCast = validSpells[Math.floor(Math.random() * validSpells.length)];
-                        } else {
-                            spellToCast = this.innateSpells[this.innateSpells.length - 1]; 
-                        }
-
-                        this.castSpell(targetX, targetY, dungeon, spellToCast); 
-                        this.rangedCooldown = 150; 
                         
-                        this.dirX = dx / distToTarget;
-                        this.dirY = dy / distToTarget;
-                        return; 
+                        if (!wallInWay) {
+                            let validSpells = [];
+
+                            for (let i = 0; i < this.innateSpells.length; i++) {
+                                let checkSpellId = this.innateSpells[i];
+                                let spellData = SPELL_REGISTRY[checkSpellId];
+                                
+                                if (!spellData) continue;
+
+                                if (spellData.type === 'buff' || spellData.type === 'ward') {
+                                    let alreadyBuffed = this.activeBuffs.some(b => b.name === spellData.name);
+                                    if (!alreadyBuffed) validSpells.push(checkSpellId);
+                                }
+                                else if (spellData.type === 'summon') {
+                                    let currentMinions = dungeon.npcs.filter(n => !n.isDead && n.summonerId === this.index).length;
+                                    let maxAllowed = spellData.maxMinions || 3;
+                                    if (currentMinions < maxAllowed) validSpells.push(checkSpellId);
+                                }
+                                else {
+                                    validSpells.push(checkSpellId);
+                                }
+                            }
+
+                            let spellToCast;
+                            if (validSpells.length > 0) {
+                                spellToCast = validSpells[Math.floor(Math.random() * validSpells.length)];
+                            } else {
+                                spellToCast = this.innateSpells[this.innateSpells.length - 1]; 
+                            }
+
+                            this.castSpell(targetX, targetY, dungeon, spellToCast); 
+                            this.rangedCooldown = 150; 
+                            
+                            this.dirX = dx / distToTarget;
+                            this.dirY = dy / distToTarget;
+                            return; 
+                        }
                     }
                 }
-            }
 
             // =========================================================
             // 10. PHYSICS, FLOCKING & EXECUTION
             // =========================================================
-            if (this.model) {
-                this.model.rx += 0.05;
-                this.model.ry += 0.03;
-                this.bobOffset += 0.1;
-                this.zHeight = Math.abs(Math.sin(this.bobOffset)) * 0.2;
-            }
+                if (this.model) {
+                    this.model.rx += 0.05;
+                    this.model.ry += 0.03;
+                    this.bobOffset += 0.1;
+                    this.zHeight = Math.abs(Math.sin(this.bobOffset)) * 0.2;
+                }
 
-            if (!this.isDead && typeof MusicEngine !== 'undefined') {
-                if (this.type === 23 || this.type === 23.1 || this.type === 42) {
-                    // Multiply by 60 so 1 second of real time = 60 points of timer progression
-                    this.wispTimer += (60 * dt); 
-                    if (this.wispTimer > 100) {
-                        if (Math.random() > 0.999) { 
-                            MusicEngine.play3DSFX('ghost', this.x, this.y, playerX, playerY, dungeon.dir);
-                            this.wispTimer = 0 - (Math.random() * 60);
+                if (!this.isDead && typeof MusicEngine !== 'undefined') {
+                    if (this.type === 23 || this.type === 23.1 || this.type === 42) {
+                        // Multiply by 60 so 1 second of real time = 60 points of timer progression
+                        this.wispTimer += (60 * dt); 
+                        if (this.wispTimer > 100) {
+                            if (Math.random() > 0.999) { 
+                                MusicEngine.play3DSFX('ghost', this.x, this.y, playerX, playerY, dungeon.dir);
+                                this.wispTimer = 0 - (Math.random() * 60);
+                            }
                         }
                     }
-                }
-                
-                const gruntTypes = [74.1, 77.2, 90, 54, 56, 56.1, 81, 37.1, 61.2];
-                if (gruntTypes.includes(this.type)) {
-                    this.gruntTimer += (60 * dt); // Scaled by dt
+                    
+                    const gruntTypes = [74.1, 77.2, 90, 54, 56, 56.1, 81, 37.1, 61.2];
+                    if (gruntTypes.includes(this.type)) {
+                        this.gruntTimer += (60 * dt); // Scaled by dt
 
-                    if (this.gruntTimer > 100) {
-                        if ((this.type === 77.2 || this.type === 90) && typeof isChasingNPC !== 'undefined' && isChasingNPC === true) {
-                            if (Math.random() > 0) { 
-                                MusicEngine.play3DSFX('scream', this.x, this.y, playerX, playerY, dungeon.dir);
-                                this.gruntTimer = 0; 
+                        if (this.gruntTimer > 100) {
+                            if ((this.type === 77.2 || this.type === 90) && typeof isChasingNPC !== 'undefined' && isChasingNPC === true) {
+                                if (Math.random() > 0) { 
+                                    MusicEngine.play3DSFX('scream', this.x, this.y, playerX, playerY, dungeon.dir);
+                                    this.gruntTimer = 0; 
+                                }
+                            } 
+                            else {
+                                if (Math.random() > 0.999) {
+                                    MusicEngine.play3DSFX('grunt', this.x, this.y, playerX, playerY, dungeon.dir);
+                                    this.gruntTimer = 0; 
+                                }
+                            }
+                            if ((this.type === 37.1 || this.type === 37)) { 
+                                if (Math.random() > 0.996) { 
+                                    MusicEngine.play3DSFX('musical2', this.x, this.y, playerX, playerY, dungeon.dir);
+                                }
                             }
                         } 
-                        else {
-                            if (Math.random() > 0.999) {
-                                MusicEngine.play3DSFX('grunt', this.x, this.y, playerX, playerY, dungeon.dir);
-                                this.gruntTimer = 0; 
-                            }
-                        }
-                        if ((this.type === 37.1 || this.type === 37)) { 
-                            if (Math.random() > 0.996) { 
-                                MusicEngine.play3DSFX('musical2', this.x, this.y, playerX, playerY, dungeon.dir);
-                            }
-                        }
-                    } 
+                    }
                 }
-            }
 
             // =========================================================
             // 11. UNIQUE NPC QUIRKS (Lockpicking, etc.)
             // =========================================================
-            if ((Math.floor(this.type) === 0 || Math.floor(this.type) === 158) && this.alignment === 'escort') {
-                if (this.combatCooldown <= 0) {
-                    let fX = Math.floor(this.x);
-                    let fY = Math.floor(this.y);
-                    const jailBarID = 91; 
-                    let lockPicked = false;
+                if ((Math.floor(this.type) === 0 || Math.floor(this.type) === 158) && this.alignment === 'escort') {
+                    if (this.combatCooldown <= 0) {
+                        let fX = Math.floor(this.x);
+                        let fY = Math.floor(this.y);
+                        const jailBarID = 91; 
+                        let lockPicked = false;
 
-                    const adjacentTiles = [
-                        { ox: 0, oy: -1 }, { ox: 0, oy: 1 }, 
-                        { ox: -1, oy: 0 }, { ox: 1, oy: 0 }
-                    ];
+                        const adjacentTiles = [
+                            { ox: 0, oy: -1 }, { ox: 0, oy: 1 }, 
+                            { ox: -1, oy: 0 }, { ox: 1, oy: 0 }
+                        ];
 
-                    for (let pos of adjacentTiles) {
-                        let checkX = fX + pos.ox;
-                        let checkY = fY + pos.oy;
+                        for (let pos of adjacentTiles) {
+                            let checkX = fX + pos.ox;
+                            let checkY = fY + pos.oy;
 
-                        if (checkY >= 0 && checkY < maze.length && checkX >= 0 && checkX < maze[0].length) {
-                            if (maze[checkY][checkX] === jailBarID) {
-                                this.dirX = pos.ox; 
-                                this.dirY = pos.oy;
-                                this.combatCooldown = 15;  
-                                this.damageFlashTimer = 3; 
-                                
-                                if (typeof MusicEngine !== 'undefined') {
-                                    MusicEngine.play3DSFX('slash', this.x, this.y, playerX, playerY, dungeon.dir);
-                                    setTimeout(() => {
-                                        MusicEngine.play3DSFX('click', this.x, this.y, playerX, playerY, dungeon.dir);
-                                    }, 150);
-                                }
-
-                                maze[checkY][checkX] = 0; 
-                                
-                                if (typeof spawnParticle !== 'undefined') {
-                                    for (let p = 0; p < 5; p++) {
-                                        spawnParticle(checkX + 0.5 + (Math.random()-0.5)*0.5, checkY + 0.5 + (Math.random()-0.5)*0.5, '#ffff00', 'sparkle');
+                            if (checkY >= 0 && checkY < maze.length && checkX >= 0 && checkX < maze[0].length) {
+                                if (maze[checkY][checkX] === jailBarID) {
+                                    this.dirX = pos.ox; 
+                                    this.dirY = pos.oy;
+                                    this.combatCooldown = 15;  
+                                    this.damageFlashTimer = 3; 
+                                    
+                                    if (typeof MusicEngine !== 'undefined') {
+                                        MusicEngine.play3DSFX('slash', this.x, this.y, playerX, playerY, dungeon.dir);
+                                        setTimeout(() => {
+                                            MusicEngine.play3DSFX('click', this.x, this.y, playerX, playerY, dungeon.dir);
+                                        }, 150);
                                     }
+
+                                    maze[checkY][checkX] = 0; 
+                                    
+                                    if (typeof spawnParticle !== 'undefined') {
+                                        for (let p = 0; p < 5; p++) {
+                                            spawnParticle(checkX + 0.5 + (Math.random()-0.5)*0.5, checkY + 0.5 + (Math.random()-0.5)*0.5, '#ffff00', 'sparkle');
+                                        }
+                                    }
+                                    lockPicked = true;
+                                    break; 
                                 }
-                                lockPicked = true;
-                                break; 
                             }
                         }
                     }
                 }
-            }
 
             // =========================================================
             // 12. DASHING & SLIDING (Assassination & Knockback)
             // =========================================================
-            if (this.isSliding && this.isAggroDashing) {
-                this.isAggroDashing = false;
-                this.dashCallback = null;
-            }
-
-            if (this.isAggroDashing || this.isSliding) {
-                let destX = this.isSliding ? this.slideTargetX : this.dashTargetX; 
-                let destY = this.isSliding ? this.slideTargetY : this.dashTargetY;
-                
-                let dx = destX - this.x;
-                let dy = destY - this.y;
-                let distance = Math.sqrt(dx * dx + dy * dy);
-                
-                // Sliding (Knockback) is a fixed physics reaction. 
-                // Dashing (Aggro) scales with their AGI muscle-twitch speed!
-                let moveSpeed = this.isSliding ? (15 * dt) : (10 * agiMultiplier * dt);
-
-                if (distance <= moveSpeed || distance === 0 || moveSpeed === 0) {
-                    this.x = destX;
-                    this.y = destY;
-                    
-                    let wasDashing = this.isAggroDashing;
-                    let wasSliding = this.isSliding; 
-
+                if (this.isSliding && this.isAggroDashing) {
                     this.isAggroDashing = false;
-                    this.isSliding = false;
+                    this.dashCallback = null;
+                }
 
-                    if (wasDashing) {
-                        this.state = 'battling'; 
-                        if (typeof this.dashCallback === 'function') {
-                            this.dashCallback();
-                            this.dashCallback = null;
-                        }
-                    } 
+                if (this.isAggroDashing || this.isSliding) {
+                    let destX = this.isSliding ? this.slideTargetX : this.dashTargetX; 
+                    let destY = this.isSliding ? this.slideTargetY : this.dashTargetY;
                     
-                    if (wasSliding) {
-                        if (typeof this.slideCallback === 'function') {
-                            this.slideCallback();
-                            this.slideCallback = null;
-                        }
-                    }
-                } else {
-                    let nextX = this.x + (dx / distance) * moveSpeed;
-                    let nextY = this.y + (dy / distance) * moveSpeed;
+                    let dx = destX - this.x;
+                    let dy = destY - this.y;
+                    let distance = Math.sqrt(dx * dx + dy * dy);
                     
-                    if (typeof this.checkCollision === 'function' && this.checkCollision(maze, nextX, nextY)) {
-                        if (this.isSliding) this.isSliding = false;
-                        if (this.isAggroDashing) {
-                            this.isAggroDashing = false;
-                            this.state = 'battling';
+                    // Sliding (Knockback) is a fixed physics reaction. 
+                    // Dashing (Aggro) scales with their AGI muscle-twitch speed!
+                    let moveSpeed = this.isSliding ? (15 * dt) : (10 * agiMultiplier * dt);
+
+                    if (distance <= moveSpeed || distance === 0 || moveSpeed === 0) {
+                        this.x = destX;
+                        this.y = destY;
+                        
+                        let wasDashing = this.isAggroDashing;
+                        let wasSliding = this.isSliding; 
+
+                        this.isAggroDashing = false;
+                        this.isSliding = false;
+
+                        if (wasDashing) {
+                            this.state = 'battling'; 
                             if (typeof this.dashCallback === 'function') {
                                 this.dashCallback();
                                 this.dashCallback = null;
                             }
+                        } 
+                        
+                        if (wasSliding) {
+                            if (typeof this.slideCallback === 'function') {
+                                this.slideCallback();
+                                this.slideCallback = null;
+                            }
                         }
                     } else {
-                        this.x = nextX;
-                        this.y = nextY;
+                        let nextX = this.x + (dx / distance) * moveSpeed;
+                        let nextY = this.y + (dy / distance) * moveSpeed;
+                        
+                        if (typeof this.checkCollision === 'function' && this.checkCollision(maze, nextX, nextY)) {
+                            if (this.isSliding) this.isSliding = false;
+                            if (this.isAggroDashing) {
+                                this.isAggroDashing = false;
+                                this.state = 'battling';
+                                if (typeof this.dashCallback === 'function') {
+                                    this.dashCallback();
+                                    this.dashCallback = null;
+                                }
+                            }
+                        } else {
+                            this.x = nextX;
+                            this.y = nextY;
+                        }
+                        
+                        if (this.isAggroDashing) {
+                            this.dirX = dx / distance;
+                            this.dirY = dy / distance;
+                        }
                     }
                     
-                    if (this.isAggroDashing) {
-                        this.dirX = dx / distance;
-                        this.dirY = dy / distance;
-                    }
+                    return; 
                 }
-                
-                return; 
-            }
             
             // =========================================================
             // 13. NORMAL MOVEMENT
             // =========================================================
-            else if ((this.state === 'chasing' || this.state === 'fleeing' || this.state === 'wandering' || this.state === 'following') && startGame !== 'dialogue') {            
-                const prevX = this.x;
-                const prevY = this.y;
-                
-                let currentSpeed = this.speed;
-                let hasteBuff = this.activeBuffs.find(b => b.name === 'Haste');
-                if (hasteBuff && hasteBuff.speedBoost) currentSpeed += hasteBuff.speedBoost; 
+                else if ((this.state === 'chasing' || this.state === 'fleeing' || this.state === 'wandering' || this.state === 'following') && startGame !== 'dialogue') {            
+                    const prevX = this.x;
+                    const prevY = this.y;
+                    
+                    let currentSpeed = this.speed;
+                    let hasteBuff = this.activeBuffs.find(b => b.name === 'Haste');
+                    if (hasteBuff && hasteBuff.speedBoost) currentSpeed += hasteBuff.speedBoost; 
 
-                if (distToActualPlayer < 0.6 && !isChasingNPC) {
-                    currentSpeed = 0; 
-                }
+                    if (distToActualPlayer < 0.6 && !isChasingNPC) {
+                        currentSpeed = 0; 
+                    }
 
-                // --- APPLY THE NERVOUS SYSTEM MULTIPLIER ---
-                // This permanently replaces the old hardcoded Ally AGI logic.
-                // EVERY entity now moves based on its own virtual AGI dice!
-                currentSpeed *= agiMultiplier; 
+                    // --- APPLY THE NERVOUS SYSTEM MULTIPLIER ---
+                    // This permanently replaces the old hardcoded Ally AGI logic.
+                    // EVERY entity now moves based on its own virtual AGI dice!
+                    currentSpeed *= agiMultiplier; 
 
-                const moveStep = currentSpeed * dt;
-                let sepX = 0; let sepY = 0;
-                
-                if (this.state === 'chasing' || this.state === 'fleeing' || this.state === 'wandering') {
-                    let mapX = Math.floor(this.x);
-                    let mapY = Math.floor(this.y);
+                    const moveStep = currentSpeed * dt;
+                    let sepX = 0; let sepY = 0;
+                    
+                    if (this.state === 'chasing' || this.state === 'fleeing' || this.state === 'wandering') {
+                        let mapX = Math.floor(this.x);
+                        let mapY = Math.floor(this.y);
 
-                    for (let ox = -1; ox <= 1; ox++) {
-                        for (let oy = -1; oy <= 1; oy++) {
-                            let key = `${mapX + ox},${mapY + oy}`;
-                            let neighbors = dungeon.spatialGrid ? dungeon.spatialGrid[key] : null;
-                            
-                            if (neighbors) {
-                                for (let other of neighbors) {
-                                    if (other === this) continue; 
-                                    if (this.state === 'chasing' && currentPrey && other === currentPrey) continue;
-                                    let dx = this.x - other.x;
-                                    let dy = this.y - other.y;
-                                    let dSq = dx * dx + dy * dy;
-                                    
-                                    if (dSq === 0) { 
-                                        dx = (Math.random() - 0.5) * 0.1;
-                                        dy = (Math.random() - 0.5) * 0.1;
-                                        dSq = dx * dx + dy * dy;
-                                    }
+                        for (let ox = -1; ox <= 1; ox++) {
+                            for (let oy = -1; oy <= 1; oy++) {
+                                let key = `${mapX + ox},${mapY + oy}`;
+                                let neighbors = dungeon.spatialGrid ? dungeon.spatialGrid[key] : null;
+                                
+                                if (neighbors) {
+                                    for (let other of neighbors) {
+                                        if (other === this) continue; 
+                                        if (this.state === 'chasing' && currentPrey && other === currentPrey) continue;
+                                        let dx = this.x - other.x;
+                                        let dy = this.y - other.y;
+                                        let dSq = dx * dx + dy * dy;
+                                        
+                                        if (dSq === 0) { 
+                                            dx = (Math.random() - 0.5) * 0.1;
+                                            dy = (Math.random() - 0.5) * 0.1;
+                                            dSq = dx * dx + dy * dy;
+                                        }
 
-                                    if (dSq < 0.64) { 
-                                        let pushStrength = 0.05 / Math.sqrt(dSq); 
-                                        sepX += dx * pushStrength; 
-                                        sepY += dy * pushStrength; 
+                                        if (dSq < 0.64) { 
+                                            let pushStrength = 0.05 / Math.sqrt(dSq); 
+                                            sepX += dx * pushStrength; 
+                                            sepY += dy * pushStrength; 
+                                        }
                                     }
                                 }
                             }
                         }
+
+                        // --- PROGRESSIVE WALL REPULSION ---
+                        let offsetX = this.x - (mapX + 0.5); 
+                        let offsetY = this.y - (mapY + 0.5);
+                        let buffer = 0.2; 
+
+                        const getRepulsion = (offset) => {
+                            let over = Math.abs(offset) - buffer;
+                            return over > 0 ? over * 4.0 : 0; 
+                        };
+
+                        if (offsetX < 0 && this.isWall(mapX - 1, mapY)) sepX += getRepulsion(offsetX);
+                        if (offsetX > 0 && this.isWall(mapX + 1, mapY)) sepX -= getRepulsion(offsetX);
+                        if (offsetY < 0 && this.isWall(mapX, mapY - 1)) sepY += getRepulsion(offsetY);
+                        if (offsetY > 0 && this.isWall(mapX, mapY + 1)) sepY -= getRepulsion(offsetY);
+
+                        if (offsetX < -buffer && offsetY < -buffer && this.isWall(mapX - 1, mapY - 1)) { sepX += getRepulsion(offsetX); sepY += getRepulsion(offsetY); }
+                        if (offsetX >  buffer && offsetY < -buffer && this.isWall(mapX + 1, mapY - 1)) { sepX -= getRepulsion(offsetX); sepY += getRepulsion(offsetY); }
+                        if (offsetX < -buffer && offsetY >  buffer && this.isWall(mapX - 1, mapY + 1)) { sepX += getRepulsion(offsetX); sepY -= getRepulsion(offsetY); }
+                        if (offsetX >  buffer && offsetY >  buffer && this.isWall(mapX + 1, mapY + 1)) { sepX -= getRepulsion(offsetX); sepY -= getRepulsion(offsetY); }
                     }
 
-                    // --- PROGRESSIVE WALL REPULSION ---
-                    let offsetX = this.x - (mapX + 0.5); 
-                    let offsetY = this.y - (mapY + 0.5);
-                    let buffer = 0.2; 
+                    let finalDirX = this.dirX + sepX;
+                    let finalDirY = this.dirY + sepY;
 
-                    const getRepulsion = (offset) => {
-                        let over = Math.abs(offset) - buffer;
-                        return over > 0 ? over * 4.0 : 0; 
-                    };
+                    const len = Math.sqrt(finalDirX*finalDirX + finalDirY*finalDirY);
+                    if (len > 0) { finalDirX /= len; finalDirY /= len; }
 
-                    if (offsetX < 0 && this.isWall(mapX - 1, mapY)) sepX += getRepulsion(offsetX);
-                    if (offsetX > 0 && this.isWall(mapX + 1, mapY)) sepX -= getRepulsion(offsetX);
-                    if (offsetY < 0 && this.isWall(mapX, mapY - 1)) sepY += getRepulsion(offsetY);
-                    if (offsetY > 0 && this.isWall(mapX, mapY + 1)) sepY -= getRepulsion(offsetY);
+                    this.dirX = finalDirX;
+                    this.dirY = finalDirY;
 
-                    if (offsetX < -buffer && offsetY < -buffer && this.isWall(mapX - 1, mapY - 1)) { sepX += getRepulsion(offsetX); sepY += getRepulsion(offsetY); }
-                    if (offsetX >  buffer && offsetY < -buffer && this.isWall(mapX + 1, mapY - 1)) { sepX -= getRepulsion(offsetX); sepY += getRepulsion(offsetY); }
-                    if (offsetX < -buffer && offsetY >  buffer && this.isWall(mapX - 1, mapY + 1)) { sepX += getRepulsion(offsetX); sepY -= getRepulsion(offsetY); }
-                    if (offsetX >  buffer && offsetY >  buffer && this.isWall(mapX + 1, mapY + 1)) { sepX -= getRepulsion(offsetX); sepY -= getRepulsion(offsetY); }
-                }
+                    const newX = this.x + (finalDirX * moveStep);
+                    const newY = this.y + (finalDirY * moveStep);
 
-                let finalDirX = this.dirX + sepX;
-                let finalDirY = this.dirY + sepY;
-
-                const len = Math.sqrt(finalDirX*finalDirX + finalDirY*finalDirY);
-                if (len > 0) { finalDirX /= len; finalDirY /= len; }
-
-                this.dirX = finalDirX;
-                this.dirY = finalDirY;
-
-                const newX = this.x + (finalDirX * moveStep);
-                const newY = this.y + (finalDirY * moveStep);
-
-                if (this.checkCollision(maze, newX, newY)) {
-                    let slid = false;
-                    
-                    if (this.state === 'wandering') {
-                        this.dirX = Math.random() - 0.5;
-                        this.dirY = Math.random() - 0.5;
-                        slid = true; 
-                    } else {
-                        if (!this.checkCollision(maze, newX, this.y)) { this.x = newX; slid = true; }
-                        else if (!this.checkCollision(maze, this.x, newY)) { this.y = newY; slid = true; }
-                    }
-                    
-                    if (!slid && this.state !== 'wandering') {
-                        let centerX = Math.floor(this.x) + 0.5;
-                        let centerY = Math.floor(this.y) + 0.5;
-                        let nudgeSpeed = this.speed * dt * 0.5; 
+                    if (this.checkCollision(maze, newX, newY)) {
+                        let slid = false;
                         
-                        if (Math.abs(this.x - centerX) > 0.05) this.x += (centerX > this.x ? nudgeSpeed : -nudgeSpeed);
-                        if (Math.abs(this.y - centerY) > 0.05) this.y += (centerY > this.y ? nudgeSpeed : -nudgeSpeed);
-                    }
-                } else {
-                    this.x = newX;
-                    this.y = newY;
-                }
-            
-                let fX = Math.floor(this.x);
-                let fY = Math.floor(this.y);
-                if (maze[fY] !== undefined && maze[fY][fX] !== undefined) {
-                    if (this.isWall(fX, fY)) { 
-                        this.x = prevX;
-                        this.y = prevY;
-                    }
-                }
-            
-                if (Math.abs(this.x - prevX) > 0.001 || Math.abs(this.y - prevY) > 0.001) {
-                    this.stepTimer += dt;
-                    if (this.stepTimer > 0.5) { 
-                        if (this.type === 54 || this.type === 9.1 || this.type === 1) {
-                            if (typeof MusicEngine !== 'undefined') { MusicEngine.play3DSFX('step', this.x, this.y, playerX, playerY, dungeon.dir); }
+                        if (this.state === 'wandering') {
+                            this.dirX = Math.random() - 0.5;
+                            this.dirY = Math.random() - 0.5;
+                            slid = true; 
+                        } else {
+                            if (!this.checkCollision(maze, newX, this.y)) { this.x = newX; slid = true; }
+                            else if (!this.checkCollision(maze, this.x, newY)) { this.y = newY; slid = true; }
                         }
-                        this.stepTimer = 0; 
+                        
+                        if (!slid && this.state !== 'wandering') {
+                            let centerX = Math.floor(this.x) + 0.5;
+                            let centerY = Math.floor(this.y) + 0.5;
+                            let nudgeSpeed = this.speed * dt * 0.5; 
+                            
+                            if (Math.abs(this.x - centerX) > 0.05) this.x += (centerX > this.x ? nudgeSpeed : -nudgeSpeed);
+                            if (Math.abs(this.y - centerY) > 0.05) this.y += (centerY > this.y ? nudgeSpeed : -nudgeSpeed);
+                        }
+                    } else {
+                        this.x = newX;
+                        this.y = newY;
+                    }
+                
+                    let fX = Math.floor(this.x);
+                    let fY = Math.floor(this.y);
+                    if (maze[fY] !== undefined && maze[fY][fX] !== undefined) {
+                        if (this.isWall(fX, fY)) { 
+                            this.x = prevX;
+                            this.y = prevY;
+                        }
+                    }
+                
+                    if (Math.abs(this.x - prevX) > 0.001 || Math.abs(this.y - prevY) > 0.001) {
+                        this.stepTimer += dt;
+                        if (this.stepTimer > 0.5) { 
+                            if (this.type === 54 || this.type === 9.1 || this.type === 1) {
+                                if (typeof MusicEngine !== 'undefined') { MusicEngine.play3DSFX('step', this.x, this.y, playerX, playerY, dungeon.dir); }
+                            }
+                            this.stepTimer = 0; 
+                        }
                     }
                 }
-            }
         
             const length = Math.sqrt(this.dirX * this.dirX + this.dirY * this.dirY);
             if (length !== 0) { this.dirX /= length; this.dirY /= length; }
@@ -8862,45 +8861,45 @@
                 // =====================================================
                 // --- 3. THE NEW DYNAMIC DATABASE LOADER ---
                 // =====================================================
-                let dbData = MAP_DB[id] || MAP_DB["-1"]; // Fallback to -1 if missing
-                
-                // Apply Settings
-                this.mapname = dbData.name || "Unknown Region";
-                this.skyColor = dbData.skyColor || 'rgba(0,0,0,1)';
-                this.floorColor = dbData.floorColor || 'rgba(0,0,0,1)';
-                this.biome = dbData.biome || '';
-                
-                if (dbData.weather) {
-                    this.weather.setMode(dbData.weather);
-                } else {
-                    if (id === 6) this.weather.setMode('snow');
-                    else if (id === 9) this.weather.setMode('storm');
-                    else if (id === 14 || id === 22) this.weather.setMode('leaves');
-                    else if (id === 15 || id === 21) this.weather.setMode('lightning');
-                    else if (id === -1 || [7,8,10,13,16,17,18,19,20].includes(id)) this.weather.setMode('space');
-                    else this.weather.setMode('clear');
-                }
+                    let dbData = MAP_DB[id] || MAP_DB["-1"]; // Fallback to -1 if missing
+                    
+                    // Apply Settings
+                    this.mapname = dbData.name || "Unknown Region";
+                    this.skyColor = dbData.skyColor || 'rgba(0,0,0,1)';
+                    this.floorColor = dbData.floorColor || 'rgba(0,0,0,1)';
+                    this.biome = dbData.biome || '';
+                    
+                    if (dbData.weather) {
+                        this.weather.setMode(dbData.weather);
+                    } else {
+                        if (id === 6) this.weather.setMode('snow');
+                        else if (id === 9) this.weather.setMode('storm');
+                        else if (id === 14 || id === 22) this.weather.setMode('leaves');
+                        else if (id === 15 || id === 21) this.weather.setMode('lightning');
+                        else if (id === -1 || [7,8,10,13,16,17,18,19,20].includes(id)) this.weather.setMode('space');
+                        else this.weather.setMode('clear');
+                    }
 
-                let envConfig = this.mapEnvironments[id] || this.mapEnvironments["default"];
-                this.horizonFade = envConfig.fade;
-                this.horizonMidColor = envConfig.mid;
+                    let envConfig = this.mapEnvironments[id] || this.mapEnvironments["default"];
+                    this.horizonFade = envConfig.fade;
+                    this.horizonMidColor = envConfig.mid;
 
-                // --- CLONE THE MAZE BY VALUE ---
-                this.maze = dbData.maze.map(row => [...row]);
+                    // --- CLONE THE MAZE BY VALUE ---
+                    this.maze = dbData.maze.map(row => [...row]);
 
-                // Apply Permanent Destruction Ledger!
-                let destructionLedgerKey = `destroyed_tiles_${this.mapID}`;
-                if (this.memory[destructionLedgerKey]) {
-                    this.memory[destructionLedgerKey].forEach(coord => {
-                        if (this.maze[coord.y] && this.maze[coord.y][coord.x] !== undefined) {
-                            this.maze[coord.y][coord.x] = 0; 
-                        }
-                    });
-                }
+                    // Apply Permanent Destruction Ledger!
+                    let destructionLedgerKey = `destroyed_tiles_${this.mapID}`;
+                    if (this.memory[destructionLedgerKey]) {
+                        this.memory[destructionLedgerKey].forEach(coord => {
+                            if (this.maze[coord.y] && this.maze[coord.y][coord.x] !== undefined) {
+                                this.maze[coord.y][coord.x] = 0; 
+                            }
+                        });
+                    }
 
-                let centerX = this.maze[0] ? this.maze[0].length / 2 : 0;
-                let centerY = this.maze.length / 2;
-                let maxRadius = Math.max(this.maze.length, this.maze[0] ? this.maze[0].length : 0);
+                    let centerX = this.maze[0] ? this.maze[0].length / 2 : 0;
+                    let centerY = this.maze.length / 2;
+                    let maxRadius = Math.max(this.maze.length, this.maze[0] ? this.maze[0].length : 0);
                 // =====================================================
                 // --- 4. DYNAMIC NPC SPAWNER ---
                 // =====================================================
@@ -8953,84 +8952,84 @@
                 // =====================================================
                 // --- 5. PLAYER SPAWN RESOLUTION ---
                 // =====================================================
-                if (!this.isLoading) {
-                    if (id === this.prevMap && this.prevX !== undefined) {
-                        this.x = this.prevX; this.y = this.prevY; this.dir = this.prevDir;
-                        this.prevX = undefined; this.prevY = undefined;
-                    } 
-                    else if (this.memory['globalSpawn'] && this.memory['globalSpawn'].mapID === id) {
-                        this.x = this.memory['globalSpawn'].x; this.y = this.memory['globalSpawn'].y; this.dir = this.memory['globalSpawn'].dir;
+                    if (!this.isLoading) {
+                        if (id === this.prevMap && this.prevX !== undefined) {
+                            this.x = this.prevX; this.y = this.prevY; this.dir = this.prevDir;
+                            this.prevX = undefined; this.prevY = undefined;
+                        } 
+                        else if (this.memory['globalSpawn'] && this.memory['globalSpawn'].mapID === id) {
+                            this.x = this.memory['globalSpawn'].x; this.y = this.memory['globalSpawn'].y; this.dir = this.memory['globalSpawn'].dir;
+                        }
+                        else if (this.defaultSpawns && this.defaultSpawns[id]) {
+                            this.x = this.defaultSpawns[id].x; this.y = this.defaultSpawns[id].y; this.dir = this.defaultSpawns[id].dir;
+                        } 
+                        else {
+                            this.x = 1.5; this.y = 1.5; this.dir = 2;
+                        }
                     }
-                    else if (this.defaultSpawns && this.defaultSpawns[id]) {
-                        this.x = this.defaultSpawns[id].x; this.y = this.defaultSpawns[id].y; this.dir = this.defaultSpawns[id].dir;
-                    } 
-                    else {
-                        this.x = 1.5; this.y = 1.5; this.dir = 2;
+
+                    if (this.mapID === -1) { this.x = 6.5; this.y = 1.5; this.dir = 2; }
+                    else if (this.mapID === 999) { this.x = 9.5; this.y = 12.5; }
+
+                    if (this.maze.length > 0) {
+                        for (let r = 0; r < this.maze.length; r++) {
+                            this.explored[r] = new Array(this.maze[0].length).fill(0);
+                        }
                     }
-                }
 
-                if (this.mapID === -1) { this.x = 6.5; this.y = 1.5; this.dir = 2; }
-                else if (this.mapID === 999) { this.x = 9.5; this.y = 12.5; }
-
-                if (this.maze.length > 0) {
-                    for (let r = 0; r < this.maze.length; r++) {
-                        this.explored[r] = new Array(this.maze[0].length).fill(0);
-                    }
-                }
-
-                if (typeof socket !== 'undefined') socket.emit('force_ai_action', `player entered map ${id}:${this.mapname}...`);
+                    if (typeof socket !== 'undefined') socket.emit('force_ai_action', `player entered map ${id}:${this.mapname}...`);
 
                 // =====================================================
                 // --- 6. LOAD PERSISTENT MEMORY & SUMMONS ---
                 // =====================================================
-                const memoryKey = 'spawned_' + id;
-                if (this.memory[memoryKey]) {
-                    this.memory[memoryKey].forEach(data => {
-                        if (data.x === undefined || data.y === undefined) return;
-                        const restoredNPC = new NPC(data.index, data.x, data.y, data.type, data.state, data.color, data.deck, data.role, data.isBoss, data.alignment);
-                        restoredNPC.isCinematic = data.isCinematic; restoredNPC.customDialogue = data.dialogue;
-                        restoredNPC.rewardCard = data.rewardCard; restoredNPC.options = data.options; 
-                        restoredNPC.endActions = data.endActions; restoredNPC.deathActions = data.deathActions; 
-                        this.npcs.push(restoredNPC);
-                    });
-                }
+                    const memoryKey = 'spawned_' + id;
+                    if (this.memory[memoryKey]) {
+                        this.memory[memoryKey].forEach(data => {
+                            if (data.x === undefined || data.y === undefined) return;
+                            const restoredNPC = new NPC(data.index, data.x, data.y, data.type, data.state, data.color, data.deck, data.role, data.isBoss, data.alignment);
+                            restoredNPC.isCinematic = data.isCinematic; restoredNPC.customDialogue = data.dialogue;
+                            restoredNPC.rewardCard = data.rewardCard; restoredNPC.options = data.options; 
+                            restoredNPC.endActions = data.endActions; restoredNPC.deathActions = data.deathActions; 
+                            this.npcs.push(restoredNPC);
+                        });
+                    }
 
-                this.npcs.forEach(npc => {
-                    let uniqueID = this.mapID + "_" + npc.index;
-                    if (this.memory[uniqueID]) {
-                        let data = this.memory[uniqueID];
-                        if (data.permanent) { npc.isDead = true; npc.visible = false; npc.x = -999; }
-                        else if (data.respawnAt) {
-                            if (Date.now() < data.respawnAt) { npc.isDead = true; npc.visible = false; npc.respawnTime = data.respawnAt; } 
-                            else { delete this.memory[uniqueID]; }
+                    this.npcs.forEach(npc => {
+                        let uniqueID = this.mapID + "_" + npc.index;
+                        if (this.memory[uniqueID]) {
+                            let data = this.memory[uniqueID];
+                            if (data.permanent) { npc.isDead = true; npc.visible = false; npc.x = -999; }
+                            else if (data.respawnAt) {
+                                if (Date.now() < data.respawnAt) { npc.isDead = true; npc.visible = false; npc.respawnTime = data.respawnAt; } 
+                                else { delete this.memory[uniqueID]; }
+                            }
                         }
-                    }
-                    if(npc.isDead === true && npc.type === 49.1 && this.mapID === 9) {
-                        this.weather.setMode('clear'); this.skyColor = 'rgba(0,0,255,1)';
-                    }
-                });                
+                        if(npc.isDead === true && npc.type === 49.1 && this.mapID === 9) {
+                            this.weather.setMode('clear'); this.skyColor = 'rgba(0,0,255,1)';
+                        }
+                    });                
 
-                if (this.activeSummons && this.activeSummons.length > 0) {
-                    for (let i = 0; i < this.activeSummons.length; i++) this.summonAlly(this.activeSummons[i], true);
-                }
+                    if (this.activeSummons && this.activeSummons.length > 0) {
+                        for (let i = 0; i < this.activeSummons.length; i++) this.summonAlly(this.activeSummons[i], true);
+                    }
 
-                if (this.activeEscorts && this.activeEscorts.length > 0) {
-                    this.activeEscorts.forEach(escortData => {
-                        let escortNPC = this.npcs.find(n => n.index === escortData.index);
-                        if (!escortNPC) {
-                            escortNPC = new NPC(escortData.index, this.x, this.y, escortData.type, 'following', escortData.color || '#00ff00', escortData.deck || [], 'dialogue', false, 'escort');
-                            this.npcs.push(escortNPC);
-                        } else { escortNPC.x = this.x; escortNPC.y = this.y; }
-                        escortNPC.isDead = false; escortNPC.visible = true; escortNPC.alignment = 'escort'; escortNPC.role = 'dialogue';
-                        escortNPC.state = 'following'; escortNPC.options = null; 
-                        if (!escortNPC.dialogueFactory) escortNPC.customDialogue = ["Lead the way! I am right behind you."];
-                    });
-                }
-                
-                if (this.memory['guild_quest'] && this.memory['guild_quest'].state === 1) {
-                    let qData = this.memory['guild_quest'];
-                    if (qData.targetMap === this.mapID && qData.spawnActions) this.executeActions(qData.spawnActions); 
-                }
+                    if (this.activeEscorts && this.activeEscorts.length > 0) {
+                        this.activeEscorts.forEach(escortData => {
+                            let escortNPC = this.npcs.find(n => n.index === escortData.index);
+                            if (!escortNPC) {
+                                escortNPC = new NPC(escortData.index, this.x, this.y, escortData.type, 'following', escortData.color || '#00ff00', escortData.deck || [], 'dialogue', false, 'escort');
+                                this.npcs.push(escortNPC);
+                            } else { escortNPC.x = this.x; escortNPC.y = this.y; }
+                            escortNPC.isDead = false; escortNPC.visible = true; escortNPC.alignment = 'escort'; escortNPC.role = 'dialogue';
+                            escortNPC.state = 'following'; escortNPC.options = null; 
+                            if (!escortNPC.dialogueFactory) escortNPC.customDialogue = ["Lead the way! I am right behind you."];
+                        });
+                    }
+                    
+                    if (this.memory['guild_quest'] && this.memory['guild_quest'].state === 1) {
+                        let qData = this.memory['guild_quest'];
+                        if (qData.targetMap === this.mapID && qData.spawnActions) this.executeActions(qData.spawnActions); 
+                    }
 
                 if (typeof this.saveGame === 'function' && !this.isLoading) this.requestSave();
                 this.isLoading = false;
@@ -10003,12 +10002,12 @@
                     // Generate a random tile within the radius
                     let rx = Math.floor(centerX + (Math.random() * (radius * 2) - radius));
                     let ry = Math.floor(centerY + (Math.random() * (radius * 2) - radius));
-
+                    
                     // 1. Check if it's within map bounds
                     if (ry > 0 && ry < this.maze.length && rx > 0 && rx < this.maze[0].length) {
-                        
+                        let tile = this.maze[ry][rx];
                         // 2. Check if it's a valid floor (not a wall)
-                        if (!this.isWall(rx, ry)) {
+                        if (tile === 0) {
                             
                             // 3. Check if another NPC is already on this exact tile
                             let isOccupied = this.npcs.some(n => 
@@ -12927,244 +12926,244 @@
                 // ==========================================
                 // 1. Z-BUFFER POPULATION (FORWARD PASS)
                 // ==========================================
-                // We build the collision array first so gaps don't corrupt the sprite occlusion test!
-                let zIndex = 0;
-                for (let i = 0; i < hitCount; i++) {
-                    let hit = this.hitPool[i];
-                    if (hit.isChasm) {
-                        continue; 
-                    }
-                    let wallHitX = (hit.side == 0) ? camY + hit.perpWallDist * rayDirY : camX + hit.perpWallDist * rayDirX;
-                    wallHitX -= Math.floor(wallHitX);
-                    let isBar = [88, 91].includes(hit.wallID) && (wallHitX % 0.25 < (hit.wallID===88 ? 0.08 : 0.05));
-                    
-                    // If it's a see-through gap, SKIP adding it to the Z-Buffer!
-                    if ([88, 91].includes(hit.wallID) && !isBar) continue;
+                    // We build the collision array first so gaps don't corrupt the sprite occlusion test!
+                    let zIndex = 0;
+                    for (let i = 0; i < hitCount; i++) {
+                        let hit = this.hitPool[i];
+                        if (hit.isChasm) {
+                            continue; 
+                        }
+                        let wallHitX = (hit.side == 0) ? camY + hit.perpWallDist * rayDirY : camX + hit.perpWallDist * rayDirX;
+                        wallHitX -= Math.floor(wallHitX);
+                        let isBar = [88, 91].includes(hit.wallID) && (wallHitX % 0.25 < (hit.wallID===88 ? 0.08 : 0.05));
+                        
+                        // If it's a see-through gap, SKIP adding it to the Z-Buffer!
+                        if ([88, 91].includes(hit.wallID) && !isBar) continue;
 
-                    let lineHeight = wallScale / hit.perpWallDist;     
-                    let zShift = lineHeight * zOffset;             
-                    let wallBottom = lineHeight / 2 + horizon + zShift;
-                    let trueDrawStart = wallBottom - (lineHeight * hit.heightMult);
-                    
-                    let exitLineHeight = wallScale / hit.exitDist; 
-                    let exitZShift = exitLineHeight * zOffset;     
-                    let exitWallBottom = exitLineHeight / 2 + horizon + exitZShift;
-                    let roofBackY = exitWallBottom - (exitLineHeight * hit.heightMult);
-                    
-                    let absoluteTopY = Math.floor(Math.max(0, Math.min(trueDrawStart, roofBackY)));
-                    if (hit.isChasm) {
-                        absoluteTopY = viewH; // Push the clipping line to the very bottom of the screen
+                        let lineHeight = wallScale / hit.perpWallDist;     
+                        let zShift = lineHeight * zOffset;             
+                        let wallBottom = lineHeight / 2 + horizon + zShift;
+                        let trueDrawStart = wallBottom - (lineHeight * hit.heightMult);
+                        
+                        let exitLineHeight = wallScale / hit.exitDist; 
+                        let exitZShift = exitLineHeight * zOffset;     
+                        let exitWallBottom = exitLineHeight / 2 + horizon + exitZShift;
+                        let roofBackY = exitWallBottom - (exitLineHeight * hit.heightMult);
+                        
+                        let absoluteTopY = Math.floor(Math.max(0, Math.min(trueDrawStart, roofBackY)));
+                        if (hit.isChasm) {
+                            absoluteTopY = viewH; // Push the clipping line to the very bottom of the screen
+                        }
+                        let bIndex = (stripX * this.maxHitsPerRay * 3) + (zIndex * 3);
+                        this.zBuffer[bIndex] = hit.perpWallDist;
+                        this.zBuffer[bIndex + 1] = hit.wallID;
+                        this.zBuffer[bIndex + 2] = absoluteTopY;
+                        
+                        zIndex++;
                     }
-                    let bIndex = (stripX * this.maxHitsPerRay * 3) + (zIndex * 3);
-                    this.zBuffer[bIndex] = hit.perpWallDist;
-                    this.zBuffer[bIndex + 1] = hit.wallID;
-                    this.zBuffer[bIndex + 2] = absoluteTopY;
                     
-                    zIndex++;
-                }
-                
-                // Set the actual number of solid occluding walls hit
-                this.zBufferCounts[stripX] = zIndex;
+                    // Set the actual number of solid occluding walls hit
+                    this.zBufferCounts[stripX] = zIndex;
 
-                let fR = this.fogColorRGB ? this.fogColorRGB.r : 5;
-                let fG = this.fogColorRGB ? this.fogColorRGB.g : 5;
-                let fB = this.fogColorRGB ? this.fogColorRGB.b : 8;
-                ctx.imageSmoothingEnabled = false;
-                
-                const screenX = Math.floor(viewX + stripX);
-                const drawWidth = Math.ceil(width)+ 1;
+                    let fR = this.fogColorRGB ? this.fogColorRGB.r : 5;
+                    let fG = this.fogColorRGB ? this.fogColorRGB.g : 5;
+                    let fB = this.fogColorRGB ? this.fogColorRGB.b : 8;
+                    ctx.imageSmoothingEnabled = false;
+                    
+                    const screenX = Math.floor(viewX + stripX);
+                    const drawWidth = Math.ceil(width)+ 1;
 
                 // ==========================================
                 // 2. BACK-TO-FRONT PROCEDURAL RENDERING
                 // ==========================================
-                for (let i = hitCount - 1; i >= 0; i--) { 
-                    let hit = this.hitPool[i];
-                    
-                    let wallID = hit.wallID;
-                    let side = hit.side;
-                    let perpWallDist = hit.perpWallDist;
-                    let heightMult = hit.heightMult;
+                    for (let i = hitCount - 1; i >= 0; i--) { 
+                        let hit = this.hitPool[i];
+                        
+                        let wallID = hit.wallID;
+                        let side = hit.side;
+                        let perpWallDist = hit.perpWallDist;
+                        let heightMult = hit.heightMult;
 
-                    const lineHeight = wallScale / perpWallDist;     
-                    const zShift = lineHeight * zOffset;             
-                    const wallBottom = Math.floor(lineHeight / 2 + horizon + zShift);
+                        const lineHeight = wallScale / perpWallDist;     
+                        const zShift = lineHeight * zOffset;             
+                        const wallBottom = Math.floor(lineHeight / 2 + horizon + zShift);
 
-                    // ==========================================
-                    // --- THE SEAMLESS CHASM RENDERER ---
-                    // ==========================================
-                    if (hit.isChasm) {
+                        // ==========================================
+                        // --- THE SEAMLESS CHASM RENDERER ---
+                        // ==========================================
+                        if (hit.isChasm) {
+                            let fogStart = dynamicMaxVis * 0.4;
+                            let fogFactor = 0;
+                            if (perpWallDist > fogStart) {
+                                let ratio = Math.min((perpWallDist - fogStart) / (dynamicMaxVis - fogStart), 1.0);
+                                fogFactor = ratio * ratio; 
+                            }
+                            if (perpWallDist > losBlockedDepth) fogFactor = 1.0;
+
+                            let chasmDepth = (hit.wallID === 97) ? 2.0 : 0.4; // Abyss vs Water
+                            
+                            // 1. CALCULATE FRONT EDGE
+                            // Clamped perfectly to the floor level. NO MORE 15 PIXEL HACK.
+                            // This entirely removes the green spikes and ensures the water naturally tucks beneath the floor.
+                            let frontFloorY = Math.floor(lineHeight / 2 + horizon + zShift);
+                            
+                            // 2. CALCULATE BACK EDGE (The far shore)
+                            let exitLineHeight = wallScale / hit.exitDist;
+                            let exitZShift = exitLineHeight * zOffset;
+                            let backFloorY = Math.floor(exitLineHeight / 2 + horizon + exitZShift);
+                            let backWaterY = Math.floor(backFloorY + (exitLineHeight * chasmDepth));
+
+                            // 3. MAP BORDER DETECTION (The Infinite Horizon)
+                            let isBorder = (hit.exitMapY < 0 || hit.exitMapY >= this.maze.length || hit.exitMapX < 0 || hit.exitMapX >= this.maze[0].length);
+                            let nextTileID = isBorder ? 0 : this.maze[hit.exitMapY][hit.exitMapX];
+                            let nextIsChasm = [93,95,97,99,101].includes(nextTileID);
+
+                            // 4. DRAW THE HORIZONTAL SURFACE
+                            // Perfectly clamped between the solid floor you stand on, and the far shore
+                            let surfaceBot = Math.max(0, Math.min(viewH, frontFloorY)); 
+                            let surfaceTop = isBorder ? Math.floor(horizon) : Math.max(0, Math.min(viewH, backWaterY));
+                            
+                            if (surfaceBot > surfaceTop) {
+                                if (hit.wallID === 97) {
+                                    setRGB(10, 5, 15); 
+                                    ctx.fillRect(screenX, viewY + surfaceTop, drawWidth, surfaceBot - surfaceTop);
+                                } else {
+                                    let wR = 10, wG = 35, wB = 75;
+                                    let timeOsc = Date.now() / 400;
+                                    let wave = Math.sin((stripX * 0.05) + (hit.mapY * 0.5) + timeOsc) * 15;
+                                    let wave2 = Math.cos((stripX * 0.02) - timeOsc) * 10;
+                                    wR += wave; wG += (wave + wave2); wB += (wave + wave2 * 2);
+                                    
+                                    wR = Math.max(0, Math.min(255, (wR * (1 - fogFactor)) + (fR * fogFactor)));
+                                    wG = Math.max(0, Math.min(255, (wG * (1 - fogFactor)) + (fG * fogFactor)));
+                                    wB = Math.max(0, Math.min(255, (wB * (1 - fogFactor)) + (fB * fogFactor)));
+                                    
+                                    setRGB(wR, wG, wB);
+                                    ctx.fillRect(screenX, viewY + surfaceTop, drawWidth, surfaceBot - surfaceTop);
+                                }
+                            }
+
+                            // 5. DRAW THE FAR SHORE CLIFF 
+                            if (!isBorder && !nextIsChasm && hit.exitDist < dynamicMaxVis) {
+                                let cliffTop = Math.max(0, Math.min(viewH, backFloorY));
+                                let cliffBot = Math.max(0, Math.min(viewH, backWaterY));
+                                
+                                // Ensure the back cliff never bleeds over the foreground floor
+                                cliffBot = Math.min(cliffBot, surfaceBot);
+
+                                if (cliffBot > cliffTop) {
+                                    let rockPattern = Math.abs(Math.sin(hit.exitMapX * 12.98 + hit.exitMapY * 78.23)) * 15;
+                                    let cR = 30 + rockPattern, cG = 25 + rockPattern, cB = 20 + rockPattern; 
+                                    
+                                    if (hit.exitSide === 1) { cR *= 0.6; cG *= 0.6; cB *= 0.6; } 
+                                    
+                                    cR = (cR * (1 - fogFactor)) + (fR * fogFactor);
+                                    cG = (cG * (1 - fogFactor)) + (fG * fogFactor);
+                                    cB = (cB * (1 - fogFactor)) + (fB * fogFactor);
+                                    
+                                    setRGB(cR, cG, cB);
+                                    ctx.fillRect(screenX, viewY + cliffTop, drawWidth, cliffBot - cliffTop);
+                                }
+                            }
+                            
+                            continue; 
+                        }
+                        // RANDOM TREE TILES ==========================================
+                            if (this.randomTreeTiles.includes(wallID)) {
+                                let pseudoRandom = Math.abs(Math.sin(hit.mapX * 12.9898 + hit.mapY * 78.233)) * 43758.5453 % 1;
+                                heightMult = 2.0 + (pseudoRandom * 2.0); 
+                            }
+                            if (this.toweringWalls.includes(wallID) && !this.tileHeights[wallID]) heightMult = 15.0;
+
+                            const trueDrawStart = wallBottom - (lineHeight * heightMult);
+                            
+                            let drawStart = Math.floor(Math.max(0, trueDrawStart));
+                            hit.topY = drawStart; 
+                            let exitLineHeight = wallScale / hit.exitDist; 
+                            let exitZShift = exitLineHeight * zOffset;     
+                            let exitWallBottom = exitLineHeight / 2 + horizon + exitZShift;
+                            let roofBackY = exitWallBottom - (exitLineHeight * heightMult);
+                            let absoluteTopY = Math.floor(Math.max(0, Math.min(trueDrawStart, roofBackY)));
+
+                        let wallHitX = (side == 0) ? camY + perpWallDist * rayDirY : camX + perpWallDist * rayDirX;
+                        wallHitX -= Math.floor(wallHitX);
+                        let isBar = [88, 91].includes(wallID) && (wallHitX % 0.25 < (wallID===88 ? 0.08 : 0.05));
+
+                        let drawEnd = Math.ceil(Math.min(viewH, wallBottom)) + 1;
+                        let actualDrawHeight = drawEnd - drawStart;
+
+                        let parsed = this.parsedWallColors[wallID];
+                        let baseR = parsed ? parsed.r : 139;
+                        let baseG = parsed ? parsed.g : 69;
+                        let baseB = parsed ? parsed.b : 19;
+
+                    // --- SAFELY ANCHORED 3D ROOFS ---
+                        if (heightMult < 15.0 && wallID !== 91 && wallID !== 88) {
+                            let exitLineHeight = wallScale / hit.exitDist; 
+                            let exitZShift = exitLineHeight * zOffset;     
+                            let exitWallBottom = exitLineHeight / 2 + horizon + exitZShift;
+                            
+                            let roofBackY = exitWallBottom - (exitLineHeight * heightMult);
+                            let rStart = Math.floor(roofBackY);
+                            let rEnd = Math.floor(trueDrawStart) + 1;
+                            
+                            let finalRoofY = Math.max(0, Math.min(rStart, rEnd));
+                            let finalRoofEnd = Math.min(viewH, Math.max(rStart, rEnd));
+                            let roofH = finalRoofEnd - finalRoofY;
+                            
+                            if (roofH > 0 && finalRoofY < viewH) {
+                                let roofR = baseR * 0.4, roofG = baseG * 0.4, roofB = baseB * 0.4;
+                                let roofFog = 0;
+                                let fogStart = dynamicMaxVis * 0.4;
+                                
+                                if (hit.exitDist > fogStart) {
+                                    let ratio = Math.min((hit.exitDist - fogStart) / (dynamicMaxVis - fogStart), 1.0);
+                                    roofFog = ratio * ratio; 
+                                }
+                                if (hit.exitDist > losBlockedDepth) roofFog = 1.0;
+
+                                roofR = (roofR * (1 - roofFog)) + (fR * roofFog);
+                                roofG = (roofG * (1 - roofFog)) + (fG * roofFog);
+                                roofB = (roofB * (1 - roofFog)) + (fB * roofFog);
+
+                                setRGB(roofR, roofG, roofB); 
+                                ctx.fillRect(screenX, viewY + finalRoofY, drawWidth, roofH);
+                            }
+                        }
+
+                        if (actualDrawHeight <= 0) continue;
+
+                    // --- SHADING MATH ---
+                        let intensity = this.noiseLevels[wallID] !== undefined ? this.noiseLevels[wallID] : 20;
+                        let noise = (Math.random() - 0.5) * intensity; 
+                        if (this.mapID !== -1 && perpWallDist > 5) noise = 0;
+
+                        let shade = (163 / (perpWallDist + 1)) + 20; 
+                        if (this.mapID === -1) shade = 193;
+                        if (shade > 255) shade = 255;
+                        if (side === 1) shade *= 0.75; 
+
+                        let brightness = shade / 255;
+                        let r = baseR * brightness + noise;
+                        let g = baseG * brightness + noise;
+                        let b = baseB * brightness + noise;
+                        
                         let fogStart = dynamicMaxVis * 0.4;
                         let fogFactor = 0;
+
                         if (perpWallDist > fogStart) {
                             let ratio = Math.min((perpWallDist - fogStart) / (dynamicMaxVis - fogStart), 1.0);
                             fogFactor = ratio * ratio; 
                         }
                         if (perpWallDist > losBlockedDepth) fogFactor = 1.0;
 
-                        let chasmDepth = (hit.wallID === 97) ? 2.0 : 0.4; // Abyss vs Water
-                        
-                        // 1. CALCULATE FRONT EDGE
-                        // Clamped perfectly to the floor level. NO MORE 15 PIXEL HACK.
-                        // This entirely removes the green spikes and ensures the water naturally tucks beneath the floor.
-                        let frontFloorY = Math.floor(lineHeight / 2 + horizon + zShift);
-                        
-                        // 2. CALCULATE BACK EDGE (The far shore)
-                        let exitLineHeight = wallScale / hit.exitDist;
-                        let exitZShift = exitLineHeight * zOffset;
-                        let backFloorY = Math.floor(exitLineHeight / 2 + horizon + exitZShift);
-                        let backWaterY = Math.floor(backFloorY + (exitLineHeight * chasmDepth));
-
-                        // 3. MAP BORDER DETECTION (The Infinite Horizon)
-                        let isBorder = (hit.exitMapY < 0 || hit.exitMapY >= this.maze.length || hit.exitMapX < 0 || hit.exitMapX >= this.maze[0].length);
-                        let nextTileID = isBorder ? 0 : this.maze[hit.exitMapY][hit.exitMapX];
-                        let nextIsChasm = [93,95,97,99,101].includes(nextTileID);
-
-                        // 4. DRAW THE HORIZONTAL SURFACE
-                        // Perfectly clamped between the solid floor you stand on, and the far shore
-                        let surfaceBot = Math.max(0, Math.min(viewH, frontFloorY)); 
-                        let surfaceTop = isBorder ? Math.floor(horizon) : Math.max(0, Math.min(viewH, backWaterY));
-                        
-                        if (surfaceBot > surfaceTop) {
-                            if (hit.wallID === 97) {
-                                setRGB(10, 5, 15); 
-                                ctx.fillRect(screenX, viewY + surfaceTop, drawWidth, surfaceBot - surfaceTop);
-                            } else {
-                                let wR = 10, wG = 35, wB = 75;
-                                let timeOsc = Date.now() / 400;
-                                let wave = Math.sin((stripX * 0.05) + (hit.mapY * 0.5) + timeOsc) * 15;
-                                let wave2 = Math.cos((stripX * 0.02) - timeOsc) * 10;
-                                wR += wave; wG += (wave + wave2); wB += (wave + wave2 * 2);
-                                
-                                wR = Math.max(0, Math.min(255, (wR * (1 - fogFactor)) + (fR * fogFactor)));
-                                wG = Math.max(0, Math.min(255, (wG * (1 - fogFactor)) + (fG * fogFactor)));
-                                wB = Math.max(0, Math.min(255, (wB * (1 - fogFactor)) + (fB * fogFactor)));
-                                
-                                setRGB(wR, wG, wB);
-                                ctx.fillRect(screenX, viewY + surfaceTop, drawWidth, surfaceBot - surfaceTop);
-                            }
-                        }
-
-                        // 5. DRAW THE FAR SHORE CLIFF 
-                        if (!isBorder && !nextIsChasm && hit.exitDist < dynamicMaxVis) {
-                            let cliffTop = Math.max(0, Math.min(viewH, backFloorY));
-                            let cliffBot = Math.max(0, Math.min(viewH, backWaterY));
-                            
-                            // Ensure the back cliff never bleeds over the foreground floor
-                            cliffBot = Math.min(cliffBot, surfaceBot);
-
-                            if (cliffBot > cliffTop) {
-                                let rockPattern = Math.abs(Math.sin(hit.exitMapX * 12.98 + hit.exitMapY * 78.23)) * 15;
-                                let cR = 30 + rockPattern, cG = 25 + rockPattern, cB = 20 + rockPattern; 
-                                
-                                if (hit.exitSide === 1) { cR *= 0.6; cG *= 0.6; cB *= 0.6; } 
-                                
-                                cR = (cR * (1 - fogFactor)) + (fR * fogFactor);
-                                cG = (cG * (1 - fogFactor)) + (fG * fogFactor);
-                                cB = (cB * (1 - fogFactor)) + (fB * fogFactor);
-                                
-                                setRGB(cR, cG, cB);
-                                ctx.fillRect(screenX, viewY + cliffTop, drawWidth, cliffBot - cliffTop);
-                            }
-                        }
-                        
-                        continue; 
-                    }
-                    // ==========================================
-                    if (this.randomTreeTiles.includes(wallID)) {
-                        let pseudoRandom = Math.abs(Math.sin(hit.mapX * 12.9898 + hit.mapY * 78.233)) * 43758.5453 % 1;
-                        heightMult = 2.0 + (pseudoRandom * 2.0); 
-                    }
-                    if (this.toweringWalls.includes(wallID) && !this.tileHeights[wallID]) heightMult = 15.0;
-
-                    const trueDrawStart = wallBottom - (lineHeight * heightMult);
-                    
-                    let drawStart = Math.floor(Math.max(0, trueDrawStart));
-                    hit.topY = drawStart; 
-                    let exitLineHeight = wallScale / hit.exitDist; 
-                    let exitZShift = exitLineHeight * zOffset;     
-                    let exitWallBottom = exitLineHeight / 2 + horizon + exitZShift;
-                    let roofBackY = exitWallBottom - (exitLineHeight * heightMult);
-                    let absoluteTopY = Math.floor(Math.max(0, Math.min(trueDrawStart, roofBackY)));
-
-                    let wallHitX = (side == 0) ? camY + perpWallDist * rayDirY : camX + perpWallDist * rayDirX;
-                    wallHitX -= Math.floor(wallHitX);
-                    let isBar = [88, 91].includes(wallID) && (wallHitX % 0.25 < (wallID===88 ? 0.08 : 0.05));
-
-                    let drawEnd = Math.ceil(Math.min(viewH, wallBottom)) + 1;
-                    let actualDrawHeight = drawEnd - drawStart;
-
-                    let parsed = this.parsedWallColors[wallID];
-                    let baseR = parsed ? parsed.r : 139;
-                    let baseG = parsed ? parsed.g : 69;
-                    let baseB = parsed ? parsed.b : 19;
-
-                    // --- SAFELY ANCHORED 3D ROOFS ---
-                    if (heightMult < 15.0 && wallID !== 91 && wallID !== 88) {
-                        let exitLineHeight = wallScale / hit.exitDist; 
-                        let exitZShift = exitLineHeight * zOffset;     
-                        let exitWallBottom = exitLineHeight / 2 + horizon + exitZShift;
-                        
-                        let roofBackY = exitWallBottom - (exitLineHeight * heightMult);
-                        let rStart = Math.floor(roofBackY);
-                        let rEnd = Math.floor(trueDrawStart) + 1;
-                        
-                        let finalRoofY = Math.max(0, Math.min(rStart, rEnd));
-                        let finalRoofEnd = Math.min(viewH, Math.max(rStart, rEnd));
-                        let roofH = finalRoofEnd - finalRoofY;
-                        
-                        if (roofH > 0 && finalRoofY < viewH) {
-                            let roofR = baseR * 0.4, roofG = baseG * 0.4, roofB = baseB * 0.4;
-                            let roofFog = 0;
-                            let fogStart = dynamicMaxVis * 0.4;
-                            
-                            if (hit.exitDist > fogStart) {
-                                let ratio = Math.min((hit.exitDist - fogStart) / (dynamicMaxVis - fogStart), 1.0);
-                                roofFog = ratio * ratio; 
-                            }
-                            if (hit.exitDist > losBlockedDepth) roofFog = 1.0;
-
-                            roofR = (roofR * (1 - roofFog)) + (fR * roofFog);
-                            roofG = (roofG * (1 - roofFog)) + (fG * roofFog);
-                            roofB = (roofB * (1 - roofFog)) + (fB * roofFog);
-
-                            setRGB(roofR, roofG, roofB); 
-                            ctx.fillRect(screenX, viewY + finalRoofY, drawWidth, roofH);
-                        }
-                    }
-
-                    if (actualDrawHeight <= 0) continue;
-
-                    // --- SHADING MATH ---
-                    let intensity = this.noiseLevels[wallID] !== undefined ? this.noiseLevels[wallID] : 20;
-                    let noise = (Math.random() - 0.5) * intensity; 
-                    if (this.mapID !== -1 && perpWallDist > 5) noise = 0;
-
-                    let shade = (163 / (perpWallDist + 1)) + 20; 
-                    if (this.mapID === -1) shade = 193;
-                    if (shade > 255) shade = 255;
-                    if (side === 1) shade *= 0.75; 
-
-                    let brightness = shade / 255;
-                    let r = baseR * brightness + noise;
-                    let g = baseG * brightness + noise;
-                    let b = baseB * brightness + noise;
-                    
-                    let fogStart = dynamicMaxVis * 0.4;
-                    let fogFactor = 0;
-
-                    if (perpWallDist > fogStart) {
-                        let ratio = Math.min((perpWallDist - fogStart) / (dynamicMaxVis - fogStart), 1.0);
-                        fogFactor = ratio * ratio; 
-                    }
-                    if (perpWallDist > losBlockedDepth) fogFactor = 1.0;
-
-                    let rawR = r, rawG = g, rawB = b;
-                    r = (r * (1 - fogFactor)) + (fR * fogFactor);
-                    g = (g * (1 - fogFactor)) + (fG * fogFactor);
-                    b = (b * (1 - fogFactor)) + (fB * fogFactor);
-                    let isDetailed = (perpWallDist < (13.0 + (this.currentCamDist || 0)));
-                    let drawFullStrip = true; 
-                    let fadeAlpha = Math.max(0, 1.0 - fogFactor);
+                        let rawR = r, rawG = g, rawB = b;
+                        r = (r * (1 - fogFactor)) + (fR * fogFactor);
+                        g = (g * (1 - fogFactor)) + (fG * fogFactor);
+                        b = (b * (1 - fogFactor)) + (fB * fogFactor);
+                        let isDetailed = (perpWallDist < (13.0 + (this.currentCamDist || 0)));
+                        let drawFullStrip = true; 
+                        let fadeAlpha = Math.max(0, 1.0 - fogFactor);
 
                     // ==========================================
                     // --- PROCEDURAL SCREEN SHADERS ---
@@ -17195,6 +17194,9 @@
                                 if (typeof MusicEngine !== 'undefined') finalActions.push(['play_sfx', 'click']);
                                 let lastLine = this.currentSpeaker.customDialogue[this.currentSpeaker.customDialogue.length - 1];
                                 this.currentSpeaker.customDialogue = [lastLine];
+                            }
+                            else if (this.currentSpeaker.alignment === 'defender') {
+                                 this.currentSpeaker.customDialogue = null;
                             }
                             else if (this.currentSpeaker.role === 'battle') {
                                 this.dCounter = 0;
@@ -50014,7 +50016,7 @@
 
             // --- FIX 2: DISABLE IMAGE SMOOTHING FOR CRISP SCALING ---
             // (We only turn it back on if it's the UI card background, index -27)
-            ctx.imageSmoothingEnabled = false; 
+            ctx.imageSmoothingEnabled = true; 
             let previousBlend = ctx.globalCompositeOperation;
 
             if (index === 99) {
@@ -57027,7 +57029,7 @@
                 // B. NPC CHECK
                         let npcsOnTile = [];
                         for (let npc of Dungeon.npcs) {
-                            if (!npc.visible || npc.isDead || npc.alignment === 'ally'|| npc.alignment === 'escort') continue;
+                            if (!npc.visible || npc.isDead || npc.alignment === 'ally'|| npc.alignment === 'escort'||(npc.alignment === 'defender'&&npc.customDialogue===null)) continue;
                             if (Math.floor(npc.x) === targetX && Math.floor(npc.y) === targetY) {
                                 npcsOnTile.push(npc);
                             }
