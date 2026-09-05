@@ -9036,12 +9036,11 @@
                 this.isLoading = false;
             }
             loadCustomMap(data) {
-                this.loadMap(999)
-                //this.maze = data.maze;
-                //this.skyColor = data.skyColor;
-                //this.floorColor = data.floorColor;
+                this.loadMap(999);
+                this.maze = data.maze;
+                this.skyColor = data.skyColor;
+                this.floorColor = data.floorColor;
                 this.scenarioType = data.scenarioType;
-                //this.npcs = [];
                 this.explored = [];
                 if (this.maze.length > 0) {
                     for (let r = 0; r < this.maze.length; r++) {
@@ -9059,159 +9058,222 @@
                 }
                 this.prevMap = data.prevMapID !== undefined ? data.prevMapID : 0;
 
+                // ===================================================
                 // Spawn AI-Generated NPCs exactly where the server told them to be
-                    if (data.npcs && data.npcs.length > 0) {
-                
-                // Step A: Pool the incoming server data by behavior
-                let serverBosses   = data.npcs.filter(n => n.isBoss);
-                let serverFoes     = data.npcs.filter(n => n.alignment === 'foe' && !n.isBoss);
-                let serverFriends  = data.npcs.filter(n => n.alignment === 'friendly' || n.alignment === 'defender');
-                let serverShops    = data.npcs.filter(n => n.role === 'shop');
-
-                // Step B: Inject Server Scripts into Static Client NPCs
-                this.npcs.forEach(clientNPC => {
-                    let injectedData = null;
-
-                    // 1. Boss Injection (e.g., Arena Master ID: 2, Mimic ID: 4)
-                    if (clientNPC.isBoss || clientNPC.id === 2 || clientNPC.id === 4) {
-                        if (serverBosses.length > 0) injectedData = serverBosses.shift();
-                    }
-                    // 2. Shop Injection (e.g., Traveling Merchant ID: 3)
-                    else if (clientNPC.role === 'shop' || clientNPC.id === 3) {
-                        if (serverShops.length > 0) injectedData = serverShops.shift();
-                    }
-                    // 3. Foe Injection (e.g., Highway Mugger ID: 1)
-                    else if (clientNPC.alignment === 'foe' || clientNPC.id === 1) {
-                        if (serverFoes.length > 0) injectedData = serverFoes.shift();
-                    }
-                    // 4. Friendly/Lore Injection (e.g., Gambler ID: 5, Guild Clerks > 200)
-                    else if (clientNPC.alignment === 'friendly' || clientNPC.id >= 200) {
-                        if (serverFriends.length > 0) injectedData = serverFriends.shift();
-                    }
-
-                    // Step C: Apply the Hijacked Data!
-                    if (injectedData) {
-                        // Overwrite Dialogue
-                        if (injectedData.dialogue) {
-                            clientNPC.customDialogue = typeof injectedData.dialogue === 'string' 
-                                ? [injectedData.dialogue] 
-                                : injectedData.dialogue;
-                        }
-
-                        // Overwrite Deck & Sprite (So static enemies match the biome theme!)
-                        if (injectedData.deck && injectedData.deck.length > 0 && clientNPC.role !== 'shop') {
-                            clientNPC.deck = injectedData.deck;
-                            clientNPC.type = injectedData.type; // Updates their look to match the server's monster type
-                        }
-
-                        // Overwrite Shop Inventory
-                        if (clientNPC.role === 'shop' && injectedData.deck) {
-                            clientNPC.deck = injectedData.deck;
-                            clientNPC.endActions = [['open_shop', injectedData.deck], ['play_sfx', 'click']];
-                        }
-                    }
-                });
-
                 // ===================================================
-                // Step D: Spawn the Leftovers safely!
-                // (Any server NPCs that didn't get hijacked into a static NPC)
-                // ===================================================
-                let leftoverNPCs = [...serverBosses, ...serverFoes, ...serverFriends, ...serverShops];
-                
-                leftoverNPCs.forEach((npc, index) => {
-                    let safeType = npc.type || 82; 
-                    let safeState = npc.state || 'chasing';
-                    let safeRole = npc.role || 'battle';
-                    let safeColor = npc.color || '#ff0000';
-                    let safeDeck = (npc.deck && npc.deck.length > 0) ? npc.deck : [Math.floor(safeType)];
-                    let safeDialogue = typeof npc.dialogue === 'string' ? [npc.dialogue] : npc.dialogue;
-                    let spawnIndex = npc.index !== undefined ? npc.index : (100 + index);
+                if (data.npcs && data.npcs.length > 0) {
+                    // Step A: Pool the incoming server data by behavior
+                    let serverBosses   = data.npcs.filter(n => n.isBoss);
+                    let serverFoes     = data.npcs.filter(n => n.alignment === 'foe' && !n.isBoss);
+                    let serverFriends  = data.npcs.filter(n => n.alignment === 'friendly' || n.alignment === 'defender');
+                    let serverShops    = data.npcs.filter(n => n.role === 'shop');
 
-                    // Get safe spawn using server coordinates as a target!
-                    let safePos = this.getSafeSpawn(npc.x, npc.y, 6);
+                    // Step B: Inject Server Scripts into Static Client NPCs
+                    this.npcs.forEach(clientNPC => {
+                        let injectedData = null;
 
-                    this.npcs.push(Object.assign(new NPC(
-                        spawnIndex, safePos.x, safePos.y - 0.5, safeType, safeState, safeColor, safeDeck, safeRole, 
-                        npc.isBoss || false, npc.alignment || 'foe'
-                    ), {
-                        customDialogue: safeDialogue,
-                        options: npc.options || null,
-                        endActions: npc.endActions || [],
-                        deathActions: npc.deathActions || [],
-                        yesActions: npc.yesActions || null,
-                        noActions: npc.noActions || null
-                    }));
-                });
+                        if (clientNPC.isBoss || clientNPC.id === 2 || clientNPC.id === 4) {
+                            if (serverBosses.length > 0) injectedData = serverBosses.shift();
+                        }
+                        else if (clientNPC.role === 'shop' || clientNPC.id === 3) {
+                            if (serverShops.length > 0) injectedData = serverShops.shift();
+                        }
+                        else if (clientNPC.alignment === 'foe' || clientNPC.id === 1) {
+                            if (serverFoes.length > 0) injectedData = serverFoes.shift();
+                        }
+                        else if (clientNPC.alignment === 'friendly' || clientNPC.id >= 200) {
+                            if (serverFriends.length > 0) injectedData = serverFriends.shift();
+                        }
+
+                        // Step C: Apply the Hijacked Data!
+                        if (injectedData) {
+                            if (injectedData.dialogue) {
+                                clientNPC.customDialogue = typeof injectedData.dialogue === 'string' 
+                                    ? [injectedData.dialogue] 
+                                    : injectedData.dialogue;
+                            }
+                            if (injectedData.deck && injectedData.deck.length > 0 && clientNPC.role !== 'shop') {
+                                clientNPC.deck = injectedData.deck;
+                                clientNPC.type = injectedData.type; 
+                            }
+                            if (clientNPC.role === 'shop' && injectedData.deck) {
+                                clientNPC.deck = injectedData.deck;
+                                clientNPC.endActions = [['open_shop', injectedData.deck], ['play_sfx', 'click']];
+                            }
+                        }
+                    });
+
+                    // Step D: Spawn the Leftovers safely!
+                    let leftoverNPCs = [...serverBosses, ...serverFoes, ...serverFriends, ...serverShops];
+                    
+                    leftoverNPCs.forEach((npc, index) => {
+                        let safeType = npc.type || 82; 
+                        let safeState = npc.state || 'chasing';
+                        let safeRole = npc.role || 'battle';
+                        let safeColor = npc.color || '#ff0000';
+                        let safeDeck = (npc.deck && npc.deck.length > 0) ? npc.deck : [Math.floor(safeType)];
+                        let safeDialogue = typeof npc.dialogue === 'string' ? [npc.dialogue] : npc.dialogue;
+                        let spawnIndex = npc.index !== undefined ? npc.index : (100 + index);
+
+                        let safePos = this.getSafeSpawn(npc.x, npc.y, 6);
+
+                        this.npcs.push(Object.assign(new NPC(
+                            spawnIndex, safePos.x, safePos.y - 0.5, safeType, safeState, safeColor, safeDeck, safeRole, 
+                            npc.isBoss || false, npc.alignment || 'foe'
+                        ), {
+                            customDialogue: safeDialogue,
+                            options: npc.options || null,
+                            endActions: npc.endActions || [],
+                            deathActions: npc.deathActions || [],
+                            yesActions: npc.yesActions || null,
+                            noActions: npc.noActions || null
+                        }));
+                    });
                 }
-                
+
+                // ===================================================
+                // Step E: DYNAMIC WILDERNESS POI INJECTOR (Sub-Plots)
+                // ===================================================
+                let aiScripts = data.poiScripts || {};
+                // Find all safe, empty floor tiles far away from the player
+                let validPOIFloors = [];
+                if (this.maze && this.maze.length > 0) {
+                    for (let y = 2; y < this.maze.length - 2; y++) {
+                        for (let x = 2; x < this.maze[0].length - 2; x++) {
+                            // Empty floor tile, and at least 8 tiles away from the player spawn
+                            if (this.maze[y][x] === 0 && Math.abs(x - this.x) > 8 && Math.abs(y - this.y) > 8) {
+                                validPOIFloors.push({x, y});
+                            }
+                        }
+                    }
+                }
+
+                // If we have enough room, spawn 1 or 2 random mini-scenarios
+                if (validPOIFloors.length > 10) {
+                    validPOIFloors.sort(() => Math.random() - 0.5);
+                    let numPOIsToSpawn = Math.random() > 0.5 ? 2 : 1; 
+                    let scenarios = [0, 1, 2, 3, 4].sort(() => Math.random() - 0.5);
+
+                    for (let i = 0; i < numPOIsToSpawn; i++) {
+                        let loc = validPOIFloors[i];
+                        let px = loc.x + 0.5;
+                        let py = loc.y + 0.5;
+                        let uID = 900000 + Math.floor(Math.random() * 9000); 
+                        let scenarioId = scenarios[i];
+
+                        if (scenarioId === 0) {
+                            let n = new NPC(uID, px, py, 252, 'stationary', '#ffff00', [252], 'dialogue', false, 'friendly');
+                            // USE THE AI SCRIPT HERE!
+                            n.customDialogue = [aiScripts.narcissist || "Behold my magnificent victory!", "Don't you agree I am the greatest?"];
+                            n.options = ['Praise Them', 'Insult Them'];
+                            n.yesActions = [['play_sfx', 'chime'], ['notify', { text: "They laugh obnoxiously and throw some gold at you.", endActions: [['give_card', 10], ['close_dialogue', null]] }]];
+                            n.noActions = [['play_sfx', 'horn'], ['notify', { text: "HOW DARE YOU! DIE!", endActions: [['close_dialogue', null]] }], ['transform_npc', { index: uID, newAlignment: 'foe', newRole: 'battle', newState: 'chasing', clearDialogue: true, newIsBoss: true }]];
+                            this.npcs.push(n);
+                        } 
+                        else if (scenarioId === 1) {
+                            let n = new NPC(uID, px, py, 94, 'stationary', '#00ff00', [13, 93, 82, 28], 'dialogue', false, 'friendly');
+                            // USE THE AI SCRIPT HERE!
+                            n.customDialogue = [aiScripts.lunchBreak || "I'm on break.", "Buy something or leave."];
+                            n.options = ['Trade', 'Slay the Fiend!'];
+                            n.yesActions = [['open_shop', [13, 93, 82, 28]], ['play_sfx', 'click']];
+                            n.noActions = [['play_sfx', 'scream'], ['transform_npc', { index: uID, newAlignment: 'foe', newRole: 'battle', clearDialogue: true }], ['notify', { text: "UNION VIOLATION! GET HIM!", endActions: [['close_dialogue', null]] }]];
+                            this.npcs.push(n);
+                        }
+                        else if (scenarioId === 2) {
+                            let n = new NPC(uID, px, py, 258, 'stationary', '#ffff00', [258], 'dialogue', false, 'friendly');
+                            // USE THE AI SCRIPT HERE!
+                            n.customDialogue = [aiScripts.grudge || "See that beast? It looked at me funny.", "Help me jump it."];
+                            n.options = ['Help Assassinate', 'Get Help, Weirdo'];
+                            n.yesActions = [['play_sfx', 'slash'], ['disappear', uID], ['spawn_ephemeral_npc', { index: uID+1, x: px+1, y: py, sprite: 225, state: 'stationary', role: 'battle', alignment: 'foe', isBoss: true, deathActions: [['give_card', 10], ['notify', {text:"The 'threat' has been neutralized.", endActions:[['close_dialogue', null]]}]]}], ['close_dialogue', null]];
+                            n.noActions = [['play_sfx', 'cancel'], ['notify', { text: "You're blind to the truth! Take this curse!", endActions: [['close_dialogue', null]] }], ['transform_npc', { index: uID, newAlignment: 'foe_coward', newState: 'fleeing', clearDialogue: true }]];
+                            this.npcs.push(n);
+                        }
+                        else if (scenarioId === 3) {
+                            let n = new NPC(uID, px, py, 297, 'wandering', '#00ff00', [297], 'dialogue', false, 'friendly');
+                            // USE THE AI SCRIPT HERE!
+                            n.customDialogue = [aiScripts.curse || "Oh god, I'm cursed!", "Do you have any cleansing magic?!"];
+                            n.options = ['Cast Cleansing Spell', 'Walk Away Holding Nose'];
+                            n.yesActions = [['play_sfx', 'heal'], ['notify', { text: "You cast a spell... The stink fades!", endActions: [['close_dialogue', null]] }], ['become_ally', 297], ['transform_npc', { index: uID, clearDialogue: true, customDialogue: ["I owe you my life! Lead the way!"] }]];
+                            n.noActions = [['close_dialogue', null]];
+                            this.npcs.push(n);
+                        }
+                        else if (scenarioId === 4) {
+                            let n = new NPC(uID, px, py, 255, 'stationary', '#ffff00', [255], 'dialogue', false, 'friendly');
+                            // USE THE AI SCRIPT HERE!
+                            n.customDialogue = [aiScripts.lovelorn || "Oh, my heart aches! I'm in love with a monster.", "Should I confess?"];
+                            n.options = ['Follow Your Heart', 'That is a Terrible Idea'];
+                            n.yesActions = [['play_sfx', 'dash'], ['notify', { text: "They run off to confess their love...", endActions: [['close_dialogue', null]] }], ['transform_npc', { index: uID, newAlignment: 'friendly_shy', newState: 'fleeing', clearDialogue: true }]];
+                            n.noActions = [['play_sfx', 'chime'], ['notify', { text: "You're right... Take this for your wisdom.", endActions: [['give_card', 10], ['close_dialogue', null]] }], ['disappear', uID]];
+                            this.npcs.push(n);
+                        }
+                    }
+                }
+
+                // ===================================================
+                // Step F: BIOME MUSIC AND WEATHER RESOLUTION
+                // ===================================================
                 let song999 = 44;
-                    if (data.biome){
+                if (data.biome){
                     this.biome = data.biome;
                     if (data.biome === "Sylvan"){
-                    song999 = rnd(0,1);
-                    if (song999 === 0){song999 = 10}
-                    if (song999 === 1){song999 = 2}
+                        song999 = rnd(0,1);
+                        if (song999 === 0){song999 = 10}
+                        if (song999 === 1){song999 = 2}
                     }
                     if (data.biome === "Ruins"){
-                    song999 = rnd(0,2);
-                    if (song999 === 0){song999 = 28}
-                    if (song999 === 1){song999 = 6}
-                    if (song999 === 2){song999 = 44}
+                        song999 = rnd(0,2);
+                        if (song999 === 0){song999 = 28}
+                        if (song999 === 1){song999 = 6}
+                        if (song999 === 2){song999 = 44}
                     }
                     if (data.biome === "Desert"){
-                    song999 = rnd(0,2);
-                    if (song999 === 0){song999 = 32}
-                    if (song999 === 1){song999 = 38}
-                    if (song999 === 2){song999 = 44}
+                        song999 = rnd(0,2);
+                        if (song999 === 0){song999 = 32}
+                        if (song999 === 1){song999 = 38}
+                        if (song999 === 2){song999 = 44}
                     }
                     if (data.biome === "Snow"){
-                    song999 = rnd(0,1);
-                    if (song999 === 0){song999 = 31}
-                    if (song999 === 1){song999 = 20}
+                        song999 = rnd(0,1);
+                        if (song999 === 0){song999 = 31}
+                        if (song999 === 1){song999 = 20}
                     }
-                    if (data.biome === "Void"){/////
-                    song999 = rnd(0,4);
-                    if (song999 === 0){song999 = 23}
-                    if (song999 === 1){song999 = 29}
-                    if (song999 === 2){song999 = 27}
-                    if (song999 === 3){song999 = 28}
+                    if (data.biome === "Void"){
+                        song999 = rnd(0,4);
+                        if (song999 === 0){song999 = 23}
+                        if (song999 === 1){song999 = 29}
+                        if (song999 === 2){song999 = 27}
+                        if (song999 === 3){song999 = 28}
                     }
-                    if (data.biome === "Sea"){////////
-                    song999 = rnd(0,1);
-                    if (song999 === 0){song999 = 36}
-                    if (song999 === 1){song999 = 44}
+                    if (data.biome === "Sea"){
+                        song999 = rnd(0,1);
+                        if (song999 === 0){song999 = 36}
+                        if (song999 === 1){song999 = 44}
                     }
                     if (data.biome === "Castle"){
-                    song999 = rnd(0,1);
-                    if (song999 === 0){song999 = 11}
-                    if (song999 === 1){song999 = 34}
+                        song999 = rnd(0,1);
+                        if (song999 === 0){song999 = 11}
+                        if (song999 === 1){song999 = 34}
                     }
                     if (data.biome === "Otherworld"){
-                    song999 = rnd(0,3);
-                    if (song999 === 0){song999 = 37}
-                    if (song999 === 1){song999 = 18}
-                    if (song999 === 2){song999 = 44}
+                        song999 = rnd(0,3);
+                        if (song999 === 0){song999 = 37}
+                        if (song999 === 1){song999 = 18}
+                        if (song999 === 2){song999 = 44}
                     }
                     if (data.biome === "Tomb"){
-                    song999 = rnd(0,2);
-                    if (song999 === 0){song999 = 39}
-                    if (song999 === 1){song999 = 19}
-                    if (song999 === 2){song999 = 44}
+                        song999 = rnd(0,2);
+                        if (song999 === 0){song999 = 39}
+                        if (song999 === 1){song999 = 19}
+                        if (song999 === 2){song999 = 44}
                     }
                 }
-                //if (this.activeSummons && this.activeSummons.length > 0) {
-                //    for (let i = 0; i < this.activeSummons.length; i++) {
-                //        let cardData = this.activeSummons[i];
-                        // Re-summon them seamlessly without duplicating save data
-                //        this.summonAlly(cardData, true); 
-               //     }
-               // }
+                
                 if (typeof MusicEngine !== 'undefined') {
                     MusicEngine.stop();
                     MusicEngine.play(song999);
                 }
                 console.log(`Loaded Custom AI Map: ${data.name}`);
-                }
+            }
             registerClick(x, y) {
                 this.clickInput = { x: x, y: y };
                 // --- CHECK BUTTON PRESS ---
