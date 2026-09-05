@@ -2746,7 +2746,7 @@
                 92: { type: 'imbue', name: 'Imbue Fire', consume: 26, cooldown: 3000 },
                 93: { type: 'projectile', name: 'Lightning',cooldown: 7000, castStat: 2, defStat: 3, color: [1,1,0], glow: '#ffff00', model3D: 'd4', isHoming: true, chains: 1 },
                 94: { type: 'projectile', name: 'Ice Shard',cooldown: 9000,     castStat: 2, defStat: 1, color: [0,0,1], glow: '#0000ff', model3D: 'd4', isHoming: false  },
-                9999: { type: 'projectile', name: 'Attack', castStat: 0, defStat: 1, color: [1,1,1], glow: '#ffff00', sprite2D: 315, isHoming: true, range: 1.3, knockback: 1.3 },
+                9999: { type: 'projectile', name: 'Attack', castStat: 0, defStat: 1, color: [1,1,1], glow: '#ffff00', sprite2D: 316, isHoming: true, range: 1.3, knockback: 1.3 },
                 9998: { type: 'projectile', name: 'Imbued Attack', castStat: 0, defStat: 1, color: [1,0.5,0], glow: '#ff0000', sprite2D: -37, isHoming: false, knockback: 1.5 },
                 // // --- INSTANT FRONTAL AoE (Cone) ---
                 95: { type: 'cone', name: 'Flurry',cooldown: 3000, castStat: 3, defStat: 1, range: 3.0, knockback: 2, angle: 0.5 },
@@ -2950,7 +2950,7 @@
                     188: { name: "Bear", type: "monster", rank: "Eight", classes: ["Warrior", "Knight"], power: 40 },
                     191: { name: "Wolf", type: "monster", rank: "Eighteen", classes: ["Knight", "Warrior"], power: 40 },
                     194: { name: "Boar", type: "monster", rank: "Seven", classes: ["Warrior", "Knight"], power: 40 },
-                    197: { name: "Vampire", type: "monster", rank: "Temptation", classes: ["Mage", "Rogue", "Knight"], power: 40 },
+                    197: { name: "Vampire", type: "monster", rank: "XV", classes: ["Mage", "Rogue", "Knight"], power: 40 },
                     200: { name: "Spriggan", type: "monster", rank: "Seven", classes: ["Mage", "Druid"], power: 20 },
                     203: { name: "Dullahan", type: "monster", rank: "Knight", classes: ["Warrior", "Knight"], power: 35 },
                     206: { name: "Wyvern", type: "monster", rank: "Nine", classes: ["Warrior", "Hunter", "Rogue"], power: 25 },
@@ -2963,7 +2963,7 @@
                     228: { name: "Bird", type: "monster", rank: "Nine", classes: ["Hunter", "Druid", "Mage"], power: 10 },
                     231: { name: "Hart", type: "monster", rank: "King", classes: ["Knight", "Druid", "Hunter"], power: 20 },
                     234: { name: "Squirrel", type: "monster", rank: "Four", classes: ["Rogue"], power: 5 },
-                    237: { name: "Suncat", type: "monster", rank: "The Fool", classes: ["Rogue", "Mage", "Hunter", "Druid"], power: 30 },
+                    237: { name: "Suncat", type: "monster", rank: "0", classes: ["Rogue", "Mage", "Hunter", "Druid"], power: 30 },
                     240: { name: "Fox", type: "monster", rank: "Seven", classes: ["Rogue", "Hunter", "Mage"], power: 15 },
                     246: { name: "Auroch", type: "monster", rank: "Seven", classes: ["Warrior", "Knight"], power: 20 },
                     249: { name: "Dancer", type: "monster", rank: "Knight", classes: ["Priest", "Mage", "Rogue"], power: 20 },
@@ -2973,7 +2973,7 @@
                     261: { name: "Mage", type: "monster", rank: "Page", classes: ["Mage"], power: 25 },
                     264: { name: "Hunter", type: "monster", rank: "Knight", classes: ["Hunter", "Rogue"], power: 20 },
                     267: { name: "Giant Bat", type: "monster", rank: "Five", classes: ["Rogue", "Hunter", "Druid"], power: 10 },
-                    270: { name: "Questing Beast", type: "monster", rank: "The Fool", classes: ["Warrior", "Knight", "Mage", "Druid", "Hunter"], power: 40 },
+                    270: { name: "Questing Beast", type: "monster", rank: "0", classes: ["Warrior", "Knight", "Mage", "Druid", "Hunter"], power: 40 },
                     273: { name: "Magma Warrior", type: "monster", rank: "King", classes: ["Warrior", "Knight", "Mage"], power: 35 },
                     276: { name: "Skeleton Warrior", type: "monster", rank: "Seven", classes: ["Warrior", "Knight"], power: 15 },
                     279: { name: "Giant Frog", type: "monster", rank: "Four", classes: ["Hunter", "Druid"], power: 15 },
@@ -2982,7 +2982,7 @@
                     297: { name: "Drunken Man", type: "monster", rank: "Page", classes: ["Rogue", "Warrior"], power: 10 },
                     300: { name: "Buck", type: "monster", rank: "Knight", classes: ["Druid", "Hunter", "Knight"], power: 15 },
                     306: { name: "Mounted Knight", type: "monster", rank: "King", classes: ["Knight", "Warrior"], power: 40 },
-                    309: { name: "King", type: "monster", rank: "The Emperor", classes: ["Knight", "Warrior", "Priest"], power: 40 },
+                    309: { name: "King", type: "monster", rank: "IV", classes: ["Knight", "Warrior", "Priest"], power: 40 },
                     315: { name: "Flying Sword", type: "monster", rank: "Ace", classes: ["Mage", "Knight", "Warrior"], power: 20 },
                     318: { name: "Ghoul", type: "monster", rank: "Six", classes: ["Rogue", "Warrior", "Mage"], power: 15 },
 
@@ -3028,8 +3028,31 @@
         let ani = 0;
         let portraitani = 0;
         let dragY = 0;
-        
-
+        const SPRITE_CONFIGS = {};
+        const MODEL_UPGRADES = {
+            23: { id: 108 }, // Wisp
+            88: { id: 140, variant: 'mirage' },
+            54: { id: 111 }, // Goblin
+            56: { id: 117 }, // Imp
+            57: { id: 114 }, "57.1": { id: 114 }, // Spider
+            79: { id: 143, variant: 'fire' },
+            81: { id: 120 }, // Ice Golem
+            82: { id: 123 }, // Skeleton
+            85: { id: 164, variant: 'ghost_knight' },
+            86: { id: 126 }, // Dark Sylph
+            61: { id: 149, variant: 'light' }, "61.1": { id: 149, variant: 'light' }, 
+            33: { id: 129 }, "33.1": { id: 129 }, // Salamander
+            60: { id: 131 }, "60.1": { id: 131 }, // Pixie
+            74: { id: 134 }, "74.1": { id: 134 }, // Gargoyle
+            42: { id: 155 }, "42.1": { id: 155 }, // Shade
+            75: { id: 161, variant: 'brown_knight' }, "75.1": { id: 161, variant: 'brown_knight' },
+            91: { id: 106 },
+            62: { id: 173 }, "62.1": { id: 173 }, // Queen
+            76: { id: 176 }, "76.1": { id: 176 }, // Green
+            48: { id: 179 }, "48.1": { id: 179 }, // Blue
+            34: { id: 182 }, "34.1": { id: 182 }, // Red
+            999: { id: 185 }, 61391: { id: 185 }  // Black
+        };        
     //BATTLE ENGINE VARIABLES
         let spellcheck = 0;
         let winSpellTie = 0;
@@ -6893,7 +6916,8 @@
 
             if (!this.isDead && typeof MusicEngine !== 'undefined') {
                 if (this.type === 23 || this.type === 23.1 || this.type === 42) {
-                    this.wispTimer++;
+                    // Multiply by 60 so 1 second of real time = 60 points of timer progression
+                    this.wispTimer += (60 * dt); 
                     if (this.wispTimer > 100) {
                         if (Math.random() > 0.999) { 
                             MusicEngine.play3DSFX('ghost', this.x, this.y, playerX, playerY, dungeon.dir);
@@ -6904,7 +6928,7 @@
                 
                 const gruntTypes = [74.1, 77.2, 90, 54, 56, 56.1, 81, 37.1, 61.2];
                 if (gruntTypes.includes(this.type)) {
-                    this.gruntTimer++;
+                    this.gruntTimer += (60 * dt); // Scaled by dt
 
                     if (this.gruntTimer > 100) {
                         if ((this.type === 77.2 || this.type === 90) && typeof isChasingNPC !== 'undefined' && isChasingNPC === true) {
@@ -7995,19 +8019,24 @@
             let flatMod = this.stat[statIndex][2] + (this.level || 0); 
 
             // 2. Tally up all Active Buffs and Debuffs dynamically
-            let activeMod = 0;
-            if (this.activeBuffs) {
-                this.activeBuffs.forEach(buff => {
-                    // Add buffs
-                    if (buff.type === 'buff' || buff.type === 'item_buff') {
-                        if (buff.buffStat === statIndex || buff.buffStat === 'all') activeMod += buff.amount;
-                    }
-                    // Subtract debuffs
-                    if (buff.type === 'debuff') {
-                        if (buff.debuffStat === statIndex || buff.debuffStat === 'all') activeMod -= buff.amount;
-                    }
-                });
-            }
+                let activeMod = 0;
+                if (this.activeBuffs) {
+                    this.activeBuffs.forEach(buff => {
+                        // A. Standard Buffs
+                        if (buff.type === 'buff' || buff.type === 'item_buff') {
+                            if (buff.buffStat === statIndex || buff.buffStat === 'all') activeMod += buff.amount;
+                        }
+                        // B. Standard Debuffs
+                        if (buff.type === 'debuff') {
+                            if (buff.debuffStat === statIndex || buff.debuffStat === 'all') activeMod -= buff.amount;
+                        }
+                        // C. Multi-Stat items (like the Tome)
+                        if (buff.multiStat) {
+                            let match = buff.multiStat.find(m => m.stat === statIndex);
+                            if (match) activeMod += match.amount;
+                        }
+                    });
+                }
 
             // Combine permanent progress points with temporary buff points
             let totalMod = flatMod + activeMod;
@@ -9765,11 +9794,8 @@
                 let startNode = { x: Math.floor(startX), y: Math.floor(startY), g: 0, h: 0, f: 0, parent: null };
                 let targetNode = { x: Math.floor(targetX), y: Math.floor(targetY) };
 
-                // --- NEW: THE AI LEASH ---
-                // Do not attempt to pathfind if the target is insanely far away.
                 if (Math.abs(startNode.x - targetNode.x) > 20 || Math.abs(startNode.y - targetNode.y) > 20) return [];
 
-                // Create the 30x30 bounding box around the NPC
                 let minX = Math.max(0, startNode.x - 15);
                 let maxX = Math.min(this.maze[0].length - 1, startNode.x + 15);
                 let minY = Math.max(0, startNode.y - 15);
@@ -9784,8 +9810,22 @@
                 while (openList.length > 0 && steps < maxSteps) {
                     steps++;
                     
-                    openList.sort((a, b) => a.f - b.f);
-                    let currentNode = openList.shift();
+                    // --- FASTER $O(N)$ MIN-FIND WITH $O(1)$ REMOVAL ---
+                    let minIndex = 0;
+                    for (let i = 1; i < openList.length; i++) {
+                        if (openList[i].f < openList[minIndex].f) {
+                            minIndex = i;
+                        }
+                    }
+                    
+                    let currentNode = openList[minIndex];
+                    
+                    // Swap the lowest node with the end of the array, then pop it.
+                    // This completely eliminates the array shifting penalty!
+                    openList[minIndex] = openList[openList.length - 1];
+                    openList.pop();
+                    // --------------------------------------------------
+
                     closedList.add(currentNode.x + (currentNode.y * 10000));
 
                     if (currentNode.x === targetNode.x && currentNode.y === targetNode.y) {
@@ -9806,10 +9846,7 @@
                         let nx = currentNode.x + dir.x;
                         let ny = currentNode.y + dir.y;
 
-                        // --- NEW: BOUNDING BOX CHECK ---
-                        // Ignore anything outside the local 30x30 bubble!
                         if (nx < minX || nx > maxX || ny < minY || ny > maxY) continue;
-
                         if (this.isWall(nx, ny)) continue;
                         if (closedList.has(nx + (ny * 10000))) continue;
 
@@ -9862,7 +9899,8 @@
                 }
 
                 let queue = [{ x: startXInt, y: startYInt }];
-                
+                let head = 0; // <-- The tracking pointer
+
                 this.flowField[startYInt][startXInt].x = 0; 
                 this.flowField[startYInt][startXInt].y = 0;
                 this.flowField[startYInt][startXInt].active = true;
@@ -9871,14 +9909,15 @@
                     {x: 0, y: -1}, {x: 0, y: 1}, {x: -1, y: 0}, {x: 1, y: 0}, 
                 ];
 
-                while (queue.length > 0) {
-                    let current = queue.shift();
+                // Replaced queue.length > 0 with head < queue.length
+                while (head < queue.length) {
+                    // Grab the current item and increment the head pointer, zero array shifting!
+                    let current = queue[head++]; 
 
                     for (let dir of dirs) {
                         let nx = current.x + dir.x;
                         let ny = current.y + dir.y;
 
-                        // --- NEW: ENFORCE THE BUBBLE IN THE FLOOD FILL ---
                         if (nx >= minX && nx <= maxX && ny >= minY && ny <= maxY) {
                             if (!this.isWall(nx, ny) && !this.flowField[ny][nx].active) {
                                 let dx = current.x - nx;
@@ -10827,10 +10866,13 @@
                         
                         if (dist > 0) {
                             let imageIndex = Number(this.focusTarget.type);
-                            if (typeof getUpgradedImageIndex === 'function') imageIndex = getUpgradedImageIndex(imageIndex);
                             
-                            let config = this.getSpriteConfig(this.focusTarget, 0, imageIndex); 
+                            // Look up the 3D override instantly!
+                            if (MODEL_UPGRADES[imageIndex]) {
+                                imageIndex = MODEL_UPGRADES[imageIndex].id;
+                            }
                             
+                            let config = this.getSpriteConfig(this.focusTarget, 0, imageIndex);
                             // 1. HORIZONTAL TRACKING (PAN)
                             let desiredAngle = Math.atan2(dx, -dy);
                             let panNeeded = (desiredAngle + (config.facePan || 0)) - this.currentAngle;
@@ -11297,7 +11339,10 @@
                                 type: n.type, 
                                 dirX: n.dirX,
                                 dirY: n.dirY,
-                                dir: n.dir !== undefined ? n.dir : ((Math.round(Math.atan2(n.dirX || 0, -(n.dirY || 1)) / (Math.PI / 2)) + 4) % 4)
+                                dir: n.dir !== undefined ? n.dir : ((Math.round(Math.atan2(n.dirX || 0, -(n.dirY || 1)) / (Math.PI / 2)) + 4) % 4),
+                                // NEW: Tell the other players what animation state this summon is in!
+                                isMoving: (Math.abs(n.x - (n.lastX||n.x)) > 0.005 || Math.abs(n.y - (n.lastY||n.y)) > 0.005),
+                                isAttacking: (n.attackAnimTimer > 0 || n.combatCooldown > 0)
                             }));
 
                         if (typeof socket !== 'undefined') {
@@ -11387,6 +11432,8 @@
                                                     dir: summon.dir,
                                                     dirX: summon.dirX,
                                                     dirY: summon.dirY,
+                                                    isMoving: summon.isMoving,       // <--- ADD THIS
+                                                    isAttacking: summon.isAttacking,
                                                     isRemoteSummon: true,
                                                     ownerName: rp.name,
                                                     socketId: id,
@@ -11488,7 +11535,7 @@
                             let anyCap = 0 + getDiceTier(this.stat[3][1]);
                             
                             // Allow up to 9 slots for Battle-Mage based on stats
-                            maxSlots = Math.min(9, monsterCap + itemCap + spellCap + anyCap);
+                            maxSlots = Math.min(6, monsterCap + itemCap + spellCap + anyCap);
                         } else {
                             // STANDARD CLASSES: Continuously refresh to check for expired cooldowns
                             this.updateSkills();
@@ -11909,7 +11956,7 @@
                                     if (npc.type == -27){
                                         let cardID = npc.deck ? npc.deck[0] : 0;
                                         
-                                        ctx.imageSmoothingEnabled = true; // <--- TURN ON
+                                        ctx.imageSmoothingEnabled = false; // <--- TURN ON
                                         drawPortrait(-27, 0, 0, 1, cardID); 
                                         ctx.imageSmoothingEnabled = false; // <--- TURN OFF
                                         
@@ -11954,7 +12001,7 @@
                                             drawScale *= zoomMult;
                                         }
 
-                                        ctx.imageSmoothingEnabled = true; // <--- TURN ON
+                                        ctx.imageSmoothingEnabled = false; // <--- TURN ON
                                         drawPortrait(imageToDraw, drawX, drawY, drawScale);
                                         ctx.imageSmoothingEnabled = false; // <--- TURN OFF
                                         
@@ -12119,7 +12166,7 @@
                                     drawY2 -= offset2 * 10;
                                     drawScale2 *= pSZ;
                                 
-                                    ctx.imageSmoothingEnabled = true; // <--- TURN ON
+                                    ctx.imageSmoothingEnabled = false; // <--- TURN ON
                                     drawPortrait(316, drawX2, drawY2, drawScale2);
                                     ctx.imageSmoothingEnabled = false; // <--- TURN OFF
                                         
@@ -12617,9 +12664,9 @@
                 if (rayDirY < 0) { stepY = -1; sideDistY = (camY - mapY) * deltaDistY; }
                 else { stepY = 1; sideDistY = (mapY + 1 - camY) * deltaDistY; }
 
-                let dynamicMaxVis = Math.max(2, Math.round(this.dSense / 3));
-                const MAX_RENDER_DEPTH = Math.min(32, dynamicMaxVis + 1); 
-                
+                // THE FIX: Push the Z-Buffer and Fog Depth back to account for 3rd person!
+                let dynamicMaxVis = Math.max(2, Math.round(this.dSense / 3)) + (this.currentCamDist || 0);
+                const MAX_RENDER_DEPTH = Math.min(32, dynamicMaxVis + 1);
                 let hitCount = 0;
                 let solidHit = false;
                 let losBlockedDepth = MAX_RENDER_DEPTH;
@@ -13548,9 +13595,7 @@
                 }
 
 
-            // ==========================================
-            // --- 2D MODE: MINI-ATLAS ---
-            // ==========================================
+
             drawAtlasMinimap(ctx, viewX, viewY, viewW, viewH) {
                 // 1. Define the minimap bounding box in UI grid units (Top Right Corner)
                 let mapBoxX = 7.85;
@@ -13787,93 +13832,52 @@
                 ctx.stroke();
                 }
         //NPC RENDERING
-            getSpriteConfig(sprite, angle,overrideType) {
-                let scale = 0.69;
-                let hover = -.13;
-                let faceZ = 0.70; // 70% up the sprite's height
-                let facePan = 0.0; // Dead center
-                let type = overrideType !== undefined ? overrideType : Number(sprite.type);            
-                if (isNaN(type) || type === null) {
-                    type = 203; // Force them to render as a Shade!
-                }           
-                //3D UPDATE
-                // 0. 3D Base Scale & Hover
-                    if (type >= 140 && type <= 142) { scale = 1.0; hover = 0; } // 3D Wisp 
-                        else if (type >= 143 && type <= 145) { scale = 1; hover = -.6; } // 3D Imp
-                        else if (type >= 149 && type <= 151) { scale = .69; hover = .13; } // 3D Sylph
-                        else if (type >= 152 && type <= 154) { scale = 4; hover = -2; } // 3D Djinn
-                        else if (type >= 155 && type <= 157) { scale = 2; hover = -.5; } // 3D Shade
-                        else if (type >= 158 && type <= 160) { scale =2; hover = -.9; } // 3D Knight
-                        else if (type >= 161 && type <= 163) { scale =1; hover = -.6; } // 3D Brown Knight
-                        else if (type >= 164 && type <= 166) { scale =2; hover = -.9; } // 3D Ghost Knight
-                        else if (type >= 167 && type <= 169) { scale =4; hover = -2; } // 3D Kraken
-                        else if (type >= 170 && type <= 172) { scale =2; hover = -.9; } // 3D Kraken
-                        else if (type >= 173 && type <= 187) { scale =1.3; hover = .13; } // 3D Fairy Queen
-                        else if (type >= 188 && type <= 190) { scale =4; hover = -1.75; } // 3D bear 
-                        else if (type >= 191 && type <= 197) { scale =3; hover = -1.369; } // 3D wolf n boar
-                        else if (type >= 203 && type <= 205) { scale =3; hover = -1; } // 3D Dullahan
-                        else if (type >= 198 && type <= 209) { scale =4; hover = -2; } // 3D Fairy Queen
-                        else if (type >= 219 && type <= 221) { scale =.5; hover = -.3; } // 3D Rat
-                        else if (type >= 243 && type <= 245) { scale =3; hover = -1.369; } // 3D ship
-                        else if (type >= 246 && type <= 248) { scale =3; hover = -1.369;} // 3D auroch
-                        else if (type >= 249 && type <= 329) { scale =3; hover = -1.369; } // 3D woman
-
-                        if (type >= 137 && type <= 139) { scale = 2; hover = -1; } // 3D Sea Serpent
-                        if (type >= 134 && type <= 136) { scale = 1; hover = .13; } // 3D Gargoyle
-                        if (type >= 131 && type <= 133) { scale = .69; hover = .13; } // 3D Pixie
-                        if (type >= 129 && type <= 130) { scale = 2.5; hover = -1; } // 3D Salamander
-                        if (type >= 126 && type <= 128) { scale = .69; hover = .13; } // 3D Dark Sylph
-                        if (type >= 123 && type <= 125) { scale = 2; hover = -1; } // 3D Skeleton
-                        else if (type >= 120 && type <= 122) { scale = 3; hover = -1; } // 3D Ice Golem
-                        else if (type >= 117 && type <= 119) { scale = 1; hover = -.6; } // 3D Imp
-                        else if (type >= 114 && type <= 116) { scale = 2; hover = -1; } // 3D Spider 
-                        else if (type >= 108 && type <= 110) { scale = 1.0; hover = 0; } // 3D Wisp 
-                        else if (type >= 100 && type <= 106) { scale = 1.1; hover = -0.15; } // 3D Mech
-                    // --- NEW: HARDCODE CUSTOM FACE POSITIONS HERE
-                        if (type == 63 || type == 63.1) { faceZ = 0.36; facePan = -0.15; } 
-                        // Example: The Spider is squat, so look lower
-                        //if (type >= 114 && type <= 116) { faceZ = 0.40; } 
-                        // Example: The Kraken King's face is dead center, but massive, so look lower relative to scale
-                        if  (type == 49 || type == 49.1) { faceZ = 0.36; }
-                        if  (type == 77 || type == 77.1) { faceZ = 0.69; }
-                // 1. 2D Base Scale & Hover
-                    if (type === -27) { scale = 0.3; hover = 0.4; }
-                    else if ([60.1, 60, 23].includes(type)) { scale = 0.3; hover = 0.4 + (Math.sin(angle) * 0.01); }
-                    else if (type <= -39 && type >= -42) { scale = 0.15; hover = 0.5 + (Math.sin(angle) * 0.01); }
-                    else if ([56, 56.1, 79, 75, 75.1, 57, 57.1].includes(type)) { scale = 0.369; hover = 0; }
-                    else if ([41, 54, 10, 42].includes(type)) { scale = 0.613; hover = -0.16; }
-                    else if ([99, 86, 61.1].includes(type)) { scale = 0.69; hover = 0.31; }
-                    else if ([77.1, 77, 90, 89, 35.1, 35].includes(type)) { scale = 1.369; hover = -0.13; }
-                    else if ([63.1, 63].includes(type)) { scale = 1.369; hover = 0.39 + (Math.sin(angle) * 0.01); }
-                    else if ([81, 53, 55].includes(type)) { scale = 0.9631; hover = -0.19; }
-                    else if ([49.1, 49].includes(type)) { scale = 1.69; hover = 0.0; }
-                    else if (type <= -29 && type >= -35) { scale = 0.9; hover = 0.0; }
-                    if (type === 55) { scale = 2.0; hover = -0.5; }
-                // 2. Modifiers
-                    if (sprite.role === 'summoned_minion') { scale = 0.30; hover -= 0.13; }
-                    if (sprite.isBoss && type !== 60.1&& type <100) { scale *= 1.369; hover -= 0.13; }
-                    //if (sprite.isBoss && type >100) { scale *= 1.369; hover -= 0.6; }
-                // 3. Entity Alignment Modifiers
-                    if (sprite.isPlayer&&this.mapID !== 9) {
-                        scale = 0.69; hover = -.13;
-                    } 
-                    else if (sprite.isPlayer&&this.mapID === 9) {
-                        scale =3; hover = -1.369;
-                    } 
-                    else if (sprite.name && sprite.socketId && sprite.name !== "Suncat") { scale *= 0.69; hover -= 0.1; }
-
-                    if (sprite.alignment === 'ally') {
-                        scale *= 0.91; hover -= 0.13;
-                        if ([77.1, 77, 90, 89, 35.1, 35].includes(type)) {
-                            scale = 0.9631; hover = -0.369;
-                        }
-                        if ([63,63.1].includes(type)) {
-                            scale = 0.9631; hover = -0.369;
-                        }
-                    }
-                    
+            getSpriteConfig(sprite, angle, overrideType) {
+                let type = overrideType !== undefined ? overrideType : Number(sprite.type);
+                if (isNaN(type) || type === null) type = 203; // Force to Shade
                 
-                //
+                // 1. INSTANT O(1) DICTIONARY LOOKUP
+                // If the ID isn't in our config, default to 0.69 scale and -0.13 hover.
+                let config = SPRITE_CONFIGS[type] || { scale: 0.69, hover: -0.13, faceZ: 0.70, facePan: 0.0 };
+                
+                let scale = config.scale;
+                let hover = config.hover;
+                let faceZ = config.faceZ;
+                let facePan = config.facePan;
+
+                // 2. DYNAMIC BOBBING (Requires 'angle' calculation per frame)
+                if ([60.1, 60, 23].includes(type)) hover = 0.4 + (Math.sin(angle) * 0.01);
+                else if (type <= -39 && type >= -42) hover = 0.5 + (Math.sin(angle) * 0.01);
+                else if ([63.1, 63].includes(type)) hover = 0.39 + (Math.sin(angle) * 0.01);
+
+                // 3. APPLY ROLE & BOSS MODIFIERS
+                if (sprite.role === 'summoned_minion') { 
+                    scale = 0.30; 
+                    hover -= 0.13; 
+                }
+                if (sprite.isBoss && type !== 60.1 && type < 100) { 
+                    scale *= 1.369; 
+                    hover -= 0.13; 
+                }
+
+                // 4. PLAYER & ALIGNMENT MODIFIERS
+                if (sprite.isPlayer && this.mapID !== 9) {
+                    scale = 0.69; hover = -0.13;
+                } 
+                else if (sprite.isPlayer && this.mapID === 9) {
+                    scale = 3.0; hover = -1.369;
+                } 
+                else if (sprite.name && sprite.socketId && sprite.name !== "Suncat") { 
+                    scale *= 0.69; hover -= 0.1; 
+                }
+
+                if (sprite.alignment === 'ally') {
+                    scale *= 0.91; hover -= 0.13;
+                    if ([77.1, 77, 90, 89, 35.1, 35, 63, 63.1].includes(type)) {
+                        scale = 0.9631; hover = -0.369;
+                    }
+                }
+                
                 return { scale, hover, animIndex: type, faceZ, facePan };
             }
             cacheDynamicNPCBillboard(npc) {
@@ -13897,7 +13901,7 @@
 
                 // 3. Draw the dynamic card and portrait
                 let cardID = npc.deck ? npc.deck[0] : 0;
-                ctx.imageSmoothingEnabled = true; 
+                ctx.imageSmoothingEnabled = false; 
                 drawPortrait(-27, 0, 0, 1, cardID); 
                 ctx.imageSmoothingEnabled = false;
                 
@@ -13979,8 +13983,9 @@
                 npc.needsBillboardUpdate = false;
             }
             drawCombinedSprites(ctx, viewX, viewY, viewW, viewH, dirX, dirY, planeX, planeY, spriteList, camX, camY) {        
-                const dynamicMaxVis = Math.max(2, Math.round(this.dSense / 3)); 
-                const renderRadius = dynamicMaxVis + (this.currentCamDist || 0) + 2; 
+                // THE FIX: Apply the exact same camera stretch to sprites and particles!
+                const dynamicMaxVis = Math.max(2, Math.round(this.dSense / 3)) + (this.currentCamDist || 0); 
+                const renderRadius = dynamicMaxVis + 2; 
                 const MAX_DIST_SQ = Math.pow(renderRadius, 2);
                 
                 const horizon = (viewH / 2) + this.pitch;
@@ -14057,13 +14062,16 @@
                         
                         // Near Plane & Fog Clipping
                         if (sprite.isPlayer) {
+                            // The player's own mesh is immune to camera occlusion, but still needs near-clipping
                             let minimalNearPlane = Math.min(0.1, this.currentCamDist * 0.5);
                             if (transformY < minimalNearPlane) continue; 
                         } else {
-                            // Drop the near-plane to 0.01 for allies so they can rush directly past the lens
-                            let nearClip = (sprite.alignment === 'ally') ? 0.01 : 0.1;
+                            // THE FIX: Drop nearClip to 0.01 for EVERYONE so tiny rats at your feet don't vanish.
+                            let nearClip = 0.01; 
                             
-                            if (transformY <= nearClip || transformY > dynamicMaxVis) continue; 
+                            // THE FIX: Remove the dynamicMaxVis check! It was deleting your allies when you zoomed out!
+                            // We already culled them mathematically using renderRadius earlier in the function.
+                            if (transformY <= nearClip) continue; 
                         }
 
                         const spriteScreenX = Math.floor((viewW / 2) * (1 + transformX / transformY));
@@ -14106,342 +14114,106 @@
                     // ==========================================
                     // 1. 2D->3D & VARIANT INTERCEPT
                     // ==========================================
-                        //3D UPDATE
-                            let spriteVariant = 'normal';
-                            let imageIndex = (sprite.type !== undefined) ? Number(sprite.type) : 0;
-                        // Convert 2D to 3D
-                            if (imageIndex === 23) imageIndex = 108; // Upgrade Wisp!
-                            if (imageIndex === 88) { imageIndex = 140; spriteVariant = 'mirage'; } // Uses Wisp 3D!
-                            if (imageIndex === 54) imageIndex = 111; // Upgrade Goblin!
-                            if (imageIndex === 57||imageIndex === 57.1) imageIndex = 114; // Upgrade Spider!
-                            if (imageIndex === 56) imageIndex = 117; // Upgrade Imp!
-                            if (imageIndex === 79) { imageIndex = 143; spriteVariant = 'fire'; }
-                            if (imageIndex === 81) imageIndex = 120; // Upgrade Ice Golem!
-                            //if (imageIndex === 75||imageIndex === 75.1) { imageIndex = 146; spriteVariant = 'gnome'; } // Uses Golem 3D!
-                            if (imageIndex === 82) imageIndex = 123; // Upgrade Skeleton!
-                            if (imageIndex === 86) imageIndex = 126; // Upgrade Dark Sylph!
-                            if (imageIndex === 61||imageIndex === 61.1) { imageIndex = 149; spriteVariant = 'light'; } // Uses Sylph 3D!
-                            if (imageIndex === 33||imageIndex === 33.1) imageIndex = 129; // Upgrade Salamander
-                            if (imageIndex === 60||imageIndex === 60.1) imageIndex = 131; // Upgrade Pixie
-                            if (imageIndex === 74||imageIndex === 74.1) imageIndex = 134; // Upgrade Gargoyle
-                            //if (imageIndex === 46||imageIndex === 46.1) imageIndex = 137; // Upgrade Sea Serpent
-                            //if (imageIndex === 35||imageIndex === 35.1) imageIndex = 152; // Upgrade Gargoyle
-                            if (imageIndex === 42||imageIndex === 42.1) imageIndex = 155; // Upgrade Gargoyle
-                            //if (imageIndex === 4 || imageIndex === 4.1) imageIndex = 158; // Upgrade Knight!
-                            if (imageIndex === 85) { imageIndex = 164; spriteVariant = 'ghost_knight'; } // Ghost Variant!
-                            if (imageIndex === 75|| imageIndex === 75.1) { imageIndex = 161; spriteVariant = 'brown_knight'; }
-                            //if (imageIndex === 49 || imageIndex === 49.1) imageIndex = 167; // Upgrade Kraken King!
-                            //if (imageIndex === 32 || imageIndex === 32.1) imageIndex = 170; // Upgrade Apprentice!
-                            if (imageIndex === 62 || imageIndex === 62.1) imageIndex = 173; // Upgrade Fairy Queen!
-                            if (imageIndex === 76 || imageIndex === 76.1) imageIndex = 176; // Upgrade Fairy Queen!
-                            if (imageIndex === 48 || imageIndex === 48.1) imageIndex = 179; // Upgrade Fairy Queen!
-                            if (imageIndex === 34 || imageIndex === 34.1) imageIndex = 182; // Upgrade Fairy Queen!
-                            if (imageIndex === 999 || imageIndex === 61391) imageIndex = 185; // Upgrade Fairy Queen!
-                            //if (imageIndex === 63 || imageIndex === 63.1) imageIndex = 206; // Upgrade Fairy Queen!
-                            if (imageIndex === 106&&this.mapID === 9) {imageIndex = 243;} // Upgrade Fairy Queen!
-                            else if(imageIndex === 91) {imageIndex = 106;}
-                   // ==========================================
+                        let spriteVariant = 'normal';
+                        let imageIndex = (sprite.type !== undefined) ? Number(sprite.type) : 0;
+
+                        // Apply mapping if it exists
+                        if (MODEL_UPGRADES[imageIndex]) {
+                            let upgrade = MODEL_UPGRADES[imageIndex];
+                            imageIndex = upgrade.id;
+                            if (upgrade.variant) spriteVariant = upgrade.variant;
+                        }
+
+                        // Special map-specific overrides
+                        if (imageIndex === 106 && this.mapID === 9) {
+                            imageIndex = 243;
+                        }
+                    // ==========================================
                     // --- 2. 3D SPRITE FRAMES ---
                     // ==========================================
-                    let currentDir = 2; // Default South
-                    if (imageIndex >= 100) {
-                        
-                        // --- 1. Decrement Timers ---
-                        if (sprite.damageFlashTimer > 0) sprite.damageFlashTimer--;
-                        if (sprite.attackAnimTimer > 0) sprite.attackAnimTimer--;
+                        let currentDir = 2; // Default South
+                        if (imageIndex >= 100) {
+                            
+                            // --- 0. Decrement Timers ---
+                                if (sprite.damageFlashTimer > 0) sprite.damageFlashTimer--;
+                                if (sprite.attackAnimTimer > 0) sprite.attackAnimTimer--;
 
-                        // --- 2. Attack Animation Logic ---
-                        let isAttacking = false;
-                        if (sprite.isPlayer) {
-                            isAttacking = (this.playerAttackTimer > 0);
-                        } else {
-                            // Works seamlessly for both NPCs and Remote Players now!
-                            isAttacking = (sprite.combatCooldown > 0 || sprite.damageFlashTimer > 0 || sprite.attackAnimTimer > 0);
-                        }
+                            // --- 1. DETERMINE ANIMATION STATES ---
+                                let isAttacking = false;
+                                let isMoving = false;
 
-                        // --- 3. Movement & Bobbing Logic (No more special cases!) ---
-                        let isMoving = false;
-                        if (sprite.isPlayer) {
-                            isMoving = this.isSlidingToTile;
-                        } else {
-                            // Because the socket fakes the 'speed' variable, remote players act exactly like NPCs!
-                            isMoving = (sprite.speed > 0 && sprite.state !== 'stationary');
-                            
-                            // Bob up and down
-                            //if (isMoving) sprite.zHeight = Math.sin(Date.now() * 0.01) * 0.15;
-                            //else sprite.zHeight = 0;
-                            
-                            // Dip forward when attacking
-                            //if (isAttacking) sprite.zHeight -= 0.2;
-                        }
+                                // PLAYER LOGIC
+                                    if (sprite.isPlayer) {
+                                        
+                                        isAttacking = (this.playerAttackTimer > 0);
+                                        isMoving = this.isSlidingToTile;
+                                        
+                                        // Player State Exception: 104 = Walk, 105 = Attack, 106 = Idle
+                                        if (imageIndex >= 100) { 
+                                            if (isAttacking) imageIndex = 105;
+                                            else if (isMoving) imageIndex = 104;
+                                            else imageIndex = 106;
+                                        }
+                                    } 
+                                // NPC & SUMMON LOGIC
+                                    else {
+                                    
+                                        let posChanged = sprite.lastX !== undefined && 
+                                            (Math.abs(sprite.x - sprite.lastX) > 0.005 || Math.abs(sprite.y - sprite.lastY) > 0.005);
+                                        
+                                    
+                                        isMoving = sprite.isMoving || posChanged;
+                                        isAttacking = sprite.isAttacking || (sprite.combatCooldown > 0 || sprite.damageFlashTimer > 0 || sprite.attackAnimTimer > 0);
+                                        
+                                        sprite.lastX = sprite.x;
+                                        sprite.lastY = sprite.y;
+                                        
+                                        if (isAttacking) {
+                                            imageIndex += 2;
+                                        } else if (isMoving) {
+                                            imageIndex += 1;
+                                        }
 
-                        // Sift into the correct animation block
-                            if (imageIndex >= 104 && imageIndex <= 106) { // MECH
-                                if (isAttacking) imageIndex = 105;
-                                else if (isMoving) imageIndex = 104;
-                                else imageIndex = 106;
-                            }
-                            else if (imageIndex >= 108 && imageIndex <= 110) { // WISP
-                                if (isAttacking) imageIndex = 110;
-                                else if (isMoving) imageIndex = 109;
-                                else imageIndex = 108;
-                            }
-                            else if (imageIndex >= 111 && imageIndex <= 113) { // GOBLIN
-                                if (isAttacking) imageIndex = 113;
-                                else if (isMoving) imageIndex = 112;
-                                else imageIndex = 111;
-                            }
-                            else if (imageIndex >= 114 && imageIndex <= 116) { // SPIDER
-                                if (isAttacking) imageIndex = 116; else if (isMoving) imageIndex = 115; else imageIndex = 114;
-                            }
-                            else if (imageIndex >= 117 && imageIndex <= 119) { // IMP
-                                if (isAttacking) imageIndex = 119; else if (isMoving) imageIndex = 118; else imageIndex = 117;
-                            }
-                            else if (imageIndex >= 120 && imageIndex <= 122) { // ICE GOLEM
-                                if (isAttacking) imageIndex = 122; else if (isMoving) imageIndex = 121; else imageIndex = 120;
-                            }
-                            else if (imageIndex >= 123 && imageIndex <= 125) { // SKELETON
-                                if (isAttacking) imageIndex = 125; else if (isMoving) imageIndex = 124; else imageIndex = 123;
-                            }
-                            else if (imageIndex >= 126 && imageIndex <= 128) { // DARK SYLPH
-                                if (isAttacking) imageIndex = 128; else if (isMoving) imageIndex = 127; else imageIndex = 126;
-                            }
-                            else if (imageIndex >= 129 && imageIndex <= 130) { // SALAMANDER
-                                if (isAttacking) imageIndex = 130; else if (isMoving) imageIndex = 130; else imageIndex = 129;
-                            }
-                            else if (imageIndex >= 131 && imageIndex <= 133) { // SALAMANDER 2
-                                if (isAttacking) imageIndex = 133; else if (isMoving) imageIndex = 132; else imageIndex = 131;
-                            }
-                            else if (imageIndex >= 134 && imageIndex <= 136) { // SALAMANDER 3
-                                if (isAttacking) imageIndex = 136; else if (isMoving) imageIndex = 135; else imageIndex = 134;
-                            }
-                            else if (imageIndex >= 137 && imageIndex <= 139) { // SEA SERPENT
-                                if (isAttacking) imageIndex = 139; else if (isMoving) imageIndex = 138; else imageIndex = 137;
-                            }
-                            else if (imageIndex >= 140 && imageIndex <= 142) { // MIRAGE
-                                if (isAttacking) imageIndex = 142; else if (isMoving) imageIndex = 141; else imageIndex = 140;
-                            }
-                            else if (imageIndex >= 143 && imageIndex <= 145) { // FIRE IMP
-                                if (isAttacking) imageIndex = 145; else if (isMoving) imageIndex = 144; else imageIndex = 143;
-                            }
-                            else if (imageIndex >= 146 && imageIndex <= 148) { // GNOME
-                                if (isAttacking) imageIndex = 148; else if (isMoving) imageIndex = 147; else imageIndex = 146;
-                            }
-                            else if (imageIndex >= 149 && imageIndex <= 151) { // LIGHT SYLPH
-                                if (isAttacking) imageIndex = 151; else if (isMoving) imageIndex = 150; else imageIndex = 149;
-                            }
-                            else if (imageIndex >= 152 && imageIndex <= 154) { // DJINN
-                                if (isAttacking) imageIndex = 154; else if (isMoving) imageIndex = 153; else imageIndex = 152;
-                            }
-                            else if (imageIndex >= 155 && imageIndex <= 157) { // SHADE
-                                if (isAttacking) imageIndex = 157; else if (isMoving) imageIndex = 156; else imageIndex = 155;
-                            }
-                            else if (imageIndex >= 158 && imageIndex <= 160) { // KNIGHT
-                                if (isAttacking) imageIndex = 160; else if (isMoving) imageIndex = 159; else imageIndex = 158;
-                            }
-                            else if (imageIndex >= 161 && imageIndex <= 163) { // BROWN KNIGHT
-                                if (isAttacking) imageIndex = 163; else if (isMoving) imageIndex = 162; else imageIndex = 161;
-                            }
-                            else if (imageIndex >= 164 && imageIndex <= 166) { // GHOST KNIGHT
-                                if (isAttacking) imageIndex = 166; else if (isMoving) imageIndex = 165; else imageIndex = 164;
-                            }
-                            else if (imageIndex >= 167 && imageIndex <= 169) { // KRAKEN KING
-                                if (isAttacking) imageIndex = 169; else if (isMoving) imageIndex = 168; else imageIndex = 167;
-                            }
-                            else if (imageIndex >= 170 && imageIndex <= 172) { // APPRENTICE
-                                if (isAttacking) imageIndex = 172; else if (isMoving) imageIndex = 171; else imageIndex = 170;
-                            }
-                            else if (imageIndex >= 173 && imageIndex <= 175) { // FAIRY QUEEN
-                                if (isAttacking) imageIndex = 175; else if (isMoving) imageIndex = 174; else imageIndex = 173;
-                            }
-                            else if (imageIndex >= 176 && imageIndex <= 178) { // FAIRY green
-                                if (isAttacking) imageIndex = 178; else if (isMoving) imageIndex = 177; else imageIndex = 176;
-                            }
-                            else if (imageIndex >= 179 && imageIndex <= 181) { // FAIRY blue
-                                if (isAttacking) imageIndex = 181; else if (isMoving) imageIndex = 180; else imageIndex = 179;
-                            }
-                            else if (imageIndex >= 182 && imageIndex <= 184) { // FAIRY red
-                                if (isAttacking) imageIndex = 184; else if (isMoving) imageIndex = 183; else imageIndex = 182;
-                            }
-                            else if (imageIndex >= 185 && imageIndex <= 187) { // FAIRY black
-                                if (isAttacking) imageIndex = 187; else if (isMoving) imageIndex = 185; else imageIndex = 185;
-                            }
-                            else if (imageIndex >= 188 && imageIndex <= 190) { // bear
-                                if (isAttacking) imageIndex = 190; else if (isMoving) imageIndex = 189; else imageIndex = 188;
-                            }
-                            else if (imageIndex >= 191 && imageIndex <= 193) { // wolf
-                                if (isAttacking) imageIndex = 193; else if (isMoving) imageIndex = 192; else imageIndex = 191;
-                            }
-                            else if (imageIndex >= 194 && imageIndex <= 196) { // boar
-                                if (isAttacking) imageIndex = 196; else if (isMoving) imageIndex = 195; else imageIndex = 194;
-                            }
-                            else if (imageIndex >= 197 && imageIndex <= 199) { // vampire
-                                if (isAttacking) imageIndex = 199; else if (isMoving) imageIndex = 198; else imageIndex = 197;
-                            }
-                            else if (imageIndex >= 200 && imageIndex <= 202) { // spriggan
-                                if (isAttacking) imageIndex = 202; else if (isMoving) imageIndex = 201; else imageIndex = 200;
-                            }
-                            else if (imageIndex >= 203 && imageIndex <= 205) { // dullahan
-                                if (isAttacking) imageIndex = 205; else if (isMoving) imageIndex = 204; else imageIndex = 203;
-                            }
-                            else if (imageIndex >= 210 && imageIndex <= 212) { // scorpion
-                                if (isAttacking) imageIndex = 212; else if (isMoving) imageIndex = 211; else imageIndex = 210;
-                            }
-                            else if (imageIndex >= 213 && imageIndex <= 215) { // wasp
-                                if (isAttacking) imageIndex = 215; else if (isMoving) imageIndex = 214; else imageIndex = 213;
-                            }
-                            else if (imageIndex >= 216 && imageIndex <= 218) { // ant
-                                if (isAttacking) imageIndex = 218; else if (isMoving) imageIndex = 217; else imageIndex = 216;
-                            }
-                            else if (imageIndex >= 219 && imageIndex <= 221) { // rat
-                                if (isAttacking) imageIndex = 221; else if (isMoving) imageIndex = 220; else imageIndex = 219;
-                            }
-                            else if (imageIndex >= 222 && imageIndex <= 224) { // slime
-                                if (isAttacking) imageIndex = 224; else if (isMoving) imageIndex = 223; else imageIndex = 222;
-                            }
-                            else if (imageIndex >= 225 && imageIndex <= 227) { // rabbit
-                                if (isAttacking) imageIndex = 227; else if (isMoving) imageIndex = 226; else imageIndex = 225;
-                            }
-                            else if (imageIndex >= 228 && imageIndex <= 230) { // bird
-                                if (isAttacking) imageIndex = 230; else if (isMoving) imageIndex = 229; else imageIndex = 228;
-                            }
-                            else if (imageIndex >= 231 && imageIndex <= 233) { // ram
-                                if (isAttacking) imageIndex = 231; else if (isMoving) imageIndex = 232; else imageIndex = 231;
-                            }
-                            else if (imageIndex >= 234 && imageIndex <= 236) { // squirrel
-                                if (isAttacking) imageIndex = 236; else if (isMoving) imageIndex = 235; else imageIndex = 234;
-                            }
-                            else if (imageIndex >= 237 && imageIndex <= 239) { // cat
-                                if (isAttacking) imageIndex = 239; else if (isMoving) imageIndex = 238; else imageIndex = 237;
-                            }
-                            else if (imageIndex >= 240 && imageIndex <= 242) { // fox
-                                if (isAttacking) imageIndex = 242; else if (isMoving) imageIndex = 241; else imageIndex = 240;
-                            }
-                            else if (imageIndex >= 243 && imageIndex <= 245) { // boat
-                                if (isAttacking) imageIndex = 245; else if (isMoving) imageIndex = 244; else imageIndex = 243;
-                            }
-                            else if (imageIndex >= 246 && imageIndex <= 248) { // auroch
-                                if (isAttacking) imageIndex = 248; else if (isMoving) imageIndex = 247; else imageIndex = 246;
-                            }
-                            else if (imageIndex >= 249 && imageIndex <= 251) { // dancer
-                                if (isAttacking) imageIndex = 251; else if (isMoving) imageIndex = 250; else imageIndex = 249;
-                            }
-                            else if (imageIndex >= 252 && imageIndex <= 254) { // warrior
-                                if (isAttacking) imageIndex = 254; else if (isMoving) imageIndex = 253; else imageIndex = 252;
-                            }
-                            else if (imageIndex >= 255 && imageIndex <= 257) { // desert villager
-                                if (isAttacking) imageIndex = 257; else if (isMoving) imageIndex = 256; else imageIndex = 255;
-                            }
-                            else if (imageIndex >= 258 && imageIndex <= 260) { // assassin
-                                if (isAttacking) imageIndex = 260; else if (isMoving) imageIndex = 259; else imageIndex = 258;
-                            }
-                            else if (imageIndex >= 261 && imageIndex <= 263) { // magician
-                                if (isAttacking) imageIndex = 263; else if (isMoving) imageIndex = 262; else imageIndex = 261;
-                            }
-                            else if (imageIndex >= 264 && imageIndex <= 266) { // hunter
-                                if (isAttacking) imageIndex = 266; else if (isMoving) imageIndex = 265; else imageIndex = 264;
-                            }
-                            else if (imageIndex >= 267 && imageIndex <= 269) { // bat
-                                if (isAttacking) imageIndex = 269; else if (isMoving) imageIndex = 268; else imageIndex = 267;
-                            }
-                            else if (imageIndex >= 270 && imageIndex <= 272) { // questing beast
-                                if (isAttacking) imageIndex = 272; else if (isMoving) imageIndex = 271; else imageIndex = 270;
-                            }
-                            else if (imageIndex >= 273 && imageIndex <= 275) { // magma warrior
-                                if (isAttacking) imageIndex = 275; else if (isMoving) imageIndex = 274; else imageIndex = 273;
-                            }
-                            else if (imageIndex >= 276 && imageIndex <= 278) { // skeleton warrior
-                                if (isAttacking) imageIndex = 278; else if (isMoving) imageIndex = 277; else imageIndex = 276;
-                            }
-                            else if (imageIndex >= 279 && imageIndex <= 281) { // frog
-                                if (isAttacking) imageIndex = 281; else if (isMoving) imageIndex = 280; else imageIndex = 279;
-                            }
-                            else if (imageIndex >= 282 && imageIndex <= 284) { // wolfman
-                                if (isAttacking) imageIndex = 284; else if (isMoving) imageIndex = 283; else imageIndex = 282;
-                            }
-                            else if (imageIndex >= 285 && imageIndex <= 287) { // bear man
-                                if (isAttacking) imageIndex = 287; else if (isMoving) imageIndex = 286; else imageIndex = 285;
-                            }
-                            else if (imageIndex >= 288 && imageIndex <= 290) { // boar man
-                                if (isAttacking) imageIndex = 290; else if (isMoving) imageIndex = 289; else imageIndex = 288;
-                            }
-                            else if (imageIndex >= 291 && imageIndex <= 293) { // lizard man
-                                if (isAttacking) imageIndex = 293; else if (isMoving) imageIndex = 292; else imageIndex = 291;
-                            }
-                            else if (imageIndex >= 294 && imageIndex <= 296) { // cyclops
-                                if (isAttacking) imageIndex = 296; else if (isMoving) imageIndex = 295; else imageIndex = 294;
-                            }
-                            else if (imageIndex >= 297 && imageIndex <= 299) { // drunk 
-                                if (isAttacking) imageIndex = 299; else if (isMoving) imageIndex = 298; else imageIndex = 297;
-                            }
-                            else if (imageIndex >= 300 && imageIndex <= 302) { // buck
-                                if (isAttacking) imageIndex = 302; else if (isMoving) imageIndex = 301; else imageIndex = 300;
-                            }
-                            else if (imageIndex >= 303 && imageIndex <= 305) { // doe 
-                                if (isAttacking) imageIndex = 305; else if (isMoving) imageIndex = 304; else imageIndex = 303;
-                            }
-                            else if (imageIndex >= 306 && imageIndex <= 308) { // mounted knight
-                                if (isAttacking) imageIndex = 308; else if (isMoving) imageIndex = 307; else imageIndex = 306;
-                            }
-                            else if (imageIndex >= 309 && imageIndex <= 311) { // king 
-                                if (isAttacking) imageIndex = 311; else if (isMoving) imageIndex = 310; else imageIndex = 309;
-                            }
-                            else if (imageIndex >= 312 && imageIndex <= 314) { // queen 
-                                if (isAttacking) imageIndex = 314; else if (isMoving) imageIndex = 313; else imageIndex = 312;
-                            }
-                            else if (imageIndex >= 315 && imageIndex <= 317) { // flying sword
-                                if (isAttacking) imageIndex = 317; else if (isMoving) imageIndex = 316; else imageIndex = 315;
-                            }
-                            else if (imageIndex >= 318 && imageIndex <= 320) { // ghoul 
-                                if (isAttacking) imageIndex = 320; else if (isMoving) imageIndex = 319; else imageIndex = 318;
-                            }
-                            else if (imageIndex >= 321 && imageIndex <= 323) { // chest man
-                                if (isAttacking) imageIndex = 323; else if (isMoving) imageIndex = 322; else imageIndex = 321;
-                            }
-                            else if (imageIndex >= 324 && imageIndex <= 326) { // chest man
-                                if (isAttacking) imageIndex = 326; else if (isMoving) imageIndex = 325; else imageIndex = 324;
-                            }
-                            else if (imageIndex >= 327 && imageIndex <= 329) { // chest man
-                                if (isAttacking) imageIndex = 329; else if (isMoving) imageIndex = 328; else imageIndex = 327;
-                            }
-                        // --- 1. HANDLE EXCEPTIONS ---
-                        if (imageIndex >= 206 && imageIndex <= 209) { // DRAGON (4 Frames)
-                            if (isAttacking) {
-                                // Alternate between Bite (108) and Fire (109) every 2 seconds
-                                let useFireBreath = Math.floor(Date.now() / 2000) % 2 === 0;
-                                imageIndex = useFireBreath ? 209 : 208;
-                            }
-                            else if (isMoving) imageIndex = 207;
-                            else imageIndex = 206;
-                        }
+                                        // DRAGON EXCEPTION (Alternates 208 and 209 for attacks)
+                                            if (imageIndex >= 206 && imageIndex <= 209) {
+                                                if (isAttacking) {
+                                                    let useFireBreath = Math.floor(Date.now() / 2000) % 2 === 0;
+                                                    imageIndex = useFireBreath ? 209 : 208;
+                                                } else if (isMoving) {
+                                                    imageIndex = 207;
+                                                } else {
+                                                    imageIndex = 206;
+                                                }
+                                            }
+                                    }
 
-                        // ---> THE FIX: ACCURATE CAMERA DIRECTION MATH <---
-                        if (sprite.isPlayer) {
-                            currentDir = 0; // Always see the player's back
-                        } 
-                        else if (sprite.dir !== undefined && (sprite.socketId || sprite.isRemoteSummon || sprite.dirX === undefined)) {
-                            // ---> Remote Players and Summons use 4-way 'dir' integers (0=N, 1=E, 2=S, 3=W) <---
-                            let relativeDir = (sprite.dir - this.dir + 4) % 4;
-                            
-                            // Map relative 4-way direction to the 8-way sprite sheet:
-                            if (relativeDir === 0) currentDir = 0;      // Facing same way -> See their Back
-                            else if (relativeDir === 1) currentDir = 6; // Turned 90 deg clockwise -> See their Right Side
-                            else if (relativeDir === 2) currentDir = 4; // Facing opposite -> See their Front
-                            else if (relativeDir === 3) currentDir = 2; // Turned 90 deg counter-clockwise -> See their Left Side
-                        }
-                        else if (sprite.dirX !== undefined && sprite.dirY !== undefined) {
-                            // Standard Offline NPC Angle Math
-                            let npcAngle = Math.atan2(sprite.dirY, sprite.dirX);
-                            let camAngle = this.currentAngle + (this.lookPan || 0); 
-                            let relativeAngle = npcAngle - camAngle - (Math.PI / 2);
-                            
-                            while (relativeAngle < 0) relativeAngle += Math.PI * 2;
-                            while (relativeAngle >= Math.PI * 2) relativeAngle -= Math.PI * 2;
-                            
-                            let sector = Math.floor((relativeAngle + Math.PI / 8) / (Math.PI / 4));
-                            currentDir = sector % 8;
-                        }
-                    }
+                            // --- 2. ACCURATE CAMERA DIRECTION MATH ---
+                                if (sprite.isPlayer) {
+                                    currentDir = 0; // Always see the player's back
+                                } 
+                                else if (sprite.dir !== undefined && (sprite.socketId || sprite.isRemoteSummon || sprite.dirX === undefined)) {
+                                    // ---> Remote Players and Summons use 4-way 'dir' integers (0=N, 1=E, 2=S, 3=W) <---
+                                    let relativeDir = (sprite.dir - this.dir + 4) % 4;
+                                    
+                                    // Map relative 4-way direction to the 8-way sprite sheet:
+                                    if (relativeDir === 0) currentDir = 0;      // Facing same way -> See their Back
+                                    else if (relativeDir === 1) currentDir = 6; // Turned 90 deg clockwise -> See their Right Side
+                                    else if (relativeDir === 2) currentDir = 4; // Facing opposite -> See their Front
+                                    else if (relativeDir === 3) currentDir = 2; // Turned 90 deg counter-clockwise -> See their Left Side
+                                }
+                                else if (sprite.dirX !== undefined && sprite.dirY !== undefined) {
+                                    // Standard Offline NPC Angle Math
+                                    let npcAngle = Math.atan2(sprite.dirY, sprite.dirX);
+                                    let camAngle = this.currentAngle + (this.lookPan || 0); 
+                                    let relativeAngle = npcAngle - camAngle - (Math.PI / 2);
+                                    
+                                    while (relativeAngle < 0) relativeAngle += Math.PI * 2;
+                                    while (relativeAngle >= Math.PI * 2) relativeAngle -= Math.PI * 2;
+                                    
+                                    let sector = Math.floor((relativeAngle + Math.PI / 8) / (Math.PI / 4));
+                                    currentDir = sector % 8;
+                                }
+                            }
 
                     // ==========================================
                     // --- 3. CALCULATE SIZE & HOVER ---
@@ -14464,74 +14236,74 @@
                         const drawStartX = Math.floor(-spriteSize / 2 + spriteScreenX + viewX);
 
                         if (drawStartX >= viewX + viewW || drawStartX + spriteSize <= viewX) continue;
-                        // =========================================================
-                        // --- NEW: EVERQUEST CON & WARD RING (PERFECT ANCHOR) ---
-                        // =========================================================
+                    // =========================================================
+                    // --- NEW: EVERQUEST CON & WARD RING (PERFECT ANCHOR) ---
+                    // =========================================================
                         // 1. Filter for valid combat alignments (Foes, Defenders, Allies)
-                        let hasRingAlignment = typeof sprite.alignment === 'string' && 
-                                               (sprite.alignment.startsWith('foe') || 
-                                                sprite.alignment.startsWith('defender') || 
-                                                sprite.alignment.startsWith('ally'));
+                            let hasRingAlignment = typeof sprite.alignment === 'string' && 
+                                                (sprite.alignment.startsWith('foe') || 
+                                                    sprite.alignment.startsWith('defender') || 
+                                                    sprite.alignment.startsWith('ally'));
 
-                        if (isCenterVisible && hasRingAlignment && !sprite.isDead && sprite.role !== 'dropped_card') {
-                            
-                            let maxWardTime = (sprite.maxWards || 0) * (sprite.timePerWard || 3.0);
-                            let currentWardTime = sprite.currentWardTime || 0;
-
-                            // 2. ONLY draw the ring if they actually have Ward remaining!
-                            if (maxWardTime > 0 && currentWardTime > 0) {
-                                let percent = Math.max(0, Math.min(1, currentWardTime / maxWardTime));
-                                let unitScale = (viewH * this.zScale) / transformY;
+                            if (isCenterVisible && hasRingAlignment && !sprite.isDead && sprite.role !== 'dropped_card') {
                                 
-                                // --- THE PERFECT SHADOW FIX ---
-                                // 1. Start by anchoring the ring to the absolute bottom of the sprite's box
-                                let groundFeetY = drawStartY + spriteSize; 
+                                let maxWardTime = (sprite.maxWards || 0) * (sprite.timePerWard || 3.0);
+                                let currentWardTime = sprite.currentWardTime || 0;
 
-                                // 2. Because 3D sprites have a little empty transparent space at the bottom 
-                                // of their 128x128 canvas, we bring the ring UP slightly to touch their visual feet.
-                                groundFeetY -= (spriteSize * 0.39); // Tweak this decimal (0.10 to 0.15) if you want it slightly higher/lower!
+                                // 2. ONLY draw the ring if they actually have Ward remaining!
+                                if (maxWardTime > 0 && currentWardTime > 0) {
+                                    let percent = Math.max(0, Math.min(1, currentWardTime / maxWardTime));
+                                    let unitScale = (viewH * this.zScale) / transformY;
+                                    
+                                    // --- THE PERFECT SHADOW FIX ---
+                                    // 1. Start by anchoring the ring to the absolute bottom of the sprite's box
+                                    let groundFeetY = drawStartY + spriteSize; 
 
-                                // 3. If it's a FLYING creature (hover is positive), detach the ring 
-                                // and push it back down to the floor so it acts like a true shadow!
-                                if (hover > 0) groundFeetY += (unitScale * hover);
-                                
-                                // 4. Do the same if they are jumping/bobbing in the air
-                                if (sprite.zHeight > 0) groundFeetY += (unitScale * sprite.zHeight);
+                                    // 2. Because 3D sprites have a little empty transparent space at the bottom 
+                                    // of their 128x128 canvas, we bring the ring UP slightly to touch their visual feet.
+                                    groundFeetY -= (spriteSize * 0.39); // Tweak this decimal (0.10 to 0.15) if you want it slightly higher/lower!
 
-                                let ringCenterX = viewX + spriteScreenX;
+                                    // 3. If it's a FLYING creature (hover is positive), detach the ring 
+                                    // and push it back down to the floor so it acts like a true shadow!
+                                    if (hover > 0) groundFeetY += (unitScale * hover);
+                                    
+                                    // 4. Do the same if they are jumping/bobbing in the air
+                                    if (sprite.zHeight > 0) groundFeetY += (unitScale * sprite.zHeight);
 
-                                // Scales the ring width based on the creature's scale using your custom magic numbers!
-                                let ringRadX = Math.max(6, spriteSize * 0.19);  
-                                let ringRadY = ringRadX * 0.36; // Perspective tilt for floor projection
+                                    let ringCenterX = viewX + spriteScreenX;
 
-                                ctx.save();
-                                
-                                // Get the Danger (Con) Color
-                                let alignColor = typeof sprite.getConColor === 'function' ? sprite.getConColor(this) : 'rgba(200, 0, 0, 0.8)';
-                                ctx.strokeStyle = alignColor;
-                                
-                                ctx.globalAlpha = 1.0; 
-                                ctx.globalCompositeOperation = 'lighter'; // Magical glow
-                                ctx.lineWidth = Math.max(1.5, unitScale * 0.04); 
-                                
-                                // Ward loading-bar arc
-                                let startAngle = Math.PI; // Starts at 9 o'clock (left side)
-                                let endAngle = startAngle + (Math.PI * 2 * percent); // Sweeps clockwise
-                                
-                                ctx.beginPath();
-                                if (ctx.ellipse) {
-                                    ctx.ellipse(ringCenterX, groundFeetY, ringRadX, ringRadY, 0, startAngle, endAngle);
-                                } else {
-                                    ctx.scale(1, ringRadY / ringRadX);
-                                    ctx.arc(ringCenterX, groundFeetY / (ringRadY / ringRadX), ringRadX, startAngle, endAngle);
-                                    ctx.scale(1, ringRadX / ringRadY);
+                                    // Scales the ring width based on the creature's scale using your custom magic numbers!
+                                    let ringRadX = Math.max(6, spriteSize * 0.19);  
+                                    let ringRadY = ringRadX * 0.36; // Perspective tilt for floor projection
+
+                                    ctx.save();
+                                    
+                                    // Get the Danger (Con) Color
+                                    let alignColor = typeof sprite.getConColor === 'function' ? sprite.getConColor(this) : 'rgba(200, 0, 0, 0.8)';
+                                    ctx.strokeStyle = alignColor;
+                                    
+                                    ctx.globalAlpha = 1.0; 
+                                    ctx.globalCompositeOperation = 'lighter'; // Magical glow
+                                    ctx.lineWidth = Math.max(1.5, unitScale * 0.04); 
+                                    
+                                    // Ward loading-bar arc
+                                    let startAngle = Math.PI; // Starts at 9 o'clock (left side)
+                                    let endAngle = startAngle + (Math.PI * 2 * percent); // Sweeps clockwise
+                                    
+                                    ctx.beginPath();
+                                    if (ctx.ellipse) {
+                                        ctx.ellipse(ringCenterX, groundFeetY, ringRadX, ringRadY, 0, startAngle, endAngle);
+                                    } else {
+                                        ctx.scale(1, ringRadY / ringRadX);
+                                        ctx.arc(ringCenterX, groundFeetY / (ringRadY / ringRadX), ringRadX, startAngle, endAngle);
+                                        ctx.scale(1, ringRadX / ringRadY);
+                                    }
+                                    ctx.stroke();
+                                    
+                                    ctx.restore();
                                 }
-                                ctx.stroke();
-                                
-                                ctx.restore();
                             }
-                        }
-                        // =========================================================
+                        
                     // ==========================================
                     // --- 4. FETCH CACHED IMAGE ---
                     // ==========================================
@@ -14575,7 +14347,7 @@
 
                         let previousBlend = ctx.globalCompositeOperation;
                         if (imageIndex === 99) ctx.globalCompositeOperation = 'lighter';
-                        ctx.imageSmoothingEnabled = true;
+                        ctx.imageSmoothingEnabled = false;
 
                         // HOIST INVARIANTS OUTSIDE THE LOOP!
                         const textureRatio = cacheSize / spriteSize;
@@ -15387,50 +15159,31 @@
                 }
             }
             applySpell(spellId, magnitude = 1) {
-                    let spell = SPELL_REGISTRY[spellId];
-                    if (!spell) return;
+                let spell = SPELL_REGISTRY[spellId];
+                if (!spell) return;
 
-                    if (!this.activeBuffs) this.activeBuffs = [];
-                    let newEffect = JSON.parse(JSON.stringify(spell)); 
+                if (!this.activeBuffs) this.activeBuffs = [];
+                let newEffect = JSON.parse(JSON.stringify(spell)); 
 
-                    if (newEffect.name === 'Curse') newEffect.amount = -magnitude; 
-                    else if (newEffect.type === 'buff') newEffect.amount = magnitude;
-                    if (newEffect.name === 'Haste') newEffect.speedBoost = magnitude * 0.1; 
+                if (newEffect.name === 'Curse') newEffect.amount = -magnitude; 
+                else if (newEffect.type === 'buff') newEffect.amount = magnitude;
+                
+                if (newEffect.name === 'Haste') newEffect.speedBoost = magnitude * 0.1; 
 
-                    // Prevent infinite stacking
-                    let existingIndex = this.activeBuffs.findIndex(b => b.name === newEffect.name);
-                    if (existingIndex !== -1) {
-                        let oldEffect = this.activeBuffs[existingIndex];
-                        
-                        // Revert old stats
-                        if (oldEffect.multiStat) {
-                            oldEffect.multiStat.forEach(mod => this.stat[mod.stat][2] -= mod.amount);
-                        } else if (oldEffect.buffStat === 'all' || oldEffect.debuffStat === 'all') {
-                            for (let s = 0; s < 4; s++) this.stat[s][2] -= oldEffect.amount;
-                        } else if (oldEffect.type === 'buff' || oldEffect.type === 'item_buff') {
-                            this.stat[oldEffect.buffStat][2] -= oldEffect.amount;
-                        } else if (oldEffect.type === 'debuff' && oldEffect.debuffStat !== undefined) {
-                            this.stat[oldEffect.debuffStat][2] -= oldEffect.amount;
-                        }
-                        this.activeBuffs.splice(existingIndex, 1);
-                    }
-
-                    // Apply new stats
-                    if (newEffect.multiStat) {
-                        newEffect.multiStat.forEach(mod => this.stat[mod.stat][2] += mod.amount);
-                    } else if (newEffect.buffStat === 'all' || newEffect.debuffStat === 'all') {
-                        for (let s = 0; s < 4; s++) this.stat[s][2] += newEffect.amount;
-                    } else if (newEffect.type === 'buff' || newEffect.type === 'item_buff') {
-                        this.stat[newEffect.buffStat][2] += newEffect.amount;
-                    } else if (newEffect.type === 'debuff' && newEffect.debuffStat !== undefined) {
-                        this.stat[newEffect.debuffStat][2] += newEffect.amount;
-                    }
-                    // --- NEW: VoT TRACKING ---
-                    newEffect.tickTimer = 0;
-                    newEffect.accumulatedVoT = 0; // Tracks stacking stats so we can remove them cleanly
-                    newEffect.resistDC = magnitude; // Save the caster's dice roll! The target must beat this every tick to shake it off.
-                    this.activeBuffs.push(newEffect);
+                // Prevent infinite stacking by overwriting the old buff
+                let existingIndex = this.activeBuffs.findIndex(b => b.name === newEffect.name);
+                if (existingIndex !== -1) {
+                    this.activeBuffs.splice(existingIndex, 1);
                 }
+
+                // --- NEW: VoT TRACKING ---
+                newEffect.tickTimer = 0;
+                newEffect.accumulatedVoT = 0; 
+                newEffect.resistDC = magnitude; 
+                
+                // Simply push it to the active pool. No base stat mutation!
+                this.activeBuffs.push(newEffect);
+            }
             openBoosterPack(spellId) {
                 let spellData = SPELL_REGISTRY[spellId];
                 let pulledCardIDs = [];
@@ -15531,13 +15284,18 @@
                 let activeMod = 0;
                 if (this.activeBuffs) {
                     this.activeBuffs.forEach(buff => {
-                        // Add buffs
+                        // A. Standard Buffs
                         if (buff.type === 'buff' || buff.type === 'item_buff') {
                             if (buff.buffStat === statIndex || buff.buffStat === 'all') activeMod += buff.amount;
                         }
-                        // Subtract debuffs
+                        // B. Standard Debuffs
                         if (buff.type === 'debuff') {
                             if (buff.debuffStat === statIndex || buff.debuffStat === 'all') activeMod -= buff.amount;
+                        }
+                        // C. Multi-Stat items (like the Tome)
+                        if (buff.multiStat) {
+                            let match = buff.multiStat.find(m => m.stat === statIndex);
+                            if (match) activeMod += match.amount;
                         }
                     });
                 }
@@ -15972,7 +15730,9 @@
                     while (this.xp >= xpNeeded) {
                         this.xp -= xpNeeded; 
                         this.level++;
-                        this.statPoints = (this.statPoints || 0) + 1;
+                        let statPointGain = 1;
+                        if (this.playerClass === 'Battle-Mage'){statPointGain = 4;}
+                        this.statPoints = (this.statPoints || 0) + statPointGain;
                         
                         // DIRECT FORMULA: Perfect linear scaling
                         this.power = 100 + (this.level * 13);     
@@ -17286,12 +17046,19 @@
                         this.currentSpeaker.dir = 1; // Foe faces East
                     }
 
-                    // --- ORIGINAL RENDERING LOGIC ---
-                    let imageIndex = this.currentSpeaker.type;
-                    imageIndex = getUpgradedImageIndex(imageIndex);
-                    
-                    let config = this.getSpriteConfig(this.currentSpeaker, 0, imageIndex);
+                    let imageIndex = Number(this.currentSpeaker.type);
 
+                    // Look up the 3D override instantly using the new global!
+                    if (typeof MODEL_UPGRADES !== 'undefined' && MODEL_UPGRADES[imageIndex]) {
+                        imageIndex = MODEL_UPGRADES[imageIndex].id;
+                    }
+
+                    // Special map-specific overrides
+                    if (imageIndex === 106 && this.mapID === 9) {
+                        imageIndex = 243;
+                    }
+
+                    let config = this.getSpriteConfig(this.currentSpeaker, 0, imageIndex);
                 // 2. Define your baseline UI coordinates
                 let baseX = -0.01;
                 let baseY = 0.013;
@@ -20304,6 +20071,8 @@
             // --- 2. STANDARD SETUP ---
             this.x = x;
             this.y = y;
+            this.dirX = dirX; 
+            this.dirY = dirY;
             this.baseSpeed = speed; 
             this.vx = dirX * speed;
             this.vy = dirY * speed;
@@ -20471,6 +20240,13 @@
                             const turnSpeed = 20.0; 
                             this.vx += (idealVx - this.vx) * turnSpeed * dt;
                             this.vy += (idealVy - this.vy) * turnSpeed * dt;
+                            
+                            // 👇 ADD THIS TO KEEP 3D SPRITES FACING THE TARGET
+                            let currentSpeed = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
+                            if (currentSpeed > 0) {
+                                this.dirX = this.vx / currentSpeed;
+                                this.dirY = this.vy / currentSpeed;
+                            }
                         }
                     }
                 }
@@ -21616,7 +21392,7 @@
                         let iconY = this.y + 0.1;
 
                         // Check if the icon is the Bear, Wolf, or Boar (IDs 188 to 196)
-                        if (displayIcon >= 188 && displayIcon <= 196) {
+                        if (displayIcon >= 188 && displayIcon <= 329) {
                             let zoomMult = 4 // Same zoom multiplier as the main portrait!
                             
                             // Calculate how much we need to shift X and Y to keep it perfectly centered
@@ -36379,7 +36155,7 @@
                                             let isClassValid = false; 
 
                                             // Battle-Mages bypass all class restrictions
-                                            if (pClass === 'battle-mage' || pClass === 'battlemage'||pClass === 'none') {
+                                            if (Dungeon.tutorialFinished === 1) {
                                                 isClassValid = true;
                                             } else {
                                                 // Look up the card in the lightweight DB
@@ -36467,7 +36243,6 @@
                                 
                                // 2. Assign the points (+2 for specialists, +1 for normal)
                                 let increment = isBonus ? 2 : 1;
-                                if (Dungeon.playerClass === 'Battle-Mage') increment = 3;
 
                                 // Add strictly to the permanent tracker
                                 Dungeon.statProgress[statIndex] += increment;
@@ -36496,14 +36271,7 @@
                                 // If it just upgraded and dropped to 0, they get +0!
                                 stat[2] = Dungeon.statProgress[statIndex];
 
-                                // 4. FORCE UI UPDATE
-                                if (Dungeon.uiPlayerCard) {
-                                    let pCard = Dungeon.uiPlayerCard;
-                                    pCard.stat[statIndex][0] = stat[0]; // min
-                                    pCard.stat[statIndex][1] = stat[1]; // max
-                                    pCard.stat[statIndex][2] = stat[2]; // mod (base + buffs)
-                                    pCard.stat[statIndex][3] = `${stat[0]}d${stat[1]}`; // label
-                                }
+                                
                             };
                             // ------------------------------------
 
@@ -40319,34 +40087,34 @@
             ctx.font = fs + "px Franklin Gothic, Helvetica, Arial, sans-serif";
             }
         function getAniValues(at, duration, startX, endX, startY, endY, startSize, endSize) {
-      /**
-         * Calculates animation position with Lerp, Safety Clamping, and Center Offset.
-         * Returns {x, y, z} where Z is the Scale.
-         * @param {number} at        - Current timer value.
-         * @param {number} duration  - Total animation time (e.g. 70).
-         * @param {number} startX    - Starting Center X.
-         * @param {number} endX      - Ending Center X.
-         * @param {number} startY    - Starting Center Y.
-         * @param {number} endY      - Ending Center Y.
-         * @param {number} startSize - Starting Scale.
-         * @param {number} endSize   - Ending Scale.
-     */
-        // 1. Calculate Progress & Clamp (Safety Net)
-        let t = at / duration;
-        if (t > 1) t = 1;
-        if (t < 0) t = 0;
+            /*
+                * Calculates animation position with Lerp, Safety Clamping, and Center Offset.
+                * Returns {x, y, z} where Z is the Scale.
+                * @param {number} at        - Current timer value.
+                * @param {number} duration  - Total animation time (e.g. 70).
+                * @param {number} startX    - Starting Center X.
+                * @param {number} endX      - Ending Center X.
+                * @param {number} startY    - Starting Center Y.
+                * @param {number} endY      - Ending Center Y.
+                * @param {number} startSize - Starting Scale.
+                * @param {number} endSize   - Ending Scale.
+            */
+            // 1. Calculate Progress & Clamp (Safety Net)
+            let t = at / duration;
+            if (t > 1) t = 1;
+            if (t < 0) t = 0;
 
-        // 2. Lerp the Center Positions
-        let centX = startX + (endX - startX) * t;
-        let centY = startY + (endY - startY) * t;
-        let scale = startSize + (endSize - startSize) * t;
+            // 2. Lerp the Center Positions
+            let centX = startX + (endX - startX) * t;
+            let centY = startY + (endY - startY) * t;
+            let scale = startSize + (endSize - startSize) * t;
 
-        // 3. Apply Centering Offset and return x, y, z
-        return {
-            x: centX - (scale / 2),
-            y: centY - (scale / 2),
-            z: scale 
-        };
+            // 3. Apply Centering Offset and return x, y, z
+            return {
+                x: centX - (scale / 2),
+                y: centY - (scale / 2),
+                z: scale 
+            };
         }//startGame = 'grimoire'
   
     //2D
@@ -40822,7 +40590,7 @@
                     let finalH = (tH / 10) * (3.5 * drawZ);
 
                     // Stamp the image!
-                    ctx.imageSmoothingEnabled = true;
+                    ctx.imageSmoothingEnabled = false;
                     ctx.drawImage(window.cardCache[card], finalX, finalY, finalW, finalH);
                     ctx.imageSmoothingEnabled = false;
                     break;
@@ -49989,7 +49757,7 @@
                     
                     portraitani = i % 2; 
                     dragY = i % 2;
-                    window.cacheAngle = (i / totalFrames) * (Math.PI * 2);
+                    window.cacheAngle = ((i / totalFrames) * (Math.PI * 2)) - Math.PI;
 
                     // 1. Render the portal/model as usual
                     drawPortraitPaths(index, 0, 0, 1); 
@@ -50022,7 +49790,7 @@
                     // ==========================================
                     
                     spriteCache[index].push(frameCanvas);
-                    window.cacheAngle = (i / totalFrames) * (Math.PI * 2);
+                    window.cacheAngle = ((i / totalFrames) * (Math.PI * 2)) - Math.PI;
                     // PROGRESS UPDATE
                     currentDraws++;
                     if (currentDraws % 10 === 0 && updateProgressCallback) {
@@ -50052,7 +49820,7 @@
                         
                         ctx = cleanupCtx;
                         tX = 0; tY = 0; tL = dirCacheSize; tH = dirCacheSize;
-                        window.cacheAngle = (i / totalFrames) * (Math.PI * 2);
+                        window.cacheAngle = ((i / totalFrames) * (Math.PI * 2)) - Math.PI;
                         let baseIndex = index - 100;
                         let variant = 'normal';
                         //3D Update VARIANTS
@@ -50086,58 +49854,98 @@
                     }
                 }
             }     
+            
+            // ==========================================
+            // BUILD THE 3D & 2D CONFIG DICTIONARY
+            // ==========================================
+            // Format: Min ID, Max ID, Scale, Hover
+            setConfig(108, 110, 1.0, 0.0);        // 3D Wisp
+            setConfig(140, 142, 1.0, 0.0);        // Mirage
+            setConfig(117, 119, 1.0, -0.6);       // 3D Imp
+            setConfig(143, 145, 1.0, -0.6);       // Fire Imp
+            setConfig(114, 116, 2.0, -1.0);       // Spider
+            setConfig(120, 122, 3.0, -1.0);       // Ice Golem
+            setConfig(123, 125, 2.0, -1.0);       // Skeleton
+            setConfig(126, 128, 0.69, 0.13);      // Dark Sylph
+            setConfig(149, 151, 0.69, 0.13);      // Light Sylph
+            setConfig(129, 130, 2.5, -1.0);       // Salamander
+            setConfig(131, 133, 0.69, 0.13);      // Pixie
+            setConfig(134, 136, 1.0, 0.13);       // Gargoyle
+            setConfig(137, 139, 2.0, -1.0);       // Sea Serpent
+            setConfig(152, 154, 4.0, -2.0);       // Djinn
+            setConfig(155, 157, 2.0, -0.5);       // Shade
+            setConfig(158, 160, 2.0, -0.9);       // Knight
+            setConfig(161, 163, 1.0, -0.6);       // Brown Knight
+            setConfig(164, 166, 2.0, -0.9);       // Ghost Knight
+            setConfig(167, 169, 4.0, -2.0);       // Kraken
+            setConfig(170, 172, 2.0, -0.9);       // Apprentice
+            setConfig(173, 187, 1.3, 0.13);       // Fairy Queens (All Variants)
+            setConfig(188, 190, 4.0, -1.75);      // Bear
+            setConfig(191, 197, 3.0, -1.369);     // Wolf, Boar
+            setConfig(198, 202, 4.0, -2.0);       // Spriggan & Vamp
+            setConfig(203, 205, 3.0, -1.0);       // Dullahan
+            setConfig(206, 209, 4.0, -2.0);       // Dragon
+            setConfig(219, 221, 0.5, -0.3);       // Rat
+            setConfig(243, 329, 3.0, -1.369);     // Ships, Aurochs, Women (Massive Range)
+            setConfig(100, 106, 1.1, -0.15);      // Mech
             // Finish up
             if (updateProgressCallback) updateProgressCallback(100);
+            // --- HARDCODED FACES ---
+            // Format: ID, Scale, Hover, faceZ, facePan
+            setSingle(63, 1.369, 0.39, 0.36, -0.15);
+            setSingle(63.1, 1.369, 0.39, 0.36, -0.15);
+            setSingle(49, 1.69, 0.0, 0.36, 0.0);
+            setSingle(49.1, 1.69, 0.0, 0.36, 0.0);
+            setSingle(77, 1.369, -0.13, 0.69, 0.0);
+            setSingle(77.1, 1.369, -0.13, 0.69, 0.0);
 
+            // --- STATIC 2D EXCEPTIONS ---
+            setSingle(-27, 0.3, 0.4);
+            setConfig(-42, -39, 0.15, 0.5);
+            setConfig(-35, -29, 0.9, 0.0);
+            setSingle(55, 2.0, -0.5);
+            setSingle(56, 0.369, 0.0); setSingle(56.1, 0.369, 0.0);
+            setSingle(57, 0.369, 0.0); setSingle(57.1, 0.369, 0.0);
+            setSingle(75, 0.369, 0.0); setSingle(75.1, 0.369, 0.0);
+            setSingle(79, 0.369, 0.0);
+            setSingle(41, 0.613, -0.16); setSingle(54, 0.613, -0.16); 
+            setSingle(10, 0.613, -0.16); setSingle(42, 0.613, -0.16);
+            setSingle(99, 0.69, 0.31); setSingle(86, 0.69, 0.31); setSingle(61.1, 0.69, 0.31);
+            setSingle(90, 1.369, -0.13); setSingle(89, 1.369, -0.13);
+            setSingle(35, 1.369, -0.13); setSingle(35.1, 1.369, -0.13);
+            setSingle(81, 0.9631, -0.19); setSingle(53, 0.9631, -0.19);
             // Restore Globals
             ctx = originalCtx;
             tX = oldTX; tY = oldTY; tL = oldTL; tH = oldTH;
             delete window.cacheAngle;
             }
-        function getUpgradedImageIndex(imageIndex) {
-            const upgradeMap = {
-                23: 108, // Wisp
-                88: 140, // Mirage
-                54: 111, // Goblin
-                57: 114, "57.1": 114, // Spider
-                56: 117, // Imp upgrade
-                79: 143, // Fire Imp
-                81: 120, // Ice Golem
-                82: 123, // Skeleton
-                86: 126, // Dark Sylph
-                61: 149, "61.1": 149,//sylph
-                33: 129, "33.1": 129, // Salamander
-                60: 131, "60.1": 131, // Pixie
-                74: 134, "74.1": 134, // Gargoyle
-                42: 155, "42.1": 155, // Shade
-                85: 164,//arthur
-                75: 161, "75.1": 161,//gnome
-                91:106,
-                // THE FAIRIES
-                62: 173, "62.1": 173, // Queen
-                76: 176, "76.1": 176, // Green
-                48: 179, "48.1": 179, // Blue (Ice)
-                34: 182, "34.1": 182, // Red (Witch)
-                999: 185, 61391: 185  // Black
-            };
-
-            // If the imageIndex exists in our map, return the upgraded 3D version.
-            // If it doesn't exist, just return the original imageIndex unchanged.
-            return upgradeMap[imageIndex] !== undefined ? upgradeMap[imageIndex] : imageIndex;
+        
+        // Helper function to quickly bulk-assign ranges
+        function setConfig(min, max, scale, hover, faceZ = 0.70, facePan = 0.0) {
+            for (let i = Math.floor(min); i <= Math.ceil(max); i++) {
+                SPRITE_CONFIGS[i] = { scale, hover, faceZ, facePan };
             }
+        }
 
+        // Helper for decimals (like 60.1, 77.1) or single IDs
+        function setSingle(id, scale, hover, faceZ = 0.70, facePan = 0.0) {
+            SPRITE_CONFIGS[id] = { scale, hover, faceZ, facePan };
+        }
         function drawPortrait(index, x, y, z, card = 0, direction = 0, frameOverride = -1) {
             if (Number(index) === -27 || !spriteCache[index]) {
                 drawPortraitPaths(index, x, y, z, card);
                 return;
             }
 
-            let drawX = tX + (tL / 10) * x;
-            let drawY = tY + (tH / 10) * y;
-            let drawW = tL * z;
-            let drawH = tH * z;
+            // --- FIX 1: ROUND TO WHOLE PIXELS TO PREVENT SUB-PIXEL BLUR ---
+            let drawX = Math.floor(tX + (tL / 10) * x);
+            let drawY = Math.floor(tY + (tH / 10) * y);
+            let drawW = Math.floor(tL * z);
+            let drawH = Math.floor(tH * z);
 
-            ctx.imageSmoothingEnabled = true; 
+            // --- FIX 2: DISABLE IMAGE SMOOTHING FOR CRISP SCALING ---
+            // (We only turn it back on if it's the UI card background, index -27)
+            ctx.imageSmoothingEnabled = false; 
             let previousBlend = ctx.globalCompositeOperation;
 
             if (index === 99) {
@@ -50147,6 +49955,10 @@
             let cacheEntry = spriteCache[index];
             let animationSpeed = 100; 
             if (index == 46.1 || index == 63.1 || index == 74.1 || index == 82) { animationSpeed = 300; }
+            // --- THE FIX: DESYNCHRONIZE ANIMATIONS ---
+            // Use the model's exact pixel X/Y coordinates as a random seed.
+            // We multiply by 10 so the offset is large enough to shift the frame.
+            let desyncOffset = Math.floor(drawX + drawY) * 10; 
 
             // Check what kind of cache entry we are dealing with
             if (Array.isArray(cacheEntry)) {
@@ -50156,13 +49968,18 @@
                     let safeDir = Math.max(0, Math.min(7, Math.floor(direction)));
                     let currentDirArray = cacheEntry[safeDir];
                     
-                    // USE OVERRIDE IF PROVIDED, OTHERWISE USE CLOCK
-                    const currentFrame = frameOverride !== -1 ? frameOverride : Math.floor(Date.now() / animationSpeed) % currentDirArray.length;
+                    // Add the desyncOffset to Date.now()!
+                    const currentFrame = frameOverride !== -1 ? frameOverride : 
+                        Math.floor((Date.now() + desyncOffset) / animationSpeed) % currentDirArray.length;
+                        
                     ctx.drawImage(currentDirArray[currentFrame], drawX, drawY, drawW, drawH);
                     
                 } else {
                     // ---> IT'S A STANDARD 1D ANIMATION <---
-                    const currentFrame = frameOverride !== -1 ? frameOverride : Math.floor(Date.now() / animationSpeed) % cacheEntry.length;
+                    // Add the desyncOffset to Date.now()!
+                    const currentFrame = frameOverride !== -1 ? frameOverride : 
+                        Math.floor((Date.now() + desyncOffset) / animationSpeed) % cacheEntry.length;
+                        
                     ctx.drawImage(cacheEntry[currentFrame], drawX, drawY, drawW, drawH);
                 }
                 
@@ -50699,40 +50516,40 @@
                                 add3dShapeRigged(mesh, 'rec', computeBone(swordGrip, 0, 1.2, 0, 0,0,0), 0.2, 1.2, 0.05, cSteel); 
                                 break;
                             case 6: // IDLE / STANDING MECH
-                            let idleT = window.cacheAngle || 0; 
-                            // A very tiny bob up and down to simulate breathing
-                            let breathe = Math.sin(idleT) * 0.009; 
+                                let idleT = window.cacheAngle || 0; 
+                                // A very tiny bob up and down to simulate breathing
+                                let breathe = Math.sin(idleT) * 0.009; 
 
-                            // Torso is mostly static, just breathing
-                            let idleTorso = { x: 0, y: breathe, z: 0, rx: 0, ry: 0, rz: 0 };
-                            let idleHead = computeBone(idleTorso, 0, -1.2, 0, 0, 0, 0);
-                            
-                            // Arms rest at the sides. We use 'rz' to angle them slightly outward.
-                            let idleRArm = computeBone(idleTorso, 1.0, -0.6, 0, 0, 0, 0.1);
-                            let idleLArm = computeBone(idleTorso, -1.0, -0.6, 0, 0, 0, -0.1);
-                            
-                            // Legs in a wide, stable stance. 'rz' angles the thighs out.
-                            let idleRThigh = computeBone(idleTorso, 0.5, 0.8, 0, 0, 0, -0.1);
-                            let idleRCalf = computeBone(idleRThigh, 0, 0.8, 0, 0, 0, 0);
-                            let idleLThigh = computeBone(idleTorso, -0.5, 0.8, 0, 0, 0, 0.1);
-                            let idleLCalf = computeBone(idleLThigh, 0, 0.8, 0, 0, 0, 0);
+                                // Torso is mostly static, just breathing
+                                let idleTorso = { x: 0, y: breathe, z: 0, rx: 0, ry: 0, rz: 0 };
+                                let idleHead = computeBone(idleTorso, 0, -1.2, 0, 0, 0, 0);
+                                
+                                // Arms rest at the sides. We use 'rz' to angle them slightly outward.
+                                let idleRArm = computeBone(idleTorso, 1.0, -0.6, 0, 0, 0, 0.1);
+                                let idleLArm = computeBone(idleTorso, -1.0, -0.6, 0, 0, 0, -0.1);
+                                
+                                // Legs in a wide, stable stance. 'rz' angles the thighs out.
+                                let idleRThigh = computeBone(idleTorso, 0.5, 0.8, 0, 0, 0, -0.1);
+                                let idleRCalf = computeBone(idleRThigh, 0, 0.8, 0, 0, 0, 0);
+                                let idleLThigh = computeBone(idleTorso, -0.5, 0.8, 0, 0, 0, 0.1);
+                                let idleLCalf = computeBone(idleLThigh, 0, 0.8, 0, 0, 0, 0);
 
-                            // Sword held neutrally
-                            let idleSwordGrip = computeBone(idleRArm, 0, 0.7, 0, Math.PI/4, 0, 0);
+                                // Sword held neutrally
+                                let idleSwordGrip = computeBone(idleRArm, 0, 0.7, 0, Math.PI/4, 0, 0);
 
-                            // --- ATTACH SHAPES ---
-                            add3dShapeRigged(mesh, 'rec', idleTorso, 0.8, 0.8, 0.4, cArmor);
-                            add3dShapeRigged(mesh, 'rec', idleHead, 0.4, 0.4, 0.4, {r: 0.2, g: 0.6, b: 1.0}); // Blue Visor
-                            
-                            add3dShapeRigged(mesh, 'arc', idleRArm, 0.15, 0.7, 0.15, cArmor);
-                            add3dShapeRigged(mesh, 'arc', idleLArm, 0.15, 0.7, 0.15, cArmor);
-                            add3dShapeRigged(mesh, 'arc', idleRThigh, 0.2, 0.6, 0.2, cArmor);
-                            add3dShapeRigged(mesh, 'arc', idleRCalf, 0.15, 0.7, 0.15, cJoint);
-                            add3dShapeRigged(mesh, 'arc', idleLThigh, 0.2, 0.6, 0.2, cArmor);
-                            add3dShapeRigged(mesh, 'arc', idleLCalf, 0.15, 0.7, 0.15, cJoint);
+                                // --- ATTACH SHAPES ---
+                                add3dShapeRigged(mesh, 'rec', idleTorso, 0.8, 0.8, 0.4, cArmor);
+                                add3dShapeRigged(mesh, 'rec', idleHead, 0.4, 0.4, 0.4, {r: 0.2, g: 0.6, b: 1.0}); // Blue Visor
+                                
+                                add3dShapeRigged(mesh, 'arc', idleRArm, 0.15, 0.7, 0.15, cArmor);
+                                add3dShapeRigged(mesh, 'arc', idleLArm, 0.15, 0.7, 0.15, cArmor);
+                                add3dShapeRigged(mesh, 'arc', idleRThigh, 0.2, 0.6, 0.2, cArmor);
+                                add3dShapeRigged(mesh, 'arc', idleRCalf, 0.15, 0.7, 0.15, cJoint);
+                                add3dShapeRigged(mesh, 'arc', idleLThigh, 0.2, 0.6, 0.2, cArmor);
+                                add3dShapeRigged(mesh, 'arc', idleLCalf, 0.15, 0.7, 0.15, cJoint);
 
-                            add3dShapeRigged(mesh, 'rec', idleSwordGrip, 0.6, 0.1, 0.1, cGold); 
-                            add3dShapeRigged(mesh, 'rec', computeBone(idleSwordGrip, 0, 1.2, 0, 0,0,0), 0.2, 1.2, 0.05, cSteel); 
+                                add3dShapeRigged(mesh, 'rec', idleSwordGrip, 0.6, 0.1, 0.1, cGold); 
+                                add3dShapeRigged(mesh, 'rec', computeBone(idleSwordGrip, 0, 1.2, 0, 0,0,0), 0.2, 1.2, 0.05, cSteel); 
                             break;
                         //WARD(107)
                             case 7: // 3D ROTATING SHIELD
@@ -57171,7 +56988,7 @@
                             let isEnemy = (hitNPC.alignment.startsWith('foe') && hitNPC.alignment !== 'foe_coward' && hitNPC.role !== 'summoned_minion') || hitNPC.role === 'battle';
                             
                             // --- NEW: NON-MAGE COLLISION (RESTORED CHAIN RAMMING!) ---
-                            if (isEnemy && Dungeon.playerClass !== 'Battle-Mage') {
+                            if (isEnemy) {
                                 Dungeon.shieldBash(hitNPC);
                                 
                                 if (typeof socket !== 'undefined') {
@@ -80825,9 +80642,23 @@
                     let xtcolor = 'white';
                     
                     Dungeon.uiPlayerCard.name = `${playerName} Lv.${currentLvl}`;
-                    Dungeon.uiPlayerCard.description =myLivePerception;
+                    Dungeon.uiPlayerCard.description = myLivePerception;
                     Dungeon.uiPlayerCard.portrait = playerSprite;
-                    Dungeon.uiPlayerCard.place (2.75,1.75,2)
+
+                    // --- NEW: REAL-TIME VIRTUAL DICE SYNC ---
+                    // We loop through all 4 stats and sync the UI card to the Dungeon's Effective Dice
+                    for (let i = 0; i < 4; i++) {
+                        let effDice = Dungeon.getEffectiveDice(i);
+                        Dungeon.uiPlayerCard.stat[i][0] = effDice.numDice;
+                        Dungeon.uiPlayerCard.stat[i][1] = effDice.diceSides;
+                        Dungeon.uiPlayerCard.stat[i][2] = effDice.flatMod;
+                        
+                        // We ONLY pass the dice text. The Card.place() method will automatically 
+                        // handle drawing the flatMod as a floating green/red number!
+                        Dungeon.uiPlayerCard.stat[i][3] = `${effDice.numDice}d${effDice.diceSides}`; 
+                    }
+
+                    Dungeon.uiPlayerCard.place(2.75, 1.75, 2);
                     let totalCards = typeof Dungeon !== 'undefined' && Dungeon.deck ? Dungeon.deck.length : 0;
                     // Ensure playerStats exist
             
@@ -80854,7 +80685,6 @@
                             if (pClass === 'Rogue' && statIndex === 3) return true;
                             if (pClass === 'Mage' && statIndex === 2) return true;
                             if (pClass === 'Priest' && (statIndex === 1 || statIndex === 2)) return true;
-                            if (pClass === 'Battle-Mage') return true;
 
                             return false;
                         };
@@ -80862,7 +80692,6 @@
                         const drawBonusText = (statIdx, drawX, drawY) => {
                             let hasBonus = checkBonus(statIdx);
                             let txt = hasBonus ? "+2" : "+1";
-                            if (pClass === 'Battle-Mage') txt = "+4";
 
                             let color = hasBonus ? '#00ffff' : 'white';
                             
@@ -82243,7 +82072,7 @@
                         drawShape('rec', cX, cY, 1, 0, 0, 1.1, 1.1, 0,0,0,0, '#222233', 1);
                         
                         // --- THE SILENT CRASH FIX ---
-                        ctx.imageSmoothingEnabled = true;
+                        ctx.imageSmoothingEnabled = false;
                         ctx.save(); // Protects canvas state
                         try {
                             if (isDeck) drawPortrait(-27, cX, cY, 0.13, id); 
@@ -82729,15 +82558,16 @@
     
     initializeStoryArchive();
     resizeCanvas(); 
-
+    
     // ==========================================
     // CACHING PHASE 1: PORTRAITS (0% -> 50%)
     // ==========================================
+        
     await cacheAllPortraits((progressPercentage) => {
         // Divide by 2 so it fills exactly half the bar
         progressBar.style.width = (progressPercentage) + '%';
     });
-
+    
    
 
     // --- MATH IS DONE ---
