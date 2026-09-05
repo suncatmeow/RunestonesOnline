@@ -318,11 +318,13 @@
                     
                     ],
                     wildlife: [
-                        { type: 'hercBird', count: 9, sprite: 228, interaction: 'battle', alignment: 'foe', zoneX: 0.22, zoneY: 0.22, radius: 0.4 },
-                        { type: 'hercAuroch', count: 9, sprite: 246, interaction: 'battle', alignment: 'foe', zoneX: 0.22, zoneY: 0.22, radius: 0.4 },
-                        { type: 'hercWyvern', count: 3, sprite: 206, interaction: 'battle', alignment: 'foe', zoneX: 0.75, zoneY: 0.25, radius: 0.4 },
-                        { type: 'desertScorpion', count: 2, sprite: 216, interaction: 'battle', alignment: 'foe', zoneX: 0.25, zoneY: 0.90, radius: 0.25 },
-                        { type: 'desertAnt', count: 3, sprite: 216, interaction: 'battle', alignment: 'foe', zoneX: 0.69, zoneY: 0.90, radius: 0.25 }
+                        { type: 'hercBird', count: 9, sprite: 228, interaction: 'battle', alignment: 'foe', zoneX: 0.22, zoneY: 0.22, radius: 0.4, level: 30 },
+                        { type: 'hercAuroch', count: 9, sprite: 246, interaction: 'battle', alignment: 'foe', zoneX: 0.22, zoneY: 0.22, radius: 0.4, level: 32 },
+                        { type: 'hercWyvern', count: 3, sprite: 206, interaction: 'battle', alignment: 'foe', zoneX: 0.75, zoneY: 0.25, radius: 0.4, level: 35 },
+                        { type: 'desertScorpion', count: 2, sprite: 216, interaction: 'battle', alignment: 'foe', zoneX: 0.25, zoneY: 0.90, radius: 0.25, level: 30 },
+                        { type: 'desertAnt', count: 3, sprite: 216, interaction: 'battle', alignment: 'foe', zoneX: 0.69, zoneY: 0.90, radius: 0.25, level: 30 },
+                        // MINIBOSS
+                        { type: 'ancientWyvern', count: 1, sprite: 206, interaction: 'battle', alignment: 'foe', zoneX: 0.5, zoneY: 0.5, radius: 0.2, level: 40, isBoss: true }
                     ],
                     npcs: []
                 },
@@ -485,13 +487,15 @@
                         
                     ],
                     wildlife: [
-                        { type: 'moorSpider', count: 1, sprite: 57, interaction: 'battle', alignment: 'foe', zoneX: 0.9, zoneY: 0.1, radius: 0.3 },
-                        { type: 'moorSlime', count: 3, sprite: 222, interaction: 'battle', alignment: 'foe', zoneX: 0.5, zoneY: 0.5, radius: 0.3 },
-                        { type: 'moorBoar', count: 6, sprite: 194, interaction: 'battle', alignment: 'foe', zoneX: 0.8, zoneY: 0.1, radius: 0.3 },
-                        { type: 'moorFox', count: 1, sprite: 240, interaction: 'battle', alignment: 'foe', zoneX: 0.75, zoneY: 6.0, radius: 0.3 },
-                        { type: 'moorRat', count: 1, sprite: 219, interaction: 'battle', alignment: 'foe', zoneX: 0.5, zoneY: 0.5, radius: 0.5 },
-                        { type: 'moorDeer', count: 1, sprite: 300, interaction: 'dialogue', alignment: 'defender', zoneX: 0.5, zoneY: 0.5, radius: 0.5, customDialogue: ['*It eyes you apathetically.*'] },
-                        { type: 'moorDrunk', count: 1, sprite: 297, interaction: 'dialogue', alignment: 'defender', zoneX: 0.53, zoneY: 0.27, radius: 0.05, customDialogue: ["Experts come here to hunt and discuss ideas.","I come for the cheap ale.","*burp*"] }
+                        { type: 'moorSpider', count: 1, sprite: 57, interaction: 'battle', alignment: 'foe', zoneX: 0.9, zoneY: 0.1, radius: 0.3, level: 3 },
+                        { type: 'moorSlime', count: 3, sprite: 222, interaction: 'battle', alignment: 'foe', zoneX: 0.5, zoneY: 0.5, radius: 0.3, level: 1 },
+                        { type: 'moorBoar', count: 6, sprite: 194, interaction: 'battle', alignment: 'foe', zoneX: 0.8, zoneY: 0.1, radius: 0.3, level: 2 },
+                        { type: 'moorFox', count: 1, sprite: 240, interaction: 'battle', alignment: 'foe', zoneX: 0.75, zoneY: 6.0, radius: 0.3, level: 2 },
+                        { type: 'moorRat', count: 1, sprite: 219, interaction: 'battle', alignment: 'foe', zoneX: 0.5, zoneY: 0.5, radius: 0.5, level: 1 },
+                        { type: 'moorDeer', count: 1, sprite: 300, interaction: 'dialogue', alignment: 'defender', zoneX: 0.5, zoneY: 0.5, radius: 0.5, customDialogue: ['*It eyes you apathetically.*'], level: 13 },
+                        { type: 'moorDrunk', count: 1, sprite: 297, interaction: 'dialogue', alignment: 'defender', zoneX: 0.53, zoneY: 0.27, radius: 0.05, customDialogue: ["Experts come here to hunt and discuss ideas.","I come for the cheap ale.","*burp*"], level: 10 },
+                        // MINIBOSS
+                        { type: 'direBoar', count: 1, sprite: 194, interaction: 'battle', alignment: 'foe', zoneX: 0.5, zoneY: 0.5, radius: 0.2, level: 6, isBoss: true }
                     ],
                     npcs: [
                         { index: 8001, x: 47.5, y: 23.5, sprite: 252, role: 'dialogue', deck: [50, 51, 58, 59], alignment: 'friendly', customDialogue: ["Those without power fall prey to those with power.","You must get stronger!"], options: ["Listen", "Leave"], yesActions: [['train', 'warrior_trainer']], noActions: [['close_dialogue', null]] },
@@ -765,9 +769,11 @@
                     
                     ],
                     wildlife: [
-                        { type: 'tintWolf', count: 3, sprite: 191, interaction: 'battle', alignment: 'foe', zoneX: 0.25, zoneY: 0.25, radius: 0.3 },
-                        { type: 'tintFox', count: 6, sprite: 240, interaction: 'battle', alignment: 'foe', zoneX: 0.75, zoneY: 0.75, radius: 0.3 },
-                        { type: 'tintBunny', count: 9, sprite: 225, interaction: 'battle', alignment: 'foe', zoneX: 0.5, zoneY: 0.5, radius: 0.2 }
+                        { type: 'tintWolf', count: 3, sprite: 191, interaction: 'battle', alignment: 'foe', zoneX: 0.25, zoneY: 0.25, radius: 0.3, level: 6 },
+                        { type: 'tintFox', count: 6, sprite: 240, interaction: 'battle', alignment: 'foe', zoneX: 0.75, zoneY: 0.75, radius: 0.3, level: 3 },
+                        { type: 'tintBunny', count: 9, sprite: 225, interaction: 'battle', alignment: 'foe', zoneX: 0.5, zoneY: 0.5, radius: 0.2, level: 1 },
+                        // MINIBOSS
+                        { type: 'alphaWolf', count: 1, sprite: 191, interaction: 'battle', alignment: 'foe', zoneX: 0.5, zoneY: 0.5, radius: 0.3, level: 9, isBoss: true }
                     ],
                     npcs: [
                         { index: 541718, x: 20.5, y: 8.5, sprite: 243, role: 'portal', deck: [27.5, 75.5, 4, 1], alignment: 'friendly',
@@ -1034,11 +1040,13 @@
                     
                     ],
                     wildlife: [
-                        { type: 'wallRam', count: 9, sprite: 231, interaction: 'battle', alignment: 'foe', zoneX: 1.0, zoneY: 0.25, radius: 0.3 },
-                        { type: 'wallBear', count: 3, sprite: 188, interaction: 'battle', alignment: 'foe', zoneX: 0.55, zoneY: 0.5, radius: 0.3 },
-                        { type: 'wallWolf', count: 6, sprite: 191, interaction: 'battle', alignment: 'foe', zoneX: 0.63, zoneY: 1.0, radius: 0.3 },
-                        { type: 'wallFox', count: 3, sprite: 240, interaction: 'battle', alignment: 'foe', zoneX: 0.75, zoneY: 1.0, radius: 0.3 },
-                        { type: 'wallBunny', count: 2, sprite: 225, interaction: 'battle', alignment: 'foe', zoneX: 0.5, zoneY: 0.5, radius: 0.2 }
+                        { type: 'wallRam', count: 9, sprite: 231, interaction: 'battle', alignment: 'foe', zoneX: 1.0, zoneY: 0.25, radius: 0.3, level: 3 },
+                        { type: 'wallBear', count: 3, sprite: 188, interaction: 'battle', alignment: 'foe', zoneX: 0.55, zoneY: 0.5, radius: 0.3, level: 9 },
+                        { type: 'wallWolf', count: 6, sprite: 191, interaction: 'battle', alignment: 'foe', zoneX: 0.63, zoneY: 1.0, radius: 0.3, level: 6 },
+                        { type: 'wallFox', count: 3, sprite: 240, interaction: 'battle', alignment: 'foe', zoneX: 0.75, zoneY: 1.0, radius: 0.3, level: 3 },
+                        { type: 'wallBunny', count: 2, sprite: 225, interaction: 'battle', alignment: 'foe', zoneX: 0.5, zoneY: 0.5, radius: 0.2, level: 1 },
+                        // MINIBOSS
+                        { type: 'goliathBear', count: 1, sprite: 188, interaction: 'battle', alignment: 'foe', zoneX: 0.5, zoneY: 0.5, radius: 0.2, level: 13, isBoss: true }
                     ],
                     npcs: [] // Add static NPCs here if needed
                 },
@@ -1254,11 +1262,13 @@
                     
                     ],
                     wildlife: [
-                        { type: 'desertAnt', count: 9, sprite: 210, interaction: 'battle', alignment: 'foe', zoneX: 0.5, zoneY: 0.5, radius: 0.5 },
-                        { type: 'desertScorpion', count: 6, sprite: 216, interaction: 'battle', alignment: 'foe', zoneX: 0.5, zoneY: 0.5, radius: 0.5 },
-                        { type: 'desertSalamander', count: 3, sprite: 33.1, interaction: 'battle', alignment: 'foe', zoneX: 0.5, zoneY: 0.5, radius: 0.5 },
-                        { type: 'desertMirage', count: 3, sprite: 88, interaction: 'battle', alignment: 'foe', zoneX: 0.77, zoneY: 0.77, radius: 0.3 },
-                        { type: 'desertImp', count: 3, sprite: 79, interaction: 'battle', alignment: 'foe', zoneX: 0.5, zoneY: 0.5, radius: 0.5 }
+                        { type: 'desertAnt', count: 9, sprite: 210, interaction: 'battle', alignment: 'foe', zoneX: 0.5, zoneY: 0.5, radius: 0.5, level: 6 },
+                        { type: 'desertScorpion', count: 6, sprite: 216, interaction: 'battle', alignment: 'foe', zoneX: 0.5, zoneY: 0.5, radius: 0.5, level: 6 },
+                        { type: 'desertSalamander', count: 3, sprite: 33.1, interaction: 'battle', alignment: 'foe', zoneX: 0.5, zoneY: 0.5, radius: 0.5, level: 9 },
+                        { type: 'desertMirage', count: 3, sprite: 88, interaction: 'battle', alignment: 'foe', zoneX: 0.77, zoneY: 0.77, radius: 0.3, level: 3 },
+                        { type: 'desertImp', count: 3, sprite: 79, interaction: 'battle', alignment: 'foe', zoneX: 0.5, zoneY: 0.5, radius: 0.5, level: 6 },
+                        // MINIBOSS
+                        { type: 'emperorScorpion', count: 1, sprite: 210, interaction: 'battle', alignment: 'foe', zoneX: 0.25, zoneY: 0.25, radius: 0.2, level: 13, isBoss: true }
                     ],
                     npcs: [
                         { index: 541712, x: 26.5, y: 75.5, sprite: 243, role: 'portal', deck: [20.5, 7.5, 2,3 ], alignment: 'friendly' },
@@ -1390,15 +1400,17 @@
                         
                     ],
                     wildlife: [
-                        { type: 'savageGoblin', count: 6, sprite: 54, interaction: 'battle', alignment: 'foe', zoneX: 0.5, zoneY: 0.5, radius: 0.5 },
-                        { type: 'savageSquirrel', count: 1, sprite: 234, interaction: 'battle', alignment: 'foe', zoneX: 0.5, zoneY: 0.5, radius: 0.5 },
-                        { type: 'savageBoar', count: 2, sprite: 194, interaction: 'battle', alignment: 'foe', zoneX: 0.3, zoneY: 0.69, radius: 0.3 },
-                        { type: 'savageFox', count: 1, sprite: 240, interaction: 'battle', alignment: 'foe', zoneX: 0.75, zoneY: 1.0, radius: 0.3 },
-                        { type: 'savageWolf', count: 3, sprite: 191, interaction: 'battle', alignment: 'foe', zoneX: 0.25, zoneY: 0.75, radius: 0.1 },
-                        { type: 'savageBunny', count: 1, sprite: 225, interaction: 'battle', alignment: 'foe', zoneX: 0.5, zoneY: 0.5, radius: 0.5 },
-                        { type: 'savageBear', count: 3, sprite: 188, interaction: 'battle', alignment: 'foe', zoneX: 0.5, zoneY: 0.5, radius: 0.6 },
-                        { type: 'savagePixie', count: 3, sprite: 60.1, interaction: 'battle', alignment: 'foe', zoneX: 0.5, zoneY: 0.5, radius: 0.6 },
-                        { type: 'savageWisp', count: 3, sprite: 23, interaction: 'battle', alignment: 'foe', zoneX: 0.9, zoneY: 0.9, radius: 0.1 }
+                        { type: 'savageGoblin', count: 6, sprite: 54, interaction: 'battle', alignment: 'foe', zoneX: 0.5, zoneY: 0.5, radius: 0.5, level: 6 },
+                        { type: 'savageSquirrel', count: 1, sprite: 234, interaction: 'battle', alignment: 'foe', zoneX: 0.5, zoneY: 0.5, radius: 0.5, level: 1 },
+                        { type: 'savageBoar', count: 2, sprite: 194, interaction: 'battle', alignment: 'foe', zoneX: 0.3, zoneY: 0.69, radius: 0.3, level: 6 },
+                        { type: 'savageFox', count: 1, sprite: 240, interaction: 'battle', alignment: 'foe', zoneX: 0.75, zoneY: 1.0, radius: 0.3, level: 3 },
+                        { type: 'savageWolf', count: 3, sprite: 191, interaction: 'battle', alignment: 'foe', zoneX: 0.25, zoneY: 0.75, radius: 0.1, level: 6 },
+                        { type: 'savageBunny', count: 1, sprite: 225, interaction: 'battle', alignment: 'foe', zoneX: 0.5, zoneY: 0.5, radius: 0.5, level: 1 },
+                        { type: 'savageBear', count: 3, sprite: 188, interaction: 'battle', alignment: 'foe', zoneX: 0.5, zoneY: 0.5, radius: 0.6, level: 9 },
+                        { type: 'savagePixie', count: 3, sprite: 60.1, interaction: 'battle', alignment: 'foe', zoneX: 0.5, zoneY: 0.5, radius: 0.6, level: 3 },
+                        { type: 'savageWisp', count: 3, sprite: 23, interaction: 'battle', alignment: 'foe', zoneX: 0.9, zoneY: 0.9, radius: 0.1, level: 3 },
+                        // MINIBOSS
+                        { type: 'elderSpriggan', count: 1, sprite: 100, interaction: 'battle', alignment: 'foe', zoneX: 0.5, zoneY: 0.5, radius: 0.2, level: 19, isBoss: true }
                     ],
                     npcs: [
                         { index: 2, x: 93.5, y: 16.5, sprite: 54, role: 'battle', deck: [40, 41, 54], alignment: 'foe', customDialogue: ["We can't go back!"] },
@@ -1657,10 +1669,12 @@
                         
                     ],
                     wildlife: [
-                        { type: 'snowRam', count: 1, sprite: 231, interaction: 'battle', alignment: 'foe', zoneX: 0.43, zoneY: 0.03, radius: 0.1 },
-                        { type: 'snowGolem', count: 9, sprite: 81, interaction: 'battle', alignment: 'foe', zoneX: 0.46, zoneY: 0.17, radius: 0.2 },
-                        { type: 'snowBoar', count: 3, sprite: 194, interaction: 'battle', alignment: 'foe', zoneX: 0.78, zoneY: 0.54, radius: 0.1 },
-                        { type: 'snowBear', count: 2, sprite: 188, interaction: 'battle', alignment: 'foe', zoneX: 0.25, zoneY: 0.75, radius: 0.3 }
+                        { type: 'snowRam', count: 1, sprite: 231, interaction: 'battle', alignment: 'foe', zoneX: 0.43, zoneY: 0.03, radius: 0.1, level: 3 },
+                        { type: 'snowGolem', count: 9, sprite: 81, interaction: 'battle', alignment: 'foe', zoneX: 0.46, zoneY: 0.17, radius: 0.2, level: 6 },
+                        { type: 'snowBoar', count: 3, sprite: 194, interaction: 'battle', alignment: 'foe', zoneX: 0.78, zoneY: 0.54, radius: 0.1, level: 6 },
+                        { type: 'snowBear', count: 2, sprite: 188, interaction: 'battle', alignment: 'foe', zoneX: 0.25, zoneY: 0.75, radius: 0.3, level: 13 },
+                        // MINIBOSS
+                        { type: 'frostCyclops', count: 1, sprite: 294, interaction: 'battle', alignment: 'foe', zoneX: 0.5, zoneY: 0.5, radius: 0.2, level: 19, isBoss: true }
                     ],
                     npcs: [
                         { index: 1, x: 87.5, y: 67.5, sprite: -32, role: 'portal', deck: [5.5, 9.5, 7, 0], alignment: 'friendly' },
@@ -1946,13 +1960,15 @@
                         
                     ],
                     wildlife: [
-                        { type: 'avalonPixie', count: 9, sprite: 60.1, interaction: 'battle', alignment: 'foe', zoneX: 0.5, zoneY: 0.5, radius: 0.5 },
-                        { type: 'avalonSpider', count: 3, sprite: 57, interaction: 'battle', alignment: 'foe', zoneX: 0.5, zoneY: 0.5, radius: 0.5 },
-                        { type: 'avalonSlime', count: 6, sprite: 222, interaction: 'battle', alignment: 'foe', zoneX: 0.5, zoneY: 0.5, radius: 0.5 },
-                        { type: 'avalonSylph', count: 3, sprite: 86, interaction: 'battle', alignment: 'foe', zoneX: 0.75, zoneY: 1.0, radius: 0.3 },
-                        { type: 'avalonSpriggan', count: 2, sprite: 100, interaction: 'battle', alignment: 'foe', zoneX: 0.5, zoneY: 0.5, radius: 0.5 },
-                        { type: 'avalonVampire', count: 1, sprite: 97, interaction: 'battle', alignment: 'foe', zoneX: 0.25, zoneY: 0.75, radius: 0.3 },
-                        { type: 'avalonDullahan', count: 1, sprite: 103, interaction: 'battle', alignment: 'foe', zoneX: 0.75, zoneY: 0.5, radius: 0.25 }
+                        { type: 'avalonPixie', count: 9, sprite: 60.1, interaction: 'battle', alignment: 'foe', zoneX: 0.5, zoneY: 0.5, radius: 0.5, level: 6 },
+                        { type: 'avalonSpider', count: 3, sprite: 57, interaction: 'battle', alignment: 'foe', zoneX: 0.5, zoneY: 0.5, radius: 0.5, level: 6 },
+                        { type: 'avalonSlime', count: 6, sprite: 222, interaction: 'battle', alignment: 'foe', zoneX: 0.5, zoneY: 0.5, radius: 0.5, level: 3 },
+                        { type: 'avalonSylph', count: 3, sprite: 86, interaction: 'battle', alignment: 'foe', zoneX: 0.75, zoneY: 1.0, radius: 0.3, level: 9 },
+                        { type: 'avalonSpriggan', count: 2, sprite: 100, interaction: 'battle', alignment: 'foe', zoneX: 0.5, zoneY: 0.5, radius: 0.5, level: 19 },
+                        { type: 'avalonVampire', count: 1, sprite: 97, interaction: 'battle', alignment: 'foe', zoneX: 0.25, zoneY: 0.75, radius: 0.3, level: 19 },
+                        { type: 'avalonDullahan', count: 1, sprite: 103, interaction: 'battle', alignment: 'foe', zoneX: 0.75, zoneY: 0.5, radius: 0.25, level: 19 },
+                        // MINIBOSS
+                        { type: 'vampireLord', count: 1, sprite: 97, interaction: 'battle', alignment: 'foe', zoneX: 0.5, zoneY: 0.5, radius: 0.2, level: 33, isBoss: true }
                     ],
                     npcs: [
                         // Portals
@@ -2259,11 +2275,13 @@
                     
                     ],
                     wildlife: [
-                        { type: 'joywasp', count: 9, sprite: 213, interaction: 'battle', alignment: 'foe', zoneX: 0.5, zoneY: 0.5, radius: 0.5 },
-                        { type: 'joyBear', count: 3, sprite: 188, interaction: 'battle', alignment: 'foe', zoneX: 0.5, zoneY: 0.5, radius: 0.5 },
-                        { type: 'wallWolf', count: 6, sprite: 191, interaction: 'battle', alignment: 'foe', zoneX: 0.63, zoneY: 0.3, radius: 0.1 },
-                        { type: 'wallFox', count: 1, sprite: 240, interaction: 'battle', alignment: 'foe', zoneX: 0.75, zoneY: 1.0, radius: 0.3 },
-                        { type: 'wallBunny', count: 1, sprite: 225, interaction: 'battle', alignment: 'foe', zoneX: 0.5, zoneY: 0.5, radius: 0.2 }
+                        { type: 'joywasp', count: 9, sprite: 213, interaction: 'battle', alignment: 'foe', zoneX: 0.5, zoneY: 0.5, radius: 0.5, level: 6 },
+                        { type: 'joyBear', count: 3, sprite: 188, interaction: 'battle', alignment: 'foe', zoneX: 0.5, zoneY: 0.5, radius: 0.5, level: 9 },
+                        { type: 'wallWolf', count: 6, sprite: 191, interaction: 'battle', alignment: 'foe', zoneX: 0.63, zoneY: 0.3, radius: 0.1, level: 6 },
+                        { type: 'wallFox', count: 1, sprite: 240, interaction: 'battle', alignment: 'foe', zoneX: 0.75, zoneY: 1.0, radius: 0.3, level: 3 },
+                        { type: 'wallBunny', count: 1, sprite: 225, interaction: 'battle', alignment: 'foe', zoneX: 0.5, zoneY: 0.5, radius: 0.2, level: 1 },
+                        // MINIBOSS
+                        { type: 'hiveguardWasp', count: 1, sprite: 213, interaction: 'battle', alignment: 'foe', zoneX: 0.5, zoneY: 0.5, radius: 0.2, level: 13, isBoss: true }
                     ],
                     npcs: [
                         { index: 541713, x: 81.5, y: 7.5, sprite: 243, role: 'portal', deck: [77.5, 89.5, 0, 0], alignment: 'friendly' },
@@ -2420,7 +2438,7 @@
                     ],
                     wildlife: [],
                     npcs: [
-                        { index: 0, x: 2.5, y: 2.5, sprite: 35.1, role: 'dialogue', deck: [35], alignment: 'friendly',
+                        { index: 0, x: 2.5, y: 2.5, sprite: 35.1, role: 'dialogue', deck: [35], alignment: 'friendly', level: 25,
                             customDialogue: ["He said that true freedom meant burning down the old world.", "Instead, I burned my soul for his amusement.", "Look at you, marching upward to your destiny...", "Tell me, hero... are your strings any looser than mine?"],
                             onSpawn: (npc) => {
                                 let fireDeck = []; for (let i = 22; i <= 35; i++) fireDeck.push(i);
@@ -2448,7 +2466,7 @@
                     ],
                     wildlife: [],
                     npcs: [
-                        { index: 0, x: 2.5, y: 2.5, sprite: 49.1, role: 'battle', alignment: 'foe', isBoss: true,
+                        { index: 0, x: 2.5, y: 2.5, sprite: 49.1, role: 'battle', alignment: 'foe', isBoss: true, level: 25,
                             onSpawn: (npc) => {
                                 let waterDeck = []; for (let i = 36; i <= 49; i++) waterDeck.push(i);
                                 npc.deck = waterDeck;
@@ -2477,7 +2495,7 @@
                     ],
                     wildlife: [],
                     npcs: [
-                        { index: 0, x: 2.5, y: 2.5, sprite: 63.1, role: 'dialogue', deck: [63], alignment: 'friendly',
+                        { index: 0, x: 2.5, y: 2.5, sprite: 63.1, role: 'dialogue', deck: [63], alignment: 'friendly', level: 25,
                             customDialogue: ["He told me that a King of Swords should kneel to no Queen... that the sky belonged to me.", "Thus I rained fire upon the land, burning the innocent, to fuel my vanity.", "Only to die a tyrant, for what? A hoard of meaningless gold?", "Tell me, O hero... whose hand truly holds your sword?"],
                             onSpawn: (npc) => {
                                 let airDeck = []; for (let i = 50; i <= 63; i++) airDeck.push(i);
@@ -2520,8 +2538,7 @@
                     ],
                     wildlife: [],
                     npcs: [
-                        { index: 3, x: 2.5, y: 5.5, sprite: -27, role: 'dialogue', deck: [14], alignment: 'friendly' },
-                        { index: 0, x: 2.5, y: 14.5, sprite: 77.1, role: 'dialogue', deck: [77], alignment: 'friendly',
+                        { index: 0, x: 2.5, y: 14.5, sprite: 77.1, role: 'dialogue', deck: [77], alignment: 'friendly', level: 25,
                             customDialogue: ["I built walls of stone to keep her safe...", "He warned me the Queens would tear those walls down. That the only defense was a brutal offense.", "I fought for love. I fought for my family. I was a pawn. I lost everything...", "What do you fight for, puppet of fate?"],
                             onSpawn: (npc) => {
                                 let earthDeck = []; for (let i = 64; i <= 77; i++) earthDeck.push(i);
@@ -2549,10 +2566,11 @@
                     ],
                     wildlife: [],
                     npcs: [
-                        { index: 0, x: 2.5, y: 1.5, sprite: 0, role: 'dialogue', deck: [0], alignment: 'friendly',
+                        { index: 0, x: 2.5, y: 1.5, sprite: 0, role: 'dialogue', deck: [0], alignment: 'friendly', level: 40,
                             customDialogue: ["Um, so actually...There is no Dark Emperor.", "It was me all along!", "I offered each of the Kings what they most desired.", "They turned so easily.", "But wow, those Kings sure had a lot of cards!", "I wonder...", "Who's stronger, you or me?"],
                             onSpawn: (npc) => {
                                 let bossDeck = []; for (let i = 0; i <= 77; i++) bossDeck.push(i);
+                                bossDeck.push(93, 94, 95, 96, 97); // Bonus Spells
                                 npc.endActions = [
                                     ['play_sfx', 'heal'], ['remove_card', {card:0,text:"Fool has left the party!"}],
                                     ['spawn_npc', [21, 1, 'SPEAKER_X', 1.369, 0, 'chasing', '#ff0000', bossDeck, null, null, 'battle', null, true, 'foe', [], [
@@ -13482,70 +13500,69 @@
                 const fractionalY = this.y - Math.floor(this.y)-.5;
                 
                 // NEW: Only run the heavy Line of Sight math every 5th frame
-                    let updateFogOfWar = (this.frame % 5 === 0);
+                let updateFogOfWar = (this.frame % 5 === 0);
 
-                    for (let y = -range; y <= range; y++) {
-                        for (let x = -range; x <= range; x++) {
-                            const mapX = Math.floor(this.x) + x;
-                            const mapY = Math.floor(this.y) + y;
+                for (let y = -range; y <= range; y++) {
+                    for (let x = -range; x <= range; x++) {
+                        const mapX = Math.floor(this.x) + x;
+                        const mapY = Math.floor(this.y) + y;
 
-                            if (mapX >= 0 && mapX < this.maze[0].length && mapY >= 0 && mapY < this.maze.length) {
-                                
-                                const realDist = Math.sqrt(Math.pow((mapX + 0.5) - this.x, 2) + Math.pow((mapY + 0.5) - this.y, 2));
-                                let isCurrentlySeen = false;
-                                
-                                // DYNAMIC REVEAL
-                                if (this.explored[mapY] && this.explored[mapY][mapX] === 1) {
-                                    // If we already explored it, don't run the heavy math! Just check if it's close.
-                                    isCurrentlySeen = (realDist <= this.dSense);
-                                } 
-                                
-                                // If it's an update frame, and it's unexplored, cast the ray to see if we discover it
-                                if (updateFogOfWar && !isCurrentlySeen && this.dSense > 0 && realDist <= this.dSense) {
-                                    if (this.checkLineOfSight(mapX + 0.5, mapY + 0.5)) {
-                                        isCurrentlySeen = true;
-                                        if (!this.explored[mapY]) this.explored[mapY] = [];
-                                        this.explored[mapY][mapX] = 1; 
-                                    }
+                        if (mapX >= 0 && mapX < this.maze[0].length && mapY >= 0 && mapY < this.maze.length) {
+                            
+                            const realDist = Math.sqrt(Math.pow((mapX + 0.5) - this.x, 2) + Math.pow((mapY + 0.5) - this.y, 2));
+                            let isCurrentlySeen = false;
+                            
+                            // DYNAMIC REVEAL
+                            if (this.explored[mapY] && this.explored[mapY][mapX] === 1) {
+                                // If we already explored it, don't run the heavy math! Just check if it's close.
+                                isCurrentlySeen = (realDist <= this.dSense);
+                            } 
+                            
+                            // If it's an update frame, and it's unexplored, cast the ray to see if we discover it
+                            if (updateFogOfWar && !isCurrentlySeen && this.dSense > 0 && realDist <= this.dSense) {
+                                if (this.checkLineOfSight(mapX + 0.5, mapY + 0.5)) {
+                                    isCurrentlySeen = true;
+                                    if (!this.explored[mapY]) this.explored[mapY] = [];
+                                    this.explored[mapY][mapX] = 1; 
                                 }
-
-                    // ONLY DRAW IF EXPLORED
-                    if (this.explored[mapY] && this.explored[mapY][mapX] === 1) {
-                        const screenX = startX + size / 2 + (x - fractionalX) * cellSize;
-                        const screenY = startY + size / 2 + (y - fractionalY) * cellSize;
-                        
-                        if (screenX >= startX && screenX < startX + size && screenY >= startY && screenY < startY + size) {
-                            const tileID = this.maze[mapY][mapX];
-
-                            // --- FOG OF WAR EFFECT ---
-                            // Bright if currently in LOS/dSense, dim if just a memory
-                            ctx.globalAlpha = isCurrentlySeen ? 1.0 : 0.4;
-
-                            if (this.isWall(mapX, mapY)) {
-                                ctx.fillStyle = this.wallColors[tileID] || '#8b4513'; 
-                                ctx.fillRect(screenX, screenY, cellSize + 0.5, cellSize + 0.5);
-                            } else {
-                                ctx.fillStyle = this.floorColor; 
-                                ctx.fillRect(screenX, screenY, cellSize + 0.5, cellSize + 0.5);
                             }
-                            ctx.globalAlpha = 1.0; // Reset
+
+                            // ONLY DRAW IF EXPLORED
+                            if (this.explored[mapY] && this.explored[mapY][mapX] === 1) {
+                                const screenX = startX + size / 2 + (x - fractionalX) * cellSize;
+                                const screenY = startY + size / 2 + (y - fractionalY) * cellSize;
+                                
+                                if (screenX >= startX && screenX < startX + size && screenY >= startY && screenY < startY + size) {
+                                    const tileID = this.maze[mapY][mapX];
+
+                                    // --- FOG OF WAR EFFECT ---
+                                    // Bright if currently in LOS/dSense, dim if just a memory
+                                    ctx.globalAlpha = isCurrentlySeen ? 1.0 : 0.4;
+
+                                    if (this.isWall(mapX, mapY)) {
+                                        ctx.fillStyle = this.wallColors[tileID] || '#8b4513'; 
+                                        ctx.fillRect(screenX, screenY, cellSize + 0.5, cellSize + 0.5);
+                                    } else {
+                                        ctx.fillStyle = this.floorColor; 
+                                        ctx.fillRect(screenX, screenY, cellSize + 0.5, cellSize + 0.5);
+                                    }
+                                    ctx.globalAlpha = 1.0; // Reset
+                                }
+                            }
                         }
                     }
-                    }
-                }
                 }
 
                 // --- 2. DRAW NPCs ---
-                    this.npcs.forEach(npc => {
+                this.npcs.forEach(npc => {
                     if (!npc.visible || npc.isDead) return;
 
                     const diffX = npc.x - this.x;
                     const diffY = npc.y - this.y;
                     const dist = Math.sqrt(diffX*diffX + diffY*diffY);
 
-                    if (npc.isBoss||npc.isTarget) {
-                        let starColor = 'red';
-                        if(npc.isTarget){starColor = 'yellow'}
+                    if (npc.isBoss || npc.isTarget) {
+                        let starColor = npc.isTarget ? 'yellow' : 'red';
                         let drawDiffX = diffX;
                         let drawDiffY = diffY;
                         
@@ -13579,16 +13596,36 @@
                         let identifyRadius = Math.max(0, this.dSense - 15); 
                         
                         if (dist <= identifyRadius || this.dSense >= 50) {
-                            if (this.mapID === 999) {
-                                switch(npc.role) {
-                                    case 'battle': drawColor = '#ff0000'; break;     
-                                    case 'quest_giver': drawColor = '#ffd700'; break; 
-                                    case 'reward': drawColor = '#00ff00'; break;     
-                                    case 'dialogue': drawColor = '#00ffff'; break;   
-                                    default: drawColor = npc.color || '#ff0000';
-                                }
+                            
+                            // Helper combinations to catch all specific and sub-types
+                            let isPortal = (npc.role === 'portal' || npc.role === 'internal_portal' || npc.type === 99 || (npc.type <= -29 && npc.type >= -35));
+                            let isItem = (npc.role === 'dropped_card' || npc.role === 'reward' || npc.type < 0 || npc.type === -27);
+                            
+                            let align = npc.alignment || '';
+                            let isFriendly = (
+                                npc.role === 'dialogue' || 
+                                npc.role === 'shop' || 
+                                npc.role === 'quest_giver' || 
+                                align.startsWith('friendly') || 
+                                align.startsWith('defender') || 
+                                align.startsWith('ally') || 
+                                align.startsWith('escort')
+                            );
+                            let isFoe = align.startsWith('foe'); // Catches foe, foe_coward, foe_wave
+
+                            // Apply the colors strictly based on your criteria
+                            if (isPortal) {
+                                drawColor = '#00ffff'; // Cyan
+                            } else if (isItem) {
+                                drawColor = '#ffff00'; // Yellow
+                            } else if (isFriendly) {
+                                drawColor = '#00ff00'; // Green
+                            } else if (isFoe) {
+                                drawColor = '#ff0000'; // Red
+                            } else if (align === 'neutral' || npc.role === 'sign') {
+                                drawColor = '#aaaaaa'; // Gray out purely decorative stuff
                             } else {
-                                drawColor = npc.color || '#ff0000'; 
+                                drawColor = npc.color || '#ff0000'; // Fallback
                             }
                         }
 
@@ -13600,63 +13637,88 @@
                         ctx.arc(screenX + cellSize/2, screenY + cellSize/2, cellSize/3, 0, Math.PI*2);
                         ctx.fill();
                     }
-                    });
+                });
 
                 // --- 3. DRAW ONLINE PLAYERS ---
-                    if (window.remotePlayers) {
-                        for (let id in window.remotePlayers) {
-                            let p = window.remotePlayers[id];
-                            if (p.mapID === this.mapID && p.x !== undefined && p.y !== undefined) {
-                                const diffX = p.x - this.x;
-                                const diffY = p.y - this.y;
-                                const dist = Math.sqrt(diffX*diffX + diffY*diffY);
+                if (window.remotePlayers) {
+                    for (let id in window.remotePlayers) {
+                        let p = window.remotePlayers[id];
+                        if (p.mapID === this.mapID && p.x !== undefined && p.y !== undefined) {
+                            const diffX = p.x - this.x;
+                            const diffY = p.y - this.y;
+                            const dist = Math.sqrt(diffX*diffX + diffY*diffY);
 
-                                if(Math.abs(diffX) <= range && Math.abs(diffY) <= range) {
-                                    let canSeePlayer = false;
-                                    if (this.dSense > 0 && dist <= this.dSense) canSeePlayer = true;
-                                    else canSeePlayer = this.checkLineOfSight(p.x, p.y);
+                            if(Math.abs(diffX) <= range && Math.abs(diffY) <= range) {
+                                let canSeePlayer = false;
+                                if (this.dSense > 0 && dist <= this.dSense) canSeePlayer = true;
+                                else canSeePlayer = this.checkLineOfSight(p.x, p.y);
 
-                                    if (!canSeePlayer) continue;
+                                if (!canSeePlayer) continue;
 
-                                    const screenX = startX + size/2 + diffX * cellSize;
-                                    const screenY = startY + size/2 + diffY * cellSize;
-                                    
-                                    if (p.name && p.name.toLowerCase().includes("suncat")) {
-                                        ctx.fillStyle = '#ff6600'; 
-                                    } else {
-                                        ctx.fillStyle = '#00ffff'; 
-                                    }
-                                    
-                                    ctx.beginPath();
-                                    ctx.arc(screenX + cellSize/2, screenY + cellSize/2, cellSize/3, 0, Math.PI*2);
-                                    ctx.fill();
+                                const screenX = startX + size/2 + diffX * cellSize;
+                                const screenY = startY + size/2 + diffY * cellSize;
+                                
+                                if (p.name && p.name.toLowerCase().includes("suncat")) {
+                                    ctx.fillStyle = '#ff6600'; // Orange
+                                } else {
+                                    ctx.fillStyle = '#ff00ff'; // Magenta 
                                 }
+                                
+                                ctx.beginPath();
+                                ctx.arc(screenX + cellSize/2, screenY + cellSize/2, cellSize/3, 0, Math.PI*2);
+                                ctx.fill();
                             }
                         }
                     }
+                }
                     
-                // Player Arrow
+                // --- 4. DRAW PLAYER ARROW ---
                     const playerScreenX = startX + size / 2;
                     const playerScreenY = startY + size / 2;
+
                     ctx.save();
                     ctx.translate(playerScreenX + cellSize / 2, playerScreenY + cellSize / 2);
                     ctx.rotate(this.dir * Math.PI / 2);
-                    ctx.fillStyle = '#fff';
+
+                    // Dynamically grab the contrast color based on the current floor
+                    const arrowColor = this.getContrastColor(this.floorColor);
+                    ctx.fillStyle = arrowColor;
+
+                    // Draw the triangle
                     ctx.beginPath();
                     ctx.moveTo(0, -cellSize);
                     ctx.lineTo(-cellSize / 2, cellSize / 2);
                     ctx.lineTo(cellSize / 2, cellSize / 2);
+                    ctx.closePath();
                     ctx.fill();
+
+                    // Add an inverted outline so it never blends in with nearby walls or particles
+                    ctx.lineWidth = 1.5;
+                    ctx.strokeStyle = arrowColor === '#ffffff' ? '#000000' : '#ffffff';
+                    ctx.stroke();
+
                     ctx.restore();
-                //Player Coordinates
-                let mMapY = 2;
-                if(startGame === 'mapmaker'){mMapY = 1.9 }
-                    drawText(7.85, mMapY, 2, 0.2, `${Math.floor(this.x)},${Math.floor(this.y)}`, 'yellow', 1, 'center');
-
+                
+                // --- 5. PLAYER COORDINATES ---
+                    let mMapY = 2;
+                    if (typeof startGame !== 'undefined' && startGame === 'mapmaker') { 
+                        mMapY = 1.9; 
+                    }
+                    
+                    // Reuse the contrast color so the text pops against the map!
+                    const coordsColor = this.getContrastColor(this.floorColor);
+                    
+                    drawText(
+                        7.85, 
+                        mMapY, 
+                        2, 
+                        0.2, 
+                        `${Math.floor(this.x)},${Math.floor(this.y)}`, 
+                        coordsColor, 
+                        1, 
+                        'center'
+                    );
                 }
-
-
-
             drawAtlasMinimap(ctx, viewX, viewY, viewW, viewH) {
                 // 1. Define the minimap bounding box in UI grid units (Top Right Corner)
                 let mapBoxX = 7.85;
@@ -13865,6 +13927,40 @@
                 }
                     
                 drawText(0, 9.4, 10, 0.25, "Tap anywhere to close", 'gray', 1, 'center');
+            }
+            getContrastColor(colorStr) {
+                if (!colorStr) return '#ffffff'; // Fallback to white
+
+                let r = 0, g = 0, b = 0;
+
+                // Handle HEX
+                if (colorStr.startsWith('#')) {
+                    let hex = colorStr.replace('#', '');
+                    if (hex.length === 3) {
+                        r = parseInt(hex[0] + hex[0], 16);
+                        g = parseInt(hex[1] + hex[1], 16);
+                        b = parseInt(hex[2] + hex[2], 16);
+                    } else if (hex.length === 6 || hex.length === 8) {
+                        r = parseInt(hex.substring(0, 2), 16);
+                        g = parseInt(hex.substring(2, 4), 16);
+                        b = parseInt(hex.substring(4, 6), 16);
+                    }
+                } 
+                // Handle RGB / RGBA
+                else if (colorStr.startsWith('rgb')) {
+                    let match = colorStr.match(/\d+/g);
+                    if (match && match.length >= 3) {
+                        r = parseInt(match[0]);
+                        g = parseInt(match[1]);
+                        b = parseInt(match[2]);
+                    }
+                }
+
+                // Calculate Relative Luminance
+                let luminance = (0.299 * r + 0.587 * g + 0.114 * b);
+
+                // If the floor is bright (luminance > 128), use Black. Otherwise, use pure White.
+                return luminance > 128 ? '#000000' : '#ffffff'; 
             }
             drawStar(ctx, cx, cy, spikes, outerRadius, innerRadius, color) {
                 let rot = Math.PI / 2 * 3;
