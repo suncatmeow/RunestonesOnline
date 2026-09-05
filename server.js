@@ -3794,21 +3794,21 @@
         // 1. Start with a solid block of walls
         let grid = Array(size).fill().map(() => Array(size).fill(wallType));
 
+        // --- FIX: WRAP EVERY COORDINATE IN Math.floor() ---
         let nodes = {
-            start:     { x: 10 + Math.floor(Math.random() * 10), y: 10 + Math.floor(Math.random() * 10), type: 'Start' },
-            allyCamp:  { x: Math.floor(size / 2) + (Math.random() * 10 - 5), y: Math.floor(size / 2) + (Math.random() * 10 - 5), type: 'Ally' },
-            ambush1:   { x: 20 + Math.floor(Math.random() * 10), y: size - 30 + Math.floor(Math.random() * 10), type: 'Ambush' },
-            ambush2:   { x: size - 30 + Math.floor(Math.random() * 10), y: 20 + Math.floor(Math.random() * 10), type: 'Ambush' },
-            bossLair:  { x: size - 20 + Math.floor(Math.random() * 10), y: size - 20 + Math.floor(Math.random() * 10), type: 'Boss' }
+            start:     { x: Math.floor(10 + Math.random() * 10), y: Math.floor(10 + Math.random() * 10), type: 'Start' },
+            allyCamp:  { x: Math.floor(size / 2 + Math.random() * 10 - 5), y: Math.floor(size / 2 + Math.random() * 10 - 5), type: 'Ally' },
+            ambush1:   { x: Math.floor(20 + Math.random() * 10), y: Math.floor(size - 30 + Math.random() * 10), type: 'Ambush' },
+            ambush2:   { x: Math.floor(size - 30 + Math.random() * 10), y: Math.floor(20 + Math.random() * 10), type: 'Ambush' },
+            bossLair:  { x: Math.floor(size - 20 + Math.random() * 10), y: Math.floor(size - 20 + Math.random() * 10), type: 'Boss' }
         };
 
-        // --- NEW: CARVE LAKES AND CLIFFS! ---
-        // If the biome passed in water/cliff tiles, generate a random body of water!
+        // --- FIX: FLOOR LAKE CENTERS ---
         let hasWaterFeature = false;
         if (waterTile !== null && cliffTile !== null) {
             hasWaterFeature = true;
-            let lakeX = Math.floor(size / 2) + (Math.random() * 20 - 10);
-            let lakeY = Math.floor(size / 2) + (Math.random() * 20 - 10);
+            let lakeX = Math.floor(size / 2 + Math.random() * 20 - 10);
+            let lakeY = Math.floor(size / 2 + Math.random() * 20 - 10);
             let lakeRadius = 8 + Math.floor(Math.random() * 6);
 
             for (let y = lakeY - lakeRadius; y <= lakeY + lakeRadius; y++) {
@@ -3816,13 +3816,10 @@
                     if (y > 2 && y < size - 2 && x > 2 && x < size - 2) {
                         let distSq = Math.pow(x - lakeX, 2) + Math.pow(y - lakeY, 2);
                         
-                        // The deep center is Water (Tile 93)
                         if (distSq <= (lakeRadius - 2) * (lakeRadius - 2)) {
                             grid[y][x] = waterTile; 
                         } 
-                        // The outer edge is Cliffs (Tile 94/95)
                         else if (distSq <= lakeRadius * lakeRadius) {
-                            // Add some noise so the cliffs look natural, not a perfect circle
                             if (Math.random() > 0.3) grid[y][x] = cliffTile;
                         }
                     }
