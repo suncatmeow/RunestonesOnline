@@ -2758,97 +2758,106 @@
                 },
             };
             const SPELL_REGISTRY = {
-                
                 // --- PROJECTILES (Attack) ---
-                13: { type: 'projectile', name: 'Death', cooldown: 9000,castStat: 2, defStat: 2, color: [0,0,0], glow: '#00ffff',  model3D: 'd4', isHoming: true }, 
-                26: { type: 'projectile', name: 'Fireball', cooldown: 6000,     castStat: 2, defStat: 1, color: [1,0.5,0], glow: '#ff0000', sprite2D: -37, isHoming: false,knockback: 1.5  }, 
+                13: { type: 'projectile', name: 'Death', cooldown: 9000, castStat: 2, defStat: 2, color: [0,0,0], glow: '#00ffff',  model3D: 'd4', isHoming: true }, 
+                26: { type: 'projectile', name: 'Fireball', cooldown: 6000, castStat: 2, defStat: 1, color: [1,0.5,0], glow: '#ff0000', sprite2D: -37, isHoming: false, knockback: 1.5  }, 
+                80: { type: 'projectile', name: 'Ice Shard', cooldown: 9000, castStat: 2, defStat: 1, color: [0,0,1], glow: '#0000ff', model3D: 'd4', isHoming: false }, // MOVED TO 80 (Frost Wyrm) to prevent conflict with 94 Lich
                 92: { type: 'imbue', name: 'Imbue Fire', consume: 26, cooldown: 3000 },
-                93: { type: 'projectile', name: 'Lightning',cooldown: 7000, castStat: 2, defStat: 3, color: [1,1,0], glow: '#ffff00', model3D: 'd4', isHoming: true, chains: 1 },
-                94: { type: 'projectile', name: 'Ice Shard',cooldown: 9000,     castStat: 2, defStat: 1, color: [0,0,1], glow: '#0000ff', model3D: 'd4', isHoming: false  },
+                93: { type: 'projectile', name: 'Lightning', cooldown: 7000, castStat: 2, defStat: 3, color: [1,1,0], glow: '#ffff00', model3D: 'd4', isHoming: true, chains: 1 },
                 9999: { type: 'projectile', name: 'Attack', castStat: 0, defStat: 1, color: [1,1,1], glow: '#ffff00', sprite2D: 316, isHoming: true, range: 1.3, knockback: 1.3 },
                 9998: { type: 'projectile', name: 'Imbued Attack', castStat: 0, defStat: 1, color: [1,0.5,0], glow: '#ff0000', sprite2D: -37, isHoming: false, knockback: 1.5 },
-                // // --- INSTANT FRONTAL AoE (Cone) ---
-                95: { type: 'cone', name: 'Flurry',cooldown: 3000, castStat: 3, defStat: 1, range: 3.0, knockback: 2, angle: 0.5 },
-                // // --- INSTANT TELEPORT STRIKES ---
-                40: { type: 'assassination', name: 'Steal',cooldown: 90000, castStat: 3, defStat: 3, range: 4, isSteal: true },
-                52: { type: 'assassination', name: 'Backstab',cooldown: 6000, castStat: 3, defStat: 3, range: 9 },
-                51: { type: 'assassination', name: 'Overpower',cooldown: 9000, castStat: 0, defStat: 0, range: 3 },
-                59: { type: 'assassination', name: 'Critical Strike',cooldown: 9000,castStat: 0, defStat: 3, range: 6},
-                65: { type: 'assassination', name: 'Shield Bash',cooldown: 9000, castStat: 1, defStat: 0, range: 1},
+                
+                // --- INSTANT FRONTAL AoE (Cone) ---
+                95: { type: 'cone', name: 'Flurry', cooldown: 3000, castStat: 3, defStat: 1, range: 3.0, knockback: 2, angle: 0.5 },
+                
+                // --- INSTANT TELEPORT STRIKES ---
+                40: { type: 'assassination', name: 'Steal', cooldown: 90000, castStat: 3, defStat: 3, range: 4, isSteal: true },
+                51: { type: 'assassination', name: 'Overpower', cooldown: 9000, castStat: 0, defStat: 0, range: 3 },
+                52: { type: 'assassination', name: 'Backstab', cooldown: 6000, castStat: 3, defStat: 3, range: 9 },
+                59: { type: 'assassination', name: 'Critical Strike', cooldown: 9000, castStat: 0, defStat: 3, range: 6},
+                65: { type: 'assassination', name: 'Shield Bash', cooldown: 9000, castStat: 1, defStat: 0, range: 1},
 
                 // --- TIMED BUFFS (AoE) ---
-                28: { type: 'buff', name: 'Defense',cooldown: 450000,  castStat: 2, buffStat: 1, amount: 2, duration: 1800, visual: 'arc', auraColor: 'rgba(0, 255, 0, 0.6)' },
-                8:  { type: 'buff', name: 'Strength',cooldown: 450000, castStat: 2, buffStat: 0, amount: 2, duration: 1800, visual: 'arc', auraColor: 'rgba(255, 255, 0, 0.6)' },
+                8:  { type: 'buff', name: 'Strength', cooldown: 450000, castStat: 2, buffStat: 0, amount: 2, duration: 1800, visual: 'arc', auraColor: 'rgba(255, 255, 0, 0.6)' },
+                28: { type: 'buff', name: 'Defense', cooldown: 450000,  castStat: 2, buffStat: 1, amount: 2, duration: 1800, visual: 'arc', auraColor: 'rgba(0, 255, 0, 0.6)' },
                 29: { type: 'buff', name: 'Haste',  cooldown: 450000,  castStat: 2, buffStat: 3, amount: 2, duration: 1800, visual: 'arc', auraColor: 'rgba(0, 0, 255, 0.6)' },
+                70: { type: 'cultivate', name: 'Cultivate', cooldown: 86400000, castStat: 2 }, // 24 Hour Limit Break
                     
-           
-                // Poison (DoT) - Ticks every 30 frames (1s). Rolls defStat vs castStat every tick to try and end early.
+                // --- SPECIAL TICKING DEBUFFS / BUFFS ---
                 600: { type: 'debuff', name: 'Poison', cooldown: 10000, castStat: 2, defStat: 1, duration: 300, tickRate: 30, votType: 'dot', votAmount: 1.0, visual: 'aura', auraColor: 'rgba(0,255,0,0.7)' },
-
-                // Rampage (BoT) - Starts at +0 STR. Every second, you gain +1 STR. Ends after 5 seconds.
                 601: { type: 'buff', name: 'Rampage', cooldown: 10000, castStat: 2, buffStat: 0, amount: 0, duration: 150, tickRate: 30, votType: 'bot', votAmount: 1, visual: 'aura', auraColor: 'rgba(255,0,0,0.7)' },
-
-                // Regen (HoT) - Restores 1.0 Ward Time every second for 10 seconds.
                 602: { type: 'buff', name: 'Regen', cooldown: 10000, castStat: 2, duration: 300, tickRate: 30, votType: 'hot', votAmount: 1.0, visual: 'sparkle', auraColor: 'rgba(0,255,255,0.7)' },
-
-                // Electrocute (Stun) - Binds the target for half a second, every 2 seconds.
                 603: { type: 'debuff', name: 'Electrocute', cooldown: 10000, castStat: 2, defStat: 1, duration: 300, tickRate: 60, votType: 'stun', visual: 'chains', auraColor: 'rgba(255,255,0,0.7)' },
-                // --- DEBUFFS (Fired as Projectiles!) ---
-                515: { type: 'debuff', name: 'Curse', cooldown: 90000,castStat: 2, defStat: 0, debuffStat: 'all', duration: 3600, visual: 'aura', auraColor: 'rgba(128, 0, 128, 0.7)', color: [1,0,1], glow: '#800080', model3D: 'd4', isHoming: true },
-                512: { type: 'debuff', name: 'Bind',cooldown: 90000,  castStat: 2, defStat: 3, bind: true, duration: 600, visual: 'chains', auraColor: 'rgba(100, 100, 100, 0.8)', color: [1,1,1], glow: '#888888', model3D: 'd4', isHoming: true },
-                558: { type: 'debuff', name: 'Intimidate',cooldown: 90000,  castStat: 0, defStat: 2,debuffStat: 0, bind: true, duration: 450, visual: 'chains', auraColor: 'rgba(100, 100, 0, 0.8)', color: [1,1,0], glow: '#888888', model3D: 'd4', isHoming: true },
-                518: { type: 'debuff', name: 'Lunacy',cooldown: 90000,  castStat: 0, defStat: 2,debuffStat: 2, bind: true, duration: 450, visual: 'chains', auraColor: 'rgba(100, 100, 0, 0.8)', color: [1,1,0], glow: '#888888', model3D: 'd4', isHoming: true },
-                68: { type: 'debuff', name: 'Bad Luck Charm',cooldown: 450000, castStat: 3, defStat: 2, debuffStat: 0, duration: 3600, visual: 'aura', auraColor: 'rgba(128, 0, 128, 0.7)', color: [1,0,1], glow: '#800080', model3D: 'd4', isHoming: true },
-                //
+                
+                // --- DEBUFFS (Fired as Projectiles) ---
+                68: { type: 'debuff', name: 'Bad Luck Charm', cooldown: 450000, castStat: 3, defStat: 2, debuffStat: 0, duration: 3600, visual: 'aura', auraColor: 'rgba(128, 0, 128, 0.7)', color: [1,0,1], glow: '#800080', model3D: 'd4', isHoming: true },
+                512: { type: 'debuff', name: 'Bind', cooldown: 90000,  castStat: 2, defStat: 3, bind: true, duration: 600, visual: 'chains', auraColor: 'rgba(100, 100, 100, 0.8)', color: [1,1,1], glow: '#888888', model3D: 'd4', isHoming: true },
+                515: { type: 'debuff', name: 'Curse', cooldown: 90000, castStat: 2, defStat: 0, debuffStat: 'all', duration: 3600, visual: 'aura', auraColor: 'rgba(128, 0, 128, 0.7)', color: [1,0,1], glow: '#800080', model3D: 'd4', isHoming: true },
+                518: { type: 'debuff', name: 'Lunacy', cooldown: 90000,  castStat: 0, defStat: 2, debuffStat: 2, bind: true, duration: 450, visual: 'chains', auraColor: 'rgba(100, 100, 0, 0.8)', color: [1,1,0], glow: '#888888', model3D: 'd4', isHoming: true },
+                558: { type: 'debuff', name: 'Intimidate', cooldown: 90000,  castStat: 0, defStat: 2, debuffStat: 0, bind: true, duration: 450, visual: 'chains', auraColor: 'rgba(100, 100, 0, 0.8)', color: [1,1,0], glow: '#888888', model3D: 'd4', isHoming: true },
+                
                 // --- DEBUFF CONES (Frontal AoE) ---
-                15: { type: 'cone', name: 'Curse', cooldown: 90000, castStat: 2, defStat: 0, debuffStat: 'all', duration: 3600, visual: 'aura', auraColor: 'rgba(128, 0, 128, 0.7)', range: 4.0, angle: 0.5 },
                 12: { type: 'cone', name: 'Bind', cooldown: 90000, castStat: 2, defStat: 3, bind: true, duration: 600, visual: 'chains', auraColor: 'rgba(100, 100, 100, 0.8)', range: 4.0, angle: 0.5 },
-                58: { type: 'cone', name: 'Intimidate', cooldown: 90000, castStat: 0, defStat: 2, debuffStat: 0, bind: true, duration: 450, visual: 'chains', auraColor: 'rgba(100, 100, 0, 0.8)', range: 4.0, angle: 0.5 },
+                15: { type: 'cone', name: 'Curse', cooldown: 90000, castStat: 2, defStat: 0, debuffStat: 'all', duration: 3600, visual: 'aura', auraColor: 'rgba(128, 0, 128, 0.7)', range: 4.0, angle: 0.5 },
                 18: { type: 'cone', name: 'Lunacy', cooldown: 90000, castStat: 0, defStat: 2, debuffStat: 2, bind: true, duration: 450, visual: 'chains', auraColor: 'rgba(100, 100, 0, 0.8)', range: 4.0, angle: 0.5 },
+                58: { type: 'cone', name: 'Intimidate', cooldown: 90000, castStat: 0, defStat: 2, debuffStat: 0, bind: true, duration: 450, visual: 'chains', auraColor: 'rgba(100, 100, 0, 0.8)', range: 4.0, angle: 0.5 },
+                
                 // --- CONSUMABLE ITEMS (Static Buffs & Wards) ---
-                50: { type: 'item_buff', name: 'Sword',cooldown: 450000,       buffStat: 0, amount: 1, duration: 1800, visual: 'arc', auraColor: 'rgba(255, 255, 0, 0.6)' },
-                64: { type: 'item_buff', name: 'Shield', cooldown: 450000,     buffStat: 1, amount: 1, duration: 1800, visual: 'arc', auraColor: 'rgba(0, 255, 0, 0.6)' },
-                36: { type: 'item_buff', name: 'Hourglass',cooldown: 450000,   buffStat: 3, amount: 1, duration: 1800, visual: 'arc', auraColor: 'rgba(0, 0, 255, 0.6)' },
                 22: { type: 'item_buff', name: 'Wand',    cooldown: 450000,    buffStat: 2, amount: 1, duration: 1800, visual: 'arc', auraColor: 'rgba(255, 0, 0, 0.6)' },
+                25: { type: 'item_buff', name: 'Elixer', cooldown: 450000,  buffStat: 'all', amount: 1, duration: 1800, visual: 'arc', auraColor: 'rgba(255, 255, 255, 0.6)' },
                 27: { type: 'item_buff', name: 'Amulet',  cooldown: 450000,    buffStat: '2', amount: 3, duration: 1800, visual: 'arc', auraColor: 'rgba(255, 255, 255, 0.6)' },
                 31: { type: 'item_buff', name: 'Tome', cooldown: 450000,       multiStat: [{stat: 2, amount: 6}, {stat: 0, amount: -1}, {stat: 3, amount: -3}], duration: 1800, visual: 'arc', auraColor: 'rgba(255, 255, 255, 0.6)' },
+                36: { type: 'item_buff', name: 'Hourglass', cooldown: 450000,   buffStat: 3, amount: 1, duration: 1800, visual: 'arc', auraColor: 'rgba(0, 0, 255, 0.6)' },
+                50: { type: 'item_buff', name: 'Sword', cooldown: 450000,       buffStat: 0, amount: 1, duration: 1800, visual: 'arc', auraColor: 'rgba(255, 255, 0, 0.6)' },
+                64: { type: 'item_buff', name: 'Shield', cooldown: 450000,     buffStat: 1, amount: 1, duration: 1800, visual: 'arc', auraColor: 'rgba(0, 255, 0, 0.6)' },
+                72: { type: 'item_buff', name: 'Magic Ring', cooldown: 450000,  buffStat: 'all', amount: 2, duration: 1800, visual: 'arc', auraColor: 'rgba(255, 255, 255, 0.6)' },
 
-                72: { type: 'item_buff', name: 'Magic Ring',cooldown: 450000,  buffStat: 'all', amount: 2, duration: 1800, visual: 'arc', auraColor: 'rgba(255, 255, 255, 0.6)' },
-                25: { type: 'item_buff', name: 'Elixer',cooldown: 450000,  buffStat: 'all', amount: 1, duration: 1800, visual: 'arc', auraColor: 'rgba(255, 255, 255, 0.6)' },
-
-                66: { type: 'item_ward', name: 'Armor',cooldown: 450000, hits: 3, visual: 'shield', auraColor: 'rgba(0, 255, 0, 0.8)' },
-                30: { type: 'item_ward', name: 'Protect Orb',cooldown: 450000, hits: 3, visual: 'shield', auraColor: 'rgba(255, 0, 0, 0.8)' },
-                //utility
-                43: { type: 'item_teleport', name: 'Teleportation Crystal',cooldown: 450000, },
-                7: { type: 'item_chariot', name: 'Winged Boots',cooldown: 450000, },
-                // --- BOOSTER PACK ITEMS
-                // --- DRAW UNTIL MONSTER ---
-                // (Removed boosterSize because the new logic draws infinitely until a monster is hit)
-                10: { type: 'item_booster', name: 'Treasure Chest', drawUntil: 'monster',cooldown: 450000, },
-                67: { type: 'item_booster', name: 'Dragon Hoard',   drawUntil: 'monster',cooldown: 86400000, },
-                73: { type: 'item_booster', name: 'Inheritance',    drawUntil: 'monster',cooldown: 86400000, },
-
-                // --- SPECIFIC LOOT POOLS ---
-                71: { type: 'item_booster', name: 'Forge', boosterSize: 1, lootPool: 'item',cooldown: 900000, },
-                24: { type: 'item_booster', name: 'Scry',  boosterSize: 1, lootPool: 'spell',cooldown: 900000, },
-                53: { type: 'item_booster', name: 'Camp',  boosterSize: 1, lootPool: 'magic',cooldown: 86400000, }, 
-                41: { type: 'item_booster', name: 'Loot',  boosterSize: 1, lootPool: 'magic',cooldown: 450000, },
-
-                // --- TOTALLY RANDOM ---
-                38: { type: 'item_booster', name: 'Quest Reward', boosterSize: 1, lootPool: 'any',cooldown: 450000, },
-                69: { type: 'item_booster', name: 'Charity',      boosterSize: 1, lootPool: 'magic',cooldown: 86400000, },
+                30: { type: 'item_ward', name: 'Protect Orb', cooldown: 450000, hits: 3, visual: 'shield', auraColor: 'rgba(255, 0, 0, 0.8)' },
+                66: { type: 'item_ward', name: 'Armor', cooldown: 450000, hits: 3, visual: 'shield', auraColor: 'rgba(0, 255, 0, 0.8)' },
                 
-                // --- SPECIAL UI TIES ---
-                // (Djinn Lamp bypasses the random roller entirely, so no extra params needed)
-                44: { type: 'item_booster', name: 'Djinn Lamp',cooldown: 86400000 },
+                // --- UTILITY ---
+                7: { type: 'item_chariot', name: 'Winged Boots', cooldown: 450000 },
+                43: { type: 'item_teleport', name: 'Teleportation Crystal', cooldown: 450000 },
+
+                // --- BOOSTER PACK ITEMS ---
+                10: { type: 'item_booster', name: 'Treasure Chest', drawUntil: 'monster', cooldown: 450000 },
+                67: { type: 'item_booster', name: 'Dragon Hoard',   drawUntil: 'monster', cooldown: 86400000 },
+                73: { type: 'item_booster', name: 'Inheritance',    drawUntil: 'monster', cooldown: 86400000 },
+                24: { type: 'item_booster', name: 'Scry',  boosterSize: 1, lootPool: 'spell', cooldown: 900000 },
+                38: { type: 'item_booster', name: 'Quest Reward', boosterSize: 1, lootPool: 'any', cooldown: 450000 },
+                41: { type: 'item_booster', name: 'Loot',  boosterSize: 1, lootPool: 'magic', cooldown: 450000 },
+                44: { type: 'item_booster', name: 'Djinn Lamp', cooldown: 86400000 },
+                53: { type: 'item_booster', name: 'Camp',  boosterSize: 1, lootPool: 'magic', cooldown: 86400000 }, 
+                69: { type: 'item_booster', name: 'Charity',      boosterSize: 1, lootPool: 'magic', cooldown: 86400000 },
+                71: { type: 'item_booster', name: 'Forge', boosterSize: 1, lootPool: 'item', cooldown: 900000 },
+
                 // --- AOE FORCE & JUDGEMENT ---
-                39: { type: 'aoe_knockback', name: 'Dragon Wing', range: 8,cooldown: 30000 },
-                20: { type: 'aoe_judgement', name: 'Horn of Judgement', range: 8 ,cooldown: 86400000},
-                // --- NPC SUMMONING SPELLS ---
-                500: { type: 'summon', name: 'Raise Dead', summonType: 82, count: 1,maxMinions:1,cooldown: 450000, }, // Spawns 2 Skeletons
-                501: { type: 'summon', name: 'Call Familiar', summonType: 23, count: 1,maxMinions:1,cooldown: 450000, }, // Spawns 1 Wisp
-                };//
-            
+                20: { type: 'aoe_judgement', name: 'Horn of Judgement', range: 8 , cooldown: 86400000},
+                39: { type: 'aoe_knockback', name: 'Dragon Wing', range: 8, cooldown: 30000 },
+                
+                // --- MONSTER SUMMONING SPELLS ---
+                // Added specific castStats. Hunters use AGI (3), Druids/Mages use INT (2)
+                23: { type: 'summon', name: 'Call Wisp', summonType: 23, count: 1, maxMinions: 2, cooldown: 15000, castStat: 2 },
+                42: { type: 'summon', name: 'Summon Shade', summonType: 42, count: 1, maxMinions: 1, cooldown: 25000, castStat: 2 },
+                54: { type: 'summon', name: 'Call Goblin', summonType: 54, count: 1, maxMinions: 3, cooldown: 15000, castStat: 3 },
+                56: { type: 'summon', name: 'Summon Imp', summonType: 56, count: 1, maxMinions: 2, cooldown: 15000, castStat: 2 },
+                60: { type: 'summon', name: 'Summon Pixie', summonType: 60, count: 1, maxMinions: 2, cooldown: 20000, castStat: 2 },
+                63: { type: 'summon', name: 'Summon Dragon', summonType: 63, count: 1, maxMinions: 1, cooldown: 120000, castStat: 2 }, // 2 Min Cooldown!
+                82: { type: 'summon', name: 'Raise Dead', summonType: 82, count: 2, maxMinions: 3, cooldown: 30000, castStat: 2 }, // Spawns 2!
+                94: { type: 'summon', name: 'Lich Form', summonType: 94, count: 1, maxMinions: 1, cooldown: 90000, castStat: 2 },
+                188: { type: 'summon', name: 'Tame Bear', summonType: 188, count: 1, maxMinions: 1, cooldown: 30000, castStat: 3 }, // Beasts scale off AGI (Hunters)
+                191: { type: 'summon', name: 'Tame Wolf', summonType: 191, count: 1, maxMinions: 2, cooldown: 20000, castStat: 3 },
+                194: { type: 'summon', name: 'Tame Boar', summonType: 194, count: 1, maxMinions: 2, cooldown: 20000, castStat: 3 },
+                203: { type: 'summon', name: 'Call Dullahan', summonType: 203, count: 1, maxMinions: 1, cooldown: 60000, castStat: 2 },
+                206: { type: 'summon', name: 'Tame Wyvern', summonType: 206, count: 1, maxMinions: 1, cooldown: 60000, castStat: 3 },
+                210: { type: 'summon', name: 'Tame Scorpion', summonType: 210, count: 1, maxMinions: 2, cooldown: 15000, castStat: 3 },
+                213: { type: 'summon', name: 'Tame Wasp', summonType: 213, count: 2, maxMinions: 4, cooldown: 15000, castStat: 2 }, // Insects scale off INT (Druids)
+                216: { type: 'summon', name: 'Tame Ant', summonType: 216, count: 2, maxMinions: 5, cooldown: 10000, castStat: 2 },
+                219: { type: 'summon', name: 'Tame Rat', summonType: 219, count: 2, maxMinions: 4, cooldown: 10000, castStat: 3 },
+                225: { type: 'summon', name: 'Tame Bunny', summonType: 225, count: 1, maxMinions: 3, cooldown: 10000, castStat: 3 },
+                234: { type: 'summon', name: 'Tame Squirrel', summonType: 234, count: 1, maxMinions: 3, cooldown: 10000, castStat: 3 },
+                240: { type: 'summon', name: 'Tame Fox', summonType: 240, count: 1, maxMinions: 2, cooldown: 15000, castStat: 3 }
+            };
             const CARD_MANIFEST_DB = {
                 // --- Major Arcana (Base Summons & Story) ---
                     0: { name: "Fool", type: "monster", rank: "0", classes: ["Rogue", "Warrior", "Mage", "Priest", "Knight", "Hunter", "Druid"], power: 5 },
@@ -5406,36 +5415,28 @@
                 this.innateSpells = []; // Start empty
                 
                 // ==========================================
-                // 1. DYNAMIC CLASS-BASED SPELL GENERATOR
+                // 1. DYNAMIC CLASS-BASED SPELL GENERATOR (Level-Based)
                 // ==========================================
                 let myManifest = typeof CARD_MANIFEST_DB !== 'undefined' ? CARD_MANIFEST_DB[Math.floor(this.type)] : null;
 
-                // Does this monster exist in the manifest, and does it have classes?
                 if (myManifest && myManifest.classes && myManifest.classes.length > 0) {
                     let validSpells = [];
                     
-                    // --- THE FIX: Grab up to the first TWO classes. 
-                    // .slice(0, 2) safely handles monsters that only have 1 class.
-                    // .map converts to lowercase so we can safely check for "all"
+                    // Grab up to the first TWO classes
                     let primaryClasses = myManifest.classes.slice(0, 2).map(c => c.toLowerCase());
                     
-                    // Scan the entire manifest for spells that match this monster's primary classes
                     for (let cardId in CARD_MANIFEST_DB) {
                         let cardDef = CARD_MANIFEST_DB[cardId];
+                        let spellDef = typeof SPELL_REGISTRY !== 'undefined' ? SPELL_REGISTRY[cardId] : null;
                         
-                        // Ensure it's classified as a spell in the manifest AND exists in the engine's Spell Registry
-                        if (cardDef.type === 'spell' && typeof SPELL_REGISTRY !== 'undefined' && SPELL_REGISTRY[cardId]) {
-                            
-                            // Safely grab the spell's classes, or default to an empty array
+                        // ONLY allow spells and monster summons. NO ITEMS.
+                        if (spellDef && (cardDef.type === 'spell' ) && !spellDef.type.includes('item')) {
                             let spellClasses = (cardDef.classes || []).map(c => c.toLowerCase());
                             
-                            // It's a match if: 
-                            // 1. The spell is for "all"
-                            // 2. The monster is for "all"
-                            // 3. The spell shares at least one of the monster's 2 primary classes
+                            // It's a match if the spell is for "all", the monster is for "all", or they share a class
                             let hasMatchingClass = spellClasses.includes('all') || 
-                                                primaryClasses.includes('all') || 
-                                                spellClasses.some(c => primaryClasses.includes(c));
+                                                   primaryClasses.includes('all') || 
+                                                   spellClasses.some(c => primaryClasses.includes(c));
                             
                             if (hasMatchingClass) {
                                 validSpells.push(parseInt(cardId));
@@ -5443,54 +5444,66 @@
                         }
                     }
 
-                    // If we found class-appropriate spells, give them a random loadout!
+                    // --- Determine Spell Count Based on Level ---
+                    let spellCount = 1; // Default for Level 0-2
+                    if (this.level >= 6 || this.isBoss) {
+                        spellCount = 3; // High level or Boss
+                    } else if (this.level >= 3) {
+                        spellCount = 2; // Mid level
+                    }
+
+                    // --- Pick Random Spells from the Hat ---
                     if (validSpells.length > 0) {
-                        // Shuffle the valid spells array for variety
+                        // Shuffle the valid spells array for true randomness
                         for (let i = validSpells.length - 1; i > 0; i--) {
                             const j = Math.floor(Math.random() * (i + 1));
                             [validSpells[i], validSpells[j]] = [validSpells[j], validSpells[i]];
                         }
                         
-                        // Bosses get 3 random class spells. Normal mobs get 1 or 2.
-                        let spellCount = this.isBoss ? 3 : (Math.random() > 0.5 ? 2 : 1);
+                        // Draw the exact number of spells their level allows
                         this.innateSpells = validSpells.slice(0, spellCount);
                     }
                 }
 
-                // Fallback: If they have no classes or no spells matched, give them Fireball
+                // Fallback: If they somehow got nothing, give them standard Attack
                 if (this.innateSpells.length === 0) {
                     this.innateSpells = [9999]; 
                 }
 
                 // ==========================================
-                // 2. MANUAL OVERRIDES (Absolute Authority)
+                // 2. MANUAL OVERRIDES (Additive!)
                 // ==========================================
-                // If you hardcode a monster here, it overwrites the random class generation.
-                // This ensures your story bosses and special encounters always work exactly as designed.
+                // If you hardcode a monster here, it ADDS to their random level-based generation.
+                let overrideSpells = [];
                 if (this.isRanged) {
                     switch(Math.floor(this.type)) {
-                        case 0:case 83:case 87: // Fool
-                            this.innateSpells = [52, 59]; 
+                        case 0:case 83:case 87: // Fool, Tentacle, Suncat
+                            overrideSpells = [52, 59]; 
                             break;
-                        
-
                         case 42: // Shade
-                            this.innateSpells = [28, 93,23]; // Primary: Defense, Secondary: Lightning, Raise Dead
+                            overrideSpells = [28, 93, 23]; 
                             break;
                         case 5: // Heirophant
-                            this.innateSpells = [82,12, 26, 66, 92]; // Primary: Bind, Secondary: Fireball
+                            overrideSpells = [82, 12, 26, 28, 92]; 
+                            break;
+                        case 49:
+                            overrideSpells = [52, 59,83];
                             break;                
                         case 57: // Spider 
-                            this.innateSpells = [12,52]; // Primary: Bind, 
+                            overrideSpells = [12, 52]; 
                             break;
-                        case 79://fire imp
-                            this.innateSpells = [26,52]; // Primary: Fire 
+                        case 79: // Fire Imp
+                            overrideSpells = [26, 52]; 
                             break;
-
                         case 35: case 9: case 94: // Djinn, Hermit, Lich
-                            this.innateSpells = [82,28, 8, 13, 15, 66, 12, 93]; 
+                            overrideSpells = [82, 28, 8, 13, 15, 12, 93]; 
                             break;
                     }
+                }
+                
+                // Merge the random hat selection with the manual overrides, and remove duplicates!
+                if (overrideSpells.length > 0) {
+                    this.innateSpells = [...new Set([...this.innateSpells, ...overrideSpells])];
                 }
             }
 
@@ -5649,16 +5662,6 @@
             // 3. BATTLE LOGIC (Role-Based)
             // ==========================================
                 if (this.role === 'battle') {
-                    if (this.customDialogue && this.customDialogue.length > 0) {
-                        // Just open the text box! Your dialogue() function will handle the rest.
-                        this.startDialogue(dungeon);
-                        return; 
-                    }
-                    if (!this.deck || this.deck.length === 0) {
-                        this.role = 'reward';
-                        return; // Let the collision/pickup system handle it normally
-                    }
-                    
                     let realcardname = null;
                     if (typeof cardnames !== 'undefined') {
                         cardnames.forEach((card, i) => {
@@ -5670,144 +5673,220 @@
                         let tempCard = new Card(Math.floor(this.type), 0);
                         realcardname = tempCard.name;
                     }
-
-                    // Suncat Spectator Logic
-                    if (dungeon.mapID !== 999 || Math.random() < 0.13) {
-                        if (typeof socket !== 'undefined') {
-                            socket.emit('force_ai_action', `Player just encountered: ${realcardname}, in the map:${dungeon.mapname} and has engaged in battle. TASK: Narrate the start of the encounter as if you could experience from the perspective of either: A. the player's perspective, OR B. the foe's perspective.(1 sentences MAX)`);
+                    
+                    // --- AI NARRATION TRIGGER ---
+                    // This fires exactly ONCE. 
+                    // The Action Queue ('clear_dialogue') will wipe this.customDialogue AFTER the player reads it,
+                    // which prevents this AI socket from ever spamming on subsequent hits!
+                    if (this.customDialogue && this.customDialogue.length > 0) {
+                        // Suncat Spectator Logic
+                        if (dungeon.mapID !== 999 || Math.random() < 0.13) {
+                            if (typeof socket !== 'undefined') {
+                                // Added .join(" ") so the AI reads the array cleanly
+                                let spokenWords = this.customDialogue.join(" "); 
+                                socket.emit('force_ai_action', `Player just encountered: ${realcardname} in the map:${dungeon.mapname} and has engaged in battle. TASK: Narrate the start of the encounter where the foe said "${spokenWords}" as if you could experience from the perspective of either: A. the player's perspective, OR B. the foe's perspective.(1 sentences MAX)`);
+                            }
                         }
+                        
+                        // NOTE: We no longer call this.startDialogue() or customDialogue = null here!
+                        // The collision logic in executeDungeonMove/update handles starting the dialogue,
+                        // and the Action Queue handles clearing it!
+                        return; 
                     }
-
-                    dungeon.npcs.forEach(npc => npc.visible = false);
-                    dungeon.currentEnemy = this;
-
-                    if (typeof startGame !== 'undefined' && startGame !== 'battle') {
-                        console.log("Starting Battle...");
-                        startGame = 'battle';
-                        preGame = 'explore';
-                        if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('slash');
-                        
-                        if (typeof Field !== 'undefined') {
-                            Player[0] = new Field(0, 0); // 0 = Player Side, 0 = Human
-                            Player[1] = new Field(1, 1); // 1 = Foe Side,    1 = CPU
-                            Player[1].opponent = Player[0];
-                            Player[0].opponent = Player[1];
-                        }
-
-                        // Dynamic Battle Music
-                        let battleSong = rnd(0, 4);
-                        if (dungeon.mapID !== 999) {
-                            if ([0, 1].includes(dungeon.mapID)) battleSong = 0;
-                            else if ([2, 3].includes(dungeon.mapID)) battleSong = rnd(2, 4);
-                            else if ([4, 5].includes(dungeon.mapID)) battleSong = 1;
-                            else if (dungeon.mapID >= 6 && dungeon.mapID <= 9) battleSong = rnd(2, 5);
-                            else if (dungeon.mapID >= 10 && dungeon.mapID <= 13) battleSong = rnd(2, 6);
-                            else if (dungeon.mapID === 14) battleSong = 3;
-
-                            // Miniboss / Boss Overrides
-                            if ((this.type === 60.1 && this.index === 14) || 
-                                (this.type === 54 && this.index === 4) || 
-                                (this.type === 56 && this.index === 5)) battleSong = 7;
-                            else if (this.isBoss || [35.1, 49.1, 63.1, 77.1].includes(this.type)) battleSong = 8;
-                            if (this.type === 35.1 && dungeon.mapID === 17) battleSong = 1;
-                            if (this.type === 49.1 && dungeon.mapID === 18) battleSong = 3;
-                            if (this.type === 63.1 && dungeon.mapID === 19) battleSong = 9;
-                            if (this.type === 77.1 && dungeon.mapID === 20) battleSong = 5;
-                            
-                            if (this.type === 0 && dungeon.mapID === 21) battleSong = 10;
-                            if (this.type === 4.1 || this.type === 85) battleSong = 9;
-                        }
-
-                        // Play selected battle song
-                        if (typeof MusicEngine !== 'undefined') {
-                            MusicEngine.stop();
-                            const songMap = { 0: 5, 1: 15, 2: 16, 3: 25, 4: 26, 5: 43, 6: 45, 7: 27, 8: 35, 9: 40, 10: 42 };
-                            MusicEngine.play(songMap[battleSong] || 45);
-                        }
-
-                        // Clear fields and build decks
-                        Player[0].deck = [];     
-                        Player[0].hand = [];     
-                        Player[0].aMonster = []; 
-                        
-                        if (typeof sRune !== 'undefined') {
-                            sRune = new stone(1.545,4.545,1,eSTAT.S);
-                            cRune = new stone(7.625,4.625,1,eSTAT.C);
-                            iRune = new stone(3.545,4.49,1,eSTAT.I);
-                            aRune = new stone(5.545,4.53,1,eSTAT.A);
-                        }
-
-                        // Build Player Deck (with Mastery)
-                        if (dungeon.deck && dungeon.playerClass === 'Battle-Mage') {
-                            for (let c of dungeon.deck) {
-                                let mLevel = (dungeon.mastery && dungeon.mastery[c.index]) ? dungeon.mastery[c.index].level : 0;
-                                Player[0].deck.push(new Card(c.index, 0, { mastery: mLevel })); 
-                            }
-                            
-                            // Shuffle Player Deck
-                            for (let i = Player[0].deck.length - 1; i > 0; i--) {
-                                const j = Math.floor(Math.random() * (i + 1));
-                                [Player[0].deck[i], Player[0].deck[j]] = [Player[0].deck[j], Player[0].deck[i]];
-                            }
-
-                            for(let i = 0; i < Player[0].deck.length; i++){
-                                Player[0].deck[i].locIndex = i; 
-                                Player[0].deck[i].locCount = i;
-                                Player[0].deck[i].location = 'deck';
-                            }
-                        }
-                        if(Dbug == 1){
-                            Player[0].deck.length = 0;
-                            Player[0].deck.push(new Card(63,0))
-                            Player[0].deck[0].locIndex = 0; 
-                            Player[0].deck[0].locCount = 0;
-                            Player[0].deck[0].location = 'deck';
-                            Player[0].deck[0].stat[0][2] = 100;
-                            Player[0].deck[0].stat[1][2] = 100;
-                            Player[0].deck[0].stat[2][2] = 100;
-                            Player[0].deck[0].stat[3][2] = 100;
-                            }
-                        // Build Foe Deck
-                        Player[1].deck = [];
-                        Player[1].hand = [];
-                        Player[1].aMonster = [];
-                        Player[1].isCPU = 1; 
-
-                        if (this.deck && this.deck.length > 0) {
-                            for (let card of this.deck) {  
-                                // FIX: Extract integer if it's an object, otherwise use the raw number
-                                let cID = typeof card === 'object' ? (card.index || card.id) : card;
-                                Player[1].deck.push(new Card(cID, 1));
-                            }
-                            
-                            // Shuffle Foe Deck
-                            for (let i = Player[1].deck.length - 1; i > 0; i--) {
-                                const j = Math.floor(Math.random() * (i + 1));
-                                [Player[1].deck[i], Player[1].deck[j]] = [Player[1].deck[j], Player[1].deck[i]];
-                            }
-
-                            for(let i = 0; i < Player[1].deck.length; i++){
-                                Player[1].deck[i].locIndex = i; 
-                                Player[1].deck[i].locCount = i;
-                                Player[1].deck[i].location = 'deck';
-                            }
-                        } 
-
-                        // Face the open space to start the battle
-                        for (let i = 0; i < 4; i++) {
-                            let targetX = Math.floor(dungeon.x);
-                            let targetY = Math.floor(dungeon.y);
-                            if (dungeon.dir === 0) targetY -= 1;      
-                            else if (dungeon.dir === 1) targetX += 1; 
-                            else if (dungeon.dir === 2) targetY += 1; 
-                            else if (dungeon.dir === 3) targetX -= 1; 
-                            
-                            if (!dungeon.isWall(targetX, targetY)) break; 
-                            dungeon.dir = (dungeon.dir + 1) % 4;
-                        }
+                    
+                    if (!this.deck || this.deck.length === 0) {
+                        this.role = 'reward';
+                        return; 
                     }
                 }
             }
+        startCardBattle(dungeon){
+            let realcardname = null;
+            if (typeof cardnames !== 'undefined') {
+                cardnames.forEach((card, i) => {
+                    if (card.portrait === this.type) realcardname = i;
+                });
+                if (realcardname) realcardname = cardnames[realcardname].name;
+            }
+                    
+            if (!realcardname) {
+                let tempCard = new Card(Math.floor(this.type), 0);
+                realcardname = tempCard.name;
+            }
+            
+            // Suncat Spectator Logic
+            if (dungeon.mapID !== 999 || Math.random() < 0.13) {
+                if (typeof socket !== 'undefined') {
+                    socket.emit('force_ai_action', `Player just encountered: ${realcardname} in the map:${dungeon.mapname} and has engaged in battle. TASK: Narrate the start of the encounter as if you could experience from the perspective of either: A. the player's perspective in second person, OR B. the foe's perspective in third person.(1 sentences MAX)`);
+                }
+            }
+            
+            dungeon.npcs.forEach(npc => npc.visible = false);
+            dungeon.currentEnemy = this;
+
+            // ==========================================
+            // --- THE FIX: NON-MAGE PERMA-DEATH ---
+            // ==========================================
+            if (dungeon.playerClass !== 'Battle-Mage') {
+                console.log(`Player is a ${dungeon.playerClass} and cannot wield cards! Game Over.`);
+                
+                if (typeof socket !== 'undefined') {
+                    socket.emit('suncat_spectate', `Player (${dungeon.playerClass}) was slain by ${realcardname}!`);
+                }
+                
+                if (typeof MusicEngine !== 'undefined') {
+                    MusicEngine.stop();
+                    MusicEngine.play3DSFX('cancel'); // Death sound
+                }
+
+                // Add a dramatic red flash to the screen before refreshing
+                if (typeof ctx !== 'undefined' && typeof canvas !== 'undefined') {
+                    ctx.fillStyle = "rgba(150, 0, 0, 0.7)";
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                }
+
+                // Wait 1.5 seconds so they realize they died, then refresh the page
+                setTimeout(() => {
+                    location.reload();
+                }, 1500);
+                
+                return; // CRITICAL: Stop the battle setup entirely!
+            }
+            // ==========================================
+
+            if (typeof startGame !== 'undefined' && startGame !== 'battle') {
+                //Change Game State
+                console.log("Starting Battle...");
+                startGame = 'battle';
+                preGame = 'explore';
+                if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('slash');
+                
+                // Create field if not created    
+                if (typeof Field !== 'undefined') {
+                    Player[0] = new Field(0, 0); // 0 = Player Side, 0 = Human
+                    Player[1] = new Field(1, 1); // 1 = Foe Side,    1 = CPU
+                    Player[1].opponent = Player[0];
+                    Player[0].opponent = Player[1];
+                }
+
+                // Dynamic Battle Music
+                let battleSong = rnd(0, 4);
+                if (dungeon.mapID !== 999) {
+                    if ([0, 1].includes(dungeon.mapID)) battleSong = 0;
+                    else if ([2, 3].includes(dungeon.mapID)) battleSong = rnd(2, 4);
+                    else if ([4, 5].includes(dungeon.mapID)) battleSong = 1;
+                    else if (dungeon.mapID >= 6 && dungeon.mapID <= 9) battleSong = rnd(2, 5);
+                    else if (dungeon.mapID >= 10 && dungeon.mapID <= 13) battleSong = rnd(2, 6);
+                    else if (dungeon.mapID === 14) battleSong = 3;
+
+                    // Miniboss / Boss Overrides
+                    if ((this.type === 60.1 && this.index === 14) || 
+                        (this.type === 54 && this.index === 4) || 
+                        (this.type === 56 && this.index === 5)) battleSong = 7;
+                    else if (this.isBoss || [35.1, 49.1, 63.1, 77.1].includes(this.type)) battleSong = 8;
+                    
+                    if (this.type === 35.1 && dungeon.mapID === 17) battleSong = 1;
+                    if (this.type === 49.1 && dungeon.mapID === 18) battleSong = 3;
+                    if (this.type === 63.1 && dungeon.mapID === 19) battleSong = 9;
+                    if (this.type === 77.1 && dungeon.mapID === 20) battleSong = 5;
+                            
+                    if (this.type === 0 && dungeon.mapID === 21) battleSong = 10;
+                    if (this.type === 4.1 || this.type === 85) battleSong = 9;
+                }
+
+                // Play selected battle song
+                if (typeof MusicEngine !== 'undefined') {
+                    MusicEngine.stop();
+                    const songMap = { 0: 5, 1: 15, 2: 16, 3: 25, 4: 26, 5: 43, 6: 45, 7: 27, 8: 35, 9: 40, 10: 42 };
+                    MusicEngine.play(songMap[battleSong] || 45);
+                }
+
+                // Clear defaults and import player and foe decks
+                Player[0].deck = [];     
+                Player[0].hand = [];     
+                Player[0].aMonster = []; 
+                
+                // Reset runestones
+                if (typeof sRune !== 'undefined') {
+                    sRune = new stone(1.545,4.545,1,eSTAT.S);
+                    cRune = new stone(7.625,4.625,1,eSTAT.C);
+                    iRune = new stone(3.545,4.49,1,eSTAT.I);
+                    aRune = new stone(5.545,4.53,1,eSTAT.A);
+                }
+
+                // Build Player Deck (with Mastery)
+                if (dungeon.deck && dungeon.playerClass === 'Battle-Mage') {
+                    for (let c of dungeon.deck) {
+                        let mLevel = (dungeon.mastery && dungeon.mastery[c.index]) ? dungeon.mastery[c.index].level : 0;
+                        Player[0].deck.push(new Card(c.index, 0, { mastery: mLevel })); 
+                    }
+                        
+                    // Shuffle Player Deck
+                    for (let i = Player[0].deck.length - 1; i > 0; i--) {
+                        const j = Math.floor(Math.random() * (i + 1));
+                        [Player[0].deck[i], Player[0].deck[j]] = [Player[0].deck[j], Player[0].deck[i]];
+                    }
+
+                    for(let i = 0; i < Player[0].deck.length; i++){
+                        Player[0].deck[i].locIndex = i; 
+                        Player[0].deck[i].locCount = i;
+                        Player[0].deck[i].location = 'deck';
+                    }
+                }
+                
+                // Dbug Mode
+                if(Dbug == 1){
+                    Player[0].deck.length = 0;
+                    Player[0].deck.push(new Card(63,0))
+                    Player[0].deck[0].locIndex = 0; 
+                    Player[0].deck[0].locCount = 0;
+                    Player[0].deck[0].location = 'deck';
+                    Player[0].deck[0].stat[0][2] = 100;
+                    Player[0].deck[0].stat[1][2] = 100;
+                    Player[0].deck[0].stat[2][2] = 100;
+                    Player[0].deck[0].stat[3][2] = 100;
+                }
+                
+                // Build Foe Deck
+                Player[1].deck = [];
+                Player[1].hand = [];
+                Player[1].aMonster = [];
+                Player[1].isCPU = 1; 
+
+                if (this.deck && this.deck.length > 0) {
+                    //Push foe deck into Player[1] deck array
+                    for (let card of this.deck) {  
+                        // FIX: Extract integer if it's an object, otherwise use the raw number
+                        let cID = typeof card === 'object' ? (card.index || card.id) : card;
+                        Player[1].deck.push(new Card(cID, 1));
+                    }
+                        
+                    // Shuffle Foe Deck
+                    for (let i = Player[1].deck.length - 1; i > 0; i--) {
+                        const j = Math.floor(Math.random() * (i + 1));
+                        [Player[1].deck[i], Player[1].deck[j]] = [Player[1].deck[j], Player[1].deck[i]];
+                    }
+
+                    for(let i = 0; i < Player[1].deck.length; i++){
+                        Player[1].deck[i].locIndex = i; 
+                        Player[1].deck[i].locCount = i;
+                        Player[1].deck[i].location = 'deck';
+                    }
+                } 
+
+                // start the battle
+                for (let i = 0; i < 4; i++) {
+                    let targetX = Math.floor(dungeon.x);
+                    let targetY = Math.floor(dungeon.y);
+                    if (dungeon.dir === 0) targetY -= 1;      
+                    else if (dungeon.dir === 1) targetX += 1; 
+                    else if (dungeon.dir === 2) targetY += 1; 
+                    else if (dungeon.dir === 3) targetX -= 1; 
+                    if (!dungeon.isWall(targetX, targetY)) break; 
+                    dungeon.dir = (dungeon.dir + 1) % 4;
+                }
+            }
+        }
         startDialogue(dungeon) {
             if (this.role === 'portal' || this.role === 'internal_portal') return;
 
@@ -5848,65 +5927,65 @@
             // ==========================================
             // --- NPC FACES PLAYER ---
             // ==========================================
-            let toPlayerX = dungeon.x - this.x;
-            let toPlayerY = dungeon.y - this.y;
-            let toPlayerDist = Math.sqrt(toPlayerX * toPlayerX + toPlayerY * toPlayerY);
+                let toPlayerX = dungeon.x - this.x;
+                let toPlayerY = dungeon.y - this.y;
+                let toPlayerDist = Math.sqrt(toPlayerX * toPlayerX + toPlayerY * toPlayerY);
 
-            if (toPlayerDist > 0) {
-                this.dirX = toPlayerX / toPlayerDist;
-                this.dirY = toPlayerY / toPlayerDist;
-            }
+                if (toPlayerDist > 0) {
+                    this.dirX = toPlayerX / toPlayerDist;
+                    this.dirY = toPlayerY / toPlayerDist;
+                }
             
             // ==========================================
             // --- NEAR-PLANE FIX & SNAP ---
             // ==========================================
-            let dx = this.x - dungeon.x;
-            let dy = this.y - dungeon.y;
-            let dist = Math.sqrt(dx * dx + dy * dy);
+                let dx = this.x - dungeon.x;
+                let dy = this.y - dungeon.y;
+                let dist = Math.sqrt(dx * dx + dy * dy);
 
-            if (dist < 0.6) {
-                let safeX = dx === 0 ? 0.01 : dx;
-                let safeY = dy === 0 ? 0.01 : dy;
-                let safeDist = Math.sqrt(safeX * safeX + safeY * safeY);
-                
-                this.x = dungeon.x + (safeX / safeDist) * 0.6;
-                this.y = dungeon.y + (safeY / safeDist) * 0.6;
-                
-                // --- THE FIX: Kill sliding momentum so they don't fly past you! ---
-                this.isSliding = false;
-                this.isAggroDashing = false;
-                
-                dx = this.x - dungeon.x;
-                dy = this.y - dungeon.y;
-            }
-            
-            // 1. Pan the player's body left/right to face the NPC's general direction
-            let desiredAngle = Math.atan2(dx, -dy);
-            
-            let newDir = Math.round(desiredAngle / (Math.PI / 2)) % 4;
-            if (newDir < 0) newDir += 4; 
-            
-            dungeon.dir = newDir; 
-            dungeon.currentAngle = dungeon.dir * (Math.PI / 2);
-            
-            // (Note: The exact pixel-perfect cinematicPan and cinematicPitch 
-            // are now dynamically tracked in the render loop!)
-
-            const buttons = [btnMove, btnMove2, btnTurnL, btnTurnR, btnLook, btnYes, btnNo];
-            buttons.forEach(btn => {
-                if (btn) {
-                    btn.isPressed = false;
-                    btn.currentDir = null;
-                    btn.joyX = 0;
-                    btn.joyY = 0;
+                if (dist < 0.6) {
+                    let safeX = dx === 0 ? 0.01 : dx;
+                    let safeY = dy === 0 ? 0.01 : dy;
+                    let safeDist = Math.sqrt(safeX * safeX + safeY * safeY);
+                    
+                    this.x = dungeon.x + (safeX / safeDist) * 0.6;
+                    this.y = dungeon.y + (safeY / safeDist) * 0.6;
+                    
+                    // --- THE FIX: Kill sliding momentum so they don't fly past you! ---
+                    this.isSliding = false;
+                    this.isAggroDashing = false;
+                    
+                    dx = this.x - dungeon.x;
+                    dy = this.y - dungeon.y;
                 }
-            });
-            if (typeof activePointers !== 'undefined') {
-                Object.keys(activePointers).forEach(key => delete activePointers[key]);
-            }
-            console.log("Starting dialogue...");
-            startGame = 'dialogue';
-            if(typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('click');
+                
+                // 1. Pan the player's body left/right to face the NPC's general direction
+                let desiredAngle = Math.atan2(dx, -dy);
+                
+                let newDir = Math.round(desiredAngle / (Math.PI / 2)) % 4;
+                if (newDir < 0) newDir += 4; 
+                
+                dungeon.dir = newDir; 
+                dungeon.currentAngle = dungeon.dir * (Math.PI / 2);
+                
+                // (Note: The exact pixel-perfect cinematicPan and cinematicPitch 
+                // are now dynamically tracked in the render loop!)
+
+                const buttons = [btnMove, btnMove2, btnTurnL, btnTurnR, btnLook, btnYes, btnNo];
+                buttons.forEach(btn => {
+                    if (btn) {
+                        btn.isPressed = false;
+                        btn.currentDir = null;
+                        btn.joyX = 0;
+                        btn.joyY = 0;
+                    }
+                });
+                if (typeof activePointers !== 'undefined') {
+                    Object.keys(activePointers).forEach(key => delete activePointers[key]);
+                }
+                console.log("Starting dialogue...");
+                startGame = 'dialogue';
+                if(typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('click');
             //high priestess
             //first interaction
             if((this.index == 0&&dungeon.MainQuest == 0&&dungeon.mapID ==  0)){
@@ -6816,8 +6895,19 @@
                                 }
                                 else if (typeof this.alignment === 'string' && this.alignment.startsWith('foe')) {
                                     if (startGame === 'explore' && !this.isDead) {
-                                        // --- WARD INTERCEPTOR ---
-                                        if (dungeon.absorbHit(this)) {
+                                        
+                                        // 1. DIALOGUE INTERCEPTOR: Do they have something to say before striking?
+                                        if (this.customDialogue && this.customDialogue.length > 0) {
+                                            if (!this.endActions) this.endActions = [];
+                                            this.endActions.push(['clear_dialogue', this.index]);
+                                            this.endActions.push(['npc_strike_player', this.index]);
+                                            
+                                            this.startDialogue(dungeon);
+                                            this.isSliding = false;
+                                            this.combatCooldown = 25; // Brief pause after talking
+                                        }
+                                        // 2. STANDARD HIT
+                                        else if (dungeon.absorbHit(this)) {
                                             this.isSliding = false; 
                                             this.state = 'chasing';
                                             this.combatCooldown = 25; 
@@ -6832,14 +6922,11 @@
                                             }
                                         }
                                         else {
-                                            this.triggerInteraction(dungeon); 
                                             if (this.role === 'battle') {
                                                 if (typeof socket !== 'undefined' && socket) {
                                                     socket.emit("engage_npc", { npcIndex: this.index, x: this.x, y: this.y });
                                                 }
-                                            }
-                                            else if (this.role === 'dialogue') {
-                                                this.startDialogue(dungeon); 
+                                                this.startCardBattle(dungeon);
                                             }
                                         }
                                     }
@@ -6884,11 +6971,18 @@
                         if (!wallInWay) {
                             let validSpells = [];
 
+                            if (!this.skillCooldowns) this.skillCooldowns = {};
+
                             for (let i = 0; i < this.innateSpells.length; i++) {
                                 let checkSpellId = this.innateSpells[i];
                                 let spellData = SPELL_REGISTRY[checkSpellId];
                                 
                                 if (!spellData) continue;
+
+                                // --- THE FIX: AI MUST RESPECT SPELL COOLDOWNS! ---
+                                if (this.skillCooldowns[checkSpellId] > Date.now()) {
+                                    continue; // Spell is on cooldown, skip it!
+                                }
 
                                 if (spellData.type === 'buff' || spellData.type === 'ward') {
                                     let alreadyBuffed = this.activeBuffs.some(b => b.name === spellData.name);
@@ -6906,13 +7000,15 @@
 
                             let spellToCast;
                             if (validSpells.length > 0) {
+                                // Pick a random valid, off-cooldown spell!
                                 spellToCast = validSpells[Math.floor(Math.random() * validSpells.length)];
                             } else {
-                                spellToCast = this.innateSpells[this.innateSpells.length - 1]; 
+                                // If every single spell is on cooldown, fallback to a basic magic attack!
+                                spellToCast = 9999; 
                             }
 
                             this.castSpell(targetX, targetY, dungeon, spellToCast); 
-                            this.rangedCooldown = 150; 
+                            this.rangedCooldown = 150; // The AI's physical delay between actions
                             
                             this.dirX = dx / distToTarget;
                             this.dirY = dy / distToTarget;
@@ -7229,7 +7325,9 @@
         castSpell(targetX, targetY, dungeon, spellId) {
             let spellData = SPELL_REGISTRY[spellId];
             if (!spellData) return;
-
+            if (!this.skillCooldowns) this.skillCooldowns = {};
+            let cdMs = spellData.cooldown || 5000;
+            this.skillCooldowns[spellId] = Date.now() + cdMs;
             // ==========================================
             // 1. PRE-CALCULATE EFFICACY (The NPC's Roll)
             // ==========================================
@@ -7774,7 +7872,7 @@
             let newEffect = JSON.parse(JSON.stringify(spell)); 
 
             if (newEffect.name === 'Curse') newEffect.amount = -magnitude; 
-            else if (newEffect.name === 'Bind' || newEffect.name === 'Lunacy') newEffect.duration = magnitude * 30; 
+            else if (newEffect.name === 'Bind' || newEffect.name === 'Lunacy') newEffect.duration = (magnitude * 30) + 60;
             else if (newEffect.type === 'buff') newEffect.amount = magnitude;
             
             if (newEffect.name === 'Haste') newEffect.speedBoost = magnitude * 0.1; 
@@ -10285,27 +10383,28 @@
                 // ==========================================
                 // --- PLAYER ATLAS OVERLAY ---
                 // ==========================================
-                if (this.isViewingAtlas) {
-                    this.renderAtlasOverlay();
-                    return;
-                }
-                if (this.isViewingWorld) {
-                    this.renderWorldOverlay();
-                    return;
-                }
+                    if (this.isViewingAtlas) {
+                        this.renderAtlasOverlay();
+                        return;
+                    }
+                    if (this.isViewingWorld) {
+                        this.renderWorldOverlay();
+                        return;
+                    }
                     //if(this.currentSpeaker === null &&startGame === 'dialogue'){startGame = 'explore'}
                 // ==========================================
                 // --- PLAYER BUFF & WARD MANAGER ---
                 // ==========================================
-                        if (this.activeBuffs && this.activeBuffs.length > 0) {
-                            for (let i = this.activeBuffs.length - 1; i >= 0; i--) {
-                                let b = this.activeBuffs[i];
-                                if (b.type === 'buff' || b.type === 'debuff' || b.type === 'item_buff') {
-                                    b.duration -= (30 * dt); 
+                    let isPlayerBound = false;
+                    if (this.activeBuffs && this.activeBuffs.length > 0) {
+                        for (let i = this.activeBuffs.length - 1; i >= 0; i--) {
+                            let b = this.activeBuffs[i];
+                            if (b.type === 'buff' || b.type === 'debuff' || b.type === 'item_buff') {
+                                b.duration -= (30 * dt); 
                                     
-                                    // ==========================================
-                                    // --- THE VoT TICK ENGINE ---
-                                    // ==========================================
+                                // ==========================================
+                                // --- THE VoT TICK ENGINE ---
+                                // ==========================================
                                     if (b.tickRate) {
                                         b.tickTimer += (30 * dt);
                                         if (b.tickTimer >= b.tickRate) {
@@ -10356,9 +10455,9 @@
                                     // --- BUFF EXPIRATION ---
                                     // ==========================================
                                     if (b.duration <= 0) {
-                                        // Simply remove the buff from the active array! 
-                                        // The Virtual Dice engine will handle the math automatically.
                                         this.activeBuffs.splice(i, 1);
+                                    } else {
+                                        if (b.bind) isPlayerBound = true; // <--- CAPTURE THE BIND FLAG
                                     }
                                 }
                             } 
@@ -10707,14 +10806,18 @@
                 //INIT VARS
                         const resStep = 1; 
                         this.frame++;
+                        let isPlayerMoving = !isPlayerBound && (this.isSlidingToTile || this.isAggroDashing || window.activeMoveKey || (typeof btnMove !== 'undefined' && btnMove.isPressed) || (typeof btnMove2 !== 'undefined' && btnMove2.isPressed));
+
                         // --- 1. CONTINUOUS HOLD-TO-MOVE LOGIC ---
-                            if (this.inputCooldown === undefined) this.inputCooldown = 0;
-                            if (this.inputCooldown > 0) this.inputCooldown -= dt;
-                            
-                            if (this.manualTurnTimer === undefined) this.manualTurnTimer = 0;
-                            if (this.manualTurnTimer > 0) this.manualTurnTimer -= dt;
-                            if (this.inputCooldown <= 0 && (startGame === 'explore' || startGame === 'mapmaker')) {
-                                // Prioritize movement, then turning
+                        if (this.inputCooldown === undefined) this.inputCooldown = 0;
+                        if (this.inputCooldown > 0) this.inputCooldown -= dt;
+
+                        if (this.manualTurnTimer === undefined) this.manualTurnTimer = 0;
+                        if (this.manualTurnTimer > 0) this.manualTurnTimer -= dt;
+
+                        // THE FIX: Block all movement if the player is bound!
+                        if (this.inputCooldown <= 0 && !isPlayerBound && (startGame === 'explore' || startGame === 'mapmaker')) {
+                            // Prioritize movement, then turning
                             if (typeof btnMove !== 'undefined' && btnMove.isPressed && btnMove.currentDir) btnMove.press();
                             else if (typeof btnTurnL !== 'undefined' && btnTurnL.isPressed) btnTurnL.press();
                             else if (typeof btnTurnR !== 'undefined' && btnTurnR.isPressed) btnTurnR.press();
@@ -10895,7 +10998,6 @@
                     let isJoystickActive = (typeof btnLook !== 'undefined' && btnLook.isPressed);
                     
                     // Check if the player is actively moving
-                    let isPlayerMoving = this.isSlidingToTile || this.isAggroDashing || window.activeMoveKey || (typeof btnMove !== 'undefined' && btnMove.isPressed) || (typeof btnMove2 !== 'undefined' && btnMove2.isPressed);
 
                     // --- NEW: IDLE TIMER ---
                     if (this.idleTimer === undefined) this.idleTimer = 0;
@@ -13693,9 +13795,7 @@
                     ctx.fill();
 
                     // Add an inverted outline so it never blends in with nearby walls or particles
-                    ctx.lineWidth = 1.5;
-                    ctx.strokeStyle = arrowColor === '#ffffff' ? '#000000' : '#ffffff';
-                    ctx.stroke();
+                    
 
                     ctx.restore();
                 
@@ -14009,7 +14109,7 @@
 
                 // 3. APPLY ROLE & BOSS MODIFIERS
                 if (sprite.role === 'summoned_minion') { 
-                    scale = 0.30; 
+                    scale = 0.69; 
                     hover -= 0.13; 
                 }
                 if (sprite.isBoss && type !== 60.1 && type < 100) { 
@@ -15843,26 +15943,23 @@
                 if (!npc) return false; // Safety check
                 let alignStr = npc.alignment || 'neutral';
                 let baseAlignment = alignStr.split('_')[0];
-                //0. PARTICLES
-                    if(npc.role != 'dialogue' && npc.role !== 'dropped_card' && !npc.role.includes('portal')){
-                        for (let p = 0; p < 8; p++) {
-                            spawnParticle(
-                                npc.x + (Math.random() - 0.5) * 0.4,
-                                npc.y + (Math.random() - 0.5) * 0.4,
-                                '#800000', 
-                                'sparkle' 
-                            );
-                        }
-                    }
                 
-                //1. CHECK LEVEL UP
-                    // 1. Target Check: Don't get XP for picking up cards, entering portals, or your own allies dying.
-                        let isValidXPTarget = npc.role !== 'dropped_card' && !npc.role.includes('portal') && baseAlignment !== 'ally';
-                    
-                    // 2. Reason Check: Only grant XP if the player (or their summons) did the killing. 
-                        let isPlayerKill = reason !== 'npc_infighting' && reason !== 'story_event' && reason !== 'despawn';
+                // 0. PARTICLES
+                if(npc.role != 'dialogue' && npc.role !== 'dropped_card' && !(npc.role && String(npc.role).includes('portal'))){
+                    for (let p = 0; p < 8; p++) {
+                        spawnParticle(
+                            npc.x + (Math.random() - 0.5) * 0.4, npc.y + (Math.random() - 0.5) * 0.4,
+                            '#800000', 'sparkle' 
+                        );
+                    }
+                }
 
-                        if (isValidXPTarget && isPlayerKill) {
+                // 1. CHECK LEVEL UP
+                let isValidXPTarget = npc.role !== 'dropped_card' && !(npc.role && String(npc.role).includes('portal')) && baseAlignment !== 'ally';
+                let isPlayerKill = reason !== 'npc_infighting' && reason !== 'story_event' && reason !== 'despawn';
+
+                if (isValidXPTarget && isPlayerKill) {
+
                     // ==========================================
                     // --- THE FIX: DYNAMIC SCALING XP ---
                     // ==========================================
@@ -15870,12 +15967,12 @@
                     let baseXP = npc.xp || 10;
                     
                     // Add 15 XP for every bonus level the monster had
-                    let levelBonusXP = (npc.level || 0) * 15;
+                    let levelBonusXP = ((npc.level || 0) * baseXP);
                     
                     // Bosses are massive, so they triple the TOTAL payout
                     let bossMultiplier = npc.isBoss ? 3 : 1; 
 
-                    let finalXP = (baseXP + levelBonusXP) * bossMultiplier;
+                    let finalXP = levelBonusXP * bossMultiplier;
 
                     this.xp = this.xp + finalXP;
 
@@ -15887,7 +15984,7 @@
                     while (this.xp >= xpNeeded) {
                         this.xp -= xpNeeded; 
                         this.level++;
-                        let statPointGain = 1;
+                        let statPointGain = 4;
                         if (this.playerClass === 'Battle-Mage'){statPointGain = 4;}
                         this.statPoints = (this.statPoints || 0) + statPointGain;
                         
@@ -15904,6 +16001,39 @@
                         if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('buff2');
                     } else {
                         this.dSense = this.dSense + .3;
+                    }
+                    // ==========================================
+                    // --- B. SUMMON XP (Persistent Mastery) ---
+                    // ==========================================
+                    if (this.activeSummons && this.activeSummons.length > 0) {
+                        this.activeSummons.forEach(summon => {
+                            let sId = summon.cardId;
+                            if (!this.mastery) this.mastery = {};
+                            if (!this.mastery[sId]) this.mastery[sId] = { level: 0, xp: 0 };
+                            
+                            this.mastery[sId].xp += finalXP;
+                            let petXpNeeded = Math.floor(100 * Math.pow(this.mastery[sId].level + 1, 1.8));
+                            
+                            if (this.mastery[sId].xp >= petXpNeeded) {
+                                this.mastery[sId].xp -= petXpNeeded;
+                                this.mastery[sId].level++;
+                                
+                                // Find the live NPC on the map and level it up immediately
+                                let livePet = this.npcs.find(n => n.index === summon.npcId);
+                                if (livePet) {
+                                    livePet.level++;
+                                    let baseName = new Card(livePet.type, 0).name;
+                                    livePet.name = `${playerName}'s Lvl.${livePet.level} ${baseName}`;
+                                    
+                                    if (typeof spawnParticle !== 'undefined') {
+                                        for(let p=0; p<5; p++) spawnParticle(livePet.x, livePet.y, '#00ff00', 'sparkle');
+                                    }
+                                    this.actionQueue.unshift(['notify', { text: `${livePet.name} leveled up!`, endActions: [['close_dialogue', null]] }]);
+                                    if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('heal');
+                                }
+                            }
+                        });
+                        this.requestSave();
                     }
                 }
 
@@ -15934,8 +16064,7 @@
                             npc.visible = false;
                         // LOOT DROP
                             // Only drop a physical card if they die in the overworld (not a tactical duel)
-                            // and ensure the dying NPC is actually an enemy!
-                            if (typeof startGame !== 'undefined' && startGame === 'explore' && npc.role !== 'dropped_card' && !npc.role.includes('portal')&&npc.alignment !== 'ally' &&npc.role !== 'summoned_minion') {                        
+                                if (typeof startGame !== 'undefined' && startGame === 'explore' && npc.role !== 'dropped_card' && !(npc.role && String(npc.role).includes('portal')) && npc.alignment !== 'ally' && npc.role !== 'summoned_minion') {                                
                                 // Card drop rate
                                 if (Math.random() < 1&&this.playerClass ==='Battle-Mage') { 
                                     let loot = 0;
@@ -16370,6 +16499,31 @@
                     if(cardID == 60){cardID = 60.1}
                     if(cardID == 63){cardID = 63.1}
                     if(cardID == 49){cardID = 49.1}
+                    
+                // ==========================================
+                // --- NEW: DYNAMIC SUMMON LEVEL SCALING ---
+                // ==========================================
+                if (!this.mastery) this.mastery = {};
+                if (!this.mastery[cardID]) this.mastery[cardID] = { level: 0, xp: 0 };
+                
+                // 1. Get the specific Cast Stat for this summon (Default to INT/2 if not found)
+                let spellData = typeof SPELL_REGISTRY !== 'undefined' ? SPELL_REGISTRY[cardID] : null;
+                let castStat = (spellData && spellData.castStat !== undefined) ? spellData.castStat : 2; 
+                
+                let pDice = this.getEffectiveDice ? this.getEffectiveDice(castStat) : {flatMod: 0};
+                let statBonus = Math.floor(((pDice.numDice * pDice.diceSides) + pDice.flatMod) / 2);
+                
+                // 2. Base Mastery Level (from pet XP) + Player Level + Cast Stat Bonus
+                let totalSummonLevel = this.mastery[cardID].level + this.level + statBonus;
+                
+                // 3. Apply Soft Cap based on Monster Tier
+                // A low-tier monster (power 5) hits its ceiling much earlier than a Dragon (power 50)
+                let manifestData = typeof CARD_MANIFEST_DB !== 'undefined' ? CARD_MANIFEST_DB[cardID] : null;
+                if (manifestData && manifestData.power) {
+                    let maxPotential = manifestData.power * 3; // e.g. Rabbit caps at 15. Dragon caps at 150.
+                    totalSummonLevel = Math.min(totalSummonLevel, maxPotential);
+                }
+
                 let myAlly = new NPC(
                     uniqueIndex, 
                     spawnX, 
@@ -16380,19 +16534,18 @@
                     [cardID],      
                     'battle',      
                     false,         
-                    'ally'         
+                    'ally',        
+                    totalSummonLevel // Inject the combined level!
                 );
                 myAlly.activeBuffs = []; 
                 
                 // Let's wipe its base stats too, just in case the template was dirty!
                 myAlly.stat = [
-                    [0, 0, 0], // STR
-                    [0, 0, 0], // CON
-                    [0, 0, 0], // INT
-                    [0, 0, 0]  // AGI
+                    [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0]  
                 ];
+                
                 let allyname = new Card(myAlly.type, 0);
-                myAlly.name = playerName + "'s " + allyname.name; 
+                myAlly.name = `${playerName}'s Lvl.${totalSummonLevel} ${allyname.name}`; 
                 this.npcs.push(myAlly);
                 
                 if (!isRestore) {
@@ -17181,73 +17334,73 @@
                                 
                             // ... existing dialogue logic ...
 
-                else if(this.currentSpeaker.alignment === 'foe_coward') {
-                    // --- NEW: Snap coward directly in front of the player ---
-                    // this.dir: 0 = North, 1 = East, 2 = South, 3 = West
-                    this.currentSpeaker.speed = 0;
-                    if (this.dir === 0) { 
-                        this.currentSpeaker.x = this.x;
-                        this.currentSpeaker.y = this.y - 0.8;
-                        this.currentSpeaker.dir = 2; // Foe faces South
-                    } else if (this.dir === 1) { 
-                        this.currentSpeaker.x = this.x + 0.8;
-                        this.currentSpeaker.y = this.y;
-                        this.currentSpeaker.dir = 3; // Foe faces West
-                    } else if (this.dir === 2) { 
-                        this.currentSpeaker.x = this.x;
-                        this.currentSpeaker.y = this.y + 0.8;
-                        this.currentSpeaker.dir = 0; // Foe faces North
-                    } else if (this.dir === 3) { 
-                        this.currentSpeaker.x = this.x - 0.8;
-                        this.currentSpeaker.y = this.y;
-                        this.currentSpeaker.dir = 1; // Foe faces East
-                    }
+                    else if(this.currentSpeaker.alignment === 'foe_coward') {
+                        // --- NEW: Snap coward directly in front of the player ---
+                        // this.dir: 0 = North, 1 = East, 2 = South, 3 = West
+                        this.currentSpeaker.speed = 0;
+                        if (this.dir === 0) { 
+                            this.currentSpeaker.x = this.x;
+                            this.currentSpeaker.y = this.y - 0.8;
+                            this.currentSpeaker.dir = 2; // Foe faces South
+                        } else if (this.dir === 1) { 
+                            this.currentSpeaker.x = this.x + 0.8;
+                            this.currentSpeaker.y = this.y;
+                            this.currentSpeaker.dir = 3; // Foe faces West
+                        } else if (this.dir === 2) { 
+                            this.currentSpeaker.x = this.x;
+                            this.currentSpeaker.y = this.y + 0.8;
+                            this.currentSpeaker.dir = 0; // Foe faces North
+                        } else if (this.dir === 3) { 
+                            this.currentSpeaker.x = this.x - 0.8;
+                            this.currentSpeaker.y = this.y;
+                            this.currentSpeaker.dir = 1; // Foe faces East
+                        }
 
-                    let imageIndex = Number(this.currentSpeaker.type);
+                        let imageIndex = Number(this.currentSpeaker.type);
 
-                    // Look up the 3D override instantly using the new global!
-                    if (typeof MODEL_UPGRADES !== 'undefined' && MODEL_UPGRADES[imageIndex]) {
-                        imageIndex = MODEL_UPGRADES[imageIndex].id;
-                    }
+                        // Look up the 3D override instantly using the new global!
+                        if (typeof MODEL_UPGRADES !== 'undefined' && MODEL_UPGRADES[imageIndex]) {
+                            imageIndex = MODEL_UPGRADES[imageIndex].id;
+                        }
 
-                    // Special map-specific overrides
-                    if (imageIndex === 106 && this.mapID === 9) {
-                        imageIndex = 243;
-                    }
+                        // Special map-specific overrides
+                        if (imageIndex === 106 && this.mapID === 9) {
+                            imageIndex = 243;
+                        }
 
-                    let config = this.getSpriteConfig(this.currentSpeaker, 0, imageIndex);
+                        let config = this.getSpriteConfig(this.currentSpeaker, 0, imageIndex);
                 // 2. Define your baseline UI coordinates
-                let baseX = -0.01;
-                let baseY = 0.013;
+                    let baseX = -0.01;
+                    let baseY = 0.013;
 
                 // 3. Translate the 3D properties to the 2D Canvas!
-                let portraitY = baseY + (config.hover * 0.05); 
+                    let portraitY = baseY + (config.hover * 0.05); 
 
                 // 4. Apply the 3D scale
-                let portraitScale = config.scale;
-                if(imageIndex >= 129 || imageIndex <= 131) {
-                    portraitY = -6;
-                    baseX = -6;
-                    portraitScale = config.scale * .9;
-                }
+                    let portraitScale = config.scale;
+                    if(imageIndex >= 129 || imageIndex <= 131) {
+                        portraitY = -6;
+                        baseX = -6;
+                        portraitScale = config.scale * .9;
+                    }
 
                 // --- NEW: Direction Override ---
-                // 0 was Left. Try 1, 2, 3, etc., until the sprite is looking directly at the camera!
-                
+                    // 0 was Left. Try 1, 2, 3, etc., until the sprite is looking directly at the camera!
+                    
 
-                // Pass portraitDir as the 6th argument!
-                //drawPortrait(imageIndex, baseX, portraitY, portraitScale);
-                }
+                    // Pass portraitDir as the 6th argument!
+                    //drawPortrait(imageIndex, baseX, portraitY, portraitScale);
+                    }
 
-                            // else{
-                                    
-                                //  drawPortrait(this.currentSpeaker.type, 1.55, 3.1, .69, cardToDraw);
+                                // else{
+                                        
+                                    //  drawPortrait(this.currentSpeaker.type, 1.55, 3.1, .69, cardToDraw);
 
-                                //}
-                            
+                                    //}
+                                
+                                }
                             }
                         }
-                    }
 
                 // --- 2. LOGIC: CUSTOM DIALOGUE (2D & 3D) ---
                     if (this.currentSpeaker.customDialogue && this.currentSpeaker.customDialogue.length > 0) {
@@ -17289,7 +17442,7 @@
                                 finalActions.push(['open_shop', this.currentSpeaker.deck]);
                                 if (typeof MusicEngine !== 'undefined') finalActions.push(['play_sfx', 'click']);
                                 let lastLine = this.currentSpeaker.customDialogue[this.currentSpeaker.customDialogue.length - 1];
-                                this.currentSpeaker.customDialogue = [lastLine];
+                                this.currentSpeaker.customDialogue = null;
                             }
                             else if (this.currentSpeaker.alignment === 'defender') {
                                  this.currentSpeaker.customDialogue = null;
@@ -17305,7 +17458,7 @@
                                 this.isProcessingActions = false;
                                 this.processNextAction();
 
-                                enemyToFight.triggerInteraction(this);
+                                //enemyToFight.triggerInteraction(this);
                                 return; 
                             }
                             else if (this.currentSpeaker.role === 'reward') {
@@ -17787,7 +17940,41 @@
                             this.memory['hunted_mobs'] = payload.mobs;
                             this.requestSave();
                         break;
-
+                        case 'shield_bash_npc': {
+                            let targetNPC = this.npcs.find(n => n.index === payload);
+                            if (targetNPC && !targetNPC.isDead) {
+                                this.shieldBash(targetNPC);
+                            }
+                            break;
+                        }
+                        case 'npc_strike_player': {
+                            let strikingNPC = this.npcs.find(n => n.index === payload);
+                            if (strikingNPC && !strikingNPC.isDead) {
+                                if (this.absorbHit(strikingNPC)) {
+                                    strikingNPC.isSliding = false; 
+                                    strikingNPC.state = 'chasing';
+                                    strikingNPC.combatCooldown = 25; 
+                                    
+                                    let dx = strikingNPC.x - this.x;
+                                    let dy = strikingNPC.y - this.y;
+                                    let dist = Math.sqrt(dx*dx + dy*dy) || 1;
+                                    
+                                    if (dist < 0.8) {
+                                        strikingNPC.x = this.x + (dx/dist) * 0.81;
+                                        strikingNPC.y = this.y + (dy/dist) * 0.81;
+                                    }
+                                } else {
+                                    // Player lost wards, push them to the card battle!
+                                    if (strikingNPC.role === 'battle') {
+                                        if (typeof socket !== 'undefined' && socket) {
+                                            socket.emit("engage_npc", { npcIndex: strikingNPC.index, x: strikingNPC.x, y: strikingNPC.y });
+                                        }
+                                        strikingNPC.startCardBattle(this);
+                                    }
+                                }
+                            }
+                            break;
+                        }    
                         case 'start_minigame':
                             isBlocking = true; // PAUSES QUEUE
                             this.dCounter = 0;
@@ -18003,6 +18190,14 @@
                                 }
                             break;
 
+                        case 'clear_dialogue': {
+                            let targetNPC = this.npcs.find(n => n.index === payload);
+                            if (targetNPC) {
+                                targetNPC.customDialogue = null;
+                                targetNPC.dialogueFactory = null;
+                            }
+                            break;
+                        }
                         case 'update_quest_state':
                             if (this.memory[payload.key]) {
                                 if (payload.state === 0) {
@@ -57156,12 +57351,30 @@
                             
                             // --- NEW: NON-MAGE COLLISION (RESTORED CHAIN RAMMING!) ---
                             if (isEnemy) {
-                                Dungeon.shieldBash(hitNPC);
-                                
-                                if (typeof socket !== 'undefined') {
-                                    socket.emit("engage_npc", { npcIndex: hitNPC.index, x: hitNPC.x, y: hitNPC.y });
+                                if (hitNPC.customDialogue && hitNPC.customDialogue.length > 0) {
+                                    // 1. THEY HAVE DIALOGUE! We queue the bash for after they talk.
+                                    if (!hitNPC.endActions) hitNPC.endActions = [];
+                                    
+                                    // Queue wiping the dialogue so it only triggers once
+                                    hitNPC.endActions.push(['clear_dialogue', hitNPC.index]);
+                                    // Queue the actual combat bash
+                                    hitNPC.endActions.push(['shield_bash_npc', hitNPC.index]);
+                                    
+                                    hitNPC.triggerInteraction(Dungeon);
+                                    hitNPC.startDialogue(Dungeon);
+                                    
+                                    if (typeof socket !== 'undefined') {
+                                        socket.emit("engage_npc", { npcIndex: hitNPC.index, x: hitNPC.x, y: hitNPC.y });
+                                    }
+                                    return; // Stop here, let dialogue take over!
+                                } else {
+                                    // 2. NO DIALOGUE - Standard Ramming
+                                    Dungeon.shieldBash(hitNPC);
+                                    if (typeof socket !== 'undefined') {
+                                        socket.emit("engage_npc", { npcIndex: hitNPC.index, x: hitNPC.x, y: hitNPC.y });
+                                    }
+                                    return; 
                                 }
-                                return; // Stop here! Let the player re-engage next frame!
                             }
                             // -------------------------------
 
