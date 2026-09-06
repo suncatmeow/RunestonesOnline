@@ -7001,18 +7001,20 @@
                             let spellToCast;
                             if (validSpells.length > 0) {
                                 // Pick a random valid, off-cooldown spell!
-                                spellToCast = validSpells[Math.floor(Math.random() * validSpells.length)];
-                            } else {
-                                // If every single spell is on cooldown, fallback to a basic magic attack!
-                                spellToCast = 9999; 
+                                let spellToCast = validSpells[Math.floor(Math.random() * validSpells.length)];
+                                
+                                this.castSpell(targetX, targetY, dungeon, spellToCast); 
+                                this.rangedCooldown = 150; // The AI's physical delay between actions
+                                
+                                this.dirX = dx / distToTarget;
+                                this.dirY = dy / distToTarget;
+                                return; // Stop moving for 1 frame to cast
                             }
-
-                            this.castSpell(targetX, targetY, dungeon, spellToCast); 
-                            this.rangedCooldown = 150; // The AI's physical delay between actions
                             
-                            this.dirX = dx / distToTarget;
-                            this.dirY = dy / distToTarget;
-                            return; 
+                            // IF WE REACH HERE: 
+                            // The NPC has spells, but they are all on cooldown or maxed out.
+                            // Because there is no 'return', the code drops right through to the movement logic,
+                            // causing the Boar to instantly run up and ram you!
                         }
                     }
                 }
