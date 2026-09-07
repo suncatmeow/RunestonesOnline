@@ -6793,19 +6793,20 @@
                                             let dist = Math.sqrt(dx*dx + dy*dy) || 1;
                                             
                                             // --- NEW: STR-Based Bounce Resistance ---
-                                            let kbResist = 1.0;
-                                            if (firstAttacker.getEffectiveDice) {
-                                                let strDice = firstAttacker.getEffectiveDice(0); // 0 is STR
-                                                let strScore = (strDice.numDice * strDice.diceSides) + strDice.flatMod;
-                                                kbResist = Math.max(0.2, 1.0 - ((strScore - 4) * 0.05));
-                                            }
-                                            
-                                            let bounceDist = 1.5 * kbResist;
-                                            firstAttacker.slideTargetX = firstAttacker.x + (dx/dist) * bounceDist;
-                                            firstAttacker.slideTargetY = firstAttacker.y + (dy/dist) * bounceDist;
-                                            firstAttacker.isSliding = true;
+                                                let kbResist = 1.0;
+                                                if (firstAttacker.getEffectiveDice) {
+                                                    let strDice = firstAttacker.getEffectiveDice(0); // 0 is STR
+                                                    let strScore = (strDice.numDice * strDice.diceSides) + strDice.flatMod;
+                                                    kbResist = Math.max(0.2, 1.0 - ((strScore - 4) * 0.05));
+                                                }
+                                                
+                                                let bounceDist = 1.5 * kbResist;
+                                                firstAttacker.slideTargetX = firstAttacker.x + (dx/dist) * bounceDist;
+                                                firstAttacker.slideTargetY = firstAttacker.y + (dy/dist) * bounceDist;
+                                                firstAttacker.isSliding = true;
                                             firstAttacker.combatCooldown = 13; 
                                             someoneDied = true;
+                                            if (firstAttacker.triggerInnateTouch) firstAttacker.triggerInnateTouch(firstDefender);
                                         } else {
                                             for (let p = 0; p < 8; p++) spawnParticle(firstDefender.x + (Math.random() - 0.5) * 0.4, firstDefender.y + (Math.random() - 0.5) * 0.4, '#ff0000', 'smoke');
                                             dungeon.killNPC(firstDefender, false, 'npc_infighting');
@@ -6825,19 +6826,21 @@
                                                 let dist = Math.sqrt(dx*dx + dy*dy) || 1;
                                                 
                                                 // --- NEW: STR-Based Bounce Resistance ---
-                                                let kbResist = 1.0;
-                                                if (firstDefender.getEffectiveDice) {
-                                                    let strDice = firstDefender.getEffectiveDice(0); // 0 is STR
-                                                    let strScore = (strDice.numDice * strDice.diceSides) + strDice.flatMod;
-                                                    kbResist = Math.max(0.2, 1.0 - ((strScore - 4) * 0.05));
-                                                }
-                                                
-                                                let bounceDist = 1.5 * kbResist;
-                                                firstDefender.slideTargetX = firstDefender.x + (dx/dist) * bounceDist;
-                                                firstDefender.slideTargetY = firstDefender.y + (dy/dist) * bounceDist;
-                                                firstDefender.isSliding = true;
+                                                    let kbResist = 1.0;
+                                                    if (firstDefender.getEffectiveDice) {
+                                                        let strDice = firstDefender.getEffectiveDice(0); // 0 is STR
+                                                        let strScore = (strDice.numDice * strDice.diceSides) + strDice.flatMod;
+                                                        kbResist = Math.max(0.2, 1.0 - ((strScore - 4) * 0.05));
+                                                    }
+                                                    
+                                                    let bounceDist = 1.5 * kbResist;
+                                                    firstDefender.slideTargetX = firstDefender.x + (dx/dist) * bounceDist;
+                                                    firstDefender.slideTargetY = firstDefender.y + (dy/dist) * bounceDist;
+                                                    firstDefender.isSliding = true;
                                                 firstDefender.combatCooldown = 13; 
                                                 someoneDied = true;
+                                                if (firstDefender.triggerInnateTouch) firstDefender.triggerInnateTouch(firstAttacker);
+
                                             } else {
                                                 for (let p = 0; p < 8; p++) spawnParticle(firstAttacker.x + (Math.random() - 0.5) * 0.4, firstAttacker.y + (Math.random() - 0.5) * 0.4, '#ff0000', 'smoke');
                                                 dungeon.killNPC(firstAttacker, false, 'npc_infighting');
@@ -7644,6 +7647,7 @@
                             } else if (bestTarget === dungeon) {
                                 dungeon.playerFlashTimer = 3;
                                 this.combatCooldown = 25;
+                                this.triggerInnateTouch(dungeon);
                             }
                         } else {
                             if (bestTarget !== dungeon) {
@@ -7887,6 +7891,82 @@
             
             this.activeBuffs.push(newEffect);
         }
+        triggerInnateTouch(target) {
+            // 25% chance for the innate effect to trigger on a successful hit
+            if (Math.random() > 0.25) return;
+
+            let effect = null;
+            let baseType = Math.floor(this.type);
+
+            switch(baseType) {
+                // --- BURN (DoT) ---
+                case 273: // Magma Warrior
+                case 79:  // Fire Imp
+                case 33:  // Salamander
+                case 63:  // Dragon
+                    effect = { name: 'Burn', type: 'debuff', votType: 'dot', votAmount: 2, duration: 150, tickRate: 30 };
+                    break;
+                    
+                // --- POISON (DoT) ---
+                case 210: // Scorpion
+                case 213: // Wasp
+                case 57:  // Spider (Maybe venomous)
+                    effect = { name: 'Poison', type: 'debuff', votType: 'dot', votAmount: 1, duration: 300, tickRate: 30 };
+                    break;
+
+                // --- DRAIN (DoT + Self HoT) ---
+                case 197: // Vampire
+                case 267: // Giant Bat
+                    effect = { name: 'Drain', type: 'debuff', votType: 'dot', votAmount: 3, duration: 60, tickRate: 30 };
+                    // Vampire steals the life and heals its own wards instantly!
+                    this.currentWardTime = Math.min(this.currentWardTime + 5, this.maxWards * this.timePerWard);
+                    if (typeof spawnParticle !== 'undefined') {
+                        for (let p = 0; p < 5; p++) spawnParticle(this.x, this.y, '#ff0000', 'sparkle');
+                    }
+                    break;
+
+                // --- CURSE (Stat Reduction) ---
+                case 42:  // Shade
+                case 318: // Ghoul
+                case 203: // Dullahan
+                    effect = { name: 'Curse', type: 'debuff', debuffStat: 'all', amount: 1, duration: 150 };
+                    break;
+
+                // --- BIND (Stun/Root) ---
+                // (If you want Spiders to web instead of poison, use this one)
+                case 83:  // Tentacle
+                    effect = { name: 'Webbed', type: 'debuff', bind: true, duration: 60 };
+                    break;
+
+                // --- DRUNK (Confusion/Wobble) ---
+                case 297: // Drunken Man
+                    effect = { name: 'Drunk', type: 'debuff', duration: 200 };
+                    break;
+            }
+
+            // Apply the effect if one was selected!
+            if (effect) {
+                // If hitting the Player (Dungeon)
+                if (target === Dungeon || target.isPlayer) {
+                    if (!target.activeBuffs) target.activeBuffs = [];
+                    
+                    // Check if they already have this exact debuff to prevent infinite stacking
+                    let existingIndex = target.activeBuffs.findIndex(b => b.name === effect.name);
+                    if (existingIndex !== -1) target.activeBuffs.splice(existingIndex, 1);
+                    
+                    target.activeBuffs.push(JSON.parse(JSON.stringify(effect)));
+                    target.playerFlashTimer = 3; 
+                } 
+                // If hitting another NPC
+                else if (target.activeBuffs !== undefined) {
+                    let existingIndex = target.activeBuffs.findIndex(b => b.name === effect.name);
+                    if (existingIndex !== -1) target.activeBuffs.splice(existingIndex, 1);
+                    
+                    target.activeBuffs.push(JSON.parse(JSON.stringify(effect)));
+                    target.damageFlashTimer = 3;
+                }
+            }
+        }
         summonMinion(dungeon, minionType) {
             // 1. Find a valid empty floor tile near the caster
             let spawnX = this.x + (Math.random() * 2 - 1);
@@ -7956,6 +8036,9 @@
             if (canMoveY) this.y = targetY;
         }
         absorbHit(attacker, spellId = null) {
+            if (attacker && typeof attacker.triggerInnateTouch === 'function' && spellId === null) {
+                    attacker.triggerInnateTouch(this);
+                }
             let legacyWard = this.activeBuffs ? this.activeBuffs.find(b => b.type === 'ward' || b.type === 'item_ward') : null;
 
             // 1. If shattered and no ward time left (and no legacy ward), take full damage (Trigger Death/Battle)
@@ -9005,52 +9088,52 @@
                 // =====================================================
                 // --- 4. DYNAMIC NPC SPAWNER ---
                 // =====================================================
-                if (dbData.wildlife && dbData.wildlife.length > 0) {
-                    for (let config of dbData.wildlife) {
-                        for (let i = 0; i < config.count; i++) {
-                            let safePOS = this.getSafeSpawn(Math.floor(this.maze[0].length * config.zoneX), Math.floor(this.maze.length * config.zoneY), config.radius);
-                            let spriteStr = config.sprite.toString().replace('.', '');
-                            let uniqueSpawnId = parseInt(`${id}${spriteStr}${i}`); 
+                    if (dbData.wildlife && dbData.wildlife.length > 0) {
+                        for (let config of dbData.wildlife) {
+                            for (let i = 0; i < config.count; i++) {
+                                let safePOS = this.getSafeSpawn(Math.floor(this.maze[0].length * config.zoneX), Math.floor(this.maze.length * config.zoneY), config.radius);
+                                let spriteStr = config.sprite.toString().replace('.', '');
+                                let uniqueSpawnId = parseInt(`${id}${spriteStr}${i}`); 
 
-                            // FIX 1: The Wildlife loop uses 'config' and 'safePOS'
-                            let newNPC = new NPC(
-                                uniqueSpawnId, safePOS.x, safePOS.y, config.sprite, 'wandering', '#ff0000', 
-                                [config.sprite], config.interaction, null, config.alignment,
-                                config.level || 0 // (Added level support for wildlife too!)
-                            );
-                            newNPC.customDialogue = config.customDialogue;
-                            this.npcs.push(newNPC);
+                                // FIX 1: The Wildlife loop uses 'config' and 'safePOS'
+                                let newNPC = new NPC(
+                                    uniqueSpawnId, safePOS.x, safePOS.y, config.sprite, 'wandering', '#ff0000', 
+                                    [config.sprite], config.interaction, null, config.alignment,
+                                    config.level || 0 // (Added level support for wildlife too!)
+                                );
+                                newNPC.customDialogue = config.customDialogue;
+                                this.npcs.push(newNPC);
+                            }
                         }
                     }
-                }
 
-                if (dbData.npcs && dbData.npcs.length > 0) {
-                    dbData.npcs.forEach((n) => {
-                        // Check if this NPC is blocked by a Story Quest flag
-                        if (n.spawnCondition && !n.spawnCondition(this)) return;
+                    if (dbData.npcs && dbData.npcs.length > 0) {
+                        dbData.npcs.forEach((n) => {
+                            // Check if this NPC is blocked by a Story Quest flag
+                            if (n.spawnCondition && !n.spawnCondition(this)) return;
 
-                        // FIX 2: The standard NPC loop uses 'n'
-                        let newNPC = new NPC(
-                            n.index, n.x, n.y, n.sprite, n.state || 'stationary', n.color || '#66ccff', 
-                            n.deck || [], n.role || 'dialogue', n.isBoss || false, n.alignment || 'friendly',
-                            n.level || 0 // <--- THIS is where n.level goes!
-                        );
-                        
-                        if (n.customDialogue) newNPC.customDialogue = n.customDialogue;
-                        if (n.options) newNPC.options = n.options;
-                        if (n.yesActions) newNPC.yesActions = n.yesActions;
-                        if (n.noActions) newNPC.noActions = n.noActions;
-                        if (n.endActions) newNPC.endActions = n.endActions;
-                        if (n.rewardCard) newNPC.rewardCard = n.rewardCard;
-                        if (n.dialogueFactory) newNPC.dialogueFactory = n.dialogueFactory;
-                        if (n.isCinematic) newNPC.isCinematic = n.isCinematic;
+                            // FIX 2: The standard NPC loop uses 'n'
+                            let newNPC = new NPC(
+                                n.index, n.x, n.y, n.sprite, n.state || 'stationary', n.color || '#66ccff', 
+                                n.deck || [], n.role || 'dialogue', n.isBoss || false, n.alignment || 'friendly',
+                                n.level || 0 // <--- THIS is where n.level goes!
+                            );
+                            
+                            if (n.customDialogue) newNPC.customDialogue = n.customDialogue;
+                            if (n.options) newNPC.options = n.options;
+                            if (n.yesActions) newNPC.yesActions = n.yesActions;
+                            if (n.noActions) newNPC.noActions = n.noActions;
+                            if (n.endActions) newNPC.endActions = n.endActions;
+                            if (n.rewardCard) newNPC.rewardCard = n.rewardCard;
+                            if (n.dialogueFactory) newNPC.dialogueFactory = n.dialogueFactory;
+                            if (n.isCinematic) newNPC.isCinematic = n.isCinematic;
 
-                        // Execute custom onSpawn hooks (This is how Map 0 Ships update their dialogue!)
-                        if (n.onSpawn) n.onSpawn(newNPC, this);
-                        
-                        this.npcs.push(newNPC);
-                    });
-                }
+                            // Execute custom onSpawn hooks (This is how Map 0 Ships update their dialogue!)
+                            if (n.onSpawn) n.onSpawn(newNPC, this);
+                            
+                            this.npcs.push(newNPC);
+                        });
+                    }
                 // =====================================================
                 // --- 5. PLAYER SPAWN RESOLUTION ---
                 // =====================================================
@@ -10131,6 +10214,10 @@
                 return { x: centerX + 0.5, y: centerY + 0.5 };
                 }
             absorbHit(attacker, spellId = null) {
+                if (this.isDying || this.status === 'dead') return true;
+                if (attacker && typeof attacker.triggerInnateTouch === 'function' && spellId === null) {
+                    attacker.triggerInnateTouch(this);
+                }
                 let legacyWard = this.activeBuffs ? this.activeBuffs.find(b => b.type === 'ward' || b.type === 'item_ward') : null;
 
                 // 1. If shattered and no ward time left (and no legacy ward), take full damage (Trigger Last Stand)
@@ -10428,15 +10515,30 @@
                                             // 2. APPLY THE TICKS (If we didn't shake it off)
                                             if (b.duration > 0) {
                                                 if (b.votType === 'dot') {
+                                                    
+                                                    // --- NEW: THE VoT DEATH GUARD ---
+                                                    // If we are already bleeding out, ignore poison ticks!
+                                                    if (this.isDying || this.status === 'dead') continue;
+
                                                     if (this.currentWardTime > 0) {
                                                         this.currentWardTime -= b.votAmount;
-                                                        if (this.currentWardTime <= 0) { this.currentWardTime = 0; this.wardShatterCooldown = 9.0; }
+                                                        if (this.currentWardTime <= 0) { 
+                                                            this.currentWardTime = 0; 
+                                                            this.wardShatterCooldown = 9.0; 
+                                                        }
                                                     } else {
                                                         this.power -= b.votAmount;
+                                                        
+                                                        // --- NEW: TRIGGER DEATH FROM POISON ---
+                                                        if (this.power <= 0) {
+                                                            // Pass the caster object if possible, otherwise it's a lingering curse
+                                                            let casterObj = b.caster || 'a lingering affliction';
+                                                            this.killPlayer('poison', casterObj);
+                                                        }
                                                     }
                                                     this.playerFlashTimer = 3;
                                                     if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('hit');
-                                                } 
+                                                }
                                                 else if (b.votType === 'hot') {
                                                     this.currentWardTime = Math.min(this.currentWardTime + b.votAmount, this.maxWards * this.timePerWard);
                                                     if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('heal');
@@ -11182,7 +11284,9 @@
                 // ==========================================
                     const horizon = (viewH / 2) + this.pitch;
                     let safeHorizon = Math.max(0.1, horizon);
-
+                    let dynamicMaxVis = Math.max(2, Math.round(this.dSense / 3));
+                    let trueMaxVis = dynamicMaxVis + (this.currentCamDist || 0);
+                    let cullDistSq = Math.pow(trueMaxVis + 4, 2);    
                 // ==========================================
                 // 3. DRAW FLOOR GRADIENT & GROUND MIST
                 // ==========================================
@@ -11208,6 +11312,56 @@
                         
                         ctx.fillStyle = floorGrad;
                         ctx.fillRect(viewX, viewY + horizon, viewW, renderFloorHeight);
+                        // ==========================================
+                        // --- PROCEDURAL GROUND TEXTURE (Treadmill) ---
+                        // ==========================================
+                            // Determine if the floor is dark or light so the speckles contrast properly
+                            let fBrightness = this.fogColorRGB ? (this.fogColorRGB.r + this.fogColorRGB.g + this.fogColorRGB.b) / 3 : 128;
+                            ctx.fillStyle = fBrightness < 80 ? 'rgba(255, 255, 255, 0.09)' : 'rgba(0, 0, 0, 0.09)';
+                            ctx.beginPath();
+
+                            // To maintain high FPS, we only sample a grid of points on the screen (skip pixels)
+                            let stepY = Math.max(2, Math.floor(viewH / 45)); 
+                            let stepX = Math.max(2, Math.floor(viewW / 70)); 
+                            let startY = Math.floor(horizon) + 2; 
+                            let wallScale = viewH * (this.zScale || 1.0); // <--- ADD THIS LINE
+                            for (let y = startY; y < viewH; y += stepY) {
+                                let p = y - horizon;
+                                if (p <= 0) continue;
+
+                                // Exact floorcasting math to map screen row to world distance
+                                let rowDistance = (this.camZ * wallScale) / p;
+                                if (rowDistance > dynamicMaxVis * 0.75) continue; // Save CPU, hide under distant mist
+                                
+                                let floorStepX = rowDistance * (planeX * 2 / viewW) * stepX;
+                                let floorStepY = rowDistance * (planeY * 2 / viewW) * stepX;
+                                
+                                // Real world coordinates of the leftmost pixel in this row
+                                let floorX = this.x + rowDistance * (dirX - planeX);
+                                let floorY = this.y + rowDistance * (dirY - planeY);
+                                
+                                // Size scales down as it gets further away (perspective)
+                                let size = rowDistance < 2 ? 3 : (rowDistance < 5 ? 2 : 1);
+
+                                for (let x = 0; x < viewW; x += stepX) {
+                                    // Chop world coordinates into a 12x12 grid per tile
+                                    let cellX = Math.floor(floorX * 12);
+                                    let cellY = Math.floor(floorY * 12);
+                                    
+                                    // Extremely fast bitwise pseudo-random number generator (0 to 63)
+                                    let noise = (cellX * 374761393 + cellY * 668265263) & 63;
+                                    
+                                    if (noise < 4) { // Roughly 6% density of grass/rocks
+                                        // Draw a tiny vertical dash
+                                        ctx.rect(viewX + x, viewY + y - size, size, size);
+                                    }
+                                    
+                                    floorX += floorStepX;
+                                    floorY += floorStepY;
+                                }
+                            }
+                            // Render all hundreds of dots in a single GPU call!
+                            ctx.fill();
                         // --- PROCEDURAL CREEPING GROUND MIST ---
                             if (!this.weather || !['space'].includes(this.weather.mode)) {
                                 let timeMs = Date.now();
@@ -11541,12 +11695,6 @@
                 // 6. Draw everything
                 // ==========================================
                     
-                    // 0. MAX CULL DISTANCE ---
-                        // +4 buffer so entities don't visibly pop in/out at the edges
-                            let dynamicMaxVis = Math.max(2, Math.round(this.dSense / 3));
-                            let trueMaxVis = dynamicMaxVis + (this.currentCamDist || 0);
-                            let cullDistSq = Math.pow(trueMaxVis + 4, 2); 
-
                             this.renderList.length = 0; 
 
                     // 1. NPCs
@@ -11631,74 +11779,206 @@
                         }
 
                         this.drawCombinedSprites(ctx, viewX, viewY, viewW, viewH, dirX, dirY, planeX, planeY, this.renderList, camX, camY);
+                    // --- STATUS EFFECT OVERLAYS ---
+                        let activeEffects = { burn: false, poison: false, curse: false, web: false, drunk: false };
+
+                        if (this.activeBuffs) {
+                            for (let b of this.activeBuffs) {
+                                if (b.name === 'Burn') activeEffects.burn = true;
+                                if (b.name === 'Poison') activeEffects.poison = true;
+                                if (b.name === 'Curse') activeEffects.curse = true;
+                                if (b.name === 'Webbed' || b.bind) activeEffects.web = true;
+                                if (b.name === 'Drunk') activeEffects.drunk = true;
+                            }
+                        }
+
+                        // 1. Burn (Flickering Orange/Red Heat)
+                        if (activeEffects.burn) {
+                            ctx.fillStyle = `rgba(255, 69, 0, ${0.15 + Math.sin(Date.now() / 100) * 0.05})`;
+                            ctx.fillRect(0, 0, canvas.width, canvas.height);
+                        }
+
+                        // 2. Poison (Pulsing Sickly Green)
+                        if (activeEffects.poison) {
+                            ctx.fillStyle = `rgba(50, 205, 50, ${0.15 + Math.cos(Date.now() / 200) * 0.05})`;
+                            ctx.fillRect(0, 0, canvas.width, canvas.height);
+                        }
+
+                        // 3. Curse (Dark Purple Vignette creeping from the edges)
+                        if (activeEffects.curse) {
+                            let grd = ctx.createRadialGradient(canvas.width/2, canvas.height/2, canvas.height/4, canvas.width/2, canvas.height/2, canvas.width);
+                            grd.addColorStop(0, "transparent");
+                            grd.addColorStop(1, "rgba(75, 0, 130, 0.3)");
+                            ctx.fillStyle = grd;
+                            ctx.fillRect(0, 0, canvas.width, canvas.height);
+                        }
+
+                        // 4. Webbed/Bound (Static white translucent wash)
+                        if (activeEffects.web) {
+                            ctx.fillStyle = `rgba(255, 255, 255, 0.15)`;
+                            ctx.fillRect(0, 0, canvas.width, canvas.height);
+                        }
+
+                        // 5. Drunk (Camera Wobble)
+                        // Note: If you want Drunk to physically sway the 3D camera, you can apply this math 
+                        // directly to your raycaster's pitch/yaw right before it renders the walls!
+                        if (activeEffects.drunk) {
+                            ctx.fillStyle = `rgba(139, 69, 19, 0.1)`; // Slight sepia tint
+                            ctx.fillRect(0, 0, canvas.width, canvas.height);
+                        }
                     // 5. UI
                         this.drawMinimap(ctx, viewX, viewY, viewW, viewH);
                         // ==========================================
                         // --- WARD UI (Below Minimap) ---
                         // ==========================================
-                            let fullWards = Math.floor(this.currentWardTime / this.timePerWard);
-                            let partialWardPercent = (this.currentWardTime % this.timePerWard) / this.timePerWard;
+                        let fullWards = Math.floor(this.currentWardTime / this.timePerWard);
+                        let partialWardPercent = (this.currentWardTime % this.timePerWard) / this.timePerWard;
 
-                            // Edge case to prevent rendering weirdness when fully healed
-                            if (this.currentWardTime >= this.maxWards * this.timePerWard) {
-                                fullWards = this.maxWards;
-                                partialWardPercent = 0;
+                        // --- 1. GATHER ACTIVE AURAS & COLORS ---
+                        let activeAuras = [];
+                        let wardColors = ['#00ffff']; // Base Natural Cyan
+                        let flashRGB = '0, 255, 255'; // Base Damage Flash Color
+
+                        if (this.activeBuffs) {
+                            for (let b of this.activeBuffs) {
+                                // Debuffs (These overwrite the flashRGB so you know what hit you)
+                                if (b.name === 'Poison') { wardColors.push('#32CD32'); activeAuras.push('poison'); flashRGB = '50, 205, 50'; } 
+                                if (b.name === 'Burn') { wardColors.push('#FF4500'); activeAuras.push('burn'); flashRGB = '255, 69, 0'; } 
+                                if (b.name === 'Curse') { wardColors.push('#8A2BE2'); activeAuras.push('curse'); flashRGB = '138, 43, 226'; } 
+                                if (b.name === 'Webbed' || b.bind) { wardColors.push('#FFFFFF'); activeAuras.push('bind'); flashRGB = '255, 255, 255'; } 
+                                if (b.name === 'Drunk') { wardColors.push('#8B4513'); activeAuras.push('drunk'); flashRGB = '139, 69, 19'; } 
+                                
+                                // Buffs
+                                if (b.name === 'Strength') { wardColors.push('#FFD700'); activeAuras.push('str'); } 
+                                if (b.name === 'Defense') { wardColors.push('#32CD32'); activeAuras.push('con'); } 
+                                if (b.name === 'Haste') { wardColors.push('#1E90FF'); activeAuras.push('agi'); } 
                             }
+                        }
 
-                            for (let i = 0; i < this.maxWards; i++) {
-                                let shieldX = 7.605 + (i * 0.725);
-                                let shieldY = 2.65;
-                                let shieldScale = 0.1;
+                        // --- 2. RAINBOW CYCLE THE WARD BAR ---
+                        let colorCycleSpeed = 400; 
+                        let currentColorIndex = Math.floor(Date.now() / colorCycleSpeed) % wardColors.length;
+                        this.currentWardColor = wardColors[currentColorIndex]; 
 
-                                if (i < fullWards) {
-                                    // 1. ACTIVE WARD: Fully opaque
+                        // Edge case to prevent rendering weirdness when fully healed
+                        if (this.currentWardTime >= this.maxWards * this.timePerWard) {
+                            fullWards = this.maxWards;
+                            partialWardPercent = 0;
+                        }
+
+                        for (let i = 0; i < this.maxWards; i++) {
+                            let shieldX = 7.605 + (i * 0.725);
+                            let shieldY = 2.65;
+                            let shieldScale = 0.1;
+
+                            if (i < fullWards) {
+                                // 1. ACTIVE WARD: Fully opaque
+                                ctx.globalAlpha = 1.0;
+                                drawPortrait(107, shieldX, shieldY, shieldScale);
+                            } else if (i === fullWards && this.currentWardTime > 0) {
+                                // 2. RECHARGING WARD: Faded with dynamic loading bar
+                                ctx.globalAlpha = 0.3;
+                                drawPortrait(107, shieldX, shieldY, shieldScale);
+                                
+                                ctx.globalAlpha = 1.0;
+                                drawShape('rec', shieldX+.25, shieldY + 0.65, shieldScale*.5, 0, 0, 10, 1.5, 0,0,0,0, '#222222', 1);
+                                
+                                // ---> THE FIX: Replaced 'cyan' with this.currentWardColor <---
+                                drawShape('rec', shieldX+.25, shieldY + 0.65, shieldScale*.5, 0, 0, 10 * partialWardPercent, 1.5, 0,0,0,0, this.currentWardColor, 1);
+                            } else {
+                                // 3. BROKEN WARD
+                                ctx.globalAlpha = 0.3;
+                                drawPortrait(107, shieldX, shieldY, shieldScale);
+                                
+                                if (i === 0 && this.wardShatterCooldown > 0) {
                                     ctx.globalAlpha = 1.0;
-                                    drawPortrait(107, shieldX, shieldY, shieldScale);
-                                } else if (i === fullWards && this.currentWardTime > 0) {
-                                    // 2. RECHARGING WARD: Faded with blue loading bar
-                                    ctx.globalAlpha = 0.3;
-                                    drawPortrait(107, shieldX, shieldY, shieldScale);
-                                    
-                                    ctx.globalAlpha = 1.0;
+                                    let shatterPercent = 1.0 - (this.wardShatterCooldown / 9.0);
                                     drawShape('rec', shieldX+.25, shieldY + 0.65, shieldScale*.5, 0, 0, 10, 1.5, 0,0,0,0, '#222222', 1);
-                                    drawShape('rec', shieldX+.25, shieldY + 0.65, shieldScale*.5, 0, 0, 10 * partialWardPercent, 1.5, 0,0,0,0, 'cyan', 1);
-                                } else {
-                                    // 3. BROKEN WARD
-                                    ctx.globalAlpha = 0.3;
-                                    drawPortrait(107, shieldX, shieldY, shieldScale);
-                                    
-                                    // If this is the first broken ward AND we are in the 9-sec shatter penalty, show a red recovery bar!
-                                    if (i === 0 && this.wardShatterCooldown > 0) {
-                                        ctx.globalAlpha = 1.0;
-                                        let shatterPercent = 1.0 - (this.wardShatterCooldown / 9.0);
-                                        drawShape('rec', shieldX+.25, shieldY + 0.65, shieldScale*.5, 0, 0, 10, 1.5, 0,0,0,0, '#222222', 1);
-                                        drawShape('rec', shieldX+.25, shieldY + 0.65, shieldScale*.5, 0, 0, 10 * shatterPercent, 1.5, 0,0,0,0, '#ff3300', 1);
-                                    }
+                                    drawShape('rec', shieldX+.25, shieldY + 0.65, shieldScale*.5, 0, 0, 10 * shatterPercent, 1.5, 0,0,0,0, '#ff3300', 1);
                                 }
                             }
+                        }
                         ctx.globalAlpha = 1.0; // Reset
+
                         btnDeck.show(7.875, 2.275, .5, 1, 1, 'Deck', 'jrpg_btn', 1, 0);
                         btnJournal.show(8.575, 2.275, .5, 1, 1, 'Journal', 'jrpg_btn', 1, 0);
                         btnPOV.show(9.3, 2.275, .5, 1, 1, 'POV', 'jrpg_btn', 1, 0);
                         if(window.settingsControlsMode ==='dpad'&&startGame!= 'dialogue'){
-                        btnMove.show(5,5, 5, 1, 1, '', 'd_pad', 1, 0);
-                        btnTurnL.show(5.2,5.3, 1.5, 1, 1, '', 'turn_l', 1, 0);
-                        btnTurnR.show(8.3,5.3, 1.5, 1, 1, '', 'turn_r', 1, 0);
-                        
+                            btnMove.show(5,5, 5, 1, 1, '', 'd_pad', 1, 0);
+                            btnTurnL.show(5.2,5.3, 1.5, 1, 1, '', 'turn_l', 1, 0);
+                            btnTurnR.show(8.3,5.3, 1.5, 1, 1, '', 'turn_r', 1, 0);
                         }
-                        btnLook.show(6.875, 6.875, 1.25, 1, 1, '', 'joystick', 1, 0); // Added to right side
-                        
-                        //btnATK.show(7, 3.6, 1, 1, 1, 'ATK', 'jrpg_btn', 1, 0);
-    
-                        // --- 2. WARD SCREEN FLASH ---
-                            if (this.playerFlashTimer > 0) {
-                                this.playerFlashTimer--;
-                                ctx.save();
-                                // Draws a cyan tint over the entire screen that fades out
-                                ctx.fillStyle = `rgba(0, 255, 255, ${this.playerFlashTimer / 30})`;
+                        btnLook.show(6.875, 6.875, 1.25, 1, 1, '', 'joystick', 1, 0); 
+
+                        // ==========================================
+                        // --- 3. THE FLASHER & PERSISTENT AURAS ---
+                        // ==========================================
+
+                        // A. The Impact Flash (Uses the dynamic RGB we captured above)
+                        if (this.playerFlashTimer > 0) {
+                            this.playerFlashTimer--;
+                            ctx.save();
+                            ctx.fillStyle = `rgba(${flashRGB}, ${this.playerFlashTimer / 30})`;
+                            ctx.fillRect(viewX, viewY, viewW, viewH);
+                            ctx.restore();
+                        }
+
+                        // B. Persistent Psychedelic Tints & Wobbles
+                        ctx.save(); 
+
+                        if (activeAuras.includes('curse') || activeAuras.includes('drunk')) {
+                            // Physically wobble the entire 2D canvas view!
+                            let swayX = Math.sin(Date.now() / 200) * 10; 
+                            let swayY = Math.cos(Date.now() / 300) * 5;
+                            ctx.translate(swayX, swayY);
+
+                            if (activeAuras.includes('curse')) {
+                                // Deep purple fog
+                                ctx.fillStyle = `rgba(75, 0, 130, ${0.15 + Math.sin(Date.now() / 400) * 0.1})`;
                                 ctx.fillRect(viewX, viewY, viewW, viewH);
-                                ctx.restore();
                             }
+                        } 
+                        else if (activeAuras.includes('bind')) {
+                            // Sharp frantic jitter
+                            let jitterX = (Math.random() - 0.5) * 8;
+                            let jitterY = (Math.random() - 0.5) * 8;
+                            ctx.translate(jitterX, jitterY);
+                            
+                            // Ghostly white fade
+                            ctx.fillStyle = `rgba(255, 255, 255, 0.15)`;
+                            ctx.fillRect(viewX, viewY, viewW, viewH);
+                        }
+
+                        // C. Elemental Overlays
+                        if (activeAuras.includes('burn')) {
+                            // If you want embers, tie it to the weather engine!
+                            if (this.weather) this.weather.setMode('embers');
+                            // Heat wave overlay
+                            ctx.fillStyle = `rgba(255, 69, 0, ${0.05 + Math.random() * 0.08})`; 
+                            ctx.fillRect(viewX, viewY, viewW, viewH);
+                        } else if (this.weather && this.weather.mode === 'embers' && !this.isDying) {
+                            // Turn embers off if the burn expires (and we aren't dead)
+                            this.weather.setMode('clear'); 
+                        }
+
+                        if (activeAuras.includes('poison')) {
+                            ctx.fillStyle = `rgba(50, 205, 50, ${0.1 + Math.sin(Date.now() / 300) * 0.05})`; 
+                            ctx.fillRect(viewX, viewY, viewW, viewH);
+                        }
+
+                        // D. Buff Overlays (Like isDying, but positive tints)
+                        if (activeAuras.includes('str')) {
+                            ctx.fillStyle = `rgba(255, 215, 0, 0.08)`; // Golden
+                            ctx.fillRect(viewX, viewY, viewW, viewH);
+                        } else if (activeAuras.includes('agi')) {
+                            ctx.fillStyle = `rgba(30, 144, 255, 0.08)`; // Blue
+                            ctx.fillRect(viewX, viewY, viewW, viewH);
+                        } else if (activeAuras.includes('con')) {
+                            ctx.fillStyle = `rgba(50, 205, 50, 0.08)`; // Green
+                            ctx.fillRect(viewX, viewY, viewW, viewH);
+                        }
+
+                        ctx.restore(); // MUST restore so the canvas wobble doesn't break the UI layout next frame!
                         // // --- DYNAMIC SPELL SLOTS LAYOUT ---
                         let maxSlots = 6;
 
@@ -11793,41 +12073,49 @@
                     this.weather.update(dt);
                     this.weather.draw(ctx, tX, tY);
                 // ==========================================
-                    // --- LAST STAND EXECUTION (SOFT REBOOT) ---
-                    // ==========================================
-                    if (this.isDying && this.weather && this.weather.mode === 'dying') {
-                        if (this.weather.dyingTimer >= this.weather.dyingMaxTime && !this.isDead) {
-                            this.isDead = true;
-                            this.status = 'dead';
+                // --- LAST STAND EXECUTION (SOFT REBOOT) ---
+                // ==========================================
+                if (this.isDying && this.weather && this.weather.mode === 'dying') {
+                    
+                    // THE FIX: Check if a dialogue or cutscene is currently blocking the screen
+                    let isDialogueActive = (typeof startGame !== 'undefined' && startGame === 'dialogue') || this.currentSpeaker !== null;
+
+                    // Wait for the weather timer AND for the dialogue to be fully closed
+                    if (this.weather.dyingTimer >= this.weather.dyingMaxTime && !this.isDead && !isDialogueActive) {
+                        this.isDead = true;
+                        this.status = 'dead';
+                        
+                        // Nuke all inputs
+                        window.activeMoveKey = null;
+                        window.activeCtrlKey = false;
+                        if (typeof btnMove !== 'undefined') { btnMove.isPressed = false; btnMove.currentDir = null; }
+
+                        // Clear any lingering action queues to prevent post-death ghost events
+                        this.actionQueue = [];
+                        
+                        // DO NOT USE location.reload()! It causes file:/// security crashes.
+                        // Instead, we wipe the variables and load the save natively!
+                        setTimeout(() => {
+                            console.log("Soft Rebooting Engine...");
+                            this.isDying = false;
+                            this.isDead = false;
+                            this.status = 'normal';
                             
-                            // Nuke all inputs
-                            window.activeMoveKey = null;
-                            window.activeCtrlKey = false;
-                            if (typeof btnMove !== 'undefined') { btnMove.isPressed = false; btnMove.currentDir = null; }
+                            // Reset vital combat stats
+                            this.currentWardTime = this.maxWards * this.timePerWard;
+                            this.activeBuffs = [];
+                            this.activeSummons = [];
+                            this.projectiles = [];
                             
-                            // DO NOT USE location.reload()! It causes file:/// security crashes.
-                            // Instead, we wipe the variables and load the save natively!
-                            setTimeout(() => {
-                                console.log("Soft Rebooting Engine...");
-                                this.isDying = false;
-                                this.isDead = false;
-                                this.status = 'normal';
-                                
-                                // Reset vital combat stats
-                                this.currentWardTime = this.maxWards * this.timePerWard;
-                                this.activeBuffs = [];
-                                this.activeSummons = [];
-                                this.projectiles = [];
-                                
-                                // Restore the map's original weather
-                                let originalWeather = this.mapEnvironments[this.mapID] ? this.mapEnvironments[this.mapID].weather : 'clear';
-                                this.weather.setMode(originalWeather);
-                                
-                                // Load save, or dump them back at the tutorial spawn
-                                startGame = 0;
-                            }, 250); 
-                        }
+                            // Restore the map's original weather
+                            let originalWeather = this.mapEnvironments[this.mapID] ? this.mapEnvironments[this.mapID].weather : 'clear';
+                            this.weather.setMode(originalWeather);
+                            
+                            // Load save, or dump them back at the tutorial spawn
+                            startGame = 0;
+                        }, 250); 
                     }
+                }
                     // ==========================================
                     // --- DYNAMIC OVERWORLD COMBAT MUSIC ---
                     // ==========================================
@@ -12916,13 +13204,24 @@
                         sideDistY += deltaDistY; mapY += stepY; side = 1; currentDepth = sideDistY - deltaDistY; 
                     }
 
-                    if (currentDepth > MAX_RENDER_DEPTH) break;
+                    // 1. BOUNDS CHECK FIRST (Prevents array reading crashes)
                     if (mapY < 0 || mapY >= this.maze.length || mapX < 0 || mapX >= this.maze[0].length) break; 
 
-                    if (this.explored[mapY] && this.explored[mapY][mapX] !== undefined) this.explored[mapY][mapX] = 1;
-
+                    // 2. GET TILE DATA FIRST
                     const tileID = this.maze[mapY][mapX];
                     let isChasm = [92,93,95,97,99,101].includes(tileID);
+                    let isMapEdge = (mapY === 0 || mapY === this.maze.length - 1 || mapX === 0 || mapX === this.maze[0].length - 1);
+
+                    // 3. DEPTH CHECK & HORIZON PIERCING
+                    if (currentDepth > MAX_RENDER_DEPTH) {
+                        // If past max vision, keep casting to find borders or towering walls
+                        if (!isMapEdge && tileID <= 0 && !isChasm) {
+                            continue; // Skip empty floors to save processing
+                        }
+                    }
+
+                    // 4. MAP EXPLORATION
+                    if (this.explored[mapY] && this.explored[mapY][mapX] !== undefined) this.explored[mapY][mapX] = 1;
 
                     // ==========================================
                     // --- 1. THE FLAWLESS CHASM FAST-FORWARD ---
@@ -13144,7 +13443,8 @@
                         let side = hit.side;
                         let perpWallDist = hit.perpWallDist;
                         let heightMult = hit.heightMult;
-
+                        let isMapEdge = (hit.mapY === 0 || hit.mapY === this.maze.length - 1 || hit.mapX === 0 || hit.mapX === this.maze[0].length - 1);
+                        let isTowering = (this.toweringWalls && this.toweringWalls.includes(wallID));
                         const lineHeight = wallScale / perpWallDist;     
                         const zShift = lineHeight * zOffset;             
                         const wallBottom = Math.floor(lineHeight / 2 + horizon + zShift);
@@ -13160,7 +13460,11 @@
                                 fogFactor = ratio * ratio; 
                             }
                             if (perpWallDist > losBlockedDepth) fogFactor = 1.0;
-
+                            
+                            if (isMapEdge || isTowering) {
+                                // Cap fog at 85% so border shapes always pierce the mist!
+                                fogFactor = Math.min(fogFactor, 0.85); 
+                            }
                             let chasmDepth = (hit.wallID === 97) ? 2.0 : 0.4; // Abyss vs Water
                             
                             // 1. CALCULATE FRONT EDGE
@@ -13282,7 +13586,10 @@
                                     roofFog = ratio * ratio; 
                                 }
                                 if (hit.exitDist > losBlockedDepth) roofFog = 1.0;
-
+                                // --- HORIZON FIX: ROOF SILHOUETTES ---
+                                if (isMapEdge || isTowering) {
+                                    roofFog = Math.min(roofFog, 0.85); 
+                                }
                                 roofR = (roofR * (1 - roofFog)) + (fR * roofFog);
                                 roofG = (roofG * (1 - roofFog)) + (fG * roofFog);
                                 roofB = (roofB * (1 - roofFog)) + (fB * roofFog);
@@ -14483,6 +14790,16 @@
                                                     imageIndex = 206;
                                                 }
                                             }
+                                        //Salamander Exception
+                                            if (imageIndex >= 129 && imageIndex <= 130) {
+                                                if (isAttacking) {
+                                                    imageIndex = 130
+                                                } else if (isMoving) {
+                                                    imageIndex = 130;
+                                                } else {
+                                                    imageIndex = 129;
+                                                }
+                                            }
                                     }
 
                             // --- 2. ACCURATE CAMERA DIRECTION MATH ---
@@ -15642,303 +15959,8 @@
                 return { numDice, diceSides, flatMod: totalMod };
             }
         //NPC
-            spawnNPC(npcType, index, x, y, options = {}) {
-                    let npc;
-                    
-                    // Default fallback values
-                    let sprite = options.sprite || 32;
-                    let deck = options.deck || [];
-                    let color = options.color || '#00ff00';
-
-                    switch(npcType) {
-
-                        // ==========================================
-                        case ENUM_NPC.GUILD_CLERK:
-                            npc = new NPC(index, x, y, sprite, 'stationary', color, deck, 'dialogue', false, 'friendly');
-                            npc.dialogueFactory = (dungeon) => {
-                                if (dungeon.guild_rep === undefined) dungeon.guild_rep = 0; 
-                                if (!dungeon.memory['guild_bounty']) dungeon.memory['guild_bounty'] = { state: 0 }; 
-                                
-                                let requiredTrophy = options.reqItem || 50; 
-                                let hasTrophy = dungeon.deck.some(c => c.index === requiredTrophy) || 
-                                                dungeon.extra.some(c => c.index === requiredTrophy) || 
-                                                dungeon.hand.some(c => c && c.index === requiredTrophy);
-
-                                if (dungeon.memory['guild_bounty'].state === 0) {
-                                    npc.options = ['Accept Bounty', 'Leave'];
-                                    npc.yesActions = [
-                                        ['update_quest_state', { key: 'guild_bounty', state: 1 }],
-                                        ['notify', `Bounty Accepted! Bring back a Trophy (Card ${requiredTrophy}).`],
-                                        ['play_sfx', 'click'],
-                                        ['close_dialogue', null]
-                                    ];
-                                    npc.noActions = [['close_dialogue', null]];
-                                    return {
-                                        text: [`Welcome. (Rep: ${dungeon.guild_rep})`, "Would you like to register for a hunt?"]
-                                    };
-                                } else if (dungeon.memory['guild_bounty'].state === 1) {
-                                    if (hasTrophy) {
-                                        npc.options = null; 
-                                        return {
-                                            text: ["Ah, you've secured the Trophy! Excellent work."],
-                                            actions: [
-                                                ['remove_card', { card: requiredTrophy, text: "You handed over the Trophy." }],
-                                                ['give_card', { card: options.reward || 64, text: "Guild Payment Received!" }], 
-                                                ['update_quest_state', { key: 'guild_bounty', state: 0 }], 
-                                                ['set_flag', { key: 'guild_rep', value: dungeon.guild_rep + 10 }], 
-                                                ['play_sfx', 'heal']
-                                            ]
-                                        };
-                                    } else {
-                                        npc.options = null;
-                                        return { text: ["Come back to any Counter when you have secured the target!"], actions: [] };
-                                    }
-                                }
-                            };
-                            break;
-
-                        // ==========================================
-                        case ENUM_NPC.TRAITOR:
-                            npc = new NPC(index, x, y, sprite, 'stationary', color, deck, 'dialogue', false, 'friendly');
-                            npc.customDialogue = [
-                                "Oh, thank goodness you're here! I found this rare artifact.",
-                                "Come closer, let me show it to you...",
-                                "...My blade! Die, fool!"
-                            ];
-                            npc.endActions = [
-                                ['play_sfx', 'slash'],
-                                ['transform_npc', { index: index, newAlignment: 'foe', newRole: 'battle', newState: 'chasing' }],
-                                ['start_battle', index] 
-                            ];
-                            break;
-
-                        // ==========================================
-                        case ENUM_NPC.GAMBLER_CASUAL:
-                            npc = new NPC(index, x, y, sprite, 'stationary', color, deck, 'dialogue', false, 'friendly');
-                            npc.dialogueFactory = (dungeon) => {
-                                if (dungeon.memory['gambler_matches'] === undefined) dungeon.memory['gambler_matches'] = 0;
-
-                                npc.options = ['Play Eidolon', 'Not Right Now'];
-                                npc.yesActions = [
-                                    ['spectate', 'Player sat down for a casual game of Eidolon.'],
-                                    ['start_minigame', 'casual_duel'] 
-                                ];
-                                npc.yesActions.push(() => { dungeon.memory['gambler_matches'] += 1; return ['play_sfx', 'click']; });
-                                npc.noActions = [['play_sfx', 'cancel'], ['close_dialogue', null]];
-
-                                let introText = dungeon.memory['gambler_matches'] > 0 
-                                    ? "Back for another round? I shuffled my deck just for you!" 
-                                    : "Fancy a game?";
-
-                                return { text: [introText, "No gold on the line, just pride. What do you say?"] };
-                            };
-                            break;
-
-                        // ==========================================
-                        case ENUM_NPC.MIMIC:
-                            // Force loot sprite and yellow minimap dot
-                            npc = new NPC(index, x, y, -27, 'stationary', '#ffff00', deck, 'battle', false, 'foe');
-                            npc.customDialogue = ["Kee hee! You fell for the bait!"];
-                            break;
-
-                        // ==========================================
-                        case ENUM_NPC.TOLL_GUARD:
-                        npc = new NPC(index, x, y, sprite, 'stationary', color, deck, 'dialogue', false, 'friendly');
-                        npc.dialogueFactory = (dungeon) => {
-                            let reqItem = options.tollItem || 50; // Default to Card 50 (Gold)
-                            let itemName = options.tollName || "Gold";
-                            
-                            // Check if player has the item in hand, extra, or deck
-                            let hasItem = dungeon.deck.some(c => c.index === reqItem) || 
-                                        dungeon.extra.some(c => c.index === reqItem) || 
-                                        dungeon.hand.some(c => c && c.index === reqItem);
-
-                            npc.options = [`Pay Toll (${itemName})`, 'Force Your Way'];
-                            
-                            // Dynamic Yes Actions based on inventory
-                            if (hasItem) {
-                                npc.yesActions = [
-                                    ['remove_card', { card: reqItem, text: `You paid the ${itemName}.` }],
-                                    ['play_sfx', 'chime'],
-                                    ['notify', options.successText || ["You may pass."]],
-                                    ['disappear', index] // Guard steps aside
-                                ];
-                            } else {
-                                npc.yesActions = [
-                                    ['play_sfx', 'cancel'],
-                                    ['notify', `You don't have the required ${itemName}!`]
-                                ];
-                            }
-
-                            // No Action always triggers a fight
-                            npc.noActions = [
-                                ['spectate', 'Player refused the toll and initiated combat!'],
-                                ['transform_npc', { 
-                                    index: index, 
-                                    newAlignment: 'foe', 
-                                    newRole: 'battle', 
-                                    newState: 'chasing',
-                                    newDeck: options.battleDeck || deck 
-                                }],
-                                ['start_battle', index]
-                            ];
-
-                            return { text: options.dialogue || ["None pass without paying the toll!"] };
-                        };
-                        break;
-
-                    // ==========================================
-                    // THE FACTION RECRUITER: Checks global stats before joining
-                    // Options used: factionKey, reqRep, rewardCard, successText, failText
-                    // ==========================================
-                    case ENUM_NPC.FACTION_RECRUITER:
-                        npc = new NPC(index, x, y, sprite, 'stationary', color, deck, 'dialogue', false, 'friendly');
-                        npc.dialogueFactory = (dungeon) => {
-                            let currentRep = dungeon[options.factionKey] || 0;
-                            let reqRep = options.reqRep || 100;
-
-                            if (currentRep >= reqRep) {
-                                return {
-                                    text: options.successText || ["Your reputation precedes you. I am ready to join."],
-                                    actions: [
-                                        ['give_card', { card: options.rewardCard || sprite, text: "New Ally Joined!" }],
-                                        ['become_ally', sprite],
-                                        ['play_sfx', 'heal'],
-                                        ['disappear', index]
-                                    ]
-                                };
-                            } else {
-                                return {
-                                    text: options.failText || [
-                                        `I only follow the proven.`, 
-                                        `(Requires ${reqRep} ${options.factionKey}. You have ${currentRep}.)`
-                                    ],
-                                    actions: []
-                                };
-                            }
-                        };
-                        break;
-
-                    // ==========================================
-                    // THE RIDDLE DOOR: Answers dictate passage or punishment
-                    // Options used: riddleText, optionsArr, correctIndex, rewardCard, trapActions
-                    // ==========================================
-                    case ENUM_NPC.RIDDLE_DOOR:
-                        npc = new NPC(index, x, y, sprite, 'stationary', color, deck, 'dialogue', false, 'friendly');
-                        npc.dialogueFactory = (dungeon) => {
-                            let memKey = `riddle_${index}`;
-                            if (!dungeon.memory[memKey]) dungeon.memory[memKey] = { solved: false };
-
-                            if (dungeon.memory[memKey].solved) {
-                                return { text: ["The path is clear."], actions: [] };
-                            }
-
-                            // Feed the custom options directly into the UI
-                            npc.options = options.optionsArr || ['Option A', 'Option B'];
-                            let correctIndex = options.correctIndex || 0;
-
-                            // Map out the actions dynamically based on which button is the correct answer
-                            let successActions = [
-                                ['play_sfx', 'chime'],
-                                ['notify', "Correct. The way opens."],
-                                ['disappear', index]
-                            ];
-                            
-                            // Add a reward if specified
-                            if (options.rewardCard) successActions.unshift(['give_card', { card: options.rewardCard, text: "A secret compartment opens!" }]);
-                            
-                            // Inject the memory update so it saves immediately
-                            successActions.push(() => { dungeon.memory[memKey].solved = true; return ['spectate', 'Riddle solved.']; });
-
-                            let failActions = options.trapActions || [
-                                ['play_sfx', 'cancel'],
-                                ['notify', "Incorrect. A trap triggers!"]
-                            ];
-
-                            // Assign dynamically
-                            npc.yesActions = (correctIndex === 0) ? successActions : failActions;
-                            npc.noActions = (correctIndex === 1) ? successActions : failActions;
-
-                            return { text: options.riddleText || ["Answer my riddle to pass."] };
-                        };
-                        break;
-                        default:
-                            console.warn(`[spawnNPC] Warning: NPC Type '${npcType}' not recognized. Spawning default dummy.`);
-                            npc = new NPC(index, x, y, sprite, 'stationary', color, deck, 'dialogue', false, 'friendly');
-                            npc.customDialogue = ["I have nothing to say."];
-                            break;
-                    }
-
-                    // Push the fully constructed NPC to the map
-                    this.npcs.push(npc);
-                    return npc; // Return it just in case you need to chain methods
-                    }
             spawnPersistentNPC(targetMapID, index, x, y, type, state = 'stationary', color = '#ffffff', deck = [], dialogue = null, rewardCard = null, role = 'battle', options = null, isBoss = null, alignment = 'friendly', endActions = [], deathActions = [], isCinematic = false,yesActions = null, noActions = null) {    
-                    // --- NATIVE FACTORY INTERCEPTOR ---
-                    // If the server requests a bounty merchant, build the complex native object instead!
-                    if (role === 'bounty_merchant') {
-                        let merchant = this.createBountyMerchant({
-                            giverId: index, x: x, y: y, sprite: type
-                        });
-                        
-                        this.npcs = this.npcs.filter(n => n.index !== index);
-                        this.npcs.push(merchant);
-                        return; 
-                    }
-
-                    // 2. QUEST GIVER
-                    if (role === 'quest_giver') {
-                        // We randomly decide what kind of quest this is on the fly!
-                        let questTypes = ['fetch', 'rescue', 'escort', 'bounty'];
-                        // If spawned via the custom menu, let options[0] dictate the type if provided, otherwise random.
-                        let chosenType = (options && options[0] && questTypes.includes(options[0].toLowerCase())) 
-                            ? options[0].toLowerCase() 
-                            : questTypes[Math.floor(Math.random() * questTypes.length)];
-                        // Pick a random target map (excluding the hub)
-                        let possibleMaps = this.mapID
-                        let targetMap = this.mapID
-                        
-                        // Pick a random reward card (e.g. Gold, Armor, or a Potion)
-                        
-                        let chosenReward = Math.floor(Math.random() * 90);
-
-                        let questConfig = {
-                            questKey: 'q_suncat_dynamic_' + index,
-                            type: chosenType,
-                            repeatable: false,
-                            giverId: index, 
-                            x: x, 
-                            y: y, 
-                            sprite: type,
-                            targetMap: targetMap,
-                            rewardCard: chosenReward,
-                            textIntro: (dialogue && dialogue.length > 0 && dialogue[0] !== "What do you want?") ? dialogue : null,                    textWait: ["Have you finished the task yet?"],
-                            textComplete: ["You did it! Thank you so much. Here is your reward."]
-                        };
-
-                        // Populate the specific requirements based on the quest type
-                        if (chosenType === 'fetch') {
-                            questConfig.items = [
-                                { id: index + 1000, x: 10.5, y: 10.5, lootCard: 64, pickupMsg: "You found the requested item!" }
-                            ];
-                        } else if (chosenType === 'rescue') {
-                            questConfig.victims = [
-                                { id: index + 1000, x: 10.5, y: 10.5, sprite: 32, isCinematic: true }
-                            ];
-                        } else if (chosenType === 'escort') {
-                            questConfig.items = [
-                                { id: index + 1000, x: 10.5, y: 10.5, lootCard: null, pickupMsg: "We reached the destination!" }
-                            ];
-                            questConfig.escortHome = true;
-                            questConfig.escortRole = 'dialogue';
-                        }
-
-                        let questNPC = this.createQuestNPC(questConfig);
-                        
-                        this.npcs = this.npcs.filter(n => n.index !== index);
-                        this.npcs.push(questNPC);
-                        return;
-                    }
+                    
                     
                     // SAVE END ACTIONS & DEATH ACTIONS TO MEMORY
                     const npcData = { 
@@ -20030,14 +20052,69 @@
 
                 return quests;
             }
-            killPlayer(reason = 'combat', killerName = 'an unknown force') {
+            killPlayer(reason = 'combat', killerNPC = null) {
                 if (this.isDying || this.isDead) return; 
                 
                 this.isDying = true;
-                
-                console.log(`Player fatally wounded! Reason: ${reason}. Killer: ${killerName}`);
+                console.log(`Player fatally wounded! Reason: ${reason}.`);
 
-                // Roll the Dice
+                let killerName = "an unknown force";
+
+                // Generic taunt arrays (Array of arrays so the dialogue engine reads it correctly)
+                const genericTaunts = [
+                    ["Too slow!"],
+                    ["Another fool bites the dust!"],
+                    ["You were unworthy of this realm!"],
+                    ["Rest in pieces!"],
+                    ["Did you really think you could win?"],
+                    ["Pathetic."]
+                ];
+
+                if (killerNPC && typeof killerNPC === 'object') {
+                    // 1. Resolve the Killer's true name using your Card DB
+                    if (killerNPC.name && killerNPC.name !== "undefined") {
+                        killerName = killerNPC.name;
+                    } else if (killerNPC.type !== undefined && typeof Card !== 'undefined') {
+                        let cardData = new Card(Math.floor(killerNPC.type), 0);
+                        killerName = cardData.name || "a monster";
+                    } else {
+                        killerName = "a monster";
+                    }
+                    
+                    // 2. Preserve their entire custom dialogue array, or assign a random generic taunt
+                    if (!killerNPC.customDialogue || killerNPC.customDialogue.length === 0) {
+                        killerNPC.customDialogue = genericTaunts[Math.floor(Math.random() * genericTaunts.length)];
+                    }
+                    
+                    // 3. Strip interactions so you don't accidentally accept a quest while dying!
+                    killerNPC.options = null;
+                    killerNPC.yesActions = null;
+                    killerNPC.noActions = null;
+                    killerNPC.endActions = []; 
+                    killerNPC.rewardCard = null;
+
+                    // 4. THE FIX: Set them as speaker. The 3D camera will snap to them natively!
+                    this.currentSpeaker = killerNPC;
+                    
+                } else {
+                    // Fallback for environmental damage or Damage over Time
+                    killerName = typeof killerNPC === 'string' ? killerNPC : "your wounds";
+                    this.currentSpeaker = {
+                        type: -37, // Skull / System Icon
+                        index: 99999,
+                        visible: true,
+                        alignment: 'friendly', 
+                        role: 'notification', 
+                        customDialogue: [`You have succumbed to ${killerName}.`],
+                        endActions: []
+                    };
+                }
+
+                // Trigger the native dialogue box UI
+                if (typeof startGame !== 'undefined') startGame = 'dialogue';
+                this.dCounter = 0;
+
+                // --- DICE ROLL FOR DEATH TIMER ---
                 const rollStat = (idx) => {
                     let statArr = this.stat[idx];
                     if (!statArr) return 4;
@@ -20055,10 +20132,9 @@
 
                 // Time to live (Willpower + Brawn + Mind)
                 this.deathMaxTime = 3.0 + ((strRoll + conRoll + intRoll) * 0.25);
-                // Disorientation/Shake multiplier (Balance)
                 this.deathIntensity = Math.max(0.1, 1.5 - (agiRoll * 0.05));
 
-                // TRIGGER THE WEATHER SYSTEM
+                // --- TRIGGER WEATHER ENGINE ---
                 if (this.weather) {
                     this.weather.setMode('dying');
                     this.weather.dyingTimer = 0;
@@ -20071,8 +20147,8 @@
                     MusicEngine.play3DSFX('cancel'); 
                 }
 
+                // Broadcast the exact string name to the server
                 if (typeof socket !== 'undefined') {
-                    socket.emit('suncat_spectate', `Player (${this.playerClass || 'Adventurer'}) was struck a fatal blow by ${killerName}, but is fighting to their last breath!`);
                     socket.emit('player_died', { mapID: this.mapID, reason: reason, killer: killerName });
                 }
             }
