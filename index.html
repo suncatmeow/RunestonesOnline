@@ -11410,9 +11410,19 @@
                         // ==========================================
                         // --- PROCEDURAL GROUND TEXTURE (Treadmill) ---
                         // ==========================================
-                            // Determine if the floor is dark or light so the speckles contrast properly
-                            let fBrightness = this.fogColorRGB ? (this.fogColorRGB.r + this.fogColorRGB.g + this.fogColorRGB.b) / 3 : 128;
-                            ctx.fillStyle = fBrightness < 80 ? 'rgba(255, 255, 255, 0.09)' : 'rgba(0, 0, 0, 0.09)';
+                            let rgb = (() => {
+                                let c = this.floorColor || '#808080';
+                                if (c.startsWith('#')) {
+                                    let hex = c.replace('#', '');
+                                    if (hex.length === 3) hex = hex.split('').map(char => char + char).join('');
+                                    return { r: parseInt(hex.substr(0, 2), 16), g: parseInt(hex.substr(2, 2), 16), b: parseInt(hex.substr(4, 2), 16) };
+                                }
+                                let m = c.match(/\d+/g);
+                                return m ? { r: parseInt(m[0]), g: parseInt(m[1]), b: parseInt(m[2]) } : { r: 128, g: 128, b: 128 };
+                            })();
+
+                            let fBrightness = (rgb.r + rgb.g + rgb.b) / 3;
+                            ctx.fillStyle = fBrightness < 80 ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 255, 0, 0.13)';
                             ctx.beginPath();
 
                             // To maintain high FPS, we only sample a grid of points on the screen (skip pixels)
@@ -59840,7 +59850,7 @@
         const dur = 0.5 + (weightedRand * 1.9); 
         
         // Volume remains aggressive and doubled
-        const vol = 1.6 + (rand2 * 0.6);
+        const vol = .6 + (rand2 * 0.9);
 
         if (!this._sharedNoiseBuffer) {
             const bufSize = this.ctx.sampleRate * 2.0;
