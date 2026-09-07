@@ -3565,7 +3565,7 @@
                         // Trigger audio based on spell
                         if (typeof MusicEngine !== 'undefined') {
                             if (spellId === 9999) {
-                                MusicEngine.play3DSFX('slash', data.startX, data.startY, Dungeon.x, Dungeon.y, Dungeon.dir);
+                                MusicEngine.play3DSFX('attack', data.startX, data.startY, Dungeon.x, Dungeon.y, Dungeon.dir);
                             } else if (spellData && spellData.type === 'projectile') {
                                 MusicEngine.play3DSFX('fire2', data.startX, data.startY, Dungeon.x, Dungeon.y, Dungeon.dir);
                             } else {
@@ -6761,7 +6761,7 @@
                                     this.dirY = -toTargetY;
                                     
                                     if (this.clashCount < 0) {
-                                        MusicEngine.play3DSFX('slash', this.x, this.y, playerX, playerY, dungeon.dir);
+                                        MusicEngine.play3DSFX('attack', this.x, this.y, playerX, playerY, dungeon.dir);
                                         let myNewX = this.x - toTargetX * 0.3;
                                         let myNewY = this.y - toTargetY * 0.3;
                                         if (!this.checkCollision(maze, myNewX, this.y)) this.x = myNewX;
@@ -6794,7 +6794,7 @@
                                     if (dungeon.mapID == 5 && ((t1 === 78 && t2 === 79) || (t1 === 79 && t2 === 78))) isCinematic = true;
                                     
                                     if (isCinematic) {
-                                        MusicEngine.play3DSFX('slash', this.x, this.y, playerX, playerY, dungeon.dir);
+                                        MusicEngine.play3DSFX('attack', this.x, this.y, playerX, playerY, dungeon.dir);
                                         let myNewX = this.x - toTargetX * 0.6;
                                         let myNewY = this.y - toTargetY * 0.6;
                                         if (!this.checkCollision(dungeon.maze, myNewX, this.y)) this.x = myNewX;
@@ -6861,7 +6861,7 @@
                                         firstDefender = currentPrey; defenderMastery = 0;
                                     }
 
-                                    MusicEngine.play3DSFX('slash', this.x, this.y, playerX, playerY, dungeon.dir);
+                                    MusicEngine.play3DSFX('attack', this.x, this.y, playerX, playerY, dungeon.dir);
 
                                     // Combat Math
                                     let atkStr = getVirtualRoll(firstAttacker, 0, attackerMastery);
@@ -7172,7 +7172,7 @@
                                     this.damageFlashTimer = 3; 
                                     
                                     if (typeof MusicEngine !== 'undefined') {
-                                        MusicEngine.play3DSFX('slash', this.x, this.y, playerX, playerY, dungeon.dir);
+                                        MusicEngine.play3DSFX('attack', this.x, this.y, playerX, playerY, dungeon.dir);
                                         setTimeout(() => {
                                             MusicEngine.play3DSFX('click', this.x, this.y, playerX, playerY, dungeon.dir);
                                         }, 150);
@@ -7755,7 +7755,7 @@
                         }
                     } 
                     else {
-                        if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('slash', bestTarget.x, bestTarget.y, dungeon.x, dungeon.y, dungeon.dir);                        
+                        if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('attack', bestTarget.x, bestTarget.y, dungeon.x, dungeon.y, dungeon.dir);                        
                         
                         if (bestTarget.isRemotePlayer) {
                             let myStats = { level: dungeon.level, stat: this.stat, damage: this.damage || 0 };
@@ -7811,7 +7811,7 @@
                 this.isAggroDashing = true; 
 
                 this.dashCallback = () => {
-                    if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('slash', this.x, this.y, dungeon.x, dungeon.y, dungeon.dir);                        
+                    if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('attack', this.x, this.y, dungeon.x, dungeon.y, dungeon.dir);                        
 
                     if (typeof globalParticles !== 'undefined' && typeof spawnParticle !== 'undefined') {
                         let pColor = spellData.glow || spellData.auraColor || '#ffffff';
@@ -8197,7 +8197,7 @@
                         }
                     }
                 }
-                //if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('cancel', this.x, this.y);
+                if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('slash', this.x, this.y);
 
                 if (this.isSliding) {
                     // If they got knocked back, tell them to bleed WHEN THEY STOP sliding!
@@ -8234,7 +8234,7 @@
                 }
             } else {
                 // Blocked successfully (Ward holds strong, no time lost!)
-                //if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('block', this.x, this.y);
+                if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('block', this.x, this.y);
             }
 
             // We successfully absorbed the hit (preventing immediate death)
@@ -10363,7 +10363,7 @@
                     
                     this.playerFlashTimer = 15; 
                     
-                    if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('cancel');
+                    if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('slash');
 
                     if (typeof globalParticles !== 'undefined') {
                         for (let p = 0; p < 3; p++) {
@@ -10444,6 +10444,8 @@
                             this.isSlidingToTile = false;
                         }
                         window.activeMoveKey = null; 
+                        MusicEngine.play3DSFX('block', targetNPC.x, targetNPC.y, this.x, this.y, this.dir);
+
                     }
                 } 
                 else {
@@ -10451,7 +10453,7 @@
                     // PHASE 2: THE STRIKE (Player vs NPC)
                     // ==========================================
                     if (typeof MusicEngine !== 'undefined') {
-                        MusicEngine.play3DSFX('slash', targetNPC.x, targetNPC.y, this.x, this.y, this.dir);
+                        MusicEngine.play3DSFX('attack', targetNPC.x, targetNPC.y, this.x, this.y, this.dir);
                     }
 
                     if (targetNPC.absorbHit(this)) {
@@ -15471,7 +15473,7 @@
 
                     this.playerAttackTimer = 15;
                     if (finalSpellId === 9999 || finalSpellId === 9998) {
-                        if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX("slash");
+                        if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX("attack");
                     } else if (spellData.type === 'projectile') {
                         if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('fire2'); 
                     } else {
@@ -15579,7 +15581,7 @@
                             }
                         } 
                         else {
-                            if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('slash');                        
+                            if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('attack');                        
                             
                             if (bestTarget.isRemotePlayer) {
                                 let myStats = { level: this.level, stat: this.stat, damage: this.damage || 0 };
@@ -15663,7 +15665,7 @@
                     else if (this.dir === 3) fX = -1; 
 
                     if (typeof MusicEngine !== 'undefined') {
-                        MusicEngine.play3DSFX(spellData.name === 'Shield Bash' ? 'block' : (spellData.bind ? 'wind' : 'slash'));
+                        MusicEngine.play3DSFX(spellData.name === 'Shield Bash' ? 'block' : (spellData.bind ? 'block' : 'attack'));
                     }
 
                     if (typeof globalParticles !== 'undefined' && typeof spawnParticle !== 'undefined') {
@@ -17318,7 +17320,7 @@
                         if (clickedAttackButton) {
                             if (typeof MusicEngine !== 'undefined') {
                                 MusicEngine.stop();
-                                MusicEngine.play3DSFX('slash');
+                                MusicEngine.play3DSFX('attack');
                                 MusicEngine.play(15);
                             }
                             this.option = 4;
@@ -17378,7 +17380,7 @@
                                 this.dCounter = 6;
                                 if (typeof MusicEngine !== 'undefined') {
                                     MusicEngine.stop();
-                                    MusicEngine.play3DSFX('slash'); 
+                                    MusicEngine.play3DSFX('attack'); 
                                     MusicEngine.play(25);
                                 }
                             }
@@ -23026,7 +23028,7 @@
                                 Dungeon.currentSpeaker = null;
                                 Dungeon.dCounter = 0;
                                 
-                                if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('slash');
+                                if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('attack');
                                 
                                 enemyToFight.triggerInteraction(Dungeon);
                                 btnYes.visible = false;
@@ -23792,7 +23794,7 @@
                                 let defRoll = this.rollTacticalStat(target, defStat);
 
                                 if (atkRoll > defRoll) {
-                                    if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('slash');
+                                    if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('attack');
                                     
                                     let ward = target.activeBuffs ? target.activeBuffs.find(b => b.type === 'ward') : null;
                                     if (ward) {
@@ -24712,7 +24714,7 @@
                             this.animResult = 'wall_break';
                             
                             activeUnit.hasActed = true;
-                            if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('slash'); 
+                            if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('attack'); 
                             return; // End AI processing for this tick
                         }
                     }
@@ -25034,7 +25036,7 @@
                         // --- NEW: MAGICIAN AMBUSH RESOLUTION ---
                         if (this.config && this.config.isMagicianAmbush) {
                             // Play the attack sound effect sequence
-                            if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('slash');
+                            if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('attack');
                             setTimeout(() => { if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('death'); }, 300);
                             
                             // Flag the quest as complete
@@ -25111,7 +25113,7 @@
                             this.animDefender = { x: mapX + 0.5, y: mapY + 0.5, isWall: true, wallX: mapX, wallY: mapY };
                             this.animResult = 'wall_break';
                             
-                            if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('slash');
+                            if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('attack');
                         } 
                         else {
                             if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('cancel');
@@ -25543,7 +25545,7 @@
                     
                     let fX = dx / distToTarget;
                     let fY = dy / distToTarget;
-                    if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('slash');
+                    if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('attack');
 
                     this.units.forEach(target => {
                         if (target.isDead || target.alignment === caster.alignment || target.role === 'dropped_card') return;
@@ -57757,7 +57759,7 @@
                                     // 1. SUNCAT COLLISION
                                     if (p.socketId === "NPC_SUNCAT") {
                                         if (typeof socket !== 'undefined') socket.emit("battle_action", { targetId: p.socketId, actionType: "SUNCAT_HIT" });
-                                        if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('slash');
+                                        if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('attack');
                                     } 
                                     // 2. PLAYER PVP COLLISION
                                     else {
@@ -57770,7 +57772,7 @@
                                                 payload: { attackerStats: myStats, spellId: null } 
                                             });
                                         }
-                                        if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('slash');
+                                        if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('attack');
                                     }
                                     
                                     // Bounce the player back slightly so they don't clip through the target
@@ -58997,7 +58999,13 @@
           
           this.createNoise(t + 0.2, 'highpass', 3000, 0.8, 0.1, 0, distGain, panner);
           break;
-        }
+        case 39: case 'attack':
+          this.createDynamicSlash(t, distGain, panner);
+          break;
+        case 40: case 'block': case 'defend': case 'hit':
+          this.createDynamicClash(t, distGain, panner);
+          break;
+    }
     },  
     
     sing(text, startTime, notesArray = [0], rootFreq = 110, targetDuration = 0.25, resonance = 1.0, breathiness = 0.1, pan = 0, volOffset = 1.0) {
@@ -59814,6 +59822,172 @@
               }
           };
     },//
+    // ==========================================
+    // PROCEDURAL BATTLE FX (Long Resonance & Heavy Impact)
+    // ==========================================
+
+    createDynamicSlash(t, distGain, panner) {
+        distGain.connect(panner);
+        panner.connect(this.masterGain ? this.masterGain : this.ctx.destination);
+
+        // 1. WEIGHTED PROBABILITY CURVE
+        // Math.pow with 0.35 forces the random number to skew heavily toward 1.0.
+        const weightedRand = Math.pow(Math.random(), 0.35); 
+        const rand2 = Math.random();
+        
+        // --- THE DURATION CAP INCREASE ---
+        // Base is 0.5s. Max is 0.5 + 1.9 = 2.4 seconds (Two Whole Notes)
+        const dur = 0.5 + (weightedRand * 1.9); 
+        
+        // Volume remains aggressive and doubled
+        const vol = 1.6 + (rand2 * 0.6);
+
+        if (!this._sharedNoiseBuffer) {
+            const bufSize = this.ctx.sampleRate * 2.0;
+            this._sharedNoiseBuffer = this.ctx.createBuffer(1, bufSize, this.ctx.sampleRate);
+            const data = this._sharedNoiseBuffer.getChannelData(0);
+            for (let i = 0; i < bufSize; i++) data[i] = Math.random() * 2 - 1;
+        }
+
+        // --- LAYER A: THE HEAVY SWISH (The air being cut) ---
+        const noise = this.ctx.createBufferSource();
+        noise.buffer = this._sharedNoiseBuffer;
+        
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'highpass';
+        filter.frequency.setValueAtTime(800 + (weightedRand * 600), t);
+
+        const noiseGain = this.ctx.createGain();
+        noiseGain.gain.setValueAtTime(0, t);
+        // Instant attack for the rush of air
+        noiseGain.gain.linearRampToValueAtTime(vol * 0.8, t + 0.02); 
+        // The swish fades faster than the metal rings (scales with swing size)
+        noiseGain.gain.exponentialRampToValueAtTime(0.01, t + (dur * 0.5)); 
+
+        noise.connect(filter); filter.connect(noiseGain); noiseGain.connect(distGain);
+        noise.start(t); noise.stop(t + dur);
+
+        // --- LAYER B: THE PRIMARY STRIKE (The Blade Contact) ---
+        const baseRingFreq = 1200 + (rand2 * 1800);
+        const steelNodes = [];
+        
+        for(let i = 0; i < 2; i++) {
+            const osc = this.ctx.createOscillator();
+            osc.type = i === 0 ? 'square' : 'triangle'; 
+            osc.frequency.setValueAtTime(baseRingFreq * (1 + (i * 0.53)), t);
+            
+            const ringFilter = this.ctx.createBiquadFilter();
+            ringFilter.type = 'bandpass';
+            ringFilter.frequency.setValueAtTime(baseRingFreq * 1.5, t);
+            ringFilter.Q.value = 4.0;
+
+            const ringGain = this.ctx.createGain();
+            ringGain.gain.setValueAtTime(0, t);
+            // Slower attack (0.04s): lets the wind hit first, then the steel opens up
+            ringGain.gain.linearRampToValueAtTime(vol * 0.7, t + 0.04);
+            // Drags out across the massive new duration
+            ringGain.gain.exponentialRampToValueAtTime(0.001, t + dur); 
+
+            osc.connect(ringFilter); ringFilter.connect(ringGain); ringGain.connect(distGain);
+            osc.start(t); osc.stop(t + dur);
+            steelNodes.push(osc, ringFilter, ringGain);
+        }
+
+        // --- LAYER C: SYMPATHETIC RESONANCE (The "Tinnitus" Bloom) ---
+        const resonanceNodes = [];
+        const resFreqs = [6500 + (weightedRand * 1000), 8200 + (rand2 * 1500)]; 
+        
+        resFreqs.forEach((freq, i) => {
+            const resOsc = this.ctx.createOscillator();
+            resOsc.type = 'sine';
+            resOsc.frequency.setValueAtTime(freq, t);
+            resOsc.frequency.exponentialRampToValueAtTime(freq * 0.98, t + (dur * 1.5));
+            
+            const resGain = this.ctx.createGain();
+            resGain.gain.setValueAtTime(0, t);
+            // THE BLOOM: Swells in after the initial strike (0.15s)
+            resGain.gain.linearRampToValueAtTime(vol * 0.25, t + 0.15); 
+            // Rings out 50% longer than the rest of the sound! (Up to 3.6 seconds!)
+            resGain.gain.exponentialRampToValueAtTime(0.0001, t + (dur * 1.5)); 
+
+            resOsc.connect(resGain); resGain.connect(distGain);
+            resOsc.start(t); resOsc.stop(t + (dur * 1.5));
+            resonanceNodes.push(resOsc, resGain);
+        });
+
+        this.cleanupNodes(t + (dur * 1.5), noise, filter, noiseGain, ...steelNodes, ...resonanceNodes);
+    },
+
+    createDynamicClash(t, distGain, panner) {
+        distGain.connect(panner);
+        panner.connect(this.masterGain ? this.masterGain : this.ctx.destination);
+
+        const rand = Math.random();
+        const dur = 0.5 + (rand * 0.3);
+        
+        // BOOSTED VOLUME: Increased from 0.55 to 0.75
+        const vol = 0.69; 
+
+        // 1. THE THUD (Heavy armor kick drum)
+        const thud = this.ctx.createOscillator();
+        thud.type = 'sine';
+        thud.frequency.setValueAtTime(120 + (rand * 60), t);
+        thud.frequency.exponentialRampToValueAtTime(30, t + 0.12); 
+
+        const thudGain = this.ctx.createGain();
+        thudGain.gain.setValueAtTime(vol * 3.5, t); 
+        thudGain.gain.exponentialRampToValueAtTime(0.01, t + 0.15);
+
+        thud.connect(thudGain); thudGain.connect(distGain);
+        thud.start(t); thud.stop(t + 0.15);
+
+        // 2. THE CYMBAL SPLASH (Wide metallic hiss)
+        const cymbalNoise = this.ctx.createBufferSource();
+        if (!this._sharedNoiseBuffer) {
+            const bufSize = this.ctx.sampleRate * 2.0;
+            this._sharedNoiseBuffer = this.ctx.createBuffer(1, bufSize, this.ctx.sampleRate);
+            const data = this._sharedNoiseBuffer.getChannelData(0);
+            for (let i = 0; i < bufSize; i++) data[i] = Math.random() * 2 - 1;
+        }
+        cymbalNoise.buffer = this._sharedNoiseBuffer;
+        
+        const cymbalFilter = this.ctx.createBiquadFilter();
+        cymbalFilter.type = 'highpass';
+        cymbalFilter.frequency.setValueAtTime(3500 + (rand * 1500), t); 
+        cymbalFilter.Q.value = 0.5;
+
+        const cymbalGain = this.ctx.createGain();
+        cymbalGain.gain.setValueAtTime(vol * 2.0, t);
+        cymbalGain.gain.exponentialRampToValueAtTime(0.01, t + dur);
+
+        cymbalNoise.connect(cymbalFilter); cymbalFilter.connect(cymbalGain); cymbalGain.connect(distGain);
+        cymbalNoise.start(t); cymbalNoise.stop(t + dur);
+
+        // 3. THE TR-808 METALLIC CLUSTER 
+        const sq1 = this.ctx.createOscillator(); sq1.type = 'square'; sq1.frequency.value = 345 + (rand * 50);
+        const sq2 = this.ctx.createOscillator(); sq2.type = 'square'; sq2.frequency.value = 492 + (rand * 70);
+        const sq3 = this.ctx.createOscillator(); sq3.type = 'square'; sq3.frequency.value = 731 + (rand * 100);
+
+        const metallicFilter = this.ctx.createBiquadFilter();
+        metallicFilter.type = 'highpass';
+        metallicFilter.frequency.setValueAtTime(2500 + (rand * 800), t); 
+
+        const metallicGain = this.ctx.createGain();
+        metallicGain.gain.setValueAtTime(vol * 2.0, t);
+        metallicGain.gain.exponentialRampToValueAtTime(0.001, t + dur * 0.7);
+
+        sq1.connect(metallicFilter);
+        sq2.connect(metallicFilter);
+        sq3.connect(metallicFilter);
+        metallicFilter.connect(metallicGain);
+        metallicGain.connect(distGain);
+
+        sq1.start(t); sq1.stop(t + dur);
+        sq2.start(t); sq2.stop(t + dur);
+        sq3.start(t); sq3.stop(t + dur);
+
+        this.cleanupNodes(t + dur, thud, thudGain, cymbalNoise, cymbalFilter, cymbalGain, sq1, sq2, sq3, metallicFilter, metallicGain);
+    },
     createTone(t, freq, type, vol, dur, slide, distGain = null, panner = null) {
       const osc = this.ctx.createOscillator();
       const gain = this.ctx.createGain();
@@ -60113,6 +60287,10 @@
         case 51: case 'Coast':
             this.currentSong = new CoastalModule(this.ctx, this.masterGain);
             this.style = "Coast";
+            break;
+        case 52: case 'Lacrimosa':
+            this.currentSong = new LacrimosaModule(this.ctx, this.masterGain);
+            this.style = "Lacrimosa";
             break;
           default:
           console.error("Unknown style:", style);
@@ -60543,60 +60721,60 @@
         };
         },
         createGhostSound(t, distGain, panner) {
-        distGain.connect(panner);
-        panner.connect(this.masterGain);
+            distGain.connect(panner);
+            panner.connect(this.masterGain);
 
-        const osc = this.ctx.createOscillator();
-        osc.type = 'sine';
-        // Eerie wobble
-        osc.frequency.setValueAtTime(400, t);
-        osc.frequency.linearRampToValueAtTime(600, t + 1.0);
-        osc.frequency.linearRampToValueAtTime(300, t + 2.0);
+            const osc = this.ctx.createOscillator();
+            osc.type = 'sine';
+            // Eerie wobble
+            osc.frequency.setValueAtTime(400, t);
+            osc.frequency.linearRampToValueAtTime(600, t + 1.0);
+            osc.frequency.linearRampToValueAtTime(300, t + 2.0);
 
-        const gain = this.ctx.createGain();
-        gain.gain.setValueAtTime(0, t);
-        gain.gain.linearRampToValueAtTime(0.3, t + 0.5); // Slow fade in
-        gain.gain.linearRampToValueAtTime(0, t + 2.0);   // Slow fade out
+            const gain = this.ctx.createGain();
+            gain.gain.setValueAtTime(0, t);
+            gain.gain.linearRampToValueAtTime(0.3, t + 0.5); // Slow fade in
+            gain.gain.linearRampToValueAtTime(0, t + 2.0);   // Slow fade out
 
-        osc.connect(gain);
-        gain.connect(distGain);
-        osc.start(t);
-        osc.stop(t + 2.0);
-        osc.onended = () => {
-            osc.disconnect();
-            gain.disconnect();
-            distGain.disconnect();
-            panner.disconnect();
-        };
+            osc.connect(gain);
+            gain.connect(distGain);
+            osc.start(t);
+            osc.stop(t + 2.0);
+            osc.onended = () => {
+                osc.disconnect();
+                gain.disconnect();
+                distGain.disconnect();
+                panner.disconnect();
+            };
         },
         createNoiseBurst(t, type, freq, vol, dur, destNode) {
-        // Helper to generate noise into a specific destination node
-        const bufSize = this.ctx.sampleRate * dur;
-        const buffer = this.ctx.createBuffer(1, bufSize, this.ctx.sampleRate);
-        const data = buffer.getChannelData(0);
-        for (let i = 0; i < bufSize; i++) data[i] = Math.random() * 2 - 1;
+            // Helper to generate noise into a specific destination node
+            const bufSize = this.ctx.sampleRate * dur;
+            const buffer = this.ctx.createBuffer(1, bufSize, this.ctx.sampleRate);
+            const data = buffer.getChannelData(0);
+            for (let i = 0; i < bufSize; i++) data[i] = Math.random() * 2 - 1;
 
-        const noise = this.ctx.createBufferSource();
-        noise.buffer = buffer;
+            const noise = this.ctx.createBufferSource();
+            noise.buffer = buffer;
 
-        const filter = this.ctx.createBiquadFilter();
-        filter.type = type;
-        filter.frequency.value = freq;
+            const filter = this.ctx.createBiquadFilter();
+            filter.type = type;
+            filter.frequency.value = freq;
 
-        const gain = this.ctx.createGain();
-        gain.gain.setValueAtTime(vol, t);
-        gain.gain.exponentialRampToValueAtTime(0.01, t + dur);
+            const gain = this.ctx.createGain();
+            gain.gain.setValueAtTime(vol, t);
+            gain.gain.exponentialRampToValueAtTime(0.01, t + dur);
 
-        noise.connect(filter);
-        filter.connect(gain);
-        gain.connect(destNode); // Connect to the Spatial Gain Node
-        noise.start(t);
-        noise.stop(t + dur);
-        noise.onended = () => {
-            noise.disconnect();
-            filter.disconnect();
-            gain.disconnect();
-        };
+            noise.connect(filter);
+            filter.connect(gain);
+            gain.connect(destNode); // Connect to the Spatial Gain Node
+            noise.start(t);
+            noise.stop(t + dur);
+            noise.onended = () => {
+                noise.disconnect();
+                filter.disconnect();
+                gain.disconnect();
+            };
         },
         // 5. RANDOM MUSICAL MOVEMENT (3D Spatialized)
         createMusicalMovement(t, distGain, panner) {
