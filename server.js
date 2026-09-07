@@ -6907,6 +6907,7 @@ io.on("connection", (socket) => {
                 players[socket.id].playerProfile = playerProfile; 
                 players[socket.id].searchableMemories = loadedMemories;   
                 players[socket.id].suncatPerception = perception;  
+                condenseSessionOnLogin(socket.id);
                 if (!players[socket.id].dmNarrativeLog) {
                     players[socket.id].dmNarrativeLog = [];
                 }
