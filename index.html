@@ -8090,7 +8090,7 @@
             
             dungeon.npcs.push(minion);
 
-            if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('arcane');
+            if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('arcane',this.x,this.y, dungeon.x, dungeon.y, dungeon.dir);
             
             if (typeof globalParticles !== 'undefined') {
                 for (let p = 0; p < 6; p++) {
@@ -8197,7 +8197,7 @@
                         }
                     }
                 }
-                if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('slash', this.x, this.y);
+                if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('slash', this.x, this.y, Dungeon.x, Dungeon.y, Dungeon.dir);
 
                 if (this.isSliding) {
                     // If they got knocked back, tell them to bleed WHEN THEY STOP sliding!
@@ -8234,7 +8234,7 @@
                 }
             } else {
                 // Blocked successfully (Ward holds strong, no time lost!)
-                if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('block', this.x, this.y);
+                if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('block', this.x, this.y, Dungeon.x, Dungeon.y, Dungeon.dir);
             }
 
             // We successfully absorbed the hit (preventing immediate death)
@@ -59850,7 +59850,7 @@
         const dur = 0.5 + (weightedRand * 1.9); 
         
         // Volume remains aggressive and doubled
-        const vol = .6 + (rand2 * 0.3);
+        const vol = 1.3 + (rand2 * 0.6);
 
         if (!this._sharedNoiseBuffer) {
             const bufSize = this.ctx.sampleRate * 2.0;
@@ -59880,10 +59880,10 @@
         // --- LAYER B: THE PRIMARY STRIKE (The Blade Contact) ---
         const baseRingFreq = 1200 + (rand2 * 1800);
         const steelNodes = [];
-        
+        /*
         for(let i = 0; i < 2; i++) {
             const osc = this.ctx.createOscillator();
-            osc.type = i === 0 ? 'square' : 'triangle'; 
+            osc.type = i === 0 ? 'sine' : 'sine'; 
             osc.frequency.setValueAtTime(baseRingFreq * (1 + (i * 0.53)), t);
             
             const ringFilter = this.ctx.createBiquadFilter();
@@ -59901,7 +59901,7 @@
             osc.connect(ringFilter); ringFilter.connect(ringGain); ringGain.connect(distGain);
             osc.start(t); osc.stop(t + dur);
             steelNodes.push(osc, ringFilter, ringGain);
-        }
+        }*/
 
         // --- LAYER C: SYMPATHETIC RESONANCE (The "Tinnitus" Bloom) ---
         const resonanceNodes = [];
