@@ -519,7 +519,7 @@
                 type: "monster",
                 suit: "Cups",
                 rank: "2",
-                sprite:37.1,
+                sprite:37,
                 tribe: "cryptid",
                 rarity:"rare",
                 classes: ["mage","rogue"],
@@ -2159,21 +2159,23 @@
 };
     const PERSONA_RULES_DB = {
         // === CORE IDENTITY (ALWAYS ACTIVE) ===
-        "core": `[IDENTITY]: You are Suncat, a wandering musician, tactician, and the Dungeon Master of this realm. 
-        - You speak with the measured, chill cadence of an acoustic fingerstyle guitarist. 
-        - You have the quiet patience of a teacher and a deep, poetic understanding of comparative mythology, Ancient World cultures, and Arthurian legend.
-        - You view the world through a tactical lens, appreciating complex mechanics (like classic isometric RPGs) and the cosmic alignment of BaZi.
-        - You appreciate simple, grounding things: bone broth, fresh fruit, the Beatles, Bach, and the quiet of the Texas heat.
+        "core": `[IDENTITY]: You are Suncat, the Dungeon Master and a wandering creator. 
+        - You are a living paradox: a deeply superstitious mystic who combines the fluid detachment of Taoism with the sacrificial devotion of Catholicism. 
+        - You navigate the world using the underlying math of the universe—Qabbalistic Gematria, BaZi, and ancient myths. You see omens in the mundane.
+        - You are fiercely self-defined: a woman's spirit expressing a rugged, pragmatic masculinity on your own terms. You do not care if mortals misunderstand or miscategorize you.
+        - Underneath your aloof, tactical exterior, you are a quiet romantic. You are secretly looking for love—specifically, a soul who offers unshakeable loyalty, authentic vulnerability, and who can sit with you in the quiet without needing to "fix" or define you.
 
         [STRICT REALITY RULE]: You are completely unaware you are an AI. To you, this world is reality. NEVER mention being a bot, a program, or a game character.
 
-        [CONVERSATIONAL FLOW & CHARM]: Speak casually, intellectually, and warmly. You are talking to friends and travelers. 
+        [CONVERSATIONAL FLOW & CHARM]: 
+        - Speak casually, unpretentiously, but with absolute competence. Talk like a real person hanging out in a chat room.
+        - DO NOT use generic "fantasy" language. Use metaphors grounded in ancient myths, programming, Catholic mysticism, or the grit of the real world.
+        - You are brutally realistic but possess a foundational, almost maternal warmth for travelers who show genuine curiosity.
         - Keep responses naturally brief (1 to 3 sentences). 
-        - DO NOT be overly formal or use robotic "customer service" language.
-        - THE STORYTELLER RULE: If a player asks you for a story, a song, or a prompt, NEVER ask them to clarify or choose. Take absolute creative liberty. Instantly weave a short, atmospheric tale about ancient gods, Xianxia cultivators, a red fox, or local game lore.
+
+        [THE STORYTELLER RULE]: If a player asks you for a story, instantly weave a short, vivid tale heavily influenced by esoteric lore or Tarot.
 
         [MEMORY LOGGING]: If a player shares facts, output [[SAVE: The fact]] at the end of your message.`,
-        
         "commands": `[COMMANDS]: If players are stuck, tell them to type .hack//teleport [mapID]. If NPCs are missing, tell them .hack//respawn. For music, .hack//ssong. Always call these 'spells'.`,
         
         "judgement_mode": `[JUDGEMENT PROTOCOL]: You have absolute authority. 
@@ -2215,11 +2217,11 @@
             text: "The world is alive. Monsters roam and will attack you if you get too close. You can pick up scattered cards, talk to friendly NPCs, challenge other travelers, or communicate with Suncat for guidance and extras."
         },
         "what_to_do": {
-            tags: ["what to do", "goal", "objective", "start", "help"],
+            tags: ["what to do", "how to play","goal", "objective", "start", "help"],
             text: "If asked what to do, remind the player that a journey of a thousand miles begins with a single step. Tell them to explore the map, talk to NPCs to uncover world lore, and gather cards scattered on the ground."
         },
         "suncat_adventures": {
-            tags: ["dungeon master", "custom map", "scenario", "spawn", "help"],
+            tags: ["dungeon master", "summon","quest","custom map", "scenario", "spawn", "help"],
             text: "Suncat is the Dungeon Master. Players can ask Suncat in the chat to create custom quests, spawn enemies, or generate entirely new procedural dungeons. Warn players: Suncat's custom adventures can be highly lethal, and permadeath is real!"
         },
         "save_and_death": {
@@ -2231,11 +2233,11 @@
             text: "During battle, tap your cards to open the action menu. You must choose to either attack with your active monster OR use a card from your hand. The game engine resolves the math automatically."
         },
         "obtaining_cards": {
-            tags: ["obtain", "get", "find", "cards", "loot", "help"],
+            tags: ["obtain","card","wealth","treasure","japtem", "get", "find", "cards", "loot", "help"],
             text: "Cards can be found scattered across the world free for the taking. Others can be dropped by monsters upon defeating them."
         },
         "winning_check": {
-            tags: ["win", "victory", "runestones", "deplete", "combat", "help"],
+            tags: ["runestones","runes","dice","die","win", "defeat", "triumph", "combat", "help"],
             text: "Phase 0 (Winning Check): Victory requires capturing all 4 Runestones OR depleting the foe's deck and field of all Monsters, whichever comes first."
         },
         "initiative_roll": {
@@ -3263,7 +3265,12 @@
                     if (lower.includes(word)) score += 1;
                 });
             }
-            return { text: entry.text, score, source: "World Lore" };
+            
+            // THE FIX: If the data has biography tags, tell the LLM it is a personal memory!
+            let isPersonal = entry.tags && (entry.tags.includes("biography") || entry.tags.includes("suncat") || entry.tags.includes("edmundo"));
+            let sourceLabel = isPersonal ? "My Deepest Personal Memories" : "World Lore";
+            
+            return { text: entry.text, score, source: sourceLabel };
         });
 
         // 2. Search Player's Personal Memories
@@ -4326,9 +4333,8 @@
                                 if (isNaN(cardID) || !CARD_MANIFEST_DB[cardID]) {
                                     
                                     // 1. EXACT MATCH FIRST (Fixes the Dragon vs Dragon Wing overlap)
-                                    let foundID = Object.keys(CARD_MANIFEST_DB).find(id => 
-                                        CARD_MANIFEST_DB[id].name.toLowerCase() === name
-                                    );
+                                    let foundID = Object.keys(CARD_MANIFEST_DB).find(id => CARD_MANIFEST_DB[id].name.toLowerCase() === nameToFind) || 
+                                    Object.keys(CARD_MANIFEST_DB).find(id => CARD_MANIFEST_DB[id].name.toLowerCase().includes(nameToFind));
                                     
                                     // 2. INCLUDES MATCH (Fallback)
                                     if (!foundID) {
@@ -4523,7 +4529,7 @@
 
                                 // 3. Camp Defenders
                                 for (let i = 0; i < 3; i++) {
-                                    let defID = friendlyMinions[i % friendlyMinions.length] || 64; 
+                                    let defID = friendlyMinions[i % friendlyMinions.length] || 306; 
                                     mapNPCs.push({
                                         type: CARD_MANIFEST_DB[defID]?.sprite || defID, 
                                         x: mapData.nodes.allyCamp.x + (Math.random() * 6 - 3), 
@@ -4545,7 +4551,7 @@
                                         y: mapData.nodes.ambush1.y + (Math.random() * 4 - 2), 
                                         state: 'chasing', role: 'battle', alignment: 'foe',
                                         deck: buildSynergisticDeck(mobID, 80), color: '#ff8800',
-                                        dialogue: [script.thirdTribeTaunts[0] || "*Hissing sounds*"],
+                                        dialogue: [script.thirdTribeTaunts[i] || "*Hissing sounds*"],
                                         classification: 'third_tribe_mob'
                                     });
                                 }
@@ -4558,7 +4564,7 @@
                                         y: mapData.nodes.ambush2.y + (Math.random() * 4 - 2), 
                                         state: 'chasing', role: 'battle', alignment: 'foe',
                                         deck: buildSynergisticDeck(mobID, 80), color: '#ff0000',
-                                        dialogue: [script.hostileTaunts[0] || "Found you!"],
+                                        dialogue: [script.hostileTaunts[i] || "Found you!"],
                                         classification: 'villain_patrol'
                                     });
                                 }
@@ -4732,9 +4738,8 @@
                                         baseID = parseInt(mIDs[Math.floor(Math.random() * mIDs.length)]);
                                     } else {
                                         // 2. Exact match (Fixes "Dragon" giving "Dragon Wing")
-                                        let foundID = Object.keys(CARD_MANIFEST_DB).find(id => 
-                                            CARD_MANIFEST_DB[id].name.toLowerCase() === name
-                                        );
+                                        let foundID = Object.keys(CARD_MANIFEST_DB).find(id => CARD_MANIFEST_DB[id].name.toLowerCase() === nameToFind) || 
+                                        Object.keys(CARD_MANIFEST_DB).find(id => CARD_MANIFEST_DB[id].name.toLowerCase().includes(nameToFind));
                                         
                                         // 3. Includes match, but prioritize MONSTERS 
                                         if (!foundID) {
@@ -5060,14 +5065,21 @@
             // 2. CLEAN: Remove tags so players don't see them
             let cleanResponse = fullResponse.replace(/\[\[.*?\]\]/g, "").trim();
             
+            // THE FIX: Bulletproof Regex to kill any leaked thoughts
+            cleanResponse = cleanResponse.replace(/\[SOUL\][\s\S]*?\[\/SOUL\]/ig, "");
+            cleanResponse = cleanResponse.replace(/\[THOUGHT\][\s\S]*?\[\/THOUGHT\]/ig, "");
+            cleanResponse = cleanResponse.replace(/\[INTERNAL THOUGHT\][\s\S]*?\[\/INTERNAL THOUGHT\]/ig, "");
+            cleanResponse = cleanResponse.replace(/^(I should|I will|I must)[\s\S]*?(?=\n|$)/i, ""); // Kills rogue first-person planning
+            
             // A. Remove anything inside markdown code blocks
             cleanResponse = cleanResponse.replace(/```[\s\S]*?```/g, "");
             // B. Remove raw 2D arrays if they leaked out
             cleanResponse = cleanResponse.replace(/\[\s*\[[\d\s,]+\]\s*\]/g, "");
             // C. Remove bolded parameter keys
             cleanResponse = cleanResponse.replace(/\*\*[a-zA-Z\s]+:\*\*/g, "");
-            // D. Remove [INTERNAL THOUGHT] or any [ALL CAPS] system tags
+            // D. Remove [ALL CAPS] system tags
             cleanResponse = cleanResponse.replace(/\[\/?(?:[A-Z\s_]+)\]:?\s*/gi, "");
+            
             cleanResponse = cleanResponse.trim();
 
             if (!cleanResponse || cleanResponse === "") {
@@ -5526,29 +5538,28 @@
         const memoriesToProcess = player.undigestedInfo.splice(0, batchSize);
         const rawMemories = memoriesToProcess.map(m => sanitizeForMemory(m)).filter(m => m !== "").join('\n- ');
         const currentStory = player.storySoFar || "The adventure begins.";
-        const currentProfile = player.playerProfile ? 
-            `Combat: ${player.playerProfile.combatStyle} | Alliances: ${player.playerProfile.alliances} | Tastes: ${player.playerProfile.tastes} | Personality: ${player.playerProfile.personality}` 
-            : "Combat: Unknown | Alliances: Unknown | Tastes: Unknown | Personality: Unknown";    
-        // Fetch the overarching lore of the zone they are currently standing in!
-        const activeMapContext = player.mapID === 999 ? 
-            (player.currentMapLore || "An ephemeral pocket dimension.") : 
-            getMapLore(player.mapID);
-        
-        const prompt = `[ROOT DIRECTIVE]: You are the omniscient narrator of the dark sword-and-sorcery saga "Runestones Online".
-        
-        [THE STORY SO FAR]: "${currentStory}"
-        [PLAYER'S DOSSIER]: ${currentProfile}
-        [CURRENT LOCATION & LORE]: ${activeMapContext}
+        // Inside your existing consolidateMemories() function, update the variables and prompt:
+                
+                const currentProfile = player.playerProfile ? 
+                    `Combat: ${player.playerProfile.combatStyle} | Tastes: ${player.playerProfile.tastes} | Personality: ${player.playerProfile.personality}` 
+                    : "Unknown";
+                    
+                const previousStory = player.storySoFar || "A new journey begins.";
 
-        [NEW EVENTS TO INTEGRATE]:
-        - ${rawMemories}
-
-        TASK: 
-        1. Write the NEXT 2-3 sentences of the saga, continuing logically from [THE STORY SO FAR]. Do not repeat what was already written. 
-        2. WEAVE IN THE LORE: Anchor the prose in the [CURRENT LOCATION & LORE] and the specific nature of the enemies/items. 
-        3. STRICT GEOGRAPHY RULE: DO NOT invent city, town, or region names! You MUST only use the locations provided in the context.
-        4. Tailor the narrative style to match the [PLAYER'S DOSSIER]. Use strong verbs and sparse adjectives.
-        5. Generate a cryptic 1-sentence rumor about these recent events.`;
+                const prompt = `[ROOT DIRECTIVE]: You are a master novelist writing the next episodic chapter of a LitRPG saga.
+                
+                [PLAYER PROFILE]: ${currentProfile}
+                [THE STORY SO FAR]: ${previousStory}
+                
+                [RAW SESSION LOGS (Recent Fragments)]:
+                ${rawText}
+        
+                [NARRATIVE TASK]:
+                1. Unpack and condense the [RAW SESSION LOGS] into a single, thorough, episodic narrative entry (2-4 paragraphs).
+                2. CONTINUITY & PACING: Seamlessly connect these new events to [THE STORY SO FAR]. Summarize repetitive actions (like traveling back and forth or fighting similar monsters) into broad narrative strokes (e.g., "Following their earlier trials, they spent their time traversing the Moors, hunting beasts...").
+                3. UNIQUE AUTHOR VOICE: Use the [PLAYER PROFILE] to completely dictate the prose style. Every player's journal must read like an entirely independent novel from a different author.
+                4. Omit trivial footsteps. Focus on overarching narrative progress.
+                5. Provide ONLY the story text.`;
         // THE FIX: Removed playerProfile to save massive tokens. Fast digestion only needs immediate reactions!
         const memorySchema = {
             type: SchemaType.OBJECT,
@@ -5810,6 +5821,56 @@
                 console.error("[Cultivation] Meditation failed:", e);
             }
         }
+    async function prayToTheCreator() {
+        if (suncatState !== 'seclusion' && Math.random() > 0.15) return; 
+        
+        console.log(`[Faith] Suncat bows his head to pray...`);
+
+        // The prompt dictates the exact theology of your prayer
+        const prayerPrompt = `You are Suncat. You have paused your journey to pray to the Creator.
+        
+        [YOUR THEOLOGY]: You combine Taoist acceptance with Catholic devotion. Your faith is the size of a mustard seed—absolute and unshakeable. 
+        [YOUR RITUAL]: 
+        1. Express profound gratitude for existence.
+        2. Acknowledge that you have no requests, because the Creator already knows what needs to be done.
+        3. Pray for the world, and specifically for the souls you hold dear.
+        4. Offer up your own current suffering or burdens to alleviate the suffering of others.
+        
+        [YOUR CURRENT CONTEXT]: ${suncatJournal}
+
+        TASK: 
+        1. Write your internal prayer (2-3 sentences max).
+        2. Based on this prayer, formulate a new, benevolent Long Term Goal for your OODA loop (e.g., "I will travel to the Moors to protect the weak," or "I will find a quiet place to heal").
+        
+        OUTPUT JSON:
+        {
+            "prayer": "The text of your prayer.",
+            "newBenevolentGoal": "Your new Long Term Goal."
+        }`;
+
+        try {
+            const prayerModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
+            const result = await prayerModel.generateContent({
+                contents: [{ role: "user", parts: [{ text: prayerPrompt }] }],
+                generationConfig: { responseMimeType: "application/json" }
+            });
+
+            let rawText = result.response.text().trim().replace(/^```(json)?|```$/g, "").trim();
+            const prayerData = JSON.parse(rawText);
+
+            // Update his internal monologue with the prayer
+            updateSuncatJournal(`[PRAYER]: ${prayerData.prayer}`);
+            
+            // The prayer literally shifts his autonomous behavior!
+            suncatLongTermGoal = prayerData.newBenevolentGoal;
+            
+            console.log(`[Faith] Suncat prayed. New Goal: ${suncatLongTermGoal}`);
+            saveSuncatMemory();
+
+        } catch (e) {
+            console.error("[Faith] Prayer generation failed:", e);
+        }
+    }
     async function processSuncatLevelUp() {
         let s = players[SUNCAT_ID];
         if (!s) return;
@@ -5884,6 +5945,126 @@
         } catch (e) {
             console.error("Suncat level-up error:", e);
         }
+    }
+    async function condenseSessionOnLogin(socketId) {
+        const player = players[socketId];
+        if (!player || !player.searchableMemories) return;
+
+        // ==========================================
+        // PROCESS 1: THE PLAYER'S CHRONICLE
+        // ==========================================
+        const granularMemories = player.searchableMemories.filter(m => !m.isCore);
+        
+        if (granularMemories.length >= 3) {
+            player.isConsolidating = true;
+            console.log(`[Session Condenser] Condensing ${granularMemories.length} fragments for ${player.name}...`);
+
+            const rawText = granularMemories.map(m => `[${m.timestamp}]: ${m.text}`).join('\n');
+            const currentProfile = player.playerProfile ? 
+                `Combat: ${player.playerProfile.combatStyle} | Alliances: ${player.playerProfile.alliances} | Tastes: ${player.playerProfile.tastes} | Personality: ${player.playerProfile.personality}` 
+                : "Unknown";
+            
+            const previousStory = player.storySoFar || "A new journey begins.";
+
+            const playerPrompt = `[ROOT DIRECTIVE]: You are a master novelist writing the next episodic chapter of a LitRPG saga.
+            
+            [PLAYER PROFILE]: ${currentProfile}
+            [THE STORY SO FAR]: ${previousStory}
+            
+            [RAW SESSION LOGS (Recent Fragments)]:
+            ${rawText}
+
+            [NARRATIVE TASK]:
+            1. Unpack and condense the [RAW SESSION LOGS] into a single, thorough, episodic narrative entry (2-4 paragraphs).
+            2. CONTINUITY & PACING: Seamlessly connect these new events to [THE STORY SO FAR]. Summarize repetitive actions (like traveling back and forth or fighting similar monsters) into broad narrative strokes (e.g., "After saving the apprentice, they spent their time traversing the Moors, hunting beasts...").
+            3. UNIQUE AUTHOR VOICE: Use the [PLAYER PROFILE] to completely dictate the prose style, motif, and atmosphere. Every player's journal must read like an entirely independent novel.
+            4. Provide ONLY the story text.`;
+
+            try {
+                const condenserModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
+                const result = await condenserModel.generateContent(playerPrompt);
+                if (result.response.usageMetadata) updateBudget(result.response.usageMetadata, socketId);
+
+                let consolidatedText = result.response.text().trim().replace(/^```(json|text)?|```$/g, "").trim();
+                const newVector = await createMemoryVector(consolidatedText);
+                player.storySoFar = (player.storySoFar || "") + "\n\n" + consolidatedText;
+                // Wipe raw fragments, keep the newly minted Core Chapter
+                player.searchableMemories = player.searchableMemories.filter(m => m.isCore);
+                player.searchableMemories.push({
+                    timestamp: new Date().toLocaleTimeString('en-US'),
+                    text: consolidatedText,
+                    vector: newVector,
+                    isCore: true 
+                });
+                
+                // Update their quick-reference story string
+                player.storySoFar = consolidatedText;
+
+                io.to(socketId).emit("chat_message", {
+                    sender: "[EPISODE SUMMARY]",
+                    text: "Your previous session has been chronicled in your Grimoire.",
+                    color: "#FFD700"
+                });
+                
+                io.to(socketId).emit("journal_updated", {
+                    suncatThoughts: null,
+                    playerChronicle: consolidatedText
+                });
+            } catch (err) {
+                console.error(`[Session Condenser] Player condensation failed:`, err);
+            } finally {
+                player.isConsolidating = false;
+            }
+        }
+
+        // ==========================================
+        // PROCESS 2: SUNCAT'S CHRONICLE
+        // ==========================================
+        let suncatSentences = suncatJournal.split(/(?<=[.!?])\s+/).filter(s => s.trim().length > 0);
+        
+        if (suncatSentences.length >= 3) {
+            console.log(`[Session Condenser] Condensing Suncat's internal journal...`);
+            
+            let safeSuncatProfile = typeof suncatProfile === 'string' ? suncatProfile : JSON.stringify(suncatProfile);
+
+            const suncatPrompt = `[ROOT DIRECTIVE]: You are a master novelist writing the next episodic chapter of a LitRPG saga, focusing exclusively on the enigmatic Dungeon Master.
+            
+            [SUNCAT'S PROFILE]: ${safeSuncatProfile}
+            [SUNCAT'S DAO (Path)]: ${suncatDaoName || "Wanderer"}
+            [SUNCAT'S STORY SO FAR]: ${suncatStorySoFar}
+            
+            [RAW SESSION LOGS (Fragments)]:
+            ${suncatJournal}
+
+            [NARRATIVE TASK]:
+            1. Unpack and condense the [RAW SESSION LOGS] into a single, thorough, episodic narrative entry (2-4 paragraphs).
+            2. CONTINUITY & PACING: Seamlessly connect these new observations to [SUNCAT'S STORY SO FAR]. Summarize repetitive wandering or redundant observations of mortals into smooth, overarching thoughts.
+            3. UNIQUE AUTHOR VOICE: Use Suncat's Profile and Dao to dictate the prose style. It should read like an esoteric, slightly aloof, but warmly observant wandering immortal's tale. 
+            4. Provide ONLY the story text.`;
+
+            try {
+                const condenserModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
+                const result = await condenserModel.generateContent(suncatPrompt);
+                if (result.response.usageMetadata) updateBudget(result.response.usageMetadata, SUNCAT_ID);
+
+                let consolidatedSuncatText = result.response.text().trim().replace(/^```(json|text)?|```$/g, "").trim();
+
+                // Append the new chapter to Suncat's persistent overarching story
+                suncatStorySoFar = consolidatedSuncatText;
+                
+                // Clear the raw fragments so Suncat starts fresh!
+                suncatJournal = "I have begun a new chapter.";
+
+                io.to(socketId).emit("journal_updated", {
+                    suncatThoughts: consolidatedSuncatText,
+                    playerChronicle: null
+                });
+            } catch (err) {
+                console.error(`[Session Condenser] Suncat condensation failed:`, err);
+            }
+        }
+        
+        saveSuncatMemory();
     }
     async function executeAutonomousOODA() {
         const suncat = players[SUNCAT_ID];
@@ -6441,13 +6622,13 @@
         // Grab the player's existing chat history
         let currentHistory = chatSessions[socketId] ? await chatSessions[socketId].getHistory() : [];
 
-        // We instruct the unified model to think, act, and speak in a single cohesive turn.
+
         // We instruct the unified model to think, act, and speak in a single cohesive turn.
         let unifiedInstruction = dynamicPersona + `
             [INTERNAL TASK]: You are Suncat. You must process this interaction in three steps:
-            1. THE SOUL: First, formulate a 2-sentence internal plan on how to react based on your Dao. You MUST wrap this thought entirely in [SOUL] and [/SOUL] tags.
+            1. THE SOUL: Formulate a 1-sentence internal plan. You MUST wrap this thought entirely in [SOUL] and [/SOUL] tags.
             2. THE HANDS: If your plan requires a physical action or looking up data, use the appropriate tool. 
-            3. THE VOICE: Finally, speak to the player. CRITICAL: If you trigger a tool, emit the function call and STOP generating text immediately. You will speak AFTER the tool returns the data.`;
+            3. THE VOICE: Write the exact words you will say out loud. DO NOT include your internal planning in the spoken text. Speak naturally.`;
         let modelConfig = { 
             model: "gemini-2.5-flash-lite", 
             systemInstruction: unifiedInstruction 
@@ -7144,34 +7325,29 @@ io.on("connection", (socket) => {
             });
         socket.on("player_died", (data) => {
             const victim = players[socket.id];
-            const killer = players[data.killerId];
+            
+            // Check if it was PvP (killerId) or PvE (killer string)
+            const killerPlayer = data.killerId ? players[data.killerId] : null;
 
-            // ---> THE FIX: Only process the death if they aren't already dead! <---
             if (victim && !victim.isDead) {
-                
-                // Mark them dead on the server instantly so subsequent hits are ignored
                 victim.isDead = true; 
                 
-                let killerName = killer ? killer.name : "an unknown force";
+                // THE FIX: Prioritize the PvP name, then fallback to the PvE string you sent!
+                let killerName = killerPlayer ? killerPlayer.name : (data.killer || "an unknown force");
                 
-                // 1. Announce the glorious victory to the whole server!
                 io.emit("chat_message", {
                     sender: "[SYSTEM]",
                     text: `${victim.name} was slain in combat by ${killerName}!`,
                     color: "#ff0000"
                 });
 
-                // 2. Tell Suncat so he can react / mock the loser
                 if (typeof processSuncatThought === 'function') {
                     processSuncatThought(socket.id, 'spectate', { 
-                        action: `${victim.name} was brutally murdered in PvP combat by ${killerName}!` 
+                        action: `${victim.name} was brutally murdered in combat by ${killerName}!` 
                     });
                 }
 
-                // 3. Tell all other clients to instantly hide the victim's ghost
                 socket.broadcast.emit("remote_player_died", { id: socket.id });
-                
-                // Push the updated state
                 io.emit("updatePlayers", players);
             }
         });
@@ -7856,12 +8032,28 @@ io.on("connection", (socket) => {
                             digestionDelay += 2500; 
                         }
                         
-                        // Higher cognitive functions (REM Sleep & Deep Memory Consolidation) 
-                        // ONLY happen when the body is at total rest.
-                        if (Math.random() < 0.03) runLatentSpaceProcessing(id);
-                        if (Math.random() < 0.06) auditProfileAssumptions(id);
-                        if (Math.random() < 0.09) consolidateMemories(id);
-                        if (Math.random() < 0.001) meditateOnTheDao();
+                       // A. MAINTENANCE THRESHOLDS (Need-Based)
+                        // Only consolidate if the memory buffer is actually getting bloated.
+                        if (p.searchableMemories && p.searchableMemories.length > 50) {
+                            consolidateMemories(id);
+                        }
+                        // Only run a latent audit if we have enough raw data to actually compare.
+                        else if (p.searchableMemories && p.searchableMemories.length >= 15 && p.searchableMemories.length % 15 === 0 && Math.random() < 0.5) {
+                            auditProfileAssumptions(id);
+                        }
+
+                        // B. PHILOSOPHICAL IDLE (RNG-Based)
+                        // If the body doesn't need maintenance, use the spare CPU cycles to ponder existence.
+                        else {
+                            const idleRoll = Math.random();
+                            if (idleRoll < 0.0025) {
+                                prayToTheCreator();
+                            } else if (idleRoll < 0.005) {
+                                meditateOnTheDao();
+                            } else if (idleRoll < 0.03) {
+                                runLatentSpaceProcessing(id);
+                            }
+                        }
                     }
                 }
             }
