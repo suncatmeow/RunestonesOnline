@@ -5445,7 +5445,13 @@
                     vector: newVector,
                     isCore: true 
                 });
+                player.storySoFar = (player.storySoFar ? player.storySoFar + "\n\n" : "") + consolidatedText;
 
+                // Tell the client UI to wipe granular entries and append this Core Chapter
+                io.to(playerId).emit("journal_condensed", {
+                    target: 'player',
+                    newCoreText: consolidatedText
+                });
                 console.log(`[Memory Sleep Cycle] Successfully consolidated ${MEMORIES_TO_MERGE} memories into 1 Core Memory for ${player.name}. Memory array size reduced to ${player.searchableMemories.length}.`);
 
             } catch (err) {
@@ -5997,18 +6003,16 @@
                     isCore: true 
                 });
                 
-                // Update their quick-reference story string
-                player.storySoFar = consolidatedText;
-
                 io.to(socketId).emit("chat_message", {
                     sender: "[EPISODE SUMMARY]",
                     text: "Your previous session has been chronicled in your Grimoire.",
                     color: "#FFD700"
                 });
                 
-                io.to(socketId).emit("journal_updated", {
-                    suncatThoughts: null,
-                    playerChronicle: consolidatedText
+                // Emits the specific wipe-and-condense signal to the client
+                io.to(socketId).emit("journal_condensed", {
+                    target: 'player',
+                    newCoreText: consolidatedText
                 });
             } catch (err) {
                 console.error(`[Session Condenser] Player condensation failed:`, err);
@@ -6049,15 +6053,16 @@
 
                 let consolidatedSuncatText = result.response.text().trim().replace(/^```(json|text)?|```$/g, "").trim();
 
-                // Append the new chapter to Suncat's persistent overarching story
-                suncatStorySoFar = consolidatedSuncatText;
+                // FIX: Append the new chapter to Suncat's persistent overarching story instead of overwriting!
+                suncatStorySoFar = (suncatStorySoFar ? suncatStorySoFar + "\n\n" : "") + consolidatedSuncatText;
                 
                 // Clear the raw fragments so Suncat starts fresh!
                 suncatJournal = "I have begun a new chapter.";
 
-                io.to(socketId).emit("journal_updated", {
-                    suncatThoughts: consolidatedSuncatText,
-                    playerChronicle: null
+                // Tell ALL clients to condense Suncat's UI journal!
+                io.emit("journal_condensed", {
+                    target: 'suncat',
+                    newCoreText: consolidatedSuncatText
                 });
             } catch (err) {
                 console.error(`[Session Condenser] Suncat condensation failed:`, err);
