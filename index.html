@@ -6179,7 +6179,17 @@
                     this.speed = 0; 
                     return;  
                 }
-                
+                // --- CALCULATE NPC BUFF AURA ---
+                this.auraColor = null; 
+                if (this.activeBuffs && this.activeBuffs.length > 0) {
+                    // Grab the most recent buff/debuff to define their aura
+                    let topEffect = this.activeBuffs[this.activeBuffs.length - 1];
+                    
+                    if (topEffect.name === 'Poison') this.auraColor = '#32CD32'; // Green glow
+                    else if (topEffect.name === 'Burn') this.auraColor = '#FF4500'; // Orange glow
+                    else if (topEffect.name === 'Curse') this.auraColor = '#8A2BE2'; // Purple glow
+                    else if (topEffect.name === 'Webbed' || topEffect.bind) this.auraColor = '#FFFFFF'; 
+                }
             // =========================================================
             // 3. EXPIRING LOOT LOGIC
             // =========================================================
@@ -14852,7 +14862,7 @@
 
                         if (drawStartX >= viewX + viewW || drawStartX + spriteSize <= viewX) continue;
                     // =========================================================
-                    // --- NEW: EVERQUEST CON & WARD RING (PERFECT ANCHOR) ---
+                    // --- HEALTH RING (PERFECT ANCHOR) ---
                     // =========================================================
                         // 1. Filter for valid combat alignments (Foes, Defenders, Allies)
                             let hasRingAlignment = typeof sprite.alignment === 'string' && 
