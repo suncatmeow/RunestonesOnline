@@ -4368,19 +4368,22 @@
                 const dateString = new Date().toLocaleDateString();
                 const fullDate = `${dateString} - ${timeString}`;
                 
-                // Save Player History
+                // Safety init
+                window.playerChronicle = window.playerChronicle || [];
+                window.suncatChronicle = window.suncatChronicle || [];
+
+                // Save Player History (Marked as Granular/Mundane)
                 if (data.playerChronicle) {
-                    playerChronicle.push({ timestamp: fullDate, text: data.playerChronicle });
+                    playerChronicle.push({ timestamp: fullDate, text: data.playerChronicle, isCore: false });
                     localStorage.setItem('runestones_chronicle', JSON.stringify(playerChronicle));
                 }
                 
-                // Save Suncat's Scribbles
+                // Save Suncat's Scribbles (Marked as Granular/Mundane)
                 if (data.suncatThoughts) {
-                    suncatChronicle.push({ timestamp: fullDate, text: data.suncatThoughts });
+                    suncatChronicle.push({ timestamp: fullDate, text: data.suncatThoughts, isCore: false });
                     localStorage.setItem('suncat_chronicle', JSON.stringify(suncatChronicle));
                 }
                 
-                // --- ADD THIS NEW BLOCK ---
                 // Instantly update the UI Card if Suncat changed his opinion!
                 if (data.perception) {
                     myLivePerception = data.perception;
@@ -4389,14 +4392,36 @@
                         Dungeon.uiPlayerCard.desc = myLivePerception;
                     }
                     
-                    
                     localStorage.setItem('runestones_perception', myLivePerception);
                     console.log("Live Perception Updated:", myLivePerception);
                 }
-                // --------------------------
-                
-                console.log("Memory synchronized and saved to local storage.");
             });
+
+            // ---> ADD THE NEW LISTENER HERE <---
+            socket.on("journal_condensed", (data) => {
+                const timeString = new Date().toLocaleTimeString();
+                const dateString = new Date().toLocaleDateString();
+                const fullDate = `${dateString} - ${timeString}`;
+
+                window.playerChronicle = window.playerChronicle || [];
+                window.suncatChronicle = window.suncatChronicle || [];
+
+                if (data.target === 'player') {
+                    // Keep ONLY the core memories (chapters), delete the mundane granular logs
+                    playerChronicle = playerChronicle.filter(entry => entry.isCore);
+                    // Append the new condensed chapter
+                    playerChronicle.push({ timestamp: fullDate, text: data.newCoreText, isCore: true });
+                    localStorage.setItem('runestones_chronicle', JSON.stringify(playerChronicle));
+                } 
+                else if (data.target === 'suncat') {
+                    // Keep ONLY the core memories for Suncat
+                    suncatChronicle = suncatChronicle.filter(entry => entry.isCore);
+                    // Append the new condensed chapter
+                    suncatChronicle.push({ timestamp: fullDate, text: data.newCoreText, isCore: true });
+                    localStorage.setItem('suncat_chronicle', JSON.stringify(suncatChronicle));
+                }
+            });
+            // -----------------------------------
         
             socket.on('stats_sync_reply', (data) => {
                 myLivePerception = data.perception;
