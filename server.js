@@ -3943,70 +3943,195 @@
                 miniCenter: { x: mini.cx, y: mini.cy }
             };
     }
-    function generateActorDrivenMap(size, wallType, floorType = 0, waterTile = null, cliffTile = null) {
-        // 1. Start with a solid block of walls
-        let grid = Array(size).fill().map(() => Array(size).fill(wallType));
+    function generateActorDrivenMap(size, baseWallType, floorType = 0, waterTile = null, cliffTile = null) {
+        let grid = Array(size).fill().map(() => Array(size).fill(baseWallType));
 
-        // --- NEW: DYNAMIC LAYOUT VARIANTS ---
-        let layoutVariant = Math.floor(Math.random() * 4); // Picks 0, 1, 2, or 3
+        let layoutVariant = Math.floor(Math.random() * 6); 
         let nodes = {};
-        let lakeX = Math.floor(size / 2);
-        let lakeY = Math.floor(size / 2);
+        let layoutName = "";
+        let layoutDesc = "";
+
+        // Common node defaults
+        let radSmall = 4, radMed = 6, radLarge = 8;
 
         if (layoutVariant === 0) {
-            // VARIANT 0: The Classic Diagonal (Your Original Map)
+            layoutName = "The Classic Diagonal";
+            layoutDesc = "A traditional journey from one corner of the realm to the other.";
             nodes = {
-                start:     { x: Math.floor(10 + Math.random() * 10), y: Math.floor(10 + Math.random() * 10), type: 'Start' },
-                allyCamp:  { x: Math.floor(size / 2 + Math.random() * 10 - 5), y: Math.floor(size / 2 + Math.random() * 10 - 5), type: 'Ally' },
-                ambush1:   { x: Math.floor(20 + Math.random() * 10), y: Math.floor(size - 30 + Math.random() * 10), type: 'Ambush' },
-                ambush2:   { x: Math.floor(size - 30 + Math.random() * 10), y: Math.floor(20 + Math.random() * 10), type: 'Ambush' },
-                bossLair:  { x: Math.floor(size - 20 + Math.random() * 10), y: Math.floor(size - 20 + Math.random() * 10), type: 'Boss' }
+                start:     { x: 15, y: 15, radius: radSmall, theme: 'BASIC' },
+                allyCamp:  { x: 30, y: 30, radius: radMed, theme: 'CITY' },
+                ambush1:   { x: 20, y: 75, radius: radMed, theme: 'BASIC' },
+                ambush2:   { x: 75, y: 20, radius: radMed, theme: 'BASIC' },
+                bossLair:  { x: 85, y: 85, radius: radLarge, theme: 'CASTLE' }
             };
-            lakeX = Math.floor(size / 2 + Math.random() * 20 - 10);
-            lakeY = Math.floor(size / 2 + Math.random() * 20 - 10);
         } 
         else if (layoutVariant === 1) {
-            // VARIANT 1: The Vertical Gauntlet (Start bottom, Boss top)
+            layoutName = "The Stronghold Siege";
+            layoutDesc = "The heroes are defending a central stronghold while enemy forces spawn on the perimeter and push inward.";
             nodes = {
-                start:     { x: Math.floor(size / 2 + Math.random() * 10 - 5), y: Math.floor(size - 15 - Math.random() * 10), type: 'Start' },
-                allyCamp:  { x: Math.floor(size / 2 + Math.random() * 10 - 5), y: Math.floor(size - 35 - Math.random() * 10), type: 'Ally' },
-                ambush1:   { x: Math.floor(20 + Math.random() * 10), y: Math.floor(size / 2 + Math.random() * 10 - 5), type: 'Ambush' },
-                ambush2:   { x: Math.floor(size - 30 + Math.random() * 10), y: Math.floor(size / 2 + Math.random() * 10 - 5), type: 'Ambush' },
-                bossLair:  { x: Math.floor(size / 2 + Math.random() * 10 - 5), y: Math.floor(15 + Math.random() * 10), type: 'Boss' }
+                bossLair:  { x: 15, y: 15, radius: radLarge, theme: 'CAVE' },
+                ambush1:   { x: 85, y: 15, radius: radMed, theme: 'BASIC' },
+                ambush2:   { x: 15, y: 85, radius: radMed, theme: 'BASIC' },
+                allyCamp:  { x: 50, y: 50, radius: radLarge, theme: 'CITY', customWall: 25 }, // Stone walls
+                start:     { x: 50, y: 60, radius: radSmall, theme: 'BASIC' } // Spawns safely inside the camp
             };
-            lakeX = Math.floor(size / 2 + Math.random() * 20 - 10);
-            lakeY = Math.floor(size / 2 - 20); // Push lake up a bit to block the boss
         }
         else if (layoutVariant === 2) {
-            // VARIANT 2: The Outward Spiral (Start center, Boss in top-left)
+            layoutName = "The Multi-Zone Epic";
+            layoutDesc = "A massive mosaic of distinct regions: a city, a forest, a cave system, and a towering castle all connected by narrow bridges.";
             nodes = {
-                start:     { x: Math.floor(size / 2 + Math.random() * 10 - 5), y: Math.floor(size / 2 + Math.random() * 10 - 5), type: 'Start' },
-                allyCamp:  { x: Math.floor(size - 25 - Math.random() * 10), y: Math.floor(25 + Math.random() * 10), type: 'Ally' },
-                ambush1:   { x: Math.floor(size - 25 - Math.random() * 10), y: Math.floor(size - 25 - Math.random() * 10), type: 'Ambush' },
-                ambush2:   { x: Math.floor(25 + Math.random() * 10), y: Math.floor(size - 25 - Math.random() * 10), type: 'Ambush' },
-                bossLair:  { x: Math.floor(20 + Math.random() * 10), y: Math.floor(20 + Math.random() * 10), type: 'Boss' }
+                start:     { x: 15, y: 15, radius: 5, theme: 'CITY', customWall: 25 }, // Stone city
+                allyCamp:  { x: 15, y: 85, radius: 7, theme: 'FOREST', customWall: 23 }, // Tree camp
+                ambush1:   { x: 85, y: 15, radius: 7, theme: 'CAVE', customWall: 1 }, // Dirt cave
+                ambush2:   { x: 50, y: 50, radius: 6, theme: 'PARK', customWall: 3 }, // Park lake in center
+                bossLair:  { x: 85, y: 85, radius: 9, theme: 'CASTLE', customWall: 5 } // Ruby castle
             };
-            lakeX = Math.floor(30 + Math.random() * 10); 
-            lakeY = Math.floor(size / 2 + Math.random() * 10 - 5);
+        }
+        else if (layoutVariant === 3) {
+            layoutName = "The Subterranean Lake";
+            layoutDesc = "A sprawling, claustrophobic underground cavern system wrapped around a massive, dark underground lake.";
+            nodes = {
+                start:     { x: 50, y: 90, radius: 4, theme: 'CAVE', customWall: baseWallType },
+                allyCamp:  { x: 80, y: 80, radius: 6, theme: 'CAVE', customWall: baseWallType },
+                ambush1:   { x: 20, y: 50, radius: 6, theme: 'CAVE', customWall: baseWallType },
+                ambush2:   { x: 80, y: 20, radius: 6, theme: 'CAVE', customWall: baseWallType },
+                bossLair:  { x: 50, y: 10, radius: 8, theme: 'CAVE', customWall: baseWallType }
+            };
+            // Override the base wall to be jagged for the whole map
+            for (let y = 0; y < size; y++) {
+                for (let x = 0; x < size; x++) {
+                    if (Math.random() < 0.1) grid[y][x] = cliffTile || baseWallType;
+                }
+            }
+        }
+        else if (layoutVariant === 4) {
+            layoutName = "The Vertical Gauntlet";
+            layoutDesc = "A grueling, straight-shot climb from the bottom of the map to a heavily fortified peak.";
+            nodes = {
+                start:     { x: 50, y: 85, radius: radSmall, theme: 'BASIC' },
+                allyCamp:  { x: 50, y: 70, radius: radMed, theme: 'CITY' },
+                ambush1:   { x: 30, y: 45, radius: radMed, theme: 'BASIC' },
+                ambush2:   { x: 70, y: 45, radius: radMed, theme: 'BASIC' },
+                bossLair:  { x: 50, y: 15, radius: radLarge, theme: 'CASTLE' }
+            };
         }
         else {
-            // VARIANT 3: The Horizontal Crawl (Start left, Boss right)
+            layoutName = "The Outward Spiral";
+            layoutDesc = "The journey begins in the center and spirals dangerously outward into hostile territory.";
             nodes = {
-                start:     { x: Math.floor(15 + Math.random() * 10), y: Math.floor(size / 2 + Math.random() * 10 - 5), type: 'Start' },
-                allyCamp:  { x: Math.floor(35 + Math.random() * 10), y: Math.floor(size / 2 + Math.random() * 10 - 5), type: 'Ally' },
-                ambush1:   { x: Math.floor(size / 2 + Math.random() * 10 - 5), y: Math.floor(20 + Math.random() * 10), type: 'Ambush' },
-                ambush2:   { x: Math.floor(size / 2 + Math.random() * 10 - 5), y: Math.floor(size - 30 + Math.random() * 10), type: 'Ambush' },
-                bossLair:  { x: Math.floor(size - 20 + Math.random() * 10), y: Math.floor(size / 2 + Math.random() * 10 - 5), type: 'Boss' }
+                start:     { x: 50, y: 50, radius: radSmall, theme: 'CITY' },
+                allyCamp:  { x: 50, y: 65, radius: radMed, theme: 'BASIC' },
+                ambush1:   { x: 20, y: 80, radius: radMed, theme: 'FOREST' },
+                ambush2:   { x: 80, y: 20, radius: radMed, theme: 'CAVE' },
+                bossLair:  { x: 20, y: 20, radius: radLarge, theme: 'CASTLE' }
             };
-            lakeX = Math.floor(size / 2 + Math.random() * 10 - 5); // Dead center between ambushes
-            lakeY = Math.floor(size / 2 + Math.random() * 10 - 5);
         }
 
-        // --- 2. GENERATE LAKE (Now uses dynamic lakeX/lakeY) ---
+        // Introduce some random jitter to the nodes so they aren't EXACTLY perfectly aligned every time
+        Object.values(nodes).forEach(n => {
+            n.x += Math.floor(Math.random() * 6 - 3);
+            n.y += Math.floor(Math.random() * 6 - 3);
+            n.x = Math.max(10, Math.min(size - 10, n.x));
+            n.y = Math.max(10, Math.min(size - 10, n.y));
+        });
+
+        // --- THE CARVER ---
+        const carveRoom = (node) => {
+            let cx = node.x, cy = node.y, radius = node.radius;
+            let theme = node.theme;
+            let localWall = node.customWall !== undefined ? node.customWall : baseWallType;
+
+            // Draw outer thick boundary for distinct zones
+            if (node.customWall !== undefined) {
+                 for (let y = cy - radius - 2; y <= cy + radius + 2; y++) {
+                     for (let x = cx - radius - 2; x <= cx + radius + 2; x++) {
+                         if (y > 0 && y < size - 1 && x > 0 && x < size - 1) {
+                             if (Math.pow(x - cx, 2) + Math.pow(y - cy, 2) <= Math.pow(radius + 2, 2)) {
+                                 grid[y][x] = localWall;
+                             }
+                         }
+                     }
+                 }
+            }
+
+            // Carve interior
+            for (let y = cy - radius; y <= cy + radius; y++) {
+                for (let x = cx - radius; x <= cx + radius; x++) {
+                    if (y > 1 && y < size - 2 && x > 1 && x < size - 2) {
+                        let distSq = Math.pow(x - cx, 2) + Math.pow(y - cy, 2);
+                        if (distSq <= radius * radius) {
+                            
+                            if (theme === 'CITY') {
+                                // Blocky buildings
+                                if (x % 3 === 0 && y % 3 === 0 && Math.random() > 0.2) grid[y][x] = localWall;
+                                else grid[y][x] = floorType;
+                            } 
+                            else if (theme === 'CAVE') {
+                                // Organic noisy cellular
+                                grid[y][x] = Math.random() > 0.4 ? floorType : localWall;
+                            }
+                            else if (theme === 'CASTLE') {
+                                // Structured hollow square
+                                if (Math.abs(x - cx) >= radius - 1 || Math.abs(y - cy) >= radius - 1) {
+                                    grid[y][x] = localWall;
+                                    // Doorways
+                                    if (x === cx || y === cy) grid[y][x] = floorType;
+                                } else {
+                                    grid[y][x] = floorType;
+                                }
+                            }
+                            else if (theme === 'PARK') {
+                                // Central geometrical lake
+                                if (distSq <= (radius/2)*(radius/2) && waterTile) grid[y][x] = waterTile;
+                                else grid[y][x] = floorType;
+                            }
+                            else if (theme === 'FOREST') {
+                                // Trees scattered
+                                grid[y][x] = Math.random() > 0.7 ? (node.customWall || 23) : floorType;
+                            }
+                            else {
+                                grid[y][x] = floorType; // BASIC organic circle
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Cellular automata smoothing just for CAVE interiors
+            if (theme === 'CAVE') {
+                for (let i = 0; i < 2; i++) {
+                    let temp = JSON.parse(JSON.stringify(grid));
+                    for (let y = cy - radius; y <= cy + radius; y++) {
+                        for (let x = cx - radius; x <= cx + radius; x++) {
+                            if (Math.pow(x - cx, 2) + Math.pow(y - cy, 2) <= radius * radius) {
+                                let walls = 0;
+                                for(let dy=-1; dy<=1; dy++) for(let dx=-1; dx<=1; dx++) {
+                                    if (grid[y+dy] && grid[y+dy][x+dx] === localWall) walls++;
+                                }
+                                temp[y][x] = walls >= 5 ? localWall : floorType;
+                            }
+                        }
+                    }
+                    grid = temp;
+                }
+            }
+        };
+
+        // --- CARVE THE NODES ---
+        Object.values(nodes).forEach(n => carveRoom(n));
+
+        // --- GLOBAL LAKE PLACEMENT (If it's not the Multi-Zone map which has a park) ---
         let hasWaterFeature = false;
-        if (waterTile !== null && cliffTile !== null) {
+        if (waterTile !== null && cliffTile !== null && layoutVariant !== 2) {
             hasWaterFeature = true;
             let lakeRadius = 8 + Math.floor(Math.random() * 6);
+            let lakeX = Math.floor(size / 2 + Math.random() * 20 - 10);
+            let lakeY = Math.floor(size / 2 + Math.random() * 20 - 10);
+            
+            // Subterranean map has a massive center lake
+            if (layoutVariant === 3) {
+                lakeX = 50; lakeY = 50; lakeRadius = 15;
+            }
 
             for (let y = lakeY - lakeRadius; y <= lakeY + lakeRadius; y++) {
                 for (let x = lakeX - lakeRadius; x <= lakeX + lakeRadius; x++) {
@@ -4024,55 +4149,35 @@
             }
         }
 
-        const carveRoom = (cx, cy, radius, isOrganic) => {
-            cx = Math.floor(cx); cy = Math.floor(cy);
-            for (let y = cy - radius; y <= cy + radius; y++) {
-                for (let x = cx - radius; x <= cx + radius; x++) {
-                    if (y > 0 && y < size - 1 && x > 0 && x < size - 1) {
-                        // Don't overwrite the water we just placed!
-                        if (grid[y][x] === waterTile || grid[y][x] === cliffTile) continue;
+        // --- CARVE THE PATHS ---
+        const carvePath = (nodeA, nodeB) => {
+            let currX = nodeA.x;
+            let currY = nodeA.y;
+            let destX = nodeB.x;
+            let destY = nodeB.y;
 
-                        if (isOrganic) {
-                            if (Math.pow(x - cx, 2) + Math.pow(y - cy, 2) <= radius * radius) grid[y][x] = floorType;
-                        } else {
-                            grid[y][x] = floorType;
-                        }
+            // Make the path zig-zag a bit instead of a perfect line
+            while (currX !== destX || currY !== destY) {
+                if (currX !== destX && (Math.random() > 0.5 || currY === destY)) {
+                    currX += Math.sign(destX - currX);
+                } else {
+                    currY += Math.sign(destY - currY);
+                }
+
+                if (currY > 0 && currY < size - 1 && currX > 0 && currX < size - 1) {
+                    // Bridges over water
+                    if (grid[currY][currX] === waterTile) {
+                        grid[currY][currX] = floorType;
+                        grid[currY][currX + 1] = floorType; // Wider bridges
+                    } else {
+                        grid[currY][currX] = floorType;
+                        grid[currY][currX + 1] = floorType; 
                     }
                 }
             }
         };
 
-        carveRoom(nodes.start.x, nodes.start.y, 4, true);
-        carveRoom(nodes.allyCamp.x, nodes.allyCamp.y, 6, false); 
-        carveRoom(nodes.ambush1.x, nodes.ambush1.y, 5, true);
-        carveRoom(nodes.ambush2.x, nodes.ambush2.y, 5, true);
-        carveRoom(nodes.bossLair.x, nodes.bossLair.y, 8, false);
-
-        const carvePath = (nodeA, nodeB) => {
-            let currX = Math.floor(nodeA.x);
-            let currY = Math.floor(nodeA.y);
-            let destX = Math.floor(nodeB.x);
-            let destY = Math.floor(nodeB.y);
-
-            while (currX !== destX) {
-                if (currY > 0 && currY < size - 1) {
-                    // If the path hits water, drop a floor tile to act as a "bridge" over the water
-                    grid[currY][currX] = floorType;
-                    grid[currY + 1][currX] = floorType; 
-                }
-                currX += Math.sign(destX - currX);
-            }
-            while (currY !== destY) {
-                if (currX > 0 && currX < size - 1) {
-                    grid[currY][currX] = floorType;
-                    grid[currY][currX + 1] = floorType; 
-                }
-                currY += Math.sign(destY - currY);
-            }
-        };
-
-        // Regardless of which layout variant was chosen, this pathing network ensures 
-        // the map is always navigable and logically connected!
+        // Pathing Network
         carvePath(nodes.start, nodes.allyCamp);
         carvePath(nodes.allyCamp, nodes.ambush1);
         carvePath(nodes.allyCamp, nodes.ambush2);
@@ -4086,7 +4191,8 @@
             }
         }
 
-        return { grid, nodes, validFloors, hasWaterFeature };
+        // Return the layoutName and Description so Suncat knows what it is!
+        return { grid, nodes, validFloors, hasWaterFeature, layoutName, layoutDesc };
     }
     function generateTintagelHub() {
         let maxR = 99, maxC = 99; 
@@ -4690,7 +4796,8 @@
 
                                     // Build a spatial layout string to feed the LLM
                                     let spatialLayout = `
-                                    [SPATIAL MAP LAYOUT]:
+                                    [SPATIAL MAP LAYOUT: ${mapData.layoutName}]:
+                                    - STRUCTURE: ${mapData.layoutDesc}
                                     - Player Start Point: X:${mapData.nodes.start.x}, Y:${mapData.nodes.start.y}
                                     - Ally Camp: X:${mapData.nodes.allyCamp.x}, Y:${mapData.nodes.allyCamp.y}
                                     - Ambush Chokepoints: X:${mapData.nodes.ambush1.x}, Y:${mapData.nodes.ambush1.y} and X:${mapData.nodes.ambush2.x}, Y:${mapData.nodes.ambush2.y}
@@ -4699,7 +4806,7 @@
 
                                     // ---> NEW: IF WATER GENERATED, TELL THE AI! <---
                                     if (mapData.hasWaterFeature) {
-                                        spatialLayout += `- GEOGRAPHY: This map features deep bodies of water and impassable cliffs. The AI characters should reference the water, drowning, bridges, or the cliffs in their dialogue!\n`;
+                                        spatialLayout += `- GEOGRAPHY: This map features deep bodies of water and impassable cliffs. The AI characters MUST reference the water, drowning, bridges, or the cliffs in their dialogue!\n`;
                                     }
 
                                 // ==========================================
