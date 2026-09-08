@@ -34344,20 +34344,26 @@
             });
     //CAMERA
         window.addEventListener('wheel', (e) => {
-            if (typeof startGame !== 'undefined' && startGame === 'tarot' && window.showTarotPopup) {
+            if (typeof startGame !== 'undefined') {
+                // Tarot Wheel Scroll
+                if (startGame === 'tarot' && window.showTarotPopup) {
                     if (window.tarotScrollY === undefined) window.tarotScrollY = 0;
-                    
-                    // e.deltaY is usually around 100 per wheel click. 
-                    // Multiply by 0.02 to scale it to your Canvas grid units.
                     let scrollSpeed = e.deltaY * 0.02; 
                     window.tarotScrollY += scrollSpeed;
-                    
-                    // Prevent scrolling up past the top
                     if (window.tarotScrollY < 0) window.tarotScrollY = 0;
-                    
-                    e.preventDefault(); // Stop the whole web page from scrolling
-                    return; // Stop here so it doesn't trigger the Dungeon zoom
+                    e.preventDefault();
+                    return;
                 }
+                // Journal Wheel Scroll
+                if (startGame === 'journal' && window.journalFullscreenIndex >= 0) {
+                    if (window.journalScrollY === undefined) window.journalScrollY = 0;
+                    let scrollSpeed = e.deltaY * 0.02;
+                    window.journalScrollY += scrollSpeed;
+                    if (window.journalScrollY < 0) window.journalScrollY = 0;
+                    e.preventDefault();
+                    return;
+                }
+            }
             if (startGame !== 'explore' || typeof Dungeon === 'undefined') return;
 
                 const zoomSpeed = 0.5;
@@ -34437,32 +34443,57 @@
             activePointers[e.pointerId] = e;
             let pointerKeys = Object.keys(activePointers);
             // --- NEW: TAROT SWIPE-TO-SCROLL SETUP ---
-            if (typeof startGame !== 'undefined' && startGame === 'tarot' && window.showTarotPopup) {
-                // Calculate grid coordinates for the initial touch
-                let tL_val = (typeof tL !== 'undefined') ? tL : window.innerWidth;
-                let tH_val = (typeof tH !== 'undefined') ? tH : window.innerHeight;
-                let wX_val = (typeof wX !== 'undefined') ? wX : window.innerWidth;
-                let wY_val = (typeof wY !== 'undefined') ? wY : window.innerHeight;
-                
-                let pos = { x: e.clientX - (wX_val - tL_val) / 2, y: e.clientY - (wY_val - tH_val) / 2 };
-                let gridPos = { x: pos.x / (tL_val / 10), y: pos.y / (tH_val / 10) };
-                
-                let boxX = 1.0; let boxY = 1.5; let boxW = 8.0; let boxH = 7.0;
-
-                // Check if the touch is inside the popup bounds
-                if (gridPos.x > boxX && gridPos.x < (boxX + boxW) &&
-                    gridPos.y > boxY && gridPos.y < (boxY + boxH)) {
+                if (typeof startGame !== 'undefined' && startGame === 'tarot' && window.showTarotPopup) {
+                    // Calculate grid coordinates for the initial touch
+                    let tL_val = (typeof tL !== 'undefined') ? tL : window.innerWidth;
+                    let tH_val = (typeof tH !== 'undefined') ? tH : window.innerHeight;
+                    let wX_val = (typeof wX !== 'undefined') ? wX : window.innerWidth;
+                    let wY_val = (typeof wY !== 'undefined') ? wY : window.innerHeight;
                     
-                    // Make sure they aren't clicking the red "X" Close Button
-                    let hitClose = gridPos.x > (boxX + boxW - 0.6) && gridPos.x < (boxX + boxW - 0.1) &&
-                                   gridPos.y > (boxY + 0.1) && gridPos.y < (boxY + 0.6);
-                                   
-                    if (!hitClose) {
-                        window.isDraggingTarot = true;
-                        window.lastTarotTouchY = gridPos.y;
+                    let pos = { x: e.clientX - (wX_val - tL_val) / 2, y: e.clientY - (wY_val - tH_val) / 2 };
+                    let gridPos = { x: pos.x / (tL_val / 10), y: pos.y / (tH_val / 10) };
+                    
+                    let boxX = 1.0; let boxY = 1.5; let boxW = 8.0; let boxH = 7.0;
+
+                    // Check if the touch is inside the popup bounds
+                    if (gridPos.x > boxX && gridPos.x < (boxX + boxW) &&
+                        gridPos.y > boxY && gridPos.y < (boxY + boxH)) {
+                        
+                        // Make sure they aren't clicking the red "X" Close Button
+                        let hitClose = gridPos.x > (boxX + boxW - 0.6) && gridPos.x < (boxX + boxW - 0.1) &&
+                                    gridPos.y > (boxY + 0.1) && gridPos.y < (boxY + 0.6);
+                                    
+                        if (!hitClose) {
+                            window.isDraggingTarot = true;
+                            window.lastTarotTouchY = gridPos.y;
+                        }
                     }
                 }
-            }
+            // --- JOURNAL SWIPE-TO-SCROLL SETUP ---
+                if (typeof startGame !== 'undefined' && startGame === 'journal' && window.journalFullscreenIndex >= 0) {
+                    let tL_val = (typeof tL !== 'undefined') ? tL : window.innerWidth;
+                    let tH_val = (typeof tH !== 'undefined') ? tH : window.innerHeight;
+                    let wX_val = (typeof wX !== 'undefined') ? wX : window.innerWidth;
+                    let wY_val = (typeof wY !== 'undefined') ? wY : window.innerHeight;
+                    
+                    let pos = { x: e.clientX - (wX_val - tL_val) / 2, y: e.clientY - (wY_val - tH_val) / 2 };
+                    let gridPos = { x: pos.x / (tL_val / 10), y: pos.y / (tH_val / 10) };
+                    
+                    // Matches the box dimensions used in your full-screen journal render block
+                    let boxX = 1.0; let boxY = 2.2; let boxW = 8.0; let boxH = 5.5;
+
+                    if (gridPos.x > boxX && gridPos.x < (boxX + boxW) &&
+                        gridPos.y > boxY && gridPos.y < (boxY + boxH)) {
+                        
+                        let hitClose = gridPos.x > (boxX + boxW - 0.7) && gridPos.x < (boxX + boxW - 0.1) &&
+                                    gridPos.y > (boxY + 0.1) && gridPos.y < (boxY + 0.6);
+                                    
+                        if (!hitClose) {
+                            window.isDraggingJournal = true;
+                            window.lastJournalTouchY = gridPos.y;
+                        }
+                    }
+                }
             if ( typeof handleInput === 'function') handleInput(e);
 
             if (pointerKeys.length === 2 && typeof Dungeon !== 'undefined') {
@@ -34524,6 +34555,15 @@
                     window.lastTarotTouchY = gridPos.y;
                     return; // Stop processing other pointer movements
                 }
+                // --- JOURNAL DRAGGING ---
+                if (window.isDraggingJournal) {
+                    if (window.journalScrollY === undefined) window.journalScrollY = 0;
+                    let deltaY = window.lastJournalTouchY - gridPos.y; 
+                    window.journalScrollY += deltaY;
+                    if (window.journalScrollY < 0) window.journalScrollY = 0;
+                    window.lastJournalTouchY = gridPos.y;
+                    return;
+                }
                 // --- NEW: TACTICS MENU DRAGGING ---
                 if (typeof startGame !== 'undefined' && startGame === 'tactics' && window.TacticsEngine && window.TacticsEngine.isDraggingMenu) {
                     // Update coordinates minus the offset so it doesn't snap
@@ -34578,6 +34618,7 @@
         const endPointer = (e) => {
             delete activePointers[e.pointerId];
             window.isDraggingTarot = false;
+            window.isDraggingJournal = false;
             window.isPaintingMap = false;
             window.activeTouchZone = null;
             window.lastPaintX = undefined;
@@ -36352,7 +36393,60 @@
 
                     // 2. CHECK SCROLL ARROWS AND QUEST CLICKS
                     if (['record', 'suncat', ' story ', ' quest '].includes(journalTab)) {
-                        
+                        // --- FULLSCREEN JOURNAL NAVIGATION & SCROLLING ---
+                        if ((journalTab === 'record' || journalTab === 'suncat') && window.journalFullscreenIndex >= 0) {
+                            let boxX = 1.0; let boxY = 2.2; let boxW = 8.0; let boxH = 5.5;
+                            
+                            // Clicked X (Close)
+                            if (gridPos.x > boxX + boxW - 0.7 && gridPos.x < boxX + boxW - 0.1 && 
+                                gridPos.y > boxY + 0.1 && gridPos.y < boxY + 0.6) {
+                                window.journalFullscreenIndex = -1;
+                                if(typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('click');
+                                return;
+                            }
+                            // Clicked UP Scroll
+                            if (gridPos.x > boxX + boxW - 0.5 && gridPos.x < boxX + boxW - 0.1 &&
+                                gridPos.y > boxY + 0.8 && gridPos.y < boxY + 1.4) {
+                                window.journalScrollY = Math.max(0, window.journalScrollY - 0.5); // Scroll up
+                                return;
+                            }
+                            // Clicked DOWN Scroll
+                            if (gridPos.x > boxX + boxW - 0.5 && gridPos.x < boxX + boxW - 0.1 &&
+                                gridPos.y > boxY + boxH - 0.7 && gridPos.y < boxY + boxH - 0.1) {
+                                window.journalScrollY += 0.5; // Scroll down
+                                return;
+                            }
+                            
+                            // Block any other clicks from hitting the list beneath the overlay!
+                            if (gridPos.x >= boxX && gridPos.x <= boxX + boxW && gridPos.y >= boxY && gridPos.y <= boxY + boxH) {
+                                return; 
+                            }
+                        }
+
+                        // --- JOURNAL LIST PREVIEW CLICKS ---
+                        if ((journalTab === 'record' || journalTab === 'suncat') && window.journalFullscreenIndex === -1) {
+                            // Check if they clicked one of the 3 visible preview boxes
+                            if (gridPos.x >= 1 && gridPos.x <= 8.2) {
+                                if (gridPos.y >= 2.4 && gridPos.y <= 4.0) { // Box 0
+                                    window.journalFullscreenIndex = journalScroll + 0;
+                                    window.journalScrollY = 0;
+                                    if(typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('click');
+                                    return;
+                                }
+                                if (gridPos.y >= 4.2 && gridPos.y <= 5.8) { // Box 1
+                                    window.journalFullscreenIndex = journalScroll + 1;
+                                    window.journalScrollY = 0;
+                                    if(typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('click');
+                                    return;
+                                }
+                                if (gridPos.y >= 6.0 && gridPos.y <= 7.6) { // Box 2
+                                    window.journalFullscreenIndex = journalScroll + 2;
+                                    window.journalScrollY = 0;
+                                    if(typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('click');
+                                    return;
+                                }
+                            }
+                        }
                         // --- FULLSCREEN QUEST NAVIGATION ---
                         if (journalTab === ' quest ' && window.questFullscreenIndex >= 0) {
                             // Clicked BACK (x: 4 to 6, y: 8.2 to 9.0)
@@ -81068,6 +81162,9 @@
                 }
                 
                     // ----------------------------------------------------
+                // ----------------------------------------------------
+                // JOURNAL & SUNCAT TABS
+                // ----------------------------------------------------
                 else if (journalTab === 'record' || journalTab === 'suncat') {
                     let targetArray = journalTab === 'record' ? playerChronicle : suncatChronicle;
                     let title = journalTab === 'record' ? "- Magical Record -" : "- SUNCAT'S JOURNAL -";
@@ -81075,9 +81172,57 @@
                     
                     drawText(1, 1.5, 8, 0.8, title, '#d4af37', 1, 'center');
 
+                    // Initialize states if they don't exist
+                    if (typeof window.journalFullscreenIndex === 'undefined') window.journalFullscreenIndex = -1;
+                    if (typeof window.journalScrollY === 'undefined') window.journalScrollY = 0;
+
                     if (targetArray.length === 0) {
                         drawText(1, 4, 8, 0.5, "The pages are blank...", 'gray', 1, 'center');
-                    } else {
+                    } 
+                    // VIEW A: FULLSCREEN SCROLLING OVERLAY (Merged Tarot + Quest mechanics)
+                    else if (window.journalFullscreenIndex >= 0 && window.journalFullscreenIndex < targetArray.length) {
+                        let reversed = [...targetArray].reverse(); // Get the correct order
+                        let entry = reversed[window.journalFullscreenIndex];
+                        
+                        let boxX = 1.0; let boxY = 2.2; let boxW = 8.0; let boxH = 5.5; 
+                        
+                        // Background & Frame
+                        drawShape('rec', 1, boxY, 1, 0, 0, boxW, boxH, 0,0,0,0, '#111122', 1);
+                        drawShape('rec', 1, boxY, 1, 0, 0, boxW, boxH, 0,0,0,0, '#d4af37', 0); 
+                        
+                        // Timestamp Header
+                        drawText(boxX + 0.2, boxY + 0.2, boxW - 1, 0.4, "[" + entry.timestamp + "]", '#888888', 1, 'left');
+
+                        // Red 'X' Close Button
+                        drawShape('rec', 0, 0, 1, boxX + boxW - 0.7, boxY + 0.1, 0.6, 0.5, 0,0,0,0, '#880000', 1);
+                        drawShape('rec', 0, 0, 1, boxX + boxW - 0.7, boxY + 0.1, 0.6, 0.5, 0,0,0,0, '#ff0000', 0);
+                        drawText(boxX + boxW - 0.7, boxY + 0.15, 0.6, 0.4, "X", 'white', 1, 'center');
+
+                        // --- CREATE CLIPPING REGION ---
+                        ctx.save();
+                        ctx.beginPath();
+                        let clipX = tX + (tL/10) * (boxX + 0.2);
+                        let clipY = tY + (tH/10) * (boxY + 0.7);
+                        let clipW = (tL/10) * (boxW - 0.4);
+                        let clipH = (tH/10) * (boxH - 0.8);
+                        ctx.rect(clipX, clipY, clipW, clipH);
+                        ctx.clip(); 
+
+                        // Draw the massive text that can now scroll safely!
+                        drawText(boxX + 0.2, boxY + 0.7 - window.journalScrollY, boxW - 0.6, 20.0, entry.text, color, 1, 'left');
+
+                        ctx.restore(); // Stop clipping
+                        // --- END CLIPPING REGION ---
+
+                        // Draw Scroll Arrows
+                        drawShape('rec', 0, 0, 1, boxX + boxW - 0.5, boxY + 0.8, 0.4, 0.6, 0,0,0,0, '#333333', 1);
+                        drawText(boxX + boxW - 0.5, boxY + 0.85, 0.4, 0.5, "^", 'gold', 1, 'center');
+                        
+                        drawShape('rec', 0, 0, 1, boxX + boxW - 0.5, boxY + boxH - 0.7, 0.4, 0.6, 0,0,0,0, '#333333', 1);
+                        drawText(boxX + boxW - 0.5, boxY + boxH - 0.65, 0.4, 0.5, "v", 'gold', 1, 'center');
+                    }
+                    // VIEW B: SCROLLING LIST PREVIEWS
+                    else {
                         let maxDisplay = 3; 
                         let yOffset = 2.5;
 
@@ -81086,12 +81231,25 @@
                         let visibleEntries = reversed.slice(journalScroll, journalScroll + maxDisplay);
 
                         for (let entry of visibleEntries) {
-                            drawText(1, yOffset, 7.5, 0.3, "[" + entry.timestamp + "]", '#888888', 1);
-                            drawText(1, yOffset + 0.4, 7.5, 1.5, entry.text, color, 1); // 1.5 height wraps the text!
-                            yOffset += 2.0; // Space out the entries
+                            // Draw an interactive box background
+                            drawShape('rec', 1, yOffset - 0.1, 1, 0, 0, 7.2, 1.6, 0,0,0,0, '#222233', 1);
+                            drawShape('rec', 1, yOffset - 0.1, 1, 0, 0, 7.2, 1.6, 0,0,0,0, '#444488', 0);
+
+                            // Timestamp
+                            drawText(1.2, yOffset + 0.1, 7.0, 0.3, "[" + entry.timestamp + "]", '#888888', 1);
+                            
+                            // Truncate text into a preview so it doesn't shrink!
+                            let cleanDesc = entry.text.replace(/\n/g, " ");
+                            let previewText = cleanDesc.length > 50 ? cleanDesc.substring(0, 50) + "..." : cleanDesc;
+                            drawText(1.2, yOffset + 0.6, 6.8, 0.4, previewText, color, 1);
+                            
+                            // Visual cue to click
+                            drawText(6.5, yOffset + 1.0, 1.5, 0.3, "[READ]", '#d4af37', 1, 'right');
+
+                            yOffset += 1.8; // Space out the entries
                         }
 
-                        // DRAW SCROLL ARROWS (Right Side)
+                        // DRAW MASTER LIST SCROLL ARROWS
                         if (journalScroll > 0) {
                             drawShape('rec', 8.5, 2.5, 1, 0, 0, 1, 1, 0,0,0,0, '#444444', 1);
                             drawText(8.5, 2.7, 1, 0.6, "^", '#d4af37', 1, 'center'); 
