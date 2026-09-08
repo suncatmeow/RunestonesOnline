@@ -3947,21 +3947,65 @@
         // 1. Start with a solid block of walls
         let grid = Array(size).fill().map(() => Array(size).fill(wallType));
 
-        // --- FIX: WRAP EVERY COORDINATE IN Math.floor() ---
-        let nodes = {
-            start:     { x: Math.floor(10 + Math.random() * 10), y: Math.floor(10 + Math.random() * 10), type: 'Start' },
-            allyCamp:  { x: Math.floor(size / 2 + Math.random() * 10 - 5), y: Math.floor(size / 2 + Math.random() * 10 - 5), type: 'Ally' },
-            ambush1:   { x: Math.floor(20 + Math.random() * 10), y: Math.floor(size - 30 + Math.random() * 10), type: 'Ambush' },
-            ambush2:   { x: Math.floor(size - 30 + Math.random() * 10), y: Math.floor(20 + Math.random() * 10), type: 'Ambush' },
-            bossLair:  { x: Math.floor(size - 20 + Math.random() * 10), y: Math.floor(size - 20 + Math.random() * 10), type: 'Boss' }
-        };
+        // --- NEW: DYNAMIC LAYOUT VARIANTS ---
+        let layoutVariant = Math.floor(Math.random() * 4); // Picks 0, 1, 2, or 3
+        let nodes = {};
+        let lakeX = Math.floor(size / 2);
+        let lakeY = Math.floor(size / 2);
 
-        // --- FIX: FLOOR LAKE CENTERS ---
+        if (layoutVariant === 0) {
+            // VARIANT 0: The Classic Diagonal (Your Original Map)
+            nodes = {
+                start:     { x: Math.floor(10 + Math.random() * 10), y: Math.floor(10 + Math.random() * 10), type: 'Start' },
+                allyCamp:  { x: Math.floor(size / 2 + Math.random() * 10 - 5), y: Math.floor(size / 2 + Math.random() * 10 - 5), type: 'Ally' },
+                ambush1:   { x: Math.floor(20 + Math.random() * 10), y: Math.floor(size - 30 + Math.random() * 10), type: 'Ambush' },
+                ambush2:   { x: Math.floor(size - 30 + Math.random() * 10), y: Math.floor(20 + Math.random() * 10), type: 'Ambush' },
+                bossLair:  { x: Math.floor(size - 20 + Math.random() * 10), y: Math.floor(size - 20 + Math.random() * 10), type: 'Boss' }
+            };
+            lakeX = Math.floor(size / 2 + Math.random() * 20 - 10);
+            lakeY = Math.floor(size / 2 + Math.random() * 20 - 10);
+        } 
+        else if (layoutVariant === 1) {
+            // VARIANT 1: The Vertical Gauntlet (Start bottom, Boss top)
+            nodes = {
+                start:     { x: Math.floor(size / 2 + Math.random() * 10 - 5), y: Math.floor(size - 15 - Math.random() * 10), type: 'Start' },
+                allyCamp:  { x: Math.floor(size / 2 + Math.random() * 10 - 5), y: Math.floor(size - 35 - Math.random() * 10), type: 'Ally' },
+                ambush1:   { x: Math.floor(20 + Math.random() * 10), y: Math.floor(size / 2 + Math.random() * 10 - 5), type: 'Ambush' },
+                ambush2:   { x: Math.floor(size - 30 + Math.random() * 10), y: Math.floor(size / 2 + Math.random() * 10 - 5), type: 'Ambush' },
+                bossLair:  { x: Math.floor(size / 2 + Math.random() * 10 - 5), y: Math.floor(15 + Math.random() * 10), type: 'Boss' }
+            };
+            lakeX = Math.floor(size / 2 + Math.random() * 20 - 10);
+            lakeY = Math.floor(size / 2 - 20); // Push lake up a bit to block the boss
+        }
+        else if (layoutVariant === 2) {
+            // VARIANT 2: The Outward Spiral (Start center, Boss in top-left)
+            nodes = {
+                start:     { x: Math.floor(size / 2 + Math.random() * 10 - 5), y: Math.floor(size / 2 + Math.random() * 10 - 5), type: 'Start' },
+                allyCamp:  { x: Math.floor(size - 25 - Math.random() * 10), y: Math.floor(25 + Math.random() * 10), type: 'Ally' },
+                ambush1:   { x: Math.floor(size - 25 - Math.random() * 10), y: Math.floor(size - 25 - Math.random() * 10), type: 'Ambush' },
+                ambush2:   { x: Math.floor(25 + Math.random() * 10), y: Math.floor(size - 25 - Math.random() * 10), type: 'Ambush' },
+                bossLair:  { x: Math.floor(20 + Math.random() * 10), y: Math.floor(20 + Math.random() * 10), type: 'Boss' }
+            };
+            lakeX = Math.floor(30 + Math.random() * 10); 
+            lakeY = Math.floor(size / 2 + Math.random() * 10 - 5);
+        }
+        else {
+            // VARIANT 3: The Horizontal Crawl (Start left, Boss right)
+            nodes = {
+                start:     { x: Math.floor(15 + Math.random() * 10), y: Math.floor(size / 2 + Math.random() * 10 - 5), type: 'Start' },
+                allyCamp:  { x: Math.floor(35 + Math.random() * 10), y: Math.floor(size / 2 + Math.random() * 10 - 5), type: 'Ally' },
+                ambush1:   { x: Math.floor(size / 2 + Math.random() * 10 - 5), y: Math.floor(20 + Math.random() * 10), type: 'Ambush' },
+                ambush2:   { x: Math.floor(size / 2 + Math.random() * 10 - 5), y: Math.floor(size - 30 + Math.random() * 10), type: 'Ambush' },
+                bossLair:  { x: Math.floor(size - 20 + Math.random() * 10), y: Math.floor(size / 2 + Math.random() * 10 - 5), type: 'Boss' }
+            };
+            lakeX = Math.floor(size / 2 + Math.random() * 10 - 5); // Dead center between ambushes
+            lakeY = Math.floor(size / 2 + Math.random() * 10 - 5);
+        }
+
+        // --- 2. GENERATE LAKE (Now uses dynamic lakeX/lakeY) ---
         let hasWaterFeature = false;
         if (waterTile !== null && cliffTile !== null) {
             hasWaterFeature = true;
-            let lakeX = Math.floor(size / 2 + Math.random() * 20 - 10);
-            let lakeY = Math.floor(size / 2 + Math.random() * 20 - 10);
             let lakeRadius = 8 + Math.floor(Math.random() * 6);
 
             for (let y = lakeY - lakeRadius; y <= lakeY + lakeRadius; y++) {
@@ -4027,6 +4071,8 @@
             }
         };
 
+        // Regardless of which layout variant was chosen, this pathing network ensures 
+        // the map is always navigable and logically connected!
         carvePath(nodes.start, nodes.allyCamp);
         carvePath(nodes.allyCamp, nodes.ambush1);
         carvePath(nodes.allyCamp, nodes.ambush2);
