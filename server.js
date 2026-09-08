@@ -2289,6 +2289,16 @@
         ];   
     const toolsDef = [{
         functionDeclarations: [
+            // EXPORT CHRONICLES
+            {
+                name: "exportChronicles",
+                description: "Use this when the player asks to download, save, or export their journal, their story, or Suncat's journal. Spawns an Imp to deliver the text files.",
+                parameters: {
+                    type: SchemaType.OBJECT,
+                    properties: { targetName: { type: SchemaType.STRING } },
+                    required: ["targetName"]
+                }
+            },
             // GENERATE DEV REPORT (Autonomous Code Agent)
             {
                 name: "generateDevReport",
@@ -3049,6 +3059,11 @@
         if (["code", "bug", "fix", "report", "renderer", "boilerplate", "refactor", "function", "debug"].some(kw => lowerText.includes(kw))) {
             activeTools.push(toolsDef[0].functionDeclarations.find(t => t.name === 'generateDevReport'));
         }
+        // 6. Journal Export Tool
+        if (["export", "download", "save my story", "save my journal", "print"].some(kw => lowerText.includes(kw))) {
+            const exportTool = toolsDef[0].functionDeclarations.find(t => t.name === 'exportChronicles');
+            if (exportTool) activeTools.push(exportTool);
+        }
         // Always give him the ability to grant items/cards and teleport
         activeTools.push(toolsDef[0].functionDeclarations.find(t => t.name === 'givePlayerCard'));
         activeTools.push(toolsDef[0].functionDeclarations.find(t => t.name === 'teleportPlayer'));
@@ -3059,11 +3074,25 @@
     }
     // --- AUTONOMOUS DEV AGENT: RECURSIVE FILE TRACING ---
     
-    // 1. Bracket-counting block extractor (extracts exact function/class)
     function extractCodeBlock(sourceCode, keyword) {
         if (!sourceCode || !keyword) return null;
         const lines = sourceCode.split('\n');
-        const startIndex = lines.findIndex(l => l.toLowerCase().includes(keyword.toLowerCase()));
+        
+        const keyLower = keyword.toLowerCase();
+        
+        // 1st Pass: Look for an actual function or class declaration
+        let startIndex = lines.findIndex(l => {
+            let lower = l.toLowerCase();
+            return lower.includes(`function ${keyLower}`) || 
+                   lower.includes(`class ${keyLower}`) || 
+                   lower.includes(`${keyLower} = function`) ||
+                   lower.includes(`${keyLower}(`);
+        });
+
+        // 2nd Pass: Fallback to the first mention of the word if it's not a function
+        if (startIndex === -1) {
+            startIndex = lines.findIndex(l => l.toLowerCase().includes(keyLower));
+        }
         
         if (startIndex === -1) return null;
 
@@ -3073,7 +3102,6 @@
 
         for (let i = startIndex; i < lines.length; i++) {
             extracted.push(lines[i]);
-            
             for (let char of lines[i]) {
                 if (char === '{') {
                     bracketCount++;
@@ -3082,18 +3110,13 @@
                     bracketCount--;
                 }
             }
-
-            if (startedCounting && bracketCount === 0) {
-                break; 
-            }
+            if (startedCounting && bracketCount === 0) break; 
             
-            // Failsafe cap: Prevents infinite loops on malformed syntax
             if (extracted.length > 600) {
                 extracted.push("// ... [Truncated at 600 lines for token safety] ...");
                 break; 
             }
         }
-
         return extracted.join('\n');
     }
 
@@ -4452,6 +4475,45 @@
                                 functionResult = { result: `Failed: Player not found.` };
                             }
                         }
+                        // EXPORT CHRONICLES
+                        else if (call.name === "exportChronicles") {
+                            const targetID = findSocketID(call.args.targetName);
+                            if (targetID && players[targetID]) {
+                                const player = players[targetID];
+                                
+                                // Bundle the texts
+                                let pStory = player.storySoFar || "No story recorded for this traveler.";
+                                let sStory = suncatStorySoFar || "Suncat has written nothing yet.";
+                                let compiledChronicle = `=== CHRONICLE OF ${player.name.toUpperCase()} ===\n\n${pStory}\n\n\n=== THE WANDERER'S SAGA (SUNCAT) ===\n\n${sStory}`;
+
+                                // Generate clean timestamp and filename
+                                const dateStr = new Date().toISOString().replace(/T/, '_').replace(/:/g, '-').split('.')[0];
+                                const safePlayerName = player.name.replace(/[^a-zA-Z0-9]/g, '_');
+                                const dynamicFilename = `Saga_of_${safePlayerName}_${dateStr}.txt`;
+
+                                let impID = 56; 
+                                let spawnX = player.x + (Math.random() > 0.5 ? 2.5 : -2.5);
+                                let spawnY = player.y + (Math.random() > 0.5 ? 2.5 : -2.5);
+
+                                io.emit("remote_spawn_npc", {
+                                    mapID: player.mapID,
+                                    index: Math.floor(Math.random() * 100000) + 1000,
+                                    x: spawnX, y: spawnY,
+                                    type: CARD_MANIFEST_DB[impID]?.sprite || impID,
+                                    state: 'chasing', role: 'dialogue', color: '#ff8800', deck: [],
+                                    dialogue: [`I have compiled the chronicles of this realm. Guard them well!`],
+                                    isBoss: false, alignment: 'friendly_messenger',
+                                    endActions: [
+                                        ['download_text_file', { filename: dynamicFilename, content: compiledChronicle }],
+                                        ['disappear', null]
+                                    ]
+                                });
+                                
+                                functionResult = { result: `Success. Dispatched an Imp to deliver the compiled journals.` };
+                            } else {
+                                functionResult = { result: `Failed: Player not found.` };
+                            }
+                        }
                         // A. GIFTING
                         else if (call.name === "givePlayerCard") {
                             const targetName = call.args.targetName;
@@ -5744,7 +5806,6 @@
             if (digestedData.updatedStory) {
                 player.storySoFar = digestedData.updatedStory;
                 
-                // ---> THE FIX: We MUST await this so memories aren't lost into the void when a player logs out! <---
                 try {
                     const vector = await createMemoryVector(digestedData.updatedStory);
                     if (vector) {
@@ -5752,7 +5813,8 @@
                         player.searchableMemories.push({
                             timestamp: new Date().toLocaleTimeString('en-US'),
                             text: digestedData.updatedStory,
-                            vector: vector
+                            vector: vector,
+                            isCore: false // explicitly flag as raw material!
                         });
                     }
                 } catch (err) {
@@ -6109,19 +6171,19 @@
             
             const previousStory = player.storySoFar || "A new journey begins.";
 
-            const playerPrompt = `[ROOT DIRECTIVE]: You are a master novelist writing the next episodic chapter of a LitRPG saga.
+            const playerPrompt = `[ROOT DIRECTIVE]: You are writing the NEXT episodic chapter of a gritty 1980s sword-and-sorcery LitRPG saga (channeling the visceral, dark fantasy pulp style of Robert E. Howard's 'Conan' or R.A. Salvatore).
             
             [PLAYER PROFILE]: ${currentProfile}
-            [THE STORY SO FAR]: ${previousStory}
+            [PREVIOUS CHAPTER SUMMARY (For Context Only - DO NOT REWRITE THIS)]: ${previousStory}
             
-            [RAW SESSION LOGS (Recent Fragments)]:
+            [NEW RAW LOGS TO ADAPT]:
             ${rawText}
 
             [NARRATIVE TASK]:
-            1. Unpack and condense the [RAW SESSION LOGS] into a single, thorough, episodic narrative entry (2-4 paragraphs).
-            2. CONTINUITY & PACING: Seamlessly connect these new events to [THE STORY SO FAR]. Summarize repetitive actions (like traveling back and forth or fighting similar monsters) into broad narrative strokes (e.g., "After saving the apprentice, they spent their time traversing the Moors, hunting beasts...").
-            3. UNIQUE AUTHOR VOICE: Use the [PLAYER PROFILE] to completely dictate the prose style, motif, and atmosphere. Every player's journal must read like an entirely independent novel.
-            4. Provide ONLY the story text.`;
+            1. Write ONLY the new events from the [NEW RAW LOGS]. DO NOT rewrite or summarize the [PREVIOUS CHAPTER SUMMARY]. You are simply writing what happens next.
+            2. TONE: Visceral, dark fantasy pulp. Describe magic and combat with kinetic, brutal detail (e.g., a fireball roaring down a thief's throat, the sickening crunch of steel on bone, desperate atmospheric gloom, and savage triumphs).
+            3. UNIQUE AUTHOR VOICE: Use the [PLAYER PROFILE] to dictate the specific combat style and attitude of the protagonist.
+            4. Write 2-3 paragraphs. Provide ONLY the story text.`;
 
             try {
                 const condenserModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
@@ -6168,20 +6230,19 @@
             
             let safeSuncatProfile = typeof suncatProfile === 'string' ? suncatProfile : JSON.stringify(suncatProfile);
 
-            const suncatPrompt = `[ROOT DIRECTIVE]: You are a master novelist writing the next episodic chapter of a LitRPG saga, focusing exclusively on the enigmatic Dungeon Master.
+            const suncatPrompt = `[ROOT DIRECTIVE]: You are writing the NEXT episodic chapter of a gritty 1980s sword-and-sorcery LitRPG saga (in the visceral style of Robert E. Howard or R.A. Salvatore), focusing exclusively on the enigmatic Dungeon Master.
             
             [SUNCAT'S PROFILE]: ${safeSuncatProfile}
             [SUNCAT'S DAO (Path)]: ${suncatDaoName || "Wanderer"}
-            [SUNCAT'S STORY SO FAR]: ${suncatStorySoFar}
+            [PREVIOUS CHAPTER SUMMARY (For Context Only - DO NOT REWRITE THIS)]: ${suncatStorySoFar}
             
-            [RAW SESSION LOGS (Fragments)]:
+            [NEW RAW LOGS TO ADAPT]:
             ${suncatJournal}
 
             [NARRATIVE TASK]:
-            1. Unpack and condense the [RAW SESSION LOGS] into a single, thorough, episodic narrative entry (2-4 paragraphs).
-            2. CONTINUITY & PACING: Seamlessly connect these new observations to [SUNCAT'S STORY SO FAR]. Summarize repetitive wandering or redundant observations of mortals into smooth, overarching thoughts.
-            3. UNIQUE AUTHOR VOICE: Use Suncat's Profile and Dao to dictate the prose style. It should read like an esoteric, slightly aloof, but warmly observant wandering immortal's tale. 
-            4. Provide ONLY the story text.`;
+            1. Write ONLY the new events from the [NEW RAW LOGS]. DO NOT rewrite or summarize the [PREVIOUS CHAPTER SUMMARY]. You are simply writing what happens next.
+            2. TONE: Visceral, dark fantasy pulp. Describe the world, magic, and mortals with kinetic, brutal detail. It should read like an esoteric, slightly aloof, but savagely observant immortal's tale. 
+            3. Write 2-3 paragraphs. Provide ONLY the story text.`;
 
             try {
                 const condenserModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
@@ -6993,45 +7054,52 @@
         ${codeSnippet}
 
         TASK:
-        Write an actionable, copy-paste ready developer report formatted exactly into these three sections:
+            Write an actionable, copy-paste ready developer report.
+            CRITICAL: DO NOT format your response as JSON. DO NOT wrap the entire response in a markdown code block. Write it as a standard, human-readable text document using these exact three headers:
 
-        1. THE DIAGNOSIS:
-        Explain plainly what is broken or sub-optimal in the logic flow. No corporate filler.
+            === ANALYSIS ===
+            Explain plainly what is broken or sub-optimal in the logic flow. No corporate filler.
 
-        2. THE RE-FORGED ARTIFACT:
-        Provide the complete, production-ready rewritten block of code. DO NOT omit code or use "// ... rest of code stays the same". Provide the entire updated function/block ready to drop in.
+            === THE FIX ===
+            Provide the complete, production-ready rewritten block of code. DO NOT omit code or use "// ... rest of code stays the same".
 
-        3. THE RIPPLE EFFECT:
-        Explicitly list what other functions, socket events, or game states will be affected by this change based on the dependencies and map provided.`;
+            === WHY THIS WORKS ===
+            Explicitly list what other functions, socket events, or game states will be affected by this change based on the dependencies and map provided.`;
 
                 try {
                     const devModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
                     const result = await devModel.generateContent(prompt);
                     const reportText = result.response.text();
 
+                    
+                    // Generate a clean, readable timestamp: YYYY-MM-DD_HH-MM-SS
+                        const dateStr = new Date().toISOString().replace(/T/, '_').replace(/:/g, '-').split('.')[0];
+                    // Scrub the targetNode so it's safe for Windows/Mac filenames
+                        const safeTargetName = (targetNode || 'Architecture').replace(/[^a-zA-Z0-9]/g, '_');
+                        const dynamicFilename = `Suncat_DevReport_${safeTargetName}_${dateStr}.txt`;
                     // Spawn the Imp messenger to deliver the scroll
-                    let impID = 56; 
-                    let spawnX = player.x + (Math.random() > 0.5 ? 2.5 : -2.5);
-                    let spawnY = player.y + (Math.random() > 0.5 ? 2.5 : -2.5);
+                        let impID = 56; 
+                        let spawnX = player.x + (Math.random() > 0.5 ? 2.5 : -2.5);
+                        let spawnY = player.y + (Math.random() > 0.5 ? 2.5 : -2.5);
 
-                    io.emit("remote_spawn_npc", {
-                        mapID: player.mapID,
-                        index: Math.floor(Math.random() * 100000) + 1000,
-                        x: spawnX,
-                        y: spawnY,
-                        type: CARD_MANIFEST_DB[impID]?.sprite || impID,
-                        state: 'chasing',
-                        role: 'dialogue',
-                        color: '#ff8800', 
-                        deck: [],
-                        dialogue: [`My master Suncat sent me with your report! Check your downloads!`],
-                        isBoss: false,
-                        alignment: 'friendly_messenger',
-                        endActions: [['download_text_file', { 
-                            filename: `Suncat_Report_${targetNode || 'Debug'}_${Date.now()}.txt`, 
-                            content: reportText 
-                        }]]
-                    });
+                        io.emit("remote_spawn_npc", {
+                            mapID: player.mapID,
+                            index: Math.floor(Math.random() * 100000) + 1000,
+                            x: spawnX,
+                            y: spawnY,
+                            type: CARD_MANIFEST_DB[impID]?.sprite || impID,
+                            state: 'chasing',
+                            role: 'dialogue',
+                            color: '#ff8800', 
+                            deck: [],
+                            dialogue: [`My master Suncat sent me with your report! Check your downloads!`],
+                            isBoss: false,
+                            alignment: 'friendly_messenger',
+                            endActions: [
+                                ['download_text_file', { filename: dynamicFilename, content: reportText }],
+                                ['disappear', null]
+                            ]
+                        });
 
                     console.log(`[Dev Agent] Report complete. Courier dispatched to ${player.name}.`);
 
