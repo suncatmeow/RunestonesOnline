@@ -7108,31 +7108,43 @@
             if (triggerType === 'chat') {
                 player.lastSuncatChat = now;
             }
-            // RECORD DM NARRATIVES TO PLAYER JOURNAL
+            // ==========================================
+            // RECORDING ACTIONS TO MEMORY PIPELINE
+            // ==========================================
+            
+            // 1. Push DM Narrations directly to the Player's UI so they see it instantly
             if (messageOptions.sender === "") {
                 const journalPayload = {
                     playerChronicle: finalSpeech, 
                     suncatThoughts: null
                 };
                 
-                // If it's targeted at a specific player (like force_ai_action), send it only to them.
                 if (messageOptions.targetId) {
                     io.to(messageOptions.targetId).emit("journal_updated", journalPayload);
                 } else {
-                    // Otherwise, if it's a global DM event, push it to everyone's journal.
                     io.emit("journal_updated", journalPayload);
                 }
             }
-            if (triggerType !== 'chat' && !useBigBrain) {
-                if (!player.dmNarrativeLog) player.dmNarrativeLog = [];
-                player.dmNarrativeLog.push(finalSpeech);
-                
-                if (player.dmNarrativeLog.length > 4) {
-                    if (!player.undigestedInfo) player.undigestedInfo = [];
-                    player.undigestedInfo.push(player.dmNarrativeLog.shift()); 
+
+            // 2. FEED THE STOMACH: Send ALL AI output directly into undigestedInfo
+            if (finalSpeech && finalSpeech.trim() !== "") {
+                if (!player.undigestedInfo) player.undigestedInfo = [];
+
+                if (messageOptions.sender === "") {
+                    // It was an omniscient DM Narration (Boss kill, area lore, pacing)
+                    player.undigestedInfo.push(`[DM NARRATED]: ${finalSpeech}`);
+                } 
+                else if (triggerType === 'chat') {
+                    // Suncat actually spoke to the player
+                    player.undigestedInfo.push(`[SUNCAT SAID]: ${finalSpeech}`);
+                } 
+                else {
+                    // Any other background spectator event
+                    player.undigestedInfo.push(`[EVENT]: ${finalSpeech}`);
                 }
             }
         }
+
 
         // ---> THE FIX: Wrap the history save so background events don't bloat the memory! <---
         if (triggerType === 'chat' || useBigBrain) {
