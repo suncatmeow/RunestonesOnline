@@ -14930,15 +14930,11 @@
                             if (Array.isArray(cachedSource[0])) {
                                 let currentDirArray = cachedSource[currentDir];
                                 if (!currentDirArray) {
-                                    // If the 3D camera calculated an 8-way angle but the sprite only has 4 directions, map it down.
-                                    // If it has some other weird amount, wrap it using modulo so it NEVER crashes.
                                     let safeIndex = (cachedSource.length === 4) ? Math.floor(currentDir / 2) : (currentDir % cachedSource.length);
                                     currentDirArray = cachedSource[safeIndex] || cachedSource[0];
                                 }
-
                                 const currentFrame = Math.floor(Date.now() / 150) % currentDirArray.length;
                                 srcImg = currentDirArray[currentFrame];
-                                
                             } else {
                                 let animationSpeed = [46.1, 63.1, 74.1, 82].includes(imageIndex) ? 300 : 100;
                                 const currentFrame = Math.floor(Date.now() / animationSpeed) % cachedSource.length;
@@ -14951,7 +14947,15 @@
                         const cacheSize = srcImg.width || 512; 
                         let fogStart = dynamicMaxVis * 0.4;
                         let spriteFogFactor = transformY > fogStart ? Math.pow(Math.min((transformY - fogStart) / (dynamicMaxVis - fogStart), 1.0), 1.8) : 0;
-                        let lensFade = (sprite.alignment === 'ally' && transformY < 0.2) ? (transformY * 5) : 1.0;
+                        
+                        // THE FIX 1: Apply lens fade to ALL non-player sprites that get too close!
+                        // This prevents giant scaled sprites from covering the camera and hiding the player.
+                        let lensFade = 1.0;
+                        if (!sprite.isPlayer && transformY < 0.4) {
+                            // Fades from 1.0 at 0.4 dist down to 0.0 at 0.05 dist
+                            lensFade = Math.max(0, (transformY - 0.05) * 2.85); 
+                        }
+
                         ctx.globalAlpha = (sprite.isPlayer ? 0.7 * (1.0 - spriteFogFactor) : 1.0 - spriteFogFactor) * lensFade;
                         ctx.filter = (sprite.damageFlashTimer > 0) ? 'brightness(50%) sepia(100%) hue-rotate(-50deg) saturate(1000%) contrast(200%)' : 'none';
 
@@ -14959,10 +14963,8 @@
                         if (imageIndex === 99) ctx.globalCompositeOperation = 'lighter';
                         ctx.imageSmoothingEnabled = true;
 
-                        // HOIST INVARIANTS OUTSIDE THE LOOP!
                         const textureRatio = cacheSize / spriteSize;
 
-                        // Replace `let currentStreak = null;` and `const flushStreak...` with:
                         let streakActive = false;
                         let s_startX = 0, s_destX = 0, s_width = 0, s_blocked = false, s_clipY = 0;
 
@@ -14983,32 +14985,35 @@
                             }
                         };
 
-                        for (let x = 0; x < spriteSize; x++) {
+                        // THE FIX 2: Clamp the loop directly to the screen boundaries!
+                        // Instead of looping 15,000 times for a close sprite, we only loop for the 400 pixels that actually fit on screen.
+                        let startX = Math.max(0, Math.floor(spriteSize / 2 - spriteScreenX));
+                        let endX = Math.min(spriteSize, Math.floor(viewW + spriteSize / 2 - spriteScreenX));
+
+                        for (let x = startX; x < endX; x++) {
                             const localCol = Math.floor(-spriteSize / 2 + spriteScreenX) + x;
                             
-                            if (localCol >= 0 && localCol < viewW) {
-                                let distFromCenter = Math.abs(x - (spriteSize / 2)) / (spriteSize / 2);
-                                let dynamicBias = isCenterVisible ? 0.08 * (1.0 - distFromCenter) : 0.02;                            
-                                
-                                checkOcclusion(localCol, transformY, dynamicBias, sprite); // Sets occlusionResult
+                            // Because of our clamp above, we no longer need the "if (localCol >= 0 && localCol < viewW)" check here!
+                            let distFromCenter = Math.abs(x - (spriteSize / 2)) / (spriteSize / 2);
+                            let dynamicBias = isCenterVisible ? 0.08 * (1.0 - distFromCenter) : 0.02;                            
+                            
+                            checkOcclusion(localCol, transformY, dynamicBias, sprite); 
 
-                                if (occlusionResult.isBlocked && drawStartY >= occlusionResult.minClipY) occlusionResult.minClipY = drawStartY; 
+                            if (occlusionResult.isBlocked && drawStartY >= occlusionResult.minClipY) occlusionResult.minClipY = drawStartY; 
 
-                                if (streakActive && s_blocked === occlusionResult.isBlocked && s_clipY === occlusionResult.minClipY) {
-                                    s_width++;
-                                } else {
-                                    if (streakActive) flushStreak();
-                                    streakActive = true;
-                                    s_startX = x;
-                                    s_destX = localCol;
-                                    s_width = 1;
-                                    s_blocked = occlusionResult.isBlocked;
-                                    s_clipY = occlusionResult.minClipY;
-                                }
+                            if (streakActive && s_blocked === occlusionResult.isBlocked && s_clipY === occlusionResult.minClipY) {
+                                s_width++;
                             } else {
-                                if (streakActive) { flushStreak(); streakActive = false; }
+                                if (streakActive) flushStreak();
+                                streakActive = true;
+                                s_startX = x;
+                                s_destX = localCol;
+                                s_width = 1;
+                                s_blocked = occlusionResult.isBlocked;
+                                s_clipY = occlusionResult.minClipY;
                             }
                         }
+                        
                         if (streakActive) flushStreak();
 
                         ctx.globalCompositeOperation = previousBlend;
