@@ -12358,37 +12358,7 @@
                     
             }
             renderTopDown(dt) {
-                // ==========================================
-                // --- FPS THROTTLE ---
-                // ==========================================
-                let targetFPS = 15; // Adjust this to match your 3D speed!
-                let frameDelay = 1000 / targetFPS;
-
-                if (this._last2DFrameTime === undefined) {
-                    this._last2DFrameTime = performance.now();
-                    this._flickerBuffer = document.createElement('canvas');
-                    this._flickerCtx = this._flickerBuffer.getContext('2d');
-                }
-
-                if (this._flickerBuffer.width !== ctx.canvas.width || this._flickerBuffer.height !== ctx.canvas.height) {
-                    this._flickerBuffer.width = ctx.canvas.width;
-                    this._flickerBuffer.height = ctx.canvas.height;
-                }
-
-                let now = performance.now();
-                let elapsed = now - this._last2DFrameTime;
-
-                if (elapsed < frameDelay) {
-                    ctx.drawImage(this._flickerBuffer, 0, 0);
-                    return; 
-                }
                 
-                this._last2DFrameTime = now - (elapsed % frameDelay);
-
-                // ---> NEW FIX: OVERWRITE DT <---
-                // Tell the physics engine exactly how much time we waited so player speed normalizes!
-                let npcdt = dt;
-                dt = elapsed / 1000; 
 
                 // --- INITIALIZATION SYNC ---
                 if (!this.hotbarSynced) {
@@ -12396,7 +12366,6 @@
                     this.hotbarSynced = true;
                 }
                 
-                // ... rest of the code ...
 
                 // ==========================================
                 // --- 1. CONTINUOUS HOLD-TO-MOVE LOGIC ---
@@ -12447,10 +12416,10 @@
                 // --- 3. UPDATE LOGIC ---
                 // ==========================================
                 this.frame++;
-                this.updateAllyFormations(npcdt);
+                this.updateAllyFormations(dt);
 
                 this.npcs.forEach(npc => {
-                    npc.update(this.maze, this.x, this.y, this, npcdt);
+                    npc.update(this.maze, this.x, this.y, this, dt);
 
                     // --- PARTICLE EMITTER ---
                     if (!npc.isDead && npc.visible && npc.activeBuffs && npc.activeBuffs.length > 0) {
@@ -12475,7 +12444,7 @@
                 });
 
                 for (let i = 0; i < PARTICLE_POOL_SIZE; i++) {
-                    globalParticles[i].update(npcdt);
+                    globalParticles[i].update(dt);
                 }
                 
                 let viewW = (typeof tL !== 'undefined' && tL > 0) ? tL : window.innerWidth;
@@ -12484,7 +12453,7 @@
                 let viewY = (typeof tY !== 'undefined') ? tY : 0;
                 
                 this.weather.resize(viewW, viewH); 
-                this.weather.update(npcdt);
+                this.weather.update(dt);
                 this.projectiles.forEach(p => p.update(this, dt));
                 this.projectiles = this.projectiles.filter(p => p.active);
 
@@ -13031,8 +13000,7 @@
                     this.shuffleSpells();
                     this.lastSpellShuffleTime = currentTime;
                 }
-                this._flickerCtx.clearRect(0, 0, this._flickerBuffer.width, this._flickerBuffer.height);
-                this._flickerCtx.drawImage(ctx.canvas, 0, 0);
+                
             }
             drawTileTexture(tileID, tx, ty, size) {
                 let s = size; // Shortcut for the cell size
