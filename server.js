@@ -5610,8 +5610,9 @@
             if (digestedData.updatedStory) {
                 player.storySoFar = digestedData.updatedStory;
                 
-                // THE FIX: Asynchronous Vector Creation! Do not 'await' this and block the server.
-                createMemoryVector(digestedData.updatedStory).then(vector => {
+                // ---> THE FIX: We MUST await this so memories aren't lost into the void when a player logs out! <---
+                try {
+                    const vector = await createMemoryVector(digestedData.updatedStory);
                     if (vector) {
                         if (!player.searchableMemories) player.searchableMemories = [];
                         player.searchableMemories.push({
@@ -5620,7 +5621,9 @@
                             vector: vector
                         });
                     }
-                }).catch(err => console.error("[Memory] Async embed failed:", err));
+                } catch (err) {
+                    console.error("[Memory] Async embed failed:", err);
+                }
             }
             
             if (digestedData.suncatPerception) player.suncatPerception = digestedData.suncatPerception;
@@ -5961,7 +5964,7 @@
         // ==========================================
         const granularMemories = player.searchableMemories.filter(m => !m.isCore);
         
-        if (granularMemories.length >= 3) {
+        if (granularMemories.length >= 1) {
             player.isConsolidating = true;
             console.log(`[Session Condenser] Condensing ${granularMemories.length} fragments for ${player.name}...`);
 
