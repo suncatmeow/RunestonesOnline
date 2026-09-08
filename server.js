@@ -5767,15 +5767,28 @@
                 if (granularMemories.length < MEMORIES_TO_MERGE) return; 
 
                 const oldestMemories = granularMemories.slice(0, MEMORIES_TO_MERGE);
-                const rawText = oldestMemories.map(m => `[${m.timestamp}]: ${m.text}`).join('\n');
-                // 2. Instruct the LLM to act as the subconscious archivist
-                const prompt = `You are the subconscious archivist for a Dark Fantasy World. 
-                Review these chronological, granular memories of the past:
+                                const rawText = oldestMemories.map(m => `[${m.timestamp}]: ${m.text}`).join('\n');
                 
+                // ---> NEW ARCHIVIST PROMPT (The R.A. Salvatore Epic) <---
+                const currentProfile = player.playerProfile ? 
+                    `Combat: ${player.playerProfile.combatStyle} | Alliances: ${player.playerProfile.alliances} | Tastes: ${player.playerProfile.tastes} | Personality: ${player.playerProfile.personality}` 
+                    : "Unknown";
+                    
+                const previousStory = player.storySoFar || "A new journey begins.";
+
+                const prompt = `[ROOT DIRECTIVE]: You are writing the NEXT episodic chapter of a gritty 1980s sword-and-sorcery LitRPG saga (channeling the visceral, dark fantasy pulp style of Robert E. Howard's 'Conan' or R.A. Salvatore).
+                
+                [PLAYER PROFILE]: ${currentProfile}
+                [PREVIOUS CHAPTER SUMMARY (For Context Only - DO NOT REWRITE THIS)]: ${previousStory}
+                
+                [NEW RAW LOGS TO ADAPT]:
                 ${rawText}
-                
-                TASK: Synthesize these events into a detailed, multi-paragraph "Core Chapter" of the saga (max 8-10 sentences).
-                Focus heavily on the overarching narrative, key locations visited, and major victories or character traits revealed. Omit trivial footsteps or repetitive combat. Write as an omniscient observer.`;
+
+                [NARRATIVE TASK]:
+                1. Write ONLY the new events from the [NEW RAW LOGS]. DO NOT rewrite or summarize the [PREVIOUS CHAPTER SUMMARY]. You are simply writing what happens next.
+                2. TONE: Visceral, dark fantasy pulp. Describe magic and combat with kinetic, brutal detail (e.g., a fireball roaring down a thief's throat, the sickening crunch of steel on bone, desperate atmospheric gloom, and savage triumphs).
+                3. UNIQUE AUTHOR VOICE: Use the [PLAYER PROFILE] to dictate the specific combat style and attitude of the protagonist.
+                4. Write a massive, detailed chapter (2-4 paragraphs). Provide ONLY the story text.`;
 
                 const consolidationModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
                 const result = await consolidationModel.generateContent(prompt);
@@ -5904,20 +5917,21 @@
             : "Unknown";
 
         // Corrected prompt: uses rawMemories and explicitly asks for perception
+      
         const prompt = `[ROOT DIRECTIVE]: You are Suncat, observing and digesting the recent actions of the mortal "${player.name}".
-        
-        [PLAYER PROFILE]: ${currentProfile}
-        [PREVIOUS STORY CONTEXT]: ${previousStory}
-        
-        [RECENT RAW ACTIONS]:
-        ${rawMemories || "No recent actions recorded."}
-        
-        [ATMOSPHERE & MOOD]: ${cognitiveFilter}
+                
+                [PLAYER PROFILE]: ${currentProfile}
+                [PREVIOUS STORY CONTEXT]: ${previousStory}
+                
+                [RECENT RAW ACTIONS]:
+                ${rawText || "No recent actions recorded."}
+                
+                [ATMOSPHERE & MOOD]: ${cognitiveFilter}
 
-        TASK:
-        1. Summarize their immediate progress into 2-3 concise sentences for 'updatedStory'.
-        2. Formulate a cryptic 1-sentence overworld rumor for 'newRumor'.
-        3. Evaluate the player's character based on their recent choices, combat behavior, and tone. Provide an honest, punchy description (MAX 6 words) for 'suncatPerception' (e.g., "A bloodthirsty tactician seeking profit", "Gentle wanderer bound by honor", "Impulsive rogue courting death").`;
+                TASK:
+                1. Summarize their immediate progress into a rich, visceral paragraph (4-5 sentences) for 'updatedStory'. Keep the tone gritty (channeling the dark fantasy pulp style of R.A. Salvatore). Focus on the crunch of combat or the dark atmosphere of the setting.
+                2. Formulate a cryptic 1-sentence overworld rumor for 'newRumor'.
+                3. Evaluate the player's character based on their recent choices, combat behavior, and tone. Provide an honest, punchy description (MAX 6 words) for 'suncatPerception'.`;
 
         const memorySchema = {
             type: SchemaType.OBJECT,
