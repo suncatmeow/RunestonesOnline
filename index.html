@@ -4241,11 +4241,12 @@
             socket.on("delete_save", () => {
                 const player = players[socket.id];
                 if (player && player.name !== "Unknown") {
-                    const nameKey = player.name.toLowerCase();
+                    // ---> FIX: Use persistentId to properly wipe the server memory! <---
+                    const memoryKey = player.persistentId || player.name.toLowerCase(); 
                     
                     // 1. Erase from the Permanent Database
-                    if (suncatPersistentMemory[nameKey]) {
-                        delete suncatPersistentMemory[nameKey];
+                    if (suncatPersistentMemory[memoryKey]) {
+                        delete suncatPersistentMemory[memoryKey];
                         saveSuncatMemory(); // Save the newly cleaned JSON to disk
                     }
 
@@ -18851,7 +18852,30 @@
                         case 'spectate':
                         if (typeof socket !== 'undefined') socket.emit('suncat_spectate', payload);
                         break;
-                }
+                    // Autonomous Agent
+                        case 'download_text_file': {
+                            // payload should be the object { filename: "...", content: "..." }
+                            const filename = payload.filename || "Suncat_Report.txt";
+                            const textContent = payload.content || "Empty report.";
+
+                            // Generate the blob and force the browser to trigger a download
+                            const blob = new Blob([textContent], { type: 'text/plain;charset=utf-8' });
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = filename;
+                            document.body.appendChild(a);
+                            a.click();
+                            
+                            // Clean up the DOM and URL object
+                            setTimeout(() => {
+                                document.body.removeChild(a);
+                                URL.revokeObjectURL(url);
+                            }, 150);
+                            
+                            break;
+                        }
+            }
 
                 // If the action was instantaneous, immediately fire the next one!
                 if (!isBlocking) {
