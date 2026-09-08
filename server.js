@@ -3383,12 +3383,18 @@
     function getRelevantContext(queryText, playerMemories = [], limit = 2) {
         if (!queryText || typeof queryText !== 'string') return "";
 
-        const words = queryText.toLowerCase()
+        let rawWords = queryText.toLowerCase()
             .replace(/[^\w\s]/gi, '')
-            .split(/\s+/)
-            .filter(w => w.length > 2 && !SEARCH_STOP_WORDS.has(w));
+            .split(/\s+/);
+            
+        let words = rawWords.filter(w => w.length > 2 && !SEARCH_STOP_WORDS.has(w));
 
-        if (words.length === 0) return "";
+        // FIX: If the stop-words filter stripped everything (e.g., "who are you"), fall back to the raw words!
+        if (words.length === 0 && rawWords.length > 0) {
+            words = rawWords;
+        } else if (words.length === 0) {
+            return "";
+        }
 
         // 1. Search Global Lore & Suncat's Past
         let scoredLore = MASTER_KNOWLEDGE_BASE.map(entry => {
@@ -5739,44 +5745,41 @@
 
         const memoriesToProcess = player.undigestedInfo.splice(0, batchSize);
         const rawMemories = memoriesToProcess.map(m => sanitizeForMemory(m)).filter(m => m !== "").join('\n- ');
-        const currentStory = player.storySoFar || "The adventure begins.";
-        // Inside your existing consolidateMemories() function, update the variables and prompt:
-                
-                const currentProfile = player.playerProfile ? 
-                    `Combat: ${player.playerProfile.combatStyle} | Tastes: ${player.playerProfile.tastes} | Personality: ${player.playerProfile.personality}` 
-                    : "Unknown";
-                    
-                const previousStory = player.storySoFar || "A new journey begins.";
+        const previousStory = player.storySoFar || "A new journey begins.";
+        const currentProfile = player.playerProfile ? 
+            `Combat: ${player.playerProfile.combatStyle} | Tastes: ${player.playerProfile.tastes} | Personality: ${player.playerProfile.personality}` 
+            : "Unknown";
 
-                const prompt = `[ROOT DIRECTIVE]: You are a master novelist writing the next episodic chapter of a LitRPG saga.
-                
-                [PLAYER PROFILE]: ${currentProfile}
-                [THE STORY SO FAR]: ${previousStory}
-                
-                [RAW SESSION LOGS (Recent Fragments)]:
-                ${rawText}
+        // Corrected prompt: uses rawMemories and explicitly asks for perception
+        const prompt = `[ROOT DIRECTIVE]: You are Suncat, observing and digesting the recent actions of the mortal "${player.name}".
         
-                [NARRATIVE TASK]:
-                1. Unpack and condense the [RAW SESSION LOGS] into a single, thorough, episodic narrative entry (2-4 paragraphs).
-                2. CONTINUITY & PACING: Seamlessly connect these new events to [THE STORY SO FAR]. Summarize repetitive actions (like traveling back and forth or fighting similar monsters) into broad narrative strokes (e.g., "Following their earlier trials, they spent their time traversing the Moors, hunting beasts...").
-                3. UNIQUE AUTHOR VOICE: Use the [PLAYER PROFILE] to completely dictate the prose style. Every player's journal must read like an entirely independent novel from a different author.
-                4. Omit trivial footsteps. Focus on overarching narrative progress.
-                5. Provide ONLY the story text.`;
-        // THE FIX: Removed playerProfile to save massive tokens. Fast digestion only needs immediate reactions!
+        [PLAYER PROFILE]: ${currentProfile}
+        [PREVIOUS STORY CONTEXT]: ${previousStory}
+        
+        [RECENT RAW ACTIONS]:
+        ${rawMemories || "No recent actions recorded."}
+        
+        [ATMOSPHERE & MOOD]: ${cognitiveFilter}
+
+        TASK:
+        1. Summarize their immediate progress into 2-3 concise sentences for 'updatedStory'.
+        2. Formulate a cryptic 1-sentence overworld rumor for 'newRumor'.
+        3. Evaluate the player's character based on their recent choices, combat behavior, and tone. Provide an honest, punchy description (MAX 6 words) for 'suncatPerception' (e.g., "A bloodthirsty tactician seeking profit", "Gentle wanderer bound by honor", "Impulsive rogue courting death").`;
+
         const memorySchema = {
             type: SchemaType.OBJECT,
             properties: {
                 updatedStory: { 
-                    type: SchemaType.STRING,
-                    description: "The next 2-3 sentences of the player's chronicle."
+                    type: SchemaType.STRING, 
+                    description: "The next 2-3 sentences of the player's chronicle." 
                 },
                 newRumor: { 
-                    type: SchemaType.STRING,
-                    description: "A cryptic 1-sentence rumor about the player to share with others."
+                    type: SchemaType.STRING, 
+                    description: "A cryptic 1-sentence rumor about the player to share with others." 
                 },
-                suncatPerception: {
-                    type: SchemaType.STRING,
-                    description: "An honest evaluation of the player's character (6 words MAX)."
+                suncatPerception: { 
+                    type: SchemaType.STRING, 
+                    description: "An honest evaluation of the player's character (6 words MAX)." 
                 }
             },
             required: ["updatedStory", "newRumor", "suncatPerception"]
@@ -6638,8 +6641,10 @@
                     .join(", ");
 
                 systemOverride += `\n[DM OVERRIDE]: The player wants you to alter the world. You MUST use your tools (spawnNPC, alterTerrain). 
-                - If they asked for a character/monster, choose the most fitting one from this list: [${availableMonsters}]. Pass the name into the 'npcType' field.
-                - If they gave you a specific personality (like "tragic", "funny", "lovestruck"), you MUST write custom dialogue for that NPC matching that exact vibe and pass it into the tool's 'dialogue' array.`;
+                - CRITICAL: The 'targetName' parameter MUST be exactly "${player.name}".
+                - Choose the most fitting monster from this list: [${availableMonsters}]. Pass the name into the 'npcType' field.
+                - KEEP IT SIMPLE: Only fill out targetName, npcType, state, role, and dialogue. DO NOT use yesActions, noActions, or endActions.
+                - If they gave a specific personality, write custom dialogue matching that vibe.`;
             }
             else if (data.isConversing) {
                 systemOverride += `\n[CONVERSATION OVERRIDE]: You are in a direct back-and-forth conversation with the player. However, this is a crowded multiplayer room. If the player's message makes absolutely no sense as a logical response to your previous message, assume they turned to talk to another human and output EXACTLY the word [IGNORE] and nothing else. Otherwise, reply naturally.`;
@@ -7925,13 +7930,14 @@ io.on("connection", (socket) => {
                 let eavesdropCooldown = 120000; 
                 if (now - (suncat.lastEavesdropTime || 0) > eavesdropCooldown) {
                     try {
+                        // FIX: Only calculate the vector if the cooldown has actually passed!
                         msgVector = await createMemoryVector(safeText);
                         let semanticScore = 0;
                         if (msgVector && suncatAttentionVector) {
                             semanticScore = cosineSimilarity(msgVector, suncatAttentionVector);
                         }
                         
-                        // Raised threshold to 0.70 to ensure it's highly relevant to his interests
+                        // Raised threshold to 0.85 to ensure it's highly relevant to his interests
                         if (semanticScore > 0.85 || Math.random() < 0.005) {
                             isEavesdropping = true;
                             suncat.lastEavesdropTime = now; // Lock out eavesdropping for a while
