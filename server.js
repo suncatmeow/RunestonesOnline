@@ -2156,7 +2156,7 @@
             waterTile: 99,  // Pitch black tar pit
             cliffTile: 97  // Gray stone cliff
         }
-};
+    };
     const PERSONA_RULES_DB = {
         // === CORE IDENTITY (ALWAYS ACTIVE) ===
         "core": `[IDENTITY]: You are Suncat, the Dungeon Master and a wandering creator. 
@@ -2289,6 +2289,21 @@
         ];   
     const toolsDef = [{
         functionDeclarations: [
+            // GENERATE DEV REPORT (Autonomous Code Agent)
+            {
+                name: "generateDevReport",
+                description: "Use this IMMEDIATELY when the player asks to review code, fix a bug, trace dependencies, or write boilerplate. Passes the target file and function name to an async background worker that reads the code and sends an Imp courier.",
+                parameters: {
+                    type: SchemaType.OBJECT,
+                    properties: {
+                        targetName: { type: SchemaType.STRING },
+                        topic: { type: SchemaType.STRING, description: "Detailed description of the issue or feature." },
+                        filename: { type: SchemaType.STRING, description: "The filename (e.g., 'server.js', 'client.js')." },
+                        targetNode: { type: SchemaType.STRING, description: "The exact function, object, or class name to target (e.g., 'resize', 'processCognitiveLoad')." }
+                    },
+                    required: ["targetName", "topic", "filename"]
+                }
+            },
             //give card
             {
                 name: "givePlayerCard",
@@ -3030,7 +3045,10 @@
             activeTools.push(toolsDef[0].functionDeclarations.find(t => t.name === 'smiteOrReviveEntity'));
             activeTools.push(toolsDef[0].functionDeclarations.find(t => t.name === 'playMusic'));
         }
-        
+        // 5. Dev Agent Tools (Triggers on code keywords)
+        if (["code", "bug", "fix", "report", "renderer", "boilerplate", "refactor", "function", "debug"].some(kw => lowerText.includes(kw))) {
+            activeTools.push(toolsDef[0].functionDeclarations.find(t => t.name === 'generateDevReport'));
+        }
         // Always give him the ability to grant items/cards and teleport
         activeTools.push(toolsDef[0].functionDeclarations.find(t => t.name === 'givePlayerCard'));
         activeTools.push(toolsDef[0].functionDeclarations.find(t => t.name === 'teleportPlayer'));
@@ -3038,6 +3056,105 @@
 
         // Filter out any undefineds just in case
         return activeTools.filter(t => t !== undefined);
+    }
+    // --- AUTONOMOUS DEV AGENT: RECURSIVE FILE TRACING ---
+    
+    // 1. Bracket-counting block extractor (extracts exact function/class)
+    function extractCodeBlock(sourceCode, keyword) {
+        if (!sourceCode || !keyword) return null;
+        const lines = sourceCode.split('\n');
+        const startIndex = lines.findIndex(l => l.toLowerCase().includes(keyword.toLowerCase()));
+        
+        if (startIndex === -1) return null;
+
+        let extracted = [];
+        let bracketCount = 0;
+        let startedCounting = false;
+
+        for (let i = startIndex; i < lines.length; i++) {
+            extracted.push(lines[i]);
+            
+            for (let char of lines[i]) {
+                if (char === '{') {
+                    bracketCount++;
+                    startedCounting = true;
+                } else if (char === '}') {
+                    bracketCount--;
+                }
+            }
+
+            if (startedCounting && bracketCount === 0) {
+                break; 
+            }
+            
+            // Failsafe cap: Prevents infinite loops on malformed syntax
+            if (extracted.length > 600) {
+                extracted.push("// ... [Truncated at 600 lines for token safety] ...");
+                break; 
+            }
+        }
+
+        return extracted.join('\n');
+    }
+
+    // 2. High-speed file skeletonizer (extracts signatures of all functions/classes)
+    function generateFileSkeleton(sourceCode) {
+        if (!sourceCode) return { mapString: "No source code.", names: [] };
+        const lines = sourceCode.split('\n');
+        let skeletonText = [];
+        let functionNames = [];
+        
+        const signatureRegex = /^(?:export\s+)?(?:async\s+)?(?:function|class|const|let|var)\s+([a-zA-Z0-9_]+)/;
+
+        lines.forEach(line => {
+            let trimmed = line.trim();
+            if (trimmed.startsWith('function') || 
+                trimmed.startsWith('async function') || 
+                trimmed.startsWith('class ') ||
+                (trimmed.includes('=>') && (trimmed.startsWith('const') || trimmed.startsWith('let')))) {
+                
+                let signature = trimmed.split('{')[0].trim();
+                let match = trimmed.match(signatureRegex);
+                if (match && match[1]) {
+                    functionNames.push(match[1]);
+                }
+                
+                if (signature.length > 0 && signature.length < 140) {
+                    skeletonText.push("- " + signature);
+                }
+            }
+        });
+
+        if (skeletonText.length > 300) {
+            skeletonText = skeletonText.slice(0, 300);
+            skeletonText.push("- ... [Skeleton truncated for length]");
+        }
+
+        return { 
+            mapString: skeletonText.join('\n'), 
+            names: functionNames 
+        };
+    }
+
+    // 3. Socket Event Harvester (Finds socket.on / io.emit connected to the function)
+    function extractSocketListeners(sourceCode, targetName) {
+        if (!sourceCode || !targetName) return "";
+        const lines = sourceCode.split('\n');
+        let socketCode = [];
+        
+        for (let i = 0; i < lines.length; i++) {
+            if ((lines[i].includes('socket.on') || lines[i].includes('io.emit') || lines[i].includes('socket.emit')) && 
+                 lines[i].toLowerCase().includes(targetName.toLowerCase())) {
+                 
+                 if (lines[i].includes('{')) {
+                     let block = extractCodeBlock(sourceCode, lines[i].trim().split('{')[0]);
+                     if (block) socketCode.push(block);
+                 } else {
+                     socketCode.push(lines[i].trim());
+                 }
+            }
+        }
+        return socketCode.join('\n\n');
     }
 //MEMORY AND SYSTEM MANAGEMENT
     let isSavingMemory = false;
@@ -4318,8 +4435,25 @@
                 let functionResult = { result: "Action executed." };
                 
                 try {
+                        // DEV AGENT DISPATCHER
+                        if (call.name === "generateDevReport") {
+                            const targetID = findSocketID(call.args.targetName);
+                            if (targetID) {
+                                // Non-blocking dispatch: Suncat answers in chat while the background agent traces code
+                                processDevReport(
+                                    targetID, 
+                                    call.args.topic, 
+                                    call.args.filename, 
+                                    call.args.targetNode
+                                );
+                                
+                                functionResult = { result: `Task started. Inform the player that you are inspecting the code and an Imp courier will deliver the scroll shortly.` };
+                            } else {
+                                functionResult = { result: `Failed: Player not found.` };
+                            }
+                        }
                         // A. GIFTING
-                        if (call.name === "givePlayerCard") {
+                        else if (call.name === "givePlayerCard") {
                             const targetName = call.args.targetName;
                             const targetID = findSocketID(targetName);
                             
@@ -6642,16 +6776,14 @@
             systemInstruction: unifiedInstruction 
         };
 
-        // SECURITY FIX: Only allow map wipes/teleports if the player directly requested it in chat
+        // SECURITY FIX & DYNAMIC ROUTING: Only load tools relevant to the conversation
         if (useBigBrain) {
-            if (triggerType === 'chat') {
-                modelConfig.tools = toolsDef;
-            } else {
-                modelConfig.tools = [{
-                    functionDeclarations: toolsDef[0].functionDeclarations.filter(tool => 
-                        !['createCustomMap', 'teleportPlayer', 'teleportToPlayer', 'kickPlayer', 'banishPlayer', 'vanquishPlayer'].includes(tool.name)
-                    )
-                }];
+            const playerFavor = playerFavorMemory[socketId] || 0;
+            const activeToolDecls = getActiveTools(data.text, triggerType, playerFavor);
+            
+            // Only inject the tools object if we actually found relevant tools to use!
+            if (activeToolDecls.length > 0) {
+                modelConfig.tools = [{ functionDeclarations: activeToolDecls }];
             }
         }
 
@@ -6772,13 +6904,137 @@
             await manageHistorySize(socketId);
         }
         
-    } catch (e) {
-        console.error("Nervous System Error:", e);
-        } finally {
-            clearTimeout(typingFailSafe); 
-            player.npcIsTyping = false;
+        } catch (e) {
+            console.error("Nervous System Error:", e);
+            } finally {
+                clearTimeout(typingFailSafe); 
+                player.npcIsTyping = false;
+            }
         }
-    }
+    async function processDevReport(socketId, topic, filename, targetNode) {
+            const player = players[socketId];
+            if (!player) return;
+
+            console.log(`[Dev Agent] Deep-tracing codebase for ${player.name} | Target: ${targetNode || "General"} in ${filename}`);
+
+            let codeSnippet = "No local file provided.";
+            let fileMap = "No architecture map available.";
+
+            if (filename) {
+                try {
+                    // Path safety sandbox: Restrict file reading to project root
+                    const safePath = path.resolve(__dirname, filename);
+                    if (!safePath.startsWith(path.resolve(__dirname))) {
+                        throw new Error("Access Denied: Path traversal detected.");
+                    }
+
+                    if (fs.existsSync(safePath)) {
+                        const fileContent = fs.readFileSync(safePath, 'utf8');
+                        
+                        // 1. Generate the signature map
+                        let skeletonData = generateFileSkeleton(fileContent);
+                        fileMap = skeletonData.mapString;
+
+                        if (targetNode) {
+                            // 2. Extract primary function
+                            let primaryCode = extractCodeBlock(fileContent, targetNode);
+                            
+                            if (primaryCode) {
+                                // 3. Auto-Trace Dependencies: Scan primary code for mentions of other functions
+                                let dependencies = [];
+                                skeletonData.names.forEach(funcName => {
+                                    let wordBoundary = new RegExp(`\\b${funcName}\\b`);
+                                    if (funcName !== targetNode && wordBoundary.test(primaryCode)) {
+                                        let depBlock = extractCodeBlock(fileContent, funcName);
+                                        if (depBlock) dependencies.push(depBlock);
+                                    }
+                                });
+
+                                // 4. Scrape related socket events
+                                let sockets = extractSocketListeners(fileContent, targetNode);
+
+                                // 5. Assemble the deep-traced payload
+                                codeSnippet = `/* === PRIMARY TARGET: ${targetNode} === */\n` + primaryCode;
+                                
+                                if (dependencies.length > 0) {
+                                    codeSnippet += `\n\n/* === AUTO-TRACED DEPENDENCIES === */\n` + dependencies.join('\n\n');
+                                }
+                                if (sockets.length > 0) {
+                                    codeSnippet += `\n\n/* === RELEVANT SOCKET LISTENERS/EMITTERS === */\n` + sockets;
+                                }
+                            } else {
+                                codeSnippet = `// Note: Target '${targetNode}' not found via bracket extraction. Falling back to search.`;
+                            }
+                        } else {
+                            // If no specific function was provided, grab the first 120 lines
+                            codeSnippet = fileContent.split('\n').slice(0, 120).join('\n');
+                        }
+                    } else {
+                        codeSnippet = `// File '${filename}' does not exist on the server.`;
+                    }
+                } catch (err) {
+                    codeSnippet = `// File read error: ${err.message}`;
+                }
+            }
+
+            const prompt = `You are a Principal Software Engineer acting on behalf of Suncat.
+        The player "${player.name}" has requested an autonomous code review, bug fix, or refactor.
+
+        [OBJECTIVE]: ${topic}
+
+        [FILE ARCHITECTURE MAP]:
+        ${fileMap}
+
+        [DEEP-TRACED CODE CONTEXT]:
+        ${codeSnippet}
+
+        TASK:
+        Write an actionable, copy-paste ready developer report formatted exactly into these three sections:
+
+        1. THE DIAGNOSIS:
+        Explain plainly what is broken or sub-optimal in the logic flow. No corporate filler.
+
+        2. THE RE-FORGED ARTIFACT:
+        Provide the complete, production-ready rewritten block of code. DO NOT omit code or use "// ... rest of code stays the same". Provide the entire updated function/block ready to drop in.
+
+        3. THE RIPPLE EFFECT:
+        Explicitly list what other functions, socket events, or game states will be affected by this change based on the dependencies and map provided.`;
+
+                try {
+                    const devModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
+                    const result = await devModel.generateContent(prompt);
+                    const reportText = result.response.text();
+
+                    // Spawn the Imp messenger to deliver the scroll
+                    let impID = 56; 
+                    let spawnX = player.x + (Math.random() > 0.5 ? 2.5 : -2.5);
+                    let spawnY = player.y + (Math.random() > 0.5 ? 2.5 : -2.5);
+
+                    io.emit("remote_spawn_npc", {
+                        mapID: player.mapID,
+                        index: Math.floor(Math.random() * 100000) + 1000,
+                        x: spawnX,
+                        y: spawnY,
+                        type: CARD_MANIFEST_DB[impID]?.sprite || impID,
+                        state: 'chasing',
+                        role: 'dialogue',
+                        color: '#ff8800', 
+                        deck: [],
+                        dialogue: [`My master Suncat sent me with your report! Check your downloads!`],
+                        isBoss: false,
+                        alignment: 'friendly_messenger',
+                        endActions: [['download_text_file', { 
+                            filename: `Suncat_Report_${targetNode || 'Debug'}_${Date.now()}.txt`, 
+                            content: reportText 
+                        }]]
+                    });
+
+                    console.log(`[Dev Agent] Report complete. Courier dispatched to ${player.name}.`);
+
+                } catch (e) {
+                    console.error("[Dev Agent] Generation failed:", e);
+                }
+            }
 ////////////////////////////////////////////
 ///////////////////////////////////////////
 //CONNECTION
