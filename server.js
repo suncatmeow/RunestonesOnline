@@ -6552,6 +6552,7 @@
             const wantsAction = ["teleport", "spawn", "boss", "enemy"].some(kw => chatText.includes(kw));
             const needsOracle = ["tarot", "fortune", "reading", "interpret", "meaning of"].some(kw => chatText.includes(kw));            
             const isDirectCommand = chatText.includes("[reply]") || chatText.includes("suncat")|| data.isConversing;
+            const wantsCode = ["code", "bug", "fix", "report", "renderer", "boilerplate", "refactor", "function", "debug"].some(kw => chatText.includes(kw));
             const asksPersonal = ["who are", "your past", "remember", "real life", "favorite", "you like", "about yourself", "memories", "where are you from", "your name"].some(kw => chatText.includes(kw));
             const asksHistory = ["remember when", "my past", "did i ever", "what did i do", "our adventure"].some(kw => chatText.includes(kw));
             const needsSlayer = ["slay", "smite", "kill", "destroy"].some(kw => chatText.includes(kw));
@@ -6562,7 +6563,10 @@
                 useBigBrain = true;
                 systemOverride += `\n[CRITICAL OVERRIDE]: The player is asking for a new map, adventure, or quest. DO NOT roleplay the terrain shifting. DO NOT tell the player to use a .hack command. You MUST execute the 'createCustomMap' tool right now to physically generate the world.`;
             }
-
+            if (wantsCode) {
+                useBigBrain = true;
+                systemOverride += `\n[DEVELOPER OVERRIDE]: The player is asking you to act as an autonomous coding agent. You MUST execute the 'generateDevReport' tool immediately to extract and read their project files. Acknowledge their request in chat like a technical mentor, then cast the tool. Do NOT try to solve the code in your chat response.`;
+            }
             if (wantsAction) {
                 useBigBrain = true;
                 
