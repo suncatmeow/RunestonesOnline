@@ -5979,8 +5979,11 @@
             }
         }
         startDialogue(dungeon) {
-            if (this.role === 'portal' || this.role === 'internal_portal') return;
 
+            if (this.role === 'portal' || this.role === 'internal_portal') return;
+            Dungeon.savedViewMode = window.gameViewMode  ;
+            Dungeon.savedCameraMode = Dungeon.cameraMode;
+                                
             // --- 1. COMBAT / SPECIAL CASE BYPASS ---
             // If it's a battle mob with no taunt dialogue, do NOT freeze the game state!
             if (this.role === 'battle' && (!this.customDialogue || this.customDialogue.length === 0)) {
@@ -11186,7 +11189,7 @@
                                     if ((dx * camDirX + dy * camDirY) / Math.sqrt(distSq) > 0.8) { 
                                         // 🧱 THE FIX: Add LOS check for 3rd person too!
                                         if (this.checkLineOfSight(npc.x, npc.y)) {
-                                            targetPOVDist = 0; 
+                                            ///targetPOVDist = 0; 
                                             blockingNPC = npc; 
                                             break; 
                                         }
@@ -11205,7 +11208,6 @@
                         while (maxSafeDist < exactTarget) {
                             let checkX = Math.floor(this.x - camDirX * (maxSafeDist + step + 0.2)); 
                             let checkY = Math.floor(this.y - camDirY * (maxSafeDist + step + 0.2));
-                            
                             if (checkY < 0 || checkY >= this.maze.length || checkX < 0 || checkX >= this.maze[0].length) {
                                 hitWall = true; 
                                 break;
@@ -11218,7 +11220,7 @@
                         }
                         
                         targetPOVDist = hitWall ? maxSafeDist : exactTarget;
-                        if (targetPOVDist < 0.35) targetPOVDist = 0; 
+                        if (targetPOVDist < 0.1) targetPOVDist = 0; 
                     }
 
                     // Check if the Look Joystick is currently being dragged
@@ -11263,7 +11265,7 @@
                         }
                     }
 
-                    if (this.focusTarget) {
+                    if (this.focusTarget&& targetPOVDist <= 0.01) {
                         // --- THE ANTI-NODDING SHADOW VARIABLES ---
                         if (this._cinePan === undefined) this._cinePan = this.lookPan || 0;
                         if (this._cinePitch === undefined) this._cinePitch = this.lookPitch || 0;
@@ -12356,116 +12358,148 @@
                     
             }
             renderTopDown(dt) {
+                // ==========================================
+                // --- FPS THROTTLE ---
+                // ==========================================
+                let targetFPS = 15; // Adjust this to match your 3D speed!
+                let frameDelay = 1000 / targetFPS;
+
+                if (this._last2DFrameTime === undefined) {
+                    this._last2DFrameTime = performance.now();
+                    this._flickerBuffer = document.createElement('canvas');
+                    this._flickerCtx = this._flickerBuffer.getContext('2d');
+                }
+
+                if (this._flickerBuffer.width !== ctx.canvas.width || this._flickerBuffer.height !== ctx.canvas.height) {
+                    this._flickerBuffer.width = ctx.canvas.width;
+                    this._flickerBuffer.height = ctx.canvas.height;
+                }
+
+                let now = performance.now();
+                let elapsed = now - this._last2DFrameTime;
+
+                if (elapsed < frameDelay) {
+                    ctx.drawImage(this._flickerBuffer, 0, 0);
+                    return; 
+                }
+                
+                this._last2DFrameTime = now - (elapsed % frameDelay);
+
+                // ---> NEW FIX: OVERWRITE DT <---
+                // Tell the physics engine exactly how much time we waited so player speed normalizes!
+                let npcdt = dt;
+                dt = elapsed / 1000; 
+
                 // --- INITIALIZATION SYNC ---
-                    // Force the hotbar to sync with the loaded save data on the very first frame
-                    if (!this.hotbarSynced) {
-                        if (typeof this.shuffleSpells === 'function') this.shuffleSpells();
-                        this.hotbarSynced = true;
-                    }
+                if (!this.hotbarSynced) {
+                    if (typeof this.shuffleSpells === 'function') this.shuffleSpells();
+                    this.hotbarSynced = true;
+                }
+                
+                // ... rest of the code ...
+
                 // ==========================================
                 // --- 1. CONTINUOUS HOLD-TO-MOVE LOGIC ---
                 // ==========================================
-                    if (this.inputCooldown === undefined) this.inputCooldown = 0;
-                    if (this.inputCooldown > 0) this.inputCooldown -= dt;
+                if (this.inputCooldown === undefined) this.inputCooldown = 0;
+                if (this.inputCooldown > 0) this.inputCooldown -= dt;
 
-                    // Allow auto-polling in BOTH explore and mapmaker!
-                    if (this.inputCooldown <= 0 && (startGame === 'explore' || startGame === 'mapmaker')) {
-                        // Prioritize movement, then turning
-                        if (typeof btnMove !== 'undefined' && btnMove.isPressed && btnMove.currentDir) btnMove.press();
-                        else if (typeof btnTurnL !== 'undefined' && btnTurnL.isPressed) btnTurnL.press();
-                        else if (typeof btnTurnR !== 'undefined' && btnTurnR.isPressed) btnTurnR.press();
-                        else if (typeof btnMove2 !== 'undefined' && btnMove2.isPressed && btnMove2.currentDir) btnMove2.press();
-                        else if (window.activeTouchZone && window.settingsControlsMode === 'touch') {
-                                processTouchMovement();
-                            }
-                        // KEYBOARD POLLING
-                        else if (window.activeMoveKey && typeof processKeyboardMovement === 'function') {
-                            processKeyboardMovement(window.activeMoveKey, window.activeCtrlKey);
-                        }
+                if (this.inputCooldown <= 0 && (startGame === 'explore' || startGame === 'mapmaker')) {
+                    if (typeof btnMove !== 'undefined' && btnMove.isPressed && btnMove.currentDir) btnMove.press();
+                    else if (typeof btnTurnL !== 'undefined' && btnTurnL.isPressed) btnTurnL.press();
+                    else if (typeof btnTurnR !== 'undefined' && btnTurnR.isPressed) btnTurnR.press();
+                    else if (typeof btnMove2 !== 'undefined' && btnMove2.isPressed && btnMove2.currentDir) btnMove2.press();
+                    else if (window.activeTouchZone && window.settingsControlsMode === 'touch') {
+                        processTouchMovement();
                     }
+                    else if (window.activeMoveKey && typeof processKeyboardMovement === 'function') {
+                        processKeyboardMovement(window.activeMoveKey, window.activeCtrlKey);
+                    }
+                }
 
                 // ==========================================
                 // --- 2. SMOOTH SLIDING PHYSICS ---
                 // ==========================================
-                    if (this.targetMapX === undefined) {
-                        this.targetMapX = this.x;
-                        this.targetMapY = this.y;
+                if (this.targetMapX === undefined) {
+                    this.targetMapX = this.x;
+                    this.targetMapY = this.y;
+                }
+
+                if (this.isSlidingToTile) {
+                    let dx = this.targetMapX - this.x;
+                    let dy = this.targetMapY - this.y;
+                    let dist = Math.sqrt(dx * dx + dy * dy);
+                    
+                    let activeCooldown = this.currentCooldown || 0.22;
+                    let speed = (1.0 / activeCooldown) * dt; 
+
+                    if (dist <= speed) {
+                        this.x = this.targetMapX;
+                        this.y = this.targetMapY;
+                        this.isSlidingToTile = false;
+                    } else {
+                        this.x += (dx / dist) * speed;
+                        this.y += (dy / dist) * speed;
                     }
+                }
 
-                    if (this.isSlidingToTile) {
-                        let dx = this.targetMapX - this.x;
-                        let dy = this.targetMapY - this.y;
-                        let dist = Math.sqrt(dx * dx + dy * dy);
-                        
-                        // --- THE FIX: DYNAMIC VISUAL SPEED ---
-                        // 1.0 (One Tile) divided by your current AGI cooldown.
-                        // If your cooldown is 0.22, speed is 4.5 tiles/sec.
-                        // If your cooldown is 0.04, speed is 25 tiles/sec!
-                        let activeCooldown = this.currentCooldown || 0.22;
-                        let speed = (1.0 / activeCooldown) * dt; 
+                // ==========================================
+                // --- 3. UPDATE LOGIC ---
+                // ==========================================
+                this.frame++;
+                this.updateAllyFormations(npcdt);
 
-                        if (dist <= speed) {
-                            this.x = this.targetMapX;
-                            this.y = this.targetMapY;
-                            this.isSlidingToTile = false;
-                        } else {
-                            this.x += (dx / dist) * speed;
-                            this.y += (dy / dist) * speed;
-                        }
-                    }
+                this.npcs.forEach(npc => {
+                    npc.update(this.maze, this.x, this.y, this, npcdt);
 
-                // 3. UPDATE LOGIC (Same as 3D mode)
-                    this.frame++;
-                    this.updateAllyFormations(dt);
-                    // Inside render(dt) loop:
-                    this.npcs.forEach(npc => {
-                        npc.update(this.maze, this.x, this.y, this, dt);
-
-                // --- PARTICLE EMITTER ---
+                    // --- PARTICLE EMITTER ---
                     if (!npc.isDead && npc.visible && npc.activeBuffs && npc.activeBuffs.length > 0) {
                         if (this.frame % 3 === 0) { 
                             npc.activeBuffs.forEach(buff => {
                                 if (typeof globalParticles !== 'undefined') {
-                                    for (let p = 0; p < 3; p++) {
-                                        spawnParticle(
-                                            this.x + (Math.random() - 0.5) * 0.8,
-                                            this.y + (Math.random() - 0.5) * 0.8,
-                                            '#00ffff', 
-                                            'sparkle'
-                                        );
-                                    }
+                                    let pType = 'sparkle'; 
+                                    if (buff.visual === 'shield') pType = 'bubble';
+                                    if (buff.visual === 'aura' || buff.visual === 'chains' || buff.type === 'debuff') pType = 'smoke';
+                                    let pColor = buff.auraColor || buff.glow || '#ffffff';
+                                    
+                                    spawnParticle(
+                                        npc.x + (Math.random() - 0.5) * 0.4, 
+                                        npc.y + (Math.random() - 0.5) * 0.4, 
+                                        pColor, 
+                                        pType
+                                    );
                                 }
                             });
                         }
                     }
-                    });
+                });
 
-                    // Update and Clean up the global array
-                    for (let i = 0; i < PARTICLE_POOL_SIZE; i++) {
-                        globalParticles[i].update(dt);
-                    }
-                    this.weather.resize(tL, tL); 
-                    this.weather.update(dt);
-                    this.projectiles.forEach(p => p.update(this, dt));
-                    this.projectiles = this.projectiles.filter(p => p.active);
-                    // 2. SETUP THE 2D GRID
-                    // Draw black background filling the whole 10x10 screen
-                    drawShape('rec', 0, 0, 1, 0, 0, 10, 10, 0, 0, 0, 0, '#000000', 1);
+                for (let i = 0; i < PARTICLE_POOL_SIZE; i++) {
+                    globalParticles[i].update(npcdt);
+                }
+                
+                let viewW = (typeof tL !== 'undefined' && tL > 0) ? tL : window.innerWidth;
+                let viewH = (typeof tH !== 'undefined' && tH > 0) ? tH : window.innerHeight;
+                let viewX = (typeof tX !== 'undefined') ? tX : 0; 
+                let viewY = (typeof tY !== 'undefined') ? tY : 0;
+                
+                this.weather.resize(viewW, viewH); 
+                this.weather.update(npcdt);
+                this.projectiles.forEach(p => p.update(this, dt));
+                this.projectiles = this.projectiles.filter(p => p.active);
 
-                    // --- THE FIX ---
-                    let range = 6; // Fetch 6 tiles in every direction (5 to reach the edge, +1 buffer for smooth scrolling)
-                    let totalTiles = 10; // Hardcode to 10 to force exactly 10 tiles across the screen
-                    let cellSize = 10 / totalTiles; // This makes cellSize exactly 1.0
-                    
-                    // The center of the 10x10 screen is exactly (5, 5)
-                    let centerScreenX = 5;
-                    let centerScreenY = 5;
+                // 2. SETUP THE 2D GRID
+                drawShape('rec', 0, 0, 1, 0, 0, 10, 10, 0, 0, 0, 0, '#000000', 1);
 
-                    // Calculate smooth scrolling offsets (so the camera moves fluidly between tiles)
-                    let fractionalX = this.x - Math.floor(this.x);
-                    let fractionalY = this.y - Math.floor(this.y);
-                    let bypassLOS = (typeof startGame !== 'undefined' && startGame === 'mapmaker');
-                // 3. DRAW TILES (TWO-PASS 2.5D SYSTEM)
+                let range = 6; 
+                let totalTiles = 10; 
+                let cellSize = 10 / totalTiles; 
+                let centerScreenX = 5;
+                let centerScreenY = 5;
+
+                let fractionalX = this.x - Math.floor(this.x);
+                let fractionalY = this.y - Math.floor(this.y);
+                let bypassLOS = (typeof startGame !== 'undefined' && startGame === 'mapmaker');
 
                 // --- PASS 1: DRAW FLOORS ONLY ---
                 for (let y = -range - 1; y <= range + 1; y++) {
@@ -12478,10 +12512,8 @@
                             const diffY = mapY - Math.floor(this.y);
                             const dist = Math.sqrt(diffX*diffX + diffY*diffY);
 
-                            // 1. Check current active vision (OR bypass it if in MapMaker)
                             let isCurrentlySeen = bypassLOS || ((this.dSense > 0 && dist <= this.dSense) && this.checkLineOfSight(mapX + 0.5, mapY + 0.5));
                             
-                            // 2. Mark as permanently explored (Don't save mapmaker god-vision to memory!)
                             if (isCurrentlySeen && !bypassLOS) {
                                 if (!this.explored[mapY]) this.explored[mapY] = [];
                                 this.explored[mapY][mapX] = 1; 
@@ -12489,21 +12521,17 @@
 
                             let isExplored = bypassLOS || (this.explored[mapY] && this.explored[mapY][mapX] === 1);
 
-                            // 3. Render ONLY if we have explored it (or if bypassing)
                             if (isExplored) {
                                 let tx = centerScreenX + (x * cellSize) - (fractionalX * cellSize) - (cellSize / 2);
                                 let ty = centerScreenY + (y * cellSize) - (fractionalY * cellSize) - (cellSize / 2);
                                 let tileID = this.maze[mapY][mapX];
 
                                 if (tileID <= 0 || !this.isWall(mapX, mapY)) {
-                                    // THE MEMORY FADE: Bright if active vision, dim if just a memory!
                                     ctx.globalAlpha = isCurrentlySeen ? 1.0 : 0.35; 
-                                    
                                     let fColor = (this.floorColors && this.floorColors[tileID]) ? this.floorColors[tileID] : this.floorColor;
                                     drawShape('rec', tx, ty, 1, 0, 0, cellSize + 0.05, cellSize + 0.05, 0,0,0,0, fColor, 1);
                                     if (typeof this.drawTileTexture === 'function') this.drawTileTexture(tileID, tx, ty, cellSize);
-                                    
-                                    ctx.globalAlpha = 1.0; // Reset
+                                    ctx.globalAlpha = 1.0; 
                                 }
                             }
                         }
@@ -12530,9 +12558,7 @@
                                 let tileID = this.maze[mapY][mapX];
 
                                 if (tileID > 0 ) {
-                                    // THE MEMORY FADE
                                     ctx.globalAlpha = isCurrentlySeen ? 1.0 : 0.35; 
-                                    
                                     let wColor = this.wallColors ? (this.wallColors[tileID] || '#8b4513') : '#8b4513';
                                     drawShape('rec', tx, ty, 1, 0, 0, cellSize + 0.05, cellSize + 0.05, 0,0,0,0, wColor, 1);
                                     if (typeof this.drawTileTexture === 'function') this.drawTileTexture(tileID, tx, ty, cellSize);
@@ -12543,403 +12569,313 @@
                                     if (!isWallBelow) {
                                         let dropHeight = cellSize * 0.35; 
                                         drawShape('rec', tx, ty, 1, 0, cellSize, cellSize + 0.05, dropHeight + 0.05, 0,0,0,0, wColor, 1);
-                                        
-                                        // Increase shadow darkness slightly if it's in the memory fog
                                         let shadowAlpha = isCurrentlySeen ? 0.5 : 0.8;
                                         drawShape('rec', tx, ty, 1, 0, cellSize, cellSize + 0.05, dropHeight + 0.05, 0,0,0,0, `rgba(0,0,0,${shadowAlpha})`, 1);
                                     }
-                                    ctx.globalAlpha = 1.0; // Reset
+                                    ctx.globalAlpha = 1.0; 
                                 }
                             }
                         }
                     }
                 }
-                // 4. DRAW NPCs & 3D MODELS
-                    this.npcs.forEach(npc => {
-                        if (!npc.visible || npc.isDead) return;
 
-                        // Use the smooth 'this.x' (which includes the fractional part) 
-                        // instead of Math.floor(this.x)
-                        const diffX = npc.x - this.x-.5; 
-                        const diffY = npc.y - this.y-.5;
-                        
-                        // We want the NPC's position relative to the camera's fractional center
-                        // If you use Math.floor(this.x), you lose the smooth movement data!
-                        let tx = centerScreenX + (diffX * cellSize) - (cellSize / 2);
-                        let ty = centerScreenY + (diffY * cellSize) - (cellSize / 2);
+                // ==========================================
+                // --- 4. DRAW NPCs & 3D MODELS ---
+                // ==========================================
+                this.npcs.forEach(npc => {
+                    if (!npc.visible || npc.isDead) return;
 
-                        // Calculate distance for visibility checks
-                        const dist = Math.sqrt(diffX*diffX + diffY*diffY);
+                    const diffX = npc.x - this.x - .5; 
+                    const diffY = npc.y - this.y - .5;
+                    let tx = centerScreenX + (diffX * cellSize) - (cellSize / 2);
+                    let ty = centerScreenY + (diffY * cellSize) - (cellSize / 2);
+                    const dist = Math.sqrt(diffX*diffX + diffY*diffY);
 
-                        if (Math.abs(diffX) <= range + 1 && Math.abs(diffY) <= range + 1) {
-                            let canSeeNPC = bypassLOS || ((this.dSense > 0 && dist <= this.dSense) && this.checkLineOfSight(npc.x, npc.y));
-                            if (canSeeNPC) {
-                                //MODEL CHECK ---
-                                if (npc.model) {
-                                    let centerX = tX + (tL / 10) * tx + ((tL / 10) * cellSize) / 2;
-                                    let centerY = tY + (tH / 10) * ty + ((tH / 10) * cellSize) / 2;
-                                    let rotSpeed = npc.rs !== undefined ? npc.rs : 1; 
-                                    npc.model.animate(centerX, centerY, cellSize * 0.8, rotSpeed, dt);
-                                } else {
-                                    // --- 2D SPRITE RENDERER ---
-                                    const oldTX = tX; const oldTY = tY; const oldTL = tL; const oldTH = tH;
-                                    
-                                    let pxX = oldTX + (oldTL / 10) * tx;
-                                    let pxY = oldTY + (oldTH / 10) * ty;
-                                    let pixelSpriteSize = (oldTL / 10) * cellSize; 
+                    if (Math.abs(diffX) <= range + 1 && Math.abs(diffY) <= range + 1) {
+                        let canSeeNPC = bypassLOS || ((this.dSense > 0 && dist <= this.dSense) && this.checkLineOfSight(npc.x, npc.y));
+                        if (canSeeNPC) {
+                            if (npc.model) {
+                                let centerX = viewX + (viewW / 10) * tx + ((viewW / 10) * cellSize) / 2;
+                                let centerY = viewY + (viewH / 10) * ty + ((viewH / 10) * cellSize) / 2;
+                                let rotSpeed = npc.rs !== undefined ? npc.rs : 1; 
+                                npc.model.draw(ctx, centerX, centerY, cellSize * 20, 4); // Standardize size
+                            } else {
+                                const oldTX = tX; const oldTY = tY; const oldTL = tL; const oldTH = tH;
+                                let pxX = oldTX + (oldTL / 10) * tx;
+                                let pxY = oldTY + (oldTH / 10) * ty;
+                                let pixelSpriteSize = (oldTL / 10) * cellSize; 
 
-                                    tX = pxX; 
-                                    tY = pxY; 
-                                    tL = pixelSpriteSize; 
-                                    tH = pixelSpriteSize;
+                                tX = pxX; tY = pxY; tL = pixelSpriteSize; tH = pixelSpriteSize;
 
                                 if (typeof drawPortrait === 'function') {
                                     if (npc.type == -27){
                                         let cardID = npc.deck ? npc.deck[0] : 0;
-                                        
-                                        ctx.imageSmoothingEnabled = true; // <--- TURN ON
+                                        ctx.imageSmoothingEnabled = true; 
                                         drawPortrait(-27, 0, 0, 1, cardID); 
-                                        ctx.imageSmoothingEnabled = false; // <--- TURN OFF
-                                        
+                                        ctx.imageSmoothingEnabled = false; 
                                     } 
                                     else if (npc.role === 'sign') {
-                                        // --- THE FIX: CUSTOM 2D WOODEN SIGN RENDERER ---
-                                        const oldTX = tX; const oldTY = tY; const oldTL = tL; const oldTH = tH;
-                                        let pxX = oldTX + (oldTL / 10) * tx;
-                                        let pxY = oldTY + (oldTH / 10) * ty;
-                                        let pixelSpriteSize = (oldTL / 10) * cellSize; 
-                                        
-                                        // 1. Draw the Wooden Post
                                         drawShape('rec', pxX + pixelSpriteSize * 0.45, pxY + pixelSpriteSize * 0.4, 1, 0, 0, pixelSpriteSize * 0.1, pixelSpriteSize * 0.5, 0,0,0,0, '#3e2312', 1);
-                                        
-                                        // 2. Draw the Wooden Board
                                         drawShape('rec', pxX + pixelSpriteSize * 0.1, pxY + pixelSpriteSize * 0.1, 1, 0, 0, pixelSpriteSize * 0.8, pixelSpriteSize * 0.4, 0,0,0,0, '#8b5a2b', 1);
-                                        
-                                        // 3. Draw a Gold Trim
                                         drawShape('rec', pxX + pixelSpriteSize * 0.1, pxY + pixelSpriteSize * 0.1, 1, 0, 0, pixelSpriteSize * 0.8, pixelSpriteSize * 0.4, 0,0,0,0, '#d4af37', 0);
                                         
-                                        // 4. Draw the Text (Or a generic "SIGN" label)
                                         tX = oldTX; tY = oldTY; tL = oldTL; tH = oldTH;
                                         drawText(tx + cellSize*0.05, ty + cellSize*0.15, cellSize*0.9, 0.25, "SIGN", '#ffffff', 1, 'center');
-                                        
                                     } else {
                                         let imageToDraw = (npc.type !== undefined) ? npc.type : 0;
-                                        
-                                        // --- DYNAMIC SCALING FOR LARGE MONSTERS ---
-                                        let drawX = 0;
-                                        let drawY = 0;
-                                        let drawScale = 1;
+                                        let drawX = 0; let drawY = 0; let drawScale = 1;
                                         let checkId = Math.floor(imageToDraw);
                                         
-                                        // Check if it's the Bear, Wolf, or Boar (IDs 188 to 196)
                                         if (checkId >= 188 && checkId <= 329) {
-                                            let zoomMult = 2.5; // <-- Set to 3.0 if you want them massive!
-                                            
-                                            // Pull the massive sprite up and left so it stays perfectly centered
+                                            let zoomMult = 2.5; 
                                             let offset = (zoomMult - 1) / 2;
-                                            drawX -= offset * 10;
-                                            drawY -= offset * 10;
+                                            drawX -= offset * 10; drawY -= offset * 10;
                                             drawScale *= zoomMult;
                                         }
 
-                                        ctx.imageSmoothingEnabled = true; // <--- TURN ON
+                                        ctx.imageSmoothingEnabled = true; 
                                         drawPortrait(imageToDraw, drawX, drawY, drawScale);
-                                        ctx.imageSmoothingEnabled = false; // <--- TURN OFF
+                                        ctx.imageSmoothingEnabled = false; 
                                         
-                                        // Draw Name Tag underneath them
                                         if (npc.name && npc.name !== "undefined") {
                                             tX = oldTX; tY = oldTY; tL = oldTL; tH = oldTH;
                                             drawText(tx+ cellSize/11, ty + cellSize, cellSize, 0.4, ''+npc.name, 'green', 1, 'center');
                                         }
                                     }
                                 }
-
-                                // Restore Globals
                                 tX = oldTX; tY = oldTY; tL = oldTL; tH = oldTH;
                             }
                         }
                     }
                 });
 
-                // 5. DRAW MULTIPLAYER (WITH SPRITES!)
-                    if (window.remotePlayers) {
-                        for (let id in window.remotePlayers) {
-                            let p = window.remotePlayers[id];
-                            if (p.mapID === this.mapID && p.x !== undefined && p.y !== undefined) {
-                                
-                                // ==========================================
-                                // A. RENDER THE REMOTE PLAYER
-                                // ==========================================
-                                const diffX = p.x - this.x - .5;
-                                const diffY = p.y - this.y - .5;
-                                const dist = Math.sqrt(diffX*diffX + diffY*diffY);
+                // ==========================================
+                // --- 5. DRAW MULTIPLAYER & SUMMONS ---
+                // ==========================================
+                if (window.remotePlayers) {
+                    for (let id in window.remotePlayers) {
+                        let p = window.remotePlayers[id];
+                        if (p.mapID === this.mapID && p.x !== undefined && p.y !== undefined) {
+                            const diffX = p.x - this.x - .5;
+                            const diffY = p.y - this.y - .5;
+                            const dist = Math.sqrt(diffX*diffX + diffY*diffY);
 
-                                if (Math.abs(diffX) <= range + 1 && Math.abs(diffY) <= range + 1) {
-                                    let canSee = (this.dSense > 0 && dist <= this.dSense) && this.checkLineOfSight(p.x, p.y);                            
+                            if (Math.abs(diffX) <= range + 1 && Math.abs(diffY) <= range + 1) {
+                                let canSee = (this.dSense > 0 && dist <= this.dSense) && this.checkLineOfSight(p.x, p.y);                            
+                                
+                                if (canSee) {
+                                    let tx = centerScreenX + (diffX * cellSize) - (cellSize / 2);
+                                    let ty = centerScreenY + (diffY * cellSize) - (cellSize / 2);
                                     
-                                    if (canSee) {
-                                        let tx = centerScreenX + (diffX * cellSize) - (cellSize / 2);
-                                        let ty = centerScreenY + (diffY * cellSize) - (cellSize / 2);
-                                        
-                                        // --- HIJACK GLOBALS ---
-                                        const oldTX = tX; const oldTY = tY; const oldTL = tL; const oldTH = tH;
-                                        let pxX = oldTX + (oldTL / 10) * tx;
-                                        let pxY = oldTY + (oldTH / 10) * ty;
-                                        let pixelSpriteSize = (oldTL / 10) * cellSize; 
-                                        
-                                        tX = pxX; 
-                                        tY = pxY; 
-                                        tL = pixelSpriteSize/10; 
-                                        tH = pixelSpriteSize/10;
+                                    const oldTX = tX; const oldTY = tY; const oldTL = tL; const oldTH = tH;
+                                    let pxX = oldTX + (oldTL / 10) * tx;
+                                    let pxY = oldTY + (oldTH / 10) * ty;
+                                    let pixelSpriteSize = (oldTL / 10) * cellSize; 
+                                    
+                                    tX = pxX; tY = pxY; tL = pixelSpriteSize/10; tH = pixelSpriteSize/10;
 
-                                        if (typeof drawPortrait === 'function') {
-                                            let imageToDraw = (p.type !== undefined) ? p.type : 0;
-                                            drawPortrait(imageToDraw, 0, 0, 1*10);
-                                            
-                                            // Draw Name Tag
-                                            tX = oldTX; tY = oldTY; tL = oldTL; tH = oldTH;
-                                            
-                                            // If PvP Aggro is active, turn their name red!
-                                            let isHostile = (this.hostilePlayers && this.hostilePlayers.has(id));
-                                            let nameColor = isHostile ? '#ff0000' : ((p.name && p.name.toLowerCase().includes('suncat')) ? '#ff6600' : '#00ffff');
-                                            
-                                            drawText(tx + (cellSize/2)-1, ty + cellSize, cellSize * 2, 0.4, ''+p.name, nameColor, 1, 'center');
-                                        }
-
-                                        // Restore Globals
+                                    if (typeof drawPortrait === 'function') {
+                                        let imageToDraw = (p.type !== undefined) ? p.type : 0;
+                                        drawPortrait(imageToDraw, 0, 0, 1*10);
+                                        
                                         tX = oldTX; tY = oldTY; tL = oldTL; tH = oldTH;
+                                        let isHostile = (this.hostilePlayers && this.hostilePlayers.has(id));
+                                        let nameColor = isHostile ? '#ff0000' : ((p.name && p.name.toLowerCase().includes('suncat')) ? '#ff6600' : '#00ffff');
+                                        drawText(tx + (cellSize/2)-1, ty + cellSize, cellSize * 2, 0.4, ''+p.name, nameColor, 1, 'center');
                                     }
-                                }
-
-                                // ==========================================
-                                // B. RENDER THEIR SUMMONS!
-                                // ==========================================
-                                if (p.summons && p.summons.length > 0) {
-                                    p.summons.forEach(summon => {
-                                        const sDiffX = summon.x - this.x - .5;
-                                        const sDiffY = summon.y - this.y - .5;
-                                        const sDist = Math.sqrt(sDiffX*sDiffX + sDiffY*sDiffY);
-
-                                        if (Math.abs(sDiffX) <= range + 1 && Math.abs(sDiffY) <= range + 1) {
-                                            let canSeeSummon = (this.dSense > 0 && sDist <= this.dSense) && this.checkLineOfSight(summon.x, summon.y);
-                                            
-                                            if (canSeeSummon) {
-                                                let tx = centerScreenX + (sDiffX * cellSize) - (cellSize / 2);
-                                                let ty = centerScreenY + (sDiffY * cellSize) - (cellSize / 2);
-                                                
-                                                // --- HIJACK GLOBALS ---
-                                                const oldTX = tX; const oldTY = tY; const oldTL = tL; const oldTH = tH;
-                                                let pxX = oldTX + (oldTL / 10) * tx;
-                                                let pxY = oldTY + (oldTH / 10) * ty;
-                                                let pixelSpriteSize = (oldTL / 10) * cellSize; 
-                                                
-                                                tX = pxX; 
-                                                tY = pxY; 
-                                                tL = pixelSpriteSize/10; 
-                                                tH = pixelSpriteSize/10;
-
-                                                if (typeof drawPortrait === 'function') {
-                                                    let imageToDraw = (summon.type !== undefined) ? summon.type : 0;
-                                                    drawPortrait(imageToDraw, 0, 0, 1*10);
-                                                    
-                                                    // Draw Name Tag for the Summon
-                                                    tX = oldTX; tY = oldTY; tL = oldTL; tH = oldTH;
-                                                    let isHostile = (this.hostilePlayers && this.hostilePlayers.has(id));
-                                                    let nameColor = isHostile ? '#ff0000' : '#00ff00'; // Red if fighting you, Green if peaceful
-                                                    drawText(tx + (cellSize/2)-1, ty + cellSize, cellSize * 2, 0.4, ''+p.name, nameColor, 1, 'center');
-                                                }
-
-                                                // Restore Globals
-                                                tX = oldTX; tY = oldTY; tL = oldTL; tH = oldTH;
-                                            }
-                                        }
-                                    });
+                                    tX = oldTX; tY = oldTY; tL = oldTL; tH = oldTH;
                                 }
                             }
-                        }
-                    }
-                // --- DRAW 2D FIREBALLS ---
-                    this.projectiles.forEach(p => {
-                        const diffX = p.x - this.x;
-                        const diffY = p.y - this.y;
-                        
-                        // If it's on screen
-                        if (Math.abs(diffX) <= range + 1 && Math.abs(diffY) <= range + 1) {
-                            let tx = centerScreenX + (diffX * cellSize) - (fractionalX * cellSize) - (cellSize / 2);
-                            let ty = centerScreenY + (diffY * cellSize) - (fractionalY * cellSize) - (cellSize / 2);
-                            
-                            // --- THE FIX: RENDER 3D DICE IN 2D MODE! ---
-                            if (p.model) {
-                                // Convert grid coordinates to actual screen pixels for the Dice draw function
-                                let centerX = tX + (tL / 10) * tx + ((tL / 10) * cellSize) / 2;
-                                let centerY = tY + (tH / 10) * ty + ((tH / 10) * cellSize) / 2;
-                                let pixelSpriteSize = (tL / 10) * cellSize;
-                                
-                                // Draw the 3D spinning model
-                                p.model.draw(ctx, centerX, centerY, pixelSpriteSize * 0.5, 4);
-                                return; // STOP here so we don't draw the 2D sprite underneath it!
-                            }
 
-                            // --- FALLBACK: DRAW 2D SPRITE (If no model exists) ---
-                            const oldTX = tX; const oldTY = tY; const oldTL = tL; const oldTH = tH;
-                            
-                            let pxX = oldTX + (oldTL / 10) * tx;
-                            let pxY = oldTY + (oldTH / 10) * ty;
-                            let pixelSpriteSize = (oldTL / 10) * cellSize; 
-                            
-                            tX = pxX; 
-                            tY = pxY; 
-                            tL = pixelSpriteSize; 
-                            tH = pixelSpriteSize; 
-                            
-                            if (typeof drawPortrait === 'function') {
-                                let projSprite = -37;
-                                if (p.spellId && typeof SPELL_REGISTRY !== 'undefined' && SPELL_REGISTRY[p.spellId]) {
-                                    projSprite = SPELL_REGISTRY[p.spellId].sprite2D || -37;
-                                }
-                                if (p.spellId === 9999){
-                                    let drawX2 = 0;
-                                    let drawY2 = 0;
-                                    let drawScale2 = 1;
-                                    let pSZ = 2.5
-                                    let offset2 = (pSZ - 1) / 2;
-                                    drawX2 -= offset2 * 10;
-                                    drawY2 -= offset2 * 10;
-                                    drawScale2 *= pSZ;
-                                
-                                    ctx.imageSmoothingEnabled = true; // <--- TURN ON
-                                    drawPortrait(316, drawX2, drawY2, drawScale2);
-                                    ctx.imageSmoothingEnabled = false; // <--- TURN OFF
+                            if (p.summons && p.summons.length > 0) {
+                                p.summons.forEach(summon => {
+                                    const sDiffX = summon.x - this.x - .5;
+                                    const sDiffY = summon.y - this.y - .5;
+                                    const sDist = Math.sqrt(sDiffX*sDiffX + sDiffY*sDiffY);
+
+                                    if (Math.abs(sDiffX) <= range + 1 && Math.abs(sDiffY) <= range + 1) {
+                                        let canSeeSummon = (this.dSense > 0 && sDist <= this.dSense) && this.checkLineOfSight(summon.x, summon.y);
                                         
-                                }else{
-                                    drawPortrait(projSprite, 0, 0, 1);
-                                }
+                                        if (canSeeSummon) {
+                                            let tx = centerScreenX + (sDiffX * cellSize) - (cellSize / 2);
+                                            let ty = centerScreenY + (sDiffY * cellSize) - (cellSize / 2);
+                                            
+                                            const oldTX = tX; const oldTY = tY; const oldTL = tL; const oldTH = tH;
+                                            let pxX = oldTX + (oldTL / 10) * tx;
+                                            let pxY = oldTY + (oldTH / 10) * ty;
+                                            let pixelSpriteSize = (oldTL / 10) * cellSize; 
+                                            
+                                            tX = pxX; tY = pxY; tL = pixelSpriteSize/10; tH = pixelSpriteSize/10;
+
+                                            if (typeof drawPortrait === 'function') {
+                                                let imageToDraw = (summon.type !== undefined) ? summon.type : 0;
+                                                drawPortrait(imageToDraw, 0, 0, 1*10);
+                                                
+                                                tX = oldTX; tY = oldTY; tL = oldTL; tH = oldTH;
+                                                let isHostile = (this.hostilePlayers && this.hostilePlayers.has(id));
+                                                let nameColor = isHostile ? '#ff0000' : '#00ff00'; 
+                                                drawText(tx + (cellSize/2)-1, ty + cellSize, cellSize * 2, 0.4, ''+p.name, nameColor, 1, 'center');
+                                            }
+                                            tX = oldTX; tY = oldTY; tL = oldTL; tH = oldTH;
+                                        }
+                                    }
+                                });
                             }
-                            
-                            // Restore Globals so the rest of the map draws correctly
-                            tX = oldTX; tY = oldTY; tL = oldTL; tH = oldTH;
                         }
-                    });
-                // 6. DRAW THE PLAYER (Always dead center!)
-                    
-                    // --- HIJACK GLOBALS ---
-                    const oldTX = tX; const oldTY = tY; const oldTL = tL; const oldTH = tH;
-                    
-                    // The player is always at (5, 5). We subtract half the cellSize so the portrait centers properly
-                    let playerTx = centerScreenX - (cellSize / 2);
-                    let playerTy = centerScreenY - (cellSize / 2);
-                    
-                    // Convert to actual screen pixels
-                    let playerPxX = oldTX + (oldTL / 10) * playerTx;
-                    let playerPxY = oldTY + (oldTH / 10) * playerTy;
-                    let pixelSpriteSize = (oldTL / 10) * cellSize; 
-                    
-                    // COPY THE EXACT MATH FROM YOUR NPC BLOCK
-                    tX = playerPxX; 
-                    tY = playerPxY; 
-                    tL = pixelSpriteSize; 
-                    tH = pixelSpriteSize; 
+                    }
+                }
 
-                    // ---> TICK THE ATTACK TIMER DOWN <---
-                    if (this.playerAttackTimer === undefined) this.playerAttackTimer = 0;
-                    if (this.playerAttackTimer > 0) this.playerAttackTimer -= (30 * dt);
+                // ==========================================
+                // --- DRAW 2D FIREBALLS ---
+                // ==========================================
+                this.projectiles.forEach(p => {
+                    const diffX = p.x - this.x;
+                    const diffY = p.y - this.y;
+                    
+                    if (Math.abs(diffX) <= range + 1 && Math.abs(diffY) <= range + 1) {
+                        let tx = centerScreenX + (diffX * cellSize) - (fractionalX * cellSize) - (cellSize / 2);
+                        let ty = centerScreenY + (diffY * cellSize) - (fractionalY * cellSize) - (cellSize / 2);
+                        
+                        if (p.model) {
+                            let centerX = viewX + (viewW / 10) * tx + ((viewW / 10) * cellSize) / 2;
+                            let centerY = viewY + (viewH / 10) * ty + ((viewH / 10) * cellSize) / 2;
+                            let pixelSpriteSize = (viewW / 10) * cellSize;
+                            p.model.draw(ctx, centerX, centerY, pixelSpriteSize * 0.5, 4);
+                            return; 
+                        }
 
-                    if (typeof drawPortrait === 'function' && startGame !== 'tactics') {
+                        const oldTX = tX; const oldTY = tY; const oldTL = tL; const oldTH = tH;
+                        let pxX = oldTX + (oldTL / 10) * tx;
+                        let pxY = oldTY + (oldTH / 10) * ty;
+                        let pixelSpriteSize = (oldTL / 10) * cellSize; 
                         
-                        let currentPSprite = playerSprite;
-                        let currentDir = 2; // Default South
+                        tX = pxX; tY = pxY; tL = pixelSpriteSize; tH = pixelSpriteSize; 
                         
-                        // ---> APPLY 3D STATE MACHINE LOGIC <---
-                        if (currentPSprite >= 100) {
-                            // Swap Mesh based on action
-                            if (this.playerAttackTimer > 0) {
-                                currentPSprite = 105; // Attack Mesh
-                            } else if (this.isSlidingToTile) {
-                                currentPSprite = 104; // Walk Mesh
+                        if (typeof drawPortrait === 'function') {
+                            let projSprite = -37;
+                            if (p.spellId && typeof SPELL_REGISTRY !== 'undefined' && SPELL_REGISTRY[p.spellId]) {
+                                projSprite = SPELL_REGISTRY[p.spellId].sprite2D || -37;
+                            }
+                            if (p.spellId === 9999){
+                                let drawX2 = 0; let drawY2 = 0; let drawScale2 = 1; let pSZ = 2.5;
+                                let offset2 = (pSZ - 1) / 2;
+                                drawX2 -= offset2 * 10; drawY2 -= offset2 * 10;
+                                drawScale2 *= pSZ;
+                            
+                                ctx.imageSmoothingEnabled = true; 
+                                drawPortrait(316, drawX2, drawY2, drawScale2);
+                                ctx.imageSmoothingEnabled = false; 
                             } else {
-                                currentPSprite = 106; // Idle Mesh
+                                drawPortrait(projSprite, 0, 0, 1);
                             }
-                            
-                            // Map the grid direction (0=N, 1=E, 2=S, 3=W) to 8-way cache indices
-                            const dirMap = [0, 2, 4, 6];
-                            currentDir = dirMap[this.dir];
                         }
-
-                        // Draw the portrait with the dynamically calculated ID and Direction!
-                        // (Notice we pass -1 at the end so it auto-animates)
-                        drawPortrait(currentPSprite, -5, -5, 1, 0, currentDir, -1); 
-                        
-                        // Draw your own name tag under your character
                         tX = oldTX; tY = oldTY; tL = oldTL; tH = oldTH;
-                        drawText(centerScreenX - cellSize-.5, centerScreenY + (cellSize / 2)-.5, cellSize * 2, 0.4, ''+playerName, '#ffcc00', 1, 'center');
+                    }
+                });
+
+                // ==========================================
+                // --- 6. DRAW THE PLAYER ---
+                // ==========================================
+                const oldTX = tX; const oldTY = tY; const oldTL = tL; const oldTH = tH;
+                let playerTx = centerScreenX - (cellSize / 2);
+                let playerTy = centerScreenY - (cellSize / 2);
+                
+                let playerPxX = oldTX + (oldTL / 10) * playerTx;
+                let playerPxY = oldTY + (oldTH / 10) * playerTy;
+                let pixelSpriteSize = (oldTL / 10) * cellSize; 
+                
+                tX = playerPxX; tY = playerPxY; tL = pixelSpriteSize; tH = pixelSpriteSize; 
+
+                if (this.playerAttackTimer === undefined) this.playerAttackTimer = 0;
+                if (this.playerAttackTimer > 0) this.playerAttackTimer -= (30 * dt);
+
+                if (typeof drawPortrait === 'function' && startGame !== 'tactics') {
+                    let currentPSprite = playerSprite;
+                    let currentDir = 2; 
+                    
+                    if (currentPSprite >= 100) {
+                        if (this.playerAttackTimer > 0) {
+                            currentPSprite = 105; 
+                        } else if (this.isSlidingToTile) {
+                            currentPSprite = 104; 
+                        } else {
+                            currentPSprite = 106; 
+                        }
+                        const dirMap = [0, 2, 4, 6];
+                        currentDir = dirMap[this.dir];
                     }
 
-                    // Restore Globals
+                    drawPortrait(currentPSprite, -5, -5, 1, 0, currentDir, -1); 
+                    
                     tX = oldTX; tY = oldTY; tL = oldTL; tH = oldTH;
+                    drawText(centerScreenX - cellSize-.5, centerScreenY + (cellSize / 2)-.5, cellSize * 2, 0.4, ''+playerName, '#ffcc00', 1, 'center');
+                }
+                tX = oldTX; tY = oldTY; tL = oldTL; tH = oldTH;
 
-                
-                // --- DRAW 2D PARTICLES ---
-                    globalParticles.forEach(p => {
-                        if (!p.active) return;
-                        const diffX = p.x - this.x;
-                        const diffY = p.y - this.y;
-
-                        // Only draw if on screen
-                        if (Math.abs(diffX) <= range + 1 && Math.abs(diffY) <= range + 1) {
-                            let tx = centerScreenX + (diffX * cellSize) - (fractionalX * cellSize) - (cellSize / 2);
-                            let ty = centerScreenY + (diffY * cellSize) - (fractionalY * cellSize) - (cellSize / 2);
-                            
-                            let pScreenX = tX + (tL / 10) * tx + ((tL / 10) * cellSize) / 2;
-                            
-                            // --- FIX 1: APPLY Z-AXIS DRIFT ---
-                            // We multiply p.z by the tile height to make the particles actually float UP!
-                            let zOffset = p.z * (tH / 10) * 1.5; 
-                            let pScreenY = tY + (tH / 10) * ty + ((tH / 10) * cellSize) / 2 - zOffset;
-                            
-                            let baseSize = (tL / 10) * cellSize * 0.15; 
-
-                            // --- FIX 2: SOFTER OPACITY ---
-                            // Multiply p.life by 0.5 so the particles never exceed 50% opacity
-                            ctx.globalAlpha = Math.max(0, p.life * 0.5);
-
-                            // DRAW THE DIFFERENT SHAPES
-                            if (p.type === 'bubble') {
-                                ctx.strokeStyle = p.color;
-                                ctx.beginPath();
-                                ctx.arc(pScreenX, pScreenY, baseSize, 0, Math.PI * 2);
-                                ctx.stroke();
-                            } else if (p.type === 'smoke') {
-                                ctx.fillStyle = p.color;
-                                ctx.beginPath();
-                                ctx.arc(pScreenX, pScreenY, baseSize * 1.5, 0, Math.PI * 2);
-                                ctx.fill();
-                            } else {
-                                ctx.fillStyle = p.color;
-                                ctx.fillRect(pScreenX - baseSize/2, pScreenY - baseSize/2, baseSize, baseSize);
+                // --- PLAYER PARTICLE BUFFS (2D) ---
+                if (this.activeBuffs && this.activeBuffs.length > 0) {
+                    if (this.frame % 3 === 0) { 
+                        this.activeBuffs.forEach(buff => {
+                            if (typeof globalParticles !== 'undefined') {
+                                let pType = 'sparkle'; 
+                                if (buff.visual === 'shield') pType = 'bubble';
+                                if (buff.visual === 'aura' || buff.visual === 'chains' || buff.type === 'debuff') pType = 'smoke';
+                                let pColor = buff.auraColor || buff.glow || '#ffffff';
+                                
+                                spawnParticle(this.x + (Math.random() - 0.5) * 0.4, this.y + (Math.random() - 0.5) * 0.4, pColor, pType);
                             }
+                        });
+                    }
+                }
+
+                // ==========================================
+                // --- DRAW 2D PARTICLES ---
+                // ==========================================
+                globalParticles.forEach(p => {
+                    if (!p.active) return;
+                    const diffX = p.x - this.x;
+                    const diffY = p.y - this.y;
+
+                    if (Math.abs(diffX) <= range + 1 && Math.abs(diffY) <= range + 1) {
+                        let tx = centerScreenX + (diffX * cellSize) - (fractionalX * cellSize) - (cellSize / 2);
+                        let ty = centerScreenY + (diffY * cellSize) - (fractionalY * cellSize) - (cellSize / 2);
+                        
+                        let pScreenX = viewX + (viewW / 10) * tx + ((viewW / 10) * cellSize) / 2;
+                        let zOffset = p.z * (viewH / 10) * 1.5; 
+                        let pScreenY = viewY + (viewH / 10) * ty + ((viewH / 10) * cellSize) / 2 - zOffset;
+                        
+                        let baseSize = (viewW / 10) * cellSize * 0.15; 
+                        ctx.globalAlpha = Math.max(0, p.life * 0.5);
+
+                        if (p.type === 'bubble') {
+                            ctx.strokeStyle = p.color;
+                            ctx.beginPath();
+                            ctx.arc(pScreenX, pScreenY, baseSize, 0, Math.PI * 2);
+                            ctx.stroke();
+                        } else if (p.type === 'smoke') {
+                            ctx.fillStyle = p.color;
+                            ctx.beginPath();
+                            ctx.arc(pScreenX, pScreenY, baseSize * 1.5, 0, Math.PI * 2);
+                            ctx.fill();
+                        } else {
+                            ctx.fillStyle = p.color;
+                            ctx.fillRect(pScreenX - baseSize/2, pScreenY - baseSize/2, baseSize, baseSize);
                         }
-                    });
-                    ctx.globalAlpha = 1.0; // Reset alpha!
-                    // 7. OVERLAYS (Weather & Networking)
-                    // Pass tX and tY so weather draws perfectly inside the square
-                    this.weather.draw(ctx, tX, tY);
-                // ---------------------------------------------------------
-                // --- 8. MASKING OUT-OF-BOUNDS RENDERING (THE FRAME) ---
-                // ---------------------------------------------------------
-                    // Top border (Covers everything above y = 0)
-                    drawShape('rec', 0, 0, 1, -10, -10, 30, 10, 0,0,0,0, '#000000', 1);
-                    
-                    // Bottom border (Covers everything below y = 10)
-                    drawShape('rec', 0, 0, 1, -10, 10, 30, 10, 0,0,0,0, '#000000', 1);
-                    
-                    // Left border (Covers everything to the left of x = 0)
-                    drawShape('rec', 0, 0, 1, -10, 0, 10, 10, 0,0,0,0, '#000000', 1);
-                    
-                    // Right border (Covers everything to the right of x = 10)
-                    drawShape('rec', 0, 0, 1, 10, 0, 10, 10, 0,0,0,0, '#000000', 1);
-                // ---------------------------------------------------------
+                    }
+                });
+                ctx.globalAlpha = 1.0; 
+
+                // ==========================================
+                // --- 7. OVERLAYS (Weather, Masking, UI) ---
+                // ==========================================
+                this.weather.draw(ctx, viewX, viewY);
+
+                drawShape('rec', 0, 0, 1, -10, -10, 30, 10, 0,0,0,0, '#000000', 1);
+                drawShape('rec', 0, 0, 1, -10, 10, 30, 10, 0,0,0,0, '#000000', 1);
+                drawShape('rec', 0, 0, 1, -10, 0, 10, 10, 0,0,0,0, '#000000', 1);
+                drawShape('rec', 0, 0, 1, 10, 0, 10, 10, 0,0,0,0, '#000000', 1);
+
                 if (this.frame % 3 === 0) { 
-                    // Gather all living allied summons to send over the network
                     let mySummons = this.npcs
                         .filter(n => n.alignment === 'ally' && !n.isDead)
                         .map(n => ({ id: n.index, x: n.x, y: n.y, type: n.type, dir: n.dir }));
@@ -12948,186 +12884,155 @@
                         socket.emit("move", {
                             x: this.x, y: this.y, dir: this.dir, mapID: this.mapID, 
                             status: this.status, type: playerSprite, name: playerName,
-                            summons: mySummons // <--- INCLUDE SUMMONS IN THE PAYLOAD
+                            summons: mySummons
                         });
                     }
                 }
-                const viewW = (typeof tL !== 'undefined' && tL > 0) ? tL : window.innerWidth;
-                const viewH = (typeof tH !== 'undefined' && tH > 0) ? tH : window.innerHeight;
-                const viewX = (typeof tX !== 'undefined') ? tX : 0; 
-                const viewY = (typeof tY !== 'undefined') ? tY : 0;
-                // ==========================================
-                // --- UNIFIED 2D UI RENDERING ---
-                // ==========================================
-                 // 0. Draw D-Pad Controls if enabled
-                 let mmOffsetY = 0;
-                 if(startGame === 'mapmaker'){mmOffsetY= 3}
-                    if ( startGame !== 'dialogue') {
-                        btnMove.show(5, 5-mmOffsetY, 5, 1, 1, '', 'd_pad', 1, 0);
-                        btnTurnL.show(5.2, 5.3-mmOffsetY, 1.5, 1, 1, '', 'turn_l', 1, 0);
-                        btnTurnR.show(8.3, 5.3-mmOffsetY, 1.5, 1, 1, '', 'turn_r', 1, 0);
-                    }
-                    drawText(0.25, 0, 10, 0.5, `${Math.floor(this.x)},${Math.floor(this.y)}`, 'yellow', 1, 'center');
-           
-                    if (startGame !== 'mapmaker') {
-                        // 1. Draw the new Mini-Atlas instead of the local minimap
-                        this.drawAtlasMinimap(ctx, viewX, viewY, viewW, viewH);
 
-                        // 2. Draw the Ward UI (Copied directly from 3D mode)
-                        let fullWards = Math.floor(this.currentWardTime / this.timePerWard);
-                        let partialWardPercent = (this.currentWardTime % this.timePerWard) / this.timePerWard;
-
-                        if (this.currentWardTime >= this.maxWards * this.timePerWard) {
-                            fullWards = this.maxWards;
-                            partialWardPercent = 0;
-                        }
-
-                        for (let i = 0; i < this.maxWards; i++) {
-                            let shieldX = 7.605 + (i * 0.725);
-                            let shieldY = 2.65;
-                            let shieldScale = 0.1;
-
-                            if (i < fullWards) {
-                                ctx.globalAlpha = 1.0;
-                                drawPortrait(107, shieldX, shieldY, shieldScale);
-                            } else if (i === fullWards && this.currentWardTime > 0) {
-                                ctx.globalAlpha = 0.3;
-                                drawPortrait(107, shieldX, shieldY, shieldScale);
-                                ctx.globalAlpha = 1.0;
-                                drawShape('rec', shieldX+.25, shieldY + 0.65, shieldScale*.5, 0, 0, 10, 1.5, 0,0,0,0, '#222222', 1);
-                                drawShape('rec', shieldX+.25, shieldY + 0.65, shieldScale*.5, 0, 0, 10 * partialWardPercent, 1.5, 0,0,0,0, 'cyan', 1);
-                            } else {
-                                ctx.globalAlpha = 0.3;
-                                drawPortrait(107, shieldX, shieldY, shieldScale);
-                                if (i === 0 && this.wardShatterCooldown > 0) {
-                                    ctx.globalAlpha = 1.0;
-                                    let shatterPercent = 1.0 - (this.wardShatterCooldown / 9.0);
-                                    drawShape('rec', shieldX+.25, shieldY + 0.65, shieldScale*.5, 0, 0, 10, 1.5, 0,0,0,0, '#222222', 1);
-                                    drawShape('rec', shieldX+.25, shieldY + 0.65, shieldScale*.5, 0, 0, 10 * shatterPercent, 1.5, 0,0,0,0, '#ff3300', 1);
-                                }
-                            }
-                        }
-                        ctx.globalAlpha = 1.0; // Reset
-                        
-                        // 3. Draw the Right-Side Menu Buttons
-                        btnDeck.show(7.875, 2.275, .5, 1, 1, 'Deck', 'jrpg_btn', 1, 0);
-                        btnJournal.show(8.575, 2.275, .5, 1, 1, 'Journal', 'jrpg_btn', 1, 0);
-                        btnPOV.show(9.3, 2.275, .5, 1, 1, 'POV', 'jrpg_btn', 1, 0);
-                        btnATK.show(0, 9, 1, 1, 1, 'ATK', 'jrpg_btn', 1, 0);
-        
-                    
-                        
-                        // 5. Ward Screen Flash Effect
-                        if (this.playerFlashTimer > 0) {
-                            this.playerFlashTimer--;
-                            ctx.save();
-                            ctx.fillStyle = `rgba(0, 255, 255, ${this.playerFlashTimer / 30})`;
-                            ctx.fillRect(viewX, viewY, viewW, viewH);
-                            ctx.restore();
-                        }
-                    }
-                
-                // ==========================================
-                // --- DYNAMIC OVERWORLD COMBAT MUSIC ---
-                // ==========================================
-                    if (startGame === 'explore' && this.mapID !== 888) {
-                        
-                        // 1. THROTTLE: Only run the array scan twice a second (0.5s)
-                        if (this.musicScanTimer === undefined) this.musicScanTimer = 0;
-                        this.musicScanTimer += dt;
-                        
-                        if (this.musicScanTimer > 0.5) {
-                            this.musicScanTimer = 0; // Reset the scan timer
-                            this.isThreatNearby = false; // Reset the flag
-
-                            for (let i = 0; i < this.npcs.length; i++) {
-                                let n = this.npcs[i];
-                                if (!n.isDead && n.visible && typeof n.alignment === 'string' && n.alignment.startsWith('foe')) {
-                                    let dSq = (n.x - this.x)*(n.x - this.x) + (n.y - this.y)*(n.y - this.y);
-                                    
-                                    if (dSq < 63) {
-                                        // 1. Are they actively trying to kill you right now?
-                                        let isAggro = (n.state === 'chasing' );
-                                        
-                                        // 2. If they are just wandering, can they actually SEE you? (No walls in the way)
-                                        let hasLOS = false;
-                                        if (isAggro && n.alignment === 'foe') {
-                                            // Uses the engine's built-in raycaster to check for walls between you and the NPC
-                                            hasLOS = this.checkLineOfSight(n.x, n.y);
-                                        }
-
-                                        // Trigger ONLY if they are aggro OR they have direct line of sight!
-                                        if (isAggro && hasLOS) {
-                                            this.isThreatNearby = true;
-                                            break; // Stop scanning immediately!
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        let outdoorMaps = [-2,0,2,4,5,10,14,999]
-                        //mapsong to nature music timer
-                            if (outdoorMaps.includes(this.mapID)&&this.mapID != 9){
-                                let songTimer = Date.now();
-                                if (songTimer - lastSongTime2 > 90000){
-                                    let ransong = Math.random();
-                                    if (ransong <= 0.36) {MusicEngine.stop();MusicEngine.play(48)}
-                                    else if (ransong> 0.91) {MusicEngine.stop();MusicEngine.play(49)}
-
-                                    lastSongTime2 = Date.now();
-                                }
-                            }
-                        // 2. TRIGGER LOGIC: Handled continuously
-                            if (this.isThreatNearby && !this.inCombat) {
-                                this.inCombat = true;
-                                this.combatCooldownTimer = 0;
-                                
-                                // Grab the map's music data (either an array pool or a single number)
-                                let songData = (this.mapCombatSong && this.mapCombatSong[this.mapID] !== undefined) ? this.mapCombatSong[this.mapID] : [45];
-                                
-                                let cSong;
-                                // NEW: Check if the map has a music pool
-                                if (Array.isArray(songData)) {
-                                    // Pick a random song from the pool for this specific encounter!
-                                    cSong = songData[Math.floor(Math.random() * songData.length)];
-                                } else {
-                                    // Fallback for maps that still only have a single number assigned
-                                    cSong = songData;
-                                }
-                                
-                                // Play selected battle song
-                                if (typeof MusicEngine !== 'undefined') {
-                                    MusicEngine.stop();
-                                    MusicEngine.play(cSong);
-                                }
-                            } 
-                            else if (!this.isThreatNearby && this.inCombat) {
-                                this.combatCooldownTimer += dt;
-                                
-                                // Wait 1.0 seconds of safety before changing the music back
-                                if (this.combatCooldownTimer > 1.0) {
-                                    this.inCombat = false;
-                                    this.combatCooldownTimer = 0;
-                                    if (typeof MusicEngine !== 'undefined') {
-                                        MusicEngine.stop();
-                                        let defaultSong = this.mapSong[this.mapID];
-                                        if (defaultSong !== undefined) MusicEngine.play(defaultSong); 
-                                    }
-                                }
-                            } 
-                            else if (this.isThreatNearby && this.inCombat) {
-                                this.combatCooldownTimer = 0; // Reset safe buffer if threat returns
-                            }
-                    }
-                //spell slot shuffle timer
-                    let currentTime = Date.now();
-                    if (currentTime - this.lastSpellShuffleTime > this.spellShuffleCooldown) {
-                        this.shuffleSpells();
-                        this.lastSpellShuffleTime = currentTime;
+                let mmOffsetY = 0;
+                if(startGame === 'mapmaker'){mmOffsetY= 3}
+                if (startGame !== 'dialogue') {
+                    btnMove.show(5, 5-mmOffsetY, 5, 1, 1, '', 'd_pad', 1, 0);
+                    btnTurnL.show(5.2, 5.3-mmOffsetY, 1.5, 1, 1, '', 'turn_l', 1, 0);
+                    btnTurnR.show(8.3, 5.3-mmOffsetY, 1.5, 1, 1, '', 'turn_r', 1, 0);
                 }
+                drawText(0.25, 0, 10, 0.5, `${Math.floor(this.x)},${Math.floor(this.y)}`, 'yellow', 1, 'center');
+
+                if (startGame !== 'mapmaker') {
+                    this.drawAtlasMinimap(ctx, viewX, viewY, viewW, viewH);
+
+                    let fullWards = Math.floor(this.currentWardTime / this.timePerWard);
+                    let partialWardPercent = (this.currentWardTime % this.timePerWard) / this.timePerWard;
+
+                    if (this.currentWardTime >= this.maxWards * this.timePerWard) {
+                        fullWards = this.maxWards;
+                        partialWardPercent = 0;
+                    }
+
+                    for (let i = 0; i < this.maxWards; i++) {
+                        let shieldX = 7.605 + (i * 0.725);
+                        let shieldY = 2.65;
+                        let shieldScale = 0.1;
+
+                        if (i < fullWards) {
+                            ctx.globalAlpha = 1.0;
+                            drawPortrait(107, shieldX, shieldY, shieldScale);
+                        } else if (i === fullWards && this.currentWardTime > 0) {
+                            ctx.globalAlpha = 0.3;
+                            drawPortrait(107, shieldX, shieldY, shieldScale);
+                            ctx.globalAlpha = 1.0;
+                            drawShape('rec', shieldX+.25, shieldY + 0.65, shieldScale*.5, 0, 0, 10, 1.5, 0,0,0,0, '#222222', 1);
+                            drawShape('rec', shieldX+.25, shieldY + 0.65, shieldScale*.5, 0, 0, 10 * partialWardPercent, 1.5, 0,0,0,0, 'cyan', 1);
+                        } else {
+                            ctx.globalAlpha = 0.3;
+                            drawPortrait(107, shieldX, shieldY, shieldScale);
+                            if (i === 0 && this.wardShatterCooldown > 0) {
+                                ctx.globalAlpha = 1.0;
+                                let shatterPercent = 1.0 - (this.wardShatterCooldown / 9.0);
+                                drawShape('rec', shieldX+.25, shieldY + 0.65, shieldScale*.5, 0, 0, 10, 1.5, 0,0,0,0, '#222222', 1);
+                                drawShape('rec', shieldX+.25, shieldY + 0.65, shieldScale*.5, 0, 0, 10 * shatterPercent, 1.5, 0,0,0,0, '#ff3300', 1);
+                            }
+                        }
+                    }
+                    ctx.globalAlpha = 1.0;
+
+                    btnDeck.show(7.875, 2.275, .5, 1, 1, 'Deck', 'jrpg_btn', 1, 0);
+                    btnJournal.show(8.575, 2.275, .5, 1, 1, 'Journal', 'jrpg_btn', 1, 0);
+                    btnPOV.show(9.3, 2.275, .5, 1, 1, 'POV', 'jrpg_btn', 1, 0);
+                    btnATK.show(0, 9, 1, 1, 1, 'ATK', 'jrpg_btn', 1, 0);
+
+                    if (this.playerFlashTimer > 0) {
+                        this.playerFlashTimer--;
+                        ctx.save();
+                        ctx.fillStyle = `rgba(0, 255, 255, ${this.playerFlashTimer / 30})`;
+                        ctx.fillRect(viewX, viewY, viewW, viewH);
+                        ctx.restore();
+                    }
+                }
+
+                // ==========================================
+                // --- 8. DYNAMIC COMBAT MUSIC ---
+                // ==========================================
+                if (startGame === 'explore' && this.mapID !== 888) {
+                    if (this.musicScanTimer === undefined) this.musicScanTimer = 0;
+                    this.musicScanTimer += dt;
                     
-                
-                    
+                    if (this.musicScanTimer > 0.5) {
+                        this.musicScanTimer = 0; 
+                        this.isThreatNearby = false; 
+
+                        for (let i = 0; i < this.npcs.length; i++) {
+                            let n = this.npcs[i];
+                            if (!n.isDead && n.visible && typeof n.alignment === 'string' && n.alignment.startsWith('foe')) {
+                                let dSq = (n.x - this.x)*(n.x - this.x) + (n.y - this.y)*(n.y - this.y);
+                                
+                                if (dSq < 63) {
+                                    let isAggro = (n.state === 'chasing' );
+                                    let hasLOS = false;
+                                    if (isAggro && n.alignment === 'foe') {
+                                        hasLOS = this.checkLineOfSight(n.x, n.y);
+                                    }
+                                    if (isAggro && hasLOS) {
+                                        this.isThreatNearby = true;
+                                        break; 
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    let outdoorMaps = [-2,0,2,4,5,10,14,999];
+                    if (outdoorMaps.includes(this.mapID) && this.mapID != 9){
+                        let songTimer = Date.now();
+                        if (songTimer - lastSongTime2 > 90000){
+                            let ransong = Math.random();
+                            if (ransong <= 0.36) {MusicEngine.stop();MusicEngine.play(48)}
+                            else if (ransong> 0.91) {MusicEngine.stop();MusicEngine.play(49)}
+                            lastSongTime2 = Date.now();
+                        }
+                    }
+
+                    if (this.isThreatNearby && !this.inCombat) {
+                        this.inCombat = true;
+                        this.combatCooldownTimer = 0;
+                        
+                        let songData = (this.mapCombatSong && this.mapCombatSong[this.mapID] !== undefined) ? this.mapCombatSong[this.mapID] : [45];
+                        let cSong;
+                        if (Array.isArray(songData)) {
+                            cSong = songData[Math.floor(Math.random() * songData.length)];
+                        } else {
+                            cSong = songData;
+                        }
+                        
+                        if (typeof MusicEngine !== 'undefined') {
+                            MusicEngine.stop();
+                            MusicEngine.play(cSong);
+                        }
+                    } 
+                    else if (!this.isThreatNearby && this.inCombat) {
+                        this.combatCooldownTimer += dt;
+                        if (this.combatCooldownTimer > 1.0) {
+                            this.inCombat = false;
+                            this.combatCooldownTimer = 0;
+                            if (typeof MusicEngine !== 'undefined') {
+                                MusicEngine.stop();
+                                let defaultSong = this.mapSong[this.mapID];
+                                if (defaultSong !== undefined) MusicEngine.play(defaultSong); 
+                            }
+                        }
+                    } 
+                    else if (this.isThreatNearby && this.inCombat) {
+                        this.combatCooldownTimer = 0; 
+                    }
+                }
+
+                let currentTime = Date.now();
+                if (currentTime - this.lastSpellShuffleTime > this.spellShuffleCooldown) {
+                    this.shuffleSpells();
+                    this.lastSpellShuffleTime = currentTime;
+                }
+                this._flickerCtx.clearRect(0, 0, this._flickerBuffer.width, this._flickerBuffer.height);
+                this._flickerCtx.drawImage(ctx.canvas, 0, 0);
             }
             drawTileTexture(tileID, tx, ty, size) {
                 let s = size; // Shortcut for the cell size
@@ -14745,15 +14650,8 @@
                                         // 1. Player is completely immune to wall occlusion
                                         if (sprite.isPlayer) continue; 
                                         
-                                        if (sprite.alignment === 'ally') {
-                                            // 2. Wall is immediately in front of the ally (Your original logic)
-                                            if (hitDist > targetDepth - 0.5) continue; 
-                                            
-                                            // 3. NEW: The camera lens itself is clipped into a wall!
-                                            // If the wall is touching the camera, let we still want to see our allies.
-                                            if (hitDist < 0.8 && !this.isFirstPerson) continue; 
-                                        }
-                                        }
+                                        
+                                    }
                                     occlusionResult.isBlocked = true;
                                     if (hitTopY < occlusionResult.minClipY) occlusionResult.minClipY = hitTopY;
                                 
@@ -14934,10 +14832,8 @@
                                     }
 
                             // --- 2. ACCURATE CAMERA DIRECTION MATH ---
-                                if (sprite.isPlayer) {
-                                    currentDir = 0; // Always see the player's back
-                                } 
-                                else if (sprite.dir !== undefined && (sprite.socketId || sprite.isRemoteSummon || sprite.dirX === undefined)) {
+                                
+                                if (sprite.dir !== undefined && (sprite.socketId || sprite.isRemoteSummon || sprite.dirX === undefined)) {
                                     // ---> Remote Players and Summons use 4-way 'dir' integers (0=N, 1=E, 2=S, 3=W) <---
                                     let relativeDir = (sprite.dir - this.dir + 4) % 4;
                                     
@@ -17618,6 +17514,9 @@
                         }
                         // B. END DIALOGUE & FIRE ACTION QUEUE (Card Drops delegated to the Queue!)
                         else {
+                            if (Dungeon.savedViewMode) window.gameViewMode = Dungeon.savedViewMode;
+                                if (Dungeon.savedCameraMode) Dungeon.cameraMode = Dungeon.savedCameraMode;
+                                
                             let killSpeaker = false;
                             let finalActions = this.currentSpeaker.endActions ? [...this.currentSpeaker.endActions] : [];
 
@@ -17710,7 +17609,9 @@
                 // ---> NEW: Reset the camera angle so they look straight ahead again <---
                 //this.lookPan = 0;
                 //this.lookPitch = 0;
-
+                if (Dungeon.savedViewMode) window.gameViewMode = Dungeon.savedViewMode;
+                if (Dungeon.savedCameraMode) Dungeon.cameraMode = Dungeon.savedCameraMode;
+                                
                 let targetToKill = null;
                 if (killSpeaker && this.currentSpeaker) {
                     targetToKill = this.currentSpeaker;
@@ -34762,11 +34663,32 @@
 
                                     if (!isNaN(targetID)) {
                                         Dungeon.constructing = false;
+                                        
+                                        // --- THE FIX: GRAB THE SPAWN COORDS ---
+                                        // If the map doesn't have a default spawn, fallback to 5.5 safely
+                                        let spawn = Dungeon.defaultSpawns[targetID] || { x: 5.5, y: 5.5, dir: 0 };
+                                        
+                                        // --- SNAP PLAYER & KILL ALL MOMENTUM ---
+                                        Dungeon.x = spawn.x;
+                                        Dungeon.y = spawn.y;
+                                        Dungeon.dir = spawn.dir;
+                                        
+                                        Dungeon.targetMapX = spawn.x;
+                                        Dungeon.targetMapY = spawn.y;
+                                        Dungeon.isSlidingToTile = false;
+                                        Dungeon.isAggroDashing = false;
+                                        window.activeMoveKey = null; // Clear any stuck keyboard inputs
+                                        
                                         Dungeon.loadMap(targetID); // Teleport!
                                         
                                         MusicEngine.stop();
                                         MusicEngine.play3DSFX('warp');
-                                        MusicEngine.play(Dungeon.mapSong[Dungeon.mapID]);
+                                        
+                                        // Safe check to prevent audio crashes if a map has no assigned song
+                                        if (Dungeon.mapSong[Dungeon.mapID] !== undefined) {
+                                            MusicEngine.play(Dungeon.mapSong[Dungeon.mapID]);
+                                        }
+                                        
                                         chatLog.push(`[SYSTEM]: Teleporting to Map ${targetID}...`);
                                         Dungeon.requestSave();
                                         if (chatLog.length > 100) chatLog.shift();
