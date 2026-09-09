@@ -5924,7 +5924,7 @@
                 [PREVIOUS STORY CONTEXT]: ${previousStory}
                 
                 [RECENT RAW ACTIONS]:
-                ${rawText || "No recent actions recorded."}
+                ${rawMemories|| "No recent actions recorded."}
                 
                 [ATMOSPHERE & MOOD]: ${cognitiveFilter}
 
