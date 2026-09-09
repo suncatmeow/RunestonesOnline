@@ -5974,7 +5974,7 @@
 
             // 4. DISTRIBUTE THE NUTRIENTS TO ALL ORGANS!
             if (digestedData.updatedStory) {
-                player.storySoFar = digestedData.updatedStory;
+              
                 
                 try {
                     const vector = await createMemoryVector(digestedData.updatedStory);
@@ -6388,6 +6388,14 @@
             } finally {
                 player.isConsolidating = false;
             }
+        }else {
+            // ---> THE FIX: If there's nothing to condense, but they DO have an old story, send it to the UI! <---
+            if (player.storySoFar) {
+                io.to(socketId).emit("journal_condensed", {
+                    target: 'player',
+                    newCoreText: player.storySoFar
+                });
+            }
         }
 
         // ==========================================
@@ -6434,6 +6442,14 @@
                 });
             } catch (err) {
                 console.error(`[Session Condenser] Suncat condensation failed:`, err);
+            }
+        }else {
+            // ---> THE FIX: Send Suncat's existing story to the UI on login! <---
+            if (suncatStorySoFar) {
+                io.to(socketId).emit("journal_condensed", {
+                    target: 'suncat',
+                    newCoreText: suncatStorySoFar
+                });
             }
         }
         
@@ -7501,6 +7517,25 @@ io.on("connection", (socket) => {
             delete playerAITokens[oldSocketId];
 
             io.emit("updatePlayers", players);
+            socket.on("disconnect", async () => {
+            console.log(`Player disconnected: ${socket.id}`);
+            
+            const me = players[socket.id];
+            const oldSocketId = socket.id;
+
+            // --- INSTANT REMOVAL (Fixes the visual ghost bug) ---
+            if (me && me.battleOpponent) {
+                const opponentId = me.battleOpponent;
+                io.to(opponentId).emit("battle_opponent_disconnected", { id: oldSocketId });
+                if (players[opponentId]) players[opponentId].battleOpponent = null;
+            }
+
+            // Instantly delete from server RAM so they disappear for others
+            delete players[oldSocketId];
+            delete playerFavorMemory[oldSocketId];
+            delete playerAITokens[oldSocketId];
+
+            io.emit("updatePlayers", players);
             io.emit("player_disconnected", { id: oldSocketId }); // Tell clients to erase the sprite
 
             if (me && me.name !== "Unknown") {
@@ -7545,12 +7580,6 @@ io.on("connection", (socket) => {
                 const isMapEmpty = !Object.values(players).some(p => p.mapID === 999 && p.id !== SUNCAT_ID);
                 if (isMapEmpty) activeCustomMap = null;
             }, 500);
-        });
-        socket.on('toggle_narration', (isEnabled) => {
-            if (players[socket.id]) {
-                players[socket.id].narrationEnabled = isEnabled;
-                console.log(`[Settings] ${players[socket.id].name} set AI Narration to: ${isEnabled}`);
-            }
         });
     //MOVEMENT & NAVIGATION
         socket.on("move", (data) => {
