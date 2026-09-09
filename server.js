@@ -5965,7 +5965,7 @@
             
             if (result.response.usageMetadata) updateBudget(result.response.usageMetadata, socketId);
             
-                        let rawText = result.response.text().trim();
+            let rawText = result.response.text().trim();
             
             // Bulletproof JSON Extractor
             const jsonMatch = rawText.match(/\{[\s\S]*\}/);
@@ -5975,19 +5975,16 @@
 
             // 4. DISTRIBUTE THE NUTRIENTS TO ALL ORGANS!
             if (digestedData.updatedStory) {
-              
-                
                 try {
                     const vector = await createMemoryVector(digestedData.updatedStory);
-                    if (vector) {
-                        if (!player.searchableMemories) player.searchableMemories = [];
-                        player.searchableMemories.push({
-                            timestamp: new Date().toLocaleTimeString('en-US'),
-                            text: digestedData.updatedStory,
-                            vector: vector,
-                            isCore: false // explicitly flag as raw material!
-                        });
-                    }
+                    if (!player.searchableMemories) player.searchableMemories = [];
+                    // Force the push even if the vector is null!
+                    player.searchableMemories.push({
+                        timestamp: new Date().toLocaleTimeString('en-US'),
+                        text: digestedData.updatedStory,
+                        vector: vector || [], 
+                        isCore: false 
+                    });
                 } catch (err) {
                     console.error("[Memory] Async embed failed:", err);
                 }
@@ -6389,14 +6386,6 @@
             } finally {
                 player.isConsolidating = false;
             }
-        }else {
-            // ---> THE FIX: If there's nothing to condense, but they DO have an old story, send it to the UI! <---
-            if (player.storySoFar) {
-                io.to(socketId).emit("journal_condensed", {
-                    target: 'player',
-                    newCoreText: player.storySoFar
-                });
-            }
         }
 
         // ==========================================
@@ -6443,14 +6432,6 @@
                 });
             } catch (err) {
                 console.error(`[Session Condenser] Suncat condensation failed:`, err);
-            }
-        }else {
-            // ---> THE FIX: Send Suncat's existing story to the UI on login! <---
-            if (suncatStorySoFar) {
-                io.to(socketId).emit("journal_condensed", {
-                    target: 'suncat',
-                    newCoreText: suncatStorySoFar
-                });
             }
         }
         
@@ -7500,7 +7481,7 @@ io.on("connection", (socket) => {
             }
             });
         
-        socket.on("disconnect", async () => {
+                socket.on("disconnect", async () => {
             console.log(`Player disconnected: ${socket.id}`);
             
             const me = players[socket.id];
@@ -8064,7 +8045,115 @@ io.on("connection", (socket) => {
                 socket.emit('chat_clear_screen');
                 return;
             }
+            // ==========================================
+            // NEW COMMAND: .hack//rumor
+            // ==========================================
+            if (content === ".hack//rumor") {
+                // Grab the active rumors, or provide a default if the array is empty
+                let currentRumors = globalRumors.length > 0 
+                    ? globalRumors 
+                    : ["*The winds are quiet...*", "No rumors in the realm today."];
+                
+                let spawnX = player.x + (Math.random() > 0.5 ? 2.5 : -2.5);
+                let spawnY = player.y + (Math.random() > 0.5 ? 2.5 : -2.5);
 
+                // Spawn the Imp and feed the rumors directly into its dialogue array!
+                io.to(socket.id).emit("remote_spawn_npc", {
+                    mapID: player.mapID,
+                    index: Math.floor(Math.random() * 100000) + 1000,
+                    x: spawnX, y: spawnY,
+                    type: 56, // The Imp Sprite
+                    state: 'stationary', role: 'dialogue', color: '#ff8800', deck: [],
+                    dialogue: ["Greetings! Have you heard the latest whispers?", ...currentRumors, "Heh heh... Keep your ear to the ground!"],
+                    isBoss: false, alignment: 'friendly_messenger',
+                    endActions: [['disappear', null]]
+                });
+                return;
+            }
+
+            // ==========================================
+            // NEW COMMAND: .hack//me
+            // ==========================================
+            if (content === ".hack//me") {
+                socket.emit('chat_message', { sender: "[SYSTEM]", text: "Initiating Deep Cognitive Scrape. Suncat is evaluating your soul...", color: "#FFD700" });
+                
+                // 1. Force a final digest of any pending raw actions before we read the history
+                await processCognitiveLoad(socket.id, true);
+                
+                // 2. Gather EVERYTHING into one massive context block
+                let allMemories = player.searchableMemories || [];
+                let rawText = allMemories.map(m => `[${m.timestamp}]: ${m.text}`).join('\n');
+                
+                const profilePrompt = `[ROOT DIRECTIVE]: You are Suncat. You are performing a 'Deep Soul Evaluation' on the player ${player.name}.
+                
+                [THEIR ENTIRE HISTORY SO FAR]:
+                ${player.storySoFar || "A new soul."}
+                ${rawText}
+                
+                TASK:
+                1. Write a massive, comprehensive, multi-paragraph epic chapter summarizing their ENTIRE existence and journey so far. Make it highly readable, spread out with line breaks, and format it beautifully as a gritty LitRPG saga. 
+                2. Evaluate their soul based on this history. Formulate a brand new, highly accurate 6-word (MAX) description of them for 'suncatPerception'.
+                
+                OUTPUT JSON FORMAT:
+                { 
+                  "megaChapter": "The formatted text here...", 
+                  "newPerception": "The 6-word description here..." 
+                }`;
+
+                try {
+                    const evalModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
+                    const result = await evalModel.generateContent({
+                        contents: [{ role: "user", parts: [{ text: profilePrompt }] }],
+                        generationConfig: { responseMimeType: "application/json" }
+                    });
+                    
+                    let responseText = result.response.text().trim();
+                    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+                    if (!jsonMatch) throw new Error("No JSON object found.");
+                    
+                    let parsed = JSON.parse(jsonMatch[0]);
+                    
+                    // 3. Update the Player's Flavor Text (Perception)
+                    if (parsed.newPerception) {
+                        player.suncatPerception = parsed.newPerception;
+                        
+                        // Force the UI Player Card to update instantly
+                        socket.emit("stats_sync_reply", {
+                            favor: playerFavorMemory[socket.id] || 0,
+                            mana: player.sessionCost || 0,
+                            tiles: player.exploredTiles ? player.exploredTiles.size : 0,
+                            perception: player.suncatPerception
+                        });
+                    }
+                    
+                    // 4. Overwrite Story & Wipe Granular Fragments
+                    if (parsed.megaChapter) {
+                        const newVector = await createMemoryVector(parsed.megaChapter);
+                        player.storySoFar = parsed.megaChapter;
+                        
+                        // Nuke all old fragments, keep ONLY the new core chapter!
+                        player.searchableMemories = [{
+                            timestamp: new Date().toLocaleTimeString('en-US'),
+                            text: parsed.megaChapter,
+                            vector: newVector || [],
+                            isCore: true
+                        }];
+                        
+                        // 5. Send to UI to wipe the local storage and render the new chapter
+                        socket.emit("journal_condensed", {
+                            target: 'player',
+                            newCoreText: parsed.megaChapter
+                        });
+                        
+                        socket.emit('chat_message', { sender: "[SYSTEM]", text: "Evaluation complete. Check your Grimoire and Player Card.", color: "#00ff00" });
+                    }
+                    saveSuncatMemory();
+                } catch (e) {
+                    console.error("[Deep Scrape] Failed:", e);
+                    socket.emit('chat_message', { sender: "[SYSTEM]", text: "Evaluation failed. The mind is too clouded.", color: "#ff0000" });
+                }
+                return;
+            }
             // ==========================================
             // THE SEMANTIC ATTENTION ROUTER
             // ==========================================
