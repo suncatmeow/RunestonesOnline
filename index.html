@@ -10156,6 +10156,9 @@
                         
                             
                     }
+                    if (this.mapID === 9){
+                        playerSprite = 243;
+                    }else{playerSprite = 106}
                 }
             
             findPath(startX, startY, targetX, targetY) {
@@ -14602,27 +14605,24 @@
 
                 const checkOcclusion = (screenCol, targetDepth, dynamicBias = 0, sprite = null) => {
                         occlusionResult.isBlocked = false;
-                        occlusionResult.minClipY = viewH;
+                        // THE FIX: Ensure the clip includes viewY so it matches the drawing math
+                        occlusionResult.minClipY = viewY + viewH;
 
                     if (screenCol >= 0 && screenCol < viewW) {
                             let hitCount = this.zBufferCounts[screenCol];
                             for (let j = 0; j < hitCount; j++) {
                                 let index = (screenCol * this.maxHitsPerRay * 3) + (j * 3);
                                 let hitDist = this.zBuffer[index];
-                                let hitWallID = this.zBuffer[index + 1];
-                                let hitTopY = this.zBuffer[index + 2];
+                                let hitTopY = this.zBuffer[index + 2] + viewY; // Sync coordinate space!
 
                                 if (hitDist >= (targetDepth - dynamicBias)) break; 
 
                                     if (sprite && sprite.type != -27) {
-                                        // 1. Player is completely immune to wall occlusion
+                                        // Player is immune to occlusion
                                         if (sprite.isPlayer) continue; 
-                                        
-                                        
                                     }
                                     occlusionResult.isBlocked = true;
                                     if (hitTopY < occlusionResult.minClipY) occlusionResult.minClipY = hitTopY;
-                                
                             }
                         }
                         return occlusionResult;
@@ -14752,9 +14752,18 @@
                                         
                                         // Player State Exception: 104 = Walk, 105 = Attack, 106 = Idle
                                         if (imageIndex >= 100) { 
-                                            if (isAttacking) imageIndex = 105;
-                                            else if (isMoving) imageIndex = 104;
-                                            else imageIndex = 106;
+                                            if(this.mapID !== 9){
+                                                if (isAttacking) imageIndex = 105;
+                                                else if (isMoving) imageIndex = 104;
+                                                else imageIndex = 106;
+                                            }
+                                            else{
+                                                if (isAttacking) {
+                                                imageIndex += 2;
+                                                } else if (isMoving) {
+                                                    imageIndex += 1;
+                                                }
+                                            }
                                         }
                                     } 
                                 // NPC & SUMMON LOGIC
@@ -14974,31 +14983,45 @@
                                 let srcW = Math.max(1, Math.floor(s_width * textureRatio));
                                 
                                 if (srcW > 0) {
-                                    if (!s_blocked) {
-                                        ctx.drawImage(srcImg, srcX, 0, srcW, cacheSize, viewX + s_destX, drawStartY, s_width, spriteSize);
-                                    } else {
-                                        let visibleHeightRatio = (s_clipY - drawStartY) / spriteSize;
-                                        let srcHeight = cacheSize * visibleHeightRatio;
-                                        ctx.drawImage(srcImg, srcX, 0, srcW, srcHeight, viewX + s_destX, drawStartY, s_width, s_clipY - drawStartY);
+                                    // 1. Calculate actual vertical visible bounds on screen
+                                    let drawY1 = Math.max(viewY, drawStartY);
+                                    let drawY2 = Math.min(viewY + viewH, s_blocked ? s_clipY : (drawStartY + spriteSize));
+                                    let drawH = drawY2 - drawY1;
+
+                                    if (drawH > 0) {
+                                        // 2. Map those screen Y bounds back to the source image pixels safely
+                                        let yRatio1 = Math.max(0, Math.min(1, (drawY1 - drawStartY) / spriteSize));
+                                        let yRatio2 = Math.max(0, Math.min(1, (drawY2 - drawStartY) / spriteSize));
+                                        
+                                        let srcY = Math.floor(yRatio1 * cacheSize);
+                                        let srcH = Math.floor((yRatio2 - yRatio1) * cacheSize);
+
+                                        // THE FIX: Only pass the tiny visible slice to the GPU!
+                                        if (srcH > 0) {
+                                            ctx.drawImage(
+                                                srcImg, 
+                                                srcX, srcY, srcW, srcH, 
+                                                viewX + s_destX, drawY1, s_width, drawH
+                                            );
+                                        }
                                     }
                                 }
                             }
                         };
 
-                        // THE FIX 2: Clamp the loop directly to the screen boundaries!
-                        // Instead of looping 15,000 times for a close sprite, we only loop for the 400 pixels that actually fit on screen.
+                        // Screen bounding to prevent massive loops on huge sprites!
                         let startX = Math.max(0, Math.floor(spriteSize / 2 - spriteScreenX));
                         let endX = Math.min(spriteSize, Math.floor(viewW + spriteSize / 2 - spriteScreenX));
 
                         for (let x = startX; x < endX; x++) {
                             const localCol = Math.floor(-spriteSize / 2 + spriteScreenX) + x;
                             
-                            // Because of our clamp above, we no longer need the "if (localCol >= 0 && localCol < viewW)" check here!
                             let distFromCenter = Math.abs(x - (spriteSize / 2)) / (spriteSize / 2);
                             let dynamicBias = isCenterVisible ? 0.08 * (1.0 - distFromCenter) : 0.02;                            
                             
                             checkOcclusion(localCol, transformY, dynamicBias, sprite); 
 
+                            // Because occlusionResult.minClipY now includes viewY, this comparison is perfectly safe!
                             if (occlusionResult.isBlocked && drawStartY >= occlusionResult.minClipY) occlusionResult.minClipY = drawStartY; 
 
                             if (streakActive && s_blocked === occlusionResult.isBlocked && s_clipY === occlusionResult.minClipY) {
@@ -15020,10 +15043,6 @@
                         ctx.filter = 'none';
                         ctx.globalAlpha = 1.0;
                         ctx.imageSmoothingEnabled = false;
-
-                        // We completely deleted the drawText code down here because 
-                        // the text is already baked into our cached offscreen canvas!
-
                         
                         } 
 
@@ -34939,7 +34958,7 @@
                                     }
                                     
                                 }
-                                if (msg.toLowerCase().startsWith('.hack//sm')) {
+                                else if (msg.toLowerCase().startsWith('.hack//sm')) {
                                     exportCurrentMap(); 
                                     chatLog.push(`[SYSTEM]: Exporting Map ${Dungeon.mapID} to file...`);
                                     if (chatLog.length > 100) chatLog.shift();
@@ -35002,77 +35021,85 @@
                                     console.log(`Tactics! Player + ${allyCount} Allies vs ${foeCount} Foes.`);
                                 }
                                 // === COMMAND CHECK: GUILD PROGRESSION DEBUGGER ===
-                            else if (msg.toLowerCase().startsWith('.hack//guild')) {
-                                let parts = msg.toLowerCase().trim().split(/\s+/);
-                                let rankArg = parts[1] || 'reset';
-                                let progressArg = parts[2] !== undefined ? parseInt(parts[2]) : null;
+                                else if (msg.toLowerCase().startsWith('.hack//guild')) {
+                                    let parts = msg.toLowerCase().trim().split(/\s+/);
+                                    let rankArg = parts[1] || 'reset';
+                                    let progressArg = parts[2] !== undefined ? parseInt(parts[2]) : null;
 
-                                if (!Dungeon.memory) Dungeon.memory = {};
+                                    if (!Dungeon.memory) Dungeon.memory = {};
 
-                                if (rankArg === 'reset' || rankArg === '') {
-                                    // Complete Wipe Back to Zero
-                                    Dungeon.memory['guild_rank'] = 'F';
-                                    Dungeon.memory['guild_rep'] = 0;
-                                    Dungeon.memory['c_rank_progress'] = 0;
-                                    Dungeon.memory['a_rank_progress'] = 0;
-                                    Dungeon.memory['s_class_rank'] = 0;
-                                    Dungeon.memory['guild_quest'] = { state: 0 };
-                                    Dungeon.memory['elder_traitor_active'] = false;
-                                    Dungeon.memory['elder_traitor_defeated'] = false;
-                                    
-                                    chatLog.push(`[SYSTEM]: Guild progress completely wiped. F-Rank, 0 Rep.`);
-                                } else {
-                                    let targetRank = rankArg.toUpperCase();
-                                    if (['F', 'E', 'D', 'C', 'B', 'A', 'S'].includes(targetRank)) {
-                                        Dungeon.memory['guild_rank'] = targetRank;
-                                        Dungeon.memory['guild_quest'] = { state: 0 }; // Clear active quest slots to prevent soft-locks
-
-                                        // Set smart defaults for reputation and progress based on rank, or use custom arguments
-                                        switch (targetRank) {
-                                            case 'F':
-                                                Dungeon.memory['guild_rep'] = progressArg !== null ? progressArg : 0;
-                                                Dungeon.memory['c_rank_progress'] = 0;
-                                                Dungeon.memory['a_rank_progress'] = 0;
-                                                break;
-                                            case 'E':
-                                                Dungeon.memory['guild_rep'] = progressArg !== null ? progressArg : 30;
-                                                break;
-                                            case 'D':
-                                                Dungeon.memory['guild_rep'] = progressArg !== null ? progressArg : 30;
-                                                break;
-                                            case 'C':
-                                                Dungeon.memory['guild_rep'] = progressArg !== null ? progressArg : 30;
-                                                // If progressArg is specified (e.g. .hack//guild c 4), set it. Otherwise default to 0.
-                                                Dungeon.memory['c_rank_progress'] = progressArg !== null ? progressArg : 0;
-                                                break;
-                                            case 'B':
-                                                Dungeon.memory['guild_rep'] = progressArg !== null ? progressArg : 30;
-                                                Dungeon.memory['c_rank_progress'] = 5; // C-Rank campaigns finished
-                                                break;
-                                            case 'A':
-                                                Dungeon.memory['guild_rep'] = progressArg !== null ? progressArg : 100;
-                                                Dungeon.memory['c_rank_progress'] = 5;
-                                                // 2 means ready for the Mastermind finale! (Pass 0, 1, or 2 via argument)
-                                                Dungeon.memory['a_rank_progress'] = progressArg !== null ? progressArg : 2; 
-                                                break;
-                                            case 'S':
-                                                Dungeon.memory['guild_rep'] = progressArg !== null ? progressArg : 500;
-                                                Dungeon.memory['c_rank_progress'] = 5;
-                                                Dungeon.memory['a_rank_progress'] = 3;
-                                                // 0=Copper, 1=Silver, 2=Gold, 3=Mithril
-                                                Dungeon.memory['s_class_rank'] = progressArg !== null ? progressArg : 0; 
-                                                break;
-                                        }
-                                        chatLog.push(`[SYSTEM]: Set Guild to Rank ${targetRank} | Rep: ${Dungeon.memory['guild_rep']} | Progress: C(${Dungeon.memory['c_rank_progress']}) A(${Dungeon.memory['a_rank_progress']})`);
+                                    if (rankArg === 'reset' || rankArg === '') {
+                                        // Complete Wipe Back to Zero
+                                        Dungeon.memory['guild_rank'] = 'F';
+                                        Dungeon.memory['guild_rep'] = 0;
+                                        Dungeon.memory['c_rank_progress'] = 0;
+                                        Dungeon.memory['a_rank_progress'] = 0;
+                                        Dungeon.memory['s_class_rank'] = 0;
+                                        Dungeon.memory['guild_quest'] = { state: 0 };
+                                        Dungeon.memory['elder_traitor_active'] = false;
+                                        Dungeon.memory['elder_traitor_defeated'] = false;
+                                        
+                                        chatLog.push(`[SYSTEM]: Guild progress completely wiped. F-Rank, 0 Rep.`);
                                     } else {
-                                        chatLog.push(`[SYSTEM]: Invalid rank. Use: .hack//guild [f/e/d/c/b/a/s] [progress_number]`);
-                                    }
-                                }
+                                        let targetRank = rankArg.toUpperCase();
+                                        if (['F', 'E', 'D', 'C', 'B', 'A', 'S'].includes(targetRank)) {
+                                            Dungeon.memory['guild_rank'] = targetRank;
+                                            Dungeon.memory['guild_quest'] = { state: 0 }; // Clear active quest slots to prevent soft-locks
 
-                                if (chatLog.length > 100) chatLog.shift();
-                                Dungeon.requestSave();
-                            }
-                                
+                                            // Set smart defaults for reputation and progress based on rank, or use custom arguments
+                                            switch (targetRank) {
+                                                case 'F':
+                                                    Dungeon.memory['guild_rep'] = progressArg !== null ? progressArg : 0;
+                                                    Dungeon.memory['c_rank_progress'] = 0;
+                                                    Dungeon.memory['a_rank_progress'] = 0;
+                                                    break;
+                                                case 'E':
+                                                    Dungeon.memory['guild_rep'] = progressArg !== null ? progressArg : 30;
+                                                    break;
+                                                case 'D':
+                                                    Dungeon.memory['guild_rep'] = progressArg !== null ? progressArg : 30;
+                                                    break;
+                                                case 'C':
+                                                    Dungeon.memory['guild_rep'] = progressArg !== null ? progressArg : 30;
+                                                    // If progressArg is specified (e.g. .hack//guild c 4), set it. Otherwise default to 0.
+                                                    Dungeon.memory['c_rank_progress'] = progressArg !== null ? progressArg : 0;
+                                                    break;
+                                                case 'B':
+                                                    Dungeon.memory['guild_rep'] = progressArg !== null ? progressArg : 30;
+                                                    Dungeon.memory['c_rank_progress'] = 5; // C-Rank campaigns finished
+                                                    break;
+                                                case 'A':
+                                                    Dungeon.memory['guild_rep'] = progressArg !== null ? progressArg : 100;
+                                                    Dungeon.memory['c_rank_progress'] = 5;
+                                                    // 2 means ready for the Mastermind finale! (Pass 0, 1, or 2 via argument)
+                                                    Dungeon.memory['a_rank_progress'] = progressArg !== null ? progressArg : 2; 
+                                                    break;
+                                                case 'S':
+                                                    Dungeon.memory['guild_rep'] = progressArg !== null ? progressArg : 500;
+                                                    Dungeon.memory['c_rank_progress'] = 5;
+                                                    Dungeon.memory['a_rank_progress'] = 3;
+                                                    // 0=Copper, 1=Silver, 2=Gold, 3=Mithril
+                                                    Dungeon.memory['s_class_rank'] = progressArg !== null ? progressArg : 0; 
+                                                    break;
+                                            }
+                                            chatLog.push(`[SYSTEM]: Set Guild to Rank ${targetRank} | Rep: ${Dungeon.memory['guild_rep']} | Progress: C(${Dungeon.memory['c_rank_progress']}) A(${Dungeon.memory['a_rank_progress']})`);
+                                        } else {
+                                            chatLog.push(`[SYSTEM]: Invalid rank. Use: .hack//guild [f/e/d/c/b/a/s] [progress_number]`);
+                                        }
+                                    }
+
+                                    if (chatLog.length > 100) chatLog.shift();
+                                    Dungeon.requestSave();
+                                }
+                                else {
+                                    // If it's a server command like .hack//record, .hack//records, .hack//dao, etc., 
+                                    // send it directly to the backend socket!
+                                    if (typeof socket !== 'undefined') {
+                                        socket.emit('chat_message', msg);
+                                    }
+                                    chatLog.push(`[SYSTEM]: Transmitting command to the ether...`);
+                                    if (chatLog.length > 100) chatLog.shift();
+                                }   
                                 chatInput.value = "";
                                 chatDraft = "";
                                 isChatActive = false;
