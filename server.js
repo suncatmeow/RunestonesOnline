@@ -5924,7 +5924,7 @@
                 [PREVIOUS STORY CONTEXT]: ${previousStory}
                 
                 [RECENT RAW ACTIONS]:
-                ${rawMemories}|| "No recent actions recorded."}
+                ${rawMemories|| "No recent actions recorded."}
                 
                 [ATMOSPHERE & MOOD]: ${cognitiveFilter}
 
@@ -7499,7 +7499,7 @@ io.on("connection", (socket) => {
             }
             });
         
-                socket.on("disconnect", async () => {
+        socket.on("disconnect", async () => {
             console.log(`Player disconnected: ${socket.id}`);
             
             const me = players[socket.id];
