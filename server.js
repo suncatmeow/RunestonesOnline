@@ -5965,12 +5965,13 @@
             
             if (result.response.usageMetadata) updateBudget(result.response.usageMetadata, socketId);
             
-            let rawText = result.response.text().trim();
-            if (rawText.startsWith("```")) {
-                rawText = rawText.replace(/^```(json)?|```$/g, "").trim();
-            }
+                        let rawText = result.response.text().trim();
             
-            const digestedData = JSON.parse(rawText);
+            // Bulletproof JSON Extractor
+            const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+            if (!jsonMatch) throw new Error("No JSON object found in response.");
+            
+            const digestedData = JSON.parse(jsonMatch[0]);
 
             // 4. DISTRIBUTE THE NUTRIENTS TO ALL ORGANS!
             if (digestedData.updatedStory) {
