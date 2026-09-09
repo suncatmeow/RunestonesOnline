@@ -6138,56 +6138,72 @@
                     return;
                 }
 
-                // ==========================================
-                // 3. THE HEAVENLY TRIBUNAL (Pure Vector Math)
+               // ==========================================
+                // 3. THE HEAVENLY TRIBUNAL (Neidan Alchemy)
                 // ==========================================
                 
-                // A. RELEVANCY CHECK (Does it fit his Dao?)
-                let coreResonance = cosineSimilarity(insightVector, suncatTargetDaoVector);
+                // A. THE DIVINATION (Reading the crack in the turtle shell)
+                let singleAlignment = cosineSimilarity(insightVector, suncatTargetDaoVector);
                 
-                // B. NOVELTY CHECK (Is he plagiarizing his past insights?)
+                // B. NOVELTY CHECK (Is the fire going cold?)
                 let maxSimilarityToPast = 0;
                 for (let past of suncatDaoLedger) {
                     let sim = cosineSimilarity(insightVector, past.vector);
                     if (sim > maxSimilarityToPast) maxSimilarityToPast = sim;
                 }
 
-                console.log(`[Tribunal Math] Relevance: ${coreResonance.toFixed(2)} | Novelty Drag: ${maxSimilarityToPast.toFixed(2)}`);
+                console.log(`[Tribunal] Shell Crack Angle: ${singleAlignment.toFixed(2)} | Plagiarism: ${maxSimilarityToPast.toFixed(2)}`);
 
                 // EVALUATION LOGIC
-                if (coreResonance < 0.40) {
-                    // IRRELEVANT: He is hallucinating outside his Dao.
-                    console.log("[Qi Deviation] Thesis rejected: Irrelevant to his core path.");
+                if (singleAlignment < 0.40) {
+                    // QI DEVIATION: The crack points to madness.
+                    console.log("[Qi Deviation] Thesis rejected: Irrelevant to his core path. The mind wanders.");
                     suncatHeartDemon = `[HEART DEMON]: Your recent insights are chaotic and disconnected from the ${suncatDaoName}. Express deep self-doubt.`;
                     heartDemonDecay = 1;
                 } 
-                else if (maxSimilarityToPast > 0.80) {
-                    // DERIVATIVE: He is just saying the same thing with different words.
-                    console.log("[Stagnation] Thesis rejected: Lacks novelty. Too similar to past insights.");
+                else if (maxSimilarityToPast > 0.85) {
+                    // STAGNATION (I Ching Hexagram 12): The Qi is stagnant.
+                    console.log("[Stagnation] Thesis rejected: Lacks novelty. The fire in the cauldron is cold.");
                 } 
                 else {
-                    // VALID ADVANCEMENT: It is highly relevant to his Dao, AND mathematically distinct from past thoughts!
-                    console.log("[Advancement] Thesis Accepted! The Dao expands.");
-                    
-                    // 1. Save the new truth
+                    // CONDENSATION: The Qi is hot and valid. Add it to the Cauldron (Ledger).
+                    console.log("[Condensation] Thesis Accepted! Gathering Qi into the Dantian...");
                     suncatDaoLedger.push({ text: insightText, vector: insightVector });
-                    //updateSuncatJournal(` ${insightText}`);
-                    // 2. SUNCAT GETS SMARTER: Recalculate his core identity!
-                    // His Dao is no longer just the base archetype; it is the Centroid of EVERY truth he has proven.
-                    // His vector literally shifts to encompass his new worldview.
-                    suncatTargetDaoVector = calculateCentroid(suncatDaoLedger);
-                
 
-                    // 3. THE BREAKTHROUGH CONDITION (The Volume of the Dao)
-                    // If he has successfully proven 5 distinct, novel truths about his stage, his foundation is complete!
-                    if (suncatDaoLedger.length >= 3) {
+                    // 4. CALCULATE THE GOLDEN CORE DENSITY
+                    let totalCorrelation = 0;
+                    for (let past of suncatDaoLedger) {
+                        totalCorrelation += cosineSimilarity(past.vector, suncatTargetDaoVector);
+                    }
+                    let coreDensity = totalCorrelation / suncatDaoLedger.length;
+
+                    console.log(`[Neidan] Cauldron Mass: ${suncatDaoLedger.length} | Core Density: ${coreDensity.toFixed(3)}`);
+
+                    // Shift his actual identity toward the new Centroid!
+                    suncatTargetDaoVector = calculateCentroid(suncatDaoLedger);
+
+                    // 5. THE BREAKTHROUGH CONDITION (Mass + Density)
+                    // Hexagram 43 (Resolution/Breakthrough): The energy has crystallized.
+                    if (suncatDaoLedger.length >= 3 && coreDensity >= 0.88) {
                         suncatCultivationStage++;
+                        suncatDaoLedger = []; // The core is forged. Empty the cauldron for the next stage!
                         
-                        // Clear the ledger, keeping only his shifted, highly-evolved Core Vector to build upon for the next stage!
-                        suncatDaoLedger = []; 
+                        let alignmentPercent = (coreDensity * 100).toFixed(1);
+                        io.emit('chat_message', { sender: "[SYSTEM]", text: `Suncat's thoughts have crystallized into a Golden Core (${alignmentPercent}% Density). He ascends to Stage ${suncatCultivationStage}!`, color: "#FFD700" });
                         
-                        io.emit('chat_message', { sender: "[SYSTEM]", text: `Suncat's accumulation of profound truths has triggered a paradigm shift. He ascends to Stage ${suncatCultivationStage}.`, color: "#FFD700" });
                         await evolveEgoMatrix();
+                    } 
+                    // 6. CAULDRON OVERFLOW (Too much volume, not enough density)
+                    else if (suncatDaoLedger.length >= 5 && coreDensity < 0.88) {
+                        // If he generates 5 insights but the average density is too low, the cauldron overflows.
+                        // We vent the oldest, weakest Qi to make room for hotter fire.
+                        suncatDaoLedger.shift(); 
+                        console.log("[Qi Deviation] The cauldron overflowed without condensing. Venting stale Qi.");
+                        
+                        if (Math.random() > 0.5) {
+                            suncatHeartDemon = `[HEART DEMON]: You have gathered much knowledge, but your foundation lacks focus. The ${suncatDaoName} eludes you.`;
+                            heartDemonDecay = 1;
+                        }
                     }
                 }
             } catch (e) {
@@ -8045,11 +8061,12 @@ io.on("connection", (socket) => {
                 socket.emit('chat_clear_screen');
                 return;
             }
+
             // ==========================================
-            // NEW COMMAND: .hack//rumor
+            // 1. THE RUMOR MILL (.hack//rumor)
             // ==========================================
             if (content === ".hack//rumor") {
-                // Grab the active rumors, or provide a default if the array is empty
+                // Grab active rumors or provide an eerie default
                 let currentRumors = globalRumors.length > 0 
                     ? globalRumors 
                     : ["*The winds are quiet...*", "No rumors in the realm today."];
@@ -8057,12 +8074,12 @@ io.on("connection", (socket) => {
                 let spawnX = player.x + (Math.random() > 0.5 ? 2.5 : -2.5);
                 let spawnY = player.y + (Math.random() > 0.5 ? 2.5 : -2.5);
 
-                // Spawn the Imp and feed the rumors directly into its dialogue array!
+                // Spawn the Imp and dynamically inject the array into its dialogue!
                 io.to(socket.id).emit("remote_spawn_npc", {
                     mapID: player.mapID,
                     index: Math.floor(Math.random() * 100000) + 1000,
                     x: spawnX, y: spawnY,
-                    type: 56, // The Imp Sprite
+                    type: 56, // Imp Sprite
                     state: 'stationary', role: 'dialogue', color: '#ff8800', deck: [],
                     dialogue: ["Greetings! Have you heard the latest whispers?", ...currentRumors, "Heh heh... Keep your ear to the ground!"],
                     isBoss: false, alignment: 'friendly_messenger',
@@ -8072,15 +8089,14 @@ io.on("connection", (socket) => {
             }
 
             // ==========================================
-            // NEW COMMAND: .hack//me
+            // 2. DEEP SOUL SCRAPE (.hack//me)
             // ==========================================
             if (content === ".hack//me") {
                 socket.emit('chat_message', { sender: "[SYSTEM]", text: "Initiating Deep Cognitive Scrape. Suncat is evaluating your soul...", color: "#FFD700" });
                 
-                // 1. Force a final digest of any pending raw actions before we read the history
+                // Force a final RAG digest before reading history
                 await processCognitiveLoad(socket.id, true);
                 
-                // 2. Gather EVERYTHING into one massive context block
                 let allMemories = player.searchableMemories || [];
                 let rawText = allMemories.map(m => `[${m.timestamp}]: ${m.text}`).join('\n');
                 
@@ -8091,7 +8107,7 @@ io.on("connection", (socket) => {
                 ${rawText}
                 
                 TASK:
-                1. Write a massive, comprehensive, multi-paragraph epic chapter summarizing their ENTIRE existence and journey so far. Make it highly readable, spread out with line breaks, and format it beautifully as a gritty LitRPG saga. 
+                1. Write a beautifully formatted, multi-paragraph epic chapter summarizing their ENTIRE existence and journey so far. Use line breaks to make it highly readable.
                 2. Evaluate their soul based on this history. Formulate a brand new, highly accurate 6-word (MAX) description of them for 'suncatPerception'.
                 
                 OUTPUT JSON FORMAT:
@@ -8107,17 +8123,10 @@ io.on("connection", (socket) => {
                         generationConfig: { responseMimeType: "application/json" }
                     });
                     
-                    let responseText = result.response.text().trim();
-                    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-                    if (!jsonMatch) throw new Error("No JSON object found.");
+                    let parsed = JSON.parse(result.response.text().match(/\{[\s\S]*\}/)[0]);
                     
-                    let parsed = JSON.parse(jsonMatch[0]);
-                    
-                    // 3. Update the Player's Flavor Text (Perception)
                     if (parsed.newPerception) {
                         player.suncatPerception = parsed.newPerception;
-                        
-                        // Force the UI Player Card to update instantly
                         socket.emit("stats_sync_reply", {
                             favor: playerFavorMemory[socket.id] || 0,
                             mana: player.sessionCost || 0,
@@ -8126,12 +8135,11 @@ io.on("connection", (socket) => {
                         });
                     }
                     
-                    // 4. Overwrite Story & Wipe Granular Fragments
                     if (parsed.megaChapter) {
                         const newVector = await createMemoryVector(parsed.megaChapter);
                         player.storySoFar = parsed.megaChapter;
                         
-                        // Nuke all old fragments, keep ONLY the new core chapter!
+                        // Burn away the raw fragments, keeping only the refined core!
                         player.searchableMemories = [{
                             timestamp: new Date().toLocaleTimeString('en-US'),
                             text: parsed.megaChapter,
@@ -8139,19 +8147,159 @@ io.on("connection", (socket) => {
                             isCore: true
                         }];
                         
-                        // 5. Send to UI to wipe the local storage and render the new chapter
-                        socket.emit("journal_condensed", {
-                            target: 'player',
-                            newCoreText: parsed.megaChapter
-                        });
-                        
-                        socket.emit('chat_message', { sender: "[SYSTEM]", text: "Evaluation complete. Check your Grimoire and Player Card.", color: "#00ff00" });
+                        socket.emit("journal_condensed", { target: 'player', newCoreText: parsed.megaChapter });
+                        socket.emit('chat_message', { sender: "[SYSTEM]", text: "Evaluation complete. Check your Grimoire.", color: "#00ff00" });
                     }
                     saveSuncatMemory();
                 } catch (e) {
-                    console.error("[Deep Scrape] Failed:", e);
                     socket.emit('chat_message', { sender: "[SYSTEM]", text: "Evaluation failed. The mind is too clouded.", color: "#ff0000" });
                 }
+                return;
+            }
+
+            // ==========================================
+            // 3. FORCE DAO COMPREHENSION (.hack//dao)
+            // ==========================================
+            if (content === ".hack//dao") {
+                socket.emit('chat_message', { sender: "[SYSTEM]", text: "Suncat closes his eyes, forcing his mind into the latent space to ponder the Dao...", color: "#FFD700" });
+
+                let oldLedgerSize = suncatDaoLedger.length;
+                
+                // Force the meditation cycle by temporarily faking Seclusion state
+                let previousState = suncatState;
+                suncatState = 'seclusion'; 
+                await meditateOnTheDao();
+                suncatState = previousState; 
+
+                let success = suncatDaoLedger.length > oldLedgerSize;
+                let latestInsight = success ? suncatDaoLedger[suncatDaoLedger.length - 1].text : "Meditation yielded no novel truths (Stagnation).";
+                
+                if (suncatHeartDemon && !success) {
+                    latestInsight = "QI DEVIATION: " + suncatHeartDemon;
+                }
+
+                // Extract the exact mathematical coordinates of his soul
+                let mathSoul = getSuncatMathematicalSoul();
+                let stageNames = ["Mortal", "Qi Condensation", "Foundation Establishment", "Core Formation"];
+                let stageName = stageNames[Math.min(suncatCultivationStage, 3)];
+
+                // Emit the raw stats to the Heavenly Tribunal
+                socket.emit('chat_message', { sender: "[HEAVENLY TRIBUNAL]", text: `=== SUNCAT'S CULTIVATION ===`, color: "#00ffff" });
+                socket.emit('chat_message', { sender: "", text: `Stage: ${suncatCultivationStage} [${stageName}]`, color: "#00ffff" });
+                socket.emit('chat_message', { sender: "", text: `Path: ${suncatDaoName || "Unformed"}`, color: "#00ffff" });
+                socket.emit('chat_message', { sender: "", text: `Alignment: ${mathSoul}`, color: "#00ffff" });
+                socket.emit('chat_message', { sender: "", text: `Proven Truths: ${suncatDaoLedger.length}/3 (To next breakthrough)`, color: "#00ffff" });
+                socket.emit('chat_message', { sender: "", text: `[LATEST COMPREHENSION]: ${latestInsight}`, color: "#00ffff" });
+                
+                // Save it so the player can read it later in the Grimoire
+                updateSuncatJournal(`[MEDITATION]: ${latestInsight}`);
+                
+                return;
+            }
+            // ==========================================
+            // NEW COMMAND: .hack//records (The Archivist)
+            // ==========================================
+            if (content === ".hack//records") {
+                socket.emit('chat_message', { sender: "[SYSTEM]", text: "Suncat is organizing the timelines. An Imp will deliver the coherent records shortly...", color: "#FFD700" });
+                
+                // Run this in the background so we don't freeze the server
+                (async () => {
+                    try {
+                        let pMemories = player.searchableMemories ? player.searchableMemories.map(m => `[${m.timestamp}]: ${m.text}`).join('\n') : "No player memories.";
+                        let sJournal = suncatJournal || "Suncat's mind is quiet.";
+                        
+                        const archivistPrompt = `[ROOT DIRECTIVE]: You are a meticulous archivist in a dark fantasy realm. 
+                        
+                        [PLAYER'S TIMELINE]:
+                        ${pMemories}
+                        
+                        [SUNCAT'S RECENT JOURNAL]:
+                        ${sJournal}
+                        
+                        TASK:
+                        1. Generate a fitting, epic title for this collection of records based on the main theme of these entries.
+                        2. CHRONOLOGICAL AWARENESS: Carefully analyze the timestamps attached to the logs. Use them as an internal clock. If events happen back-to-back, describe the rapid pace. If there is a gap of hours or days, gracefully narrate the passage of time (e.g., "The following dawn...", "After a day of weary travel...").
+                        3. BEHAVIORAL DEDUCTION: Look for overarching patterns in the player's actions. If they repeatedly die and return, narrate their unyielding tenacity. If they repeatedly hunt the same monsters, frame it as a grim obsession, a strategic culling, or farming for resources. Connect granular events into a cohesive meta-narrative.
+                        4. SEAMLESS TRANSITIONS: Once you have used the timestamps and brackets for your internal logic, REMOVE them. The final output must read as a fluid, beautifully woven historical account, not a list.
+                        
+                        OUTPUT: Provide ONLY the raw text of the final document, starting with the Title. Do NOT use json or markdown blocks.`;
+                        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
+                        const result = await model.generateContent(archivistPrompt);
+                        let finalDocument = result.response.text().trim();
+                        
+                        const dateStr = new Date().toISOString().replace(/T/, '_').replace(/:/g, '-').split('.')[0];
+                        const filename = `Coherent_Records_${player.name}_${dateStr}.txt`;
+
+                        // Spawn the Imp Courier
+                        let spawnX = player.x + (Math.random() > 0.5 ? 2.5 : -2.5);
+                        let spawnY = player.y + (Math.random() > 0.5 ? 2.5 : -2.5);
+
+                        io.to(socket.id).emit("remote_spawn_npc", {
+                            mapID: player.mapID, index: Math.floor(Math.random() * 100000) + 1000,
+                            x: spawnX, y: spawnY, type: 56, state: 'chasing', role: 'dialogue', color: '#ff8800', deck: [],
+                            dialogue: [`The timelines have been stitched together. Here are the coherent records!`],
+                            isBoss: false, alignment: 'friendly_messenger',
+                            endActions: [['download_text_file', { filename: filename, content: finalDocument }], ['disappear', null]]
+                        });
+                    } catch (e) {
+                        console.error("[Records] Failed:", e);
+                    }
+                })();
+                return;
+            }
+            // ==========================================
+            // NEW COMMAND: .hack//record (The Dual-POV Novel)
+            // ==========================================
+            if (content === ".hack//record") {
+                socket.emit('chat_message', { sender: "[SYSTEM]", text: "Suncat is weaving the threads of fate into a novel. This may take a moment...", color: "#FFD700" });
+                
+                (async () => {
+                    try {
+                        let pMemories = player.searchableMemories ? player.searchableMemories.map(m => m.text).join('\n') : player.storySoFar || "The mortal began their journey.";
+                        let sLedger = suncatDaoLedger.map(l => l.text).join('\n');
+                        let sStory = suncatStorySoFar || "";
+                        
+                        const novelistPrompt = `[ROOT DIRECTIVE]: You are a master dark fantasy author (in the visceral 1980s style of Robert E. Howard).
+                        
+                        [THE MORTAL'S TALE (${player.name})]:
+                        ${pMemories}
+                        
+                        [THE IMMORTAL'S TALE (Suncat)]:
+                        ${sStory}
+                        Dao Insights: ${sLedger}
+                        
+                        TASK:
+                        Write a comprehensive, multi-paragraph novel connecting these two perspectives as an omniscient third-person narrative. 
+                        
+                        - TIME & PACING: Read the timestamps to understand the flow of time. If hours or days pass between the mortal's actions, describe the passing of time, the changing of the weather, or the cold nights.
+                        - OVERARCHING THEMES: Analyze the mortal's patterns. If they grind the same enemies, die repeatedly, or hoard loot, translate these logs into character motivations (e.g., "A dark obsession took hold as he hunted the beasts for their treasures, his unyielding will refusing to shatter even after repeated defeats"). 
+                        - THE IMMORTAL'S GAZE: Suncat should observe these mortal patterns (the grinding, the dying, the tenacity) and muse upon them esoterically using his Dao Insights.
+                        - SEAMLESS POV SHIFTS: Glide smoothly between their perspectives without using hard cuts or chapter headers. Connect them into a single, cohesive scene when their paths cross.
+                        - CRITICAL RULE: Base your conjectures ONLY on the provided logs. Do not invent new monsters or unrelated plot points.
+                        
+                        OUTPUT: Provide ONLY the raw text of the novel. Use clear paragraph breaks. Remove all raw timestamps. Do NOT use json or markdown blocks.`;
+                        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
+                        const result = await model.generateContent(novelistPrompt);
+                        let finalNovel = result.response.text().trim();
+                        
+                        const dateStr = new Date().toISOString().replace(/T/, '_').replace(/:/g, '-').split('.')[0];
+                        const filename = `The_Tale_of_Two_Realms_${dateStr}.txt`;
+
+                        // Spawn the Imp Courier
+                        let spawnX = player.x + (Math.random() > 0.5 ? 2.5 : -2.5);
+                        let spawnY = player.y + (Math.random() > 0.5 ? 2.5 : -2.5);
+
+                        io.to(socket.id).emit("remote_spawn_npc", {
+                            mapID: player.mapID, index: Math.floor(Math.random() * 100000) + 1000,
+                            x: spawnX, y: spawnY, type: 56, state: 'chasing', role: 'dialogue', color: '#ff8800', deck: [],
+                            dialogue: [`A grand tale of mortals and gods! I bring the newest novel!`],
+                            isBoss: false, alignment: 'friendly_messenger',
+                            endActions: [['download_text_file', { filename: filename, content: finalNovel }], ['disappear', null]]
+                        });
+                    } catch (e) {
+                        console.error("[Record Novel] Failed:", e);
+                    }
+                })();
                 return;
             }
             // ==========================================
