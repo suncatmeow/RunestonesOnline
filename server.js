@@ -96,7 +96,7 @@
             learnedSpells: [9999, 26],
             aggroList: new Set()
         };
-
+  //END GLOBAL STATE & VARIABLES
 
 
     //VECTOR STATES
@@ -2562,7 +2562,7 @@
         1. Keep the lyrics extremely short to fit a single musical measure (1 to 3 words MAX).
         2. Follow the exact formatting instructions provided in your current task prompt.
     `;
-    // --- THE BARDIC GRIMOIRE ---
+    
     // --- THE BARDIC GRIMOIRE ---
     const BARDIC_TALES = [
         // ==========================================================
@@ -5717,7 +5717,7 @@
                 }
             }
         }
-        async function auditProfileAssumptions(playerId) {
+    async function auditProfileAssumptions(playerId) {
             const player = players[playerId];
             if (!player || !player.playerProfile || !player.searchableMemories || player.searchableMemories.length === 0) return;
 
@@ -6615,7 +6615,7 @@
                 }
                 return; 
             }
-            // --- ADD THIS NEW BLOCK RIGHT HERE ---
+        // --- ADD THIS NEW BLOCK RIGHT HERE ---
             if (triggerType === 'chat' && data.text) {
                 const textLower = data.text.toLowerCase();
                 const asksOpinion = ["think of me", "your opinion", "judge me", "evaluate me", "how do you see me", "what kind of person"].some(kw => textLower.includes(kw));
@@ -7498,55 +7498,28 @@ io.on("connection", (socket) => {
                 }
             }
             });
-        socket.on("disconnect", async () => {
+        
+                socket.on("disconnect", async () => {
             console.log(`Player disconnected: ${socket.id}`);
             
             const me = players[socket.id];
             const oldSocketId = socket.id;
 
-            // --- INSTANT REMOVAL (Fixes the visual ghost bug) ---
+            // 1. Instantly tell clients to erase the sprite to prevent visual ghosts
             if (me && me.battleOpponent) {
                 const opponentId = me.battleOpponent;
                 io.to(opponentId).emit("battle_opponent_disconnected", { id: oldSocketId });
                 if (players[opponentId]) players[opponentId].battleOpponent = null;
             }
+            io.emit("player_disconnected", { id: oldSocketId }); 
 
-            // Instantly delete from server RAM so they disappear for others
-            delete players[oldSocketId];
-            delete playerFavorMemory[oldSocketId];
-            delete playerAITokens[oldSocketId];
-
-            io.emit("updatePlayers", players);
-            socket.on("disconnect", async () => {
-            console.log(`Player disconnected: ${socket.id}`);
-            
-            const me = players[socket.id];
-            const oldSocketId = socket.id;
-
-            // --- INSTANT REMOVAL (Fixes the visual ghost bug) ---
-            if (me && me.battleOpponent) {
-                const opponentId = me.battleOpponent;
-                io.to(opponentId).emit("battle_opponent_disconnected", { id: oldSocketId });
-                if (players[opponentId]) players[opponentId].battleOpponent = null;
-            }
-
-            // Instantly delete from server RAM so they disappear for others
-            delete players[oldSocketId];
-            delete playerFavorMemory[oldSocketId];
-            delete playerAITokens[oldSocketId];
-
-            io.emit("updatePlayers", players);
-            io.emit("player_disconnected", { id: oldSocketId }); // Tell clients to erase the sprite
-
+            // 2. BACKGROUND AI DIGESTION & SAVE (Run this BEFORE deleting!)
             if (me && me.name !== "Unknown") {
                 io.emit("chat_message", {
                     sender: "[SYSTEM]",
                     text: `${me.name} has logged out.`
                 });
-            }
 
-            // --- BACKGROUND AI DIGESTION & SAVE ---
-            if (me && me.name !== "Unknown") {
                 try {
                     // Empty the stomach safely in the background
                     await processCognitiveLoad(oldSocketId, true); 
@@ -7554,12 +7527,12 @@ io.on("connection", (socket) => {
                     console.error(`[Disconnect] Failed to digest final memories for ${me.name}:`, err);
                 }
 
-                // USE THE PERSISTENT ID TO SAVE
+                // Save to persistent memory
                 const memoryKey = me.persistentId || me.name.toLowerCase();
                 let currentHistory = chatSessions[oldSocketId] ? await chatSessions[oldSocketId].getHistory() : [];
 
                 suncatPersistentMemory[memoryKey] = {
-                    favor: playerFavorMemory[oldSocketId] || 0, // Fallback to 0 if deleted above
+                    favor: playerFavorMemory[oldSocketId] || 0,
                     playerProfile: me.playerProfile || { combatStyle: "Unknown", alliances: "Unknown", tastes: "Unknown", personality: "Unknown" },
                     activeQuest: me.activeQuest || null,
                     storySoFar: me.storySoFar || "",
@@ -7572,15 +7545,23 @@ io.on("connection", (socket) => {
                 saveSuncatMemory();
             }
 
+            // 3. NOW it is safe to delete from RAM!
+            delete players[oldSocketId];
+            delete playerFavorMemory[oldSocketId];
+            delete playerAITokens[oldSocketId];
             if (chatSessions[oldSocketId]) {
                 delete chatSessions[oldSocketId];
             }
+
+            io.emit("updatePlayers", players);
 
             setTimeout(() => {
                 const isMapEmpty = !Object.values(players).some(p => p.mapID === 999 && p.id !== SUNCAT_ID);
                 if (isMapEmpty) activeCustomMap = null;
             }, 500);
         });
+
+        
     //MOVEMENT & NAVIGATION
         socket.on("move", (data) => {
             if (players[socket.id]) {
@@ -9003,7 +8984,7 @@ setInterval(() => {
                 player.dmStress = 0;
                 
                 const nameKey = player.name.toLowerCase();
-                suncatPersistentMemory[nameKey] = {
+                    suncatPersistentMemory[nameKey] = {
                     favor: playerFavorMemory[socketId] || 0,
                     playerProfile: player.playerProfile || { combatStyle: "Unknown", alliances: "Unknown", tastes: "Unknown", personality: "Unknown" },
                     activeQuest: player.activeQuest || null,
