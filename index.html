@@ -1801,18 +1801,18 @@
                     ],
                     wildlife: [],
                     npcs: [
-                        { index: 0, x: 33.5, y: 7.5, sprite: 99, role: 'portal', deck: [5.5, 1.5, 8, 2], alignment: 'friendly' },
-                        { index: 5, x: 13.5, y: 13.5, sprite: 37, role: 'battle', deck: [13,15,52,40,37], alignment: 'foe' },
-                        { index: 6, x: 19.5, y: 6.5, sprite: 46.1, role: 'battle', deck: [52,52,40,29,46], alignment: 'foe', customDialogue: ["Hss! Fresh meat in our waters!"] },
-                        { index: 7, x: 6.5, y: 3.5, sprite: 46.1, role: 'battle', deck: [52,52,40,29,46], alignment: 'foe', customDialogue: ["The storm brings us a feast!"] },
-                        { index: 13, x: 26.5, y: 13.5, sprite: 47.1, role: 'battle', deck: [52,59,58,28,29,6,47], alignment: 'foe', customDialogue: ["His ship never returned... neither will yours."] },
-                        { index: 14, x: 9.5, y: 13.5, sprite: 47.1, role: 'battle', deck: [52,59,58,28,29,6,47], alignment: 'foe', customDialogue: ["Do you hear the sails? No... only the waves."] },
-                        { index: 15, x: 7.5, y: 1.5, sprite: 47.1, role: 'battle', deck: [52,59,58,28,29,6,47], alignment: 'foe', customDialogue: ["Why do you get to go home when he couldn't?"] },
+                        { index: 0, x: 33.5, y: 7.5, sprite: 99, role: 'portal', deck: [5.5, 1.5, 8, 2], alignment: 'friendly',state:'wandering' },
+                        { index: 5, x: 13.5, y: 13.5, sprite: 37, role: 'battle', deck: [13,15,52,40,37], alignment: 'foe' ,state: 'wandering'},
+                        { index: 6, x: 19.5, y: 6.5, sprite: 46.1, role: 'battle', deck: [52,52,40,29,46], alignment: 'foe',state: 'wandering', customDialogue: ["Hss! Fresh meat in our waters!"] },
+                        { index: 7, x: 6.5, y: 3.5, sprite: 46.1, role: 'battle', deck: [52,52,40,29,46], alignment: 'foe',state: 'wandering', customDialogue: ["The storm brings us a feast!"] },
+                        { index: 13, x: 26.5, y: 13.5, sprite: 47.1, role: 'battle', deck: [52,59,58,28,29,6,47], alignment: 'foe',state: 'wandering', customDialogue: ["His ship never returned... neither will yours."] },
+                        { index: 14, x: 9.5, y: 13.5, sprite: 47.1, role: 'battle', deck: [52,59,58,28,29,6,47], alignment: 'foe',state: 'wandering', customDialogue: ["Do you hear the sails? No... only the waves."] },
+                        { index: 15, x: 7.5, y: 1.5, sprite: 47.1, role: 'battle', deck: [52,59,58,28,29,6,47], alignment: 'foe',state: 'wandering', customDialogue: ["Why do you get to go home when he couldn't?"] },
                         
                         // Kraken Tentacles (Only if Kraken is alive)
-                        { index: 2, x: 10.5, y: 9.5, sprite: 83, role: 'battle', deck: [59,52,40,83], alignment: 'foe', spawnCondition: (d) => !d.memory['kraken_dead'] },
-                        { index: 3, x: 21.5, y: 12.5, sprite: 83, role: 'battle', deck: [59,52,40,83], alignment: 'foe', spawnCondition: (d) => !d.memory['kraken_dead'] },
-                        { index: 4, x: 26.5, y: 2.5, sprite: 83, role: 'battle', deck: [59,52,40,83], alignment: 'foe', spawnCondition: (d) => !d.memory['kraken_dead'] },
+                        { index: 2, x: 10.5, y: 9.5, sprite: 83, role: 'battle', deck: [59,52,40,83], alignment: 'foe',state: 'wandering', spawnCondition: (d) => !d.memory['kraken_dead'] },
+                        { index: 3, x: 21.5, y: 12.5, sprite: 83, role: 'battle', deck: [59,52,40,83], alignment: 'foe',state: 'wandering', spawnCondition: (d) => !d.memory['kraken_dead'] },
+                        { index: 4, x: 26.5, y: 2.5, sprite: 83, role: 'battle', deck: [59,52,40,83], alignment: 'foe',state: 'wandering', spawnCondition: (d) => !d.memory['kraken_dead'] },
 
                         // Kraken Boss!
                         { index: 1, x: 6.5, y: 7.5, sprite: 49.1, role: 'dialogue', deck: [52], alignment: 'friendly',
@@ -1823,7 +1823,7 @@
                                 if (d.MainQuest < 5) {
                                     npc.role = 'dialogue';
                                     npc.customDialogue = ["*The massive beast ignores you, deeming you unworthy of its wrath.*", "*A massive tidal wave sweeps you away!*"];
-                                    npc.endActions = [['play_sfx', 'wind'], ['load_map', 9]];
+                                    npc.endActions = [['play_sfx', 'wind'], ['load_map', {id:9,x:32.5,y:7.5}]];
                                 } else {
                                     npc.role = 'battle'; npc.state = 'chasing'; npc.isBoss = true;
                                     npc.deck = [52,52,52,52,40,40,10,10,58,51,51,58,83,83,83,49];
@@ -2117,7 +2117,7 @@
                         { index: 1, x: 6.5, y: 7.5, sprite: 63.1, role: 'dialogue', isBoss: true, deck: [39,39,51,59,58,26,26,28,19,63,63,63], alignment: 'friendly',
                             spawnCondition: (d) => !d.memory['dragon_dead'],
                             dialogueFactory: (d) => {
-                                if (d.MainQuest < 5) return { text: ["*The Ancient Dragon glances at you, utterly uninterested in a weakling.*", "*A single flap of its massive wings generates a hurricane that blows you away!*"], endActions: [['play_sfx', 'wind'], ['load_map', 12]] };
+                                if (d.MainQuest < 5) return { text: ["*The Ancient Dragon glances at you, utterly uninterested in a weakling.*", "*A single flap of its massive wings generates a hurricane that blows you away!*"], endActions: [['play_sfx', 'wind'], ['load_map', {id:12,x:12.5,y:15.5}]] };
                                 return { text: ["Arrogant fools...", "You don't know the difference between heaven and earth!"], options: ['Draw Weapon'], yesActions: [['play_sfx', 'horn'], ['spawn_npc', [12, 12, 'SPEAKER_X','SPEAKER_Y', 63.1, 'chasing', '#ff0000', [39,39,51,59,58,26,26,28,19,63,63,63], null, null, 'battle', null, true, 'foe', [], [['set_memory', {key: 'dragon_dead', value: true}]]]], ['spectate', "Player has encountered the Dragon in his lair. Careful not to get burned..."], ['disappear', null], ['close_dialogue', null]], noActions: null };
                             }
                         }
@@ -23252,7 +23252,10 @@
                                 this.canDismissEndScreen = false; 
 
                                 // --- FIX: HARVEST SURVIVING SUMMONS ---
-                                if (typeof Dungeon !== 'undefined') {
+                                let stakesCheck = this.config && this.config.stakes ? this.config.stakes : 'mock';
+                                
+                                // NEW FIX: Only harvest if it's NOT a mock battle!
+                                if (typeof Dungeon !== 'undefined' && stakesCheck !== 'mock_menu' && stakesCheck !== 'mock') {
                                     Dungeon.activeSummons = []; // Reset the overworld pool
                                     
                                     // Find all living allies that are summons
@@ -24691,36 +24694,70 @@
                 // 2. Initialize an empty hand
                 unit.tacticsHand = { call: null, item: null, spell: null };
 
-                // 3. Determine the Card Source (Mock Deck vs Real Deck)
-                let cardSource = [];
-                if (this.config && this.config.stakes === 'mock_menu') {
-                    // Use the 78-card mock deck passed during initialization
-                    cardSource = (unit.playerData && unit.playerData.dungeonContext) ? unit.playerData.dungeonContext : [];
-                } else if (typeof Dungeon !== 'undefined' && Dungeon.extra) {
-                    // Use the actual player's extra deck for real exploration/battles
-                    cardSource = Dungeon.extra;
+                let availableCalls = [];
+                let availableItems = [];
+                let availableSpells = [];
+
+                let stakes = (this.config && this.config.stakes) ? this.config.stakes : 'mock';
+
+                // Helper to quickly sort cards from a deck
+                const parseDeckCards = (deck) => {
+                    deck.forEach(c => {
+                        let id = (typeof c === 'object') ? (c.index !== undefined ? c.index : c.id) : c;
+                        let type = (typeof c === 'object' && c.type !== undefined) ? c.type : new Card(id, 0).type;
+                        
+                        if (type === 0) availableCalls.push(id);
+                        else if (type === 1 && SPELL_REGISTRY[id]) availableItems.push(id);
+                        else if (type === 2 && SPELL_REGISTRY[id]) availableSpells.push(id);
+                    });
+                };
+
+                // 3. Determine the Source (Mock Deck vs Learned Skills vs Battle Mage Deck)
+                if (stakes === 'mock_menu') {
+                    // Arcade mode: uses the 78-card mock deck passed during initialization
+                    let cardSource = (unit.playerData && unit.playerData.dungeonContext) ? unit.playerData.dungeonContext : [];
+                    parseDeckCards(cardSource);
+                    
+                } else if (typeof Dungeon !== 'undefined') {
+                    // In-Game Mode
+                    // Strip spaces and lowercase to ensure a safe class check (e.g. "Battle Mage" -> "battlemage")
+                    let pClass = Dungeon.playerClass ? Dungeon.playerClass.toLowerCase().replace(/\s+/g, '') : '';
+                    let isBattleMage = (pClass === 'battlemage');
+
+                    if (isBattleMage) {
+                        // Battle Mages use their physical extra deck in battles
+                        parseDeckCards(Dungeon.extra || []);
+                    } else {
+                        // All other classes use their dynamically Learned Skills!
+                        if (Dungeon.spellsLearned) {
+                            for (let spellIdStr in Dungeon.spellsLearned) {
+                                if (Dungeon.spellsLearned[spellIdStr]) {
+                                    let id = parseInt(spellIdStr);
+                                    let sData = SPELL_REGISTRY[id];
+                                    if (sData) {
+                                        if (sData.type === 'summon') {
+                                            availableCalls.push(id);
+                                        } else if (sData.type && sData.type.startsWith('item_')) {
+                                            availableItems.push(id);
+                                        } else {
+                                            availableSpells.push(id); // Catches Projectiles, Cones, Buffs, etc.
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
 
-                if (cardSource.length > 0) {
-                    // --- NEW: Filter by type AND verify they exist in the registry! ---
-                    // (Note: Type 0 are Monster Calls, which bypass the registry by default)
-                    let availableCalls = cardSource.filter(c => c.type === 0);
-                    let availableItems = cardSource.filter(c => c.type === 1 && SPELL_REGISTRY[c.index]);
-                    let availableSpells = cardSource.filter(c => c.type === 2 && SPELL_REGISTRY[c.index]);
-
-                    // 4. Randomly pick one of each (if they have any valid ones!)
-                    if (availableCalls.length > 0) {
-                        let randomCall = availableCalls[Math.floor(Math.random() * availableCalls.length)];
-                        unit.tacticsHand.call = randomCall.index; // Cache the Card ID
-                    }
-                    if (availableItems.length > 0) {
-                        let randomItem = availableItems[Math.floor(Math.random() * availableItems.length)];
-                        unit.tacticsHand.item = randomItem.index; 
-                    }
-                    if (availableSpells.length > 0) {
-                        let randomSpell = availableSpells[Math.floor(Math.random() * availableSpells.length)];
-                        unit.tacticsHand.spell = randomSpell.index;
-                    }
+                // 4. Randomly pick one of each category to populate the hand
+                if (availableCalls.length > 0) {
+                    unit.tacticsHand.call = availableCalls[Math.floor(Math.random() * availableCalls.length)];
+                }
+                if (availableItems.length > 0) {
+                    unit.tacticsHand.item = availableItems[Math.floor(Math.random() * availableItems.length)];
+                }
+                if (availableSpells.length > 0) {
+                    unit.tacticsHand.spell = availableSpells[Math.floor(Math.random() * availableSpells.length)];
                 }
             }
             executeAIAction(activeUnit) {
@@ -35411,7 +35448,8 @@
                             // ==========================================
                             // 0. HARVEST SURVIVING SUMMONS
                             // ==========================================
-                            if (typeof Dungeon !== 'undefined') {
+                            // NEW FIX: Block mock battles from touching the overworld save!
+                            if (typeof Dungeon !== 'undefined' && stakes !== 'mock_menu' && stakes !== 'mock') {
                                 Dungeon.activeSummons = []; // Clear the old overworld list
                                 
                                 window.TacticsEngine.units.forEach(u => {
