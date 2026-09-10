@@ -2394,6 +2394,18 @@
                     required: ["targetName"] 
                 }
             },
+            // GENERATE TACTICS SCENARIO
+            {
+                name: "launchTacticalSkirmish",
+                description: "Use this to initiate a tactical skirmish. The server will randomly generate the enemy team, and your writer-brain will draft the narrative script for the battle.",
+                parameters: {
+                    type: SchemaType.OBJECT,
+                    properties: {
+                        targetName: { type: SchemaType.STRING }
+                    },
+                    required: ["targetName"]
+                }
+            },
             // spawn npc
             {
                 name: "spawnNPC",
@@ -3046,7 +3058,9 @@
             activeTools.push(toolsDef[0].functionDeclarations.find(t => t.name === 'createCustomMap'));
             activeTools.push(toolsDef[0].functionDeclarations.find(t => t.name === 'assignQuest'));
         }
-
+        if (["tactics", "skirmish", "duel", "arena fight", "tactical", "board game"].some(kw => lowerText.includes(kw))) {
+            activeTools.push(toolsDef[0].functionDeclarations.find(t => t.name === 'launchTacticalSkirmish'));
+        }
         // 4. Combat / Spawning Tools (Only if they want action or Suncat is DMing an event)
         if (triggerType === 'event' || triggerType === 'exploration' || ["spawn", "fight", "monster", "boss", "weather", "music"].some(kw => lowerText.includes(kw))) {
             activeTools.push(toolsDef[0].functionDeclarations.find(t => t.name === 'spawnNPC'));
@@ -4194,139 +4208,7 @@
         // Return the layoutName and Description so Suncat knows what it is!
         return { grid, nodes, validFloors, hasWaterFeature, layoutName, layoutDesc };
     }
-    function generateTintagelHub() {
-        let maxR = 99, maxC = 99; 
-        let grid = Array(maxR).fill().map(() => Array(maxC).fill(0));
-        
-        let safeTiles = [];
-        let startX = 50, startY = 50; 
-
-        // Wall Types from BIOME_DB
-        const WALL_TREE = 23;    // Forest green/brown
-        const WALL_STONE = 25;   // Gray
-        const WALL_WOOD = 1;     // Brown
-        const WALL_DIRT = 3;     // Light brown
-
-        // 1. THE NORTH: Forest Labyrinth (Rows 0 to 29)
-        for (let r = 1; r < 29; r++) {
-            for (let c = 1; c < 98; c++) {
-                if (Math.random() < 0.45) grid[r][c] = WALL_TREE;
-            }
-        }
-        let pathC = 50;
-        for (let r = 29; r >= 1; r--) {
-            for (let w = -2; w <= 2; w++) {
-                if (grid[r] && grid[r][pathC + w] !== undefined) grid[r][pathC + w] = 0; 
-            }
-            pathC += Math.floor(Math.random() * 5) - 2;
-            pathC = Math.max(10, Math.min(88, pathC));
-        }
-
-        // 2. THE SOUTH: Goblin Refugee Camp (Rows 70 to 98)
-        for (let r = 72; r < 98; r++) {
-            for (let c = 10; c < 90; c++) {
-                if (Math.random() < 0.15) {
-                    grid[r][c] = WALL_WOOD;
-                    if (grid[r][c+1] !== undefined) grid[r][c+1] = WALL_WOOD;
-                    if (grid[r+1] && grid[r+1][c] !== undefined) grid[r+1][c] = WALL_WOOD;
-                }
-            }
-        }
-
-        // 3. THE EAST: Hermit's Rocky Ridge (Cols 70 to 98, Rows 30 to 69)
-        for (let r = 30; r < 70; r++) {
-            for (let c = 72; c < 98; c++) {
-                if (Math.random() < 0.3) grid[r][c] = WALL_DIRT;
-                if (Math.random() < 0.1) grid[r][c] = WALL_STONE;
-            }
-        }
-
-        // 4. THE WEST: Peaceful Village (Cols 1 to 29, Rows 40 to 60)
-        const buildHouse = (hr, hc) => {
-            for(let r=hr; r<hr+3; r++) {
-                for(let c=hc; c<hc+3; c++) {
-                    if (r===hr || r===hr+2 || c===hc || c===hc+2) {
-                        grid[r][c] = Math.random() > 0.5 ? WALL_WOOD : WALL_DIRT; 
-                    } else {
-                        safeTiles.push({x: c, y: r}); 
-                    }
-                }
-            }
-            grid[hr+2][hc+1] = 0; 
-        };
-
-        let vHouses = [[42, 10], [42, 20], [50, 5], [50, 15], [58, 10], [58, 20]];
-        vHouses.forEach(h => buildHouse(h[0], h[1]));
-
-        // 5. THE CENTER: Tintagel City Walls (39x39 Box)
-        let cityTop = 30, cityBottom = 69, cityLeft = 30, cityRight = 69;
-        for (let r = cityTop; r <= cityBottom; r++) {
-            for (let c = cityLeft; c <= cityRight; c++) {
-                if (r === cityTop || r === cityBottom || c === cityLeft || c === cityRight) {
-                    grid[r][c] = WALL_STONE; 
-                }
-            }
-        }
-
-        for (let w = -1; w <= 1; w++) {
-            grid[cityTop][50 + w] = 0;    
-            grid[cityBottom][50 + w] = 0; 
-            grid[50 + w][cityRight] = 0;  
-        }
-
-        for (let c = cityLeft + 2; c < cityRight - 2; c+=5) { if (c !== 50) buildHouse(cityTop + 1, c); }
-        for (let c = cityLeft + 2; c < cityRight - 2; c+=5) { if (c !== 50) buildHouse(cityBottom - 3, c); }
-
-        // 6. THE CENTER: The Castle 
-        let castTop = 43, castBottom = 56, castLeft = 43, castRight = 56;
-        for (let r = castTop; r <= castBottom; r++) {
-            for (let c = castLeft; c <= castRight; c++) {
-                if (r === castTop || r === castBottom || c === castLeft || c === castRight) {
-                    grid[r][c] = WALL_STONE; 
-                } else {
-                    safeTiles.push({x: c, y: r}); 
-                }
-            }
-        }
-
-        for (let r = castTop + 4; r <= castBottom; r++) { grid[r][48] = WALL_STONE; grid[r][52] = WALL_STONE; } 
-        for (let c = castLeft; c <= castRight; c++) { grid[47][c] = WALL_STONE; } 
-
-        grid[castBottom][50] = 0; 
-        grid[47][50] = 0;         
-        grid[52][48] = 0; grid[52][52] = 0; 
-
-        startX = 50;
-        startY = 45;
-        // --- MAP ALL VALID FLOORS ONCE ---
-        let floorTiles = [];
-        for (let r = 1; r < maxR - 1; r++) {
-            for (let c = 1; c < maxC - 1; c++) {
-                if (grid[r][c] === 0) floorTiles.push({ x: c, y: r });
-            }
-        }
-
-
-        return { grid, startX, startY, bossX: 90, bossY: 50, safeTiles,floorTiles }; 
-    }
-    function buildServerHubs() {
-            let tData = generateTintagelHub();
-            tintagelHubMap = {
-                id: 100, 
-                maze: tData.grid, 
-                skyColor: "rgba(15,30,15,1)", // Sylvan Sky
-                floorColor: "#2d4c1e",        // Sylvan Floor
-                name: "Tintagel Faction Hub", 
-                npcs: [], // You can push static NPCs like the Emperor here later!
-                weather: "leaves",
-                spawnX: tData.startX + 0.5, 
-                spawnY: tData.startY + 0.5,
-                biome: "Sylvan", 
-                safeTiles: tData.safeTiles 
-            };
-            console.log("[World Engine] Map 100 (Tintagel Hub) generated and cached.");
-        }
-//AI & NARRATIVE GENERATORS/TOOLS
+    //AI & NARRATIVE GENERATORS/TOOLS
     async function initConceptVectors() {
         console.log("[System] Initializing Philosophical Compass...");
         
@@ -4568,6 +4450,53 @@
         } catch (e) {
             console.error("Script Generation Failed:", e);
             return null; 
+        }
+    }
+    async function generateTacticsScript(player, bossName, minionNames) {
+        const currentProfile = player.playerProfile ? 
+            `Combat: ${player.playerProfile.combatStyle} | Personality: ${player.playerProfile.personality}` 
+            : "Unknown";
+
+        const prompt = `[ROOT DIRECTIVE]: You are the Dungeon Master. The player ${player.name} has triggered a tactical skirmish.
+        
+        [PLAYER PROFILE]: ${currentProfile}
+        
+        [THE ENEMY FORCES]:
+        - Leader: ${bossName}
+        - Minions: ${minionNames.join(', ')}
+        
+        TASK:
+        Write the narrative script for this encounter based on what this team composition looks like to you.
+        1. scenarioName: A cool, dramatic name for this skirmish.
+        2. introTaunt: A 1-2 sentence taunt spoken by the Leader before combat starts. Tailor it to the player's profile if possible.
+        3. winText: A 1 sentence narration describing the player's victory over these specific enemies.`;
+
+        const schema = {
+            type: SchemaType.OBJECT,
+            properties: {
+                scenarioName: { type: SchemaType.STRING },
+                introTaunt: { type: SchemaType.STRING },
+                winText: { type: SchemaType.STRING }
+            },
+            required: ["scenarioName", "introTaunt", "winText"]
+        };
+
+        try {
+            const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
+            const result = await model.generateContent({
+                contents: [{ role: "user", parts: [{ text: prompt }] }],
+                generationConfig: { responseMimeType: "application/json", responseSchema: schema }
+            });
+            let rawText = result.response.text().trim().replace(/^```(json)?|```$/g, "").trim();
+            return JSON.parse(rawText);
+        } catch (e) {
+            console.error("Tactics Script Error", e);
+            // Bulletproof fallback
+            return { 
+                scenarioName: "Ambush in the Dark", 
+                introTaunt: "You've wandered into the wrong territory!", 
+                winText: "The enemy forces scatter, leaving the field to you." 
+            };
         }
     }
     function cacheScriptLines(biomeName, script) {
@@ -5011,7 +4940,59 @@
                                 functionResult = { result: "Critical Error building multi-zone map." };
                             }
                         }
-                        
+                        // Q. LAUNCH TACTICS SCENARIO
+                        else if (call.name === "launchTacticalSkirmish") {
+                            const targetID = findSocketID(call.args.targetName);
+                            if (targetID && players[targetID]) {
+                                const player = players[targetID];
+                                
+                                // 1. Server Rolls the Boss
+                                const monsterIDs = Object.keys(CARD_MANIFEST_DB).filter(id => CARD_MANIFEST_DB[id].type === "monster" && CARD_MANIFEST_DB[id].rank !== "0");
+                                const bossId = parseInt(monsterIDs[Math.floor(Math.random() * monsterIDs.length)]);
+                                
+                                // 2. Server Rolls the Minions (Using your synergy helper!)
+                                let availableMinions = getMinions(bossId);
+                                // Shuffle and take 2 to 4 minions
+                                availableMinions = availableMinions.sort(() => 0.5 - Math.random()).slice(0, Math.floor(Math.random() * 3) + 2);
+                                
+                                let eTeam = [bossId, ...availableMinions];
+                                
+                                // 3. Translate IDs to Names for the AI
+                                let bossName = CARD_MANIFEST_DB[bossId]?.name || "Unknown Leader";
+                                let minionNames = availableMinions.map(id => CARD_MANIFEST_DB[id]?.name || "Unknown");
+                                
+                                // 4. Ask Suncat's writer-brain to script the scenario
+                                const script = await generateTacticsScript(player, bossName, minionNames);
+                                
+                                // 5. Inject the flawless server-generated package into the client
+                                const safeCode = `
+                                    if (typeof Dungeon !== 'undefined') {
+                                        let tIndex = Math.floor(Math.random() * 100000) + 900000;
+                                        // Spawn the boss 1 tile directly in front of the player
+                                        let boss = new NPC(tIndex, Dungeon.x, Dungeon.y - 1, ${bossId}, 'stationary', '#ff0000', ${JSON.stringify(eTeam)}, 'battle', true, 'foe');
+                                        
+                                        boss.deathActions = [
+                                            ['notify', ${JSON.stringify(script.winText)}],
+                                            ['play_sfx', 'chime'],
+                                            ['give_card', ${bossId}],
+                                            ['disappear', tIndex]
+                                        ];
+                                        
+                                        Dungeon.npcs.push(boss);
+
+                                        // Start the sequence!
+                                        Dungeon.actionQueue.unshift(['start_tactics', { id: tIndex, stakes: 'real', scenarioName: ${JSON.stringify(script.scenarioName)} }]);
+                                        Dungeon.actionQueue.unshift(['inject_dialogue', { index: tIndex, text: [${JSON.stringify(script.introTaunt)}] }]);
+                                        Dungeon.processNextAction();
+                                    }
+                                `;
+                                
+                                io.to(targetID).emit('suncat_client_spell', { clientCode: safeCode });
+                                functionResult = { result: `Successfully rolled enemy team (${bossName} & ${minionNames.length} minions). The battle "${script.scenarioName}" has commenced.` };
+                            } else {
+                                functionResult = { result: `Failed: Player not found.` };
+                            }
+                        }
                         // F. TELEPORT SPECIFIC PLAYER
                         else if (call.name === "teleportPlayer") {
                             const targetID = findSocketID(call.args.targetName);
@@ -6798,6 +6779,7 @@
             const needsOracle = ["tarot", "fortune", "reading", "interpret", "meaning of"].some(kw => chatText.includes(kw));            
             const isDirectCommand = chatText.includes("[reply]") || chatText.includes("suncat")|| data.isConversing;
             const wantsCode = ["code", "bug", "fix", "report", "renderer", "boilerplate", "refactor", "function", "debug"].some(kw => chatText.includes(kw));
+            const wantsTactics = ["tactics", "skirmish", "duel", "arena fight", "tactical"].some(kw => chatText.includes(kw));
             const asksPersonal = ["who are", "your past", "remember", "real life", "favorite", "you like", "about yourself", "memories", "where are you from", "your name"].some(kw => chatText.includes(kw));
             const asksHistory = ["remember when", "my past", "did i ever", "what did i do", "our adventure"].some(kw => chatText.includes(kw));
             const needsSlayer = ["slay", "smite", "kill", "destroy"].some(kw => chatText.includes(kw));
@@ -6807,6 +6789,10 @@
             if (wantsNewMap) {
                 useBigBrain = true;
                 systemOverride += `\n[CRITICAL OVERRIDE]: The player is asking for a new map, adventure, or quest. DO NOT roleplay the terrain shifting. DO NOT tell the player to use a .hack command. You MUST execute the 'createCustomMap' tool right now to physically generate the world.`;
+            }
+            else if (wantsTactics) {
+                useBigBrain = true;
+                systemOverride += `\n[CRITICAL OVERRIDE]: The player is asking for a tactical skirmish or duel. You MUST execute the 'launchTacticalSkirmish' tool right now. The server will handle rolling the enemy team and will ping your writer-brain to generate the dialogue in the background.`;
             }
             if (wantsCode) {
                 useBigBrain = true;
@@ -9252,7 +9238,6 @@ setInterval(() => {
 //INIT ON LOAD
     initConceptVectors();
     loadSuncatMemory();
-    buildServerHubs();
 console.log(`Server attempting to start on port ${port}...`);
 server.listen(port, () => {
   console.log(`Server running on port ${port}`);
