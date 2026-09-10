@@ -4466,36 +4466,49 @@
         - Minions: ${minionNames.join(', ')}
         
         TASK:
-        Write the narrative script for this encounter based on what this team composition looks like to you.
+        Write the narrative script for this encounter.
         1. scenarioName: A cool, dramatic name for this skirmish.
-        2. introTaunt: A 1-2 sentence taunt spoken by the Leader before combat starts. Tailor it to the player's profile if possible.
+        2. cinematic: Write a dramatic, back-and-forth cutscene between ${bossName} and ${player.name} right before the battle starts. (3 to 5 lines). Make it personal based on the player's profile!
         3. winText: A 1 sentence narration describing the player's victory over these specific enemies.`;
 
         const schema = {
             type: SchemaType.OBJECT,
             properties: {
                 scenarioName: { type: SchemaType.STRING },
-                introTaunt: { type: SchemaType.STRING },
-                winText: { type: SchemaType.STRING }
+                winText: { type: SchemaType.STRING },
+                cinematic: { 
+                    type: SchemaType.ARRAY, 
+                    description: "The script for the cutscene.",
+                    items: { 
+                        type: SchemaType.OBJECT,
+                        properties: {
+                            speaker: { type: SchemaType.STRING, description: "The name of the character talking." },
+                            text: { type: SchemaType.STRING, description: "What they say." }
+                        }
+                    } 
+                }
             },
-            required: ["scenarioName", "introTaunt", "winText"]
+            required: ["scenarioName", "winText", "cinematic"]
         };
 
         try {
             const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
             const result = await model.generateContent({
                 contents: [{ role: "user", parts: [{ text: prompt }] }],
-                generationConfig: { responseMimeType: "application/json", responseSchema: schema }
+                generationConfig: { responseMimeType: "application/json", responseSchema: schema, temperature: 0.9 }
             });
             let rawText = result.response.text().trim().replace(/^```(json)?|```$/g, "").trim();
             return JSON.parse(rawText);
         } catch (e) {
             console.error("Tactics Script Error", e);
-            // Bulletproof fallback
+            // Bulletproof fallback so the game never crashes
             return { 
                 scenarioName: "Ambush in the Dark", 
-                introTaunt: "You've wandered into the wrong territory!", 
-                winText: "The enemy forces scatter, leaving the field to you." 
+                winText: "The enemy forces scatter, leaving the field to you.",
+                cinematic: [
+                    { speaker: bossName, text: "You've wandered into the wrong territory!" },
+                    { speaker: player.name, text: "We'll see about that." }
+                ]
             };
         }
     }
@@ -4951,21 +4964,19 @@
                                 const monsterIDs = Object.keys(CARD_MANIFEST_DB).filter(id => CARD_MANIFEST_DB[id].type === "monster" && CARD_MANIFEST_DB[id].rank !== "0");
                                 const bossId = parseInt(monsterIDs[Math.floor(Math.random() * monsterIDs.length)]);
                                 
-                                // 2. Server Rolls the Minions (Using your synergy helper!)
+                                // 2. Server Rolls the Minions
                                 let availableMinions = getMinions(bossId);
-                                // Shuffle and take 2 to 4 minions
                                 availableMinions = availableMinions.sort(() => 0.5 - Math.random()).slice(0, Math.floor(Math.random() * 3) + 2);
-                                
                                 let eTeam = [bossId, ...availableMinions];
                                 
-                                // 3. Translate IDs to Names for the AI
+                                // 3. Translate IDs to Names
                                 let bossName = CARD_MANIFEST_DB[bossId]?.name || "Unknown Leader";
                                 let minionNames = availableMinions.map(id => CARD_MANIFEST_DB[id]?.name || "Unknown");
                                 
-                                // 4. Ask Suncat's writer-brain to script the scenario
+                                // 4. Ask Suncat's writer-brain to script the scenario and cutscene!
                                 const script = await generateTacticsScript(player, bossName, minionNames);
                                 
-                                // 5. Inject the flawless server-generated package into the client
+                                // 5. Inject the payload into the client
                                 const safeCode = `
                                     if (typeof Dungeon !== 'undefined') {
                                         let tIndex = Math.floor(Math.random() * 100000) + 900000;
@@ -4981,9 +4992,15 @@
                                         
                                         Dungeon.npcs.push(boss);
 
-                                        // Start the sequence!
-                                        Dungeon.actionQueue.unshift(['start_tactics', { id: tIndex, stakes: 'real', scenarioName: ${JSON.stringify(script.scenarioName)} }]);
-                                        Dungeon.actionQueue.unshift(['inject_dialogue', { index: tIndex, text: [${JSON.stringify(script.introTaunt)}] }]);
+                                        // Start the sequence! Notice we are passing the cinematic array inside customConfig
+                                        Dungeon.actionQueue.unshift(['start_tactics', { 
+                                            id: tIndex, 
+                                            stakes: 'real', 
+                                            scenarioName: ${JSON.stringify(script.scenarioName)},
+                                            bossName: ${JSON.stringify(bossName)},
+                                            cutscene: ${JSON.stringify(script.cinematic)}
+                                        }]);
+                                        
                                         Dungeon.processNextAction();
                                     }
                                 `;
