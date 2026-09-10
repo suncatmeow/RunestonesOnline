@@ -23291,6 +23291,34 @@
                             this.elderWardApplied = true;
                         }
                     }
+                    // --- AI GENERATED CINEMATIC TRIGGER ---
+                    if (this.config && this.config.cutscene && this.turnCount === 0 && !this.aiCutsceneTriggered) {
+                        this.aiCutsceneTriggered = true;
+                        
+                        // Grab the sprites currently on the board
+                        let bossSprite = foes.find(f => f.isBoss)?.type || 54;
+                        let playerUnit = allies.find(a => a.role !== 'summoned_minion');
+                        let playerSprite = playerUnit ? playerUnit.type : 0;
+
+                        // Map the LLM's script into your exact cinematicQueue format
+                        this.cinematicQueue = this.config.cutscene.map(line => {
+                            // If the speaker is the boss, use the boss portrait. Otherwise, use the player.
+                            let isBoss = (this.config.bossName && line.speaker === this.config.bossName);
+                            return {
+                                text: `${line.speaker}: ${line.text}`,
+                                sprite: isBoss ? bossSprite : playerSprite
+                            };
+                        });
+
+                        this.state = 'CINEMATIC';
+                        
+                        // Drop the epic boss music!
+                        if (typeof MusicEngine !== 'undefined') {
+                            MusicEngine.stop(); 
+                            MusicEngine.play(8); 
+                        }
+                        return; // Halt queue generation until the cinematic finishes
+                    }
                     // --- S-RANK FINALE CUSTCENE TRIGGER ---
                     if (this.config && this.config.isFinale && this.turnCount === 0 && !this.finaleTriggered) {
                         this.finaleTriggered = true;
