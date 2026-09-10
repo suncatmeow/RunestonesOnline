@@ -4616,8 +4616,9 @@
                                 if (isNaN(cardID) || !CARD_MANIFEST_DB[cardID]) {
                                     
                                     // 1. EXACT MATCH FIRST (Fixes the Dragon vs Dragon Wing overlap)
-                                    let foundID = Object.keys(CARD_MANIFEST_DB).find(id => CARD_MANIFEST_DB[id].name.toLowerCase() === nameToFind) || 
-                                    Object.keys(CARD_MANIFEST_DB).find(id => CARD_MANIFEST_DB[id].name.toLowerCase().includes(nameToFind));
+                                    // ---> THE FIX: Changed nameToFind to name <---
+                                    let foundID = Object.keys(CARD_MANIFEST_DB).find(id => CARD_MANIFEST_DB[id].name.toLowerCase() === name) || 
+                                    Object.keys(CARD_MANIFEST_DB).find(id => CARD_MANIFEST_DB[id].name.toLowerCase().includes(name));
                                     
                                     // 2. INCLUDES MATCH (Fallback)
                                     if (!foundID) {
@@ -5074,8 +5075,9 @@
                                         baseID = parseInt(mIDs[Math.floor(Math.random() * mIDs.length)]);
                                     } else {
                                         // 2. Exact match (Fixes "Dragon" giving "Dragon Wing")
-                                        let foundID = Object.keys(CARD_MANIFEST_DB).find(id => CARD_MANIFEST_DB[id].name.toLowerCase() === nameToFind) || 
-                                        Object.keys(CARD_MANIFEST_DB).find(id => CARD_MANIFEST_DB[id].name.toLowerCase().includes(nameToFind));
+                                        // ---> THE FIX: Changed nameToFind to name <---
+                                        let foundID = Object.keys(CARD_MANIFEST_DB).find(id => CARD_MANIFEST_DB[id].name.toLowerCase() === name) || 
+                                        Object.keys(CARD_MANIFEST_DB).find(id => CARD_MANIFEST_DB[id].name.toLowerCase().includes(name));
                                         
                                         // 3. Includes match, but prioritize MONSTERS 
                                         if (!foundID) {
