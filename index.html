@@ -4395,6 +4395,9 @@
                     
                     localStorage.setItem('runestones_perception', myLivePerception);
                     console.log("Live Perception Updated:", myLivePerception);
+                    if (typeof Dungeon !== 'undefined') {
+                        Dungeon.syncLivingPlayerCards();
+                    }
                 }
             });
 
@@ -4426,13 +4429,12 @@
         
             socket.on('stats_sync_reply', (data) => {
                 myLivePerception = data.perception;
+                localStorage.setItem('runestones_perception', myLivePerception);
 
-                // Update the Player Card UI immediately
-                if (typeof Dungeon !== 'undefined' && Dungeon.uiPlayerCard) {
-                    Dungeon.uiPlayerCard.desc = myLivePerception;
+                // ---> FORCE THE CARDS TO UPDATE <---
+                if (typeof Dungeon !== 'undefined') {
+                    Dungeon.syncLivingPlayerCards();
                 }
-                
-                
             });
             socket.on("new_quest_objective", (data) => {
             currentQuest = data.questText;
@@ -8882,18 +8884,23 @@
                     // // <--- ADD THIS LINE
                     // --------------------------------
 
-                    // 2. Restore Player Name/Sprite
+                    // 2. Restore Player Name/Sprite & Offline Perception
                     if (data.name) {
                         playerName = data.name; 
                         playerSprite = data.sprite;
-                        Player[0].name = data.name; 
                     }
-                    if (data.perception) {
-                        myLivePerception = data.perception;
-                        if (typeof Player !== 'undefined' && Player[0]) {
-                            Player[0].desc = myLivePerception;
-                        }
+                    
+                    // --- THE OFFLINE PERCEPTION FIX ---
+                    // Try to load from the save file first, otherwise fall back to localStorage
+                    let savedPerception = data.perception || localStorage.getItem('runestones_perception');
+                    if (savedPerception) {
+                        myLivePerception = savedPerception;
+                    } else {
+                        myLivePerception = "An unpredictable wanderer stepping into the unknown.";
                     }
+                    
+                    // Sync the living cards immediately upon loading!
+                    this.syncLivingPlayerCards();
                     // 3. Restore Memory (Dead NPCs)
                     this.memory = { ...this.memory, ...data.memory };
 
@@ -9007,6 +9014,63 @@
                 console.log("Save file and AI memories permanently deleted. True Permadeath achieved.");
                 
                 return true;
+            }
+            syncLivingPlayerCards() {
+                // 1. Update the UI Player Card (Deck Menu)
+                if (this.uiPlayerCard) {
+                    let lvl = this.level || 0;
+                    this.uiPlayerCard.name = `${typeof playerName !== 'undefined' ? playerName : 'Player'} Lv.${lvl}`;
+                    this.uiPlayerCard.desc = typeof myLivePerception !== 'undefined' ? myLivePerception : 'Ready for adventure.';
+                    this.uiPlayerCard.portrait = typeof playerSprite !== 'undefined' ? playerSprite : 106;
+                    
+                    for (let i = 0; i < 4; i++) {
+                        this.uiPlayerCard.stat[i][0] = this.stat[i][0];
+                        this.uiPlayerCard.stat[i][1] = this.stat[i][1];
+                        this.uiPlayerCard.stat[i][2] = this.stat[i][2];
+                        this.uiPlayerCard.stat[i][3] = `${this.stat[i][0]}d${this.stat[i][1]}`;
+                    }
+                }
+
+                // 2. Helper to update physical cards in your inventory
+                const updateCardInArray = (arr) => {
+                    if (!arr) return;
+                    arr.forEach(c => {
+                        if (c && c.index === 91) {
+                            c.name = typeof playerName !== 'undefined' ? playerName : 'Player';
+                            c.desc = typeof myLivePerception !== 'undefined' ? myLivePerception : 'Ready for adventure.';
+                            c.portrait = typeof playerSprite !== 'undefined' ? playerSprite : 106;
+                            
+                            // Recalculate Rank to Roman Numeral
+                            let lvl = this.level || 0;
+                            if (lvl === 0) {
+                                c.rank = '0';
+                            } else {
+                                const romanMap = { M: 1000, CM: 900, D: 500, CD: 400, C: 100, XC: 90, L: 50, XL: 40, X: 10, IX: 9, V: 5, IV: 4, I: 1 };
+                                let str = ''; let tempLvl = lvl;
+                                for (let key of Object.keys(romanMap)) {
+                                    let q = Math.floor(tempLvl / romanMap[key]);
+                                    tempLvl -= q * romanMap[key];
+                                    str += key.repeat(q);
+                                }
+                                c.rank = str;
+                            }
+
+                            // Sync Stats
+                            for (let i = 0; i < 4; i++) {
+                                c.stat[i][0] = this.stat[i][0];
+                                c.stat[i][1] = this.stat[i][1];
+                                c.stat[i][2] = this.stat[i][2];
+                                c.stat[i][3] = `${this.stat[i][0]}d${this.stat[i][1]}`;
+                            }
+                        }
+                    });
+                };
+
+                // 3. Apply to all inventories
+                updateCardInArray(this.deck);
+                updateCardInArray(this.extra);
+                updateCardInArray(this.hand);
+                if (typeof Player !== 'undefined' && Player[0]) updateCardInArray(Player[0].deck);
             }
         //MAP MAKER
             editorSaveDraft() {
@@ -20900,10 +20964,7 @@
                             }
                             
                         } else {
-                            if (typeof MessageBox !== 'undefined') {
-                                MessageBox.show(0.5, 8, 1, 9, 2, 'You were slain by a spell!', 'dialogue', 1, 0);
-                            }
-                            setTimeout(() => { window.location.reload(); }, 2000); 
+                            Dungeon.killPlayer('spell') 
                         }
                     }
                     return;
@@ -39272,7 +39333,7 @@
                         MusicEngine.play(18);
                         startGame = 'explore'; // OR 'tutorial' if you prefer
                             resizeCanvas()
-                        Player[0].name = playerName; // Attach the name to the local Player object too
+                        Dungeon.name = playerName; // Attach the name to the local Player object too
                         // Optional: Tell server our new identity
                         if (typeof socket !== 'undefined') {
                             socket.emit('setIdentity', { name: playerName, sprite: playerSprite });
@@ -81732,7 +81793,7 @@
                     let xtcolor = 'white';
                     
                     Dungeon.uiPlayerCard.name = `${playerName} Lv.${currentLvl}`;
-                    Dungeon.uiPlayerCard.description = myLivePerception;
+                    Dungeon.uiPlayerCard.desc = myLivePerception;
                     Dungeon.uiPlayerCard.portrait = playerSprite;
 
                     // --- NEW: REAL-TIME VIRTUAL DICE SYNC ---
@@ -82221,10 +82282,10 @@
                         // --- 4. PLAYER STATS (RIGHT SIDE) ---
                         let xpNeeded = Math.floor(100 * Math.pow(Dungeon.level + 1, 1.8));
                         
-                        let playerCard = new Card(91,0)
-                        playerCard.name = `${playerName} Lv.${Dungeon.level}`;
-                        playerCard.description =myLivePerception;
-                        playerCard.portrait = playerSprite;
+                        let playerCard = Dungeon.uiPlayerCard
+                        //playerCard.name = `${playerName} Lv.${Dungeon.level}`;
+                        //playerCard.description =myLivePerception;
+                        //playerCard.portrait = playerSprite;
                         playerCard.place (6,2.5,1.5)
                         // Visual XP Bar (Background gray, Foreground green)
                         drawShape('rec', 5.75, 1.8, 1, 0, 0, 4, 0.4, 0,0,0,0, '#333333', 1);
