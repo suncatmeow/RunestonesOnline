@@ -20213,7 +20213,106 @@
 
                 return quests;
             }
-             
+            killPlayer(reason = 'combat', killerNPC = null) {
+                if (this.isDying || this.isDead) return; 
+                
+                this.isDying = true;
+                console.log(`Player fatally wounded! Reason: ${reason}.`);
+
+                let killerName = "an unknown force";
+
+                // Generic taunt arrays (Array of arrays so the dialogue engine reads it correctly)
+                const genericTaunts = [
+                    ["Too slow!"],
+                    ["Another fool bites the dust!"],
+                    ["You were unworthy of this realm!"],
+                    ["Rest in pieces!"],
+                    ["Did you really think you could win?"],
+                    ["Pathetic."]
+                ];
+
+                if (killerNPC && typeof killerNPC === 'object') {
+                    // 1. Resolve the Killer's true name using your Card DB
+                    if (killerNPC.name && killerNPC.name !== "undefined") {
+                        killerName = killerNPC.name;
+                    } else if (killerNPC.type !== undefined && typeof Card !== 'undefined') {
+                        let cardData = new Card(Math.floor(killerNPC.type), 0);
+                        killerName = cardData.name || "a monster";
+                    } else {
+                        killerName = "a monster";
+                    }
+                    
+                    // 2. Preserve their entire custom dialogue array, or assign a random generic taunt
+                    if (!killerNPC.customDialogue || killerNPC.customDialogue.length === 0) {
+                        killerNPC.customDialogue = genericTaunts[Math.floor(Math.random() * genericTaunts.length)];
+                    }
+                    
+                    // 3. Strip interactions so you don't accidentally accept a quest while dying!
+                    killerNPC.options = null;
+                    killerNPC.yesActions = null;
+                    killerNPC.noActions = null;
+                    killerNPC.endActions = []; 
+                    killerNPC.rewardCard = null;
+
+                    // 4. THE FIX: Set them as speaker. The 3D camera will snap to them natively!
+                    this.currentSpeaker = killerNPC;
+                    
+                } else {
+                    // Fallback for environmental damage or Damage over Time
+                    killerName = typeof killerNPC === 'string' ? killerNPC : "your wounds";
+                    this.currentSpeaker = {
+                        type: -37, // Skull / System Icon
+                        index: 99999,
+                        visible: true,
+                        alignment: 'friendly', 
+                        role: 'notification', 
+                        customDialogue: [`You have succumbed to ${killerName}.`],
+                        endActions: []
+                    };
+                }
+
+                // Trigger the native dialogue box UI
+                if (typeof startGame !== 'undefined') startGame = 'dialogue';
+                this.dCounter = 0;
+
+                // --- DICE ROLL FOR DEATH TIMER ---
+                const rollStat = (idx) => {
+                    let statArr = this.stat[idx];
+                    if (!statArr) return 4;
+                    let total = statArr[2]; 
+                    for (let i = 0; i < statArr[0]; i++) {
+                        total += Math.floor(Math.random() * statArr[1]) + 1;
+                    }
+                    return Math.max(1, total); 
+                };
+
+                let strRoll = rollStat(0); 
+                let conRoll = rollStat(1); 
+                let intRoll = rollStat(2); 
+                let agiRoll = rollStat(3); 
+
+                // Time to live (Willpower + Brawn + Mind)
+                this.deathMaxTime = 3.0 + ((strRoll + conRoll + intRoll) * 0.25);
+                this.deathIntensity = Math.max(0.1, 1.5 - (agiRoll * 0.05));
+
+                // --- TRIGGER WEATHER ENGINE ---
+                if (this.weather) {
+                    this.weather.setMode('dying');
+                    this.weather.dyingTimer = 0;
+                    this.weather.dyingMaxTime = this.deathMaxTime;
+                    this.weather.dyingIntensity = this.deathIntensity;
+                }
+
+                if (typeof MusicEngine !== 'undefined') {
+                    MusicEngine.stop();
+                    MusicEngine.play3DSFX('cancel'); 
+                }
+
+                // Broadcast the exact string name to the server
+                if (typeof socket !== 'undefined') {
+                    socket.emit('player_died', { mapID: this.mapID, reason: reason, killer: killerName });
+                }
+            }
         //Tactics:
             getValidMoves(unitX, unitY, moveStat) {
                     let moves = [];
