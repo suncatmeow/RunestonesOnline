@@ -6371,7 +6371,7 @@
                 
                 io.to(socketId).emit("chat_message", {
                     sender: "[EPISODE SUMMARY]",
-                    text: "Your previous session has been chronicled in your Grimoire.",
+                    text: "Your previous session has been chronicled in your Journal.",
                     color: "#FFD700"
                 });
                 
@@ -7327,7 +7327,6 @@ io.on("connection", (socket) => {
         socket.on("join_game", (data) => {
             let name = (typeof data === 'object') ? data.name : data;
             const nameKey = name.toLowerCase(); 
-            
             // 1. Extract the persistent ID (fallback to nameKey for older saves/clients)
             let persistentId = (typeof data === 'object' && data.persistentId) 
                 ? data.persistentId 
@@ -7366,7 +7365,16 @@ io.on("connection", (socket) => {
             let loadedStory = savedData ? savedData.storySoFar : ""; 
             let loadedMemories = savedData ? (savedData.searchableMemories || []) : [];
             playerFavorMemory[socket.id] = favor;
-            let perception = savedData ? (savedData.suncatPerception || "An unpredictable wanderer stepping into the unknown.") : "An unpredictable wanderer stepping into the unknown.";
+
+            // --- THE FIX: TRUST THE CLIENT'S PERCEPTION ---
+            let defaultPerception = "An unpredictable wanderer stepping into the unknown.";
+            let serverPerception = savedData ? (savedData.suncatPerception || defaultPerception) : defaultPerception;
+            
+            // If the server's memory is blank/default, but the client passed up a custom string from their local save file, adopt it!
+            if (data.perception && data.perception !== defaultPerception && serverPerception === defaultPerception) {
+                serverPerception = data.perception;
+            }
+            let perception = serverPerception;
                 // --- SANITIZATION STEP ---
             // This fixes the "Starting an object on a scalar field" error
             // AND fixes the "Each Content should have at least one part" error.
@@ -7423,7 +7431,14 @@ io.on("connection", (socket) => {
                 players[socket.id].storySoFar = loadedStory;
                 players[socket.id].playerProfile = playerProfile; 
                 players[socket.id].searchableMemories = loadedMemories;   
-                players[socket.id].suncatPerception = perception;  
+                players[socket.id].suncatPerception = perception;
+                if (name.toLowerCase() === "player" || name.toLowerCase() === "unknown") {
+                    if (!players[socket.id].undigestedInfo) players[socket.id].undigestedInfo = [];
+                    players[socket.id].undigestedInfo.push("[PSYCHOLOGICAL NOTE]: The mortal refuses to give a real name, referring to themselves only as 'Player'. They may be an amnesiac, an anomaly, or emotionally detached from this reality.");
+                } else {
+                    if (!players[socket.id].undigestedInfo) players[socket.id].undigestedInfo = [];
+                    players[socket.id].undigestedInfo.push(`[PSYCHOLOGICAL NOTE]: The mortal chose to name themselves '${name}'. Consider what kind of person chooses a name like that.`);
+                }  
                 condenseSessionOnLogin(socket.id);
                 if (!players[socket.id].dmNarrativeLog) {
                     players[socket.id].dmNarrativeLog = [];
@@ -7434,9 +7449,7 @@ io.on("connection", (socket) => {
                 players[socket.id].scenarioContext = savedData ? savedData.scenarioContext : null;
                 if (players[socket.id].mapID === 999 && activeCustomMap) {
                     socket.emit('load_custom_map', activeCustomMap);
-                } else if (players[socket.id].mapID === 100 && tintagelHubMap) {
-                    socket.emit('load_custom_map', tintagelHubMap);
-                }
+                } 
                 if (cleanHistory.length > 0) {
                     console.log(`Loading ${cleanHistory.length} memories for ${name}...`);
                     try {
@@ -7485,7 +7498,7 @@ io.on("connection", (socket) => {
             }
             });
         
-                socket.on("disconnect", async () => {
+        socket.on("disconnect", async () => {
             console.log(`Player disconnected: ${socket.id}`);
             
             const me = players[socket.id];
