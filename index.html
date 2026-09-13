@@ -2842,7 +2842,7 @@
                 // --- PROJECTILES (Attack) ---
                 13: { type: 'projectile', name: 'Death', cooldown: 9000, castStat: 2, defStat: 2, color: [0,0,0], glow: '#00ffff',  model3D: 'd4', isHoming: true }, 
                 26: { type: 'projectile', name: 'Fireball', cooldown: 6000, castStat: 2, defStat: 1, color: [1,0.5,0], glow: '#ff0000', sprite2D: -37, isHoming: false, knockback: 1.5  }, 
-                80: { type: 'projectile', name: 'Ice Shard', cooldown: 9000, castStat: 2, defStat: 1, color: [0,0,1], glow: '#0000ff', model3D: 'd4', isHoming: false }, // MOVED TO 80 (Frost Wyrm) to prevent conflict with 94 Lich
+                //80: { type: 'projectile', name: 'Ice Shard', cooldown: 9000, castStat: 2, defStat: 1, color: [0,0,1], glow: '#0000ff', model3D: 'd4', isHoming: false }, // MOVED TO 80 (Frost Wyrm) to prevent conflict with 94 Lich
                 92: { type: 'imbue', name: 'Imbue Fire', consume: 26, cooldown: 3000 },
                 93: { type: 'projectile', name: 'Lightning', cooldown: 7000, castStat: 2, defStat: 3, color: [1,1,0], glow: '#ffff00', model3D: 'd4', isHoming: true, chains: 1 },
                 9999: { type: 'projectile', name: 'Attack', castStat: 0, defStat: 1, color: [1,1,1], glow: '#ffff00', sprite2D: 316, isHoming: true, range: 1.3, knockback: 1.3 },
@@ -2852,11 +2852,11 @@
                 95: { type: 'cone', name: 'Flurry', cooldown: 3000, castStat: 3, defStat: 1, range: 3.0, knockback: 2, angle: 0.5 },
                 
                 // --- INSTANT TELEPORT STRIKES ---
-                40: { type: 'assassination', name: 'Steal', cooldown: 90000, castStat: 3, defStat: 3, range: 4, isSteal: true },
+                40: { type: 'assassination', name: 'Steal', cooldown: 90000, castStat: 3, defStat: 3, range: 3, isSteal: true },
                 51: { type: 'assassination', name: 'Overpower', cooldown: 9000, castStat: 0, defStat: 0, range: 3 },
                 52: { type: 'assassination', name: 'Backstab', cooldown: 6000, castStat: 3, defStat: 3, range: 9 },
                 59: { type: 'assassination', name: 'Critical Strike', cooldown: 9000, castStat: 0, defStat: 3, range: 6},
-                65: { type: 'assassination', name: 'Shield Bash', cooldown: 9000, castStat: 1, defStat: 0, range: 1},
+                65: { type: 'assassination', name: 'Shield Bash', cooldown: 9000, castStat: 1, defStat: 0, range: 3},
 
                 // --- TIMED BUFFS (AoE) ---
                 8:  { type: 'buff', name: 'Strength', cooldown: 450000, castStat: 2, buffStat: 0, amount: 2, duration: 1800, visual: 'arc', auraColor: 'rgba(255, 255, 0, 0.6)' },
@@ -2872,16 +2872,16 @@
                 
                 // --- DEBUFFS (Fired as Projectiles) ---
                 68: { type: 'debuff', name: 'Bad Luck Charm', cooldown: 450000, castStat: 3, defStat: 2, debuffStat: 0, duration: 3600, visual: 'aura', auraColor: 'rgba(128, 0, 128, 0.7)', color: [1,0,1], glow: '#800080', model3D: 'd4', isHoming: true },
-                512: { type: 'debuff', name: 'Bind', cooldown: 90000,  castStat: 2, defStat: 3, bind: true, duration: 600, visual: 'chains', auraColor: 'rgba(100, 100, 100, 0.8)', color: [1,1,1], glow: '#888888', model3D: 'd4', isHoming: true },
-                515: { type: 'debuff', name: 'Curse', cooldown: 90000, castStat: 2, defStat: 0, debuffStat: 'all', duration: 3600, visual: 'aura', auraColor: 'rgba(128, 0, 128, 0.7)', color: [1,0,1], glow: '#800080', model3D: 'd4', isHoming: true },
-                518: { type: 'debuff', name: 'Lunacy', cooldown: 90000,  castStat: 0, defStat: 2, debuffStat: 2, bind: true, duration: 450, visual: 'chains', auraColor: 'rgba(100, 100, 0, 0.8)', color: [1,1,0], glow: '#888888', model3D: 'd4', isHoming: true },
-                558: { type: 'debuff', name: 'Intimidate', cooldown: 90000,  castStat: 0, defStat: 2, debuffStat: 0, bind: true, duration: 450, visual: 'chains', auraColor: 'rgba(100, 100, 0, 0.8)', color: [1,1,0], glow: '#888888', model3D: 'd4', isHoming: true },
+                12: { type: 'debuff', name: 'Bind', cooldown: 90000,  castStat: 2, defStat: 3, bind: true, duration: 600, visual: 'chains', auraColor: 'rgba(100, 100, 100, 0.8)', color: [1,1,1], glow: '#888888', model3D: 'd4', isHoming: true },
+                15: { type: 'debuff', name: 'Curse', cooldown: 90000, castStat: 2, defStat: 0, debuffStat: 'all', duration: 3600, visual: 'aura', auraColor: 'rgba(128, 0, 128, 0.7)', color: [1,0,1], glow: '#800080', model3D: 'd4', isHoming: true },
+                18: { type: 'debuff', name: 'Lunacy', cooldown: 90000,  castStat: 0, defStat: 2, debuffStat: 2, bind: true, duration: 450, visual: 'chains', auraColor: 'rgba(100, 100, 0, 0.8)', color: [1,1,0], glow: '#888888', model3D: 'd4', isHoming: true },
+                58: { type: 'debuff', name: 'Intimidate', cooldown: 90000,  castStat: 0, defStat: 2, debuffStat: 0, bind: true, duration: 450, visual: 'chains', auraColor: 'rgba(100, 100, 0, 0.8)', color: [1,1,0], glow: '#888888', model3D: 'd4', isHoming: true },
                 
                 // --- DEBUFF CONES (Frontal AoE) ---
-                12: { type: 'cone', name: 'Bind', cooldown: 90000, castStat: 2, defStat: 3, bind: true, duration: 600, visual: 'chains', auraColor: 'rgba(100, 100, 100, 0.8)', range: 4.0, angle: 0.5 },
-                15: { type: 'cone', name: 'Curse', cooldown: 90000, castStat: 2, defStat: 0, debuffStat: 'all', duration: 3600, visual: 'aura', auraColor: 'rgba(128, 0, 128, 0.7)', range: 4.0, angle: 0.5 },
-                18: { type: 'cone', name: 'Lunacy', cooldown: 90000, castStat: 0, defStat: 2, debuffStat: 2, bind: true, duration: 450, visual: 'chains', auraColor: 'rgba(100, 100, 0, 0.8)', range: 4.0, angle: 0.5 },
-                58: { type: 'cone', name: 'Intimidate', cooldown: 90000, castStat: 0, defStat: 2, debuffStat: 0, bind: true, duration: 450, visual: 'chains', auraColor: 'rgba(100, 100, 0, 0.8)', range: 4.0, angle: 0.5 },
+                512: { type: 'cone', name: 'Bind', cooldown: 90000, castStat: 2, defStat: 3, bind: true, duration: 600, visual: 'chains', auraColor: 'rgba(100, 100, 100, 0.8)', range: 4.0, angle: 0.5 },
+                515: { type: 'cone', name: 'Curse', cooldown: 90000, castStat: 2, defStat: 0, debuffStat: 'all', duration: 3600, visual: 'aura', auraColor: 'rgba(128, 0, 128, 0.7)', range: 4.0, angle: 0.5 },
+                518: { type: 'cone', name: 'Lunacy', cooldown: 90000, castStat: 0, defStat: 2, debuffStat: 2, bind: true, duration: 450, visual: 'chains', auraColor: 'rgba(100, 100, 0, 0.8)', range: 4.0, angle: 0.5 },
+                558: { type: 'cone', name: 'Intimidate', cooldown: 90000, castStat: 0, defStat: 2, debuffStat: 0, bind: true, duration: 450, visual: 'chains', auraColor: 'rgba(100, 100, 0, 0.8)', range: 4.0, angle: 0.5 },
                 
                 // --- CONSUMABLE ITEMS (Static Buffs & Wards) ---
                 22: { type: 'item_buff', name: 'Wand',    cooldown: 450000,    buffStat: 2, amount: 1, duration: 1800, visual: 'arc', auraColor: 'rgba(255, 0, 0, 0.6)' },
@@ -4428,11 +4428,20 @@
             // -----------------------------------
         
             socket.on('stats_sync_reply', (data) => {
-                myLivePerception = data.perception;
-                localStorage.setItem('runestones_perception', myLivePerception);
+                let defaultText = "An unpredictable wanderer stepping into the unknown.";
+                
+                // THE FIX: Only overwrite if the server has an actual custom evaluation,
+                // OR if our local text is currently blank/default.
+                if (data.perception && data.perception !== defaultText) {
+                    myLivePerception = data.perception;
+                    localStorage.setItem('runestones_perception', myLivePerception);
+                } 
+                else if (!myLivePerception || myLivePerception.trim() === "") {
+                    myLivePerception = defaultText;
+                }
 
                 // ---> FORCE THE CARDS TO UPDATE <---
-                if (typeof Dungeon !== 'undefined') {
+                if (typeof Dungeon !== 'undefined' && typeof Dungeon.syncLivingPlayerCards === 'function') {
                     Dungeon.syncLivingPlayerCards();
                 }
             });
@@ -5399,222 +5408,182 @@
 //////////////////////////[DUNGEON CLASSES]/////////////////////////////
 ///////////////////vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv//////////////////////
     class NPC {
-        constructor(index,x, y, type, state = 'wandering',minimapColor = '#ff0000',deck = [],role='battle',isBoss = null,alignment = 'foe',level = 0) {
-            //init vars
-                this.isTarget = false;
-                this.searchTimer = 0;
-                this.needsBillboardUpdate = true;
-                this.cachedBillboard = null;
-                this.baseCard = new Card(Math.floor(this.type),0);
-                this.alignment = alignment; // Store the alignment
-                this.combatCooldown = 0;    // Cooldown for NPC vs NPC attacks
-                this.lastSeenX = null;
-                this.lastSeenY = null;
-                this.talkedTo = 0;
-                this.clashCount = 0;
+        constructor(index, x, y, type, state = 'wandering', minimapColor = '#ff0000', deck = [], role = 'battle', isBoss = null, alignment = 'foe', level = 0) {
+            
+            // 1. CORE IDENTITY & POSITION
+                this.index = index;
+                this.type = type; 
+                this.level = level;
+                this.isBoss = !!isBoss; // Strict boolean cleanup
+                
                 this.x = x;
                 this.y = y;
                 this.originx = x;
                 this.originy = y;
-                this.index = index;
-                this.type = type; 
-                this.deck = deck; // Store the custom deck
-                this.cards = deck.map(c => typeof c === 'number' ? new Card(c, 0) : c);
-                this.color = minimapColor; 
-                this.visible = true;
-                //movement cache 
-                this.pathTimer = Math.floor(Math.random() * 15);
-                this.cachedPath = [];
-                //npc combat
-                this.isCinematic = false; // Good practice to default this here too!
-                this.damageFlashTimer = 0;
-                this.cachedPrey = null;
-                //
+
+                // Base Identity from Card Dictionary
+                this.baseCard = new Card(Math.floor(this.type), 0);
+                this.name = this.baseCard.name;
                 
-                
-                // --- 1. INITIAL ROLE ASSIGNMENT ---
-                // Default to 'battle' if nothing is passed
                 this.role = role || 'battle';
+                this.alignment = alignment; 
+                this.xp = getPower(null, deck); // Assuming getPower accepts deck array
 
-                // --- 2. HARD OVERRIDES (The True Failsafe) ---
-                if (this.type === -27 || this.type === 99 || this.type < 0) {
-                    if (this.role !== 'portal') this.role = 'dialogue'; 
-                    
-                    // Allow 'friendly_shy' to persist so they can flee!
-                    if (this.alignment !== 'friendly_shy') this.alignment = 'friendly';
+            // 2. STATS & LIFE FORCE (WARDS)
+                // Import true stats directly from the Card encyclopedia
+                this.stat = JSON.parse(JSON.stringify(this.baseCard.stat));
+                
+                // Dynamic CON-Based Ward Rolling
+                let conDice = this.getEffectiveDice ? this.getEffectiveDice(1) : {numDice:1, diceSides:4, flatMod:0}; 
+                let rolledWards = conDice.flatMod;
+                for (let i = 0; i < conDice.numDice; i++) {
+                    rolledWards += Math.floor(Math.random() * conDice.diceSides) + 1;
                 }
 
-                // --- 3. BOOLEAN CLEANUP ---
-                // Ensures isBoss is strictly true or false, never undefined
-                this.isBoss = !!isBoss; 
+                this.maxWards = Math.max(1, rolledWards); // Absolute minimum 1
+                if (this.isBoss && this.maxWards < 9) this.maxWards = 9; // Boss safety net
 
-                // --- 4. DIALOGUE FALLBACK ---
-                // If it's a talking NPC (not an item/effect), make sure they actually have words!
-                if (this.role === 'dialogue' && this.type >= 0 && this.type !== 99) {
-                    // This safely checks for null, undefined, empty strings "", or empty arrays []
-                    if (!this.customDialogue || this.customDialogue.length === 0) {
-                        this.customDialogue = ['What do you want?']; 
-                    }
-                }
-            // AUDIO TIMERS ---
-                this.stepTimer = 0;     // Tracks footstep rhythm
-                this.gruntTimer = Math.random() * 500; // Random start for grunts
-                this.wispTimer = 0;     // Continuous wisp sound
-            // RESPAWN LOGIC ---
-                this.isDead = false;          // Is the NPC currently dead?
-                this.respawnTime = Infinity;         // Timestamp when they should return
-                this.respawnDelay = 910613;    // 30 Seconds (Adjust as needed)
-            //// MOVEMENT
-                this.dirX = Math.random() - 0.5;
-                this.dirY = Math.random() - 0.5;
-                this.speed = 1; 
-                this.xp= getPower(null,this.cards);
-            // WARD SYSTEM ---
-                this.maxWards = (this.isBoss) ? 9 : 1; // Bosses get 3 natural wards!
                 this.timePerWard = 3.0;
                 this.currentWardTime = this.maxWards * this.timePerWard;
                 this.wardShatterCooldown = 0;
-            //FATNESS ---
-                const fatSprites = [33, 33.1, 63, 63.1, 74, 74.1, 49, 49.1, 89, 37, 37.1, 47, 47.1]; 
-            
-                // Normal NPCs get a 0.2 radius. Big ones get a 0.35 radius so their edges don't clip!
-                this.radius = fatSprites.includes(this.type) ? .35 : .25;
-            //3D MODEL LOGIC ---
-                this.model = null;
-                this.bobOffset = 0; // For the up/down animation
-                this.zHeight = 0;   // Height from floor
+
+            // 3. MOVEMENT & PATHFINDING
+                this.state = state; 
+                this.preState = state;
+                
+                this.dirX = Math.random() - 0.5;
+                this.dirY = Math.random() - 0.5;
+                this.speed = 1; 
                 this.chasing = false;
 
-                if (this.type === 'Fire Elemental') {
-                    this.model = new Dice('d4');
-                    
-                    // Base color (Inner core of the fire)
-                    this.model.setColor(1, 0, 1); 
-                    
-                    // Glow color (Outer halo - Orange/Red)
-                    this.model.setGlow('#660033'); 
-                    
-                    this.model.rs = 99; 
-                    this.state = 'wandering';
-                }
-                if (this.type === 9999) {
-                    this.model = new Dice('d4');
-                    this.model.setColor(0, 1, 1); // Cyan color
-                    this.model.setGlow('#00ffff'); // Cyan glow
-                    this.model.rs = 0.02; // Slow spin
-                    this.state = 'stationary';
-                }
-            //NPC STATE
-                this.preState = state;
-                this.state = state; 
-            //RANGED COMBAT STATS ---
-                //const rangedTypes = [0, 1, 2, 5, 9, 9.1,32, 32.1, 33, 33.1, 34, 34.1, 35, 35.1,37,37.1,42, 48,57,57.1, 62, 63,63.1,76,78,79,83,999]; 
-                //this.isRanged = rangedTypes.includes(Math.floor(this.type)) || rangedTypes.includes(this.type);
-                this.isRanged = true;
-                this.rangedCooldown = Math.random() * 60;
-                this.level = level;
-                this.stat = [
-                    [1, 4, 0], // 0: STR
-                    [1, 4, 0], // 1: CON
-                    [1, 4, 0], // 2: INT
-                    [1, 4, 0]  // 3: AGI
-                ];
-            //SPELL ASSIGNMENT ---
-                this.activeBuffs = []; // Tracks all active spells on this NPC
-                this.innateSpells = []; // Start empty
-                
-                // ==========================================
-                // 1. DYNAMIC CLASS-BASED SPELL GENERATOR (Level-Based)
-                // ==========================================
-                let myManifest = typeof CARD_MANIFEST_DB !== 'undefined' ? CARD_MANIFEST_DB[Math.floor(this.type)] : null;
+                this.pathTimer = Math.floor(Math.random() * 15);
+                this.cachedPath = [];
 
+            // 4. COMBAT, AGGRO & RADAR
+                this.isTarget = false;
+                this.isRanged = true; // Hardcoded true based on your current setup
+                
+                this.combatCooldown = 0;    
+                this.rangedCooldown = Math.random() * 60;
+                this.damageFlashTimer = 0;
+                this.clashCount = 0;
+                this.isCinematic = false; 
+
+                // Radar Memory
+                this.cachedPrey = null;
+                this.lastSeenX = null;
+                this.lastSeenY = null;
+                this.searchTimer = 0;
+
+            // 5. DECK, BUFFS & SPELL GENERATION
+                this.deck = deck; 
+                this.cards = deck.map(c => typeof c === 'number' ? new Card(c, 0) : c);
+                
+                this.activeBuffs = []; 
+                this.innateSpells = []; 
+
+                // Dynamic Class-Based Spell Generator
+                let myManifest = typeof CARD_MANIFEST_DB !== 'undefined' ? CARD_MANIFEST_DB[Math.floor(this.type)] : null;
                 if (myManifest && myManifest.classes && myManifest.classes.length > 0) {
                     let validSpells = [];
-                    
-                    // Grab up to the first TWO classes
                     let primaryClasses = myManifest.classes.slice(0, 2).map(c => c.toLowerCase());
                     
                     for (let cardId in CARD_MANIFEST_DB) {
                         let cardDef = CARD_MANIFEST_DB[cardId];
                         let spellDef = typeof SPELL_REGISTRY !== 'undefined' ? SPELL_REGISTRY[cardId] : null;
                         
-                        // ONLY allow spells and monster summons. NO ITEMS.
-                        if (spellDef && (cardDef.type === 'spell' ) && !spellDef.type.includes('item')) {
+                        if (spellDef && cardDef.type === 'spell' && !spellDef.type.includes('item')) {
                             let spellClasses = (cardDef.classes || []).map(c => c.toLowerCase());
-                            
-                            // It's a match if the spell is for "all", the monster is for "all", or they share a class
                             let hasMatchingClass = spellClasses.includes('all') || 
-                                                   primaryClasses.includes('all') || 
-                                                   spellClasses.some(c => primaryClasses.includes(c));
-                            
-                            if (hasMatchingClass) {
-                                validSpells.push(parseInt(cardId));
-                            }
+                                                primaryClasses.includes('all') || 
+                                                spellClasses.some(c => primaryClasses.includes(c));
+                            if (hasMatchingClass) validSpells.push(parseInt(cardId));
                         }
                     }
 
-                    // --- Determine Spell Count Based on Level ---
-                    let spellCount = 1; // Default for Level 0-2
-                    if (this.level >= 6 || this.isBoss) {
-                        spellCount = 3; // High level or Boss
-                    } else if (this.level >= 3) {
-                        spellCount = 2; // Mid level
-                    }
+                    let spellCount = (this.level >= 6 || this.isBoss) ? 3 : (this.level >= 3 ? 2 : 1);
 
-                    // --- Pick Random Spells from the Hat ---
                     if (validSpells.length > 0) {
-                        // Shuffle the valid spells array for true randomness
                         for (let i = validSpells.length - 1; i > 0; i--) {
                             const j = Math.floor(Math.random() * (i + 1));
                             [validSpells[i], validSpells[j]] = [validSpells[j], validSpells[i]];
                         }
-                        
-                        // Draw the exact number of spells their level allows
                         this.innateSpells = validSpells.slice(0, spellCount);
                     }
                 }
 
-                // Fallback: If they somehow got nothing, give them standard Attack
-                if (this.innateSpells.length === 0) {
-                    this.innateSpells = []; 
-                }
-
-                // ==========================================
-                // 2. MANUAL OVERRIDES (Additive!)
-                // ==========================================
-                // If you hardcode a monster here, it ADDS to their random level-based generation.
+                // Spell Manual Overrides (Additive)
                 let overrideSpells = [];
                 if (this.isRanged) {
                     switch(Math.floor(this.type)) {
-                        case 0:case 83:case 87: // Fool, Tentacle, Suncat
-                            overrideSpells = [52, 59]; 
-                            break;
-                        case 42: // Shade
-                            overrideSpells = [28, 93, 23]; 
-                            break;
-                        case 5: // Heirophant
-                            overrideSpells = [82, 12, 26, 28, 92]; 
-                            break;
-                        case 49:
-                            overrideSpells = [52, 59,83];
-                            break;                
-                        case 57: // Spider 
-                            overrideSpells = [12, 52]; 
-                            break;
-                        case 79: // Fire Imp
-                            overrideSpells = [26, 52]; 
-                            break;
-                        case 35: case 9: case 94: // Djinn, Hermit, Lich
-                            overrideSpells = [82, 28, 8, 13, 15, 12, 93]; 
-                            break;
+                        case 0: case 49: case 83: case 87: overrideSpells = [52, 59, 83]; break;
+                        case 42: overrideSpells = [28, 93, 23]; break;
+                        case 5: overrideSpells = [82, 12, 26, 28, 92]; break;
+                        case 57: overrideSpells = [12, 52]; break;
+                        case 79: overrideSpells = [26, 52]; break;
+                        case 9: case 35: case 94: overrideSpells = [82, 28, 8, 13, 15, 12, 93]; break;
                     }
                 }
                 
-                // Merge the random hat selection with the manual overrides, and remove duplicates!
                 if (overrideSpells.length > 0) {
                     this.innateSpells = [...new Set([...this.innateSpells, ...overrideSpells])];
                 }
-            }
+
+            // 6. RENDER, 3D MODELS & HITBOXES
+                this.visible = true;
+                this.color = minimapColor; 
+                this.needsBillboardUpdate = true;
+                this.cachedBillboard = null;
+
+                // Fatness / Hitbox Radius
+                const fatSprites = [33, 33.1, 63, 63.1, 74, 74.1, 49, 49.1, 89, 37, 37.1, 47, 47.1]; 
+                this.radius = fatSprites.includes(Math.floor(this.type)) ? 0.35 : 0.25;
+
+                // Custom 3D Models
+                this.model = null;
+                this.bobOffset = 0; 
+                this.zHeight = 0;   
+
+                if (this.type === 'Fire Elemental') {
+                    this.model = new Dice('d4');
+                    this.model.setColor(1, 0, 1); 
+                    this.model.setGlow('#660033'); 
+                    this.model.rs = 99; 
+                    this.state = 'wandering';
+                } else if (this.type === 9999) {
+                    this.model = new Dice('d4');
+                    this.model.setColor(0, 1, 1); 
+                    this.model.setGlow('#00ffff');
+                    this.model.rs = 0.02; 
+                    this.state = 'stationary';
+                }
+
+            // 7. AUDIO, FX & TIMERS
+                this.stepTimer = 0;     
+                this.wispTimer = 0;     
+                this.gruntTimer = Math.random() * 500; 
+
+            // 8. SYSTEM, RESPAWN & DIALOGUE RULES
+                this.isDead = false;          
+                this.respawnTime = Infinity;         
+                this.respawnDelay = 910613;    
+                
+                // Interaction specific
+                this.talkedTo = 0;
+
+                // Hard Overrides
+                if (this.type === -27 || this.type === 99 || this.type < 0) {
+                    if (this.role !== 'portal') this.role = 'dialogue'; 
+                    if (this.alignment !== 'friendly_shy') this.alignment = 'friendly';
+                }
+
+                // Dialogue Fallback Setup
+                if (this.role === 'dialogue' && this.type >= 0 && this.type !== 99) {
+                    if (!this.customDialogue || this.customDialogue.length === 0) {
+                        this.customDialogue = ['What do you want?']; 
+                    }
+                }
+        }
 
 
         checkCollision(maze, x, y) {
@@ -6820,112 +6789,64 @@
                                     let t1 = Math.floor(this.type);
                                     let t2 = Math.floor(currentPrey.type);
                                     if (this.isCinematic || currentPrey.isCinematic) isCinematic = true;
-                                    
                                     if (dungeon.mapID == 14 && ((t1 === 74 || t1 === 90) && t2 === 74 || t1 === 74 && (t2 === 77 || t2 === 90))) isCinematic = true;
                                     if (dungeon.mapID == 5 && ((t1 === 78 && t2 === 79) || (t1 === 79 && t2 === 78))) isCinematic = true;
                                     
                                     if (isCinematic) {
                                         MusicEngine.play3DSFX('attack', this.x, this.y, playerX, playerY, dungeon.dir);
-                                        let myNewX = this.x - toTargetX * 0.6;
-                                        let myNewY = this.y - toTargetY * 0.6;
+                                        let myNewX = this.x - toTargetX * 0.6; let myNewY = this.y - toTargetY * 0.6;
                                         if (!this.checkCollision(dungeon.maze, myNewX, this.y)) this.x = myNewX;
                                         if (!this.checkCollision(dungeon.maze, this.x, myNewY)) this.y = myNewY;
 
-                                        let preyNewX = currentPrey.x + toTargetX * 0.6;
-                                        let preyNewY = currentPrey.y + toTargetY * 0.6;
+                                        let preyNewX = currentPrey.x + toTargetX * 0.6; let preyNewY = currentPrey.y + toTargetY * 0.6;
                                         if (!currentPrey.checkCollision(dungeon.maze, preyNewX, currentPrey.y)) currentPrey.x = preyNewX;
                                         if (!currentPrey.checkCollision(dungeon.maze, currentPrey.x, preyNewY)) currentPrey.y = preyNewY;
 
-                                        this.combatCooldown = 13;
-                                        currentPrey.combatCooldown = 13;
+                                        this.combatCooldown = 13; currentPrey.combatCooldown = 13;
                                         return; 
                                     }
-                                    
-                                    // --- THE FIX: Virtual Dice implementation for Auto-Battler ---
-                                    const getVirtualRoll = (entity, statIndex, masteryBonus) => {
-                                        let eDice = entity.getEffectiveDice ? entity.getEffectiveDice(statIndex) : { numDice: 1, diceSides: 6, flatMod: 0 };
-                                        let total = eDice.flatMod + masteryBonus;
-                                        for (let i = 0; i < eDice.numDice; i++) {
-                                            total += Math.floor(Math.random() * eDice.diceSides) + 1;
-                                        }
-                                        // Apply secondary logic (Like player dice sides if entity is ally)
-                                        if (entity.alignment === 'ally' && statIndex !== 2 && dungeon.stat && dungeon.stat[statIndex]) {
-                                            let playerSides = dungeon.stat[statIndex][1]; 
-                                            if (playerSides === 6) total += 1;
-                                            else if (playerSides === 8) total += 2;
-                                            else if (playerSides === 10) total += 3;
-                                            else if (playerSides === 12) total += 4;
-                                            else if (playerSides === 20) total += 5;
-                                        }
-                                        return total;
-                                    };
 
                                     let allyMastery = (dungeon.mastery && dungeon.mastery[Math.floor(this.type)]) ? dungeon.mastery[Math.floor(this.type)].level : 0;
                                     let firstAttacker, firstDefender, attackerMastery, defenderMastery; 
-                                    let agiTie = true, tieBreakerFailsafe = 0; 
 
-                                    // Initiative Phase
-                                    while (agiTie && tieBreakerFailsafe < 10) {
-                                        tieBreakerFailsafe++;
-                                        let allyAgi = getVirtualRoll(this, 3, allyMastery);
-                                        let targetAgi = getVirtualRoll(currentPrey, 3, 0);
-                                        
-                                        if (allyAgi === targetAgi) {
-                                            let allyLucky = this.activeBuffs && this.activeBuffs.some(b => b.name === 'Lucky Charm');
-                                            let targetLucky = currentPrey.activeBuffs && currentPrey.activeBuffs.some(b => b.name === 'Lucky Charm');
-                                            if (allyLucky && !targetLucky) allyAgi += 99; 
-                                            else if (targetLucky && !allyLucky) targetAgi += 99;
-                                        }
-                                        if (allyAgi > targetAgi) {
-                                            firstAttacker = this; attackerMastery = allyMastery;
-                                            firstDefender = currentPrey; defenderMastery = 0;
-                                            agiTie = false;
-                                        } else if (targetAgi > allyAgi) {
-                                            firstAttacker = currentPrey; attackerMastery = 0;
-                                            firstDefender = this; defenderMastery = allyMastery;
-                                            agiTie = false;
-                                        }
-                                    }
+                                    // --- CLEAN INITIATIVE PHASE ---
+                                    let allyAgi = this.rollStat(3, allyMastery);
+                                    let targetAgi = currentPrey.rollStat(3, 0);
 
-                                    if (agiTie) {
+                                    if (allyAgi >= targetAgi) {
                                         firstAttacker = this; attackerMastery = allyMastery;
                                         firstDefender = currentPrey; defenderMastery = 0;
+                                    } else {
+                                        firstAttacker = currentPrey; attackerMastery = 0;
+                                        firstDefender = this; defenderMastery = allyMastery;
                                     }
 
                                     MusicEngine.play3DSFX('attack', this.x, this.y, playerX, playerY, dungeon.dir);
 
-                                    // Combat Math
-                                    let atkStr = getVirtualRoll(firstAttacker, 0, attackerMastery);
-                                    let defCon = getVirtualRoll(firstDefender, 1, defenderMastery);
+                                    // --- CLEAN COMBAT MATH ---
+                                    let atkStr = firstAttacker.rollStat(0, attackerMastery);
+                                    let defCon = firstDefender.rollStat(1, defenderMastery);
                                     
-                                    if (atkStr === defCon) {
-                                        let atkLucky = firstAttacker.activeBuffs && firstAttacker.activeBuffs.some(b => b.name === 'Lucky Charm');
-                                        let defLucky = firstDefender.activeBuffs && firstDefender.activeBuffs.some(b => b.name === 'Lucky Charm');
-                                        if (atkLucky && !defLucky) atkStr += 99;
-                                        else if (defLucky && !atkLucky) defCon += 99;
-                                        else defCon += 1; 
-                                    }
-                                    
+                                    // Tie goes to defender
+                                    if (atkStr === defCon) defCon += 1; 
+
                                     let someoneDied = false;
 
                                     if (atkStr > defCon) {
-                                        if (firstDefender.absorbHit(firstAttacker)) {
+                                        // --- THE FIX: Pass calculated damage into absorbHit ---
+                                        if (firstDefender.absorbHit(firstAttacker, null, (atkStr - defCon))) {
                                             let dx = firstAttacker.x - firstDefender.x;
                                             let dy = firstAttacker.y - firstDefender.y;
                                             let dist = Math.sqrt(dx*dx + dy*dy) || 1;
                                             
-                                            // --- NEW: STR-Based Bounce Resistance ---
-                                                let kbResist = 1.0;
-                                                if (firstAttacker.getEffectiveDice) {
-                                                    let strDice = firstAttacker.getEffectiveDice(0); // 0 is STR
-                                                    let strScore = (strDice.numDice * strDice.diceSides) + strDice.flatMod;
-                                                    kbResist = Math.max(0.2, 1.0 - ((strScore - 4) * 0.05));
-                                                }
-                                                
-                                                let bounceDist = 1.5 * kbResist;
-                                                firstAttacker.slideTargetX = firstAttacker.x + (dx/dist) * bounceDist;
-                                                firstAttacker.slideTargetY = firstAttacker.y + (dy/dist) * bounceDist;
-                                                firstAttacker.isSliding = true;
+                                            let strDice = firstAttacker.getEffectiveDice ? firstAttacker.getEffectiveDice(0) : {numDice:1, diceSides:4, flatMod:0};
+                                            let strScore = (strDice.numDice * strDice.diceSides) + strDice.flatMod;
+                                            let kbResist = Math.max(0.2, 1.0 - ((strScore - 4) * 0.05));
+                                            
+                                            let bounceDist = 1.5 * kbResist;
+                                            firstAttacker.slideTargetX = firstAttacker.x + (dx/dist) * bounceDist;
+                                            firstAttacker.slideTargetY = firstAttacker.y + (dy/dist) * bounceDist;
+                                            firstAttacker.isSliding = true;
                                             firstAttacker.combatCooldown = 13; 
                                             someoneDied = true;
                                             if (firstAttacker.triggerInnateTouch) firstAttacker.triggerInnateTouch(firstDefender);
@@ -6936,33 +6857,28 @@
                                             someoneDied = true;
                                         }
                                     } 
-                                    
                                     else {
-                                        let defStr = getVirtualRoll(firstDefender, 0, defenderMastery);
-                                        let atkCon = getVirtualRoll(firstAttacker, 1, attackerMastery);
+                                        // --- CLEAN COUNTER-ATTACK ---
+                                        let defStr = firstDefender.rollStat(0, defenderMastery);
+                                        let atkCon = firstAttacker.rollStat(1, attackerMastery);
 
                                         if (defStr > atkCon) {
-                                            if (firstAttacker.absorbHit(firstDefender)) {
+                                            if (firstAttacker.absorbHit(firstDefender, null, (defStr - atkCon))) {
                                                 let dx = firstDefender.x - firstAttacker.x;
                                                 let dy = firstDefender.y - firstAttacker.y;
                                                 let dist = Math.sqrt(dx*dx + dy*dy) || 1;
                                                 
-                                                // --- NEW: STR-Based Bounce Resistance ---
-                                                    let kbResist = 1.0;
-                                                    if (firstDefender.getEffectiveDice) {
-                                                        let strDice = firstDefender.getEffectiveDice(0); // 0 is STR
-                                                        let strScore = (strDice.numDice * strDice.diceSides) + strDice.flatMod;
-                                                        kbResist = Math.max(0.2, 1.0 - ((strScore - 4) * 0.05));
-                                                    }
-                                                    
-                                                    let bounceDist = 1.5 * kbResist;
-                                                    firstDefender.slideTargetX = firstDefender.x + (dx/dist) * bounceDist;
-                                                    firstDefender.slideTargetY = firstDefender.y + (dy/dist) * bounceDist;
-                                                    firstDefender.isSliding = true;
+                                                let strDice = firstDefender.getEffectiveDice ? firstDefender.getEffectiveDice(0) : {numDice:1, diceSides:4, flatMod:0};
+                                                let strScore = (strDice.numDice * strDice.diceSides) + strDice.flatMod;
+                                                let kbResist = Math.max(0.2, 1.0 - ((strScore - 4) * 0.05));
+                                                
+                                                let bounceDist = 1.5 * kbResist;
+                                                firstDefender.slideTargetX = firstDefender.x + (dx/dist) * bounceDist;
+                                                firstDefender.slideTargetY = firstDefender.y + (dy/dist) * bounceDist;
+                                                firstDefender.isSliding = true;
                                                 firstDefender.combatCooldown = 13; 
                                                 someoneDied = true;
                                                 if (firstDefender.triggerInnateTouch) firstDefender.triggerInnateTouch(firstAttacker);
-
                                             } else {
                                                 for (let p = 0; p < 8; p++) spawnParticle(firstAttacker.x + (Math.random() - 0.5) * 0.4, firstAttacker.y + (Math.random() - 0.5) * 0.4, '#ff0000', 'smoke');
                                                 dungeon.killNPC(firstAttacker, false, 'npc_infighting');
@@ -7439,60 +7355,43 @@
             if (!this.skillCooldowns) this.skillCooldowns = {};
             let cdMs = spellData.cooldown || 5000;
             this.skillCooldowns[spellId] = Date.now() + cdMs;
+            
             // ==========================================
             // 1. PRE-CALCULATE EFFICACY (The NPC's Roll)
             // ==========================================
-            let statToCast = spellData.castStat !== undefined ? spellData.castStat : 2; // Default INT
-            let isJudgement = spellData.type === 'aoe_judgement';
-            let spellPower = 0;
-            let aDice = this.getEffectiveDice ? this.getEffectiveDice(3) : {numDice: 1, diceSides: 4, flatMod: 0};
-            let agiScore = (aDice.numDice * aDice.diceSides) + aDice.flatMod;
-            let lungeMult = Math.max(0.5, 1.0 + ((agiScore - 4) * 0.05));
-            if (isJudgement) {
-                // Judgement summons the power of ALL 4 stats!
-                for (let s = 0; s < 4; s++) {
-                    let sDice = this.getEffectiveDice(s);
-                    spellPower += sDice.flatMod;
-                    for (let i = 0; i < sDice.numDice; i++) {
-                        spellPower += Math.floor(Math.random() * sDice.diceSides) + 1;
-                    }
-                }
-            } else {
-                // Standard single-stat roll
-                let castDice = this.getEffectiveDice(statToCast);
-                spellPower = castDice.flatMod;
-                for (let i = 0; i < castDice.numDice; i++) {
-                    spellPower += Math.floor(Math.random() * castDice.diceSides) + 1;
-                }
-            }
-
-            // --- Helper 1: Rolls the Defender's Virtual Dice cleanly ---
-            const rollDefense = (entity, defStatIndex) => {
-                let totalDef = 0;
-                if (isJudgement) {
-                    for (let s = 0; s < 4; s++) {
-                        let tDice = entity.getEffectiveDice ? entity.getEffectiveDice(s) : { numDice: 1, diceSides: 4, flatMod: 0 };
-                        totalDef += tDice.flatMod;
-                        for (let i = 0; i < tDice.numDice; i++) totalDef += Math.floor(Math.random() * tDice.diceSides) + 1;
-                    }
-                } else {
-                    let tDice = entity.getEffectiveDice ? entity.getEffectiveDice(defStatIndex) : { numDice: 1, diceSides: 4, flatMod: 0 };
-                    totalDef += tDice.flatMod;
-                    for (let i = 0; i < tDice.numDice; i++) totalDef += Math.floor(Math.random() * tDice.diceSides) + 1;
-                }
-                return totalDef;
-            };
-
-            // --- Helper 2: DRY STR Knockback Resistance ---
-            const getKnockbackResist = (entity) => {
-                // If it's a target without dice (like the player fallback), assume 1.0 (no resistance)
-                if (!entity.getEffectiveDice) return 1.0; 
+                let statToCast = spellData.castStat !== undefined ? spellData.castStat : 2; // Default INT
+                let isJudgement = spellData.type === 'aoe_judgement';
+                let spellPower = 0;
                 
-                let strDice = entity.getEffectiveDice(0); // 0 is STR
-                let strScore = (strDice.numDice * strDice.diceSides) + strDice.flatMod;
-                // High STR reduces knockback distance. Max resistance limits pushback to 20%.
-                return Math.max(0.2, 1.0 - ((strScore - 4) * 0.05)); 
-            };
+                let aDice = this.getEffectiveDice ? this.getEffectiveDice(3) : {numDice: 1, diceSides: 4, flatMod: 0};
+                let agiScore = (aDice.numDice * aDice.diceSides) + aDice.flatMod;
+                let lungeMult = Math.max(0.5, 1.0 + ((agiScore - 4) * 0.05));
+                
+                // --- CLEAN SPELL ROLL ---
+                if (isJudgement) {
+                    for (let s = 0; s < 4; s++) spellPower += this.rollStat(s);
+                } else {
+                    spellPower = this.rollStat(statToCast);
+                }
+
+                // --- CLEAN DEFENDER ROLL HELPER ---
+                const rollDefense = (entity, defStatIndex) => {
+                    let totalDef = 0;
+                    if (isJudgement) {
+                        for (let s = 0; s < 4; s++) totalDef += entity.rollStat ? entity.rollStat(s) : 0;
+                    } else {
+                        totalDef = entity.rollStat ? entity.rollStat(defStatIndex) : 0;
+                    }
+                    return totalDef;
+                };
+
+                // --- Helper 2: DRY STR Knockback Resistance ---
+                const getKnockbackResist = (entity) => {
+                    if (!entity.getEffectiveDice) return 1.0; 
+                    let strDice = entity.getEffectiveDice(0); // 0 is STR
+                    let strScore = (strDice.numDice * strDice.diceSides) + strDice.flatMod;
+                    return Math.max(0.2, 1.0 - ((strScore - 4) * 0.05)); 
+                };
 
             // ==========================================
             // 2. ROUTE THE PRE-CALCULATED POWER
@@ -7719,32 +7618,65 @@
 
                 if (!bestTarget) return;
 
-                let dx = bestTarget.x - this.x;
-                let dy = bestTarget.y - this.y;
-                let dist = Math.sqrt(dx * dx + dy * dy);
-                
-                let chargeRatio = dist > 0.5 ? ((dist - 0.5) / dist) : 0;
-                let chargeX = this.x + (dx * chargeRatio);
-                let chargeY = this.y + (dy * chargeRatio);
-                
-                if (dungeon.isWall(Math.floor(chargeX), Math.floor(chargeY))) {
-                    chargeX = this.x; 
-                    chargeY = this.y;
+                // --- THE FIX: SMART BACKSTAB LOCATOR ---
+                let targetDir = 2; // Default facing down
+                if (bestTarget.dir !== undefined) {
+                    targetDir = bestTarget.dir;
+                } else if (bestTarget.dirX !== undefined && bestTarget.dirY !== undefined) {
+                    if (Math.abs(bestTarget.dirX) > Math.abs(bestTarget.dirY)) targetDir = bestTarget.dirX > 0 ? 1 : 3; 
+                    else targetDir = bestTarget.dirY > 0 ? 2 : 0; 
                 }
 
-                this.dashTargetX = chargeX;
-                this.dashTargetY = chargeY;
+                // Map out offsets: [Behind, Left Flank, Right Flank, Front]
+                let offsets = [];
+                if (targetDir === 0) { offsets = [{x:0, y:1}, {x:-1, y:0}, {x:1, y:0}, {x:0, y:-1}]; } 
+                else if (targetDir === 1) { offsets = [{x:-1, y:0}, {x:0, y:-1}, {x:0, y:1}, {x:1, y:0}]; } 
+                else if (targetDir === 2) { offsets = [{x:0, y:-1}, {x:1, y:0}, {x:-1, y:0}, {x:0, y:1}]; } 
+                else if (targetDir === 3) { offsets = [{x:1, y:0}, {x:0, y:1}, {x:0, y:-1}, {x:-1, y:0}]; } 
+
+                let dashX = null;
+                let dashY = null;
+                let safeMaze = typeof dungeon !== 'undefined' ? dungeon.maze : null;
+
+                for (let offset of offsets) {
+                    let testX = bestTarget.x + offset.x;
+                    let testY = bestTarget.y + offset.y;
+                    
+                    // checkCollision accounts for the true radius/fatness of the NPC!
+                    if (safeMaze && !this.checkCollision(safeMaze, testX, testY)) {
+                        dashX = testX;
+                        dashY = testY;
+                        break;
+                    }
+                }
+
+                if (dashX === null || dashY === null) {
+                    // The player is hugging a corner. The NPC can't get behind, so it just strikes from the front!
+                    let dx = bestTarget.x - this.x;
+                    let dy = bestTarget.y - this.y;
+                    let dist = Math.sqrt(dx * dx + dy * dy);
+                    let chargeRatio = dist > 0.8 ? ((dist - 0.8) / dist) : 0;
+                    dashX = this.x + (dx * chargeRatio);
+                    dashY = this.y + (dy * chargeRatio);
+                }
+
+                this.dashTargetX = dashX;
+                this.dashTargetY = dashY;
                 this.isAggroDashing = true; 
                 
-                if (Math.abs(dx) > Math.abs(dy)) this.dir = dx > 0 ? 1 : 3;
-                else this.dir = dy > 0 ? 2 : 0;
+                // Update facing direction
+                let finalDx = bestTarget.x - this.x;
+                let finalDy = bestTarget.y - this.y;
+                if (Math.abs(finalDx) > Math.abs(finalDy)) this.dir = finalDx > 0 ? 1 : 3;
+                else this.dir = finalDy > 0 ? 2 : 0;
 
                 this.dashCallback = () => {
                     let targetDef = 0;
                     if (bestTarget === dungeon) {
                         targetDef = 0;
                     } else {
-                        targetDef = rollDefense(bestTarget, spellData.defStat || 3);
+                        // Assuming rollDefense is available in the scope
+                        targetDef = typeof rollDefense !== 'undefined' ? rollDefense(bestTarget, spellData.defStat || 3) : 0;
                     }
 
                     if (spellData.isSteal) {
@@ -7769,12 +7701,12 @@
                             } else if (bestTarget === dungeon) {
                                 dungeon.playerFlashTimer = 3;
                                 this.combatCooldown = 25;
-                                this.triggerInnateTouch(dungeon);
+                                if (this.triggerInnateTouch) this.triggerInnateTouch(dungeon);
                             }
                         } else {
                             if (bestTarget !== dungeon) {
                                 if (bestTarget.alignment !== 'foe' && bestTarget.alignment !== 'foe_wave') {
-                                    // charm bug...
+                                    // charm bug safety
                                 } else {
                                     bestTarget.dirX *= -1; 
                                     bestTarget.dirY *= -1;
@@ -7792,12 +7724,12 @@
                             let myStats = { level: dungeon.level, stat: this.stat, damage: this.damage || 0 };
                             if (typeof socket !== 'undefined') socket.emit("battle_action", { targetId: bestTarget.socketId, actionType: "OVERWORLD_HIT", payload: { attackerStats: myStats, spellId: spellId }});
                         } else {
-                            if (bestTarget.absorbHit(this, spellId)) {
+                            if (bestTarget.absorbHit && bestTarget.absorbHit(this, spellId)) {
                                 let pushX = this.dir === 1 ? 1 : (this.dir === 3 ? -1 : 0);
                                 let pushY = this.dir === 2 ? 1 : (this.dir === 0 ? -1 : 0);
                                 
-                                // --- NEW: DRY Knockback Application ---
-                                let kbResist = getKnockbackResist(bestTarget);
+                                // --- DRY Knockback Application ---
+                                let kbResist = typeof getKnockbackResist !== 'undefined' ? getKnockbackResist(bestTarget) : 1.0;
                                 let knockDist = 0.5 * kbResist; 
                                 
                                 if (!bestTarget.isSliding) {
@@ -7807,7 +7739,7 @@
                                 }
                                 bestTarget.state = 'chasing';
                             } else {
-                                dungeon.killNPC(bestTarget, false, 'backstab');
+                                if (dungeon.killNPC) dungeon.killNPC(bestTarget, false, 'backstab');
                             }
                         }
                     }
@@ -8078,6 +8010,11 @@
                     
                     target.activeBuffs.push(JSON.parse(JSON.stringify(effect)));
                     target.playerFlashTimer = 3; 
+                    if (typeof socket !== 'undefined') {
+                        let currentWeather = target.weather ? target.weather.mode : 'clear';
+                        let monsterName = (typeof Card !== 'undefined') ? new Card(Math.floor(this.type), 0).name : 'a monster';
+                        socket.emit('suncat_spectate', `[Weather: ${currentWeather}] Player was afflicted with a deadly '${effect.name}' curse by ${monsterName}.`);
+                    }
                 } 
                 // If hitting another NPC
                 else if (target.activeBuffs !== undefined) {
@@ -8157,52 +8094,96 @@
             if (canMoveX) this.x = targetX;
             if (canMoveY) this.y = targetY;
         }
-        absorbHit(attacker, spellId = null) {
+        absorbHit(attacker, spellId = null, forcedDamage = null) {
             if (attacker && typeof attacker.triggerInnateTouch === 'function' && spellId === null) {
-                    attacker.triggerInnateTouch(this);
-                }
+                attacker.triggerInnateTouch(this);
+            }
             let legacyWard = this.activeBuffs ? this.activeBuffs.find(b => b.type === 'ward' || b.type === 'item_ward') : null;
 
-            // 1. If shattered and no ward time left (and no legacy ward), take full damage (Trigger Death/Battle)
             if (this.currentWardTime <= 0 && !legacyWard) return false;
-
-            let atkStat = 0; // Default to STR for physical/collision
-            let defStat = 1; // Default to CON for physical defense
-            
-            // Adjust for spell logic
-            if (spellId !== null && typeof SPELL_REGISTRY !== 'undefined' && SPELL_REGISTRY[spellId]) {
-                let spell = SPELL_REGISTRY[spellId];
-                atkStat = spell.castStat !== undefined ? spell.castStat : 2; 
-                defStat = spell.defStat !== undefined ? spell.defStat : 1;
-            }
-
-            // 2. Attacker Roll
-            let atkRoll = 0;
-            if (attacker) {
-                // --- NEW: Virtual Dice for Attacker ---
-                let atkDice = attacker.getEffectiveDice ? attacker.getEffectiveDice(atkStat) : {numDice: 1, diceSides: 6, flatMod: 0};
-                atkRoll = atkDice.flatMod;
-                for(let i=0; i<atkDice.numDice; i++) {
-                    atkRoll += Math.floor(Math.random() * atkDice.diceSides) + 1;
-                }
-                if (attacker.damage) atkRoll += attacker.damage; 
-            } else {
-                atkRoll = Math.floor(Math.random() * 6) + 1; // Fallback
-            }
-
-            // 3. Defender Roll (NPC)
-            // --- NEW: Virtual Dice for NPC ---
-            let defDice = this.getEffectiveDice(defStat);
-            let defRoll = defDice.flatMod;
-            for(let i=0; i<defDice.numDice; i++){
-                defRoll += Math.floor(Math.random() * defDice.diceSides) + 1;
-            }
-
-            // 4. Resolve the Tug-of-War
-            if (atkRoll > defRoll) {
-                let damageScalar = 0.75; 
-                let timeLost = (atkRoll - defRoll) * damageScalar;
+            // ==========================================
+            // --- NEW: DYNAMIC AGI DODGING ---
+            // ==========================================
+            // Only attempt a dodge if they aren't already sliding or stun-locked
+            if (!this.isSliding && this.combatCooldown <= 0) {
                 
+                let defAgi = this.rollStat(3); // Defender AGI
+                let atkAgi = attacker ? (attacker.rollStat ? attacker.rollStat(3) : 10) : 10;
+                
+                // If the defender drastically out-rolls the attacker's speed
+                if (defAgi >= atkAgi + 3) {
+                    
+                    let dx = this.x - (attacker ? attacker.x : (typeof Dungeon !== 'undefined' ? Dungeon.x : this.x));
+                    let dy = this.y - (attacker ? attacker.y : (typeof Dungeon !== 'undefined' ? Dungeon.y : this.y));
+                    let dist = Math.sqrt(dx * dx + dy * dy) || 1;
+                    
+                    let dodgeDist = 1.2; 
+                    let safeMaze = typeof Dungeon !== 'undefined' ? Dungeon.maze : null;
+
+                    // 1. Calculate Potential Escape Routes
+                    let sideX = -dy / dist; let sideY = dx / dist; // Sidestep
+                    if (Math.random() > 0.5) { sideX *= -1; sideY *= -1; } // Randomize left/right initially
+                    let backX = dx / dist;  let backY = dy / dist; // Backflip
+                    
+                    let moveX = null, moveY = null;
+
+                    // 2. Look Before You Leap! (Check if the dodge path hits a wall)
+                    if (safeMaze && !this.checkCollision(safeMaze, this.x + (sideX * dodgeDist), this.y + (sideY * dodgeDist))) {
+                        moveX = sideX; moveY = sideY; // Sidestep is safe!
+                    } 
+                    else if (safeMaze && !this.checkCollision(safeMaze, this.x + (backX * dodgeDist), this.y + (backY * dodgeDist))) {
+                        moveX = backX; moveY = backY; // Backflip is safe!
+                    } 
+                    else if (safeMaze && !this.checkCollision(safeMaze, this.x + (-sideX * dodgeDist), this.y + (-sideY * dodgeDist))) {
+                        moveX = -sideX; moveY = -sideY; // Try the OTHER sidestep direction!
+                    }
+
+                    // 3. Execute Dodge (Or fail if cornered)
+                    if (moveX !== null && moveY !== null) {
+                        this.slideTargetX = this.x + (moveX * dodgeDist);
+                        this.slideTargetY = this.y + (moveY * dodgeDist);
+                        this.isSliding = true;
+                        this.combatCooldown = 15; 
+
+                        if (typeof spawnParticle !== 'undefined') {
+                            for (let p = 0; p < 5; p++) spawnParticle(this.x + (Math.random()-0.5), this.y + (Math.random()-0.5), '#ffffff', 'smoke'); 
+                        }
+                        // If you have a 'miss' or 'whoosh' sound, play it here!
+                        if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('miss', this.x, this.y, Dungeon.x, Dungeon.y, Dungeon.dir);
+
+                        return true; // Dodge successful! Hit absorbed.
+                    }
+                    // If moveX is STILL null, they are backed into a corner and CANNOT escape! 
+                    // The code will naturally fall through and they will take full damage.
+                }
+            }
+            let timeLost = 0;
+            let blocked = false;
+
+            // --- THE FIX: Use pre-calculated damage if provided ---
+            if (forcedDamage !== null) {
+                timeLost = forcedDamage * 0.75;
+            } else {
+                let atkStat = 0; let defStat = 1; 
+                
+                if (spellId !== null && typeof SPELL_REGISTRY !== 'undefined' && SPELL_REGISTRY[spellId]) {
+                    let spell = SPELL_REGISTRY[spellId];
+                    atkStat = spell.castStat !== undefined ? spell.castStat : 2; 
+                    defStat = spell.defStat !== undefined ? spell.defStat : 1;
+                }
+
+                // --- CLEAN ROLLS ---
+                let atkRoll = (attacker && attacker.rollStat) ? attacker.rollStat(atkStat, attacker.damage || 0) : Math.floor(Math.random() * 6) + 1;
+                let defRoll = this.rollStat(defStat);
+
+                if (atkRoll > defRoll) {
+                    timeLost = (atkRoll - defRoll) * 0.75;
+                } else {
+                    blocked = true;
+                }
+            }
+
+            if (!blocked && timeLost > 0) {
                 if (this.currentWardTime > 0) {
                     this.currentWardTime -= timeLost;
                 } else if (legacyWard) {
@@ -8210,65 +8191,45 @@
                 }
                 
                 this.damageFlashTimer = 3;
-                // ---> THE FIX: Throttled Overworld Dash Broadcast <---
+
+                // Throttled Overworld Dash Broadcast
                 if (attacker && (attacker.isPlayer || attacker.deck !== undefined)) {
                     if (typeof socket !== 'undefined' && typeof dungeon !== 'undefined') {
                         let now = Date.now();
-                        
-                        // Only send the dash packet once every 3 seconds!
                         if (!this.lastEngageEmit || now - this.lastEngageEmit > 3000) {
                             this.lastEngageEmit = now;
-                            
-                            // Tell all other clients that this NPC is now rushing you!
-                            socket.emit("engage_npc", { 
-                                npcIndex: this.index, 
-                                x: dungeon.x, 
-                                y: dungeon.y 
-                            });
+                            socket.emit("engage_npc", { npcIndex: this.index, x: typeof Dungeon !== 'undefined' ? Dungeon.x : this.x, y: typeof Dungeon !== 'undefined' ? Dungeon.y : this.y });
                         }
                     }
                 }
-                if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('slash', this.x, this.y, Dungeon.x, Dungeon.y, Dungeon.dir);
+                
+                if (typeof MusicEngine !== 'undefined' && typeof Dungeon !== 'undefined') MusicEngine.play3DSFX('slash', this.x, this.y, Dungeon.x, Dungeon.y, Dungeon.dir);
 
                 if (this.isSliding) {
-                    // If they got knocked back, tell them to bleed WHEN THEY STOP sliding!
                     this.slideCallback = () => {
                         if (typeof globalParticles !== 'undefined') {
-                            for (let p = 0; p < 9; p++) {
-                                // Because this fires later, target.x and target.y will be their final knocked-back coordinates!
-                                spawnParticle(this.x+ (Math.random() - 0.13), this.y+ (Math.random() - 0.13), '#800000', 'sparkle'); 
-                            }
+                            for (let p = 0; p < 9; p++) spawnParticle(this.x+ (Math.random() - 0.13), this.y+ (Math.random() - 0.13), '#800000', 'sparkle'); 
                         }
                     };
                 } else {
-                    // If they hit a wall immediately or didn't get knocked back, bleed right now
                     if (typeof globalParticles !== 'undefined') {
-                        for (let p = 0; p < 9; p++) {
-                            spawnParticle(this.x+ (Math.random() - 0.5), this.y+ (Math.random() - 0.5), '#800000', 'sparkle'); 
-                        }
+                        for (let p = 0; p < 9; p++) spawnParticle(this.x+ (Math.random() - 0.5), this.y+ (Math.random() - 0.5), '#800000', 'sparkle'); 
                     }
                 }
 
-                // Did the wards break entirely?
                 if (this.currentWardTime <= 0 && !legacyWard) {
                     this.currentWardTime = 0;
-                    
-                    // --- NEW: CON-Based Shatter Recovery ---
                     let conDice = this.getEffectiveDice(1); // CON
                     let conScore = (conDice.numDice * conDice.diceSides) + conDice.flatMod;
-                    // Base 9 seconds. Every point of CON above 4 reduces the penalty by 0.2 seconds.
                     this.wardShatterCooldown = Math.max(2.0, 9.0 - ((conScore - 4) * 0.2)); 
-
                 } else if (legacyWard && legacyWard.hits <= 0) {
                     let wIdx = this.activeBuffs.findIndex(b => b === legacyWard);
                     if (wIdx > -1) this.activeBuffs.splice(wIdx, 1);
                 }
-            } else {
-                // Blocked successfully (Ward holds strong, no time lost!)
-                if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('block', this.x, this.y, Dungeon.x, Dungeon.y, Dungeon.dir);
+            } else if (blocked) {
+                if (typeof MusicEngine !== 'undefined' && typeof Dungeon !== 'undefined') MusicEngine.play3DSFX('block', this.x, this.y, Dungeon.x, Dungeon.y, Dungeon.dir);
             }
 
-            // We successfully absorbed the hit (preventing immediate death)
             return true; 
         }
         getConColor(dungeon) {
@@ -8386,6 +8347,21 @@
 
             // Return the "Virtual Dice" to be rolled
             return { numDice, diceSides, flatMod: totalMod };
+        }
+        rollStat(statIndex, flatBonus = 0) {
+            let dice = this.getEffectiveDice(statIndex);
+            let total = dice.flatMod + flatBonus;
+            
+            for (let i = 0; i < dice.numDice; i++) {
+                total += Math.floor(Math.random() * dice.diceSides) + 1;
+            }
+
+            // Bake Lucky Charm directly into the roll
+            if (this.activeBuffs && this.activeBuffs.some(b => b.name === 'Lucky Charm')) {
+                total += 99; 
+            }
+
+            return total;
         }
         }
     
@@ -8964,8 +8940,9 @@
                         // A. ANNOUNCE ARRIVAL & UPLOAD BRAIN
                         socket.emit("join_game", {
                             name: playerName,
-                            persistentId: myPersistentId, // <--- ADD THIS HERE!
-                            playerChronicle: typeof playerChronicle !== 'undefined' ? playerChronicle : "" 
+                            persistentId: myPersistentId, 
+                            playerChronicle: typeof playerChronicle !== 'undefined' ? playerChronicle : "",
+                            perception: myLivePerception // <--- ADD THIS LINE HERE!
                         });
 
                         // B. Sync Position
@@ -15188,286 +15165,282 @@
                 let spellData = SPELL_REGISTRY[spellId];
                 if (!spellData) return;
 
-                // ==========================================
                 // 1. PRE-CALCULATE EFFICACY (The Caster's Roll)
-                // ==========================================
-                let statToCast = spellData.castStat !== undefined ? spellData.castStat : 2; // Default INT
-                let isJudgement = spellData.type === 'aoe_judgement';
-                let spellPower = 0;
+                    let statToCast = spellData.castStat !== undefined ? spellData.castStat : 2; // Default INT
+                    let isJudgement = spellData.type === 'aoe_judgement';
+                    let spellPower = 0;
 
-                if (isJudgement) {
-                    // Judgement summons the power of ALL 4 stats!
-                    for (let s = 0; s < 4; s++) {
-                        let sDice = this.getEffectiveDice(s);
-                        spellPower += sDice.flatMod;
-                        for (let i = 0; i < sDice.numDice; i++) {
-                            spellPower += Math.floor(Math.random() * sDice.diceSides) + 1;
+                    if (isJudgement) {
+                        // Judgement summons the power of ALL 4 stats!
+                        for (let s = 0; s < 4; s++) {
+                            let sDice = this.getEffectiveDice(s);
+                            spellPower += sDice.flatMod;
+                            for (let i = 0; i < sDice.numDice; i++) {
+                                spellPower += Math.floor(Math.random() * sDice.diceSides) + 1;
+                            }
+                        }
+                    } else {
+                        // Standard single-stat roll (plus weapon damage if applicable)
+                        let pDice = this.getEffectiveDice(statToCast);
+                        spellPower = pDice.flatMod + (this.damage || 0); 
+                        for (let i = 0; i < pDice.numDice; i++) {
+                            spellPower += Math.floor(Math.random() * pDice.diceSides) + 1;
                         }
                     }
-                } else {
-                    // Standard single-stat roll (plus weapon damage if applicable)
-                    let pDice = this.getEffectiveDice(statToCast);
-                    spellPower = pDice.flatMod + (this.damage || 0); 
-                    for (let i = 0; i < pDice.numDice; i++) {
-                        spellPower += Math.floor(Math.random() * pDice.diceSides) + 1;
-                    }
-                }
 
                 // --- Helper Function: Rolls the Defender's Virtual Dice cleanly ---
-                const rollDefense = (entity, defStatIndex) => {
-                    let totalDef = 0;
-                    if (isJudgement) {
-                        for (let s = 0; s < 4; s++) {
-                            let tDice = entity.getEffectiveDice ? entity.getEffectiveDice(s) : { numDice: 1, diceSides: 4, flatMod: 0 };
+                    const rollDefense = (entity, defStatIndex) => {
+                        let totalDef = 0;
+                        if (isJudgement) {
+                            for (let s = 0; s < 4; s++) {
+                                let tDice = entity.getEffectiveDice ? entity.getEffectiveDice(s) : { numDice: 1, diceSides: 4, flatMod: 0 };
+                                totalDef += tDice.flatMod;
+                                for (let i = 0; i < tDice.numDice; i++) totalDef += Math.floor(Math.random() * tDice.diceSides) + 1;
+                            }
+                        } else {
+                            let tDice = entity.getEffectiveDice ? entity.getEffectiveDice(defStatIndex) : { numDice: 1, diceSides: 4, flatMod: 0 };
                             totalDef += tDice.flatMod;
                             for (let i = 0; i < tDice.numDice; i++) totalDef += Math.floor(Math.random() * tDice.diceSides) + 1;
                         }
-                    } else {
-                        let tDice = entity.getEffectiveDice ? entity.getEffectiveDice(defStatIndex) : { numDice: 1, diceSides: 4, flatMod: 0 };
-                        totalDef += tDice.flatMod;
-                        for (let i = 0; i < tDice.numDice; i++) totalDef += Math.floor(Math.random() * tDice.diceSides) + 1;
-                    }
-                    return totalDef;
-                };
+                        return totalDef;
+                    };
 
-                // ==========================================
                 // 2. ROUTE THE PRE-CALCULATED POWER
-                // ==========================================
 
-                // --- INSTANT BUFFS & WARDS ---
-                if (spellData.type === 'buff' || spellData.type === 'ward') {
-                    // A. Apply to nearby allied NPCs
-                    this.npcs.forEach(npc => {
-                        if (!npc.isDead && npc.alignment === 'ally') {
-                            npc.applySpell(spellId, spellPower); 
+                    // --- INSTANT BUFFS & WARDS ---
+                        if (spellData.type === 'buff' || spellData.type === 'ward') {
+                            // A. Apply to nearby allied NPCs
+                            this.npcs.forEach(npc => {
+                                if (!npc.isDead && npc.alignment === 'ally') {
+                                    npc.applySpell(spellId, spellPower); 
+                                }
+                            });
+
+                            // B. Apply to nearby friendly Network Players
+                            if (window.remotePlayers && typeof socket !== 'undefined') {
+                                for (let id in window.remotePlayers) {
+                                    let rp = window.remotePlayers[id];
+                                    if (rp.mapID === this.mapID && !rp.isDead && (!this.hostilePlayers || !this.hostilePlayers.has(id))) {
+                                        let distSq = Math.pow(rp.x - this.x, 2) + Math.pow(rp.y - this.y, 2);
+                                        if (distSq < 25) { 
+                                            socket.emit("battle_action", {
+                                                targetId: id, actionType: "OVERWORLD_SPELL",
+                                                payload: { spellId: spellId, magnitude: spellPower, knockX: 0, knockY: 0 }
+                                            });
+                                        }
+                                    }
+                                }
+                            }
+
+                            // C. Apply to the Player
+                            this.applySpell(spellId, spellPower); 
+                            if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('arcane');
                         }
-                    });
+                
+                // --- IMBUEMENT MAGIC ---
+                    else if (spellData.type === 'imbue') {
+                        let requiredSpellId = spellData.consume; 
+                        
+                        let handIndex = -1;
+                        if (this.hand) handIndex = this.hand.findIndex(c => c !== null && c.index === requiredSpellId);
+                        let isSkillReady = this.spellsLearned && this.spellsLearned[requiredSpellId] && !((this.skillCooldowns[requiredSpellId] || 0) > Date.now());
 
-                    // B. Apply to nearby friendly Network Players
-                    if (window.remotePlayers && typeof socket !== 'undefined') {
-                        for (let id in window.remotePlayers) {
-                            let rp = window.remotePlayers[id];
-                            if (rp.mapID === this.mapID && !rp.isDead && (!this.hostilePlayers || !this.hostilePlayers.has(id))) {
-                                let distSq = Math.pow(rp.x - this.x, 2) + Math.pow(rp.y - this.y, 2);
-                                if (distSq < 25) { 
-                                    socket.emit("battle_action", {
-                                        targetId: id, actionType: "OVERWORLD_SPELL",
-                                        payload: { spellId: spellId, magnitude: spellPower, knockX: 0, knockY: 0 }
+                        if (handIndex !== -1 || isSkillReady) {
+                            if (handIndex !== -1) {
+                                this.hand[handIndex] = null; 
+                                if (typeof this.shuffleSpells === 'function') this.shuffleSpells(); 
+                            } else {
+                                let reqCooldown = (SPELL_REGISTRY[requiredSpellId] && SPELL_REGISTRY[requiredSpellId].cooldown) ? SPELL_REGISTRY[requiredSpellId].cooldown : 6000;
+                                this.skillCooldowns[requiredSpellId] = Date.now() + reqCooldown;
+                            }
+
+                            let imbueCooldown = spellData.cooldown || 15000; 
+                            this.skillCooldowns[spellId] = Date.now() + imbueCooldown;
+                            
+                            // Apply pre-calculated spellPower!
+                            this.imbuedFireDamage = (this.imbuedFireDamage || 0) + spellPower;
+                            
+                            if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('buff2');
+                            if (typeof globalParticles !== 'undefined') {
+                                for (let p = 0; p < 3; p++) spawnParticle(this.x, this.y, '#ff4400', 'sparkle');
+                            }
+                        } else {
+                            if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('cancel');
+                            this.skillCooldowns[spellId] = Date.now() + 1000;
+                        }
+                        if (typeof this.updateSkills === 'function') this.updateSkills();
+                    }
+
+                // --- AOE WALL-SLAM & JUDGEMENT (Network Synced) ---
+                    else if (spellData.type === 'aoe_knockback' || spellData.type === 'aoe_judgement') {
+                        if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX(isJudgement ? 'horn' : 'wind');
+
+                        let targetsToCheck = [...this.npcs];
+                        if (window.remotePlayers) {
+                            for (let id in window.remotePlayers) {
+                                let rp = window.remotePlayers[id];
+                                if (rp.mapID === this.mapID && !rp.isDead && rp.x !== undefined) {
+                                    targetsToCheck.push({
+                                        isRemotePlayer: true, socketId: id, name: rp.name, x: rp.x, y: rp.y,
+                                        alignment: (this.hostilePlayers && this.hostilePlayers.has(id)) ? 'foe' : 'ally',
+                                        stat: [[1,4,0],[1,4,0],[1,4,0],[1,4,0]], type: 91
                                     });
                                 }
                             }
                         }
-                    }
 
-                    // C. Apply to the Player
-                    this.applySpell(spellId, spellPower); 
-                    if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('arcane');
-                }
-                
-                // --- IMBUEMENT MAGIC ---
-                else if (spellData.type === 'imbue') {
-                    let requiredSpellId = spellData.consume; 
-                    
-                    let handIndex = -1;
-                    if (this.hand) handIndex = this.hand.findIndex(c => c !== null && c.index === requiredSpellId);
-                    let isSkillReady = this.spellsLearned && this.spellsLearned[requiredSpellId] && !((this.skillCooldowns[requiredSpellId] || 0) > Date.now());
+                        targetsToCheck.forEach(target => {
+                            if (target.isDead || !target.visible || target.type < 0 || target.type === 99 || target.alignment === 'ally') return;
+                            if (typeof target.alignment === 'string' && !target.alignment.startsWith('foe')) return;
 
-                    if (handIndex !== -1 || isSkillReady) {
-                        if (handIndex !== -1) {
-                            this.hand[handIndex] = null; 
-                            if (typeof this.shuffleSpells === 'function') this.shuffleSpells(); 
-                        } else {
-                            let reqCooldown = (SPELL_REGISTRY[requiredSpellId] && SPELL_REGISTRY[requiredSpellId].cooldown) ? SPELL_REGISTRY[requiredSpellId].cooldown : 6000;
-                            this.skillCooldowns[requiredSpellId] = Date.now() + reqCooldown;
-                        }
+                            let dx = target.x - this.x; let dy = target.y - this.y;
+                            let dist = Math.sqrt(dx*dx + dy*dy);
+                            if (dist === 0) { dx = 1; dist = 1; } 
 
-                        let imbueCooldown = spellData.cooldown || 15000; 
-                        this.skillCooldowns[spellId] = Date.now() + imbueCooldown;
-                        
-                        // Apply pre-calculated spellPower!
-                        this.imbuedFireDamage = (this.imbuedFireDamage || 0) + spellPower;
-                        
-                        if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('buff2');
-                        if (typeof globalParticles !== 'undefined') {
-                            for (let p = 0; p < 3; p++) spawnParticle(this.x, this.y, '#ff4400', 'sparkle');
-                        }
-                    } else {
-                        if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('cancel');
-                        this.skillCooldowns[spellId] = Date.now() + 1000;
-                    }
-                    if (typeof this.updateSkills === 'function') this.updateSkills();
-                }
+                            if (dist <= spellData.range) {
+                                let resisted = false;
 
-                // --- AOE WALL-SLAM & JUDGEMENT (Network Synced) ---
-                else if (spellData.type === 'aoe_knockback' || spellData.type === 'aoe_judgement') {
-                    if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX(isJudgement ? 'horn' : 'wind');
-
-                    let targetsToCheck = [...this.npcs];
-                    if (window.remotePlayers) {
-                        for (let id in window.remotePlayers) {
-                            let rp = window.remotePlayers[id];
-                            if (rp.mapID === this.mapID && !rp.isDead && rp.x !== undefined) {
-                                targetsToCheck.push({
-                                    isRemotePlayer: true, socketId: id, name: rp.name, x: rp.x, y: rp.y,
-                                    alignment: (this.hostilePlayers && this.hostilePlayers.has(id)) ? 'foe' : 'ally',
-                                    stat: [[1,4,0],[1,4,0],[1,4,0],[1,4,0]], type: 91
-                                });
-                            }
-                        }
-                    }
-
-                    targetsToCheck.forEach(target => {
-                        if (target.isDead || !target.visible || target.type < 0 || target.type === 99 || target.alignment === 'ally') return;
-                        if (typeof target.alignment === 'string' && !target.alignment.startsWith('foe')) return;
-
-                        let dx = target.x - this.x; let dy = target.y - this.y;
-                        let dist = Math.sqrt(dx*dx + dy*dy);
-                        if (dist === 0) { dx = 1; dist = 1; } 
-
-                        if (dist <= spellData.range) {
-                            let resisted = false;
-
-                            if (isJudgement) {
-                                let targetDef = rollDefense(target, spellData.defStat || 3);
-                                if (spellPower > targetDef) {
-                                    if (target.isRemotePlayer) {
-                                        let myStats = { level: 99, stat: this.stat, damage: 9999 };
-                                        if (typeof socket !== 'undefined') socket.emit("battle_action", { targetId: target.socketId, actionType: "OVERWORLD_HIT", payload: { attackerStats: myStats, spellId: spellId }});
-                                        return;
-                                    } else {
-                                        this.killNPC(target, false, 'judgement');
-                                    }
+                                if (isJudgement) {
+                                    let targetDef = rollDefense(target, spellData.defStat || 3);
+                                    if (spellPower > targetDef) {
+                                        if (target.isRemotePlayer) {
+                                            let myStats = { level: 99, stat: this.stat, damage: 9999 };
+                                            if (typeof socket !== 'undefined') socket.emit("battle_action", { targetId: target.socketId, actionType: "OVERWORLD_HIT", payload: { attackerStats: myStats, spellId: spellId }});
+                                            return;
+                                        } else {
+                                            this.killNPC(target, false, 'judgement');
+                                        }
+                                    } else { resisted = true; }
                                 } else { resisted = true; }
-                            } else { resisted = true; }
 
-                            if (resisted && !target.isDead) { 
-                                let knockPower = spellData.knockback || 1.0;
-                                let pushX = dx / dist; let pushY = dy / dist;
+                                if (resisted && !target.isDead) { 
+                                    let knockPower = spellData.knockback || 1.0;
+                                    let pushX = dx / dist; let pushY = dy / dist;
 
-                                if (target.isRemotePlayer) {
-                                    if (typeof socket !== 'undefined') {
-                                        socket.emit("battle_action", {
-                                            targetId: target.socketId, actionType: "OVERWORLD_SPELL",
-                                            payload: { spellId: spellId, magnitude: 1, knockX: pushX * knockPower, knockY: pushY * knockPower }
-                                        });
+                                    if (target.isRemotePlayer) {
+                                        if (typeof socket !== 'undefined') {
+                                            socket.emit("battle_action", {
+                                                targetId: target.socketId, actionType: "OVERWORLD_SPELL",
+                                                payload: { spellId: spellId, magnitude: 1, knockX: pushX * knockPower, knockY: pushY * knockPower }
+                                            });
+                                        }
+                                        return; 
                                     }
-                                    return; 
-                                }
 
-                                let maxPush = 20; let pushed = 0;
-                                let testX = target.x; let testY = target.y;
-                                
-                                while (pushed < maxPush) {
-                                    let nextX = testX + pushX * 0.25; 
-                                    let nextY = testY + pushY * 0.25;
-                                    if (this.isWall(Math.floor(nextX), Math.floor(nextY))) break; 
-                                    testX = nextX; testY = nextY; pushed++;
-                                }
+                                    let maxPush = 20; let pushed = 0;
+                                    let testX = target.x; let testY = target.y;
+                                    
+                                    while (pushed < maxPush) {
+                                        let nextX = testX + pushX * 0.25; 
+                                        let nextY = testY + pushY * 0.25;
+                                        if (this.isWall(Math.floor(nextX), Math.floor(nextY))) break; 
+                                        testX = nextX; testY = nextY; pushed++;
+                                    }
 
-                                if (!target.isSliding) {
-                                    target.slideTargetX = testX; target.slideTargetY = testY;
-                                    target.isSliding = true;
+                                    if (!target.isSliding) {
+                                        target.slideTargetX = testX; target.slideTargetY = testY;
+                                        target.isSliding = true;
+                                    }
+                                    target.state = 'chasing';
+                                    target.combatCooldown = 13;
                                 }
-                                target.state = 'chasing';
-                                target.combatCooldown = 13;
                             }
+                        });
+                        
+                        if (typeof globalParticles !== 'undefined') {
+                            let pColor = spellData.glow || spellData.auraColor || '#ffffff';
+                            for (let p = 0; p < 12; p++) spawnParticle(this.x + (Math.random() - 0.5) * 1.5, this.y + (Math.random() - 0.5) * 1.5, pColor, 'sparkle');
                         }
-                    });
-                    
-                    if (typeof globalParticles !== 'undefined') {
-                        let pColor = spellData.glow || spellData.auraColor || '#ffffff';
-                        for (let p = 0; p < 12; p++) spawnParticle(this.x + (Math.random() - 0.5) * 1.5, this.y + (Math.random() - 0.5) * 1.5, pColor, 'sparkle');
                     }
-                }
                 
                 // --- PROJECTILES (Network Broadcasted) ---
-                else if (spellData.type === 'projectile' || spellData.type === 'debuff') {
-                    let baseDirX = 0; let baseDirY = 0;
-                    if (this.dir === 0) baseDirY = -1;
-                    else if (this.dir === 1) baseDirX = 1;
-                    else if (this.dir === 2) baseDirY = 1;
-                    else if (this.dir === 3) baseDirX = -1;
+                    else if (spellData.type === 'projectile' || spellData.type === 'debuff') {
+                        let baseDirX = 0; let baseDirY = 0;
+                        if (this.dir === 0) baseDirY = -1;
+                        else if (this.dir === 1) baseDirX = 1;
+                        else if (this.dir === 2) baseDirY = 1;
+                        else if (this.dir === 3) baseDirX = -1;
 
-                    let finalDirX = baseDirX; let finalDirY = baseDirY;
+                        let finalDirX = baseDirX; let finalDirY = baseDirY;
 
-                    if (this.cameraMode !== undefined && (spellId === 9999 || !spellData.isHoming)) { 
-                        let bestTarget = null;
-                        let closestDist = Infinity;
-                        let maxScanRange = spellData.range !== undefined ? spellData.range : 5.0;
+                        if (this.cameraMode !== undefined && (spellId === 9999 || !spellData.isHoming)) { 
+                            let bestTarget = null;
+                            let closestDist = Infinity;
+                            let maxScanRange = spellData.range !== undefined ? spellData.range : 5.0;
 
-                        let potentialTargets = [...this.npcs];
-                        if (window.remotePlayers) {
-                            for (let id in window.remotePlayers) {
-                                let rp = window.remotePlayers[id];
-                                if (rp.mapID === this.mapID && !rp.isDead && this.hostilePlayers && this.hostilePlayers.has(id)) {
-                                    potentialTargets.push({ x: rp.x, y: rp.y, alignment: 'foe' });
+                            let potentialTargets = [...this.npcs];
+                            if (window.remotePlayers) {
+                                for (let id in window.remotePlayers) {
+                                    let rp = window.remotePlayers[id];
+                                    if (rp.mapID === this.mapID && !rp.isDead && this.hostilePlayers && this.hostilePlayers.has(id)) {
+                                        potentialTargets.push({ x: rp.x, y: rp.y, alignment: 'foe' });
+                                    }
+                                }
+                            }
+
+                            if (this.focusTarget && !this.focusTarget.isDead && typeof this.focusTarget.alignment === 'string' && this.focusTarget.alignment.startsWith('foe')) {
+                                let dx = this.focusTarget.x - this.x; let dy = this.focusTarget.y - this.y;
+                                let dist = Math.sqrt(dx*dx + dy*dy);
+                                if (dist <= maxScanRange + 0.5) { bestTarget = this.focusTarget; closestDist = dist; }
+                            }
+
+                            if (!bestTarget) {
+                                potentialTargets.forEach(npc => {
+                                    if (npc.isDead || !npc.visible || npc.alignment === 'ally') return;
+                                    if (typeof npc.alignment === 'string' && !npc.alignment.startsWith('foe')) return;
+
+                                    let dx = npc.x - this.x; let dy = npc.y - this.y;
+                                    let dist = Math.sqrt(dx*dx + dy*dy);
+
+                                    if (dist > 0 && dist <= maxScanRange + 0.5) {
+                                        let dot = (baseDirX * (dx/dist)) + (baseDirY * (dy/dist));
+                                        if (dot > 0.707 && dist < closestDist) { closestDist = dist; bestTarget = npc; }
+                                    }
+                                });
+                            }
+
+                            if (bestTarget) {
+                                finalDirX = (bestTarget.x - this.x) / closestDist;
+                                finalDirY = (bestTarget.y - this.y) / closestDist;
+
+                                if ((this.manualTurnTimer || 0) <= 0) {
+                                    if (Math.abs(finalDirX) > Math.abs(finalDirY)) this.dir = finalDirX > 0 ? 1 : 3;
+                                    else this.dir = finalDirY > 0 ? 2 : 0;
+                                    this.currentAngle = this.dir * (Math.PI / 2);
+                                    this._cinePan = 0; this.lookPan = 0;
                                 }
                             }
                         }
 
-                        if (this.focusTarget && !this.focusTarget.isDead && typeof this.focusTarget.alignment === 'string' && this.focusTarget.alignment.startsWith('foe')) {
-                            let dx = this.focusTarget.x - this.x; let dy = this.focusTarget.y - this.y;
-                            let dist = Math.sqrt(dx*dx + dy*dy);
-                            if (dist <= maxScanRange + 0.5) { bestTarget = this.focusTarget; closestDist = dist; }
+                        const startX = this.x + (finalDirX * 0.5);
+                        const startY = this.y + (finalDirY * 0.5);
+                        let finalSpellId = spellId;
+                        let finalDamage = 0;
+
+                        if ((spellId === 9999 || spellId === 26) && this.imbuedFireDamage > 0) {
+                            finalSpellId = (spellId === 9999) ? 9998 : 26; 
+                            finalDamage = this.imbuedFireDamage; 
+                            this.imbuedFireDamage = 0; 
                         }
 
-                        if (!bestTarget) {
-                            potentialTargets.forEach(npc => {
-                                if (npc.isDead || !npc.visible || npc.alignment === 'ally') return;
-                                if (typeof npc.alignment === 'string' && !npc.alignment.startsWith('foe')) return;
-
-                                let dx = npc.x - this.x; let dy = npc.y - this.y;
-                                let dist = Math.sqrt(dx*dx + dy*dy);
-
-                                if (dist > 0 && dist <= maxScanRange + 0.5) {
-                                    let dot = (baseDirX * (dx/dist)) + (baseDirY * (dy/dist));
-                                    if (dot > 0.707 && dist < closestDist) { closestDist = dist; bestTarget = npc; }
-                                }
+                        this.projectiles.push(new Projectile(startX, startY, finalDirX, finalDirY, 6.0, finalDamage, null, SPELL_REGISTRY[finalSpellId].isHoming, finalSpellId));        
+                        
+                        if (typeof socket !== 'undefined') {
+                            socket.emit("player_fires_projectile", {
+                                mapID: this.mapID, spellId: finalSpellId,
+                                startX: startX, startY: startY, dirX: finalDirX, dirY: finalDirY, speed: 6.0
                             });
                         }
 
-                        if (bestTarget) {
-                            finalDirX = (bestTarget.x - this.x) / closestDist;
-                            finalDirY = (bestTarget.y - this.y) / closestDist;
-
-                            if ((this.manualTurnTimer || 0) <= 0) {
-                                if (Math.abs(finalDirX) > Math.abs(finalDirY)) this.dir = finalDirX > 0 ? 1 : 3;
-                                else this.dir = finalDirY > 0 ? 2 : 0;
-                                this.currentAngle = this.dir * (Math.PI / 2);
-                                this._cinePan = 0; this.lookPan = 0;
-                            }
+                        this.playerAttackTimer = 15;
+                        if (finalSpellId === 9999 || finalSpellId === 9998) {
+                            if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX("attack");
+                        } else if (spellData.type === 'projectile') {
+                            if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('fire2'); 
+                        } else {
+                            if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('arcane3'); 
                         }
                     }
-
-                    const startX = this.x + (finalDirX * 0.5);
-                    const startY = this.y + (finalDirY * 0.5);
-                    let finalSpellId = spellId;
-                    let finalDamage = 0;
-
-                    if ((spellId === 9999 || spellId === 26) && this.imbuedFireDamage > 0) {
-                        finalSpellId = (spellId === 9999) ? 9998 : 26; 
-                        finalDamage = this.imbuedFireDamage; 
-                        this.imbuedFireDamage = 0; 
-                    }
-
-                    this.projectiles.push(new Projectile(startX, startY, finalDirX, finalDirY, 6.0, finalDamage, null, SPELL_REGISTRY[finalSpellId].isHoming, finalSpellId));        
-                    
-                    if (typeof socket !== 'undefined') {
-                        socket.emit("player_fires_projectile", {
-                            mapID: this.mapID, spellId: finalSpellId,
-                            startX: startX, startY: startY, dirX: finalDirX, dirY: finalDirY, speed: 6.0
-                        });
-                    }
-
-                    this.playerAttackTimer = 15;
-                    if (finalSpellId === 9999 || finalSpellId === 9998) {
-                        if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX("attack");
-                    } else if (spellData.type === 'projectile') {
-                        if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('fire2'); 
-                    } else {
-                        if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('arcane3'); 
-                    }
-                }
 
                 // --- ASSASSINATION (Network Synced) ---
                 else if (spellData.type === 'assassination') {
@@ -15519,23 +15492,49 @@
                         else targetDir = bestTarget.dirY > 0 ? 2 : 0; 
                     }
 
-                    let behindX = bestTarget.x; let behindY = bestTarget.y;
-                    if (targetDir === 0) behindY += 1;     
-                    else if (targetDir === 1) behindX -= 1; 
-                    else if (targetDir === 2) behindY -= 1; 
-                    else if (targetDir === 3) behindX += 1; 
+                    // --- THE FIX: SMART BACKSTAB LOCATOR ---
+                        // Map out: [Behind, Left Flank, Right Flank, Front]
+                        let offsets = [];
+                        if (targetDir === 0) { offsets = [{x:0, y:1}, {x:-1, y:0}, {x:1, y:0}, {x:0, y:-1}]; } // Facing UP
+                        else if (targetDir === 1) { offsets = [{x:-1, y:0}, {x:0, y:-1}, {x:0, y:1}, {x:1, y:0}]; } // Facing RIGHT
+                        else if (targetDir === 2) { offsets = [{x:0, y:-1}, {x:1, y:0}, {x:-1, y:0}, {x:0, y:1}]; } // Facing DOWN
+                        else if (targetDir === 3) { offsets = [{x:1, y:0}, {x:0, y:1}, {x:0, y:-1}, {x:-1, y:0}]; } // Facing LEFT
 
-                    if (this.isWall(Math.floor(behindX), Math.floor(behindY))) {
-                        if (typeof MessageBox !== 'undefined') MessageBox.show(0.5, 8, 1, 9, 2, "No room to step behind them!", 'dialogue', 1, 0);
-                        if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('cancel');
-                        return; 
-                    }
+                        let dashX = null;
+                        let dashY = null;
+                        let r = 0.25; // Hitbox radius buffer
 
-                    this.dashTargetX = behindX; this.dashTargetY = behindY;
-                    this.isAggroDashing = true; this.dir = targetDir; 
+                        // Scan the offsets to find the first perfectly safe spot
+                        for (let offset of offsets) {
+                            let testX = bestTarget.x + offset.x;
+                            let testY = bestTarget.y + offset.y;
+                            
+                            // Check the 4 physical corners of the destination to ensure zero wall clipping!
+                            let isSafe = !this.isWall(Math.floor(testX + r), Math.floor(testY + r)) &&
+                                        !this.isWall(Math.floor(testX - r), Math.floor(testY + r)) &&
+                                        !this.isWall(Math.floor(testX + r), Math.floor(testY - r)) &&
+                                        !this.isWall(Math.floor(testX - r), Math.floor(testY - r));
 
-                    if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('wind');
+                            if (isSafe) {
+                                dashX = testX;
+                                dashY = testY;
+                                break; // Safe spot found!
+                            }
+                        }
 
+                        // If completely boxed into a corner, cancel the warp!
+                        if (dashX === null || dashY === null) {
+                            if (typeof MessageBox !== 'undefined') MessageBox.show(0.5, 8, 1, 9, 2, "No room to step around them!", 'dialogue', 1, 0);
+                            if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('cancel');
+                            return; 
+                        }
+
+                        this.dashTargetX = dashX; 
+                        this.dashTargetY = dashY;
+                        this.isAggroDashing = true; 
+                        this.dir = targetDir; 
+
+                        if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('wind');
                     this.dashCallback = () => {
                         let targetDef = rollDefense(bestTarget, spellData.defStat || 3);
 
@@ -15968,7 +15967,15 @@
                     xp: 0,                   
                     role: 'dropped_card'     
                 };
-                
+                if (typeof socket !== 'undefined') {
+                    let currentWeather = this.weather ? this.weather.mode : 'clear';
+                    
+                    // 1. Translate raw IDs (like 54, 12) into actual names (like "Goblin", "Bind")
+                    let cardNames = pulledCardIDs.map(id => new Card(id, 0).name).join(', ');
+                    
+                    // 2. Use [SYSTEM EVENT] to bypass the 1% RNG limit and force an instant chat reaction
+                    socket.emit('suncat_spectate', `[SYSTEM EVENT] [Weather: ${currentWeather}] Player excitedly tore open a magical booster pack and pulled: ${cardNames}. Provide a brief, cryptic tarot reading based on this spread.`);
+                }
                 if (typeof startGame !== 'undefined') startGame = 'dialogue'; 
                 this.dCounter = 0;            
             }
@@ -16121,7 +16128,34 @@
                     let finalXP = levelBonusXP * bossMultiplier;
 
                     this.xp = this.xp + finalXP;
+                    if (typeof socket !== 'undefined' && isPlayerKill) {
+                        // Calculate NPC Max Potential
+                        let npcMax = 0;
+                        for (let i = 0; i < 4; i++) {
+                            let nDice = npc.getEffectiveDice ? npc.getEffectiveDice(i) : { numDice: 1, diceSides: 4, flatMod: 0 };
+                            npcMax += (nDice.numDice * nDice.diceSides) + nDice.flatMod;
+                        }
+                        if (npc.isBoss) npcMax = Math.floor(npcMax * 1.5); 
 
+                        // Calculate Player Max Potential
+                        let playerMax = 0;
+                        for (let i = 0; i < 4; i++) {
+                            let pDice = this.getEffectiveDice ? this.getEffectiveDice(i) : { numDice: 1, diceSides: 4, flatMod: 0 };
+                            playerMax += (pDice.numDice * pDice.diceSides) + pDice.flatMod;
+                        }
+
+                        let diff = npcMax - playerMax;
+                        let cardName = (typeof Card !== 'undefined') ? new Card(Math.floor(npc.type), 0).name : 'a monster';
+                        let currentWeather = this.weather ? this.weather.mode : 'clear';
+                        
+                        let combatReport = "";
+                        if (diff >= 15) combatReport = `Player miraculously survived and killed a terrifyingly deadly ${cardName}.`;
+                        else if (diff >= 5) combatReport = `Player struggled but managed to defeat a tough ${cardName}.`;
+                        else if (diff >= -5) combatReport = `Player fought an evenly-matched ${cardName} and won.`;
+                        else combatReport = `Player effortlessly crushed a pathetically weak ${cardName}.`;
+
+                        socket.emit('suncat_spectate', `[Weather: ${currentWeather}] ${combatReport}`);
+                    }
                     // 1. LEVEL UP (Only process this math if we actually gained XP)
                     let xpNeeded = Math.floor(100 * Math.pow(this.level + 1, 1.8));
                     let leveledUp = false;
@@ -16131,7 +16165,7 @@
                         this.xp -= xpNeeded; 
                         this.level++;
                         let statPointGain = 4;
-                        if (this.playerClass === 'Battle-Mage'){statPointGain = 4;}
+                        if (this.playerClass === 'Battle-Mage'){statPointGain = 9;}
                         this.statPoints = (this.statPoints || 0) + statPointGain;
                         
                         // DIRECT FORMULA: Perfect linear scaling
@@ -16646,29 +16680,11 @@
                     if(cardID == 63){cardID = 63.1}
                     if(cardID == 49){cardID = 49.1}
                     
-                // ==========================================
-                // --- NEW: DYNAMIC SUMMON LEVEL SCALING ---
-                // ==========================================
                 if (!this.mastery) this.mastery = {};
                 if (!this.mastery[cardID]) this.mastery[cardID] = { level: 0, xp: 0 };
                 
-                // 1. Get the specific Cast Stat for this summon (Default to INT/2 if not found)
-                let spellData = typeof SPELL_REGISTRY !== 'undefined' ? SPELL_REGISTRY[cardID] : null;
-                let castStat = (spellData && spellData.castStat !== undefined) ? spellData.castStat : 2; 
-                
-                let pDice = this.getEffectiveDice ? this.getEffectiveDice(castStat) : {flatMod: 0};
-                let statBonus = Math.floor(((pDice.numDice * pDice.diceSides) + pDice.flatMod) / 2);
-                
-                // 2. Base Mastery Level (from pet XP) + Player Level + Cast Stat Bonus
-                let totalSummonLevel = this.mastery[cardID].level + this.level + statBonus;
-                
-                // 3. Apply Soft Cap based on Monster Tier
-                // A low-tier monster (power 5) hits its ceiling much earlier than a Dragon (power 50)
-                let manifestData = typeof CARD_MANIFEST_DB !== 'undefined' ? CARD_MANIFEST_DB[cardID] : null;
-                if (manifestData && manifestData.power) {
-                    let maxPotential = manifestData.power * 3; // e.g. Rabbit caps at 15. Dragon caps at 150.
-                    totalSummonLevel = Math.min(totalSummonLevel, maxPotential);
-                }
+                // Fetch the pet's mastery level from the system
+                let petMastery = this.mastery[cardID].level;
 
                 let myAlly = new NPC(
                     uniqueIndex, 
@@ -16681,17 +16697,49 @@
                     'battle',      
                     false,         
                     'ally',        
-                    totalSummonLevel // Inject the combined level!
+                    0 // Always spawn at Level 0 so we purely rely on stat-buff scaling
                 );
                 myAlly.activeBuffs = []; 
                 
-                // Let's wipe its base stats too, just in case the template was dirty!
-                myAlly.stat = [
-                    [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0]  
-                ];
+                // Wipe its base stats so we rely entirely on the Card manifest + scaling
+                myAlly.stat = [ [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0] ];
                 
                 let allyname = new Card(myAlly.type, 0);
-                myAlly.name = `${playerName}'s Lvl.${totalSummonLevel} ${allyname.name}`; 
+                myAlly.name = `${playerName}'s ${allyname.name}`; 
+
+                // ==========================================
+                // --- THE FIX: SUMMONER'S BOND ---
+                // We calculate your power, and inject it as a hidden static buff!
+                // ==========================================
+                let summonerBuff = { 
+                    name: "Summoner's Bond", 
+                    type: 'static_buff', 
+                    duration: Infinity, 
+                    buffs: [] 
+                };
+
+                const tiers = [4, 6, 8, 10, 12, 20];
+
+                for (let i = 0; i < 4; i++) {
+                    // Check your current stats
+                    let pDiceSides = this.stat[i][1] || 4; 
+                    let pMod = this.stat[i][2] || 0;
+
+                    // Convert your dice into a flat tier bonus (d4=1, d6=2... d20=6)
+                    let tierIndex = tiers.indexOf(pDiceSides);
+                    let tierBonus = tierIndex !== -1 ? (tierIndex + 1) : 1; 
+
+                    // Add Mastery and Player Power together, and push it to the stat!
+                    let totalTransferredPower = tierBonus + pMod + petMastery;
+                    
+                    summonerBuff.buffs.push({ stat: i, amount: totalTransferredPower });
+                }
+
+                // Inject the buff into the Summon's bloodstream
+                myAlly.activeBuffs.push(summonerBuff);
+
+                // ==========================================
+
                 this.npcs.push(myAlly);
                 
                 if (!isRestore) {
@@ -17751,7 +17799,9 @@
                             
                             // 2. Add the card to the inventory
                             this.extra.push(new Card(gCardID, 0)); 
-                            
+                            if (typeof socket !== 'undefined') {
+                                socket.emit('suncat_spectate', `Player acquired a new item or entity (Card ID: ${gCardID}).`);
+                            }
                             // 3. FORCE A SAVE IMMEDIATELY
                             // This bypasses the dialogue window delay and guarantees the card is secured in memory.
                             if (typeof this.saveGame === 'function') this.requestSave();
@@ -20163,106 +20213,7 @@
 
                 return quests;
             }
-            killPlayer(reason = 'combat', killerNPC = null) {
-                if (this.isDying || this.isDead) return; 
-                
-                this.isDying = true;
-                console.log(`Player fatally wounded! Reason: ${reason}.`);
-
-                let killerName = "an unknown force";
-
-                // Generic taunt arrays (Array of arrays so the dialogue engine reads it correctly)
-                const genericTaunts = [
-                    ["Too slow!"],
-                    ["Another fool bites the dust!"],
-                    ["You were unworthy of this realm!"],
-                    ["Rest in pieces!"],
-                    ["Did you really think you could win?"],
-                    ["Pathetic."]
-                ];
-
-                if (killerNPC && typeof killerNPC === 'object') {
-                    // 1. Resolve the Killer's true name using your Card DB
-                    if (killerNPC.name && killerNPC.name !== "undefined") {
-                        killerName = killerNPC.name;
-                    } else if (killerNPC.type !== undefined && typeof Card !== 'undefined') {
-                        let cardData = new Card(Math.floor(killerNPC.type), 0);
-                        killerName = cardData.name || "a monster";
-                    } else {
-                        killerName = "a monster";
-                    }
-                    
-                    // 2. Preserve their entire custom dialogue array, or assign a random generic taunt
-                    if (!killerNPC.customDialogue || killerNPC.customDialogue.length === 0) {
-                        killerNPC.customDialogue = genericTaunts[Math.floor(Math.random() * genericTaunts.length)];
-                    }
-                    
-                    // 3. Strip interactions so you don't accidentally accept a quest while dying!
-                    killerNPC.options = null;
-                    killerNPC.yesActions = null;
-                    killerNPC.noActions = null;
-                    killerNPC.endActions = []; 
-                    killerNPC.rewardCard = null;
-
-                    // 4. THE FIX: Set them as speaker. The 3D camera will snap to them natively!
-                    this.currentSpeaker = killerNPC;
-                    
-                } else {
-                    // Fallback for environmental damage or Damage over Time
-                    killerName = typeof killerNPC === 'string' ? killerNPC : "your wounds";
-                    this.currentSpeaker = {
-                        type: -37, // Skull / System Icon
-                        index: 99999,
-                        visible: true,
-                        alignment: 'friendly', 
-                        role: 'notification', 
-                        customDialogue: [`You have succumbed to ${killerName}.`],
-                        endActions: []
-                    };
-                }
-
-                // Trigger the native dialogue box UI
-                if (typeof startGame !== 'undefined') startGame = 'dialogue';
-                this.dCounter = 0;
-
-                // --- DICE ROLL FOR DEATH TIMER ---
-                const rollStat = (idx) => {
-                    let statArr = this.stat[idx];
-                    if (!statArr) return 4;
-                    let total = statArr[2]; 
-                    for (let i = 0; i < statArr[0]; i++) {
-                        total += Math.floor(Math.random() * statArr[1]) + 1;
-                    }
-                    return Math.max(1, total); 
-                };
-
-                let strRoll = rollStat(0); 
-                let conRoll = rollStat(1); 
-                let intRoll = rollStat(2); 
-                let agiRoll = rollStat(3); 
-
-                // Time to live (Willpower + Brawn + Mind)
-                this.deathMaxTime = 3.0 + ((strRoll + conRoll + intRoll) * 0.25);
-                this.deathIntensity = Math.max(0.1, 1.5 - (agiRoll * 0.05));
-
-                // --- TRIGGER WEATHER ENGINE ---
-                if (this.weather) {
-                    this.weather.setMode('dying');
-                    this.weather.dyingTimer = 0;
-                    this.weather.dyingMaxTime = this.deathMaxTime;
-                    this.weather.dyingIntensity = this.deathIntensity;
-                }
-
-                if (typeof MusicEngine !== 'undefined') {
-                    MusicEngine.stop();
-                    MusicEngine.play3DSFX('cancel'); 
-                }
-
-                // Broadcast the exact string name to the server
-                if (typeof socket !== 'undefined') {
-                    socket.emit('player_died', { mapID: this.mapID, reason: reason, killer: killerName });
-                }
-            }
+             
         //Tactics:
             getValidMoves(unitX, unitY, moveStat) {
                     let moves = [];
@@ -22989,6 +22940,10 @@
                             }
                             
                             if (Dungeon.currentSpeaker && Dungeon.currentSpeaker.yesActions) {
+                                if (typeof socket !== 'undefined') {
+                                    let optText = Dungeon.currentSpeaker.options ? Dungeon.currentSpeaker.options[0] : 'Yes';
+                                    socket.emit('suncat_spectate', `Player selected the option "${optText}" while speaking to a ${Dungeon.currentSpeaker.name || 'stranger'} who said, ${Dungeon.currentSpeaker.customDialogue || 'what do you want?'}".`);
+                                }
                                 Dungeon.executeActions(Dungeon.currentSpeaker.yesActions);
                                 Dungeon.processNextAction();
                             } else {
@@ -23068,6 +23023,10 @@
                             }
                             
                             if (Dungeon.currentSpeaker && Dungeon.currentSpeaker.noActions) {
+                                if (typeof socket !== 'undefined') {
+                                    let optText = Dungeon.currentSpeaker.options ? Dungeon.currentSpeaker.options[0] : 'Yes';
+                                    socket.emit('suncat_spectate', `Player selected the option "${optText}" while speaking to a ${Dungeon.currentSpeaker.name || 'stranger'} who said, ${Dungeon.currentSpeaker.customDialogue || 'what do you want?'}".`);
+                                }
                                 Dungeon.executeActions(Dungeon.currentSpeaker.noActions);
                                 Dungeon.processNextAction();
                             } else {
