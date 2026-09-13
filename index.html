@@ -16697,15 +16697,15 @@
                     'battle',      
                     false,         
                     'ally',        
-                    0 // Always spawn at Level 0 so we purely rely on stat-buff scaling
+                    petMastery // Always spawn at Level 0 so we purely rely on stat-buff scaling
                 );
                 myAlly.activeBuffs = []; 
                 
                 // Wipe its base stats so we rely entirely on the Card manifest + scaling
-                myAlly.stat = [ [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0] ];
+                //myAlly.stat = [ [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0] ];
                 
-                let allyname = new Card(myAlly.type, 0);
-                myAlly.name = `${playerName}'s ${allyname.name}`; 
+                //let allyname = new Card(myAlly.type, 0);
+                //myAlly.name = `${playerName}'s ${allyname.name}`; 
 
                 // ==========================================
                 // --- THE FIX: SUMMONER'S BOND ---
@@ -16730,7 +16730,7 @@
                     let tierBonus = tierIndex !== -1 ? (tierIndex + 1) : 1; 
 
                     // Add Mastery and Player Power together, and push it to the stat!
-                    let totalTransferredPower = tierBonus + pMod + petMastery;
+                    let totalTransferredPower = tierBonus + pMod;
                     
                     summonerBuff.buffs.push({ stat: i, amount: totalTransferredPower });
                 }
@@ -24869,7 +24869,7 @@
                     // In-Game Mode
                     // Strip spaces and lowercase to ensure a safe class check (e.g. "Battle Mage" -> "battlemage")
                     let pClass = Dungeon.playerClass ? Dungeon.playerClass.toLowerCase().replace(/\s+/g, '') : '';
-                    let isBattleMage = (pClass === 'battlemage');
+                    let isBattleMage = (pClass === 'battlemage'||pClass === 'battle-mage'||pClass === 'Battle-Mage');
 
                     if (isBattleMage) {
                         // Battle Mages use their physical extra deck in battles
@@ -37515,7 +37515,8 @@
                                     while (Dungeon.xp >= xpNeeded) {
                                         Dungeon.xp -= xpNeeded; 
                                         Dungeon.level++;
-                                        Dungeon.statPoints =Dungeon.statPoints + 1;
+                                        Dungeon.statPoints =Dungeon.statPoints + 4;
+                                        if (Dungeon.playerClass === 'Battle-Mage'){Dungeon.statPoints + 5}
                                         Dungeon.power = 100 + (Dungeon.level * 13); // Linear scaling we built!
                                         leveledUp = true;
                                         xpNeeded = Math.floor(100 * Math.pow(Dungeon.level + 1, 1.8)); 
