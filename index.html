@@ -16091,19 +16091,43 @@
                     
                     this.requestSave();
                 }
-            
             killNPC(npc, respawnInput = false, reason = 'combat', alignment = null) {
                 if (!npc) return false; // Safety check
+                
+                // ==========================================
+                // 1. THE PIÑATA LOCK (Race Condition Fix)
+                // ==========================================
+                // If they are already dead or currently dying, abort immediately!
+                if (npc.isDead || npc.isDying) return false;
+
+                // Lock them down immediately so no other bullets/spells can trigger this!
+                npc.isDying = true; 
+                npc.isDead = true; 
+                npc.visible = false;
+                
+                // Wipe physics so projectiles pass through their falling body
+                npc.isSliding = false;
+                npc.isAggroDashing = false;
+                npc.combatCooldown = 0;
+                
+                // Wipe old DoTs, Buffs, and Cooldowns so they don't respawn poisoned!
+                npc.activeBuffs = [];
+                if (npc.skillCooldowns) npc.skillCooldowns = {};
+
+                // ==========================================
+
                 let alignStr = npc.alignment || 'neutral';
                 let baseAlignment = alignStr.split('_')[0];
                 
                 // 0. PARTICLES
                 if(npc.role != 'dialogue' && npc.role !== 'dropped_card' && !(npc.role && String(npc.role).includes('portal'))){
                     for (let p = 0; p < 8; p++) {
-                        spawnParticle(
-                            npc.x + (Math.random() - 0.5) * 0.4, npc.y + (Math.random() - 0.5) * 0.4,
-                            '#800000', 'sparkle' 
-                        );
+                        if (typeof spawnParticle !== 'undefined') {
+                            spawnParticle(
+                                npc.x + (Math.random() - 0.5) * 0.4, npc.y + (Math.random() - 0.5) * 0.4,
+                                '#800000', 'sparkle' 
+                            );
+                        }
                     }
                 }
 
@@ -16113,21 +16137,14 @@
 
                 if (isValidXPTarget && isPlayerKill) {
 
-                    // ==========================================
-                    // --- THE FIX: DYNAMIC SCALING XP ---
-                    // ==========================================
-                    // Start with the monster's hardcoded XP (or 10 as fallback)
+                    // --- DYNAMIC SCALING XP ---
                     let baseXP = npc.xp || 10;
-                    
-                    // Add 15 XP for every bonus level the monster had
                     let levelBonusXP = ((npc.level || 0) * baseXP);
-                    
-                    // Bosses are massive, so they triple the TOTAL payout
                     let bossMultiplier = npc.isBoss ? 3 : 1; 
-
                     let finalXP = levelBonusXP * bossMultiplier;
 
                     this.xp = this.xp + finalXP;
+                    
                     if (typeof socket !== 'undefined' && isPlayerKill) {
                         // Calculate NPC Max Potential
                         let npcMax = 0;
@@ -16156,16 +16173,15 @@
 
                         socket.emit('suncat_spectate', `[Weather: ${currentWeather}] ${combatReport}`);
                     }
-                    // 1. LEVEL UP (Only process this math if we actually gained XP)
+                    
+                    // A. PLAYER LEVEL UP 
                     let xpNeeded = Math.floor(100 * Math.pow(this.level + 1, 1.8));
                     let leveledUp = false;
 
-                    // Use a while loop in case they gained a massive amount of XP at once
                     while (this.xp >= xpNeeded) {
                         this.xp -= xpNeeded; 
                         this.level++;
-                        let statPointGain = 4;
-                        if (this.playerClass === 'Battle-Mage'){statPointGain = 9;}
+                        let statPointGain = (this.playerClass === 'Battle-Mage') ? 9 : 4;
                         this.statPoints = (this.statPoints || 0) + statPointGain;
                         
                         // DIRECT FORMULA: Perfect linear scaling
@@ -16177,14 +16193,12 @@
                     if (leveledUp) {
                         console.log(`Level Up! You are now Level ${this.level}. Max Deck Power increased to ${this.power}.`);
                         this.dSense = this.dSense + 3;
-
                         if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('buff2');
                     } else {
                         this.dSense = this.dSense + .3;
                     }
-                    // ==========================================
-                    // --- B. SUMMON XP (Persistent Mastery) ---
-                    // ==========================================
+                    
+                    // B. SUMMON XP (Persistent Mastery)
                     if (this.activeSummons && this.activeSummons.length > 0) {
                         this.activeSummons.forEach(summon => {
                             let sId = summon.cardId;
@@ -16198,12 +16212,11 @@
                                 this.mastery[sId].xp -= petXpNeeded;
                                 this.mastery[sId].level++;
                                 
-                                // Find the live NPC on the map and level it up immediately
                                 let livePet = this.npcs.find(n => n.index === summon.npcId);
                                 if (livePet) {
                                     livePet.level++;
                                     let baseName = new Card(livePet.type, 0).name;
-                                    livePet.name = `${playerName}'s Lvl.${livePet.level} ${baseName}`;
+                                    livePet.name = `${playerName || 'Player'}'s Lvl.${livePet.level} ${baseName}`;
                                     
                                     if (typeof spawnParticle !== 'undefined') {
                                         for(let p=0; p<5; p++) spawnParticle(livePet.x, livePet.y, '#00ff00', 'sparkle');
@@ -16217,403 +16230,254 @@
                     }
                 }
 
-                //2. ONLINE SYNC: UPDATE SERVER
-                    // Only broadcast standard combat/gameplay deaths, not despawns or dropped cards
-                    if (typeof socket !== 'undefined' && npc.role !== 'dropped_card' && npc.role !== 'summoned_minion') {
-                        socket.emit("client_killed_npc", {
-                            mapID: this.mapID,
-                            index: npc.index,
-                            type: npc.type
-                        });
-                    }
-                //3. VANQUISH NPC
-                    //SET RESPAWN TIME
-                        let delay;
-                        if (respawnInput === true) {
-                            delay = Infinity; // Old 'permanent = true'
-                        } else if (respawnInput === false || respawnInput === null) {
-                            delay = npc.respawnDelay; // Old 'permanent = false', uses NPC default
-                        } else {
-                            delay = Number(respawnInput); // Custom timer passed in (e.g., 60000 for 60s)
-                        }
-                        let isPermanent = (delay === Infinity);
-
-                    //NPC
-                        //VANQUISH NPC
-                            npc.isDead = true;
-                            npc.visible = false;
-                        // LOOT DROP
-                            // Only drop a physical card if they die in the overworld (not a tactical duel)
-                                if (typeof startGame !== 'undefined' && startGame === 'explore' && npc.role !== 'dropped_card' && !(npc.role && String(npc.role).includes('portal')) && npc.alignment !== 'ally' && npc.role !== 'summoned_minion') {                                
-                                // Card drop rate
-                                if (Math.random() < 1&&this.playerClass ==='Battle-Mage') { 
-                                    let loot = 0;
-                                    //card drop rate
-                                        loot = rnd(1,npc.deck.length-1)
-                                    
-                                    //SAVE CARD ID
-                                        let droppedCardID = (npc.deck && npc.deck.length > 0) ? npc.deck[loot] : Math.floor(npc.type);
-
-                                        //If the deck holds Card objects instead of raw numbers, extract the index
-                                            if (typeof droppedCardID === 'object' && droppedCardID !== null) {
-                                                droppedCardID = droppedCardID.index || droppedCardID.id;
-                                            }
-                                            
-                                        //Ensure the droppedCardID has a valid portrait mapping.
-                                            // If it's undefined (somehow) or 0 (and not the fool), default to something safe.
-                                            if (droppedCardID === undefined) droppedCardID = Math.floor(npc.type);
-
-                                    // Give the loot a random high index so it doesn't clash with existing map NPCs
-                                        let lootIndex = Math.floor(Math.random() * 100000) + 700000;
-
-                                    // Spawn the loot sprite exactly where the monster died
-                                        let lootSprite = new NPC(
-                                            lootIndex, 
-                                            npc.x, 
-                                            npc.y, 
-                                            -27,           // The loot bag / card sprite
-                                            'stationary', 
-                                            '#ffff00',     // Yellow minimap dot for treasure!
-                                            [droppedCardID], 
-                                            'dialogue', 
-                                            null, 
-                                            'friendly'
-                                        );
-                                
-                                    // Push it to the map so the player can walk over it!
-                                        this.npcs.push(lootSprite);
-                                }
-                            }
-                    //NPC MINION
-                        // If the NPC that just died summoned anything, kill its minions too!
-                        this.npcs.forEach(minion => {
-                            if (!minion.isDead && minion.summonerId === npc.index) {
-                                minion.isDead = true;
-                                minion.visible = false;
-                                minion.x = -999; // Move off map
-                                
-                                if (typeof globalParticles !== 'undefined') {
-                                    for (let p = 0; p < 3; p++) {
-                                        spawnParticle(
-                                            this.x + (Math.random() - 0.5) * 0.8,
-                                            this.y + (Math.random() - 0.5) * 0.8,
-                                            '#800000', 
-                                            'sparkle'
-                                        );
-                                    }
-                                }
-                            }
-                        });
-                    // Player Summoned Minion
-
-                        let summonRecordIndex = this.activeSummons ? this.activeSummons.findIndex(s => s.npcId === npc.index) : -1;
-                        if (summonRecordIndex !== -1) {
-                            let deadSummon = this.activeSummons[summonRecordIndex];
-                            let originalSpellId = deadSummon.cardId; // This correctly grabs 88 (Raise Dead) or 92 (Call Familiar)
-                            
-                            // Remove them from active tracking
-                            this.activeSummons.splice(summonRecordIndex, 1);
-                            
-                            // Put the SPELL on cooldown!
-                            let sData = typeof SPELL_REGISTRY !== 'undefined' ? SPELL_REGISTRY[originalSpellId] : null;
-                            let cdMs = sData && sData.cooldown ? sData.cooldown : 5000;
-                            
-                            this.skillCooldowns[originalSpellId] = Date.now() + cdMs;
-                            
-                            // Force the hotbar to refresh so the button instantly grays out/disappears
-                            if (typeof this.updateSkills === 'function') this.updateSkills();
-                        }
-                    //ALLY
-                        if (npc.alignment === 'ally') {
-                            // 1. Find exactly which active summon object this was using its unique map index
-                                let summonIndex = -1;
-                                if (this.activeSummons) {
-                                    summonIndex = this.activeSummons.findIndex(s => s.npcId === npc.index);
-                                }
-                            
-                            if (summonIndex !== -1) {
-                                let deadUID = this.activeSummons[summonIndex].uid;
-                                let deadCardID = this.activeSummons[summonIndex].cardId;
-                                // 2. Remove them from the active squad
-                                    this.activeSummons.splice(summonIndex, 1);
-                                
-                                // 3. DESTROY THE SPECIFIC CARD FROM THE HAND
-                                    let foundInHand = false;
-                                    for (let i = 0; i < this.hand.length; i++) {
-                                        if (this.hand[i] && this.hand[i].uid === deadUID) {
-                                            this.hand[i] = null; // Card is permanently destroyed
-                                            foundInHand = true;
-                                            console.log(`Ally died! Card permanently destroyed from Hand.`);
-
-                                            // Instantly wipe the dynamic UI button
-                                                if (typeof window.uiSpellButtons !== 'undefined' && window.uiSpellButtons[i]) {
-                                                    window.uiSpellButtons[i].assignedCard = null;
-                                                }
-                                            }
-                                        }
-
-                                        // Fallback just in case it somehow got pushed back to extra
-                                        if (!foundInHand) {
-                                            let extraIndex = this.extra.findIndex(c => c.uid === deadUID);
-                                            if (extraIndex !== -1) {
-                                                this.extra.splice(extraIndex, 1); 
-                                            }
-                                        }
-                                // 4. DOWNED ALLY CARD RECOVERY
-                                    if(this.playerClass ==='Battle-Mage'){
-                                        // Spawn a temporary card on the ground exactly where they died
-                                        let dropIndex = Math.floor(Math.random() * 100000) + 800000; 
-                                        let droppedCard = new NPC(
-                                            dropIndex, 
-                                            Math.floor(npc.x) + 0.5, // FIX: Centered X
-                                            Math.floor(npc.y) + 0.5, // FIX: Centered Y
-                                            -27,           // The Card Sprite
-                                            'stationary', 
-                                            '#ffff00',     // Yellow minimap dot
-                                            [deadCardID],  // The card they can recover
-                                            'dropped_card',// NEW ROLE
-                                            false, 
-                                            'friendly'
-                                        );
-                                        droppedCard.lifespan = 600;
-                                        this.npcs.push(droppedCard);
-                                    }
-                            }
-                            
-                            // Force the hotbar to shuffle in a new card
-                            if (typeof this.shuffleSpells === 'function') this.shuffleSpells();
-
-                            this.requestSave();
-                        }
-                        // -------------------------------
-                            // -------------------------------
-                            
-                    //MEMORY
-                        let uniqueID = this.mapID + "_" + npc.index;
-                        let spawnedKey = 'spawned_' + this.mapID;
-                        let wasSpawned = false;
-                        //Do not record card drops
-                            if (npc.role === 'dropped_card') {
-                                npc.isDead = true;
-                                npc.visible = false;
-                                npc.x = -999;
-                                return; // Safely ignore enemy drops!
-                            }                            
-
-                        //Do Not record temp NPCs
-                            if (this.memory[spawnedKey]) {
-                                let indexInSpawned = this.memory[spawnedKey].findIndex(n => n.index === npc.index);
-                                if (indexInSpawned !== -1) {
-                                    wasSpawned = true;
-                                    if (isPermanent) {
-                                        this.memory[spawnedKey].splice(indexInSpawned, 1);
-                                    }
-                                }
-                            }
-
-                        //Record in Death Ledger
-                            if (npc.alignment !== 'ally' && npc.role !== 'summoned_minion') {
-                                if (isPermanent) {
-                                    // Only native map NPCs need a permanent death record 
-                                    if (!wasSpawned) {
-                                        this.memory[uniqueID] = { permanent: true };
-                                    }
-                                    npc.respawnTime = Infinity;
-                                } else {
-                                    // Temporary death
-                                    let respawnTimestamp = Date.now() + delay;
-                                    npc.respawnTime = respawnTimestamp;
-                                    this.memory[uniqueID] = { respawnAt: respawnTimestamp, permanent: false };
-                                }
-                            }
-                        //Event Tracking
-                            let aliveHostiles = 0;
-                            let lastFoe = null; // Track the last surviving enemy
-
-                            this.npcs.forEach(n => {
-                                // Ignore dead things, dialogue NPCs, portals, and cards
-                                if (!n.isDead && n.alignment === 'foe' && n.role !== 'dialogue' && n.role !== 'quest_giver' && n.type !== 99 && n.type !== -27) {
-                                    aliveHostiles++;
-                                    lastFoe = n; 
-                                }
-                            });
-                //4. WORLD-ALTERING EVENTS (Data-Driven!)
-                    if (reason !== 'story_event' && npc.deathActions && npc.deathActions.length > 0) {
-                        this.executeActions(npc.deathActions);
-                    }
-                //5. CARD PICK UP
-                    let lootTriggered = false;
-
-                    // ONLY do the UI popup if we are currently inside a tactical battle screen
-                    if (typeof startGame !== 'undefined' && startGame === 'battle'&&this.playerClass ==='Battle-Mage') {
-                        
-                        if (npc.deck && npc.deck.length > 0) {
-                            let availableLootIDs = npc.deck.map(c => typeof c === 'object' ? c.index : c);
-                            if (npc.hand) {
-                                let handIDs = npc.hand.map(c => typeof c === 'object' ? c.index : c);
-                                availableLootIDs = availableLootIDs.concat(handIDs);
-                            }
-
-                            let playerOwnedIDs = this.deck.map(c => typeof c === 'object' ? c.index : c);
-                            let uniqueLoot = availableLootIDs.filter(id => !playerOwnedIDs.includes(id));
-
-                            if (uniqueLoot.length > 0) {
-                                let rndIndex = Math.floor(Math.random() * uniqueLoot.length);
-                                let cardID = uniqueLoot[rndIndex];
-                                
-                                // --- FIX 2: DELEGATE LOOT TO THE ACTION QUEUE ---
-                                // Instead of manually pushing to 'extra' and hardcoding a UI popup,
-                                // we let the 'give_card' action handle it seamlessly!
-                                this.executeActions([['give_card', cardID]]);
-                                lootTriggered = true;
-                            }
-                        }
-                    }
-                    
-
-                    
-                
-                
-                //6. MERCY EVENT
-                    const recruitPleas = [
-                        // The Classic Frantic Minion
-                        [
-                            "Eek! Don't hurt me! I surrender!",
-                            "Spare me! I'll fight whoever you want!"
-                        ],
-                        [
-                        "Wait! Please don't kill me!",
-                            "I yield! If you spare me, I'll lend you my strength!"],
-                        // Out of Breath
-                        [
-                            "Wait! *huff* Wait! *puff* I can't run anymore!",
-                            "I give up! Let me live and I'll fight for your side!"
-                        ],
-                        // Changing Management
-                        [
-                            "Yikes! Okay, okay, you win!",
-                            "Don't hurt me! I'll fight for you, I swear!"
-                        ],
-                        // The Loot Panic
-                        [
-                            "Gah! Please don't turn me into loot!",
-                            "Let me live and I'll smash your enemies for you!"
-                        ],
-                        // The Absolute Groveler
-                        [
-                            "No! I yield!",
-                            "I'm at your service! I'll lend you all my strength!"
-                        ],
-                        
-                        // The "Please Don't Look At My Stats" 
-                        [
-                            "Mercy! I don't want to die!",
-                            "Take me with you! I'll fight for you instead!"
-                        ]
-                    ];
-                    // --- THE COWARD TRIGGER ---
-                    // If only 1 enemy is left, and it's not a boss, make it panic!
-                    if (aliveHostiles === 1 && lastFoe && !lastFoe.isBoss) {
-                        lastFoe.isAggroDashing = false;
-                        lastFoe.isSliding = false;
-                        lastFoe.state = 'fleeing';
-                        lastFoe.speed = 2.5; 
-                        lastFoe.role = 'dialogue'; 
-                        lastFoe.alignment = 'foe_coward'; 
-                        
-                        const randomPlea = recruitPleas[Math.floor(Math.random() * recruitPleas.length)];
-                        lastFoe.customDialogue = randomPlea;
-                        lastFoe.options = ['Spare', 'Finish It'];
-                        
-                        // REMOVE rewardCard so it doesn't trigger the loot screen!
-                        lastFoe.rewardCard = null; 
-
-                        // --- NEW: DYNAMIC ACTION QUEUE ---
-                        // If they click Spare (btnYes)
-                        lastFoe.yesActions = [
-                            ['become_ally', Math.floor(lastFoe.type)],
-                            ['spectate', 'Player showed mercy and recruited an enemy.'],
-                            ['disappear', null], 
-                            ['close_dialogue', null]
-                        ];
-
-                        // If they click Finish It (btnNo)
-                        lastFoe.noActions = [
-                            ['spectate', 'Player showed no mercy to the fleeing enemy!'],
-                            // Turn them back into an enemy!
-                            ['transform_npc', { index: lastFoe.index, newAlignment: 'foe', newRole: 'battle', newState: 'chasing' }],
-                            // Force the battle to start immediately
-                        ];
-                    }
-
-                //7. CUSTOM MAP SCENARIO COMPLETE (Auto-Extraction)
-                    if (this.mapID === 999 && !this.scenarioEnding) {
-                        let scenarioWon = false;
-                        let endMessage = "";
-
-                        // 1. Calculate remaining objectives & bosses
-                        // We ensure we don't count the NPC that is currently dying!
-                        let aliveBosses = this.npcs.filter(n => n.isBoss && !n.isDead && n.index !== npc.index && n.x !== -999).length;
-                        let objectivesLeft = this.npcs.filter(n => (n.role === 'escort_giver' || n.role === 'reward') && !n.isDead && n.index !== npc.index && n.x !== -999).length;
-
-                        // 2. Check Win Conditions based on Scenario Type
-                        if (this.mapScenario === 'Raid') {
-                            if (aliveBosses === 0) {
-                                scenarioWon = true;
-                                endMessage = 'The Boss has been slain! The instance is collapsing...';
-                            }
-                        } 
-                        else if (this.mapScenario === 'Invasion' || this.mapScenario === 'Arena Madness') {
-                            if (aliveHostiles === 0 && aliveBosses === 0) {
-                                scenarioWon = true;
-                                endMessage = 'All foes have been vanquished! The realm is safe...';
-                            }
-                        } 
-                        else if (this.mapScenario === 'Rescue/Fetch') {
-                            // Win if all hostages/rewards are collected AND all bosses (main boss + quest targets) are dead!
-                            if (objectivesLeft === 0 && aliveBosses === 0) {
-                                scenarioWon = true;
-                                endMessage = 'All objectives secured and all threats eliminated! Returning to the Overworld...';
-                            }
-                        } 
-                        else {
-                            // Fallback Failsafe
-                            if (aliveBosses === 0 && npc.isBoss) {
-                                scenarioWon = true;
-                                endMessage = 'The realm has been cleared! The instance is collapsing...';
-                            }
-                        }
-
-                        // --- TRIGGER THE 10 SECOND EXTRACTION ---
-                        if (scenarioWon) {
-                            this.scenarioEnding = true; // Lock it so it doesn't trigger multiple times
-                            currentQuest = endMessage + ' Teleporting in 10 seconds...';
-                            
-                            if (typeof MusicEngine !== 'undefined') {
-                                MusicEngine.stop();
-                                MusicEngine.play(8); // Play the Victory Fanfare
-                            }
-
-                            setTimeout(() => {
-                                // Make sure they haven't manually left already
-                                if (this.mapID === 999) {
-                                    console.log(`Extraction Complete. Teleporting back to map ${this.prevMap}...`);
-                                    
-                                    this.mapID = this.prevMap;
-                                    this.scenarioEnding = false;
-                                    
-                                    // Wipe active summons so dungeon hostages don't follow you back to the city forever
-                                    this.activeSummons = [];
-                                    
-                                    this.loadMap(this.prevMap); 
-                                    this.requestSave();
-                                }
-                            }, 10000); 
-                        }
-                    }
-                return lootTriggered;
-                    
+                // 2. ONLINE SYNC: UPDATE SERVER
+                if (typeof socket !== 'undefined' && npc.role !== 'dropped_card' && npc.role !== 'summoned_minion') {
+                    socket.emit("client_killed_npc", {
+                        mapID: this.mapID,
+                        index: npc.index,
+                        type: npc.type
+                    });
                 }
+                
+                // 3. VANQUISH NPC
+                let delay;
+                if (respawnInput === true) delay = Infinity;
+                else if (respawnInput === false || respawnInput === null) delay = npc.respawnDelay; 
+                else delay = Number(respawnInput); 
+                
+                let isPermanent = (delay === Infinity);
+
+                // LOOT DROP
+                if (typeof startGame !== 'undefined' && startGame === 'explore' && npc.role !== 'dropped_card' && !(npc.role && String(npc.role).includes('portal')) && npc.alignment !== 'ally' && npc.role !== 'summoned_minion') {                                
+                    if (Math.random() < 1 && this.playerClass === 'Battle-Mage') { 
+                        let loot = rnd(1, npc.deck.length-1);
+                        let droppedCardID = (npc.deck && npc.deck.length > 0) ? npc.deck[loot] : Math.floor(npc.type);
+
+                        if (typeof droppedCardID === 'object' && droppedCardID !== null) {
+                            droppedCardID = droppedCardID.index || droppedCardID.id;
+                        }
+                        if (droppedCardID === undefined) droppedCardID = Math.floor(npc.type);
+
+                        let lootIndex = Math.floor(Math.random() * 100000) + 700000;
+                        let lootSprite = new NPC(
+                            lootIndex, npc.x, npc.y, -27, 'stationary', '#ffff00', [droppedCardID], 'dialogue', null, 'friendly'
+                        );
+                        this.npcs.push(lootSprite);
+                    }
+                }
+
+                // NPC MINION
+                this.npcs.forEach(minion => {
+                    if (!minion.isDead && minion.summonerId === npc.index) {
+                        minion.isDead = true; minion.visible = false; minion.x = -999;
+                        if (typeof globalParticles !== 'undefined') {
+                            for (let p = 0; p < 3; p++) spawnParticle(minion.x + (Math.random() - 0.5) * 0.8, minion.y + (Math.random() - 0.5) * 0.8, '#800000', 'sparkle');
+                        }
+                    }
+                });
+
+                // Player Summoned Minion
+                let summonRecordIndex = this.activeSummons ? this.activeSummons.findIndex(s => s.npcId === npc.index) : -1;
+                if (summonRecordIndex !== -1) {
+                    let deadSummon = this.activeSummons[summonRecordIndex];
+                    let originalSpellId = deadSummon.cardId; 
+                    this.activeSummons.splice(summonRecordIndex, 1);
+                    
+                    let sData = typeof SPELL_REGISTRY !== 'undefined' ? SPELL_REGISTRY[originalSpellId] : null;
+                    let cdMs = sData && sData.cooldown ? sData.cooldown : 5000;
+                    this.skillCooldowns[originalSpellId] = Date.now() + cdMs;
+                    
+                    if (typeof this.updateSkills === 'function') this.updateSkills();
+                }
+
+                // ALLY
+                if (npc.alignment === 'ally') {
+                    let summonIndex = -1;
+                    if (this.activeSummons) summonIndex = this.activeSummons.findIndex(s => s.npcId === npc.index);
+                    
+                    if (summonIndex !== -1) {
+                        let deadUID = this.activeSummons[summonIndex].uid;
+                        let deadCardID = this.activeSummons[summonIndex].cardId;
+                        this.activeSummons.splice(summonIndex, 1);
+                        
+                        let foundInHand = false;
+                        for (let i = 0; i < this.hand.length; i++) {
+                            if (this.hand[i] && this.hand[i].uid === deadUID) {
+                                this.hand[i] = null; 
+                                foundInHand = true;
+                                console.log(`Ally died! Card permanently destroyed from Hand.`);
+                                if (typeof window.uiSpellButtons !== 'undefined' && window.uiSpellButtons[i]) {
+                                    window.uiSpellButtons[i].assignedCard = null;
+                                }
+                            }
+                        }
+
+                        if (!foundInHand && this.extra) {
+                            let extraIndex = this.extra.findIndex(c => c.uid === deadUID);
+                            if (extraIndex !== -1) this.extra.splice(extraIndex, 1); 
+                        }
+
+                        if(this.playerClass === 'Battle-Mage'){
+                            let dropIndex = Math.floor(Math.random() * 100000) + 800000; 
+                            let droppedCard = new NPC(
+                                dropIndex, Math.floor(npc.x) + 0.5, Math.floor(npc.y) + 0.5, -27, 'stationary', '#ffff00', [deadCardID], 'dropped_card', false, 'friendly'
+                            );
+                            droppedCard.lifespan = 600;
+                            this.npcs.push(droppedCard);
+                        }
+                    }
+                    if (typeof this.shuffleSpells === 'function') this.shuffleSpells();
+                    if (typeof this.requestSave === 'function') this.requestSave();
+                }
+
+                // MEMORY
+                let uniqueID = this.mapID + "_" + npc.index;
+                let spawnedKey = 'spawned_' + this.mapID;
+                let wasSpawned = false;
+
+                if (npc.role === 'dropped_card') {
+                    npc.x = -999;
+                    return; 
+                }                            
+
+                if (this.memory[spawnedKey]) {
+                    let indexInSpawned = this.memory[spawnedKey].findIndex(n => n.index === npc.index);
+                    if (indexInSpawned !== -1) {
+                        wasSpawned = true;
+                        if (isPermanent) this.memory[spawnedKey].splice(indexInSpawned, 1);
+                    }
+                }
+
+                if (npc.alignment !== 'ally' && npc.role !== 'summoned_minion') {
+                    if (isPermanent) {
+                        if (!wasSpawned) this.memory[uniqueID] = { permanent: true };
+                        npc.respawnTime = Infinity;
+                    } else {
+                        let respawnTimestamp = Date.now() + delay;
+                        npc.respawnTime = respawnTimestamp;
+                        this.memory[uniqueID] = { respawnAt: respawnTimestamp, permanent: false };
+                    }
+                }
+
+                let aliveHostiles = 0;
+                let lastFoe = null; 
+
+                this.npcs.forEach(n => {
+                    if (!n.isDead && n.alignment === 'foe' && n.role !== 'dialogue' && n.role !== 'quest_giver' && n.type !== 99 && n.type !== -27) {
+                        aliveHostiles++;
+                        lastFoe = n; 
+                    }
+                });
+
+                // 4. WORLD-ALTERING EVENTS
+                if (reason !== 'story_event' && npc.deathActions && npc.deathActions.length > 0) {
+                    this.executeActions(npc.deathActions);
+                }
+
+                // 5. CARD PICK UP (Tactical Mode)
+                let lootTriggered = false;
+                if (typeof startGame !== 'undefined' && startGame === 'battle' && this.playerClass === 'Battle-Mage') {
+                    if (npc.deck && npc.deck.length > 0) {
+                        let availableLootIDs = npc.deck.map(c => typeof c === 'object' ? c.index : c);
+                        if (npc.hand) {
+                            let handIDs = npc.hand.map(c => typeof c === 'object' ? c.index : c);
+                            availableLootIDs = availableLootIDs.concat(handIDs);
+                        }
+
+                        let playerOwnedIDs = this.deck.map(c => typeof c === 'object' ? c.index : c);
+                        let uniqueLoot = availableLootIDs.filter(id => !playerOwnedIDs.includes(id));
+
+                        if (uniqueLoot.length > 0) {
+                            let rndIndex = Math.floor(Math.random() * uniqueLoot.length);
+                            let cardID = uniqueLoot[rndIndex];
+                            if (typeof this.executeActions === 'function') this.executeActions([['give_card', cardID]]);
+                            lootTriggered = true;
+                        }
+                    }
+                }
+
+                // 6. MERCY EVENT
+                const recruitPleas = [
+                    ["Eek! Don't hurt me! I surrender!", "Spare me! I'll fight whoever you want!"],
+                    ["Wait! Please don't kill me!", "I yield! If you spare me, I'll lend you my strength!"],
+                    ["Wait! *huff* Wait! *puff* I can't run anymore!", "I give up! Let me live and I'll fight for your side!"],
+                    ["Yikes! Okay, okay, you win!", "Don't hurt me! I'll fight for you, I swear!"],
+                    ["Gah! Please don't turn me into loot!", "Let me live and I'll smash your enemies for you!"],
+                    ["No! I yield!", "I'm at your service! I'll lend you all my strength!"],
+                    ["Mercy! I don't want to die!", "Take me with you! I'll fight for you instead!"]
+                ];
+
+                if (aliveHostiles === 1 && lastFoe && !lastFoe.isBoss) {
+                    lastFoe.isAggroDashing = false;
+                    lastFoe.isSliding = false;
+                    lastFoe.state = 'fleeing';
+                    lastFoe.speed = 2.5; 
+                    lastFoe.role = 'dialogue'; 
+                    lastFoe.alignment = 'foe_coward'; 
+                    
+                    const randomPlea = recruitPleas[Math.floor(Math.random() * recruitPleas.length)];
+                    lastFoe.customDialogue = randomPlea;
+                    lastFoe.options = ['Spare', 'Finish It'];
+                    lastFoe.rewardCard = null; 
+
+                    lastFoe.yesActions = [
+                        ['become_ally', Math.floor(lastFoe.type)],
+                        ['spectate', 'Player showed mercy and recruited an enemy.'],
+                        ['disappear', null], 
+                        ['close_dialogue', null]
+                    ];
+
+                    lastFoe.noActions = [
+                        ['spectate', 'Player showed no mercy to the fleeing enemy!'],
+                        ['transform_npc', { index: lastFoe.index, newAlignment: 'foe', newRole: 'battle', newState: 'chasing' }],
+                    ];
+                }
+
+                // 7. CUSTOM MAP SCENARIO COMPLETE
+                if (this.mapID === 999 && !this.scenarioEnding) {
+                    let scenarioWon = false;
+                    let endMessage = "";
+
+                    let aliveBosses = this.npcs.filter(n => n.isBoss && !n.isDead && n.index !== npc.index && n.x !== -999).length;
+                    let objectivesLeft = this.npcs.filter(n => (n.role === 'escort_giver' || n.role === 'reward') && !n.isDead && n.index !== npc.index && n.x !== -999).length;
+
+                    if (this.mapScenario === 'Raid') {
+                        if (aliveBosses === 0) { scenarioWon = true; endMessage = 'The Boss has been slain! The instance is collapsing...'; }
+                    } else if (this.mapScenario === 'Invasion' || this.mapScenario === 'Arena Madness') {
+                        if (aliveHostiles === 0 && aliveBosses === 0) { scenarioWon = true; endMessage = 'All foes have been vanquished! The realm is safe...'; }
+                    } else if (this.mapScenario === 'Rescue/Fetch') {
+                        if (objectivesLeft === 0 && aliveBosses === 0) { scenarioWon = true; endMessage = 'All objectives secured and all threats eliminated! Returning to the Overworld...'; }
+                    } else {
+                        if (aliveBosses === 0 && npc.isBoss) { scenarioWon = true; endMessage = 'The realm has been cleared! The instance is collapsing...'; }
+                    }
+
+                    if (scenarioWon) {
+                        this.scenarioEnding = true; 
+                        let currentQuest = endMessage + ' Teleporting in 10 seconds...';
+                        
+                        if (typeof MusicEngine !== 'undefined') {
+                            MusicEngine.stop(); MusicEngine.play(8); 
+                        }
+
+                        setTimeout(() => {
+                            if (this.mapID === 999) {
+                                console.log(`Extraction Complete. Teleporting back to map ${this.prevMap}...`);
+                                this.mapID = this.prevMap;
+                                this.scenarioEnding = false;
+                                this.activeSummons = [];
+                                this.loadMap(this.prevMap); 
+                                if (typeof this.requestSave === 'function') this.requestSave();
+                            }
+                        }, 10000); 
+                    }
+                }
+
+                // AFTER ALL CALCULATIONS, MOVE THE BODY
+                npc.x = -999;
+                
+                return lootTriggered;
+            }
+
             reviveNPC(index) {
                 // 1. Construct the unique ID for this map and npc index
                 // Note: Use the index number (e.g., 5, 56, etc.)
