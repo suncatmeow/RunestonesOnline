@@ -2840,104 +2840,102 @@
             };
             const SPELL_REGISTRY = {
                 // --- PROJECTILES (Attack) ---
-                13: { type: 'projectile', name: 'Death', cooldown: 9000, castStat: 2, defStat: 2, color: [0,0,0], glow: '#00ffff',  model3D: 'd4', isHoming: true }, 
-                26: { type: 'projectile', name: 'Fireball', cooldown: 6000, castStat: 2, defStat: 1, color: [1,0.5,0], glow: '#ff0000', sprite2D: -37, isHoming: false, knockback: 1.5  }, 
-                //80: { type: 'projectile', name: 'Ice Shard', cooldown: 9000, castStat: 2, defStat: 1, color: [0,0,1], glow: '#0000ff', model3D: 'd4', isHoming: false }, // MOVED TO 80 (Frost Wyrm) to prevent conflict with 94 Lich
-                92: { type: 'imbue', name: 'Imbue Fire', consume: 26, cooldown: 3000 },
-                93: { type: 'projectile', name: 'Lightning', cooldown: 7000, castStat: 2, defStat: 3, color: [1,1,0], glow: '#ffff00', model3D: 'd4', isHoming: true, chains: 1 },
-                9999: { type: 'projectile', name: 'Attack', castStat: 0, defStat: 1, color: [1,1,1], glow: '#ffff00', sprite2D: 316, isHoming: true, range: 1.3, knockback: 1.3 },
-                9998: { type: 'projectile', name: 'Imbued Attack', castStat: 0, defStat: 1, color: [1,0.5,0], glow: '#ff0000', sprite2D: -37, isHoming: false, knockback: 1.5 },
+                13: { type: 'projectile', name: 'Death', cooldown: 9000, castStat: 2, defStat: 2, color: [0,0,0], glow: '#00ffff',  model3D: 'd4', isHoming: true, sfx: 'arcane3' }, 
+                26: { type: 'projectile', name: 'Fireball', cooldown: 6000, castStat: 2, defStat: 1, color: [1,0.5,0], glow: '#ff0000', sprite2D: -37, isHoming: false, knockback: 1.5, sfx: 'fire2' }, 
+                92: { type: 'imbue', name: 'Imbue Fire', consume: 26, cooldown: 3000, sfx: 'buff2' },
+                93: { type: 'projectile', name: 'Lightning', cooldown: 7000, castStat: 2, defStat: 3, color: [1,1,0], glow: '#ffff00', model3D: 'd4', isHoming: true, chains: 1, sfx: 'lightning' },
+                9999: { type: 'projectile', name: 'Attack', castStat: 0, defStat: 1, color: [1,1,1], glow: '#ffff00', sprite2D: 316, isHoming: true, range: 1.3, knockback: 1.3, sfx: 'attack' },
+                9998: { type: 'projectile', name: 'Imbued Attack', castStat: 0, defStat: 1, color: [1,0.5,0], glow: '#ff0000', sprite2D: -37, isHoming: false, knockback: 1.5, sfx: 'fire3' },
                 
                 // --- INSTANT FRONTAL AoE (Cone) ---
-                95: { type: 'cone', name: 'Flurry', cooldown: 3000, castStat: 3, defStat: 1, range: 3.0, knockback: 2, angle: 0.5 },
+                95: { type: 'cone', name: 'Flurry', cooldown: 3000, castStat: 3, defStat: 1, range: 3.0, knockback: 2, angle: 0.5, sfx: 'air3' },
                 
                 // --- INSTANT TELEPORT STRIKES ---
-                40: { type: 'assassination', name: 'Steal', cooldown: 90000, castStat: 3, defStat: 3, range: 3, isSteal: true },
-                51: { type: 'assassination', name: 'Overpower', cooldown: 9000, castStat: 0, defStat: 0, range: 3 },
-                52: { type: 'assassination', name: 'Backstab', cooldown: 6000, castStat: 3, defStat: 3, range: 9 },
-                59: { type: 'assassination', name: 'Critical Strike', cooldown: 9000, castStat: 0, defStat: 3, range: 6},
-                65: { type: 'assassination', name: 'Shield Bash', cooldown: 9000, castStat: 1, defStat: 0, range: 3},
+                40: { type: 'assassination', name: 'Steal', cooldown: 90000, castStat: 3, defStat: 3, range: 3, isSteal: true, sfx: 'chime' },
+                51: { type: 'assassination', name: 'Overpower', cooldown: 9000, castStat: 0, defStat: 0, range: 3, sfx: 'earth3' },
+                52: { type: 'assassination', name: 'Backstab', cooldown: 6000, castStat: 3, defStat: 3, range: 9, sfx: 'slash' },
+                59: { type: 'assassination', name: 'Critical Strike', cooldown: 9000, castStat: 0, defStat: 3, range: 6, sfx: 'slash' },
+                65: { type: 'assassination', name: 'Shield Bash', cooldown: 9000, castStat: 1, defStat: 0, range: 3, sfx: 'block' },
 
                 // --- TIMED BUFFS (AoE) ---
-                8:  { type: 'buff', name: 'Strength', cooldown: 450000, castStat: 2, buffStat: 0, amount: 2, duration: 1800, visual: 'arc', auraColor: 'rgba(255, 255, 0, 0.6)' },
-                28: { type: 'buff', name: 'Defense', cooldown: 450000,  castStat: 2, buffStat: 1, amount: 2, duration: 1800, visual: 'arc', auraColor: 'rgba(0, 255, 0, 0.6)' },
-                29: { type: 'buff', name: 'Haste',  cooldown: 450000,  castStat: 2, buffStat: 3, amount: 2, duration: 1800, visual: 'arc', auraColor: 'rgba(0, 0, 255, 0.6)' },
-                70: { type: 'cultivate', name: 'Cultivate', cooldown: 86400000, castStat: 2 }, // 24 Hour Limit Break
+                8:  { type: 'buff', name: 'Strength', cooldown: 450000, castStat: 2, buffStat: 0, amount: 2, duration: 1800, visual: 'arc', auraColor: 'rgba(255, 255, 0, 0.6)', sfx: 'buff' },
+                28: { type: 'buff', name: 'Defense', cooldown: 450000,  castStat: 2, buffStat: 1, amount: 2, duration: 1800, visual: 'arc', auraColor: 'rgba(0, 255, 0, 0.6)', sfx: 'buff' },
+                29: { type: 'buff', name: 'Haste',  cooldown: 450000,  castStat: 2, buffStat: 3, amount: 2, duration: 1800, visual: 'arc', auraColor: 'rgba(0, 0, 255, 0.6)', sfx: 'buff' },
+                70: { type: 'cultivate', name: 'Cultivate', cooldown: 86400000, castStat: 2, sfx: 'heal' },
                     
                 // --- SPECIAL TICKING DEBUFFS / BUFFS ---
-                600: { type: 'debuff', name: 'Poison', cooldown: 10000, castStat: 2, defStat: 1, duration: 300, tickRate: 30, votType: 'dot', votAmount: 1.0, visual: 'aura', auraColor: 'rgba(0,255,0,0.7)' },
-                601: { type: 'buff', name: 'Rampage', cooldown: 10000, castStat: 2, buffStat: 0, amount: 0, duration: 150, tickRate: 30, votType: 'bot', votAmount: 1, visual: 'aura', auraColor: 'rgba(255,0,0,0.7)' },
-                602: { type: 'buff', name: 'Regen', cooldown: 10000, castStat: 2, duration: 300, tickRate: 30, votType: 'hot', votAmount: 1.0, visual: 'sparkle', auraColor: 'rgba(0,255,255,0.7)' },
-                603: { type: 'debuff', name: 'Electrocute', cooldown: 10000, castStat: 2, defStat: 1, duration: 300, tickRate: 60, votType: 'stun', visual: 'chains', auraColor: 'rgba(255,255,0,0.7)' },
+                600: { type: 'debuff', name: 'Poison', cooldown: 10000, castStat: 2, defStat: 1, duration: 300, tickRate: 30, votType: 'dot', votAmount: 1.0, visual: 'aura', auraColor: 'rgba(0,255,0,0.7)', sfx: 'debuff' },
+                601: { type: 'buff', name: 'Rampage', cooldown: 10000, castStat: 2, buffStat: 0, amount: 0, duration: 150, tickRate: 30, votType: 'bot', votAmount: 1, visual: 'aura', auraColor: 'rgba(255,0,0,0.7)', sfx: 'buff2' },
+                602: { type: 'buff', name: 'Regen', cooldown: 10000, castStat: 2, duration: 300, tickRate: 30, votType: 'hot', votAmount: 1.0, visual: 'sparkle', auraColor: 'rgba(0,255,255,0.7)', sfx: 'heal' },
+                603: { type: 'debuff', name: 'Electrocute', cooldown: 10000, castStat: 2, defStat: 1, duration: 300, tickRate: 60, votType: 'stun', visual: 'chains', auraColor: 'rgba(255,255,0,0.7)', sfx: 'lightning' },
                 
                 // --- DEBUFFS (Fired as Projectiles) ---
-                68: { type: 'debuff', name: 'Bad Luck Charm', cooldown: 450000, castStat: 3, defStat: 2, debuffStat: 0, duration: 3600, visual: 'aura', auraColor: 'rgba(128, 0, 128, 0.7)', color: [1,0,1], glow: '#800080', model3D: 'd4', isHoming: true },
-                12: { type: 'debuff', name: 'Bind', cooldown: 90000,  castStat: 2, defStat: 3, bind: true, duration: 600, visual: 'chains', auraColor: 'rgba(100, 100, 100, 0.8)', color: [1,1,1], glow: '#888888', model3D: 'd4', isHoming: true },
-                15: { type: 'debuff', name: 'Curse', cooldown: 90000, castStat: 2, defStat: 0, debuffStat: 'all', duration: 3600, visual: 'aura', auraColor: 'rgba(128, 0, 128, 0.7)', color: [1,0,1], glow: '#800080', model3D: 'd4', isHoming: true },
-                18: { type: 'debuff', name: 'Lunacy', cooldown: 90000,  castStat: 0, defStat: 2, debuffStat: 2, bind: true, duration: 450, visual: 'chains', auraColor: 'rgba(100, 100, 0, 0.8)', color: [1,1,0], glow: '#888888', model3D: 'd4', isHoming: true },
-                58: { type: 'debuff', name: 'Intimidate', cooldown: 90000,  castStat: 0, defStat: 2, debuffStat: 0, bind: true, duration: 450, visual: 'chains', auraColor: 'rgba(100, 100, 0, 0.8)', color: [1,1,0], glow: '#888888', model3D: 'd4', isHoming: true },
+                68: { type: 'debuff', name: 'Bad Luck Charm', cooldown: 450000, castStat: 3, defStat: 2, debuffStat: 0, duration: 3600, visual: 'aura', auraColor: 'rgba(128, 0, 128, 0.7)', color: [1,0,1], glow: '#800080', model3D: 'd4', isHoming: true, sfx: 'debuff2' },
+                12: { type: 'debuff', name: 'Bind', cooldown: 90000,  castStat: 2, defStat: 3, bind: true, duration: 600, visual: 'chains', auraColor: 'rgba(100, 100, 100, 0.8)', color: [1,1,1], glow: '#888888', model3D: 'd4', isHoming: true, sfx: 'debuff' },
+                15: { type: 'debuff', name: 'Curse', cooldown: 90000, castStat: 2, defStat: 0, debuffStat: 'all', duration: 3600, visual: 'aura', auraColor: 'rgba(128, 0, 128, 0.7)', color: [1,0,1], glow: '#800080', model3D: 'd4', isHoming: true, sfx: 'debuff3' },
+                18: { type: 'debuff', name: 'Lunacy', cooldown: 90000,  castStat: 0, defStat: 2, debuffStat: 2, bind: true, duration: 450, visual: 'chains', auraColor: 'rgba(100, 100, 0, 0.8)', color: [1,1,0], glow: '#888888', model3D: 'd4', isHoming: true, sfx: 'debuff2' },
+                58: { type: 'debuff', name: 'Intimidate', cooldown: 90000,  castStat: 0, defStat: 2, debuffStat: 0, bind: true, duration: 450, visual: 'chains', auraColor: 'rgba(100, 100, 0, 0.8)', color: [1,1,0], glow: '#888888', model3D: 'd4', isHoming: true, sfx: 'debuff' },
                 
                 // --- DEBUFF CONES (Frontal AoE) ---
-                512: { type: 'cone', name: 'Bind', cooldown: 90000, castStat: 2, defStat: 3, bind: true, duration: 600, visual: 'chains', auraColor: 'rgba(100, 100, 100, 0.8)', range: 4.0, angle: 0.5 },
-                515: { type: 'cone', name: 'Curse', cooldown: 90000, castStat: 2, defStat: 0, debuffStat: 'all', duration: 3600, visual: 'aura', auraColor: 'rgba(128, 0, 128, 0.7)', range: 4.0, angle: 0.5 },
-                518: { type: 'cone', name: 'Lunacy', cooldown: 90000, castStat: 0, defStat: 2, debuffStat: 2, bind: true, duration: 450, visual: 'chains', auraColor: 'rgba(100, 100, 0, 0.8)', range: 4.0, angle: 0.5 },
-                558: { type: 'cone', name: 'Intimidate', cooldown: 90000, castStat: 0, defStat: 2, debuffStat: 0, bind: true, duration: 450, visual: 'chains', auraColor: 'rgba(100, 100, 0, 0.8)', range: 4.0, angle: 0.5 },
+                512: { type: 'cone', name: 'Bind', cooldown: 90000, castStat: 2, defStat: 3, bind: true, duration: 600, visual: 'chains', auraColor: 'rgba(100, 100, 100, 0.8)', range: 4.0, angle: 0.5, sfx: 'debuff' },
+                515: { type: 'cone', name: 'Curse', cooldown: 90000, castStat: 2, defStat: 0, debuffStat: 'all', duration: 3600, visual: 'aura', auraColor: 'rgba(128, 0, 128, 0.7)', range: 4.0, angle: 0.5, sfx: 'debuff3' },
+                518: { type: 'cone', name: 'Lunacy', cooldown: 90000, castStat: 0, defStat: 2, debuffStat: 2, bind: true, duration: 450, visual: 'chains', auraColor: 'rgba(100, 100, 0, 0.8)', range: 4.0, angle: 0.5, sfx: 'debuff2' },
+                558: { type: 'cone', name: 'Intimidate', cooldown: 90000, castStat: 0, defStat: 2, debuffStat: 0, bind: true, duration: 450, visual: 'chains', auraColor: 'rgba(100, 100, 0, 0.8)', range: 4.0, angle: 0.5, sfx: 'debuff' },
                 
                 // --- CONSUMABLE ITEMS (Static Buffs & Wards) ---
-                22: { type: 'item_buff', name: 'Wand',    cooldown: 450000,    buffStat: 2, amount: 1, duration: 1800, visual: 'arc', auraColor: 'rgba(255, 0, 0, 0.6)' },
-                25: { type: 'item_buff', name: 'Elixer', cooldown: 450000,  buffStat: 'all', amount: 1, duration: 1800, visual: 'arc', auraColor: 'rgba(255, 255, 255, 0.6)' },
-                27: { type: 'item_buff', name: 'Amulet',  cooldown: 450000,    buffStat: '2', amount: 3, duration: 1800, visual: 'arc', auraColor: 'rgba(255, 255, 255, 0.6)' },
-                31: { type: 'item_buff', name: 'Tome', cooldown: 450000,       multiStat: [{stat: 2, amount: 6}, {stat: 0, amount: -1}, {stat: 3, amount: -3}], duration: 1800, visual: 'arc', auraColor: 'rgba(255, 255, 255, 0.6)' },
-                36: { type: 'item_buff', name: 'Hourglass', cooldown: 450000,   buffStat: 3, amount: 1, duration: 1800, visual: 'arc', auraColor: 'rgba(0, 0, 255, 0.6)' },
-                50: { type: 'item_buff', name: 'Sword', cooldown: 450000,       buffStat: 0, amount: 1, duration: 1800, visual: 'arc', auraColor: 'rgba(255, 255, 0, 0.6)' },
-                64: { type: 'item_buff', name: 'Shield', cooldown: 450000,     buffStat: 1, amount: 1, duration: 1800, visual: 'arc', auraColor: 'rgba(0, 255, 0, 0.6)' },
-                72: { type: 'item_buff', name: 'Magic Ring', cooldown: 450000,  buffStat: 'all', amount: 2, duration: 1800, visual: 'arc', auraColor: 'rgba(255, 255, 255, 0.6)' },
+                22: { type: 'item_buff', name: 'Wand',    cooldown: 450000,    buffStat: 2, amount: 1, duration: 1800, visual: 'arc', auraColor: 'rgba(255, 0, 0, 0.6)', sfx: 'heal' },
+                25: { type: 'item_buff', name: 'Elixer', cooldown: 450000,  buffStat: 'all', amount: 1, duration: 1800, visual: 'arc', auraColor: 'rgba(255, 255, 255, 0.6)', sfx: 'heal' },
+                27: { type: 'item_buff', name: 'Amulet',  cooldown: 450000,    buffStat: '2', amount: 3, duration: 1800, visual: 'arc', auraColor: 'rgba(255, 255, 255, 0.6)', sfx: 'heal' },
+                31: { type: 'item_buff', name: 'Tome', cooldown: 450000,        multiStat: [{stat: 2, amount: 6}, {stat: 0, amount: -1}, {stat: 3, amount: -3}], duration: 1800, visual: 'arc', auraColor: 'rgba(255, 255, 255, 0.6)', sfx: 'heal' },
+                36: { type: 'item_buff', name: 'Hourglass', cooldown: 450000,   buffStat: 3, amount: 1, duration: 1800, visual: 'arc', auraColor: 'rgba(0, 0, 255, 0.6)', sfx: 'heal' },
+                50: { type: 'item_buff', name: 'Sword', cooldown: 450000,       buffStat: 0, amount: 1, duration: 1800, visual: 'arc', auraColor: 'rgba(255, 255, 0, 0.6)', sfx: 'heal' },
+                64: { type: 'item_buff', name: 'Shield', cooldown: 450000,      buffStat: 1, amount: 1, duration: 1800, visual: 'arc', auraColor: 'rgba(0, 255, 0, 0.6)', sfx: 'heal' },
+                72: { type: 'item_buff', name: 'Magic Ring', cooldown: 450000,  buffStat: 'all', amount: 2, duration: 1800, visual: 'arc', auraColor: 'rgba(255, 255, 255, 0.6)', sfx: 'heal' },
 
-                30: { type: 'item_ward', name: 'Protect Orb', cooldown: 450000, hits: 3, visual: 'shield', auraColor: 'rgba(255, 0, 0, 0.8)' },
-                66: { type: 'item_ward', name: 'Armor', cooldown: 450000, hits: 3, visual: 'shield', auraColor: 'rgba(0, 255, 0, 0.8)' },
+                30: { type: 'item_ward', name: 'Protect Orb', cooldown: 450000, hits: 3, visual: 'shield', auraColor: 'rgba(255, 0, 0, 0.8)', sfx: 'buff2' },
+                66: { type: 'item_ward', name: 'Armor', cooldown: 450000, hits: 3, visual: 'shield', auraColor: 'rgba(0, 255, 0, 0.8)', sfx: 'buff2' },
                 
                 // --- UTILITY ---
-                7: { type: 'item_chariot', name: 'Winged Boots', cooldown: 450000 },
-                43: { type: 'item_teleport', name: 'Teleportation Crystal', cooldown: 450000 },
+                7: { type: 'item_chariot', name: 'Winged Boots', cooldown: 450000, sfx: 'teleport' },
+                43: { type: 'item_teleport', name: 'Teleportation Crystal', cooldown: 450000, sfx: 'warp' },
 
                 // --- BOOSTER PACK ITEMS ---
-                10: { type: 'item_booster', name: 'Treasure Chest', drawUntil: 'monster', cooldown: 450000 },
-                67: { type: 'item_booster', name: 'Dragon Hoard',   drawUntil: 'monster', cooldown: 86400000 },
-                73: { type: 'item_booster', name: 'Inheritance',    drawUntil: 'monster', cooldown: 86400000 },
-                24: { type: 'item_booster', name: 'Scry',  boosterSize: 1, lootPool: 'spell', cooldown: 900000 },
-                38: { type: 'item_booster', name: 'Quest Reward', boosterSize: 1, lootPool: 'any', cooldown: 450000 },
-                41: { type: 'item_booster', name: 'Loot',  boosterSize: 1, lootPool: 'magic', cooldown: 450000 },
-                44: { type: 'item_booster', name: 'Djinn Lamp', cooldown: 86400000 },
-                53: { type: 'item_booster', name: 'Camp',  boosterSize: 1, lootPool: 'magic', cooldown: 86400000 }, 
-                69: { type: 'item_booster', name: 'Charity',      boosterSize: 1, lootPool: 'magic', cooldown: 86400000 },
-                71: { type: 'item_booster', name: 'Forge', boosterSize: 1, lootPool: 'item', cooldown: 900000 },
+                10: { type: 'item_booster', name: 'Treasure Chest', drawUntil: 'monster', cooldown: 450000, sfx: 'chime' },
+                67: { type: 'item_booster', name: 'Dragon Hoard',   drawUntil: 'monster', cooldown: 86400000, sfx: 'chime' },
+                73: { type: 'item_booster', name: 'Inheritance',    drawUntil: 'monster', cooldown: 86400000, sfx: 'chime' },
+                24: { type: 'item_booster', name: 'Scry',  boosterSize: 1, lootPool: 'spell', cooldown: 900000, sfx: 'chime' },
+                38: { type: 'item_booster', name: 'Quest Reward', boosterSize: 1, lootPool: 'any', cooldown: 450000, sfx: 'chime' },
+                41: { type: 'item_booster', name: 'Loot',  boosterSize: 1, lootPool: 'magic', cooldown: 450000, sfx: 'chime' },
+                44: { type: 'item_booster', name: 'Djinn Lamp', cooldown: 86400000, sfx: 'chime' },
+                53: { type: 'item_booster', name: 'Camp',  boosterSize: 1, lootPool: 'magic', cooldown: 86400000, sfx: 'chime' }, 
+                69: { type: 'item_booster', name: 'Charity',      boosterSize: 1, lootPool: 'magic', cooldown: 86400000, sfx: 'chime' },
+                71: { type: 'item_booster', name: 'Forge', boosterSize: 1, lootPool: 'item', cooldown: 900000, sfx: 'chime' },
 
                 // --- AOE FORCE & JUDGEMENT ---
-                20: { type: 'aoe_judgement', name: 'Horn of Judgement', range: 8 , cooldown: 86400000},
-                39: { type: 'aoe_knockback', name: 'Dragon Wing', range: 8, cooldown: 30000 },
+                20: { type: 'aoe_judgement', name: 'Horn of Judgement', range: 8, cooldown: 86400000, sfx: 'buff3' },
+                39: { type: 'aoe_knockback', name: 'Dragon Wing', range: 8, cooldown: 30000, sfx: 'air2' },
                 
                 // --- MONSTER SUMMONING SPELLS ---
-                // Added specific castStats. Hunters use AGI (3), Druids/Mages use INT (2)
-                23: { type: 'summon', name: 'Call Wisp', summonType: 23, count: 1, maxMinions: 2, cooldown: 15000, castStat: 2 },
-                42: { type: 'summon', name: 'Summon Shade', summonType: 42, count: 1, maxMinions: 1, cooldown: 25000, castStat: 2 },
-                54: { type: 'summon', name: 'Call Goblin', summonType: 54, count: 1, maxMinions: 3, cooldown: 15000, castStat: 3 },
-                56: { type: 'summon', name: 'Summon Imp', summonType: 56, count: 1, maxMinions: 2, cooldown: 15000, castStat: 2 },
-                60: { type: 'summon', name: 'Summon Pixie', summonType: 60, count: 1, maxMinions: 2, cooldown: 20000, castStat: 2 },
-                63: { type: 'summon', name: 'Summon Dragon', summonType: 63, count: 1, maxMinions: 1, cooldown: 120000, castStat: 2 }, // 2 Min Cooldown!
-                82: { type: 'summon', name: 'Raise Dead', summonType: 82, count: 2, maxMinions: 3, cooldown: 30000, castStat: 2 }, // Spawns 2!
-                94: { type: 'summon', name: 'Lich Form', summonType: 94, count: 1, maxMinions: 1, cooldown: 90000, castStat: 2 },
-                188: { type: 'summon', name: 'Tame Bear', summonType: 188, count: 1, maxMinions: 1, cooldown: 30000, castStat: 3 }, // Beasts scale off AGI (Hunters)
-                191: { type: 'summon', name: 'Tame Wolf', summonType: 191, count: 1, maxMinions: 2, cooldown: 20000, castStat: 3 },
-                194: { type: 'summon', name: 'Tame Boar', summonType: 194, count: 1, maxMinions: 2, cooldown: 20000, castStat: 3 },
-                203: { type: 'summon', name: 'Call Dullahan', summonType: 203, count: 1, maxMinions: 1, cooldown: 60000, castStat: 2 },
-                206: { type: 'summon', name: 'Tame Wyvern', summonType: 206, count: 1, maxMinions: 1, cooldown: 60000, castStat: 3 },
-                210: { type: 'summon', name: 'Tame Scorpion', summonType: 210, count: 1, maxMinions: 2, cooldown: 15000, castStat: 3 },
-                213: { type: 'summon', name: 'Tame Wasp', summonType: 213, count: 2, maxMinions: 4, cooldown: 15000, castStat: 2 }, // Insects scale off INT (Druids)
-                216: { type: 'summon', name: 'Tame Ant', summonType: 216, count: 2, maxMinions: 5, cooldown: 10000, castStat: 2 },
-                219: { type: 'summon', name: 'Tame Rat', summonType: 219, count: 2, maxMinions: 4, cooldown: 10000, castStat: 3 },
-                225: { type: 'summon', name: 'Tame Bunny', summonType: 225, count: 1, maxMinions: 3, cooldown: 10000, castStat: 3 },
-                234: { type: 'summon', name: 'Tame Squirrel', summonType: 234, count: 1, maxMinions: 3, cooldown: 10000, castStat: 3 },
-                240: { type: 'summon', name: 'Tame Fox', summonType: 240, count: 1, maxMinions: 2, cooldown: 15000, castStat: 3 }
+                23: { type: 'summon', name: 'Call Wisp', summonType: 23, count: 1, maxMinions: 2, cooldown: 15000, castStat: 2, sfx: 'arcane' },
+                42: { type: 'summon', name: 'Summon Shade', summonType: 42, count: 1, maxMinions: 1, cooldown: 25000, castStat: 2, sfx: 'arcane' },
+                54: { type: 'summon', name: 'Call Goblin', summonType: 54, count: 1, maxMinions: 3, cooldown: 15000, castStat: 3, sfx: 'arcane' },
+                56: { type: 'summon', name: 'Summon Imp', summonType: 56, count: 1, maxMinions: 2, cooldown: 15000, castStat: 2, sfx: 'arcane' },
+                60: { type: 'summon', name: 'Summon Pixie', summonType: 60, count: 1, maxMinions: 2, cooldown: 20000, castStat: 2, sfx: 'arcane' },
+                63: { type: 'summon', name: 'Summon Dragon', summonType: 63, count: 1, maxMinions: 1, cooldown: 120000, castStat: 2, sfx: 'arcane2' },
+                82: { type: 'summon', name: 'Raise Dead', summonType: 82, count: 2, maxMinions: 3, cooldown: 30000, castStat: 2, sfx: 'arcane' },
+                94: { type: 'summon', name: 'Lich Form', summonType: 94, count: 1, maxMinions: 1, cooldown: 90000, castStat: 2, sfx: 'arcane3' },
+                188: { type: 'summon', name: 'Tame Bear', summonType: 188, count: 1, maxMinions: 1, cooldown: 30000, castStat: 3, sfx: 'arcane' },
+                191: { type: 'summon', name: 'Tame Wolf', summonType: 191, count: 1, maxMinions: 2, cooldown: 20000, castStat: 3, sfx: 'arcane' },
+                194: { type: 'summon', name: 'Tame Boar', summonType: 194, count: 1, maxMinions: 2, cooldown: 20000, castStat: 3, sfx: 'arcane' },
+                203: { type: 'summon', name: 'Call Dullahan', summonType: 203, count: 1, maxMinions: 1, cooldown: 60000, castStat: 2, sfx: 'arcane2' },
+                206: { type: 'summon', name: 'Tame Wyvern', summonType: 206, count: 1, maxMinions: 1, cooldown: 60000, castStat: 3, sfx: 'arcane' },
+                210: { type: 'summon', name: 'Tame Scorpion', summonType: 210, count: 1, maxMinions: 2, cooldown: 15000, castStat: 3, sfx: 'arcane' },
+                213: { type: 'summon', name: 'Tame Wasp', summonType: 213, count: 2, maxMinions: 4, cooldown: 15000, castStat: 2, sfx: 'arcane' },
+                216: { type: 'summon', name: 'Tame Ant', summonType: 216, count: 2, maxMinions: 5, cooldown: 10000, castStat: 2, sfx: 'arcane' },
+                219: { type: 'summon', name: 'Tame Rat', summonType: 219, count: 2, maxMinions: 4, cooldown: 10000, castStat: 3, sfx: 'arcane' },
+                225: { type: 'summon', name: 'Tame Bunny', summonType: 225, count: 1, maxMinions: 3, cooldown: 10000, castStat: 3, sfx: 'arcane' },
+                234: { type: 'summon', name: 'Tame Squirrel', summonType: 234, count: 1, maxMinions: 3, cooldown: 10000, castStat: 3, sfx: 'arcane' },
+                240: { type: 'summon', name: 'Tame Fox', summonType: 240, count: 1, maxMinions: 2, cooldown: 15000, castStat: 3, sfx: 'arcane' }
             };
             const CARD_MANIFEST_DB = {
                 // --- Major Arcana (Base Summons & Story) ---
@@ -7440,6 +7438,7 @@
 
                     for (let i = 0; i < toSummon; i++) {
                         this.summonMinion(dungeon, spellData.summonType);
+                        if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX(spellData.sfx || 'arcane',this.x, this.y, dungeon.x, dungeon.y, dungeon.dir)
                     }
                 } else {
                     if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('cancel', this.x, this.y, dungeon.x, dungeon.y, dungeon.dir);            
@@ -7691,7 +7690,7 @@
                                 if (!dungeon.extra) dungeon.extra = [];
                                 dungeon.extra.push(new Card(stolenCardId, 0));
                                 
-                                if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('chime', this.x, this.y, dungeon.x, dungeon.y, dungeon.dir);
+                                if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX(spellData.sfx || 'arcane',this.x, this.y, dungeon.x, dungeon.y, dungeon.dir)
                                 if (typeof spawnParticle !== 'undefined') spawnParticle(bestTarget.x, bestTarget.y, '#ffff00', 'sparkle');
 
                                 if (typeof socket !== 'undefined') {
@@ -7718,7 +7717,7 @@
                         }
                     } 
                     else {
-                        if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('attack', bestTarget.x, bestTarget.y, dungeon.x, dungeon.y, dungeon.dir);                        
+                        if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX(spellData.sfx||'attack', bestTarget.x, bestTarget.y, dungeon.x, dungeon.y, dungeon.dir);                        
                         
                         if (bestTarget.isRemotePlayer) {
                             let myStats = { level: dungeon.level, stat: this.stat, damage: this.damage || 0 };
@@ -7774,7 +7773,7 @@
                 this.isAggroDashing = true; 
 
                 this.dashCallback = () => {
-                    if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('attack', this.x, this.y, dungeon.x, dungeon.y, dungeon.dir);                        
+                    if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX(spellData.sfx ||'attack', this.x, this.y, dungeon.x, dungeon.y, dungeon.dir);                        
 
                     if (typeof globalParticles !== 'undefined' && typeof spawnParticle !== 'undefined') {
                         let pColor = spellData.glow || spellData.auraColor || '#ffffff';
@@ -15234,7 +15233,7 @@
 
                             // C. Apply to the Player
                             this.applySpell(spellId, spellPower); 
-                            if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('arcane');
+                            if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX(spellData.sfx || 'heal')
                         }
                 
                 // --- IMBUEMENT MAGIC ---
@@ -15260,7 +15259,7 @@
                             // Apply pre-calculated spellPower!
                             this.imbuedFireDamage = (this.imbuedFireDamage || 0) + spellPower;
                             
-                            if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('buff2');
+                            if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX(spellData.sfx || 'heal')
                             if (typeof globalParticles !== 'undefined') {
                                 for (let p = 0; p < 3; p++) spawnParticle(this.x, this.y, '#ff4400', 'sparkle');
                             }
@@ -15273,7 +15272,7 @@
 
                 // --- AOE WALL-SLAM & JUDGEMENT (Network Synced) ---
                     else if (spellData.type === 'aoe_knockback' || spellData.type === 'aoe_judgement') {
-                        if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX(isJudgement ? 'horn' : 'wind');
+                        if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX(spellData.sfx || 'heal')
 
                         let targetsToCheck = [...this.npcs];
                         if (window.remotePlayers) {
@@ -15433,13 +15432,9 @@
                         }
 
                         this.playerAttackTimer = 15;
-                        if (finalSpellId === 9999 || finalSpellId === 9998) {
-                            if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX("attack");
-                        } else if (spellData.type === 'projectile') {
-                            if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('fire2'); 
-                        } else {
-                            if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('arcane3'); 
-                        }
+                        
+                            if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX(spellData.sfx || 'arcane')
+                        
                     }
 
                 // --- ASSASSINATION (Network Synced) ---
@@ -15534,13 +15529,13 @@
                         this.isAggroDashing = true; 
                         this.dir = targetDir; 
 
-                        if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('wind');
+                        if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX(spellData.sfx || 'slash')
                     this.dashCallback = () => {
                         let targetDef = rollDefense(bestTarget, spellData.defStat || 3);
 
                         if (spellData.isSteal) {
                             if (spellPower > targetDef) {
-                                if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('chime');
+                                if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX(spellData.sfx || 'slash')
                                 
                                 if (bestTarget.isRemotePlayer) {
                                     let myStats = { level: this.level, stat: this.stat, damage: this.damage || 0 };
@@ -15790,7 +15785,7 @@
                     if (this.statPoints === undefined) this.statPoints = 0;
                     this.statPoints += statRoll;
 
-                    if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('heal');
+                    if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX(spellData.sfx || 'heal')
                     if (typeof globalParticles !== 'undefined') {
                         for (let p = 0; p < 9; p++) spawnParticle(this.x + (Math.random() - 0.5), this.y + (Math.random() - 0.5), '#009966', 'sparkle');
                     }
@@ -15852,7 +15847,7 @@
                         }
                     }
 
-                    if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('heal'); 
+                    if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX(spellData.sfx || 'heal')
                 }
             }
             applySpell(spellId, magnitude = 1) {
@@ -58464,6 +58459,9 @@
     masterGain: null,
     currentSong: null,
     activeVoiceNodes: [],
+    sfxConcurrency: 0,
+    MAX_SFX: 12,        // Max number of SFX allowed at once before dropping them
+    sfxThrottles: {},
     async init() {
       const AudioCtx = window.AudioContext || window.webkitAudioContext;
       if (!this.ctx) {
@@ -58486,7 +58484,30 @@
       if (!window.settingsAudio) return;
       if (!this.ctx) return;
       if (this.ctx.state === 'suspended') this.ctx.resume();
+      const now = Date.now();
+      
+      // 1. Type-Specific Cooldown (Prevents overlapping phase-cancellation & CPU spikes)
+      // Steps get a 200ms gap, standard attacks/blocks get an 80ms gap.
+      const throttleTime = (type === 'step') ? 200 : 80; 
+      
+      if (this.sfxThrottles[type] && (now - this.sfxThrottles[type] < throttleTime)) {
+          return; // Drop this sound, we literally just played it!
+      }
 
+      // 2. Global Concurrency Cap (Protects RAM)
+      if (this.sfxConcurrency >= this.MAX_SFX) {
+          return; // Engine is full, drop this sound!
+      }
+
+      // Passed the checks! Register the sound.
+      this.sfxThrottles[type] = now;
+      this.sfxConcurrency++;
+
+      // Automatically free up this concurrency slot after 800ms
+      // (This acts as a failsafe so the counter never gets stuck)
+      setTimeout(() => {
+          this.sfxConcurrency = Math.max(0, this.sfxConcurrency - 1);
+      }, 800);  
       let panVal = 0;
       let volume = 1; // Default to full volume for 2D/UI sounds
 
