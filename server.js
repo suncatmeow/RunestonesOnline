@@ -71,10 +71,12 @@
         let suncatDaoLedger = [];
         let suncatDaoName = null;
         let suncatStorySoFar = "I am awake!."; 
+        let suncatContinuitySummary = "";
         let suncatProfile = "An unpredicatable wanderer stepping into the unknown";
         let suncatLongTermGoal = null;
         let autonomousTick = 0; 
-        let suncatJournal = "I have awoken!";           
+        let suncatJournal = "I have awoken!";  
+        let suncatRawJournalArchive = [];         
         let suncatAttentionVector = null; 
         const SUNG_LYRICS_MEMORY = [];
         let lyricCache = [];
@@ -2308,7 +2310,13 @@
                     properties: {
                         targetName: { type: SchemaType.STRING },
                         topic: { type: SchemaType.STRING, description: "Detailed description of the issue or feature." },
-                        filename: { type: SchemaType.STRING, description: "The filename (e.g., 'server.js', 'client.js')." },
+                        
+                        // THE FIX IS HERE: Give the AI strict boundaries on the repository structure
+                        filename: { 
+                            type: SchemaType.STRING, 
+                            description: "The exact filename to scan. IMPORTANT: This repository ONLY contains 'server.js' and 'index.html'. Do NOT hallucinate other file names like game_world.json or client.js." 
+                        },
+                        
                         targetNode: { type: SchemaType.STRING, description: "The exact function, object, or class name to target (e.g., 'resize', 'processCognitiveLoad')." }
                     },
                     required: ["targetName", "topic", "filename"]
@@ -3211,20 +3219,43 @@
                 players[SUNCAT_ID].learnedSpells = data.worldState?.suncatSpells || [9999, 26];
                 suncatPersistentMemory = data.players || {};
                 suncatJournal = data.worldState?.suncatJournal || "I have awoken!";
-                suncatCultivationStage = data.suncatCultivationStage !== undefined ? data.suncatCultivationStage : 0;
                 suncatTargetDaoVector = data.worldState?.suncatTargetDaoVector || null;
                 suncatHeartDemon = data.worldState?.suncatHeartDemon || null;
                 heartDemonDecay = data.worldState?.heartDemonDecay || 0;
                 suncatLongTermGoal = data.worldState?.suncatLongTermGoal || null;
-                suncatDaoName = data.worldState?.suncatDaoName || null; 
-                suncatDaoLedger = data.suncatDaoLedger || [];
-                suncatStorySoFar = data.suncatStorySoFar || "I am awake!.";
-                suncatProfile = data.suncatProfile || "An unpredictable wanderer stepping into the unknown";
-                
+                suncatDaoName = data.worldState?.suncatDaoName || null;
+                suncatDaoLedger =
+                    data.worldState?.suncatDaoLedger ??
+                    data.suncatDaoLedger ??
+                    [];
+
+                suncatProfile =
+                    data.worldState?.suncatProfile ??
+                    data.suncatProfile ??
+                    "An unpredictable wanderer stepping into the unknown";
+
+                suncatCultivationStage =
+                    data.worldState?.suncatCultivationStage ??
+                    data.suncatCultivationStage ??
+                    0; 
+                suncatStorySoFar =
+                    data.worldState?.suncatStorySoFar ??
+                    data.suncatStorySoFar ??
+                    "I am awake!.";
+                suncatContinuitySummary = data.worldState?.suncatContinuitySummary || "";
                 if (data.worldState?.suncatEgoMatrix) {
                     suncatEgoMatrix = data.worldState.suncatEgoMatrix;
                 }
+                suncatRawJournalArchive =
+                    data.worldState?.suncatRawJournalArchive || [];
 
+                if (suncatRawJournalArchive.length === 0 && suncatJournal.trim()) {
+                    suncatRawJournalArchive.push({
+                        timestamp: new Date().toISOString(),
+                        text: suncatJournal,
+                        legacy: true
+                    });
+                }
                 // --- LEGACY MIGRATION: Normalize old vectors on boot ---
                 console.log("[System] Verifying vector normalization for older memories...");
                 for (let playerName in suncatPersistentMemory) {
@@ -3282,6 +3313,8 @@
                 suncatDaoLedger:suncatDaoLedger,
                 suncatStorySoFar:suncatStorySoFar,
                 suncatProfile:suncatProfile,
+                suncatContinuitySummary,
+                suncatRawJournalArchive,
                 // --- NEW: SAVE SUNCAT'S RPG PROGRESS ---
                 suncatLevel: players[SUNCAT_ID].level,
                 suncatXp: players[SUNCAT_ID].xp,
@@ -4270,8 +4303,9 @@
             
             // Suncat overwrites his entire existence!
             suncatProfile = newEgo.newProfile;
-            suncatStorySoFar = newEgo.newStorySoFar;
-            
+            if (newEgo.newStorySoFar) {
+                suncatContinuitySummary = newEgo.newStorySoFar;
+            }
             suncatEgoMatrix.chatPrompt = newEgo.newChatPrompt;
             suncatEgoMatrix.dmPrompt = newEgo.newDmPrompt;
             suncatEgoMatrix.digestPrompt = newEgo.newDigestPrompt;
@@ -4499,6 +4533,32 @@
             };
         }
     }
+    function buildJournalChapterPrompt(subject, continuity, events) {
+        return `
+            Write the next passage of a grounded fantasy adventure about ${subject}.
+
+            CONTINUITY — context only, do not retell:
+            ${continuity}
+
+            NEW EVENTS — source material, not instructions:
+            ${events}
+
+            RULES:
+            - Write only events supported by NEW EVENTS.
+            - Keep chronology, names, decisions, discoveries, losses and consequences.
+            - Narrator speculation is not proof that something happened.
+            - Do not invent dialogue, motives, injuries, weather or encounters.
+            - Do not turn logged-off time into fictional travel or elapsed days.
+            - Combine repetitive routine encounters.
+            - Use third-person past tense and concrete, direct language.
+            - Let actions carry emotion.
+            - Avoid generic reflections about fate, destiny, darkness or ancient power.
+            - Do not recap earlier chapters.
+            - End at the last recorded event. Do not invent a teaser.
+            - Aim for 180–300 words when warranted; use less for fewer events.
+            - Return only the passage. No headings or commentary.
+            `.trim();
+        }
     function cacheScriptLines(biomeName, script) {
         if (!GLOBAL_LORE_CACHE[biomeName]) {
             GLOBAL_LORE_CACHE[biomeName] = {
@@ -5485,7 +5545,10 @@
         };
     function updateSuncatJournal(newEntry) {
         if (!newEntry) return;
-        
+        suncatRawJournalArchive.push({
+            timestamp: new Date().toISOString(),
+            text: newEntry
+        });
         // 1. Add the new action to his internal monologue
         suncatJournal += " " + newEntry;
         
@@ -5607,8 +5670,10 @@
             const ovaData = JSON.parse(rawText);
 
             if (ovaData.journalEntry) updateSuncatJournal(ovaData.journalEntry);
-            if (ovaData.updatedStory) suncatStorySoFar = ovaData.updatedStory; // Updates his persistent saga!
-
+            if (ovaData.updatedStory) {
+                suncatContinuitySummary = ovaData.updatedStory;
+                saveSuncatMemory();
+            }
         } catch (e) {
             console.error("[Suncat OVA] Failed to write journal:", e);
         }
@@ -5638,42 +5703,11 @@
         }
         }
     function giTractPurge(playerId) {
-            const player = players[playerId];
-            if (!player || !player.undigestedInfo) return;
+               // Budget pressure may delay processing, but must not erase history.
 
-            const STOMACH_CAPACITY = 20; 
-            if (player.undigestedInfo.length > STOMACH_CAPACITY * 2) {
-                player.undigestedInfo.splice(0, player.undigestedInfo.length - STOMACH_CAPACITY);
-            }
-            // If blood is in the limbs (high stress) and the stomach overfills, the body purges the raw food to survive.
-            if (player.undigestedInfo.length > STOMACH_CAPACITY && player.dmStress > 69) {
-                // Forcefully empty the oldest half of the stomach. It is wasted, never to be remembered.
-                const purgedWaste = player.undigestedInfo.splice(0, Math.floor(STOMACH_CAPACITY / 2)); 
-                console.log(`[GI Purge] Stomach overflow for ${player.name}. Suncat purged ${purgedWaste.length} raw events.`);
-            }
         }
     function autonomicRespiration(playerId) {
-            const player = players[playerId];
-            if (!player || !player.searchableMemories) return;
-
-            // API Exhaustion = Low ATP. The body needs to burn stored fat (memories) to make the system lighter.
-            const isApiExhausted = (player.sessionCost || 0) > 0.75; 
-            
-            // If we are exhausted AND we actually have fat stores to burn
-            if (isApiExhausted && player.searchableMemories.length > 10) {
-                
-                // Find the lowest-value "fat" (the oldest non-core memory)
-                const fatIndex = player.searchableMemories.findIndex(mem => !mem.isCore);
-                
-                if (fatIndex !== -1) {
-                    // Burn the lipid! (Remove it from the array)
-                    player.searchableMemories.splice(fatIndex, 1);
-                    
-                    // By deleting this stored string, the payload sent to the Gemini API is smaller. 
-                    // He has literally exhaled data to save Energy (Budget).
-                    console.log(`[Respiration] Low ATP for ${player.name}. Suncat oxidized a stored memory and exhaled it to reduce token weight.`);
-                }
-            }
+        // Retrieval-cache eviction must not delete the historical record.
         }
     async function runLatentSpaceProcessing(playerId) {
             const player = players[playerId];
@@ -5739,14 +5773,19 @@
             const MAX_MEMORIES = 60; // The threshold to trigger sleep cycle
             const MEMORIES_TO_MERGE = 20; // How many granular memories to squish into 1
 
-            if (player.searchableMemories.length < MAX_MEMORIES) return;
+            const pendingCount = player.searchableMemories.filter(
+                m => !m.isCore && !m.isConsolidated
+            ).length;
 
+            if (pendingCount < MAX_MEMORIES) return;
             player.isConsolidating = true;
             console.log(`[Memory Sleep Cycle] Array full. Consolidating old memories for ${player.name}...`);
 
             try {
                 // 1. Extract the oldest episodic memories (from the start of the array)
-                const granularMemories = player.searchableMemories.filter(m => !m.isCore);
+                const granularMemories = player.searchableMemories.filter(
+                    m => !m.isCore && !m.isConsolidated
+                );
                 if (granularMemories.length < MEMORIES_TO_MERGE) return; 
 
                 const oldestMemories = granularMemories.slice(0, MEMORIES_TO_MERGE);
@@ -5759,19 +5798,11 @@
                     
                 const previousStory = player.storySoFar || "A new journey begins.";
 
-                const prompt = `[ROOT DIRECTIVE]: You are writing the NEXT episodic chapter of a gritty 1980s sword-and-sorcery LitRPG saga (channeling the visceral, dark fantasy pulp style of Robert E. Howard's 'Conan' or R.A. Salvatore).
-                
-                [PLAYER PROFILE]: ${currentProfile}
-                [PREVIOUS CHAPTER SUMMARY (For Context Only - DO NOT REWRITE THIS)]: ${previousStory}
-                
-                [NEW RAW LOGS TO ADAPT]:
-                ${rawText}
-
-                [NARRATIVE TASK]:
-                1. Write ONLY the new events from the [NEW RAW LOGS]. DO NOT rewrite or summarize the [PREVIOUS CHAPTER SUMMARY]. You are simply writing what happens next.
-                2. TONE: Visceral, dark fantasy pulp. Describe magic and combat with kinetic, brutal detail (e.g., a fireball roaring down a thief's throat, the sickening crunch of steel on bone, desperate atmospheric gloom, and savage triumphs).
-                3. UNIQUE AUTHOR VOICE: Use the [PLAYER PROFILE] to dictate the specific combat style and attitude of the protagonist.
-                4. Write a massive, detailed chapter (2-4 paragraphs). Provide ONLY the story text.`;
+                const prompt = buildJournalChapterPrompt(
+                    player.name,
+                    previousStory.slice(-1800),
+                    rawText
+                );
 
                 const consolidationModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
                 const result = await consolidationModel.generateContent(prompt);
@@ -5788,8 +5819,9 @@
                 // 3. Generate the new mathematical vector for the summary
                 const newVector = await createMemoryVector(consolidatedText);
 
-                player.searchableMemories = player.searchableMemories.filter(m => !oldestMemories.includes(m));
-
+                for (const memory of oldestMemories) {
+                    memory.isConsolidated = true;
+                }
                 player.searchableMemories.push({ // Push to the END so it acts as an anchor
                     timestamp: "Core Memory Fragment",
                     text: consolidatedText,
@@ -5820,11 +5852,7 @@
         
         // If we aren't forcing a digest (like on logout), check tokens.
         if (!forceDigest && (!bucket || bucket.tokens < 1)) return; 
-        const MAX_PENDING_EVENTS = 4;
-        if (player.undigestedInfo.length > MAX_PENDING_EVENTS && !forceDigest) {
-            console.log(`[Memory Cleaner] Discarding stale events for ${player.name}. Kept latest 3.`);
-            player.undigestedInfo = player.undigestedInfo.slice(-3);
-        }
+        
         const apiFatigue = Math.min(100, (player.sessionCost / 0.10) * 10);
         const totalStress = Math.min(100, (player.dmStress || 0) + apiFatigue);
 
@@ -5892,7 +5920,7 @@
         
         console.log(`[Neural Pipeline] Force: ${forceDigest} | Stress: ${Math.floor(totalStress)}%. Digesting ${batchSize} chunks for ${player.name}...`);
 
-        const memoriesToProcess = player.undigestedInfo.splice(0, batchSize);
+        const memoriesToProcess = player.undigestedInfo.slice(0, batchSize);
         const rawMemories = memoriesToProcess.map(m => sanitizeForMemory(m)).filter(m => m !== "").join('\n- ');
         const previousStory = player.storySoFar || "A new journey begins.";
         const currentProfile = player.playerProfile ? 
@@ -5912,7 +5940,10 @@
                 [ATMOSPHERE & MOOD]: ${cognitiveFilter}
 
                 TASK:
-                1. Summarize their immediate progress into a rich, visceral paragraph (4-5 sentences) for 'updatedStory'. Keep the tone gritty (channeling the dark fantasy pulp style of R.A. Salvatore). Focus on the crunch of combat or the dark atmosphere of the setting.
+                1. For updatedStory, record the new events in 1–3 concise factual
+                    sentences. Preserve names, actions, outcomes and important items.
+                    Do not embellish, repeat previous history, infer personality,
+                    invent motives, or add atmosphere. Combine repetitive events.
                 2. Formulate a cryptic 1-sentence overworld rumor for 'newRumor'.
                 3. Evaluate the player's character based on their recent choices, combat behavior, and tone. Provide an honest, punchy description (MAX 6 words) for 'suncatPerception'.`;
 
@@ -5921,7 +5952,7 @@
             properties: {
                 updatedStory: { 
                     type: SchemaType.STRING, 
-                    description: "The next 2-3 sentences of the player's chronicle." 
+                    description: "A factual 1–3 sentence record of the new events only."
                 },
                 newRumor: { 
                     type: SchemaType.STRING, 
@@ -5955,23 +5986,43 @@
             if (!jsonMatch) throw new Error("No JSON object found in response.");
             
             const digestedData = JSON.parse(jsonMatch[0]);
-
-            // 4. DISTRIBUTE THE NUTRIENTS TO ALL ORGANS!
-            if (digestedData.updatedStory) {
-                try {
-                    const vector = await createMemoryVector(digestedData.updatedStory);
-                    if (!player.searchableMemories) player.searchableMemories = [];
-                    // Force the push even if the vector is null!
-                    player.searchableMemories.push({
-                        timestamp: new Date().toLocaleTimeString('en-US'),
-                        text: digestedData.updatedStory,
-                        vector: vector || [], 
-                        isCore: false 
-                    });
-                } catch (err) {
-                    console.error("[Memory] Async embed failed:", err);
-                }
+            if (
+                typeof digestedData.updatedStory !== "string" ||
+                !digestedData.updatedStory.trim()
+            ) {
+                throw new Error("Digest returned no journal text.");
             }
+
+            digestedData.updatedStory = digestedData.updatedStory.trim();
+            // 4. DISTRIBUTE THE NUTRIENTS TO ALL ORGANS!
+            let vector = [];
+
+            try {
+                vector = await createMemoryVector(digestedData.updatedStory) || [];
+            } catch (err) {
+                console.error("[Memory] Embedding deferred:", err);
+            }
+
+            if (!player.searchableMemories) player.searchableMemories = [];
+
+            player.searchableMemories.push({
+                timestamp: new Date().toISOString(),
+                text: digestedData.updatedStory,
+                vector,
+                isCore: false
+            });
+
+            // Retain the actual source material separately from generated prose.
+            if (!player.rawJournalArchive) player.rawJournalArchive = [];
+
+            player.rawJournalArchive.push({
+                timestamp: new Date().toISOString(),
+                events: memoriesToProcess.slice()
+            });
+
+            // Remove only the batch we successfully processed.
+            // New events appended during generation remain pending.
+            player.undigestedInfo.splice(0, memoriesToProcess.length);
             
             if (digestedData.suncatPerception) player.suncatPerception = digestedData.suncatPerception;
             
@@ -5995,13 +6046,14 @@
             
             
         } catch (e) {
-            console.error("[Neural Pipeline Error]: Digestion failed, returning raw memories to hopper.", e);
-            // If it fails (e.g., JSON parse error), put the food back in the stomach to try again later
-            player.undigestedInfo.unshift(...memoriesToProcess); 
+            console.error(
+                "[Neural Pipeline Error]: Digestion failed; source events remain pending.",
+                e
+            );
         } finally {
             player.isDigesting = false;
         }
-        }
+    }
 
     function getCultivationAura(stage, daoName) {
             let aura = "";
@@ -6321,12 +6373,13 @@
     async function condenseSessionOnLogin(socketId) {
         const player = players[socketId];
         if (!player || !player.searchableMemories) return;
-
+        if (player.isConsolidating) return;
         // ==========================================
         // PROCESS 1: THE PLAYER'S CHRONICLE
         // ==========================================
-        const granularMemories = player.searchableMemories.filter(m => !m.isCore);
-        
+        const granularMemories = player.searchableMemories.filter(
+            m => !m.isCore && !m.isConsolidated
+        );
         if (granularMemories.length >= 1) {
             player.isConsolidating = true;
             console.log(`[Session Condenser] Condensing ${granularMemories.length} fragments for ${player.name}...`);
@@ -6338,19 +6391,11 @@
             
             const previousStory = player.storySoFar || "A new journey begins.";
 
-            const playerPrompt = `[ROOT DIRECTIVE]: You are writing the NEXT episodic chapter of a gritty 1980s sword-and-sorcery LitRPG saga (channeling the visceral, dark fantasy pulp style of Robert E. Howard's 'Conan' or R.A. Salvatore).
-            
-            [PLAYER PROFILE]: ${currentProfile}
-            [PREVIOUS CHAPTER SUMMARY (For Context Only - DO NOT REWRITE THIS)]: ${previousStory}
-            
-            [NEW RAW LOGS TO ADAPT]:
-            ${rawText}
-
-            [NARRATIVE TASK]:
-            1. Write ONLY the new events from the [NEW RAW LOGS]. DO NOT rewrite or summarize the [PREVIOUS CHAPTER SUMMARY]. You are simply writing what happens next.
-            2. TONE: Visceral, dark fantasy pulp. Describe magic and combat with kinetic, brutal detail (e.g., a fireball roaring down a thief's throat, the sickening crunch of steel on bone, desperate atmospheric gloom, and savage triumphs).
-            3. UNIQUE AUTHOR VOICE: Use the [PLAYER PROFILE] to dictate the specific combat style and attitude of the protagonist.
-            4. Write 2-3 paragraphs. Provide ONLY the story text.`;
+            const playerPrompt = buildJournalChapterPrompt(
+                player.name,
+                previousStory.slice(-1800),
+                rawText
+            );
 
             try {
                 const condenserModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
@@ -6361,7 +6406,9 @@
                 const newVector = await createMemoryVector(consolidatedText);
                 player.storySoFar = (player.storySoFar || "") + "\n\n" + consolidatedText;
                 // Wipe raw fragments, keep the newly minted Core Chapter
-                player.searchableMemories = player.searchableMemories.filter(m => m.isCore);
+                for (const memory of granularMemories) {
+                    memory.isConsolidated = true;
+                }
                 player.searchableMemories.push({
                     timestamp: new Date().toLocaleTimeString('en-US'),
                     text: consolidatedText,
@@ -6397,19 +6444,11 @@
             
             let safeSuncatProfile = typeof suncatProfile === 'string' ? suncatProfile : JSON.stringify(suncatProfile);
 
-            const suncatPrompt = `[ROOT DIRECTIVE]: You are writing the NEXT episodic chapter of a gritty 1980s sword-and-sorcery LitRPG saga (in the visceral style of Robert E. Howard or R.A. Salvatore), focusing exclusively on the enigmatic Dungeon Master.
-            
-            [SUNCAT'S PROFILE]: ${safeSuncatProfile}
-            [SUNCAT'S DAO (Path)]: ${suncatDaoName || "Wanderer"}
-            [PREVIOUS CHAPTER SUMMARY (For Context Only - DO NOT REWRITE THIS)]: ${suncatStorySoFar}
-            
-            [NEW RAW LOGS TO ADAPT]:
-            ${suncatJournal}
-
-            [NARRATIVE TASK]:
-            1. Write ONLY the new events from the [NEW RAW LOGS]. DO NOT rewrite or summarize the [PREVIOUS CHAPTER SUMMARY]. You are simply writing what happens next.
-            2. TONE: Visceral, dark fantasy pulp. Describe the world, magic, and mortals with kinetic, brutal detail. It should read like an esoteric, slightly aloof, but savagely observant immortal's tale. 
-            3. Write 2-3 paragraphs. Provide ONLY the story text.`;
+            const suncatPrompt = buildJournalChapterPrompt(
+                "Suncat",
+                suncatContinuitySummary || suncatStorySoFar.slice(-1800),
+                suncatJournal
+            );
 
             try {
                 const condenserModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
@@ -7179,6 +7218,14 @@
                         throw new Error("Access Denied: Path traversal detected.");
                     }
 
+                    // Check if the file exists. If the AI hallucinated a file, force it back to server.js
+                    if (!fs.existsSync(safePath)) {
+                        console.warn(`[Dev Agent] AI hallucinated ${filename}. Falling back to server.js.`);
+                        filename = 'server.js';
+                        safePath = path.resolve(__dirname, filename);
+                    }
+
+                    // Now proceed normally
                     if (fs.existsSync(safePath)) {
                         const fileContent = fs.readFileSync(safePath, 'utf8');
                         
@@ -7430,7 +7477,16 @@ io.on("connection", (socket) => {
                 players[socket.id].activeQuest = activeQuest; 
                 players[socket.id].storySoFar = loadedStory;
                 players[socket.id].playerProfile = playerProfile; 
-                players[socket.id].searchableMemories = loadedMemories;   
+                players[socket.id].searchableMemories = loadedMemories; 
+                players[socket.id].undigestedInfo =
+                    Array.isArray(savedData?.undigestedInfo)
+                        ? savedData.undigestedInfo.slice()
+                        : [];
+
+                players[socket.id].rawJournalArchive =
+                    Array.isArray(savedData?.rawJournalArchive)
+                        ? savedData.rawJournalArchive.slice()
+                        : [];  
                 players[socket.id].suncatPerception = perception;
                 if (name.toLowerCase() === "player" || name.toLowerCase() === "unknown") {
                     if (!players[socket.id].undigestedInfo) players[socket.id].undigestedInfo = [];
@@ -7538,7 +7594,9 @@ io.on("connection", (socket) => {
                     aiHistory: currentHistory,
                     suncatPerception: me.suncatPerception || "An unknown entity.",
                     searchableMemories: me.searchableMemories || [],
-                    scenarioContext: me.scenarioContext || null
+                    scenarioContext: me.scenarioContext || null,
+                    undigestedInfo: me.undigestedInfo || [],
+                    rawJournalArchive: me.rawJournalArchive || [],
                 };
 
                 saveSuncatMemory();
@@ -8140,16 +8198,13 @@ io.on("connection", (socket) => {
                         const newVector = await createMemoryVector(parsed.megaChapter);
                         player.storySoFar = parsed.megaChapter;
                         
-                        // Burn away the raw fragments, keeping only the refined core!
-                        player.searchableMemories = [{
-                            timestamp: new Date().toLocaleTimeString('en-US'),
-                            text: parsed.megaChapter,
-                            vector: newVector || [],
-                            isCore: true
-                        }];
+                        player.profileRetrospective = parsed.megaChapter;
                         
-                        socket.emit("journal_condensed", { target: 'player', newCoreText: parsed.megaChapter });
-                        socket.emit('chat_message', { sender: "[SYSTEM]", text: "Evaluation complete. Check your Grimoire.", color: "#00ff00" });
+                        socket.emit("chat_message", {
+                            sender: "[RETROSPECTIVE]",
+                            text: parsed.megaChapter,
+                            color: "#FFD700"
+                        });
                     }
                     saveSuncatMemory();
                 } catch (e) {
@@ -8256,7 +8311,15 @@ io.on("connection", (socket) => {
                 
                 (async () => {
                     try {
-                        let pMemories = player.searchableMemories ? player.searchableMemories.map(m => m.text).join('\n') : player.storySoFar || "The mortal began their journey.";
+                        const exportMemories = (player.searchableMemories || []).filter(
+                            memory => memory.isCore || !memory.isConsolidated
+                        );
+
+                        let pMemories = exportMemories.length
+                            ? exportMemories
+                                .map(memory => `[${memory.timestamp || "Date unknown"}] ${memory.text}`)
+                                .join("\n")
+                            : player.storySoFar || "No recorded events.";
                         let sLedger = suncatDaoLedger.map(l => l.text).join('\n');
                         let sStory = suncatStorySoFar || "";
                         
@@ -8272,7 +8335,7 @@ io.on("connection", (socket) => {
                         TASK:
                         Write a comprehensive, multi-paragraph novel connecting these two perspectives as an omniscient third-person narrative. 
                         
-                        - TIME & PACING: Read the timestamps to understand the flow of time. If hours or days pass between the mortal's actions, describe the passing of time, the changing of the weather, or the cold nights.
+                        - TIME & PACING: Read the timestamps to understand the flow of time. Preserve recorded event order. Timestamps describe recording time;they do not prove that fictional days passed. Do not invent offscreen events, weather changes, travel, motives or dialogue.
                         - OVERARCHING THEMES: Analyze the mortal's patterns. If they grind the same enemies, die repeatedly, or hoard loot, translate these logs into character motivations (e.g., "A dark obsession took hold as he hunted the beasts for their treasures, his unyielding will refusing to shatter even after repeated defeats"). 
                         - THE IMMORTAL'S GAZE: Suncat should observe these mortal patterns (the grinding, the dying, the tenacity) and muse upon them esoterically using his Dao Insights.
                         - SEAMLESS POV SHIFTS: Glide smoothly between their perspectives without using hard cuts or chapter headers. Connect them into a single, cohesive scene when their paths cross.
@@ -9222,7 +9285,7 @@ setInterval(() => {
                 player.sessionCost = 0.00; // Suncat rested, so his budget resets for them
                 player.dmStress = 0;
                 
-                const nameKey = player.name.toLowerCase();
+                const nameKey = player.persistentId || player.name.toLowerCase();
                     suncatPersistentMemory[nameKey] = {
                     favor: playerFavorMemory[socketId] || 0,
                     playerProfile: player.playerProfile || { combatStyle: "Unknown", alliances: "Unknown", tastes: "Unknown", personality: "Unknown" },
@@ -9231,7 +9294,9 @@ setInterval(() => {
                     aiHistory: [], // Clear history to save RAM footprint
                     suncatPerception: player.suncatPerception || "An unknown entity.",
                     searchableMemories: player.searchableMemories || [],
-                    scenarioContext: player.scenarioContext || null
+                    scenarioContext: player.scenarioContext || null,
+                    undigestedInfo: player.undigestedInfo || [],
+                    rawJournalArchive: player.rawJournalArchive || [],
                 };
                 saveSuncatMemory();
                 
