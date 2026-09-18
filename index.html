@@ -108,10 +108,10 @@
                 pool: [],
                 getCanvas: function(w, h) {
                     let canvas = this.pool.pop() || document.createElement('canvas');
+                    // A dimension assignment resets pixels AND all context state.
+                    // Keep one unconditional reset for reused canvases (including clips).
+                    if (canvas.height !== h) canvas.height = h;
                     canvas.width = w;
-                    canvas.height = h;
-                    let ctx = canvas.getContext('2d');
-                    ctx.clearRect(0, 0, w, h); // CRITICAL: Wipes GPU memory clean for reuse
                     return canvas;
                 },
                 returnCanvas: function(canvas) {
@@ -722,11 +722,11 @@
                         [93,93, 0, 0,33, 0, 0,91, 0, 0,33, 0, 0, 0, 0, 0, 0, 0, 0,33, 0, 0, 0, 0, 0, 0, 0,33, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
                         [93,93, 0, 0,33, 0, 0,91, 0, 0,33, 0, 0,33, 0, 0, 0, 0,33, 0, 0, 0, 0, 0, 0, 0, 0,33, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
                         [93,93, 0, 0,33,33,33,33, 0, 0,33, 0, 0,33,33,33,33,33,33, 0, 0, 0,33,33,33,33,33,33, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                        [93, 0, 0, 0, 0,33, 0, 0, 0, 0,33, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,33, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                        [93, 0, 0, 0, 0,33,33,33, 0,33,33, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,33, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                        [93, 0, 0, 0, 0,33, 0, 0, 0, 0,33, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,33,51,51, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                        [93, 0, 0, 0, 0,33,33,33, 0,33,33, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,33,50,50, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
                         [93, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,33, 0, 0,33, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
                         [93,95, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,33, 0, 0,33, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                        [93,95,33,33,33,33,33,33, 0, 0,33,33,33,33,33,33,33,33,33,33, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                        [93,95,33,33,33,33,33,33, 0, 0,33,33,33,33,33,33,33,33,33,33,50,50, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
                         [93,95,33,33,33,33,33,33, 0, 0,33,33,33,33,33,33,33,33, 0,33, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
                         [93,95,33, 0, 0, 0,33,33, 0, 0,33, 0, 0, 0, 0, 0, 0,33, 0,33, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
                         [93,95,33, 0, 0, 0,33,33, 0, 0,33, 0, 0, 0, 0, 0, 0,33, 0,33, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -2885,7 +2885,7 @@
                 // --- CONSUMABLE ITEMS (Static Buffs & Wards) ---
                 22: { type: 'item_buff', name: 'Wand',    cooldown: 450000,    buffStat: 2, amount: 1, duration: 1800, visual: 'arc', auraColor: 'rgba(255, 0, 0, 0.6)', sfx: 'heal' },
                 25: { type: 'item_buff', name: 'Elixer', cooldown: 450000,  buffStat: 'all', amount: 1, duration: 1800, visual: 'arc', auraColor: 'rgba(255, 255, 255, 0.6)', sfx: 'heal' },
-                27: { type: 'item_buff', name: 'Amulet',  cooldown: 450000,    buffStat: '2', amount: 3, duration: 1800, visual: 'arc', auraColor: 'rgba(255, 255, 255, 0.6)', sfx: 'heal' },
+                27: { type: 'item_buff', name: 'Amulet',  cooldown: 450000,    buffStat: 2, amount: 3, duration: 1800, visual: 'arc', auraColor: 'rgba(255, 255, 255, 0.6)', sfx: 'heal' },
                 31: { type: 'item_buff', name: 'Tome', cooldown: 450000,        multiStat: [{stat: 2, amount: 6}, {stat: 0, amount: -1}, {stat: 3, amount: -3}], duration: 1800, visual: 'arc', auraColor: 'rgba(255, 255, 255, 0.6)', sfx: 'heal' },
                 36: { type: 'item_buff', name: 'Hourglass', cooldown: 450000,   buffStat: 3, amount: 1, duration: 1800, visual: 'arc', auraColor: 'rgba(0, 0, 255, 0.6)', sfx: 'heal' },
                 50: { type: 'item_buff', name: 'Sword', cooldown: 450000,       buffStat: 0, amount: 1, duration: 1800, visual: 'arc', auraColor: 'rgba(255, 255, 0, 0.6)', sfx: 'heal' },
@@ -4097,7 +4097,6 @@
                     // Mark them dead so the renderer ignores them
                     deadPlayer.isDead = true;
                     deadPlayer.visible = false;
-                    deadPlayer.x = -999; // Yeet them into the void just to be safe
                     
                     // Optional: Spawn a blood/smoke explosion where they died!
                     if (typeof spawnParticle !== 'undefined') {
@@ -4410,14 +4409,14 @@
 
                 if (data.target === 'player') {
                     // Keep ONLY the core memories (chapters), delete the mundane granular logs
-                    playerChronicle = playerChronicle.filter(entry => entry.isCore);
+                    //playerChronicle = playerChronicle.filter(entry => entry.isCore);
                     // Append the new condensed chapter
                     playerChronicle.push({ timestamp: fullDate, text: data.newCoreText, isCore: true });
                     localStorage.setItem('runestones_chronicle', JSON.stringify(playerChronicle));
                 } 
                 else if (data.target === 'suncat') {
                     // Keep ONLY the core memories for Suncat
-                    suncatChronicle = suncatChronicle.filter(entry => entry.isCore);
+                    //suncatChronicle = suncatChronicle.filter(entry => entry.isCore);
                     // Append the new condensed chapter
                     suncatChronicle.push({ timestamp: fullDate, text: data.newCoreText, isCore: true });
                     localStorage.setItem('suncat_chronicle', JSON.stringify(suncatChronicle));
@@ -5584,40 +5583,36 @@
         }
 
 
-        checkCollision(maze, x, y) {
-            if (isNaN(x) || isNaN(y)) {
-                console.error("Collision check received NaN coordinates", {x, y});
-                return true; // Treat as collision to stop movement
-            }
+        checkCollision(maze, x, y, dungeon = null) {
+            if (isNaN(x) || isNaN(y)) return true;
             
-            // --- FIX 1: THE TRUE OCTAGON COLLISION BOX ---
             const r = this.radius; 
-            const d = this.radius * 0.7071; // The exact math for a 45-degree angle
+            const d = this.radius * 0.7071; 
             
             const points = [
-                // Standard N, S, E, W
-                {x: x + r, y: y}, 
-                {x: x - r, y: y}, 
-                {x: x, y: y + r}, 
-                {x: x, y: y - r},
-                // THE MISSING DIAGONALS
-                {x: x + d, y: y + d}, 
-                {x: x - d, y: y + d}, 
-                {x: x + d, y: y - d}, 
-                {x: x - d, y: y - d}
+                {x: x + r, y: y}, {x: x - r, y: y}, 
+                {x: x, y: y + r}, {x: x, y: y - r},
+                {x: x + d, y: y + d}, {x: x - d, y: y + d}, 
+                {x: x + d, y: y - d}, {x: x - d, y: y - d}
             ];
             
             for (let p of points) {
                 if (p.y < 0 || p.y >= maze.length) return true; 
                 if (p.x < 0 || p.x >= maze[0].length) return true; 
 
-                const tile = maze[Math.floor(p.y)][Math.floor(p.x)];
-
-                if (tile > 0) return true; 
-                if (tile < 0 && Math.abs(tile) % 2 === 1) return true;
+                // If dungeon reference is available, use its advanced Z-aware isWall check!
+                if (dungeon && typeof dungeon.isWall === 'function') {
+                    let npcCurrentZ = dungeon.getFloorElevation(this.x, this.y);
+                    if (dungeon.isWall(p.x, p.y, npcCurrentZ)) return true;
+                } else {
+                    // Fallback
+                    const tile = maze[Math.floor(p.y)][Math.floor(p.x)];
+                    if (tile > 0) return true; 
+                    if (tile < 0 && Math.abs(tile) % 2 === 1) return true;
+                }
             }
             return false;
-            }
+        }
         hasLineOfSight(maze, targetX, targetY) {
             let x0 = Math.floor(this.x); let y0 = Math.floor(this.y);
             let x1 = Math.floor(targetX); let y1 = Math.floor(targetY);
@@ -6125,20 +6120,13 @@
             
             }
         isWall(mapX, mapY) {
-            // FIX: Force coordinates to integers before checking the array
-            const fX = Math.floor(mapX);
-            const fY = Math.floor(mapY);
-            
-            if (fX < 0 || fY < 0) return true; // Bounds check
-            
-            if (typeof Dungeon === 'undefined' || !Dungeon.maze || !Dungeon.maze[fY]) return true;
-            
-            const tile = Dungeon.maze[fY][fX];
-            if (tile > 0) return true; 
-            if (tile < 0 && Math.abs(tile) % 2 === 1) return true;
-            
-                return false;
+            // Force NPCs to use the Dungeon's 3D physics!
+            if (typeof Dungeon !== 'undefined' && Dungeon.isWall) {
+                let myZ = Dungeon.getFloorElevation(this.x, this.y);
+                return Dungeon.isWall(mapX, mapY, myZ);
             }
+            return true; // Failsafe
+        }
         update(maze, playerX, playerY, dungeon, dt) {
             if (this.role === 'sign') return;
 
@@ -6666,9 +6654,9 @@
                     let idealX = this.x + (awayX * 1.5);
                     let idealY = this.y + (awayY * 1.5);
 
-                    if (this.checkCollision(maze, idealX, idealY)) {
-                        let canSlideX = !this.checkCollision(maze, idealX, this.y);
-                        let canSlideY = !this.checkCollision(maze, this.x, idealY);
+                    if (this.checkCollision(maze, idealX, idealY,dungeon)) {
+                        let canSlideX = !this.checkCollision(maze, idealX, this.y,dungeon);
+                        let canSlideY = !this.checkCollision(maze, this.x, idealY,dungeon);
 
                         if (canSlideX && !canSlideY) {
                             this.dirX = Math.sign(awayX);
@@ -6691,7 +6679,7 @@
                             let jukeX = awayY * this.fleeTangent;
                             let jukeY = -awayX * this.fleeTangent;
                             
-                            if (this.checkCollision(maze, this.x + jukeX, this.y + jukeY)) {
+                            if (this.checkCollision(maze, this.x + jukeX, this.y + jukeY,dungeon)) {
                                 this.dirX = -awayX + ((Math.random() - 0.5) * 0.5); 
                                 this.dirY = -awayY + ((Math.random() - 0.5) * 0.5);
                             } else {
@@ -6762,8 +6750,8 @@
                                         MusicEngine.play3DSFX('attack', this.x, this.y, playerX, playerY, dungeon.dir);
                                         let myNewX = this.x - toTargetX * 0.3;
                                         let myNewY = this.y - toTargetY * 0.3;
-                                        if (!this.checkCollision(maze, myNewX, this.y)) this.x = myNewX;
-                                        if (!this.checkCollision(maze, this.x, myNewY)) this.y = myNewY;
+                                        if (!this.checkCollision(maze, myNewX, this.y,dungeon)) this.x = myNewX;
+                                        if (!this.checkCollision(maze, this.x, myNewY,dungeon)) this.y = myNewY;
 
                                         let preyNewX = currentPrey.x + toTargetX * 0.6;
                                         let preyNewY = currentPrey.y + toTargetY * 0.6;
@@ -6793,8 +6781,8 @@
                                     if (isCinematic) {
                                         MusicEngine.play3DSFX('attack', this.x, this.y, playerX, playerY, dungeon.dir);
                                         let myNewX = this.x - toTargetX * 0.6; let myNewY = this.y - toTargetY * 0.6;
-                                        if (!this.checkCollision(dungeon.maze, myNewX, this.y)) this.x = myNewX;
-                                        if (!this.checkCollision(dungeon.maze, this.x, myNewY)) this.y = myNewY;
+                                        if (!this.checkCollision(dungeon.maze, myNewX, this.y,dungeon)) this.x = myNewX;
+                                        if (!this.checkCollision(dungeon.maze, this.x, myNewY,dungeon)) this.y = myNewY;
 
                                         let preyNewX = currentPrey.x + toTargetX * 0.6; let preyNewY = currentPrey.y + toTargetY * 0.6;
                                         if (!currentPrey.checkCollision(dungeon.maze, preyNewX, currentPrey.y)) currentPrey.x = preyNewX;
@@ -6889,8 +6877,8 @@
                                     if (!someoneDied) {
                                         let myNewX = this.x - toTargetX * 0.6;
                                         let myNewY = this.y - toTargetY * 0.6;
-                                        if (!this.checkCollision(maze, myNewX, this.y)) this.x = myNewX;
-                                        if (!this.checkCollision(maze, this.x, myNewY)) this.y = myNewY;
+                                        if (!this.checkCollision(maze, myNewX, this.y,dungeon)) this.x = myNewX;
+                                        if (!this.checkCollision(maze, this.x, myNewY,dungeon)) this.y = myNewY;
 
                                         let preyNewX = currentPrey.x + toTargetX * 0.6;
                                         let preyNewY = currentPrey.y + toTargetY * 0.6;
@@ -7186,7 +7174,7 @@
                         let nextX = this.x + (dx / distance) * moveSpeed;
                         let nextY = this.y + (dy / distance) * moveSpeed;
                         
-                        if (typeof this.checkCollision === 'function' && this.checkCollision(maze, nextX, nextY)) {
+                        if (typeof this.checkCollision === 'function' && this.checkCollision(maze, nextX, nextY,dungeon)) {
                             if (this.isSliding) this.isSliding = false;
                             if (this.isAggroDashing) {
                                 this.isAggroDashing = false;
@@ -7299,7 +7287,7 @@
                     const newX = this.x + (finalDirX * moveStep);
                     const newY = this.y + (finalDirY * moveStep);
 
-                    if (this.checkCollision(maze, newX, newY)) {
+                    if (this.checkCollision(maze, newX, newY,dungeon)) {
                         let slid = false;
                         
                         if (this.state === 'wandering') {
@@ -7307,8 +7295,8 @@
                             this.dirY = Math.random() - 0.5;
                             slid = true; 
                         } else {
-                            if (!this.checkCollision(maze, newX, this.y)) { this.x = newX; slid = true; }
-                            else if (!this.checkCollision(maze, this.x, newY)) { this.y = newY; slid = true; }
+                            if (!this.checkCollision(maze, newX, this.y,dungeon)) { this.x = newX; slid = true; }
+                            else if (!this.checkCollision(maze, this.x, newY,dungeon)) { this.y = newY; slid = true; }
                         }
                         
                         if (!slid && this.state !== 'wandering') {
@@ -7642,7 +7630,7 @@
                     let testY = bestTarget.y + offset.y;
                     
                     // checkCollision accounts for the true radius/fatness of the NPC!
-                    if (safeMaze && !this.checkCollision(safeMaze, testX, testY)) {
+                    if (safeMaze && !this.checkCollision(safeMaze, testX, testY,dungeon)) {
                         dashX = testX;
                         dashY = testY;
                         break;
@@ -7914,10 +7902,15 @@
             if (!this.activeBuffs) this.activeBuffs = [];
             let newEffect = JSON.parse(JSON.stringify(spell)); 
 
-            if (newEffect.name === 'Curse') newEffect.amount = -magnitude; 
-            else if (newEffect.name === 'Bind' || newEffect.name === 'Lunacy') newEffect.duration = (magnitude * 30) + 60;
-            else if (newEffect.type === 'buff') newEffect.amount = magnitude;
-            
+            if (newEffect.type === 'debuff') {
+                newEffect.amount = Math.abs(magnitude);
+            } else if (newEffect.type === 'buff') {
+                newEffect.amount = magnitude;
+            }
+
+            if (newEffect.name === 'Bind' || newEffect.name === 'Lunacy') {
+                newEffect.duration = (magnitude * 30) + 60;
+            }
             if (newEffect.name === 'Haste') newEffect.speedBoost = magnitude * 0.1; 
 
             // Prevent infinite stacking by just overwriting the old buff object
@@ -8077,11 +8070,11 @@
             let targetY = this.y + pushY;
 
             // 1. Check Orthogonal axes with the buffer applied to the leading edge
-            let canMoveX = !this.checkCollision(maze, targetX + (Math.sign(pushX) * buffer), this.y);
-            let canMoveY = !this.checkCollision(maze, this.x, targetY + (Math.sign(pushY) * buffer));
+            let canMoveX = !this.checkCollision(maze, targetX + (Math.sign(pushX) * buffer), this.y,Dungeon);
+            let canMoveY = !this.checkCollision(maze, this.x, targetY + (Math.sign(pushY) * buffer,Dungeon));
             
             // 2. Check the exact diagonal
-            let canMoveDiag = !this.checkCollision(maze, targetX, targetY);
+            let canMoveDiag = !this.checkCollision(maze, targetX, targetY,Dungeon);
 
             // 3. THE CORNER FIX: If both orthogonal directions seem clear but the diagonal is blocked, 
             // it means they are trying to slide exactly through a corner vertex. Stop them.
@@ -8127,13 +8120,13 @@
                     let moveX = null, moveY = null;
 
                     // 2. Look Before You Leap! (Check if the dodge path hits a wall)
-                    if (safeMaze && !this.checkCollision(safeMaze, this.x + (sideX * dodgeDist), this.y + (sideY * dodgeDist))) {
+                    if (safeMaze && !this.checkCollision(safeMaze, this.x + (sideX * dodgeDist), this.y + (sideY * dodgeDist),Dungeon)) {
                         moveX = sideX; moveY = sideY; // Sidestep is safe!
                     } 
-                    else if (safeMaze && !this.checkCollision(safeMaze, this.x + (backX * dodgeDist), this.y + (backY * dodgeDist))) {
+                    else if (safeMaze && !this.checkCollision(safeMaze, this.x + (backX * dodgeDist), this.y + (backY * dodgeDist),Dungeon)) {
                         moveX = backX; moveY = backY; // Backflip is safe!
                     } 
-                    else if (safeMaze && !this.checkCollision(safeMaze, this.x + (-sideX * dodgeDist), this.y + (-sideY * dodgeDist))) {
+                    else if (safeMaze && !this.checkCollision(safeMaze, this.x + (-sideX * dodgeDist), this.y + (-sideY * dodgeDist),Dungeon)) {
                         moveX = -sideX; moveY = -sideY; // Try the OTHER sidestep direction!
                     }
 
@@ -8304,48 +8297,11 @@
                     });
                 }
 
-            // Combine permanent progress points with temporary buff points
-            let totalMod = flatMod + activeMod;
-            const tiers = [4, 6, 8, 10, 12, 20];
-
-            // 3. POSITIVE ROLLOVER (Temporary Upgrades!)
-            while (totalMod >= 4) {
-                totalMod -= 4; // Consume 4 flat points
-                let currentTierIndex = tiers.indexOf(diceSides);
-                
-                if (currentTierIndex < tiers.length - 1) {
-                    // Step the die up! (e.g., d6 -> d8)
-                    diceSides = tiers[currentTierIndex + 1];
-                } else {
-                    // Prestige! A buffed d20 adds a whole new die and resets to d4
-                    numDice += 1;
-                    diceSides = 4;
-                }
-            }
-
-            // 4. NEGATIVE ROLLOVER (Curses shrink your dice!)
-            while (totalMod <= -4) {
-                totalMod += 4; // Consume 4 negative points
-                let currentTierIndex = tiers.indexOf(diceSides);
-                
-                if (currentTierIndex > 0) {
-                    // Step the die down! (e.g., d8 -> d6)
-                    diceSides = tiers[currentTierIndex - 1];
-                } else {
-                    // Demote! A cursed d4 loses a die and drops to d20
-                    if (numDice > 1) {
-                        numDice -= 1;
-                        diceSides = 20;
-                    } else {
-                        // Rock bottom. Cannot go lower than 1d4. We break the loop and suffer the flat negative.
-                        totalMod -= 4; 
-                        break; 
-                    }
-                }
-            }
-
-            // Return the "Virtual Dice" to be rolled
-            return { numDice, diceSides, flatMod: totalMod };
+            return resolveBuffDice(
+                numDice,
+                diceSides,
+                flatMod + activeMod
+            );
         }
         rollStat(statIndex, flatBonus = 0) {
             let dice = this.getEffectiveDice(statIndex);
@@ -8572,9 +8528,13 @@
                 };
 
                 this.toweringWalls = [13, 22, 23, 27, 37, 41, 42, 43, 62, 63];
-                this.randomTreeTiles = [2, 3, 9, 3, 14, 22];
-                this.tileHeights = { 93: .001, 32: .01, 9: 0.1, 13: 1.5, 23: 2.5, 4: .001, 6: .001 }; 
-
+                this.randomTreeTiles = [2, 3, 5, 9, 3, 14, 22];
+                this.tileHeights = {50:.25,51:.5, 93: .001, 32: .01, 9: 0.1, 13: 1.5, 23: 2.5, 4: .001, 6: .001 }; 
+                this.floorElevations = {
+                    50: 0,  // Example: Tile 50 is a platform 1 level up
+                    51: .25   // Example: Tile 51 is a platform 2 levels up
+                };
+                this.transparentWalls = [88, 91,50,51];
                 this.floorColors = {
                     "-1": '#0000FF', 
                     "-2": '#000000', 
@@ -9628,6 +9588,58 @@
             
             
             }
+           
+            getTileElevation(tileID) {
+                if (tileID <= 0) return 0.0;
+                
+                // Read directly from the constructor properties
+                if (this.floorElevations && this.floorElevations[tileID] !== undefined) {
+                    return this.floorElevations[tileID];
+                }
+                
+                // Default to floor level if not specified in the constructor
+                return 0.0; 
+            }
+
+            getTileHeight(tileID) {
+                if (tileID <= 0) return 0.0;
+                
+                // Check your custom tileHeights dictionary first, default to 1.0 full block
+                if (this.tileHeights && this.tileHeights[tileID] !== undefined) {
+                    return this.tileHeights[tileID];
+                }
+                return 1.0;
+            }
+
+            getSurfaceHeight(mapX, mapY) {
+                let tx = Math.floor(mapX);
+                let ty = Math.floor(mapY);
+                if (!this.maze || ty < 0 || ty >= this.maze.length || tx < 0 || tx >= this.maze[0].length) return 0.0;
+                
+                let tile = this.maze[ty][tx];
+                if (tile <= 0) return 0.0;
+                
+                let base = this.getTileElevation(tile);
+                let height = this.getTileHeight(tile);
+                
+                // --- THE FIX ---
+                // If the tile has a custom base elevation or a custom height mapped, it's a solid platform.
+                let isPlatform = (base > 0 || (this.tileHeights && this.tileHeights[tile] !== undefined));
+
+                // If it is NOT a platform, and it is an even pass-through wall or a transparent wall,
+                // tell the camera to stay on the floor below it.
+                if (!isPlatform && (tile % 2 === 0 || (this.transparentWalls && this.transparentWalls.includes(tile)))) {
+                    return 0.0;
+                }
+                
+                // Otherwise, it's a solid block/platform, so return its top surface!
+                return base + height;
+            }
+            
+
+            getFloorElevation(x, y) {
+                return this.getSurfaceHeight(x, y);
+            }
             getAtlasPosition(mapID) {
                 for (let y = 0; y < this.atlas.length; y++) {
                     for (let x = 0; x < this.atlas[y].length; x++) {
@@ -10031,42 +10043,51 @@
                 }
             }
         //COLLISION
-            isWall(mapX, mapY) {
+            isWall(mapX, mapY, actorCurrentZ = null) {
                 if (!this.maze || this.maze.length === 0 || !this.maze[0]) return true;
-                
-                // --- PROTECT AGAINST NaN CRASHES ---
                 if (isNaN(mapX) || isNaN(mapY)) return true;
 
-                // --- THE FIX: Floor the floating-point coordinates into integers! ---
                 const fX = Math.floor(mapX);
                 const fY = Math.floor(mapY);
 
-                // 1. Boundary Check
                 if (fX < 0 || fX >= this.maze[0].length || fY < 0 || fY >= this.maze.length) return true;
 
                 const tile = this.maze[fY][fX];
-
-                // 2. POSITIVE NUMBERS (Walls)
-                // Odds are solid, Evens are pass-through
-                if (tile > 0) {
-                    if (tile % 2 === 0) return false; // Pass-through wall
-                    return true; // Solid wall
-                }
-
-                // 3. NEGATIVE NUMBERS (Floors)
+                
+                // Negative tiles (floors)
                 if (tile < 0) {
-                    // Get absolute value to ignore the negative sign
-                    const absTile = Math.abs(tile);
-                    
-                    // If ODD (-1, -3, -5), it is Unwalkable (Water, Cliff)
-                    if (absTile % 2 === 1) return true; 
+                    return Math.abs(tile) % 2 === 1; // Odd floors are unpassable chasms
+                }
+                
+                // Zero is open ground
+                if (tile === 0) return false;
 
-                    // If EVEN (-2, -4, -6), it is Walkable (Rug, Dirt path)
-                    return false; 
+                let base = this.getTileElevation(tile);
+                let height = this.getTileHeight(tile);
+                let targetSurfaceZ = this.getSurfaceHeight(fX, fY);
+                let currentZ = actorCurrentZ !== null ? actorCurrentZ : this.getFloorElevation(this.x, this.y);
+
+                // --- THE FIX: SPAWN & PLATFORM FREEDOM ---
+                // If you are already standing at or above this tile's surface (e.g. you spawned on it),
+                // treat it as walkable ground so you never get trapped!
+                if (currentZ >= targetSurfaceZ - 0.1) {
+                    return false;
                 }
 
-                // 4. Zero is default Walkable Floor
-                return false;
+                let isPlatform = (base > 0 || (this.tileHeights && this.tileHeights[tile] !== undefined));
+
+                // Pass-through walls (evens) - ONLY apply if it's NOT a custom platform
+                if (!isPlatform && tile % 2 === 0) return false;
+
+                // Step-up check
+                if (targetSurfaceZ - currentZ <= 0.51) {
+                    if (!isPlatform && this.transparentWalls && this.transparentWalls.includes(tile)) {
+                        if (currentZ < targetSurfaceZ + 1.0) return true;
+                    }
+                    return false;
+                }
+
+                return true; // Wall is too tall to step on without climbing
             }
             checkLineOfSight(targetX, targetY) {
                 let x0 = Math.floor(this.x);
@@ -11203,7 +11224,6 @@
                                 peripheralVision = 0.4; 
                             }
                             
-                            // 🧱 THE FIX: Added `this.checkLineOfSight(npc.x, npc.y)`
                             if (distSq < 4.0 && ((dx * camDirX + dy * camDirY) / Math.sqrt(distSq) > peripheralVision)) { 
                                 if (this.checkLineOfSight(npc.x, npc.y)) { // <--- X-RAY VISION PREVENTED HERE
                                     if (isAllyNPC) {
@@ -11388,13 +11408,17 @@
                     }
 
                         let targetPitch = 0;
-                        let targetCamZ = 0.5; 
+
+                        // NEW: Read the floor elevation of the tile you are standing on!
+                        let myFloorZ = this.getFloorElevation(this.x, this.y);
+                        // Camera eye level is always 0.5 ABOVE whatever floor you are standing on
+                        let targetCamZ = myFloorZ + 0.5; 
                         let targetZScale = 1.0;
 
                         if (targetPOVDist > 0.01) {
                             let zoomPercent = Math.min(targetPOVDist / 8, 1.0); 
                             targetPitch = -(viewH * 0.35) * zoomPercent; 
-                            targetCamZ = 0.5 + (2.0 * zoomPercent); 
+                            targetCamZ = myFloorZ + 0.5 + (2.0 * zoomPercent)
                             targetZScale = 1.0 + (0.2 * zoomPercent); 
                         }
 
@@ -11918,6 +11942,7 @@
                     // 4. REMOTE PLAYERS & THEIR SUMMONS
                         if (window.remotePlayers) {
                             for (let id in window.remotePlayers) {
+                                if (typeof socket !== 'undefined' && id === socket.id) continue;
                                 let rp = window.remotePlayers[id];
                                 if (rp && rp.mapID === this.mapID && !rp.isDead && rp.visible !== false) {
                                     
@@ -13259,6 +13284,15 @@
                     let isChasm = [92,93,95,97,99,101].includes(tileID);
                     let isMapEdge = (mapY === 0 || mapY === this.maze.length - 1 || mapX === 0 || mapX === this.maze[0].length - 1);
 
+                    let prevMapX = side === 0 ? mapX - stepX : mapX;
+                    let prevMapY = side === 1 ? mapY - stepY : mapY;
+                    let prevTileZ = this.getFloorElevation(prevMapX, prevMapY);
+
+                    let heightMult = this.tileHeights && this.tileHeights[tileID] !== undefined ? this.tileHeights[tileID] : 1.0;
+                    let floorZ = this.getTileElevation(tileID);
+                    let targetTileZ = floorZ + heightMult;
+
+                    
                     // 3. DEPTH CHECK & HORIZON PIERCING
                     if (currentDepth > MAX_RENDER_DEPTH) {
                         // If past max vision, keep casting to find borders or towering walls
@@ -13333,8 +13367,8 @@
                     // ==========================================
                     else if (tileID > 0) { 
                         let heightMult = this.tileHeights[tileID] !== undefined ? this.tileHeights[tileID] : 1.0;
-                        let isTransparentWall = [88, 91].includes(tileID);
-                        
+                        let floorZ = this.floorElevations[tileID] !== undefined ? this.floorElevations[tileID] : 0.0;
+                        let isTransparentWall = this.transparentWalls.includes(tileID);
                         if (this.randomTreeTiles && this.randomTreeTiles.includes(tileID)) {
                             let pseudoRandom = Math.abs(Math.sin(mapX * 12.9898 + mapY * 78.233)) * 43758.5453 % 1;
                             heightMult = 2.0 + (pseudoRandom * 2.0); 
@@ -13347,19 +13381,23 @@
                         }
 
                         let perpWallDist = (side === 0) ? (mapX - camX + (1 - stepX) / 2) / rayDirX 
-                                                        : (mapY - camY + (1 - stepY) / 2) / rayDirY;
+                                : (mapY - camY + (1 - stepY) / 2) / rayDirY;
                         if (isNaN(perpWallDist) || perpWallDist <= 0) perpWallDist = 0.1;
-                        
-                        let lineHeight = wallScale / perpWallDist;
-                        let zShift = lineHeight * zOffset;
-                        let wallBottom = lineHeight / 2 + horizon + zShift;
-                        let trueDrawStart = wallBottom - (lineHeight * heightMult);
 
+                        let lineHeight = wallScale / perpWallDist;
+
+                        // How far the tile's floor and ceiling are relative to your camera's actual Z
+                        let relativeFloorZ = this.camZ - floorZ;
+                        let relativeCeilZ = this.camZ - (floorZ + heightMult);
+
+                        // Calculate exactly where the floor and ceiling hit the screen
+                        let wallBottom = Math.floor(horizon + (lineHeight * relativeFloorZ));
+                        let trueDrawStart = Math.floor(horizon + (lineHeight * relativeCeilZ));
                         let exitDist = Math.min(sideDistX, sideDistY);
                         let exitLineHeight = wallScale / exitDist; 
                         let exitZShift = exitLineHeight * zOffset;     
                         let exitWallBottom = exitLineHeight / 2 + horizon + exitZShift;
-                        let roofBackY = exitWallBottom - (exitLineHeight * heightMult);
+                        let roofBackY = horizon + (wallScale / exitDist) * (this.camZ - (floorZ + heightMult));
                         
                         let absoluteTopY = Math.min(trueDrawStart, roofBackY);
 
@@ -13447,20 +13485,14 @@
                         // If it's a see-through gap, SKIP adding it to the Z-Buffer!
                         if ([88, 91].includes(hit.wallID) && !isBar) continue;
 
-                        let lineHeight = wallScale / hit.perpWallDist;     
-                        let zShift = lineHeight * zOffset;             
-                        let wallBottom = lineHeight / 2 + horizon + zShift;
-                        let trueDrawStart = wallBottom - (lineHeight * hit.heightMult);
+                        const topZ = this.getTileElevation(hit.wallID) + hit.heightMult;
+                        const trueDrawStart = horizon
+                            + (wallScale / hit.perpWallDist) * (this.camZ - topZ);
+                        const roofBackY = horizon
+                            + (wallScale / hit.exitDist) * (this.camZ - topZ);
+                        const absoluteTopY = Math.floor(Math.max(0,
+                            Math.min(trueDrawStart, roofBackY)));
                         
-                        let exitLineHeight = wallScale / hit.exitDist; 
-                        let exitZShift = exitLineHeight * zOffset;     
-                        let exitWallBottom = exitLineHeight / 2 + horizon + exitZShift;
-                        let roofBackY = exitWallBottom - (exitLineHeight * hit.heightMult);
-                        
-                        let absoluteTopY = Math.floor(Math.max(0, Math.min(trueDrawStart, roofBackY)));
-                        if (hit.isChasm) {
-                            absoluteTopY = viewH; // Push the clipping line to the very bottom of the screen
-                        }
                         let bIndex = (stripX * this.maxHitsPerRay * 3) + (zIndex * 3);
                         this.zBuffer[bIndex] = hit.perpWallDist;
                         this.zBuffer[bIndex + 1] = hit.wallID;
@@ -13492,10 +13524,22 @@
                         let heightMult = hit.heightMult;
                         let isMapEdge = (hit.mapY === 0 || hit.mapY === this.maze.length - 1 || hit.mapX === 0 || hit.mapX === this.maze[0].length - 1);
                         let isTowering = (this.toweringWalls && this.toweringWalls.includes(wallID));
-                        const lineHeight = wallScale / perpWallDist;     
-                        const zShift = lineHeight * zOffset;             
-                        const wallBottom = Math.floor(lineHeight / 2 + horizon + zShift);
+                        let floorZ = this.floorElevations && this.floorElevations[wallID] !== undefined ? this.floorElevations[wallID] : 0.0;
+                        let isTransparentWall = this.transparentWalls && this.transparentWalls.includes(wallID);
 
+                        const lineHeight = wallScale / perpWallDist;     
+                        const zShift = lineHeight * zOffset; 
+
+                        // --- THE SKIRT & ARCHWAY FIX ---
+                        // If it's a transparent wall/pass-through, it floats (archway). 
+                        // Otherwise, draw the cliff face all the way down to Z=0.
+                        let cliffBaseZ = (isTransparentWall || wallID % 2 === 0 || floorZ > 0) ? floorZ : 0.0;
+
+                        let relativeFloorZ = this.camZ - cliffBaseZ;
+                        let relativeCeilZ  = this.camZ - (floorZ + heightMult);
+
+                        const wallBottom = Math.floor(horizon + (lineHeight * relativeFloorZ));
+                        const trueDrawStart = Math.floor(horizon + (lineHeight * relativeCeilZ));
                         // ==========================================
                         // --- THE SEAMLESS CHASM RENDERER ---
                         // ==========================================
@@ -13587,14 +13631,13 @@
                             }
                             if (this.toweringWalls.includes(wallID) && !this.tileHeights[wallID]) heightMult = 15.0;
 
-                            const trueDrawStart = wallBottom - (lineHeight * heightMult);
                             
                             let drawStart = Math.floor(Math.max(0, trueDrawStart));
                             hit.topY = drawStart; 
                             let exitLineHeight = wallScale / hit.exitDist; 
                             let exitZShift = exitLineHeight * zOffset;     
                             let exitWallBottom = exitLineHeight / 2 + horizon + exitZShift;
-                            let roofBackY = exitWallBottom - (exitLineHeight * heightMult);
+                            let roofBackY = horizon + (wallScale / hit.exitDist) * (this.camZ - (floorZ + heightMult));
                             let absoluteTopY = Math.floor(Math.max(0, Math.min(trueDrawStart, roofBackY)));
 
                         let wallHitX = (side == 0) ? camY + perpWallDist * rayDirY : camX + perpWallDist * rayDirX;
@@ -13615,7 +13658,7 @@
                             let exitZShift = exitLineHeight * zOffset;     
                             let exitWallBottom = exitLineHeight / 2 + horizon + exitZShift;
                             
-                            let roofBackY = exitWallBottom - (exitLineHeight * heightMult);
+                            let roofBackY = horizon + (wallScale / hit.exitDist) * (this.camZ - (floorZ + heightMult));
                             let rStart = Math.floor(roofBackY);
                             let rEnd = Math.floor(trueDrawStart) + 1;
                             
@@ -14641,32 +14684,46 @@
                 const MAX_DIST_SQ = Math.pow(renderRadius, 2);
                 
                 const horizon = (viewH / 2) + this.pitch;
-                let occlusionResult = { isBlocked: false, minClipY: 0 };
+                const invDet = 1.0 / (planeX * dirY - dirX * planeY);
+                const wallScale = viewH * this.zScale;
+                const frameNow = Date.now();
+                const frameAngle = typeof window.cacheAngle !== 'undefined' ? window.cacheAngle : frameNow / 400;
+                const fogStart = dynamicMaxVis * 0.4;
+                const viewBottom = viewY + viewH;
+                const bufferStride = this.maxHitsPerRay * 3;
+                const occlusionResult = { isBlocked: false, minClipY: viewBottom };
+                // Refresh each render so editor/map changes cannot leave stale metadata.
+                const wallMetadata = this._spriteWallMetadata || (this._spriteWallMetadata = new Map());
+                wallMetadata.clear();
+                const projections = this._spriteProjections || (this._spriteProjections = new WeakMap());
 
-                const checkOcclusion = (screenCol, targetDepth, dynamicBias = 0, sprite = null) => {
-                        occlusionResult.isBlocked = false;
-                        // THE FIX: Ensure the clip includes viewY so it matches the drawing math
-                        occlusionResult.minClipY = viewY + viewH;
-
-                    if (screenCol >= 0 && screenCol < viewW) {
-                            let hitCount = this.zBufferCounts[screenCol];
-                            for (let j = 0; j < hitCount; j++) {
-                                let index = (screenCol * this.maxHitsPerRay * 3) + (j * 3);
-                                let hitDist = this.zBuffer[index];
-                                let hitTopY = this.zBuffer[index + 2] + viewY; // Sync coordinate space!
-
-                                if (hitDist >= (targetDepth - dynamicBias)) break; 
-
-                                    if (sprite && sprite.type != -27) {
-                                        // Player is immune to occlusion
-                                        if (sprite.isPlayer) continue; 
-                                    }
-                                    occlusionResult.isBlocked = true;
-                                    if (hitTopY < occlusionResult.minClipY) occlusionResult.minClipY = hitTopY;
-                            }
+                // One helper per render. A null foot height retains the particle policy.
+                const checkOcclusion = (screenCol, targetDepth, dynamicBias = 0, sprite = null, footZ = null) => {
+                    occlusionResult.isBlocked = false;
+                    occlusionResult.minClipY = viewBottom;
+                    if ((sprite && sprite.isPlayer) || screenCol < 0 || screenCol >= viewW) return occlusionResult;
+                    const end = screenCol * bufferStride + this.zBufferCounts[screenCol] * 3;
+                    const depthLimit = targetDepth - dynamicBias;
+                    for (let index = screenCol * bufferStride; index < end; index += 3) {
+                        if (this.zBuffer[index] >= depthLimit) break;
+                        const wallID = this.zBuffer[index + 1];
+                        let metadata = wallMetadata.get(wallID);
+                        if (metadata === undefined) {
+                            const height = this.tileHeights && this.tileHeights[wallID] !== undefined ? this.tileHeights[wallID] : 1.0;
+                            metadata = {
+                                topZ: this.getTileElevation(wallID) + height,
+                                transparent: !!(this.transparentWalls && this.transparentWalls.includes(wallID))
+                            };
+                            wallMetadata.set(wallID, metadata);
                         }
-                        return occlusionResult;
-                    };
+                        if (metadata.transparent) continue;
+                        if (footZ === null ? metadata.topZ <= 0.6 : footZ >= metadata.topZ - 0.1) continue;
+                        occlusionResult.isBlocked = true;
+                        const hitTopY = this.zBuffer[index + 2] + viewY;
+                        if (hitTopY < occlusionResult.minClipY) occlusionResult.minClipY = hitTopY;
+                    }
+                    return occlusionResult;
+                };
 
                 // --- SPRITE FILTERING & SORTING ---
                     this.visibleSprites.length = 0;
@@ -14680,300 +14737,153 @@
                             this.cacheDynamicNPCBillboard(npc);
                         }
                         
-                        npc.dist = ((camX - npc.x) * (camX - npc.x) + (camY - npc.y) * (camY - npc.y));
-                        if (npc.dist < MAX_DIST_SQ) this.visibleSprites.push(npc);
+                        const spriteX = npc.x - camX;
+                        const spriteY = npc.y - camY;
+                        npc.dist = spriteX * spriteX + spriteY * spriteY;
+                        if (npc.dist >= MAX_DIST_SQ) continue;
+                        let projected = projections.get(npc);
+                        if (!projected) {
+                            projected = { sprite: npc, transformX: 0, transformY: 0 };
+                            projections.set(npc, projected);
+                        }
+                        projected.transformX = invDet * (dirY * spriteX - dirX * spriteY);
+                        projected.transformY = invDet * (-planeY * spriteX + planeX * spriteY);
+                        this.visibleSprites.push(projected);
                     }
-                    this.visibleSprites.sort((a, b) => b.dist - a.dist);
+                    this.visibleSprites.sort((a, b) => b.transformY - a.transformY);
                 // ==========================================
                 // --- MAIN SPRITE RENDERING LOOP ---
                 // ==========================================
                     for (let i = 0; i < this.visibleSprites.length; i++) {
-                        const sprite = this.visibleSprites[i];
-                        const realDist = Math.sqrt(sprite.dist);
-                        
-                        let inVision = (realDist <= renderRadius);
-                        if (!inVision && !sprite.isPlayer) continue;
-
-                        let spriteX = sprite.x - camX;
-                        let spriteY = sprite.y - camY;
-                        let invDet = 1.0 / (planeX * dirY - dirX * planeY);
-                        let transformX = invDet * (dirY * spriteX - dirX * spriteY);
-                        let transformY = invDet * (-planeY * spriteX + planeX * spriteY);
+                        const projected = this.visibleSprites[i];
+                        const sprite = projected.sprite;
+                        let transformX = projected.transformX;
+                        const transformY = projected.transformY;
 
                         if (Math.abs(transformX) < 0.001) transformX = 0;
                         
                         // Near Plane & Fog Clipping
                         if (sprite.isPlayer) {
-                            // The player's own mesh is immune to camera occlusion, but still needs near-clipping
                             let minimalNearPlane = Math.min(0.1, this.currentCamDist * 0.5);
                             if (transformY < minimalNearPlane) continue; 
                         } else {
-                            // THE FIX: Drop nearClip to 0.01 for EVERYONE so tiny rats at your feet don't vanish.
-                            let nearClip = 0.01; 
-                            
-                            // THE FIX: Remove the dynamicMaxVis check! It was deleting your allies when you zoomed out!
-                            // We already culled them mathematically using renderRadius earlier in the function.
+                            let nearClip = 0.15; 
                             if (transformY <= nearClip) continue; 
                         }
 
                         const spriteScreenX = Math.floor((viewW / 2) * (1 + transformX / transformY));
 
-                    // ==========================================
-                    //DICE RENDERER ---
-                    // ==========================================
-                        if (sprite.model) {
-                            let baseScale = 0.5; 
-                            const modelSize = Math.abs(Math.floor(((viewH * this.zScale) / transformY) * baseScale)); 
-                            
-                            if (spriteScreenX >= 0 && spriteScreenX < viewW) {
-                                let modelOcclusion = checkOcclusion(spriteScreenX, transformY);
-                                if (!modelOcclusion.isBlocked) {
-                                    const floorY = horizon + ((viewH * this.zScale) / transformY) * this.camZ;
-                                    const drawStartY = Math.floor(floorY - modelSize) + viewY;
-                                    const drawStartX = Math.floor(-modelSize / 2 + spriteScreenX + viewX);
-                                    
-                                    const centerX = drawStartX + modelSize / 2;
-                                    const centerY = drawStartY + modelSize / 2;
-                                    
-                                    sprite.model.draw(ctx, centerX, centerY, modelSize * 0.5, 4);
-                                }
-                            }
-                            
-                            if (sprite.type === -37 && typeof drawPortrait === 'function') {
-                                const expSize = Math.abs(Math.floor(((viewH * this.zScale) / transformY) * 1.0)); 
-                                const floorY = horizon + ((viewH * this.zScale) / transformY) * this.camZ;
-                                const drawStartY = Math.floor(floorY - expSize) + viewY;
-                                const drawStartX = Math.floor(-expSize / 2 + spriteScreenX + viewX);
-
-                                const oldTX = tX; const oldTY = tY; const oldTL = tL; const oldTH = tH;
-                                tX = drawStartX; tY = drawStartY; tL = expSize; tH = expSize;
-                                drawPortrait(-37, 0, 0, 1); 
-                                tX = oldTX; tY = oldTY; tL = oldTL; tH = oldTH;
-                            }
-                            continue; 
-                        }
-
-                    // ==========================================
-                    // 1. 2D->3D & VARIANT INTERCEPT
-                    // ==========================================
+                        // ==========================================
+                        // --- 1. 2D->3D & VARIANT INTERCEPT ---
+                        // ==========================================
                         let spriteVariant = 'normal';
                         let imageIndex = (sprite.type !== undefined) ? Number(sprite.type) : 0;
 
-                        // Apply mapping if it exists
                         if (MODEL_UPGRADES[imageIndex]) {
                             let upgrade = MODEL_UPGRADES[imageIndex];
                             imageIndex = upgrade.id;
                             if (upgrade.variant) spriteVariant = upgrade.variant;
                         }
 
-                        // Special map-specific overrides
                         if (imageIndex === 106 && this.mapID === 9) {
                             imageIndex = 243;
                         }
-                    // ==========================================
-                    // --- 2. 3D SPRITE FRAMES ---
-                    // ==========================================
+
+                        // ==========================================
+                        // --- 2. ANIMATION STATES & DIRECTION FIRST ---
+                        // ==========================================
                         let currentDir = 2; // Default South
                         if (imageIndex >= 100) {
-                            
-                            // --- 0. Decrement Timers ---
-                                if (sprite.damageFlashTimer > 0) sprite.damageFlashTimer--;
-                                if (sprite.attackAnimTimer > 0) sprite.attackAnimTimer--;
+                            if (sprite.damageFlashTimer > 0) sprite.damageFlashTimer--;
+                            if (sprite.attackAnimTimer > 0) sprite.attackAnimTimer--;
 
-                            // --- 1. DETERMINE ANIMATION STATES ---
-                                let isAttacking = false;
-                                let isMoving = false;
+                            let isAttacking = false;
+                            let isMoving = false;
 
-                                // PLAYER LOGIC
-                                    if (sprite.isPlayer) {
-                                        
-                                        isAttacking = (this.playerAttackTimer > 0);
-                                        isMoving = this.isSlidingToTile;
-                                        
-                                        // Player State Exception: 104 = Walk, 105 = Attack, 106 = Idle
-                                        if (imageIndex >= 100) { 
-                                            if(this.mapID !== 9){
-                                                if (isAttacking) imageIndex = 105;
-                                                else if (isMoving) imageIndex = 104;
-                                                else imageIndex = 106;
-                                            }
-                                            else{
-                                                if (isAttacking) {
-                                                imageIndex += 2;
-                                                } else if (isMoving) {
-                                                    imageIndex += 1;
-                                                }
-                                            }
-                                        }
-                                    } 
-                                // NPC & SUMMON LOGIC
-                                    else {
-                                    
-                                        let posChanged = sprite.lastX !== undefined && 
-                                            (Math.abs(sprite.x - sprite.lastX) > 0.005 || Math.abs(sprite.y - sprite.lastY) > 0.005);
-                                        
-                                    
-                                        isMoving = sprite.isMoving || posChanged;
-                                        isAttacking = sprite.isAttacking || (sprite.combatCooldown > 0 || sprite.damageFlashTimer > 0 || sprite.attackAnimTimer > 0);
-                                        
-                                        sprite.lastX = sprite.x;
-                                        sprite.lastY = sprite.y;
-                                        
-                                        if (isAttacking) {
-                                            imageIndex += 2;
-                                        } else if (isMoving) {
-                                            imageIndex += 1;
-                                        }
-
-                                        // DRAGON EXCEPTION (Alternates 208 and 209 for attacks)
-                                            if (imageIndex >= 206 && imageIndex <= 209) {
-                                                if (isAttacking) {
-                                                    let useFireBreath = Math.floor(Date.now() / 2000) % 2 === 0;
-                                                    imageIndex = useFireBreath ? 209 : 208;
-                                                } else if (isMoving) {
-                                                    imageIndex = 207;
-                                                } else {
-                                                    imageIndex = 206;
-                                                }
-                                            }
-                                        //Salamander Exception
-                                            if (imageIndex >= 129 && imageIndex <= 130) {
-                                                if (isAttacking) {
-                                                    imageIndex = 130
-                                                } else if (isMoving) {
-                                                    imageIndex = 130;
-                                                } else {
-                                                    imageIndex = 129;
-                                                }
-                                            }
-                                    }
-
-                            // --- 2. ACCURATE CAMERA DIRECTION MATH ---
+                            if (sprite.isPlayer) {
+                                isAttacking = (this.playerAttackTimer > 0);
+                                isMoving = this.isSlidingToTile;
                                 
-                                if (sprite.dir !== undefined && (sprite.socketId || sprite.isRemoteSummon || sprite.dirX === undefined)) {
-                                    // ---> Remote Players and Summons use 4-way 'dir' integers (0=N, 1=E, 2=S, 3=W) <---
-                                    let relativeDir = (sprite.dir - this.dir + 4) % 4;
-                                    
-                                    // Map relative 4-way direction to the 8-way sprite sheet:
-                                    if (relativeDir === 0) currentDir = 0;      // Facing same way -> See their Back
-                                    else if (relativeDir === 1) currentDir = 6; // Turned 90 deg clockwise -> See their Right Side
-                                    else if (relativeDir === 2) currentDir = 4; // Facing opposite -> See their Front
-                                    else if (relativeDir === 3) currentDir = 2; // Turned 90 deg counter-clockwise -> See their Left Side
+                                if (imageIndex >= 100) { 
+                                    if (this.mapID !== 9) {
+                                        if (isAttacking) imageIndex = 105;
+                                        else if (isMoving) imageIndex = 104;
+                                        else imageIndex = 106;
+                                    } else {
+                                        if (isAttacking) imageIndex += 2;
+                                        else if (isMoving) imageIndex += 1;
+                                    }
                                 }
-                                else if (sprite.dirX !== undefined && sprite.dirY !== undefined) {
-                                    // Standard Offline NPC Angle Math
-                                    let npcAngle = Math.atan2(sprite.dirY, sprite.dirX);
-                                    let camAngle = this.currentAngle + (this.lookPan || 0); 
-                                    let relativeAngle = npcAngle - camAngle - (Math.PI / 2);
-                                    
-                                    while (relativeAngle < 0) relativeAngle += Math.PI * 2;
-                                    while (relativeAngle >= Math.PI * 2) relativeAngle -= Math.PI * 2;
-                                    
-                                    let sector = Math.floor((relativeAngle + Math.PI / 8) / (Math.PI / 4));
-                                    currentDir = sector % 8;
+                            } else {
+                                let posChanged = sprite.lastX !== undefined && 
+                                    (Math.abs(sprite.x - sprite.lastX) > 0.005 || Math.abs(sprite.y - sprite.lastY) > 0.005);
+                                
+                                isMoving = sprite.isMoving || posChanged;
+                                isAttacking = sprite.isAttacking || (sprite.combatCooldown > 0 || sprite.damageFlashTimer > 0 || sprite.attackAnimTimer > 0);
+                                
+                                sprite.lastX = sprite.x;
+                                sprite.lastY = sprite.y;
+                                
+                                if (isAttacking) imageIndex += 2;
+                                else if (isMoving) imageIndex += 1;
+
+                                if (imageIndex >= 206 && imageIndex <= 209) {
+                                    if (isAttacking) {
+                                        let useFireBreath = Math.floor(frameNow / 2000) % 2 === 0;
+                                        imageIndex = useFireBreath ? 209 : 208;
+                                    } else if (isMoving) {
+                                        imageIndex = 207;
+                                    } else {
+                                        imageIndex = 206;
+                                    }
+                                }
+                                if (imageIndex >= 129 && imageIndex <= 130) {
+                                    imageIndex = isAttacking || isMoving ? 130 : 129;
                                 }
                             }
 
-                    // ==========================================
-                    // --- 3. CALCULATE SIZE & HOVER ---
-                    // ==========================================
-                        let angle = typeof window.cacheAngle !== 'undefined' ? window.cacheAngle : (Date.now() / 400);
-                        
-                        let { scale, hover, animIndex } = this.getSpriteConfig(sprite, angle, imageIndex); 
-                        imageIndex = animIndex;
-                        const spriteSize = Math.abs(Math.floor(((viewH * this.zScale) / transformY) * scale)); 
-
-                        let isCenterVisible = true;
-                        if (spriteScreenX >= 0 && spriteScreenX < viewW) {
-                            let coreOcclusion = checkOcclusion(spriteScreenX, transformY);
-                            if (coreOcclusion.isBlocked && !sprite.isPlayer) isCenterVisible = false;
+                            // Calculate 8-way direction index
+                            if (sprite.dir !== undefined && (sprite.socketId || sprite.isRemoteSummon || sprite.dirX === undefined)) {
+                                let relativeDir = (sprite.dir - this.dir + 4) % 4;
+                                if (relativeDir === 0) currentDir = 0;
+                                else if (relativeDir === 1) currentDir = 6;
+                                else if (relativeDir === 2) currentDir = 4;
+                                else if (relativeDir === 3) currentDir = 2;
+                            } else if (sprite.dirX !== undefined && sprite.dirY !== undefined) {
+                                let npcAngle = Math.atan2(sprite.dirY, sprite.dirX);
+                                let camAngle = this.currentAngle + (this.lookPan || 0); 
+                                let relativeAngle = npcAngle - camAngle - (Math.PI / 2);
+                                while (relativeAngle < 0) relativeAngle += Math.PI * 2;
+                                while (relativeAngle >= Math.PI * 2) relativeAngle -= Math.PI * 2;
+                                let sector = Math.floor((relativeAngle + Math.PI / 8) / (Math.PI / 4));
+                                currentDir = sector % 8;
+                            }
                         }
 
-                        const floorY = horizon + ((viewH * this.zScale) / transformY) * this.camZ;
-                        const hoverOffset = ((viewH * this.zScale) / transformY) * (hover + (sprite.zHeight || 0));
+                        // ==========================================
+                        // --- 3. CONFIG & SIZE CALCULATION ---
+                        // ==========================================
+                        const angle = frameAngle;
+                        let { scale, hover } = this.getSpriteConfig(sprite, angle, imageIndex); 
+
+                        const projectionScale = wallScale / transformY;
+                        const spriteSize = Math.abs(Math.floor(projectionScale * scale));
+
+                        let spriteFloorZ = this.getFloorElevation(sprite.x, sprite.y);
+                        let totalFootZ = spriteFloorZ + Math.max(0, hover) + (sprite.zHeight || 0);
+                        const floorY = horizon + projectionScale * (this.camZ - spriteFloorZ);
+                        const hoverOffset = projectionScale * (hover + (sprite.zHeight || 0));
                         const drawStartY = Math.floor(floorY - spriteSize - hoverOffset) + viewY;
                         const drawStartX = Math.floor(-spriteSize / 2 + spriteScreenX + viewX);
 
                         if (drawStartX >= viewX + viewW || drawStartX + spriteSize <= viewX) continue;
-                    // =========================================================
-                    // --- Health RING (PERFECT ANCHOR) ---
-                    // =========================================================
-                        // 1. Filter for valid combat alignments (Foes, Defenders, Allies)
-                            let hasRingAlignment = typeof sprite.alignment === 'string' && 
-                                                (sprite.alignment.startsWith('foe') || 
-                                                    sprite.alignment.startsWith('defender') || 
-                                                    sprite.alignment.startsWith('ally'));
 
-                            if (isCenterVisible && hasRingAlignment && !sprite.isDead && sprite.role !== 'dropped_card') {
-                                
-                                let maxWardTime = (sprite.maxWards || 0) * (sprite.timePerWard || 3.0);
-                                let currentWardTime = sprite.currentWardTime || 0;
-
-                                // 2. ONLY draw the ring if they actually have Ward remaining!
-                                if (maxWardTime > 0 && currentWardTime > 0) {
-                                    let percent = Math.max(0, Math.min(1, currentWardTime / maxWardTime));
-                                    let unitScale = (viewH * this.zScale) / transformY;
-                                    
-                                    // --- THE PERFECT SHADOW FIX ---
-                                    // 1. Start by anchoring the ring to the absolute bottom of the sprite's box
-                                    let groundFeetY = drawStartY + spriteSize; 
-
-                                    // 2. Because 3D sprites have a little empty transparent space at the bottom 
-                                    // of their 128x128 canvas, we bring the ring UP slightly to touch their visual feet.
-                                    groundFeetY -= (spriteSize * 0.39); // Tweak this decimal (0.10 to 0.15) if you want it slightly higher/lower!
-
-                                    // 3. If it's a FLYING creature (hover is positive), detach the ring 
-                                    // and push it back down to the floor so it acts like a true shadow!
-                                    if (hover > 0) groundFeetY += (unitScale * hover);
-                                    
-                                    // 4. Do the same if they are jumping/bobbing in the air
-                                    if (sprite.zHeight > 0) groundFeetY += (unitScale * sprite.zHeight);
-
-                                    let ringCenterX = viewX + spriteScreenX;
-
-                                    // Scales the ring width based on the creature's scale using your custom magic numbers!
-                                    let ringRadX = Math.max(6, spriteSize * 0.19);  
-                                    let ringRadY = ringRadX * 0.36; // Perspective tilt for floor projection
-
-                                    ctx.save();
-                                    
-                                    // Get the Danger (Con) Color
-                                    let alignColor = typeof sprite.getConColor === 'function' ? sprite.getConColor(this) : 'rgba(200, 0, 0, 0.8)';
-                                    ctx.strokeStyle = alignColor;
-                                    
-                                    ctx.globalAlpha = 1.0; 
-                                    ctx.globalCompositeOperation = 'lighter'; // Magical glow
-                                    ctx.lineWidth = Math.max(1.5, unitScale * 0.04); 
-                                    
-                                    // Ward loading-bar arc
-                                    let startAngle = Math.PI; // Starts at 9 o'clock (left side)
-                                    let endAngle = startAngle + (Math.PI * 2 * percent); // Sweeps clockwise
-                                    
-                                    ctx.beginPath();
-                                    if (ctx.ellipse) {
-                                        ctx.ellipse(ringCenterX, groundFeetY, ringRadX, ringRadY, 0, startAngle, endAngle);
-                                    } else {
-                                        ctx.scale(1, ringRadY / ringRadX);
-                                        ctx.arc(ringCenterX, groundFeetY / (ringRadY / ringRadX), ringRadX, startAngle, endAngle);
-                                        ctx.scale(1, ringRadX / ringRadY);
-                                    }
-                                    ctx.stroke();
-                                    
-                                    ctx.restore();
-                                }
-                            }
-                        
-                    // ==========================================
-                    // --- 4. FETCH CACHED IMAGE ---
-                    // ==========================================
-
-                        // If it's a dynamic NPC, use its personal cached billboard! Otherwise use the global cache.
+                        // ==========================================
+                        // --- 4. FETCH CACHED IMAGE (Now currentDir exists!) ---
+                        // ==========================================
                         let cachedSource = sprite.cachedBillboard || spriteCache[imageIndex];
-
-                        // Failsafe: if nothing is cached, skip it so we don't crash
                         if (!cachedSource) continue; 
 
-                        // === HIGH-PERFORMANCE VERTICAL SLICING ===
                         let srcImg;
                         if (Array.isArray(cachedSource)) {
                             if (Array.isArray(cachedSource[0])) {
@@ -14982,19 +14892,17 @@
                                     let safeIndex = (cachedSource.length === 4) ? Math.floor(currentDir / 2) : (currentDir % cachedSource.length);
                                     currentDirArray = cachedSource[safeIndex] || cachedSource[0];
                                 }
-                                const currentFrame = Math.floor(Date.now() / 150) % currentDirArray.length;
+                                const currentFrame = Math.floor(frameNow / 150) % currentDirArray.length;
                                 srcImg = currentDirArray[currentFrame];
                             } else {
                                 let animationSpeed = [46.1, 63.1, 74.1, 82].includes(imageIndex) ? 300 : 100;
-                                const currentFrame = Math.floor(Date.now() / animationSpeed) % cachedSource.length;
+                                const currentFrame = Math.floor(frameNow / animationSpeed) % cachedSource.length;
                                 srcImg = cachedSource[currentFrame];
                             }
                         } else {
                             srcImg = cachedSource;
                         }
 
-                        const cacheSize = srcImg.width || 512; 
-                        let fogStart = dynamicMaxVis * 0.4;
                         let spriteFogFactor = transformY > fogStart ? Math.pow(Math.min((transformY - fogStart) / (dynamicMaxVis - fogStart), 1.0), 1.8) : 0;
                         
                         // THE FIX 1: Apply lens fade to ALL non-player sprites that get too close!
@@ -15012,54 +14920,46 @@
                         if (imageIndex === 99) ctx.globalCompositeOperation = 'lighter';
                         ctx.imageSmoothingEnabled = true;
 
-                        const textureRatio = cacheSize / spriteSize;
+                        const cacheW = srcImg.width || 512;
+                        const cacheH = srcImg.height || 512;
 
                         let streakActive = false;
                         let s_startX = 0, s_destX = 0, s_width = 0, s_blocked = false, s_clipY = 0;
 
                         const flushStreak = () => {
-                            if (streakActive && s_clipY > drawStartY) {
-                                let srcX = Math.floor(s_startX * textureRatio);
-                                let srcW = Math.max(1, Math.floor(s_width * textureRatio));
-                                
-                                if (srcW > 0) {
-                                    // 1. Calculate actual vertical visible bounds on screen
-                                    let drawY1 = Math.max(viewY, drawStartY);
-                                    let drawY2 = Math.min(viewY + viewH, s_blocked ? s_clipY : (drawStartY + spriteSize));
-                                    let drawH = drawY2 - drawY1;
+                            if (!streakActive || spriteSize <= 0) return;
 
-                                    if (drawH > 0) {
-                                        // 2. Map those screen Y bounds back to the source image pixels safely
-                                        let yRatio1 = Math.max(0, Math.min(1, (drawY1 - drawStartY) / spriteSize));
-                                        let yRatio2 = Math.max(0, Math.min(1, (drawY2 - drawStartY) / spriteSize));
-                                        
-                                        let srcY = Math.floor(yRatio1 * cacheSize);
-                                        let srcH = Math.floor((yRatio2 - yRatio1) * cacheSize);
+                            const drawY1 = Math.max(viewY, drawStartY);
+                            const drawY2 = Math.min(
+                                viewY + viewH,
+                                drawStartY + spriteSize,
+                                s_blocked ? s_clipY : Infinity
+                            );
+                            const drawH = drawY2 - drawY1;
+                            if (drawH <= 0 || s_width <= 0) return;
 
-                                        // THE FIX: Only pass the tiny visible slice to the GPU!
-                                        if (srcH > 0) {
-                                            ctx.drawImage(
-                                                srcImg, 
-                                                srcX, srcY, srcW, srcH, 
-                                                viewX + s_destX, drawY1, s_width, drawH
-                                            );
-                                        }
-                                    }
-                                }
-                            }
+                            // All strips use the same mapping, regardless of clipping boundaries.
+                            const srcX = s_startX * cacheW / spriteSize;
+                            const srcY = (drawY1 - drawStartY) * cacheH / spriteSize;
+                            const srcW = s_width * cacheW / spriteSize;
+                            const srcH = drawH * cacheH / spriteSize;
+
+                            ctx.imageSmoothingEnabled = false; // Preserve current effective appearance.
+                            ctx.drawImage(
+                                srcImg,
+                                srcX, srcY, srcW, srcH,
+                                viewX + s_destX, drawY1, s_width, drawH
+                            );
                         };
 
                         // Screen bounding to prevent massive loops on huge sprites!
-                        let startX = Math.max(0, Math.floor(spriteSize / 2 - spriteScreenX));
-                        let endX = Math.min(spriteSize, Math.floor(viewW + spriteSize / 2 - spriteScreenX));
-
+                        const spriteLeft = Math.floor(-spriteSize / 2 + spriteScreenX);
+                        let startX = Math.max(0, -spriteLeft);
+                        let endX = Math.min(spriteSize, viewW - spriteLeft);
                         for (let x = startX; x < endX; x++) {
-                            const localCol = Math.floor(-spriteSize / 2 + spriteScreenX) + x;
-                            
-                            let distFromCenter = Math.abs(x - (spriteSize / 2)) / (spriteSize / 2);
-                            let dynamicBias = isCenterVisible ? 0.08 * (1.0 - distFromCenter) : 0.02;                            
-                            
-                            checkOcclusion(localCol, transformY, dynamicBias, sprite); 
+                            const localCol = spriteLeft + x;
+                            const dynamicBias = 0.0001;
+                            checkOcclusion(localCol, transformY, dynamicBias, sprite, totalFootZ); 
 
                             // Because occlusionResult.minClipY now includes viewY, this comparison is perfectly safe!
                             if (occlusionResult.isBlocked && drawStartY >= occlusionResult.minClipY) occlusionResult.minClipY = drawStartY; 
@@ -15091,7 +14991,6 @@
                         if (!p.active) return;
                         const pX = p.x - camX;
                         const pY = p.y - camY;
-                        const invDet = 1.0 / (planeX * dirY - dirX * planeY);
                         const transformX = invDet * (dirY * pX - dirX * pY);
                         const transformY = invDet * (-planeY * pX + planeX * pY); 
 
@@ -15100,7 +14999,7 @@
                             
                             if (pScreenX >= 0 && pScreenX < viewW) {
                                 const pZ = p.z || 0; 
-                                const pScreenY = Math.floor(horizon + ((viewH * this.zScale) / transformY) * (this.camZ - pZ)) + viewY;
+                                const pScreenY = Math.floor(horizon + (wallScale / transformY) * (this.camZ - pZ)) + viewY;
                                 
                                 let { isBlocked, minClipY } = checkOcclusion(pScreenX, transformY);
                                 let isVisible = !(isBlocked && pScreenY >= minClipY);
@@ -15857,9 +15756,11 @@
                 if (!this.activeBuffs) this.activeBuffs = [];
                 let newEffect = JSON.parse(JSON.stringify(spell)); 
 
-                if (newEffect.name === 'Curse') newEffect.amount = -magnitude; 
-                else if (newEffect.type === 'buff') newEffect.amount = magnitude;
-                
+                if (newEffect.type === 'debuff') {
+                    newEffect.amount = Math.abs(magnitude);
+                } else if (newEffect.type === 'buff') {
+                    newEffect.amount = magnitude;
+                }
                 if (newEffect.name === 'Haste') newEffect.speedBoost = magnitude * 0.1; 
 
                 // Prevent infinite stacking by overwriting the old buff
@@ -16000,48 +15901,11 @@
                     });
                 }
 
-                // Combine permanent progress points with temporary buff points
-                let totalMod = flatMod + activeMod;
-                const tiers = [4, 6, 8, 10, 12, 20];
-
-                // 3. POSITIVE ROLLOVER (Temporary Upgrades!)
-                while (totalMod >= 4) {
-                    totalMod -= 4; // Consume 4 flat points
-                    let currentTierIndex = tiers.indexOf(diceSides);
-                    
-                    if (currentTierIndex < tiers.length - 1) {
-                        // Step the die up! (e.g., d6 -> d8)
-                        diceSides = tiers[currentTierIndex + 1];
-                    } else {
-                        // Prestige! A buffed d20 adds a whole new die and resets to d4
-                        numDice += 1;
-                        diceSides = 4;
-                    }
-                }
-
-                // 4. NEGATIVE ROLLOVER (Curses shrink your dice!)
-                while (totalMod <= -4) {
-                    totalMod += 4; // Consume 4 negative points
-                    let currentTierIndex = tiers.indexOf(diceSides);
-                    
-                    if (currentTierIndex > 0) {
-                        // Step the die down! (e.g., d8 -> d6)
-                        diceSides = tiers[currentTierIndex - 1];
-                    } else {
-                        // Demote! A cursed d4 loses a die and drops to d20
-                        if (numDice > 1) {
-                            numDice -= 1;
-                            diceSides = 20;
-                        } else {
-                            // Rock bottom. Cannot go lower than 1d4. We break the loop and suffer the flat negative.
-                            totalMod -= 4; 
-                            break; 
-                        }
-                    }
-                }
-
-                // Return the "Virtual Dice" to be rolled
-                return { numDice, diceSides, flatMod: totalMod };
+                return resolveBuffDice(
+                    numDice,
+                    diceSides,
+                    flatMod + activeMod
+                );
             }
         //NPC
             spawnPersistentNPC(targetMapID, index, x, y, type, state = 'stationary', color = '#ffffff', deck = [], dialogue = null, rewardCard = null, role = 'battle', options = null, isBoss = null, alignment = 'friendly', endActions = [], deathActions = [], isCinematic = false,yesActions = null, noActions = null) {    
@@ -23613,7 +23477,10 @@
                                         if (sData.type === 'buff' || sData.type === 'ward') {
                                             let atkCard = new Card(Math.floor(p.attacker.type), 0);
                                             let atkStat = sData.castStat !== undefined ? sData.castStat : 2; // Default INT
-                                            magnitude = Math.max(1, atkCard.rollStat(atkStat)); 
+                                            magnitude = Math.max(
+                                                1,
+                                                this.rollTacticalStat(p.attacker, atkStat)
+                                            ); 
                                         }
                                         
                                         this.applyTacticalSpell(target, p.spellId, magnitude);
@@ -25284,7 +25151,7 @@
                 card.stat[statIndex][2] += (tacticalBonus + auraMod);
                 
                 // 4. Roll it!
-                return card.rollStat(statIndex);
+                return card.rollStat(statIndex, false);
             }
             revertTacticalStat(unit, effect) {
                 if (!unit.bonusStats) return;
@@ -25364,10 +25231,18 @@
                 let newEffect = JSON.parse(JSON.stringify(spellData)); 
 
                 // Standardize magnitudes
-                if (newEffect.name === 'Curse') newEffect.amount = -magnitude; 
-                else if (newEffect.name === 'Bind' || newEffect.name === 'Lunacy') newEffect.isBinding = true; 
-                else if (newEffect.type === 'buff' || newEffect.type === 'item_buff') newEffect.amount = magnitude;
-                
+                if (newEffect.type === 'debuff') {
+                    newEffect.amount = -Math.abs(magnitude);
+                } else if (
+                    newEffect.type === 'buff' ||
+                    newEffect.type === 'item_buff'
+                ) {
+                    newEffect.amount = magnitude;
+                }
+
+                if (newEffect.name === 'Bind' || newEffect.name === 'Lunacy') {
+                    newEffect.isBinding = true;
+                }
                 // CONVERSION: Tactics is Turn-Based!
                 // Convert real-time duration (e.g., 1800) into tactical turns.
                 newEffect.turnsLeft = newEffect.duration ? Math.max(1, Math.floor(newEffect.duration / 600)) : 3;
@@ -25398,7 +25273,10 @@
                     if (sData.type === 'buff' || sData.type === 'ward') {
                         let casterCard = new Card(Math.floor(caster.type), 0);
                         let statToCast = sData.castStat !== undefined ? sData.castStat : 2;
-                        magnitude = Math.max(1, casterCard.rollStat(statToCast)); 
+                        magnitude = Math.max(
+                            1,
+                            this.rollTacticalStat(caster, statToCast)
+                        );
                     }
                     
                     // Apply to caster and nearby allies (AoE Buffs!)
@@ -25476,7 +25354,9 @@
                     
                     if (isJudgement) {
                         let casterCard = new Card(Math.floor(caster.type), 0);
-                        for(let s = 0; s < 4; s++) casterTotalStats += casterCard.rollStat(s) + (caster.bonusStats ? caster.bonusStats[s] || 0 : 0);
+                        for (let s = 0; s < 4; s++) {
+                            casterTotalStats += this.rollTacticalStat(caster, s);
+                        }
                     }
                     if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX(isJudgement ? 'horn' : 'wind');
 
@@ -25493,8 +25373,9 @@
                             if (isJudgement) {
                                 let targetCard = new Card(Math.floor(target.type), 0);
                                 let targetTotalStats = 0;
-                                for(let s = 0; s < 4; s++) targetTotalStats += targetCard.rollStat(s) + (target.bonusStats ? target.bonusStats[s] || 0 : 0);
-
+                                for (let s = 0; s < 4; s++) {
+                                    targetTotalStats += this.rollTacticalStat(target, s);
+                                }
                                 if (casterTotalStats > targetTotalStats) {
                                     target.isDead = true; target.visible = false; target.x = -999;
                                     if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('death');
@@ -29082,10 +28963,16 @@
                           if (Player[attacker].look[eLOOK.R] > Player[attacker].opponent.look[eLOOK.R]|| (Player[attacker].look[eLOOK.R] == Player[attacker].opponent.look[eLOOK.R] && winSpellTie == 1)) {
                             // Curse (15)
                             if (Player[attacker].hand[Player[attacker].look[eLOOK.H]].index == 15&&spellcheck == 0) {
-                                Player[attacker].opponent.aMonster[0].stat[eSTAT.S][eDICE.MOD] = Player[attacker].aMonster[0].stat[eSTAT.S][eDICE.MOD] - (Player[attacker].look[eLOOK.R] - Player[attacker].opponent.look[eLOOK.R]);
-                                Player[attacker].opponent.aMonster[0].stat[eSTAT.C][eDICE.MOD] = Player[attacker].aMonster[0].stat[eSTAT.C][eDICE.MOD] - (Player[attacker].look[eLOOK.R] - Player[attacker].opponent.look[eLOOK.R]);
-                                Player[attacker].opponent.aMonster[0].stat[eSTAT.I][eDICE.MOD] = Player[attacker].aMonster[0].stat[eSTAT.I][eDICE.MOD] - (Player[attacker].look[eLOOK.R] - Player[attacker].opponent.look[eLOOK.R]);
-                                Player[attacker].opponent.aMonster[0].stat[eSTAT.A][eDICE.MOD] = Player[attacker].aMonster[0].stat[eSTAT.A][eDICE.MOD] - (Player[attacker].look[eLOOK.R] - Player[attacker].opponent.look[eLOOK.R]);
+                                const target = Player[attacker].opponent.aMonster[0];
+                                const penalty = Math.max(
+                                    0,
+                                    Player[attacker].look[eLOOK.R] -
+                                    Player[attacker].opponent.look[eLOOK.R]
+                                );
+
+                                for (let stat = 0; stat < 4; stat++) {
+                                    target.stat[stat][eDICE.MOD] -= penalty;
+                                }
                                 spellcheck = 1;
                               }
                             // Bind (12)
@@ -33125,26 +33012,56 @@
               this.name = this.name + ' + '+this.mastery;
           }
       }//end constructor
-    rollStat (stat){//call x: Player[0].aMonster[0].rollStat(0), stat ex:0-STR, 1 - CON, 2 - INT, 3 - AGI
-      let temprunestat = 0;
-      if(stat == 0){
-        if (sRune.owner == this.foe) {temprunestat = 1;}
-      }
-      
-      if(stat == 1){
-        if (cRune.owner == this.foe) {temprunestat = 1;}
-      }
-      if(stat == 2){
-        if (iRune.owner == this.foe) {temprunestat = 1;}
-      }
-      if(stat == 0){
-        if (aRune.owner == this.foe) {temprunestat = 1;}
-      }
-      let tempstatroll = rnd(this.stat[stat][0]+temprunestat,this.stat[stat][1])+this.stat[stat][2]+temprunestat;
-      if (tempstatroll <0) {return 0;}
-      else{
-        return tempstatroll;
-      }
+    getBuffDice(stat, includeRunes = true) {
+        const base = this.stat[stat];
+        let runeBonus = 0;
+
+        if (includeRunes) {
+            if (
+                stat === 0 &&
+                typeof sRune !== 'undefined' &&
+                sRune.owner === this.foe
+            ) runeBonus = 1;
+
+            if (
+                stat === 1 &&
+                typeof cRune !== 'undefined' &&
+                cRune.owner === this.foe
+            ) runeBonus = 1;
+
+            if (
+                stat === 2 &&
+                typeof iRune !== 'undefined' &&
+                iRune.owner === this.foe
+            ) runeBonus = 1;
+
+            if (
+                stat === 3 &&
+                typeof aRune !== 'undefined' &&
+                aRune.owner === this.foe
+            ) runeBonus = 1;
+        }
+
+        // Preserve the existing rune rule: one extra die and one point.
+        return resolveBuffDice(
+            base[0] + runeBonus,
+            base[1],
+            (base[2] || 0) + runeBonus
+        );
+    }
+
+    rollStat(stat, includeRunes = true) {
+        const dice = this.getBuffDice(stat, includeRunes);
+        let total = dice.flatMod;
+
+        // Zero-sided fallback stats contribute no dice.
+        if (dice.diceSides > 0) {
+            for (let i = 0; i < dice.numDice; i++) {
+                total += Math.floor(Math.random() * dice.diceSides) + 1;
+            }
+        }
+
+        return Math.max(0, total);
     }
     
     place(x,y,z,faceDown = false){
@@ -33192,11 +33109,9 @@
 
                             for(let i = 0; i < 4; i++){
                               
-                              if (this.stat[i][1] >= 10) { offsety3 = .05; } else { offsety3 = 0; }
-                             
-                              // FIX 2: We only add stat[i][2] + temprunestat (Mastery is already baked into stat[i][2]!)
-                              let totalMod = this.stat[i][2] + temprunestat[i];
-
+                              const effective = this.getBuffDice(i);
+                              offsety3 = effective.diceSides >= 10 ? .05 : 0;
+                              let totalMod = effective.flatMod;
                               if (totalMod > 0){
                                 statTextColor = 'green'; // Bright Green
                                 drawText((x+.25*z) + ((1.8/4)*offsetx)*z, y+offsety2*z ,.23,.23, '+' + totalMod, statTextColor, z, 'center');
@@ -33208,7 +33123,7 @@
                               }
 
                                // Draw the base stat string (e.g., "1d6" or "1d6+1")
-                               drawText((x+.24*z) + ((1.8/4)*offsetx)*z, y+(offsety+offsety3)*z, 1.8/4.3, 1.8/4, this.stat[i][3], 'black', z); //str
+                               drawText((x+.24*z) + ((1.8/4)*offsetx)*z, y+(offsety+offsety3)*z, 1.8/4.3, 1.8/4, `${effective.numDice}d${effective.diceSides}`, 'black', z); //str
                               
                               if (i == 1){ offsety = .80; offsety2 = .99; }
                               if (i % 2 == 0){ offsetx = 3; } else { offsetx = 1; }
@@ -57718,53 +57633,110 @@
                         }
                     }
 
-                // A. WALL CHECK (Bypass if we are transitioning maps)
-                    if (!canTransition && Dungeon.isWall(targetX, targetY) && (!Dungeon.ghost)) {
-                        let tileID = Dungeon.maze[targetY][targetX];
-                        let smashedThrough = false;
+                // A. WALL CHECK & INTERACTION PARSER (Bypass if we are transitioning maps)
+                if (!canTransition && Dungeon.isWall(targetX, targetY) && (!Dungeon.ghost)) {
+                    let tileID = Dungeon.maze[targetY][targetX];
+                    
+                    // We only need toughness for things you can bump-to-break (like doors/bars)
+                    // No need to hardcode climbDC anymore!
+                    let tileProp = typeof TILE_PROPERTIES !== 'undefined' && TILE_PROPERTIES[tileID] ? TILE_PROPERTIES[tileID] : { toughness: undefined, name: "Wall" };
+                    
+                    let currentZ = Dungeon.getFloorElevation(Dungeon.x, Dungeon.y);
+                    let targetSurfaceZ = Dungeon.getSurfaceHeight(targetX, targetY);
+                    let heightDiff = targetSurfaceZ - currentZ;
 
-                        // --- STR WALL CRASH LOGIC ---
-                            let toughness = typeof TILE_TOUGHNESS !== 'undefined' ? TILE_TOUGHNESS[tileID] : undefined;
+                    let actionTaken = false;
+                    
+                    // Check if the wall reaches the ceiling (infinite height), meaning we can't climb over it
+                    let isInfiniteWall = (Dungeon.toweringWalls && Dungeon.toweringWalls.includes(tileID) && !Dungeon.tileHeights[tileID]);
+
+                    // ----------------------------------------------------
+                    // 1. CLIMBING / PARKOUR (Prioritized over breaking)
+                    // ----------------------------------------------------
+                    // If the wall is higher than a standard step (0.5), AND it doesn't reach the ceiling
+                    if (heightDiff > 0.5 && !isInfiniteWall) {
+                        
+                        // Dynamic DC: Base 5 + (Height Difference * 8). 
+                        // A 1-tile high wall = DC 13. A 2-tile high wall = DC 21.
+                        let climbDC = Math.floor(5 + (heightDiff * 8)); 
+                        
+                        // Roll AGI (Stat Index 3)
+                        let agiDice = Dungeon.getEffectiveDice ? Dungeon.getEffectiveDice(3) : { numDice: 1, diceSides: 6, flatMod: 0 };
+                        let agiRoll = agiDice.flatMod;
+                        for (let d = 0; d < agiDice.numDice; d++) agiRoll += Math.floor(Math.random() * agiDice.diceSides) + 1;
+
+                        if (agiRoll >= climbDC) {
+                            // SUCCESSFUL CLIMB! Vault onto the platform
+                            if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('step');
                             
-                            if (toughness !== undefined) {
-                                // Safely get Player STR (Stat Index 0 = Base + Modifiers)
-                                let baseStr = (Dungeon.stat && Dungeon.stat[0]) ? Dungeon.stat[0][0] : 1;
-                                let modStr = (Dungeon.stat && Dungeon.stat[0]) ? Dungeon.stat[0][2]: 0;
-                                let maxStr = (Dungeon.stat && Dungeon.stat[0]) ? Dungeon.stat[0][1]: 4;
-                                let playerStr = baseStr + modStr;
-
-                                // Roll to see if we smash it! (Player STR + a 6-sided dice roll)
-                                let crashRoll = rnd(baseStr,maxStr)+modStr; 
-                                if (tileID === 91&& (Dungeon.playerClass =='Rogue'|| Dungeon.playerClass =='Battle-Mage')){crashRoll = 999;}
-                                if (crashRoll >= toughness) {
-                                    // SUCCESS! Break the wall.
-                                    Dungeon.maze[targetY][targetX] = 0;
-                                    smashedThrough = true; // Flag so we don't block movement!
-                                    
-                                    if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('break'); // Add a break sound!
-                                    if (typeof socket !== 'undefined') {
-                                        socket.emit('tile_destroyed', { mapID: Dungeon.mapID, x: targetX, y: targetY });
-                                        socket.emit('suncat_spectate', `player smashed through a wall!`);
-                                    }
-                                }
+                            Dungeon.targetMapX = targetX + 0.5;
+                            Dungeon.targetMapY = targetY + 0.5;
+                            
+                            // Instantly adjust player height to match platform surface to prevent camera clipping
+                            Dungeon.x = Dungeon.targetMapX;
+                            Dungeon.y = Dungeon.targetMapY;
+                            
+                            if (typeof socket !== 'undefined') {
+                                socket.emit('suncat_spectate', `player scaled a wall via Agility (${agiRoll} vs DC ${climbDC})!`);
                             }
+                            actionTaken = true;
+                        } else {
+                            // FAILED CLIMB
+                            if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('cancel');
+                            if (typeof MessageBox !== 'undefined') {
+                                MessageBox.show(0.5, 2, 1, 9, 2, `The ledge is too high to climb! (Rolled ${agiRoll} vs DC ${climbDC})`, 'system', 1, 0);
+                            }
+                            return; // Stop here! Don't try to break the wall if you just slipped trying to climb it.
+                        }
+                    }
 
-                            // --- FAILURE TO BREAK / INDESTRUCTIBLE ---
-                            if (!smashedThrough) {
-                                if (typeof MusicEngine !== 'undefined') { 
-                                    MusicEngine.play3DSFX('cancel');
-                                    
-                                    // ---> THE FIX: Throttle the network emit! <---
-                                    if (typeof socket !== 'undefined') {
-                                        if (!window.lastWallCrashTime || Date.now() - window.lastWallCrashTime > 5000) {
-                                            socket.emit('suncat_spectate', `player has crashed into a wall.`);
-                                            window.lastWallCrashTime = Date.now();
-                                        }
-                                    }
-                                }
-                                return; // Stop the movement!
+                    // ----------------------------------------------------
+                    // 2. STRENGTH BREAKING (Fallback for Bars/Doors/Infinite Walls)
+                    // ----------------------------------------------------
+                    // We only bump-to-break if climbing wasn't an option (e.g. Prison Bars that hit the ceiling)
+                    if (!actionTaken && tileProp.toughness !== undefined) {
+                        let baseStr = (Dungeon.stat && Dungeon.stat[0]) ? Dungeon.stat[0][0] : 1;
+                        let modStr = (Dungeon.stat && Dungeon.stat[0]) ? Dungeon.stat[0][2] : 0;
+                        let maxStr = (Dungeon.stat && Dungeon.stat[0]) ? Dungeon.stat[0][1] : 4;
+
+                        let crashRoll = Math.floor(Math.random() * (maxStr - baseStr + 1)) + baseStr + modStr;
+                        
+                        // Special Class Overrides for Prison Bars (ID 91)
+                        if (tileID === 91 && (Dungeon.playerClass === 'Rogue' || Dungeon.playerClass === 'Battle-Mage')) {
+                            // Roll AGI to pick/squeeze through the bars instead of STR
+                            let agiDice = Dungeon.getEffectiveDice ? Dungeon.getEffectiveDice(3) : { numDice: 1, diceSides: 6, flatMod: 0 };
+                            let agiRoll = agiDice.flatMod;
+                            for (let d = 0; d < agiDice.numDice; d++) agiRoll += Math.floor(Math.random() * agiDice.diceSides) + 1;
+                            
+                            // If they beat a DC 14 lockpick check, they auto-pass the break check
+                            if (agiRoll >= 14) crashRoll = 999;
+                        }
+
+                        if (crashRoll >= tileProp.toughness) {
+                            // SUCCESS! Smash the wall open
+                            Dungeon.maze[targetY][targetX] = 0; // Turn into open floor
+                            actionTaken = true;
+
+                            if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('break');
+                            if (typeof socket !== 'undefined') {
+                                socket.emit('tile_destroyed', { mapID: Dungeon.mapID, x: targetX, y: targetY });
+                                socket.emit('suncat_spectate', `player busted through a ${tileProp.name}!`);
+                            }
+                        } else {
+                            // Failed to break
+                            if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('cancel');
+                            if (typeof MessageBox !== 'undefined') {
+                                MessageBox.show(0.5, 2, 1, 9, 2, `You failed to break the ${tileProp.name}.`, 'system', 1, 0);
                             }
                         }
+                    }
+
+                    // If neither climb nor break succeeded (or wasn't applicable), block movement
+                    if (!actionTaken) {
+                        if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('cancel');
+                        return;
+                    }
+                }
 
                 // B. NPC CHECK
                         let npcsOnTile = [];
@@ -57906,42 +57878,86 @@
                     }
 
                 // D. FINALIZE MOVEMENT
-                    Dungeon.targetMapX = targetX + 0.5;
-                    Dungeon.targetMapY = targetY + 0.5;
-                    Dungeon.isSlidingToTile = true;
+                Dungeon.targetMapX = targetX + 0.5;
+                Dungeon.targetMapY = targetY + 0.5;
+                Dungeon.isSlidingToTile = true;
 
-                    // NEW: Capture the map ID before checking triggers
-                    let previousMapID = Dungeon.mapID;
+                // NEW: Capture the map ID before checking triggers
+                let previousMapID = Dungeon.mapID;
 
-                    // Temporarily set Dungeon.x/y to the target to safely trigger floor events immediately
-                    let tempX = Dungeon.x;
-                    let tempY = Dungeon.y;
-                    Dungeon.x = Dungeon.targetMapX;
-                    Dungeon.y = Dungeon.targetMapY;
+                // Temporarily set Dungeon.x/y to the target to safely trigger floor events immediately
+                let tempX = Dungeon.x;
+                let tempY = Dungeon.y;
+                
+                // ====================================================
+                // --- CHECK FOR FALLS / JUMPING DOWN ---
+                // ====================================================
+                let previousZ = Dungeon.getFloorElevation(tempX, tempY);
+                let newZ = Dungeon.getFloorElevation(targetX, targetY);
+                let dropHeight = previousZ - newZ;
 
-                    Dungeon.checkFloorTriggers();
+                if (dropHeight > 0.5) {
+                    // You dropped off a ledge! Roll AGI to cushion the landing.
+                    let agiDice = Dungeon.getEffectiveDice ? Dungeon.getEffectiveDice(3) : { numDice: 1, diceSides: 6, flatMod: 0 };
+                    let conDice = Dungeon.getEffectiveDice ? Dungeon.getEffectiveDice(1) : { numDice: 1, diceSides: 6, flatMod: 0 };
+                    
+                    let agiRoll = agiDice.flatMod;
+                    for (let d = 0; d < agiDice.numDice; d++) agiRoll += Math.floor(Math.random() * agiDice.diceSides) + 1;
+                    
+                    let mitigatedDrop = Math.max(0, dropHeight - (agiRoll * 0.25)); // AGI reduces effective fall height
 
-                    // FIX: Only restore the old coordinates if we are still on the same map
-                    if (Dungeon.mapID === previousMapID) {
-                        Dungeon.x = tempX;
-                        Dungeon.y = tempY;
+                    if (mitigatedDrop > 0.3) {
+                        // Take Fall Damage! Roll CON to absorb impact.
+                        let conRoll = conDice.flatMod;
+                        for (let d = 0; d < conDice.numDice; d++) conRoll += Math.floor(Math.random() * conDice.diceSides) + 1;
+                        
+                        let rawDamage = Math.floor(mitigatedDrop * 10);
+                        let finalDamage = Math.max(1, rawDamage - conRoll); // CON reduces damage taken
+
+                        // Apply damage to player power/ward
+                        Dungeon.currentWardTime -= (finalDamage * 0.2);
+                        if (Dungeon.currentWardTime < 0) {
+                            Dungeon.currentWardTime = 0;
+                            Dungeon.power -= finalDamage;
+                        }
+
+                        if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('hit');
+                        if (typeof MessageBox !== 'undefined') {
+                            MessageBox.show(0.5, 2, 1, 9, 2, `Ouch! You dropped down and took ${finalDamage} impact damage.`, 'system', 1, 0);
+                        }
                     } else {
-                        // Map changed! Snap immediately to the new target (e.g., 0.5) to prevent rubber-banding
-                        Dungeon.x = Dungeon.targetMapX;
-                        Dungeon.y = Dungeon.targetMapY;
-                    }
-
-                    if (typeof socket !== 'undefined') {
-                        socket.emit("move", {
-                            x: Dungeon.targetMapX,  // Emit the target
-                            y: Dungeon.targetMapY,
-                            dir: Dungeon.dir,
-                            mapID: Dungeon.mapID || 0,
-                            status: Dungeon.status,
-                            portrait: playerSprite, 
-                        });
+                        // Rolled high enough AGI to land gracefully! (Superhero landing)
+                        if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('step');
                     }
                 }
+                // ====================================================
+
+                Dungeon.x = Dungeon.targetMapX;
+                Dungeon.y = Dungeon.targetMapY;
+
+                Dungeon.checkFloorTriggers();
+
+                // FIX: Only restore the old coordinates if we are still on the same map
+                if (Dungeon.mapID === previousMapID) {
+                    Dungeon.x = tempX;
+                    Dungeon.y = tempY;
+                } else {
+                    // Map changed! Snap immediately to the new target
+                    Dungeon.x = Dungeon.targetMapX;
+                    Dungeon.y = Dungeon.targetMapY;
+                }
+
+                if (typeof socket !== 'undefined') {
+                    socket.emit("move", {
+                        x: Dungeon.targetMapX,  // Emit the target
+                        y: Dungeon.targetMapY,
+                        dir: Dungeon.dir,
+                        mapID: Dungeon.mapID || 0,
+                        status: Dungeon.status,
+                        portrait: playerSprite, 
+                    });
+                }
+            } // <-- End of executeDungeonMove
             function processKeyboardMovement(key, ctrlKey) {
                 if (typeof Dungeon === 'undefined' || Dungeon.inputCooldown > 0) return;
                         Dungeon.inputCooldown = Dungeon.updateMomentum();
@@ -58063,7 +58079,49 @@
             max = Math.floor(max);
             return Math.floor(Math.random() * (max - min + 1)+ min);
             }
-    
+            function resolveBuffDice(numDice, diceSides, totalMod) {
+                const tiers = [4, 6, 8, 10, 12, 20];
+
+                numDice = Number(numDice) || 0;
+                diceSides = Number(diceSides) || 0;
+                totalMod = Number(totalMod) || 0;
+
+                while (totalMod >= 4) {
+                    const tier = tiers.indexOf(diceSides);
+
+                    if (tier === tiers.length - 1) {
+                        numDice++;
+                        diceSides = 4;
+                    } else if (tier >= 0) {
+                        diceSides = tiers[tier + 1];
+                    } else {
+                        // Handles existing d2 stats: their first upgrade is d4.
+                        const next = tiers.find(sides => sides > diceSides);
+                        if (next === undefined) break;
+                        diceSides = next;
+                    }
+
+                    totalMod -= 4;
+                }
+
+                while (totalMod <= -4) {
+                    const tier = tiers.indexOf(diceSides);
+
+                    if (tier > 0) {
+                        diceSides = tiers[tier - 1];
+                    } else if (tier === 0 && numDice > 1) {
+                        numDice--;
+                        diceSides = 20;
+                    } else {
+                        // Keep remaining penalties at the minimum die.
+                        break;
+                    }
+
+                    totalMod += 4;
+                }
+
+                return { numDice, diceSides, flatMod: totalMod };
+            }
         //Card Power for shops
             function getPower(card = null, array = null) {
             // --- 1. IF AN ARRAY OF CARDS IS PASSED IN ---
