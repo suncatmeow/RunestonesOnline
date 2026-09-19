@@ -11921,7 +11921,13 @@
 
                     
                     
-                    if (this.frame % 3 === 0) { 
+                    const networkNow = performance.now();
+
+                        if (
+                            socket.connected &&
+                            networkNow - (this.lastNetworkSendAt || 0) >= 50
+                        ) {
+                            this.lastNetworkSendAt = networkNow;
                         // Gather all living allied summons to send over the network
                         let mySummons = this.npcs
                             .filter(n => n.alignment === 'ally' && !n.isDead)
@@ -12925,7 +12931,13 @@
                 drawShape('rec', 0, 0, 1, -10, 0, 10, 10, 0,0,0,0, '#000000', 1);
                 drawShape('rec', 0, 0, 1, 10, 0, 10, 10, 0,0,0,0, '#000000', 1);
 
-                if (this.frame % 3 === 0) { 
+                const networkNow = performance.now();
+
+                    if (
+                        socket.connected &&
+                        networkNow - (this.lastNetworkSendAt || 0) >= 50
+                    ) {
+                        this.lastNetworkSendAt = networkNow;
                     let mySummons = this.npcs
                         .filter(n => n.alignment === 'ally' && !n.isDead)
                         .map(n => ({ id: n.index, x: n.x, y: n.y, type: n.type, dir: n.dir }));
