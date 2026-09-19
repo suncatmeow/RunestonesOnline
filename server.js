@@ -50,7 +50,7 @@
         let activeCustomMap = null;
         let tintagelHubMap = null; 
     //BUDGETING
-        const MAX_AI_CALLS = 30; // Maximum burst of allowed interactions
+        const MAX_AI_CALLS = 6; // Maximum burst of allowed interactions
         const REFILL_TIME = 13000; // Regain 1 interaction token every 15 seconds
         const playerAITokens = {};
         const MAX_SESSION_COST = 2.00; // Hard limit: $1.00
@@ -3385,11 +3385,7 @@
                 return true;
             }
             
-            // THE OVERDRAFT PLEXUS: If the bucket is empty, but this is critical, let it pass!
-            if (isEssential) {
-                bucket.tokens--;
-                return true;
-            }
+            
             
             return false; // Rate-limited
         }
@@ -4593,7 +4589,7 @@
         }
     async function executeAITools(currentResponse, activeSession, socket) {
         let chainCount = 0;
-        const MAX_CHAIN = 6; 
+        const MAX_CHAIN = 3; 
 
         while (currentResponse.functionCalls() && chainCount < MAX_CHAIN) {
             chainCount++;
@@ -4740,7 +4736,7 @@
                                 currentTargetID = targetID; 
                                 lastSwitchTime = Date.now();
                                 
-                                io.emit("updatePlayers", players);
+                                io.emit("updatePlayers", getPublicPlayers());
                                 functionResult = { result: `Teleport successful. You are now standing next to ${requester.name}.` };
                             } else {
                                 functionResult = { result: "Teleport failed. Could not find player coordinates." };
@@ -5077,7 +5073,7 @@
                                 } else if (destMap === 100 && tintagelHubMap) {
                                     io.to(targetID).emit('load_custom_map', tintagelHubMap);
                                 }
-                                io.emit("updatePlayers", players);
+                                io.emit("updatePlayers", getPublicPlayers());
                                 functionResult = { result: `Success: Warped player to map ${destMap}.` };
                             }
 
@@ -5370,7 +5366,7 @@
                             if (players[SUNCAT_ID]) {
                                 players[SUNCAT_ID].state = 'protecting';
                                 players[SUNCAT_ID].lastFireTime = 0; // Reset cooldown
-                                io.emit("updatePlayers", players);
+                                io.emit("updatePlayers", getPublicPlayers());
                                 functionResult = { result: `Protection engaged. Suncat is now firing fireballs using the player's borrowed eyes.` };
                             } else {
                                 functionResult = { result: `Failed: Suncat not found on server.` };
@@ -5379,7 +5375,7 @@
                         else if (call.name === "deactivate_protection") {
                             if (players[SUNCAT_ID]) {
                                 players[SUNCAT_ID].state = 'wandering';
-                                io.emit("updatePlayers", players);
+                                io.emit("updatePlayers", getPublicPlayers());
                                 functionResult = { result: `Protection disengaged. Suncat is standing down.` };
                             } else {
                                 functionResult = { result: `Failed: Suncat not found on server.` };
@@ -5400,7 +5396,7 @@
                                     suncat.y = ny;
                                     suncat.targetX = undefined;
                                     suncat.targetY = undefined;
-                                    io.emit("updatePlayers", players);
+                                    io.emit("updatePlayers", getPublicPlayers());
                                     functionResult = { result: `You successfully warped to Map ${newMap} at coordinates X:${nx}, Y:${ny}. You should observe your surroundings now.` };
                                     
                                     // Let the server know he arrived
@@ -5439,7 +5435,7 @@
                 currentResponse = completion.response; 
 
                 if (currentResponse.usageMetadata) {
-                    updateBudget(currentResponse.usageMetadata);
+                    updateBudget(currentResponse.usageMetadata, socket?.id);
                 }
             }
             
@@ -5922,7 +5918,8 @@
 
         const memoriesToProcess = player.undigestedInfo.slice(0, batchSize);
         const rawMemories = memoriesToProcess.map(m => sanitizeForMemory(m)).filter(m => m !== "").join('\n- ');
-        const previousStory = player.storySoFar || "A new journey begins.";
+        const previousStory =
+            (player.storySoFar || "A new journey begins.").slice(-2400);
         const currentProfile = player.playerProfile ? 
             `Combat: ${player.playerProfile.combatStyle} | Tastes: ${player.playerProfile.tastes} | Personality: ${player.playerProfile.personality}` 
             : "Unknown";
@@ -6574,7 +6571,35 @@
             console.error("[OODA] Action Execution Failed:", e);
         }
         }
+    const activeThoughts = new Set();
+
     async function processSuncatThought(socketId, triggerType, data) {
+        if (!players[socketId]) return;
+
+        if (activeThoughts.has(socketId)) {
+            if (triggerType === "chat") {
+                io.to(socketId).emit("chat_message", {
+                    sender: NPC_NAME,
+                    text: "*One moment—I'm still answering.*",
+                    color: "#aaaaaa"
+                });
+            }
+            return;
+        }
+
+        activeThoughts.add(socketId);
+
+        try {
+            await processSuncatThoughtUnlocked(
+                socketId,
+                triggerType,
+                data || {}
+            );
+        } finally {
+            activeThoughts.delete(socketId);
+        }
+    }
+    async function processSuncatThoughtUnlocked(socketId, triggerType, data) {
         const player = players[socketId];
         if (!player) return;
         if (player.narrationEnabled === false) {
@@ -6711,7 +6736,9 @@
                         suncatStatus += `\n[CURRENT ENVIRONMENT]: We are in the same location.\n${environmentContext}`;
                     }
                 //PLAYER SPECIFIC CONTEXT
-                    const storyContext = player.storySoFar ? `\n[THE STORY SO FAR]: ${player.storySoFar}` : ""; 
+                    const storyContext = player.storySoFar
+                        ? `\n[RECENT STORY]: ${player.storySoFar.slice(-2400)}`
+                        : "";
                     const favorContext = `\n[FAVOR SCORE]: ${playerFavorMemory[socketId] || 0}/10`;
                     let factsContext = "";
                     if (player.playerProfile) {
@@ -7040,8 +7067,10 @@
       
 
         // Grab the player's existing chat history
-        let currentHistory = chatSessions[socketId] ? await chatSessions[socketId].getHistory() : [];
-
+        let currentHistory =
+            triggerType === "chat" && chatSessions[socketId]
+                ? await chatSessions[socketId].getHistory()
+                : [];
 
         // We instruct the unified model to think, act, and speak in a single cohesive turn.
         let unifiedInstruction = dynamicPersona + `
@@ -7070,7 +7099,7 @@
         
         let activeSession;
         // ---> THE FIX: Only load massive chat history if they are actually talking! <---
-        if (triggerType === 'chat' || useBigBrain) {
+        if (triggerType === 'chat') {
             activeSession = activeModel.startChat({ history: currentHistory });
             chatSessions[socketId] = activeSession; 
         } else {
@@ -7080,14 +7109,14 @@
 
         // 1. Send the prompt!
         let result = await activeSession.sendMessage(prompt);
-        
+        updateBudget(result.response.usageMetadata, socketId);
        // 2. If he decided to use a tool, run it through the executor! 
         if (useBigBrain && result.response.functionCalls()) {
             const toolOutput = await executeAITools(result.response, activeSession, io.sockets.sockets.get(socketId));
             result = { response: toolOutput }; // <-- Re-wrap it to prevent the crash!
         }
 
-        if (result.response.usageMetadata) updateBudget(result.response.usageMetadata, socketId);
+        
         let finalSpeech = "";
         try {
             if (result.response.text()) {
@@ -7160,11 +7189,7 @@
                     suncatThoughts: null
                 };
                 
-                if (messageOptions.targetId) {
-                    io.to(messageOptions.targetId).emit("journal_updated", journalPayload);
-                } else {
-                    io.emit("journal_updated", journalPayload);
-                }
+                io.to(socketId).emit("journal_updated", journalPayload);
             }
 
             // 2. FEED THE STOMACH: Send ALL AI output directly into undigestedInfo
@@ -7188,7 +7213,7 @@
 
 
         // ---> THE FIX: Wrap the history save so background events don't bloat the memory! <---
-        if (triggerType === 'chat' || useBigBrain) {
+        if (triggerType === 'chat') {
             let updatedHistory = await activeSession.getHistory(); 
             chatSessions[socketId] = voiceModel.startChat({ history: scrubAIHistory(updatedHistory) });
             await manageHistorySize(socketId);
@@ -7342,6 +7367,24 @@
             }
 ////////////////////////////////////////////
 ///////////////////////////////////////////
+function getPublicPlayers() {
+    return Object.fromEntries(
+        Object.entries(players).map(([id, p]) => [
+            id,
+            {
+                id,
+                name: p.name,
+                x: p.x,
+                y: p.y,
+                mapID: p.mapID,
+                type: p.type,
+                dir: p.dir,
+                status: p.status,
+                summons: p.summons || []
+            }
+        ])
+    );
+}
 //CONNECTION
 io.on("connection", (socket) => {
     //INITIALIZE CONNECTION
@@ -7360,14 +7403,14 @@ io.on("connection", (socket) => {
             undigestedInfo: [],     
             narrationEnabled: true // <--- ADD THIS
         };
-        io.emit("updatePlayers", players);
+        io.emit("updatePlayers", getPublicPlayers());
         socket.emit("load_dead_npcs", deadNPCs);
     //SESSION LIFECYCLE
         socket.on('setIdentity', (data) => {
             if (players[socket.id]) {
                 players[socket.id].name = data.name; 
                 players[socket.id].type = data.sprite; 
-                io.emit("updatePlayers", players); 
+                io.emit("updatePlayers", getPublicPlayers()); 
             }
             });
 
@@ -7575,17 +7618,11 @@ io.on("connection", (socket) => {
                     text: `${me.name} has logged out.`
                 });
 
-                try {
-                    // Empty the stomach safely in the background
-                    await processCognitiveLoad(oldSocketId, true); 
-                } catch (err) {
-                    console.error(`[Disconnect] Failed to digest final memories for ${me.name}:`, err);
-                }
+                
 
                 // Save to persistent memory
                 const memoryKey = me.persistentId || me.name.toLowerCase();
-                let currentHistory = chatSessions[oldSocketId] ? await chatSessions[oldSocketId].getHistory() : [];
-
+                const currentHistory = [];
                 suncatPersistentMemory[memoryKey] = {
                     favor: playerFavorMemory[oldSocketId] || 0,
                     playerProfile: me.playerProfile || { combatStyle: "Unknown", alliances: "Unknown", tastes: "Unknown", personality: "Unknown" },
@@ -7610,7 +7647,7 @@ io.on("connection", (socket) => {
                 delete chatSessions[oldSocketId];
             }
 
-            io.emit("updatePlayers", players);
+            io.emit("updatePlayers", getPublicPlayers());
 
             setTimeout(() => {
                 const isMapEmpty = !Object.values(players).some(p => p.mapID === 999 && p.id !== SUNCAT_ID);
@@ -7621,6 +7658,12 @@ io.on("connection", (socket) => {
         
     //MOVEMENT & NAVIGATION
         socket.on("move", (data) => {
+            if (
+                !data ||
+                !Number.isFinite(data.x) ||
+                !Number.isFinite(data.y) ||
+                !Number.isInteger(data.mapID)
+            ) return;
             if (players[socket.id]) {
                 const player = players[socket.id];
                 // --- NEW: THE EXPLORATION TRACKER ---
@@ -7672,17 +7715,46 @@ io.on("connection", (socket) => {
                     if (tintagelHubMap) socket.emit('load_custom_map', tintagelHubMap);
                 }
 
-                let update = { ...players[socket.id], ...data };
-                if (!data.name) update.name = players[socket.id].name;
-                if (data.summons) update.summons = data.summons;
-                players[socket.id] = update;
-                players[socket.id].lastActive = Date.now();
+                player.x = data.x;
+                player.y = data.y;
+                player.mapID = data.mapID;
+
+                if (Number.isFinite(data.dir)) player.dir = data.dir;
+                if (Number.isFinite(data.type)) player.type = data.type;
+
+                if (typeof data.status === "string") {
+                    player.status = data.status.slice(0, 32);
+                }
+
+                if (Array.isArray(data.summons)) {
+                    player.summons = data.summons
+                        .filter(s =>
+                            s &&
+                            Number.isFinite(s.x) &&
+                            Number.isFinite(s.y) &&
+                            Number.isFinite(s.type)
+                        )
+                        .slice(0, 32)
+                        .map(s => ({
+                            id: s.id,
+                            x: s.x,
+                            y: s.y,
+                            type: s.type,
+                            dir: Number.isFinite(s.dir) ? s.dir : 0,
+                            dirX: Number.isFinite(s.dirX) ? s.dirX : 0,
+                            dirY: Number.isFinite(s.dirY) ? s.dirY : 0,
+                            isMoving: s.isMoving === true,
+                            isAttacking: s.isAttacking === true
+                        }));
+                }
+
+                player.lastActive = Date.now();
                 
                 // 2. Wake Up Logic
                 if (players[socket.id].name.startsWith("[AFK] ")) {
                     players[socket.id].name = players[socket.id].name.replace("[AFK] ", "");
                     // Only broadcast the FULL list if a name changed/someone woke up
-                    io.emit("updatePlayers", players); 
+                    io.emit("updatePlayers", getPublicPlayers()); 
             } else {
                 socket.broadcast.emit("playerMoved", { 
                     id: socket.id, 
@@ -7690,7 +7762,10 @@ io.on("connection", (socket) => {
                     y: data.y,
                     mapID: data.mapID, // <-- ADD THIS so clients know what map they are on
                     dir: data.dir,
-                    summons: data.summons
+                    summons: data.summons,
+                    name: player.name,
+                    type: player.type,
+                    status: player.status,
                 });
                 }
             }
@@ -7720,7 +7795,7 @@ io.on("connection", (socket) => {
                 socket.emit("force_teleport", { mapID: 999 });
                 
                 // 5. Tell everyone else their coordinates updated
-                io.emit("updatePlayers", players);
+                io.emit("updatePlayers", getPublicPlayers());
                 
                 // Optional: Prompt Suncat to narrate their arrival!
                 processSuncatThought(socket.id, 'exploration', { action: `Player has accepted the invitation and stepped through the portal into the new scenario: ${player.mapScenario}.` });
@@ -7817,6 +7892,23 @@ io.on("connection", (socket) => {
         socket.on("npc_died", async (data) => {
             // --- NEW: SUNCAT GAINS XP ---
             let suncat = players[SUNCAT_ID];
+            const reportingPlayer = players[socket.id];
+
+            if (
+                !reportingPlayer ||
+                !data ||
+                data.mapID !== reportingPlayer.mapID
+            ) return;
+
+            const uniqueID = `${data.mapID}_${data.index}`;
+
+            if (data.alignment !== "ally") {
+                if (Object.prototype.hasOwnProperty.call(deadNPCs, uniqueID)) {
+                    return;
+                }
+
+                deadNPCs[uniqueID] = data.isBoss ? Infinity : Date.now();
+            }
             // If Suncat is on the exact same map as the slaughter, he absorbs the stray Qi!
             if (suncat && suncat.mapID === data.mapID) {
                 suncat.xp += data.isBoss ? 150 : 25;
@@ -7832,16 +7924,10 @@ io.on("connection", (socket) => {
                     socket.broadcast.emit("npc_died", data); // Still broadcast so other players see it die
                     return; // Exit early!
                 }
-            let uniqueID = data.mapID + "_" + data.index;
-            if (deadNPCs[uniqueID]) {
-                return; 
-            }
             
-            deadNPCs[uniqueID] = data.isBoss ? Infinity : Date.now();
-
             socket.broadcast.emit("npc_died", data);
             
-            const player = Object.values(players).find(p => p.mapID === data.mapID && p.id !== SUNCAT_ID);
+            const player = reportingPlayer;
             if (!player) return;
 
             const now = Date.now();
@@ -7936,7 +8022,7 @@ io.on("connection", (socket) => {
                 }
 
                 socket.broadcast.emit("remote_player_died", { id: socket.id });
-                io.emit("updatePlayers", players);
+                io.emit("updatePlayers", getPublicPlayers());
             }
         });
         socket.on("challenge_request", (data) => {
@@ -7965,9 +8051,17 @@ io.on("connection", (socket) => {
                     attacker = null; 
                 }
                 if (suncat) {
-                    suncat.hp = (suncat.hp || 100) - (data.payload?.damage || 5);
-                    let incomingDamage = data.payload?.damage || data.payload?.attackerStats?.damage || 5;
-                    suncat.hp = (suncat.hp || 100) - incomingDamage;
+                    
+                    const reportedDamage =
+                        data.payload?.damage ??
+                        data.payload?.attackerStats?.damage ??
+                        5;
+
+                    const incomingDamage = Number.isFinite(reportedDamage)
+                        ? Math.max(0, reportedDamage)
+                        : 0;
+
+                    suncat.hp = Math.max(0, (suncat.hp ?? 100) - incomingDamage);
                     // 1. SUNCAT KNOCKBACK MATH
                     if (data.payload?.x !== undefined && data.payload?.y !== undefined) {
                         let dx = suncat.x - data.payload.x;
@@ -7983,7 +8077,7 @@ io.on("connection", (socket) => {
                     }
 
                     io.emit("remote_npc_flash", { id: SUNCAT_ID });
-                    io.emit("updatePlayers", players); 
+                    io.emit("updatePlayers", getPublicPlayers()); 
                     
                     // 2. DID HE DIE?
                     if (suncat.hp <= 0) {
@@ -7993,7 +8087,7 @@ io.on("connection", (socket) => {
                         suncat.aggroList = new Set(); // Wipe aggro if he dies
                         suncatState = 'active';
 
-                        io.emit("updatePlayers", players);
+                        io.emit("updatePlayers", getPublicPlayers());
                         io.emit("chat_message", { sender: "Suncat", text: "Ouch... I've sustained too much damage. Returning to my realm to heal.", color: "#ff6600" });
                         processSuncatThought(socket.id, 'event', { action: "You just took lethal damage from a player and were forced to retreat to Map 22 to heal." });
                     } 
@@ -8064,7 +8158,7 @@ io.on("connection", (socket) => {
 
             if (player.name.startsWith("[AFK] ")) {
                 player.name = player.name.replace("[AFK] ", "");
-                io.emit("updatePlayers", players);
+                io.emit("updatePlayers", getPublicPlayers());
             }
 
             console.log(`${player.name} says: ${safeText}`);
@@ -8113,7 +8207,7 @@ io.on("connection", (socket) => {
                 socket.emit('chat_message', { sender: "[SYSTEM]", text: "Emergency extraction initiated. Returning to Suncat's Realm.", color: "#ffff00" });
                 players[socket.id].mapID = 22; players[socket.id].x = 5.5; players[socket.id].y = 5.5;
                 io.to(socket.id).emit("force_teleport", { mapID: 22 });
-                io.emit("updatePlayers", players);
+                io.emit("updatePlayers", getPublicPlayers());
                 return; 
             }
             if (content === ".hack//clear") {
@@ -8894,19 +8988,20 @@ io.on("connection", (socket) => {
                 player.x = mapData.startX + 0.5;
                 player.y = mapData.startY + 0.5;
                 
-                io.emit("updatePlayers", players);
-                });
-            socket.on("force_ai_action", async (instruction) => {
+                io.emit("updatePlayers", getPublicPlayers());
+            });
+        socket.on("force_ai_action", async (instruction) => {
             const player = players[socket.id];
-            if (!player) return;
-            if (player.narrationEnabled === false) return;
-            if(player.name!="Unknown"){
-            console.log(`[Force AI Action] Triggered by client for ${player.name}: ${instruction}`);
-            }
-            // We pass it to Suncat's brain disguised as a chat message, 
-            // but wrapped in a System Directive so he knows to obey it immediately.
-            processSuncatThought(socket.id, 'chat', { 
-                text: `[SYSTEM DIRECTIVE]: ${instruction}. EXECUTE IMMEDIATELY.` 
+
+            if (
+                !player ||
+                player.name === "Unknown" ||
+                player.narrationEnabled === false ||
+                typeof instruction !== "string"
+            ) return;
+
+            void processSuncatThought(socket.id, "exploration", {
+                action: instruction.slice(0, 600)
             });
         });
     //////////////
@@ -8917,6 +9012,11 @@ io.on("connection", (socket) => {
     setInterval(() => {
     const suncat = players[SUNCAT_ID];
         if (!suncat) return;
+        const hasConnectedPlayer = Object.keys(players).some(
+            id => id !== SUNCAT_ID && io.sockets.sockets.has(id)
+        );
+
+        if (!hasConnectedPlayer) return;
         const now = Date.now();
         let digestionDelay = 0; 
         //SECLUSION
@@ -9084,7 +9184,7 @@ io.on("connection", (socket) => {
             suncat.x = Math.max(1, Math.min(maxBounds, suncat.x));
             suncat.y = Math.max(1, Math.min(maxBounds, suncat.y));
 
-            io.emit("updatePlayers", players);
+            io.emit("updatePlayers", getPublicPlayers());
         //SUNCAT SFX EMITTER
             if (Math.random() < 0.001) { 
                 // Pick a sound that fits his "Glitched Ghost" persona
@@ -9110,130 +9210,7 @@ io.on("connection", (socket) => {
             }
         //SUNCAT RANDOM EVENTS
             const directorRoll = Math.random();
-            // EVENT A: Proactive Speech
-                if (directorRoll < 0.03) {
-                    const nearbyPlayer = Object.values(players).find(p => p.id !== SUNCAT_ID && p.mapID === suncat.mapID && Math.abs(p.x - suncat.x) < 4 && Math.abs(p.y - suncat.y) < 4&& p.narrationEnabled !== false);
-
-                    if (nearbyPlayer && chatSessions[nearbyPlayer.id]) {
-                        nearbyPlayer.npcIsTyping = true;
-                        const typingFailSafe = setTimeout(() => { nearbyPlayer.npcIsTyping = false; }, 20000);
-                        const proactivePrompt = `You are idling near ${nearbyPlayer.name} on Map ${suncat.mapID}. Speak to them unprompted. If favor is ok (>3), ask a personal question, share lore, or comment on this location. If favor is bad(<3), insult them or tell them to go away. DO NOT use brackets or tags in your response.`;
-                        
-                        setTimeout(async () => {
-                            try {
-                                let dynamicPersona = PERSONA_RULES_DB.core + "\n" + PERSONA_RULES_DB.commands + "\n" + PERSONA_RULES_DB.judgement_mode;
-                                const activeModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite", systemInstruction: dynamicPersona, tools: toolsDef });
-                                chatSessions[nearbyPlayer.id] = activeModel.startChat({ history: await chatSessions[nearbyPlayer.id].getHistory() });
-
-                                const result = await chatSessions[nearbyPlayer.id].sendMessage(proactivePrompt);
-                                if (result.response.usageMetadata) updateBudget(result.response.usageMetadata);
-                                
-                                let proactiveOptions = { sender: NPC_NAME, color: "#ffffff" };
-                                broadcastSuncatMessage(result.response.text(), proactiveOptions);
-                                await manageHistorySize(nearbyPlayer.id);
-                            }catch (e) { 
-                                console.error("Proactive Speech Failed", e); 
-                            } finally {
-                                clearTimeout(typingFailSafe);
-                                nearbyPlayer.npcIsTyping = false;
-                            }
-                        }, 1000);
-                    }
-                }
-            // EVENT B: DM Pacing / Plot Advance
-                else if (directorRoll >= 0.03 && directorRoll < 0.06) {
-                    const advPlayer = Object.values(players).find(p => p.id !== SUNCAT_ID && (p.mapID === 999 || p.activeQuest)&& p.narrationEnabled !== false);
-
-                    if (advPlayer && chatSessions[advPlayer.id]) {
-                        advPlayer.npcIsTyping = true;
-                        const typingFailSafe = setTimeout(() => { advPlayer.npcIsTyping = false; }, 20000);
-                        
-                        const plotContext = advPlayer.activeQuest ? `Current Quest: ${advPlayer.activeQuest}` : "Wandering an uncharted map.";
-                        const activeMapLore = getMapLore(advPlayer.mapID); 
-                        
-                        // --- THE RNG PACING DIRECTOR ---
-                        const pacingRoll = Math.random();
-                        let dmPrompt = "";
-                        let requiresBigBrain = false;
-                        let injectedPersona = PERSONA_RULES_DB.core + "\n";
-                        
-                        // Track dynamic message options for the pacing events
-                        let pacingMsgOptions = { sender: NPC_NAME, color: "#ffffff" };
-                         if (pacingRoll < 0.9) {
-                            pacingMsgOptions = { sender: "", color: "#cccccc" }; // Narrator
-                            dmPrompt = `[DM PACING]: ${advPlayer.name} is lingering on Map ${advPlayer.mapID}.\n[TERRAIN]: ${activeMapLore}\nNarrate the creepy or beautiful atmosphere around them in exactly ONE atmospheric sentence. Make them feel watched. DO NOT ask questions.Omit Suncat's perspective.`;
-                        } 
-                        else {
-                            // 1. SERVER does the logic. No AI required here.
-                                let bossNPC = activeCustomMap.npcs.find(n => n.isBoss);
-                                let mID = bossNPC ? bossNPC.type : 54; // Fallback to Goblin if no boss found
-
-                                let spawnSpot = {
-                                    x: advPlayer.x + (Math.random() > 0.5 ? 4 : -4),
-                                    y: advPlayer.y + (Math.random() > 0.5 ? 4 : -4)
-                                };
-
-                                // Clamp it safely within the 100x100 grid bounds
-                                spawnSpot.x = Math.max(2, Math.min(97, Math.floor(spawnSpot.x)));
-                                spawnSpot.y = Math.max(2, Math.min(97, Math.floor(spawnSpot.y)));
-                            // 2. SERVER spawns the monster natively
-                            io.emit("remote_spawn_npc", {
-                                mapID: advPlayer.mapID,
-                                index: Math.floor(Math.random() * 100000) + 1000,
-                                x: spawnSpot.x, y: spawnSpot.y,
-                                type: CARD_MANIFEST_DB[mID].sprite || mID,
-                                state: 'chasing',color: '#ff0000',
-                                deck: buildSynergisticDeck(mID, 300),
-                                dialogue: ["You cannot hide!"], // Temporary dialogue
-                                isBoss: false,
-                                alignment:'foe',
-                                role:'battle'
-                            });
-
-                            // 3. AI ONLY does the narrative (Cheap!)
-                            requiresBigBrain = false; // <-- MASSIVE SAVINGS. NO TOOLS NEEDED.
-                            pacingMsgOptions = { sender: "", color: "#cccccc" };
-                            
-                            dmPrompt = `[DM PACING]: A ${CARD_MANIFEST_DB[mID].name} just ambushed ${advPlayer.name} on Map ${advPlayer.mapID}. Narrate this sudden attack dynamically in exactly ONE sentence using a ${dmMood} tone.`;                  
-                        }
-
-                        setTimeout(async () => {
-                            try {
-                                let modelConfig = { 
-                                model: requiresBigBrain ? "gemini-2.5-flash-lite" : "gemini-2.5-flash-lite", 
-                                systemInstruction: injectedPersona
-                            };
-                            if (requiresBigBrain) {
-                                modelConfig.tools = [{
-                                    functionDeclarations: toolsDef[0].functionDeclarations.filter(tool => 
-                                        !['createCustomMap', 'teleportPlayer', 'teleportToPlayer', 'kickPlayer', 'banishPlayer', 'vanquishPlayer'].includes(tool.name)
-                                    )
-                                }];
-                            }
-                                const activeDmModel = genAI.getGenerativeModel(modelConfig);
-                                chatSessions[advPlayer.id] = activeDmModel.startChat({ history: await chatSessions[advPlayer.id].getHistory() });
-                                
-                                const result = await chatSessions[advPlayer.id].sendMessage(dmPrompt);
-                                
-                                // Only try to execute tools if we gave the AI the tools payload!
-                                let finalResponse = requiresBigBrain 
-                                    ? await executeAITools(result.response, chatSessions[advPlayer.id], io.sockets.sockets.get(advPlayer.id))
-                                    : result.response;
-                                
-                                if (finalResponse.text()) broadcastSuncatMessage(finalResponse.text(), pacingMsgOptions);                        
-                                players[advPlayer.id].lastSuncatChat = Date.now(); // <--- FIX: Start the conversation timer!
-                                let updatedHistory = await chatSessions[advPlayer.id].getHistory(); 
-                                chatSessions[advPlayer.id] = activeDmModel.startChat({ history: scrubAIHistory(updatedHistory) });
-                                await manageHistorySize(advPlayer.id);
-                            } catch (e) {
-                                console.error("DM Proactive Error:", e);
-                            } finally {
-                                clearTimeout(typingFailSafe);
-                                advPlayer.npcIsTyping = false;
-                            }
-                        }, 1000);
-                    }
-                }
+            
     }, 30000); // END OF THE 10 SECOND INTERVAL
     
 // DEAD NPC GARBAGE COLLECTOR
@@ -9277,7 +9254,7 @@ setInterval(() => {
         suncat.x = target.x + (Math.random() > 0.5 ? 2 : -2); // Warp slightly offset so he doesn't land on their head
         suncat.y = target.y + (Math.random() > 0.5 ? 2 : -2);
         
-        io.emit("updatePlayers", players);
+        io.emit("updatePlayers", getPublicPlayers());
         
         // Creepy system message to the victim
         io.to(targetId).emit("chat_message", { 
@@ -9303,7 +9280,7 @@ setInterval(() => {
         suncat.x = Math.max(1, Math.min(maxB, suncat.x));
         suncat.y = Math.max(1, Math.min(maxB, suncat.y));
         
-        io.emit("updatePlayers", players);
+        io.emit("updatePlayers", getPublicPlayers());
     }
 
     // 5. RAPID FIRE SPELLCASTING
@@ -9365,7 +9342,7 @@ setInterval(() => {
                     delete playerFavorMemory[socketId];
                     delete playerAITokens[socketId];
                     delete chatSessions[socketId];
-                    io.emit("updatePlayers", players);
+                    io.emit("updatePlayers", getPublicPlayers());
                 }
                 continue; // Skip to the next player
             }
@@ -9400,7 +9377,7 @@ setInterval(() => {
                 saveSuncatMemory();
                 
                 player.name = "[AFK] " + player.name;
-                io.emit("updatePlayers", players);
+                io.emit("updatePlayers", getPublicPlayers());
                 
                 // Delete the expensive AI chat session from active RAM
                 if (chatSessions[socketId]) {
