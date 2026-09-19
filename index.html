@@ -163,7 +163,7 @@
         var preGame = 0;
         let debug = 0;
         let Dbug = 0;
-        let songcount = 52;
+        let songcount = 56;
         var resize = 0;
         //Enums
             const MOVEMENT_KEYS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'w', 'W', 'a', 'A', 's', 'S', 'd', 'D', 'q', 'Q', 'e', 'E']);
@@ -60836,9 +60836,21 @@
             this.currentSong = new CoastalModule(this.ctx, this.masterGain);
             this.style = "Coast";
             break;
-        case 52: case 'Lacrimosa':
-            this.currentSong = new LacrimosaModule(this.ctx, this.masterGain);
-            this.style = "Lacrimosa";
+        case 52: case 'Lacrimosa2':
+            this.currentSong = new Lacrimosa2Module(this.ctx, this.masterGain);
+            this.style = "Doom";
+            break;
+        case 53: case 'Cathedral':
+            this.currentSong = new CathedralModule(this.ctx, this.masterGain);
+            this.style = "Cathedral";
+            break;
+        case 54: case 'Crown':
+            this.currentSong = new CrownModule(this.ctx, this.masterGain);
+            this.style = "Crown";
+            break;
+        case 55: case 'Twilight':
+            this.currentSong = new TwilightModule(this.ctx, this.masterGain);
+            this.style = "Twilight of the Gods";
             break;
           default:
           console.error("Unknown style:", style);
@@ -79188,7 +79200,8 @@
         };
       }
     }
-    // MODULE 49: Lacrimosa (Requiem)
+  //////
+  // MODULE 49: Lacrimosa (Requiem)
     class LacrimosaModule {
       constructor(ctx, dest) {
         this.ctx = ctx;
@@ -79198,7 +79211,7 @@
 
         // --- GLOBAL ACOUSTICS ---
         this.master = ctx.createGain();
-        this.master.gain.value = 0.65; 
+        this.master.gain.value = 1; 
 
         // Cathedral Reverb
         this.revNode = ctx.createConvolver();
@@ -79951,569 +79964,501 @@
     }
     // MODULE 50: 
     class TantagelEpicModule {
-      constructor(ctx, dest) {
-        this.ctx = ctx;
-        this.dest = dest;
-        this.isStopped = false;
-        this.timers = [];
+        static sharedNoiseBuffer = null;
+        static sharedImpulseBuffer = null;
 
-        // --- GLOBAL ACOUSTICS (The Abyss) ---
-        this.master = ctx.createGain();
-        this.master.gain.value = 0.65; 
+        constructor(ctx, dest) {
+            this.ctx = ctx;
+            this.dest = dest;
+            this.isStopped = false;
+            this.timers = [];
 
-        this.revNode = ctx.createConvolver();
-        this.setupCastleReverb();
-        this.revGain = ctx.createGain(); this.revGain.gain.value = 0.55; // Huge reverb
-        this.dryGain = ctx.createGain(); this.dryGain.gain.value = 0.7;
+            this.master = ctx.createGain();
+            this.master.gain.value = 0.65; 
 
-        // Heavy "Slam" Compression to glue the drums and orchestra together
-        this.comp = ctx.createDynamicsCompressor();
-        this.comp.threshold.value = -24;
-        this.comp.ratio.value = 12;
-        this.comp.attack.value = 0.005; // Fast attack for punchy drums
-        this.comp.release.value = 0.1;
+            this.revNode = ctx.createConvolver();
+            this.setupCastleReverb();
+            this.revGain = ctx.createGain(); this.revGain.gain.value = 0.55; 
+            this.dryGain = ctx.createGain(); this.dryGain.gain.value = 0.7;
 
-        this.input = ctx.createGain();
-        this.input.connect(this.comp);
-        this.comp.connect(this.revNode);
-        this.comp.connect(this.dryGain);
-        this.revNode.connect(this.revGain);
-        this.revGain.connect(this.master);
-        this.dryGain.connect(this.master);
-        this.master.connect(this.dest);
+            this.comp = ctx.createDynamicsCompressor();
+            this.comp.threshold.value = -24;
+            this.comp.ratio.value = 12;
+            this.comp.attack.value = 0.005; 
+            this.comp.release.value = 0.1;
 
-        // --- MUSICAL SCORE (A Minor) ---
-        this.tempo = 105; // Sped up slightly for a marching, aggressive feel
-        this.tickCount = 0;
-        this.rootFreq = 220.00; // A3
-        this.noiseBuffer = this.createNoiseBuffer(1.0);
-        
-        const _ = null;
+            this.input = ctx.createGain();
+            this.input.connect(this.comp);
+            this.comp.connect(this.revNode);
+            this.comp.connect(this.dryGain);
+            this.revNode.connect(this.revGain);
+            this.revGain.connect(this.master);
+            this.dryGain.connect(this.master);
+            this.master.connect(this.dest);
 
-        // 1. THE MELODY (Soaring Doomsday Brass/Strings)
-        this.melodyScore = [
-            // Bar 1-8
-            [0, 4], _, _, _, [7, 2], _, [3, 2], _, [7, 8], _, _, _, _, _, _, _,
-            [0, 4], _, _, _, [8, 2], _, [7, 2], _, [8, 8], _, _, _, _, _, _, _,
-            [0, 4], _, _, _, [10, 2], _, [8, 2], _, [10, 8], _, _, _, _, _, _, _,
-            [0, 4], _, _, _, [12, 2], _, [10, 2], _, [12, 8], _, _, _, _, _, _, _,
-            [10, 4], _, _, _, [10, 2], _, [10, 2], _, [12, 4], _, _, _, [7, 4], _, _, _,
-            [8, 4], _, _, _, [8, 2], _, [8, 2], _, [10, 4], _, _, _, [5, 4], _, _, _,
-            [7, 4], _, _, _, [7, 2], _, [7, 2], _, [8, 4], _, _, _, [3, 4], _, _, _,
-            [5, 2], _, [8, 2], _, [7, 2], _, [5, 2], _, [3, 2], _, [2, 2], _, [0, 2], _, [-1, 2], _,
+            this.tempo = 105; 
+            this.tickCount = 0;
+            this.rootFreq = 220.00; 
             
-            // --- THE B-SECTION CLIMAX ---
-            [19, 2], _, [17, 1], [15, 1], [17, 2], _, [15, 1], [14, 1], [15, 2], _, [14, 1], [12, 1], [14, 2], _, [12, 1], [11, 1],
-            [12, 2], _, [10, 1], [8, 1], [10, 2], _, [8, 1], [7, 1], [8, 2], _, [7, 1], [5, 1], [7, 2], _, [5, 1], [3, 1],
-            [5, 2], _, [3, 1], [2, 1], [3, 2], _, [2, 1], [0, 1], [2, 2], _, [0, 1], [-1, 1], [0, 2], _, [-1, 1], [-3, 1],
-            [-1, 4], _, _, _, [-5, 4], _, _, _, [0, 4], _, _, _, [2, 4], _, _, _
-        ];
-
-        // 2. THE ALBERTI HARMONY (Aggressive Spiccato Strings)
-        this.harmonyScore = [
-            // Bar 1-8
-            [-12, 2], _, [-9, 2], _, [-5, 2], _, [-9, 2], _, [-12, 2], _, [-9, 2], _, [-5, 2], _, [-9, 2], _,
-            [-12, 2], _, [-7, 2], _, [-4, 2], _, [-7, 2], _, [-12, 2], _, [-7, 2], _, [-4, 2], _, [-7, 2], _,
-            [-14, 2], _, [-10, 2], _, [-7, 2], _, [-10, 2], _, [-14, 2], _, [-10, 2], _, [-7, 2], _, [-10, 2], _,
-            [-14, 2], _, [-9, 2], _, [-5, 2], _, [-9, 2], _, [-14, 2], _, [-9, 2], _, [-5, 2], _, [-9, 2], _,
-            [-17, 2], _, [-14, 2], _, [-9, 2], _, [-14, 2], _, [-17, 2], _, [-14, 2], _, [-9, 2], _, [-14, 2], _,
-            [-19, 2], _, [-14, 2], _, [-10, 2], _, [-14, 2], _, [-19, 2], _, [-14, 2], _, [-10, 2], _, [-14, 2], _,
-            [-21, 2], _, [-17, 2], _, [-12, 2], _, [-17, 2], _, [-21, 2], _, [-17, 2], _, [-12, 2], _, [-17, 2], _,
-            [-22, 2], _, [-17, 2], _, [-13, 2], _, [-17, 2], _, [-22, 2], _, [-17, 2], _, [-13, 2], _, [-17, 2], _,
+            // Use static cached noise to prevent frame drops
+            if (!TantagelEpicModule.sharedNoiseBuffer) {
+                TantagelEpicModule.sharedNoiseBuffer = this.createNoiseBuffer(1.0);
+            }
+            this.noiseBuffer = TantagelEpicModule.sharedNoiseBuffer;
             
-            // --- THE B-SECTION CLIMAX (Frantic Arpeggios) ---
-            [-12, 1], [-9, 1], [-5, 1], [-9, 1], [-14, 1], [-10, 1], [-7, 1], [-10, 1], [-16, 1], [-12, 1], [-9, 1], [-12, 1], [-17, 1], [-13, 1], [-10, 1], [-13, 1],
-            [-19, 1], [-16, 1], [-12, 1], [-16, 1], [-21, 1], [-17, 1], [-14, 1], [-17, 1], [-22, 1], [-19, 1], [-16, 1], [-19, 1], [-24, 1], [-21, 1], [-17, 1], [-21, 1],
-            [-22, 1], [-19, 1], [-17, 1], [-19, 1], [-24, 1], [-21, 1], [-17, 1], [-21, 1], [-25, 1], [-22, 1], [-17, 1], [-22, 1], [-27, 1], [-24, 1], [-19, 1], [-24, 1],
-            [-17, 2], _, [-13, 2], _, [-10, 2], _, [-13, 2], _, [-17, 2], _, [-13, 2], _, [-10, 2], _, [-13, 2], _
-        ];
+            const _ = null;
 
-        // 3. THE WALKING BASS (Massive Sub-Bass + Growl)
-        this.bassScore = [
-            [-24, 16], _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, 
-            [-19, 16], _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, 
-            [-26, 16], _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, 
-            [-21, 16], _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, 
-            [-21, 16], _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, 
-            [-22, 16], _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, 
-            [-24, 16], _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, 
-            [-29, 16], _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, 
-            
-            // --- THE B-SECTION CLIMAX (Heavy downward march) ---
-            [-24, 4], _, _, _, [-26, 4], _, _, _, [-28, 4], _, _, _, [-29, 4], _, _, _, 
-            [-19, 4], _, _, _, [-21, 4], _, _, _, [-22, 4], _, _, _, [-24, 4], _, _, _, 
-            [-22, 4], _, _, _, [-24, 4], _, _, _, [-25, 4], _, _, _, [-27, 4], _, _, _, 
-            [-29, 16], _, _, _, _, _, _, _, _, _, _, _, _, _, _, _  
-        ];
-      }
+            this.melodyScore = [
+                [0, 4], _, _, _, [7, 2], _, [3, 2], _, [7, 8], _, _, _, _, _, _, _,
+                [0, 4], _, _, _, [8, 2], _, [7, 2], _, [8, 8], _, _, _, _, _, _, _,
+                [0, 4], _, _, _, [10, 2], _, [8, 2], _, [10, 8], _, _, _, _, _, _, _,
+                [0, 4], _, _, _, [12, 2], _, [10, 2], _, [12, 8], _, _, _, _, _, _, _,
+                [10, 4], _, _, _, [10, 2], _, [10, 2], _, [12, 4], _, _, _, [7, 4], _, _, _,
+                [8, 4], _, _, _, [8, 2], _, [8, 2], _, [10, 4], _, _, _, [5, 4], _, _, _,
+                [7, 4], _, _, _, [7, 2], _, [7, 2], _, [8, 4], _, _, _, [3, 4], _, _, _,
+                [5, 2], _, [8, 2], _, [7, 2], _, [5, 2], _, [3, 2], _, [2, 2], _, [0, 2], _, [-1, 2], _,
+                [19, 2], _, [17, 1], [15, 1], [17, 2], _, [15, 1], [14, 1], [15, 2], _, [14, 1], [12, 1], [14, 2], _, [12, 1], [11, 1],
+                [12, 2], _, [10, 1], [8, 1], [10, 2], _, [8, 1], [7, 1], [8, 2], _, [7, 1], [5, 1], [7, 2], _, [5, 1], [3, 1],
+                [5, 2], _, [3, 1], [2, 1], [3, 2], _, [2, 1], [0, 1], [2, 2], _, [0, 1], [-1, 1], [0, 2], _, [-1, 1], [-3, 1],
+                [-1, 4], _, _, _, [-5, 4], _, _, _, [0, 4], _, _, _, [2, 4], _, _, _
+            ];
 
-      createNoiseBuffer(duration) {
-        const bufferSize = this.ctx.sampleRate * duration;
-        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
-        const data = buffer.getChannelData(0);
-        for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
-        return buffer;
-      }
+            this.harmonyScore = [
+                [-12, 2], _, [-9, 2], _, [-5, 2], _, [-9, 2], _, [-12, 2], _, [-9, 2], _, [-5, 2], _, [-9, 2], _,
+                [-12, 2], _, [-7, 2], _, [-4, 2], _, [-7, 2], _, [-12, 2], _, [-7, 2], _, [-4, 2], _, [-7, 2], _,
+                [-14, 2], _, [-10, 2], _, [-7, 2], _, [-10, 2], _, [-14, 2], _, [-10, 2], _, [-7, 2], _, [-10, 2], _,
+                [-14, 2], _, [-9, 2], _, [-5, 2], _, [-9, 2], _, [-14, 2], _, [-9, 2], _, [-5, 2], _, [-9, 2], _,
+                [-17, 2], _, [-14, 2], _, [-9, 2], _, [-14, 2], _, [-17, 2], _, [-14, 2], _, [-9, 2], _, [-14, 2], _,
+                [-19, 2], _, [-14, 2], _, [-10, 2], _, [-14, 2], _, [-19, 2], _, [-14, 2], _, [-10, 2], _, [-14, 2], _,
+                [-21, 2], _, [-17, 2], _, [-12, 2], _, [-17, 2], _, [-21, 2], _, [-17, 2], _, [-12, 2], _, [-17, 2], _,
+                [-22, 2], _, [-17, 2], _, [-13, 2], _, [-17, 2], _, [-22, 2], _, [-17, 2], _, [-13, 2], _, [-17, 2], _,
+                [-12, 1], [-9, 1], [-5, 1], [-9, 1], [-14, 1], [-10, 1], [-7, 1], [-10, 1], [-16, 1], [-12, 1], [-9, 1], [-12, 1], [-17, 1], [-13, 1], [-10, 1], [-13, 1],
+                [-19, 1], [-16, 1], [-12, 1], [-16, 1], [-21, 1], [-17, 1], [-14, 1], [-17, 1], [-22, 1], [-19, 1], [-16, 1], [-19, 1], [-24, 1], [-21, 1], [-17, 1], [-21, 1],
+                [-22, 1], [-19, 1], [-17, 1], [-19, 1], [-24, 1], [-21, 1], [-17, 1], [-21, 1], [-25, 1], [-22, 1], [-17, 1], [-22, 1], [-27, 1], [-24, 1], [-19, 1], [-24, 1],
+                [-17, 2], _, [-13, 2], _, [-10, 2], _, [-13, 2], _, [-17, 2], _, [-13, 2], _, [-10, 2], _, [-13, 2], _
+            ];
 
-      setupCastleReverb() {
-        const len = this.ctx.sampleRate * 4.0; // Huge 4-second tail
-        const buf = this.ctx.createBuffer(2, len, this.ctx.sampleRate);
-        for (let c = 0; c < 2; c++) {
-          const d = buf.getChannelData(c);
-          for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3.0);
+            this.bassScore = [
+                [-24, 16], _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, 
+                [-19, 16], _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, 
+                [-26, 16], _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, 
+                [-21, 16], _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, 
+                [-21, 16], _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, 
+                [-22, 16], _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, 
+                [-24, 16], _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, 
+                [-29, 16], _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, 
+                [-24, 4], _, _, _, [-26, 4], _, _, _, [-28, 4], _, _, _, [-29, 4], _, _, _, 
+                [-19, 4], _, _, _, [-21, 4], _, _, _, [-22, 4], _, _, _, [-24, 4], _, _, _, 
+                [-22, 4], _, _, _, [-24, 4], _, _, _, [-25, 4], _, _, _, [-27, 4], _, _, _, 
+                [-29, 16], _, _, _, _, _, _, _, _, _, _, _, _, _, _, _  
+            ];
         }
-        this.revNode.buffer = buf;
-      }
 
-      start() {
-        this.isStopped = false;
-        this.tickCount = 0;
-        this.timers = [];
-        this.master.gain.setValueAtTime(0, this.ctx.currentTime);
-        this.master.gain.linearRampToValueAtTime(0.65, this.ctx.currentTime + 1);
-        this.scheduleNextTick();
-      }
+        createNoiseBuffer(duration) {
+            const bufferSize = this.ctx.sampleRate * duration;
+            const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+            const data = buffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+            return buffer;
+        }
 
-      stop() {
-        this.isStopped = true;
-        this.timers.forEach(t => clearTimeout(t));
-        this.timers = [];
+        setupCastleReverb() {
+            if (!TantagelEpicModule.sharedImpulseBuffer) {
+                const len = this.ctx.sampleRate * 4.0;
+                const buf = this.ctx.createBuffer(2, len, this.ctx.sampleRate);
+                for (let c = 0; c < 2; c++) {
+                    const d = buf.getChannelData(c);
+                    for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3.0);
+                }
+                TantagelEpicModule.sharedImpulseBuffer = buf;
+            }
+            this.revNode.buffer = TantagelEpicModule.sharedImpulseBuffer;
+        }
 
-        const t = this.ctx.currentTime;
-        this.master.gain.cancelScheduledValues(t);
-        this.master.gain.linearRampToValueAtTime(0, t + 1.0); 
-
-        setTimeout(() => {
-          if (this.input) this.input.disconnect();
-          if (this.comp) this.comp.disconnect();
-          if (this.revNode) this.revNode.disconnect();
-          if (this.revGain) this.revGain.disconnect();
-          if (this.dryGain) this.dryGain.disconnect();
-          if (this.master) this.master.disconnect();
-        }, 4000); 
-      }
-
-      // --- THE SEQUENCER ---
-
-      scheduleNextTick() {
-        if (this.isStopped) return;
-
-        const t = this.ctx.currentTime + 0.1; 
-        this.playTick(t);
-
-        this.tickCount++;
-
-        const tickDur = (60.0 / this.tempo) / 4;
-        const timerId = setTimeout(() => {
-            this.timers = this.timers.filter(id => id !== timerId);
+        start() {
+            this.isStopped = false;
+            this.tickCount = 0;
+            this.timers = [];
+            this.master.gain.setValueAtTime(0, this.ctx.currentTime);
+            this.master.gain.linearRampToValueAtTime(0.65, this.ctx.currentTime + 1);
             this.scheduleNextTick();
-        }, tickDur * 1000);
-        this.timers.push(timerId);
-      }
-
-      playTick(t) {
-        const tickDur = (60.0 / this.tempo) / 4;
-        const currentTick = this.tickCount % 192; // 12 Bars 
-        const isBSection = currentTick >= 128; // Ticks 128-192 are the climax
-
-        // 1. THE EPIC LEAD
-        const melodyData = this.melodyScore[currentTick];
-        if (melodyData) {
-            this.playEpicLead(t, melodyData[0], tickDur * melodyData[1], 0.35, 0.15); 
         }
 
-        // 2. THE SPICCATO ARPEGGIOS
-        const harmonyData = this.harmonyScore[currentTick];
-        if (harmonyData) {
-            // Arps bite harder and louder during the B-Section
-            const arpVol = isBSection ? 0.25 : 0.15;
-            this.playEpicArp(t, harmonyData[0], tickDur * harmonyData[1], arpVol, -0.3); 
+        stop() {
+            this.isStopped = true;
+            this.timers.forEach(t => clearTimeout(t));
+            this.timers = [];
+
+            const t = this.ctx.currentTime;
+            this.master.gain.cancelScheduledValues(t);
+            this.master.gain.linearRampToValueAtTime(0, t + 1.0); 
+
+            setTimeout(() => {
+            if (this.input) this.input.disconnect();
+            if (this.comp) this.comp.disconnect();
+            if (this.revNode) this.revNode.disconnect();
+            if (this.revGain) this.revGain.disconnect();
+            if (this.dryGain) this.dryGain.disconnect();
+            if (this.master) this.master.disconnect();
+            }, 4000); 
         }
 
-        // 3. THE DOOM BASS
-        const bassData = this.bassScore[currentTick];
-        if (bassData) {
-            this.playDoomBass(t, bassData[0], tickDur * bassData[1]);
+        scheduleNextTick() {
+            if (this.isStopped) return;
+            const t = this.ctx.currentTime + 0.1; 
+            this.playTick(t);
+            this.tickCount++;
+            const tickDur = (60.0 / this.tempo) / 4;
+            const timerId = setTimeout(() => {
+                this.timers = this.timers.filter(id => id !== timerId);
+                this.scheduleNextTick();
+            }, tickDur * 1000);
+            this.timers.push(timerId);
         }
 
-        // 4. THE CINEMATIC WAR DRUMS
-        const tickInBar = currentTick % 16;
-        if (isBSection) {
-            // Intense march: Hit on beat 1 and beat 3
-            if (tickInBar === 0 || tickInBar === 8) this.playCinematicHit(t, tickInBar === 0);
-        } else {
-            // Steady march: Hit only on beat 1
-            if (tickInBar === 0) this.playCinematicHit(t, true);
+        playTick(t) {
+            const tickDur = (60.0 / this.tempo) / 4;
+            const currentTick = this.tickCount % 192; 
+            const isBSection = currentTick >= 128; 
+
+            const melodyData = this.melodyScore[currentTick];
+            if (melodyData) this.playEpicLead(t, melodyData[0], tickDur * melodyData[1], 0.35, 0.15); 
+
+            const harmonyData = this.harmonyScore[currentTick];
+            if (harmonyData) {
+                const arpVol = isBSection ? 0.25 : 0.15;
+                this.playEpicArp(t, harmonyData[0], tickDur * harmonyData[1], arpVol, -0.3); 
+            }
+
+            const bassData = this.bassScore[currentTick];
+            if (bassData) this.playDoomBass(t, bassData[0], tickDur * bassData[1]);
+
+            const tickInBar = currentTick % 16;
+            if (isBSection) {
+                if (tickInBar === 0 || tickInBar === 8) this.playCinematicHit(t, tickInBar === 0);
+            } else {
+                if (tickInBar === 0) this.playCinematicHit(t, true);
+            }
         }
-      }
 
-      // --- THE ORCHESTRAL INSTRUMENTS ---
+        playEpicLead(t, semitone, dur, vol, pan) {
+            const osc1 = this.ctx.createOscillator();
+            const osc2 = this.ctx.createOscillator();
+            const filter = this.ctx.createBiquadFilter();
+            const g = this.ctx.createGain();
 
-      playEpicLead(t, semitone, dur, vol, pan) {
-        // Dual-Oscillator Brass/String Ensemble
-        const osc1 = this.ctx.createOscillator();
-        const osc2 = this.ctx.createOscillator();
-        const filter = this.ctx.createBiquadFilter();
-        const g = this.ctx.createGain();
+            osc1.type = 'sawtooth';
+            osc2.type = 'sawtooth';
+            
+            const freq = this.rootFreq * Math.pow(2, semitone / 12);
+            osc1.frequency.value = freq;
+            osc2.frequency.value = freq;
+            osc2.detune.value = 12; 
 
-        osc1.type = 'sawtooth';
-        osc2.type = 'sawtooth';
-        
-        const freq = this.rootFreq * Math.pow(2, semitone / 12);
-        osc1.frequency.value = freq;
-        osc2.frequency.value = freq;
-        osc2.detune.value = 12; // Chorus effect for massive width
+            filter.type = 'lowpass';
+            filter.frequency.setValueAtTime(800, t);
+            filter.frequency.exponentialRampToValueAtTime(4500, t + Math.min(dur, 0.4));
+            filter.frequency.exponentialRampToValueAtTime(1200, t + dur);
 
-        // Dynamic Filter: Opens up as the note sustains (Brass swell)
-        filter.type = 'lowpass';
-        filter.frequency.setValueAtTime(800, t);
-        filter.frequency.exponentialRampToValueAtTime(4500, t + Math.min(dur, 0.4));
-        filter.frequency.exponentialRampToValueAtTime(1200, t + dur);
+            g.gain.setValueAtTime(0, t);
+            g.gain.linearRampToValueAtTime(vol, t + 0.05); 
+            g.gain.setValueAtTime(vol * 0.8, t + dur - 0.05); 
+            g.gain.linearRampToValueAtTime(0, t + dur + 0.1); 
 
-        // Heroic Envelope
-        g.gain.setValueAtTime(0, t);
-        g.gain.linearRampToValueAtTime(vol, t + 0.05); // Strong attack
-        g.gain.setValueAtTime(vol * 0.8, t + dur - 0.05); 
-        g.gain.linearRampToValueAtTime(0, t + dur + 0.1); // Smooth release into reverb
+            const panner = this.ctx.createStereoPanner();
+            panner.pan.value = pan;
 
-        const panner = this.ctx.createStereoPanner();
-        panner.pan.value = pan;
+            osc1.connect(filter); osc2.connect(filter);
+            filter.connect(g); g.connect(panner); panner.connect(this.input);
+            
+            osc1.start(t); osc2.start(t);
+            osc1.stop(t + dur + 0.1); osc2.stop(t + dur + 0.1);
+            osc1.onended = () => { osc1.disconnect(); osc2.disconnect(); filter.disconnect(); g.disconnect(); panner.disconnect(); };
+        }
 
-        osc1.connect(filter); osc2.connect(filter);
-        filter.connect(g); g.connect(panner); panner.connect(this.input);
-        
-        osc1.start(t); osc2.start(t);
-        osc1.stop(t + dur + 0.1); osc2.stop(t + dur + 0.1);
-        
-        osc1.onended = () => { osc1.disconnect(); osc2.disconnect(); filter.disconnect(); g.disconnect(); panner.disconnect(); };
-      }
+        playEpicArp(t, semitone, dur, vol, pan) {
+            const osc = this.ctx.createOscillator();
+            const filter = this.ctx.createBiquadFilter();
+            const g = this.ctx.createGain();
 
-      playEpicArp(t, semitone, dur, vol, pan) {
-        const osc = this.ctx.createOscillator();
-        const filter = this.ctx.createBiquadFilter();
-        const g = this.ctx.createGain();
+            osc.type = 'sawtooth';
+            osc.frequency.value = this.rootFreq * Math.pow(2, semitone / 12);
 
-        // Sharp, biting Sawtooth for fast strings
-        osc.type = 'sawtooth';
-        osc.frequency.value = this.rootFreq * Math.pow(2, semitone / 12);
+            filter.type = 'lowpass';
+            filter.Q.value = 2.0; 
+            filter.frequency.setValueAtTime(6000, t);
+            filter.frequency.exponentialRampToValueAtTime(400, t + (dur * 0.5));
 
-        // "Pluck/Bite" Filter: Snaps shut rapidly
-        filter.type = 'lowpass';
-        filter.Q.value = 2.0; // Resonance adds bite
-        filter.frequency.setValueAtTime(6000, t);
-        filter.frequency.exponentialRampToValueAtTime(400, t + (dur * 0.5));
+            g.gain.setValueAtTime(0, t);
+            g.gain.linearRampToValueAtTime(vol, t + 0.01); 
+            g.gain.exponentialRampToValueAtTime(0.001, t + dur); 
 
-        g.gain.setValueAtTime(0, t);
-        g.gain.linearRampToValueAtTime(vol, t + 0.01); 
-        g.gain.exponentialRampToValueAtTime(0.001, t + dur); 
+            const panner = this.ctx.createStereoPanner();
+            panner.pan.value = pan;
 
-        const panner = this.ctx.createStereoPanner();
-        panner.pan.value = pan;
+            osc.connect(filter); filter.connect(g); g.connect(panner); panner.connect(this.input);
+            osc.start(t); osc.stop(t + dur);
+            osc.onended = () => { osc.disconnect(); filter.disconnect(); g.disconnect(); panner.disconnect(); };
+        }
 
-        osc.connect(filter); filter.connect(g); g.connect(panner); panner.connect(this.input);
-        osc.start(t); osc.stop(t + dur);
-        osc.onended = () => { osc.disconnect(); filter.disconnect(); g.disconnect(); panner.disconnect(); };
-      }
+        playDoomBass(t, semitone, dur) {
+            const subOsc = this.ctx.createOscillator();
+            const growlOsc = this.ctx.createOscillator();
+            const filter = this.ctx.createBiquadFilter();
+            const g = this.ctx.createGain();
 
-      playDoomBass(t, semitone, dur) {
-        const subOsc = this.ctx.createOscillator();
-        const growlOsc = this.ctx.createOscillator();
-        const filter = this.ctx.createBiquadFilter();
-        const g = this.ctx.createGain();
+            const freq = this.rootFreq * Math.pow(2, semitone / 12);
+            subOsc.type = 'triangle';
+            subOsc.frequency.value = freq;
+            growlOsc.type = 'sawtooth';
+            growlOsc.frequency.value = freq;
 
-        const freq = this.rootFreq * Math.pow(2, semitone / 12);
-        
-        // Triangle for deep floor-shaking sub-bass
-        subOsc.type = 'triangle';
-        subOsc.frequency.value = freq;
-        
-        // Sawtooth for the audible cello "growl" on top
-        growlOsc.type = 'sawtooth';
-        growlOsc.frequency.value = freq;
+            filter.type = 'lowpass';
+            filter.frequency.setValueAtTime(2500, t);
+            filter.frequency.exponentialRampToValueAtTime(600, t + (dur * 0.3));
 
-        // Dark filter to keep it menacing
-        filter.type = 'lowpass';
-        filter.frequency.setValueAtTime(2500, t);
-        filter.frequency.exponentialRampToValueAtTime(600, t + (dur * 0.3));
+            g.gain.setValueAtTime(0, t);
+            g.gain.linearRampToValueAtTime(0.5, t + 0.05); 
+            g.gain.setValueAtTime(0.5, t + dur - 0.1);
+            g.gain.linearRampToValueAtTime(0, t + dur + 0.2); 
 
-        g.gain.setValueAtTime(0, t);
-        g.gain.linearRampToValueAtTime(0.5, t + 0.05); 
-        g.gain.setValueAtTime(0.5, t + dur - 0.1);
-        g.gain.linearRampToValueAtTime(0, t + dur + 0.2); 
+            subOsc.connect(filter); growlOsc.connect(filter);
+            filter.connect(g); g.connect(this.input);
+            
+            subOsc.start(t); growlOsc.start(t);
+            subOsc.stop(t + dur + 0.2); growlOsc.stop(t + dur + 0.2);
+            subOsc.onended = () => { subOsc.disconnect(); growlOsc.disconnect(); filter.disconnect(); g.disconnect(); };
+        }
 
-        subOsc.connect(filter); growlOsc.connect(filter);
-        filter.connect(g); g.connect(this.input);
-        
-        subOsc.start(t); growlOsc.start(t);
-        subOsc.stop(t + dur + 0.2); growlOsc.stop(t + dur + 0.2);
-        
-        subOsc.onended = () => { subOsc.disconnect(); growlOsc.disconnect(); filter.disconnect(); g.disconnect(); };
-      }
+        playCinematicHit(t, isHeavy) {
+            const osc = this.ctx.createOscillator();
+            const oscGain = this.ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(150, t);
+            osc.frequency.exponentialRampToValueAtTime(30, t + 0.5); 
+            
+            oscGain.gain.setValueAtTime(0, t);
+            oscGain.gain.linearRampToValueAtTime(isHeavy ? 1.0 : 0.6, t + 0.02);
+            oscGain.gain.exponentialRampToValueAtTime(0.001, t + 1.5);
 
-      playCinematicHit(t, isHeavy) {
-        // Deep Timpani Boom
-        const osc = this.ctx.createOscillator();
-        const oscGain = this.ctx.createGain();
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(150, t);
-        osc.frequency.exponentialRampToValueAtTime(30, t + 0.5); // Massive pitch dive
-        
-        oscGain.gain.setValueAtTime(0, t);
-        oscGain.gain.linearRampToValueAtTime(isHeavy ? 1.0 : 0.6, t + 0.02);
-        oscGain.gain.exponentialRampToValueAtTime(0.001, t + 1.5);
+            const noise = this.ctx.createBufferSource();
+            noise.buffer = this.noiseBuffer;
+            const noiseFilter = this.ctx.createBiquadFilter();
+            noiseFilter.type = 'lowpass';
+            noiseFilter.frequency.setValueAtTime(isHeavy ? 3000 : 1000, t); 
+            noiseFilter.frequency.exponentialRampToValueAtTime(200, t + 0.5);
+            
+            const noiseGain = this.ctx.createGain();
+            noiseGain.gain.setValueAtTime(0, t);
+            noiseGain.gain.linearRampToValueAtTime(isHeavy ? 0.5 : 0.2, t + 0.01);
+            noiseGain.gain.exponentialRampToValueAtTime(0.001, t + 0.8);
 
-        // Metallic Noise Crash
-        const noise = this.ctx.createBufferSource();
-        noise.buffer = this.noiseBuffer;
-        const noiseFilter = this.ctx.createBiquadFilter();
-        noiseFilter.type = 'lowpass';
-        noiseFilter.frequency.setValueAtTime(isHeavy ? 3000 : 1000, t); // Heavy hits are brighter
-        noiseFilter.frequency.exponentialRampToValueAtTime(200, t + 0.5);
-        
-        const noiseGain = this.ctx.createGain();
-        noiseGain.gain.setValueAtTime(0, t);
-        noiseGain.gain.linearRampToValueAtTime(isHeavy ? 0.5 : 0.2, t + 0.01);
-        noiseGain.gain.exponentialRampToValueAtTime(0.001, t + 0.8);
-
-        osc.connect(oscGain); oscGain.connect(this.input);
-        noise.connect(noiseFilter); noiseFilter.connect(noiseGain); noiseGain.connect(this.input);
-        
-        osc.start(t); osc.stop(t + 1.5);
-        noise.start(t); noise.stop(t + 0.8);
-        
-        osc.onended = () => { osc.disconnect(); oscGain.disconnect(); noise.disconnect(); noiseFilter.disconnect(); noiseGain.disconnect(); };
-      }
+            osc.connect(oscGain); oscGain.connect(this.input);
+            noise.connect(noiseFilter); noiseFilter.connect(noiseGain); noiseGain.connect(this.input);
+            
+            osc.start(t); osc.stop(t + 1.5);
+            noise.start(t); noise.stop(t + 0.8);
+            osc.onended = () => { osc.disconnect(); oscGain.disconnect(); noise.disconnect(); noiseFilter.disconnect(); noiseGain.disconnect(); };
+        }
     }
     // MODULE 49:nt Edition)
     class TantagelModule {
-      constructor(ctx, dest) {
-        this.ctx = ctx;
-        this.dest = dest;
-        this.isStopped = false;
-        this.timers = [];
+        static sharedImpulseBuffer = null;
 
-        // --- GLOBAL ACOUSTICS ---
-        this.master = ctx.createGain();
-        this.master.gain.value = 0.55; 
+        constructor(ctx, dest) {
+            this.ctx = ctx;
+            this.dest = dest;
+            this.isStopped = false;
+            this.timers = [];
 
-        // The "Stone Keep" Reverb (Lonely, vast, and echoing)
-        this.revNode = ctx.createConvolver();
-        this.setupCastleReverb();
-        this.revGain = ctx.createGain(); this.revGain.gain.value = 0.45;
-        this.dryGain = ctx.createGain(); this.dryGain.gain.value = 0.8;
+            this.master = ctx.createGain();
+            this.master.gain.value = 0.55; 
 
-        this.comp = ctx.createDynamicsCompressor();
-        this.comp.threshold.value = -12;
-        this.comp.ratio.value = 4;
-        this.comp.attack.value = 0.01; 
+            this.revNode = ctx.createConvolver();
+            this.setupCastleReverb();
+            this.revGain = ctx.createGain(); this.revGain.gain.value = 0.45;
+            this.dryGain = ctx.createGain(); this.dryGain.gain.value = 0.8;
 
-        this.input = ctx.createGain();
-        this.input.connect(this.comp);
-        this.comp.connect(this.revNode);
-        this.comp.connect(this.dryGain);
-        this.revNode.connect(this.revGain);
-        this.revGain.connect(this.master);
-        this.dryGain.connect(this.master);
-        this.master.connect(this.dest);
+            this.comp = ctx.createDynamicsCompressor();
+            this.comp.threshold.value = -12;
+            this.comp.ratio.value = 4;
+            this.comp.attack.value = 0.01; 
 
-        // --- MUSICAL SCORE (A Minor) ---
-        this.tempo = 100; // Stately, classical tempo
-        this.tickCount = 0;
-        this.rootFreq = 220.00; // A3
-        
-        const _ = null;
+            this.input = ctx.createGain();
+            this.input.connect(this.comp);
+            this.comp.connect(this.revNode);
+            this.comp.connect(this.dryGain);
+            this.revNode.connect(this.revGain);
+            this.revGain.connect(this.master);
+            this.dryGain.connect(this.master);
+            this.master.connect(this.dest);
 
-        // 1. THE MELODY (Pulse 1 - The Subject)
-        this.melodyScore = [
-            // Bar 1-4: The Regal Theme
-            [0, 4], _, _, _, [7, 2], _, [3, 2], _, [7, 8], _, _, _, _, _, _, _,
-            [0, 4], _, _, _, [8, 2], _, [7, 2], _, [8, 8], _, _, _, _, _, _, _,
-            [0, 4], _, _, _, [10, 2], _, [8, 2], _, [10, 8], _, _, _, _, _, _, _,
-            [0, 4], _, _, _, [12, 2], _, [10, 2], _, [12, 8], _, _, _, _, _, _, _,
-            // Bar 5-7: The Climb
-            [10, 4], _, _, _, [10, 2], _, [10, 2], _, [12, 4], _, _, _, [7, 4], _, _, _,
-            [8, 4], _, _, _, [8, 2], _, [8, 2], _, [10, 4], _, _, _, [5, 4], _, _, _,
-            [7, 4], _, _, _, [7, 2], _, [7, 2], _, [8, 4], _, _, _, [3, 4], _, _, _,
-            // Bar 8: The Bach Run (16th notes climbing to the climax)
-            [5, 2], _, [7, 2], _, [8, 2], _, [10, 2], _, [12, 2], _, [14, 2], _, [15, 2], _, [17, 2], _,
+            this.tempo = 100; 
+            this.tickCount = 0;
+            this.rootFreq = 220.00; 
             
-            // --- BAR 9-11: THE B-SECTION (The "Bum Dadada" Sequence) ---
-            [19, 2], _, [17, 1], [15, 1], [17, 2], _, [15, 1], [14, 1], [15, 2], _, [14, 1], [12, 1], [14, 2], _, [12, 1], [11, 1],
-            [12, 2], _, [10, 1], [8, 1], [10, 2], _, [8, 1], [7, 1], [8, 2], _, [7, 1], [5, 1], [7, 2], _, [5, 1], [3, 1],
-            [5, 2], _, [3, 1], [2, 1], [3, 2], _, [2, 1], [0, 1], [2, 2], _, [0, 1], [-1, 1], [0, 2], _, [-1, 1], [-3, 1],
-            // Bar 12: Resolution
-            [-1, 4], _, _, _, [-5, 4], _, _, _, [0, 8], _, _, _, _, _, _, _
-        ];
+            const _ = null;
 
-        // 2. THE CONTRAPUNTAL HARMONY (Pulse 2 - The Counter-Subject)
-        this.harmonyScore = [
-            // Bars 1-4: Moving contrary to the melody sustains
-            [-12, 4], _, _, _, [-12, 2], _, [-9, 2], _, [-5, 2], _, [-7, 2], _, [-9, 2], _, [-12, 2], _,
-            [-12, 4], _, _, _, [-12, 2], _, [-7, 2], _, [-4, 2], _, [-5, 2], _, [-7, 2], _, [-12, 2], _,
-            [-14, 4], _, _, _, [-14, 2], _, [-10, 2], _, [-7, 2], _, [-9, 2], _, [-10, 2], _, [-14, 2], _,
-            [-14, 4], _, _, _, [-14, 2], _, [-9, 2], _, [-5, 2], _, [-7, 2], _, [-9, 2], _, [-14, 2], _,
-            // Bars 5-7: Interlocking 8th notes
-            [-9, 4], _, _, _, [-14, 4], _, _, _, [-9, 4], _, _, _, [-17, 4], _, _, _,
-            [-10, 4], _, _, _, [-14, 4], _, _, _, [-10, 4], _, _, _, [-19, 4], _, _, _,
-            [-12, 4], _, _, _, [-17, 4], _, _, _, [-12, 4], _, _, _, [-21, 4], _, _, _,
-            // Bar 8: Contrary motion run down to meet the melody
-            [-13, 2], _, [-15, 2], _, [-17, 2], _, [-19, 2], _, [-21, 2], _, [-22, 2], _, [-24, 2], _, [-25, 2], _,
+            this.melodyScore = [
+                [0, 4], _, _, _, [7, 2], _, [3, 2], _, [7, 8], _, _, _, _, _, _, _,
+                [0, 4], _, _, _, [8, 2], _, [7, 2], _, [8, 8], _, _, _, _, _, _, _,
+                [0, 4], _, _, _, [10, 2], _, [8, 2], _, [10, 8], _, _, _, _, _, _, _,
+                [0, 4], _, _, _, [12, 2], _, [10, 2], _, [12, 8], _, _, _, _, _, _, _,
+                [10, 4], _, _, _, [10, 2], _, [10, 2], _, [12, 4], _, _, _, [7, 4], _, _, _,
+                [8, 4], _, _, _, [8, 2], _, [8, 2], _, [10, 4], _, _, _, [5, 4], _, _, _,
+                [7, 4], _, _, _, [7, 2], _, [7, 2], _, [8, 4], _, _, _, [3, 4], _, _, _,
+                [5, 2], _, [7, 2], _, [8, 2], _, [10, 2], _, [12, 2], _, [14, 2], _, [15, 2], _, [17, 2], _,
+                [19, 2], _, [17, 1], [15, 1], [17, 2], _, [15, 1], [14, 1], [15, 2], _, [14, 1], [12, 1], [14, 2], _, [12, 1], [11, 1],
+                [12, 2], _, [10, 1], [8, 1], [10, 2], _, [8, 1], [7, 1], [8, 2], _, [7, 1], [5, 1], [7, 2], _, [5, 1], [3, 1],
+                [5, 2], _, [3, 1], [2, 1], [3, 2], _, [2, 1], [0, 1], [2, 2], _, [0, 1], [-1, 1], [0, 2], _, [-1, 1], [-3, 1],
+                [-1, 4], _, _, _, [-5, 4], _, _, _, [0, 8], _, _, _, _, _, _, _
+            ];
 
-            // --- BAR 9-11: THE B-SECTION (Ascending 16ths against Descending Melody) ---
-            [-12, 1], [-10, 1], [-9, 2], _, [-10, 1], [-9, 1], [-7, 2], _, [-9, 1], [-7, 1], [-5, 2], _, [-7, 1], [-5, 1], [-4, 2], _,
-            [-7, 1], [-5, 1], [-4, 2], _, [-5, 1], [-4, 1], [-2, 2], _, [-4, 1], [-2, 1], [0, 2], _, [-2, 1], [0, 1], [2, 2], _,
-            [0, 1], [2, 1], [3, 2], _, [2, 1], [3, 1], [5, 2], _, [3, 1], [5, 1], [7, 2], _, [5, 1], [7, 1], [8, 2], _,
-            // Bar 12: Big Dominant Chord Arpeggio
-            [-17, 2], _, [-13, 2], _, [-10, 2], _, [-13, 2], _, [-12, 8], _, _, _, _, _, _, _
-        ];
+            this.harmonyScore = [
+                [-12, 4], _, _, _, [-12, 2], _, [-9, 2], _, [-5, 2], _, [-7, 2], _, [-9, 2], _, [-12, 2], _,
+                [-12, 4], _, _, _, [-12, 2], _, [-7, 2], _, [-4, 2], _, [-5, 2], _, [-7, 2], _, [-12, 2], _,
+                [-14, 4], _, _, _, [-14, 2], _, [-10, 2], _, [-7, 2], _, [-9, 2], _, [-10, 2], _, [-14, 2], _,
+                [-14, 4], _, _, _, [-14, 2], _, [-9, 2], _, [-5, 2], _, [-7, 2], _, [-9, 2], _, [-14, 2], _,
+                [-9, 4], _, _, _, [-14, 4], _, _, _, [-9, 4], _, _, _, [-17, 4], _, _, _,
+                [-10, 4], _, _, _, [-14, 4], _, _, _, [-10, 4], _, _, _, [-19, 4], _, _, _,
+                [-12, 4], _, _, _, [-17, 4], _, _, _, [-12, 4], _, _, _, [-21, 4], _, _, _,
+                [-13, 2], _, [-15, 2], _, [-17, 2], _, [-19, 2], _, [-21, 2], _, [-22, 2], _, [-24, 2], _, [-25, 2], _,
+                [-12, 1], [-10, 1], [-9, 2], _, [-10, 1], [-9, 1], [-7, 2], _, [-9, 1], [-7, 1], [-5, 2], _, [-7, 1], [-5, 1], [-4, 2], _,
+                [-7, 1], [-5, 1], [-4, 2], _, [-5, 1], [-4, 1], [-2, 2], _, [-4, 1], [-2, 1], [0, 2], _, [-2, 1], [0, 1], [2, 2], _,
+                [0, 1], [2, 1], [3, 2], _, [2, 1], [3, 1], [5, 2], _, [3, 1], [5, 1], [7, 2], _, [5, 1], [7, 1], [8, 2], _,
+                [-17, 2], _, [-13, 2], _, [-10, 2], _, [-13, 2], _, [-12, 8], _, _, _, _, _, _, _
+            ];
 
-        // 3. THE BASSO CONTINUO (Triangle - Walking Bassline)
-        this.bassScore = [
-            // Bars 1-4: Steady, deliberate 4th notes that "walk" the chord changes
-            [-24, 4], _, _, _, [-12, 4], _, _, _, [-16, 4], _, _, _, [-19, 4], _, _, _,
-            [-24, 4], _, _, _, [-12, 4], _, _, _, [-14, 4], _, _, _, [-17, 4], _, _, _,
-            [-26, 4], _, _, _, [-14, 4], _, _, _, [-17, 4], _, _, _, [-21, 4], _, _, _,
-            [-26, 4], _, _, _, [-14, 4], _, _, _, [-16, 4], _, _, _, [-19, 4], _, _, _,
-            // Bars 5-7: Faster 8th note walk down
-            [-17, 2], _, [-16, 2], _, [-14, 2], _, [-12, 2], _, [-17, 2], _, [-16, 2], _, [-14, 2], _, [-12, 2], _,
-            [-19, 2], _, [-17, 2], _, [-16, 2], _, [-14, 2], _, [-19, 2], _, [-17, 2], _, [-16, 2], _, [-14, 2], _,
-            [-21, 2], _, [-19, 2], _, [-17, 2], _, [-16, 2], _, [-21, 2], _, [-19, 2], _, [-17, 2], _, [-16, 2], _,
-            // Bar 8: Dominant Pedal Point
-            [-22, 4], _, _, _, [-10, 4], _, _, _, [-22, 4], _, _, _, [-10, 4], _, _, _,
-
-            // --- BAR 9-11: THE B-SECTION (Heavy Driving 8th notes) ---
-            [-24, 2], _, [-21, 2], _, [-26, 2], _, [-23, 2], _, [-28, 2], _, [-24, 2], _, [-29, 2], _, [-26, 2], _,
-            [-19, 2], _, [-16, 2], _, [-21, 2], _, [-17, 2], _, [-22, 2], _, [-19, 2], _, [-24, 2], _, [-21, 2], _,
-            [-22, 2], _, [-19, 2], _, [-24, 2], _, [-21, 2], _, [-25, 2], _, [-22, 2], _, [-27, 2], _, [-24, 2], _,
-            [-29, 4], _, _, _, [-17, 4], _, _, _, [-24, 8], _, _, _, _, _, _, _
-        ];
-      }
-
-      setupCastleReverb() {
-        const len = this.ctx.sampleRate * 2.5; 
-        const buf = this.ctx.createBuffer(2, len, this.ctx.sampleRate);
-        for (let c = 0; c < 2; c++) {
-          const d = buf.getChannelData(c);
-          for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3.0);
+            this.bassScore = [
+                [-24, 4], _, _, _, [-12, 4], _, _, _, [-16, 4], _, _, _, [-19, 4], _, _, _,
+                [-24, 4], _, _, _, [-12, 4], _, _, _, [-14, 4], _, _, _, [-17, 4], _, _, _,
+                [-26, 4], _, _, _, [-14, 4], _, _, _, [-17, 4], _, _, _, [-21, 4], _, _, _,
+                [-26, 4], _, _, _, [-14, 4], _, _, _, [-16, 4], _, _, _, [-19, 4], _, _, _,
+                [-17, 2], _, [-16, 2], _, [-14, 2], _, [-12, 2], _, [-17, 2], _, [-16, 2], _, [-14, 2], _, [-12, 2], _,
+                [-19, 2], _, [-17, 2], _, [-16, 2], _, [-14, 2], _, [-19, 2], _, [-17, 2], _, [-16, 2], _, [-14, 2], _,
+                [-21, 2], _, [-19, 2], _, [-17, 2], _, [-16, 2], _, [-21, 2], _, [-19, 2], _, [-17, 2], _, [-16, 2], _,
+                [-22, 4], _, _, _, [-10, 4], _, _, _, [-22, 4], _, _, _, [-10, 4], _, _, _,
+                [-24, 2], _, [-21, 2], _, [-26, 2], _, [-23, 2], _, [-28, 2], _, [-24, 2], _, [-29, 2], _, [-26, 2], _,
+                [-19, 2], _, [-16, 2], _, [-21, 2], _, [-17, 2], _, [-22, 2], _, [-19, 2], _, [-24, 2], _, [-21, 2], _,
+                [-22, 2], _, [-19, 2], _, [-24, 2], _, [-21, 2], _, [-25, 2], _, [-22, 2], _, [-27, 2], _, [-24, 2], _,
+                [-29, 4], _, _, _, [-17, 4], _, _, _, [-24, 8], _, _, _, _, _, _, _
+            ];
         }
-        this.revNode.buffer = buf;
-      }
 
-      start() {
-        this.isStopped = false;
-        this.tickCount = 0;
-        this.timers = [];
-        this.master.gain.setValueAtTime(0, this.ctx.currentTime);
-        this.master.gain.linearRampToValueAtTime(0.55, this.ctx.currentTime + 1);
+        setupCastleReverb() {
+            if (!TantagelModule.sharedImpulseBuffer) {
+                const len = this.ctx.sampleRate * 2.5; 
+                const buf = this.ctx.createBuffer(2, len, this.ctx.sampleRate);
+                for (let c = 0; c < 2; c++) {
+                const d = buf.getChannelData(c);
+                for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3.0);
+                }
+                TantagelModule.sharedImpulseBuffer = buf;
+            }
+            this.revNode.buffer = TantagelModule.sharedImpulseBuffer;
+        }
 
-        this.scheduleNextTick();
-      }
-
-      stop() {
-        this.isStopped = true;
-        this.timers.forEach(t => clearTimeout(t));
-        this.timers = [];
-
-        const t = this.ctx.currentTime;
-        this.master.gain.cancelScheduledValues(t);
-        this.master.gain.linearRampToValueAtTime(0, t + 1.0); 
-
-        setTimeout(() => {
-          if (this.input) this.input.disconnect();
-          if (this.comp) this.comp.disconnect();
-          if (this.revNode) this.revNode.disconnect();
-          if (this.revGain) this.revGain.disconnect();
-          if (this.dryGain) this.dryGain.disconnect();
-          if (this.master) this.master.disconnect();
-        }, 3000); 
-      }
-
-      scheduleNextTick() {
-        if (this.isStopped) return;
-
-        const t = this.ctx.currentTime + 0.1; 
-        this.playTick(t);
-
-        this.tickCount++;
-
-        const secondsPerBeat = 60.0 / this.tempo;
-        const tickDur = secondsPerBeat / 4;
-
-        const timerId = setTimeout(() => {
-            this.timers = this.timers.filter(id => id !== timerId);
+        start() {
+            this.isStopped = false;
+            this.tickCount = 0;
+            this.timers = [];
+            this.master.gain.setValueAtTime(0, this.ctx.currentTime);
+            this.master.gain.linearRampToValueAtTime(0.55, this.ctx.currentTime + 1);
             this.scheduleNextTick();
-        }, tickDur * 1000);
-        this.timers.push(timerId);
-      }
-
-      playTick(t) {
-        const tickDur = (60.0 / this.tempo) / 4;
-        const currentTick = this.tickCount % 192; // 12 Bars 
-
-        // 1. THE MELODY (Pulse 1 - Lead)
-        const melodyData = this.melodyScore[currentTick];
-        if (melodyData) {
-            this.playPulse(t, melodyData[0], tickDur * melodyData[1], 0.25, 0.2); 
         }
 
-        // 2. THE HARMONY (Pulse 2 - The Counter-Subject)
-        const harmonyData = this.harmonyScore[currentTick];
-        if (harmonyData) {
-            this.playPulse(t, harmonyData[0], tickDur * harmonyData[1], 0.15, -0.3); 
+        stop() {
+            this.isStopped = true;
+            this.timers.forEach(t => clearTimeout(t));
+            this.timers = [];
+
+            const t = this.ctx.currentTime;
+            this.master.gain.cancelScheduledValues(t);
+            this.master.gain.linearRampToValueAtTime(0, t + 1.0); 
+
+            setTimeout(() => {
+            if (this.input) this.input.disconnect();
+            if (this.comp) this.comp.disconnect();
+            if (this.revNode) this.revNode.disconnect();
+            if (this.revGain) this.revGain.disconnect();
+            if (this.dryGain) this.dryGain.disconnect();
+            if (this.master) this.master.disconnect();
+            }, 3000); 
         }
 
-        // 3. THE BASSO CONTINUO (Triangle Wave)
-        const bassData = this.bassScore[currentTick];
-        if (bassData) {
-            this.playTriangle(t, bassData[0], tickDur * bassData[1]);
+        scheduleNextTick() {
+            if (this.isStopped) return;
+            const t = this.ctx.currentTime + 0.1; 
+            this.playTick(t);
+            this.tickCount++;
+            const secondsPerBeat = 60.0 / this.tempo;
+            const tickDur = secondsPerBeat / 4;
+            const timerId = setTimeout(() => {
+                this.timers = this.timers.filter(id => id !== timerId);
+                this.scheduleNextTick();
+            }, tickDur * 1000);
+            this.timers.push(timerId);
         }
-      }
 
-      playPulse(t, semitone, dur, vol, pan) {
-        const osc = this.ctx.createOscillator();
-        const filter = this.ctx.createBiquadFilter();
-        const g = this.ctx.createGain();
+        playTick(t) {
+            const tickDur = (60.0 / this.tempo) / 4;
+            const currentTick = this.tickCount % 192; 
 
-        osc.type = 'square';
-        osc.frequency.value = this.rootFreq * Math.pow(2, semitone / 12);
+            const melodyData = this.melodyScore[currentTick];
+            if (melodyData) this.playPulse(t, melodyData[0], tickDur * melodyData[1], 0.25, 0.2); 
 
-        filter.type = 'lowpass';
-        filter.frequency.setValueAtTime(2800, t);
+            const harmonyData = this.harmonyScore[currentTick];
+            if (harmonyData) this.playPulse(t, harmonyData[0], tickDur * harmonyData[1], 0.15, -0.3); 
 
-        g.gain.setValueAtTime(0, t);
-        g.gain.linearRampToValueAtTime(vol, t + 0.01); 
-        g.gain.setValueAtTime(vol * 0.8, t + dur - 0.02); 
-        g.gain.linearRampToValueAtTime(0, t + dur); 
+            const bassData = this.bassScore[currentTick];
+            if (bassData) this.playTriangle(t, bassData[0], tickDur * bassData[1]);
+        }
 
-        const panner = this.ctx.createStereoPanner();
-        panner.pan.value = pan;
+        playPulse(t, semitone, dur, vol, pan) {
+            const osc = this.ctx.createOscillator();
+            const filter = this.ctx.createBiquadFilter();
+            const g = this.ctx.createGain();
 
-        osc.connect(filter); filter.connect(g); g.connect(panner); panner.connect(this.input);
-        osc.start(t); osc.stop(t + dur);
-        osc.onended = () => { osc.disconnect(); filter.disconnect(); g.disconnect(); panner.disconnect(); };
-      }
+            osc.type = 'square';
+            osc.frequency.value = this.rootFreq * Math.pow(2, semitone / 12);
 
-      playTriangle(t, semitone, dur) {
-        const osc = this.ctx.createOscillator();
-        const g = this.ctx.createGain();
+            filter.type = 'lowpass';
+            filter.frequency.setValueAtTime(2800, t);
 
-        osc.type = 'triangle';
-        osc.frequency.value = this.rootFreq * Math.pow(2, semitone / 12);
+            g.gain.setValueAtTime(0, t);
+            g.gain.linearRampToValueAtTime(vol, t + 0.01); 
+            g.gain.setValueAtTime(vol * 0.8, t + dur - 0.02); 
+            g.gain.linearRampToValueAtTime(0, t + dur); 
 
-        g.gain.setValueAtTime(0, t);
-        g.gain.setValueAtTime(0.5, t + 0.001); 
-        g.gain.setValueAtTime(0.5, t + dur - 0.01);
-        g.gain.linearRampToValueAtTime(0, t + dur); 
+            const panner = this.ctx.createStereoPanner();
+            panner.pan.value = pan;
 
-        const panner = this.ctx.createStereoPanner();
-        panner.pan.value = 0;
+            osc.connect(filter); filter.connect(g); g.connect(panner); panner.connect(this.input);
+            osc.start(t); osc.stop(t + dur);
+            osc.onended = () => { osc.disconnect(); filter.disconnect(); g.disconnect(); panner.disconnect(); };
+        }
 
-        osc.connect(g); g.connect(panner); panner.connect(this.input);
-        osc.start(t); osc.stop(t + dur);
-        osc.onended = () => { osc.disconnect(); g.disconnect(); panner.disconnect(); };
-      }
+        playTriangle(t, semitone, dur) {
+            const osc = this.ctx.createOscillator();
+            const g = this.ctx.createGain();
+
+            osc.type = 'triangle';
+            osc.frequency.value = this.rootFreq * Math.pow(2, semitone / 12);
+
+            g.gain.setValueAtTime(0, t);
+            g.gain.setValueAtTime(0.5, t + 0.001); 
+            g.gain.setValueAtTime(0.5, t + dur - 0.01);
+            g.gain.linearRampToValueAtTime(0, t + dur); 
+
+            const panner = this.ctx.createStereoPanner();
+            panner.pan.value = 0;
+
+            osc.connect(g); g.connect(panner); panner.connect(this.input);
+            osc.start(t); osc.stop(t + dur);
+            osc.onended = () => { osc.disconnect(); g.disconnect(); panner.disconnect(); };
+        }
     }
-   class CoastalModule {
+    class CoastalModule {
       constructor(ctx, dest) {
         this.ctx = ctx;
         this.dest = dest;
@@ -80711,6 +80656,2110 @@
       }
     }
 
+    class CathedralModule {
+        // Global static cache for raw PCM data (independent of any AudioContext)
+        static rawBank = { ready: false, buffers: new Map(), impulse: null, promise: null };
+        
+        static profiles = {
+            strings: {range:[48,87], seconds:4.8, attack:.035, release:.16, gain:.19, wet:.24},
+            cello:   {range:[36,66], seconds:4.8, attack:.025, release:.14, gain:.23, wet:.17},
+            brass:   {range:[48,87], seconds:4.8, attack:.025, release:.16, gain:.18, wet:.23},
+            organ:   {range:[48,87], seconds:4.8, attack:.012, release:.13, gain:.14, wet:.32},
+            glass:   {range:[51,90], seconds:3.2, attack:.003, release:.20, gain:.22, wet:.34},
+            piano:   {range:[42,87], seconds:3.2, attack:.003, release:.16, gain:.25, wet:.20},
+            choir:   {range:[48,87], seconds:5.8, attack:.15, release:.35, gain:.19, wet:.40},
+            bass:    {range:[30,57], seconds:3.2, attack:.008, release:.07, gain:.26, wet:.07}
+        };
+
+        constructor(ctx, dest, options={}) {
+            this.ctx = ctx; 
+            this.dest = dest || ctx.destination;
+            this.seed = (options.seed === undefined ? Math.random() * 4294967296 : Number(options.seed)) >>> 0;
+            this.intensity = Number.isFinite(options.intensity) ? Math.max(0, Math.min(1, options.intensity)) : .93;
+            this.isPlaying = false; 
+            this.loading = false; 
+            this.timer = null; 
+            this.generation = 0;
+            this.graph = null; 
+            this.voices = new Set(); 
+            this.onSection = null; 
+            this.onProgress = null; 
+            this.onError = null;
+            
+            // Context-specific AudioBuffer lookup cache (populated instantly from rawBank)
+            this.contextBuffers = new Map();
+            this._reset();
+        }
+
+        static rng(seed) {
+            let s = seed >>> 0;
+            return () => {
+                let t = s = (s + 0x6D2B79F5) >>> 0;
+                t = Math.imul(t ^ t >>> 15, t | 1);
+                t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+                return ((t ^ t >>> 14) >>> 0) / 4294967296;
+            };
+        }
+
+        _pick(a) { return a[Math.floor(this.random() * a.length)]; }
+
+        _reset() {
+            this.random = CathedralModule.rng(this.seed);
+            this.movement = 0; this.sectionIndex = -1; this.bar = -1; this.totalBars = 0; this.step = 0; this.elapsed = 0;
+            this.root = 50; this.entries = []; this.last = [74, 67, 60, 43]; this.prevStrong = [null, null, null, null];
+            this.history = []; this.drumGroove = null; this._makeForm();
+            this.subject = [
+                [0,0,4],[4,4,2],[6,3,2],[8,2,4],[12,1,2],[14,2,2],
+                [16,3,4],[20,5,2],[22,4,2],[24,3,2],[26,2,2],[28,1,4],
+                [32,2,2],[34,3,2],[36,4,4],[40,5,2],[42,4,2],[44,3,4],
+                [48,1,4],[52,6,4],[56,7,6]
+            ];
+            this.answerRotation = this._pick([0, 1, 2]);
+        }
+
+        _makeForm() {
+            const S = (name, bars, bpm, kind, energy, meter = 16, key = 0) => ({ name, bars, bpm, kind, energy, meter, key });
+            const development = [
+                S('The Glass Labyrinth', 12, 168, 'glass', .73, 14, 5),
+                S('The Inverted Cathedral', 16, 160, 'inversion', .84, 16, 0),
+                S('Procession of the Uncrowned', 12, 164, 'march', .82, 16, -2)
+            ];
+            if (this.movement) {
+                for (let i = development.length - 1; i > 0; i--) {
+                    const j = Math.floor(this.random() * (i + 1));
+                    [development[i], development[j]] = [development[j], development[i]];
+                }
+                development.forEach(s => { s.bars += this._pick([-4, 0, 4]); s.key += this._pick([-2, 0, 3]); });
+            }
+            this.form = [
+                S(this.movement ? 'A Door in Another Sky' : 'The Door Opens', 4, 128, 'threshold', .36),
+                S('Four Voices Enter', 16, 152, 'exposition', .62),
+                ...development,
+                S('An Orbit Made of Ash', 8, 112, 'orbit', .32, 12, 3),
+                S('Two Suns at War', 16, 172, 'double', .87, 16, 0),
+                S('The Pursuit / Stretto', 12, 180, 'stretto', .96, 16, 5),
+                S('Suspended Judgment', 8, 132, 'suspension', .46, 16, -2),
+                S('The Unwritten Sun', 16, 176, 'apotheosis', 1, 16, 0),
+                S('Beyond the Last Door', 8, 156, 'bridge', .64, 16, 0)
+            ];
+        }
+
+        setIntensity(x) { if (Number.isFinite(x)) this.intensity = Math.max(0, Math.min(1, x)); }
+        _degree(d) { const scale = this.mode; return scale[(d % 7 + 7) % 7] + 12 * Math.floor(d / 7); }
+        _fit(n, low, high) { while (n < low) n += 12; while (n > high) n -= 12; return n; }
+
+        _nextBar() {
+            this.bar++; this.totalBars++;
+            if (this.sectionIndex < 0 || this.bar >= this.form[this.sectionIndex].bars) {
+                this.sectionIndex++; this.bar = 0; this.entries = [];
+                if (this.sectionIndex === this.form.length) {
+                    this.movement++; this.root = 50 + this._pick([-5, -2, 0, 3, 5]);
+                    this.sectionIndex = 0; this._makeForm();
+                }
+                this.section = this.form[this.sectionIndex];
+                this.sectionName = this.section.name; this.sectionStart = this.elapsed;
+                const info = { name: this.sectionName, movement: this.movement + 1, time: this.elapsed, bpm: this.section.bpm, meter: this.section.meter / 4 };
+                this.history.push(info);
+                if (this.history.length > 48) this.history.shift();
+                if (this.onSection) this.onSection(info);
+            }
+            const s = this.section, k = s.kind, b = this.bar;
+            this.tonic = this.root + s.key; this.tempo = s.bpm; this.meter = s.meter;
+            this.energy = s.energy * (.7 + .3 * this.intensity);
+            this.mode = k === 'orbit' ? [0, 2, 3, 5, 7, 9, 10] : [0, 2, 3, 5, 7, 8, 11];
+            const progressions = {
+                threshold: [0, 5, 3, 4], exposition: [0, 3, 1, 4], march: [0, 5, 3, 4, 2, 6, 1, 4],
+                glass: [0, 1, 5, 4, 3, 6], inversion: [0, 3, 6, 2, 5, 1, 4, 4], orbit: [0, 3, 5, 6, 2, 3, 1, 4],
+                double: [0, 5, 3, 4, 0, 2, 1, 4], stretto: [0, 3, 1, 4], suspension: [5, 3, 1, 4],
+                apotheosis: [0, 5, 2, 6, 3, 1, 4, 0], bridge: [0, 3, 5, 4, 1, 5, 4, 4]
+            };
+            this.chordDegree = progressions[k][b % progressions[k].length];
+            this.chord = [0, 2, 4].map(d => this._degree(d + this.chordDegree));
+            const entry = (voice, shift = 0, transform = 'normal', stretch = 1) => {
+                this.entries = this.entries.filter(e => e.voice !== voice);
+                this.entries.push({ voice, shift, transform, stretch, age: 0 });
+            };
+            if (k === 'exposition' && b % 4 === 0) entry([1, 0, 2, 3][b / 4], b % 8 === 4 ? 4 : 0);
+            if (k === 'inversion' && b % 4 === 0) entry((b / 4 + this.movement) % 3, 0, 'inverted');
+            if (k === 'double' && b % 4 === 0) { entry(b % 8 ? 1 : 0, 0); entry(2, 0, 'countersubject'); }
+            if (k === 'stretto' && b % 2 === 0) entry((b / 2) % 3, b % 4 ? 4 : 0, b >= 8 ? 'inverted' : 'normal');
+            if (k === 'apotheosis' && b % 8 === 0) { entry(0, 0, 'normal', 2); entry(2, 0, 'countersubject'); }
+            if (k === 'march' && b % 4 === 0) entry(2, 0, this.movement % 2 ? 'inverted' : 'normal');
+            if (k === 'bridge' && b === 0) entry(1, 0, 'retrograde');
+            this.barEvents = this._composeBar();
+        }
+
+        _subjectEvents(e) {
+            let data = e.transform === 'countersubject' ? [
+                [0,4,6],[6,5,2],[8,4,2],[10,3,2],[12,2,4],[16,1,4],[20,2,4],[24,3,6],
+                [30,2,2],[32,1,4],[36,0,2],[38,1,2],[40,2,4],[44,3,4],[48,4,6],[54,3,2],[56,2,4],[60,1,4]
+            ] : this.subject;
+            if (e.transform === 'retrograde') data = data.map(([t, d, l]) => [64 - t - l, d, l]).sort((a, b) => a[0] - b[0]);
+            return data.map(([t, d, l]) => ({
+                step: t * e.stretch - e.age,
+                degree: (e.transform === 'inverted' ? 4 - d : d) + e.shift,
+                len: l * e.stretch
+            })).filter(n => n.step >= 0 && n.step < this.meter);
+        }
+
+        _composeBar() {
+            const events = [], s = this.section, k = s.kind, b = this.bar, dt = 60 / this.tempo / 4;
+            const emit = (step, midi, len, instrument, level, pan, role = 'counterpoint') =>
+                events.push({ step, midi, len, instrument, level, pan, role });
+            const palette = {
+                threshold: ['glass', 'organ', 'cello', 'bass'], exposition: ['strings', 'organ', 'cello', 'bass'],
+                march: ['brass', 'strings', 'cello', 'bass'], glass: ['glass', 'piano', 'strings', 'bass'],
+                inversion: ['organ', 'strings', 'cello', 'bass'], orbit: ['strings', 'glass', 'cello', 'bass'],
+                double: ['strings', 'brass', 'organ', 'bass'], stretto: ['strings', 'organ', 'cello', 'bass'],
+                suspension: ['choir', 'piano', 'cello', 'bass'], apotheosis: ['brass', 'strings', 'organ', 'bass'],
+                bridge: ['glass', 'strings', 'cello', 'bass']
+            }[k];
+            if (this.movement % 2 && ['exposition', 'inversion', 'double'].includes(k)) {
+                [palette[0], palette[1]] = [palette[1], palette[0]];
+            }
+            const ranges = [[69, 87], [60, 77], [48, 66], [31, 48]], pans = [-.38, .32, -.2, .02];
+            const subjects = new Map();
+            for (const e of this.entries) {
+                const ev = this._subjectEvents(e);
+                subjects.set(e.voice, ev);
+                for (const n of ev) {
+                    let midi = this._fit(this.tonic + this._degree(n.degree) + (e.voice === 0 ? 12 : e.voice === 3 ? -12 : 0), ...ranges[e.voice]);
+                    emit(n.step, midi, n.len * .92, palette[e.voice], e.voice === 3 ? .65 : .78, pans[e.voice], 'subject');
+                }
+            }
+            let activeVoices = k === 'threshold' ? 1 : k === 'exposition' ? Math.min(4, 1 + Math.floor(b / 4)) : k === 'orbit' ? 2 : k === 'suspension' ? 2 : 3;
+            if (k === 'apotheosis') activeVoices = 3;
+            const order = [1, 0, 2, 3].slice(0, activeVoices);
+            for (let step = 0; step < this.meter; step += 2) {
+                const simultaneous = events.filter(e => e.role === 'subject' && e.step <= step && e.step + e.len > step);
+                const chosen = simultaneous.map(e => ({ midi: e.midi, voice: pans.indexOf(e.pan) }));
+                const strong = step % 4 === 0;
+                for (const voice of order) {
+                    if (subjects.has(voice)) {
+                        const at = events.find(e => e.role === 'subject' && e.pan === pans[voice] && e.step === step);
+                        if (at) this.last[voice] = at.midi;
+                        continue;
+                    }
+                    if (voice === 3) continue;
+                    const sparse = ['threshold', 'orbit', 'suspension'].includes(k);
+                    if (sparse && step % 4 !== 0) continue;
+                    if (!sparse && voice === 2 && step % 4 !== 2) continue;
+                    if (step === this.meter - 2 && b % 4 === 3) continue;
+                    if (voice === 1 && step % 4 === 2 && k !== 'glass' && this.random() < .40) continue;
+                    const candidates = [];
+                    for (let d = -7; d < 22; d++) {
+                        const midi = this.tonic + this._degree(d);
+                        if (midi < ranges[voice][0] || midi > ranges[voice][1]) continue;
+                        const leap = Math.abs(midi - this.last[voice]);
+                        let cost = leap * .18 + (leap > 7 ? 3 : 0) + (leap === 0 ? 1.5 : 0);
+                        if (strong && !this.chord.some(c => (midi - this.tonic - c) % 12 === 0)) cost += 2.4;
+                        for (const other of chosen) {
+                            const interval = Math.abs(midi - other.midi) % 12;
+                            if (strong && ![0, 3, 4, 7, 8, 9].includes(interval)) cost += 4;
+                            if (interval === 0) cost += 1.3;
+                            const prev = this.prevStrong[voice], oprev = this.prevStrong[other.voice];
+                            if (strong && prev !== null && oprev !== null && [0, 7].includes(interval) && Math.abs(prev - oprev) % 12 === interval && Math.sign(midi - prev) === Math.sign(other.midi - oprev) && midi !== prev) cost += 5;
+                            if (voice < other.voice && midi < other.midi || voice > other.voice && midi > other.midi) cost += 2;
+                        }
+                        const target = (ranges[voice][0] + ranges[voice][1]) / 2 + Math.sin((b * 4 + step) / 5 + voice) * 3;
+                        cost += Math.abs(midi - target) * .035 + this.random() * .95;
+                        candidates.push({ midi, cost });
+                    }
+                    candidates.sort((a, b) => a.cost - b.cost);
+                    const midi = candidates[0].midi;
+                    const len = sparse ? 3.6 : step % 4 === 0 ? 1.85 : 1.65;
+                    emit(step, midi, len, palette[voice], sparse ? .54 : voice === 2 ? .45 : .54, pans[voice]);
+                    chosen.push({ midi, voice });
+                    this.last[voice] = midi;
+                }
+                if (strong) for (const n of chosen) this.prevStrong[n.voice] = n.midi;
+            }
+            const bass = this._fit(this.tonic + this._degree(this.chordDegree) - 12, 31, 48);
+            if (!subjects.has(3)) {
+                const rhythm = ['orbit', 'suspension', 'threshold'].includes(k) ? [0, Math.floor(this.meter / 2)] : k === 'glass' ? [0, 6, 10] : k === 'stretto' ? [0, 3, 6, 8, 11, 14] : [0, 4, 8, 12];
+                for (const step of rhythm.filter(x => x < this.meter)) emit(step, step === 8 ? bass + 7 : bass, step === 0 ? 3.4 : 2.6, 'bass', .66, 0, 'bass');
+            }
+            if (['orbit', 'suspension', 'apotheosis'].includes(k) || k === 'threshold' && b >= 2) {
+                for (let i = 0; i < 3; i++) emit(0, this._fit(this.tonic + this.chord[i], 48, 74), this.meter * .91, k === 'orbit' ? 'strings' : 'choir', k === 'apotheosis' ? .30 : .34, (i - 1) * .52, 'pad');
+            }
+            if (k === 'glass' || k === 'double' || k === 'apotheosis' && b >= 8) {
+                const pattern = this._pick([[0,2,1,2,0,1,2], [0,1,2,1,0,2,1], [2,0,1,2,1,0,2]]);
+                for (let step = 1; step < this.meter; step += 2) emit(step, this._fit(this.tonic + this.chord[pattern[(step - 1) / 2 % 7]] + 12, 60, 88), 1.25, k === 'double' ? 'piano' : 'glass', .25, -.55, 'filigree');
+            }
+            if (k === 'apotheosis' && b % 4 === 0) emit(0, this._fit(this.tonic + 24, 72, 86), 7, 'glass', .35, .45, 'bell');
+            const drum = (step, instrument, level = 1, midi = 48) => { if (step < this.meter) emit(step, midi, 1, instrument, level, 0, 'drum'); };
+            if (!['orbit', 'suspension'].includes(k) && !(k === 'exposition' && b < 4)) {
+                if (k === 'threshold') {
+                    if (b >= 2) { drum(0, 'timpani', .55, 38); drum(10, 'timpani', .35, 45); }
+                } else {
+                    if (b % 2 === 0 || !this.drumGroove) this.drumGroove = this._pick(k === 'march' ? [[0,3,6,8,11],[0,2,8,10,14]] : k === 'double' ? [[0,6,10],[0,7,8,14]] : [[0,6,8],[0,3,8,10],[0,6,11,14]]);
+                    const kickSteps = k === 'glass' ? [0, 6, 10] : k === 'stretto' ? [0, 3, 6, 10, 14] : this.drumGroove;
+                    kickSteps.forEach(t => drum(t, 'kick', .7));
+                    (k === 'glass' ? [6, 10] : k === 'double' && b % 8 < 4 ? [8] : [4, 12]).forEach(t => drum(t, 'snare', .58));
+                    for (let t = 0; t < this.meter; t += 2) if (this.random() < .8) drum(t, 'cymbal', t % 4 === 0 ? .19 : .10);
+                    if (this.energy > .87) for (const t of [3, 11, 15]) if (this.random() < this.intensity * .5) drum(t, 'kick', .4);
+                    if (b % 4 === 3) for (let t = this.meter - 4; t < this.meter; t++) drum(t, 'timpani', .28 + .06 * (t % 4), 48 - (t % 4) * 3);
+                    if (b % 8 === 0) drum(0, 'crash', .45);
+                }
+            } else if (k === 'orbit' && b >= 6 || k === 'suspension' && b >= 6) {
+                drum(0, 'timpani', .35, 38); drum(this.meter - 2, 'timpani', .27, 45);
+            }
+            for (const e of events) { e.offset = e.role === 'drum' ? 0 : this.random() * .007; e.level *= .94 + this.random() * .12; e.seconds = e.len * dt; }
+            for (const e of this.entries) e.age += this.meter;
+            this.entries = this.entries.filter(e => e.age < 64 * e.stretch);
+            return events;
+        }
+
+        static sample(kind, midi, sampleRate = 24000) {
+            const P = this.profiles[kind], seconds = P ? P.seconds : kind === 'crash' ? 2.5 : kind === 'cymbal' ? .15 : 1.2;
+            const length = Math.ceil(seconds * sampleRate), L = new Float32Array(length), R = new Float32Array(length);
+            const rand = this.rng(76543 + midi * 871 + kind.split('').reduce((a, c) => a + c.charCodeAt(0) * 13, 0));
+            const f = 440 * 2 ** ((midi - 69) / 12), TAU = Math.PI * 2;
+            if (!P) {
+                let phase = 0, nlow = 0, prev = 0;
+                for (let i = 0; i < length; i++) {
+                    const t = i / sampleRate, n = rand() * 2 - 1; nlow = nlow * .7 + n * .3; const high = n - prev; prev = n;
+                    let x = 0;
+                    if (kind === 'kick') { phase += TAU * (43 + 135 * Math.exp(-t * 36)) / sampleRate; x = Math.sin(phase) * Math.exp(-t * 13) + high * .13 * Math.exp(-t * 180); }
+                    if (kind === 'snare') x = (Math.sin(TAU * 185 * t) * .42 + Math.sin(TAU * 332 * t) * .16) * Math.exp(-t * 24) + high * .32 * Math.exp(-t * 19);
+                    if (kind === 'timpani') x = (Math.sin(TAU * f * t + 2 * (1 - Math.exp(-t * 30))) * .7 + Math.sin(TAU * f * 1.505 * t) * .25 + Math.sin(TAU * f * 2.04 * t) * .1) * Math.exp(-t * 4.5) + nlow * .12 * Math.exp(-t * 35);
+                    if (kind === 'crash' || kind === 'cymbal') x = (high * .20 + Math.sin(TAU * 4211 * t) * Math.sin(TAU * 3187 * t) * .15 + Math.sin(TAU * 6599 * t) * .08) * Math.exp(-t * (kind === 'crash' ? 2.4 : 45));
+                    const fade = Math.min(1, i / 50) * Math.min(1, (length - i) / 300);
+                    L[i] = x * fade; R[i] = kind === 'crash' ? L[i] * .8 + n * .05 * Math.exp(-t * 3) * fade : L[i];
+                }
+                return { left: L, right: R, sampleRate };
+            }
+            if (kind === 'piano' || kind === 'glass') {
+                const maxH = Math.min(kind === 'piano' ? 16 : 12, Math.floor(sampleRate * .44 / f));
+                for (let h = 1; h <= maxH; h++) {
+                    const ratio = kind === 'piano' ? h * Math.sqrt(1 + .00016 * h * h) : h * Math.sqrt(1 + .0018 * h * h);
+                    const amp = (kind === 'piano' ? 1 : Math.sin(h * 1.9) ** 2 + .15) / Math.pow(h, kind === 'piano' ? 1.32 : 1.5);
+                    const decay = kind === 'piano' ? .85 + h * .20 : .60 + h * .17, delta = TAU * f * ratio / sampleRate;
+                    let phase = rand() * TAU; const drift = kind === 'piano' ? 1.0007 : 1.0014;
+                    for (let i = 0; i < length; i++) {
+                        const env = Math.exp(-decay * i / sampleRate);
+                        L[i] += Math.sin(phase + delta * i) * amp * env;
+                        R[i] += Math.sin(phase + delta * drift * i) * amp * env;
+                    }
+                }
+            } else {
+                const size = 2048, tables = [new Float32Array(size), new Float32Array(size)];
+                for (let state = 0; state < 2; state++) {
+                    const maxH = Math.min(44, Math.floor(sampleRate * .43 / f));
+                    for (let h = 1; h <= maxH; h++) {
+                        const hz = h * f; let amp = 1 / Math.pow(h, 1.25);
+                        if (kind === 'strings' || kind === 'cello') amp = (.30 + 1.4 * Math.exp(-(((hz - 650) / 500) ** 2)) + .7 * Math.exp(-(((hz - 2300) / 1300) ** 2))) / Math.pow(h, state ? 1.3 : 1.05);
+                        if (kind === 'brass') amp = (1 + .5 * Math.exp(-(((hz - 1300) / 800) ** 2))) / Math.pow(h, state ? 1.65 : .95) * Math.exp(-hz / (state ? 2300 : 4800));
+                        if (kind === 'organ') amp = ({1:.75, 2:.6, 3:.27, 4:.24, 6:.13, 8:.12}[h] || .015 / h);
+                        if (kind === 'choir') amp = (.045 + .9 * Math.exp(-(((hz - (state ? 450 : 780)) / 170) ** 2)) + .48 * Math.exp(-(((hz - (state ? 1500 : 1150)) / 230) ** 2)) + .20 * Math.exp(-(((hz - 2650) / 400) ** 2))) / Math.pow(h, .65);
+                        if (kind === 'bass') amp = 1 / Math.pow(h, 1.8) * Math.exp(-hz / 1400);
+                        const phase = rand() * .12;
+                        for (let i = 0; i < size; i++) tables[state][i] += Math.sin(TAU * h * i / size + phase) * amp;
+                    }
+                }
+                const at = (table, phase) => { const p = ((phase % 1) + 1) % 1 * size, j = p | 0; return table[j] * (1 - p + j) + table[(j + 1) % size] * (p - j); };
+                const p = [rand(), rand(), rand()], rates = [1, 2 ** (-5 / 1200), 2 ** (6 / 1200)];
+                for (let i = 0; i < length; i++) {
+                    const t = i / sampleRate, vib = (kind === 'organ' || kind === 'bass' ? 0 : .0013) * (1 - Math.exp(-t * 5)) * Math.sin(TAU * 5.1 * t);
+                    const morph = kind === 'brass' ? 1 - Math.exp(-t * 7) : .5 + .4 * Math.sin(t * (kind === 'choir' ? 1.8 : .9));
+                    let a = 0, b = 0;
+                    for (let j = 0; j < 3; j++) {
+                        p[j] += f * rates[j] * (1 + vib + Math.sin(t * 1.7 + j) * .0004) / sampleRate;
+                        const x = at(tables[0], p[j]) * (1 - morph) + at(tables[1], p[j]) * morph;
+                        a += x * [.50, .36, .14][j]; b += x * [.50, .14, .36][j];
+                    }
+                    const breath = (rand() * 2 - 1) * (kind === 'choir' ? .009 : kind === 'strings' || kind === 'cello' ? .016 : .003);
+                    L[i] = a + breath; R[i] = b - breath;
+                }
+            }
+            let peak = 0; for (let i = 0; i < length; i++) peak = Math.max(peak, Math.abs(L[i]), Math.abs(R[i]));
+            const norm = .74 / Math.max(.01, peak);
+            for (let i = 0; i < length; i++) {
+                const fade = Math.min(1, i / 48) * Math.min(1, (length - i) / 600);
+                L[i] *= norm * fade; R[i] *= norm * fade;
+            }
+            return { left: L, right: R, sampleRate };
+        }
+
+        static impulse(sampleRate = 24000) {
+            const n = Math.ceil(sampleRate * 2.35), L = new Float32Array(n), R = new Float32Array(n), rand = this.rng(93061391);
+            for (let i = 0; i < n; i++) {
+                const t = i / sampleRate, env = Math.exp(-t * 3.8) * .026, gate = Math.min(1, t / .035);
+                L[i] = (rand() * 2 - 1) * env * gate; R[i] = (rand() * 2 - 1) * env * gate;
+            }
+            for (const [t, a] of [[.029, .17], [.043, .13], [.071, .11], [.109, .08], [.173, .06]]) {
+                L[Math.floor(t * sampleRate)] += a; R[Math.floor((t + .007) * sampleRate)] += a * .9;
+            }
+            return { left: L, right: R, sampleRate };
+        }
+
+        _sampleKey(kind, midi) {
+            return kind in CathedralModule.profiles ? `${kind}:${Math.round(midi / 3) * 3}` : `${kind}:${kind === 'timpani' ? Math.round(midi / 3) * 3 : 48}`;
+        }
+
+        async prepare() {
+            if (CathedralModule.rawBank.ready) return;
+            if (CathedralModule.rawBank.promise) {
+                await CathedralModule.rawBank.promise;
+                return;
+            }
+
+            CathedralModule.rawBank.promise = (async () => {
+                const sr = this.ctx.sampleRate;
+                const keys = [];
+                for (const [kind, p] of Object.entries(CathedralModule.profiles)) {
+                    for (let n = Math.round(p.range[0] / 3) * 3; n <= Math.round(p.range[1] / 3) * 3; n += 3) keys.push(`${kind}:${n}`);
+                }
+                for (const kind of ['kick', 'snare', 'cymbal', 'crash']) keys.push(`${kind}:48`);
+                for (let n = 36; n <= 48; n += 3) keys.push(`timpani:${n}`);
+
+                for (let i = 0; i < keys.length; i++) {
+                    const [kind, n] = keys[i].split(':');
+                    // Store raw Float32Array data globally, avoiding AudioContext creation during preload!
+                    CathedralModule.rawBank.buffers.set(keys[i], CathedralModule.sample(kind, +n, sr));
+                    if (this.onProgress) this.onProgress((i + 1) / keys.length);
+                    if (i % 2 === 0) await new Promise(r => setTimeout(r, 0)); // Yield to main thread
+                }
+                CathedralModule.rawBank.impulse = CathedralModule.impulse(sr);
+                CathedralModule.rawBank.ready = true;
+            })();
+
+            try {
+                await CathedralModule.rawBank.promise;
+            } catch (error) {
+                CathedralModule.rawBank.buffers.clear();
+                throw error;
+            } finally {
+                CathedralModule.rawBank.promise = null;
+            }
+        }
+
+        _getBuffer(key) {
+            let buf = this.contextBuffers.get(key);
+            if (!buf) {
+                const raw = CathedralModule.rawBank.buffers.get(key);
+                if (!raw) return null;
+                const sr = this.ctx.sampleRate;
+                buf = this.ctx.createBuffer(2, raw.left.length, sr);
+                buf.copyToChannel(raw.left, 0);
+                buf.copyToChannel(raw.right, 1);
+                this.contextBuffers.set(key, buf);
+            }
+            return buf;
+        }
+
+        _getImpulseBuffer() {
+            if (!this.contextImpulse) {
+                const raw = CathedralModule.rawBank.impulse;
+                if (!raw) return null;
+                const sr = this.ctx.sampleRate;
+                const buf = this.ctx.createBuffer(2, raw.left.length, sr);
+                buf.copyToChannel(raw.left, 0);
+                buf.copyToChannel(raw.right, 1);
+                this.contextImpulse = buf;
+            }
+            return this.contextImpulse;
+        }
+
+        _graph() {
+            const c = this.ctx, nodes = [], add = n => (nodes.push(n), n), dry = add(c.createGain()), wet = add(c.createGain());
+            const reverb = add(c.createConvolver()); reverb.normalize = false; reverb.buffer = this._getImpulseBuffer();
+            const hp = add(c.createBiquadFilter()); hp.type = 'highpass'; hp.frequency.value = 30;
+            const comp = add(c.createDynamicsCompressor()); comp.threshold.value = -17; comp.knee.value = 12; comp.ratio.value = 3; comp.attack.value = .012; comp.release.value = .18;
+            const out = add(c.createGain()); out.gain.value = 0;
+            dry.connect(hp); wet.connect(reverb); reverb.connect(hp); hp.connect(comp); comp.connect(out); out.connect(this.dest);
+            this.graph = { dry, wet, out, nodes }; this.master = out;
+        }
+
+        _play(e, t) {
+            if (!this.graph) return;
+            const key = this._sampleKey(e.instrument, e.midi), buffer = this._getBuffer(key);
+            if (!buffer) throw new Error('Missing instrument sample ' + key);
+            const base = +key.split(':')[1], P = CathedralModule.profiles[e.instrument];
+            const c = this.ctx, src = c.createBufferSource(), env = c.createGain(), pan = c.createStereoPanner(), send = c.createGain();
+            src.buffer = buffer;
+            const rate = P || e.instrument === 'timpani' ? 2 ** ((e.midi - base) / 12) : 1;
+            src.playbackRate.value = rate;
+            const duration = P ? Math.min(e.seconds, buffer.duration / rate - .1) : buffer.duration / rate - .02;
+            const attack = P ? Math.min(P.attack, duration * .2) : .001, release = P ? P.release : .01;
+            const level = e.level * (P ? P.gain : .45);
+            env.gain.setValueAtTime(0, t); env.gain.linearRampToValueAtTime(level, t + attack);
+            env.gain.setValueAtTime(level, t + duration); env.gain.linearRampToValueAtTime(0, t + duration + release);
+            pan.pan.value = e.pan; send.gain.value = P ? P.wet : .12;
+            src.connect(env); env.connect(pan); pan.connect(this.graph.dry); pan.connect(send); send.connect(this.graph.wet);
+            const nodes = [src, env, pan, send], voice = { src, nodes };
+            this.voices.add(voice);
+            src.onended = () => { nodes.forEach(n => n.disconnect()); this.voices.delete(voice); };
+            src.start(t); src.stop(t + duration + release + .01);
+        }
+
+        async start() {
+            if (this.isPlaying || this.loading) return;
+            const token = ++this.generation; this.loading = true;
+            try {
+                if (this.ctx.state === 'suspended') await this.ctx.resume();
+                await this.prepare();
+                if (token !== this.generation) return;
+                this._reset(); this._graph(); this.isPlaying = true; this.loading = false;
+                this.nextTime = this.ctx.currentTime + .12;
+                this.graph.out.gain.setValueAtTime(0, this.ctx.currentTime);
+                this.graph.out.gain.linearRampToValueAtTime(.86, this.nextTime + .15);
+                this._scheduler();
+            } catch (error) {
+                if (token === this.generation) { this.stop(); if (this.onError) this.onError(error); else console.error(error); }
+                return false;
+            } finally {
+                if (token === this.generation) this.loading = false;
+            }
+        }
+
+        _scheduler() {
+            if (!this.isPlaying) return;
+            const now = this.ctx.currentTime;
+            if (this.nextTime < now - .2) this.nextTime = now + .08;
+            let budget = 16;
+            while (this.nextTime < now + .18 && budget-- > 0) {
+                if (this.step === 0) this._nextBar();
+                for (const e of this.barEvents) if (e.step === this.step) this._play(e, this.nextTime + e.offset);
+                const dt = 60 / this.tempo / 4;
+                this.nextTime += dt; this.elapsed += dt;
+                this.step = (this.step + 1) % this.meter;
+            }
+            this.timer = setTimeout(() => {
+                try { this._scheduler(); } catch (e) { this.stop(); if (this.onError) this.onError(e); else console.error(e); }
+            }, 25);
+        }
+
+        stop() {
+            this.generation++; this.loading = false; this.isPlaying = false;
+            clearTimeout(this.timer); this.timer = null;
+            const graph = this.graph; this.graph = null;
+            const voices = [...this.voices], now = this.ctx.currentTime;
+            if (graph) {
+                graph.out.gain.cancelScheduledValues(now);
+                graph.out.gain.setValueAtTime(graph.out.gain.value, now);
+                graph.out.gain.linearRampToValueAtTime(0, now + .04);
+            }
+            for (const voice of voices) try { voice.src.stop(now + .045); } catch (_) {}
+            setTimeout(() => {
+                if (graph) graph.nodes.forEach(n => n.disconnect());
+                for (const v of voices) { v.nodes.forEach(n => n.disconnect()); this.voices.delete(v); }
+            }, 100);
+        }
+
+        score(seconds = 210) {
+            if (this.isPlaying || this.loading) throw new Error('Use a separate module to export a score.');
+            this._reset();
+            const result = [], sections = [];
+            let last = '';
+            while (this.elapsed < seconds) {
+                this._nextBar();
+                if (last !== this.sectionName) { sections.push({ ...this.history.at(-1) }); last = this.sectionName; }
+                const dt = 60 / this.tempo / 4;
+                for (const e of this.barEvents) {
+                    const time = this.elapsed + e.step * dt + e.offset;
+                    if (time < seconds) result.push({ ...e, time, key: this._sampleKey(e.instrument, e.midi) });
+                }
+                this.elapsed += this.meter * dt;
+            }
+            return { seed: this.seed, seconds, sections, events: result };
+        }
+    }
+    class Lacrimosa2Module {
+        constructor(ctx, dest) {
+            this.ctx = ctx;
+            this.dest = dest;
+            this.isPlaying = false;
+            this.isStopped = true;
+            this.timer = null;
+            this.voices = new Set();
+            this.graph = null;
+            this.rootFreq = 146.83;
+
+            // Your original eight choir chords, unchanged.
+            this.refrain = [
+            [0,-5,-9], [-1,-5,-10], [0,-5,-9], [2,-1,-10],
+            [3,-1,-5], [2,-1,-5], [0,-3,-7], [-1,-5,-10]
+            ];
+
+            this.harmony = [
+            [0,-5,-9], [0,-5,-9], [-1,-5,-10], [-1,-5,-10],
+            [3,0,-4], [2,-1,-5], [0,-5,-9], [-1,-5,-10]
+            ];
+
+            this.light = [
+            [7,3,-2], [5,2,-5], [3,0,-9], [2,-2,-7],
+            [0,-4,-9], [2,-2,-7], [2,-1,-5], [-1,-5,-10]
+            ];
+
+            // 32 bars of 12/8. Tempo counts eighth notes.
+            this.form = [
+            {name:'Vigil', tempo:125, choir:.78},
+            {name:'Lacrimosa', tempo:125, choir:1.00},
+            {name:'Procession', tempo:132, choir:.92},
+            {name:'Answer', tempo:125, choir:.86},
+            {name:'A little light', tempo:118, choir:.84},
+            {name:'Gathering', tempo:132, choir:.94},
+            {name:'Full choir', tempo:132, choir:1.04},
+            {name:'After the prayer', tempo:125, choir:.74}
+            ];
+
+            this.impulse = null;
+        }
+
+        buildGraph() {
+            const c = this.ctx;
+            const input = c.createGain();
+            const comp = c.createDynamicsCompressor();
+
+            comp.threshold.value = -16;
+            comp.ratio.value = 6;
+            comp.attack.value = .03;
+
+            const reverb = c.createConvolver();
+
+            if (!this.impulse) {
+            const length = Math.ceil(c.sampleRate * 3.5);
+            this.impulse = c.createBuffer(2, length, c.sampleRate);
+
+            for (let channel = 0; channel < 2; channel++) {
+                const data = this.impulse.getChannelData(channel);
+
+                for (let i = 0; i < length; i++) {
+                data[i] =
+                    (Math.random()*2-1) * Math.pow(1-i/length, 3);
+                }
+            }
+            }
+
+            reverb.buffer = this.impulse;
+
+            const wet = c.createGain();
+            wet.gain.value = .5;
+
+            const dry = c.createGain();
+            dry.gain.value = .7;
+
+            const master = c.createGain();
+            master.gain.value = 0;
+
+            input.connect(comp);
+            comp.connect(reverb);
+            comp.connect(dry);
+            reverb.connect(wet);
+            wet.connect(master);
+            dry.connect(master);
+            master.connect(this.dest);
+
+            this.input = input;
+            this.master = master;
+            this.graph = {
+            master,
+            nodes:[input,comp,reverb,wet,dry,master]
+            };
+        }
+
+        start() {
+            if (this.isPlaying) return;
+
+            if (this.ctx.state === 'suspended') {
+            this.ctx.resume().catch(error =>
+                console.warn('Lacrimosa:', error)
+            );
+            }
+
+            this.buildGraph();
+            this.isPlaying = true;
+            this.isStopped = false;
+            this.tickCount = 0;
+            this.nextNoteTime = this.ctx.currentTime + .1;
+
+            this.master.gain.setValueAtTime(0, this.ctx.currentTime);
+            this.master.gain.linearRampToValueAtTime(
+            .65, this.nextNoteTime + 1
+            );
+
+            this.schedule();
+        }
+
+        schedule() {
+            if (!this.isPlaying) return;
+
+            const now = this.ctx.currentTime;
+
+            // Avoid firing a burst of late notes after a browser stall.
+            if (this.nextNoteTime < now - .2) {
+            this.nextNoteTime = now + .08;
+            }
+
+            let budget = 12;
+
+            while (this.nextNoteTime < now + .15 && budget-- > 0) {
+            this.playTick(this.nextNoteTime);
+            this.nextNoteTime += 60 / this.tempo;
+            this.tickCount++;
+            }
+
+            this.timer = setTimeout(() => this.schedule(), 25);
+        }
+
+        stop() {
+            this.isPlaying = false;
+            this.isStopped = true;
+
+            clearTimeout(this.timer);
+            this.timer = null;
+
+            const graph = this.graph;
+            this.graph = null;
+
+            const voices = [...this.voices];
+            const t = this.ctx.currentTime;
+
+            if (graph) {
+            graph.master.gain.cancelScheduledValues(t);
+            graph.master.gain.setValueAtTime(
+                graph.master.gain.value, t
+            );
+            graph.master.gain.linearRampToValueAtTime(0, t + .08);
+            }
+
+            for (const voice of voices) {
+            for (const source of voice.sources) {
+                try {
+                source.stop(t + .09);
+                } catch (_) {}
+            }
+            }
+
+            // Disconnect only the captured graph, never a restarted song.
+            setTimeout(() => {
+            if (graph) {
+                graph.nodes.forEach(node => node.disconnect());
+            }
+
+            for (const voice of voices) {
+                voice.nodes.forEach(node => node.disconnect());
+                this.voices.delete(voice);
+            }
+            }, 160);
+        }
+
+        track(sources, nodes, end) {
+            const voice = {sources, nodes};
+            this.voices.add(voice);
+
+            let remaining = sources.length;
+
+            sources.forEach(source => {
+            source.onended = () => {
+                if (--remaining > 0) return;
+
+                nodes.forEach(node => node.disconnect());
+                this.voices.delete(voice);
+            };
+
+            source.stop(end);
+            });
+        }
+
+        playTick(t) {
+            const tick = this.tickCount % 384;
+            const cycle = Math.floor(this.tickCount / 384);
+            const sectionIndex = Math.floor(tick / 48);
+            const section = this.form[sectionIndex];
+
+            const local = tick % 48;
+            const bar = Math.floor(local / 12);
+            const beat = Math.floor(local / 3);
+            const part = local % 3;
+
+            this.tempo = section.tempo;
+            this.sectionName = section.name;
+
+            const d = 60 / this.tempo;
+            const original = sectionIndex === 1 || sectionIndex === 6;
+
+            const chords = sectionIndex === 4
+            ? this.light
+            : original
+                ? this.refrain
+                : this.harmony;
+
+            const chord = chords[beat % chords.length];
+
+            // The refrain stays in D minor.
+            if (part === 0) {
+            if (sectionIndex === 0) {
+                if (beat % 2 === 0) {
+                this.playChoir(t, chord, d*5.8, section.choir);
+                }
+            } else if (sectionIndex === 7) {
+                if (beat % 2 === 0) {
+                const ending = beat >= 12 ? [0,-5,-9] : chord;
+                this.playChoir(t, ending, d*5.7, section.choir);
+                }
+            } else {
+                this.playChoir(t, chord, d*3, section.choir);
+            }
+            }
+
+            // Cello follows the choir's actual lowest note.
+            const bass = chord[2];
+
+            if (sectionIndex !== 0 && sectionIndex !== 7) {
+            const walking = sectionIndex === 2 || sectionIndex === 5;
+
+            if (walking || part === 0) {
+                this.playString(
+                t, bass,
+                d * (walking ? .88 : 2.65),
+                walking ? .095 : .11,
+                -.22, 'cello'
+                );
+            }
+            } else if (local % 12 === 0) {
+            this.playString(
+                t,
+                sectionIndex === 7 && bar === 3 ? -9 : bass,
+                d*9, .08, -.2, 'cello'
+            );
+            }
+
+            // Quiet falling answers leave the choir in front.
+            if (
+            part === 1 &&
+            [1,3,4,5,6].includes(sectionIndex)
+            ) {
+            const shouldAnswer =
+                sectionIndex === 3 ||
+                sectionIndex === 5 ||
+                (beat + cycle) % 2 === 0;
+
+            if (shouldAnswer) {
+                const target = chord[0] + 12;
+                const approach = target + (sectionIndex === 4 ? 2 : 1);
+
+                this.playString(
+                t, approach, d*1.8,
+                sectionIndex === 6 ? .055 : .042,
+                .32, 'violin', target
+                );
+            }
+            }
+
+            // A lower voice answers after the upper one.
+            if (
+            sectionIndex === 3 &&
+            part === 2 &&
+            beat % 2 === 1
+            ) {
+            const previous = chords[(beat-1) % chords.length][0];
+
+            this.playString(
+                t, previous, d*2.6,
+                .042, -.38, 'violin', chord[1]
+            );
+            }
+
+            // Organ appears only as the piece gathers weight.
+            if (
+            [2,5,6].includes(sectionIndex) &&
+            part === 0 &&
+            beat % 2 === 0
+            ) {
+            this.playOrgan(
+                t, chord, d*5.7,
+                sectionIndex === 6 ? .035 : .023
+            );
+            }
+
+            // Bells punctuate entrances and the brighter passage.
+            if (
+            (sectionIndex === 0 && local === 0) ||
+            (sectionIndex === 4 && local % 12 === 0) ||
+            (sectionIndex === 6 && local === 0)
+            ) {
+            this.playBell(
+                t, chord[0] + 24,
+                sectionIndex === 4 ? .035 : .027
+            );
+            }
+        }
+
+        playChoir(t, chord, dur, level = 1) {
+            // Your original choir synthesis and octave spacing.
+            chord.forEach((semi, i) => {
+            const c = this.ctx;
+            const osc = c.createOscillator();
+            const f1 = c.createBiquadFilter();
+            const f2 = c.createBiquadFilter();
+            const g = c.createGain();
+
+            osc.type = 'sawtooth';
+
+            const octave = i === 0 ? 2 : i === 2 ? .5 : 1;
+            osc.frequency.value =
+                this.rootFreq * octave * 2**(semi/12);
+
+            const vib = c.createOscillator();
+            vib.frequency.value = 5;
+
+            const depth = c.createGain();
+            depth.gain.value = 4;
+
+            vib.connect(depth);
+            depth.connect(osc.frequency);
+
+            // Preserve the original SERIAL formant filters.
+            f1.type = 'bandpass';
+            f1.frequency.value = 700;
+            f1.Q.value = 2.5;
+
+            f2.type = 'bandpass';
+            f2.frequency.value = 1200;
+            f2.Q.value = 2;
+
+            g.gain.setValueAtTime(0, t);
+            g.gain.linearRampToValueAtTime(.3*level, t+dur*.2);
+            g.gain.setValueAtTime(.3*level, t+dur*.8);
+            g.gain.linearRampToValueAtTime(0, t+dur);
+
+            osc.connect(f1);
+            f1.connect(f2);
+            f2.connect(g);
+            g.connect(this.input);
+
+            osc.start(t);
+            vib.start(t);
+
+            this.track(
+                [osc,vib],
+                [osc,vib,depth,f1,f2,g],
+                t+dur
+            );
+            });
+        }
+
+        playString(t, semi, dur, level, pan, type, endSemi = semi) {
+            const c = this.ctx;
+            const filter = c.createBiquadFilter();
+            const gain = c.createGain();
+            const panner = c.createStereoPanner();
+
+            panner.pan.value = pan;
+
+            const octave = type === 'cello' ? .5 : 1;
+            const freq = this.rootFreq * octave * 2**(semi/12);
+            const end = this.rootFreq * octave * 2**(endSemi/12);
+
+            filter.type = 'lowpass';
+            filter.Q.value = .55;
+
+            filter.frequency.setValueAtTime(
+            type === 'cello' ? 550 : 1100, t
+            );
+            filter.frequency.linearRampToValueAtTime(
+            type === 'cello' ? 850 : 1900, t+dur*.3
+            );
+            filter.frequency.linearRampToValueAtTime(
+            type === 'cello' ? 300 : 700, t+dur
+            );
+
+            const attack = Math.min(.16, dur*.25);
+
+            gain.gain.setValueAtTime(0, t);
+            gain.gain.linearRampToValueAtTime(level, t+attack);
+            gain.gain.setValueAtTime(level*.8, t+dur*.65);
+            gain.gain.linearRampToValueAtTime(0, t+dur);
+
+            filter.connect(gain);
+            gain.connect(panner);
+            panner.connect(this.input);
+
+            const sources = [-4,4].map(detune => {
+            const osc = c.createOscillator();
+
+            osc.type = 'sawtooth';
+            osc.detune.value = detune;
+            osc.frequency.setValueAtTime(freq, t);
+            osc.frequency.setTargetAtTime(end, t+dur*.42, .065);
+
+            osc.connect(filter);
+            osc.start(t);
+            return osc;
+            });
+
+            this.track(
+            sources,
+            [...sources,filter,gain,panner],
+            t+dur
+            );
+        }
+
+        playOrgan(t, chord, dur, level) {
+            const c = this.ctx;
+            const g = c.createGain();
+
+            g.gain.setValueAtTime(0, t);
+            g.gain.linearRampToValueAtTime(level, t+.2);
+            g.gain.setValueAtTime(level, t+dur*.75);
+            g.gain.linearRampToValueAtTime(0, t+dur);
+            g.connect(this.input);
+
+            const sources = [];
+
+            chord.forEach(semi => {
+            const osc = c.createOscillator();
+
+            osc.type = 'sine';
+            osc.frequency.value = this.rootFreq * 2**(semi/12);
+
+            osc.connect(g);
+            osc.start(t);
+            sources.push(osc);
+            });
+
+            this.track(sources, [...sources,g], t+dur);
+        }
+
+        playBell(t, semi, level) {
+            const c = this.ctx;
+            const sources = [];
+            const nodes = [];
+            const freq = this.rootFreq * 2**(semi/12);
+
+            [1,2.01,2.76].forEach((ratio,i) => {
+            const osc = c.createOscillator();
+            const g = c.createGain();
+
+            osc.type = 'sine';
+            osc.frequency.value = freq*ratio;
+
+            g.gain.setValueAtTime(0, t);
+            g.gain.linearRampToValueAtTime(
+                level/(i+1)**2, t+.006
+            );
+            g.gain.exponentialRampToValueAtTime(.00001, t+3.8);
+
+            osc.connect(g);
+            g.connect(this.input);
+            osc.start(t);
+
+            sources.push(osc);
+            nodes.push(osc,g);
+            });
+
+            this.track(sources, nodes, t+4);
+        }
+        }
+    class CrownModule {
+        constructor(ctx, dest, options = {}) {
+            this.ctx = ctx;
+            this.dest = dest || ctx.destination;
+            this.seed = options.seed === undefined
+                ? ((Math.random() * 4294967296) >>> 0)
+                : (Number(options.seed) >>> 0);
+            this.intensity = Math.max(0, Math.min(1, Number(options.intensity ?? .75) || 0));
+            this.isPlaying = false;
+            this.timer = null;
+            this.voices = new Set();
+            this.graph = null;
+            this.onSection = null;
+            this._resetScore();
+        }
+        _random() {
+            let t = this.rng = (this.rng + 0x6D2B79F5) >>> 0;
+            t = Math.imul(t ^ (t >>> 15), t | 1);
+            t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+            return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+        }
+        _pick(a) { return a[Math.floor(this._random() * a.length)]; }
+        _resetScore() {
+            this.rng = this.seed;
+            this.tick = 0;
+            this.cycle = 0;
+            this.phase = -1;
+            this.localBar = -1;
+            this.tonic = 50; 
+            this.previousVoicing = [62, 65, 69];
+            this.lastLead = 74;
+            this.sectionName = 'Summoning';
+            this.tempo = 164;
+            this.theme = [0, 2, 4, 3, 2, 1, 4, 6, 7, 6, 4, 3, 2, 1, 6, 4];
+            this.theme[10] = this._pick([4, 5, 7]);
+            this.theme[13] = this._pick([1, 2, 3]);
+            this._makeForm(true);
+            this.sectionTrace = [];
+        }
+        _makeForm(first) {
+            const routes = this.cycle % 2 === 0
+                ? ['Iron Procession', 'Solar Oath', 'Mirror Duel']
+                : ['Solar Oath', 'Mirror Duel', 'Iron Procession'];
+            this.form = [
+                {name: first ? 'Summoning' : 'Reforging', bars: 2, bpm: 164, energy: .55},
+                {name: routes[0], bars: 8, bpm: 174, energy: .83},
+                {name: routes[1], bars: 8, bpm: 176, energy: .9},
+                {name: routes[2], bars: 4 + this._pick([0, 4]), bpm: 180, energy: .94},
+                {name: 'Ashes Remember', bars: 4, bpm: 148, energy: .38},
+                {name: 'The Ascent', bars: 4, bpm: 172, energy: .8},
+                {name: 'Crown of the Last Sun', bars: 8, bpm: 182, energy: 1},
+                {name: 'Turn of the Wheel', bars: 2, bpm: 174, energy: .75}
+            ];
+        }
+        setIntensity(value) {
+            if (Number.isFinite(value)) this.intensity = Math.max(0, Math.min(1, value));
+        }
+        _beginBar(time) {
+            this.localBar++;
+            if (this.phase < 0 || this.localBar >= this.form[this.phase].bars) {
+                this.phase++;
+                this.localBar = 0;
+                if (this.phase >= this.form.length) {
+                    this.cycle++;
+                    this.phase = 0;
+                    this.tonic = 50 + this._pick([0, 0, 5, -2, 3]);
+                    this._makeForm(false);
+                }
+                this.sectionName = this.form[this.phase].name;
+                this.sectionTrace.push({time, name: this.sectionName, cycle: this.cycle});
+                if (this.sectionTrace.length > 32) this.sectionTrace.shift();
+                if (typeof this.onSection === 'function') {
+                    try { this.onSection({name: this.sectionName, cycle: this.cycle, time}); }
+                    catch (error) { console.warn('Battle music section callback:', error); }
+                }
+            }
+            const section = this.form[this.phase];
+            this.tempo = section.bpm;
+            this.energy = section.energy * (.65 + this.intensity * .35);
+            this.isLament = this.sectionName === 'Ashes Remember';
+            this.isDuel = this.sectionName === 'Mirror Duel';
+            this.isClimax = this.sectionName === 'Crown of the Last Sun';
+            this.isRise = this.sectionName === 'The Ascent';
+            const progressions = {
+                'Summoning': [0, 4], 'Reforging': [0, 4],
+                'Iron Procession': [0, 0, 5, 4, 0, 3, 5, 4],
+                'Solar Oath': [0, 5, 2, 6, 3, 5, 4, 4],
+                'Mirror Duel': [0, 3, 1, 4, 5, 3, 4, 4],
+                'Ashes Remember': [5, 2, 3, 4],
+                'The Ascent': [3, 5, 4, 4],
+                'Crown of the Last Sun': [0, 5, 3, 4, 0, 2, 5, 4],
+                'Turn of the Wheel': [5, 4]
+            };
+            const progression = progressions[this.sectionName];
+            this.chordDegree = progression[this.localBar % progression.length];
+            this.scale = [0, 2, 3, 5, 7, 8, this.chordDegree === 4 ? 11 : 10];
+            this.chord = [0, 2, 4].map(i => this._degree(this.chordDegree + i));
+            this.ostinato = this._pick([[0,2,1,2,0,2,1,3],[0,1,2,1,3,2,1,2],[0,2,3,2,1,2,0,1]]);
+            this.barNotes = this._melody();
+        }
+        _degree(d) { return this.scale[((d % 7) + 7) % 7] + 12 * Math.floor(d / 7); }
+        _nearestChord(note) {
+            const choices = [];
+            for (let oct = -1; oct <= 2; oct++) for (const c of this.chord) choices.push(this.tonic + c + oct * 12);
+            return choices.reduce((a,b) => Math.abs(b-note) < Math.abs(a-note) ? b : a);
+        }
+        _register(note, low, high) {
+            while (note < low) note += 12;
+            while (note > high) note -= 12;
+            return note;
+        }
+        _melody() {
+            const events = new Map();
+            const b = this.localBar;
+            if (this.isLament) {
+                for (const [step,degree,len] of [[0, this.theme[(b*2)%16],7],[8,this.theme[(b*2+1)%16],6]]) {
+                    const midi = this._register(this._nearestChord(this.tonic + 12 + this._degree(degree)), 60, 81);
+                    events.set(step,{midi,len,voice:'strings'});
+                }
+                return events;
+            }
+            if (this.isDuel) {
+                let degree = this.chordDegree + (b % 2 ? 7 : 0);
+                const direction = b % 2 ? -1 : 1;
+                for (let step=0; step<16; step++) {
+                    if (step === 7 || (step === 15 && b % 4 !== 3)) continue;
+                    if (step % 2) degree += this._pick([direction,direction,0,-direction]);
+                    let midi = this.tonic + 12 + this._degree(degree);
+                    if (step % 4 === 0) midi = this._nearestChord(midi);
+                    midi = this._register(midi, 62, 86);
+                    events.set(step,{midi,len:step%4===0?1.5:.8,voice:b%2?'organ':'pluck'});
+                }
+                return events;
+            }
+            const rhythms = [[0,3,6,8,10,12],[0,2,5,8,11,14],[0,4,6,8,12,14]];
+            const rhythm = b % 4 < 2 ? rhythms[0] : this._pick(rhythms);
+            for (let j=0;j<rhythm.length;j++) {
+                const step=rhythm[j];
+                let degree=this.theme[((b%2)*8+j)%16];
+                if (b%4>=2 && j>1 && this._random()<.35) degree += this._pick([-1,1,2]);
+                if (this.isRise) degree += Math.floor(b/2)*2;
+                let midi=this.tonic+12+this._degree(degree);
+                if (step%4===0) midi=this._nearestChord(midi);
+                if (b%4===3 && j===rhythm.length-1) midi=this.tonic+12+(this.chordDegree===4?11:7);
+                midi=this._register(midi,62,this.isClimax?88:84);
+                const gap=(rhythm[j+1]??16)-step;
+                events.set(step,{midi,len:gap*.9,voice:this.isClimax?'brass':'lead'});
+            }
+            return events;
+        }
+        _noiseBuffer(seconds, seed) {
+            const buffer=this.ctx.createBuffer(1,Math.ceil(this.ctx.sampleRate*seconds),this.ctx.sampleRate);
+            const data=buffer.getChannelData(0);
+            let x=seed>>>0;
+            for(let i=0;i<data.length;i++) { x^=x<<13;x^=x>>>17;x^=x<<5;data[i]=(x>>>0)/2147483648-1; }
+            return buffer;
+        }
+        _buildGraph() {
+            const c=this.ctx, nodes=[];
+            const add=n=>{nodes.push(n);return n;};
+            
+            // INCREASED PRE-COMPRESSOR MIX (was .72 -> 1.0) to drive the master compressor harder for a fuller sound
+            const mix=add(c.createGain());mix.gain.value=1.0;
+            
+            const highpass=add(c.createBiquadFilter());highpass.type='highpass';highpass.frequency.value=32;
+            const comp=add(c.createDynamicsCompressor());comp.threshold.value=-17;comp.knee.value=14;comp.ratio.value=3.5;comp.attack.value=.008;comp.release.value=.15;
+            const out=add(c.createGain());out.gain.value=0;
+            mix.connect(highpass);highpass.connect(comp);comp.connect(out);out.connect(this.dest);
+            const delay=add(c.createDelay(1));delay.delayTime.value=.173;
+            const damp=add(c.createBiquadFilter());damp.type='lowpass';damp.frequency.value=2600;
+            const feedback=add(c.createGain());feedback.gain.value=.22;
+            const send=add(c.createGain());send.gain.value=.12;
+            mix.connect(send);send.connect(delay);delay.connect(damp);damp.connect(comp);damp.connect(feedback);feedback.connect(delay);
+            this.graph={mix,out,nodes};
+            this.noise=this.noise||this._noiseBuffer(1.6,0xFACE6139);
+            const real=new Float32Array(20),imag=new Float32Array(20);
+            for(let i=1;i<20;i++) imag[i]=(i%2?1:.5)/Math.pow(i,1.35);
+            this.leadWave=c.createPeriodicWave(real,imag);
+            this.master=out;
+        }
+        _track(sources,nodes,end) {
+            const voice={sources,nodes,end};this.voices.add(voice);
+            let remaining=sources.length;
+            const cleanup=()=>{if(--remaining>0)return;for(const n of nodes){try{n.disconnect();}catch(_){}}this.voices.delete(voice);};
+            for(const source of sources){source.onended=cleanup;source.stop(end);}
+        }
+        _tone(midi,time,duration,type='lead',level=.1,pan=0) {
+            const c=this.ctx, f=440*Math.pow(2,(midi-69)/12);
+            const profiles={
+                lead:{wave:'custom',cut:4000,attack:.012,release:.08,detune:3},
+                brass:{wave:'sawtooth',cut:2400,attack:.035,release:.11,detune:5},
+                strings:{wave:'sawtooth',cut:1800,attack:.12,release:.20,detune:6},
+                organ:{wave:'square',cut:2500,attack:.006,release:.05,detune:1},
+                pluck:{wave:'triangle',cut:5200,attack:.003,release:.07,detune:0},
+                bass:{wave:'sawtooth',cut:700,attack:.005,release:.035,detune:0}
+            };
+            const p=profiles[type]||profiles.lead;
+            const filter=c.createBiquadFilter();filter.type='lowpass';filter.Q.value=.6;
+            filter.frequency.setValueAtTime(p.cut,time);
+            if(type==='pluck'||type==='bass')filter.frequency.exponentialRampToValueAtTime(Math.max(220,p.cut*.3),time+duration);
+            const env=c.createGain(),stereo=c.createStereoPanner();stereo.pan.value=pan;
+            const velocity=level*(.94+this._random()*.12);
+            const attack=Math.min(p.attack,duration*.25);
+            env.gain.setValueAtTime(0,time);env.gain.linearRampToValueAtTime(velocity,time+attack);
+            env.gain.exponentialRampToValueAtTime(Math.max(.0001,velocity*(type==='pluck'?.12:.7)),time+duration);
+            env.gain.exponentialRampToValueAtTime(.0001,time+duration+p.release);
+            filter.connect(env);env.connect(stereo);stereo.connect(this.graph.mix);
+            const nodes=[filter,env,stereo],sources=[];
+            for(let i=0;i<(p.detune?2:1);i++){
+                const osc=c.createOscillator();
+                if(p.wave==='custom')osc.setPeriodicWave(this.leadWave);else osc.type=p.wave;
+                osc.frequency.setValueAtTime(f,time);osc.detune.value=p.detune*(i?1:-1);
+                const gain=c.createGain();gain.gain.value=p.detune?.5:1;
+                osc.connect(gain);gain.connect(filter);nodes.push(osc,gain);sources.push(osc);osc.start(time);
+            }
+            this._track(sources,nodes,time+duration+p.release+.015);
+        }
+        _choir(midi,t,duration) {
+            const c=this.ctx,osc=c.createOscillator();osc.type='sawtooth';osc.frequency.value=440*2**((midi-69)/12);
+            
+            // LOUDER CHOIR PADS (Boosted for better background presence)
+            const env=c.createGain();env.gain.setValueAtTime(0,t);env.gain.linearRampToValueAtTime(.075,t+.18);env.gain.setValueAtTime(.06,t+duration*.8);env.gain.linearRampToValueAtTime(0,t+duration+.25);
+            const nodes=[osc,env];
+            for(const [freq,q,vol] of [[650,5,.55],[1100,7,.25],[2600,9,.10]]){
+                const filter=c.createBiquadFilter();filter.type='bandpass';filter.frequency.value=freq;filter.Q.value=q;
+                const gain=c.createGain();gain.gain.value=vol;osc.connect(filter);filter.connect(gain);gain.connect(env);nodes.push(filter,gain);
+            }
+            env.connect(this.graph.mix);osc.start(t);this._track([osc],nodes,t+duration+.28);
+        }
+        _drum(kind,t,velocity=1) {
+            const c=this.ctx,env=c.createGain(),pan=c.createStereoPanner();pan.pan.value=kind==='hat'?.35:kind==='crash'?-.35:0;
+            env.connect(pan);pan.connect(this.graph.mix);
+            let source, nodes=[env,pan],duration;
+            if(kind==='kick'||kind==='tom'){
+                source=c.createOscillator();source.type='sine';duration=kind==='kick'?.22:.32;
+                
+                // THUMPING KICK BOOST
+                source.frequency.setValueAtTime(kind==='kick'?170:185,t);
+                source.frequency.exponentialRampToValueAtTime(kind==='kick'?38:74,t+.09);
+                source.connect(env);
+            }else{
+                source=c.createBufferSource();source.buffer=this.noise;
+                const filter=c.createBiquadFilter();filter.type=kind==='snare'?'bandpass':'highpass';filter.frequency.value=kind==='snare'?1900:kind==='hat'?6800:4200;filter.Q.value=.65;
+                source.connect(filter);filter.connect(env);nodes.push(filter);
+                duration=kind==='snare'?.15:kind==='hat'?.035:.85;
+            }
+            // BOOSTED DRUM GAINS ACROSS THE BOARD
+            const gain=kind==='kick'?.6:kind==='tom'?.32:kind==='snare'?.32:kind==='hat'?.08:.16;
+            env.gain.setValueAtTime(.0001,t);env.gain.linearRampToValueAtTime(gain*velocity,t+.002);env.gain.exponentialRampToValueAtTime(.0001,t+duration);
+            nodes.push(source);source.start(t);this._track([source],nodes,t+duration+.01);
+        }
+        _pad(t,barSeconds) {
+            const next=this.chord.map((chord,i)=>{
+                const base=this.tonic+chord;
+                const candidates=[base-12,base,base+12,base+24].filter(n=>n>=53&&n<=77);
+                return candidates.reduce((a,b)=>Math.abs(b-this.previousVoicing[i])<Math.abs(a-this.previousVoicing[i])?b:a);
+            }).sort((a,b)=>a-b);
+            this.previousVoicing=next;
+            next.forEach((m,i)=>{
+                // LOUDER STRINGS PAD (Velocity boosted from .07/.036 to .12/.065)
+                this._tone(m,t,barSeconds*.85,'strings',this.isLament?.12:.065,(i-1)*.45);
+                if(this.isClimax || this.isLament)this._choir(m,t,barSeconds*.84);
+            });
+        }
+        _scheduleStep(tick,t) {
+            const step=tick%16;
+            if(step===0)this._beginBar(t);
+            const sixteenth=60/this.tempo/4,b=this.localBar,E=this.energy;
+            const root=this._register(this.tonic+this._degree(this.chordDegree)-12,33,48);
+            if(step===0){
+                this._pad(t,sixteenth*16);
+                if(!this.isLament&&(b===0||b%4===0))this._drum('crash',t,1.1); // Louder crash
+            }
+            if(this.isLament){
+                if(step===0||step===8)this._tone(root,t,sixteenth*7,'bass',.20,0); // Thumping bass (.13 -> .20)
+                if(step%4===2)this._tone(this.tonic+12+this.chord[(step/2)%3|0],t,sixteenth*2,'pluck',.08,-.25);
+                if(b===3&&step>=12)this._drum('tom',t,.45+(step-12)*.12);
+            }else{
+                if([0,6,10].includes(step)||(E>.83&&step===14))this._drum('kick',t,step===0?1.3:.95); // Thumping kick velocities
+                if(step===4||step===12)this._drum('snare',t,1.1); // Harder snare
+                if(step%2===0||(E>.86&&this._random()<.25))this._drum('hat',t,step%4===0?.9:.55);
+                if(step%2===0){
+                    const bassNote=step===10?this._register(root+7,33,52):root;
+                    this._tone(bassNote,t,sixteenth*1.55,'bass',.20,0); // Thumping bass (.13 -> .20)
+                }
+                if(step%2===0 || (this.isRise&&b>=2) || (this.isClimax&&b>=4)){
+                    const index=this.ostinato[(step/2|0)%8];
+                    const semitone=this.chord[index%3]+(index===3?12:0);
+                    this._tone(this.tonic+semitone+(this.isDuel?0:12),t,sixteenth*.72,'pluck',.055+(E*.015),-.5); // Louder ostinato plucks
+                }
+                if(b%4===3&&step>=13){this._drum(step%2?'tom':'snare',t,.55+(step-13)*.12);}
+                if(this.isRise&&step%4===0)this._tone(this.tonic+12+this._degree(b+step/4),t,sixteenth*2.5,'brass',.085,.25);
+            }
+            const event=this.barNotes.get(step);
+            if(event){
+                // Boosted lead melody velocities
+                this._tone(event.midi,t,event.len*sixteenth,event.voice,this.isDuel?.16:this.isLament?.14:.18,this.isDuel?(b%2?.28:-.28):.08);
+                this.lastLead=event.midi;
+                if(this.isClimax && step%4===0){
+                    const counter=this._register(this._nearestChord(event.midi-5),55,76);
+                    this._tone(counter,t,event.len*sixteenth*.9,'organ',.065,-.32); // Louder countermelody
+                }
+            }
+            if(!this.isLament&&!this.isDuel&&b%4===2&&step===15&&this._random()<.5)
+                this._tone(this._register(this.lastLead-2,60,84),t,sixteenth*.65,'pluck',.055,.35);
+            return sixteenth;
+        }
+        start() {
+            if(this.isPlaying)return;
+            if(this.ctx.state==='suspended')this.ctx.resume().catch(()=>{});
+            this._resetScore();this._buildGraph();this.isPlaying=true;
+            this.nextNoteTime=this.ctx.currentTime+.06;
+            this.graph.out.gain.setValueAtTime(0,this.ctx.currentTime);
+            
+            // FINAL VOLUME NORMALIZATION INCREASE (was .85 -> 1.1)
+            this.graph.out.gain.linearRampToValueAtTime(1.1,this.nextNoteTime+.08);
+            
+            this._scheduler();
+        }
+        _scheduler() {
+            if(!this.isPlaying)return;
+            const now=this.ctx.currentTime;
+            if(this.nextNoteTime<now-.2)this.nextNoteTime=now+.04;
+            let budget=32;
+            while(this.nextNoteTime<now+.12&&budget-->0){
+                this.nextNoteTime+=this._scheduleStep(this.tick++,this.nextNoteTime);
+            }
+            this.timer=setTimeout(()=>this._scheduler(),25);
+        }
+        stop() {
+            this.isPlaying=false;clearTimeout(this.timer);this.timer=null;
+            const graph=this.graph;if(!graph)return;
+            this.graph=null;
+            const now=this.ctx.currentTime;
+            graph.out.gain.cancelScheduledValues(now);
+            graph.out.gain.setValueAtTime(graph.out.gain.value,now);
+            graph.out.gain.linearRampToValueAtTime(0,now+.035);
+            for(const voice of [...this.voices]){
+                for(const source of voice.sources){try{source.stop(Math.min(voice.end,now+.04));}catch(_){}}
+            }
+            setTimeout(()=>{for(const node of graph.nodes){try{node.disconnect();}catch(_){}}},80);
+        }
+        scheduleOffline(seconds) {
+            if(this.isPlaying)throw new Error('Stop live playback before offline scheduling.');
+            if(this.graph)throw new Error('Use a fresh module for each offline render.');
+            this._resetScore();this._buildGraph();
+            this.graph.out.gain.setValueAtTime(1.1,0); // Boosted here too
+            let t=.06;
+            while(t<seconds)t+=this._scheduleStep(this.tick++,t);
+            this.graph.out.gain.setValueAtTime(1.1,Math.max(0,seconds-1.5));
+            this.graph.out.gain.linearRampToValueAtTime(0,seconds);
+            return t;
+        }
+    }
+    class TwilightModule {
+        constructor(ctx, dest) {
+            this.ctx = ctx;
+            this.dest = dest;
+            this.tempo = 152;
+
+            this.isPlaying = false;
+            this.timer = null;
+            this.graph = null;
+            this.nodes = new Set();
+            this.phrases = new Set();
+            this.session = 0;
+
+            this.fallback = [
+                'Hold the line',
+                'The walls fall',
+                'Hope grows cold',
+                'Do not yield',
+
+                'Far hoofbeats',
+                'Through the rain',
+                'One light burns',
+                'He rides near',
+
+                'Our friend rides',
+                'Against the dark',
+                'We fear still',
+                'Come back home',
+
+                'His blade shines',
+                'The night breaks',
+                'Stand with him',
+                'Raise your eyes',
+
+                'The dawn rides',
+                'We rise again',
+                'Fear gives way',
+                'Our hearts burn',
+
+                'The field turns',
+                'We stand saved',
+                'Come home now',
+                'We live on'
+            ];
+
+            this.progressions = [
+                [0, 8, 5, 7],
+                [0, 8, 3, 7],
+                [0, 5, 8, 7],
+                [0, 3, 8, 7],
+                [0, 8, 3, 10],
+                [0, 5, 8, 7]
+            ];
+
+            this.theme = [
+                0, 7, 12, 10, 7, 5, 3, 7,
+                12, 15, 14, 12, 10, 7, 5, 2
+            ];
+
+            this.noise = null;
+            this.impulse = null;
+        }
+
+        buildGraph() {
+            const c = this.ctx;
+
+            const band = c.createGain();
+            const voices = c.createGain();
+            const mix = c.createGain();
+            const reverb = c.createConvolver();
+            const wet = c.createGain();
+            const dark = c.createBiquadFilter();
+            const comp = c.createDynamicsCompressor();
+            const out = c.createGain();
+
+            // VOLUME NORMALIZATION (+25% boost across background synths & instruments)
+            band.gain.value = 1.625;  // 1.3 * 1.25 for a louder, richer background synth presence
+            voices.gain.value = 0.45; 
+            wet.gain.value = 0.6;    
+
+            dark.type = 'lowpass';
+            dark.frequency.value = 1500; 
+
+            comp.threshold.value = -15;
+            comp.ratio.value = 4;
+            comp.attack.value = .012;
+            comp.release.value = .2;
+
+            out.gain.value = 0;
+
+            if (!this.impulse) {
+                this.impulse = c.createBuffer(
+                    2,
+                    Math.ceil(c.sampleRate * 4.0),
+                    c.sampleRate
+                );
+
+                for (let channel = 0; channel < 2; channel++) {
+                    const a = this.impulse.getChannelData(channel);
+
+                    for (let i = 0; i < a.length; i++) {
+                        a[i] =
+                            (Math.random() * 2 - 1) *
+                            (1 - i / a.length) ** 3;
+                    }
+                }
+
+                this.noise = c.createBuffer(
+                    1, c.sampleRate, c.sampleRate
+                );
+
+                const a = this.noise.getChannelData(0);
+
+                for (let i = 0; i < a.length; i++) {
+                    a[i] = Math.random() * 2 - 1;
+                }
+            }
+
+            reverb.buffer = this.impulse;
+
+            band.connect(mix);
+            voices.connect(mix);
+
+            mix.connect(comp);
+            mix.connect(reverb);
+
+            reverb.connect(dark);
+            dark.connect(wet);
+            wet.connect(comp);
+
+            comp.connect(out);
+            out.connect(this.dest);
+
+            this.graph = {
+                band,
+                voices,
+                out,
+                nodes: [
+                    band, voices, mix, reverb,
+                    wet, dark, comp, out
+                ]
+            };
+
+            this.master = out;
+        }
+
+        start() {
+            if (this.isPlaying) return;
+
+            if (this.ctx.state === 'suspended') {
+                this.ctx.resume().catch(console.warn);
+            }
+
+            this.buildGraph();
+            this.isPlaying = true;
+
+            const token = ++this.session;
+
+            this.tick = 0;
+            this.pendingLyrics = null;
+            this.lyrics = [...this.fallback];
+            this.requestTimer = null;
+            this.nextTime = this.ctx.currentTime + .1;
+
+            // +25% volume normalization bump on master target (.72 * 1.25 = 0.9)
+            this.master.gain.linearRampToValueAtTime(
+                0.9, this.nextTime + .3
+            );
+
+            this.requestLyrics(token);
+            this.schedule();
+        }
+
+        requestLyrics(token) {
+            if (
+                typeof socket === 'undefined' ||
+                !socket.connected
+            ) return;
+
+            let settled = false;
+
+            this.requestTimer = setTimeout(() => {
+                settled = true;
+                this.requestTimer = null;
+            }, 18000);
+
+            socket.emit('suncat_compose_last_light', {}, result => {
+                if (
+                    settled ||
+                    token !== this.session ||
+                    !this.isPlaying
+                ) return;
+
+                settled = true;
+                clearTimeout(this.requestTimer);
+                this.requestTimer = null;
+
+                if (
+                    !result ||
+                    !Array.isArray(result.lines) ||
+                    result.lines.length !== 24
+                ) return;
+
+                const lines = result.lines.map(line =>
+                    typeof line === 'string' ? line.trim() : ''
+                );
+
+                if (!lines.every(line =>
+                    /^[a-zA-Z' ]{1,40}$/.test(line) &&
+                    line.split(/\s+/).length <= 3
+                )) return;
+
+                if (this.tick < 8 * 16) {
+                    this.lyrics = lines;
+                } else {
+                    this.pendingLyrics = lines;
+                }
+            });
+        }
+
+        schedule() {
+            if (!this.isPlaying) return;
+
+            const now = this.ctx.currentTime;
+            this.cleanPhrases(now);
+
+            if (this.nextTime < now - .2) {
+                this.nextTime = now + .06;
+            }
+
+            let budget = 24;
+
+            while (
+                this.nextTime < now + .14 &&
+                budget-- > 0
+            ) {
+                this.playTick(this.tick++, this.nextTime);
+                this.nextTime += 60 / this.tempo / 4;
+            }
+
+            this.timer = setTimeout(() => this.schedule(), 25);
+        }
+
+        playTick(tick, t) {
+            const step = tick % 16;
+            const absoluteBar = Math.floor(tick / 16);
+            const bar = absoluteBar % 112;
+            const cycle = Math.floor(absoluteBar / 112);
+            const dt = 60 / this.tempo / 4;
+
+            const intro = bar < 8;
+            const coda = bar >= 104;
+
+            const line = Math.max(
+                0, Math.min(23, Math.floor((bar - 8) / 4))
+            );
+
+            const stage = Math.floor(line / 4);
+            const phraseBar = (bar - 8 + 112) % 4;
+            const progression = this.progressions[stage];
+
+            const degree = intro
+                ? [0, 8, 5, 7][Math.floor(bar / 2) % 4]
+                : coda
+                    ? [8, 5, 7, 0][Math.floor((bar - 104) / 2)]
+                    : progression[line % 4];
+
+            const tonic = 50 + [0, -2, 0, 3][cycle % 4];
+            const third = [0, 5].includes(degree) ? 3 : 4;
+            const chord = [degree, degree + third, degree + 7];
+
+            const energy = intro
+                ? .45
+                : coda
+                    ? .55
+                    : [.60, .68, .76, .87, 1, .78][stage];
+
+            if (step === 0) {
+                if (bar === 0 && this.pendingLyrics) {
+                    this.lyrics = this.pendingLyrics;
+                    this.pendingLyrics = null;
+                }
+
+                chord.forEach((note, i) => {
+                    this.tone(
+                        t, tonic + note, dt * 14,
+                        'pad', .05, (i - 1) * .4 // Louder, richer background synth pads
+                    );
+                });
+
+                if (!intro && !coda && phraseBar === 0) {
+                    this.singLine(
+                        this.lyrics[line],
+                        t, tonic, chord, stage, dt
+                    );
+                }
+
+                if ((!intro && bar % 8 === 0) || bar === 6) {
+                    this.drum(t, 'crash', .18);
+                }
+            }
+
+            const gallop = [0, 2, 3].includes(step % 4);
+
+            if (
+                gallop &&
+                (!intro || bar >= 4 || step % 4 === 0)
+            ) {
+                // Thumping bass gain boost (+25%)
+                this.tone(
+                    t,
+                    tonic + degree - 12,
+                    dt * (step % 4 === 0 ? 1.55 : .7),
+                    'bass',
+                    (.16 + energy * .07) *
+                        (step % 4 === 0 ? 1 : .7),
+                    -.08
+                );
+
+                if (stage >= 2 && !intro && !coda) {
+                    this.tone(
+                        t, tonic + degree, dt * .75,
+                        'chug', .05 * energy, -.4
+                    );
+
+                    this.tone(
+                        t, tonic + degree + 7, dt * .75,
+                        'chug', .038 * energy, .4
+                    );
+                }
+            }
+
+            if (!intro || bar >= 4) {
+                if ([0, 6, 8, 14].includes(step)) {
+                    this.drum(t, 'kick', .42 * energy); // Thumping punchy kick
+                }
+
+                if (step === 4 || step === 12) {
+                    this.drum(t, 'snare', .24 * energy);
+                }
+
+                if (step % 2 === 0) {
+                    this.drum(t, 'hat', .05 * energy);
+                }
+
+                if (bar % 8 === 7 && step >= 13) {
+                    this.drum(
+                        t, 'tom', .22 * energy,
+                        100 - (step - 13) * 15
+                    );
+                }
+            }
+
+            const answer =
+                !intro && !coda && phraseBar >= 2;
+
+            if (
+                answer &&
+                [0, 3, 6, 8, 12, 14].includes(step)
+            ) {
+                const index = (
+                    Math.floor(step / 2) +
+                    phraseBar * 4 +
+                    line
+                ) % this.theme.length;
+
+                let note = tonic + 12 + this.theme[index];
+
+                while (note > 86) note -= 12;
+
+                if (step % 4 === 0) {
+                    note = tonic + 12 +
+                        chord[Math.floor(step / 4) % 3];
+                }
+
+                while (note > 86) note -= 12;
+
+                this.tone(
+                    t, note,
+                    dt * (step === 8 ? 3 : 1.7),
+                    'lead', .09 + energy * .03, .2
+                );
+
+                if (stage === 4 && step % 4 === 0) {
+                    this.tone(
+                        t,
+                        tonic + chord[2 - Math.floor(step / 4) % 3],
+                        dt * 2.7,
+                        'lead', .04, -.3
+                    );
+                }
+            }
+
+            if (intro && step === 0 && bar % 2 === 0) {
+                this.tone(
+                    t, tonic + 19, dt * 12,
+                    'bell', .08, .3
+                );
+            }
+        }
+
+        singLine(text, t, tonic, chord, stage, dt) {
+            if (
+                typeof MusicEngine === 'undefined' ||
+                typeof MusicEngine.sing !== 'function'
+            ) return;
+            
+            // --- UI LYRIC DISPATCH ---
+            if (text) {
+                const cleanLyric = text.replace(/-/g, '').replace(/[\[\]]/g, '').trim();
+                const delayInMs = Math.max(0, (t - this.ctx.currentTime) * 1000);
+                if (cleanLyric.length > 0) {
+                    setTimeout(() => {
+                        if (!this.isPlaying) return;
+                        console.log(`%c[Twilight Sings] 🎵 "${cleanLyric}"`, 'color: #00e6e6; font-size: 16px; font-weight: bold;');
+                        document.dispatchEvent(new CustomEvent('suncat_lyrics', { detail: cleanLyric }));
+                    }, delayInMs);
+                }
+            }
+
+            const fit = (midi, low, high) => {
+                while (440 * 2 ** ((midi - 69) / 12) < low) {
+                    midi += 12;
+                }
+
+                while (440 * 2 ** ((midi - 69) / 12) > high) {
+                    midi -= 12;
+                }
+
+                return midi;
+            };
+
+            const root = 136.9;
+
+            const toSemi = midi => 12 * Math.log2(
+                (440 * 2 ** ((midi - 69) / 12)) / root
+            );
+
+            const high = stage >= 3;
+
+            const baseMidi = tonic + 12 + chord[stage % 3];
+            const midi = fit(
+                baseMidi,
+                high ? 329.63 : 220.0,
+                high ? 659.25 : 440.0
+            );
+
+            const duration = dt * 29;
+            const gates = [];
+            const sources = [];
+
+            let harmonyConfigs = [{ interval: 0, pan: 0, vol: 0.65, res: high ? 1.4 : 1.2, delay: 0 }];
+            
+            if (stage === 2) {
+                harmonyConfigs = [
+                    { interval: 0, pan: -0.3, vol: 0.55, res: 1.2, delay: 0 },
+                    { interval: 2, pan: 0.3, vol: 0.5, res: 1.0, delay: 0.02 }
+                ];
+            } else if (stage >= 3) {
+                harmonyConfigs = [
+                    { interval: 0, pan: 0, vol: 0.6, res: 1.4, delay: 0 },      
+                    { interval: 2, pan: -0.65, vol: 0.45, res: 1.0, delay: 0.025 }, 
+                    { interval: 4, pan: 0.65, vol: 0.35, res: 0.9, delay: 0.048 }  
+                ];
+            }
+
+            const beforeAllVoices = new Set(MusicEngine.activeVoiceNodes || []);
+
+            harmonyConfigs.forEach(cfg => {
+                const harmonyMidi = fit(
+                    tonic + 12 + chord[(stage + cfg.interval) % 3],
+                    220.0, 659.25
+                );
+
+                const gate = this.ctx.createGain();
+                gate.gain.setValueAtTime(0, t + cfg.delay);
+                gate.gain.linearRampToValueAtTime(cfg.vol, t + cfg.delay + .035);
+                gate.gain.setValueAtTime(cfg.vol, t + cfg.delay + duration);
+                gate.gain.linearRampToValueAtTime(0, t + cfg.delay + duration + .22);
+
+                const panner = this.ctx.createStereoPanner();
+                panner.pan.value = cfg.pan;
+
+                gate.connect(panner);
+                panner.connect(this.graph.voices);
+                gates.push(gate);
+
+                try {
+                    MusicEngine.sing(
+                        text.toLowerCase(),
+                        t + cfg.delay,
+                        [toSemi(harmonyMidi)],
+                        root,
+                        duration - cfg.delay,
+                        cfg.res,
+                        .12,
+                        0,
+                        .68,
+                        gate
+                    );
+                } catch (error) {
+                    console.warn('Last Light vocal chorus:', error);
+                }
+            });
+
+            const newSources = (MusicEngine.activeVoiceNodes || []).filter(n => !beforeAllVoices.has(n));
+            sources.push(...newSources);
+
+            this.phrases.add({
+                gates,
+                sources,
+                end: t + duration + .4
+            });
+
+            const gain = this.graph.band.gain;
+            gain.setValueAtTime(1.625, t);
+            gain.linearRampToValueAtTime(1.1, t + .08);
+            gain.setValueAtTime(1.1, t + duration);
+            gain.linearRampToValueAtTime(1.625, t + duration + .4);
+
+            console.log('[Last Light]', text);
+        }
+
+        cleanPhrases(now, all = false) {
+            for (const phrase of [...this.phrases]) {
+                if (!all && now < phrase.end) continue;
+
+                if (Array.isArray(phrase.gates)) {
+                    for (const gate of phrase.gates) {
+                        try { gate.disconnect(); } catch (_) {}
+                    }
+                }
+
+                for (const source of phrase.sources) {
+                    try { source.stop(); } catch (_) {}
+                    try { source.disconnect(); } catch (_) {}
+                }
+
+                if (
+                    typeof MusicEngine !== 'undefined' &&
+                    MusicEngine.activeVoiceNodes
+                ) {
+                    const owned = new Set(phrase.sources);
+
+                    MusicEngine.activeVoiceNodes =
+                        MusicEngine.activeVoiceNodes.filter(
+                            node => !owned.has(node)
+                        );
+                }
+
+                this.phrases.delete(phrase);
+            }
+        }
+
+        track(sources, nodes, end) {
+            const voice = { sources, nodes };
+            this.nodes.add(voice);
+
+            let remaining = sources.length;
+
+            for (const source of sources) {
+                source.onended = () => {
+                    if (--remaining) return;
+
+                    nodes.forEach(node => node.disconnect());
+                    this.nodes.delete(voice);
+                };
+
+                source.stop(end);
+            }
+        }
+
+        tone(t, midi, duration, type, level, pan) {
+            const c = this.ctx;
+            const filter = c.createBiquadFilter();
+            const env = c.createGain();
+            const p = c.createStereoPanner();
+
+            p.pan.value = pan;
+            filter.type = 'lowpass';
+            filter.Q.value = .65;
+
+            const cut = {
+                pad: 1800,
+                bass: 900,
+                chug: 1400,
+                lead: 3000,
+                bell: 5500
+            }[type];
+
+            filter.frequency.setValueAtTime(cut, t);
+            filter.frequency.exponentialRampToValueAtTime(
+                Math.max(160, cut * .45),
+                t + duration
+            );
+
+            const attack = Math.min(
+                type === 'pad' ? .18 : .018,
+                duration * .25
+            );
+
+            env.gain.setValueAtTime(0, t);
+            env.gain.linearRampToValueAtTime(level, t + attack);
+            env.gain.exponentialRampToValueAtTime(
+                Math.max(.0001, level * .5),
+                t + duration
+            );
+            env.gain.linearRampToValueAtTime(
+                0, t + duration + .09
+            );
+
+            filter.connect(env);
+            env.connect(p);
+            p.connect(this.graph.band);
+
+            const sources = [];
+
+            for (const detune of [-4, 4]) {
+                const osc = c.createOscillator();
+
+                osc.type = type === 'bell'
+                    ? 'sine'
+                    : type === 'lead'
+                        ? 'triangle'
+                        : 'sawtooth';
+
+                osc.frequency.value =
+                    440 * 2 ** ((midi - 69) / 12);
+
+                osc.detune.value = detune;
+                osc.connect(filter);
+                osc.start(t);
+                sources.push(osc);
+            }
+
+            this.track(
+                sources,
+                [...sources, filter, env, p],
+                t + duration + .1
+            );
+        }
+
+        drum(t, type, level, freq = 100) {
+            const c = this.ctx;
+            const env = c.createGain();
+
+            let source;
+            let filter;
+
+            const duration = {
+                kick: .24,
+                snare: .17,
+                hat: .045,
+                tom: .3,
+                crash: .9
+            }[type];
+
+            if (type === 'kick' || type === 'tom') {
+                source = c.createOscillator();
+                source.type = 'sine';
+
+                source.frequency.setValueAtTime(
+                    type === 'kick' ? 160 : freq, t // Punchier initial transient for kick
+                );
+
+                source.frequency.exponentialRampToValueAtTime(
+                    type === 'kick' ? 38 : freq * .55, // Deeper sub-bass drop for a thumping feel
+                    t + .14
+                );
+
+                source.connect(env);
+            } else {
+                source = c.createBufferSource();
+                source.buffer = this.noise;
+
+                filter = c.createBiquadFilter();
+                filter.type =
+                    type === 'snare' ? 'bandpass' : 'highpass';
+
+                filter.frequency.value = type === 'snare'
+                    ? 1800
+                    : type === 'hat'
+                        ? 6500
+                        : 3500;
+
+                source.connect(filter);
+                filter.connect(env);
+            }
+
+            env.gain.setValueAtTime(0, t);
+            env.gain.linearRampToValueAtTime(level, t + .002);
+            env.gain.exponentialRampToValueAtTime(
+                .0001, t + duration
+            );
+
+            env.connect(this.graph.band);
+            source.start(t);
+
+            this.track(
+                [source],
+                [source, env, ...(filter ? [filter] : [])],
+                t + duration + .01
+            );
+        }
+
+        stop() {
+            this.isPlaying = false;
+            this.session++;
+
+            clearTimeout(this.timer);
+            clearTimeout(this.requestTimer);
+
+            this.timer = null;
+            this.requestTimer = null;
+
+            this.cleanPhrases(this.ctx.currentTime, true);
+
+            const graph = this.graph;
+            this.graph = null;
+
+            const voices = [...this.nodes];
+            const now = this.ctx.currentTime;
+
+            if (graph) {
+                graph.out.gain.cancelScheduledValues(now);
+                graph.out.gain.setValueAtTime(
+                    graph.out.gain.value, now
+                );
+                graph.out.gain.linearRampToValueAtTime(
+                    0, now + .05
+                );
+            }
+
+            for (const voice of voices) {
+                for (const source of voice.sources) {
+                    try {
+                        source.stop(now + .06);
+                    } catch (_) {}
+                }
+            }
+
+            setTimeout(() => {
+                if (graph) {
+                    graph.nodes.forEach(node => node.disconnect());
+                }
+
+                for (const voice of voices) {
+                    voice.nodes.forEach(node => node.disconnect());
+                    this.nodes.delete(voice);
+                }
+            }, 100);
+        }
+    }
   //
   let currentSuncatLyric = "";
 
@@ -81091,21 +83140,20 @@
                 }
                 else{
                     drawText(0, 2.8, 10, 0.6, song + ' / ' + (songcount-1), "rgba(100,100,100,1)", 1,'center')
-                        if (song == 46){ MusicEngine.style= currentSuncatLyric
+                    if (song === 46||song === 55){ 
+                        MusicEngine.style= currentSuncatLyric;
                         drawText(0, 1.75, 10, 0.5, MusicEngine.style, "rgba(255,100,0,1)", 1,'center');
-                        }
-                        else{
-                    drawText(0, 1.75, 10, 0.5, MusicEngine.style, "rgba(100,100,100,1)", 1,'center');
-                        }
-                    
                     }
-                
-
-                    drawText(0, .5, 10, 0.6, "Jukebox", "rgba(100,100,100,1)", 1,'center');
-                    drawText(0, 8.75, 2, 1, '<<Back', "rgba(100,100,100,1)", 1);
-                    drawPortrait(-1,1,3,.2);
-                    drawPortrait(-2,7,3,.2);
-                    MessageBox.show(4.4,3.37,1,1.25,1.25,'','jrpg_btn',1,0)
+                    
+                    else{
+                        drawText(0, 1.75, 10, 0.5, MusicEngine.style, "rgba(100,100,100,1)", 1,'center');
+                    }    
+                }
+                drawText(0, .5, 10, 0.6, "Jukebox", "rgba(100,100,100,1)", 1,'center');
+                drawText(0, 8.75, 2, 1, '<<Back', "rgba(100,100,100,1)", 1);
+                drawPortrait(-1,1,3,.2);
+                drawPortrait(-2,7,3,.2);
+                MessageBox.show(4.4,3.37,1,1.25,1.25,'','jrpg_btn',1,0)
                         
                 }
             
@@ -84065,12 +86113,29 @@
     // ==========================================
     // CACHING PHASE 1: PORTRAITS (0% -> 50%)
     // ==========================================
-        
     await cacheAllPortraits((progressPercentage) => {
-        // Divide by 2 so it fills exactly half the bar
-        progressBar.style.width = (progressPercentage) + '%';
+        // Scale portrait progress to take up the first half (0% to 50%)
+        progressBar.style.width = (progressPercentage * 0.5) + '%';
     });
     
+    // ==========================================
+    // CACHING PHASE 2: CATHEDRAL PIPES (50% -> 100%)
+    // ==========================================
+    statusText.innerText = "Tuning Cathedral pipe organs...";
+    
+    try {
+        const tempCtx = window.gameAudioCtx || new (window.AudioContext || window.webkitAudioContext)();
+        const cathedralPreloader = new CathedralModule(tempCtx);
+        
+        cathedralPreloader.onProgress = (progress) => {
+            // Fills the second half of the loading bar (50% to 100%)
+            progressBar.style.width = (50 + progress * 50) + '%';
+        };
+        
+        await cathedralPreloader.prepare();
+    } catch (e) {
+        console.warn("Cathedral background pre-cache skipped:", e);
+    }
    
 
     // --- MATH IS DONE ---
