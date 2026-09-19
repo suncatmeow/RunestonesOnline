@@ -3136,6 +3136,18 @@
         let portraitani = 0;
         let dragY = 0;
         const SPRITE_CONFIGS = {};
+        const TERRAIN_SURFACES = {
+            92:  { kind: 'water', blocked: true, eyeDip: 0.20 },
+            93:  { kind: 'water', blocked: true, eyeDip: 0.20 },
+            94:  { kind: 'water', blocked: true, eyeDip: 0.20 },
+            95:  { kind: 'water', blocked: true, eyeDip: 0.20 },
+
+            96:  { kind: 'chasm', blocked: true, eyeDip: 0 },
+            97:  { kind: 'chasm', blocked: true, eyeDip: 0 },
+
+            99:  { kind: 'lava', blocked: true, eyeDip: 0 },
+            101: { kind: 'lava', blocked: true, eyeDip: 0 }
+        };
         const MODEL_UPGRADES = {
             23: { id: 108 }, // Wisp
             88: { id: 140, variant: 'mirage' },
@@ -3587,7 +3599,20 @@
                 const payload = data.payload; 
 
                 if (typeof Dungeon === 'undefined') return;
-
+                if (
+                    typeof data.actionType === 'string' &&
+                    data.actionType.startsWith('OVERWORLD_') &&
+                    (
+                        Dungeon.isDying ||
+                        Dungeon.isDead ||
+                        (
+                            typeof startGame !== 'undefined' &&
+                            (startGame === 'battle' || startGame === 'tactics')
+                        )
+                    )
+                ) {
+                    return;
+                }
                 // Trigger Aggro automatically if someone hits us first!
                 if (data.senderId && !Dungeon.hostilePlayers.has(data.senderId)) {
                     Dungeon.hostilePlayers.add(data.senderId);
@@ -3603,7 +3628,11 @@
                             damage: payload.attackerStats.damage
                         };
                         
-                        let survived = Dungeon.absorbHit(fakeAttacker, payload.spellId);
+                        let survived = Dungeon.absorbHit(
+                            fakeAttacker,
+                            payload.spellId,
+                            data.senderId
+                        );
                         
                         // ---> NEW: PVP KNOCKBACK APPLIED HERE <---
                         if (survived && payload.x !== undefined && payload.y !== undefined) {
@@ -3624,17 +3653,11 @@
                         }
                         
                         if (!survived) {
-                            console.log("You were killed by another player!");
-                            
-                            // ---> NEW: Instantly report our death to the server before we reload! <---
-                            if (typeof socket !== 'undefined') {
-                                socket.emit("player_died", { killerId: data.senderId });
-                            }
-                            
-                            if (typeof MessageBox !== 'undefined') {
-                                MessageBox.show(0.5, 8, 1, 9, 2, 'You were slain by another player!', 'dialogue', 1, 0);
-                            }
-                            setTimeout(() => { window.location.reload(); }, 2000); 
+                            Dungeon.killPlayer(
+                                'pvp_combat',
+                                'another player',
+                                data.senderId
+                            );
                         }
                         break;
 
@@ -3666,7 +3689,7 @@
                         
                         // Failsafe: Did the spell/DoT outright kill them?
                         if (Dungeon.power <= 0 && Dungeon.currentWardTime <= 0) {
-                            setTimeout(() => { window.location.reload(); }, 2000);
+                          
                         }
                         break;
                     // --- RUNE PICK (The Mirror Logic) ---
@@ -5432,10 +5455,8 @@
                 
                 // Dynamic CON-Based Ward Rolling
                 let conDice = this.getEffectiveDice ? this.getEffectiveDice(1) : {numDice:1, diceSides:4, flatMod:0}; 
-                let rolledWards = conDice.flatMod;
-                for (let i = 0; i < conDice.numDice; i++) {
-                    rolledWards += Math.floor(Math.random() * conDice.diceSides) + 1;
-                }
+                let rolledWards = this.rollStat(1);
+                
 
                 this.maxWards = Math.max(1, rolledWards); // Absolute minimum 1
                 if (this.isBoss && this.maxWards < 9) this.maxWards = 9; // Boss safety net
@@ -6193,8 +6214,7 @@
                                 // A. DnD RESIST ROLL
                                 if (b.type === 'debuff' && b.defStat !== undefined) {
                                     let defDice = this.getEffectiveDice(b.defStat);
-                                    let defRoll = defDice.flatMod;
-                                    for (let r = 0; r < defDice.numDice; r++) defRoll += Math.floor(Math.random() * defDice.diceSides) + 1;
+                                    let defRoll = this.rollStat(b.defStat);
                                     if (defRoll > b.resistDC) b.duration = 0; // Shook it off!
                                 }
 
@@ -7364,9 +7384,9 @@
                 const rollDefense = (entity, defStatIndex) => {
                     let totalDef = 0;
                     if (isJudgement) {
-                        for (let s = 0; s < 4; s++) totalDef += entity.rollStat ? entity.rollStat(s) : 0;
+                        for (let s = 0; s < 4; s++) totalDef += resolveStatRoll(entity, s);
                     } else {
-                        totalDef = entity.rollStat ? entity.rollStat(defStatIndex) : 0;
+                        totalDef = resolveStatRoll(entity, defStatIndex);
                     }
                     return totalDef;
                 };
@@ -7749,7 +7769,11 @@
                                 }
                                 bestTarget.state = 'chasing';
                             } else {
-                                if (dungeon.killNPC) dungeon.killNPC(bestTarget, false, 'backstab');
+                                if (bestTarget === dungeon) {
+                                    dungeon.killPlayer('backstab', this);
+                                } else if (dungeon.killNPC) {
+                                    dungeon.killNPC(bestTarget, false, 'backstab');
+                                }
                             }
                         }
                     }
@@ -7881,7 +7905,11 @@
                                             target.applySpell(spellId, magnitude);
                                             target.damageFlashTimer = 3;
                                         } else {
-                                            dungeon.killNPC(target, false, 'cone_attack');
+                                            if (target === dungeon) {
+                                                dungeon.killPlayer('cone_attack', this);
+                                            } else {
+                                                dungeon.killNPC(target, false, 'cone_attack');
+                                            }
                                         }
                                     }
                                 } else {
@@ -8123,7 +8151,7 @@
             if (!this.isSliding && this.combatCooldown <= 0) {
                 
                 let defAgi = this.rollStat(3); // Defender AGI
-                let atkAgi = attacker ? (attacker.rollStat ? attacker.rollStat(3) : 10) : 10;
+                let atkAgi = attacker ? resolveStatRoll(attacker, 3) : 10;
                 
                 // If the defender drastically out-rolls the attacker's speed
                 if (defAgi >= atkAgi + 3) {
@@ -8188,7 +8216,12 @@
                 }
 
                 // --- CLEAN ROLLS ---
-                let atkRoll = (attacker && attacker.rollStat) ? attacker.rollStat(atkStat, attacker.damage || 0) : Math.floor(Math.random() * 6) + 1;
+                let atkRoll = resolveStatRoll(attacker, atkStat, {
+                    flatBonus: attacker ? attacker.damage || 0 : 0,
+                    ...(!attacker ? {
+                        dice: { numDice: 1, diceSides: 6, flatMod: 0 }
+                    } : {})
+                });
                 let defRoll = this.rollStat(defStat);
 
                 if (atkRoll > defRoll) {
@@ -8327,21 +8360,9 @@
             );
         }
         rollStat(statIndex, flatBonus = 0) {
-            let dice = this.getEffectiveDice(statIndex);
-            let total = dice.flatMod + flatBonus;
-            
-            for (let i = 0; i < dice.numDice; i++) {
-                total += Math.floor(Math.random() * dice.diceSides) + 1;
-            }
-
-            // Bake Lucky Charm directly into the roll
-            if (this.activeBuffs && this.activeBuffs.some(b => b.name === 'Lucky Charm')) {
-                total += 99; 
-            }
-
-            return total;
+            return resolveStatRoll(this, statIndex, { flatBonus });
         }
-        }
+    }
     
     class Explore {
         constructor() {
@@ -8805,8 +8826,9 @@
                     this.xp = data.xp || 0;
                     this.level = data.level || 0;
                     this.power = data.power || 100;
-                    this.xpNeeded = data.xpNeeded
-                    
+                    this.xpNeeded = Math.floor(
+                        100 * Math.pow(this.level + 1, 1.8)
+                    );
                     this.stat = data.stat; 
                     this.statPoints = data.statPoints; 
                     this.statProgress = data.statProgress || [0, 0, 0, 0];
@@ -9640,6 +9662,7 @@
                 if (!this.maze || ty < 0 || ty >= this.maze.length || tx < 0 || tx >= this.maze[0].length) return 0.0;
                 
                 let tile = this.maze[ty][tx];
+                if (TERRAIN_SURFACES[tile]) return 0;
                 if (tile <= 0) return 0.0;
                 
                 let base = this.getTileElevation(tile);
@@ -10076,7 +10099,8 @@
                 if (fX < 0 || fX >= this.maze[0].length || fY < 0 || fY >= this.maze.length) return true;
 
                 const tile = this.maze[fY][fX];
-                
+                const surface = TERRAIN_SURFACES[tile];
+                if (surface) return surface.blocked;
                 // Negative tiles (floors)
                 if (tile < 0) {
                     return Math.abs(tile) % 2 === 1; // Odd floors are unpassable chasms
@@ -10422,16 +10446,41 @@
                 // Fallback if the area is completely jammed
                 return { x: centerX + 0.5, y: centerY + 0.5 };
                 }
-            absorbHit(attacker, spellId = null) {
-                if (this.isDying || this.status === 'dead') return true;
+            absorbHit(attacker, spellId = null, killerId = null) {
+                if (this.isDying || this.isDead || this.status === 'dead') {
+                    return true;
+                }
                 if (attacker && typeof attacker.triggerInnateTouch === 'function' && spellId === null) {
                     attacker.triggerInnateTouch(this);
                 }
                 let legacyWard = this.activeBuffs ? this.activeBuffs.find(b => b.type === 'ward' || b.type === 'item_ward') : null;
-
+                
                 // 1. If shattered and no ward time left (and no legacy ward), take full damage (Trigger Last Stand)
                 if (this.currentWardTime <= 0 && !legacyWard) {
-                    return false; // Failed to absorb
+                    /*
+                    // Preserve the existing NPC melee second-wind route.
+                        if (
+                            this.playerClass === 'Battle-Mage' &&
+                            spellId === null &&
+                            attacker &&
+                            !attacker.isPlayer &&
+                            attacker.role === 'battle' &&
+                            typeof attacker.startCardBattle === 'function'
+                        ) {
+                            return false;
+                        }*/
+                    const killer =
+                        attacker && attacker.isPlayer
+                            ? 'another player'
+                            : attacker;
+
+                    this.killPlayer(
+                        spellId === null ? 'combat' : 'spell',
+                        killer,
+                        killerId
+                    );
+
+                    return false;
                 }
 
                 let atkStat = 0; 
@@ -10444,27 +10493,14 @@
                     defStat = spell.defStat !== undefined ? spell.defStat : 1;
                 }
 
-                // 2. Attacker Roll
-                let atkRoll = 0;
-                if (attacker) {
-                    // --- NEW: Use Virtual Dice for the attacker! ---
-                    let atkDice = attacker.getEffectiveDice ? attacker.getEffectiveDice(atkStat) : {numDice: 1, diceSides: 6, flatMod: 0};
-                    atkRoll = atkDice.flatMod; 
-                    for (let i = 0; i < atkDice.numDice; i++) {
-                        atkRoll += Math.floor(Math.random() * atkDice.diceSides) + 1;
-                    }
-                    if (attacker.damage) atkRoll += attacker.damage; 
-                } else {
-                    atkRoll = Math.floor(Math.random() * 6) + 1; 
-                }
+                let atkRoll = resolveStatRoll(attacker, atkStat, {
+                    flatBonus: attacker ? attacker.damage || 0 : 0,
+                    ...(!attacker ? {
+                        dice: { numDice: 1, diceSides: 6, flatMod: 0 }
+                    } : {})
+                });
 
-                // 3. Player Roll 
-                // --- NEW: Use Virtual Dice for the Player! ---
-                let defDice = this.getEffectiveDice(defStat);
-                let defRoll = defDice.flatMod;
-                for (let i = 0; i < defDice.numDice; i++) {
-                    defRoll += Math.floor(Math.random() * defDice.diceSides) + 1;
-                }
+                let defRoll = this.rollStat(defStat);
 
                 // 4. Resolve Tug-of-War
                 if (atkRoll > defRoll) {
@@ -10514,22 +10550,10 @@
                 
                 // 1. Roll Player CON
                 let pConDice = this.getEffectiveDice(1); // 1 = CON
-                let pConRoll = pConDice.flatMod;
-                for (let i = 0; i < pConDice.numDice; i++) { 
-                    pConRoll += Math.floor(Math.random() * pConDice.diceSides) + 1; 
-                }
+                let pConRoll = this.rollStat(1);
 
                 // 2. Roll NPC STR
-                let npcStrRoll = 0;
-                if (targetNPC.getEffectiveDice) {
-                    let nStrDice = targetNPC.getEffectiveDice(0); // 0 = STR
-                    npcStrRoll = nStrDice.flatMod;
-                    for (let i = 0; i < nStrDice.numDice; i++) {
-                        npcStrRoll += Math.floor(Math.random() * nStrDice.diceSides) + 1;
-                    }
-                } else {
-                    npcStrRoll = Math.floor(Math.random() * 4) + 1; // Failsafe
-                }
+                let npcStrRoll = resolveStatRoll(targetNPC, 0);
 
                 if (pConRoll < npcStrRoll) {
                     // Player lost the tug of war! Player gets pushed back.
@@ -10714,9 +10738,7 @@
                                             
                                             // 1. DnD RESIST ROLL (Shake off debuffs early!)
                                             if (b.type === 'debuff' && b.defStat !== undefined) {
-                                                let defCard = new Card(91, 0, { mastery: this.level });
-                                                let defRoll = defCard.rollStat(b.defStat) + (this.stat[b.defStat][2] || 0);
-                                                
+                                                let defRoll = this.rollStat(b.defStat);
                                                 if (defRoll > b.resistDC) {
                                                     b.duration = 0; // Shook it off!
                                                     if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('block');
@@ -10731,20 +10753,23 @@
                                                     // If we are already bleeding out, ignore poison ticks!
                                                     if (this.isDying || this.status === 'dead') continue;
 
-                                                    if (this.currentWardTime > 0) {
-                                                        this.currentWardTime -= b.votAmount;
-                                                        if (this.currentWardTime <= 0) { 
-                                                            this.currentWardTime = 0; 
-                                                            this.wardShatterCooldown = 9.0; 
-                                                        }
-                                                    } else {
-                                                        this.power -= b.votAmount;
-                                                        
-                                                        // --- NEW: TRIGGER DEATH FROM POISON ---
-                                                        if (this.power <= 0) {
-                                                            // Pass the caster object if possible, otherwise it's a lingering curse
-                                                            let casterObj = b.caster || 'a lingering affliction';
-                                                            this.killPlayer('poison', casterObj);
+                                                    const tickDamage = Number(b.votAmount) || 0;
+
+                                                    if (tickDamage > 0) {
+                                                        if (this.currentWardTime > 0) {
+                                                            this.currentWardTime = Math.max(
+                                                                0,
+                                                                this.currentWardTime - tickDamage
+                                                            );
+
+                                                            if (this.currentWardTime === 0) {
+                                                                this.wardShatterCooldown = 9.0;
+                                                            }
+                                                        } else {
+                                                            this.killPlayer(
+                                                                'poison',
+                                                                b.caster || 'a lingering affliction'
+                                                            );
                                                         }
                                                     }
                                                     this.playerFlashTimer = 3;
@@ -10784,9 +10809,7 @@
                     this.wardShatterCooldown -= dt; // Count down the penalty
                 } else if (this.currentWardTime < this.maxWards * this.timePerWard) {
                     // Tick-by-tick regen based on CON roll
-                    let conSides = this.stat[1][1] || 4; // Stat 1 is CON
-                    let conBonus = this.stat[1][2] || 0;
-                    let conRoll = Math.floor(Math.random() * conSides) + 1 + conBonus;
+                    let conRoll = Math.max(0, this.rollStat(1));
                     
                     // Adjust multiplier so a standard roll feels fair.
                     // 0.2 means an average roll of 3 gives 0.6 seconds of ward back per real second.
@@ -11444,7 +11467,17 @@
                             targetCamZ = myFloorZ + 0.5 + (2.0 * zoomPercent)
                             targetZScale = 1.0 + (0.2 * zoomPercent); 
                         }
+                        const standingTile =
+                            this.maze[Math.floor(this.y)]?.[Math.floor(this.x)];
 
+                        const standingSurface = TERRAIN_SURFACES[standingTile];
+
+                        // Fade the dip out as the camera pulls into third person.
+                        const firstPersonWeight =
+                            1 - Math.min(targetPOVDist / 8, 1);
+
+                        targetCamZ -=
+                            (standingSurface?.eyeDip || 0) * firstPersonWeight;
                         let maxPitchClamp = viewH * 0.6; 
                         targetPitch += Math.max(-maxPitchClamp, Math.min(maxPitchClamp, this.lookPitch || 0));
 
@@ -12296,50 +12329,7 @@
                 this.weather.resize(tL, tL);
                     this.weather.update(dt);
                     this.weather.draw(ctx, tX, tY);
-                // ==========================================
-                // --- LAST STAND EXECUTION (SOFT REBOOT) ---
-                // ==========================================
-                if (this.isDying && this.weather && this.weather.mode === 'dying') {
-                    
-                    // THE FIX: Check if a dialogue or cutscene is currently blocking the screen
-                    let isDialogueActive = (typeof startGame !== 'undefined' && startGame === 'dialogue') || this.currentSpeaker !== null;
-
-                    // Wait for the weather timer AND for the dialogue to be fully closed
-                    if (this.weather.dyingTimer >= this.weather.dyingMaxTime && !this.isDead && !isDialogueActive) {
-                        this.isDead = true;
-                        this.status = 'dead';
-                        
-                        // Nuke all inputs
-                        window.activeMoveKey = null;
-                        window.activeCtrlKey = false;
-                        if (typeof btnMove !== 'undefined') { btnMove.isPressed = false; btnMove.currentDir = null; }
-
-                        // Clear any lingering action queues to prevent post-death ghost events
-                        this.actionQueue = [];
-                        
-                        // DO NOT USE location.reload()! It causes file:/// security crashes.
-                        // Instead, we wipe the variables and load the save natively!
-                        setTimeout(() => {
-                            console.log("Soft Rebooting Engine...");
-                            this.isDying = false;
-                            this.isDead = false;
-                            this.status = 'normal';
-                            
-                            // Reset vital combat stats
-                            this.currentWardTime = this.maxWards * this.timePerWard;
-                            this.activeBuffs = [];
-                            this.activeSummons = [];
-                            this.projectiles = [];
-                            
-                            // Restore the map's original weather
-                            let originalWeather = this.mapEnvironments[this.mapID] ? this.mapEnvironments[this.mapID].weather : 'clear';
-                            this.weather.setMode(originalWeather);
-                            
-                            // Load save, or dump them back at the tutorial spawn
-                            startGame = 0;
-                        }, 250); 
-                    }
-                }
+                
                     // ==========================================
                     // --- DYNAMIC OVERWORLD COMBAT MUSIC ---
                     // ==========================================
@@ -13304,7 +13294,7 @@
 
                     // 2. GET TILE DATA FIRST
                     const tileID = this.maze[mapY][mapX];
-                    let isChasm = [92,93,95,97,99,101].includes(tileID);
+                    let isChasm = Boolean(TERRAIN_SURFACES[tileID]);
                     let isMapEdge = (mapY === 0 || mapY === this.maze.length - 1 || mapX === 0 || mapX === this.maze[0].length - 1);
 
                     let prevMapX = side === 0 ? mapX - stepX : mapX;
@@ -13352,7 +13342,10 @@
                             if (mapY < 0 || mapY >= this.maze.length || mapX < 0 || mapX >= this.maze[0].length) break; 
 
                             let nextTileID = this.maze[mapY][mapX];
-                            if (![92,93,95,97,99,101].includes(nextTileID)) break; // Found solid land! Stop fast-forwarding!
+                            if (
+                                TERRAIN_SURFACES[nextTileID]?.kind !==
+                                TERRAIN_SURFACES[tileID]?.kind
+                            ) break; // Found solid land! Stop fast-forwarding!
                         }
 
                         let hit = this.hitPool[hitCount];
@@ -13579,8 +13572,9 @@
                                 // Cap fog at 85% so border shapes always pierce the mist!
                                 fogFactor = Math.min(fogFactor, 0.85); 
                             }
-                            let chasmDepth = (hit.wallID === 97) ? 2.0 : 0.4; // Abyss vs Water
-                            
+                            const surfaceKind = TERRAIN_SURFACES[hit.wallID]?.kind;
+                            let chasmDepth = surfaceKind === 'chasm' ? 2.0 : 0.4; // Abyss vs Water
+                                                        
                             // 1. CALCULATE FRONT EDGE
                             // Clamped perfectly to the floor level. NO MORE 15 PIXEL HACK.
                             // This entirely removes the green spikes and ensures the water naturally tucks beneath the floor.
@@ -13595,7 +13589,8 @@
                             // 3. MAP BORDER DETECTION (The Infinite Horizon)
                             let isBorder = (hit.exitMapY < 0 || hit.exitMapY >= this.maze.length || hit.exitMapX < 0 || hit.exitMapX >= this.maze[0].length);
                             let nextTileID = isBorder ? 0 : this.maze[hit.exitMapY][hit.exitMapX];
-                            let nextIsChasm = [93,95,97,99,101].includes(nextTileID);
+                            let nextIsChasm =
+                                TERRAIN_SURFACES[nextTileID]?.kind === surfaceKind;
 
                             // 4. DRAW THE HORIZONTAL SURFACE
                             // Perfectly clamped between the solid floor you stand on, and the far shore
@@ -13603,11 +13598,14 @@
                             let surfaceTop = isBorder ? Math.floor(horizon) : Math.max(0, Math.min(viewH, backWaterY));
                             
                             if (surfaceBot > surfaceTop) {
-                                if (hit.wallID === 97) {
+                                if (surfaceKind === 'chasm') {
                                     setRGB(10, 5, 15); 
                                     ctx.fillRect(screenX, viewY + surfaceTop, drawWidth, surfaceBot - surfaceTop);
                                 } else {
-                                    let wR = 10, wG = 35, wB = 75;
+                                    let [wR, wG, wB] =
+                                        surfaceKind === 'lava'
+                                            ? [210, 65, 8]
+                                            : [10, 35, 75];
                                     let timeOsc = Date.now() / 400;
                                     let wave = Math.sin((stripX * 0.05) + (hit.mapY * 0.5) + timeOsc) * 15;
                                     let wave2 = Math.cos((stripX * 0.02) - timeOsc) * 10;
@@ -15012,12 +15010,12 @@
                         ctx.imageSmoothingEnabled = false;
                         // ==========================================
                     // ==========================================
-                    // --- EVERQUEST CON RINGS & WARD DEPLETION ---
+                    // --- WARD RING ---
                     // ==========================================
                     // 1. Check Alignment: Only show on foes or defenders!
                     let isValidAuraTarget = false;
                     if (sprite.alignment) {
-                        if (sprite.alignment.startsWith('foe') || sprite.alignment.startsWith('defender')) {
+                        if (sprite.alignment.startsWith('foe')) {
                             isValidAuraTarget = true;
                         }
                     }
@@ -15025,17 +15023,24 @@
                     if (!sprite.isPlayer && isValidAuraTarget) {
                         ctx.save();
                         
-                        // 2. Calculate dynamic scale based on distance AND sprite scale
-                        let ringRadius = Math.max(4, (viewH / transformY) * 0.18 * scale);
-                        
-                        // THE FIX: Lift the ring up slightly from the absolute floor so it wraps around their feet!
-                        // (Subtracting moves it UP on the screen canvas)
-                        let verticalLift = (viewH / transformY) * 0.05; 
-                        let ringY = Math.floor(floorY - verticalLift) + viewY;
+                        const foot = getRingFoot(srcImg);
+                        const ringConfig = SPRITE_CONFIGS[imageIndex] || {};
 
+                        const footX = ringConfig.ringFootX ?? foot.x;
+                        const footY = ringConfig.ringFootY ?? foot.y;
+
+                        let ringX = drawStartX + spriteSize * footX;
+                        let ringY = drawStartY + spriteSize * footY;
+
+                        let ringRadius = Math.max(
+                            4,
+                            spriteSize * (ringConfig.ringRadius ?? foot.radius)
+                        );
+
+                        const ringSquash = ringConfig.ringSquash ?? 0.35;
                         // 3. Scan columns to ensure it doesn't render over solid walls (Occlusion)
                         let isOccluded = false;
-                        let sampleCol = Math.floor(spriteScreenX);
+                        let sampleCol = Math.floor(ringX - viewX);
                         if (sampleCol >= 0 && sampleCol < viewW) {
                             let endIdx = sampleCol * bufferStride + this.zBufferCounts[sampleCol] * 3;
                             for (let idx = sampleCol * bufferStride; idx < endIdx; idx += 3) {
@@ -15048,7 +15053,14 @@
                                 }
                             }
                         }
-
+                        /*
+                        Object.assign(SPRITE_CONFIGS[158], {
+                            ringFootX: 0.5,
+                            ringFootY: 0.78,
+                            ringRadius: 0.18,
+                            ringSquash: 0.35
+                        });
+                        */
                         // 4. Render the rings if visible in front of walls
                         if (!isOccluded) {
                             
@@ -15092,8 +15104,8 @@
                             }
 
                             if (activeStatusColors.length > 0) {
-                                let colorIdx = Math.floor(Date.now() / 600) % activeStatusColors.length;
-                                ringColor = activeStatusColors[colorIdx];
+                                const cycle = [conSolid, ...activeStatusColors];
+                                ringColor = cycle[Math.floor(Date.now() / 600) % cycle.length];
                             }
 
                             // --- CALCULATE WARD DEPLETION PERCENTAGE ---
@@ -15105,23 +15117,66 @@
                                 }
                             }
 
-                            // --- DRAWING THE RING(S) ---
-                            ctx.lineWidth = Math.max(1, 2.5 / transformY);
-                            ctx.strokeStyle = ringColor;
+                            const ringTime = frameNow / 1000;
+                            const ringStart = -Math.PI / 2;
+                            const ringEnd = ringStart + Math.PI * 2 * wardPercent;
+                            const ringWidth = Math.max(1, 2.5 / transformY);
 
-                            // 1. Faint Base Ring (So you can always see their danger level/status, even with 0 wards)
+                            ctx.strokeStyle = ringColor;
+                            ctx.lineWidth = ringWidth;
+
+                            // Empty-ward outline remains visible.
                             ctx.globalAlpha = 0.25;
                             ctx.beginPath();
-                            ctx.ellipse(viewX + spriteScreenX, ringY, ringRadius, ringRadius * 0.35, 0, 0, Math.PI * 2);
+                            ctx.ellipse(
+                                ringX, ringY,
+                                ringRadius, ringRadius * ringSquash,
+                                0, 0, Math.PI * 2
+                            );
                             ctx.stroke();
 
-                            // 2. Bright Depleting Ward Ring
                             if (wardPercent > 0) {
-                                ctx.globalAlpha = 1.0;
+                                // Keep one continuous, readable HP arc underneath the shimmer.
+                                ctx.globalAlpha = 0.7;
                                 ctx.beginPath();
-                                let endAngle = (-Math.PI / 2) + (Math.PI * 2 * wardPercent);
-                                ctx.ellipse(viewX + spriteScreenX, ringY, ringRadius, ringRadius * 0.35, 0, -Math.PI / 2, endAngle);
+                                ctx.ellipse(
+                                    ringX, ringY,
+                                    ringRadius, ringRadius * ringSquash,
+                                    0, ringStart, ringEnd
+                                );
                                 ctx.stroke();
+
+                                // Modest segment count; fewer segments for distant sprites.
+                                const segments = Math.max(
+                                    12,
+                                    Math.min(40, Math.ceil(ringRadius * 0.8))
+                                );
+
+                                ctx.lineWidth = ringWidth * 1.8;
+
+                                for (let i = 0; i < segments; i++) {
+                                    const a0 = ringStart + Math.PI * 2 * i / segments;
+                                    if (a0 >= ringEnd) break;
+
+                                    const a1 = Math.min(
+                                        ringEnd,
+                                        ringStart + Math.PI * 2 * (i + 1) / segments
+                                    );
+
+                                    const wave =
+                                        Math.sin(a0 * 7 - ringTime * 2.5) * 0.5 +
+                                        Math.cos(a0 * 11 + ringTime * 1.7) * 0.5;
+
+                                    ctx.globalAlpha = 0.2 + (wave + 1) * 0.3;
+
+                                    ctx.beginPath();
+                                    ctx.ellipse(
+                                        ringX, ringY,
+                                        ringRadius, ringRadius * ringSquash,
+                                        0, a0, a1
+                                    );
+                                    ctx.stroke();
+                                }
                             }
                         }
                         ctx.restore();
@@ -15211,36 +15266,21 @@
                     let spellPower = 0;
 
                     if (isJudgement) {
-                        // Judgement summons the power of ALL 4 stats!
                         for (let s = 0; s < 4; s++) {
-                            let sDice = this.getEffectiveDice(s);
-                            spellPower += sDice.flatMod;
-                            for (let i = 0; i < sDice.numDice; i++) {
-                                spellPower += Math.floor(Math.random() * sDice.diceSides) + 1;
-                            }
+                            spellPower += this.rollStat(s);
                         }
                     } else {
-                        // Standard single-stat roll (plus weapon damage if applicable)
-                        let pDice = this.getEffectiveDice(statToCast);
-                        spellPower = pDice.flatMod + (this.damage || 0); 
-                        for (let i = 0; i < pDice.numDice; i++) {
-                            spellPower += Math.floor(Math.random() * pDice.diceSides) + 1;
-                        }
+                        spellPower = this.rollStat(statToCast, this.damage || 0);
                     }
 
-                // --- Helper Function: Rolls the Defender's Virtual Dice cleanly ---
                     const rollDefense = (entity, defStatIndex) => {
+                        if (!isJudgement) {
+                            return resolveStatRoll(entity, defStatIndex);
+                        }
+
                         let totalDef = 0;
-                        if (isJudgement) {
-                            for (let s = 0; s < 4; s++) {
-                                let tDice = entity.getEffectiveDice ? entity.getEffectiveDice(s) : { numDice: 1, diceSides: 4, flatMod: 0 };
-                                totalDef += tDice.flatMod;
-                                for (let i = 0; i < tDice.numDice; i++) totalDef += Math.floor(Math.random() * tDice.diceSides) + 1;
-                            }
-                        } else {
-                            let tDice = entity.getEffectiveDice ? entity.getEffectiveDice(defStatIndex) : { numDice: 1, diceSides: 4, flatMod: 0 };
-                            totalDef += tDice.flatMod;
-                            for (let i = 0; i < tDice.numDice; i++) totalDef += Math.floor(Math.random() * tDice.diceSides) + 1;
+                        for (let s = 0; s < 4; s++) {
+                            totalDef += resolveStatRoll(entity, s);
                         }
                         return totalDef;
                     };
@@ -16017,6 +16057,9 @@
                 if (typeof startGame !== 'undefined') startGame = 'dialogue'; 
                 this.dCounter = 0;            
             }
+            rollStat(statIndex, flatBonus = 0) {
+                return resolveStatRoll(this, statIndex, { flatBonus });
+            }
             getEffectiveDice(statIndex) {
                 // 1. Get Base Stats (Your permanent array)
                 let numDice = this.stat[statIndex][0];
@@ -16094,7 +16137,10 @@
                 }
             killNPC(npc, respawnInput = false, reason = 'combat', alignment = null) {
                 if (!npc) return false; // Safety check
-                
+                if (npc === this) {
+                    this.killPlayer(reason);
+                    return false;
+                }
                 // ==========================================
                 // 1. THE PIÑATA LOCK (Race Condition Fix)
                 // ==========================================
@@ -16176,20 +16222,7 @@
                     }
                     
                     // A. PLAYER LEVEL UP 
-                    let xpNeeded = Math.floor(100 * Math.pow(this.level + 1, 1.8));
-                    let leveledUp = false;
-
-                    while (this.xp >= xpNeeded) {
-                        this.xp -= xpNeeded; 
-                        this.level++;
-                        let statPointGain = (this.playerClass === 'Battle-Mage') ? 9 : 4;
-                        this.statPoints = (this.statPoints || 0) + statPointGain;
-                        
-                        // DIRECT FORMULA: Perfect linear scaling
-                        this.power = 100 + (this.level * 13);     
-                        leveledUp = true;
-                        xpNeeded = Math.floor(100 * Math.pow(this.level + 1, 1.8));
-                    }
+                    let leveledUp = this.levelUpPlayer() > 0;
 
                     if (leveledUp) {
                         console.log(`Level Up! You are now Level ${this.level}. Max Deck Power increased to ${this.power}.`);
@@ -16222,7 +16255,6 @@
                                     if (typeof spawnParticle !== 'undefined') {
                                         for(let p=0; p<5; p++) spawnParticle(livePet.x, livePet.y, '#00ff00', 'sparkle');
                                     }
-                                    this.actionQueue.unshift(['notify', { text: `${livePet.name} leveled up!`, endActions: [['close_dialogue', null]] }]);
                                     if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('heal');
                                 }
                             }
@@ -20078,7 +20110,69 @@
 
                 return quests;
             }
-            killPlayer(reason = 'combat', killerNPC = null) {
+            finishPlayerDeath() {
+                if (!this.isDying || this.isDead) return;
+
+                this.isDead = true;
+                this.status = 'dead';
+
+                window.activeMoveKey = null;
+                window.activeCtrlKey = false;
+
+                if (typeof btnMove !== 'undefined') {
+                    btnMove.isPressed = false;
+                    btnMove.currentDir = null;
+                }
+
+                if (typeof btnMove2 !== 'undefined') {
+                    btnMove2.isPressed = false;
+                    btnMove2.currentDir = null;
+                }
+
+                this.actionQueue = [];
+                this.isProcessingActions = false;
+                this.currentSpeaker = null;
+                this.currentEnemy = null;
+
+                const sequence = this._deathSequence;
+
+                setTimeout(() => {
+                    // Ignore a callback belonging to an obsolete death sequence.
+                    if (this._deathSequence !== sequence) return;
+
+                    this.currentWardTime = this.maxWards * this.timePerWard;
+                    this.wardShatterCooldown = 0;
+                    this.activeBuffs = [];
+                    this.activeSummons = [];
+                    this.projectiles = [];
+
+                    this.isSlidingToTile = false;
+                    this.isAggroDashing = false;
+
+                    this.isDying = false;
+                    this.isDead = false;
+                    this.status = 'normal';
+                    this._deathSequence = null;
+
+                    if (this.weather) {
+                        this.weather.deathOverlayLocked = false;
+
+                        const environment =
+                            this.mapEnvironments &&
+                            this.mapEnvironments[this.mapID];
+
+                        this.weather.setMode(
+                            environment && environment.weather
+                                ? environment.weather
+                                : 'clear'
+                        );
+                    }
+
+                    // Preserve your existing return-to-start behavior.
+                    startGame = 0;
+                }, 250);
+            }
+            killPlayer(reason = 'combat', killerNPC = null, killerId = null) {
                 if (this.isDying || this.isDead) return; 
                 
                 this.isDying = true;
@@ -20140,29 +20234,33 @@
                 if (typeof startGame !== 'undefined') startGame = 'dialogue';
                 this.dCounter = 0;
 
-                // --- DICE ROLL FOR DEATH TIMER ---
-                const rollStat = (idx) => {
-                    let statArr = this.stat[idx];
-                    if (!statArr) return 4;
-                    let total = statArr[2]; 
-                    for (let i = 0; i < statArr[0]; i++) {
-                        total += Math.floor(Math.random() * statArr[1]) + 1;
-                    }
-                    return Math.max(1, total); 
-                };
-
-                let strRoll = rollStat(0); 
-                let conRoll = rollStat(1); 
-                let intRoll = rollStat(2); 
-                let agiRoll = rollStat(3); 
+                let strRoll = Math.max(1, this.rollStat(0));
+                let conRoll = Math.max(1, this.rollStat(1));
+                let intRoll = Math.max(1, this.rollStat(2));
+                let agiRoll = Math.max(1, this.rollStat(3));
 
                 // Time to live (Willpower + Brawn + Mind)
                 this.deathMaxTime = 3.0 + ((strRoll + conRoll + intRoll) * 0.25);
                 this.deathIntensity = Math.max(0.1, 1.5 - (agiRoll * 0.05));
+                const sequence = {};
+                    this._deathSequence = sequence;
 
+                    clearTimeout(this._deathTimeout);
+
+                    this._deathTimeout = setTimeout(() => {
+                        if (
+                            this._deathSequence === sequence &&
+                            this.isDying &&
+                            !this.isDead
+                        ) {
+                            this.finishPlayerDeath();
+                        }
+                    }, this.deathMaxTime * 1000);
                 // --- TRIGGER WEATHER ENGINE ---
                 if (this.weather) {
+                    this.weather.deathOverlayLocked = true;
                     this.weather.setMode('dying');
+                    this.weather.dyingStartedAt = performance.now();
                     this.weather.dyingTimer = 0;
                     this.weather.dyingMaxTime = this.deathMaxTime;
                     this.weather.dyingIntensity = this.deathIntensity;
@@ -20175,8 +20273,41 @@
 
                 // Broadcast the exact string name to the server
                 if (typeof socket !== 'undefined') {
-                    socket.emit('player_died', { mapID: this.mapID, reason: reason, killer: killerName });
+                    socket.emit('player_died', {
+                        mapID: this.mapID,
+                        reason,
+                        killer: killerName,
+                        ...(killerId !== null ? { killerId } : {})
+                    });
                 }
+            }
+            levelUpPlayer() {
+                let levelsGained = 0;
+
+                this.xpNeeded = Math.floor(
+                    100 * Math.pow(this.level + 1, 1.8)
+                );
+
+                while (this.xp >= this.xpNeeded) {
+                    this.xp -= this.xpNeeded;
+                    this.level++;
+
+                    const statPointGain =
+                        this.playerClass === 'Battle-Mage' ? 9 : 4;
+
+                    this.statPoints =
+                        (this.statPoints || 0) + statPointGain;
+
+                    this.power = 100 + (this.level * 13);
+
+                    levelsGained++;
+
+                    this.xpNeeded = Math.floor(
+                        100 * Math.pow(this.level + 1, 1.8)
+                    );
+                }
+
+                return levelsGained;
             }
         //Tactics:
             getValidMoves(unitX, unitY, moveStat) {
@@ -20787,10 +20918,7 @@
                     let statToCast = spellData.castStat !== undefined ? spellData.castStat : 0;
                     
                     let cDice = getCasterDice(statToCast);
-                    let atkRoll = cDice.flatMod + (this.damage || 0);
-                    for (let j = 0; j < cDice.numDice; j++) {
-                        atkRoll += Math.floor(Math.random() * cDice.diceSides) + 1;
-                    }
+                    let atkRoll = resolveStatRoll(caster, statToCast, { dice: cDice, flatBonus: this.damage || 0 });
 
                     if (atkRoll >= toughness) {
                         exploreRef.maze[mapY][mapX] = 0; 
@@ -20827,7 +20955,7 @@
                                 exploreRef.applyKnockback(pushX, pushY, kbPower);
                             }
                         } else {
-                            Dungeon.killPlayer('spell');
+                            exploreRef.killPlayer('spell', this.owner);
                         }
                     }
                     return;
@@ -20965,6 +21093,7 @@
         }
 
         setMode(mode) {
+            if (this.deathOverlayLocked && mode !== 'dying') return;
             if (this.mode === mode) return;
             this.mode = mode;
             this.particles = [];
@@ -20988,7 +21117,8 @@
             else if (mode === 'dying') {
                 this.dyingTimer = 0;
                 this.dyingMaxTime = 5.0; 
-                this.dyingIntensity = 1.0; 
+                this.dyingIntensity = 1.0; ;
+                this.dyingStartedAt = performance.now();
             }
         }
 
@@ -21053,8 +21183,14 @@
 
             // --- THE DYING TIMER ---
             if (this.mode === 'dying') {
-                this.dyingTimer += dt;
-                return; // Skip particle updates while dying
+                if (this.dyingStartedAt === undefined) {
+                    this.dyingStartedAt = performance.now();
+                }
+
+                this.dyingTimer =
+                    (performance.now() - this.dyingStartedAt) / 1000;
+
+                return;
             }
 
             const wind = (this.mode === 'snow') ? 0 : -2;
@@ -21122,200 +21258,200 @@
         }
 
         draw(ctx, startX, startY) {
-        if (this.mode === 'clear') return;
-    
-        ctx.save();
-    
-        // --- 1. CAMERA SHAKE ---
-        let shakeX = 0;
-        let shakeY = 0;
-        if (this.mode === 'apocalypse' || this.mode === 'inferno') {
-            shakeX = (Math.random() - 0.5) * this.shakeIntensity * 2;
-            shakeY = (Math.random() - 0.5) * this.shakeIntensity * 2;
-        } 
-        else if (this.mode === 'dying') {
-            let deathProgress = Math.min(1.0, this.dyingTimer / this.dyingMaxTime);
-            shakeX = (Math.random() - 0.5) * 12 * this.dyingIntensity * deathProgress;
-            shakeY = (Math.random() - 0.5) * 12 * this.dyingIntensity * deathProgress;
-        }
-    
-        ctx.beginPath();
-        ctx.rect(startX, startY, this.width, this.height);
-        ctx.clip();
+            if (this.mode === 'clear') return;
         
-        ctx.translate(startX + shakeX, startY + shakeY);
-    
-        // --- DRAW BACKGROUND CLOUDS ---
-        if (this.mode === 'lightning' || this.mode === 'apocalypse' || this.mode === 'inferno') {
-            for (let p of this.particles) {
-                if (p.type !== 'cloud') continue;
-                
-                let color = (this.mode === 'apocalypse' || this.mode === 'inferno') 
-                    ? `rgba(45, 20, 20, ${p.opacity})` 
-                    : `rgba(40, 40, 55, ${p.opacity})`;
-                
-                let gradient = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size);
-                gradient.addColorStop(0, color);
-                gradient.addColorStop(1, `rgba(0,0,0,0)`);
-                ctx.fillStyle = gradient;
-                ctx.beginPath();
-                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-                ctx.fill();
+            ctx.save();
+        
+            // --- 1. CAMERA SHAKE ---
+            let shakeX = 0;
+            let shakeY = 0;
+            if (this.mode === 'apocalypse' || this.mode === 'inferno') {
+                shakeX = (Math.random() - 0.5) * this.shakeIntensity * 2;
+                shakeY = (Math.random() - 0.5) * this.shakeIntensity * 2;
+            } 
+            else if (this.mode === 'dying') {
+                let deathProgress = Math.min(1.0, this.dyingTimer / this.dyingMaxTime);
+                shakeX = (Math.random() - 0.5) * 12 * this.dyingIntensity * deathProgress;
+                shakeY = (Math.random() - 0.5) * 12 * this.dyingIntensity * deathProgress;
             }
-        }
-    
-        // --- DRAW SPACE/GLITTER ---
-        if (this.mode === 'space') {
-            for (let p of this.particles) {
-                let alpha = Math.sin(p.life * Math.PI);
-                ctx.fillStyle = `rgba(${p.color}, ${alpha})`;
-                ctx.shadowBlur = 10 * alpha; 
-                ctx.shadowColor = `rgba(${p.color}, ${alpha})`;
-                ctx.beginPath();
-                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.shadowBlur = 0;
-            }
-        }
-    
-        // --- FLASH EFFECT ---
-        if ((this.mode === 'storm' || this.mode === 'lightning' || this.mode === 'apocalypse') && this.flashOpacity > 0) {
-            ctx.fillStyle = (this.mode === 'apocalypse') 
-                ? `rgba(255, 220, 180, ${this.flashOpacity})`
-                : `rgba(255, 255, 255, ${this.flashOpacity})`;
-            ctx.fillRect(0, 0, this.width, this.height);
-        }
-    
-        // --- DRAW STANDARD PARTICLES ---
-        if (this.mode === 'leaves') {
-            for (let p of this.particles) {
-                ctx.save();
-                ctx.translate(p.x, p.y);
-                ctx.rotate(p.rotation);
-                ctx.fillStyle = p.color;
-                ctx.beginPath();
-                ctx.moveTo(0, -p.size);
-                ctx.lineTo(p.size/2, 0);
-                ctx.lineTo(0, p.size);
-                ctx.lineTo(-p.size/2, 0);
-                ctx.fill();
-                ctx.restore();
-            }
-        }
-        else if (this.mode === 'rain' || this.mode === 'storm') {
+        
             ctx.beginPath();
-            ctx.strokeStyle = "rgba(170, 190, 230, 0.6)";
-            for (let p of this.particles) {
-                if(p.type === 'rain') {
-                    ctx.moveTo(p.x, p.y);
-                    ctx.lineTo(p.x - 2, p.y + p.length);
+            ctx.rect(startX, startY, this.width, this.height);
+            ctx.clip();
+            
+            ctx.translate(startX + shakeX, startY + shakeY);
+        
+            // --- DRAW BACKGROUND CLOUDS ---
+            if (this.mode === 'lightning' || this.mode === 'apocalypse' || this.mode === 'inferno') {
+                for (let p of this.particles) {
+                    if (p.type !== 'cloud') continue;
+                    
+                    let color = (this.mode === 'apocalypse' || this.mode === 'inferno') 
+                        ? `rgba(45, 20, 20, ${p.opacity})` 
+                        : `rgba(40, 40, 55, ${p.opacity})`;
+                    
+                    let gradient = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size);
+                    gradient.addColorStop(0, color);
+                    gradient.addColorStop(1, `rgba(0,0,0,0)`);
+                    ctx.fillStyle = gradient;
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                    ctx.fill();
                 }
             }
-            ctx.stroke();
-        }
-        else if (this.mode === 'snow') {
-            ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
-            ctx.beginPath();
-            for(let p of this.particles) if(p.type === 'snow') ctx.rect(p.x, p.y, p.size, p.size);
-            ctx.fill();
-        }
-    
-        // --- DRAW EMBERS ---
-        if (this.mode === 'apocalypse' || this.mode === 'inferno') {
-            for (let p of this.particles) {
-                if (p.type !== 'ember') continue;
-                
-                let alpha = p.life * (0.6 + Math.random() * 0.4); 
-                ctx.fillStyle = p.color;
-                ctx.globalAlpha = alpha;
-                ctx.shadowBlur = 10;
-                ctx.shadowColor = "#ff4d00"; 
-                
-                ctx.beginPath();
-                ctx.rect(p.x, p.y, p.size, p.size);
-                ctx.fill();
-                
-                ctx.shadowBlur = 0; 
-                ctx.globalAlpha = 1.0;
+        
+            // --- DRAW SPACE/GLITTER ---
+            if (this.mode === 'space') {
+                for (let p of this.particles) {
+                    let alpha = Math.sin(p.life * Math.PI);
+                    ctx.fillStyle = `rgba(${p.color}, ${alpha})`;
+                    ctx.shadowBlur = 10 * alpha; 
+                    ctx.shadowColor = `rgba(${p.color}, ${alpha})`;
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.shadowBlur = 0;
+                }
             }
-        }
-    
-        // --- DRAW LIGHTNING ---
-        if (this.mode === 'storm' || this.mode === 'lightning' || this.mode === 'apocalypse') {
-            this.drawLightning(ctx);
-        }
-    
-        // --- RED FIRE VIGNETTE ---
-        if (this.mode === 'apocalypse' || this.mode === 'inferno') {
-            ctx.globalCompositeOperation = 'source-over';
-            let grad = ctx.createRadialGradient(
-                this.width/2, this.height/2, this.width * 0.3, 
-                this.width/2, this.height/2, this.width * 0.8
-            );
-            grad.addColorStop(0, 'rgba(0,0,0,0)');
-            grad.addColorStop(0.6, 'rgba(100, 20, 0, 0.1)');
-            grad.addColorStop(1, 'rgba(255, 50, 0, 0.35)'); 
-    
-            ctx.fillStyle = grad;
-            ctx.fillRect(0, 0, this.width, this.height);
-        }
-    
-        // ==========================================
-        // --- DYING VIGNETTE (THE BLACKOUT) ---
-        // ==========================================
-        if (this.mode === 'dying') {
-            let deathProgress = Math.min(1.0, this.dyingTimer / this.dyingMaxTime);
-            
-            let cx = this.width / 2;
-            let cy = this.height / 2;
-            let maxRadius = Math.sqrt(cx*cx + cy*cy);
-            
-            // --- PHASE 1: THE BLACKOUT TUNNEL (0% to 70% of timer) ---
-            let tunnelProgress = Math.min(1.0, deathProgress / 0.7);
-            
-            // Cubing the progress creates a terrifying ease-in. It creeps slowly, then snaps shut.
-            let blackOut = Math.pow(tunnelProgress, 3); 
-            
-            // Pulse math for the red adrenaline ring fighting against the dark
-            let pulseSpeed = Math.PI * (1.5 + (this.dyingIntensity * 0.5));
-            let pulse = Math.abs(Math.sin(this.dyingTimer * pulseSpeed));
-            let edgeR = Math.floor(180 * (1.0 - tunnelProgress) * pulse);
-            
-            // The red ring shrinks from the outside edge (1.0) down to the center (0.01)
-            let stopRing = Math.max(0.01, Math.min(0.99, 1.0 - blackOut)); 
-            
-            let grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, maxRadius);
-            
-            // 1. Center of the screen (slowly dims to pure black)
-            grad.addColorStop(0, `rgba(0, 0, 0, ${blackOut})`);
-            
-            // 2. The encroaching tunnel wall (Pulsating Red that pushes inward)
-            grad.addColorStop(stopRing, `rgba(${edgeR}, 0, 0, ${0.5 + (blackOut * 0.5)})`);
-            
-            // 3. The outer void (Solid Black that fills the screen as the ring shrinks)
-            grad.addColorStop(1, `rgba(0, 0, 0, ${0.8 + (tunnelProgress * 0.2)})`);
-            
-            ctx.fillStyle = grad;
-            ctx.fillRect(0, 0, this.width, this.height);
-            
-            // --- PHASE 2: THE WHITE LIGHT (70% to 100% of timer) ---
-            if (deathProgress > 0.7) {
-                let lightProg = (deathProgress - 0.7) / 0.3; // 0.0 to 1.0
-                
-                // Multiplied by 2.0 to ensure the sphere explodes past the corners of the canvas
-                let lightRadius = Math.max(0.1, maxRadius * lightProg * 2.0);
-                
-                let lightGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, lightRadius);
-                lightGrad.addColorStop(0, "rgba(255, 255, 255, 1)"); // Pure white core
-                lightGrad.addColorStop(0.5, `rgba(255, 255, 255, ${lightProg})`); // Fading halo
-                lightGrad.addColorStop(1, "rgba(255, 255, 255, 0)"); // Transparent edge
-                
-                ctx.fillStyle = lightGrad;
+        
+            // --- FLASH EFFECT ---
+            if ((this.mode === 'storm' || this.mode === 'lightning' || this.mode === 'apocalypse') && this.flashOpacity > 0) {
+                ctx.fillStyle = (this.mode === 'apocalypse') 
+                    ? `rgba(255, 220, 180, ${this.flashOpacity})`
+                    : `rgba(255, 255, 255, ${this.flashOpacity})`;
                 ctx.fillRect(0, 0, this.width, this.height);
             }
-        }
-    
-        ctx.restore();
+        
+            // --- DRAW STANDARD PARTICLES ---
+            if (this.mode === 'leaves') {
+                for (let p of this.particles) {
+                    ctx.save();
+                    ctx.translate(p.x, p.y);
+                    ctx.rotate(p.rotation);
+                    ctx.fillStyle = p.color;
+                    ctx.beginPath();
+                    ctx.moveTo(0, -p.size);
+                    ctx.lineTo(p.size/2, 0);
+                    ctx.lineTo(0, p.size);
+                    ctx.lineTo(-p.size/2, 0);
+                    ctx.fill();
+                    ctx.restore();
+                }
+            }
+            else if (this.mode === 'rain' || this.mode === 'storm') {
+                ctx.beginPath();
+                ctx.strokeStyle = "rgba(170, 190, 230, 0.6)";
+                for (let p of this.particles) {
+                    if(p.type === 'rain') {
+                        ctx.moveTo(p.x, p.y);
+                        ctx.lineTo(p.x - 2, p.y + p.length);
+                    }
+                }
+                ctx.stroke();
+            }
+            else if (this.mode === 'snow') {
+                ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
+                ctx.beginPath();
+                for(let p of this.particles) if(p.type === 'snow') ctx.rect(p.x, p.y, p.size, p.size);
+                ctx.fill();
+            }
+        
+            // --- DRAW EMBERS ---
+            if (this.mode === 'apocalypse' || this.mode === 'inferno') {
+                for (let p of this.particles) {
+                    if (p.type !== 'ember') continue;
+                    
+                    let alpha = p.life * (0.6 + Math.random() * 0.4); 
+                    ctx.fillStyle = p.color;
+                    ctx.globalAlpha = alpha;
+                    ctx.shadowBlur = 10;
+                    ctx.shadowColor = "#ff4d00"; 
+                    
+                    ctx.beginPath();
+                    ctx.rect(p.x, p.y, p.size, p.size);
+                    ctx.fill();
+                    
+                    ctx.shadowBlur = 0; 
+                    ctx.globalAlpha = 1.0;
+                }
+            }
+        
+            // --- DRAW LIGHTNING ---
+            if (this.mode === 'storm' || this.mode === 'lightning' || this.mode === 'apocalypse') {
+                this.drawLightning(ctx);
+            }
+        
+            // --- RED FIRE VIGNETTE ---
+            if (this.mode === 'apocalypse' || this.mode === 'inferno') {
+                ctx.globalCompositeOperation = 'source-over';
+                let grad = ctx.createRadialGradient(
+                    this.width/2, this.height/2, this.width * 0.3, 
+                    this.width/2, this.height/2, this.width * 0.8
+                );
+                grad.addColorStop(0, 'rgba(0,0,0,0)');
+                grad.addColorStop(0.6, 'rgba(100, 20, 0, 0.1)');
+                grad.addColorStop(1, 'rgba(255, 50, 0, 0.35)'); 
+        
+                ctx.fillStyle = grad;
+                ctx.fillRect(0, 0, this.width, this.height);
+            }
+        
+            // ==========================================
+            // --- DYING VIGNETTE (THE BLACKOUT) ---
+            // ==========================================
+            if (this.mode === 'dying') {
+                let deathProgress = Math.min(1.0, this.dyingTimer / this.dyingMaxTime);
+                
+                let cx = this.width / 2;
+                let cy = this.height / 2;
+                let maxRadius = Math.sqrt(cx*cx + cy*cy);
+                
+                // --- PHASE 1: THE BLACKOUT TUNNEL (0% to 70% of timer) ---
+                let tunnelProgress = Math.min(1.0, deathProgress / 0.7);
+                
+                // Cubing the progress creates a terrifying ease-in. It creeps slowly, then snaps shut.
+                let blackOut = Math.pow(tunnelProgress, 3); 
+                
+                // Pulse math for the red adrenaline ring fighting against the dark
+                let pulseSpeed = Math.PI * (1.5 + (this.dyingIntensity * 0.5));
+                let pulse = Math.abs(Math.sin(this.dyingTimer * pulseSpeed));
+                let edgeR = Math.floor(180 * (1.0 - tunnelProgress) * pulse);
+                
+                // The red ring shrinks from the outside edge (1.0) down to the center (0.01)
+                let stopRing = Math.max(0.01, Math.min(0.99, 1.0 - blackOut)); 
+                
+                let grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, maxRadius);
+                
+                // 1. Center of the screen (slowly dims to pure black)
+                grad.addColorStop(0, `rgba(0, 0, 0, ${blackOut})`);
+                
+                // 2. The encroaching tunnel wall (Pulsating Red that pushes inward)
+                grad.addColorStop(stopRing, `rgba(${edgeR}, 0, 0, ${0.5 + (blackOut * 0.5)})`);
+                
+                // 3. The outer void (Solid Black that fills the screen as the ring shrinks)
+                grad.addColorStop(1, `rgba(0, 0, 0, ${0.8 + (tunnelProgress * 0.2)})`);
+                
+                ctx.fillStyle = grad;
+                ctx.fillRect(0, 0, this.width, this.height);
+                
+                // --- PHASE 2: THE WHITE LIGHT (70% to 100% of timer) ---
+                if (deathProgress > 0.7) {
+                    let lightProg = (deathProgress - 0.7) / 0.3; // 0.0 to 1.0
+                    
+                    // Multiplied by 2.0 to ensure the sphere explodes past the corners of the canvas
+                    let lightRadius = Math.max(0.1, maxRadius * lightProg * 2.0);
+                    
+                    let lightGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, lightRadius);
+                    lightGrad.addColorStop(0, "rgba(255, 255, 255, 1)"); // Pure white core
+                    lightGrad.addColorStop(0.5, `rgba(255, 255, 255, ${lightProg})`); // Fading halo
+                    lightGrad.addColorStop(1, "rgba(255, 255, 255, 0)"); // Transparent edge
+                    
+                    ctx.fillStyle = lightGrad;
+                    ctx.fillRect(0, 0, this.width, this.height);
+                }
+            }
+        
+            ctx.restore();
         }
 
         updateLightning(dt) {
@@ -26126,17 +26262,15 @@
 
         for (let i = 0; i < iterations; i++) {
             // Simulate Attacker Roll (using the passed object's stats)
-            let myMin = attacker.stat[myStat][eDICE.MIN]; 
-            let myMax = attacker.stat[myStat][eDICE.MAX]; 
-            let myMod = attacker.stat[myStat][eDICE.MOD];
-            let myRoll = Math.floor(Math.random() * (myMax - myMin + 1) + myMin) + myMod;
+            let myRoll = resolveStatRoll(attacker, myStat, {
+                includeRunes: true,
+                minimum: 0
+            });
 
-            // Simulate Defender Roll
-            let opMin = defender.stat[oppStat][eDICE.MIN]; 
-            let opMax = defender.stat[oppStat][eDICE.MAX];
-            let opMod = defender.stat[oppStat][eDICE.MOD]; 
-            let opRoll = Math.floor(Math.random() * (opMax - opMin + 1) + opMin) + opMod;
-
+            let opRoll = resolveStatRoll(defender, oppStat, {
+                includeRunes: true,
+                minimum: 0
+            });
             if (myRoll > opRoll) wins++;
         }
         return wins / iterations;
@@ -27169,8 +27303,13 @@
                         
                         //Scales of justice activate 
                         if (Player[attacker].hasScalesOfJustice == 1) {
-                          Player[attacker].look[eLOOK.R] = rnd(1, 12);
-                          Player[defender].look[eLOOK.R] = rnd(1, 12);
+                            Player[attacker].look[eLOOK.R] = resolveStatRoll(null, 0, {
+                                dice: { numDice: 1, diceSides: 12, flatMod: 0 }
+                            });
+
+                            Player[defender].look[eLOOK.R] = resolveStatRoll(null, 0, {
+                                dice: { numDice: 1, diceSides: 12, flatMod: 0 }
+                            });
                         }
                         //////////
                         //Alchemy activate
@@ -33083,18 +33222,11 @@
     }
 
     rollStat(stat, includeRunes = true) {
-        const dice = this.getBuffDice(stat, includeRunes);
-        let total = dice.flatMod;
-
-        // Zero-sided fallback stats contribute no dice.
-        if (dice.diceSides > 0) {
-            for (let i = 0; i < dice.numDice; i++) {
-                total += Math.floor(Math.random() * dice.diceSides) + 1;
-            }
-        }
-
-        return Math.max(0, total);
-    }
+    return resolveStatRoll(this, stat, {
+        includeRunes,
+        minimum: 0
+    });
+}
     
     place(x,y,z,faceDown = false){
           var color = 0;
@@ -37321,19 +37453,7 @@
                                     
                                     // 3. Add XP and Check for Level Up!
                                     Dungeon.xp += xpYield;
-                                    let xpNeeded = Math.floor(100 * Math.pow(Dungeon.level + 1, 1.8)); 
-                                    let leveledUp = false;
-
-                                    while (Dungeon.xp >= xpNeeded) {
-                                        Dungeon.xp -= xpNeeded; 
-                                        Dungeon.level++;
-                                        Dungeon.statPoints =Dungeon.statPoints + 4;
-                                        if (Dungeon.playerClass === 'Battle-Mage'){Dungeon.statPoints + 5}
-                                        Dungeon.power = 100 + (Dungeon.level * 13); // Linear scaling we built!
-                                        leveledUp = true;
-                                        xpNeeded = Math.floor(100 * Math.pow(Dungeon.level + 1, 1.8)); 
-                                    }
-
+                                    let leveledUp = Dungeon.levelUpPlayer() > 0;
                                     // Play sounds
                                     if (leveledUp) {
                                         if(typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('teleport'); // Big success!
@@ -50744,7 +50864,68 @@
                 SPRITE_CONFIGS[i] = { scale, hover, faceZ, facePan };
             }
         }
+        const RING_FOOT_CACHE = new WeakMap();
 
+        function getRingFoot(image) {
+            if (RING_FOOT_CACHE.has(image)) {
+                return RING_FOOT_CACHE.get(image);
+            }
+
+            let result = { x: 0.5, y: 0.9, radius: 0.22 };
+
+            try {
+                const size = 96;
+                const canvas = document.createElement('canvas');
+                canvas.width = canvas.height = size;
+
+                const c = canvas.getContext('2d', {
+                    willReadFrequently: true
+                });
+
+                c.drawImage(image, 0, 0, size, size);
+                const pixels = c.getImageData(0, 0, size, size).data;
+
+                let bottom = -1;
+
+                for (let y = size - 1; y >= 0 && bottom < 0; y--) {
+                    for (let x = 0; x < size; x++) {
+                        if (pixels[(y * size + x) * 4 + 3] > 100) {
+                            bottom = y;
+                            break;
+                        }
+                    }
+                }
+
+                if (bottom >= 0) {
+                    let left = size;
+                    let right = -1;
+
+                    // Measure the lower silhouette, rather than wings or hats.
+                    for (let y = Math.max(0, bottom - 12); y <= bottom; y++) {
+                        for (let x = 0; x < size; x++) {
+                            if (pixels[(y * size + x) * 4 + 3] > 100) {
+                                left = Math.min(left, x);
+                                right = Math.max(right, x);
+                            }
+                        }
+                    }
+
+                    result = {
+                        x: (left + right + 1) / (2 * size),
+                        y: (bottom + 1) / size,
+                        radius: Math.max(
+                            0.08,
+                            Math.min(0.45, (right - left + 1) / size * 0.6)
+                        )
+                    };
+                }
+            } catch (_) {
+                // Retain the fallback for images that cannot be sampled.
+            }
+
+            RING_FOOT_CACHE.set(image, result);
+            return result;
+        }
         // Helper for decimals (like 60.1, 77.1) or single IDs
         function setSingle(id, scale, hover, faceZ = 0.70, facePan = 0.0) {
             SPRITE_CONFIGS[id] = { scale, hover, faceZ, facePan };
@@ -57703,7 +57884,11 @@
                 
                 let targetX = currentTileX + moveX;
                 let targetY = currentTileY + moveY;
+                const destinationTile = Dungeon.maze[targetY]?.[targetX];
 
+                if (TERRAIN_SURFACES[destinationTile]?.blocked) {
+                    return;
+                }
                 // ATLAS EDGE DETECTION ---
                     let isOutOfBounds = (targetX < 0 || targetX >= Dungeon.maze[0].length || targetY < 0 || targetY >= Dungeon.maze.length);
                     let canTransition = false;
@@ -57754,9 +57939,7 @@
                         
                         // Roll AGI (Stat Index 3)
                         let agiDice = Dungeon.getEffectiveDice ? Dungeon.getEffectiveDice(3) : { numDice: 1, diceSides: 6, flatMod: 0 };
-                        let agiRoll = agiDice.flatMod;
-                        for (let d = 0; d < agiDice.numDice; d++) agiRoll += Math.floor(Math.random() * agiDice.diceSides) + 1;
-
+                        let agiRoll = Dungeon.rollStat(3);
                         if (agiRoll >= climbDC) {
                             // SUCCESSFUL CLIMB! Vault onto the platform
                             if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('step');
@@ -57787,19 +57970,12 @@
                     // ----------------------------------------------------
                     // We only bump-to-break if climbing wasn't an option (e.g. Prison Bars that hit the ceiling)
                     if (!actionTaken && tileProp.toughness !== undefined) {
-                        let baseStr = (Dungeon.stat && Dungeon.stat[0]) ? Dungeon.stat[0][0] : 1;
-                        let modStr = (Dungeon.stat && Dungeon.stat[0]) ? Dungeon.stat[0][2] : 0;
-                        let maxStr = (Dungeon.stat && Dungeon.stat[0]) ? Dungeon.stat[0][1] : 4;
-
-                        let crashRoll = Math.floor(Math.random() * (maxStr - baseStr + 1)) + baseStr + modStr;
-                        
+                        let crashRoll = Dungeon.rollStat(0);
                         // Special Class Overrides for Prison Bars (ID 91)
                         if (tileID === 91 && (Dungeon.playerClass === 'Rogue' || Dungeon.playerClass === 'Battle-Mage')) {
                             // Roll AGI to pick/squeeze through the bars instead of STR
                             let agiDice = Dungeon.getEffectiveDice ? Dungeon.getEffectiveDice(3) : { numDice: 1, diceSides: 6, flatMod: 0 };
-                            let agiRoll = agiDice.flatMod;
-                            for (let d = 0; d < agiDice.numDice; d++) agiRoll += Math.floor(Math.random() * agiDice.diceSides) + 1;
-                            
+                            let agiRoll = Dungeon.rollStat(3);
                             // If they beat a DC 14 lockpick check, they auto-pass the break check
                             if (agiRoll >= 14) crashRoll = 999;
                         }
@@ -57993,28 +58169,39 @@
                     let agiDice = Dungeon.getEffectiveDice ? Dungeon.getEffectiveDice(3) : { numDice: 1, diceSides: 6, flatMod: 0 };
                     let conDice = Dungeon.getEffectiveDice ? Dungeon.getEffectiveDice(1) : { numDice: 1, diceSides: 6, flatMod: 0 };
                     
-                    let agiRoll = agiDice.flatMod;
-                    for (let d = 0; d < agiDice.numDice; d++) agiRoll += Math.floor(Math.random() * agiDice.diceSides) + 1;
-                    
+                    let agiRoll = Dungeon.rollStat(3);
                     let mitigatedDrop = Math.max(0, dropHeight - (agiRoll * 0.25)); // AGI reduces effective fall height
 
                     if (mitigatedDrop > 0.3) {
                         // Take Fall Damage! Roll CON to absorb impact.
-                        let conRoll = conDice.flatMod;
-                        for (let d = 0; d < conDice.numDice; d++) conRoll += Math.floor(Math.random() * conDice.diceSides) + 1;
-                        
+                        let conRoll = Dungeon.rollStat(1);
                         let rawDamage = Math.floor(mitigatedDrop * 10);
                         let finalDamage = Math.max(1, rawDamage - conRoll); // CON reduces damage taken
 
                         // Apply damage to player power/ward
-                        Dungeon.currentWardTime -= (finalDamage * 0.2);
-                        if (Dungeon.currentWardTime < 0) {
-                            Dungeon.currentWardTime = 0;
-                            Dungeon.power -= finalDamage;
+                        const impactDamage = finalDamage * 0.2;
+
+                        if (
+                            impactDamage > 0 &&
+                            !Dungeon.isDying &&
+                            !Dungeon.isDead
+                        ) {
+                            if (Dungeon.currentWardTime > 0) {
+                                Dungeon.currentWardTime = Math.max(
+                                    0,
+                                    Dungeon.currentWardTime - impactDamage
+                                );
+
+                                if (Dungeon.currentWardTime === 0) {
+                                    Dungeon.wardShatterCooldown = 9.0;
+                                }
+                            } else {
+                                Dungeon.killPlayer('fall', 'a fatal fall');
+                            }
                         }
 
                         if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('hit');
-                        if (typeof MessageBox !== 'undefined') {
+                        if (!Dungeon.isDying&&typeof MessageBox !== 'undefined') {
                             MessageBox.show(0.5, 2, 1, 9, 2, `Ouch! You dropped down and took ${finalDamage} impact damage.`, 'system', 1, 0);
                         }
                     } else {
@@ -58170,6 +58357,67 @@
             min = Math.ceil(min);
             max = Math.floor(max);
             return Math.floor(Math.random() * (max - min + 1)+ min);
+            }
+            function resolveStatRoll(entity, statIndex, options = {}) {
+                const {
+                    flatBonus = 0,
+                    includeRunes = false,
+                    minimum = null,
+                    dice: preparedDice = null
+                } = options;
+
+                let dice = preparedDice;
+
+                if (!dice) {
+                    if (entity && typeof entity.getEffectiveDice === 'function') {
+                        dice = entity.getEffectiveDice(statIndex);
+                    } else if (entity && typeof entity.getBuffDice === 'function') {
+                        dice = entity.getBuffDice(statIndex, includeRunes);
+                    } else if (
+                        includeRunes &&
+                        entity &&
+                        typeof Card !== 'undefined'
+                    ) {
+                        // AI simulations clone cards and lose their methods.
+                        dice = Card.prototype.getBuffDice.call(
+                            entity,
+                            statIndex,
+                            true
+                        );
+                    } else {
+                        // Network snapshots have stat arrays but no methods.
+                        const base =
+                            entity && entity.stat && entity.stat[statIndex]
+                                ? entity.stat[statIndex]
+                                : [1, 4, 0];
+
+                        dice = resolveBuffDice(
+                            base[0],
+                            base[1],
+                            base[2] || 0
+                        );
+                    }
+                }
+
+                let total =
+                    (Number(dice.flatMod) || 0) +
+                    (Number(flatBonus) || 0);
+
+                if (dice.diceSides > 0) {
+                    for (let i = 0; i < dice.numDice; i++) {
+                        total += Math.floor(Math.random() * dice.diceSides) + 1;
+                    }
+                }
+
+                if (
+                    entity &&
+                    entity.activeBuffs &&
+                    entity.activeBuffs.some(b => b.name === 'Lucky Charm')
+                ) {
+                    total += 99;
+                }
+
+                return minimum === null ? total : Math.max(minimum, total);
             }
             function resolveBuffDice(numDice, diceSides, totalMod) {
                 const tiers = [4, 6, 8, 10, 12, 20];
@@ -59304,17 +59552,13 @@
     }
     },  
     
-    sing(text, startTime, notesArray = [0], rootFreq = 110, targetDuration = 0.25, resonance = 1.0, breathiness = 0.1, pan = 0, volOffset = 1.0) {
+    sing(text, startTime, notesArray = [0], rootFreq = 110, targetDuration = 0.25, resonance = 1.0, breathiness = 0.1, pan = 0, volOffset = 1.0, outputNode = null) {
             if (!this.ctx) return;
           if (!window.settingsAudio) return;
+          const voiceOutput = outputNode || this.masterGain;
           if (this.ctx.state === 'suspended') { this.ctx.resume(); }
         if (!this.activeVoiceNodes) this.activeVoiceNodes = [];
-        if (this.activeVoiceNodes.length > 150) {
-            // Keep only the 150 most recent nodes (enough for the current phrase).
-            // The dropped nodes are automatically deleted from RAM by the browser 
-            // once their scheduled stop() time passes!
-            this.activeVoiceNodes = this.activeVoiceNodes.slice(-150);
-        }
+        
 
           // 1. NORMALIZE THE INPUT FIRST (Fixes the "Ash" and "Sword" capitalization bug)
           let t = startTime;
@@ -59823,7 +60067,7 @@
           
           // Lips -> Panner -> Master
           lips.connect(panner);
-          panner.connect(this.masterGain);
+          panner.connect(voiceOutput);
           // ------------------------------------------
 
         // Set initial pitch to the first note in the array
@@ -60068,9 +60312,17 @@
                       noiseEnv.gain.linearRampToValueAtTime(0, t + dur);
                   }
 
-                  noise.connect(noiseFilter); noiseFilter.connect(noiseEnv); noiseEnv.connect(this.masterGain);
+                  noise.connect(noiseFilter); noiseFilter.connect(noiseEnv); noiseEnv.connect(voiceOutput);
                   noise.start(t);
                   noise.stop(t + dur);
+                  noise.onended = () => {
+                        noise.disconnect();
+                        noiseFilter.disconnect();
+                        noiseEnv.disconnect();
+
+                        this.activeVoiceNodes =
+                            this.activeVoiceNodes.filter(node => node !== noise);
+                    };
               }
               t += dur; 
               // --- NEW: MICRO-TIMING DRIFT (RUBATO) ---
@@ -60611,16 +60863,17 @@
         }
 
         // 2. STOP AND DISCONNECT ALL ACTIVE VOICE NODES
-        if (this.activeVoiceNodes && this.activeVoiceNodes.length > 0) {
-            this.activeVoiceNodes.forEach(node => {
+        const voices = this.activeVoiceNodes || [];
+            this.activeVoiceNodes = [];
+
+            for (const node of voices) {
                 try {
                     node.stop(t);
+                } catch (_) {}
+
+                try {
                     node.disconnect();
-                } catch (e) {
-                    // Failsafe: Catch errors if the node already finished naturally
-                }
-            });
-            this.activeVoiceNodes = []; // Clear the array for the next run
+                } catch (_) {}
             }
 
             // 3. Stop the specific song logic
@@ -77352,6 +77605,7 @@
             if (this.melodyMemory.length > 4) this.melodyMemory.shift(); 
         }
       start() {
+            this.isAborted = false;
             if (this.isPlaying) return;
             this.ctx.resume();
             this.isPlaying = true;
@@ -77361,6 +77615,7 @@
         }
 
       stop() {
+            this.isAborted = true;
             this.isPlaying = false;
             if (this.timer) clearTimeout(this.timer);
             
@@ -77380,6 +77635,7 @@
         }
 
       scheduler() {
+        if (!this.isPlaying || this.isAborted) return;
             while (this.nextNoteTime < this.ctx.currentTime + this.scheduleAheadTime) {
                 // We pass the tick FIRST, then advance it.
                 this.scheduleNote(this.tick, this.nextNoteTime);
@@ -77472,7 +77728,9 @@
                 
                 // Only fire the event if there is actual text left to sing
                 if (cleanLyric.length > 0) {
+                    
                     setTimeout(() => {
+                        if (!this.isPlaying || this.isAborted) return;
                         console.log(`%c[Suncat Sings] 🎵 "${cleanLyric}"`, 'color: #00e6e6; font-size: 16px; font-weight: bold;');
                         document.dispatchEvent(new CustomEvent('suncat_lyrics', { detail: cleanLyric }));
                     }, delayInMs);
@@ -77574,13 +77832,13 @@
                     
                     // Parameters: text, time, notes, root, duration, RESONANCE, breathiness, PAN, VOLUME
                     // 1. LEAD: Bright resonance (1.3), Center pan (0), Volume (0.65)
-                    MusicEngine.sing(vocalSyllable, t, [semiRoot], this.rootFreq, targetDuration, 1.3, 0.15, 0, 0.65);
+                    MusicEngine.sing(vocalSyllable, t, [semiRoot], this.rootFreq, targetDuration, 1.3, 0.15, 0, 0.65,this.master);
                     
                     // 2. THIRD: Darker resonance (0.95), Left pan (-0.65), Volume (0.45)
-                    MusicEngine.sing(vocalSyllable, t + 0.025, [semiThird], this.rootFreq, targetDuration, 0.95, 0.25, -0.65, 0.45);
+                    MusicEngine.sing(vocalSyllable, t + 0.025, [semiThird], this.rootFreq, targetDuration, 0.95, 0.25, -0.65, 0.45,this.master);
                     
                     // 3. FIFTH: Darkest resonance (0.85), Right pan (0.65), Volume (0.35)
-                    MusicEngine.sing(vocalSyllable, t + 0.048, [semiFifth], this.rootFreq, targetDuration, 0.85, 0.35, 0.65, 0.35);
+                    MusicEngine.sing(vocalSyllable, t + 0.048, [semiFifth], this.rootFreq, targetDuration, 0.85, 0.35, 0.65, 0.35,this.master);
                 };
 
                 // Helper function to fire the Solo
@@ -77589,7 +77847,7 @@
                     if(Math.random()>.61391){semiLead = constrainToHigh(getDiatonic(d, Math.floor(Math.random() * 12)));}
                     
                     // THE FIX: Very bright resonance (1.4), Center pan (0), High Volume (1.0)
-                    MusicEngine.sing(vocalSyllable, t, [semiLead], this.rootFreq, targetDuration, 1.4, 0.1, 0, 1.0);
+                    MusicEngine.sing(vocalSyllable, t, [semiLead], this.rootFreq, targetDuration, 1.4, 0.1, 0, 1.0,this.master);
                 };
 
             // --- ROUTING THE SECTIONS ---
@@ -77619,7 +77877,7 @@
                 
                 // The piercing high lead (using constrainToHigh)
                 let semiHighLead = constrainToHigh(getDiatonic(d, 0));
-                MusicEngine.sing(vocalSyllable, t, [semiHighLead], this.rootFreq, targetDuration, 1.5, 0.05,0,1);
+                MusicEngine.sing(vocalSyllable, t, [semiHighLead], this.rootFreq, targetDuration, 1.5, 0.05,0,1,this.master);
                 
                 // The "Ancient Shadow" Idea: A highly breathy, heavily delayed sub-octave trailing behind it
                 //let semiShadow = semiHighLead - 12; 
