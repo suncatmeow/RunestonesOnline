@@ -2840,10 +2840,10 @@
             };
             const SPELL_REGISTRY = {
                 // --- PROJECTILES (Attack) ---
-                13: { type: 'projectile', name: 'Death', cooldown: 9000, castStat: 2, defStat: 2, color: [0,0,0], glow: '#00ffff',  model3D: 'd4', isHoming: true, sfx: 'arcane3' }, 
+                13: { type: 'projectile', name: 'Death', cooldown: 9000, castStat: 2, defStat: 2, color: [0,0,0], glow: '#00ffff',  sprite2D: -47, isHoming: true, sfx: 'arcane3' }, 
                 26: { type: 'projectile', name: 'Fireball', cooldown: 6000, castStat: 2, defStat: 1, color: [1,0.5,0], glow: '#ff0000', sprite2D: -37, isHoming: false, knockback: 1.5, sfx: 'fire2' }, 
                 92: { type: 'imbue', name: 'Imbue Fire', consume: 26, cooldown: 3000, sfx: 'buff2' },
-                93: { type: 'projectile', name: 'Lightning', cooldown: 7000, castStat: 2, defStat: 3, color: [1,1,0], glow: '#ffff00', model3D: 'd4', isHoming: true, chains: 1, sfx: 'lightning' },
+                93: { type: 'projectile', name: 'Lightning', cooldown: 7000, castStat: 2, defStat: 3, color: [1,1,0], glow: '#ffff00', sprite2D: -44, isHoming: true, chains: 1, sfx: 'lightning' },
                 9999: { type: 'projectile', name: 'Attack', castStat: 0, defStat: 1, color: [1,1,1], glow: '#ffff00', sprite2D: 316, isHoming: true, range: 1.3, knockback: 1.3, sfx: 'attack' },
                 9998: { type: 'projectile', name: 'Imbued Attack', castStat: 0, defStat: 1, color: [1,0.5,0], glow: '#ff0000', sprite2D: -37, isHoming: false, knockback: 1.5, sfx: 'fire3' },
                 
@@ -2870,11 +2870,11 @@
                 603: { type: 'debuff', name: 'Electrocute', cooldown: 10000, castStat: 2, defStat: 1, duration: 300, tickRate: 60, votType: 'stun', visual: 'chains', auraColor: 'rgba(255,255,0,0.7)', sfx: 'lightning' },
                 
                 // --- DEBUFFS (Fired as Projectiles) ---
-                68: { type: 'debuff', name: 'Bad Luck Charm', cooldown: 450000, castStat: 3, defStat: 2, debuffStat: 0, duration: 3600, visual: 'aura', auraColor: 'rgba(128, 0, 128, 0.7)', color: [1,0,1], glow: '#800080', model3D: 'd4', isHoming: true, sfx: 'debuff2' },
-                12: { type: 'debuff', name: 'Bind', cooldown: 90000,  castStat: 2, defStat: 3, bind: true, duration: 600, visual: 'chains', auraColor: 'rgba(100, 100, 100, 0.8)', color: [1,1,1], glow: '#888888', model3D: 'd4', isHoming: true, sfx: 'debuff' },
-                15: { type: 'debuff', name: 'Curse', cooldown: 90000, castStat: 2, defStat: 0, debuffStat: 'all', duration: 3600, visual: 'aura', auraColor: 'rgba(128, 0, 128, 0.7)', color: [1,0,1], glow: '#800080', model3D: 'd4', isHoming: true, sfx: 'debuff3' },
-                18: { type: 'debuff', name: 'Lunacy', cooldown: 90000,  castStat: 0, defStat: 2, debuffStat: 2, bind: true, duration: 450, visual: 'chains', auraColor: 'rgba(100, 100, 0, 0.8)', color: [1,1,0], glow: '#888888', model3D: 'd4', isHoming: true, sfx: 'debuff2' },
-                58: { type: 'debuff', name: 'Intimidate', cooldown: 90000,  castStat: 0, defStat: 2, debuffStat: 0, bind: true, duration: 450, visual: 'chains', auraColor: 'rgba(100, 100, 0, 0.8)', color: [1,1,0], glow: '#888888', model3D: 'd4', isHoming: true, sfx: 'debuff' },
+                68: { type: 'debuff', name: 'Bad Luck Charm', cooldown: 450000, castStat: 3, defStat: 2, debuffStat: 0, duration: 3600, visual: 'aura', auraColor: 'rgba(128, 0, 128, 0.7)', color: [1,0,1], glow: '#800080', sprite2D: -46, isHoming: true, sfx: 'debuff2' },
+                12: { type: 'debuff', name: 'Bind', cooldown: 90000,  castStat: 2, defStat: 3, bind: true, duration: 600, visual: 'chains', auraColor: 'rgba(100, 100, 100, 0.8)', color: [1,1,1], glow: '#888888', sprite2D: -43, isHoming: true, sfx: 'debuff' },
+                15: { type: 'debuff', name: 'Curse', cooldown: 90000, castStat: 2, defStat: 0, debuffStat: 'all', duration: 3600, visual: 'aura', auraColor: 'rgba(128, 0, 128, 0.7)', color: [1,0,1], glow: '#800080', sprite2D: -46, isHoming: true, sfx: 'debuff3' },
+                18: { type: 'debuff', name: 'Lunacy', cooldown: 90000,  castStat: 0, defStat: 2, debuffStat: 2, bind: true, duration: 450, visual: 'chains', auraColor: 'rgba(100, 100, 0, 0.8)', color: [1,1,0], glow: '#888888', sprite2D: -46, isHoming: true, sfx: 'debuff2' },
+                58: { type: 'debuff', name: 'Intimidate', cooldown: 90000,  castStat: 0, defStat: 2, debuffStat: 0, bind: true, duration: 450, visual: 'chains', auraColor: 'rgba(100, 100, 0, 0.8)', color: [1,1,0], glow: '#888888', sprite2D: -44, isHoming: true, sfx: 'debuff' },
                 
                 // --- DEBUFF CONES (Frontal AoE) ---
                 512: { type: 'cone', name: 'Bind', cooldown: 90000, castStat: 2, defStat: 3, bind: true, duration: 600, visual: 'chains', auraColor: 'rgba(100, 100, 100, 0.8)', range: 4.0, angle: 0.5, sfx: 'debuff' },
@@ -2888,8 +2888,8 @@
                 27: { type: 'item_buff', name: 'Amulet',  cooldown: 450000,    buffStat: 2, amount: 3, duration: 1800, visual: 'arc', auraColor: 'rgba(255, 255, 255, 0.6)', sfx: 'heal' },
                 31: { type: 'item_buff', name: 'Tome', cooldown: 450000,        multiStat: [{stat: 2, amount: 6}, {stat: 0, amount: -1}, {stat: 3, amount: -3}], duration: 1800, visual: 'arc', auraColor: 'rgba(255, 255, 255, 0.6)', sfx: 'heal' },
                 36: { type: 'item_buff', name: 'Hourglass', cooldown: 450000,   buffStat: 3, amount: 1, duration: 1800, visual: 'arc', auraColor: 'rgba(0, 0, 255, 0.6)', sfx: 'heal' },
-                50: { type: 'item_buff', name: 'Sword', cooldown: 450000,       buffStat: 0, amount: 1, duration: 1800, visual: 'arc', auraColor: 'rgba(255, 255, 0, 0.6)', sfx: 'heal' },
-                64: { type: 'item_buff', name: 'Shield', cooldown: 450000,      buffStat: 1, amount: 1, duration: 1800, visual: 'arc', auraColor: 'rgba(0, 255, 0, 0.6)', sfx: 'heal' },
+                50: { type: 'item_buff', name: 'Sword', cooldown: 450000,        buffStat: 0, amount: 1, duration: 1800, visual: 'arc', auraColor: 'rgba(255, 255, 0, 0.6)', sfx: 'heal' },
+                64: { type: 'item_buff', name: 'Shield', cooldown: 450000,       buffStat: 1, amount: 1, duration: 1800, visual: 'arc', auraColor: 'rgba(0, 255, 0, 0.6)', sfx: 'heal' },
                 72: { type: 'item_buff', name: 'Magic Ring', cooldown: 450000,  buffStat: 'all', amount: 2, duration: 1800, visual: 'arc', auraColor: 'rgba(255, 255, 255, 0.6)', sfx: 'heal' },
 
                 30: { type: 'item_ward', name: 'Protect Orb', cooldown: 450000, hits: 3, visual: 'shield', auraColor: 'rgba(255, 0, 0, 0.8)', sfx: 'buff2' },
@@ -2901,14 +2901,14 @@
 
                 // --- BOOSTER PACK ITEMS ---
                 10: { type: 'item_booster', name: 'Treasure Chest', drawUntil: 'monster', cooldown: 450000, sfx: 'chime' },
-                67: { type: 'item_booster', name: 'Dragon Hoard',   drawUntil: 'monster', cooldown: 86400000, sfx: 'chime' },
+                67: { type: 'item_booster', name: 'Dragon Hoard',    drawUntil: 'monster', cooldown: 86400000, sfx: 'chime' },
                 73: { type: 'item_booster', name: 'Inheritance',    drawUntil: 'monster', cooldown: 86400000, sfx: 'chime' },
                 24: { type: 'item_booster', name: 'Scry',  boosterSize: 1, lootPool: 'spell', cooldown: 900000, sfx: 'chime' },
                 38: { type: 'item_booster', name: 'Quest Reward', boosterSize: 1, lootPool: 'any', cooldown: 450000, sfx: 'chime' },
                 41: { type: 'item_booster', name: 'Loot',  boosterSize: 1, lootPool: 'magic', cooldown: 450000, sfx: 'chime' },
                 44: { type: 'item_booster', name: 'Djinn Lamp', cooldown: 86400000, sfx: 'chime' },
                 53: { type: 'item_booster', name: 'Camp',  boosterSize: 1, lootPool: 'magic', cooldown: 86400000, sfx: 'chime' }, 
-                69: { type: 'item_booster', name: 'Charity',      boosterSize: 1, lootPool: 'magic', cooldown: 86400000, sfx: 'chime' },
+                69: { type: 'item_booster', name: 'Charity',       boosterSize: 1, lootPool: 'magic', cooldown: 86400000, sfx: 'chime' },
                 71: { type: 'item_booster', name: 'Forge', boosterSize: 1, lootPool: 'item', cooldown: 900000, sfx: 'chime' },
 
                 // --- AOE FORCE & JUDGEMENT ---
@@ -7411,7 +7411,30 @@
                 const startX = this.x + (dirX * 0.5);
                 const startY = this.y + (dirY * 0.5);
 
-                dungeon.projectiles.push(new Projectile(startX, startY, dirX, dirY, 6.0, spellPower, this, false, spellId));        
+                // 1. Instantiate the projectile
+                let proj = new Projectile(
+                    startX, 
+                    startY, 
+                    dirX, 
+                    dirY, 
+                    6.0, 
+                    spellPower, 
+                    this, 
+                    spellData.isHoming || false, 
+                    spellId
+                );
+
+                // 2. Wire up visual & behavioral properties from SPELL_REGISTRY
+                proj.sprite2D = spellData.sprite2D !== undefined ? spellData.sprite2D : 0;
+                proj.model3D = spellData.model3D || null;
+                proj.color = spellData.color || [1, 1, 1];
+                proj.glow = spellData.glow || '#ffffff';
+                proj.knockback = spellData.knockback || 1.0;
+                proj.chains = spellData.chains || 0;
+                proj.sfx = spellData.sfx || 'arcane';
+
+                // 3. Push into the dungeon's active projectile array
+                dungeon.projectiles.push(proj);
             }
             
             // --- NPC SUMMONS MINIONS ---
@@ -14547,7 +14570,7 @@
 
                 // 3. APPLY ROLE & BOSS MODIFIERS
                 if (sprite.role === 'summoned_minion') { 
-                    scale = 0.69; 
+                    scale = 0.9; 
                     hover -= 0.13; 
                 }
                 if (sprite.isBoss && type !== 60.1 && type < 100) { 
@@ -14793,7 +14816,7 @@
                         // --- 2. ANIMATION STATES & DIRECTION FIRST ---
                         // ==========================================
                         let currentDir = 2; // Default South
-                        if (imageIndex >= 100) {
+                        if (imageIndex >= 103) {
                             if (sprite.damageFlashTimer > 0) sprite.damageFlashTimer--;
                             if (sprite.attackAnimTimer > 0) sprite.attackAnimTimer--;
 
@@ -14804,7 +14827,7 @@
                                 isAttacking = (this.playerAttackTimer > 0);
                                 isMoving = this.isSlidingToTile;
                                 
-                                if (imageIndex >= 100) { 
+                                if (imageIndex >= 103) { 
                                     if (this.mapID !== 9) {
                                         if (isAttacking) imageIndex = 105;
                                         else if (isMoving) imageIndex = 104;
@@ -14824,8 +14847,7 @@
                                 sprite.lastX = sprite.x;
                                 sprite.lastY = sprite.y;
                                 
-                                if (isAttacking) imageIndex += 2;
-                                else if (isMoving) imageIndex += 1;
+                                
 
                                 if (imageIndex >= 206 && imageIndex <= 209) {
                                     if (isAttacking) {
@@ -14837,8 +14859,13 @@
                                         imageIndex = 206;
                                     }
                                 }
-                                if (imageIndex >= 129 && imageIndex <= 130) {
+                                
+                                else if (imageIndex >= 129 && imageIndex <= 130) {
                                     imageIndex = isAttacking || isMoving ? 130 : 129;
+                                }
+                                else{
+                                    if (isAttacking) imageIndex += 2;
+                                    else if (isMoving) imageIndex += 1;
                                 }
                             }
 
@@ -14877,7 +14904,7 @@
                         const drawStartX = Math.floor(-spriteSize / 2 + spriteScreenX + viewX);
 
                         if (drawStartX >= viewX + viewW || drawStartX + spriteSize <= viewX) continue;
-
+                        
                         // ==========================================
                         // --- 4. FETCH CACHED IMAGE (Now currentDir exists!) ---
                         // ==========================================
@@ -14983,9 +15010,124 @@
                         ctx.filter = 'none';
                         ctx.globalAlpha = 1.0;
                         ctx.imageSmoothingEnabled = false;
-                        
-                        } 
+                        // ==========================================
+                    // ==========================================
+                    // --- EVERQUEST CON RINGS & WARD DEPLETION ---
+                    // ==========================================
+                    // 1. Check Alignment: Only show on foes or defenders!
+                    let isValidAuraTarget = false;
+                    if (sprite.alignment) {
+                        if (sprite.alignment.startsWith('foe') || sprite.alignment.startsWith('defender')) {
+                            isValidAuraTarget = true;
+                        }
+                    }
 
+                    if (!sprite.isPlayer && isValidAuraTarget) {
+                        ctx.save();
+                        
+                        // 2. Calculate dynamic scale based on distance AND sprite scale
+                        let ringRadius = Math.max(4, (viewH / transformY) * 0.18 * scale);
+                        
+                        // THE FIX: Lift the ring up slightly from the absolute floor so it wraps around their feet!
+                        // (Subtracting moves it UP on the screen canvas)
+                        let verticalLift = (viewH / transformY) * 0.05; 
+                        let ringY = Math.floor(floorY - verticalLift) + viewY;
+
+                        // 3. Scan columns to ensure it doesn't render over solid walls (Occlusion)
+                        let isOccluded = false;
+                        let sampleCol = Math.floor(spriteScreenX);
+                        if (sampleCol >= 0 && sampleCol < viewW) {
+                            let endIdx = sampleCol * bufferStride + this.zBufferCounts[sampleCol] * 3;
+                            for (let idx = sampleCol * bufferStride; idx < endIdx; idx += 3) {
+                                if (this.zBuffer[idx] < transformY) {
+                                    let wallID = this.zBuffer[idx+1];
+                                    if (!this.transparentWalls || !this.transparentWalls.includes(wallID)) {
+                                        isOccluded = true;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+
+                        // 4. Render the rings if visible in front of walls
+                        if (!isOccluded) {
+                            
+                            // --- CALCULATE EVERQUEST DANGER LEVEL ---
+                            let playerMax = 16;
+                            if (this.stat && this.stat.length >= 4) {
+                                playerMax = 0;
+                                for (let i = 0; i < 4; i++) {
+                                    let pDice = this.getEffectiveDice ? this.getEffectiveDice(i) : { numDice: this.stat[i][0] || 1, diceSides: this.stat[i][1] || 4, flatMod: this.stat[i][2] || 0 };
+                                    playerMax += (pDice.numDice * pDice.diceSides) + pDice.flatMod;
+                                }
+                            }
+                            
+                            let npcMax = 0;
+                            if (typeof sprite.getEffectiveDice === 'function') {
+                                for (let i = 0; i < 4; i++) {
+                                    let nDice = sprite.getEffectiveDice(i);
+                                    npcMax += (nDice.numDice * nDice.diceSides) + nDice.flatMod;
+                                }
+                                if (sprite.isBoss) npcMax = Math.floor(npcMax * 1.5);
+                            }
+                            
+                            let diff = npcMax - playerMax;
+                            
+                            let conSolid = '#00FF00'; // Default: Green (Trivial)
+                            if (diff >= 15) conSolid = '#FF0000'; // Red (Certain Death)
+                            else if (diff >= 5) conSolid = '#FFFF00'; // Yellow (Challenge)
+                            else if (diff >= -4) conSolid = '#FFFFFF'; // White (Equal)
+                            else if (diff >= -12) conSolid = '#1E90FF'; // Blue (Easy)
+                            else if (diff >= -19) conSolid = '#00FFFF'; // Cyan (Very Easy)
+
+                            // --- DETERMINE RING COLOR (STATUS CYCLING) ---
+                            let ringColor = conSolid; 
+                            let activeStatusColors = [];
+                            
+                            if (sprite.activeBuffs && sprite.activeBuffs.length > 0) {
+                                if (sprite.activeBuffs.some(b => b.name === 'Burn')) activeStatusColors.push('#FF4500');
+                                if (sprite.activeBuffs.some(b => b.name === 'Poison')) activeStatusColors.push('#32CD32');
+                                if (sprite.activeBuffs.some(b => b.name === 'Curse')) activeStatusColors.push('#8A2BE2');
+                                if (sprite.activeBuffs.some(b => b.name === 'Webbed' || b.bind)) activeStatusColors.push('#FFFFFF');
+                            }
+
+                            if (activeStatusColors.length > 0) {
+                                let colorIdx = Math.floor(Date.now() / 600) % activeStatusColors.length;
+                                ringColor = activeStatusColors[colorIdx];
+                            }
+
+                            // --- CALCULATE WARD DEPLETION PERCENTAGE ---
+                            let wardPercent = 1.0;
+                            if (sprite.currentWardTime !== undefined && sprite.maxWards !== undefined) {
+                                let maxTime = sprite.maxWards * (sprite.timePerWard || 3.0);
+                                if (maxTime > 0) {
+                                    wardPercent = Math.max(0, Math.min(1.0, sprite.currentWardTime / maxTime));
+                                }
+                            }
+
+                            // --- DRAWING THE RING(S) ---
+                            ctx.lineWidth = Math.max(1, 2.5 / transformY);
+                            ctx.strokeStyle = ringColor;
+
+                            // 1. Faint Base Ring (So you can always see their danger level/status, even with 0 wards)
+                            ctx.globalAlpha = 0.25;
+                            ctx.beginPath();
+                            ctx.ellipse(viewX + spriteScreenX, ringY, ringRadius, ringRadius * 0.35, 0, 0, Math.PI * 2);
+                            ctx.stroke();
+
+                            // 2. Bright Depleting Ward Ring
+                            if (wardPercent > 0) {
+                                ctx.globalAlpha = 1.0;
+                                ctx.beginPath();
+                                let endAngle = (-Math.PI / 2) + (Math.PI * 2 * wardPercent);
+                                ctx.ellipse(viewX + spriteScreenX, ringY, ringRadius, ringRadius * 0.35, 0, -Math.PI / 2, endAngle);
+                                ctx.stroke();
+                            }
+                        }
+                        ctx.restore();
+                    }
+                        } 
+                        
                 // --- DRAW 3D PARTICLES ---
                     globalParticles.forEach(p => {
                         if (!p.active) return;
@@ -20468,9 +20610,8 @@
         
     class Projectile {
         constructor(x, y, dirX, dirY, speed, damage = 1, owner = null, isHoming = false, spellId = 26) {
-            
             const spellData = SPELL_REGISTRY[spellId] || SPELL_REGISTRY[26];
-            // --- 2. STANDARD SETUP ---
+            
             this.x = x;
             this.y = y;
             this.dirX = dirX; 
@@ -20491,10 +20632,8 @@
             this.startY = y;
             this.maxRange = spellData.range !== undefined ? spellData.range : Infinity;
             
-            // --- 3. APPLY DATA FROM REGISTRY ---
             this.spellId = spellId; 
-            this.targetStat = spellData.stat;    // Automatically sets the target stat!
-            this.type = spellData.sprite2D;      // Automatically sets the 2D portrait!
+            this.targetStat = spellData.stat; 
             this.chainsLeft = spellData.chains !== undefined ? spellData.chains : 0;
             this.hitTargets = new Set();
             this.targetNPC = null;
@@ -20502,26 +20641,13 @@
             this.pathTimer = 0; 
             this.zHeight = 0; 
             
-            // --- 4. 3D MODEL SETUP ---
-            if (spellData.model3D && typeof Dice !== 'undefined') {
-                // It has a 3D Model! Build it, and erase the 2D type so it doesn't conflict
-                this.model = new Dice(spellData.model3D);
-                if (spellData.color) this.model.setColor(...spellData.color); 
-                if (spellData.glow) this.model.setGlow(spellData.glow); 
-                this.model.rs = 0.15; 
-                this.type = undefined; 
-            } else if (this.type === undefined) {
-                // It has NO 3D model, and NO 2D sprite defined. Default to the Fireball Orb!
-                this.type = -37; 
-            }
+            // --- PURE 2D CACHED SPRITE MAPPING ---
+            this.type = spellData.sprite2D !== undefined ? spellData.sprite2D : (spellId !== undefined ? spellId : -37);
         }
 
         update(exploreRef, dt) {
             if (!this.active) return;
-            if (this.model) {
-                this.model.rx += this.model.rs || 0.1;
-                this.model.ry += (this.model.rs || 0.1) * 0.7;
-            }
+            
             if (this.exploding) {
                 this.radius *= 1.5; 
                 this.explodeTimer--;
@@ -20530,35 +20656,26 @@
             }
 
             let isSuncat = (this.owner !== null && (this.owner.type === 0 || this.owner.type === 61391 || this.owner.name === 'Suncat'));
-            let caster = this.owner || exploreRef; // Helper: Who fired this?
+            let caster = this.owner || exploreRef; 
 
-            // ==========================================
-            // --- NEW: VIRTUAL DICE HELPERS & INT RADAR
-            // ==========================================
             const getCasterDice = (statIdx) => {
                 if (caster && typeof caster.getEffectiveDice === 'function') return caster.getEffectiveDice(statIdx);
-                return { numDice: 1, diceSides: 4, flatMod: 0 }; // Fallback
+                return { numDice: 1, diceSides: 4, flatMod: 0 }; 
             };
 
-            // High INT allows Homing missiles and Chain Lightning to lock-on from further away!
             let cIntDice = getCasterDice(2);
             let intScore = (cIntDice.numDice * cIntDice.diceSides) + cIntDice.flatMod;
             let intMultiplier = Math.max(0.2, 1.0 + ((intScore - 4) * 0.05));
 
             // 1. ACQUIRE TARGET & CALCULATE PATH
             if ((isSuncat || (this.owner === null && this.isHoming))) {
-                
-                // If we don't have a target yet, find one!
                 if (!this.targetNPC || this.targetNPC.isDead) {
                     let closestDistSq = Infinity;
                     let bestPath = null;
-                    
-                    // Base 15 tiles multiplied by INT!
                     let radarRange = 15 * intMultiplier; 
                     let radarRangeSq = radarRange * radarRange;
 
                     for (let npc of exploreRef.npcs) {
-                        // --- ADDED isCinematic CHECKS ---
                         if (npc.isDead || !npc.visible || npc.type < 0 || npc.type === 99 || npc === this.owner) continue;
                         if (npc.role === 'dialogue' || npc.role === 'shop' || npc.role === 'quest_giver' || npc.isCinematic || (this.owner && this.owner.isCinematic)) continue;
                         
@@ -20576,11 +20693,8 @@
                         
                         if (dSq < radarRangeSq && dSq < closestDistSq) { 
                             let tempPath = exploreRef.findPath(this.x, this.y, npc.x, npc.y);
-                            
                             if (tempPath && tempPath.length > 0) {
-                                // --- THE U-TURN FIX ---
                                 if (tempPath.length > 1) tempPath.shift();
-
                                 closestDistSq = dSq;
                                 this.targetNPC = npc;
                                 bestPath = tempPath; 
@@ -20592,31 +20706,24 @@
                         this.path = bestPath;
                         this.pathTimer = 0;
                     }
-                } 
-                else {
-                    // Recalculate path occasionally in case the target is running away
+                } else {
                     this.pathTimer++;
                     if (this.pathTimer > 10) {
                         let newPath = exploreRef.findPath(this.x, this.y, this.targetNPC.x, this.targetNPC.y);
                         if (newPath && newPath.length > 1) newPath.shift();
-                        
                         this.path = newPath;
                         this.pathTimer = 0;
                     }
                 }
                 
-                // 2. NAVIGATE THE WAYPOINTS
                 if (this.targetNPC) {
                     let steerX, steerY;
-
                     if (this.path && this.path.length > 0) {
                         let nextNode = this.path[0];
                         let distToNode = Math.sqrt(Math.pow(nextNode.x - this.x, 2) + Math.pow(nextNode.y - this.y, 2));
 
-                        // --- CORNER FIX 1: Cut the corner earlier ---
                         if (distToNode < 0.6) { 
                             this.path.shift(); 
-                            
                             if (this.path.length > 0) {
                                 steerX = this.path[0].x; steerY = this.path[0].y;
                             } else {
@@ -20637,13 +20744,10 @@
                         if (dist > 0) {
                             let idealVx = (dx / dist) * this.baseSpeed;
                             let idealVy = (dy / dist) * this.baseSpeed;
-                            
-                            // --- CORNER FIX 2: Snappier Turning ---
                             const turnSpeed = 20.0; 
                             this.vx += (idealVx - this.vx) * turnSpeed * dt;
                             this.vy += (idealVy - this.vy) * turnSpeed * dt;
                             
-                            // 👇 ADD THIS TO KEEP 3D SPRITES FACING THE TARGET
                             let currentSpeed = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
                             if (currentSpeed > 0) {
                                 this.dirX = this.vx / currentSpeed;
@@ -20658,7 +20762,6 @@
             this.x += this.vx * dt;
             this.y += this.vy * dt;
             
-            // --- RANGE LIMIT CHECK ---
             let distTraveled = Math.sqrt(Math.pow(this.x - this.startX, 2) + Math.pow(this.y - this.startY, 2));
             if (distTraveled >= this.maxRange) {
                 this.triggerExplosion();
@@ -20674,18 +20777,15 @@
                 return;
             }
 
-            // ==========================================
-            // --- WALL COLLISION (Using Virtual Dice!)
-            // ==========================================
+            // Wall Collision
             if (exploreRef.isWall(mapX, mapY)) {
                 let tileID = exploreRef.maze[mapY][mapX];
                 let toughness = TILE_TOUGHNESS[tileID];
 
                 if (toughness !== undefined) {
                     let spellData = SPELL_REGISTRY[this.spellId] || SPELL_REGISTRY[26];
-                    let statToCast = spellData.castStat !== undefined ? spellData.castStat : 0; // Default to STR
+                    let statToCast = spellData.castStat !== undefined ? spellData.castStat : 0;
                     
-                    // --- VIRTUAL DICE: Roll the caster's real stats ---
                     let cDice = getCasterDice(statToCast);
                     let atkRoll = cDice.flatMod + (this.damage || 0);
                     for (let j = 0; j < cDice.numDice; j++) {
@@ -20693,7 +20793,7 @@
                     }
 
                     if (atkRoll >= toughness) {
-                        exploreRef.maze[mapY][mapX] = 0; // Tile Destroyed!
+                        exploreRef.maze[mapY][mapX] = 0; 
                         if (typeof socket !== 'undefined') socket.emit('tile_destroyed', { mapID: exploreRef.mapID, x: mapX, y: mapY });
                         if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('earth', this.x, this.y, exploreRef.x, exploreRef.y, exploreRef.dir);
                     }
@@ -20702,51 +20802,38 @@
                 return;
             }
 
-            // ==========================================
-            // --- ENEMY/PLAYER COLLISION
-            // ==========================================
+            // Enemy/Player Collision checks follow below unchanged...
             let canHitPlayer = (this.owner === null && !isSuncat) || (this.owner && this.owner.alignment === 'foe');
-            
             if (canHitPlayer) {
                 let dx = this.x - exploreRef.x;
                 let dy = this.y - exploreRef.y;
                 
                 if (Math.sqrt(dx * dx + dy * dy) < this.radius + 0.3) {
                     this.triggerExplosion();
-                    
                     if (this.owner && typeof startGame !== 'undefined' && startGame === 'explore') {
                         if (exploreRef.absorbHit(this.owner, this.spellId)) {
-                            
-                            // ---> DRY: PLAYER KNOCKBACK RESISTANCE <---
                             let spellData = typeof SPELL_REGISTRY !== 'undefined' && SPELL_REGISTRY[this.spellId] ? SPELL_REGISTRY[this.spellId] : {};
                             let baseKb = spellData.knockback !== undefined ? spellData.knockback : 0.5;
-                            
                             let kbResist = 1.0;
                             if (exploreRef.getEffectiveDice) {
-                                let pStrDice = exploreRef.getEffectiveDice(0); // 0 = STR
+                                let pStrDice = exploreRef.getEffectiveDice(0);
                                 let pStrScore = (pStrDice.numDice * pStrDice.diceSides) + pStrDice.flatMod;
                                 kbResist = Math.max(0.2, 1.0 - ((pStrScore - 4) * 0.05));
                             }
-                            
                             let kbPower = baseKb * kbResist;
                             let pushX = this.vx / this.baseSpeed;
                             let pushY = this.vy / this.baseSpeed;
-                            
                             if (typeof exploreRef.applyKnockback === 'function') {
                                 exploreRef.applyKnockback(pushX, pushY, kbPower);
                             }
-                            
                         } else {
-                            Dungeon.killPlayer('spell') 
+                            Dungeon.killPlayer('spell');
                         }
                     }
                     return;
                 }
             }
 
-            // ==========================================
-            // --- NPC vs NPC COLLISION
-            // ==========================================
             for (let npc of exploreRef.npcs) {
                 if (npc.isDead || !npc.visible || npc.type < 0 || npc.type === 99 || npc === this.owner || npc.role === 'dialogue' || npc.role === 'shop' || npc.role === 'quest_giver' || npc.isCinematic || (this.owner && this.owner.isCinematic)) continue;
 
@@ -20759,9 +20846,7 @@
                     let dx = this.x - npc.x;
                     let dy = this.y - npc.y;
             
-                    // --- COLLISION DETECTED ---
                     if (Math.sqrt(dx * dx + dy * dy) < this.radius + npc.radius) {
-                        
                         let spellData = SPELL_REGISTRY[this.spellId] || SPELL_REGISTRY[26];
                         
                         if (spellData.type === 'debuff') {
@@ -20771,16 +20856,13 @@
                         } else {
                             if (npc.absorbHit(caster, this.spellId)) {
                                 npc.damageFlashTimer = 3;
-                                
-                                // ---> DRY: NPC KNOCKBACK RESISTANCE <---
                                 let baseKb = spellData.knockback !== undefined ? spellData.knockback : 0.5;
                                 let kbResist = 1.0;
                                 if (npc.getEffectiveDice) {
-                                    let nStrDice = npc.getEffectiveDice(0); // 0 = STR
+                                    let nStrDice = npc.getEffectiveDice(0);
                                     let nStrScore = (nStrDice.numDice * nStrDice.diceSides) + nStrDice.flatMod;
                                     kbResist = Math.max(0.2, 1.0 - ((nStrScore - 4) * 0.05));
                                 }
-
                                 let knockPower = baseKb * kbResist;
                                 let pushX = this.vx / this.baseSpeed;
                                 let pushY = this.vy / this.baseSpeed;
@@ -20794,7 +20876,6 @@
                                     let bufferY = pushY > 0 ? 0.3 : (pushY < 0 ? -0.3 : 0);
 
                                     if (exploreRef.isWall(Math.floor(nextX + bufferX), Math.floor(nextY + bufferY))) break; 
-                                    
                                     testX = nextX; testY = nextY; pushed++;
                                 }
 
@@ -20812,16 +20893,10 @@
                         
                         this.triggerExplosion();
                         
-                        // ==========================================
-                        // --- CHAIN LIGHTNING LOGIC (INT Scaled) ---
-                        // ==========================================
                         if (this.chainsLeft > 0) {
-                            this.hitTargets.add(npc); // Remember this enemy so we don't hit them again
-
+                            this.hitTargets.add(npc);
                             let nextTarget = null;
                             let closestDistSq = Infinity;
-                            
-                            // High INT increases jump radius!
                             let chainRadius = 5 * intMultiplier; 
                             let chainRadiusSq = chainRadius * chainRadius;
 
@@ -20851,56 +20926,13 @@
                                 let dist = Math.sqrt(dx * dx + dy * dy);
                                 
                                 let chainProj = new Projectile(this.x, this.y, dx/dist, dy/dist, this.baseSpeed, this.damage, this.owner, true, this.spellId);
-                                
                                 chainProj.chainsLeft = this.chainsLeft - 1;
                                 chainProj.hitTargets = new Set(this.hitTargets);
                                 chainProj.targetNPC = nextTarget; 
-                                
                                 exploreRef.projectiles.push(chainProj);
                             }
                         }
-
                         return;
-                    }
-                }
-            }
-            
-            // 4. PVP Collision (If Player fired it)
-            if (this.owner === null && window.remotePlayers) {
-                for (let id in window.remotePlayers) {
-                    let p = window.remotePlayers[id];
-                    if (p.mapID === exploreRef.mapID && p.x !== undefined) {
-                        let dist = Math.sqrt(Math.pow(this.x - p.x, 2) + Math.pow(this.y - p.y, 2));
-                        if (dist < this.radius + 0.3) {
-                            this.triggerExplosion();
-                            
-                            if (typeof socket !== 'undefined') {
-                                if (p.socketId === "NPC_SUNCAT") {
-                                    let dirX = this.vx / this.baseSpeed;
-                                    let dirY = this.vy / this.baseSpeed;
-                                    socket.emit("battle_action", { 
-                                        targetId: p.socketId, 
-                                        actionType: "SUNCAT_HIT", 
-                                        payload: { damage: this.damage || 5, x: this.x - dirX, y: this.y - dirY } 
-                                    });
-                                } else {
-                                    let myStats = { level: exploreRef.level, stat: exploreRef.stat, damage: this.damage };
-                                    let dirX = this.vx / this.baseSpeed;
-                                    let dirY = this.vy / this.baseSpeed;
-
-                                    socket.emit("battle_action", { 
-                                        targetId: p.socketId, 
-                                        actionType: "OVERWORLD_HIT", 
-                                        payload: { 
-                                            attackerStats: myStats, 
-                                            spellId: this.spellId,
-                                            x: this.x - dirX,
-                                            y: this.y - dirY
-                                        } 
-                                    });
-                                }
-                            }
-                        }
                     }
                 }
             }
@@ -34127,6 +34159,12 @@
         var aniDFire = new Dice('d4');
         var aniDice = new Dice('d8');
         var aniDice2 = new Dice('d6');
+        // New Element Objects:
+        var aniDIce = new Dice('d8');     // Ice Crystal (Octahedron - looks like a gem)
+        var aniDShock = new Dice('d6');   // Lightning Spark (Cube)
+        var aniDPoison = new Dice('d6');  // Acid Blob (Cube)
+        var aniDArcane = new Dice('d20'); // Arcane Orb (Icosahedron - very round/complex)
+        var aniDVoid = new Dice('d4');    // Void Shard (Tetrahedron)
         var Oracle = new Field(369);
     //Card Names
     for (let i = 0;i<91;i++){
@@ -41256,15 +41294,69 @@
 
                 break;
             //PROJECTILES
-                case -37:
-                
-
-                    aniDFire.setColor(1,0, 0)
-                        aniDFire.setGlow('#FF0000')
-                        aniDFire.animate(x+5,y+5,z*(4+Math.random()),50,globalDt);
-                        drawShape('arc',x,y,z,5,5,1+Math.random(),0,2,0,0,0,`rgba(${100+Math.random()*100},0,.5)`,1);//r-hand
-                    drawShape('arc',x,y,z,5,5,1+Math.random()*2,0,2,0,0,0,`rgba(255,${100+Math.random()*100},0,.5)`,1);//r-hand
+                case -37: // FIRE (Original - Red/Orange)
+                    aniDFire.setColor(1, 0, 0);
+                    aniDFire.setGlow('#FF0000');
+                    aniDFire.animate(x+5, y+5, z*(4+Math.random()), 50, globalDt);
+                    drawShape('arc',x,y,z,5,5,1+Math.random(),0,2,0,0,0,`rgba(${150+Math.random()*105}, 0, 0, 0.5)`,1);
+                    drawShape('arc',x,y,z,5,5,1+Math.random()*2,0,2,0,0,0,`rgba(255, ${100+Math.random()*100}, 0, 0.5)`,1);
                     break;
+
+                case -43: // ICE / FROST (Blue/Cyan) - Uses d8
+                    aniDIce.setColor(0, 0.5, 1);
+                    aniDIce.setGlow('#00FFFF');
+                    // Slower spin, slightly larger crystal
+                    aniDIce.animate(x+5, y+5, z*(5+Math.random()), 30, globalDt); 
+                    // Larger pale blue outer aura
+                    drawShape('arc',x,y,z,5,5,2.5+Math.random()*1.5,0,2,0,0,0,`rgba(0, ${150+Math.random()*100}, 255, 0.4)`,1);
+                    // Tight white/cyan inner core
+                    drawShape('arc',x,y,z,5,5,1+Math.random(),0,2,0,0,0,`rgba(255, 255, 255, 0.7)`,1);
+                    break;
+
+                case -44: // LIGHTNING / SHOCK (Yellow/White) - Uses d6
+                    aniDShock.setColor(1, 1, 0);
+                    aniDShock.setGlow('#FFFF00');
+                    // Very fast spin (80), erratic jittering size
+                    aniDShock.animate(x+5, y+5, z*(3+Math.random()*3.5), 80, globalDt); 
+                    // Wide yellow flash
+                    drawShape('arc',x,y,z,5,5,1.5+Math.random()*2,0,2,0,0,0,`rgba(255, 255, ${100+Math.random()*155}, 0.5)`,1);
+                    // Blinding white spark
+                    drawShape('arc',x,y,z,5,5,0.5+Math.random()*1.5,0,2,0,0,0,`rgba(255, 255, 255, 0.8)`,1);
+                    break;
+
+                case -45: // POISON / ACID (Green) - Uses d6
+                    aniDPoison.setColor(0, 0.8, 0);
+                    aniDPoison.setGlow('#32CD32');
+                    // Slow, bubbling rotation (20), wide scaling
+                    aniDPoison.animate(x+5, y+5, z*(4.5+Math.random()*0.5), 20, globalDt); 
+                    // Huge, faint toxic cloud
+                    drawShape('arc',x,y,z,5,5,3+Math.random()*1.5,0,2,0,0,0,`rgba(0, ${100+Math.random()*100}, 0, 0.3)`,1);
+                    // Bubbling bright green center
+                    drawShape('arc',x,y,z,5,5,1.5+Math.random(),0,2,0,0,0,`rgba(50, 205, 50, 0.6)`,1);
+                    break;
+
+                case -46: // ARCANE / MAGIC (Purple/Magenta) - Uses d20
+                    aniDArcane.setColor(0.6, 0, 1);
+                    aniDArcane.setGlow('#FF00FF');
+                    // Smooth, steady spin (40) and perfectly stable size (no random scaling)
+                    aniDArcane.animate(x+5, y+5, z*(5.5), 40, globalDt); 
+                    // Deep purple halo
+                    drawShape('arc',x,y,z,5,5,2+Math.random(),0,2,0,0,0,`rgba(${100+Math.random()*100}, 0, 255, 0.5)`,1);
+                    // Magenta inner ring
+                    drawShape('arc',x,y,z,5,5,1.5+Math.random()*1.5,0,2,0,0,0,`rgba(255, 0, 255, 0.5)`,1);
+                    break;
+
+                case -47: // DARK / VOID (Black/Deep Purple) - Uses d4
+                    aniDVoid.setColor(0.1, 0.1, 0.1); 
+                    aniDVoid.setGlow('#800080'); 
+                    // Negative spin speed (spins backward!), massively stretched
+                    aniDVoid.animate(x+5, y+5, z*(6+Math.random()*1.5), -50, globalDt); 
+                    // Black void aura (using black rgb with alpha)
+                    drawShape('arc',x,y,z,5,5,2.5+Math.random(),0,2,0,0,0,`rgba(0, 0, 0, 0.7)`,1); 
+                    // Deep purple tear
+                    drawShape('arc',x,y,z,5,5,1+Math.random()*2,0,2,0,0,0,`rgba(75, 0, 130, 0.6)`,1); 
+                    break;
+                        
                 case -50:
                 
 
@@ -50417,7 +50509,7 @@
                 94,61391,.61391]; 
             
             const animatedPortraits = [
-                -37,-50,15,
+                -37,-43,-44,-45,-46,-47,-50,15,
                 29,31,32,33,34,34.1,35,35.1,
                 37,42,45,46,46.1,47,47.1,48.1,48,49,
                 53,55,59,60,60.1,61,61.1,61.2,62,62.1,63,63.1,
