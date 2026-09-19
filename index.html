@@ -3137,12 +3137,12 @@
         let dragY = 0;
         const SPRITE_CONFIGS = {};
         const TERRAIN_SURFACES = {
-            92:  { kind: 'water', blocked: true, eyeDip: 0.20 },
+            92:  { kind: 'water', blocked: false, eyeDip: 0.20 },
             93:  { kind: 'water', blocked: true, eyeDip: 0.20 },
-            94:  { kind: 'water', blocked: true, eyeDip: 0.20 },
+            94:  { kind: 'water', blocked: false, eyeDip: 0.20 },
             95:  { kind: 'water', blocked: true, eyeDip: 0.20 },
 
-            96:  { kind: 'chasm', blocked: true, eyeDip: 0 },
+            96:  { kind: 'chasm', blocked: false, eyeDip: 0 },
             97:  { kind: 'chasm', blocked: true, eyeDip: 0 },
 
             99:  { kind: 'lava', blocked: true, eyeDip: 0 },
@@ -24724,26 +24724,19 @@
             }
         //Actions
             drawTacticsHand(unit) {
-                // 1. Strict Player Check
-                let isPlayer = (unit.alignment === 'ally' && unit.role !== 'summoned_minion' && !unit.summonerId);
+                // 1. Determine if this unit is the main player character
+                let isMainPlayer = (unit.alignment === 'ally' && unit.role !== 'summoned_minion' && !unit.summonerId);
                 
-                if (!isPlayer) {
-                    unit.tacticsHand = null;
-                    return;
-                }
-
-                // 2. Initialize an empty hand
+                // Initialize an empty hand
                 unit.tacticsHand = { call: null, item: null, spell: null };
 
                 let availableCalls = [];
                 let availableItems = [];
                 let availableSpells = [];
 
-                let stakes = (this.config && this.config.stakes) ? this.config.stakes : 'mock';
-
-                // Helper to quickly sort cards from a deck
-                const parseDeckCards = (deck) => {
-                    deck.forEach(c => {
+                // Helper to quickly sort cards from a deck or array
+                const parseDeckCards = (cardList) => {
+                    cardList.forEach(c => {
                         let id = (typeof c === 'object') ? (c.index !== undefined ? c.index : c.id) : c;
                         let type = (typeof c === 'object' && c.type !== undefined) ? c.type : new Card(id, 0).type;
                         
@@ -24753,35 +24746,39 @@
                     });
                 };
 
-                // 3. Determine the Source (Mock Deck vs Learned Skills vs Battle Mage Deck)
-                if (stakes === 'mock_menu') {
-                    // Arcade mode: uses the 78-card mock deck passed during initialization
-                    let cardSource = (unit.playerData && unit.playerData.dungeonContext) ? unit.playerData.dungeonContext : [];
-                    parseDeckCards(cardSource);
-                    
-                } else if (typeof Dungeon !== 'undefined') {
-                    // In-Game Mode
-                    // Strip spaces and lowercase to ensure a safe class check (e.g. "Battle Mage" -> "battlemage")
-                    let pClass = Dungeon.playerClass ? Dungeon.playerClass.toLowerCase().replace(/\s+/g, '') : '';
-                    let isBattleMage = (pClass === 'battlemage'||pClass === 'battle-mage'||pClass === 'Battle-Mage');
+                // 2. IF IT'S AN ALLY / MINION / CONTROLLED NPC, USE THEIR OWN INNATE SPELLS!
+                if (!isMainPlayer) {
+                    let rawSpells = unit.innateSpells || [];
+                    // If they have no innate spells assigned, give them a baseline fallback or empty hand
+                    parseDeckCards(rawSpells);
+                } 
+                // 3. OTHERWISE, IT IS THE MAIN PLAYER CHARACTER:
+                else {
+                    let stakes = (this.config && this.config.stakes) ? this.config.stakes : 'mock';
 
-                    if (isBattleMage) {
-                        // Battle Mages use their physical extra deck in battles
-                        parseDeckCards(Dungeon.extra || []);
-                    } else {
-                        // All other classes use their dynamically Learned Skills!
-                        if (Dungeon.spellsLearned) {
-                            for (let spellIdStr in Dungeon.spellsLearned) {
-                                if (Dungeon.spellsLearned[spellIdStr]) {
-                                    let id = parseInt(spellIdStr);
-                                    let sData = SPELL_REGISTRY[id];
-                                    if (sData) {
-                                        if (sData.type === 'summon') {
-                                            availableCalls.push(id);
-                                        } else if (sData.type && sData.type.startsWith('item_')) {
-                                            availableItems.push(id);
-                                        } else {
-                                            availableSpells.push(id); // Catches Projectiles, Cones, Buffs, etc.
+                    if (stakes === 'mock_menu') {
+                        let cardSource = (unit.playerData && unit.playerData.dungeonContext) ? unit.playerData.dungeonContext : [];
+                        parseDeckCards(cardSource);
+                    } else if (typeof Dungeon !== 'undefined') {
+                        let pClass = Dungeon.playerClass ? Dungeon.playerClass.toLowerCase().replace(/\s+/g, '') : '';
+                        let isBattleMage = (pClass === 'battlemage' || pClass === 'battle-mage');
+
+                        if (isBattleMage) {
+                            parseDeckCards(Dungeon.extra || []);
+                        } else {
+                            if (Dungeon.spellsLearned) {
+                                for (let spellIdStr in Dungeon.spellsLearned) {
+                                    if (Dungeon.spellsLearned[spellIdStr]) {
+                                        let id = parseInt(spellIdStr);
+                                        let sData = SPELL_REGISTRY[id];
+                                        if (sData) {
+                                            if (sData.type === 'summon') {
+                                                availableCalls.push(id);
+                                            } else if (sData.type && sData.type.startsWith('item_')) {
+                                                availableItems.push(id);
+                                            } else {
+                                                availableSpells.push(id);
+                                            }
                                         }
                                     }
                                 }
@@ -84683,6 +84680,7 @@
                         let xpNeeded = Math.floor(100 * Math.pow(Dungeon.level + 1, 1.8));
                         
                         let playerCard = Dungeon.uiPlayerCard
+                        playerCard.name = `${playerName} Lv.${Dungeon.level || 0}`;
                         //playerCard.name = `${playerName} Lv.${Dungeon.level}`;
                         //playerCard.description =myLivePerception;
                         //playerCard.portrait = playerSprite;
@@ -86087,15 +86085,19 @@
 
     // 1. CREATE THE LIST OF FAKE TASKS
     const loadingPhrases = [
-        "Shuffling the Deck...",
+        "Shuffling Deck...",
         "Assembling skeleton bones...",
         "Opening the pocket plane...",
-        "Consulting the Runestones...",
+        "Setting up formation array...",
         "Casting protection spells...",
         "Tuning the instruments...",
         "Generating infinite dungeons...",
         "Buffing Suncat's stats...",
+        "Establishing neural link...",
+        "Requesting passage...",
         "Bribing the Treasure Snake...",
+        "Warming grass porridge...",
+        
     ];
 
     // 2. START THE CYCLER
