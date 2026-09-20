@@ -8702,22 +8702,14 @@ io.on("connection", (socket) => {
 
         let lastLightPending = null;
 
-        socket.on('suncat_compose_last_light', async (_data, callback) => {
+        socket.on('suncat_compose_last_light', async (data, callback) => {
             if (typeof callback !== 'function') return;
 
             const reply = result => {
                 if (socket.connected) callback(result);
             };
 
-            if (lastLightPending) {
-                try {
-                    return reply({ lines: await lastLightPending });
-                } catch (error) {
-                    return reply({ lines: null });
-                }
-            }
-
-            lastLightPending = (async () => {
+            try {
                 // Filter BARDIC_TALES for combat, sieges, and hero journeys
                 const battleTales = BARDIC_TALES.filter(t => 
                     t.arc.toLowerCase().includes('battle') || 
@@ -8734,21 +8726,21 @@ io.on("connection", (socket) => {
                     ? battleTales[Math.floor(Math.random() * battleTales.length)]
                     : BARDIC_TALES[Math.floor(Math.random() * BARDIC_TALES.length)];
 
-                // Generate a random seed number to force Gemini to generate completely unique phrasing every time
-                const randomEntropySeed = Math.floor(Math.random() * 999999);
+                const lyricMemory = data && data.lyricMemory ? data.lyricMemory : "None yet.";
 
                 const prompt = `
-                    [UNIQUENESS SEED: ${randomEntropySeed}]
-                    Write a completely fresh, unique haunting heroic rescue song as Taliesin from the POV of defenders holding a failing line or the lone rider arriving to save them.
-                    Inspired by this mythic tale:
+                    Write a completely fresh, unique haunting heroic rescue/battle song as Taliesin from the POV of defenders holding a failing line or the lone rider arriving to save them or the main conflict or battle derived from the context surrounding this mythic tale:
                     TITLE: ${activeTale.title}
                     PLOT: ${activeTale.arc}
 
+                    RECENTLY SUNG LYRICS (DO NOT REPEAT THESE PHRASES):
+                    ${lyricMemory}
+
                     STRICT RULES:
                     1. Write EXACTLY 24 very short lines.
-                    2. Each line must contain ONE TO THREE simple English words MAX.
-                    3. NEVER repeat cliché phrases from standard templates; use fresh, evocative wording related to ${activeTale.title}.
-                    4. POV: First-person plural ("We") or descriptive third-person ("He rides") experiencing the siege and rescue.
+                    2. Each line must contain TWO simple English words MAX.
+                    3. Advance the narrative forward. DO NOT reuse or duplicate lines from the Recently Sung Lyrics list.
+                    4. POV: First-person plural ("We") or descriptive third-person ("He rides") experiencing the siege and rescue from the mythic tale.
                     5. Pacing:
                     - Lines 1-4: Cold defense, breaking walls, failing hope.
                     - Lines 5-8: Distant thunder, approaching hoofbeats, a single light.
@@ -8759,7 +8751,7 @@ io.on("connection", (socket) => {
 
                     Return ONLY a JSON array of 24 strings.
                     Use letters, spaces, and apostrophes only. No markdown formatting, code blocks, or commentary.
-                `;
+                            `;
 
                 const result = await taliesinModel.generateContent(prompt);
                 const text = result.response.text().trim()
@@ -8785,18 +8777,11 @@ io.on("connection", (socket) => {
                     throw new Error('Invalid lyric length or characters.');
                 }
 
-                return lines;
-                })();
-
-                try {
-                    const lines = await lastLightPending;
-                    reply({ lines });
-                } catch (error) {
-                    console.warn('[Last Light lyrics error]:', error.message);
-                    reply({ lines: null });
-                } finally {
-                    lastLightPending = null;
-                }
+                reply({ lines });
+            } catch (error) {
+                console.warn('[Last Light lyrics error]:', error.message);
+                reply({ lines: null });
+            }
         });
     //CLIENT SYNC & POLISH
         socket.on("request_stats_sync", () => {
