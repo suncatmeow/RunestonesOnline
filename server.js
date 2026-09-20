@@ -8718,7 +8718,7 @@ io.on("connection", (socket) => {
             }
 
             lastLightPending = (async () => {
-                // Filter or select a tale from BARDIC_TALES focusing on battles, sieges, lone riders, and rescues
+                // Filter BARDIC_TALES for combat, sieges, and hero journeys
                 const battleTales = BARDIC_TALES.filter(t => 
                     t.arc.toLowerCase().includes('battle') || 
                     t.arc.toLowerCase().includes('siege') || 
@@ -8726,7 +8726,8 @@ io.on("connection", (socket) => {
                     t.arc.toLowerCase().includes('rider') ||
                     t.arc.toLowerCase().includes('rescue') ||
                     t.title.toLowerCase().includes('battle') ||
-                    t.title.toLowerCase().includes('excalibur')
+                    t.title.toLowerCase().includes('excalibur') ||
+                    t.title.toLowerCase().includes('nibelung')
                 );
 
                 const activeTale = battleTales.length > 0 
@@ -8734,31 +8735,25 @@ io.on("connection", (socket) => {
                     : BARDIC_TALES[Math.floor(Math.random() * BARDIC_TALES.length)];
 
                 const prompt = `
-                    Write a haunting heroic rescue and battle song as Taliesin, inspired by this mythic tale:
+                    Write a haunting heroic rescue song as Taliesin from the POV of defenders holding a failing line or the lone rider arriving to save them.
+                    Inspired by this mythic tale:
                     TITLE: ${activeTale.title}
                     PLOT: ${activeTale.arc}
 
-                    CONTEXT:
-                    A battle seems lost. Friends hold a failing line against a siege. 
-                    Distant hoofbeats approach. Their friend rides alone through the storm to save them.
-                    Fear becomes awe, relief, and courage as he breaks the enemy advance.
-
-                    Write EXACTLY 24 very short lines.
-                    Each line must contain ONE TO THREE simple English words.
-                    Prefer short words and open vowels for slow singing.
-                    No names or complex words.
-
-                    Pacing Structure:
-                    Lines 1-4: failing defenses, cold hope, endurance under siege.
-                    Lines 5-8: approaching hoofbeats and a distant light.
-                    Lines 9-12: recognition and fear for their friend's life.
-                    Lines 13-16: his arrival, the turning battle, courage returning.
-                    Lines 17-20: awe, dawn, friends rising to fight beside him.
-                    Lines 21-24: rescue, relief, survival, a call to come home.
+                    STRICT RULES:
+                    1. Write EXACTLY 24 very short lines.
+                    2. Each line must contain ONE TO THREE simple English words MAX (to fit musical measures perfectly).
+                    3. POV: First-person plural ("We") or descriptive third-person ("He rides") experiencing the siege and rescue.
+                    4. Pacing:
+                    - Lines 1-4: Cold defense, breaking walls, failing hope.
+                    - Lines 5-8: Distant thunder, approaching hoofbeats, a single light.
+                    - Lines 9-12: Recognizing our friend, trembling fear for his life.
+                    - Lines 13-16: His strike, breaking the enemy lines, courage surging.
+                    - Lines 17-20: Dawn breaking, rising together to fight beside him.
+                    - Lines 21-24: Survival, gratitude, peace returning home.
 
                     Return ONLY a JSON array of 24 strings.
-                    Use letters, spaces and apostrophes only.
-                    No headings, markdown, phonetic spelling, or commentary.
+                    Use letters, spaces, and apostrophes only. No markdown formatting, code blocks, or commentary.
                             `;
 
                 const result = await taliesinModel.generateContent(prompt);
@@ -8792,7 +8787,7 @@ io.on("connection", (socket) => {
                 const lines = await lastLightPending;
                 reply({ lines });
             } catch (error) {
-                console.warn('[Last Light lyrics]', error.message);
+                console.warn('[Last Light lyrics error]:', error.message);
                 reply({ lines: null });
             } finally {
                 lastLightPending = null;
