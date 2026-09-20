@@ -82804,27 +82804,20 @@
             this.phrases = new Set();
             this.session = 0;
 
-            // Expanded fallback pool for variety across cycles
-            this.fallbackPools = [
-                [
-                    'Hold the line', 'The walls fall', 'Hope grows cold', 'Do not yield',
-                    'Far hoofbeats', 'Through the rain', 'One light burns', 'He rides near',
-                    'Our friend rides', 'Against the dark', 'We fear still', 'Come back home',
-                    'His blade shines', 'The night breaks', 'Stand with him', 'Raise your eyes',
-                    'The dawn rides', 'We rise again', 'Fear gives way', 'Our hearts burn',
-                    'The field turns', 'We stand saved', 'Come home now', 'We live on'
-                ],
-                [
-                    'Shields locked tight', 'Arrows fall', 'Darkness presses', 'Hold fast now',
-                    'Dust and blood', 'Horns resound', 'Through the vale', 'Hope awakes',
-                    'Lone rider', 'Breaks the night', 'Svg sword', 'Banner high',
-                    'Enemy breaks', 'Fear departs', 'Charge with him', 'Strike as one',
-                    'Light returns', 'Shadow flees', 'We are free', 'Glory shines',
-                    'The siege ends', 'Home at last', 'Rest in peace', 'We live on'
-                ]
+            // Dynamic lyric queue for seamless rotation without repetition
+            this.lyricQueue = [];
+            this.isFetchingLyrics = false;
+
+            this.fallback = [
+                'Hold the line', 'The walls fall', 'Hope grows cold', 'Do not yield',
+                'Far hoofbeats', 'Through the rain', 'One light burns', 'He rides near',
+                'Our friend rides', 'Against the dark', 'We fear still', 'Come back home',
+                'His blade shines', 'The night breaks', 'Stand with him', 'Raise your eyes',
+                'The dawn rides', 'We rise again', 'Fear gives way', 'Our hearts burn',
+                'The field turns', 'We stand saved', 'Come home now', 'We live on'
             ];
-            this.fallbackIndex = 0;
-            this.fallback = this.fallbackPools[0];
+
+            this.currentLyrics = [...this.fallback];
 
             this.progressions = [
                 [0, 8, 5, 7],
@@ -82856,18 +82849,18 @@
             const comp = c.createDynamicsCompressor();
             const out = c.createGain();
 
-            // VOLUME NORMALIZATION (+ LOUDNESS BOOST FOR PHONES)
-            band.gain.value = 1.85;  // Boosted background synths & instruments
-            voices.gain.value = 0.72;// Boosted vocal presence for mobile speakers
-            wet.gain.value = 0.65;    
+            // BALANCED MIX: Warm mobile volume without overpowering vocals
+            band.gain.value = 1.35;  // Balanced background synths & instruments
+            voices.gain.value = 0.85; // Clear, prominent vocal presence
+            wet.gain.value = 0.6;    
 
             dark.type = 'lowpass';
-            dark.frequency.value = 1600;  
+            dark.frequency.value = 1500;  
 
-            comp.threshold.value = -18; // More responsive compression for mobile headroom
+            comp.threshold.value = -16;
             comp.ratio.value = 4;
-            comp.attack.value = .01;
-            comp.release.value = .18;
+            comp.attack.value = .012;
+            comp.release.value = .2;
 
             out.gain.value = 0;
 
@@ -82930,55 +82923,37 @@
             const token = ++this.session;
 
             this.tick = 0;
-            this.pendingLyrics = null;
-            // Rotate fallback pool on each start/restart
-            this.fallbackIndex = (this.fallbackIndex + 1) % this.fallbackPools.length;
-            this.lyrics = [...this.fallbackPools[this.fallbackIndex]];
-            
-            this.requestTimer = null;
+            this.currentLyrics = [...this.fallback];
             this.nextTime = this.ctx.currentTime + .1;
 
-            // Master target volume boost (.9 -> 1.15 for mobile clarity)
             this.master.gain.linearRampToValueAtTime(
-                1.15, this.nextTime + .3
+                1.0, this.nextTime + .3
             );
 
-            this.requestLyrics(token);
+            this.fetchAndQueueLyrics(token);
             this.schedule();
         }
 
-        requestLyrics(token) {
-            if (typeof socket === 'undefined' || !socket.connected) return;
+        fetchAndQueueLyrics(token) {
+            if (typeof socket === 'undefined' || !socket.connected || this.isFetchingLyrics) return;
 
-            let settled = false;
-
-            this.requestTimer = setTimeout(() => {
-                settled = true;
-                this.requestTimer = null;
-            }, 18000);
+            this.isFetchingLyrics = true;
 
             socket.emit('suncat_compose_last_light', {}, result => {
-                if (settled || token !== this.session || !this.isPlaying) return;
+                this.isFetchingLyrics = false;
+                if (token !== this.session || !this.isPlaying) return;
 
-                settled = true;
-                clearTimeout(this.requestTimer);
-                this.requestTimer = null;
+                if (result && Array.isArray(result.lines) && result.lines.length === 24) {
+                    const lines = result.lines.map(line =>
+                        typeof line === 'string' ? line.trim() : ''
+                    );
 
-                if (!result || !Array.isArray(result.lines) || result.lines.length !== 24) return;
-
-                const lines = result.lines.map(line =>
-                    typeof line === 'string' ? line.trim() : ''
-                );
-
-                if (!lines.every(line =>
-                    /^[a-zA-Z' ]{1,40}$/.test(line) &&
-                    line.split(/\s+/).length <= 3
-                )) return;
-
-                if (this.tick < 8 * 16) {
-                    this.lyrics = lines;
-                } else {
-                    this.pendingLyrics = lines;
+                    if (lines.every(line =>
+                        /^[a-zA-Z' ]{1,40}$/.test(line) &&
+                        line.split(/\s+/).length <= 3
+                    )) {
+                        this.lyricQueue.push(lines);
+                    }
                 }
             });
         }
@@ -83016,9 +82991,13 @@
             const intro = bar < 8;
             const coda = bar >= 104;
 
-            // If a new cycle starts, request fresh lyrics in advance!
-            if (bar === 0 && cycle > 0 && step === 0 && !this.pendingLyrics) {
-                this.requestLyrics(this.session);
+            // When a new play cycle begins, rotate in the next queued lyric set if available!
+            if (bar === 0 && step === 0) {
+                if (this.lyricQueue.length > 0) {
+                    this.currentLyrics = this.lyricQueue.shift();
+                }
+                // Request another batch in the background for future cycles
+                this.fetchAndQueueLyrics(this.session);
             }
 
             const line = Math.max(
@@ -83046,27 +83025,22 @@
                     : [.60, .68, .76, .87, 1, .78][stage];
 
             if (step === 0) {
-                if (bar === 0 && this.pendingLyrics) {
-                    this.lyrics = this.pendingLyrics;
-                    this.pendingLyrics = null;
-                }
-
                 chord.forEach((note, i) => {
                     this.tone(
                         t, tonic + note, dt * 14,
-                        'pad', .07, (i - 1) * .4 
+                        'pad', .055, (i - 1) * .4 
                     );
                 });
 
                 if (!intro && !coda && phraseBar === 0) {
                     this.singLine(
-                        this.lyrics[line],
+                        this.currentLyrics[line],
                         t, tonic, chord, stage, dt
                     );
                 }
 
                 if ((!intro && bar % 8 === 0) || bar === 6) {
-                    this.drum(t, 'crash', .22);
+                    this.drum(t, 'crash', .18);
                 }
             }
 
@@ -83081,31 +83055,31 @@
                     tonic + degree - 12,
                     dt * (step % 4 === 0 ? 1.55 : .7),
                     'bass',
-                    (.20 + energy * .08) * (step % 4 === 0 ? 1 : .7),
+                    (.16 + energy * .07) * (step % 4 === 0 ? 1 : .7),
                     -.08
                 );
 
                 if (stage >= 2 && !intro && !coda) {
-                    this.tone(t, tonic + degree, dt * .75, 'chug', .06 * energy, -.4);
-                    this.tone(t, tonic + degree + 7, dt * .75, 'chug', .045 * energy, .4);
+                    this.tone(t, tonic + degree, dt * .75, 'chug', .05 * energy, -.4);
+                    this.tone(t, tonic + degree + 7, dt * .75, 'chug', .038 * energy, .4);
                 }
             }
 
             if (!intro || bar >= 4) {
                 if ([0, 6, 8, 14].includes(step)) {
-                    this.drum(t, 'kick', .50 * energy); 
+                    this.drum(t, 'kick', .42 * energy); 
                 }
 
                 if (step === 4 || step === 12) {
-                    this.drum(t, 'snare', .30 * energy);
+                    this.drum(t, 'snare', .24 * energy);
                 }
 
                 if (step % 2 === 0) {
-                    this.drum(t, 'hat', .07 * energy);
+                    this.drum(t, 'hat', .05 * energy);
                 }
 
                 if (bar % 8 === 7 && step >= 13) {
-                    this.drum(t, 'tom', .26 * energy, 100 - (step - 13) * 15);
+                    this.drum(t, 'tom', .22 * energy, 100 - (step - 13) * 15);
                 }
             }
 
@@ -83121,15 +83095,15 @@
                 }
                 while (note > 86) note -= 12;
 
-                this.tone(t, note, dt * (step === 8 ? 3 : 1.7), 'lead', .11 + energy * .03, .2);
+                this.tone(t, note, dt * (step === 8 ? 3 : 1.7), 'lead', .09 + energy * .03, .2);
 
                 if (stage === 4 && step % 4 === 0) {
-                    this.tone(t, tonic + chord[2 - Math.floor(step / 4) % 3], dt * 2.7, 'lead', .05, -.3);
+                    this.tone(t, tonic + chord[2 - Math.floor(step / 4) % 3], dt * 2.7, 'lead', .04, -.3);
                 }
             }
 
             if (intro && step === 0 && bar % 2 === 0) {
-                this.tone(t, tonic + 19, dt * 12, 'bell', .10, .3);
+                this.tone(t, tonic + 19, dt * 12, 'bell', .08, .3);
             }
         }
 
@@ -83164,18 +83138,18 @@
             const gates = [];
             const sources = [];
 
-            let harmonyConfigs = [{ interval: 0, pan: 0, vol: 0.75, res: high ? 1.4 : 1.2, delay: 0 }];
+            let harmonyConfigs = [{ interval: 0, pan: 0, vol: 0.65, res: high ? 1.4 : 1.2, delay: 0 }];
             
             if (stage === 2) {
                 harmonyConfigs = [
-                    { interval: 0, pan: -0.3, vol: 0.65, res: 1.2, delay: 0 },
-                    { interval: 2, pan: 0.3, vol: 0.6, res: 1.0, delay: 0.02 }
+                    { interval: 0, pan: -0.3, vol: 0.55, res: 1.2, delay: 0 },
+                    { interval: 2, pan: 0.3, vol: 0.5, res: 1.0, delay: 0.02 }
                 ];
             } else if (stage >= 3) {
                 harmonyConfigs = [
-                    { interval: 0, pan: 0, vol: 0.7, res: 1.4, delay: 0 },      
-                    { interval: 2, pan: -0.65, vol: 0.55, res: 1.0, delay: 0.025 }, 
-                    { interval: 4, pan: 0.65, vol: 0.45, res: 0.9, delay: 0.048 }  
+                    { interval: 0, pan: 0, vol: 0.6, res: 1.4, delay: 0 },      
+                    { interval: 2, pan: -0.65, vol: 0.45, res: 1.0, delay: 0.025 }, 
+                    { interval: 4, pan: 0.65, vol: 0.35, res: 0.9, delay: 0.048 }  
                 ];
             }
 
@@ -83224,10 +83198,10 @@
             this.phrases.add({ gates, sources, end: t + duration + .4 });
 
             const gain = this.graph.band.gain;
-            gain.setValueAtTime(1.85, t);
-            gain.linearRampToValueAtTime(1.25, t + .08);
-            gain.setValueAtTime(1.25, t + duration);
-            gain.linearRampToValueAtTime(1.85, t + duration + .4);
+            gain.setValueAtTime(1.35, t);
+            gain.linearRampToValueAtTime(1.0, t + .08);
+            gain.setValueAtTime(1.0, t + duration);
+            gain.linearRampToValueAtTime(1.35, t + duration + .4);
         }
 
         cleanPhrases(now, all = false) {
@@ -83281,11 +83255,11 @@
             filter.Q.value = .65;
 
             const cut = {
-                pad: 1900,
-                bass: 1000,
-                chug: 1500,
-                lead: 3200,
-                bell: 5800
+                pad: 1800,
+                bass: 900,
+                chug: 1400,
+                lead: 3000,
+                bell: 5500
             }[type];
 
             filter.frequency.setValueAtTime(cut, t);
@@ -83335,7 +83309,7 @@
             if (type === 'kick' || type === 'tom') {
                 source = c.createOscillator();
                 source.type = 'sine';
-                source.frequency.setValueAtTime(type === 'kick' ? 170 : freq, t);
+                source.frequency.setValueAtTime(type === 'kick' ? 160 : freq, t);
                 source.frequency.exponentialRampToValueAtTime(type === 'kick' ? 38 : freq * .55, t + .14);
                 source.connect(env);
             } else {
@@ -83365,10 +83339,7 @@
             this.session++;
 
             clearTimeout(this.timer);
-            clearTimeout(this.requestTimer);
-
             this.timer = null;
-            this.requestTimer = null;
 
             this.cleanPhrases(this.ctx.currentTime, true);
 
