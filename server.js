@@ -8696,10 +8696,11 @@ io.on("connection", (socket) => {
                 callback(`[THOUGHT] Rest [/THOUGHT]\n[LYRICS_UI] - [/LYRICS_UI]\n[LYRICS_PHONETIC] - [/LYRICS_PHONETIC]`);
             }
         });
-        let lastLightPending = null;
         let lastLightCached = null;
         let lastLightCachedAt = 0;
         let lastLightLastAttempt = 0;
+
+        let lastLightPending = null;
 
         socket.on('suncat_compose_last_light', async (_data, callback) => {
             if (typeof callback !== 'function') return;
@@ -8708,92 +8709,93 @@ io.on("connection", (socket) => {
                 if (socket.connected) callback(result);
             };
 
-            const now = Date.now();
-
-            if (lastLightCached && now - lastLightCachedAt < 5 * 60 * 1000) {
-                return reply({ lines: lastLightCached });
+            if (lastLightPending) {
+                try {
+                    return reply({ lines: await lastLightPending });
+                } catch (error) {
+                    return reply({ lines: null });
+                }
             }
 
-            if (!lastLightPending && now - lastLightLastAttempt < 60000) {
-                return reply({ lines: null });
-            }
+            lastLightPending = (async () => {
+                // Filter or select a tale from BARDIC_TALES focusing on battles, sieges, lone riders, and rescues
+                const battleTales = BARDIC_TALES.filter(t => 
+                    t.arc.toLowerCase().includes('battle') || 
+                    t.arc.toLowerCase().includes('siege') || 
+                    t.arc.toLowerCase().includes('war') || 
+                    t.arc.toLowerCase().includes('rider') ||
+                    t.arc.toLowerCase().includes('rescue') ||
+                    t.title.toLowerCase().includes('battle') ||
+                    t.title.toLowerCase().includes('excalibur')
+                );
 
-            if (!lastLightPending) {
-                lastLightLastAttempt = now;
+                const activeTale = battleTales.length > 0 
+                    ? battleTales[Math.floor(Math.random() * battleTales.length)]
+                    : BARDIC_TALES[Math.floor(Math.random() * BARDIC_TALES.length)];
 
-                lastLightPending = (async () => {
-                    const prompt = `
-            Write a haunting heroic rescue song as Taliesin.
+                const prompt = `
+                    Write a haunting heroic rescue and battle song as Taliesin, inspired by this mythic tale:
+                    TITLE: ${activeTale.title}
+                    PLOT: ${activeTale.arc}
 
-            A battle seems lost. Friends hold a failing line.
-            Distant hoofbeats approach.
-            Their friend rides alone through the storm.
-            They fear for him, then witness his power break the enemy advance.
-            Fear becomes awe, relief, and courage.
-            End with gratitude and the plea that he return alive.
+                    CONTEXT:
+                    A battle seems lost. Friends hold a failing line against a siege. 
+                    Distant hoofbeats approach. Their friend rides alone through the storm to save them.
+                    Fear becomes awe, relief, and courage as he breaks the enemy advance.
 
-            Write EXACTLY 24 very short lines.
-            Each line must contain ONE TO THREE simple English words.
-            Prefer short words and open vowels for slow singing.
-            No names or complex words.
+                    Write EXACTLY 24 very short lines.
+                    Each line must contain ONE TO THREE simple English words.
+                    Prefer short words and open vowels for slow singing.
+                    No names or complex words.
 
-            Lines 1-4: failing defenses, cold hope, endurance.
-            Lines 5-8: approaching hoofbeats and a distant light.
-            Lines 9-12: recognition and fear for their friend's life.
-            Lines 13-16: his arrival, the turning battle, courage returning.
-            Lines 17-20: awe, dawn, friends rising to fight beside him.
-            Lines 21-24: rescue, relief, survival, a call to come home.
+                    Pacing Structure:
+                    Lines 1-4: failing defenses, cold hope, endurance under siege.
+                    Lines 5-8: approaching hoofbeats and a distant light.
+                    Lines 9-12: recognition and fear for their friend's life.
+                    Lines 13-16: his arrival, the turning battle, courage returning.
+                    Lines 17-20: awe, dawn, friends rising to fight beside him.
+                    Lines 21-24: rescue, relief, survival, a call to come home.
 
-            Return ONLY a JSON array of 24 strings.
-            Use letters, spaces and apostrophes only.
-            No headings, markdown, phonetic spelling, or commentary.
-                        `;
+                    Return ONLY a JSON array of 24 strings.
+                    Use letters, spaces and apostrophes only.
+                    No headings, markdown, phonetic spelling, or commentary.
+                            `;
 
-                    const result = await taliesinModel.generateContent(prompt);
+                const result = await taliesinModel.generateContent(prompt);
+                const text = result.response.text().trim()
+                    .replace(/^```(?:json)?\s*/i, '')
+                    .replace(/\s*```$/, '');
 
-                    const text = result.response.text().trim()
-                        .replace(/^```(?:json)?\s*/i, '')
-                        .replace(/\s*```$/, '');
+                const parsed = JSON.parse(text);
 
-                    const parsed = JSON.parse(text);
+                if (!Array.isArray(parsed) || parsed.length !== 24) {
+                    throw new Error('Expected 24 lyric lines.');
+                }
 
-                    if (!Array.isArray(parsed) || parsed.length !== 24) {
-                        throw new Error('Expected 24 lyric lines.');
-                    }
+                const lines = parsed.map(line =>
+                    typeof line === 'string' ? line.trim() : ''
+                );
 
-                    const lines = parsed.map(line =>
-                        typeof line === 'string' ? line.trim() : ''
-                    );
+                const valid = lines.every(line =>
+                    /^[a-zA-Z' ]{1,40}$/.test(line) &&
+                    line.split(/\s+/).length <= 3
+                );
 
-                    const valid = lines.every(line =>
-                        /^[a-zA-Z' ]{1,40}$/.test(line) &&
-                        line.split(/\s+/).length <= 3
-                    );
+                if (!valid) {
+                    throw new Error('Invalid lyric length or characters.');
+                }
 
-                    if (!valid) {
-                        throw new Error('Invalid lyric length or characters.');
-                    }
-
-                    lastLightCached = lines;
-                    lastLightCachedAt = Date.now();
-
-                    return lines;
-                })();
-            }
-
-            const pending = lastLightPending;
+                return lines;
+            })();
 
             try {
-                reply({ lines: await pending });
+                const lines = await lastLightPending;
+                reply({ lines });
             } catch (error) {
                 console.warn('[Last Light lyrics]', error.message);
-
-                // The frontend has a complete matching fallback song.
                 reply({ lines: null });
             } finally {
-                if (lastLightPending === pending) {
-                    lastLightPending = null;
-                }
+                lastLightPending = null;
             }
         });
     //CLIENT SYNC & POLISH
