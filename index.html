@@ -82053,32 +82053,30 @@
             this.graph = null;
             this.rootFreq = 146.83;
 
-            // Your original eight choir chords, unchanged.
             this.refrain = [
-            [0,-5,-9], [-1,-5,-10], [0,-5,-9], [2,-1,-10],
-            [3,-1,-5], [2,-1,-5], [0,-3,-7], [-1,-5,-10]
+                [0,-5,-9], [-1,-5,-10], [0,-5,-9], [2,-1,-10],
+                [3,-1,-5], [2,-1,-5], [0,-3,-7], [-1,-5,-10]
             ];
 
             this.harmony = [
-            [0,-5,-9], [0,-5,-9], [-1,-5,-10], [-1,-5,-10],
-            [3,0,-4], [2,-1,-5], [0,-5,-9], [-1,-5,-10]
+                [0,-5,-9], [0,-5,-9], [-1,-5,-10], [-1,-5,-10],
+                [3,0,-4], [2,-1,-5], [0,-5,-9], [-1,-5,-10]
             ];
 
             this.light = [
-            [7,3,-2], [5,2,-5], [3,0,-9], [2,-2,-7],
-            [0,-4,-9], [2,-2,-7], [2,-1,-5], [-1,-5,-10]
+                [7,3,-2], [5,2,-5], [3,0,-9], [2,-2,-7],
+                [0,-4,-9], [2,-2,-7], [2,-1,-5], [-1,-5,-10]
             ];
 
-            // 32 bars of 12/8. Tempo counts eighth notes.
             this.form = [
-            {name:'Vigil', tempo:125, choir:.78},
-            {name:'Lacrimosa', tempo:125, choir:1.00},
-            {name:'Procession', tempo:132, choir:.92},
-            {name:'Answer', tempo:125, choir:.86},
-            {name:'A little light', tempo:118, choir:.84},
-            {name:'Gathering', tempo:132, choir:.94},
-            {name:'Full choir', tempo:132, choir:1.04},
-            {name:'After the prayer', tempo:125, choir:.74}
+                {name:'Vigil', tempo:125, choir:.85},
+                {name:'Lacrimosa', tempo:125, choir:1.10},
+                {name:'Procession', tempo:132, choir:1.00},
+                {name:'Answer', tempo:125, choir:.94},
+                {name:'A little light', tempo:118, choir:.92},
+                {name:'Gathering', tempo:132, choir:1.02},
+                {name:'Full choir', tempo:132, choir:1.12},
+                {name:'After the prayer', tempo:125, choir:.80}
             ];
 
             this.impulse = null;
@@ -82089,33 +82087,31 @@
             const input = c.createGain();
             const comp = c.createDynamicsCompressor();
 
-            comp.threshold.value = -16;
-            comp.ratio.value = 6;
-            comp.attack.value = .03;
+            comp.threshold.value = -18; // Increased headroom & mobile loudness
+            comp.ratio.value = 5;
+            comp.attack.value = .025;
 
             const reverb = c.createConvolver();
 
             if (!this.impulse) {
-            const length = Math.ceil(c.sampleRate * 3.5);
-            this.impulse = c.createBuffer(2, length, c.sampleRate);
+                const length = Math.ceil(c.sampleRate * 3.5);
+                this.impulse = c.createBuffer(2, length, c.sampleRate);
 
-            for (let channel = 0; channel < 2; channel++) {
-                const data = this.impulse.getChannelData(channel);
-
-                for (let i = 0; i < length; i++) {
-                data[i] =
-                    (Math.random()*2-1) * Math.pow(1-i/length, 3);
+                for (let channel = 0; channel < 2; channel++) {
+                    const data = this.impulse.getChannelData(channel);
+                    for (let i = 0; i < length; i++) {
+                        data[i] = (Math.random()*2-1) * Math.pow(1-i/length, 3);
+                    }
                 }
-            }
             }
 
             reverb.buffer = this.impulse;
 
             const wet = c.createGain();
-            wet.gain.value = .5;
+            wet.gain.value = .55;
 
             const dry = c.createGain();
-            dry.gain.value = .7;
+            dry.gain.value = .80; // Boosted dry signal for clarity on phone speakers
 
             const master = c.createGain();
             master.gain.value = 0;
@@ -82131,8 +82127,8 @@
             this.input = input;
             this.master = master;
             this.graph = {
-            master,
-            nodes:[input,comp,reverb,wet,dry,master]
+                master,
+                nodes:[input,comp,reverb,wet,dry,master]
             };
         }
 
@@ -82140,9 +82136,7 @@
             if (this.isPlaying) return;
 
             if (this.ctx.state === 'suspended') {
-            this.ctx.resume().catch(error =>
-                console.warn('Lacrimosa:', error)
-            );
+                this.ctx.resume().catch(error => console.warn('Lacrimosa:', error));
             }
 
             this.buildGraph();
@@ -82153,7 +82147,7 @@
 
             this.master.gain.setValueAtTime(0, this.ctx.currentTime);
             this.master.gain.linearRampToValueAtTime(
-            .65, this.nextNoteTime + 1
+                0.85, this.nextNoteTime + 1 // Boosted master volume target (.65 -> .85)
             );
 
             this.schedule();
@@ -82164,17 +82158,16 @@
 
             const now = this.ctx.currentTime;
 
-            // Avoid firing a burst of late notes after a browser stall.
             if (this.nextNoteTime < now - .2) {
-            this.nextNoteTime = now + .08;
+                this.nextNoteTime = now + .08;
             }
 
             let budget = 12;
 
             while (this.nextNoteTime < now + .15 && budget-- > 0) {
-            this.playTick(this.nextNoteTime);
-            this.nextNoteTime += 60 / this.tempo;
-            this.tickCount++;
+                this.playTick(this.nextNoteTime);
+                this.nextNoteTime += 60 / this.tempo;
+                this.tickCount++;
             }
 
             this.timer = setTimeout(() => this.schedule(), 25);
@@ -82194,31 +82187,23 @@
             const t = this.ctx.currentTime;
 
             if (graph) {
-            graph.master.gain.cancelScheduledValues(t);
-            graph.master.gain.setValueAtTime(
-                graph.master.gain.value, t
-            );
-            graph.master.gain.linearRampToValueAtTime(0, t + .08);
+                graph.master.gain.cancelScheduledValues(t);
+                graph.master.gain.setValueAtTime(graph.master.gain.value, t);
+                graph.master.gain.linearRampToValueAtTime(0, t + .08);
             }
 
             for (const voice of voices) {
-            for (const source of voice.sources) {
-                try {
-                source.stop(t + .09);
-                } catch (_) {}
-            }
+                for (const source of voice.sources) {
+                    try { source.stop(t + .09); } catch (_) {}
+                }
             }
 
-            // Disconnect only the captured graph, never a restarted song.
             setTimeout(() => {
-            if (graph) {
-                graph.nodes.forEach(node => node.disconnect());
-            }
-
-            for (const voice of voices) {
-                voice.nodes.forEach(node => node.disconnect());
-                this.voices.delete(voice);
-            }
+                if (graph) graph.nodes.forEach(node => node.disconnect());
+                for (const voice of voices) {
+                    voice.nodes.forEach(node => node.disconnect());
+                    this.voices.delete(voice);
+                }
             }, 160);
         }
 
@@ -82229,14 +82214,12 @@
             let remaining = sources.length;
 
             sources.forEach(source => {
-            source.onended = () => {
-                if (--remaining > 0) return;
-
-                nodes.forEach(node => node.disconnect());
-                this.voices.delete(voice);
-            };
-
-            source.stop(end);
+                source.onended = () => {
+                    if (--remaining > 0) return;
+                    nodes.forEach(node => node.disconnect());
+                    this.voices.delete(voice);
+                };
+                source.stop(end);
             });
         }
 
@@ -82258,163 +82241,104 @@
             const original = sectionIndex === 1 || sectionIndex === 6;
 
             const chords = sectionIndex === 4
-            ? this.light
-            : original
-                ? this.refrain
-                : this.harmony;
+                ? this.light
+                : original
+                    ? this.refrain
+                    : this.harmony;
 
             const chord = chords[beat % chords.length];
 
-            // The refrain stays in D minor.
             if (part === 0) {
-            if (sectionIndex === 0) {
-                if (beat % 2 === 0) {
-                this.playChoir(t, chord, d*5.8, section.choir);
+                if (sectionIndex === 0) {
+                    if (beat % 2 === 0) {
+                        this.playChoir(t, chord, d*5.8, section.choir);
+                    }
+                } else if (sectionIndex === 7) {
+                    if (beat % 2 === 0) {
+                        const ending = beat >= 12 ? [0,-5,-9] : chord;
+                        this.playChoir(t, ending, d*5.7, section.choir);
+                    }
+                } else {
+                    this.playChoir(t, chord, d*3, section.choir);
                 }
-            } else if (sectionIndex === 7) {
-                if (beat % 2 === 0) {
-                const ending = beat >= 12 ? [0,-5,-9] : chord;
-                this.playChoir(t, ending, d*5.7, section.choir);
-                }
-            } else {
-                this.playChoir(t, chord, d*3, section.choir);
-            }
             }
 
-            // Cello follows the choir's actual lowest note.
             const bass = chord[2];
 
             if (sectionIndex !== 0 && sectionIndex !== 7) {
-            const walking = sectionIndex === 2 || sectionIndex === 5;
-
-            if (walking || part === 0) {
-                this.playString(
-                t, bass,
-                d * (walking ? .88 : 2.65),
-                walking ? .095 : .11,
-                -.22, 'cello'
-                );
-            }
+                const walking = sectionIndex === 2 || sectionIndex === 5;
+                if (walking || part === 0) {
+                    this.playString(t, bass, d * (walking ? .88 : 2.65), walking ? .11 : .13, -.22, 'cello');
+                }
             } else if (local % 12 === 0) {
-            this.playString(
-                t,
-                sectionIndex === 7 && bar === 3 ? -9 : bass,
-                d*9, .08, -.2, 'cello'
-            );
+                this.playString(t, sectionIndex === 7 && bar === 3 ? -9 : bass, d*9, .095, -.2, 'cello');
             }
 
-            // Quiet falling answers leave the choir in front.
-            if (
-            part === 1 &&
-            [1,3,4,5,6].includes(sectionIndex)
-            ) {
-            const shouldAnswer =
-                sectionIndex === 3 ||
-                sectionIndex === 5 ||
-                (beat + cycle) % 2 === 0;
-
-            if (shouldAnswer) {
-                const target = chord[0] + 12;
-                const approach = target + (sectionIndex === 4 ? 2 : 1);
-
-                this.playString(
-                t, approach, d*1.8,
-                sectionIndex === 6 ? .055 : .042,
-                .32, 'violin', target
-                );
-            }
+            if (part === 1 && [1,3,4,5,6].includes(sectionIndex)) {
+                const shouldAnswer = sectionIndex === 3 || sectionIndex === 5 || (beat + cycle) % 2 === 0;
+                if (shouldAnswer) {
+                    const target = chord[0] + 12;
+                    const approach = target + (sectionIndex === 4 ? 2 : 1);
+                    this.playString(t, approach, d*1.8, sectionIndex === 6 ? .065 : .05, .32, 'violin', target);
+                }
             }
 
-            // A lower voice answers after the upper one.
-            if (
-            sectionIndex === 3 &&
-            part === 2 &&
-            beat % 2 === 1
-            ) {
-            const previous = chords[(beat-1) % chords.length][0];
-
-            this.playString(
-                t, previous, d*2.6,
-                .042, -.38, 'violin', chord[1]
-            );
+            if (sectionIndex === 3 && part === 2 && beat % 2 === 1) {
+                const previous = chords[(beat-1) % chords.length][0];
+                this.playString(t, previous, d*2.6, .05, -.38, 'violin', chord[1]);
             }
 
-            // Organ appears only as the piece gathers weight.
-            if (
-            [2,5,6].includes(sectionIndex) &&
-            part === 0 &&
-            beat % 2 === 0
-            ) {
-            this.playOrgan(
-                t, chord, d*5.7,
-                sectionIndex === 6 ? .035 : .023
-            );
+            if ([2,5,6].includes(sectionIndex) && part === 0 && beat % 2 === 0) {
+                this.playOrgan(t, chord, d*5.7, sectionIndex === 6 ? .042 : .028);
             }
 
-            // Bells punctuate entrances and the brighter passage.
-            if (
-            (sectionIndex === 0 && local === 0) ||
-            (sectionIndex === 4 && local % 12 === 0) ||
-            (sectionIndex === 6 && local === 0)
-            ) {
-            this.playBell(
-                t, chord[0] + 24,
-                sectionIndex === 4 ? .035 : .027
-            );
+            if ((sectionIndex === 0 && local === 0) || (sectionIndex === 4 && local % 12 === 0) || (sectionIndex === 6 && local === 0)) {
+                this.playBell(t, chord[0] + 24, sectionIndex === 4 ? .042 : .032);
             }
         }
 
         playChoir(t, chord, dur, level = 1) {
-            // Your original choir synthesis and octave spacing.
             chord.forEach((semi, i) => {
-            const c = this.ctx;
-            const osc = c.createOscillator();
-            const f1 = c.createBiquadFilter();
-            const f2 = c.createBiquadFilter();
-            const g = c.createGain();
+                const c = this.ctx;
+                const osc = c.createOscillator();
+                const f1 = c.createBiquadFilter();
+                const f2 = c.createBiquadFilter();
+                const g = c.createGain();
 
-            osc.type = 'sawtooth';
+                osc.type = 'sawtooth';
+                const octave = i === 0 ? 2 : i === 2 ? .5 : 1;
+                osc.frequency.value = this.rootFreq * octave * 2**(semi/12);
 
-            const octave = i === 0 ? 2 : i === 2 ? .5 : 1;
-            osc.frequency.value =
-                this.rootFreq * octave * 2**(semi/12);
+                const vib = c.createOscillator();
+                vib.frequency.value = 5;
+                const depth = c.createGain();
+                depth.gain.value = 4;
 
-            const vib = c.createOscillator();
-            vib.frequency.value = 5;
+                vib.connect(depth);
+                depth.connect(osc.frequency);
 
-            const depth = c.createGain();
-            depth.gain.value = 4;
+                f1.type = 'bandpass';
+                f1.frequency.value = 700;
+                f1.Q.value = 2.5;
 
-            vib.connect(depth);
-            depth.connect(osc.frequency);
+                f2.type = 'bandpass';
+                f2.frequency.value = 1200;
+                f2.Q.value = 2;
 
-            // Preserve the original SERIAL formant filters.
-            f1.type = 'bandpass';
-            f1.frequency.value = 700;
-            f1.Q.value = 2.5;
+                g.gain.setValueAtTime(0, t);
+                g.gain.linearRampToValueAtTime(.35*level, t+dur*.2);
+                g.gain.setValueAtTime(.35*level, t+dur*.8);
+                g.gain.linearRampToValueAtTime(0, t+dur);
 
-            f2.type = 'bandpass';
-            f2.frequency.value = 1200;
-            f2.Q.value = 2;
+                osc.connect(f1);
+                f1.connect(f2);
+                f2.connect(g);
+                g.connect(this.input);
 
-            g.gain.setValueAtTime(0, t);
-            g.gain.linearRampToValueAtTime(.3*level, t+dur*.2);
-            g.gain.setValueAtTime(.3*level, t+dur*.8);
-            g.gain.linearRampToValueAtTime(0, t+dur);
+                osc.start(t);
+                vib.start(t);
 
-            osc.connect(f1);
-            f1.connect(f2);
-            f2.connect(g);
-            g.connect(this.input);
-
-            osc.start(t);
-            vib.start(t);
-
-            this.track(
-                [osc,vib],
-                [osc,vib,depth,f1,f2,g],
-                t+dur
-            );
+                this.track([osc,vib], [osc,vib,depth,f1,f2,g], t+dur);
             });
         }
 
@@ -82425,7 +82349,6 @@
             const panner = c.createStereoPanner();
 
             panner.pan.value = pan;
-
             const octave = type === 'cello' ? .5 : 1;
             const freq = this.rootFreq * octave * 2**(semi/12);
             const end = this.rootFreq * octave * 2**(endSemi/12);
@@ -82433,15 +82356,9 @@
             filter.type = 'lowpass';
             filter.Q.value = .55;
 
-            filter.frequency.setValueAtTime(
-            type === 'cello' ? 550 : 1100, t
-            );
-            filter.frequency.linearRampToValueAtTime(
-            type === 'cello' ? 850 : 1900, t+dur*.3
-            );
-            filter.frequency.linearRampToValueAtTime(
-            type === 'cello' ? 300 : 700, t+dur
-            );
+            filter.frequency.setValueAtTime(type === 'cello' ? 600 : 1200, t);
+            filter.frequency.linearRampToValueAtTime(type === 'cello' ? 900 : 2000, t+dur*.3);
+            filter.frequency.linearRampToValueAtTime(type === 'cello' ? 350 : 750, t+dur);
 
             const attack = Math.min(.16, dur*.25);
 
@@ -82455,23 +82372,17 @@
             panner.connect(this.input);
 
             const sources = [-4,4].map(detune => {
-            const osc = c.createOscillator();
-
-            osc.type = 'sawtooth';
-            osc.detune.value = detune;
-            osc.frequency.setValueAtTime(freq, t);
-            osc.frequency.setTargetAtTime(end, t+dur*.42, .065);
-
-            osc.connect(filter);
-            osc.start(t);
-            return osc;
+                const osc = c.createOscillator();
+                osc.type = 'sawtooth';
+                osc.detune.value = detune;
+                osc.frequency.setValueAtTime(freq, t);
+                osc.frequency.setTargetAtTime(end, t+dur*.42, .065);
+                osc.connect(filter);
+                osc.start(t);
+                return osc;
             });
 
-            this.track(
-            sources,
-            [...sources,filter,gain,panner],
-            t+dur
-            );
+            this.track(sources, [...sources,filter,gain,panner], t+dur);
         }
 
         playOrgan(t, chord, dur, level) {
@@ -82485,16 +82396,13 @@
             g.connect(this.input);
 
             const sources = [];
-
             chord.forEach(semi => {
-            const osc = c.createOscillator();
-
-            osc.type = 'sine';
-            osc.frequency.value = this.rootFreq * 2**(semi/12);
-
-            osc.connect(g);
-            osc.start(t);
-            sources.push(osc);
+                const osc = c.createOscillator();
+                osc.type = 'sine';
+                osc.frequency.value = this.rootFreq * 2**(semi/12);
+                osc.connect(g);
+                osc.start(t);
+                sources.push(osc);
             });
 
             this.track(sources, [...sources,g], t+dur);
@@ -82507,29 +82415,27 @@
             const freq = this.rootFreq * 2**(semi/12);
 
             [1,2.01,2.76].forEach((ratio,i) => {
-            const osc = c.createOscillator();
-            const g = c.createGain();
+                const osc = c.createOscillator();
+                const g = c.createGain();
 
-            osc.type = 'sine';
-            osc.frequency.value = freq*ratio;
+                osc.type = 'sine';
+                osc.frequency.value = freq*ratio;
 
-            g.gain.setValueAtTime(0, t);
-            g.gain.linearRampToValueAtTime(
-                level/(i+1)**2, t+.006
-            );
-            g.gain.exponentialRampToValueAtTime(.00001, t+3.8);
+                g.gain.setValueAtTime(0, t);
+                g.gain.linearRampToValueAtTime(level/(i+1)**2, t+.006);
+                g.gain.exponentialRampToValueAtTime(.00001, t+3.8);
 
-            osc.connect(g);
-            g.connect(this.input);
-            osc.start(t);
+                osc.connect(g);
+                g.connect(this.input);
+                osc.start(t);
 
-            sources.push(osc);
-            nodes.push(osc,g);
+                sources.push(osc);
+                nodes.push(osc,g);
             });
 
             this.track(sources, nodes, t+4);
         }
-        }
+    }
     class CrownModule {
         constructor(ctx, dest, options = {}) {
             this.ctx = ctx;
@@ -82897,37 +82803,27 @@
             this.phrases = new Set();
             this.session = 0;
 
-            this.fallback = [
-                'Hold the line',
-                'The walls fall',
-                'Hope grows cold',
-                'Do not yield',
-
-                'Far hoofbeats',
-                'Through the rain',
-                'One light burns',
-                'He rides near',
-
-                'Our friend rides',
-                'Against the dark',
-                'We fear still',
-                'Come back home',
-
-                'His blade shines',
-                'The night breaks',
-                'Stand with him',
-                'Raise your eyes',
-
-                'The dawn rides',
-                'We rise again',
-                'Fear gives way',
-                'Our hearts burn',
-
-                'The field turns',
-                'We stand saved',
-                'Come home now',
-                'We live on'
+            // Expanded fallback pool for variety across cycles
+            this.fallbackPools = [
+                [
+                    'Hold the line', 'The walls fall', 'Hope grows cold', 'Do not yield',
+                    'Far hoofbeats', 'Through the rain', 'One light burns', 'He rides near',
+                    'Our friend rides', 'Against the dark', 'We fear still', 'Come back home',
+                    'His blade shines', 'The night breaks', 'Stand with him', 'Raise your eyes',
+                    'The dawn rides', 'We rise again', 'Fear gives way', 'Our hearts burn',
+                    'The field turns', 'We stand saved', 'Come home now', 'We live on'
+                ],
+                [
+                    'Shields locked tight', 'Arrows fall', 'Darkness presses', 'Hold fast now',
+                    'Dust and blood', 'Horns resound', 'Through the vale', 'Hope awakes',
+                    'Lone rider', 'Breaks the night', 'Svg sword', 'Banner high',
+                    'Enemy breaks', 'Fear departs', 'Charge with him', 'Strike as one',
+                    'Light returns', 'Shadow flees', 'We are free', 'Glory shines',
+                    'The siege ends', 'Home at last', 'Rest in peace', 'We live on'
+                ]
             ];
+            this.fallbackIndex = 0;
+            this.fallback = this.fallbackPools[0];
 
             this.progressions = [
                 [0, 8, 5, 7],
@@ -82959,18 +82855,18 @@
             const comp = c.createDynamicsCompressor();
             const out = c.createGain();
 
-            // VOLUME NORMALIZATION (+25% boost across background synths & instruments)
-            band.gain.value = 1.625;  // 1.3 * 1.25 for a louder, richer background synth presence
-            voices.gain.value = 0.45; 
-            wet.gain.value = 0.6;    
+            // VOLUME NORMALIZATION (+ LOUDNESS BOOST FOR PHONES)
+            band.gain.value = 1.85;  // Boosted background synths & instruments
+            voices.gain.value = 0.72;// Boosted vocal presence for mobile speakers
+            wet.gain.value = 0.65;    
 
             dark.type = 'lowpass';
-            dark.frequency.value = 1500; 
+            dark.frequency.value = 1600;  
 
-            comp.threshold.value = -15;
+            comp.threshold.value = -18; // More responsive compression for mobile headroom
             comp.ratio.value = 4;
-            comp.attack.value = .012;
-            comp.release.value = .2;
+            comp.attack.value = .01;
+            comp.release.value = .18;
 
             out.gain.value = 0;
 
@@ -82983,20 +82879,13 @@
 
                 for (let channel = 0; channel < 2; channel++) {
                     const a = this.impulse.getChannelData(channel);
-
                     for (let i = 0; i < a.length; i++) {
-                        a[i] =
-                            (Math.random() * 2 - 1) *
-                            (1 - i / a.length) ** 3;
+                        a[i] = (Math.random() * 2 - 1) * (1 - i / a.length) ** 3;
                     }
                 }
 
-                this.noise = c.createBuffer(
-                    1, c.sampleRate, c.sampleRate
-                );
-
+                this.noise = c.createBuffer(1, c.sampleRate, c.sampleRate);
                 const a = this.noise.getChannelData(0);
-
                 for (let i = 0; i < a.length; i++) {
                     a[i] = Math.random() * 2 - 1;
                 }
@@ -83021,10 +82910,7 @@
                 band,
                 voices,
                 out,
-                nodes: [
-                    band, voices, mix, reverb,
-                    wet, dark, comp, out
-                ]
+                nodes: [band, voices, mix, reverb, wet, dark, comp, out]
             };
 
             this.master = out;
@@ -83044,13 +82930,16 @@
 
             this.tick = 0;
             this.pendingLyrics = null;
-            this.lyrics = [...this.fallback];
+            // Rotate fallback pool on each start/restart
+            this.fallbackIndex = (this.fallbackIndex + 1) % this.fallbackPools.length;
+            this.lyrics = [...this.fallbackPools[this.fallbackIndex]];
+            
             this.requestTimer = null;
             this.nextTime = this.ctx.currentTime + .1;
 
-            // +25% volume normalization bump on master target (.72 * 1.25 = 0.9)
+            // Master target volume boost (.9 -> 1.15 for mobile clarity)
             this.master.gain.linearRampToValueAtTime(
-                0.9, this.nextTime + .3
+                1.15, this.nextTime + .3
             );
 
             this.requestLyrics(token);
@@ -83058,10 +82947,7 @@
         }
 
         requestLyrics(token) {
-            if (
-                typeof socket === 'undefined' ||
-                !socket.connected
-            ) return;
+            if (typeof socket === 'undefined' || !socket.connected) return;
 
             let settled = false;
 
@@ -83071,21 +82957,13 @@
             }, 18000);
 
             socket.emit('suncat_compose_last_light', {}, result => {
-                if (
-                    settled ||
-                    token !== this.session ||
-                    !this.isPlaying
-                ) return;
+                if (settled || token !== this.session || !this.isPlaying) return;
 
                 settled = true;
                 clearTimeout(this.requestTimer);
                 this.requestTimer = null;
 
-                if (
-                    !result ||
-                    !Array.isArray(result.lines) ||
-                    result.lines.length !== 24
-                ) return;
+                if (!result || !Array.isArray(result.lines) || result.lines.length !== 24) return;
 
                 const lines = result.lines.map(line =>
                     typeof line === 'string' ? line.trim() : ''
@@ -83137,6 +83015,11 @@
             const intro = bar < 8;
             const coda = bar >= 104;
 
+            // If a new cycle starts, request fresh lyrics in advance!
+            if (bar === 0 && cycle > 0 && step === 0 && !this.pendingLyrics) {
+                this.requestLyrics(this.session);
+            }
+
             const line = Math.max(
                 0, Math.min(23, Math.floor((bar - 8) / 4))
             );
@@ -83170,7 +83053,7 @@
                 chord.forEach((note, i) => {
                     this.tone(
                         t, tonic + note, dt * 14,
-                        'pad', .05, (i - 1) * .4 // Louder, richer background synth pads
+                        'pad', .07, (i - 1) * .4 
                     );
                 });
 
@@ -83182,7 +83065,7 @@
                 }
 
                 if ((!intro && bar % 8 === 0) || bar === 6) {
-                    this.drum(t, 'crash', .18);
+                    this.drum(t, 'crash', .22);
                 }
             }
 
@@ -83192,106 +83075,66 @@
                 gallop &&
                 (!intro || bar >= 4 || step % 4 === 0)
             ) {
-                // Thumping bass gain boost (+25%)
                 this.tone(
                     t,
                     tonic + degree - 12,
                     dt * (step % 4 === 0 ? 1.55 : .7),
                     'bass',
-                    (.16 + energy * .07) *
-                        (step % 4 === 0 ? 1 : .7),
+                    (.20 + energy * .08) * (step % 4 === 0 ? 1 : .7),
                     -.08
                 );
 
                 if (stage >= 2 && !intro && !coda) {
-                    this.tone(
-                        t, tonic + degree, dt * .75,
-                        'chug', .05 * energy, -.4
-                    );
-
-                    this.tone(
-                        t, tonic + degree + 7, dt * .75,
-                        'chug', .038 * energy, .4
-                    );
+                    this.tone(t, tonic + degree, dt * .75, 'chug', .06 * energy, -.4);
+                    this.tone(t, tonic + degree + 7, dt * .75, 'chug', .045 * energy, .4);
                 }
             }
 
             if (!intro || bar >= 4) {
                 if ([0, 6, 8, 14].includes(step)) {
-                    this.drum(t, 'kick', .42 * energy); // Thumping punchy kick
+                    this.drum(t, 'kick', .50 * energy); 
                 }
 
                 if (step === 4 || step === 12) {
-                    this.drum(t, 'snare', .24 * energy);
+                    this.drum(t, 'snare', .30 * energy);
                 }
 
                 if (step % 2 === 0) {
-                    this.drum(t, 'hat', .05 * energy);
+                    this.drum(t, 'hat', .07 * energy);
                 }
 
                 if (bar % 8 === 7 && step >= 13) {
-                    this.drum(
-                        t, 'tom', .22 * energy,
-                        100 - (step - 13) * 15
-                    );
+                    this.drum(t, 'tom', .26 * energy, 100 - (step - 13) * 15);
                 }
             }
 
-            const answer =
-                !intro && !coda && phraseBar >= 2;
+            const answer = !intro && !coda && phraseBar >= 2;
 
-            if (
-                answer &&
-                [0, 3, 6, 8, 12, 14].includes(step)
-            ) {
-                const index = (
-                    Math.floor(step / 2) +
-                    phraseBar * 4 +
-                    line
-                ) % this.theme.length;
-
+            if (answer && [0, 3, 6, 8, 12, 14].includes(step)) {
+                const index = (Math.floor(step / 2) + phraseBar * 4 + line) % this.theme.length;
                 let note = tonic + 12 + this.theme[index];
-
                 while (note > 86) note -= 12;
 
                 if (step % 4 === 0) {
-                    note = tonic + 12 +
-                        chord[Math.floor(step / 4) % 3];
+                    note = tonic + 12 + chord[Math.floor(step / 4) % 3];
                 }
-
                 while (note > 86) note -= 12;
 
-                this.tone(
-                    t, note,
-                    dt * (step === 8 ? 3 : 1.7),
-                    'lead', .09 + energy * .03, .2
-                );
+                this.tone(t, note, dt * (step === 8 ? 3 : 1.7), 'lead', .11 + energy * .03, .2);
 
                 if (stage === 4 && step % 4 === 0) {
-                    this.tone(
-                        t,
-                        tonic + chord[2 - Math.floor(step / 4) % 3],
-                        dt * 2.7,
-                        'lead', .04, -.3
-                    );
+                    this.tone(t, tonic + chord[2 - Math.floor(step / 4) % 3], dt * 2.7, 'lead', .05, -.3);
                 }
             }
 
             if (intro && step === 0 && bar % 2 === 0) {
-                this.tone(
-                    t, tonic + 19, dt * 12,
-                    'bell', .08, .3
-                );
+                this.tone(t, tonic + 19, dt * 12, 'bell', .10, .3);
             }
         }
 
         singLine(text, t, tonic, chord, stage, dt) {
-            if (
-                typeof MusicEngine === 'undefined' ||
-                typeof MusicEngine.sing !== 'function'
-            ) return;
+            if (typeof MusicEngine === 'undefined' || typeof MusicEngine.sing !== 'function') return;
             
-            // --- UI LYRIC DISPATCH ---
             if (text) {
                 const cleanLyric = text.replace(/-/g, '').replace(/[\[\]]/g, '').trim();
                 const delayInMs = Math.max(0, (t - this.ctx.currentTime) * 1000);
@@ -83305,48 +83148,33 @@
             }
 
             const fit = (midi, low, high) => {
-                while (440 * 2 ** ((midi - 69) / 12) < low) {
-                    midi += 12;
-                }
-
-                while (440 * 2 ** ((midi - 69) / 12) > high) {
-                    midi -= 12;
-                }
-
+                while (440 * 2 ** ((midi - 69) / 12) < low) midi += 12;
+                while (440 * 2 ** ((midi - 69) / 12) > high) midi -= 12;
                 return midi;
             };
 
             const root = 136.9;
-
-            const toSemi = midi => 12 * Math.log2(
-                (440 * 2 ** ((midi - 69) / 12)) / root
-            );
-
+            const toSemi = midi => 12 * Math.log2((440 * 2 ** ((midi - 69) / 12)) / root);
             const high = stage >= 3;
-
             const baseMidi = tonic + 12 + chord[stage % 3];
-            const midi = fit(
-                baseMidi,
-                high ? 329.63 : 220.0,
-                high ? 659.25 : 440.0
-            );
+            const midi = fit(baseMidi, high ? 329.63 : 220.0, high ? 659.25 : 440.0);
 
             const duration = dt * 29;
             const gates = [];
             const sources = [];
 
-            let harmonyConfigs = [{ interval: 0, pan: 0, vol: 0.65, res: high ? 1.4 : 1.2, delay: 0 }];
+            let harmonyConfigs = [{ interval: 0, pan: 0, vol: 0.75, res: high ? 1.4 : 1.2, delay: 0 }];
             
             if (stage === 2) {
                 harmonyConfigs = [
-                    { interval: 0, pan: -0.3, vol: 0.55, res: 1.2, delay: 0 },
-                    { interval: 2, pan: 0.3, vol: 0.5, res: 1.0, delay: 0.02 }
+                    { interval: 0, pan: -0.3, vol: 0.65, res: 1.2, delay: 0 },
+                    { interval: 2, pan: 0.3, vol: 0.6, res: 1.0, delay: 0.02 }
                 ];
             } else if (stage >= 3) {
                 harmonyConfigs = [
-                    { interval: 0, pan: 0, vol: 0.6, res: 1.4, delay: 0 },      
-                    { interval: 2, pan: -0.65, vol: 0.45, res: 1.0, delay: 0.025 }, 
-                    { interval: 4, pan: 0.65, vol: 0.35, res: 0.9, delay: 0.048 }  
+                    { interval: 0, pan: 0, vol: 0.7, res: 1.4, delay: 0 },      
+                    { interval: 2, pan: -0.65, vol: 0.55, res: 1.0, delay: 0.025 }, 
+                    { interval: 4, pan: 0.65, vol: 0.45, res: 0.9, delay: 0.048 }  
                 ];
             }
 
@@ -83392,19 +83220,13 @@
             const newSources = (MusicEngine.activeVoiceNodes || []).filter(n => !beforeAllVoices.has(n));
             sources.push(...newSources);
 
-            this.phrases.add({
-                gates,
-                sources,
-                end: t + duration + .4
-            });
+            this.phrases.add({ gates, sources, end: t + duration + .4 });
 
             const gain = this.graph.band.gain;
-            gain.setValueAtTime(1.625, t);
-            gain.linearRampToValueAtTime(1.1, t + .08);
-            gain.setValueAtTime(1.1, t + duration);
-            gain.linearRampToValueAtTime(1.625, t + duration + .4);
-
-            console.log('[Last Light]', text);
+            gain.setValueAtTime(1.85, t);
+            gain.linearRampToValueAtTime(1.25, t + .08);
+            gain.setValueAtTime(1.25, t + duration);
+            gain.linearRampToValueAtTime(1.85, t + duration + .4);
         }
 
         cleanPhrases(now, all = false) {
@@ -83422,16 +83244,9 @@
                     try { source.disconnect(); } catch (_) {}
                 }
 
-                if (
-                    typeof MusicEngine !== 'undefined' &&
-                    MusicEngine.activeVoiceNodes
-                ) {
+                if (typeof MusicEngine !== 'undefined' && MusicEngine.activeVoiceNodes) {
                     const owned = new Set(phrase.sources);
-
-                    MusicEngine.activeVoiceNodes =
-                        MusicEngine.activeVoiceNodes.filter(
-                            node => !owned.has(node)
-                        );
+                    MusicEngine.activeVoiceNodes = MusicEngine.activeVoiceNodes.filter(node => !owned.has(node));
                 }
 
                 this.phrases.delete(phrase);
@@ -83447,11 +83262,9 @@
             for (const source of sources) {
                 source.onended = () => {
                     if (--remaining) return;
-
                     nodes.forEach(node => node.disconnect());
                     this.nodes.delete(voice);
                 };
-
                 source.stop(end);
             }
         }
@@ -83467,33 +83280,22 @@
             filter.Q.value = .65;
 
             const cut = {
-                pad: 1800,
-                bass: 900,
-                chug: 1400,
-                lead: 3000,
-                bell: 5500
+                pad: 1900,
+                bass: 1000,
+                chug: 1500,
+                lead: 3200,
+                bell: 5800
             }[type];
 
             filter.frequency.setValueAtTime(cut, t);
-            filter.frequency.exponentialRampToValueAtTime(
-                Math.max(160, cut * .45),
-                t + duration
-            );
+            filter.frequency.exponentialRampToValueAtTime(Math.max(160, cut * .45), t + duration);
 
-            const attack = Math.min(
-                type === 'pad' ? .18 : .018,
-                duration * .25
-            );
+            const attack = Math.min(type === 'pad' ? .18 : .018, duration * .25);
 
             env.gain.setValueAtTime(0, t);
             env.gain.linearRampToValueAtTime(level, t + attack);
-            env.gain.exponentialRampToValueAtTime(
-                Math.max(.0001, level * .5),
-                t + duration
-            );
-            env.gain.linearRampToValueAtTime(
-                0, t + duration + .09
-            );
+            env.gain.exponentialRampToValueAtTime(Math.max(.0001, level * .5), t + duration);
+            env.gain.linearRampToValueAtTime(0, t + duration + .09);
 
             filter.connect(env);
             env.connect(p);
@@ -83503,27 +83305,15 @@
 
             for (const detune of [-4, 4]) {
                 const osc = c.createOscillator();
-
-                osc.type = type === 'bell'
-                    ? 'sine'
-                    : type === 'lead'
-                        ? 'triangle'
-                        : 'sawtooth';
-
-                osc.frequency.value =
-                    440 * 2 ** ((midi - 69) / 12);
-
+                osc.type = type === 'bell' ? 'sine' : type === 'lead' ? 'triangle' : 'sawtooth';
+                osc.frequency.value = 440 * 2 ** ((midi - 69) / 12);
                 osc.detune.value = detune;
                 osc.connect(filter);
                 osc.start(t);
                 sources.push(osc);
             }
 
-            this.track(
-                sources,
-                [...sources, filter, env, p],
-                t + duration + .1
-            );
+            this.track(sources, [...sources, filter, env, p], t + duration + .1);
         }
 
         drum(t, type, level, freq = 100) {
@@ -83544,30 +83334,16 @@
             if (type === 'kick' || type === 'tom') {
                 source = c.createOscillator();
                 source.type = 'sine';
-
-                source.frequency.setValueAtTime(
-                    type === 'kick' ? 160 : freq, t // Punchier initial transient for kick
-                );
-
-                source.frequency.exponentialRampToValueAtTime(
-                    type === 'kick' ? 38 : freq * .55, // Deeper sub-bass drop for a thumping feel
-                    t + .14
-                );
-
+                source.frequency.setValueAtTime(type === 'kick' ? 170 : freq, t);
+                source.frequency.exponentialRampToValueAtTime(type === 'kick' ? 38 : freq * .55, t + .14);
                 source.connect(env);
             } else {
                 source = c.createBufferSource();
                 source.buffer = this.noise;
 
                 filter = c.createBiquadFilter();
-                filter.type =
-                    type === 'snare' ? 'bandpass' : 'highpass';
-
-                filter.frequency.value = type === 'snare'
-                    ? 1800
-                    : type === 'hat'
-                        ? 6500
-                        : 3500;
+                filter.type = type === 'snare' ? 'bandpass' : 'highpass';
+                filter.frequency.value = type === 'snare' ? 1800 : type === 'hat' ? 6500 : 3500;
 
                 source.connect(filter);
                 filter.connect(env);
@@ -83575,18 +83351,12 @@
 
             env.gain.setValueAtTime(0, t);
             env.gain.linearRampToValueAtTime(level, t + .002);
-            env.gain.exponentialRampToValueAtTime(
-                .0001, t + duration
-            );
+            env.gain.exponentialRampToValueAtTime(.0001, t + duration);
 
             env.connect(this.graph.band);
             source.start(t);
 
-            this.track(
-                [source],
-                [source, env, ...(filter ? [filter] : [])],
-                t + duration + .01
-            );
+            this.track([source], [source, env, ...(filter ? [filter] : [])], t + duration + .01);
         }
 
         stop() {
@@ -83609,27 +83379,18 @@
 
             if (graph) {
                 graph.out.gain.cancelScheduledValues(now);
-                graph.out.gain.setValueAtTime(
-                    graph.out.gain.value, now
-                );
-                graph.out.gain.linearRampToValueAtTime(
-                    0, now + .05
-                );
+                graph.out.gain.setValueAtTime(graph.out.gain.value, now);
+                graph.out.gain.linearRampToValueAtTime(0, now + .05);
             }
 
             for (const voice of voices) {
                 for (const source of voice.sources) {
-                    try {
-                        source.stop(now + .06);
-                    } catch (_) {}
+                    try { source.stop(now + .06); } catch (_) {}
                 }
             }
 
             setTimeout(() => {
-                if (graph) {
-                    graph.nodes.forEach(node => node.disconnect());
-                }
-
+                if (graph) graph.nodes.forEach(node => node.disconnect());
                 for (const voice of voices) {
                     voice.nodes.forEach(node => node.disconnect());
                     this.nodes.delete(voice);
