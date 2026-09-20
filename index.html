@@ -115,8 +115,13 @@
                     return canvas;
                 },
                 returnCanvas: function(canvas) {
-                    // Give it back so it doesn't get left in memory
-                    this.pool.push(canvas);
+                    if (!canvas || this.pool.includes(canvas)) return;
+                    if (this.pool.length < 8) {
+                        this.pool.push(canvas);
+                    } else {
+                        canvas.width = 0;
+                        canvas.height = 0;
+                    }
                 }
             };
         // OFF-SCREEN MIST CACHE 
@@ -2841,15 +2846,20 @@
             const SPELL_REGISTRY = {
                 // --- PROJECTILES (Attack) ---
                 13: { type: 'projectile', name: 'Death', cooldown: 9000, castStat: 2, defStat: 2, color: [0,0,0], glow: '#00ffff',  sprite2D: -47, isHoming: true, sfx: 'arcane3' }, 
-                26: { type: 'projectile', name: 'Fireball', cooldown: 6000, castStat: 2, defStat: 1, color: [1,0.5,0], glow: '#ff0000', sprite2D: -37, isHoming: false, knockback: 1.5, sfx: 'fire2' }, 
-                92: { type: 'imbue', name: 'Imbue Fire', consume: 26, cooldown: 3000, sfx: 'buff2' },
-                93: { type: 'projectile', name: 'Lightning', cooldown: 7000, castStat: 2, defStat: 3, color: [1,1,0], glow: '#ffff00', sprite2D: -44, isHoming: true, chains: 1, sfx: 'lightning' },
+                26: { type: 'projectile', name: 'Fireball', cooldown: 6000, castStat: 2, defStat: 1, color: [1,0.5,0], glow: '#ff0000', sprite2D: -37, knockback: 1.5, sfx: 'fire2',
+                    procs: [{ id: 604, saveStat: 1, dcStat: 2 }] // Applies Burn (604). Target rolls CON (1) vs Caster INT (2)
+                },
+                92: { type: 'item_buff', name: 'Fire Sword', cooldown: 450000, buffStat: 0, amount: 2, duration: 1800, visual: 'arc', auraColor: 'rgba(255, 69, 0, 0.6)', sfx: 'fire2', 
+                    weaponProc: { id: 604, saveStat: 1, dcStat: 0 } // Applies Burn via Melee Hits!
+                },
+                93: { type: 'projectile', name: 'Lightning', cooldown: 7000, castStat: 2, defStat: 3, color: [1,1,0], glow: '#ffff00', sprite2D: -44, isHoming: true, chains: 1, sfx: 'lightning',
+                    procs: [{ id: 603, saveStat: 1, dcStat: 2 }] // Applies Electrocute Stun (603).
+                },
                 9999: { type: 'projectile', name: 'Attack', castStat: 0, defStat: 1, color: [1,1,1], glow: '#ffff00', sprite2D: 316, isHoming: true, range: 1.3, knockback: 1.3, sfx: 'attack' },
                 9998: { type: 'projectile', name: 'Imbued Attack', castStat: 0, defStat: 1, color: [1,0.5,0], glow: '#ff0000', sprite2D: -37, isHoming: false, knockback: 1.5, sfx: 'fire3' },
                 
-                // --- INSTANT FRONTAL AoE (Cone) ---
-                95: { type: 'cone', name: 'Flurry', cooldown: 3000, castStat: 3, defStat: 1, range: 3.0, knockback: 2, angle: 0.5, sfx: 'air3' },
-                
+                97: { type: 'gravity', name: 'Gravity', cooldown: 15000, castStat: 2, range: 6.0, sfx: 'arcane3' },
+                95: { type: 'flurry', name: 'Flurry', cooldown: 3000, castStat: 3, defStat: 1, range: 3.0, knockback: 2, sfx: 'air3' },                
                 // --- INSTANT TELEPORT STRIKES ---
                 40: { type: 'assassination', name: 'Steal', cooldown: 90000, castStat: 3, defStat: 3, range: 3, isSteal: true, sfx: 'chime' },
                 51: { type: 'assassination', name: 'Overpower', cooldown: 9000, castStat: 0, defStat: 0, range: 3, sfx: 'earth3' },
@@ -2862,13 +2872,13 @@
                 28: { type: 'buff', name: 'Defense', cooldown: 450000,  castStat: 2, buffStat: 1, amount: 2, duration: 1800, visual: 'arc', auraColor: 'rgba(0, 255, 0, 0.6)', sfx: 'buff' },
                 29: { type: 'buff', name: 'Haste',  cooldown: 450000,  castStat: 2, buffStat: 3, amount: 2, duration: 1800, visual: 'arc', auraColor: 'rgba(0, 0, 255, 0.6)', sfx: 'buff' },
                 70: { type: 'cultivate', name: 'Cultivate', cooldown: 86400000, castStat: 2, sfx: 'heal' },
-                    
+                1000: { type: 'heal', name: 'Heal', cooldown: 10000, range: 6.0, auraColor: 'rgba(0, 255, 150, 0.8)', sfx: 'heal' },        
                 // --- SPECIAL TICKING DEBUFFS / BUFFS ---
                 600: { type: 'debuff', name: 'Poison', cooldown: 10000, castStat: 2, defStat: 1, duration: 300, tickRate: 30, votType: 'dot', votAmount: 1.0, visual: 'aura', auraColor: 'rgba(0,255,0,0.7)', sfx: 'debuff' },
                 601: { type: 'buff', name: 'Rampage', cooldown: 10000, castStat: 2, buffStat: 0, amount: 0, duration: 150, tickRate: 30, votType: 'bot', votAmount: 1, visual: 'aura', auraColor: 'rgba(255,0,0,0.7)', sfx: 'buff2' },
                 602: { type: 'buff', name: 'Regen', cooldown: 10000, castStat: 2, duration: 300, tickRate: 30, votType: 'hot', votAmount: 1.0, visual: 'sparkle', auraColor: 'rgba(0,255,255,0.7)', sfx: 'heal' },
                 603: { type: 'debuff', name: 'Electrocute', cooldown: 10000, castStat: 2, defStat: 1, duration: 300, tickRate: 60, votType: 'stun', visual: 'chains', auraColor: 'rgba(255,255,0,0.7)', sfx: 'lightning' },
-                
+                604: { type: 'debuff', name: 'Burn', cooldown: 10000, castStat: 2, defStat: 1, duration: 150, tickRate: 30, votType: 'dot', votAmount: 1.5, visual: 'aura', auraColor: 'rgba(255,69,0,0.8)', sfx: 'fire2' },
                 // --- DEBUFFS (Fired as Projectiles) ---
                 68: { type: 'debuff', name: 'Bad Luck Charm', cooldown: 450000, castStat: 3, defStat: 2, debuffStat: 0, duration: 3600, visual: 'aura', auraColor: 'rgba(128, 0, 128, 0.7)', color: [1,0,1], glow: '#800080', sprite2D: -46, isHoming: true, sfx: 'debuff2' },
                 12: { type: 'debuff', name: 'Bind', cooldown: 90000,  castStat: 2, defStat: 3, bind: true, duration: 600, visual: 'chains', auraColor: 'rgba(100, 100, 100, 0.8)', color: [1,1,1], glow: '#888888', sprite2D: -43, isHoming: true, sfx: 'debuff' },
@@ -2894,48 +2904,57 @@
 
                 30: { type: 'item_ward', name: 'Protect Orb', cooldown: 450000, hits: 3, visual: 'shield', auraColor: 'rgba(255, 0, 0, 0.8)', sfx: 'buff2' },
                 66: { type: 'item_ward', name: 'Armor', cooldown: 450000, hits: 3, visual: 'shield', auraColor: 'rgba(0, 255, 0, 0.8)', sfx: 'buff2' },
-                
+                // EXAMPLES OF OTHER COOL WEAPONS YOU CAN MAKE NOW:
+                1005: { type: 'item_buff', name: 'Venom Blade', cooldown: 450000, buffStat: 3, amount: 1, duration: 1800, visual: 'arc', auraColor: 'rgba(0, 255, 0, 0.6)', sfx: 'buff', 
+                    weaponProc: { id: 600, saveStat: 1, dcStat: 3 } // Applies Poison (600). Target rolls CON (1) vs Caster AGI (3)
+                },
+                1006: { type: 'item_buff', name: 'Cursed Dagger', cooldown: 450000, buffStat: 3, amount: 2, duration: 1800, visual: 'arc', auraColor: 'purple', sfx: 'buff', 
+                    weaponProc: { id: 15, saveStat: 2, dcStat: 3 } // Applies Curse (15). Target rolls INT (2) vs Caster AGI (3)
+                },
+                1007: { type: 'item_buff', name: 'Mace of Terror', cooldown: 450000, buffStat: 0, amount: 3, duration: 1800, visual: 'arc', auraColor: 'gray', sfx: 'buff', 
+                    weaponProc: { id: 58, saveStat: 2, dcStat: 0 } // Applies Intimidate (58). Target rolls INT (2) vs Caster STR (0)
+                },
                 // --- UTILITY ---
-                7: { type: 'item_chariot', name: 'Winged Boots', cooldown: 450000, sfx: 'teleport' },
-                43: { type: 'item_teleport', name: 'Teleportation Crystal', cooldown: 450000, sfx: 'warp' },
+                    7: { type: 'item_chariot', name: 'Winged Boots', cooldown: 450000, sfx: 'teleport' },
+                    43: { type: 'item_teleport', name: 'Teleportation Crystal', cooldown: 450000, sfx: 'warp' },
 
                 // --- BOOSTER PACK ITEMS ---
-                10: { type: 'item_booster', name: 'Treasure Chest', drawUntil: 'monster', cooldown: 450000, sfx: 'chime' },
-                67: { type: 'item_booster', name: 'Dragon Hoard',    drawUntil: 'monster', cooldown: 86400000, sfx: 'chime' },
-                73: { type: 'item_booster', name: 'Inheritance',    drawUntil: 'monster', cooldown: 86400000, sfx: 'chime' },
-                24: { type: 'item_booster', name: 'Scry',  boosterSize: 1, lootPool: 'spell', cooldown: 900000, sfx: 'chime' },
-                38: { type: 'item_booster', name: 'Quest Reward', boosterSize: 1, lootPool: 'any', cooldown: 450000, sfx: 'chime' },
-                41: { type: 'item_booster', name: 'Loot',  boosterSize: 1, lootPool: 'magic', cooldown: 450000, sfx: 'chime' },
-                44: { type: 'item_booster', name: 'Djinn Lamp', cooldown: 86400000, sfx: 'chime' },
-                53: { type: 'item_booster', name: 'Camp',  boosterSize: 1, lootPool: 'magic', cooldown: 86400000, sfx: 'chime' }, 
-                69: { type: 'item_booster', name: 'Charity',       boosterSize: 1, lootPool: 'magic', cooldown: 86400000, sfx: 'chime' },
-                71: { type: 'item_booster', name: 'Forge', boosterSize: 1, lootPool: 'item', cooldown: 900000, sfx: 'chime' },
+                    10: { type: 'item_booster', name: 'Treasure Chest', drawUntil: 'monster', cooldown: 450000, sfx: 'chime' },
+                    67: { type: 'item_booster', name: 'Dragon Hoard',    drawUntil: 'monster', cooldown: 86400000, sfx: 'chime' },
+                    73: { type: 'item_booster', name: 'Inheritance',    drawUntil: 'monster', cooldown: 86400000, sfx: 'chime' },
+                    24: { type: 'item_booster', name: 'Scry',  boosterSize: 1, lootPool: 'spell', cooldown: 900000, sfx: 'chime' },
+                    38: { type: 'item_booster', name: 'Quest Reward', boosterSize: 1, lootPool: 'any', cooldown: 450000, sfx: 'chime' },
+                    41: { type: 'item_booster', name: 'Loot',  boosterSize: 1, lootPool: 'magic', cooldown: 450000, sfx: 'chime' },
+                    44: { type: 'item_booster', name: 'Djinn Lamp', cooldown: 86400000, sfx: 'chime' },
+                    53: { type: 'item_booster', name: 'Camp',  boosterSize: 1, lootPool: 'magic', cooldown: 86400000, sfx: 'chime' }, 
+                    69: { type: 'item_booster', name: 'Charity',       boosterSize: 1, lootPool: 'magic', cooldown: 86400000, sfx: 'chime' },
+                    71: { type: 'item_booster', name: 'Forge', boosterSize: 1, lootPool: 'item', cooldown: 900000, sfx: 'chime' },
 
                 // --- AOE FORCE & JUDGEMENT ---
-                20: { type: 'aoe_judgement', name: 'Horn of Judgement', range: 8, cooldown: 86400000, sfx: 'buff3' },
-                39: { type: 'aoe_knockback', name: 'Dragon Wing', range: 8, cooldown: 30000, sfx: 'air2' },
-                
+                    20: { type: 'aoe_judgement', name: 'Horn of Judgement', range: 8, cooldown: 86400000, sfx: 'buff3' },
+                    39: { type: 'aoe_knockback', name: 'Dragon Wing', range: 8, cooldown: 30000, sfx: 'air2' },
+                    
                 // --- MONSTER SUMMONING SPELLS ---
-                23: { type: 'summon', name: 'Call Wisp', summonType: 23, count: 1, maxMinions: 2, cooldown: 15000, castStat: 2, sfx: 'arcane' },
-                42: { type: 'summon', name: 'Summon Shade', summonType: 42, count: 1, maxMinions: 1, cooldown: 25000, castStat: 2, sfx: 'arcane' },
-                54: { type: 'summon', name: 'Call Goblin', summonType: 54, count: 1, maxMinions: 3, cooldown: 15000, castStat: 3, sfx: 'arcane' },
-                56: { type: 'summon', name: 'Summon Imp', summonType: 56, count: 1, maxMinions: 2, cooldown: 15000, castStat: 2, sfx: 'arcane' },
-                60: { type: 'summon', name: 'Summon Pixie', summonType: 60, count: 1, maxMinions: 2, cooldown: 20000, castStat: 2, sfx: 'arcane' },
-                63: { type: 'summon', name: 'Summon Dragon', summonType: 63, count: 1, maxMinions: 1, cooldown: 120000, castStat: 2, sfx: 'arcane2' },
-                82: { type: 'summon', name: 'Raise Dead', summonType: 82, count: 2, maxMinions: 3, cooldown: 30000, castStat: 2, sfx: 'arcane' },
-                94: { type: 'summon', name: 'Lich Form', summonType: 94, count: 1, maxMinions: 1, cooldown: 90000, castStat: 2, sfx: 'arcane3' },
-                188: { type: 'summon', name: 'Tame Bear', summonType: 188, count: 1, maxMinions: 1, cooldown: 30000, castStat: 3, sfx: 'arcane' },
-                191: { type: 'summon', name: 'Tame Wolf', summonType: 191, count: 1, maxMinions: 2, cooldown: 20000, castStat: 3, sfx: 'arcane' },
-                194: { type: 'summon', name: 'Tame Boar', summonType: 194, count: 1, maxMinions: 2, cooldown: 20000, castStat: 3, sfx: 'arcane' },
-                203: { type: 'summon', name: 'Call Dullahan', summonType: 203, count: 1, maxMinions: 1, cooldown: 60000, castStat: 2, sfx: 'arcane2' },
-                206: { type: 'summon', name: 'Tame Wyvern', summonType: 206, count: 1, maxMinions: 1, cooldown: 60000, castStat: 3, sfx: 'arcane' },
-                210: { type: 'summon', name: 'Tame Scorpion', summonType: 210, count: 1, maxMinions: 2, cooldown: 15000, castStat: 3, sfx: 'arcane' },
-                213: { type: 'summon', name: 'Tame Wasp', summonType: 213, count: 2, maxMinions: 4, cooldown: 15000, castStat: 2, sfx: 'arcane' },
-                216: { type: 'summon', name: 'Tame Ant', summonType: 216, count: 2, maxMinions: 5, cooldown: 10000, castStat: 2, sfx: 'arcane' },
-                219: { type: 'summon', name: 'Tame Rat', summonType: 219, count: 2, maxMinions: 4, cooldown: 10000, castStat: 3, sfx: 'arcane' },
-                225: { type: 'summon', name: 'Tame Bunny', summonType: 225, count: 1, maxMinions: 3, cooldown: 10000, castStat: 3, sfx: 'arcane' },
-                234: { type: 'summon', name: 'Tame Squirrel', summonType: 234, count: 1, maxMinions: 3, cooldown: 10000, castStat: 3, sfx: 'arcane' },
-                240: { type: 'summon', name: 'Tame Fox', summonType: 240, count: 1, maxMinions: 2, cooldown: 15000, castStat: 3, sfx: 'arcane' }
+                    23: { type: 'summon', name: 'Call Wisp', summonType: 23, count: 1, maxMinions: 2, cooldown: 15000, castStat: 2, sfx: 'arcane' },
+                    42: { type: 'summon', name: 'Summon Shade', summonType: 42, count: 1, maxMinions: 1, cooldown: 25000, castStat: 2, sfx: 'arcane' },
+                    54: { type: 'summon', name: 'Call Goblin', summonType: 54, count: 1, maxMinions: 3, cooldown: 15000, castStat: 3, sfx: 'arcane' },
+                    56: { type: 'summon', name: 'Summon Imp', summonType: 56, count: 1, maxMinions: 2, cooldown: 15000, castStat: 2, sfx: 'arcane' },
+                    60: { type: 'summon', name: 'Summon Pixie', summonType: 60, count: 1, maxMinions: 2, cooldown: 20000, castStat: 2, sfx: 'arcane' },
+                    63: { type: 'summon', name: 'Summon Dragon', summonType: 63, count: 1, maxMinions: 1, cooldown: 120000, castStat: 2, sfx: 'arcane2' },
+                    82: { type: 'summon', name: 'Raise Dead', summonType: 82, count: 2, maxMinions: 3, cooldown: 30000, castStat: 2, sfx: 'arcane' },
+                    94: { type: 'summon', name: 'Lich Form', summonType: 94, count: 1, maxMinions: 1, cooldown: 90000, castStat: 2, sfx: 'arcane3' },
+                    188: { type: 'summon', name: 'Tame Bear', summonType: 188, count: 1, maxMinions: 1, cooldown: 30000, castStat: 3, sfx: 'arcane' },
+                    191: { type: 'summon', name: 'Tame Wolf', summonType: 191, count: 1, maxMinions: 2, cooldown: 20000, castStat: 3, sfx: 'arcane' },
+                    194: { type: 'summon', name: 'Tame Boar', summonType: 194, count: 1, maxMinions: 2, cooldown: 20000, castStat: 3, sfx: 'arcane' },
+                    203: { type: 'summon', name: 'Call Dullahan', summonType: 203, count: 1, maxMinions: 1, cooldown: 60000, castStat: 2, sfx: 'arcane2' },
+                    206: { type: 'summon', name: 'Tame Wyvern', summonType: 206, count: 1, maxMinions: 1, cooldown: 60000, castStat: 3, sfx: 'arcane' },
+                    210: { type: 'summon', name: 'Tame Scorpion', summonType: 210, count: 1, maxMinions: 2, cooldown: 15000, castStat: 3, sfx: 'arcane' },
+                    213: { type: 'summon', name: 'Tame Wasp', summonType: 213, count: 2, maxMinions: 4, cooldown: 15000, castStat: 2, sfx: 'arcane' },
+                    216: { type: 'summon', name: 'Tame Ant', summonType: 216, count: 2, maxMinions: 5, cooldown: 10000, castStat: 2, sfx: 'arcane' },
+                    219: { type: 'summon', name: 'Tame Rat', summonType: 219, count: 2, maxMinions: 4, cooldown: 10000, castStat: 3, sfx: 'arcane' },
+                    225: { type: 'summon', name: 'Tame Bunny', summonType: 225, count: 1, maxMinions: 3, cooldown: 10000, castStat: 3, sfx: 'arcane' },
+                    234: { type: 'summon', name: 'Tame Squirrel', summonType: 234, count: 1, maxMinions: 3, cooldown: 10000, castStat: 3, sfx: 'arcane' },
+                    240: { type: 'summon', name: 'Tame Fox', summonType: 240, count: 1, maxMinions: 2, cooldown: 15000, castStat: 3, sfx: 'arcane' }
             };
             const CARD_MANIFEST_DB = {
                 // --- Major Arcana (Base Summons & Story) ---
@@ -3047,7 +3066,7 @@
                     92: { name: "Fire Sword", type: "item", classes: ["Warrior", "Knight", "Mage","Rogue","Druid","Hunter","Priest"], power: 1 },
                     93: { name: "Lightning", type: "spell", classes: ["Mage","Druid","Priest"], power: 1 },
                     94: { name: "Lich", type: "monster", rank: "IX", classes: ["Mage", "Priest"], power: 45 },
-                
+                    1000: { name: "Heal", type: "spell", classes: ["Priest", "Mage", "Druid", "Knight"], power: 10 },
                 // --- Combo Cards ---
                     95: { name: "Flurry", type: "spell", classes: ["Rogue", "Hunter", "Warrior"], power: 1 },
                     96: { name: "Outlast", type: "spell", classes: ["Knight", "Warrior", "Priest"], power: 1 },
@@ -3094,7 +3113,7 @@
                     318: { name: "Ghoul", type: "monster", rank: "Six", classes: ["Rogue", "Warrior", "Mage"], power: 15 },
 
                 // --- Generic Player Fallbacks ---
-                
+
                     999: { name: "Suncat", type: "monster", rank: "I", classes: ["Knight", "Priest", "Warrior", "Mage", "Rogue","Hunter","Druid"], power: 99 },
                     28888: { name: "Trick", type: "spell", classes: ["Rogue", "Mage"], power: 5 }
                 };
@@ -5440,7 +5459,7 @@
                 this.y = y;
                 this.originx = x;
                 this.originy = y;
-
+                this.signText = 'BEWARE'
                 // Base Identity from Card Dictionary
                 this.baseCard = new Card(Math.floor(this.type), 0);
                 this.name = this.baseCard.name;
@@ -8375,7 +8394,7 @@
                 this.memory = {};
                 this.scenarioType = '';
                 this.isLoading = true;
-
+                
             // 2. PLAYER STATS, PROGRESSION & COMBAT
                 this.level = 0;
                 this.power = 100;
@@ -12375,7 +12394,12 @@
                             }
                         }
                         //mapsong to nature music timer
-                            if (outdoorMaps.includes(this.mapID)&&this.mapID != 9){
+                            if (
+                                outdoorMaps.includes(this.mapID) &&
+                                this.mapID !== 9 &&
+                                !this.inCombat &&
+                                !this.isThreatNearby
+                            ) {
                                 let songTimer = Date.now();
                                 if (songTimer - lastSongTime2 > 90000){
                                     let ransong = Math.random();
@@ -12413,7 +12437,7 @@
                                 this.combatCooldownTimer += dt;
                                 
                                 // Wait 1.0 seconds of safety before changing the music back
-                                if (this.combatCooldownTimer > 1.0) {
+                                if (this.combatCooldownTimer > 3.0) {
                                     this.inCombat = false;
                                     this.combatCooldownTimer = 0;
                                     if (typeof MusicEngine !== 'undefined') {
@@ -14406,10 +14430,18 @@
                 let pPulse = 0.5 + 0.5 * Math.sin(Date.now() / 150);
                 let dotRadius = Math.max(pSize * 0.8, 0.15); // Ensure dot doesn't vanish on huge maps
                 drawShape('arc', pDrawX, pDrawY, 1, 0, 0, dotRadius, 0, 2, 0,0,0, `rgba(0, 255, 255, ${pPulse})`, 1);                
+                
                 // 5. Footer Text
-                   drawText(0, 1, 10, 0.2, `${Math.floor(this.x)},${Math.floor(this.y)}`, 'yellow', 1, 'center');
-           
-                drawText(0, 9.3, 10, 0.35, "Tap anywhere to close", 'gray', 1, 'center');
+                drawText(0, 1, 10, 0.2, `${Math.floor(this.x)},${Math.floor(this.y)}`, 'yellow', 1, 'center');
+            
+                // --- NEW: BLINKING TELEPORT INSTRUCTION ---
+                if (this.isTeleporting) {
+                    let pulseAlpha = 0.3 + 0.7 * Math.abs(Math.sin(Date.now() / 250));
+                    drawText(0, 9.1, 10, 0.3, "CLICK AN EXPLORED TILE TO BLINK", `rgba(0, 255, 255, ${pulseAlpha})`, 1, 'center');
+                    drawText(0, 9.6, 10, 0.25, "Tap anywhere to cancel", 'gray', 1, 'center');
+                } else {
+                    drawText(0, 9.4, 10, 0.35, "Tap anywhere to close", 'gray', 1, 'center');
+                }
             }
             renderWorldOverlay() {
                 // 1. Darken the background
@@ -14497,7 +14529,14 @@
                     }
                 }
                     
-                drawText(0, 9.4, 10, 0.25, "Tap anywhere to close", 'gray', 1, 'center');
+                if (this.isTeleporting) {
+                    // Creates a pulsing alpha between 0.3 and 1.0
+                    let pulseAlpha = 0.3 + 0.7 * Math.abs(Math.sin(Date.now() / 250));
+                    drawText(0, 0.6, 10, 0.3, "CLICK A GRID SQUARE TO TELEPORT", `rgba(0, 255, 255, ${pulseAlpha})`, 1, 'center');
+                    drawText(0, 9.4, 10, 0.25, "Tap anywhere to cancel", 'gray', 1, 'center');
+                } else {
+                    drawText(0, 9.4, 10, 0.25, "Tap anywhere to close", 'gray', 1, 'center');
+                }
             }
             getContrastColor(colorStr) {
                 if (!colorStr) return '#ffffff'; // Fallback to white
@@ -14634,9 +14673,9 @@
                 ctx.imageSmoothingEnabled = false;
                 
                 // 4. Draw the live text nameplate
-                if (npc.name && npc.name !== "undefined") {
-                    drawText(3.75, 0, 2.5, .69, '' + npc.name, 'green', 1, 'center');
-                }
+                //if (npc.name && npc.name !== "undefined") {
+               //     drawText(3.75, 0, 2.5, .69, '' + npc.name, 'green', 1, 'center');
+               // }
 
                 // 5. Restore normal rendering
                 ctx = originalCtx;
@@ -14678,7 +14717,7 @@
                 offCtx.beginPath(); offCtx.arc(386, 330, 6, 0, Math.PI*2); offCtx.fill();
 
                 // 3. Draw the Custom Text
-                let signText = npc.name || "BEWARE";
+                let signText = npc.signText || "BEWARE";
                 
                 offCtx.fillStyle = '#ffffff';
                 offCtx.font = 'bold 45px Arial'; // Or whatever custom font you use
@@ -14763,17 +14802,18 @@
                     for (let i = 0; i < spriteList.length; i++) {
                         let npc = spriteList[i];
                         
+                        
+                        
+                        const spriteX = npc.x - camX;
+                        const spriteY = npc.y - camY;
+                        npc.dist = spriteX * spriteX + spriteY * spriteY;
+                        if (npc.dist >= MAX_DIST_SQ) continue;
                         // THE FIX: Check for signs alongside your dynamic NPCs
                         if (npc.role === 'sign' && npc.needsBillboardUpdate) {
                             this.cacheSignBillboard(npc);
                         } else if (npc.type === -27 && npc.needsBillboardUpdate) {
                             this.cacheDynamicNPCBillboard(npc);
                         }
-                        
-                        const spriteX = npc.x - camX;
-                        const spriteY = npc.y - camY;
-                        npc.dist = spriteX * spriteX + spriteY * spriteY;
-                        if (npc.dist >= MAX_DIST_SQ) continue;
                         let projected = projections.get(npc);
                         if (!projected) {
                             projected = { sprite: npc, transformX: 0, transformY: 0 };
@@ -14981,7 +15021,7 @@
                             const srcW = s_width * cacheW / spriteSize;
                             const srcH = drawH * cacheH / spriteSize;
 
-                            ctx.imageSmoothingEnabled = false; // Preserve current effective appearance.
+                            ctx.imageSmoothingEnabled = true; // Smooth sprite appearance retro chunky->blurry smooth
                             ctx.drawImage(
                                 srcImg,
                                 srcX, srcY, srcW, srcH,
@@ -15663,6 +15703,7 @@
                                 if (typeof socket !== 'undefined') socket.emit("battle_action", { targetId: bestTarget.socketId, actionType: "OVERWORLD_HIT", payload: { attackerStats: myStats, spellId: spellId }});
                             } else {
                                 if (bestTarget.absorbHit(this, spellId)) {
+                                    this.triggerWeaponProcs(this, bestTarget, spellId); 
                                     let pushX = this.dir === 1 ? 1 : (this.dir === 3 ? -1 : 0);
                                     let pushY = this.dir === 2 ? 1 : (this.dir === 0 ? -1 : 0);
                                     
@@ -15810,6 +15851,7 @@
                                     }
 
                                     if (target.absorbHit(this, spellId)) {
+                                        this.triggerWeaponProcs(this, target, spellId); // <--- INJECT HERE
                                         let knockPower = (spellData.knockback || 1.0) * 0.5;
                                         let pushX = dx / dist; let pushY = dy / dist;
                                         
@@ -15857,7 +15899,76 @@
                         }
                     });
                 }
-                
+                // --- FLURRY (Sequential Rapid Strikes scaling with AGI) ---
+                else if (spellData.type === 'flurry') {
+                    // 1. Calculate how many strikes based on AGI roll (Min 3, Max 9)
+                    let agiRoll = this.rollStat(3); 
+                    let strikes = Math.max(3, Math.min(9, Math.floor(agiRoll / 2)));
+                    let delayBetweenStrikes = 120; // 120ms between each sword swing
+                    
+                    // 2. Establish forward direction (just like a standard projectile)
+                    let baseDirX = 0; let baseDirY = 0;
+                    if (this.dir === 0) baseDirY = -1;
+                    else if (this.dir === 1) baseDirX = 1;
+                    else if (this.dir === 2) baseDirY = 1;
+                    else if (this.dir === 3) baseDirX = -1;
+
+                    if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('air3');
+                    this.playerAttackTimer = strikes * 10; // Keep the player in the attack animation
+
+                    // 3. Fire them sequentially!
+                    for (let i = 0; i < strikes; i++) {
+                        setTimeout(() => {
+                            if (this.isDead || this.mapID === -1) return; // Safety check if map changed
+                            
+                            // Creates a standard basic attack projectile (9999) that HOMES IN
+                            let p = new Projectile(this.x + (baseDirX * 0.25), this.y + (baseDirY * 0.25), baseDirX, baseDirY, 12.0, this.damage || 1, null, true, 9999);
+                            
+                            // Custom Flurry Flags
+                            p.isFlurry = true;
+                            p.flurryIndex = i;
+                            p.flurryMax = strikes;
+                            
+                            this.projectiles.push(p);
+                            if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('slash');
+                            
+                            // Optional: Broadcast the rapid strikes to multiplayer!
+                            if (typeof socket !== 'undefined') {
+                                socket.emit("player_fires_projectile", {
+                                    mapID: this.mapID, spellId: 9999,
+                                    startX: p.x, startY: p.y, dirX: baseDirX, dirY: baseDirY, speed: 12.0
+                                });
+                            }
+                        }, i * delayBetweenStrikes);
+                    }
+
+                    this.skillCooldowns[spellId] = Date.now() + (spellData.cooldown || 3000);
+                    if (typeof this.updateSkills === 'function') this.updateSkills();
+                }
+                // --- GRAVITY WELL (Lingering AoE Pull, DoT, STR Bind & AGI Resistance) ---
+                else if (spellData.type === 'gravity') {
+                    // 1. Roll INT for duration (1 point = 0.5 seconds of duration, min 3 seconds)
+                    let intRoll = Math.max(1, this.rollStat(2));
+                    let duration = Math.max(3.0, intRoll * 0.5);
+
+                    // 2. Establish forward launch vector
+                    let baseDirX = 0; let baseDirY = 0;
+                    if (this.dir === 0) baseDirY = -1;
+                    else if (this.dir === 1) baseDirX = 1;
+                    else if (this.dir === 2) baseDirY = 1;
+                    else if (this.dir === 3) baseDirX = -1;
+
+                    let targetX = this.x + (baseDirX * 3.0);
+                    let targetY = this.y + (baseDirY * 3.0);
+
+                    // 3. Spawn the Gravity Well Projectile/Zone
+                    let well = new GravityWell(this.x, this.y, duration, this, spellId, this);
+                    this.projectiles.push(well);
+
+                    if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('arcane3');
+                    this.skillCooldowns[spellId] = Date.now() + (spellData.cooldown || 15000);
+                    if (typeof this.updateSkills === 'function') this.updateSkills();
+                }
                 // --- BOOSTER PACKS & UTILITY ---
                 else if (spellData.type === 'item_booster') {
                     this.openBoosterPack(spellId); 
@@ -15865,8 +15976,8 @@
                 }
                 else if (spellData.type === 'item_teleport') {
                     if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('warp');
-                    if (this.mapID === -1) this.loadMap(this.prevMap); 
-                    else this.loadMap(-1); 
+                    this.isViewingWorld = true; // Opens the World Atlas overlay!
+                    this.isTeleporting = true;
                 }
                 else if (spellData.type === 'item_chariot') {
                     this.ghost = true;
@@ -15888,35 +15999,45 @@
                     }]);
                 }
                 
-                // --- CONSUMABLE ITEMS (Item Buff / Ward) ---
+                // --- CONSUMABLE ITEMS (Item Buff / Ward / Cleansing & Healing) ---
                 else if (spellData.type === 'item_buff' || spellData.type === 'item_ward') {
                     let magnitude = spellData.amount || 1; 
                     
-                    if (spellId === 25 || spellData.name === 'Elixer') {
-                        if (this.currentWards !== undefined && this.maxWards !== undefined) {
-                            this.currentWards = this.maxWards;
+                    // --- ELIXIR: Cleanse debuffs, +1 to all stats, restore 33% (1 ward) of time ---
+                    if (spellId === 25 || spellData.name === 'Elixir') {
+                        // 1. Cleanse negative/debuff effects
+                        if (this.activeBuffs) {
+                            this.activeBuffs = this.activeBuffs.filter(b => b.type !== 'debuff');
                         }
 
-                        const cleanseAndRestore = (entity) => {
-                            if (!entity.activeBuffs) return;
-                            for (let i = entity.activeBuffs.length - 1; i >= 0; i--) {
-                                let b = entity.activeBuffs[i];
-                                if (b.type === 'debuff') {
-                                    entity.activeBuffs.splice(i, 1); // Subtraction math removed!
-                                }
-                                else if (b.type === 'ward' || b.type === 'item_ward') {
-                                    let originalSpell = Object.values(SPELL_REGISTRY).find(s => s.name === b.name);
-                                    if (originalSpell && originalSpell.hits) b.hits = originalSpell.hits;
-                                }
-                            }
-                        };
+                        // 2. Give +1 temporary buff to all 4 stats (STR, CON, INT, AGI)
+                        for (let s = 0; s < 4; s++) {
+                            this.applySpell(22, 1); // Applies a minor attribute boost payload
+                        }
 
-                        cleanseAndRestore(this);
-                        this.npcs.forEach(npc => {
-                            if (!npc.isDead && npc.alignment === 'ally') cleanseAndRestore(npc);
-                        });
+                        // 3. Restore 33% of max ward time (Equivalent to 1 full ward segment)
+                        if (this.maxWards !== undefined && this.timePerWard !== undefined) {
+                            let maxTotalTime = this.maxWards * this.timePerWard;
+                            let singleWardValue = maxTotalTime / 3;
+                            this.currentWardTime = Math.min(maxTotalTime, (this.currentWardTime || 0) + singleWardValue);
+                        }
                     }
 
+                    // --- SOLAR RITE: Dispels all effects, cleanses binds/DoTs, restores health/ward to full ---
+                    else if (spellId === 19 || spellData.name === 'Solar Rite') {
+                        // 1. Completely wipe all active buffs and debuffs (Total Dispel)
+                        this.activeBuffs = [];
+
+                        // 2. Restore total ward time back to absolute maximum (Heal to full)
+                        if (this.maxWards !== undefined && this.timePerWard !== undefined) {
+                            this.currentWardTime = this.maxWards * this.timePerWard;
+                        }
+
+                        // 3. Reset any shattered/cooldown ward states
+                        this.wardShatterCooldown = 0;
+                    }
+
+                    // Standard item application for everything else
                     this.applySpell(spellId, magnitude); 
                     
                     this.npcs.forEach(npc => {
@@ -15940,7 +16061,74 @@
                         }
                     }
 
-                    if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX(spellData.sfx || 'heal')
+                    if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX(spellData.sfx || 'heal');
+                    if (typeof globalParticles !== 'undefined') {
+                        for (let p = 0; p < 8; p++) {
+                            spawnParticle(this.x + (Math.random() - 0.5) * 0.8, this.y + (Math.random() - 0.5) * 0.8, '#00ffff', 'sparkle');
+                        }
+                    }
+                }
+                // --- DYNAMIC HEALING SPELL (AoE INT + AGI) ---
+                else if (spellData.type === 'heal') {
+                    // 1. Calculate Heal Power (INT + AGI)
+                    let intRoll = Math.max(1, this.rollStat(2)); // INT
+                    let agiRoll = Math.max(1, this.rollStat(3)); // AGI
+                    let healPower = intRoll + agiRoll;
+                    
+                    // 2. Calculate Restored Time (e.g., 0.25 seconds of ward per point)
+                    let restoredTime = healPower * 0.25;
+                    
+                    // 3. Dynamic Cooldown (Base 8s + 0.5s per point of healing power)
+                    let dynamicCooldown = 8000 + (healPower * 500);
+                    this.skillCooldowns[spellId] = Date.now() + dynamicCooldown;
+
+                    // Helper to apply the flat time restoration
+                    const applyHeal = (entity) => {
+                        if (entity.maxWards !== undefined && entity.timePerWard !== undefined) {
+                            let maxTime = entity.maxWards * entity.timePerWard;
+                            entity.currentWardTime = Math.min(maxTime, (entity.currentWardTime || 0) + restoredTime);
+                            entity.wardShatterCooldown = 0; // Clears shatter penalty!
+                        }
+                    };
+
+                    // Apply to Player
+                    applyHeal(this);
+
+                    // Apply to Allies in Range
+                    let healRange = spellData.range || 5.0;
+                    this.npcs.forEach(npc => {
+                        if (!npc.isDead && npc.alignment === 'ally') {
+                            let dx = npc.x - this.x; let dy = npc.y - this.y;
+                            if (Math.sqrt(dx*dx + dy*dy) <= healRange) {
+                                applyHeal(npc);
+                                npc.damageFlashTimer = 3; 
+                            }
+                        }
+                    });
+
+                    // Network Sync
+                    if (window.remotePlayers && typeof socket !== 'undefined') {
+                        for (let id in window.remotePlayers) {
+                            let rp = window.remotePlayers[id];
+                            if (rp.mapID === this.mapID && !rp.isDead && (!this.hostilePlayers || !this.hostilePlayers.has(id))) {
+                                let dx = rp.x - this.x; let dy = rp.y - this.y;
+                                if (Math.sqrt(dx*dx + dy*dy) <= healRange) { 
+                                    socket.emit("battle_action", {
+                                        targetId: id, actionType: "OVERWORLD_SPELL",
+                                        payload: { spellId: spellId, magnitude: restoredTime, knockX: 0, knockY: 0 } // Send restored time as magnitude!
+                                    });
+                                }
+                            }
+                        }
+                    }
+
+                    // Visuals
+                    if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX(spellData.sfx || 'heal');
+                    if (typeof globalParticles !== 'undefined') {
+                        let pColor = spellData.auraColor || '#00ffaa';
+                        for (let p = 0; p < 12; p++) spawnParticle(this.x + (Math.random() - 0.5) * 1.5, this.y + (Math.random() - 0.5) * 1.5, pColor, 'sparkle');
+                    }
+                    if (typeof this.updateSkills === 'function') this.updateSkills();
                 }
             }
             applySpell(spellId, magnitude = 1) {
@@ -15971,20 +16159,77 @@
                 // Simply push it to the active pool. No base stat mutation!
                 this.activeBuffs.push(newEffect);
             }
+            triggerWeaponProcs(caster, target, spellId) {
+                let spellData = SPELL_REGISTRY[spellId];
+                if (!spellData) return;
+
+                let procsToApply = [];
+
+                // 1. Spells with INNATE procs (e.g., Fireball applies Burn, Lightning applies Stun)
+                if (spellData.procs) {
+                    procsToApply.push(...spellData.procs);
+                }
+
+                // 2. Weapon Imbues / Buffs (Only apply these if using a physical/melee attack)
+                // 9999 = Basic Attack, 9998 = Imbued Attack, 51/52/59/65 = Assassin/Knight Melee, 95 = Flurry
+                let isPhysical = [9999, 9998, 51, 52, 59, 65, 95].includes(spellId);
+                
+                if (isPhysical && caster.activeBuffs) {
+                    caster.activeBuffs.forEach(buff => {
+                        if (buff.weaponProc) procsToApply.push(buff.weaponProc);
+                    });
+                }
+
+                // 3. Roll saves and apply the status effects!
+                procsToApply.forEach(proc => {
+                    // Get the caster's roll (e.g., INT for spells, STR for swords)
+                    let dcRoll = typeof caster.rollStat === 'function' 
+                        ? caster.rollStat(proc.dcStat !== undefined ? proc.dcStat : 2) 
+                        : resolveStatRoll(caster, proc.dcStat || 2);
+                        
+                    // Get the target's save roll (e.g., CON for poison/burn, INT for curses)
+                    let saveRoll = typeof target.rollStat === 'function' 
+                        ? target.rollStat(proc.saveStat !== undefined ? proc.saveStat : 1) 
+                        : resolveStatRoll(target, proc.saveStat || 1);
+
+                    // If the attacker overcomes the defender's save, apply the debuff!
+                    if (dcRoll > saveRoll) {
+                        let magnitude = Math.max(1, dcRoll - saveRoll);
+                        target.applySpell(proc.id, magnitude);
+                        target.damageFlashTimer = 3;
+                        
+                        // Spawn some visual effects so the player knows the proc landed
+                        if (typeof globalParticles !== 'undefined') {
+                            let pColor = SPELL_REGISTRY[proc.id] ? (SPELL_REGISTRY[proc.id].auraColor || '#ff0000') : '#ff0000';
+                            for (let p = 0; p < 6; p++) spawnParticle(target.x, target.y + 0.5, pColor, 'smoke');
+                        }
+                    }
+                });
+            }
             openBoosterPack(spellId) {
                 let spellData = SPELL_REGISTRY[spellId];
                 let pulledCardIDs = [];
-
-                // --- DJINN LAMP INTERCEPT ---
-                // If they use the Djinn Lamp, skip the RNG and open the Wish menu!
-                if (spellId === 44) {
-                    if(typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('buff2');
-                    startGame = 'djinn_lamp'; // Triggers your custom UI render loop
-                    // We will need a variable to track what page of the wish grid they are on
-                    window.djinnPage = 0; 
-                    return; 
-                }
-
+                
+                    // --- DJINN LAMP INTERCEPT ---
+                    // If they use the Djinn Lamp, skip the RNG and open the Wish menu!
+                    if (spellId === 44) {
+                        if(typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('buff2');
+                        startGame = 'djinn_lamp'; // Triggers your custom UI render loop
+                        // We will need a variable to track what page of the wish grid they are on
+                        window.djinnPage = 0; 
+                        return; 
+                    }
+                    // --- CAMP HEAL INTERCEPT ---
+                    if (spellId === 53 || (spellData && spellData.name === 'Camp')) {
+                        if (this.maxWards !== undefined && this.timePerWard !== undefined) {
+                            // Restore exactly 1 Ward of time!
+                            let maxTotalTime = this.maxWards * this.timePerWard;
+                            this.currentWardTime = Math.min(maxTotalTime, (this.currentWardTime || 0) + this.timePerWard);
+                            if (typeof globalParticles !== 'undefined') {
+                                for (let p = 0; p < 5; p++) spawnParticle(this.x + (Math.random() - 0.5), this.y + (Math.random() - 0.5), '#00ff00', 'sparkle');
+                            }
+                        }
+                    }
                 // 1. Dynamically sort ALL cards into pools
                 let allMonsters = [];
                 let allItems = [];
@@ -16104,6 +16349,7 @@
                     flatMod + activeMod
                 );
             }
+
         //NPC
             spawnPersistentNPC(targetMapID, index, x, y, type, state = 'stationary', color = '#ffffff', deck = [], dialogue = null, rewardCard = null, role = 'battle', options = null, isBoss = null, alignment = 'friendly', endActions = [], deathActions = [], isCinematic = false,yesActions = null, noActions = null) {    
                     
@@ -17614,6 +17860,7 @@
                     }
                 }
             endDialogue(killSpeaker = false, actions = []) {
+                actions = this.cloneEventActions(actions);
                 this.dCounter = 0; 
                 
                 if (this.savedViewMode) window.gameViewMode = this.savedViewMode;
@@ -17662,11 +17909,30 @@
                 // RESUME THE QUEUE
                 this.processNextAction();
                 }
+            cloneEventActions(actions, speaker = this.currentSpeaker) {
+                const copy = value => Array.isArray(value) ? value.map(copy) :
+                    value && typeof value === 'object' ? Object.fromEntries(Object.entries(value).map(([k,v]) => [k, copy(v)])) : value;
+                const cloned = copy(actions || []);
+                for (const action of cloned) {
+                    if (!Array.isArray(action)) continue;
+                    if (speaker && ['disappear', 'start_battle', 'trigger_dialogue'].includes(action[0]) && action[1] == null) action[1] = speaker.index;
+                    if (speaker && ['transform_npc', 'inject_dialogue'].includes(action[0]) && action[1] && action[1].index == null) action[1].index = speaker.index;
+                }
+                return cloned;
+            }
+            chooseDialogueActions(actions) {
+                // The chosen branch precedes the suspended script. Resume exactly once.
+                const branch = this.cloneEventActions(actions && actions.length ? actions : [['close_dialogue', null]]);
+                if (typeof btnYes !== 'undefined') btnYes.visible = false;
+                if (typeof btnNo !== 'undefined') btnNo.visible = false;
+                this.actionQueue.unshift(...branch);
+                this.processNextAction();
+            }
             executeActions(actions) {
                 if (!actions || actions.length === 0) return;
                 
                 // Push new actions to the END of the queue
-                this.actionQueue.push(...actions);
+                this.actionQueue.push(...this.cloneEventActions(actions));
                 
                 // If the engine isn't currently processing a script, kick it off!
                 if (!this.isProcessingActions) {
@@ -17675,7 +17941,7 @@
                 }
 
             processNextAction() {
-                // If the queue is empty, shut down the processor and return to normal gameplay
+                while (true) {
                     if (this.actionQueue.length === 0) {
                         this.isProcessingActions = false;
                         if (startGame === 'dialogue' && !this.currentSpeaker) {
@@ -17691,6 +17957,10 @@
 
                     this.isProcessingActions = true;
                     let currentAction = this.actionQueue.shift(); // Pull the first action off the queue
+                    if (!Array.isArray(currentAction) || typeof currentAction[0] !== 'string') {
+                        console.warn('Skipping malformed event action', currentAction);
+                        continue;
+                    }
                     let actionType = currentAction[0];
                     let payload = currentAction[1];
                     
@@ -17870,6 +18140,8 @@
                             }
 
                             // Macro Translations
+                            if (spawnArgs[2] === 'PLAYER_X+1') spawnArgs[2] = this.x + 1;
+                            if (spawnArgs[2] === 'PLAYER_X-1') spawnArgs[2] = this.x - 1;
                             if (spawnArgs[2] === 'PLAYER_X') spawnArgs[2] = this.x;
                             if (spawnArgs[3] === 'PLAYER_Y') spawnArgs[3] = this.y;
                             if (spawnArgs[3] === 'PLAYER_Y-1') spawnArgs[3] = this.y-1;
@@ -18024,7 +18296,9 @@
                     // --- COMBAT & EVENTS ---
                         case 'start_battle':
                             isBlocking = true;
-                            let enemy = this.npcs.find(n => n.index === payload);
+                            let enemy = payload == null
+                                ? this.currentSpeaker
+                                : this.npcs.find(n => n.index === payload);
                             if (enemy) {
                                 this.currentSpeaker = null;
                                 enemy.customDialogue = null; enemy.dialogueFactory = null;
@@ -18238,7 +18512,7 @@
                                 isBlocking = true;
                                 this.currentSpeaker.dialogueFactory = null;
                                 this.currentSpeaker.customDialogue = payload.text;
-                                this.currentSpeaker.rewardCard = payload.rewardCard || null;
+                                this.currentSpeaker.rewardCard = payload.rewardCard ?? null;
                                 this.currentSpeaker.endActions = payload.endActions || [];
                                 this.currentSpeaker.options = payload.options || null;       
                                 this.currentSpeaker.yesActions = payload.yesActions || null; 
@@ -18249,12 +18523,14 @@
                             break;
                             
                         case 'inject_dialogue':
-                            let injNPC = payload.index ? this.npcs.find(n => n.index === payload.index) : this.currentSpeaker;
+                            let injNPC = payload.index != null
+                                ? this.npcs.find(n => n.index === payload.index)
+                                : this.currentSpeaker;
                             if (injNPC) {
                                 isBlocking = true;
                                 injNPC.dialogueFactory = null; 
                                 injNPC.customDialogue = payload.text;
-                                injNPC.rewardCard = payload.rewardCard || null;
+                                injNPC.rewardCard = payload.rewardCard ?? null;
                                 injNPC.endActions = payload.endActions || [];
                                 injNPC.options = payload.options || null;       
                                 injNPC.yesActions = payload.yesActions || null; 
@@ -18791,13 +19067,12 @@
                             
                             break;
                         }
-            }
+                }
 
-                // If the action was instantaneous, immediately fire the next one!
-                if (!isBlocking) {
-                    this.processNextAction();
-                }
-                }
+                // Continue instantaneous actions; completion handlers resume blocking ones.
+                if (isBlocking) return;
+                } // while
+            } // processNextAction
             shuffleSpells() {
                 // 1. CALCULATE TIER HELPER (d4=0, d6=1, d8=2, d10=3, d12=4, d20=5)
                 const getDiceTier = (sides) => {
@@ -20784,13 +21059,19 @@
             this.pathTimer = 0; 
             this.zHeight = 0; 
             
-            // --- PURE 2D CACHED SPRITE MAPPING ---
+            // Flurry Flags
+            this.isFlurry = false;
+            this.flurryIndex = 0;
+            this.flurryMax = 0;
+
             this.type = spellData.sprite2D !== undefined ? spellData.sprite2D : (spellId !== undefined ? spellId : -37);
         }
 
         update(exploreRef, dt) {
             if (!this.active) return;
             
+            let caster = this.owner || exploreRef; 
+
             if (this.exploding) {
                 this.radius *= 1.5; 
                 this.explodeTimer--;
@@ -20798,23 +21079,22 @@
                 return; 
             }
 
-            let isSuncat = (this.owner !== null && (this.owner.type === 0 || this.owner.type === 61391 || this.owner.name === 'Suncat'));
-            let caster = this.owner || exploreRef; 
-
             const getCasterDice = (statIdx) => {
                 if (caster && typeof caster.getEffectiveDice === 'function') return caster.getEffectiveDice(statIdx);
                 return { numDice: 1, diceSides: 4, flatMod: 0 }; 
             };
 
-            let cIntDice = getCasterDice(2);
-            let intScore = (cIntDice.numDice * cIntDice.diceSides) + cIntDice.flatMod;
-            let intMultiplier = Math.max(0.2, 1.0 + ((intScore - 4) * 0.05));
+            let isSuncat = (this.owner !== null && (this.owner.type === 0 || this.owner.type === 61391 || this.owner.name === 'Suncat'));
 
-            // 1. ACQUIRE TARGET & CALCULATE PATH
+            // 1. ACQUIRE TARGET & CALCULATE PATH (Homing Logic Unchanged)
             if ((isSuncat || (this.owner === null && this.isHoming))) {
+                // ... (Keep all your existing homing/pathfinding logic exactly the same here)
                 if (!this.targetNPC || this.targetNPC.isDead) {
                     let closestDistSq = Infinity;
                     let bestPath = null;
+                    let cIntDice = getCasterDice(2);
+                    let intScore = (cIntDice.numDice * cIntDice.diceSides) + cIntDice.flatMod;
+                    let intMultiplier = Math.max(0.2, 1.0 + ((intScore - 4) * 0.05));
                     let radarRange = 15 * intMultiplier; 
                     let radarRangeSq = radarRange * radarRange;
 
@@ -20830,8 +21110,7 @@
                         if (!isEnemy) continue; 
                         if (this.targetType !== 'all' && npc.type !== this.targetType) continue;
 
-                        let dx = npc.x - this.x;
-                        let dy = npc.y - this.y;
+                        let dx = npc.x - this.x; let dy = npc.y - this.y;
                         let dSq = dx * dx + dy * dy;
                         
                         if (dSq < radarRangeSq && dSq < closestDistSq) { 
@@ -20880,8 +21159,7 @@
                     }
 
                     if (steerX !== undefined && steerY !== undefined) {
-                        let dx = steerX - this.x;
-                        let dy = steerY - this.y;
+                        let dx = steerX - this.x; let dy = steerY - this.y;
                         let dist = Math.sqrt(dx * dx + dy * dy);
                         
                         if (dist > 0) {
@@ -20907,7 +21185,7 @@
             
             let distTraveled = Math.sqrt(Math.pow(this.x - this.startX, 2) + Math.pow(this.y - this.startY, 2));
             if (distTraveled >= this.maxRange) {
-                this.triggerExplosion();
+                this.triggerExplosion(exploreRef, caster);
                 return;
             }
             
@@ -20916,7 +21194,7 @@
 
             if (mapX <= 0 || mapX >= exploreRef.maze[0].length - 1 || 
                 mapY <= 0 || mapY >= exploreRef.maze.length - 1) {
-                this.triggerExplosion();
+                this.triggerExplosion(exploreRef, caster);
                 return;
             }
 
@@ -20938,34 +21216,21 @@
                         if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('earth', this.x, this.y, exploreRef.x, exploreRef.y, exploreRef.dir);
                     }
                 }
-                this.triggerExplosion();
+                this.triggerExplosion(exploreRef, caster);
                 return;
             }
 
-            // Enemy/Player Collision checks follow below unchanged...
+            // Enemy/Player Collision checks
             let canHitPlayer = (this.owner === null && !isSuncat) || (this.owner && this.owner.alignment === 'foe');
             if (canHitPlayer) {
                 let dx = this.x - exploreRef.x;
                 let dy = this.y - exploreRef.y;
                 
                 if (Math.sqrt(dx * dx + dy * dy) < this.radius + 0.3) {
-                    this.triggerExplosion();
+                    this.triggerExplosion(exploreRef, caster);
                     if (this.owner && typeof startGame !== 'undefined' && startGame === 'explore') {
                         if (exploreRef.absorbHit(this.owner, this.spellId)) {
-                            let spellData = typeof SPELL_REGISTRY !== 'undefined' && SPELL_REGISTRY[this.spellId] ? SPELL_REGISTRY[this.spellId] : {};
-                            let baseKb = spellData.knockback !== undefined ? spellData.knockback : 0.5;
-                            let kbResist = 1.0;
-                            if (exploreRef.getEffectiveDice) {
-                                let pStrDice = exploreRef.getEffectiveDice(0);
-                                let pStrScore = (pStrDice.numDice * pStrDice.diceSides) + pStrDice.flatMod;
-                                kbResist = Math.max(0.2, 1.0 - ((pStrScore - 4) * 0.05));
-                            }
-                            let kbPower = baseKb * kbResist;
-                            let pushX = this.vx / this.baseSpeed;
-                            let pushY = this.vy / this.baseSpeed;
-                            if (typeof exploreRef.applyKnockback === 'function') {
-                                exploreRef.applyKnockback(pushX, pushY, kbPower);
-                            }
+                            // Hit player
                         } else {
                             exploreRef.killPlayer('spell', this.owner);
                         }
@@ -20995,35 +21260,93 @@
                             if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('debuff', this.x, this.y, exploreRef.x, exploreRef.y, exploreRef.dir);
                         } else {
                             if (npc.absorbHit(caster, this.spellId)) {
-                                npc.damageFlashTimer = 3;
-                                let baseKb = spellData.knockback !== undefined ? spellData.knockback : 0.5;
-                                let kbResist = 1.0;
-                                if (npc.getEffectiveDice) {
-                                    let nStrDice = npc.getEffectiveDice(0);
-                                    let nStrScore = (nStrDice.numDice * nStrDice.diceSides) + nStrDice.flatMod;
-                                    kbResist = Math.max(0.2, 1.0 - ((nStrScore - 4) * 0.05));
-                                }
-                                let knockPower = baseKb * kbResist;
-                                let pushX = this.vx / this.baseSpeed;
-                                let pushY = this.vy / this.baseSpeed;
-                                let maxPushSteps = Math.floor(knockPower * 4); 
-                                let pushed = 0, testX = npc.x, testY = npc.y;
                                 
-                                while (pushed < maxPushSteps) {
-                                    let nextX = testX + pushX * 0.25; 
-                                    let nextY = testY + pushY * 0.25;
-                                    let bufferX = pushX > 0 ? 0.3 : (pushX < 0 ? -0.3 : 0);
-                                    let bufferY = pushY > 0 ? 0.3 : (pushY < 0 ? -0.3 : 0);
+                                // PROCS!
+                                if (exploreRef.triggerWeaponProcs) exploreRef.triggerWeaponProcs(caster, npc, this.spellId); 
+                                
+                                npc.damageFlashTimer = 3;
+                                
+                                // ==========================================
+                                // --- CUSTOM FLURRY KNOCKBACK MATH ---
+                                // ==========================================
+                                if (this.isFlurry) {
+                                    let pStr = typeof caster.rollStat === 'function' ? caster.rollStat(0) : resolveStatRoll(caster, 0);
+                                    let tCon = resolveStatRoll(npc, 1);
+                                    
+                                    // Calculate addition for this strike (scale down so 1 point = 0.15 tiles)
+                                    let kbAddition = Math.max(0, (pStr - tCon) * 0.15);
+                                    npc.flurryKbPool = (npc.flurryKbPool || 0) + kbAddition;
 
-                                    if (exploreRef.isWall(Math.floor(nextX + bufferX), Math.floor(nextY + bufferY))) break; 
-                                    testX = nextX; testY = nextY; pushed++;
+                                    // Only do the massive knockback save on the FINAL strike!
+                                    if (this.flurryIndex === this.flurryMax - 1) {
+                                        let totalKb = npc.flurryKbPool;
+                                        npc.flurryKbPool = 0; // Reset
+                                        
+                                        // Final Enemy Mitigation Save (CON + STR)
+                                        let finalTCon = resolveStatRoll(npc, 1);
+                                        let finalTStr = resolveStatRoll(npc, 0);
+                                        let enemySave = finalTCon + finalTStr;
+
+                                        // Apply reduction
+                                        let finalPush = Math.max(0, totalKb - (enemySave * 0.05));
+
+                                        if (finalPush > 0) {
+                                            let pushX = this.vx / this.baseSpeed;
+                                            let pushY = this.vy / this.baseSpeed;
+                                            
+                                            let maxPushSteps = Math.floor(finalPush * 4); 
+                                            let pushed = 0, testX = npc.x, testY = npc.y;
+                                            while (pushed < maxPushSteps) {
+                                                let nextX = testX + pushX * 0.25; 
+                                                let nextY = testY + pushY * 0.25;
+                                                let bufferX = pushX > 0 ? 0.3 : (pushX < 0 ? -0.3 : 0);
+                                                let bufferY = pushY > 0 ? 0.3 : (pushY < 0 ? -0.3 : 0);
+                                                if (exploreRef.isWall(Math.floor(nextX + bufferX), Math.floor(nextY + bufferY))) break; 
+                                                testX = nextX; testY = nextY; pushed++;
+                                            }
+
+                                            npc.slideTargetX = testX;
+                                            npc.slideTargetY = testY;
+                                            npc.isSliding = true;
+                                            npc.state = 'chasing';
+                                            npc.combatCooldown = 20;
+                                        } else {
+                                            if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('block');
+                                        }
+                                    }
+                                } else {
+                                    // ==========================================
+                                    // --- STANDARD KNOCKBACK ---
+                                    // ==========================================
+                                    let baseKb = spellData.knockback !== undefined ? spellData.knockback : 0.5;
+                                    let kbResist = 1.0;
+                                    if (npc.getEffectiveDice) {
+                                        let nStrDice = npc.getEffectiveDice(0);
+                                        let nStrScore = (nStrDice.numDice * nStrDice.diceSides) + nStrDice.flatMod;
+                                        kbResist = Math.max(0.2, 1.0 - ((nStrScore - 4) * 0.05));
+                                    }
+                                    let knockPower = baseKb * kbResist;
+                                    let pushX = this.vx / this.baseSpeed;
+                                    let pushY = this.vy / this.baseSpeed;
+                                    let maxPushSteps = Math.floor(knockPower * 4); 
+                                    let pushed = 0, testX = npc.x, testY = npc.y;
+                                    
+                                    while (pushed < maxPushSteps) {
+                                        let nextX = testX + pushX * 0.25; 
+                                        let nextY = testY + pushY * 0.25;
+                                        let bufferX = pushX > 0 ? 0.3 : (pushX < 0 ? -0.3 : 0);
+                                        let bufferY = pushY > 0 ? 0.3 : (pushY < 0 ? -0.3 : 0);
+                                        if (exploreRef.isWall(Math.floor(nextX + bufferX), Math.floor(nextY + bufferY))) break; 
+                                        testX = nextX; testY = nextY; pushed++;
+                                    }
+
+                                    npc.slideTargetX = testX;
+                                    npc.slideTargetY = testY;
+                                    npc.isSliding = true;
+                                    npc.state = 'chasing';
+                                    npc.combatCooldown = 13; 
                                 }
 
-                                npc.slideTargetX = testX;
-                                npc.slideTargetY = testY;
-                                npc.isSliding = true;
-                                npc.state = 'chasing';
-                                npc.combatCooldown = 13; 
                             } else {
                                 npc.damageFlashTimer = 3;
                                 exploreRef.killNPC(npc, false, 'projectile_spell');
@@ -21031,12 +21354,17 @@
                             }
                         }
                         
-                        this.triggerExplosion();
+                        this.triggerExplosion(exploreRef, caster);
                         
+                        // Chains logic
                         if (this.chainsLeft > 0) {
                             this.hitTargets.add(npc);
                             let nextTarget = null;
                             let closestDistSq = Infinity;
+                            
+                            let cIntDice = getCasterDice(2);
+                            let intScore = (cIntDice.numDice * cIntDice.diceSides) + cIntDice.flatMod;
+                            let intMultiplier = Math.max(0.2, 1.0 + ((intScore - 4) * 0.05));
                             let chainRadius = 5 * intMultiplier; 
                             let chainRadiusSq = chainRadius * chainRadius;
 
@@ -21049,10 +21377,8 @@
                                 else if (typeof this.owner.alignment === 'string' && this.owner.alignment.startsWith('foe')) isEnemyToCaster = (potentialTarget.alignment === 'ally' || potentialTarget.alignment === 'defender'); 
 
                                 if (isEnemyToCaster) {
-                                    let dx = potentialTarget.x - this.x;
-                                    let dy = potentialTarget.y - this.y;
+                                    let dx = potentialTarget.x - this.x; let dy = potentialTarget.y - this.y;
                                     let dSq = dx * dx + dy * dy;
-
                                     if (dSq < chainRadiusSq && dSq < closestDistSq) {
                                         closestDistSq = dSq;
                                         nextTarget = potentialTarget;
@@ -21061,8 +21387,7 @@
                             }
 
                             if (nextTarget) {
-                                let dx = nextTarget.x - this.x;
-                                let dy = nextTarget.y - this.y;
+                                let dx = nextTarget.x - this.x; let dy = nextTarget.y - this.y;
                                 let dist = Math.sqrt(dx * dx + dy * dy);
                                 
                                 let chainProj = new Projectile(this.x, this.y, dx/dist, dy/dist, this.baseSpeed, this.damage, this.owner, true, this.spellId);
@@ -21078,11 +21403,47 @@
             }
         }
 
-        triggerExplosion() {
+        triggerExplosion(exploreRef, caster) {
             this.exploding = true;
             this.vx = 0; 
             this.vy = 0;
             this.type = 98; 
+            
+            // ==========================================
+            // --- FIREBALL AoE LOGIC ---
+            // ==========================================
+            if ((this.spellId === 26 || this.spellId === 9998) && exploreRef) {
+                let actualCaster = caster || exploreRef; 
+                let intRoll = typeof actualCaster.rollStat === 'function' ? actualCaster.rollStat(2) : resolveStatRoll(actualCaster, 2);
+                
+                // If they rolled above a 9, BOOM!
+                if (intRoll > 9) {
+                    if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('fire3');
+                    
+                    if (typeof globalParticles !== 'undefined') {
+                        for(let p = 0; p < 15; p++) spawnParticle(this.x + (Math.random() - 0.5) * 3, this.y + (Math.random() - 0.5) * 3, '#ff4500', 'smoke');
+                    }
+
+                    // Apply splash damage to everyone within 2.5 tiles
+                    exploreRef.npcs.forEach(n => {
+                        if (n.isDead || !n.visible || n === this.targetNPC) return; 
+                        
+                        let isEnemy = false;
+                        if (this.owner === null) isEnemy = (typeof n.alignment === 'string' && n.alignment.startsWith('foe')); 
+                        else if (this.owner.alignment === 'ally' || this.owner.alignment === 'defender') isEnemy = (typeof n.alignment === 'string' && n.alignment.startsWith('foe')); 
+                        else if (typeof this.owner.alignment === 'string' && this.owner.alignment.startsWith('foe')) isEnemy = (n.alignment === 'ally' || n.alignment === 'defender'); 
+
+                        if (isEnemy) {
+                            let dx = n.x - this.x; let dy = n.y - this.y;
+                            if (dx * dx + dy * dy <= 6.25) { // 2.5 tile radius
+                                n.absorbHit(actualCaster, this.spellId);
+                                if (exploreRef.triggerWeaponProcs) exploreRef.triggerWeaponProcs(actualCaster, n, this.spellId);
+                                n.damageFlashTimer = 3;
+                            }
+                        }
+                    });
+                }
+            }
         }
     }
     class WeatherSystem {
@@ -21527,6 +21888,118 @@
                     ctx.stroke();
                 }
                 ctx.shadowBlur = 0;
+            }
+        }
+    }
+    class GravityWell {
+        constructor(x, y, duration, owner, spellId, exploreRef) {
+            this.active = true;
+            this.duration = duration;
+            this.maxDuration = duration;
+            this.owner = owner;
+            this.spellId = spellId;
+            this.type = -47; 
+            this.radius = 0.2; 
+            this.maxRadius = 3.5; 
+            this.tickTimer = 0;
+
+            // --- HOMING TARGET ACQUISITION ---
+            let targetX = x;
+            let targetY = y;
+            if (exploreRef && exploreRef.npcs) {
+                let closest = null;
+                let minDist = Infinity;
+                exploreRef.npcs.forEach(npc => {
+                    if (npc.isDead || !npc.visible) return;
+                    let d = Math.pow(npc.x - owner.x, 2) + Math.pow(npc.y - owner.y, 2);
+                    if (d < minDist && d < 64) { // Within 8 tiles
+                        minDist = d;
+                        closest = npc;
+                    }
+                });
+                if (closest) {
+                    targetX = closest.x;
+                    targetY = closest.y;
+                }
+            }
+            this.x = targetX;
+            this.y = targetY;
+        }
+
+        update(exploreRef, dt) {
+            if (!this.active) return;
+
+            this.duration -= dt;
+            if (this.duration <= 0) {
+                this.active = false;
+                return;
+            }
+
+            // Expand smoothly up to max radius during the first second
+            if (this.radius < this.maxRadius) {
+                this.radius += dt * 3.0;
+            }
+
+            // Visual Particles (Swirling dark matter)
+            if (typeof globalParticles !== 'undefined' && Math.random() < 0.4) {
+                let angle = Math.random() * Math.PI * 2;
+                let dist = Math.random() * this.radius;
+                spawnParticle(this.x + Math.cos(angle) * dist, this.y + Math.sin(angle) * dist, '#4b0082', 'smoke');
+            }
+
+            // Run physics ticks every 0.5 seconds
+            this.tickTimer += dt;
+            if (this.tickTimer >= 0.5) {
+                this.tickTimer = 0;
+
+                exploreRef.npcs.forEach(npc => {
+                    if (npc.isDead || !npc.visible || npc === this.owner) return;
+
+                    let dx = this.x - npc.x;
+                    let dy = this.y - npc.y;
+                    let dist = Math.sqrt(dx * dx + dy * dy);
+
+                    if (dist <= this.radius) {
+                        // --- 1. STR CHECK: ARE THEY BOUND (UNABLE TO MOVE)? ---
+                        let casterStr = typeof this.owner.rollStat === 'function' ? this.owner.rollStat(0) : 10;
+                        let targetStr = resolveStatRoll(npc, 0);
+                        let isBound = casterStr > targetStr;
+
+                        // --- 2. AGI CHECK: RESISTING THE PULL SPEED ---
+                        let targetAgi = resolveStatRoll(npc, 3);
+                        // Higher AGI reduces pull force drastically. If AGI is massive, pull is near 0.
+                        let pullEffectiveness = Math.max(0.1, 1.0 - (targetAgi * 0.08));
+
+                        if (isBound) {
+                            // Helplessly dragged straight to the center!
+                            npc.x += (dx / dist) * 0.4;
+                            npc.y += (dy / dist) * 0.4;
+                        } else {
+                            // Pulled inward, modified inversely by their Agility
+                            npc.x += (dx / dist) * 0.25 * pullEffectiveness;
+                            npc.y += (dy / dist) * 0.25 * pullEffectiveness;
+                        }
+
+                        // --- 3. CON CHECK: DO THEY TAKE DAMAGE FROM THE DoT? ---
+                        let targetCon = resolveStatRoll(npc, 1);
+                        // Caster INT roll sets the damage difficulty
+                        let casterInt = typeof this.owner.rollStat === 'function' ? this.owner.rollStat(2) : 10;
+
+                        if (casterInt > targetCon) {
+                            let dotDamage = Math.max(1, Math.floor((casterInt - targetCon) * 0.5));
+                            npc.damageFlashTimer = 3;
+
+                            if (npc.absorbHit(this.owner, this.spellId)) {
+                                npc.currentHp = (npc.currentHp || 10) - dotDamage;
+                                if (npc.currentHp <= 0) {
+                                    exploreRef.killNPC(npc, false, 'gravity_crunch');
+                                }
+                            } else {
+                                exploreRef.killNPC(npc, false, 'gravity_crunch');
+                            }
+                        }
+                    }
+                });
             }
         }
     }
@@ -22946,11 +23419,9 @@
                                     let optText = Dungeon.currentSpeaker.options ? Dungeon.currentSpeaker.options[0] : 'Yes';
                                     socket.emit('suncat_spectate', `Player selected the option "${optText}" while speaking to a ${Dungeon.currentSpeaker.name || 'stranger'} who said, ${Dungeon.currentSpeaker.customDialogue || 'what do you want?'}".`);
                                 }
-                                Dungeon.executeActions(Dungeon.currentSpeaker.yesActions);
-                                Dungeon.processNextAction();
+                                Dungeon.chooseDialogueActions(Dungeon.currentSpeaker.yesActions);
                             } else {
-                                Dungeon.executeActions([['close_dialogue', null]]);
-                                Dungeon.processNextAction();
+                                Dungeon.chooseDialogueActions([['close_dialogue', null]]);
                             }
                             break;
                             
@@ -23026,17 +23497,15 @@
                             
                             if (Dungeon.currentSpeaker && Dungeon.currentSpeaker.noActions) {
                                 if (typeof socket !== 'undefined') {
-                                    let optText = Dungeon.currentSpeaker.options ? Dungeon.currentSpeaker.options[0] : 'Yes';
+                                    let optText = Dungeon.currentSpeaker.options ? Dungeon.currentSpeaker.options[1] : 'No';
                                     socket.emit('suncat_spectate', `Player selected the option "${optText}" while speaking to a ${Dungeon.currentSpeaker.name || 'stranger'} who said, ${Dungeon.currentSpeaker.customDialogue || 'what do you want?'}".`);
                                 }
-                                Dungeon.executeActions(Dungeon.currentSpeaker.noActions);
-                                Dungeon.processNextAction();
+                                Dungeon.chooseDialogueActions(Dungeon.currentSpeaker.noActions);
                             } else {
-                                Dungeon.executeActions([
+                                Dungeon.chooseDialogueActions([
                                     ['play_sfx', 'cancel'],
                                     ['close_dialogue', null]
                                 ]);
-                                Dungeon.processNextAction();
                             }
                             break;
                         
@@ -25802,17 +26271,20 @@
                 }
             }
             openTacticsBooster(spellId) {
+                if (spellId === 44) {
+                    spellId = 10;
+                }
                 let spellData = SPELL_REGISTRY[spellId];
                 let pulledCardIDs = [];
 
                 // --- DJINN LAMP INTERCEPT ---
-                if (spellId === 44) {
-                    if(typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('buff2');
-                    if (typeof startGame !== 'undefined') startGame = 'djinn_lamp'; 
-                    window.djinnPage = 0; 
-                    if (typeof preGame !== 'undefined') preGame = 'tactics'; // Ensure it comes back to battle!
-                    return; 
-                }
+                //if (spellId === 44) {
+                //    if(typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('buff2');
+                //    if (typeof startGame !== 'undefined') startGame = 'djinn_lamp'; 
+                //    window.djinnPage = 0; 
+                //   if (typeof preGame !== 'undefined') preGame = 'tactics'; // Ensure it comes back to battle!
+                 //   return; 
+                //}
 
                 // 1. Dynamically sort ALL cards into pools
                 let allMonsters = []; let allItems = []; let allSpells = [];
@@ -32194,7 +32666,7 @@
               break;
             case 97://Gravity                                SPELL - DEBUFF
                 this.name = 'Gravity';
-                this.portrait = 26;
+                this.portrait = -47;
                 this.power = 1;
                 this.type = 2;//null 0-monster, 1-item, 2-spell
                 this.subType = 'debuff'
@@ -33091,6 +33563,7 @@
               this.stat[2][0]=1; this.stat[2][1] = 2; this.stat[2][2]= 0; this.stat[2][3] = '1d2';
               this.stat[3][0]=1; this.stat[3][1] = 6; this.stat[3][2]= 0; this.stat[3][3] = '1d6';
               break;
+            
             // //
             // // // // //
           case 999:case 61391: //Suncat Human form                     ITEM - EQUIP
@@ -33124,6 +33597,20 @@
             
             
             //
+            case 1000: // Heal
+                this.name = 'Heal';
+                this.portrait = 20.1; // Make sure you have a sprite for this!
+                this.power = 10;
+                this.type = 2; // 2-spell
+                this.subType = 'cast'; 
+                this.desc = 'Heal yourself and nearby allies using your combined INT and AGI. Restores Ward Time based on your roll. Higher rolls trigger a longer cooldown.';
+                this.suit = 'Major Arcana';
+                this.rank = 'VI';
+                this.effect.type = 'heal'; // Lets the card game engine recognize it as a healing action
+                this.effect.atkStat = eSTAT.I; 
+                this.effect.successMessage = '[TARGET] is Healed!';
+            break;
+            
             case 28888://Trick, 7                              SPELL - CAST
         
               this.name = 'Trick';
@@ -34357,7 +34844,6 @@
     //DISPLAY 
         window.addEventListener('resize', resizeCanvas, false);
         window.addEventListener("orientationchange", function() {setTimeout(resizeCanvas, 200);}, false);
-        window.addEventListener("deviceorientation", resizeCanvas, true);
             // Check if we are running on a real web server, NOT a local file
         if (window.location.protocol !== 'file:') {
             
@@ -34410,12 +34896,7 @@
                 // 1. Force the resize to fix the squished screen
                 if (typeof resizeCanvas === 'function') resizeCanvas();
 
-                // 2. Rebuild the cache safely
-                if (typeof cacheAllPortraits === 'function') {
-                    await cacheAllPortraits((progressPercentage) => {
-                        if (progressBar) progressBar.style.width = progressPercentage + '%';
-                    });
-                }
+                
 
                 if (typeof cache2DPortraits === 'function') cache2DPortraits();
 
@@ -34868,55 +35349,59 @@
                                     }
                                 }
                                 else if (msg.toLowerCase().startsWith('.hack//blink')) {
-                                    let coordStr = msg.substring('.hack//blink'.length).trim();
-                                    let parts = coordStr.split(/[ ,]+/); 
+                                    Dungeon.isViewingAtlas = true;
+                                    Dungeon.isTeleporting = true;
+                                    if (chatLog.length > 100) chatLog.shift();
+                                    /*
+                                        let coordStr = msg.substring('.hack//blink'.length).trim();
+                                        let parts = coordStr.split(/[ ,]+/); 
 
-                                    if (parts.length >= 2) {
-                                        let targetX = parseInt(parts[0]);
-                                        let targetY = parseInt(parts[1]);
+                                        if (parts.length >= 2) {
+                                            let targetX = parseInt(parts[0]);
+                                            let targetY = parseInt(parts[1]);
 
-                                        if (!isNaN(targetX) && !isNaN(targetY)) {
-                                            Dungeon.x = targetX + 0.5;
-                                            Dungeon.y = targetY + 0.5;
-                                            
-                                            chatLog.push(`[SYSTEM]: Blinked to X: ${targetX}, Y: ${targetY}.`);
-                                            if (chatLog.length > 100) chatLog.shift();
+                                            if (!isNaN(targetX) && !isNaN(targetY)) {
+                                                Dungeon.x = targetX + 0.5;
+                                                Dungeon.y = targetY + 0.5;
+                                                
+                                                chatLog.push(`[SYSTEM]: Blinked to X: ${targetX}, Y: ${targetY}.`);
+                                                if (chatLog.length > 100) chatLog.shift();
 
-                                            Dungeon.targetMapX = Dungeon.x;
-                                            Dungeon.targetMapY = Dungeon.y;
-                                            Dungeon.isSlidingToTile = false;
-                                            
-                                            if (Dungeon.targetX !== undefined) Dungeon.targetX = Dungeon.x;
-                                            if (Dungeon.targetY !== undefined) Dungeon.targetY = Dungeon.y;
-                                            if (Dungeon.tX !== undefined) Dungeon.tX = Dungeon.x;
-                                            if (Dungeon.tY !== undefined) Dungeon.tY = Dungeon.y;
+                                                Dungeon.targetMapX = Dungeon.x;
+                                                Dungeon.targetMapY = Dungeon.y;
+                                                Dungeon.isSlidingToTile = false;
+                                                
+                                                if (Dungeon.targetX !== undefined) Dungeon.targetX = Dungeon.x;
+                                                if (Dungeon.targetY !== undefined) Dungeon.targetY = Dungeon.y;
+                                                if (Dungeon.tX !== undefined) Dungeon.tX = Dungeon.x;
+                                                if (Dungeon.tY !== undefined) Dungeon.tY = Dungeon.y;
 
-                                            window.activeMoveKey = null;
-                                            window.activeCtrlKey = false;
-                                            if (typeof btnMove !== 'undefined') { btnMove.isPressed = false; btnMove.currentDir = null; }
-                                            if (typeof btnMove2 !== 'undefined') { btnMove2.isPressed = false; btnMove2.currentDir = null; }
-                                            if (typeof btnTurnL !== 'undefined') { btnTurnL.isPressed = false; btnTurnL.currentDir = null; }
-                                            if (typeof btnTurnR !== 'undefined') { btnTurnR.isPressed = false; btnTurnR.currentDir = null; }
+                                                window.activeMoveKey = null;
+                                                window.activeCtrlKey = false;
+                                                if (typeof btnMove !== 'undefined') { btnMove.isPressed = false; btnMove.currentDir = null; }
+                                                if (typeof btnMove2 !== 'undefined') { btnMove2.isPressed = false; btnMove2.currentDir = null; }
+                                                if (typeof btnTurnL !== 'undefined') { btnTurnL.isPressed = false; btnTurnL.currentDir = null; }
+                                                if (typeof btnTurnR !== 'undefined') { btnTurnR.isPressed = false; btnTurnR.currentDir = null; }
 
-                                            if (typeof socket !== 'undefined') {
-                                                socket.emit("move", {
-                                                    x: Dungeon.x,
-                                                    y: Dungeon.y,
-                                                    dir: Dungeon.dir,
-                                                    mapID: Dungeon.mapID,
-                                                    status: Dungeon.status, 
-                                                    type: playerSprite, 
-                                                    name: playerName 
-                                                });
+                                                if (typeof socket !== 'undefined') {
+                                                    socket.emit("move", {
+                                                        x: Dungeon.x,
+                                                        y: Dungeon.y,
+                                                        dir: Dungeon.dir,
+                                                        mapID: Dungeon.mapID,
+                                                        status: Dungeon.status, 
+                                                        type: playerSprite, 
+                                                        name: playerName 
+                                                    });
+                                                }
+                                            } else {
+                                                chatLog.push(`[SYSTEM]: Invalid coordinates. Use: .hack//blink X Y`);
+                                                if (chatLog.length > 100) chatLog.shift();
                                             }
                                         } else {
-                                            chatLog.push(`[SYSTEM]: Invalid coordinates. Use: .hack//blink X Y`);
+                                            chatLog.push(`[SYSTEM]: Missing coordinates. Use: .hack//blink X Y`);
                                             if (chatLog.length > 100) chatLog.shift();
-                                        }
-                                    } else {
-                                        chatLog.push(`[SYSTEM]: Missing coordinates. Use: .hack//blink X Y`);
-                                        if (chatLog.length > 100) chatLog.shift();
-                                    }
+                                    }*/
                                 }
                                 else if (msg.toLowerCase() === '.hack//ghost') {
                                     if (Dungeon.ghost == false) {
@@ -35129,6 +35614,7 @@
                                 }
                                 else if (msg.toLowerCase() === '.hack//atlas'){
                                     Dungeon.isViewingWorld = true;
+                                    Dungeon.isTeleporting = true;
                                 }
                                 else if (msg.toLowerCase() === '.hack//tactics') {
                                     const monsterIndices = [
@@ -35935,7 +36421,7 @@
                                         let hasCustomText = Dungeon.customMenu.optYesText || Dungeon.customMenu.optNoText;
                                         if (hasCustomText) { opts = [Dungeon.customMenu.optYesText || 'Yes']; if (Dungeon.customMenu.optNoText || hasNoActions) opts.push(Dungeon.customMenu.optNoText || 'No'); } else if (hasYesActions || hasNoActions) { opts = ['Yes', 'No']; }
 
-                                        Dungeon.spawnPersistentNPC( Dungeon.mapID, targetToEdit.index, targetToEdit.x, targetToEdit.y, Dungeon.customMenu.deckModeCard || targetToEdit.type, sOpt, '#ff0000', finalDeck.length > 0 ? finalDeck : targetToEdit.deck, finalDialogue, null, rOpt, opts, isBoss, aOpt, Dungeon.customMenu.actArrays.end, Dungeon.customMenu.actArrays.death, isCine, Dungeon.customMenu.actArrays.yes, Dungeon.customMenu.actArrays.no );
+                                        Dungeon.spawnPersistentNPC( Dungeon.mapID, targetToEdit.index, targetToEdit.x, targetToEdit.y, Dungeon.customMenu.deckModeCard ?? targetToEdit.type, sOpt, '#ff0000', finalDeck, finalDialogue, null, rOpt, opts, isBoss, aOpt, Dungeon.customMenu.actArrays.end, Dungeon.customMenu.actArrays.death, isCine, Dungeon.customMenu.actArrays.yes, Dungeon.customMenu.actArrays.no );
                                     }
                                     Dungeon.customMenu.editingTargetId = null; Dungeon.editorState = 'idle'; MusicEngine?.play3DSFX('heal'); return;
                                 } else {
@@ -36414,7 +36900,7 @@
 
                                 Dungeon.spawnPersistentNPC(
                                     Dungeon.mapID, uniqueIdx, targetX+.5, targetY+.5, 
-                                    selectedPreset.typeOverride || spriteToSpawn, selectedPreset.state || 'stationary', '#ff0000', 
+                                    selectedPreset.typeOverride ?? spriteToSpawn, selectedPreset.state || 'stationary', '#ff0000', 
                                     selectedPreset.deck || [spriteToSpawn], selectedPreset.dialogue || null, null, 
                                     selectedPreset.role || 'battle', selectedPreset.options || null, selectedPreset.isBoss || false, selectedPreset.alignment || 'friendly',
                                     selectedPreset.endActions || [], selectedPreset.deathActions || [], 
@@ -38659,8 +39145,79 @@
                         return; 
                     }
                     // --- ATLAS OVERLAY INPUT INTERCEPT ---
-                    if (Dungeon.isViewingAtlas||Dungeon.isViewingWorld) {
+                    if (Dungeon.isViewingWorld) {
+                        // --- ATLAS / WORLD MAP INTERCEPT ---
                         
+                            
+                            // Only attempt teleport if they actually cast the spell
+                            if (Dungeon.isTeleporting && typeof Dungeon.atlas !== 'undefined' && Dungeon.atlas.length > 0) {
+                                let rows = Dungeon.atlas.length;
+                                let cols = Dungeon.atlas[0].length;
+                                let mapDrawSize = 10; 
+                                let pSize = mapDrawSize / Math.max(rows, cols);
+                                
+                                let startX = 5.0 - ((cols * pSize) / 2);
+                                let startY = 0;
+                                let gridW = cols * pSize;
+                                let gridH = rows * pSize;
+
+                                // Check if the click is within the rendered grid bounds
+                                if (gridPos.x >= startX && gridPos.x <= startX + gridW && gridPos.y >= startY && gridPos.y <= startY + gridH) {
+                                    let clickedX = Math.floor((gridPos.x - startX) / pSize);
+                                    let clickedY = Math.floor((gridPos.y - startY) / pSize);
+
+                                    if (clickedX >= 0 && clickedX < cols && clickedY >= 0 && clickedY < rows) {
+                                        let targetMapId = Dungeon.atlas[clickedY][clickedX];
+
+                                        // If valid map, Teleport!
+                                        // If valid map, Teleport!
+                                        if (targetMapId !== null && typeof MAP_DB !== 'undefined' && MAP_DB[targetMapId]) {
+                                            Dungeon.loadMap(targetMapId);
+                                            
+                                            // --- NEW: SNAP TO DEFAULT SPAWN POINT ---
+                                            if (Dungeon.defaultSpawns && Dungeon.defaultSpawns[targetMapId]) {
+                                                let spawn = Dungeon.defaultSpawns[targetMapId];
+                                                Dungeon.x = spawn.x;
+                                                Dungeon.y = spawn.y;
+                                                
+                                                if (spawn.dir !== undefined) {
+                                                    Dungeon.dir = spawn.dir;
+                                                    Dungeon.currentAngle = Dungeon.dir * (Math.PI / 2); // Update camera angle immediately
+                                                }
+                                            } else {
+                                                // Safe fallback just in case a map doesn't have a defined spawn yet
+                                                Dungeon.x = 5.5;
+                                                Dungeon.y = 5.5;
+                                            }
+                                            
+                                            // Clear any lingering movement states so they don't slide upon arrival
+                                            Dungeon.isSliding = false;
+                                            Dungeon.isSlidingToTile = false;
+                                            Dungeon.dashTargetX = null;
+                                            Dungeon.dashTargetY = null;
+
+                                            if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('warp');
+                                            console.log(`Teleported to Map ID: ${targetMapId} at X: ${Dungeon.x}, Y: ${Dungeon.y}`);
+                                        } else {
+                                            // Uncharted map clicked
+                                            if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('cancel');
+                                        }
+                                    }
+                                }
+                            
+
+                                    // ALWAYS close the map and reset all viewing/teleporting states
+                                    Dungeon.isViewingAtlas = false;
+                                    Dungeon.isViewingWorld = false;
+                                    Dungeon.isTeleporting = false; // CRITICAL: Reset the flag!
+                                    
+                                    // If they didn't just successfully teleport, play a cancel sound for closing the UI
+                                    if (typeof MusicEngine !== 'undefined' && !Dungeon.isTeleporting) {
+                                        MusicEngine.play3DSFX('cancel');
+                                    }
+                                    
+                                    return; // Consume the click so they don't accidentally walk
+                            }
                         // Check if they clicked inside the 8x8 map area
                         if (gridPos.x >= 1.0 && gridPos.x <= 9.0 && gridPos.y >= 1.0 && gridPos.y <= 9.0) {
                             
@@ -38677,19 +39234,99 @@
                         }
 
                         // Close the Atlas and consume the click so the player doesn't accidentally walk
-                        Dungeon.isViewingAtlas = false;
+                        
                         Dungeon.isViewingWorld = false;
                         if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('cancel');
                         return; 
                     }
                     // --- NEW: CLOSE ATLAS IF CLICKING ANYWHERE ELSE ---
-                    if (Dungeon.isViewingAtlas||Dungeon.isViewingWorld) {
-                        Dungeon.isViewingAtlas = false;
+                    if (Dungeon.isViewingWorld) {
+                        
                         Dungeon.isViewingWorld = false;
                         if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('cancel');
                         return; // Consume the click so they don't accidentally walk!
                     }
-                    
+                    // ==========================================
+                    // --- LOCAL ZONE MAP (ATLAS) TELEPORT INTERCEPT ---
+                    // ==========================================
+                    if (Dungeon.isViewingAtlas) {
+                        
+                        if (Dungeon.isTeleporting) {
+                            // Check if they clicked inside the 8x8 map area
+                            if (gridPos.x >= 1.0 && gridPos.x <= 9.0 && gridPos.y >= 1.0 && gridPos.y <= 9.0) {
+                                let mapSize = Dungeon.maze.length;
+                                let pSize = 8.0 / mapSize;
+                                let clickedX = Math.floor((gridPos.x - 1.0) / pSize);
+                                let clickedY = Math.floor((gridPos.y - 1.0) / pSize);
+
+                                if (clickedX >= 0 && clickedX < mapSize && clickedY >= 0 && clickedY < mapSize) {
+                                    
+                                    // SMART TARGETING (BFS Algorithm)
+                                    // Radiates outward from click to find the nearest Explored Floor
+                                    let queue = [{x: clickedX, y: clickedY}];
+                                    let visited = new Set([`${clickedX},${clickedY}`]);
+                                    let foundSafeTile = null;
+                                    let attempts = 0;
+
+                                    while (queue.length > 0 && attempts < 200) { // Limit search to prevent lag
+                                        let curr = queue.shift();
+                                        attempts++;
+
+                                        // Is it explored? AND Is it a floor? (<=0 means floor, >0 is wall)
+                                        let isExplored = Dungeon.explored[curr.y] && Dungeon.explored[curr.y][curr.x] === 1;
+                                        let isFloor = Dungeon.maze[curr.y][curr.x] <= 0;
+
+                                        if (isExplored && isFloor) {
+                                            foundSafeTile = curr;
+                                            break;
+                                        }
+
+                                        // Check Up, Down, Left, Right
+                                        let neighbors = [[0,-1], [1,0], [0,1], [-1,0], [1,-1], [1,1], [-1,1], [-1,-1]];
+                                        for (let n of neighbors) {
+                                            let nx = curr.x + n[0];
+                                            let ny = curr.y + n[1];
+                                            if (nx >= 0 && nx < mapSize && ny >= 0 && ny < mapSize) {
+                                                if (!visited.has(`${nx},${ny}`)) {
+                                                    visited.add(`${nx},${ny}`);
+                                                    queue.push({x: nx, y: ny});
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    // If we found a safe tile, warp them!
+                                    if (foundSafeTile) {
+                                        Dungeon.x = foundSafeTile.x + 0.5;
+                                        Dungeon.y = foundSafeTile.y + 0.5;
+                                        
+                                        // Reset movement states just like the .hack//blink command
+                                        Dungeon.targetMapX = Dungeon.x;
+                                        Dungeon.targetMapY = Dungeon.y;
+                                        Dungeon.isSlidingToTile = false;
+                                        Dungeon.dashTargetX = null;
+                                        Dungeon.dashTargetY = null;
+                                        window.activeMoveKey = null;
+                                        window.activeCtrlKey = false;
+                                        
+                                        if (typeof btnMove !== 'undefined') { btnMove.isPressed = false; btnMove.currentDir = null; }
+                                        
+                                        if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('warp');
+                                        console.log(`Blinked safely to X:${Dungeon.x}, Y:${Dungeon.y}`);
+                                    } else {
+                                        // Tried to click totally out of bounds / unexplored void
+                                        if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('cancel');
+                                    }
+                                }
+                            }
+                        }
+
+                        // ALWAYS close the map and reset states
+                        Dungeon.isViewingAtlas = false;
+                        Dungeon.isTeleporting = false;
+                        if (typeof MusicEngine !== 'undefined' && !foundSafeTile) MusicEngine.play3DSFX('cancel');
+                        return;
+                    }
                     if (btnPOV.isTouched(gridPos.x, gridPos.y) && btnPOV.visible == true&&btnPOV.type != 'jrpg') {
                         // Just call press(). The Btn class handles the sound, animation, and logic.
                         btnPOV.press(); 
@@ -40631,20 +41268,17 @@
             wX = window.innerWidth;
             wY = window.innerHeight;
 
-            // 2. Set actual canvas memory size to scaled value
-            canvas.width = wX * dpr;
-            canvas.height = wY * dpr;
-
-            // 2. Set actual canvas memory size to scaled value
-            canvas.width = wX * dpr;
-            canvas.height = wY * dpr;
+            const pixelWidth = Math.max(1, Math.floor(wX * dpr));
+            const pixelHeight = Math.max(1, Math.floor(wY * dpr));
+            if (canvas.width !== pixelWidth) canvas.width = pixelWidth;
+            if (canvas.height !== pixelHeight) canvas.height = pixelHeight;
 
             // 3. Force the CSS size to match the window
             canvas.style.width = wX + "px";
             canvas.style.height = wY + "px";
 
             // 4. Normalize the coordinate system
-            ctx.scale(dpr, dpr);
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
             //canvas redimensioned, so re-set values for playing table width and length
             tX = wX; //table length (actual x determined after funtion)
@@ -57894,8 +58528,8 @@
                 let targetX = currentTileX + moveX;
                 let targetY = currentTileY + moveY;
                 const destinationTile = Dungeon.maze[targetY]?.[targetX];
-
-                if (TERRAIN_SURFACES[destinationTile]?.blocked) {
+                const currentTile = Dungeon.maze[currentTileY]?.[currentTileX];
+                if (TERRAIN_SURFACES[destinationTile]?.blocked&&!TERRAIN_SURFACES[currentTile]?.blocked) {
                     return;
                 }
                 // ATLAS EDGE DETECTION ---
@@ -58009,7 +58643,7 @@
                     }
 
                     // If neither climb nor break succeeded (or wasn't applicable), block movement
-                    if (!actionTaken) {
+                    if (!actionTaken&&tileID != 92 && tileID != 93) {
                         if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('cancel');
                         return;
                     }
@@ -58867,7 +59501,7 @@
     currentSong: null,
     activeVoiceNodes: [],
     sfxConcurrency: 0,
-    MAX_SFX: 12,        // Max number of SFX allowed at once before dropping them
+    MAX_SFX: 6,        // Max number of SFX allowed at once before dropping them
     sfxThrottles: {},
     async init() {
       const AudioCtx = window.AudioContext || window.webkitAudioContext;
@@ -62182,7 +62816,16 @@
             const loop = () => {
                 if (this.isStopped) return;
                 
-                while (this.nextNoteTime < this.ctx.currentTime + this.scheduleAheadTime) {
+                if (this.ctx.state !== 'running') return;
+                    const audioNow = this.ctx.currentTime;
+                    if (this.nextNoteTime < audioNow) {
+                        this.nextNoteTime = audioNow + 0.05;
+                    }
+                    let audioStepsRemaining = 32;
+                    while (
+                        this.nextNoteTime < audioNow + this.scheduleAheadTime &&
+                        audioStepsRemaining-- > 0
+                    ) {
                     this.scheduleNote(this.nextNoteTime);
                     this.advanceNote();
                 }
@@ -62376,7 +63019,16 @@
             const loop = () => {
                 if (this.isStopped) return;
                 
-                while (this.nextNoteTime < this.ctx.currentTime + this.scheduleAheadTime) {
+                if (this.ctx.state !== 'running') return;
+                const audioNow = this.ctx.currentTime;
+                if (this.nextNoteTime < audioNow) {
+                    this.nextNoteTime = audioNow + 0.05;
+                }
+                let audioStepsRemaining = 32;
+                while (
+                    this.nextNoteTime < audioNow + this.scheduleAheadTime &&
+                    audioStepsRemaining-- > 0
+                ) {
                     this.scheduleNote(this.nextNoteTime);
                     this.advanceNote();
                 }
@@ -62941,7 +63593,16 @@
             if (this.isStopped) return;
             
             // Schedule notes ahead of time
-            while (this.nextNoteTime < this.ctx.currentTime + this.scheduleAheadTime) {
+            if (this.ctx.state !== 'running') return;
+                const audioNow = this.ctx.currentTime;
+                if (this.nextNoteTime < audioNow) {
+                    this.nextNoteTime = audioNow + 0.05;
+                }
+                let audioStepsRemaining = 32;
+                while (
+                    this.nextNoteTime < audioNow + this.scheduleAheadTime &&
+                    audioStepsRemaining-- > 0
+                ) {
                 this.scheduleNote(this.tickCount, this.nextNoteTime);
                 this.advanceNote();
             }
@@ -63479,7 +64140,16 @@
         const loop = () => {
             if (this.isStopped) return;
             
-            while (this.nextNoteTime < this.ctx.currentTime + this.scheduleAheadTime) {
+            if (this.ctx.state !== 'running') return;
+                const audioNow = this.ctx.currentTime;
+                if (this.nextNoteTime < audioNow) {
+                    this.nextNoteTime = audioNow + 0.05;
+                }
+                let audioStepsRemaining = 32;
+                while (
+                    this.nextNoteTime < audioNow + this.scheduleAheadTime &&
+                    audioStepsRemaining-- > 0
+                ) {
                 this.scheduleNote(this.nextNoteTime);
                 this.advanceNote();
             }
@@ -63747,7 +64417,16 @@
             const loop = () => {
                 if (this.isStopped) return;
                 
-                while (this.nextNoteTime < this.ctx.currentTime + this.scheduleAheadTime) {
+                if (this.ctx.state !== 'running') return;
+                    const audioNow = this.ctx.currentTime;
+                    if (this.nextNoteTime < audioNow) {
+                        this.nextNoteTime = audioNow + 0.05;
+                    }
+                    let audioStepsRemaining = 32;
+                    while (
+                        this.nextNoteTime < audioNow + this.scheduleAheadTime &&
+                        audioStepsRemaining-- > 0
+                    ) {
                     this.scheduleNote(this.nextNoteTime);
                     this.advanceNote();
                 }
@@ -64033,7 +64712,16 @@
                 if (this.isStopped) return;
                 
                 // While the next note falls within our schedule window...
-                while (this.nextNoteTime < this.ctx.currentTime + this.scheduleAheadTime) {
+                if (this.ctx.state !== 'running') return;
+                    const audioNow = this.ctx.currentTime;
+                    if (this.nextNoteTime < audioNow) {
+                        this.nextNoteTime = audioNow + 0.05;
+                    }
+                    let audioStepsRemaining = 32;
+                    while (
+                        this.nextNoteTime < audioNow + this.scheduleAheadTime &&
+                        audioStepsRemaining-- > 0
+                    ) {
                     this.scheduleNote(this.nextNoteTime);
                     this.advanceNote();
                 }
@@ -64354,7 +65042,16 @@
                 if (this.isStopped) return;
 
                 // Schedule notes ahead of time
-                while (this.nextNoteTime < this.ctx.currentTime + this.scheduleAheadTime) {
+                if (this.ctx.state !== 'running') return;
+                    const audioNow = this.ctx.currentTime;
+                    if (this.nextNoteTime < audioNow) {
+                        this.nextNoteTime = audioNow + 0.05;
+                    }
+                    let audioStepsRemaining = 32;
+                    while (
+                        this.nextNoteTime < audioNow + this.scheduleAheadTime &&
+                        audioStepsRemaining-- > 0
+                    ) {
                     this.scheduleNote(this.nextNoteTime);
                     this.advanceNote();
                 }
@@ -65551,7 +66248,16 @@
             const loop = () => {
                 if (this.isStopped) return;
                 
-                while (this.nextNoteTime < this.ctx.currentTime + this.scheduleAheadTime) {
+                if (this.ctx.state !== 'running') return;
+                    const audioNow = this.ctx.currentTime;
+                    if (this.nextNoteTime < audioNow) {
+                        this.nextNoteTime = audioNow + 0.05;
+                    }
+                    let audioStepsRemaining = 32;
+                    while (
+                        this.nextNoteTime < audioNow + this.scheduleAheadTime &&
+                        audioStepsRemaining-- > 0
+                    ) {
                     this.scheduleNote(this.nextNoteTime);
                     this.advanceNote();
                 }
@@ -66587,7 +67293,16 @@
         const loop = () => {
             if (this.isStopped) return;
             
-            while (this.nextNoteTime < this.ctx.currentTime + this.scheduleAheadTime) {
+            if (this.ctx.state !== 'running') return;
+                    const audioNow = this.ctx.currentTime;
+                    if (this.nextNoteTime < audioNow) {
+                        this.nextNoteTime = audioNow + 0.05;
+                    }
+                    let audioStepsRemaining = 32;
+                    while (
+                        this.nextNoteTime < audioNow + this.scheduleAheadTime &&
+                        audioStepsRemaining-- > 0
+                    ) {
                 this.playNextPhrase(this.nextNoteTime);
             }
         };
@@ -68892,7 +69607,16 @@
                 
                 // While there are notes that will need to play before our next check,
                 // schedule them now and advance the time pointer.
-                while (this.nextNoteTime < this.ctx.currentTime + this.scheduleAheadTime) {
+                if (this.ctx.state !== 'running') return;
+                    const audioNow = this.ctx.currentTime;
+                    if (this.nextNoteTime < audioNow) {
+                        this.nextNoteTime = audioNow + 0.05;
+                    }
+                    let audioStepsRemaining = 32;
+                    while (
+                        this.nextNoteTime < audioNow + this.scheduleAheadTime &&
+                        audioStepsRemaining-- > 0
+                    ) {
                     this.scheduleNote(this.tick, this.nextNoteTime);
                     this.nextNote();
                 }
@@ -69072,7 +69796,16 @@
         }
 
         scheduler() {
-            while (this.nextNoteTime < this.ctx.currentTime + this.scheduleAheadTime) {
+            const audioNow = this.ctx.currentTime;
+                if (this.nextNoteTime < audioNow) {
+                    this.nextNoteTime = audioNow + 0.05;
+                }
+                let audioStepsRemaining = 32;
+                while (
+                    this.ctx.state === 'running' &&
+                    this.nextNoteTime < audioNow + this.scheduleAheadTime &&
+                    audioStepsRemaining-- > 0
+                ) {
                 this.scheduleNote(this.current16thNote, this.nextNoteTime);
                 this.advanceNote();
             }
@@ -69388,7 +70121,16 @@
         }
 
         scheduler() {
-            while (this.nextNoteTime < this.ctx.currentTime + this.scheduleAheadTime) {
+            const audioNow = this.ctx.currentTime;
+                if (this.nextNoteTime < audioNow) {
+                    this.nextNoteTime = audioNow + 0.05;
+                }
+                let audioStepsRemaining = 32;
+                while (
+                    this.ctx.state === 'running' &&
+                    this.nextNoteTime < audioNow + this.scheduleAheadTime &&
+                    audioStepsRemaining-- > 0
+                ) {
                 this.scheduleNote(this.current16thNote, this.nextNoteTime);
                 this.advanceNote();
             }
@@ -70600,7 +71342,16 @@
 
         const loop = () => {
             // Schedule notes ahead of time
-            while (this.nextNoteTime < this.ctx.currentTime + this.scheduleAheadTime) {
+            if (this.ctx.state !== 'running') return;
+                const audioNow = this.ctx.currentTime;
+                if (this.nextNoteTime < audioNow) {
+                    this.nextNoteTime = audioNow + 0.05;
+                }
+                let audioStepsRemaining = 32;
+                while (
+                    this.nextNoteTime < audioNow + this.scheduleAheadTime &&
+                    audioStepsRemaining-- > 0
+                ) {
                 this.scheduleNote(this.tickCount, this.nextNoteTime);
                 this.nextNote();
             }
@@ -70869,7 +71620,16 @@
 
         const loop = () => {
             if (!this.isPlaying) return;
-            while (this.nextNoteTime < this.ctx.currentTime + this.scheduleAheadTime) {
+            if (this.ctx.state !== 'running') return;
+                const audioNow = this.ctx.currentTime;
+                if (this.nextNoteTime < audioNow) {
+                    this.nextNoteTime = audioNow + 0.05;
+                }
+                let audioStepsRemaining = 32;
+                while (
+                    this.nextNoteTime < audioNow + this.scheduleAheadTime &&
+                    audioStepsRemaining-- > 0
+                ) {
                 this.scheduleNote(this.nextNoteTime);
                 this.advanceNote();
             }
@@ -71137,7 +71897,16 @@
             if (this.isStopped) return;
             
             // Schedule notes ahead of time
-            while (this.nextNoteTime < this.ctx.currentTime + this.scheduleAheadTime) {
+            if (this.ctx.state !== 'running') return;
+                const audioNow = this.ctx.currentTime;
+                if (this.nextNoteTime < audioNow) {
+                    this.nextNoteTime = audioNow + 0.05;
+                }
+                let audioStepsRemaining = 32;
+                while (
+                    this.nextNoteTime < audioNow + this.scheduleAheadTime &&
+                    audioStepsRemaining-- > 0
+                ) {
                 this.scheduleNote(this.tick, this.nextNoteTime);
                 this.advanceNote();
             }
@@ -71699,7 +72468,16 @@
         }
 
         scheduler() {
-            while (this.nextNoteTime < this.ctx.currentTime + this.scheduleAheadTime) {
+            const audioNow = this.ctx.currentTime;
+                if (this.nextNoteTime < audioNow) {
+                    this.nextNoteTime = audioNow + 0.05;
+                }
+                let audioStepsRemaining = 32;
+                while (
+                    this.ctx.state === 'running' &&
+                    this.nextNoteTime < audioNow + this.scheduleAheadTime &&
+                    audioStepsRemaining-- > 0
+                ) {
                 this.scheduleNote(this.tick, this.nextNoteTime);
                 this.advanceNote();
             }
@@ -72233,7 +73011,16 @@
       // --- THE SCHEDULER ENGINE (From DarkCastle) ---
       
       scheduler() {
-        while (this.nextNoteTime < this.ctx.currentTime + this.scheduleAheadTime) {
+        const audioNow = this.ctx.currentTime;
+            if (this.nextNoteTime < audioNow) {
+                this.nextNoteTime = audioNow + 0.05;
+            }
+            let audioStepsRemaining = 32;
+            while (
+                this.ctx.state === 'running' &&
+                this.nextNoteTime < audioNow + this.scheduleAheadTime &&
+                audioStepsRemaining-- > 0
+            ) {
           this.scheduleNote(this.tick, this.nextNoteTime);
           this.advanceNote();
         }
@@ -73031,7 +73818,16 @@
         }
 
         scheduler() {
-            while (this.nextNoteTime < this.ctx.currentTime + this.scheduleAheadTime) {
+            const audioNow = this.ctx.currentTime;
+                if (this.nextNoteTime < audioNow) {
+                    this.nextNoteTime = audioNow + 0.05;
+                }
+                let audioStepsRemaining = 32;
+                while (
+                    this.ctx.state === 'running' &&
+                    this.nextNoteTime < audioNow + this.scheduleAheadTime &&
+                    audioStepsRemaining-- > 0
+                ) {
                 this.scheduleNote(this.tick, this.nextNoteTime);
                 this.advanceNote();
             }
@@ -74166,7 +74962,16 @@
       }
 
       scheduler() {
-        while (this.nextNoteTime < this.ctx.currentTime + this.scheduleAheadTime) {
+        const audioNow = this.ctx.currentTime;
+            if (this.nextNoteTime < audioNow) {
+                this.nextNoteTime = audioNow + 0.05;
+            }
+            let audioStepsRemaining = 32;
+            while (
+                this.ctx.state === 'running' &&
+                this.nextNoteTime < audioNow + this.scheduleAheadTime &&
+                audioStepsRemaining-- > 0
+            ) {
           this.scheduleNote(this.tick, this.nextNoteTime);
           this.advanceNote();
         }
@@ -74765,7 +75570,16 @@
         }
 
         scheduler() {
-            while (this.nextNoteTime < this.ctx.currentTime + this.scheduleAheadTime) {
+            const audioNow = this.ctx.currentTime;
+                if (this.nextNoteTime < audioNow) {
+                    this.nextNoteTime = audioNow + 0.05;
+                }
+                let audioStepsRemaining = 32;
+                while (
+                    this.ctx.state === 'running' &&
+                    this.nextNoteTime < audioNow + this.scheduleAheadTime &&
+                    audioStepsRemaining-- > 0
+                ) {
                 this.scheduleNote(this.tick, this.nextNoteTime);
                 this.advanceNote();
             }
@@ -75292,7 +76106,16 @@
       }
 
       scheduler() {
-        while (this.nextNoteTime < this.ctx.currentTime + this.scheduleAheadTime) {
+        const audioNow = this.ctx.currentTime;
+            if (this.nextNoteTime < audioNow) {
+                this.nextNoteTime = audioNow + 0.05;
+            }
+            let audioStepsRemaining = 32;
+            while (
+                this.ctx.state === 'running' &&
+                this.nextNoteTime < audioNow + this.scheduleAheadTime &&
+                audioStepsRemaining-- > 0
+            ) {
           this.scheduleNote(this.tick, this.nextNoteTime);
           this.advanceNote();
         }
@@ -76027,7 +76850,16 @@
         }, 2000);
       }
       scheduler() {
-        while (this.nextNoteTime < this.ctx.currentTime + this.scheduleAheadTime) {
+        const audioNow = this.ctx.currentTime;
+            if (this.nextNoteTime < audioNow) {
+                this.nextNoteTime = audioNow + 0.05;
+            }
+            let audioStepsRemaining = 32;
+            while (
+                this.ctx.state === 'running' &&
+                this.nextNoteTime < audioNow + this.scheduleAheadTime &&
+                audioStepsRemaining-- > 0
+            ) {
           this.scheduleNote(this.tick, this.nextNoteTime);
           this.advanceNote();
         }
@@ -76478,7 +77310,16 @@
 
         // --- THE LOOKAHEAD SCHEDULER ---
         scheduler() {
-            while (this.nextNoteTime < this.ctx.currentTime + this.scheduleAheadTime) {
+            const audioNow = this.ctx.currentTime;
+                if (this.nextNoteTime < audioNow) {
+                    this.nextNoteTime = audioNow + 0.05;
+                }
+                let audioStepsRemaining = 32;
+                while (
+                    this.ctx.state === 'running' &&
+                    this.nextNoteTime < audioNow + this.scheduleAheadTime &&
+                    audioStepsRemaining-- > 0
+                ) {
                 this.scheduleEvents(this.currentStep, this.nextNoteTime);
                 this.advanceTime();
             }
@@ -76807,7 +77648,16 @@
         }
 
         scheduler() {
-            while (this.nextNoteTime < this.ctx.currentTime + this.scheduleAheadTime) {
+            const audioNow = this.ctx.currentTime;
+                if (this.nextNoteTime < audioNow) {
+                    this.nextNoteTime = audioNow + 0.05;
+                }
+                let audioStepsRemaining = 32;
+                while (
+                    this.ctx.state === 'running' &&
+                    this.nextNoteTime < audioNow + this.scheduleAheadTime &&
+                    audioStepsRemaining-- > 0
+                ) {
                 this.scheduleNote(this.tick, this.nextNoteTime);
                 this.advanceNote();
             }
@@ -77657,7 +78507,16 @@
 
       scheduler() {
         if (!this.isPlaying || this.isAborted) return;
-            while (this.nextNoteTime < this.ctx.currentTime + this.scheduleAheadTime) {
+            const audioNow = this.ctx.currentTime;
+                if (this.nextNoteTime < audioNow) {
+                    this.nextNoteTime = audioNow + 0.05;
+                }
+                let audioStepsRemaining = 32;
+                while (
+                    this.ctx.state === 'running' &&
+                    this.nextNoteTime < audioNow + this.scheduleAheadTime &&
+                    audioStepsRemaining-- > 0
+                ) {
                 // We pass the tick FIRST, then advance it.
                 this.scheduleNote(this.tick, this.nextNoteTime);
                 this.advanceNote();
@@ -78214,7 +79073,16 @@
         }
 
         scheduler() {
-            while (this.nextNoteTime < this.ctx.currentTime + this.scheduleAheadTime) {
+            const audioNow = this.ctx.currentTime;
+                if (this.nextNoteTime < audioNow) {
+                    this.nextNoteTime = audioNow + 0.05;
+                }
+                let audioStepsRemaining = 32;
+                while (
+                    this.ctx.state === 'running' &&
+                    this.nextNoteTime < audioNow + this.scheduleAheadTime &&
+                    audioStepsRemaining-- > 0
+                ) {
                 this.scheduleNote(this.tick, this.nextNoteTime);
                 const secondsPerBeat = 60.0 / this.tempo;
                 this.nextNoteTime += 0.25 * secondsPerBeat; 
@@ -81048,7 +81916,7 @@
             if (!buf) {
                 const raw = CathedralModule.rawBank.buffers.get(key);
                 if (!raw) return null;
-                const sr = this.ctx.sampleRate;
+                const sr = raw.sampleRate;
                 buf = this.ctx.createBuffer(2, raw.left.length, sr);
                 buf.copyToChannel(raw.left, 0);
                 buf.copyToChannel(raw.right, 1);
@@ -81061,7 +81929,7 @@
             if (!this.contextImpulse) {
                 const raw = CathedralModule.rawBank.impulse;
                 if (!raw) return null;
-                const sr = this.ctx.sampleRate;
+                const sr = raw.sampleRate;
                 const buf = this.ctx.createBuffer(2, raw.left.length, sr);
                 buf.copyToChannel(raw.left, 0);
                 buf.copyToChannel(raw.right, 1);
@@ -82824,7 +83692,11 @@
                 ctx.fillStyle = "rgba(0,6,13,1)";
                 ctx.fillRect(0,0,wX,wY);
                 //music timer
-                if (!MusicEngine.isPlaying()) {
+                if (
+                    window.settingsAudio &&
+                    MusicEngine.ctx?.state === 'running' &&
+                    !MusicEngine.currentSong
+                ) {
                     console.log("Audio failsafe triggered: Restarting music...");
                     
                 
@@ -82912,7 +83784,11 @@
                 }
             else if (startGame == 2){//runestones tcg
                 //musictimer
-                if (!MusicEngine.isPlaying()) {
+                if (
+                    window.settingsAudio &&
+                    MusicEngine.ctx?.state === 'running' &&
+                    !MusicEngine.currentSong
+                ) {
                     console.log("Audio failsafe triggered: Restarting music...");
                     
                 
@@ -86138,8 +87014,7 @@
     statusText.innerText = "Tuning Cathedral pipe organs...";
     
     try {
-        const tempCtx = window.gameAudioCtx || new (window.AudioContext || window.webkitAudioContext)();
-        const cathedralPreloader = new CathedralModule(tempCtx);
+        const cathedralPreloader = new CathedralModule({ sampleRate: 48000 });
         
         cathedralPreloader.onProgress = (progress) => {
             // Fills the second half of the loading bar (50% to 100%)
@@ -86180,6 +87055,224 @@ window.onload = () => {
     bootGame();
 };
 //////////////////////////[END OF SCRIPT]//////////////////////////
+</script>
+<script>
+    /* Mapmaker Workbench: native event tuples remain the save/export format. */
+    (() => {
+        'use strict';
+        const clone = x => Array.isArray(x) ? x.map(clone) : x && typeof x === 'object' ? Object.fromEntries(Object.entries(x).map(([k,v]) => [k,clone(v)])) : x;
+        const roles = ['battle','dialogue','shop','dropped_card'];
+        const alignments = ['foe','friendly','escort','ally','foe_coward','friendly_messenger','defender'];
+        const states = ['chasing','wandering','stationary','fleeing'];
+        const branches = {yes:'Choice 1',no:'Choice 2',end:'After dialogue',death:'On death'};
+        // [Default payload, help]. Complex existing payloads are always retained intact.
+        const specs = {
+            notify:[{text:['Hello, traveler.'],sprite:-37},'Pauses for the player to read.'],
+            give_card:[{card:0,text:'You received a card!'},'Adds a card and pauses for its notification.'],
+            remove_card:[{card:0},'Removes one matching card.'],
+            play_sfx:['chime','Sound effect name.'], play_song:[0,'Song ID.'],
+            close_dialogue:[null,'Closes dialogue and continues the sequence.'],
+            start_battle:[null,'NPC ID; blank means the speaking NPC. Use a battle-role NPC.'],
+            disappear:[null,'NPC ID; blank means the speaking NPC.'],
+            trigger_dialogue:[0,'NPC ID to speak next.'],
+            load_map:[{id:0,x:1.5,y:1.5},'Map ID and destination coordinates.'],
+            set_memory:[{key:'quest_started',value:true},'Persistent story memory; value is JSON.'],
+            change_weather:['clear','Use a weather name supported by your environment menu.'],
+            change_sky:['#182238','Sky color.'],
+            add_stat:[0,'Stat index: 0–3.'], become_ally:[0,'Card ID to summon as an ally.'],
+            transform_npc:[{index:null,newRole:'battle',newAlignment:'foe',newState:'chasing'},'Blank index targets the speaker.'],
+            inject_dialogue:[{index:null,text:['A new chapter begins.']},'Starts dialogue on a chosen NPC; blank index targets the speaker.'],
+            set_dialogue:[{text:['A new chapter begins.']},'Replaces the current speaker’s dialogue.'],
+            rout_foes:[null,'Routes foes using the existing engine.'], kill_type:[15,'Sprite ID to remove.'], kill_all:[null,'Removes all living NPCs.'],
+            start_wave:[{waves:[[{sprite:15}]],delay:3},'Wave definitions; use Advanced JSON.'],
+            start_hunted:[{waves:3,interval:300,mobs:[{sprite:15}]},'Hunted event; use Advanced JSON.'],
+            spawn_npc:[[999,500001,'SPEAKER_X','SPEAKER_Y',15,'stationary','#ffffff',[],['Hello!'],null,'dialogue',null,false,'friendly',[],[],false,[],[]],'Native spawn arguments; use Advanced JSON. Use a unique NPC ID.'],
+            mass_transform:[{targetType:15,newType:15,newRole:'battle',newAlignment:'foe'},'Targets every matching sprite.']
+        };
+        const known = new Set(['give_card', 'remove_card', 'consume_items', 'rob_player', 'add_stat', 'become_ally', 'add_escort', 'remove_escort', 'load_map', 'set_flag', 'set_memory', 'change_weather', 'change_sky', 'set_map_song', 'restore_map_song', 'spawn_npc', 'spawn_ephemeral_npc', 'disappear', 'kill_type', 'kill_all', 'transform_npc', 'mass_transform', 'rout_foes', 'start_battle', 'start_wave', 'start_hunted', 'shield_bash_npc', 'npc_strike_player', 'start_minigame', 'stop_hunted', 'start_tactics', 'start_tutorial', 'notify', 'set_dialogue', 'inject_dialogue', 'trigger_dialogue', 'open_shop', 'close_dialogue', 'clear_dialogue', 'update_quest_state', 'update_quest_count', 'open_booster', 'cleanup_quest_npcs', 'open_guild_menu', 'train', 'play_song', 'play_sfx', 'spectate', 'download_text_file']);
+        function validateActions(list, path='Actions', issues=[], depth=0) {
+            if (!Array.isArray(list)) { issues.push(path+': expected an action list.'); return issues; }
+            if (depth>20) { issues.push(path+': nesting exceeds 20 levels.'); return issues; }
+            list.forEach((a,i)=>{
+            const where=path+' / '+(i+1);
+            if(!Array.isArray(a)||typeof a[0]!=='string'){issues.push(where+': expected [type, payload].');return;}
+            const [t,p]=a;
+            if(!known.has(t)) issues.push(where+': unsupported action '+t);
+            if(['notify','set_dialogue','inject_dialogue'].includes(t) && !(t==='notify' && typeof p==='string') && !(p && (typeof p.text==='string'||Array.isArray(p.text)&&p.text.every(x=>typeof x==='string')))) issues.push(where+': dialogue text is required.');
+            if(['set_memory','set_flag'].includes(t) && (!p||typeof p.key!=='string'||!p.key.trim())) issues.push(where+': memory key is required.');
+            if(t==='spawn_npc' && (!Array.isArray(p)||p.length<5||!Number.isFinite(p[1]))) issues.push(where+': spawn needs a map, unique NPC ID, coordinates and sprite.');
+            if(t==='add_stat' && (!Number.isInteger(p)||p<0||p>3)) issues.push(where+': stat must be 0–3.');
+            if(['give_card','remove_card'].includes(t)&&!Number.isFinite(p&&typeof p==='object'?p.card:p)) issues.push(where+': card ID must be numeric.');
+            if(['transform_npc','mass_transform','load_map'].includes(t)&&p==null) issues.push(where+': payload is required.');
+            if(p&&typeof p==='object'&&!Array.isArray(p)) for(const k of ['yesActions','noActions','endActions','deathActions','successActions','failActions','onComplete']) if(p[k]!=null) validateActions(p[k],where+' / '+k,issues,depth+1);
+            if(t==='spawn_npc'&&Array.isArray(p)) for(const j of [14,15,17,18]) if(p[j]!=null)validateActions(p[j],where+' / spawn '+j,issues,depth+1);
+            });
+            return issues;
+        }
+        function makeStructure(kind,w,h,wall,floor,seed) {
+            let n=2166136261;for(const c of String(seed)) n=Math.imul(n^c.charCodeAt(0),16777619);
+            const random=()=>{n+=0x6D2B79F5;let t=n;t=Math.imul(t^t>>>15,t|1);t^=t+Math.imul(t^t>>>7,t|61);return ((t^t>>>14)>>>0)/4294967296;};
+            let g=Array.from({length:h},()=>Array(w).fill(floor));
+            const rect=(x,y,rw,rh)=>{for(let j=y;j<y+rh;j++)for(let i=x;i<x+rw;i++)g[j][i]=(i===x||j===y||i===x+rw-1||j===y+rh-1)?wall:floor;};
+            if(kind==='Connected rooms') {
+            g=g.map(row=>row.map(()=>wall));let last=null;
+            for(let i=0;i<Math.max(5,Math.floor(w*h/55));i++){
+                const rw=3+Math.floor(random()*Math.min(6,w-4)),rh=3+Math.floor(random()*Math.min(6,h-4));
+                const x=1+Math.floor(random()*(w-rw-1)),y=1+Math.floor(random()*(h-rh-1));
+                for(let yy=y;yy<y+rh;yy++)for(let xx=x;xx<x+rw;xx++)g[yy][xx]=floor;
+                const c=[x+Math.floor(rw/2),y+Math.floor(rh/2)];
+                if(last){let [xx,yy]=last;while(xx!==c[0]){g[yy][xx]=floor;xx+=Math.sign(c[0]-xx);}while(yy!==c[1]){g[yy][xx]=floor;yy+=Math.sign(c[1]-yy);}g[yy][xx]=floor;}
+                last=c;
+            }
+            // Entrance connected to the room chain.
+            if(last){let [xx,yy]=last;while(yy<h){g[yy++][xx]=floor;}}
+            } 
+            else {
+                rect(0,0,w,h);const mid=Math.floor(w/2);g[h-1][mid]=floor;
+                if(kind==='Tavern') {for(let y=2;y<h-2;y+=3)for(let x=2;x<w-2;x+=3)if(x!==mid)g[y][x]=wall;}
+                if(kind==='Keep'){const y=Math.floor(h/2);for(let x=1;x<w-1;x++)g[y][x]=wall;g[y][mid]=floor;}
+                if(kind==='Ruins'){for(let y=0;y<h;y++)for(let x=0;x<w;x++)if(g[y][x]===wall&&random()<0.35)g[y][x]=floor;}
+                if(kind==='Courtyard'){for(let y=2;y<h-2;y++)for(let x=2;x<w-2;x++)if((x===2||x===w-3||y===2||y===h-3)&&x!==mid)g[y][x]=wall;}
+            }
+            return g;
+        }
+        window.MapmakerWorkbenchCore={validateActions,makeStructure};
+        const css=document.createElement('style');css.textContent=`
+            #mm-launch{position:fixed;right:16px;top:16px;z-index:100001;padding:12px 18px;background:#c5a769;color:#101822;border:1px solid #e5cd97;border-radius:8px;font:bold 14px system-ui;cursor:pointer}
+            #mm-workbench{position:fixed;inset:3vh 3vw;z-index:100002;background:#101923;color:#e7edf2;border:1px solid #516273;border-radius:14px;box-shadow:0 24px 100px #000c;font:14px/1.5 system-ui;display:flex;flex-direction:column;text-align:left;touch-action:auto}
+            #mm-workbench *{box-sizing:border-box}#mm-workbench input,#mm-workbench textarea{-webkit-user-select:text;user-select:text}#mm-workbench header,#mm-workbench footer{padding:16px 22px;background:#172431;display:flex;gap:10px;align-items:center;flex-wrap:wrap}#mm-workbench h2{margin:0;font-size:20px;flex:1}#mm-workbench nav{display:flex;gap:6px;padding:10px 22px;border-bottom:1px solid #344452;flex-wrap:wrap}#mm-workbench main{padding:20px 22px;overflow:auto;flex:1;min-height:0}#mm-workbench button,#mm-workbench select,#mm-workbench input,#mm-workbench textarea{font:inherit;color:inherit;border:1px solid #4b6173;border-radius:6px;background:#1c2b39;padding:8px;max-width:100%;touch-action:auto}#mm-workbench button{cursor:pointer}#mm-workbench button:hover{background:#32475a}#mm-workbench .primary{background:#38625b}#mm-workbench .active{border-color:#d7b675;color:#f7d699}#mm-workbench label{display:block;color:#c4d0da;margin:8px 0}#mm-workbench label>input,#mm-workbench label>select,#mm-workbench label>textarea{display:block;width:100%;margin-top:4px}#mm-workbench textarea{min-height:80px;resize:vertical}#mm-workbench .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}#mm-workbench .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}#mm-workbench .card{border:1px solid #344859;border-radius:8px;padding:12px;margin:10px 0;background:#14212d}#mm-workbench .hint{color:#9eafbd;font-size:13px}#mm-workbench .error{color:#ffb2a5;white-space:pre-wrap}#mm-workbench .grow{flex:1}#mm-workbench canvas{image-rendering:pixelated;width:min(100%,420px);height:auto;border:1px solid #60717d}#mm-workbench [hidden],#mm-launch[hidden]{display:none!important}
+            @media(max-width:600px){#mm-workbench{inset:0;border-radius:0}#mm-workbench main{padding:12px}#mm-workbench header{padding:10px}}
+        `;document.head.append(css);
+        function el(tag,text,parent,cls){const n=document.createElement(tag);if(text!=null)n.textContent=text;if(cls)n.className=cls;if(parent)parent.append(n);return n;}
+        function button(text,parent,fn,cls){const b=el('button',text,parent,cls);b.type='button';b.onclick=fn;return b;}
+        function field(label,value,parent,fn,type='text'){const l=el('label',label,parent);const n=el(type==='textarea'?'textarea':'input',null,l);if(type!=='textarea')n.type=type;n.value=value??'';n.oninput=()=>fn(n.value);return n;}
+        function select(label,value,values,parent,fn){const l=el('label',label,parent);const n=el('select',null,l);values.forEach(v=>{const o=el('option',v,n);o.value=v;});n.value=value;n.onchange=()=>fn(n.value);return n;}
+        let panel=null, main, footer, draft=null, originalMenu=null, tab='Identity',branch='yes', clipboard=null, suppress=null, lastState='', structureUndo=null;
+        const launch=button('Mapmaker workbench',document.body,()=>open('Structures'));launch.id='mm-launch';launch.hidden=true;
+        for(const type of ['pointerdown','pointerup','mousedown','mouseup','touchstart','touchend','click']) launch.addEventListener(type,e=>e.stopPropagation());
+        const getDungeon=()=>typeof Dungeon!=='undefined'?Dungeon:null;
+        function message(text){footer.querySelector('.error').textContent=text;}
+        function close(){panel?.remove();panel=null;window.isPaintingMap=false;}
+        function open(page='Identity'){
+            const d=getDungeon();if(!d)return;
+            close();originalMenu=d.customMenu;draft=clone(originalMenu);tab=page;
+            if(draft.editingTargetId!=null){const npc=d.npcs.find(n=>n.index===draft.editingTargetId);if(npc)draft.deckModeCard=npc.type;}else draft.deckModeCard=d.editorSpriteBrush;
+            panel=el('section',null,document.body);panel.id='mm-workbench';panel.setAttribute('role','dialog');panel.setAttribute('aria-modal','true');panel.setAttribute('aria-label','Mapmaker workbench');
+            const head=el('header',null,panel);el('h2','Mapmaker workbench',head);button('Canvas controls',head,()=>{suppress=d.customMenu;close();});
+            const nav=el('nav',null,panel);
+            for(const t of ['Identity','Dialogue','Actions','Presets','Structures'])button(t,nav,()=>{tab=t;render();}).dataset.tab=t;
+            main=el('main',null,panel);footer=el('footer',null,panel);el('span','Changes stay in this draft until applied.',footer,'grow hint');el('span','',footer,'error');button('Cancel',footer,()=>{d.editorState='idle';close();});button('Apply NPC / brush',footer,save,'primary');render();
+            panel.querySelector('button').focus();
+        }
+        function numField(label,value,parent,fn){return field(label,value,parent,v=>fn(v===''?null:Number(v)),'number');}
+        function render(){if(!panel)return;main.replaceChildren();message('');panel.querySelectorAll('nav button').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));
+            const d=getDungeon();
+            footer.querySelector('.grow').textContent=tab==='Structures'?'Stamps change map tiles immediately. Use Undo last stamp to revert.':'Changes stay in this draft until applied.';
+            footer.querySelector('button.primary').hidden=tab==='Structures';
+            if(tab==='Identity'){
+                el('p',draft.editingTargetId!=null?'Editing NPC #'+draft.editingTargetId:'Configure a reusable NPC brush, then click a map tile to place it.',main,'hint');
+                const g=el('div',null,main,'grid');
+                numField('Sprite ID',draft.deckModeCard,g,v=>draft.deckModeCard=v);
+                select('Role',roles[draft.role],roles,g,v=>draft.role=roles.indexOf(v));
+                select('Alignment',alignments[draft.align],alignments,g,v=>draft.align=alignments.indexOf(v));
+                select('Movement',states[draft.state],states,g,v=>draft.state=states.indexOf(v));
+                select('Boss',draft.boss?'Yes':'No',['No','Yes'],g,v=>draft.boss=+(v==='Yes'));
+                select('Cinematic camera',draft.cinematic?'Yes':'No',['No','Yes'],g,v=>draft.cinematic=+(v==='Yes'));
+                field('Deck — card IDs separated by commas',draft.deckArray.join(', '),main,v=>{draft.deckArray=v.trim()?v.split(',').map(x=>Number(x.trim())):[];});
+                el('p','Special templates (mimic, phase boss, portal, quest giver) remain available under Canvas controls. For a normal NPC keep Special = NONE there. This editor preserves the current special selection.',main,'hint');
+            } else if(tab==='Dialogue'){
+                el('p','Lines appear in order. Choice labels map directly to the Choice 1 and Choice 2 action lists.',main,'hint');
+                const g=el('div',null,main,'grid');field('Choice 1 label',draft.optYesText,g,v=>draft.optYesText=v||null);field('Choice 2 label',draft.optNoText,g,v=>draft.optNoText=v||null);
+                draft.dialogueArray.forEach((line,i)=>{const c=el('div',null,main,'card');field('Line '+(i+1),line,c,v=>draft.dialogueArray[i]=v,'textarea');controls(c,draft.dialogueArray,i);});
+                button('+ Dialogue line',main,()=>{draft.dialogueArray.push('');render();});
+            } else if(tab==='Actions'){
+            const r=el('div',null,main,'row');for(const [key,label] of Object.entries(branches))button(label+' ('+draft.actArrays[key].length+')',r,()=>{branch=key;render();},key===branch?'active':'');
+            el('p',branch==='end'?'Runs when dialogue finishes. Avoid placing rewards here if they should only be granted for accepting a choice.':branch==='death'?'Runs when this NPC dies. Use explicit NPC IDs for targets in this branch.':'Runs in order when the player selects this choice. Notifications and dialogue pause the sequence.',main,'hint');
+            const list=draft.actArrays[branch];
+            list.forEach((a,i)=>{
+                const c=el('div',null,main,'card');const top=el('div',null,c,'row');el('strong',(i+1)+'. '+a[0].replaceAll('_',' '),top,'grow');controls(top,list,i);
+                el('div',specs[a[0]]?.[1]||'Existing engine action. Edit its payload below.',c,'hint');
+                const [type,p]=a;
+                const obj=p&&typeof p==='object'&&!Array.isArray(p);
+                if(['notify','inject_dialogue','set_dialogue'].includes(type))field('Text (one dialogue line per line)',typeof p==='string'?p:(Array.isArray(p?.text)?p.text.join('\n'):p?.text||''),c,v=>{a[1]=typeof a[1]==='object'&&a[1]?a[1]:{};a[1].text=v.split('\n');},'textarea');
+                if(['give_card','remove_card'].includes(type)) {numField('Card ID',obj?p.card:p,c,v=>{a[1]=obj?{...a[1],card:v}:v;});if(obj)field('Message',p.text||'',c,v=>a[1].text=v);}
+                else if(obj && !['start_wave','start_hunted'].includes(type)) {
+                    const g=el('div',null,c,'grid');for(const k of Object.keys(p)){
+                    if(k==='text'||Array.isArray(p[k])||p[k]&&typeof p[k]==='object')continue;
+                    if(typeof p[k]==='number'||k==='index')numField(k,p[k],g,v=>a[1][k]=v);
+                    else if(typeof p[k]==='boolean')select(k,String(p[k]),['true','false'],g,v=>a[1][k]=v==='true');
+                    else field(k,p[k],g,v=>a[1][k]=v);
+                    }
+                } else if(typeof p==='number'||['start_battle','disappear','trigger_dialogue'].includes(type))numField('Target / value',p,c,v=>a[1]=v);
+                else if(typeof p==='string'&&type!=='notify')field('Value',p,c,v=>a[1]=v);
+                if(typeof p==='function'){el('p','Built-in code callback preserved. Edit this callback in the source, not as JSON.',c,'hint');return;}
+                const adv=el('details',null,c);el('summary','Advanced JSON payload / nested branches',adv);const raw=el('textarea',null,adv);raw.value=JSON.stringify(p,null,2);raw.setAttribute('aria-label','Advanced payload '+(i+1));
+                button('Apply JSON to this action',adv,()=>{try{const v=JSON.parse(raw.value);const errors=validateActions([[type,v]]);if(errors.length)throw Error(errors.join('\n'));a[1]=v;render();}catch(e){message(e.message);}});
+            });
+            const r2=el('div',null,main,'row');let selected='notify';select('Add action',selected,Object.keys(specs),r2,v=>selected=v);button('+ Add',r2,()=>{list.push([selected,clone(specs[selected][0])]);render();});
+            button('Copy branch',r2,()=>{clipboard=clone(list);message('Branch copied.');});button('Paste at end',r2,()=>{if(clipboard){list.push(...clone(clipboard));render();}else message('Copy a branch first.');});
+            button('Validate all branches',r2,()=>{const errors=checkDraft();message(errors.join('\n')||'All four branches passed validation.');});
+            } else if(tab==='Presets'){
+            el('p','Save your current NPC configuration as a named preset. Applying a preset replaces this draft; the map changes only when you apply it.',main,'hint');let name='';field('Preset name','',main,v=>name=v);
+            button('Save preset',main,()=>{if(!name.trim())return message('Enter a name.');try{const presets=JSON.parse(localStorage.getItem('mapmaker_workbench_presets')||'{}');const p=clone(draft);delete p.editingTargetId;p.customMenuStack=[];p.isNestedChild=false;presets[name.trim()]=p;localStorage.setItem('mapmaker_workbench_presets',JSON.stringify(presets, (key,value)=>{if(typeof value==='function')throw Error('Built-in function actions cannot be stored as presets.');return value;}));render();}catch(e){message('Could not save preset: '+e.message);}});
+            try{const presets=JSON.parse(localStorage.getItem('mapmaker_workbench_presets')||'{}');for(const name of Object.keys(presets)){const row=el('div',null,main,'card row');el('strong',name,row,'grow');button('Load into draft',row,()=>{const id=draft.editingTargetId;draft=clone(presets[name]);draft.editingTargetId=id;tab='Identity';render();});button('Delete preset',row,()=>{delete presets[name];localStorage.setItem('mapmaker_workbench_presets',JSON.stringify(presets));render();});}}catch(e){el('p','Preset storage unavailable: '+e.message,main,'error');}
+            } else structures(d);
+        }
+        function controls(parent,list,i){const row=el('span',null,parent,'row');button('↑',row,()=>{if(i){[list[i-1],list[i]]=[list[i],list[i-1]];render();}}).disabled=i===0;button('↓',row,()=>{if(i<list.length-1){[list[i+1],list[i]]=[list[i],list[i+1]];render();}}).disabled=i===list.length-1;button('Duplicate',row,()=>{list.splice(i+1,0,clone(list[i]));render();});button('Remove',row,()=>{list.splice(i,1);render();});}
+        function checkDraft(){const errors=[];if(!Number.isFinite(draft.deckModeCard))errors.push('Sprite ID must be numeric.');if(draft.deckArray.some(x=>!Number.isFinite(x)))errors.push('Deck must contain numeric card IDs.');for(const key of Object.keys(branches))validateActions(draft.actArrays[key],branches[key],errors);if((draft.actArrays.yes.length||draft.actArrays.no.length||draft.optYesText||draft.optNoText)&&!draft.dialogueArray.some(x=>x.trim()))errors.push('Add dialogue so the player can see the choices.');return errors;}
+        function save(){
+            const errors=checkDraft();if(errors.length)return message(errors.join('\n'));
+            const d=getDungeon();if(d.customMenu!==originalMenu)return message('The NPC selection changed. Reopen the workbench.');
+            if(draft.isNestedChild)return message('Finish nested NPC creation with Canvas controls.');
+            if(draft.editingTargetId!=null){
+                const n=d.npcs.find(x=>x.index===draft.editingTargetId);if(!n)return message('This NPC no longer exists.');
+                const hasChoices=draft.optYesText||draft.optNoText||draft.actArrays.yes.length||draft.actArrays.no.length;
+                const options=hasChoices?[draft.optYesText||'Yes',draft.optNoText||'No']:null;
+                d.spawnPersistentNPC(d.mapID,n.index,n.x,n.y,draft.deckModeCard,states[draft.state],n.minimapColor||n.color||'#ffffff',clone(draft.deckArray),draft.dialogueArray.length?clone(draft.dialogueArray):null,n.rewardCard??null,roles[draft.role],options,!!draft.boss,alignments[draft.align],clone(draft.actArrays.end),clone(draft.actArrays.death),!!draft.cinematic,clone(draft.actArrays.yes),clone(draft.actArrays.no));
+            }
+            d.customMenu=clone(draft);d.customMenu.editingTargetId=null;d.editorSpriteBrush=draft.deckModeCard;d.editorNpcBehavior=3;d.editorState='idle';d.editorTab='npcs';
+            close();
+        }
+        let structureSettings={kind:'House',w:9,h:9,wall:25,floor:0,seed:'suncat',rotation:0,x:null,y:null};
+        function structures(d){
+            const s=structureSettings;if(s.x===null){s.x=Math.max(1,Math.floor(d.x));s.y=Math.max(1,Math.floor(d.y));}
+            el('p','Preview a reusable structure or a connected room layout, then stamp it at a tile coordinate. Stamps preserve the outer border and refuse to put walls over the player or NPCs. Tile IDs use your existing terrain palette.',main,'hint');
+            const g=el('div',null,main,'grid');select('Structure',s.kind,['House','Tavern','Keep','Courtyard','Ruins','Connected rooms'],g,v=>s.kind=v);
+            for(const [k,label] of [['w','Width (7–50)'],['h','Height (7–50)'],['wall','Wall tile'],['floor','Floor tile'],['x','Left tile X'],['y','Top tile Y']])numField(label,s[k],g,v=>s[k]=v);
+            field('Seed',s.seed,g,v=>s.seed=v);select('Rotation',String(s.rotation),['0','90','180','270'],g,v=>s.rotation=Number(v));
+            const preview=el('div',null,main);let grid=null,signature=null;
+            const draw=()=>{try{
+            if(![s.w,s.h,s.wall,s.floor,s.x,s.y].every(Number.isInteger)||s.w<7||s.h<7||s.w>50||s.h>50||s.wall===s.floor)throw Error('Use integer dimensions 7–50, integer coordinates, and different wall/floor tiles.');
+            grid=makeStructure(s.kind,s.w,s.h,s.wall,s.floor,s.seed);for(let i=0;i<s.rotation/90;i++)grid=grid[0].map((_,x)=>grid.map(row=>row[x]).reverse());
+            signature=JSON.stringify(s);preview.replaceChildren();const canvas=el('canvas',null,preview);canvas.width=grid[0].length*8;canvas.height=grid.length*8;const ctx=canvas.getContext('2d');grid.forEach((r,y)=>r.forEach((v,x)=>{ctx.fillStyle=v===s.wall?'#94a6b5':'#253d38';ctx.fillRect(x*8,y*8,8,8);}));el('p',`${grid[0].length} × ${grid.length} tiles · light = wall · dark = floor · entrance rotates with the structure`,preview,'hint');message('');
+            }catch(e){grid=null;message(e.message);}};
+            button('Preview / refresh',main,draw);
+            button('Stamp preview',main,()=>{
+            if(!grid||signature!==JSON.stringify(s))return message('Refresh the preview after changing settings.');
+            if(s.x<1||s.y<1||s.x+grid[0].length>d.maze[0].length-1||s.y+grid.length>d.maze.length-1)return message('Structure must fit inside the map border. Try smaller dimensions or move its coordinates.');
+            const occupants=[{x:d.x,y:d.y},...d.npcs.filter(n=>!n.isDead)];
+            for(const n of occupants){const x=Math.floor(n.x)-s.x,y=Math.floor(n.y)-s.y;if(grid[y]?.[x]!==undefined&&grid[y][x]!==d.maze[y+s.y][x+s.x])return message('A changed tile contains the player or an NPC. Move the stamp or the occupant first.');}
+            structureUndo={mapID:d.mapID,before:clone(d.maze),after:null};d.saveHistoryState();grid.forEach((r,y)=>r.forEach((v,x)=>d.maze[s.y+y][s.x+x]=v));d.saveHistoryState();structureUndo.after=JSON.stringify(d.maze);message('Structure stamped. Close Canvas controls to inspect it; save a draft or export to keep your map.');
+            },'primary');
+            button('Undo last stamp',main,()=>{if(!structureUndo||structureUndo.mapID!==d.mapID||JSON.stringify(d.maze)!==structureUndo.after)return message('Undo is available immediately after a stamp, before further map edits.');d.maze=clone(structureUndo.before);d.saveHistoryState();structureUndo=null;message('Stamp undone.');});draw();
+        }
+        // Capture before canvas/window game handlers; typing must not move or paint the map.
+        for(const type of ['keydown','keyup','keypress','pointerdown','pointerup','pointermove','mousedown','mouseup','mousemove','touchstart','touchmove','touchend','wheel','click'])window.addEventListener(type,e=>{
+            if(!panel)return;
+            if(type==='keydown'&&e.key==='Tab') {const items=[...panel.querySelectorAll('button,input,select,textarea,summary')].filter(n=>!n.disabled&&n.getClientRects().length);const first=items[0],last=items[items.length-1];if(e.shiftKey&&document.activeElement===first){last?.focus();e.preventDefault();}else if(!e.shiftKey&&document.activeElement===last){first?.focus();e.preventDefault();}}
+            // Stop at the dialog in bubble phase so its own native inputs still receive events.
+            if(!panel.contains(e.target)) {e.stopImmediatePropagation();if(e.cancelable)e.preventDefault();}
+        },true);
+        // Window game listeners bubble: the dialog consumes events after its controls.
+        const observer=new MutationObserver(()=>{if(panel&&!panel.dataset.eventsBound){panel.dataset.eventsBound='1';for(const t of ['keydown','keyup','keypress','pointerdown','pointerup','pointermove','mousedown','mouseup','mousemove','touchstart','touchmove','touchend','wheel','click'])panel.addEventListener(t,e=>e.stopPropagation());}});observer.observe(document.body,{childList:true});
+        setInterval(()=>{
+            const d=getDungeon();const active=d&&typeof startGame!=='undefined'&&startGame==='mapmaker';launch.hidden=!active||!!panel;
+            if(!active){if(panel)close();lastState='';return;}
+            if(d.editorState!=='configuring_custom'){suppress=null;}
+            if(d.editorState==='configuring_custom'&&!panel&&!d.customMenu.isNestedChild&&(suppress!==d.customMenu)&&(lastState!==d.editorState||originalMenu!==d.customMenu))open('Identity');
+            lastState=d.editorState;
+        },160);
+    })();
 </script>
 </body>
 </html>
