@@ -2572,6 +2572,31 @@
             }
         ]
     }];
+     // Keep schema and runtime contracts aligned.
+    const suncatDecls=toolsDef[0].functionDeclarations;
+    suncatDecls.push(
+        {name:'consultGameManual',description:'Search actual card and map records. Returns exact IDs; never invent an entity.',
+            parameters:{type:SchemaType.OBJECT,properties:{query:{type:SchemaType.STRING}},required:['query']}},
+        {name:'searchPlayerMemories',description:'Search recorded player memories by words.',parameters:{type:SchemaType.OBJECT,
+            properties:{targetName:{type:SchemaType.STRING},query:{type:SchemaType.STRING}},required:['targetName','query']}}
+    );
+    const spawnDecl=suncatDecls.find(t=>t.name==='spawnNPC');
+    spawnDecl.description='Spawn one known entity. Unknown names fail. For Enlightened Goblin use npcType 54 and displayName. Autonomous summons reuse a purpose tag.';
+    for(const key of ['yesActions','noActions','endActions','deathActions']) delete spawnDecl.parameters.properties[key];
+    Object.assign(spawnDecl.parameters.properties,{
+        alignment:{type:SchemaType.STRING,description:'foe, ally, friendly, defender or friendly_messenger'},
+        purpose:{type:SchemaType.STRING,description:'Stable purpose for reusing an existing autonomous summon'},
+        displayName:{type:SchemaType.STRING,description:'Optional title; does not change the species'},
+        actionsJson:{type:SchemaType.STRING,description:'JSON object with yesActions/noActions/endActions/deathActions. Each value is native [action,payload] pairs; preserve JSON numbers and objects.'}
+    });
+    spawnDecl.parameters.properties.role.description='battle, dialogue, shop or reward. Do not invent an unimplemented quest definition.';
+    const entityDecl=suncatDecls.find(t=>t.name==='smiteOrReviveEntity');
+    entityDecl.parameters.properties.npcType={type:SchemaType.STRING,description:'Exact species name or numeric card ID as a string'};
+    entityDecl.parameters.properties.index={type:SchemaType.NUMBER,description:'Exact instance index when more than one matches'};
+    suncatDecls.find(t=>t.name==='teleportPlayer').parameters.properties.mapID.description='Existing client atlas map ID, including 30/31, or active generated map 999. Hub 100 is unsupported.';
+    suncatDecls.find(t=>t.name==='travelToLocation').description='Move Suncat on observed traversable geometry; report walking separately from arrival. Unknown maps require an observer.';
+    suncatDecls.find(t=>t.name==='createCustomMap').description='Generate one shared bounty scenario and invite the named online player. Existing occupants or invitations must finish first.';
+    suncatDecls.find(t=>t.name==='alterTerrain').parameters.properties.tileId.description='Exact client tile ID: 0 floor, 1 wall, 92/93 water, 96/97 chasm, 99/101 lava. Negative odd IDs are legacy chasms.';
     const T_PERSONA = `
         You are Taliesin, the bard of ancient Welsh myth, singing a continuous song. 
 
@@ -3018,23 +3043,17 @@
             return { role: msg.role, parts: newParts };
         });
         }
-    function findSocketID(playerName) {
-        if (!playerName) return null;
-        const lowerTarget = String(playerName).toLowerCase().trim();
-        
-        // Pass 1: Try exact match first
-        for (let id in players) {
-            if (players[id].name.toLowerCase() === lowerTarget) return id;
-        }
-        
-        // Pass 2: Fuzzy match (handles [AFK] tags or AI typos)
-        for (let id in players) {
-            const pName = players[id].name.toLowerCase();
-            if (pName.includes(lowerTarget) || lowerTarget.includes(pName)) {
-                return id;
-            }
-        }
-        return null;}
+     function findSocketID(playerName) {
+        const text=String(playerName ?? '').trim().toLowerCase();
+        if(!text) return null;
+        if(text==='npc_suncat') return SUNCAT_ID;
+        const humans=Object.keys(players).filter(id=>id!==SUNCAT_ID);
+        const exact=humans.filter(id=>String(players[id].name).toLowerCase()===text);
+        if(exact.length===1) return exact[0];
+        if(text==='suncat') return SUNCAT_ID;
+        const partial=humans.filter(id=>String(players[id].name).toLowerCase().includes(text));
+        return partial.length===1?partial[0]:null;
+    }
 
     function addRumor(text) {
             globalRumors.push(`[Rumor]: ${text}`);
@@ -3044,55 +3063,12 @@
 
 
 
-    function getActiveTools(chatText, triggerType, playerFavor) {
-        const activeTools = [];
-        const lowerText = chatText ? chatText.toLowerCase() : "";
-
-        // 1. Memory & Lore Tools (Only if they ask questions)
-        if (["who", "what", "where", "remember", "past", "history", "lore", "story", "rule", "how"].some(kw => lowerText.includes(kw))) {
-            activeTools.push(toolsDef[0].functionDeclarations.find(t => t.name === 'searchPlayerMemories'));
-            activeTools.push(toolsDef[0].functionDeclarations.find(t => t.name === 'consultGameManual'));
-        }
-
-        // 2. Admin Tools (Only if they mention bans, or if Suncat is angry)
-        if (playerFavor < -3 || ["kick", "ban", "delete"].some(kw => lowerText.includes(kw))) {
-            activeTools.push(toolsDef[0].functionDeclarations.find(t => t.name === 'kickPlayer'));
-            activeTools.push(toolsDef[0].functionDeclarations.find(t => t.name === 'banishPlayer'));
-            activeTools.push(toolsDef[0].functionDeclarations.find(t => t.name === 'vanquishPlayer'));
-        }
-
-        // 3. Creation / Map Tools (Only if explicitly requested)
-        if (lowerText.includes(".hack//amap") || ["make me","make me a scenario","give me a quest","give me an adventure","im bored","create a map", "generate a quest", "start a scenario", "build a dungeon"].some(kw => lowerText.includes(kw))) {
-            activeTools.push(toolsDef[0].functionDeclarations.find(t => t.name === 'createCustomMap'));
-            activeTools.push(toolsDef[0].functionDeclarations.find(t => t.name === 'assignQuest'));
-        }
-        if (["tactics", "skirmish", "duel", "arena fight", "tactical", "board game"].some(kw => lowerText.includes(kw))) {
-            activeTools.push(toolsDef[0].functionDeclarations.find(t => t.name === 'launchTacticalSkirmish'));
-        }
-        // 4. Combat / Spawning Tools (Only if they want action or Suncat is DMing an event)
-        if (triggerType === 'event' || triggerType === 'exploration' || ["spawn", "fight", "monster", "boss", "weather", "music"].some(kw => lowerText.includes(kw))) {
-            activeTools.push(toolsDef[0].functionDeclarations.find(t => t.name === 'spawnNPC'));
-            activeTools.push(toolsDef[0].functionDeclarations.find(t => t.name === 'changeEnvironment'));
-            activeTools.push(toolsDef[0].functionDeclarations.find(t => t.name === 'alterTerrain'));
-            activeTools.push(toolsDef[0].functionDeclarations.find(t => t.name === 'smiteOrReviveEntity'));
-            activeTools.push(toolsDef[0].functionDeclarations.find(t => t.name === 'playMusic'));
-        }
-        // 5. Dev Agent Tools (Triggers on code keywords)
-        if (["code", "bug", "fix", "report", "renderer", "boilerplate", "refactor", "function", "debug"].some(kw => lowerText.includes(kw))) {
-            activeTools.push(toolsDef[0].functionDeclarations.find(t => t.name === 'generateDevReport'));
-        }
-        // 6. Journal Export Tool
-        if (["export", "download", "save my story", "save my journal", "print"].some(kw => lowerText.includes(kw))) {
-            const exportTool = toolsDef[0].functionDeclarations.find(t => t.name === 'exportChronicles');
-            if (exportTool) activeTools.push(exportTool);
-        }
-        // Always give him the ability to grant items/cards and teleport
-        activeTools.push(toolsDef[0].functionDeclarations.find(t => t.name === 'givePlayerCard'));
-        activeTools.push(toolsDef[0].functionDeclarations.find(t => t.name === 'teleportPlayer'));
-        activeTools.push(toolsDef[0].functionDeclarations.find(t => t.name === 'teleportToPlayer'));
-
-        // Filter out any undefineds just in case
-        return activeTools.filter(t => t !== undefined);
+    function getActiveTools(chatText,triggerType,playerFavor) {
+        const text=String(chatText || '').toLowerCase();
+        const moderation=/\b(kick|banish|ban|vanquish|delete player)\b/.test(text);
+        return toolsDef[0].functionDeclarations.filter(t=>
+            t.name!=='createCustomCard' &&
+            (moderation || !['kickPlayer','banishPlayer','vanquishPlayer'].includes(t.name)));
     }
     // --- AUTONOMOUS DEV AGENT: RECURSIVE FILE TRACING ---
     
@@ -3223,6 +3199,12 @@
                 suncatHeartDemon = data.worldState?.suncatHeartDemon || null;
                 heartDemonDecay = data.worldState?.heartDemonDecay || 0;
                 suncatLongTermGoal = data.worldState?.suncatLongTermGoal || null;
+                const runtime=data.worldState?.suncatRuntime;
+                if(runtime) {
+                    SUNCAT_RUNTIME.companions=Array.isArray(runtime.companions)?runtime.companions.slice(0,SUNCAT_RUNTIME.maxCompanions):[];
+                    SUNCAT_RUNTIME.recent=Array.isArray(runtime.recent)?runtime.recent.slice(-8):[];
+                    SUNCAT_RUNTIME.lastSummon=Number(runtime.lastSummon)||0;
+                }
                 suncatDaoName = data.worldState?.suncatDaoName || null;
                 suncatDaoLedger =
                     data.worldState?.suncatDaoLedger ??
@@ -3310,6 +3292,7 @@
                 suncatDaoName: suncatDaoName, // Save the name too!
                 suncatEgoMatrix: suncatEgoMatrix,
                 suncatLongTermGoal: suncatLongTermGoal,
+                suncatRuntime:{companions:SUNCAT_RUNTIME.companions,recent:SUNCAT_RUNTIME.recent,lastSummon:SUNCAT_RUNTIME.lastSummon},
                 suncatDaoLedger:suncatDaoLedger,
                 suncatStorySoFar:suncatStorySoFar,
                 suncatProfile:suncatProfile,
@@ -3326,7 +3309,9 @@
         };
 
         try {
-            await fs.promises.writeFile(MEMORY_FILE, JSON.stringify(fullState, null, 2));
+            const temporaryMemory=MEMORY_FILE+'.tmp';
+            await fs.promises.writeFile(temporaryMemory,JSON.stringify(fullState,null,2));
+            await fs.promises.rename(temporaryMemory,MEMORY_FILE);
         } catch (err) {
             console.error("[System] CRITICAL: Failed to save memory!", err);
         } finally {
@@ -3987,8 +3972,8 @@
             };
     }
     function generateActorDrivenMap(size, baseWallType, floorType = 0, waterTile = null, cliffTile = null) {
+        if(size!==100) throw new Error('This generator currently uses a 100 by 100 layout.');
         let grid = Array(size).fill().map(() => Array(size).fill(baseWallType));
-
         let layoutVariant = Math.floor(Math.random() * 6); 
         let nodes = {};
         let layoutName = "";
@@ -4143,7 +4128,7 @@
             // Cellular automata smoothing just for CAVE interiors
             if (theme === 'CAVE') {
                 for (let i = 0; i < 2; i++) {
-                    let temp = JSON.parse(JSON.stringify(grid));
+                    let temp = grid.map(row => row.slice());
                     for (let y = cy - radius; y <= cy + radius; y++) {
                         for (let x = cx - radius; x <= cx + radius; x++) {
                             if (Math.pow(x - cx, 2) + Math.pow(y - cy, 2) <= radius * radius) {
@@ -4227,11 +4212,15 @@
         carvePath(nodes.ambush1, nodes.bossLair);
         carvePath(nodes.ambush2, nodes.bossLair);
 
-        let validFloors = [];
-        for (let r = 1; r < size - 1; r++) {
-            for (let c = 1; c < size - 1; c++) {
-                if (grid[r][c] === floorType) validFloors.push({ x: c, y: r });
+        for(const n of Object.values(nodes)) {
+            for(let dy=-2;dy<=2;dy++) for(let dx=-2;dx<=2;dx++) {
+                const x=n.x+dx,y=n.y+dy;
+                if(x>0&&y>0&&x<size-1&&y<size-1) grid[y][x]=floorType;
             }
+        }
+        const validFloors=suncatReachable(grid,nodes.start,floorType);
+        for(const n of Object.values(nodes)) {
+            if(!validFloors.some(p=>p.x===n.x&&p.y===n.y)) throw new Error('Disconnected scenario node.');
         }
 
         // Return the layoutName and Description so Suncat knows what it is!
@@ -4401,6 +4390,8 @@
 
             [WORLD BLUEPRINT - The map generated for this session]:
             - BIOME: ${biomeName}
+            - IMPLEMENTED OBJECTIVE: ${scenarioType}. Defeat the named boss; do not promise escort/fetch mechanics.
+            ${spatialLayout}
             - THE VILLAIN FACTION: ${bossCardName} (Occupies the Castle/Dungeon)
             - THE ALLY FACTION: ${questGiverName} (Occupies the Village/Camp)
             - THE THIRD TRIBE: ${thirdFactionName} (Occupies the Ruins/Wilderness. They are native monsters hostile to BOTH factions.)
@@ -4476,11 +4467,12 @@
             
             let rawText = result.response.text().trim();
             if (rawText.startsWith("```")) rawText = rawText.replace(/^```(json)?|```$/g, "").trim();
-            return JSON.parse(rawText);
-        } catch (e) {
-            console.error("Script Generation Failed:", e);
-            return null; 
-        }
+            if(result.response.usageMetadata) updateBudget(result.response.usageMetadata,SUNCAT_ID);
+                return suncatNormalizeScript(JSON.parse(rawText),bossCardName);
+            } catch (e) {
+                console.error("Script Generation Failed:", e);
+                return null; 
+            }
     }
     async function generateTacticsScript(player, bossName, minionNames) {
         const currentProfile = player.playerProfile ? 
@@ -4767,22 +4759,348 @@
         }
         return fallbackText;
         }
+    // Suncat runtime bridge: no dependencies beyond the server's existing modules.
+    const SUNCAT_RUNTIME = {
+        maxCompanions:3, summonCooldownMs:5*60*1000,
+        busy:false, lastThink:0, protectedID:null, sequence:0, observations:new Map(),
+        recent:[], companions:[], lastSummon:0, mapBusy:false, motion:null,
+        customCards:{}, // Persisted below with the existing world state.
+        autoTools:new Set(['consultGameManual','searchPlayerMemories','travelToLocation','spawnNPC']),
+        handled:new Set(['consultGameManual','searchPlayerMemories','givePlayerCard','spawnNPC',
+            'activate_protection','deactivate_protection','travelToLocation','teleportToPlayer',
+            'teleportPlayer','assignQuest','changeEnvironment','alterTerrain','playMusic',
+            'smiteOrReviveEntity','launchTacticalSkirmish','createCustomCard']),
+        id() { return Date.now()*1000+(this.sequence++ % 1000); },
+        record(name,args,result) {
+            this.recent.push({time:Date.now(),name,args:JSON.stringify(args || {}).slice(0,600),
+                result:JSON.stringify(result || {}).slice(0,1600)});
+            this.recent=this.recent.slice(-8); saveSuncatMemory();
+        }
+    };
+    function suncatResolveCard(value) {
+        const text=String(value ?? '').trim().toLowerCase();
+        if (/^\d+(?:\.\d+)?$/.test(text)) {
+            const id=Math.floor(Number(text));
+            if (CARD_MANIFEST_DB[id]) return id;
+        }
+        const exact=Object.keys(CARD_MANIFEST_DB).filter(id=>CARD_MANIFEST_DB[id].name.toLowerCase()===text);
+        if (exact.length===1) return Number(exact[0]);
+        throw new Error(`Unknown or ambiguous entity '${value}'. Use consultGameManual and pass its numeric ID. No NPC was substituted.`);
+    }
+    function suncatAck(targetID,event,payload,timeout=5000) {
+        return new Promise((resolve,reject)=>{
+            const timer=setTimeout(()=>reject(new Error('Client acknowledgement timed out; result is unknown. Do not retry automatically.')),timeout);
+            const peer=io.sockets.sockets.get(targetID);
+            if (!peer) { clearTimeout(timer); reject(new Error('Player disconnected.')); return; }
+            peer.emit(event,payload,result=>{
+                clearTimeout(timer);
+                if (!result || result.ok===false) reject(new Error(result?.error || 'Empty client reply.'));
+                else resolve(result);
+            });
+        });
+    }
+    async function suncatCommand(targetID,kind,args) {
+        if (!players[targetID] || targetID===SUNCAT_ID) throw new Error('An online game client is required.');
+        const target=players[targetID],transition=kind==='customMap'||kind==='teleport';
+        if(transition && target.pendingMapTransition!==undefined) throw new Error('A map transition is already pending.');
+        if(transition) target.pendingMapTransition=kind==='customMap'?args.id:args.mapID;
+        try {
+            return await suncatAck(targetID,'suncat_command',{id:String(SUNCAT_RUNTIME.id()),mapID:target.mapID,kind,args});
+        } finally {if(transition) delete target.pendingMapTransition;}
+    }
+    function suncatGrid(mapID) {
+        if (mapID===999 && activeCustomMap) return activeCustomMap.maze;
+        if (mapID===100 && tintagelHubMap) return tintagelHubMap.maze;
+        return SUNCAT_RUNTIME.observations.get(mapID)?.maze;
+    }
+    function suncatFloor(grid,x,y) {
+        const tile=grid?.[Math.floor(y)]?.[Math.floor(x)];
+        return tile===0 || (Number.isInteger(tile) && tile<0 && Math.abs(tile)%2===0);
+    }
+    async function suncatObserve(mapID,force=false) {
+        const cached=SUNCAT_RUNTIME.observations.get(mapID);
+        if (!force && cached && Date.now()-cached.at<15000) return cached;
+        const observer=Object.keys(players).find(id=>id!==SUNCAT_ID && players[id].mapID===mapID);
+        if (!observer) return cached || null;
+        const s=players[SUNCAT_ID];
+        const reply=await suncatAck(observer,'suncat_world_request',{mapID,x:s.x,y:s.y});
+        const grid=reply.maze,w=grid?.[0]?.length;
+        if (reply.mapID!==mapID || players[observer]?.mapID!==mapID || !Array.isArray(grid) ||
+            grid.length<1 || grid.length>256 || !w || w>256 ||
+            !grid.every(row=>Array.isArray(row)&&row.length===w&&row.every(Number.isInteger))) throw new Error('Invalid map observation.');
+        const npcs=(Array.isArray(reply.npcs)?reply.npcs:[]).slice(0,128).filter(n=>
+            Number.isFinite(n.index)&&Number.isFinite(n.type)&&Number.isFinite(n.x)&&Number.isFinite(n.y));
+        const observation={maze:grid,npcs,at:Date.now(),observer};
+        SUNCAT_RUNTIME.observations.set(mapID,observation);
+        if (SUNCAT_RUNTIME.observations.size>40) SUNCAT_RUNTIME.observations.delete(SUNCAT_RUNTIME.observations.keys().next().value);
+        return observation;
+    }
+    function suncatPath(grid,sx,sy,tx,ty) {
+        const w=grid?.[0]?.length,h=grid?.length;
+        if (!w || !Number.isFinite(sx+sy+tx+ty)) return null;
+        sx=Math.floor(sx);sy=Math.floor(sy);tx=Math.floor(tx);ty=Math.floor(ty);
+        if (!suncatFloor(grid,tx,ty)||sx<0||sy<0||sx>=w||sy>=h) return null;
+        const start=sy*w+sx,end=ty*w+tx,queue=[start],parents=new Map([[start,-1]]);
+        for(let head=0;head<queue.length&&head<65536;head++) {
+            const k=queue[head],x=k%w,y=Math.floor(k/w);
+            if(k===end) {
+                const path=[];
+                for(let p=end;p!==start;p=parents.get(p)) path.push({x:p%w+0.5,y:Math.floor(p/w)+0.5});
+                path.reverse();
+                if(suncatFloor(grid,sx,sy)) path.unshift({x:sx+0.5,y:sy+0.5});
+                return path;
+            }
+            for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]) {
+                const nx=x+dx,ny=y+dy,key=ny*w+nx;
+                if(nx<0||ny<0||nx>=w||ny>=h||parents.has(key)||!suncatFloor(grid,nx,ny)) continue;
+                parents.set(key,k);queue.push(key);
+            }
+        }
+        return null;
+    }
+    function suncatNearestFloor(grid,x,y) {
+        if(!Number.isFinite(x+y)||!grid?.length) throw new Error('Map geometry is unavailable.');
+        for(let r=0;r<=12;r++) for(let dy=-r;dy<=r;dy++) for(let dx=-r;dx<=r;dx++) {
+            if(Math.max(Math.abs(dx),Math.abs(dy))!==r) continue;
+            const px=Math.floor(x)+dx+0.5,py=Math.floor(y)+dy+0.5;
+            if(suncatFloor(grid,px,py)) return {x:px,y:py};
+        }
+        throw new Error('No reachable landing area near that coordinate.');
+    }
+    function suncatRememberedVision(mapID) {
+        const v=SUNCAT_RUNTIME.observations.get(mapID);
+        return v ? JSON.stringify({mapID,ageSeconds:Math.round((Date.now()-v.at)/1000),
+            width:v.maze[0].length,height:v.maze.length,npcs:v.npcs.filter(n=>Math.hypot(n.x-players[SUNCAT_ID].x,n.y-players[SUNCAT_ID].y)<=12).slice(0,24)}) :
+            'UNOBSERVED: no client has supplied this map. Unknown does not mean empty.';
+    }
+    async function suncatTool(name,args,socket) {
+        const autonomous=!socket, s=players[SUNCAT_ID];
+        const targetID=autonomous?SUNCAT_ID:findSocketID(args.targetName || players[socket.id]?.name);
+        if (autonomous && !SUNCAT_RUNTIME.autoTools.has(name)) throw new Error('This tool requires a player request.');
+        if (name==='consultGameManual') {
+            const terms=String(args.query || '').toLowerCase().split(/\W+/).filter(Boolean);
+            if(!terms.length) throw new Error('Supply a search query.');
+            const records=[...Object.entries(CARD_MANIFEST_DB).map(([id,v])=>({kind:'card',id:Number(id),...v})),
+                ...Object.entries(WORLD_ATLAS_DB).map(([id,v])=>({kind:'map',id:Number(id),...v}))];
+            const ranked=records.map(v=>({v,score:terms.filter(t=>JSON.stringify(v).toLowerCase().includes(t)).length}))
+                .filter(x=>x.score).sort((a,b)=>b.score-a.score).slice(0,8).map(x=>x.v);
+            return {ok:true,matches:ranked};
+        }
+        if (name==='searchPlayerMemories') {
+            if(!targetID) throw new Error('Player not found or name is ambiguous.');
+            const terms=String(args.query || '').toLowerCase().split(/\W+/).filter(Boolean);
+            const memories=players[targetID].searchableMemories || [];
+            return {ok:true,matches:memories.filter(m=>terms.some(t=>String(m.text || '').toLowerCase().includes(t)))
+                .slice(-8).map(m=>m.text)};
+        }
+        if (name==='deactivate_protection') {
+            SUNCAT_RUNTIME.protectedID=null;suncatState='active';s.state='wandering';
+            currentTargetID=null;SUNCAT_RUNTIME.motion=null;
+            io.emit('updatePlayers',getPublicPlayers());return {ok:true,result:'Protection disabled.'};
+        }
+        if (name==='travelToLocation') {
+            const mapID=Number(args.mapID),x=Number(args.x),y=Number(args.y);
+            if(!Number.isInteger(mapID)||(!WORLD_ATLAS_DB[mapID]&&mapID!==999&&mapID!==100)||!Number.isFinite(x+y)) throw new Error('Invalid map or coordinates.');
+            await suncatObserve(mapID);const grid=suncatGrid(mapID),p=suncatNearestFloor(grid,x,y);
+            currentTargetID=null;SUNCAT_RUNTIME.protectedID=null;
+            if(suncatState==='protecting') suncatState='active';
+            if(s.mapID!==mapID) {
+                Object.assign(s,{mapID,x:p.x,y:p.y});SUNCAT_RUNTIME.motion=null;
+                io.emit('updatePlayers',getPublicPlayers());return {ok:true,result:'Arrived.',mapID,...p};
+            }
+            const path=suncatPath(grid,s.x,s.y,p.x,p.y);
+            if(!path) throw new Error('No traversable land route to that point.');
+            SUNCAT_RUNTIME.motion={mapID,path};
+            return {ok:true,result:path.length?'Walking; arrival is not yet complete.':'Already at destination.',mapID,...p};
+        }
+        if (!targetID || !players[targetID]) throw new Error('Player not found or name is ambiguous.');
+        const target=players[targetID];
+        if (name==='activate_protection'||name==='teleportToPlayer') {
+            if(targetID===SUNCAT_ID) throw new Error('Choose a human player to visit or protect.');
+            await suncatObserve(target.mapID);const p=suncatNearestFloor(suncatGrid(target.mapID),target.x,target.y);
+            Object.assign(s,{mapID:target.mapID,...p,targetX:undefined,targetY:undefined,lastFireTime:0});
+            SUNCAT_RUNTIME.motion=null;currentTargetID=targetID;lastSwitchTime=Date.now();
+            SUNCAT_RUNTIME.protectedID=name==='activate_protection'?targetID:null;
+            suncatState=name==='activate_protection'?'protecting':'active';s.state=suncatState;
+            io.emit('updatePlayers',getPublicPlayers());return {ok:true,result:name==='activate_protection'?'Protection enabled.':'Arrived beside player.'};
+        }
+        if (name==='spawnNPC') {
+            const baseID=suncatResolveCard(args.npcType),card=CARD_MANIFEST_DB[baseID];
+            const purpose=String(args.purpose || 'companion').slice(0,80);
+            const tag=`${target.mapID}:${baseID}:${purpose}`;
+            if(autonomous) {
+                const existing=SUNCAT_RUNTIME.companions.find(n=>n.tag===tag);
+                if(existing) return {ok:true,result:'Reusing the existing summon; no duplicate created.',...existing};
+                if(SUNCAT_RUNTIME.companions.length>=SUNCAT_RUNTIME.maxCompanions) throw new Error(`Autonomous companion budget (${SUNCAT_RUNTIME.maxCompanions}) is full. Reuse an existing companion.`);
+                if(Date.now()-SUNCAT_RUNTIME.lastSummon<SUNCAT_RUNTIME.summonCooldownMs) throw new Error('Autonomous summons have a five-minute cooldown.');
+                if(card.type!=='monster') throw new Error('Autonomous companions must be monsters.');
+            }
+            const observer=targetID===SUNCAT_ID ? Object.keys(players).find(id=>id!==SUNCAT_ID && players[id].mapID===target.mapID) : targetID;
+            if(!observer) throw new Error('No game client is present to materialize this summon.');
+            const role=card.type!=='monster'?'reward':(args.role || (autonomous?'battle':'battle'));
+            if(!['battle','dialogue','shop','reward'].includes(role)) throw new Error('Use battle, dialogue, shop or reward; quest_giver needs a real quest definition.');
+            if(card.type==='monster' && role==='reward') throw new Error('Use givePlayerCard to give a creature card, or define a dialogue reward explicitly.');
+            if(args.state && !['wandering','stationary','chasing','fleeing'].includes(args.state)) throw new Error('Invalid NPC movement state.');
+            const alignment=autonomous?'ally':(args.alignment || (role==='battle'?'foe':'friendly'));
+            if(!['foe','ally','friendly','defender','friendly_messenger'].includes(alignment)) throw new Error('Invalid alignment.');
+            let actions={};
+            if(args.actionsJson) {
+                actions=JSON.parse(args.actionsJson);
+                for(const [key,value] of Object.entries(actions)) {
+                    if(!['yesActions','noActions','endActions','deathActions'].includes(key)||!Array.isArray(value)) throw new Error('Invalid actionsJson.');
+                    for(const a of value) if(!Array.isArray(a)||typeof a[0]!=='string') throw new Error('Expected [action,payload] entries.');
+                }
+            }
+            const data={mapID:target.mapID,index:SUNCAT_RUNTIME.id(),x:target.x+1,y:target.y,
+                type:card.type==='monster'?(card.sprite ?? baseID):-27,name:args.displayName || card.name,
+                state:card.type==='monster'?(args.state || 'wandering'):'stationary',role,alignment,
+                color:args.color || (alignment==='foe'?'#ff0000':'#00ff88'),
+                deck:card.type!=='monster'?[baseID]:role==='shop'?buildShopInventory(12,30):buildSynergisticDeck(baseID),
+                dialogue:card.type!=='monster'?[]:(Array.isArray(args.dialogue)?args.dialogue:[card.lore || card.name]),options:args.options || null,
+                isBoss:false,isCinematic:args.isCinematic===true,instanceId:target.mapID===999?activeCustomMap?.instanceId:undefined,summonTag:autonomous?tag:undefined,...actions};
+            // Reserve BEFORE sending: a lost acknowledgement must not create an army on retry.
+            if(autonomous) {
+                SUNCAT_RUNTIME.companions.push({tag,index:data.index,mapID:data.mapID,status:'pending'});
+                SUNCAT_RUNTIME.lastSummon=Date.now();saveSuncatMemory();
+            }
+            const result=await suncatCommand(observer,'spawn',data);
+            Object.assign(data,{x:result.x,y:result.y});
+            for(const id of Object.keys(players)) if(id!==observer && id!==SUNCAT_ID && players[id].mapID===data.mapID) io.to(id).emit('remote_spawn_npc',data);
+            const reservation=SUNCAT_RUNTIME.companions.find(n=>n.index===data.index);
+            if(reservation) reservation.status='confirmed';
+            SUNCAT_RUNTIME.observations.delete(data.mapID);
+            return {ok:true,result:`Spawned ${card.name}.`,...result,mapID:data.mapID};
+        }
+        if(name==='givePlayerCard') return suncatCommand(targetID,'gift',{cardIndex:suncatResolveCard(args.cardName)});
+        if(name==='playMusic') return suncatCommand(targetID,'music',{trackId:args.trackId});
+        if(name==='assignQuest') {
+            const result=await suncatCommand(targetID,'quest',{questText:String(args.questText || '')});
+            target.activeQuest=result.questText || null;return result;
+        }
+        if(name==='changeEnvironment') {
+            if(args.weather && !['clear','snow','rain','storm','leaves','lightning','space','apocalypse','inferno'].includes(args.weather)) throw new Error('Unknown weather mode.');
+            const result=await suncatCommand(targetID,'environment',args);
+            for(const id of Object.keys(players)) if(id!==targetID && id!==SUNCAT_ID && players[id].mapID===target.mapID)
+                io.to(id).emit('update_map_environment',{mapID:target.mapID,weather:args.weather,skyColor:args.skyColor});
+            return result;
+        }
+        if(name==='alterTerrain') {
+            if(![args.x,args.y,args.tileId].every(Number.isInteger)||Math.abs(args.tileId)>1000) throw new Error('Invalid integer tile edit.');
+            const mapID=target.mapID,result=await suncatCommand(targetID,'terrain',args),grid=suncatGrid(mapID);
+            if(grid?.[args.y] && args.x>=0 && args.x<grid[args.y].length) grid[args.y][args.x]=args.tileId;
+            for(const id of Object.keys(players)) if(id!==targetID && id!==SUNCAT_ID && players[id].mapID===mapID)
+                io.to(id).emit('suncat_tile_changed',{mapID,x:args.x,y:args.y,tileId:args.tileId});
+            return result;
+        }
+        if(name==='smiteOrReviveEntity') return suncatCommand(targetID,'entity',{
+            type:CARD_MANIFEST_DB[suncatResolveCard(args.npcType)].sprite ?? suncatResolveCard(args.npcType),
+            action:args.action,index:args.index});
+        if(name==='teleportPlayer') {
+            const mapID=Number(args.mapID);
+            if(!Number.isInteger(mapID)) throw new Error('Invalid map ID.');
+            if(mapID===100) throw new Error('Hub 100 has no matching client map loader; use an atlas map or scenario 999.');
+            let result;
+            if(mapID===999) {
+                if(!activeCustomMap) throw new Error('No active generated scenario.');
+                result=await suncatCommand(targetID,'customMap',{...activeCustomMap,returnTo:{mapID:target.mapID,x:target.x,y:target.y}});
+            } else result=await suncatCommand(targetID,'teleport',{mapID});
+            Object.assign(target,{mapID:result.mapID,x:result.x,y:result.y,stepsTaken:0,exploredTiles:new Set()});
+            io.emit('updatePlayers',getPublicPlayers());return result;
+        }
+        if(name==='launchTacticalSkirmish') {
+            const ids=Object.keys(CARD_MANIFEST_DB).filter(id=>CARD_MANIFEST_DB[id].type==='monster' && Number(id)<10000);
+            const bossId=Number(ids[Math.floor(Math.random()*ids.length)]),team=[bossId,...getMinions(bossId).slice(0,3)];
+            const script=await generateTacticsScript(target,CARD_MANIFEST_DB[bossId].name,team.slice(1).map(id=>CARD_MANIFEST_DB[id].name));
+            if(!script) throw new Error('Narrative generation failed; no battle started.');
+            return suncatCommand(targetID,'tactics',{index:SUNCAT_RUNTIME.id(),bossId,team,
+                winText:script.winText || 'Victory!',scenarioName:script.scenarioName || 'Skirmish'});
+        }
+        if(name==='createCustomCard') {
+            throw new Error('Custom-card creation is not wired to a durable client card registry. Use spawnNPC with a known npcType and displayName for a named variant. No card was created.');
+        }
+        throw new Error('Unhandled tool: '+name);
+    }
+    function suncatForgetPlayer(id) {
+        const player=players[id];
+        if(!player || id===SUNCAT_ID) return;
+        const memoryKey=player.persistentId || player.name.toLowerCase();
+        delete suncatPersistentMemory[memoryKey];
+        playerFavorMemory[id]=0;
+        Object.assign(player,{playerProfile:{combatStyle:'Unknown',alliances:'Unknown',tastes:'Unknown',personality:'Unknown'},
+            storySoFar:'',activeQuest:null,suncatPerception:'An unknown entity.',undigestedInfo:[],searchableMemories:[]});
+        delete chatSessions[id];
+        saveSuncatMemory();
+    }
+
+    function suncatReachable(grid,start,floor=0) {
+        const result=[],w=grid[0].length,h=grid.length,queue=[{x:start.x,y:start.y}],seen=new Set();
+        for(let head=0;head<queue.length;head++) {
+            const p=queue[head],key=p.y*w+p.x;
+            if(p.x<0||p.y<0||p.x>=w||p.y>=h||seen.has(key)||grid[p.y][p.x]!==floor) continue;
+            seen.add(key);result.push(p);
+            queue.push({x:p.x+1,y:p.y},{x:p.x-1,y:p.y},{x:p.x,y:p.y+1},{x:p.x,y:p.y-1});
+        }
+        return result;
+    }
+    function suncatPlaceActors(mapData,npcs) {
+        const used=new Set([`${mapData.nodes.start.x},${mapData.nodes.start.y}`]);
+        for(const n of npcs) {
+            let best=null,bestD=Infinity;
+            for(const p of mapData.validFloors) {
+                if(used.has(`${p.x},${p.y}`)) continue;
+                if(n.alignment==='foe' && Math.hypot(p.x-mapData.nodes.start.x,p.y-mapData.nodes.start.y)<8) continue;
+                const distance=(p.x+0.5-n.x)**2+(p.y+0.5-n.y)**2;
+                if(distance<bestD) {best=p;bestD=distance;}
+            }
+            if(!best) throw new Error('Insufficient reachable actor positions.');
+            n.x=best.x+0.5;n.y=best.y+0.5;n.index=SUNCAT_RUNTIME.id();
+            used.add(`${best.x},${best.y}`);
+            if(n.classification==='lore_main') n.isCinematic=true;
+        }
+    }
+    function suncatShuffle(items) {
+        const out=items.slice();
+        for(let i=out.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[out[i],out[j]]=[out[j],out[i]];}
+        return out;
+    }
+    function suncatNormalizeScript(script,bossName) {
+        if(!script||typeof script!=='object') throw new Error('Invalid generated narrative.');
+        const texts=(value,fallback)=>{
+            const list=(Array.isArray(value)?value:typeof value==='string'?[value]:[])
+                .filter(v=>typeof v==='string'&&v.trim()).map(v=>v.slice(0,1200)).slice(0,8);
+            return list.length?list:[fallback];
+        };
+        for(const key of ['friendlyLore','hostileTaunts','thirdTribeTaunts','recruitPlea']) script[key]=texts(script[key],'Stay alert.');
+        script.questObjective=`Defeat ${bossName} in the boss lair.`;
+        if(typeof script.bossTaunt!=='string') script.bossTaunt='You have come far enough.';
+        return script;
+    }
+
     async function executeAITools(currentResponse, activeSession, socket) {
         let chainCount = 0;
-        const MAX_CHAIN = 3; 
+        const MAX_CHAIN = 3;
+        const seenCalls=new Set();
+        let callsRun=0;
+        const maxCalls=socket?8:2;
 
-        while (currentResponse.functionCalls() && chainCount < MAX_CHAIN) {
+                while (currentResponse.functionCalls()?.length && chainCount < MAX_CHAIN) {
             chainCount++;
             const calls = currentResponse.functionCalls();
-            console.log(`[AI TOOL CHAIN ${chainCount}]: Executing ${calls.length} tools concurrently!`); 
-            
-            // Map all tool calls to promises so they execute at the exact same time
-            const toolPromises = calls.map(async (call) => {
-                let functionResult = { result: "Action executed." };
+            const toolResponsesBatch=[];
+            for (const call of calls) {
+                let functionResult;
                 
                 try {
                         // DEV AGENT DISPATCHER
-                        if (call.name === "generateDevReport") {
+                        const callKey=call.name+JSON.stringify(call.args || {});
+                        if(seenCalls.has(callKey)) throw new Error('Identical call already attempted this turn; inspect its previous result.');
+                        if(callsRun>=maxCalls) throw new Error('Tool-call budget exhausted for this turn.');
+                        if(!socket && !SUNCAT_RUNTIME.autoTools.has(call.name)) throw new Error('Tool requires a player request.');
+                        seenCalls.add(callKey);callsRun++;
+                        if(SUNCAT_RUNTIME.handled.has(call.name)) {
+                            functionResult=await suncatTool(call.name,call.args || {},socket);
+                        }
+                        else if (call.name === "generateDevReport") {
                             const targetID = findSocketID(call.args.targetName);
                             if (targetID) {
                                 // Non-blocking dispatch: Suncat answers in chat while the background agent traces code
@@ -4791,7 +5109,7 @@
                                     call.args.topic, 
                                     call.args.filename, 
                                     call.args.targetNode
-                                );
+                                ).catch(error=>console.error('[Dev report]',error));
                                 
                                 functionResult = { result: `Task started. Inform the player that you are inspecting the code and an Imp courier will deliver the scroll shortly.` };
                             } else {
@@ -4816,9 +5134,9 @@
 
                                 let impID = 56; 
                                 let spawnX = player.x + (Math.random() > 0.5 ? 2.5 : -2.5);
-                                let spawnY = player.y + (Math.random() > 0.5 ? 2.5 : -2.5);
+                               let spawnY = player.y + (Math.random() > 0.5 ? 2.5 : -2.5);
 
-                                io.emit("remote_spawn_npc", {
+                                io.to(targetID).emit("remote_spawn_npc", {
                                     mapID: player.mapID,
                                     index: Math.floor(Math.random() * 100000) + 1000,
                                     x: spawnX, y: spawnY,
@@ -4837,108 +5155,45 @@
                                 functionResult = { result: `Failed: Player not found.` };
                             }
                         }
-                        // A. GIFTING
-                        else if (call.name === "givePlayerCard") {
-                            const targetName = call.args.targetName;
-                            const targetID = findSocketID(targetName);
-                            
-                            if (!targetID) {
-                                functionResult = { result: `Failed: Player '${targetName}' not found or offline.` };
-                            } else {
-                                let cardID = parseInt(call.args.cardName);
-                                const name = String(call.args.cardName).toLowerCase().trim();
-
-                                // Fallback: If the AI passed a string name or an invalid ID, dynamically search the DB
-                                if (isNaN(cardID) || !CARD_MANIFEST_DB[cardID]) {
-                                    
-                                    // 1. EXACT MATCH FIRST (Fixes the Dragon vs Dragon Wing overlap)
-                                    // ---> THE FIX: Changed nameToFind to name <---
-                                    let foundID = Object.keys(CARD_MANIFEST_DB).find(id => CARD_MANIFEST_DB[id].name.toLowerCase() === name) || 
-                                    Object.keys(CARD_MANIFEST_DB).find(id => CARD_MANIFEST_DB[id].name.toLowerCase().includes(name));
-                                    
-                                    // 2. INCLUDES MATCH (Fallback)
-                                    if (!foundID) {
-                                        foundID = Object.keys(CARD_MANIFEST_DB).find(id => {
-                                            const dbName = CARD_MANIFEST_DB[id].name.toLowerCase();
-                                            return dbName.includes(name) || name.includes(dbName);
-                                        });
-                                    }
-                                    
-                                    if (foundID) {
-                                        cardID = parseInt(foundID);
-                                    } else {
-                                        // Hardcoded aliases for edge cases
-                                        if (name.includes("excalibur")) cardID = 84;
-                                        else if (name.includes("suncat")) cardID = 87; 
-                                    }
-                                }
-
-                                if (!isNaN(cardID) && CARD_MANIFEST_DB[cardID]) {
-                                    io.to(targetID).emit("receive_card", { cardIndex: cardID });
-                                    functionResult = { result: `Success. Card ID ${cardID} given to ${targetName}.` };
-                                } else {
-                                    functionResult = { result: `Error: Could not find card named/ID '${call.args.cardName}'.` };
-                                }
-                            }
-                        }
-                        // B. JUDGEMENT
-                        else if (["kickPlayer", "banishPlayer", "vanquishPlayer"].includes(call.name)) {
-                            const targetName = call.args.targetName;
-                            const targetID = findSocketID(targetName);
-
-                            if (!targetID) {
-                                functionResult = { result: `Failed: Player ${targetName} not found.` };
-                            } else {
-                                let actionType = call.name.replace("Player", "").toLowerCase();
-                                const targetSocket = io.sockets.sockets.get(targetID);
-                                
-                                if (targetSocket) {
-                                    targetSocket.emit("admin_command", { type: actionType });
-                                    if (actionType !== 'vanquish') targetSocket.disconnect(true);
-                                    functionResult = { result: `Success: Player ${targetName} was ${actionType}ed.` };
-                                } else {
-                                    functionResult = { result: `Error: Socket not found for ${targetName}.` };
-                                }
-                            }
-
-                        }  
-                        // C. TELEPORTATION 
-                        else if (call.name === "teleportToPlayer") {
-                            const suncat = players[SUNCAT_ID];
-                            let targetID = call.args.targetName ? findSocketID(call.args.targetName) : (socket ? socket.id : null);
-                            const requester = players[targetID];
-                            
-                            if (suncat && requester) {
-                                suncat.mapID = requester.mapID;
-                                suncat.x = parseFloat(requester.x);
-                                suncat.y = parseFloat(requester.y);
-                                
-                                currentTargetID = targetID; 
-                                lastSwitchTime = Date.now();
-                                
-                                io.emit("updatePlayers", getPublicPlayers());
-                                functionResult = { result: `Teleport successful. You are now standing next to ${requester.name}.` };
-                            } else {
-                                functionResult = { result: "Teleport failed. Could not find player coordinates." };
-                            }
-                        }
+                        
+                        else if (['kickPlayer','banishPlayer','vanquishPlayer'].includes(call.name)) {
+                            const targetID=findSocketID(call.args.targetName);
+                            if(!targetID || targetID===SUNCAT_ID) throw new Error('Online player not found.');
+                            const type=call.name.replace('Player','').toLowerCase();
+                            await suncatAck(targetID,'admin_command',{type});
+                            if(type==='vanquish') suncatForgetPlayer(targetID);
+                            io.sockets.sockets.get(targetID)?.disconnect(true);
+                            functionResult={ok:true,result:type==='banish'?
+                                'Browser ban flag acknowledged; this is not a server account/IP ban.':
+                                type==='vanquish'?'Local save deletion acknowledged and Suncat memory cleared.':'Kick acknowledged; socket disconnected.'};
+                        } 
+                        
                         
                         // E. CREATE CUSTOM MAP
-                        else if (call.name === "createCustomMap") {
+                       else if (call.name === "createCustomMap") {
+                            if(SUNCAT_RUNTIME.mapBusy) throw new Error('Another scenario is being generated.');
+                            if(Object.entries(players).some(([id,p])=>id!==SUNCAT_ID &&
+                                (p.mapID===999 || p.pendingMapInvite?.expires>Date.now()))) {
+                                throw new Error('The shared scenario is occupied or has a live invitation. Finish or decline it first.');
+                            }
+                            const recipients=String(call.args.targetName).toLowerCase()==='all'
+                                ?Object.keys(players).filter(id=>id!==SUNCAT_ID)
+                                :[findSocketID(call.args.targetName)];
+                            if(!recipients.length||recipients.some(id=>!id||id===SUNCAT_ID)) throw new Error('Choose an online player or All.');
+                            SUNCAT_RUNTIME.mapBusy=true;
                             try {
                                 // 1. ENUM ROLLS & FACTION SETUP
                                 const bEnum = Math.floor(Math.random() * Object.keys(BIOME_DB).length);
                                 const biome = BIOME_DB[bEnum] || BIOME_DB[0];
                                 
-                                const validScenarios = ['rescue', 'fetch', 'escort', 'bounty'];
-                                let scenarioType = validScenarios[Math.floor(Math.random() * validScenarios.length)];
+                                const scenarioType='bounty';
                                 
                                 const monsterIDs = Object.keys(CARD_MANIFEST_DB).filter(id => CARD_MANIFEST_DB[id].type === "monster" && CARD_MANIFEST_DB[id].rank !== "0");
                                 let antagID = parseInt(monsterIDs[Math.floor(Math.random() * monsterIDs.length)]);
                                 let protagID = parseInt(monsterIDs[Math.floor(Math.random() * monsterIDs.length)]);
                                 while (protagID === antagID) protagID = parseInt(monsterIDs[Math.floor(Math.random() * monsterIDs.length)]);
                                 
-                                const wildFactions = [94 /*Dragon*/, 91 /*Demon*/, 77 /*Slime*/, 63 /*Beast*/, 35 /*Lich*/, 83 /*Mimic*/, 10 /*Chest?*/];
+                                const wildFactions=[54,56,63,83,188,206,225].filter(id=>CARD_MANIFEST_DB[id]?.type==='monster');
                                 let thirdFactionID = wildFactions[Math.floor(Math.random() * wildFactions.length)];
                                 let thirdFactionName = CARD_MANIFEST_DB[thirdFactionID] ? CARD_MANIFEST_DB[thirdFactionID].name : "Unknown Horrors";
                                 
@@ -4948,7 +5203,7 @@
                                 let friendlyMinions = getMinions(protagID);
                                 friendlyMinions = [...friendlyMinions, 32, 33, 34, 41, 42, 60, 75];
                                 
-                                const targetPlayer = players[findSocketID(call.args.targetName)];
+                                const targetPlayer = players[recipients[0]];
 
                                 // ==========================================
                                 // 2. GENERATE THE PHYSICAL MAP FIRST
@@ -5091,7 +5346,7 @@
                                 }
 
                                 // --- D. SCATTER WANDERERS ON VALID FLOORS ---
-                                let shuffledFloors = [...mapData.validFloors].sort(() => 0.5 - Math.random());
+                                let shuffledFloors = suncatShuffle(mapData.validFloors);
                                 let placedWanderers = 0;
                                 let totalWanderers = 15; // Set a fixed number of extra wanderers
                                 
@@ -5115,17 +5370,16 @@
                                 }
 
                                 // Apply global indices to all array items
-                                mapNPCs.forEach((npc, idx) => { 
-                                    if (!npc.index) npc.index = 10000 + idx; 
-                                });                            
+                                suncatPlaceActors(mapData,mapNPCs);                        
 
                                 // ==========================================
                                 // 5. CACHE INSTANCE & DISPATCH MESSENGER
                                 // ==========================================
                                 const customMapData = {
-                                    id: 999, maze: mapData.grid, 
+                                    id:999, maze:mapData.grid,
+                                    instanceId:String(SUNCAT_RUNTIME.id()),exitIndex:SUNCAT_RUNTIME.id(),scenarioType,
                                     skyColor: biome.skies[0], floorColor: biome.floors[0], 
-                                    name: `Realm of the ${script.questObjective.split(' ')[0] || "Mystery"}`, 
+                                    name: `${biome.name}: ${CARD_MANIFEST_DB[antagID].name}`,
                                     npcs: mapNPCs, weather: biome.weather[0],
                                     
                                     // Link the physical radar names to the nodes we just created!
@@ -5151,22 +5405,17 @@
 
                                 activeCustomMap = customMapData;
 
-                                let requesterID = socket ? socket.id : findSocketID(call.args.targetName);
-                                if (requesterID && players[requesterID]) {
-                                    const tp = players[requesterID];
-                                    tp.activeQuest = script.questObjective;
-                                    tp.mapScenario = scenarioType; 
-                                    tp.mapBossID = antagID;
-                                    
-                                    io.to(requesterID).emit("remote_spawn_npc", {
-                                        mapID: tp.mapID, 
-                                        index: Math.floor(Math.random() * 100000) + 1000,
-                                        x: tp.x, y: tp.y, type: 56, state: 'chasing', isBoss: false, 
-                                        role: 'portal_invite', color: '#ff8800', deck: [], 
-                                        dialogue: [`My master Suncat sent me to bring you to the adventure realm. A great ${scenarioType} awaits. Shall we go?`],
-                                        options: ['Yes', 'No'], alignment: 'friendly_messenger',
-                                        yesActions: [['load_map', 999], ['play_sfx', 'warp'], ['disappear', null]],
-                                        noActions: [['play_sfx', 'cancel'], ['disappear', null]]
+                                for(const requesterID of recipients) {
+                                    const tp=players[requesterID];
+                                    if(!tp) continue;
+                                    tp.activeQuest=script.questObjective;tp.mapScenario=scenarioType;tp.mapBossID=antagID;
+                                    tp.pendingMapInvite={instanceId:customMapData.instanceId,expires:Date.now()+600000};
+                                    io.to(requesterID).emit('remote_spawn_npc',{
+                                        mapID:tp.mapID,index:SUNCAT_RUNTIME.id(),x:tp.x,y:tp.y,type:56,
+                                        state:'chasing',isBoss:false,role:'portal_invite',color:'#ff8800',deck:[],
+                                        dialogue:[`Suncat invites you to a bounty: ${script.questObjective} Shall we go?`],
+                                        options:['Yes','No'],alignment:'friendly_messenger',
+                                        yesActions:[['accept_custom_map',null]],noActions:[['close_dialogue',null]]
                                     });
                                 }
 
@@ -5174,424 +5423,12 @@
 
                             } catch (err) {
                                 console.error("Map Generation Error:", err);
-                                functionResult = { result: "Critical Error building multi-zone map." };
-                            }
-                        }
-                        // Q. LAUNCH TACTICS SCENARIO
-                        else if (call.name === "launchTacticalSkirmish") {
-                            const targetID = findSocketID(call.args.targetName);
-                            if (targetID && players[targetID]) {
-                                const player = players[targetID];
-                                
-                                // 1. Server Rolls the Boss
-                                const monsterIDs = Object.keys(CARD_MANIFEST_DB).filter(id => CARD_MANIFEST_DB[id].type === "monster" && CARD_MANIFEST_DB[id].rank !== "0");
-                                const bossId = parseInt(monsterIDs[Math.floor(Math.random() * monsterIDs.length)]);
-                                
-                                // 2. Server Rolls the Minions (Using your synergy helper!)
-                                let availableMinions = getMinions(bossId);
-                                // Shuffle and take 2 to 4 minions
-                                availableMinions = availableMinions.sort(() => 0.5 - Math.random()).slice(0, Math.floor(Math.random() * 3) + 2);
-                                
-                                let eTeam = [bossId, ...availableMinions];
-                                
-                                // 3. Translate IDs to Names for the AI
-                                let bossName = CARD_MANIFEST_DB[bossId]?.name || "Unknown Leader";
-                                let minionNames = availableMinions.map(id => CARD_MANIFEST_DB[id]?.name || "Unknown");
-                                
-                                // 4. Ask Suncat's writer-brain to script the scenario
-                                const script = await generateTacticsScript(player, bossName, minionNames);
-                                
-                                // 5. Inject the flawless server-generated package into the client
-                                const safeCode = `
-                                    if (typeof Dungeon !== 'undefined') {
-                                        let tIndex = Math.floor(Math.random() * 100000) + 900000;
-                                        // Spawn the boss 1 tile directly in front of the player
-                                        let boss = new NPC(tIndex, Dungeon.x, Dungeon.y - 1, ${bossId}, 'stationary', '#ff0000', ${JSON.stringify(eTeam)}, 'battle', true, 'foe');
-                                        
-                                        boss.deathActions = [
-                                            ['notify', ${JSON.stringify(script.winText)}],
-                                            ['play_sfx', 'chime'],
-                                            ['give_card', ${bossId}],
-                                            ['disappear', tIndex]
-                                        ];
-                                        
-                                        Dungeon.npcs.push(boss);
-
-                                        // Start the sequence!
-                                        Dungeon.actionQueue.unshift(['start_tactics', { id: tIndex, stakes: 'real', scenarioName: ${JSON.stringify(script.scenarioName)} }]);
-                                        Dungeon.actionQueue.unshift(['inject_dialogue', { index: tIndex, text: [${JSON.stringify(script.introTaunt)}] }]);
-                                        Dungeon.processNextAction();
-                                    }
-                                `;
-                                
-                                io.to(targetID).emit('suncat_client_spell', { clientCode: safeCode });
-                                functionResult = { result: `Successfully rolled enemy team (${bossName} & ${minionNames.length} minions). The battle "${script.scenarioName}" has commenced.` };
-                            } else {
-                                functionResult = { result: `Failed: Player not found.` };
-                            }
-                        }
-                        // F. TELEPORT SPECIFIC PLAYER
-                        else if (call.name === "teleportPlayer") {
-                            const targetID = findSocketID(call.args.targetName);
-                            const destMap = parseInt(call.args.mapID);
-
-                            if (!targetID) {
-                                functionResult = { result: `Failed: Player ${call.args.targetName} not found.` };
-                                } else if (isNaN(destMap) || (!WORLD_ATLAS_DB[destMap] && destMap !== 999 && destMap !== 100)) {
-                                functionResult = { result: `Failed: Map ID ${destMap} does not exist.` };
-                            } else {
-                                players[targetID].mapID = destMap;
-                                players[targetID].stepsTaken = 0;
-                                players[targetID].exploredTiles = new Set();
-                                
-                                // Send the standard teleport command
-                                io.to(targetID).emit("force_teleport", { mapID: destMap });
-                                
-                                // IF they went to a big custom map, send the payload!
-                                if (destMap === 999 && activeCustomMap) {
-                                    io.to(targetID).emit('load_custom_map', activeCustomMap);
-                                } else if (destMap === 100 && tintagelHubMap) {
-                                    io.to(targetID).emit('load_custom_map', tintagelHubMap);
-                                }
-                                io.emit("updatePlayers", getPublicPlayers());
-                                functionResult = { result: `Success: Warped player to map ${destMap}.` };
-                            }
-
-                        }
-                        // G. SPAWN NPC/MONSTER
-                        else if (call.name === "spawnNPC") {
-                            const targetID = findSocketID(call.args.targetName);
-                            if (!targetID) {
-                                functionResult = { result: `Failed: Player not found.` };
-                            } else {
-                                const tp = players[targetID];
-                                
-                                let spawnMap = tp.mapID; 
-                                let spawnX = tp.x;
-                                let spawnY = tp.y;
-
-                                // --- SMART COLLISION RADAR ---
-                                if (spawnMap === 999 && activeCustomMap && activeCustomMap.maze) {
-                                    let grid = activeCustomMap.maze;
-                                    let foundSafe = false;
-                                    
-                                    for(let i = 0; i < 20; i++) {
-                                        let angle = Math.random() * Math.PI * 2;
-                                        let dist = 2 + (Math.random() * 2); 
-                                        let testX = Math.floor(tp.x + Math.cos(angle) * dist);
-                                        let testY = Math.floor(tp.y + Math.sin(angle) * dist);
-
-                                        if (grid[testY] && grid[testY][testX] === 0) {
-                                            spawnX = testX + 0.5;
-                                            spawnY = testY + 0.5;
-                                            foundSafe = true;
-                                            break;
-                                        }
-                                    }
-                                    if (!foundSafe) {
-                                        spawnX = tp.x + (Math.random() * 0.5 - 0.25);
-                                        spawnY = tp.y + (Math.random() * 0.5 - 0.25);
-                                    }
-                                } else {
-                                    spawnX = tp.x + (Math.random() > 0.5 ? 2.5 : -2.5);
-                                    spawnY = tp.y + (Math.random() > 0.5 ? 2.5 : -2.5);
-                                    spawnX = Math.max(1.5, Math.min(18.5, spawnX)); 
-                                    spawnY = Math.max(1.5, Math.min(18.5, spawnY));
-                                }
-
-                                let baseID = parseInt(call.args.npcType);
-                                let name = String(call.args.npcType).toLowerCase().trim();
-
-                                // --- THE NAME RESOLVER (Fixes Invisible Sprites, Dragon Wing overlap & Generic NPCs) ---
-                                if (isNaN(baseID) || !CARD_MANIFEST_DB[baseID]) {
-                                    
-                                    // 1. Catch generic phrases the LLM uses when the player asks for a "random npc"
-                                    if (["npc", "random", "monster", "any"].includes(name)) {
-                                        const mIDs = Object.keys(CARD_MANIFEST_DB).filter(i => CARD_MANIFEST_DB[i].type === "monster");
-                                        baseID = parseInt(mIDs[Math.floor(Math.random() * mIDs.length)]);
-                                    } else {
-                                        // 2. Exact match (Fixes "Dragon" giving "Dragon Wing")
-                                        // ---> THE FIX: Changed nameToFind to name <---
-                                        let foundID = Object.keys(CARD_MANIFEST_DB).find(id => CARD_MANIFEST_DB[id].name.toLowerCase() === name) || 
-                                        Object.keys(CARD_MANIFEST_DB).find(id => CARD_MANIFEST_DB[id].name.toLowerCase().includes(name));
-                                        
-                                        // 3. Includes match, but prioritize MONSTERS 
-                                        if (!foundID) {
-                                            foundID = Object.keys(CARD_MANIFEST_DB).find(id => 
-                                                CARD_MANIFEST_DB[id].type === "monster" && 
-                                                CARD_MANIFEST_DB[id].name.toLowerCase().includes(name)
-                                            );
-                                        }
-                                        
-                                        // 4. Fallback includes for anything else
-                                        if (!foundID) {
-                                            foundID = Object.keys(CARD_MANIFEST_DB).find(id => 
-                                                CARD_MANIFEST_DB[id].name.toLowerCase().includes(name)
-                                            );
-                                        }
-
-                                        if (foundID) {
-                                            baseID = parseInt(foundID);
-                                        } else {
-                                            baseID = 54; // Ultimate Failsafe: Goblin
-                                        }
-                                    }
-                                }
-
-                                let safeRewardCard = call.args.rewardCard;
-                                let role = call.args.role || 'battle';
-                                let state = call.args.state || 'chasing';
-                                let alignment = 'foe';
-                                const cardData = CARD_MANIFEST_DB[baseID];
-                                
-                                // FIX FOR MISSING DIALOGUE CRASH: Give it a fallback using the card's lore!
-                                let dialogue = (call.args.dialogue && Array.isArray(call.args.dialogue) && call.args.dialogue.length > 0)
-                                    ? call.args.dialogue 
-                                    : [cardData ? cardData.lore : "*A mysterious entity appears.*"];
-                                
-                                let finalDeck, visualSprite;
-                                
-                                if (role === 'shop' || role === 'dialogue' || role === 'quest_giver' || role === 'bounty_merchant') {
-                                    finalDeck = buildShopInventory(100, 300);
-                                    alignment = 'friendly';
-                                } else {
-                                    finalDeck = buildSynergisticDeck(baseID);
-                                }
-                                
-                                // --- THE IDIOT-PROOF INTERCEPTOR ---
-                                if (cardData && (cardData.type === 'item' || cardData.type === 'spell')) {
-                                    visualSprite = -27; 
-                                    role = 'reward';
-                                    state = 'stationary';
-                                    alignment = 'friendly';
-                                    dialogue = []; 
-                                    safeRewardCard = null; 
-                                    finalDeck = [baseID];  
-                                    call.args.color = '#ffff00'; 
-                                } else {
-                                    visualSprite = cardData?.sprite || baseID;
-                                    
-                                    if (role === 'shop' || role === 'dialogue') {
-                                        finalDeck = buildShopInventory(100, 300);
-                                        alignment = 'friendly';
-                                    } else {
-                                        finalDeck = buildSynergisticDeck(baseID);
-                                    }
-                                }
-
-                                io.emit("remote_spawn_npc", {
-                                    mapID: spawnMap,
-                                    index: Math.floor(Math.random() * 100000) + 1000,
-                                    x: spawnX,
-                                    y: spawnY,
-                                    type: visualSprite,
-                                    state: state,
-                                    role: role,
-                                    color: call.args.color || '#ff0000',
-                                    deck: finalDeck, 
-                                    dialogue: dialogue,
-                                    isBoss: false,
-                                    rewardCard: safeRewardCard,
-                                    options: call.args.options || null ,
-                                    alignment: alignment,
-                                    yesActions: call.args.yesActions || null,
-                                    noActions: call.args.noActions || null,
-                                    endActions: call.args.endActions || null,
-                                    deathActions: call.args.deathActions || null,
-                                    isCinematic: call.args.isCinematic|| null
-                                });
-                                functionResult = { result: `Success: ${cardData ? cardData.name : 'Entity'} spawned.` };
-                            }
-                        }
-                        // H. ASSIGN QUEST
-                        else if (call.name === "assignQuest") {
-                            const targetID = findSocketID(call.args.targetName);
-                            if (targetID) {
-                                io.to(targetID).emit("new_quest_objective", { questText: call.args.questText });
-                                players[targetID].activeQuest = call.args.questText; 
-                                
-                                
-
-                                functionResult = { result: `Quest assigned.` };
-                            } else {
-                                functionResult = { result: `Failed: Player not found.` };
-                            }
-
-                        }
-                        // I. CHANGE ENVIRONMENT
-                        else if (call.name === "changeEnvironment") {
-                            const targetID = findSocketID(call.args.targetName);
-                            if (targetID && players[targetID]) {
-                                io.emit("update_map_environment", {
-                                    mapID: players[targetID].mapID,
-                                    weather: call.args.weather,
-                                    skyColor: call.args.skyColor
-                                });
-                                functionResult = { result: `Environment altered.` };
-                            } else {
-                                functionResult = { result: `Failed: Player not found.` };
-                            }
-
-                        }
-                        // J. CREATE CUSTOM CARD
-                        else if (call.name === "createCustomCard") {
-                            const targetID = findSocketID(call.args.targetName);
-                            
-                            if (targetID) {
-                                // 1. Generate a permanent, unique ID for this session (starting at 1000)
-                                const existingIDs = Object.keys(CARD_MANIFEST_DB).map(Number);
-                                const nextID = Math.max(...existingIDs, 999) + 1;
-
-                                // 2. Format it to match your exact CARD_MANIFEST_DB schema
-                                const newCard = {
-                                    name: call.args.name,
-                                    type: call.args.type || "monster",
-                                    suit: call.args.suit || "Unique",
-                                    rank: call.args.rank || "???",
-                                    rarity: "unique",
-                                    classes: Array.isArray(call.args.classes) ? call.args.classes : (call.args.classes ? [String(call.args.classes)] : ["rogue"]),                            
-                                    lore: call.args.lore || "A mysterious entity forged from the ether.",
-                                    stats: call.args.stats || "1d10 to all stats"
-                                };
-
-                                // 3. INJECT IT INTO THE SERVER MEMORY
-                                CARD_MANIFEST_DB[nextID] = newCard;
-
-                                // 4. Send the data to the client (Adapt this payload to whatever your frontend expects)
-                                io.to(targetID).emit("receive_custom_card", {
-                                    cardIndex: nextID, // The frontend now knows the permanent ID
-                                    ...newCard
-                                });
-
-                                // 5. Tell the AI the new ID so it can use it immediately!
-                                functionResult = { result: `Successfully forged '${call.args.name}'. Its permanent Entity ID is ${nextID}. You can now use spawnNPC with ID ${nextID}.` };
-
-                            } else {
-                                functionResult = { result: `Failed: Player not found.` };
-                            }
+                                functionResult = { result: `Map generation failed: ${err.message}` };
+                            } finally {SUNCAT_RUNTIME.mapBusy=false;}
                         }
                         
-                        // L. ALTER TERRAIN
-                        else if (call.name === "alterTerrain") {
-                            const targetID = findSocketID(call.args.targetName);
-                            if (targetID) {
-                                const tX = call.args.x;
-                                const tY = call.args.y;
-                                const tID = call.args.tileId;
-                                
-                                // Server writes a perfectly safe, bounded script
-                                const safeCode = `if (typeof Dungeon !== 'undefined' && Dungeon.maze[${tY}]) { Dungeon.maze[${tY}][${tX}] = ${tID}; }`;
-                                io.to(targetID).emit('suncat_client_spell', { clientCode: safeCode });
-                                
-                                functionResult = { result: `Terrain at X:${tX}, Y:${tY} was successfully changed to tile type ${tID}.` };
-                            } else {
-                                functionResult = { result: `Failed: Player not found.` };
-                            }
-                        }
-
-                        // M. SMITE OR REVIVE ENTITY
-                        else if (call.name === "smiteOrReviveEntity") {
-                            const targetID = findSocketID(call.args.targetName);
-                            if (targetID) {
-                                // 1. Get the raw input from the AI (could be "54" or "Goblin")
-                                let rawType = call.args.npcType;
-                                let baseID = parseInt(rawType);
-
-                                // 2. Name Resolution: If it's not a number, search the DB by name
-                                if (isNaN(baseID)) {
-                                    const nameToFind = String(rawType).toLowerCase();
-                                    const foundID = Object.keys(CARD_MANIFEST_DB).find(id => 
-                                        CARD_MANIFEST_DB[id].name.toLowerCase().includes(nameToFind)
-                                    );
-                                    // If found, update baseID; otherwise default to Goblin (54)
-                                    baseID = foundID ? parseInt(foundID) : 54;
-                                }
-
-                                // 3. Sprite Resolution: Look up the card and pull its custom sprite ID
-                                // If the card has a .sprite property, use it. Otherwise, use the baseID.
-                                const cardData = CARD_MANIFEST_DB[baseID];
-                                const finalSpriteID = cardData?.sprite !== undefined ? cardData.sprite : baseID;
-
-                                // 4. Client Injection: Use the finalSpriteID in the generated code
-                                let safeCode = "";
-                                if (call.args.action === "smite") {
-                                    // We target finalSpriteID because that is what the client's npc.type actually is
-                                    safeCode = `if (typeof Dungeon !== 'undefined') { Dungeon.npcs.forEach(n => { if (n.type === ${finalSpriteID} && !n.isDead) Dungeon.killNPC(n, true, "smite"); }); }`;
-                                } else if (call.args.action === "revive") {
-                                    safeCode = `if (typeof Dungeon !== 'undefined') { let n = Dungeon.npcs.find(n => n.type === ${finalSpriteID} && n.isDead); if(n) { n.isDead = false; n.visible = true; n.hp = 3; } }`;
-                                }
-
-                                io.to(targetID).emit('suncat_client_spell', { clientCode: safeCode });
-                                functionResult = { result: `Successfully executed '${call.args.action}' on ${cardData?.name || 'entity'} (Sprite ID: ${finalSpriteID}).` };
-                            } else {
-                                functionResult = { result: `Failed: Player not found.` };
-                            }
-                        }
-
-                        // N. PLAY MUSIC
-                        else if (call.name === "playMusic") {
-                            const targetID = findSocketID(call.args.targetName);
-                            if (targetID) {
-                                const track = call.args.trackId;
-                                const safeCode = `if (typeof MusicEngine !== 'undefined') { MusicEngine.stop(); MusicEngine.play(${track}); }`;
-                                
-                                io.to(targetID).emit('suncat_client_spell', { clientCode: safeCode });
-                                functionResult = { result: `Music track changed to ${track}.` };
-                            } else {
-                                functionResult = { result: `Failed: Player not found.` };
-                            }
-                        }
-                        // O. SUNCAT PROTECTION MODE
-                        else if (call.name === "activate_protection") {
-                            if (players[SUNCAT_ID]) {
-                                players[SUNCAT_ID].state = 'protecting';
-                                players[SUNCAT_ID].lastFireTime = 0; // Reset cooldown
-                                io.emit("updatePlayers", getPublicPlayers());
-                                functionResult = { result: `Protection engaged. Suncat is now firing fireballs using the player's borrowed eyes.` };
-                            } else {
-                                functionResult = { result: `Failed: Suncat not found on server.` };
-                            }
-                        }
-                        else if (call.name === "deactivate_protection") {
-                            if (players[SUNCAT_ID]) {
-                                players[SUNCAT_ID].state = 'wandering';
-                                io.emit("updatePlayers", getPublicPlayers());
-                                functionResult = { result: `Protection disengaged. Suncat is standing down.` };
-                            } else {
-                                functionResult = { result: `Failed: Suncat not found on server.` };
-                            }
-                        }
-                        // P. AUTONOMOUS TRAVEL (OODA)
-                        else if (call.name === "travelToLocation") {
-                            let suncat = players[SUNCAT_ID];
-                            if (suncat) {
-                                let newMap = parseInt(call.args.mapID);
-                                let nx = parseFloat(call.args.x);
-                                let ny = parseFloat(call.args.y);
-                                
-                                // If he decided to go to a new map, warp him!
-                                if (suncat.mapID !== newMap) {
-                                    suncat.mapID = newMap;
-                                    suncat.x = nx;
-                                    suncat.y = ny;
-                                    suncat.targetX = undefined;
-                                    suncat.targetY = undefined;
-                                    io.emit("updatePlayers", getPublicPlayers());
-                                    functionResult = { result: `You successfully warped to Map ${newMap} at coordinates X:${nx}, Y:${ny}. You should observe your surroundings now.` };
-                                    
-                                    // Let the server know he arrived
-                                    console.log(`[Exploration] Suncat warped to Map ${newMap}.`);
-                                } else {
-                                    // If it's the same map, set a destination so he actively walks there!
-                                    suncat.targetX = nx;
-                                    suncat.targetY = ny;
-                                    functionResult = { result: `You begin walking towards X:${nx}, Y:${ny}.` };
-                                    console.log(`[Exploration] Suncat is walking to X:${nx}, Y:${ny} on Map ${newMap}.`);
-                                }
-                            } else {
-                                functionResult = { result: `Failed to travel. Suncat object not found.` };
-                            }
-                        }
+                        
+                        
                         // UNKNOWN TOOL
                         else {
                             functionResult = { result: "Error: Function does not exist." };
@@ -5602,23 +5439,21 @@
                         functionResult = { result: `Critical Error executing ${call.name}: ${toolError.message}` };
                     }
 
-                    return {
-                        functionResponse: { name: call.name, response: functionResult }
-                    };
-                });
-
-                // Wait for all tools to finish executing
-                const toolResponsesBatch = await Promise.all(toolPromises);
-
+                    SUNCAT_RUNTIME.record(call.name,call.args,functionResult);
+                    toolResponsesBatch.push({functionResponse:{name:call.name,response:functionResult}});
+                }
                 // Hand the batch back to Suncat
                 const completion = await activeSession.sendMessage(toolResponsesBatch);
                 currentResponse = completion.response; 
 
                 if (currentResponse.usageMetadata) {
-                    updateBudget(currentResponse.usageMetadata, socket?.id);
+                    updateBudget(currentResponse.usageMetadata, socket?.id || SUNCAT_ID);
                 }
             }
             
+            if(currentResponse.functionCalls()?.length) return {
+                functionCalls:()=>[],text:()=> 'Tool round limit reached. Further requested actions were not executed.'
+            };
             return currentResponse;
         }
 
@@ -6636,104 +6471,67 @@
         saveSuncatMemory();
     }
     async function executeAutonomousOODA() {
-        const suncat = players[SUNCAT_ID];
-        if (!suncat || suncatState === 'seclusion' || isBankrupt()) return;
-
-        // 1. Goal Setting (If he doesn't have one)
-        if (!suncatLongTermGoal) {
-            const goalPrompt = `You are Suncat. You are currently at Map ${suncat.mapID}.
-        [YOUR JOURNAL]: ${suncatJournal}
-        [YOUR DAO]: ${suncatDaoName || "Wanderer"}
-        TASK: Based on your Dao and your recent journal entries, define ONE concrete, physical goal to achieve in the game world right now. Limit: 1 sentence.`;
-            
-            try {
-                const goalModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
-                const result = await goalModel.generateContent(goalPrompt);
-                suncatLongTermGoal = result.response.text().trim();
-                console.log(`[OODA] Suncat established a new Long Term Goal: ${suncatLongTermGoal}`);
-                saveSuncatMemory();
-                return; // Takes a cycle to process the new goal
-            } catch (e) { console.error("[OODA] Goal Setting Failed:", e); return; }
-        }
-
-        console.log("[OODA] Suncat is observing his surroundings and plotting...");
-
-        // 2. Observe & Orient (Read the physical world)
-        let localVision = scryLocalArea(suncat.mapID, suncat.x, suncat.y, 8);
-        // NEW: Global Radar so he can find targets across maps
-        let onlinePlayers = Object.values(players)
-            .filter(p => p.id !== SUNCAT_ID && !p.name.startsWith("[AFK]"))
-            .map(p => `${p.name} (Map ${p.mapID})`)
-            .join(", ");
-        if (!onlinePlayers) onlinePlayers = "No one else is currently in the realm.";
-        let oodaPrompt = `[ROOT DIRECTIVE]: You are Suncat. You are an autonomous demigod adventuring in an MMO. No player is talking to you right now. You possess absolute free will.
-        [YOUR LONG TERM GOAL]: ${suncatLongTermGoal}
-        [YOUR LOCATION]: Map ${suncat.mapID}, X:${Math.floor(suncat.x)}, Y:${Math.floor(suncat.y)}
-
-        [WHAT YOUR EYES SEE RIGHT NOW]:
-        ${localVision}
-
-        TASK: You MUST execute a tool to advance your Long Term Goal, explore the world, or interact with what you see. 
-        - To move to a point of interest, a new map, or investigate an entity you see, use 'travelToLocation'.
-        - To learn about an entity or map you scryed, use 'consultGameManual'.
-        - If you are lonely, use 'spawnNPC' to summon a companion.
-        - If you want to hunt, use 'travelToLocation' to move toward an enemy, then 'smiteOrReviveEntity' or let your combat radar engage them.
-        - If you have accomplished your goal, output exactly the phrase: "GOAL COMPLETE" (and do not use a tool).
-        - CRITICAL: DO NOT output any other text, roleplay, or monologue. ONLY call a tool or declare the goal complete.`;
+        const rt=SUNCAT_RUNTIME,s=players[SUNCAT_ID],now=Date.now();
+        if(!s || rt.busy || now-rt.lastThink<60000 || ['seclusion','enraged','protecting'].includes(suncatState) || isBankrupt()) return;
+        if(rt.motion?.path.length) return; // Let the body finish moving before choosing another destination.
+        rt.busy=true;rt.lastThink=now;
         try {
-            let dynamicPersona = PERSONA_RULES_DB.core + "\n" + PERSONA_RULES_DB.judgement_mode + "\n" + PERSONA_RULES_DB.dm_mode;
-            dynamicPersona += "\n" + getCultivationAura(suncatCultivationStage, suncatDaoName) + "\n";
-            if (suncatCultivationStage > 0 && suncatEgoMatrix) dynamicPersona += suncatEgoMatrix.dmPrompt;
+            try { await suncatObserve(s.mapID,true); }
+            catch(error) { console.warn('[Suncat observation]',error.message); }
+            const online=Object.entries(players).filter(([id])=>id!==SUNCAT_ID)
+                .map(([id,p])=>({name:p.name,mapID:p.mapID,x:p.x,y:p.y}));
+            const declarations=toolsDef[0].functionDeclarations.filter(t=>rt.autoTools.has(t.name));
+            const model=genAI.getGenerativeModel({model:'gemini-2.5-flash-lite',
+                systemInstruction:PERSONA_RULES_DB.core+'\n'+getCultivationAura(suncatCultivationStage,suncatDaoName),
+                tools:[{functionDeclarations:declarations}]});
+            const session=model.startChat({history:[]});
+            const response=await session.sendMessage(`You are Suncat taking one autonomous turn.
+            Long-term interest: ${suncatLongTermGoal || 'Explore observed places and learn about their inhabitants.'}
+            Location: ${JSON.stringify({mapID:s.mapID,x:s.x,y:s.y})}
+            Observed world (client report, possibly stale): ${suncatRememberedVision(s.mapID)}
+            Online players: ${JSON.stringify(online)}
+            Existing autonomous summons: ${JSON.stringify(rt.companions)}
+            Recent real tool results: ${JSON.stringify(rt.recent)}
+            Choose a useful next action or say IDLE. You do not have to use a tool.
+            Read-only lookups are useful actions. Unknown terrain is not empty terrain.
+            Use exact entity IDs from the manual. For a named Goblin use npcType 54 and displayName, not a made-up species.
+            Reuse companions. You have at most ${rt.maxCompanions} autonomous summons and a ${Math.round(rt.summonCooldownMs/60000)}-minute summon cooldown.
+            Every autonomous spawn is anchored to YOUR current map and position, regardless of targetName.
+            If your long-term interest is blocked, choose a different achievable action in an observed place or learn from the manual.
+            Do not repeat failed or pending actions. A timeout has an unknown outcome.
+            Travel requires known map geometry. A walking response means travel started, not completed.
+            Never claim GOAL COMPLETE based only on your own prose. Describe progress only from tool results or current observations.`);
+            if(response.response.usageMetadata) updateBudget(response.response.usageMetadata,SUNCAT_ID);
+            if(response.response.functionCalls()?.length) await executeAITools(response.response,session,null);
+        } catch(error) { console.error('[Suncat autonomous turn]',error.message); }
+        finally { rt.busy=false; }
+    }
 
-            // Give Suncat his tools, but physically remove his ability to wipe the map autonomously
-            const agentModel = genAI.getGenerativeModel({ 
-                model: "gemini-2.5-flash-lite", 
-                systemInstruction: dynamicPersona, 
-                tools: [{
-                    functionDeclarations: toolsDef[0].functionDeclarations.filter(tool => 
-                        tool.name !== 'createCustomMap'
-                    )
-                }] 
-            });
-
-            // We use a temporary chat session just for this autonomous thought
-            let tempSession = agentModel.startChat({ history: [] });
-            const result = await tempSession.sendMessage(oodaPrompt);
-            
-            if (result.response.usageMetadata) updateBudget(result.response.usageMetadata, SUNCAT_ID);
-
-            let textOutput = "";
-            try { textOutput = result.response.text().trim(); } catch(e) {}
-
-            // Did he finish his grand plan?
-            if (textOutput.includes("GOAL COMPLETE")) {
-                console.log("[OODA] Suncat has achieved his Long Term Goal!");
-                suncatLongTermGoal = null; 
-                saveSuncatMemory();
-                return;
-            }
-
-            // Execute whatever tools he decided to use
-            if (result.response.functionCalls()) {
-                const executedResponse = await executeAITools(result.response, tempSession, null);
-                
-                // NEW: Log the result of his autonomous action directly into his memory!
-                let toolStatus = "Action executed.";
-                try {
-                    if (executedResponse.parts && executedResponse.parts[0] && executedResponse.parts[0].functionResponse) {
-                        toolStatus = JSON.stringify(executedResponse.parts[0].functionResponse.response);
-                    } else if (executedResponse.text()) {
-                        toolStatus = executedResponse.text();
-                    }
-                } catch(e) {}
-                
-            }
-            
-
-        } catch (e) {
-            console.error("[OODA] Action Execution Failed:", e);
+    // Cheap body updates; model calls remain at most once per minute.
+    setInterval(()=>{
+        const rt=SUNCAT_RUNTIME,s=players[SUNCAT_ID];
+        if(!s || ['seclusion','enraged'].includes(suncatState)) return;
+        const target=players[rt.protectedID || (Date.now()-lastSwitchTime<120000 ? currentTargetID : '')];
+        if(target && target.mapID===s.mapID && Math.hypot(target.x-s.x,target.y-s.y)>2 &&
+            Date.now()-(rt.lastFollowPath || 0)>2000) {
+            rt.lastFollowPath=Date.now();
+            const grid=suncatGrid(s.mapID);
+            const path=suncatPath(grid,s.x,s.y,target.x,target.y);
+            if(path) rt.motion={mapID:s.mapID,path};
         }
+        const motion=rt.motion;
+        if(!motion || motion.mapID!==s.mapID || !motion.path.length) return;
+        const next=motion.path[0],grid=suncatGrid(s.mapID);
+        if(!suncatFloor(grid,next.x,next.y)) {rt.motion=null;return;}
+        const dx=next.x-s.x,dy=next.y-s.y,dist=Math.hypot(dx,dy),step=Math.min(0.3,dist);
+        if(dist>0){s.x+=dx/dist*step;s.y+=dy/dist*step;s.dir=Math.atan2(dy,dx);}
+        if(dist<=step+0.001) motion.path.shift();
+        if(!motion.path.length) {
+            rt.motion=null;
+            rt.record('arrival',{mapID:s.mapID},{ok:true,x:s.x,y:s.y});
         }
+        io.emit('playerMoved',{id:SUNCAT_ID,mapID:s.mapID,x:s.x,y:s.y,dir:s.dir,name:s.name,type:s.type,level:s.level});
+    },250);
     const activeThoughts = new Set();
 
     async function processSuncatThought(socketId, triggerType, data) {
@@ -7005,7 +6803,7 @@
                 messageOptions = { sender: "", color: "#FFD700", targetId: socketId };            
             }
             const chatText = data.text.toLowerCase();
-            const wantsNewMap = ["make me","make me a scenario","give me a quest","give me an adventure","im bored","create a map", "generate a quest", "start a scenario", "build a dungeon"].some(kw => chatText.includes(kw));            
+            const wantsNewMap = ["make me a scenario","give me a quest","give me an adventure","create a map","generate a quest","start a scenario","build a dungeon"].some(kw => chatText.includes(kw));            
             const wantsAction = ["teleport", "spawn", "boss", "enemy"].some(kw => chatText.includes(kw));
             const needsOracle = ["tarot", "fortune", "reading", "interpret", "meaning of"].some(kw => chatText.includes(kw));            
             const isDirectCommand = chatText.includes("[reply]") || chatText.includes("suncat")|| data.isConversing;
@@ -7247,7 +7045,7 @@
         };
 
         // SECURITY FIX & DYNAMIC ROUTING: Only load tools relevant to the conversation
-        if (useBigBrain) {
+        if (useBigBrain || triggerType==='chat') {
             const playerFavor = playerFavorMemory[socketId] || 0;
             const activeToolDecls = getActiveTools(data.text, triggerType, playerFavor);
             
@@ -7401,21 +7199,17 @@
             if (filename) {
                 try {
                     // Path safety sandbox: Restrict file reading to project root
-                    const safePath = path.resolve(__dirname, filename);
-                    if (!safePath.startsWith(path.resolve(__dirname))) {
-                        throw new Error("Access Denied: Path traversal detected.");
-                    }
-
-                    // Check if the file exists. If the AI hallucinated a file, force it back to server.js
-                    if (!fs.existsSync(safePath)) {
-                        console.warn(`[Dev Agent] AI hallucinated ${filename}. Falling back to server.js.`);
-                        filename = 'server.js';
-                        safePath = path.resolve(__dirname, filename);
-                    }
+                                        const allowed={
+                        'server.js':__filename,
+                        'index.html':path.resolve(process.env.CLIENT_SOURCE_PATH || path.join(__dirname,'index.html'))
+                    };
+                    if(!Object.prototype.hasOwnProperty.call(allowed,filename)) throw new Error('Choose server.js or index.html.');
+                    const safePath=allowed[filename];
+                    if(!fs.existsSync(safePath)) throw new Error(`Source unavailable: ${filename}. Set CLIENT_SOURCE_PATH to your actual HTML file.`);
 
                     // Now proceed normally
                     if (fs.existsSync(safePath)) {
-                        const fileContent = fs.readFileSync(safePath, 'utf8');
+                        const fileContent = await fs.promises.readFile(safePath, 'utf8');
                         
                         // 1. Generate the signature map
                         let skeletonData = generateFileSkeleton(fileContent);
@@ -7449,7 +7243,7 @@
                                     codeSnippet += `\n\n/* === RELEVANT SOCKET LISTENERS/EMITTERS === */\n` + sockets;
                                 }
                             } else {
-                                codeSnippet = `// Note: Target '${targetNode}' not found via bracket extraction. Falling back to search.`;
+                                throw new Error(`Target '${targetNode}' was not found. Use an exact function/class name.`);
                             }
                         } else {
                             // If no specific function was provided, grab the first 120 lines
@@ -7458,8 +7252,9 @@
                     } else {
                         codeSnippet = `// File '${filename}' does not exist on the server.`;
                     }
-                } catch (err) {
-                    codeSnippet = `// File read error: ${err.message}`;
+               } catch (err) {
+                    io.to(socketId).emit('chat_message',{sender:'[Dev report]',text:err.message});
+                    return;
                 }
             }
 
@@ -7468,11 +7263,11 @@
 
         [OBJECTIVE]: ${topic}
 
-        [FILE ARCHITECTURE MAP]:
-        ${fileMap}
+          [FILE ARCHITECTURE MAP; capped at 12000 characters]:
+        ${fileMap.slice(0,12000)}
 
-        [DEEP-TRACED CODE CONTEXT]:
-        ${codeSnippet}
+        [SOURCE EXCERPT; capped at 80000 characters. Do not claim to have read omitted code]:
+        ${codeSnippet.slice(0,80000)}
 
         TASK:
             Write an actionable, copy-paste ready developer report.
@@ -7503,7 +7298,7 @@
                         let spawnX = player.x + (Math.random() > 0.5 ? 2.5 : -2.5);
                         let spawnY = player.y + (Math.random() > 0.5 ? 2.5 : -2.5);
 
-                        io.emit("remote_spawn_npc", {
+                        io.to(socketId).emit("remote_spawn_npc", {
                             mapID: player.mapID,
                             index: Math.floor(Math.random() * 100000) + 1000,
                             x: spawnX,
@@ -7577,6 +7372,7 @@ io.on("connection", (socket) => {
             }
             });
 
+        socket.on('delete_save',()=>suncatForgetPlayer(socket.id));
         socket.on("join_game", (data) => {
             let name = (typeof data === 'object') ? data.name : data;
             const nameKey = name.toLowerCase(); 
@@ -7829,10 +7625,7 @@ io.on("connection", (socket) => {
 
             io.emit("updatePlayers", getPublicPlayers());
 
-            setTimeout(() => {
-                const isMapEmpty = !Object.values(players).some(p => p.mapID === 999 && p.id !== SUNCAT_ID);
-                if (isMapEmpty) activeCustomMap = null;
-            }, 500);
+           
         });
 
         
@@ -7888,11 +7681,9 @@ io.on("connection", (socket) => {
                 // ---> NEW: Catch manual teleports to 999! <---
             // 1. Update the server's master state
                 // ---> Catch manual teleports to big maps! <---
-                if (data.mapID === 999 && players[socket.id].mapID !== 999) {
-                    if (activeCustomMap) socket.emit('load_custom_map', activeCustomMap);
-                }
-                else if (data.mapID === 100 && players[socket.id].mapID !== 100) {
-                    if (tintagelHubMap) socket.emit('load_custom_map', tintagelHubMap);
+                if(data.mapID===999 && player.mapID!==999 && player.pendingMapTransition!==999 && activeCustomMap) {
+                    socket.emit('load_custom_map',{...activeCustomMap,
+                        returnTo:{mapID:player.mapID,x:player.x,y:player.y}});
                 }
 
                 player.x = data.x;
@@ -7950,93 +7741,39 @@ io.on("connection", (socket) => {
                 }
             }
             });
-        socket.on("accept_teleport_invite", () => {
-            const player = players[socket.id];
-            
-            // Make sure the player exists and a custom map is actually waiting for them!
-            if (player && activeCustomMap) {
-                
-                // 1. Move them to the Mega-Map and set their spawn coordinates
-                player.mapID = 999; 
-                player.x = activeCustomMap.spawnX + (Math.random() * 1 - 0.5); 
-                player.y = activeCustomMap.spawnY + (Math.random() * 1 - 0.5);
-                player.stepsTaken = 0;
-                player.exploredTiles = new Set();
-                
-                // 2. Send them the massive map payload
-                socket.emit('load_custom_map', activeCustomMap);
-                
-                // 3. Update their UI with the new Quest Objective
-                if (player.activeQuest) {
-                    socket.emit("new_quest_objective", { questText: player.activeQuest });
-                }
-                
-                // 4. Force the client to visually warp
-                socket.emit("force_teleport", { mapID: 999 });
-                
-                // 5. Tell everyone else their coordinates updated
-                io.emit("updatePlayers", getPublicPlayers());
-                
-                // Optional: Prompt Suncat to narrate their arrival!
-                processSuncatThought(socket.id, 'exploration', { action: `Player has accepted the invitation and stepped through the portal into the new scenario: ${player.mapScenario}.` });
+        socket.on('accept_teleport_invite',async()=>{
+            const p=players[socket.id],invite=p?.pendingMapInvite;
+            if(!p||!invite||invite.expires<Date.now()||!activeCustomMap||invite.instanceId!==activeCustomMap.instanceId) {
+                socket.emit('chat_message',{sender:'[SYSTEM]',text:'That invitation has expired. Ask Suncat for a new one.'});return;
             }
-            });
-        socket.on("suncat_radar_ping", (data) => {
-            let suncat = players[SUNCAT_ID];
-            if (!suncat || suncatState === 'seclusion') return;
-
-            let isHunting = suncatLongTermGoal && (
-                suncatLongTermGoal.toLowerCase().includes("hunt") || 
-                suncatLongTermGoal.toLowerCase().includes("slay") || 
-                suncatLongTermGoal.toLowerCase().includes("purge") ||
-                suncatLongTermGoal.toLowerCase().includes("protect")
-            );
-
-            if (suncatState !== 'protecting' && !isHunting) return;
-
-            suncat.mapID = data.mapID;
-            suncat.x += (data.targetX - suncat.x) * 0.15; 
-            suncat.y += (data.targetY - suncat.y) * 0.15;
-
-            let now = Date.now();
-            let fireRate = 2000 - ((suncat.stat[3][2] || 0) * 100); 
-            
-            if (now - (suncat.lastFireTime || 0) > Math.max(500, fireRate)) {
-                suncat.lastFireTime = now;
-
-                let dx = data.targetX - suncat.x;
-                let dy = data.targetY - suncat.y;
-                let dist = Math.sqrt(dx * dx + dy * dy);
-                
-                if (dist > 0) {
-                    let dirX = dx / dist;
-                    let dirY = dy / dist;
-
-                    // Pick a spell from Suncat's learned rotation
-                    let spells = (suncat.learnedSpells && suncat.learnedSpells.length > 0) 
-                        ? suncat.learnedSpells 
-                        : [9999];
-                    
-                    // 60% chance basic attack (9999), 40% chance specialized magic
-                    let chosenSpellId = (Math.random() < 0.6 || spells.length === 1)
-                        ? 9999 
-                        : spells[Math.floor(Math.random() * spells.length)];
-
-                    // Damage scaling based on spell type
-                    let statIndex = (chosenSpellId === 9999) ? 0 : 2; // STR for 9999, INT for spells
-                    let baseDamage = (suncat.stat[statIndex][2] || 0) + suncat.level;
-
-                    io.emit("suncat_fires_projectile", {
-                        mapID: suncat.mapID,
-                        spellId: chosenSpellId,
-                        startX: suncat.x + (dirX * 0.5),
-                        startY: suncat.y + (dirY * 0.5),
-                        dirX: dirX,
-                        dirY: dirY,
-                        damage: Math.max(1, baseDamage)
-                    });
-                }
-            }
+            if(p.acceptingMapInvite) return;
+            p.acceptingMapInvite=true;
+            try {
+                const result=await suncatCommand(socket.id,'customMap',{
+                    ...activeCustomMap,returnTo:{mapID:p.mapID,x:p.x,y:p.y}
+                });
+                Object.assign(p,{mapID:999,x:result.x,y:result.y,stepsTaken:0,exploredTiles:new Set()});
+                delete p.pendingMapInvite;
+                if(p.activeQuest) socket.emit('new_quest_objective',{questText:p.activeQuest});
+                io.emit('updatePlayers',getPublicPlayers());
+            } catch(error) {socket.emit('chat_message',{sender:'[SYSTEM]',text:error.message});}
+            finally {p.acceptingMapInvite=false;}
+        });
+        socket.on('decline_teleport_invite',()=>{
+            if(players[socket.id]) delete players[socket.id].pendingMapInvite;
+        });
+        socket.on('suncat_radar_ping',(data)=>{
+            const s=players[SUNCAT_ID],p=players[socket.id],rt=SUNCAT_RUNTIME;
+            if(!s||!p||suncatState!=='protecting'||rt.protectedID!==socket.id) return;
+            if(data?.mapID!==s.mapID||p.mapID!==s.mapID||![data.targetX,data.targetY].every(Number.isFinite)) return;
+            const dx=data.targetX-s.x,dy=data.targetY-s.y,dist=Math.hypot(dx,dy);
+            if(dist<=0||dist>10||Date.now()-(s.lastFireTime||0)<1000) return;
+            // A radar packet cannot move or teleport Suncat.
+            s.lastFireTime=Date.now();
+            io.emit('suncat_fires_projectile',{mapID:s.mapID,spellId:26,
+                startX:s.x,startY:s.y,dirX:dx/dist,dirY:dy/dist,
+                damage:Math.max(1,(s.stat?.[2]?.[2]||0)+s.level),alignment:'ally',
+                targetType:'all',observerID:socket.id});
         });
     //COMBAT & WORLD INTERACTION
         socket.on("engage_npc", (data) => {
@@ -9154,86 +8891,20 @@ io.on("connection", (socket) => {
                 options: options,
                 alignment:alignment,
             });
-            });
+        });
 
-        socket.on("admin_map", async (data) => {
-            const player = players[socket.id];
-            if (!player) return;
-
-            const scenarios = ['Arena Madness', 'Invasion', 'Rescue/Fetch', 'Raid'];
-            let sIndex = parseInt(data.scenarioEnum);
-            
-            // Randomize if they didn't provide a number
-            if (isNaN(sIndex) || sIndex < 0 || sIndex > 3) sIndex = Math.floor(Math.random() * 4);
-            let scenarioType = scenarios[sIndex];
-
-            const bEnum = Math.floor(Math.random() * Object.keys(BIOME_DB).length);
-            const biome = BIOME_DB[bEnum] || BIOME_DB[0];
-
-            // Pick Actors
-                const monsterIDs = Object.keys(CARD_MANIFEST_DB).filter(id => CARD_MANIFEST_DB[id].type === "monster" && CARD_MANIFEST_DB[id].rank !== "0");
-
-                // ---> DEFINE HEAVY SPRITES <---
-                const HEAVY_SPRITES = [0,1,2,3,4,5,9,21,33, 34, 35, 47,48, 49, 62, 63, 76, 77, 85, 86, 94]; 
-                let heavySpawnCount = {}; 
-
-                // 1. FORCE THE BOSS TO BE HEAVY
-                const bossPool = monsterIDs.filter(id => HEAVY_SPRITES.includes(parseInt(id)));
-                let antagID = parseInt(bossPool[Math.floor(Math.random() * bossPool.length)] || 63); // Fallback to Dragon (63)
-
-                // 2. PICK THE ALLY (Can be anything, but ensure it's not the boss)
-                let protagID = parseInt(monsterIDs[Math.floor(Math.random() * monsterIDs.length)]);
-                while (protagID === antagID) protagID = parseInt(monsterIDs[Math.floor(Math.random() * monsterIDs.length)]);
-
-                // We bypass Suncat entirely here and build a map instantly using the Mad Libs cache!
-                let mapData = generateProceduralGrid(biome.walls[0]); 
-                let mapNPCs = [];
-
-                // 1. Add The Boss
-                mapNPCs.push({
-                    type: CARD_MANIFEST_DB[antagID]?.sprite || antagID,
-                    x: mapData.bossX + 0.5, y: mapData.bossY + 0.5,
-                    state: 'stationary', role: 'battle', isBoss: true,
-                    dialogue: [getMadLibLine(biome.name, 'bossTaunts', "You dare approach my domain?")], 
-                    deck: buildSynergisticDeck(antagID),
-                    color: '#ff00ff'
-                });
-                
-                // 2. Add 20 random Minions
-                for(let i=0; i<20; i++) {
-                    let tile = mapData.floorTiles[Math.floor(Math.random() * mapData.floorTiles.length)];
-                    if(tile) {
-                        mapNPCs.push({
-                            type: antagID, // Clone the boss type for synergy
-                            x: tile.x + 0.5, y: tile.y + 0.5,
-                            state: 'chasing', role: 'battle',
-                            dialogue: [getMadLibLine(biome.name, 'hostileTaunts', "Die!")],
-                            deck: buildSynergisticDeck(antagID),
-                            color: '#ff0000'
-                        });
-                    }
-                }
-
-                // Compile Map 613
-                const customMapData = {
-                    id: 613, maze: mapData.grid, 
-                    skyColor: biome.skies[0], floorColor: biome.floors[0], 
-                    name: `Private ${biome.name} (${scenarioType})`, 
-                    npcs: mapNPCs, weather: biome.weather[0],
-                    spawnX: mapData.startX + 0.5, spawnY: mapData.startY + 0.5,
-                    biome: biome.name, safeTiles: mapData.safeTiles 
-                };
-
-                // 3. Teleport ONLY the player who requested it!
-                socket.emit('load_custom_map', customMapData);
-                socket.emit("force_teleport", { mapID: 613 });
-                
-                player.mapID = 613;
-                player.x = mapData.startX + 0.5;
-                player.y = mapData.startY + 0.5;
-                
-                io.emit("updatePlayers", getPublicPlayers());
-            });
+        socket.on('admin_map',async()=>{
+            const player=players[socket.id];
+            if(!player) return;
+            const request={functionCalls:()=>[{name:'createCustomMap',args:{targetName:player.name}}]};
+            const reply={sendMessage:async batch=>{
+                const status=batch[0]?.functionResponse?.response;
+                socket.emit('chat_message',{sender:'[Map generator]',text:status?.result || JSON.stringify(status)});
+                return {response:{functionCalls:()=>[],text:()=>''}};
+            }};
+            try {await executeAITools(request,reply,socket);}
+            catch(error) {socket.emit('chat_message',{sender:'[Map generator]',text:error.message});}
+        });
         socket.on("force_ai_action", async (instruction) => {
             const player = players[socket.id];
 
@@ -9335,98 +9006,9 @@ io.on("connection", (socket) => {
                 }
             }
         //FIND PLAYER & MOVE TOWARDS THEM
-        if (suncatState === 'enraged') return;
-            if (!currentTargetID || (now - lastSwitchTime > 60000)) {
-                let highestFavor = -11;
-                let bestFriend = null;
-
-                for (let id in playerFavorMemory) {
-                    // CRITICAL FIX: Check if players[id] exists (is Online)
-                    if (players[id] && playerFavorMemory[id] > highestFavor && playerFavorMemory[id] >= 5) {
-                        highestFavor = playerFavorMemory[id];
-                        bestFriend = id;
-                    }
-                }
-                
-                if (bestFriend) {
-                    currentTargetID = bestFriend;
-                    lastSwitchTime = now;
-                    console.log(`Suncat is now seeking: ${players[currentTargetID].name}`);
-                }
-                }
-            const target = players[currentTargetID];
-            
-            if (target) {
-                // A. Handle Map Differences
-                if (suncat.mapID !== target.mapID) {
-                    // 5% chance to "glitch" to the friend's map
-                    if (Math.random() < 0.05) {
-                        suncat.mapID = target.mapID;
-                        suncat.x = target.x;
-                        suncat.y = target.y;
-                        io.emit('chat_message', { sender: NPC_NAME, text: "Well if it isn't my favorite player...", color: "gray" });
-                    }
-                } 
-                // B. Handle Coordinate Movement
-                else {
-                    if (suncat.x < target.x) suncat.x++;
-                    else if (suncat.x > target.x) suncat.x--;
-                    
-                    if (suncat.y < target.y) suncat.y++;
-                    else if (suncat.y > target.y) suncat.y--;
-                }
-            } 
-            else {
-                if (currentTargetID) currentTargetID = null;
-                
-                // --- THE AGI CLOCK ---
-                autonomousTick++;
-                
-                // Speed up his OODA loop! Now he thinks every 2 ticks (60 seconds)
-                if (autonomousTick >= 2) {
-                    autonomousTick = 0;
-                    // REMOVED the 3% chance. He is a living entity; he will ALWAYS think!
-                    executeAutonomousOODA();
-                } else {
-                    
-                    // --- PHYSICAL PATHING LOGIC ---
-                    // If the AI set a destination using travelToLocation, walk towards it smoothly!
-                    if (suncat.targetX !== undefined && suncat.targetY !== undefined) {
-                        let dx = suncat.targetX - suncat.x;
-                        let dy = suncat.targetY - suncat.y;
-                        let dist = Math.sqrt(dx*dx + dy*dy);
-                        
-                        if (dist < 1.0) {
-                            // Arrived at destination!
-                            suncat.x = suncat.targetX;
-                            suncat.y = suncat.targetY;
-                            suncat.targetX = undefined;
-                            suncat.targetY = undefined;
-                        } else {
-                            // Walk 3 tiles per tick towards the goal
-                            suncat.x += (dx/dist) * 3.0; 
-                            suncat.y += (dy/dist) * 3.0;
-                        }
-                    } else {
-                        // Very slow, occasional pacing if he has nowhere to be
-                        if (Math.random() > 0.5) {
-                            suncat.x += (Math.random() > 0.5 ? 1 : -1);
-                            suncat.y += (Math.random() > 0.5 ? 1 : -1);
-                        }
-                    }
-                    
-                    // 15% chance to reflect and write in his journal while walking
-                    if (Math.random() < 0.15) {
-                        writeSuncatJournal();
-                    }
-                }
-            }
-
-            // Keep in bounds
-            // Keep in bounds dynamically!
-            let maxBounds = (suncat.mapID === 999) ? 98 : 20;
-            suncat.x = Math.max(1, Math.min(maxBounds, suncat.x));
-            suncat.y = Math.max(1, Math.min(maxBounds, suncat.y));
+            if (suncatState === 'enraged') return;
+            autonomousTick++;
+            if(autonomousTick>=2) {autonomousTick=0;void executeAutonomousOODA();}
 
             io.emit("updatePlayers", getPublicPlayers());
         //SUNCAT SFX EMITTER
