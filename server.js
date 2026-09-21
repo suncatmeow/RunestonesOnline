@@ -4552,7 +4552,7 @@
     
         const title = kind === "retrospective"
     ? `[RETROSPECTIVE ${number}]`
-    : `[CHAPTER ${number}]`;;
+    : `[CHAPTER ${number}]`;
     
         const chapter = {
             id: `${player.persistentId || player.name.toLowerCase()}:chapter:${number}`,
@@ -4586,7 +4586,8 @@
             storySoFar: player.storySoFar,
             searchableMemories: player.searchableMemories,
             undigestedInfo: player.undigestedInfo || [],
-            rawJournalArchive: player.rawJournalArchive || []
+            rawJournalArchive: player.rawJournalArchive || [],
+            npcDialogueEvents: player.npcDialogueEvents || [],
         };
     
         saveSuncatMemory();
@@ -4595,25 +4596,63 @@
         io.to(socketId).emit("journal_updated", {
             entryId: chapter.id,
             entryType: kind,
-            title,
-            newCoreText: `[CONDENSED]\n\n${consolidatedSuncatText}`,
+            timestamp: chapter.timestamp,
+            title: chapter.title,
+            playerChronicle: chapter.text,
             suncatThoughts: null
         });
     
         return chapter;
     }
-    function getPlayerChapterContinuity(player) {
+    function getPlayerChapterContinuity(player, sourceMemories = []) {
         const chapters = (player.searchableMemories || [])
             .filter(memory => memory.isCore && memory.text);
-    
-        if (chapters.length) {
-            return chapters
-                .slice(-3)
-                .map(memory => memory.text)
-                .join("\n\n--- EARLIER CHAPTER ---\n\n");
+
+        const recentChapters = chapters.length
+            ? chapters.slice(-3).map(memory => memory.text).join("\n\n")
+            : player.storySoFar || "No earlier chapters.";
+
+        const sourceText = getChapterSourceText(sourceMemories);
+        const archive = player.npcDialogueEvents || [];
+
+        const currentEvents = archive.filter(event =>
+            sourceText.includes(`[NPC_EVENT:${event.id}]`)
+        );
+
+        const currentIds = new Set(currentEvents.map(event => event.id));
+        const npcIds = new Set(currentEvents.map(event => event.npc.id));
+
+        // Only use history before the first current event for each NPC.
+        // Later events may already exist while an older batch is being adapted.
+        const encounterHistory = [];
+
+        for (const npcId of npcIds) {
+            const firstCurrentIndex = archive.findIndex(event =>
+                event.npc.id === npcId && currentIds.has(event.id)
+            );
+
+            const earlier = archive
+                .slice(0, firstCurrentIndex)
+                .filter(event => event.npc.id === npcId);
+
+            const encounterCount = new Set(
+                earlier.map(event => event.conversationId)
+            ).size;
+
+            encounterHistory.push({
+                npcId,
+                previousRecordedConversations: encounterCount,
+                recentEarlierInteractions: earlier.slice(-20)
+            });
         }
-    
-        return player.storySoFar || "No earlier chapters.";
+
+        return [
+            "RECENT CHAPTERS:",
+            recentChapters,
+            "",
+            "EARLIER NPC ENCOUNTERS — context only; do not retell:",
+            JSON.stringify(encounterHistory, null, 2)
+        ].join("\n");
     }
     
     function getChapterSourceText(memories) {
@@ -4675,7 +4714,17 @@
       - Quote recorded dialogue accurately. Paraphrase when exact wording is absent.
       - Let relationships develop gradually across encounters rather than declaring
         a deep bond after one ordinary conversation.
-      
+      - NPC_ID identifies the individual. Names and roles may change.
+      - Different NPC_ID values are different individuals, even with identical names.
+      - conversationId groups lines and choices from one interaction.
+      - Keep sequence order within each conversation.
+      - npc_line is displayed dialogue or descriptive text, not necessarily literal
+      speech: preserve the distinction for stage directions and action descriptions.
+      - player_choice records the selected response, not proof its action succeeded.
+      - Repeated encounters may support gradually developing familiarity.
+      - Repetition alone does not prove affection, trust, romance or loyalty.
+      - Use earlier NPC encounters as relationship context, not as new events.
+      - Do not print internal IDs, JSON fields or tracking tags in the novel.
       STYLE:
       - Third-person past tense.
       - Clear, concrete sword-and-sorcery prose.
@@ -5926,7 +5975,7 @@
 
                 const prompt = buildJournalChapterPrompt(
                     player.name,
-                    getPlayerChapterContinuity(player),
+                    getPlayerChapterContinuity(player,oldestMemories),
                     rawText
                 );  
 
@@ -6116,7 +6165,9 @@
             } catch (err) {
                 console.error("[Memory] Embedding deferred:", err);
             }
-
+            // A disconnected/replaced session must not commit late results.
+            // Its saved pending queue can be processed on a later session.
+            if (players[socketId] !== player) return;
             if (!player.searchableMemories) player.searchableMemories = [];
 
             player.searchableMemories.push({
@@ -6138,7 +6189,17 @@
             // Remove only the batch we successfully processed.
             // New events appended during generation remain pending.
             player.undigestedInfo.splice(0, memoriesToProcess.length);
-            
+            const memoryKey = player.persistentId || player.name.toLowerCase();
+
+            suncatPersistentMemory[memoryKey] = {
+                ...(suncatPersistentMemory[memoryKey] || {}),
+                searchableMemories: player.searchableMemories,
+                rawJournalArchive: player.rawJournalArchive,
+                undigestedInfo: player.undigestedInfo,
+                npcDialogueEvents: player.npcDialogueEvents || []
+            };
+
+            saveSuncatMemory();
             if (digestedData.suncatPerception) player.suncatPerception = digestedData.suncatPerception;
             
             if (digestedData.newRumor) addRumor(`${player.name}: ${digestedData.newRumor}`);
@@ -6508,7 +6569,7 @@
 
             const playerPrompt = buildJournalChapterPrompt(
                 player.name,
-                getPlayerChapterContinuity(player),
+                getPlayerChapterContinuity(player, granularMemories),
                 rawText
             );
 
@@ -6516,7 +6577,10 @@
                 const condenserModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
                 const result = await condenserModel.generateContent(playerPrompt);
                 if (result.response.usageMetadata) updateBudget(result.response.usageMetadata, socketId);
-
+                const consolidatedText = result.response.text()
+                    .trim()
+                    .replace(/^```(?:json|text)?\s*|\s*```$/g, "")
+                    .trim();
                 appendPlayerChapter(
                     socketId,
                     player,
@@ -6562,7 +6626,7 @@
                 // Tell ALL clients to condense Suncat's UI journal!
                 io.emit("journal_condensed", {
                     target: 'suncat',
-                    newCoreText: consolidatedSuncatText
+                    newCoreText: `[CONDENSED]\n\n${consolidatedSuncatText}`
                 });
             } catch (err) {
                 console.error(`[Session Condenser] Suncat condensation failed:`, err);
@@ -7619,7 +7683,11 @@ io.on("connection", (socket) => {
                 players[socket.id].activeQuest = activeQuest; 
                 players[socket.id].storySoFar = loadedStory;
                 players[socket.id].playerProfile = playerProfile; 
-                players[socket.id].searchableMemories = loadedMemories; 
+                players[socket.id].searchableMemories = loadedMemories;
+                players[socket.id].npcDialogueEvents =
+                    Array.isArray(savedData?.npcDialogueEvents)
+                        ? savedData.npcDialogueEvents.slice()
+                        : [];
                 players[socket.id].undigestedInfo =
                     Array.isArray(savedData?.undigestedInfo)
                         ? savedData.undigestedInfo.slice()
@@ -7745,6 +7813,7 @@ io.on("connection", (socket) => {
                     scenarioContext: me.scenarioContext || null,
                     undigestedInfo: me.undigestedInfo || [],
                     rawJournalArchive: me.rawJournalArchive || [],
+                    npcDialogueEvents: me.npcDialogueEvents || [],
                 };
 
                 saveSuncatMemory();
@@ -8685,7 +8754,85 @@ io.on("connection", (socket) => {
                 action: tarotPrompt,
                 isTarot: true // Flag to trigger Oracle Mode
             });
+        });
+        socket.on("npc_story_event", (data) => {
+            const player = players[socket.id];
+            if (!player || !data || typeof data !== "object") return;
+
+            if (!["npc_line", "player_choice"].includes(data.kind)) return;
+
+            const validString = (value, limit) =>
+                typeof value === "string" &&
+                value.trim().length > 0 &&
+                value.length <= limit;
+
+            if (!validString(data.id, 100)) return;
+            if (!validString(data.conversationId, 100)) return;
+            if (!validString(data.npc?.id, 250)) return;
+            if (!validString(data.text, 20000)) return;
+            if (!Number.isSafeInteger(data.sequence) || data.sequence < 0) return;
+
+            player.npcDialogueEvents ||= [];
+
+            // Repeated delivery of the same event must not duplicate history.
+            if (player.npcDialogueEvents.some(event => event.id === data.id)) {
+                return;
+            }
+
+            const event = {
+                id: data.id,
+                conversationId: data.conversationId,
+                sequence: data.sequence,
+                kind: data.kind,
+                text: data.text,
+                position: Number.isInteger(data.position) ? data.position : null,
+                timestamp: new Date().toISOString(),
+                observedAt:
+                    typeof data.observedAt === "string" ? data.observedAt : null,
+                mapID: data.mapID,
+                mapName: String(data.mapName || "").slice(0, 200),
+                npc: {
+                    id: data.npc.id,
+                    name: String(data.npc.name || "Unknown NPC").slice(0, 200),
+                    role: String(data.npc.role || "").slice(0, 100),
+                    alignment: String(data.npc.alignment || "").slice(0, 100),
+                    type: data.npc.type
+                }
+            };
+
+            // Exact source record, independent of AI summaries.
+            player.npcDialogueEvents.push(event);
+
+            const sourceText =
+                `[NPC_ID:${event.npc.id}] ` +
+                `[NPC_EVENT:${event.id}] ` +
+                JSON.stringify(event);
+
+            player.undigestedInfo ||= [];
+            player.undigestedInfo.push(sourceText);
+
+            const memoryKey = player.persistentId || player.name.toLowerCase();
+
+            suncatPersistentMemory[memoryKey] = {
+                ...(suncatPersistentMemory[memoryKey] || {}),
+                npcDialogueEvents: player.npcDialogueEvents,
+                undigestedInfo: player.undigestedInfo
+            };
+
+            saveSuncatMemory();
+
+            const description = event.kind === "npc_line"
+                ? `${event.npc.name}: ${event.text}`
+                : `You chose "${event.text}" while speaking with ${event.npc.name}.`;
+
+            socket.emit("journal_updated", {
+                entryId: `npc-event:${event.id}`,
+                entryType: "record",
+                timestamp: event.timestamp,
+                playerChronicle: `[RECORD]\n\n${description}`,
+                suncatThoughts: null
             });
+        });
         socket.on("suncat_spectate", async (actionDescription) => {
             const sender = players[socket.id];
             if (!sender) return;
@@ -8812,12 +8959,6 @@ io.on("connection", (socket) => {
                 callback(`[THOUGHT] Rest [/THOUGHT]\n[LYRICS_UI] - [/LYRICS_UI]\n[LYRICS_PHONETIC] - [/LYRICS_PHONETIC]`);
             }
         });
-        let lastLightCached = null;
-        let lastLightCachedAt = 0;
-        let lastLightLastAttempt = 0;
-
-        let lastLightPending = null;
-
         socket.on('suncat_compose_last_light', async (data, callback) => {
             if (typeof callback !== 'function') return;
 
@@ -9416,7 +9557,7 @@ setInterval(() => {
             });
         }
     }
-}, 1000); // <-- Runs every 1 second while his hitlist is active!
+}, 100000); // <-- Runs every 1 second while his hitlist is active!
 //AFK SWEEPER
     const IDLE_TIMEOUT = 3 * 60 * 1000;  // 3 minutes: Hibernate & clear chat session
     const KICK_TIMEOUT = 30 * 60 * 1000; // 30 minutes: Kick player to free RAM
@@ -9476,6 +9617,7 @@ setInterval(() => {
                     scenarioContext: player.scenarioContext || null,
                     undigestedInfo: player.undigestedInfo || [],
                     rawJournalArchive: player.rawJournalArchive || [],
+                    npcDialogueEvents: player.npcDialogueEvents || [],
                 };
                 saveSuncatMemory();
                 
