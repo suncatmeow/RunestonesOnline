@@ -187,24 +187,20 @@
             window.isPaintingMap = false;
         //Global DBs
             // Helper for Map 14 (Giant's Daughter)
-            const getDaughterPayload = (spawnX, spawnY, isYes) => {
-                if (isYes) {
-                    return {
-                        index: 90, x: spawnX, y: spawnY, sprite: 90, state: 'chasing', color: '#ff00ff', role: 'dialogue', alignment: 'friendly_messenger',
-                        customDialogue: ["Take this my love.", "May it help you in the coming battle."],
-                        endActions: [
-                            ['give_card', 73], ['give_card', 72], ['set_flag', {key: 'gd', value: 5}],
-                            ['spectate', "Player has chosen to marry the Giant's daughter."],
-                            ['play_sfx', 'heal'], ['disappear', null]
-                        ]
-                    };
-                } else {
-                    return {
-                        index: 90, x: spawnX, y: spawnY, sprite: 90, state: 'chasing', color: '#ff00ff', role: 'dialogue', alignment: 'friendly_messenger',
-                        customDialogue: ["I will never forget thee."],
-                        endActions: [['set_flag', {key: 'gd', value: 5}], ['spectate', "Player chose NOT to marry the giant's daughter."], ['disappear', null]]
-                    };
-                }
+           
+            const STORY_COMBAT_RULES = {
+                '2:301': { flag: 'fake_emperor_dead' },
+                '30:5': { flag: 'imp_ambush_defeated', level: 3 },
+                '31:11': { flag: 'djinn_dead' },
+                '9:1': { flag: 'kraken_dead' },
+                '12:12': { flag: 'dragon_dead' },
+                '14:7': { flag: 'gargoyle_defeated' },
+                '14:14': { flag: 'giant_dead' },
+                '17:1': { flag: 'phantom_djinn_defeated', level: 25 },
+                '18:0': { flag: 'phantom_kraken_defeated', level: 25 },
+                '19:2': { flag: 'phantom_dragon_defeated', level: 25 },
+                '20:1': { flag: 'phantom_giant_defeated', level: 25 },
+                '21:1': { flag: 'mq_map21', level: 40 }
             };
 
             const MAP_DB = {
@@ -833,11 +829,11 @@
                                     yesActions: [
                                         ['play_sfx', 'horn'], 
                                         // 1. Transform the Fake Emperor into the Imp Boss!
-                                        ['transform_npc', { index: 301, newType: 56, newAlignment: 'foe', newRole: 'battle', newState: 'chasing', clearDialogue: true, isBoss: true, newDeathActions: [['set_memory', {key: 'fake_emperor_dead', value: true}], ['play_sfx', 'chime'], ['notify', "The imposters are dead! The real Emperor can now return to the throne."]] }], 
+                                        ['transform_npc', { index: 301, newType: 56, newAlignment: 'foe', newRole: 'battle', newState: 'chasing', clearDialogue: true, clearDialogueFactory: true, refreshCombat: true, newIsBoss: true, newDeathActions: [['set_memory', {key: 'fake_emperor_dead', value: true}], ['play_sfx', 'chime'], ['notify', "The imposters are dead! The real Emperor can now return to the throne."]] }],
                                         // 2. Transform the rest of the fake royal court into Fire Imps (Sprite 79)
-                                        ['transform_npc', { index: 312, newType: 56, newAlignment: 'foe', newRole: 'battle', newState: 'chasing', clearDialogue: true }],
-                                        ['transform_npc', { index: 313, newType: 56, newAlignment: 'foe', newRole: 'battle', newState: 'chasing', clearDialogue: true }],
-                                        ['transform_npc', { index: 315, newType: 56, newAlignment: 'foe', newRole: 'battle', newState: 'chasing', clearDialogue: true }],
+                                        ['transform_npc', { index: 312, newType: 56, newAlignment: 'foe', newRole: 'battle', newState: 'chasing', clearDialogue: true, clearDialogueFactory: true, refreshCombat: true }],
+                                        ['transform_npc', { index: 313, newType: 56, newAlignment: 'foe', newRole: 'battle', newState: 'chasing', clearDialogue: true, clearDialogueFactory: true, refreshCombat: true }],
+                                        ['transform_npc', { index: 315, newType: 56, newAlignment: 'foe', newRole: 'battle', newState: 'chasing', clearDialogue: true, clearDialogueFactory: true, refreshCombat: true }],
                                         ['close_dialogue', null]
                                     ]
                                 };
@@ -2051,23 +2047,42 @@
                         { index: 0, x: 5.5, y: 9.5, sprite: -33, role: 'portal', deck: [48.5, 26.5, 10, 2], alignment: 'friendly' },
                         { index: 2, x: 1.5, y: 5.5, sprite: -27, role: 'dialogue', deck: [8], alignment: 'friendly' },
                         { index: 3, x: 9.5, y: 5.5, sprite: -27, role: 'dialogue', deck: [7], alignment: 'friendly' },
-                        { index: 1, x: 5.5, y: 1.5, sprite: 62, role: 'dialogue', deck: [62], alignment: 'friendly',
-                            dialogueFactory: (d) => {
-                                if (d.MainQuest < 5) return { text: ["I am sorry, I cannot talk right now.", "My kingdom is preparing for war. Please leave."], endActions: [['close_dialogue', null]] };
-                                
-                                let isDragonDead = d.memory['dragon_dead'] === true;
-                                let hasFairyQueen = d.deck.some(c => c.index === 62) || d.extra.some(c => c.index === 62) || d.hand.some(c => c && c.index === 62);
-                                
-                                if (isDragonDead) {
-                                    let vActions = [];
-                                    if (!hasFairyQueen) vActions.push(['give_card', {card: 62, text: "Fairy Queen joins your party!"}]);
-                                    vActions.push(['spawn_npc', [11, 5, 5.5, 1.5, 99, 'stationary', '#66ccff', [1.5, 16.5, 14, 1], null, null, 'portal', null, null, 'friendly']]);
-                                    vActions.push(['spectate', "Player spoke to the fairy queen after defeating the dragon. She has opened a portal to the elf queens lair."]);
-                                    vActions.push(['disappear', null]);
-                                    return { text: ["The Dark Emperor has lost his dominion over the skies.", "But the Elf Queen calls for aid. The King of Pentacles besieges her realm.", "We must help her fend off his attack. I will open a portal. Let us make haste!"], endActions: vActions };
-                                } else {
-                                    return { text: ["So you came...", "It is for naught...", "The King of Swords is too powerful.", "He demands I surrender my kingdom, or he will burn it all to ash...", "Strategy? These things fall apart in front of absolute power...", "Even my own knights have betrayed me to join his cause...", "Fight back? I am alone. My people will only suffer.", "...A ruler must fight for their people?", "You...are right. Let us go. His lair lies to the west.", "Sigh... if only the Sleeping King would awaken from his slumber..."], endActions: [['restore_map_song'], ['give_card',{card:62,text:"Fairy Queen joins your party!"}], ['spectate', "Player convinced the Fairy Queen to fight back against the Dragon."], ['disappear', null]] };
+                        { index:1, x:5.5, y:1.5, sprite:62, role:'dialogue', deck:[62], alignment:'friendly',
+                            spawnCondition: d => !d.memory.fairy_portal_opened,
+                            dialogueFactory: d => {
+                                if (d.MainQuest < 5) return {
+                                    text:['My kingdom is preparing for war. Please leave.'],
+                                    endActions:[['close_dialogue',null]]
+                                };
+                                const owned = [...(d.deck || []), ...(d.extra || []), ...(d.hand || []),
+                                    ...(d.activeSummons || [])].some(c => c && (c.cardId ?? c.index) === 62);
+                                const actions = [];
+                                if (!d.memory.fairy_queen_recruited && !owned) {
+                                    actions.push(['give_card',{card:62,once:'fairy_queen_recruited',
+                                        text:'Fairy Queen joins your party!'}]);
+                                } else actions.push(['set_memory',{key:'fairy_queen_recruited',value:true}]);
+                                if (d.memory.dragon_dead) {
+                                    actions.push(
+                                        ['spawn_npc',[11,5,5.5,1.5,99,'stationary','#66ccff',
+                                            [1.5,16.5,14,1],null,null,'portal',null,false,'friendly']],
+                                        ['set_memory',{key:'fairy_portal_opened',value:true}],
+                                        ['spectate','The Fairy Queen opens the way to the Elf Queen.'],
+                                        ['disappear',1]
+                                    );
+                                    return {text:[
+                                        'The Dark Emperor has lost his dominion over the skies.',
+                                        'The Elf Queen calls for aid. The King of Pentacles besieges her realm.',
+                                        'I will open a portal. Let us make haste!'
+                                    ],endActions:actions};
                                 }
+                                return {
+                                    text: d.memory.fairy_queen_recruited
+                                        ? ['The Dragon still threatens my people. His lair lies to the west.']
+                                        : ['The King of Swords demands my kingdom, or he will burn it to ash.',
+                                            'A ruler must fight for their people. You are right.',
+                                            'Let us go. His lair lies to the west.'],
+                                    endActions: [...actions,['restore_map_song'],['close_dialogue',null]]
+                                };
                             }
                         }
                     ]
@@ -2113,16 +2128,47 @@
                         { index: 9, x: 3.5, y: 3.5, sprite: 86, role: 'battle', deck: [59,52,51,58,50,64,28,29,7,86], alignment: 'foe' },
                         { index: 10, x: 3.5, y: 13.5, sprite: 86, role: 'battle', deck: [59,52,51,58,50,64,28,29,7,86], alignment: 'foe' },
                         { index: 11, x: 6.5, y: 13.5, sprite: 86, role: 'battle', deck: [59,52,51,58,50,64,28,29,7,86], alignment: 'foe' },
-                        { index: 2, x: 6.5, y: 6.5, sprite: -27, role: 'dialogue', deck: [67], alignment: 'friendly',
-                            spawnCondition: (d) => !d.memory['mq_map12'],
-                            onSpawn: (npc) => npc.endActions = [['set_memory', {key: 'mq_map12', value: true}], ['set_memory', {key: 'dragon_dead', value: true}], ['play_song', 24], ['spawn_npc', [12, 13, 6.5, 6.5, 62, 'chasing', '#00ff00', [62], ["Sigh...thank you...truly.", "...Come. Let us return to my castle."," We must put a stop to the fiend behind all of this."], null, 'dialogue', null, false, 'friendly_messenger', [['spectate', 'Player spoke to the Fairy Queen after defeating the Dragon in his lair.'], ['load_map', 11]]]]]
+                        { index:2, x:6.5, y:6.5, sprite:-27, role:'dialogue', deck:[67], alignment:'friendly',
+                            spawnCondition: d => d.memory.dragon_dead && !d.memory.dragon_hoard_claimed,
+                            endActions:[['set_memory',{key:'dragon_hoard_claimed',value:true}]]
                         },
-                        { index: 1, x: 6.5, y: 7.5, sprite: 63.1, role: 'dialogue', isBoss: true, deck: [39,39,51,59,58,26,26,28,19,63,63,63], alignment: 'friendly',
-                            spawnCondition: (d) => !d.memory['dragon_dead'],
-                            dialogueFactory: (d) => {
-                                if (d.MainQuest < 5) return { text: ["*The Ancient Dragon glances at you, utterly uninterested in a weakling.*", "*A single flap of its massive wings generates a hurricane that blows you away!*"], endActions: [['play_sfx', 'wind'], ['load_map', {id:12,x:12.5,y:15.5}]] };
-                                return { text: ["Arrogant fools...", "You don't know the difference between heaven and earth!"], options: ['Draw Weapon'], yesActions: [['play_sfx', 'horn'], ['spawn_npc', [12, 12, 'SPEAKER_X','SPEAKER_Y', 63.1, 'chasing', '#ff0000', [39,39,51,59,58,26,26,28,19,63,63,63], null, null, 'battle', null, true, 'foe', [], [['set_memory', {key: 'dragon_dead', value: true}]]]], ['spectate', "Player has encountered the Dragon in his lair. Careful not to get burned..."], ['disappear', null], ['close_dialogue', null]], noActions: null };
+                        { index:1, x:6.5, y:7.5, sprite:63.1, role:'dialogue', isBoss:true,
+                            deck:[39,39,51,59,58,26,26,28,19,63,63,63], alignment:'friendly',
+                            spawnCondition: d => !d.memory.dragon_dead,
+                            dialogueFactory: d => {
+                                if (d.MainQuest < 5) return {
+                                    text:['The Ancient Dragon glances at you.', 'A hurricane blows you away!'],
+                                    endActions:[['play_sfx','wind'],['load_map',{id:12,x:12.5,y:15.5,dir:0}]]
+                                };
+                                return {
+                                    text:['Arrogant fools...', "You don't know the difference between heaven and earth!"],
+                                    options:['Draw Weapon'],
+                                    yesActions:[
+                                        ['play_sfx','horn'],
+                                        ['spawn_npc',[12,12,'SPEAKER_X','SPEAKER_Y',63.1,'chasing','#ff0000',
+                                            [39,39,51,59,58,26,26,28,19,63,63,63],null,null,'battle',null,true,'foe',[],[
+                                                ['set_memory',{key:'dragon_dead',value:true}],
+                                                ['set_memory',{key:'mq_map12',value:true}],
+                                                ['play_song',24], ['sync_story_npcs',[2,13]], ['trigger_dialogue',13]
+                                            ]]],
+                                        ['disappear',1], ['close_dialogue',null]
+                                    ], noActions:null
+                                };
                             }
+                        },
+                        { index:13, x:6.5, y:7.5, sprite:62, role:'dialogue', deck:[62],
+                            state:'chasing', alignment:'friendly_messenger', isCinematic:true,
+                            spawnCondition: d => d.memory.dragon_dead && !d.memory.dragon_followup_done,
+                            onSpawn:(npc,d) => Object.assign(npc,d.findWalkablePosition(d.x,d.y)),
+                            dialogueFactory:d => ({
+                                text:['Sigh... thank you... truly.', 'Come. Let us return to my castle.',
+                                    'We must put a stop to the fiend behind all of this.'],
+                                endActions:[
+                                    ['set_memory',{key:'dragon_followup_done',value:true}],
+                                    ['disappear',13],
+                                    ['load_map',{id:11,x:5.5,y:8.5,dir:0}]
+                                ]
+                            })
                         }
                     ]
                 },
@@ -2294,21 +2340,32 @@
                         { index: 17, x: 69.5, y: 93.5, sprite: 70.1, role: 'dialogue', deck: [70], alignment: 'friendly', customDialogue: ["The glowing man smiles bashfully."], rewardCard: 70, endActions: [['spectate', "Players have encountered the glowing man and obtained the Cultivate card."]] },
                         
                         // Giant's Daughter & Gargoyle logic
-                        { index: 6, x: 53.5, y: 36.5, sprite: 90, deck: [76,77,74,74,74,75,66,71], role: 'none', alignment: 'defender',
-                        onSpawn: (npc, d) => {
-                            let isGargoyleDead = d.memory["14_7"] && d.memory["14_7"].permanent;
-                            npc.state = isGargoyleDead ? 'chasing' : 'fleeing';
-                            npc.alignment = isGargoyleDead ? 'friendly_messenger' : 'defender';
-                            npc.role = isGargoyleDead ? 'dialogue' : 'none';
-                            npc.preState = 'stationary';
-                            npc.customDialogue = ["Thank thee for thy assistance <3", "I shall inform my father of thy bravery and selflessness.", "...surely he must sorely grieve my absence... sigh, father...", "Good be with ye brave hero... <3..."];
-                            npc.endActions = [['set_flag', {key: 'gd', value: 1}], ['spectate', "player has 'saved' the giant's daughter from the gargoyles."], ['disappear', null]];
-                        }
+                        { index:6, x:53.5, y:36.5, sprite:90, deck:[76,77,74,74,74,75,66,71],
+                            role:'none', alignment:'defender', isCinematic:true,
+                            spawnCondition:d => d.gd === 0,
+                            onSpawn:(npc,d) => {
+                                const rescued = !!d.memory.gargoyle_defeated;
+                                npc.state = rescued ? 'chasing' : 'fleeing';
+                                npc.alignment = rescued ? 'friendly_messenger' : 'defender';
+                                npc.role = rescued ? 'dialogue' : 'none';
+                            },
+                            dialogueFactory:d => d.memory.gargoyle_defeated ? {
+                                text:['Thank thee for thy assistance <3',
+                                    'I shall inform my father of thy bravery and selflessness.',
+                                    'Good be with ye, brave hero.'],
+                                endActions:[['set_flag',{key:'gd',value:1}],
+                                    ['spectate',"Player saved the Giant's daughter."],['disappear',6]]
+                            } : {text:['Help! The Gargoyle is after me!'],endActions:[['close_dialogue',null]]}
                         },
-                        { index: 7, x: 53.5, y: 37.5, sprite: 74.1, role: 'battle', isBoss: true, deck: [74], alignment: 'foe',
-                        spawnCondition: (d) => !d.memory["14_7"] || !d.memory["14_7"].permanent,
-                        customDialogue: ["Thief!!!"],
-                        onSpawn: (npc) => npc.deathActions = [['transform_npc', { index: 6, newAlignment: 'friendly_messenger', newState: 'chasing', newRole: 'dialogue' }], ['spectate', "Player defeated the Gargoyle! The Giant's Daughter approaches..."]]
+                        { index:7, x:53.5, y:37.5, sprite:74.1, role:'battle', isBoss:true,
+                            deck:[74], alignment:'foe', spawnCondition:d => !d.memory.gargoyle_defeated,
+                            customDialogue:['Thief!!!'],
+                            deathActions:[
+                                ['set_memory',{key:'gargoyle_defeated',value:true}],
+                                ['transform_npc',{index:6,newAlignment:'friendly_messenger',
+                                    newState:'chasing',newRole:'dialogue'}],
+                                ['spectate',"The Giant's daughter is safe."]
+                            ]
                         },
 
                         // Elf Queen & Giant Dad logic
@@ -2317,7 +2374,13 @@
                                 if (d.MainQuest < 4) return { text: ["Who are you? Be gone, my kingdom is preparing for war."], endActions: [['close_dialogue', null]] };
                                 if (d.gd === 0) return { text: ["So you came...", "I have heard of your exploits.", "Do not fear. The King of Pentacles is not here.", "Did something happen? I wonder...", "I thought perhaps you...No? Hmm..."], endActions: [['close_dialogue', null]] };
                                 if (d.gd === 1) {
-                                    let battleGiantArgs = [14, 14, d.x-0.5, d.y-0.5, 77.1, 'chasing', '#00ff00', [77,50,65,77,70,59,51,8,65,65,28,77,77], null, null, 'battle', null, true, 'foe', [], [['set_flag', {key: 'gd', value: 2}], ['set_memory', {key: 'giant_dead', value: true}], ['spawn_npc', [14, 155, d.x, d.y-1, 77.1, 'chasing', '#00ff00', [], null, null, 'dialogue', null, false, 'friendly_messenger']], ['inject_dialogue', { index: 155, text: ["Urgh... I underestimated you...", "How about it? Will you marry my daughter?", "Marry the giant's daughter?"], options: ['Yes', 'No'], yesActions: [['inject_dialogue', { index: 155, text: ["Very well... I cannot force you two to part.", "Nevertheless, my daughter has you in her heart.", "I will not side with the Dark Emperor.", "I shall aid you, lest my daughter become a widow before she marries."], endActions: [['give_card', {card: 77, text: "Giant joins your party!"}], ['spawn_ephemeral_npc', getDaughterPayload(d.x + 1, d.y - 1, true)], ['disappear', 155]] }]], noActions: [['inject_dialogue', { index: 155, text: ["Very well... I cannot force you.", "Nevertheless, my daughter has you in her heart.", "I will not side with the Dark Emperor.", "I leave you in peace. Come daughter."], endActions: [['spawn_ephemeral_npc', getDaughterPayload(d.x + 1, d.y - 1, false)], ['disappear', 155]] }]] }]]];
+                                    const spawn = d.findWalkablePosition(d.x-1,d.y);
+                                    let battleGiantArgs = [14,14,spawn.x,spawn.y,77.1,'chasing','#00ff00',
+                                        [77,50,65,77,70,59,51,8,65,65,28,77,77],null,null,'battle',null,true,'foe',[],[
+                                            ['set_flag',{key:'gd',value:2}],
+                                            ['set_memory',{key:'giant_dead',value:true}],
+                                            ['sync_story_npcs',[15]], ['trigger_dialogue',15]
+                                        ]];
                                     return { text: ["So you came...", "I have heard of your exploits.", "Do not fear. The King of Pentacles is not here.", "Did something happen? I wonder...", "Hmm...Oh my!", "So! This little one dared to seduce my daughter??", "Father, no!", "King of Pentacles Attacks!"], endActions: [['set_flag', {key: 'gd', value: 1.5}], ['spawn_npc', battleGiantArgs], ['spectate', "Player has spoken to the Elf Queen when suddenly the Giant bursts in!"]] };
                                 }
                                 if (d.gd === 1.5) return { text: [ "Deal with him first! We will speak after." ], endActions: [['close_dialogue', null]] };
@@ -2325,12 +2388,53 @@
                                 return { text: ["..."], endActions: [['close_dialogue', null]] };
                             }
                         },
-                        { index: 15, x: 17.5, y: 9.5, sprite: 77.1, role: 'dialogue', alignment: 'friendly',
-                            spawnCondition: (d) => d.gd >= 2 && d.gd < 5,
-                            dialogueFactory: (d) => {
-                                if (d.gd === 2) return { text: ["Urgh... I underestimated you...", "How about it? Will you marry my daughter?", "Marry the giant's daughter?"], options: ['Yes', 'No'], yesActions: [['inject_dialogue', { index: 15, text: ["Very well... I cannot force you two to part.", "Nevertheless, my daughter has you in her heart.", "I will not side with the Dark Emperor.", "I shall aid you, lest my daughter become a widow before she marries."], endActions: [['give_card', {card: 77, text: "Giant joins your party!"}], ['spawn_ephemeral_npc', getDaughterPayload(18.5, 9.5, true)], ['disappear', 15]] }]], noActions: [['inject_dialogue', { index: 15, text: ["Very well... I cannot force you.", "Nevertheless, my daughter has you in her heart.", "I will not side with the Dark Emperor.", "I leave you in peace. Come daughter."], endActions: [['spawn_ephemeral_npc', getDaughterPayload(18.5, 9.5, false)], ['disappear', 15]] }]] };
-                                return { text: ["..."], endActions: [['close_dialogue', null]] };
+                        { index:15, x:17.5, y:9.5, sprite:77.1, role:'dialogue',
+                            state:'chasing', alignment:'friendly_messenger', isCinematic:true,
+                            spawnCondition:d => d.gd >= 2 && d.gd < 5 && !d.memory.giant_response_done,
+                            onSpawn:(npc,d) => Object.assign(npc,d.findWalkablePosition(d.x,d.y)),
+                            dialogueFactory:d => {
+                                if (d.gd === 2) return {
+                                    text:['Urgh... I underestimated you...', 'Will you marry my daughter?'],
+                                    options:['Yes','No'],
+                                    yesActions:[['set_flag',{key:'gd',value:3}],['trigger_dialogue',15]],
+                                    noActions:[['set_flag',{key:'gd',value:4}],['trigger_dialogue',15]]
+                                };
+                                const accepted = d.gd === 3;
+                                const endActions = [];
+                                const ownsGiant = [...(d.deck || []),...(d.extra || []),...(d.hand || []),
+                                    ...(d.activeSummons || [])].some(c => c && (c.cardId ?? c.index) === 77);
+                                if (accepted && !ownsGiant) endActions.push(['give_card',{
+                                    card:77,once:'giant_reward_claimed',text:'Giant joins your party!'
+                                }]);
+                                endActions.push(
+                                    ['set_memory',{key:'giant_response_done',value:true}],
+                                    ['sync_story_npcs',[90]], ['disappear',15], ['trigger_dialogue',90]
+                                );
+                                return {
+                                    text:accepted
+                                        ? ['Very well. You have my blessing.', 'I will not side with the Dark Emperor.',
+                                            'I shall aid you, lest my daughter become a widow before she marries.']
+                                        : ['Very well. I cannot force you.', 'I will not side with the Dark Emperor.',
+                                            'I leave you in peace. Come, daughter.'],
+                                    endActions
+                                };
                             }
+                        },
+                        { index:90, x:18.5, y:9.5, sprite:90, role:'dialogue',
+                            state:'chasing', alignment:'friendly_messenger', isCinematic:true,
+                            spawnCondition:d => (d.gd === 3 || d.gd === 4) && d.memory.giant_response_done,
+                            onSpawn:(npc,d) => Object.assign(npc,d.findWalkablePosition(d.x,d.y)),
+                            dialogueFactory:d => ({
+                                text:d.gd === 3 ? ['Take these, my love.', 'May they help you in the coming battle.']
+                                    : ['I will never forget thee.'],
+                                endActions:[
+                                    ...(d.gd === 3 ? [
+                                        ['give_card',{card:73,once:'daughter_gift_73'}],
+                                        ['give_card',{card:72,once:'daughter_gift_72'}]
+                                    ] : []),
+                                    ['set_flag',{key:'gd',value:5}], ['play_sfx','heal'], ['disappear',90]
+                                ]
+                            })
                         }
                     ]
                 },
@@ -2416,7 +2520,7 @@
                         
                         { index: 4, x: 30.5, y: 16.5, sprite: 99, role: 'portal', deck: [8.5, 22.5, 6, 0], alignment: 'friendly_shy' },
                         { index: 5, x: 12.5, y: 11.5, sprite: 99, role: 'portal', deck: [33.5, 7.5, 9, 3], alignment: 'friendly_shy' },
-                        { index: 6, x: 3.5, y: 11.5, sprite: 99, role: 'portal', deck: [12.5, 17.5, 11, 0], alignment: 'friendly_shy' },
+                        { index: 6, x: 3.5, y: 11.5, sprite: 99, role: 'portal', deck: [5.5, 8.5, 11, 0], alignment: 'friendly_shy' },
                         { index: 7, x: 9.5, y: 11.5, sprite: 99, role: 'portal', deck: [1.5, 16.5, 14, 1], alignment: 'friendly_shy' },
                         { index: 8, x: 33.5, y: 9.5, sprite: -27, role: 'dialogue', deck: [11], alignment: 'friendly' }
                     ]
@@ -5490,7 +5594,7 @@
                 
                 this.role = role || 'battle';
                 this.alignment = alignment; 
-                this.xp = getPower(null, deck); // Assuming getPower accepts deck array
+                this.xp = getPower(this.baseCard);
 
             // 2. STATS & LIFE FORCE (WARDS)
                 // Import true stats directly from the Card encyclopedia
@@ -5707,7 +5811,7 @@
                     
                     // THE FIX: Catch both variable names so arrays never get dropped!
                     this.endActions = dynamicData.endActions || dynamicData.actions || [];
-                    this.rewardCard = dynamicData.rewardCard || null;
+                    this.rewardCard = dynamicData.rewardCard ?? null;
                     if (dynamicData.options) this.options = dynamicData.options;
                     if (dynamicData.yesActions) this.yesActions = dynamicData.yesActions;
                     if (dynamicData.noActions) this.noActions = dynamicData.noActions;
@@ -6191,8 +6295,46 @@
             }
             return true; // Failsafe
         }
+        resetAfterRespawn(dungeon) {
+            const pos = dungeon.findWalkablePosition(this.originx,this.originy);
+            this.x=pos.x; this.y=pos.y;
+            this.isDead=false; this.isDying=false; this.visible=true;
+            this.currentWardTime=this.maxWards*this.timePerWard;
+            this.wardShatterCooldown=0;
+            this.activeBuffs=[]; this.skillCooldowns={};
+            this.isSliding=false; this.isAggroDashing=false;
+            this.targetMapX=this.targetMapY=undefined;
+            this.cachedPrey=null; this.cachedPath=[]; this.pathTimer=0;
+            this.lastSeenX=this.lastSeenY=null; this.searchTimer=0;
+            this.combatCooldown=0; this.rangedCooldown=0; this.talkCooldown=0;
+            this.damageFlashTimer=0; this.attackAnimTimer=0; this.playerContactCooldown=0;
+            this.state=this.preState || 'stationary';
+            this.respawnTime=Infinity;
+            delete dungeon.memory[`${dungeon.mapID}_${this.index}`];
+            dungeon.requestSave();
+        }
         update(maze, playerX, playerY, dungeon, dt) {
             if (this.role === 'sign') return;
+            if (this.isDead) {
+                if (Number.isFinite(this.respawnTime) && Date.now() >= this.respawnTime) {
+                    this.resetAfterRespawn(dungeon);
+                }
+                return;
+            }
+                        if (this.role === 'dropped_card') {
+                            this.lifespan -= (30 * dt); 
+                            if (this.lifespan < 180) {
+                                let blinkRate = this.lifespan < 60 ? 5 : 10; 
+                                this.visible = (Math.floor(this.lifespan) % blinkRate < (blinkRate / 2));
+                            } else {
+                                this.visible = true; 
+                            }
+
+                            if (this.lifespan <= 0) {
+                                this.isDead = true; this.visible = false; this.x = -999; 
+                            }
+                            return; 
+                        }
 
             // =========================================================
             // STAT MODS
@@ -6320,38 +6462,22 @@
                     else if (topEffect.name === 'Curse') this.auraColor = '#8A2BE2'; // Purple glow
                     else if (topEffect.name === 'Webbed' || topEffect.bind) this.auraColor = '#FFFFFF'; 
                 }
-            // =========================================================
-            // 3. EXPIRING LOOT LOGIC
-            // =========================================================
-                if (this.role === 'dropped_card') {
-                    this.lifespan -= (30 * dt); 
-                    if (this.lifespan < 180) {
-                        let blinkRate = this.lifespan < 60 ? 5 : 10; 
-                        this.visible = (Math.floor(this.lifespan) % blinkRate < (blinkRate / 2));
-                    } else {
-                        this.visible = true; 
-                    }
-                    
-                    if (this.lifespan <= 0) {
-                        this.isDead = true; this.visible = false; this.x = -999; 
-                    }
-                    return; 
-                }
+            
             
             // =========================================================
             // 4. CHECK RESPAWN & AGI NERVOUS SYSTEM
             // =========================================================
-                if (this.isDead) {
-                    if (Date.now() > this.respawnTime) {
-                        this.isDead = false; this.visible = true;
-                    }
-                    return;
-                }
+               
                 
-                if (this.combatCooldown > 0) this.combatCooldown -= agiMultiplier;
-                if (this.rangedCooldown > 0) this.rangedCooldown -= agiMultiplier;
-                if (this.talkCooldown > 0 && typeof startGame !== 'undefined' && startGame === 'explore') this.talkCooldown -= 1;
-                if (this.damageFlashTimer > 0) this.damageFlashTimer -= 1;
+                const tickScale = 30 * dt; // Existing NPC constants use a 30-tick baseline.
+                if (this.combatCooldown > 0) this.combatCooldown = Math.max(0,this.combatCooldown-agiMultiplier*tickScale);
+                if (this.rangedCooldown > 0) this.rangedCooldown = Math.max(0,this.rangedCooldown-agiMultiplier*tickScale);
+                if (this.talkCooldown > 0 && typeof startGame !== 'undefined' && startGame === 'explore') {
+                    this.talkCooldown = Math.max(0,this.talkCooldown-tickScale);
+                }
+                this.damageFlashTimer = Math.max(0,(this.damageFlashTimer || 0)-tickScale);
+                this.attackAnimTimer = Math.max(0,(this.attackAnimTimer || 0)-tickScale);
+                this.searchTimer = Math.max(0,(this.searchTimer || 0)-tickScale);
 
             // =========================================================
             // 5. DYNAMIC TARGET SELECTION (The Universal Radar)
@@ -6448,14 +6574,12 @@
                         // --- NEW: OBJECT PERMANENCE TRACKER ---
                         let hasLOS = this.hasLineOfSight(maze, playerX, playerY);
                         if (hasLOS) { 
-                            this.lastSeenX = playerX; 
-                            this.lastSeenY = playerY;
-                            // Base 150 frames (5 sec) memory. Multiplied by INT!
-                            this.searchTimer = 150 * intMultiplier; 
-                        } else if (this.searchTimer > 0) {
-                            this.searchTimer -= (30 * dt);
+                                this.lastSeenX = playerX; 
+                                this.lastSeenY = playerY;
+                                // Base 150 frames (5 sec) memory. Multiplied by INT!
+                                this.searchTimer = 150 * intMultiplier; 
+                            }
                         }
-                    }
 
                     this.cachedPrey = currentPrey; 
                 }
@@ -6512,7 +6636,8 @@
 
                 if (this.state === 'following' && (this.alignment === 'ally' || this.alignment === 'friendly_messenger')) {
                     let mapX = Math.floor(this.x); let mapY = Math.floor(this.y);
-                    if (dungeon.flowField && dungeon.flowField[mapY] && dungeon.flowField[mapY][mapX]) {
+                    if (dungeon.flowField?.[mapY]?.[mapX]?.generation === dungeon.flowGeneration &&
+                        dungeon.flowField?.[mapY]?.[mapX]?.active === true) {
                         let flowDir = dungeon.flowField[mapY][mapX];
                         if (flowDir.x !== 0 || flowDir.y !== 0) {
                             moveTargetX = (mapX + 0.5) + flowDir.x; moveTargetY = (mapY + 0.5) + flowDir.y;
@@ -6529,7 +6654,7 @@
                                 this.cachedPath = dungeon.findPath(this.x, this.y, targetX, targetY);
                                 this.pathTimer = 15 + Math.floor(Math.random() * 5); 
                             } else {
-                                this.pathTimer -= agiMultiplier; 
+                                this.pathTimer -= agiMultiplier * tickScale;
                             }
 
                         let path = this.cachedPath;
@@ -6549,7 +6674,8 @@
                         
                         if (hasLOS) {
                             let mapX = Math.floor(this.x); let mapY = Math.floor(this.y);
-                            if (dungeon.flowField && dungeon.flowField[mapY] && dungeon.flowField[mapY][mapX]) {
+                            if (dungeon.flowField?.[mapY]?.[mapX]?.generation === dungeon.flowGeneration &&
+                                dungeon.flowField?.[mapY]?.[mapX]?.active === true) {
                                 let flowDir = dungeon.flowField[mapY][mapX];
                                 if (flowDir.x === 0 && flowDir.y === 0) {
                                     moveTargetX = this.x; moveTargetY = this.y;
@@ -6563,7 +6689,7 @@
                                 this.cachedPath = dungeon.findPath(this.x, this.y, this.lastSeenX, this.lastSeenY);
                                 this.pathTimer = 15 + Math.floor(Math.random() * 5);
                             } else {
-                                this.pathTimer -= agiMultiplier; 
+                                this.pathTimer -= agiMultiplier * tickScale;
                             }
 
                             let path = this.cachedPath;
@@ -8380,6 +8506,12 @@
                 let activeMod = 0;
                 if (this.activeBuffs) {
                     this.activeBuffs.forEach(buff => {
+                        //summoners bond buff
+                        if (buff.type === 'static_buff' && Array.isArray(buff.buffs)) {
+                            for (const entry of buff.buffs) {
+                                if (entry.stat === statIndex || entry.stat === 'all') activeMod += entry.amount;
+                            }
+                        }
                         // A. Standard Buffs
                         if (buff.type === 'buff' || buff.type === 'item_buff') {
                             if (buff.buffStat === statIndex || buff.buffStat === 'all') activeMod += buff.amount;
@@ -8784,10 +8916,10 @@
                     return card ? { index: card.index, uid: card.uid } : null;
                 });
                 const saveData = {
-                    x: this.x,
-                    y: this.y,
-                    dir: this.dir,
-                    mapID: this.mapID,
+                    x: this.mapID === 888 && this.tacticsReturn ? this.tacticsReturn.x : this.x,
+                    y: this.mapID === 888 && this.tacticsReturn ? this.tacticsReturn.y : this.y,
+                    dir: this.mapID === 888 && this.tacticsReturn ? this.tacticsReturn.dir : this.dir,
+                    mapID: this.mapID === 888 && this.tacticsReturn ? this.tacticsReturn.mapID : this.mapID,
                     mapSpawns: this.mapSpawns || {},
                     deckIDs: simpleDeck,        // Save just the IDs
                     extraIDs: simpleExtra,
@@ -8818,7 +8950,7 @@
                 };
 
                 localStorage.setItem('battlemage_save', JSON.stringify(saveData));
-                console.log("Game Saved!", saveData);
+                if (window.DEBUG_GAME) console.log('Game Saved!', saveData);
                 
                 // Optional: Visual feedback
                 if(typeof MessageBox !== 'undefined') {
@@ -8965,7 +9097,13 @@
 
                     // 5. Load the Map & Apply Position
                     this.isLoading = true; // Tell loadMap not to save over us!
-                    if (data.mapID == 888){data.mapID = data.prevMap}
+                    if (data.mapID === 888) {
+                        data.mapID = data.prevMap;
+                        const spawn = this.defaultSpawns?.[data.mapID];
+                        data.x = spawn?.x ?? 1.5;
+                        data.y = spawn?.y ?? 1.5;
+                        data.dir = spawn?.dir ?? 2;
+                    }
                     this.loadMap(data.mapID); 
                     
                     // Force the X, Y, and Dir back to the saved data (overriding the map's default entrance)
@@ -9221,15 +9359,22 @@
             }
         //MAP DATA
             loadMap(id) {
-                this.isLoading = true; 
-
+                const wasLoading = this.isLoading;
+                const previousReturnMap = this.prevMap;
+                this.isLoading = true;
+                try {
+                    this.repairStoryState();
+                    this.flowField = null;
+                    this.flowMaze = null;
+                    this.projectiles = [];
+                    this.spatialGrid = {};
                 // --- 1. OVERWORLD POSITION CACHE ---
-                if (this.mapID !== undefined && this.mapID !== 888 && this.mapID !== 999 && this.mapID !== -1 && this.mapID !== -2) {
-                    this.overworldX = this.x;
-                    this.overworldY = this.y;
-                    this.overworldDir = this.dir;
-                    this.lastOverworldMap = this.mapID;
-                }
+                    if (this.mapID !== undefined && this.mapID !== 888 && this.mapID !== 999 && this.mapID !== -1 && this.mapID !== -2) {
+                        this.overworldX = this.x;
+                        this.overworldY = this.y;
+                        this.overworldDir = this.dir;
+                        this.lastOverworldMap = this.mapID;
+                    }
 
                 // --- 2. MOVEMENT & PHYSICS KILL SWITCH ---
                     this.targetMapX = undefined;
@@ -9317,42 +9462,17 @@
                         }
                     }
 
-                    if (dbData.npcs && dbData.npcs.length > 0) {
-                        dbData.npcs.forEach((n) => {
-                            // Check if this NPC is blocked by a Story Quest flag
-                            if (n.spawnCondition && !n.spawnCondition(this)) return;
-
-                            // FIX 2: The standard NPC loop uses 'n'
-                            let newNPC = new NPC(
-                                n.index, n.x, n.y, n.sprite, n.state || 'stationary', n.color || '#66ccff', 
-                                n.deck || [], n.role || 'dialogue', n.isBoss || false, n.alignment || 'friendly',
-                                n.level || 0 // <--- THIS is where n.level goes!
-                            );
-                            newNPC.storyIdentity =
-                                n.storyIdentity || `map:${id}:npc:${n.index}`;
-                            if (n.customDialogue) newNPC.customDialogue = n.customDialogue;
-                            if (n.options) newNPC.options = n.options;
-                            if (n.yesActions) newNPC.yesActions = n.yesActions;
-                            if (n.noActions) newNPC.noActions = n.noActions;
-                            if (n.endActions) newNPC.endActions = n.endActions;
-                            if (n.rewardCard) newNPC.rewardCard = n.rewardCard;
-                            if (n.dialogueFactory) newNPC.dialogueFactory = n.dialogueFactory;
-                            if (n.isCinematic) newNPC.isCinematic = n.isCinematic;
-                            if (n.name !== undefined) newNPC.name = n.name;
-                            if (n.isTarget !== undefined) newNPC.isTarget = n.isTarget;
-                            if (n.deathActions !== undefined) newNPC.deathActions = n.deathActions;
-                            if (n.respawnDelay !== undefined) newNPC.respawnDelay = n.respawnDelay;
-                            // Execute custom onSpawn hooks (This is how Map 0 Ships update their dialogue!)
-                            if (n.onSpawn) n.onSpawn(newNPC, this);
-                            
-                            this.npcs.push(newNPC);
-                        });
+                    for (const data of dbData.npcs || []) {
+                        const rule = STORY_COMBAT_RULES[`${id}:${data.index}`];
+                        if (rule && this.memory[rule.flag]) continue;
+                        if (data.spawnCondition && !data.spawnCondition(this)) continue;
+                        this.npcs.push(this.buildNPC(data, id));
                     }
                 // =====================================================
                 // --- 5. PLAYER SPAWN RESOLUTION ---
                 // =====================================================
-                    if (!this.isLoading) {
-                        if (id === this.prevMap && this.prevX !== undefined) {
+                    if (!wasLoading) {
+                        if (id === previousReturnMap && this.prevX !== undefined) {
                             this.x = this.prevX; this.y = this.prevY; this.dir = this.prevDir;
                             this.prevX = undefined; this.prevY = undefined;
                         } 
@@ -9382,21 +9502,15 @@
                 // --- 6. LOAD PERSISTENT MEMORY & SUMMONS ---
                 // =====================================================
                     const memoryKey = 'spawned_' + id;
-                    if (this.memory[memoryKey]) {
-                        this.memory[memoryKey].forEach(data => {
-                            if (data.x === undefined || data.y === undefined) return;
-                            const restoredNPC = new NPC(data.index, data.x, data.y, data.type, data.state, data.color, data.deck, data.role, data.isBoss, data.alignment);
-                            restoredNPC.storyIdentity =
-                                data.storyIdentity || `legacy-persistent:${id}:${data.index}`;
-                            restoredNPC.isCinematic = data.isCinematic; restoredNPC.customDialogue = data.dialogue;
-                            restoredNPC.rewardCard = data.rewardCard; 
-                            restoredNPC.options = data.options; 
-                            restoredNPC.yesActions = data.yesActions;
-                            restoredNPC.noActions = data.noActions;
-                            restoredNPC.endActions = data.endActions; 
-                            restoredNPC.deathActions = data.deathActions; 
-                            this.npcs.push(restoredNPC);
-                        });
+                    const records = new Map((this.memory[memoryKey] || []).map(data => [data.index, data]));
+                    this.memory[memoryKey] = [...records.values()].filter(data => {
+                        const rule = STORY_COMBAT_RULES[`${id}:${data.index}`];
+                        return !(rule && this.memory[rule.flag]);
+                    });
+                    for (const data of this.memory[memoryKey]) {
+                        if (!Number.isFinite(data.x) || !Number.isFinite(data.y)) continue;
+                        this.npcs = this.npcs.filter(npc => npc.index !== data.index);
+                        this.npcs.push(this.buildNPC(data, id));
                     }
 
                     this.npcs.forEach(npc => {
@@ -9409,9 +9523,7 @@
                                 else { delete this.memory[uniqueID]; }
                             }
                         }
-                        if(npc.isDead === true && npc.type === 49.1 && this.mapID === 9) {
-                            this.weather.setMode('clear'); this.skyColor = 'rgba(0,0,255,1)';
-                        }
+                        
                     });                
 
                     if (this.activeSummons && this.activeSummons.length > 0) {
@@ -9436,8 +9548,15 @@
                         if (qData.targetMap === this.mapID && qData.spawnActions) this.executeActions(qData.spawnActions); 
                     }
 
-                if (typeof this.saveGame === 'function' && !this.isLoading) this.requestSave();
-                this.isLoading = false;
+                    if (id === 9 && this.memory.kraken_dead) {
+                        this.weather.setMode('clear');
+                        this.skyColor = 'rgba(0,0,255,1)';
+                        this.mapSong[9] = 3;
+                    }
+            } finally {
+                this.isLoading = wasLoading;
+            }
+            if (!wasLoading) this.requestSave();
             }
             loadCustomMap(data) {
                 this.loadMap(999);
@@ -10401,68 +10520,45 @@
                 return []; 
             }
             generateFlowField(targetX, targetY) {
-                let startXInt = Math.floor(targetX);
-                let startYInt = Math.floor(targetY);
-
-                if (startYInt < 0 || startYInt >= this.maze.length || startXInt < 0 || startXInt >= this.maze[0].length) return;
-
-                // --- NEW: CLAMP TO LOCAL 30x30 BUBBLE ---
-                let minX = Math.max(0, startXInt - 15);
-                let maxX = Math.min(this.maze[0].length - 1, startXInt + 15);
-                let minY = Math.max(0, startYInt - 15);
-                let maxY = Math.min(this.maze.length - 1, startYInt + 15);
-
-                // 1. ALLOCATE ONCE (Using the Map bounds, but we only wipe the bubble)
-                if (!this.flowField || this.flowField.length !== this.maze.length) {
-                    this.flowField = new Array(this.maze.length);
-                    for (let y = 0; y < this.maze.length; y++) {
-                        this.flowField[y] = new Array(this.maze[0].length);
-                        for (let x = 0; x < this.maze[0].length; x++) {
-                            this.flowField[y][x] = { x: 0, y: 0, active: false }; 
-                        }
-                    }
+                const height = this.maze.length;
+                const width = this.maze[0]?.length || 0;
+                const tx = Math.floor(targetX), ty = Math.floor(targetY);
+                if (!width || tx < 0 || ty < 0 || tx >= width || ty >= height) {
+                    this.flowGeneration = (this.flowGeneration || 0) + 1;
+                    this.flowSignature = null;
+                    return;
                 }
-
-                // WIPE ONLY THE BUBBLE (Massive CPU saving!)
-                for (let y = minY; y <= maxY; y++) {
-                    for (let x = minX; x <= maxX; x++) {
-                        this.flowField[y][x].active = false;
-                    }
+                if (this.flowMaze !== this.maze || this.flowField?.length !== height ||
+                    this.flowField?.[0]?.length !== width) {
+                    this.flowField = Array.from({length:height},() => Array(width).fill(null));
+                    this.flowMaze = this.maze;
+                    this.flowSignature = null;
                 }
-
-                let queue = [{ x: startXInt, y: startYInt }];
-                let head = 0; // <-- The tracking pointer
-
-                this.flowField[startYInt][startXInt].x = 0; 
-                this.flowField[startYInt][startXInt].y = 0;
-                this.flowField[startYInt][startXInt].active = true;
-
-                let dirs = [
-                    {x: 0, y: -1}, {x: 0, y: 1}, {x: -1, y: 0}, {x: 1, y: 0}, 
-                ];
-
-                // Replaced queue.length > 0 with head < queue.length
-                while (head < queue.length) {
-                    // Grab the current item and increment the head pointer, zero array shifting!
-                    let current = queue[head++]; 
-
-                    for (let dir of dirs) {
-                        let nx = current.x + dir.x;
-                        let ny = current.y + dir.y;
-
-                        if (nx >= minX && nx <= maxX && ny >= minY && ny <= maxY) {
-                            if (!this.isWall(nx, ny) && !this.flowField[ny][nx].active) {
-                                let dx = current.x - nx;
-                                let dy = current.y - ny;
-                                let dist = Math.sqrt(dx*dx + dy*dy);
-                                
-                                this.flowField[ny][nx].x = dx/dist; 
-                                this.flowField[ny][nx].y = dy/dist;
-                                this.flowField[ny][nx].active = true;
-                                
-                                queue.push({ x: nx, y: ny }); 
-                            }
-                        }
+                const minX = Math.max(0,tx-15), maxX = Math.min(width-1,tx+15);
+                const minY = Math.max(0,ty-15), maxY = Math.min(height-1,ty+15);
+                const localWidth = maxX-minX+1;
+                const blocked = new Uint8Array(localWidth*(maxY-minY+1));
+                let signature = `${this.mapID}:${tx}:${ty}:`;
+                let i = 0;
+                for (let y=minY;y<=maxY;y++) for (let x=minX;x<=maxX;x++) {
+                    blocked[i] = this.isWall(x,y) ? 1 : 0;
+                    signature += blocked[i++];
+                }
+                // Detect changed walls without adding invalidation calls to every editor/spell.
+                if (signature === this.flowSignature) return;
+                this.flowSignature = signature;
+                const generation = this.flowGeneration = (this.flowGeneration || 0) + 1;
+                this.flowField[ty][tx] = {x:0,y:0,active:true,generation};
+                const queue = [[tx,ty]];
+                for (let head=0;head<queue.length;head++) {
+                    const [x,y] = queue[head];
+                    for (const [dx,dy] of [[0,-1],[0,1],[-1,0],[1,0]]) {
+                        const nx=x+dx, ny=y+dy;
+                        if (nx<minX || nx>maxX || ny<minY || ny>maxY) continue;
+                        if (blocked[(ny-minY)*localWidth+nx-minX]) continue;
+                        if (this.flowField[ny][nx]?.generation === generation) continue;
+                        this.flowField[ny][nx] = {x:-dx,y:-dy,active:true,generation};
+                        queue.push([nx,ny]);
                     }
                 }
             }
@@ -10758,6 +10854,55 @@
                 this.inputCooldown = 0.3; // 0.3 second stun
             }
         //MAP RENDERING
+            updateNPCWorld(dt) {
+                this.frame = (this.frame || 0) + 1;
+                    if (!this.flowField || this.frame % 15 === 0) this.generateFlowField(this.x, this.y);
+                //ALLY FORMATIONS        
+                    this.spatialGrid = {}; 
+                        for (let npc of this.npcs) {
+                            if (npc.isDead || !npc.visible || npc.type === -27) continue;
+                            let key = `${Math.floor(npc.x)},${Math.floor(npc.y)}`;
+                            if (!this.spatialGrid[key]) this.spatialGrid[key] = [];
+                            this.spatialGrid[key].push(npc);
+                        }
+
+                    this.updateAllyFormations(dt);
+                //Particle BUFFS
+                    this.npcs.forEach(npc => {
+                        npc.update(this.maze, this.x, this.y, this, dt);
+                        if (npc.playerContactCooldown && npc.playerContactCooldown > 0) {
+                            npc.playerContactCooldown -= (30 * dt);
+                        }
+                        if (!npc.isDead && npc.visible && npc.activeBuffs && npc.activeBuffs.length > 0) {
+                            if (this.frame % 3 === 0) { 
+                                npc.activeBuffs.forEach(buff => {
+                                    let pType = 'sparkle'; 
+                                    if (buff.visual === 'shield') pType = 'bubble';
+                                    if (buff.visual === 'aura' || buff.visual === 'chains' || buff.type === 'debuff') pType = 'smoke';
+                                    let pColor = buff.auraColor || buff.glow || '#ffffff';
+                                    spawnParticle(npc.x + (Math.random() - 0.5) * 0.4, npc.y + (Math.random() - 0.5) * 0.4, pColor, pType);                            });
+                            }
+                        }
+                    });
+                    // --- PLAYER PARTICLE BUFFS ---
+                    if (this.activeBuffs && this.activeBuffs.length > 0) {
+                        if (this.frame % 3 === 0) { 
+                            this.activeBuffs.forEach(buff => {
+                                let pType = 'sparkle'; 
+                                if (buff.visual === 'shield') pType = 'bubble';
+                                if (buff.visual === 'aura' || buff.visual === 'chains' || buff.type === 'debuff') pType = 'smoke';
+                                let pColor = buff.auraColor || buff.glow || '#ffffff';
+
+                                // Spawn the particles around the Player's X and Y coordinates
+                                spawnParticle(this.x + (Math.random() - 0.5) * 0.4, this.y + (Math.random() - 0.5) * 0.4, pColor, pType);
+                            });
+                        }
+                    }
+                    for (let i = 0; i < PARTICLE_POOL_SIZE; i++) {
+                        globalParticles[i].update(dt);
+                    }
+
+            }
             render(dt) {
                 // ==========================================
                 // --- PLAYER ATLAS OVERLAY ---
@@ -10908,9 +11053,7 @@
                             }
                         }
                 // --- INITIALIZATION SYNC ---
-                    for (let i = 0; i < PARTICLE_POOL_SIZE; i++) {
-                        globalParticles[i].update(dt);
-                    }
+                    
                     //Suncat Check (Universal Radar)
                         let suncat = null;
                         if (window.remotePlayers) suncat = Object.values(window.remotePlayers).find(p => p.name === 'Suncat');
@@ -10941,51 +11084,7 @@
                             }
                         }
                     //Flow Field
-                        if (this.frame % 15 === 0) this.generateFlowField(this.x, this.y);
-                    //ALLY FORMATIONS        
-                        this.spatialGrid = {}; 
-                            for (let npc of this.npcs) {
-                                if (npc.isDead || !npc.visible || npc.type === -27) continue;
-                                let key = `${Math.floor(npc.x)},${Math.floor(npc.y)}`;
-                                if (!this.spatialGrid[key]) this.spatialGrid[key] = [];
-                                this.spatialGrid[key].push(npc);
-                            }
-                        
-                        this.updateAllyFormations(dt);
-                    //Particle BUFFS
-                        this.npcs.forEach(npc => {
-                            npc.update(this.maze, this.x, this.y, this, dt);
-                            if (npc.playerContactCooldown && npc.playerContactCooldown > 0) {
-                                npc.playerContactCooldown -= (30 * dt);
-                            }
-                            if (!npc.isDead && npc.visible && npc.activeBuffs && npc.activeBuffs.length > 0) {
-                                if (this.frame % 3 === 0) { 
-                                    npc.activeBuffs.forEach(buff => {
-                                        let pType = 'sparkle'; 
-                                        if (buff.visual === 'shield') pType = 'bubble';
-                                        if (buff.visual === 'aura' || buff.visual === 'chains' || buff.type === 'debuff') pType = 'smoke';
-                                        let pColor = buff.auraColor || buff.glow || '#ffffff';
-                                        spawnParticle(npc.x + (Math.random() - 0.5) * 0.4, npc.y + (Math.random() - 0.5) * 0.4, pColor, pType);                            });
-                                }
-                            }
-                        });
-                        // --- PLAYER PARTICLE BUFFS ---
-                        if (this.activeBuffs && this.activeBuffs.length > 0) {
-                            if (this.frame % 3 === 0) { 
-                                this.activeBuffs.forEach(buff => {
-                                    let pType = 'sparkle'; 
-                                    if (buff.visual === 'shield') pType = 'bubble';
-                                    if (buff.visual === 'aura' || buff.visual === 'chains' || buff.type === 'debuff') pType = 'smoke';
-                                    let pColor = buff.auraColor || buff.glow || '#ffffff';
-                                    
-                                    // Spawn the particles around the Player's X and Y coordinates
-                                    spawnParticle(this.x + (Math.random() - 0.5) * 0.4, this.y + (Math.random() - 0.5) * 0.4, pColor, pType);
-                                });
-                            }
-                        }
-                        for (let i = 0; i < PARTICLE_POOL_SIZE; i++) {
-                            globalParticles[i].update(dt);
-                        }
+                        this.updateNPCWorld(dt);
                     //Random Event Timer
                         if (startGame === 'explore' && this.mapID !== 999 && this.mapID !== -1) {
                             this.randomEventTimer += dt;
@@ -11193,12 +11292,11 @@
                         }
                 //ROUTE TO 2D
                         if (window.gameViewMode === '2d') {
-                            this.renderTopDown(dt);
+                            this.renderTopDown(dt, true);
                             return; 
                         }
                 //INIT VARS
                         const resStep = 1; 
-                        this.frame++;
                         let isPlayerMoving = !isPlayerBound && (this.isSlidingToTile || this.isAggroDashing || window.activeMoveKey || (typeof btnMove !== 'undefined' && btnMove.isPressed) || (typeof btnMove2 !== 'undefined' && btnMove2.isPressed));
 
                         // --- 1. CONTINUOUS HOLD-TO-MOVE LOGIC ---
@@ -12502,7 +12600,7 @@
                         }
                     
             }
-            renderTopDown(dt) {
+            renderTopDown(dt, simulationDone = false) {
                 
 
                 // --- INITIALIZATION SYNC ---
@@ -12515,82 +12613,52 @@
                 // ==========================================
                 // --- 1. CONTINUOUS HOLD-TO-MOVE LOGIC ---
                 // ==========================================
-                if (this.inputCooldown === undefined) this.inputCooldown = 0;
-                if (this.inputCooldown > 0) this.inputCooldown -= dt;
+                    if (this.inputCooldown === undefined) this.inputCooldown = 0;
+                    if (this.inputCooldown > 0) this.inputCooldown -= dt;
 
-                if (this.inputCooldown <= 0 && (startGame === 'explore' || startGame === 'mapmaker')) {
-                    if (typeof btnMove !== 'undefined' && btnMove.isPressed && btnMove.currentDir) btnMove.press();
-                    else if (typeof btnTurnL !== 'undefined' && btnTurnL.isPressed) btnTurnL.press();
-                    else if (typeof btnTurnR !== 'undefined' && btnTurnR.isPressed) btnTurnR.press();
-                    else if (typeof btnMove2 !== 'undefined' && btnMove2.isPressed && btnMove2.currentDir) btnMove2.press();
-                    else if (window.activeTouchZone && window.settingsControlsMode === 'touch') {
-                        processTouchMovement();
+                    if (this.inputCooldown <= 0 && (startGame === 'explore' || startGame === 'mapmaker')) {
+                        if (typeof btnMove !== 'undefined' && btnMove.isPressed && btnMove.currentDir) btnMove.press();
+                        else if (typeof btnTurnL !== 'undefined' && btnTurnL.isPressed) btnTurnL.press();
+                        else if (typeof btnTurnR !== 'undefined' && btnTurnR.isPressed) btnTurnR.press();
+                        else if (typeof btnMove2 !== 'undefined' && btnMove2.isPressed && btnMove2.currentDir) btnMove2.press();
+                        else if (window.activeTouchZone && window.settingsControlsMode === 'touch') {
+                            processTouchMovement();
+                        }
+                        else if (window.activeMoveKey && typeof processKeyboardMovement === 'function') {
+                            processKeyboardMovement(window.activeMoveKey, window.activeCtrlKey);
+                        }
                     }
-                    else if (window.activeMoveKey && typeof processKeyboardMovement === 'function') {
-                        processKeyboardMovement(window.activeMoveKey, window.activeCtrlKey);
-                    }
-                }
 
                 // ==========================================
                 // --- 2. SMOOTH SLIDING PHYSICS ---
                 // ==========================================
-                if (this.targetMapX === undefined) {
-                    this.targetMapX = this.x;
-                    this.targetMapY = this.y;
-                }
-
-                if (this.isSlidingToTile) {
-                    let dx = this.targetMapX - this.x;
-                    let dy = this.targetMapY - this.y;
-                    let dist = Math.sqrt(dx * dx + dy * dy);
-                    
-                    let activeCooldown = this.currentCooldown || 0.22;
-                    let speed = (1.0 / activeCooldown) * dt; 
-
-                    if (dist <= speed) {
-                        this.x = this.targetMapX;
-                        this.y = this.targetMapY;
-                        this.isSlidingToTile = false;
-                    } else {
-                        this.x += (dx / dist) * speed;
-                        this.y += (dy / dist) * speed;
+                    if (this.targetMapX === undefined) {
+                        this.targetMapX = this.x;
+                        this.targetMapY = this.y;
                     }
-                }
+
+                    if (this.isSlidingToTile) {
+                        let dx = this.targetMapX - this.x;
+                        let dy = this.targetMapY - this.y;
+                        let dist = Math.sqrt(dx * dx + dy * dy);
+                        
+                        let activeCooldown = this.currentCooldown || 0.22;
+                        let speed = (1.0 / activeCooldown) * dt; 
+
+                        if (dist <= speed) {
+                            this.x = this.targetMapX;
+                            this.y = this.targetMapY;
+                            this.isSlidingToTile = false;
+                        } else {
+                            this.x += (dx / dist) * speed;
+                            this.y += (dy / dist) * speed;
+                        }
+                    }
 
                 // ==========================================
                 // --- 3. UPDATE LOGIC ---
                 // ==========================================
-                this.frame++;
-                this.updateAllyFormations(dt);
-
-                this.npcs.forEach(npc => {
-                    npc.update(this.maze, this.x, this.y, this, dt);
-
-                    // --- PARTICLE EMITTER ---
-                    if (!npc.isDead && npc.visible && npc.activeBuffs && npc.activeBuffs.length > 0) {
-                        if (this.frame % 3 === 0) { 
-                            npc.activeBuffs.forEach(buff => {
-                                if (typeof globalParticles !== 'undefined') {
-                                    let pType = 'sparkle'; 
-                                    if (buff.visual === 'shield') pType = 'bubble';
-                                    if (buff.visual === 'aura' || buff.visual === 'chains' || buff.type === 'debuff') pType = 'smoke';
-                                    let pColor = buff.auraColor || buff.glow || '#ffffff';
-                                    
-                                    spawnParticle(
-                                        npc.x + (Math.random() - 0.5) * 0.4, 
-                                        npc.y + (Math.random() - 0.5) * 0.4, 
-                                        pColor, 
-                                        pType
-                                    );
-                                }
-                            });
-                        }
-                    }
-                });
-
-                for (let i = 0; i < PARTICLE_POOL_SIZE; i++) {
-                    globalParticles[i].update(dt);
-                }
+                if (!simulationDone) this.updateNPCWorld(dt);
                 
                 let viewW = (typeof tL !== 'undefined' && tL > 0) ? tL : window.innerWidth;
                 let viewH = (typeof tH !== 'undefined' && tH > 0) ? tH : window.innerHeight;
@@ -14843,18 +14911,20 @@
                         npc.dist = spriteX * spriteX + spriteY * spriteY;
                         if (npc.dist >= MAX_DIST_SQ) continue;
                         // THE FIX: Check for signs alongside your dynamic NPCs
+                        let projected = projections.get(npc);
+                        if (!projected) {
+                            projected = {sprite:npc,transformX:0,transformY:0};
+                            projections.set(npc,projected);
+                        }
+                        projected.transformX = invDet * (dirY*spriteX-dirX*spriteY);
+                        projected.transformY = invDet * (-planeY*spriteX+planeX*spriteY);
+                        const nearPlane = npc.isPlayer ? Math.min(0.1,this.currentCamDist*0.5) : 0.15;
+                        if (npc.isPlayer ? projected.transformY < nearPlane : projected.transformY <= nearPlane) continue;
                         if (npc.role === 'sign' && npc.needsBillboardUpdate) {
                             this.cacheSignBillboard(npc);
                         } else if (npc.type === -27 && npc.needsBillboardUpdate) {
                             this.cacheDynamicNPCBillboard(npc);
                         }
-                        let projected = projections.get(npc);
-                        if (!projected) {
-                            projected = { sprite: npc, transformX: 0, transformY: 0 };
-                            projections.set(npc, projected);
-                        }
-                        projected.transformX = invDet * (dirY * spriteX - dirX * spriteY);
-                        projected.transformY = invDet * (-planeY * spriteX + planeX * spriteY);
                         this.visibleSprites.push(projected);
                     }
                     this.visibleSprites.sort((a, b) => b.transformY - a.transformY);
@@ -14901,8 +14971,7 @@
                         // ==========================================
                         let currentDir = 2; // Default South
                         if (imageIndex >= 103) {
-                            if (sprite.damageFlashTimer > 0) sprite.damageFlashTimer--;
-                            if (sprite.attackAnimTimer > 0) sprite.attackAnimTimer--;
+                            
 
                             let isAttacking = false;
                             let isMoving = false;
@@ -16385,58 +16454,151 @@
             }
 
         //NPC
-            spawnPersistentNPC(targetMapID, index, x, y, type, state = 'stationary', color = '#ffffff', deck = [], dialogue = null, rewardCard = null, role = 'battle', options = null, isBoss = null, alignment = 'friendly', endActions = [], deathActions = [], isCinematic = false,yesActions = null, noActions = null) {    
-                    
-                    
-                    // SAVE END ACTIONS & DEATH ACTIONS TO MEMORY
-                    const npcData = { 
-                        index, x, y, type, state, color, deck, 
-                        dialogue, rewardCard, role, options, isBoss, alignment, endActions, deathActions, isCinematic, yesActions, noActions 
-                    };
-                    
-                    const memoryKey = 'spawned_' + targetMapID;
-                    const previousSpawn =
-                        this.memory[memoryKey]?.find(n => n.index === index);
-
-                    npcData.storyIdentity = previousSpawn
-                        ? (
-                            previousSpawn.storyIdentity ||
-                            `legacy-persistent:${targetMapID}:${index}`
-                        )
-                        : `persistent:${newStoryId()}`;
-                    if (!this.memory[memoryKey]) {
-                        this.memory[memoryKey] = [];
-                    }
-
-                    const existingIdx = this.memory[memoryKey].findIndex(n => n.index === index);
-                    if (existingIdx !== -1) {
-                        this.memory[memoryKey][existingIdx] = npcData;
-                    } else {
-                        this.memory[memoryKey].push(npcData);
-                    }
-
-                    if (this.mapID === targetMapID) {
-                        this.npcs = this.npcs.filter(n => n.index !== index);
-                        
-                        const newNPC = new NPC(index, x, y, type, state, color, deck, role, isBoss, alignment);
-                        newNPC.storyIdentity = npcData.storyIdentity;
-                        newNPC.customDialogue = dialogue; 
-                        newNPC.rewardCard = rewardCard;   
-                        newNPC.options = options; 
-                        newNPC.endActions = endActions; 
-                        newNPC.deathActions = deathActions; // <--- ATTACH DEATH ACTIONS
-                        newNPC.isCinematic = isCinematic;
-                        newNPC.yesActions = yesActions; // <--- Attach here
-                        newNPC.noActions = noActions;   // <--- Attach here
-                        if (newNPC.role !== 'battle' && newNPC.alignment !== 'ally' && newNPC.alignment === 'foe') {
-                            newNPC.alignment = 'friendly';
-                        }
-                        
-                        this.npcs.push(newNPC);
-                    }
-                    
-                    this.requestSave();
+            buildNPC(data, mapID = this.mapID) {
+                const rule = STORY_COMBAT_RULES[`${mapID}:${data.index}`];
+                const type = data.type ?? data.sprite;
+                const npc = new NPC(
+                    data.index, data.x, data.y, type,
+                    data.state ?? 'stationary', data.color ?? '#66ccff',
+                    data.deck ?? [], data.role ?? 'dialogue', data.isBoss ?? false,
+                    data.alignment ?? 'friendly', data.level ?? rule?.level ?? 0
+                );
+                npc.storyIdentity = data.storyIdentity || `map:${mapID}:npc:${data.index}`;
+                const fields = [
+                    'name', 'options', 'yesActions', 'noActions', 'endActions',
+                    'deathActions', 'rewardCard', 'isCinematic', 'isTarget',
+                    'dialogueFactory', 'respawnDelay', 'signText'
+                ];
+                for (const field of fields) {
+                    if (data[field] !== undefined) npc[field] = data[field];
                 }
+                if (data.customDialogue !== undefined) npc.customDialogue = data.customDialogue;
+                else if (data.dialogue !== undefined) npc.customDialogue = data.dialogue;
+                if (typeof data.onSpawn === 'function') data.onSpawn(npc, this);
+                return npc;
+            }
+
+            syncStoryNPCs(indices) {
+                const definitions = MAP_DB[this.mapID]?.npcs || [];
+                for (const index of indices) {
+                    const definition = definitions.find(n => n.index === index &&
+                        (!n.spawnCondition || n.spawnCondition(this)));
+                    if (!definition || this.memory[`${this.mapID}_${index}`]?.permanent) continue;
+                    if (this.npcs.some(n => n.index === index && !n.isDead)) continue;
+                    this.npcs = this.npcs.filter(n => n.index !== index);
+                    this.npcs.push(this.buildNPC(definition));
+                }
+            }
+
+            spawnPersistentNPC(targetMapID, index, x, y, type,
+                state = 'stationary', color = '#ffffff', deck = [], dialogue = null,
+                rewardCard = null, role = 'battle', options = null, isBoss = null,
+                alignment = 'friendly', endActions = [], deathActions = [],
+                isCinematic = false, yesActions = null, noActions = null, extra = {}) {
+                const key = 'spawned_' + targetMapID;
+                const previous = (this.memory[key] || []).find(n => n.index === index);
+                const data = {
+                    index, x, y, type, state, color, deck, dialogue, rewardCard, role,
+                    options, isBoss, alignment, endActions, deathActions, isCinematic,
+                    yesActions, noActions,
+                    ...extra
+                };
+                // These fields identify the record; config cannot redirect the spawn.
+                Object.assign(data, { index, x, y, type });
+                if (data.customDialogue !== undefined) {
+                    data.dialogue = data.customDialogue;
+                    delete data.customDialogue;
+                }
+                data.storyIdentity = previous?.storyIdentity || `persistent:${newStoryId()}`;
+                const rule = STORY_COMBAT_RULES[`${targetMapID}:${index}`];
+                data.level = data.level ?? rule?.level ?? 0;
+                if (rule && this.memory[rule.flag]) return null;
+                this.memory[key] = (this.memory[key] || []).filter(n => n.index !== index);
+                this.memory[key].push(data);
+                let npc = null;
+                if (this.mapID === targetMapID) {
+                    for (const old of this.npcs.filter(n => n.index === index)) {
+                        if (old.cachedBillboard) CanvasPool.returnCanvas(old.cachedBillboard);
+                    }
+                    this.npcs = this.npcs.filter(n => n.index !== index);
+                    npc = this.buildNPC(data, targetMapID);
+                    this.npcs.push(npc);
+                }
+                this.requestSave();
+                return npc;
+            }
+            findWalkablePosition(x, y) {
+                let best = null;
+                let distance = Infinity;
+                for (let row = 0; row < this.maze.length; row++) {
+                    for (let col = 0; col < this.maze[row].length; col++) {
+                        if (this.maze[row][col] !== 0) continue;
+                        const d = (col + 0.5 - x) ** 2 + (row + 0.5 - y) ** 2;
+                        if (d < distance) { distance = d; best = {x: col + 0.5, y: row + 0.5}; }
+                    }
+                }
+                return best || {x, y};
+            }
+
+            restoreTacticsMap() {
+                const point = this.tacticsReturn || {
+                    mapID: this.prevMap,
+                    x: this.returnX ?? this.prevX,
+                    y: this.returnY ?? this.prevY,
+                    dir: this.returnDir ?? this.prevDir
+                };
+                if (point.mapID === 888 || !MAP_DB[point.mapID]) {
+                    throw new Error('Missing tactics return map');
+                }
+                this.prevX = this.prevY = this.prevDir = undefined;
+                this.loadMap(point.mapID);
+                if (Number.isFinite(point.x) && Number.isFinite(point.y)) {
+                    this.x = point.x;
+                    this.y = point.y;
+                }
+                this.dir = point.dir ?? this.dir;
+                this.targetMapX = this.targetMapY = undefined;
+                this.isSlidingToTile = false;
+                this.tacticsReturn = null;
+                this.returnX = this.returnY = this.returnDir = undefined;
+                this.requestSave();
+            }
+
+            repairStoryState() {
+                const mem = this.memory;
+                // Earlier death paths sometimes wrote timed rather than permanent markers.
+                for (const [key, rule] of Object.entries(STORY_COMBAT_RULES)) {
+                    const ledgerKey = key.replace(':', '_');
+                    if (mem[ledgerKey]) mem[rule.flag] = true;
+                    if (mem[rule.flag]) mem[ledgerKey] = {permanent: true};
+                }
+                if (mem.kraken_dead) mem.mq_map9 = true;
+                if (mem.dragon_dead) mem.mq_map12 = true;
+                // These phases now come from MAP_DB, never from obsolete saved copies.
+                const canonical = {9: [9,88,89,90], 12: [13], 14: [15,90,155]};
+                if (mem.kraken_dead && !mem.kraken_followup_done) delete mem['9_9'];
+                if (mem.dragon_dead && !mem.dragon_followup_done) delete mem['12_13'];
+                for (const [map, ids] of Object.entries(canonical)) {
+                    if (mem['spawned_' + map]) {
+                        mem['spawned_' + map] = mem['spawned_' + map].filter(n => !ids.includes(n.index));
+                    }
+                }
+                const fairyPortal = (mem.spawned_11 || []).some(n => n.index === 5 && n.role === 'portal');
+                if (fairyPortal) mem.fairy_portal_opened = true;
+                if (!mem.fairy_portal_opened && mem['11_1']?.permanent) {
+                    mem.fairy_queen_recruited = true;
+                    delete mem['11_1'];
+                }
+                // Recover an interrupted old Giant farewell; the old save did not record its answer.
+                if (this.gd >= 2 && this.gd < 5 && !mem.giant_response_done) delete mem['14_15'];
+                if (this.gd >= 2 && this.gd < 5) delete mem['14_90'];
+                // Conservatively preserve old pickup claims. The old IDs also named Fire Imps.
+                if (!mem.story_id_migration_v1) {
+                    if (mem['31_9']?.permanent) mem['31_1009'] = {permanent: true};
+                    if (mem['31_10']?.permanent) mem['31_1010'] = {permanent: true};
+                    mem.story_id_migration_v1 = true;
+                }
+            }
             killNPC(npc, respawnInput = false, reason = 'combat', alignment = null) {
                 if (!npc) return false; // Safety check
                 if (npc === this) {
@@ -16482,13 +16644,13 @@
 
                 // 1. CHECK LEVEL UP
                 let isValidXPTarget = npc.role !== 'dropped_card' && !(npc.role && String(npc.role).includes('portal')) && baseAlignment !== 'ally';
-                let isPlayerKill = reason !== 'npc_infighting' && reason !== 'story_event' && reason !== 'despawn';
+                let isPlayerKill = !['npc_infighting','story_event','despawn','dialogue'].includes(reason);
 
                 if (isValidXPTarget && isPlayerKill) {
 
                     // --- DYNAMIC SCALING XP ---
                     let baseXP = npc.xp || 10;
-                    let levelBonusXP = ((npc.level || 0) * baseXP);
+                    let levelBonusXP = (Math.max(0,npc.level || 0) + 1) * baseXP;
                     let bossMultiplier = npc.isBoss ? 3 : 1; 
                     let finalXP = levelBonusXP * bossMultiplier;
 
@@ -16575,12 +16737,19 @@
                 }
                 
                 // 3. VANQUISH NPC
+                const storyRule = STORY_COMBAT_RULES[`${this.mapID}:${npc.index}`];
+                const storyVictory = storyRule && npc.role === 'battle' &&
+                    !['story_event','dialogue','despawn'].includes(reason);
                 let delay;
-                if (respawnInput === true) delay = Infinity;
-                else if (respawnInput === false || respawnInput === null) delay = npc.respawnDelay; 
-                else delay = Number(respawnInput); 
-                
-                let isPermanent = (delay === Infinity);
+                if (storyVictory || respawnInput === true) delay = Infinity;
+                else if (respawnInput === false || respawnInput === null) delay = npc.respawnDelay;
+                else delay = Number(respawnInput);
+                let isPermanent = delay === Infinity;
+                if (storyVictory) {
+                    this.memory[storyRule.flag] = true;
+                    const key = 'spawned_' + this.mapID;
+                    if (this.memory[key]) this.memory[key] = this.memory[key].filter(n => n.index !== npc.index);
+                }
 
                 // LOOT DROP
                 if (typeof startGame !== 'undefined' && startGame === 'explore' && npc.role !== 'dropped_card' && !(npc.role && String(npc.role).includes('portal')) && npc.alignment !== 'ally' && npc.role !== 'summoned_minion') {                                
@@ -16589,7 +16758,7 @@
                         let droppedCardID = (npc.deck && npc.deck.length > 0) ? npc.deck[loot] : Math.floor(npc.type);
 
                         if (typeof droppedCardID === 'object' && droppedCardID !== null) {
-                            droppedCardID = droppedCardID.index || droppedCardID.id;
+                            droppedCardID = droppedCardID.index ?? droppedCardID.id;
                         }
                         if (droppedCardID === undefined) droppedCardID = Math.floor(npc.type);
 
@@ -16705,8 +16874,10 @@
                 });
 
                 // 4. WORLD-ALTERING EVENTS
-                if (reason !== 'story_event' && npc.deathActions && npc.deathActions.length > 0) {
-                    this.executeActions(npc.deathActions);
+                if (reason !== 'story_event' && npc.deathActions?.length) {
+                    const actions = this.cloneEventActions(npc.deathActions, npc);
+                    npc.deathActions = [];
+                    this.executeActions(actions);
                 }
 
                 // 5. CARD PICK UP (Tactical Mode)
@@ -16835,8 +17006,7 @@
                 // 3. Find the NPC object in the current list and reset it
                 let npc = this.npcs.find(n => n.index === index);
                 if (npc) {
-                    npc.isDead = false;
-                    npc.visible = true;
+                    npc.resetAfterRespawn(this);
                     // Reset position from the "Void" if they were sent to -999
                     // You might need to manually set x/y if they don't snap back automatically
                     console.log(`[Revive] NPC ${index} visual restored.`);
@@ -16874,7 +17044,7 @@
                 }
             summonAlly(cardObj, isRestore = false) {
                 // Gracefully handle both new objects and old integer saves
-                let cardID = typeof cardObj === 'object' ? (cardObj.cardId || cardObj.index) : cardObj;
+                let cardID = typeof cardObj === 'object' ? (cardObj.cardId ?? cardObj.index) : cardObj;
                 let cardUID = (typeof cardObj === 'object' && cardObj.uid) ? cardObj.uid : ('uid_' + Math.random().toString(36).substr(2, 9));
 
                 let uniqueIndex = Math.floor(Math.random() * 100000) + 900000;
@@ -17855,18 +18025,14 @@
                                  this.currentSpeaker.customDialogue = null;
                             }
                             else if (this.currentSpeaker.role === 'battle') {
-                                this.dCounter = 0;
-                                let enemyToFight = this.currentSpeaker; 
-                                this.currentSpeaker = null; 
-
+                                const enemyToFight = this.currentSpeaker;
                                 enemyToFight.customDialogue = null;
                                 enemyToFight.dialogueFactory = null;
-
-                                this.isProcessingActions = false;
-                                this.processNextAction();
-
-                                //enemyToFight.triggerInteraction(this);
-                                return; 
+                                enemyToFight.endActions = [];
+                                // Restore exploration before the queued first strike can enter card battle.
+                                startGame = 'explore';
+                                this.endDialogue(false, finalActions);
+                                return;
                             }
                             else if (this.currentSpeaker.role === 'reward') {
                                 killSpeaker = true;
@@ -17966,12 +18132,33 @@
                 }
             cloneEventActions(actions, speaker = this.currentSpeaker) {
                 const copy = value => Array.isArray(value) ? value.map(copy) :
-                    value && typeof value === 'object' ? Object.fromEntries(Object.entries(value).map(([k,v]) => [k, copy(v)])) : value;
+                    value && typeof value === 'object' ?
+                        Object.fromEntries(Object.entries(value).map(([k, v]) => [k, copy(v)])) : value;
                 const cloned = copy(actions || []);
+                const resolveSpeakerCoordinate = value => {
+                    const match = typeof value === 'string' &&
+                        /^SPEAKER_([XY])([+-]\d+(?:\.\d+)?)?$/.exec(value);
+                    return speaker && match
+                        ? speaker[match[1].toLowerCase()] + Number(match[2] || 0)
+                        : value;
+                };
                 for (const action of cloned) {
                     if (!Array.isArray(action)) continue;
-                    if (speaker && ['disappear', 'start_battle', 'trigger_dialogue'].includes(action[0]) && action[1] == null) action[1] = speaker.index;
-                    if (speaker && ['transform_npc', 'inject_dialogue'].includes(action[0]) && action[1] && action[1].index == null) action[1].index = speaker.index;
+                    if (speaker && ['disappear', 'start_battle', 'trigger_dialogue'].includes(action[0]) && action[1] == null) {
+                        action[1] = speaker.index;
+                    }
+                    if (speaker && ['transform_npc', 'inject_dialogue'].includes(action[0]) && action[1]?.index == null) {
+                        action[1].index = speaker.index;
+                    }
+                    // Resolve this action's coordinates now, before endDialogue clears the speaker.
+                    // Nested future death/dialogue actions bind to their own speaker later.
+                    if (action[0] === 'spawn_npc' && Array.isArray(action[1])) {
+                        action[1][2] = resolveSpeakerCoordinate(action[1][2]);
+                        action[1][3] = resolveSpeakerCoordinate(action[1][3]);
+                    } else if (action[0] === 'spawn_ephemeral_npc' && action[1]) {
+                        action[1].x = resolveSpeakerCoordinate(action[1].x);
+                        action[1].y = resolveSpeakerCoordinate(action[1].y);
+                    }
                 }
                 return cloned;
             }
@@ -18025,14 +18212,16 @@
                 switch(actionType) {
                     // --- INVENTORY & STATS ---
                         case 'give_card': {
+                            const onceKey = payload && typeof payload === 'object' ? payload.once : null;
+                            if (onceKey && this.memory[onceKey]) break;
                             let gCardID = typeof payload === 'object' ? payload.card : payload;
                             let gText = (typeof payload === 'object' && payload.text) ? payload.text : 'You obtained a new card!';
-                            
                             // 1. Safety fallback: Ensure the inventory array exists for brand new characters
                             if (!this.extra) this.extra = [];
                             
                             // 2. Add the card to the inventory
-                            this.extra.push(new Card(gCardID, 0)); 
+                            this.extra.push(new Card(gCardID, 0));
+                            if (onceKey) this.memory[onceKey] = true;
                             if (typeof socket !== 'undefined') {
                                 socket.emit('suncat_spectate', `Player acquired a new item or entity (Card ID: ${gCardID}).`);
                             }
@@ -18185,37 +18374,31 @@
                             break;
                     // --- NPC MANIPULATION ---
                         case 'spawn_npc': {
-                            let spawnArgs = [...payload];
-                            
-                            // --- EXTRACT CUSTOM CONFIG OBJECT ---
-                            // If the very last item is an object (and not an array like a deck), pop it off!
-                            let customConfig = null;
-                            if (spawnArgs.length > 0 && typeof spawnArgs[spawnArgs.length - 1] === 'object' && !Array.isArray(spawnArgs[spawnArgs.length - 1])) {
-                                customConfig = spawnArgs.pop(); 
-                            }
-
-                            // Macro Translations
-                            if (spawnArgs[2] === 'PLAYER_X+1') spawnArgs[2] = this.x + 1;
-                            if (spawnArgs[2] === 'PLAYER_X-1') spawnArgs[2] = this.x - 1;
-                            if (spawnArgs[2] === 'PLAYER_X') spawnArgs[2] = this.x;
-                            if (spawnArgs[3] === 'PLAYER_Y') spawnArgs[3] = this.y;
-                            if (spawnArgs[3] === 'PLAYER_Y-1') spawnArgs[3] = this.y-1;
-                            if (spawnArgs[2] === 'SPEAKER_X') spawnArgs[2] = this.currentSpeaker ? this.currentSpeaker.x : this.x;
-                            if (spawnArgs[3] === 'SPEAKER_Y') spawnArgs[3] = this.currentSpeaker ? this.currentSpeaker.y : this.y;
-                            if (spawnArgs[2] === 'SPEAKER_X+1') spawnArgs[2] = this.currentSpeaker ? this.currentSpeaker.x+1 : this.x+1;
-
-                            // Use the original safe method so old NPCs don't break!
-                            this.spawnPersistentNPC(...spawnArgs); 
-                            
-                            // Apply custom configurations to the newly spawned NPC
-                            if (customConfig) {
-                                let spawnedNPC = this.npcs.find(n => n.index === spawnArgs[1]);
-                                if (spawnedNPC) {
-                                    Object.assign(spawnedNPC, customConfig);
-                                }
-                            }
+                            const args = [...payload];
+                            const tail = args[args.length - 1];
+                            let extra = {};
+                            if (tail && typeof tail === 'object' && !Array.isArray(tail)) extra = args.pop();
+                            const point = this.currentSpeaker || this;
+                            const resolve = (value, axis) => {
+                                const match = typeof value === 'string' &&
+                                    /^(PLAYER|SPEAKER)_([XY])([+-]\d+(?:\.\d+)?)?$/.exec(value);
+                                if (!match || match[2] !== axis) return value;
+                                const actor = match[1] === 'SPEAKER' ? point : this;
+                                return actor[axis.toLowerCase()] + Number(match[3] || 0);
+                            };
+                            args[2] = resolve(args[2], 'X');
+                            args[3] = resolve(args[3], 'Y');
+                            while (args.length < 19) args.push(undefined);
+                            args[19] = extra;
+                            this.spawnPersistentNPC(...args);
                             break;
                         }
+                        case 'sync_story_npcs':
+                            this.syncStoryNPCs(payload);
+                            break;
+                        case 'return_from_tactics':
+                            this.restoreTacticsMap();
+                            break;
                         case 'spawn_ephemeral_npc': {
                             // --- ADDED MACRO TRANSLATIONS FOR EPHEMERAL NPCS ---
                             let sx = payload.x;
@@ -18275,9 +18458,24 @@
                             if (targetNPC) {
                                 // FIX 1: Safely check undefined so you can transform into Sprite 0 (The Fool)
                                 if (payload.newType !== undefined) {
+                                    if (payload.refreshCombat === true) {
+                                        const ratio = targetNPC.currentWardTime / (targetNPC.maxWards * targetNPC.timePerWard);
+                                        const fresh = new NPC(targetNPC.index, targetNPC.x, targetNPC.y,
+                                            payload.newType, payload.newState ?? targetNPC.state, targetNPC.color,
+                                            payload.newDeck ?? targetNPC.deck, payload.newRole ?? targetNPC.role,
+                                            payload.newIsBoss ?? targetNPC.isBoss,
+                                            payload.newAlignment ?? targetNPC.alignment, targetNPC.level);
+                                        for (const key of ['baseCard','name','stat','maxWards','timePerWard','innateSpells','radius','xp']) {
+                                            targetNPC[key] = fresh[key];
+                                        }
+                                        targetNPC.currentWardTime = Math.max(0,Math.min(1,ratio)) * fresh.currentWardTime;
+                                        targetNPC.cachedPrey = null;
+                                        targetNPC.cachedPath = [];
+                                    } else {
+                                        targetNPC.baseCard = new Card(Math.floor(payload.newType),0);
+                                    }
                                     targetNPC.type = payload.newType;
-                                    targetNPC.baseCard = new Card(Math.floor(payload.newType), 0);
-                                    targetNPC.needsBillboardUpdate = true; // FIX 2: Forces the 3D engine to redraw the new sprite!
+                                    targetNPC.needsBillboardUpdate = true;
                                 }
                                 if (payload.newAlignment) targetNPC.alignment = payload.newAlignment;
                                 if (payload.newRole) targetNPC.role = payload.newRole;
@@ -18498,7 +18696,7 @@
                                     if (this.activeSummons && this.activeSummons.length > 0) {
                                         this.activeSummons.forEach(summon => {
                                             // Extract the integer so Tactics can read it, but KEEP the tracking IDs!
-                                            let sId = typeof summon === 'object' ? (summon.cardId || summon.index || summon.id) : summon;
+                                            let sId = typeof summon === 'object' ? (summon.cardId ?? summon.index ?? summon.id) : summon;
                                             let sUid = typeof summon === 'object' ? summon.uid : null;
                                             let sNpcId = typeof summon === 'object' ? summon.npcId : null;
                                             
@@ -18507,14 +18705,16 @@
                                     }
 
                                 // 2. Build Enemy Team
-                                let eTeam = tactEnemy.deck.map(c => typeof c === 'object' ? (c.index || c.id) : c);
+                                let eTeam = tactEnemy.deck.map(c => typeof c === 'object' ? (c.index ?? c.id) : c);
                                 let minions = this.npcs.filter(n => !n.isDead && n.summonerId === tactEnemy.index);
                                 eTeam.push(...minions.map(m => Math.floor(m.type)));
 
                                 // --- NEW: CACHE THE BOSS DATA BEFORE WIPING THE MAP! ---
                                 customConfig.enemyNpcId = tactEnemy.index;
                                 customConfig.bossDeck = tactEnemy.deck || [];
-                                customConfig.winActions = tactEnemy.deathActions || []; 
+                                customConfig.winActions = this.cloneEventActions(tactEnemy.deathActions || [], tactEnemy);
+
+
 
                                 tactEnemy.customDialogue = null;
                                 tactEnemy.dialogueFactory = null;
@@ -20732,11 +20932,15 @@
             startEidolonMinigame(playerTeam, enemyTeam, config = { stakes: 'mock' }) {
                 if ((typeof startGame !== 'undefined')&&(startGame == 'dialogue'||startGame == 'explore')){preGame = 'explore';}else if (typeof startGame !== 'undefined'){preGame = startGame}
                 if (typeof startGame !== 'undefined') startGame = 'tactics';
-                if (this.mapID !== 888 && this.mapID !== 999 && this.mapID !== -1 && this.mapID !== -2) {
-                    this.prevMap = this.mapID; 
-                    this.prevX = this.x;     // Save precise X
-                    this.prevY = this.y;     // Save precise Y
-                    this.prevDir = this.dir; // Save direction
+                if (this.mapID !== 888) {
+                    this.tacticsReturn = {
+                        mapID: this.mapID, x: this.x, y: this.y, dir: this.dir,
+                        returnToWorld: preGame === 'explore'
+                    };
+                    this.prevMap = this.mapID;
+                    this.prevX = this.x;
+                    this.prevY = this.y;
+                    this.prevDir = this.dir;
                 }
                 
                 this.mapID = 888;
@@ -20982,8 +21186,7 @@
                     let offset = spawnOffsets[i % spawnOffsets.length];
                     
                     let isObj = typeof unitData === 'object' && unitData !== null;
-                    let cardID = isObj ? (unitData.index || unitData.id || unitData.cardId || 0) : unitData;
-                    
+                    let cardID = isObj ? (unitData.index ?? unitData.id ?? unitData.cardId ?? 0) : unitData;
                     let isMainPlayer = (i === 0);
                     let source = isObj ? (unitData.source || 'player') : (isMainPlayer ? 'player' : 'unknown');
                     let uid = isObj ? unitData.uid : null;
@@ -22122,10 +22325,11 @@
         update(dt) {
             if (!this.active) return; // Skip dead particles
             
-            this.x += this.vx;
-            this.y += this.vy;
-            this.z += this.vz;
-            this.life -= this.decay;
+            const tickScale = 60 * dt; // Preserve the intended single-pass 60-FPS particle motion.
+            this.x += this.vx * tickScale;
+            this.y += this.vy * tickScale;
+            this.z += this.vz * tickScale;
+            this.life -= this.decay * tickScale;
             
             if (this.life <= 0) {
                 this.active = false; // "Kill" it instead of deleting it
@@ -25583,13 +25787,14 @@
                 
                 // We now store the sequence of physical steps needed to reach the tile!
                 let queue = [{ x: startX, y: startY, cost: 0, path: [] }];
+                let queueHead = 0;
                 let visited = new Set([startKey]);
 
                 // Auto-detect the unit if not provided so we know their alignment
                 let movingUnit = unitRef || this.getUnitAt(startX, startY);
 
-                while (queue.length > 0) {
-                    let curr = queue.shift();
+                while (queueHead < queue.length) {
+                    let curr = queue[queueHead++];
                     
                     // Can we END our turn here?
                     // Yes, if it's our own starting tile, OR if it's completely unoccupied.
@@ -25649,23 +25854,13 @@
                             
                             // Force transition back to the Explore map
                             startGame = 'explore';
-                                if (typeof preGame !== 'undefined') preGame = 'explore';
-
-                                const returnPoint = {
-                                    id: 1,
-                                    x: 5.5,
-                                    y: 13,
-                                    dir: 0
-                                };
-
-                                Dungeon.actionQueue.unshift(
-                                    ['load_map', returnPoint],
-                                    ['trigger_dialogue', 1]
-                                );
-
-                                // This is the completion callback for the blocking cinematic.
-                                Dungeon.isProcessingActions = false;
-                                Dungeon.processNextAction();
+                            if (typeof preGame !== 'undefined') preGame = 'explore';
+                            Dungeon.actionQueue.unshift(
+                                ['return_from_tactics', null],
+                                ['trigger_dialogue', 1]
+                            );
+                            Dungeon.isProcessingActions = false;
+                            Dungeon.processNextAction();
                             return;
                         }
 
@@ -36201,7 +36396,7 @@
                             // --- 3. CLEANUP & ROUTING ---
                             window.TacticsEngine = new TacticsController(); 
                             
-                            if (stakes === 'mock') {
+                            if (stakes === 'mock' && !Dungeon.tacticsReturn?.returnToWorld) {
                                 startGame = 'options'; // Send straight back to the menu!
                                 return;
                             }
@@ -36218,8 +36413,8 @@
                                             let allPulledCards = [];
                                             
                                             // A. Gather Boss Loot
-                                            if (tacticsBossId && bossDeck && bossDeck.length > 0) {
-                                                let availableLootIDs = bossDeck.map(c => typeof c === 'object' ? (c.index || c.id) : c);
+                                            if (tacticsBossId != null && bossDeck && bossDeck.length > 0) {
+                                                let availableLootIDs = bossDeck.map(c => typeof c === 'object' ? (c.index ?? c.id) : c);
                                                 let playerOwnedIDs = Dungeon.deck.map(c => c.index).concat(Dungeon.extra.map(c => c.index));
                                                 let uniqueLoot = availableLootIDs.filter(id => !playerOwnedIDs.includes(id));
                                                 if (uniqueLoot.length > 0) allPulledCards.push(uniqueLoot[Math.floor(Math.random() * uniqueLoot.length)]);
@@ -36235,21 +36430,18 @@
                                             }
 
                                             // D. Mark Boss Dead permanently (CRITICAL: Do this before loadMap!)
-                                            if (tacticsBossId) Dungeon.memory[Dungeon.prevMap + "_" + tacticsBossId] = { permanent: true }; 
-
+                                            if (tacticsBossId != null) {
+                                                const map = Dungeon.tacticsReturn?.mapID ?? Dungeon.prevMap;
+                                                Dungeon.memory[`${map}_${tacticsBossId}`] = {permanent: true};
+                                                const rule = STORY_COMBAT_RULES[`${map}:${tacticsBossId}`];
+                                                if (rule) Dungeon.memory[rule.flag] = true;
+                                            }
                                             // E. Queue Loot Popups
                                             allPulledCards.reverse().forEach(cardID => Dungeon.actionQueue.unshift(['give_card', { card: cardID, text: "Spoils of War! You recovered loot." }]));
                                         }
 
                                         // --- NOW WE SAFELY LOAD THE MAP ---
-                                        Dungeon.mapID = Dungeon.prevMap;
-                                        Dungeon.loadMap(Dungeon.prevMap);
-                                        
-                                        if (Dungeon.returnX !== undefined) {
-                                            Dungeon.x = Dungeon.returnX;
-                                            Dungeon.y = Dungeon.returnY;
-                                            Dungeon.dir = Dungeon.returnDir;
-                                        }
+                                        Dungeon.restoreTacticsMap();
 
                                         Dungeon.isProcessingActions = false;
                                         Dungeon.processNextAction();
@@ -84632,57 +84824,45 @@
                     if (currentMapId !== 999) {
                         let mqDesc = "";
                         let isObjCompleted = false;
+                   
+                    if (currentMapId === 1) {
+                        mqDesc = 'Rescue the Magician in the Outer Dungeon.';
+                        isObjCompleted = !!mem.mq_map1;
+                    } else if (currentMapId === 2) {
+                        mqDesc = 'Help the Fool and expose the imposters at court.';
+                        isObjCompleted = !!mem.fake_emperor_dead;
+                    } else if (currentMapId === 5) {
+                        mqDesc = "Seek the Hermit's guidance in the Savage Forest.";
+                        isObjCompleted = !!mem.mq_map2;
+                    } else if (currentMapId === 30) {
+                        mqDesc = 'Defeat the Imp ambush and rescue the Apprentice.';
+                        isObjCompleted = !!mem.mq_map3;
+                    } else if (currentMapId === 4 || currentMapId === 31) {
+                        mqDesc = 'Defeat the Djinn and free the Witch Queen.';
+                        isObjCompleted = !!mem.djinn_dead;
+                    } else if ([6,7,8,9].includes(currentMapId)) {
+                        mqDesc = "Borrow the Ice Queen's ship and defeat the Kraken.";
+                        isObjCompleted = !!mem.kraken_dead;
+                    } else if ([10,11,12,13].includes(currentMapId)) {
+                        mqDesc = 'Aid the Fairy Queen and defeat the Dragon.';
+                        isObjCompleted = !!mem.dragon_dead;
+                    } else if (currentMapId === 14) {
+                        mqDesc = "Resolve the conflict with the Giant and his daughter, then return to the Elf Queen.";
+                        isObjCompleted = !!mem.mq_map14 || Dungeon.gd >= 6;
+                    } else if (currentMapId === 15) {
+                        mqDesc = 'Cross the Dark Bridge and reach the tower.';
+                    } else if (currentMapId >= 16 && currentMapId <= 20) {
+                        mqDesc = `Ascend the Dark Tower, floor ${currentMapId - 15} of 5.`;
+                    } else if (currentMapId === 21) {
+                        mqDesc = 'Confront the mastermind atop the tower.';
+                        isObjCompleted = !!(mem.mq_map21 || mem.fool_defeated);
+                    }
 
-                        if (currentMapId === 0) {
-                            mqDesc = "Speak to the High Priestess to learn the basics, then find the portal.";
-                            isObjCompleted = mem['mq_map0'] || (typeof Dungeon !== 'undefined' && Dungeon.MainQuest > 0);
-                        }
-                        else if (currentMapId === 1) {
-                            mqDesc = "Search the Outer Dungeon for the Magician and his artifacts.";
-                            isObjCompleted = mem['mq_map1'] === true; 
-                        }
-                        else if (currentMapId === 2) {
-                            mqDesc = "Navigate Tintagel Forest and seek out the Hermit's guidance.";
-                            isObjCompleted = mem['mq_map2'] === true; 
-                        }
-                        else if (currentMapId === 3) {
-                            mqDesc = "Brave the Goblin Caverns, defeat the Imp Ambush, and rescue the Apprentice.";
-                            isObjCompleted = mem['mq_map3'] === true; 
-                        }
-                        else if (currentMapId === 4 || currentMapId === 5) {
-                            mqDesc = "Cross the desert and defeat the King of Wands (Djinn) to save the Witch Queen.";
-                            isObjCompleted = mem['mq_map5'] || (mem["5_11"] && mem["5_11"].permanent); 
-                        }
-                        else if (currentMapId >= 6 && currentMapId <= 9) {
-                            mqDesc = "Reach the Ice Queen, borrow her ship, and slay the King of Cups (Kraken).";
-                            isObjCompleted = mem['mq_map9'] || (mem["9_1"] && mem["9_1"].permanent);
-                        }
-                        else if (currentMapId >= 10 && currentMapId <= 13) {
-                            mqDesc = "Convince the Fairy Queen to fight, then slay the King of Swords (Dragon) in his lair.";
-                            isObjCompleted = mem['mq_map12'] || (mem["12_12"] && mem["12_12"].permanent);
-                        }
-                        else if (currentMapId === 14) {
-                            mqDesc = "Rendezvous with the Elf Queen and deal with the King of Pentacles (Giant).";
-                            isObjCompleted = mem['mq_map14'] || (typeof Dungeon !== 'undefined' && Dungeon.gd >= 6); 
-                        }
-                        else if (currentMapId === 15) {
-                            mqDesc = "Cross the Dark Bridge. There is no turning back now.";
-                            isObjCompleted = false; // Transition map
-                        }
-                        else if (currentMapId >= 16 && currentMapId <= 20) {
-                            mqDesc = `Ascend the Dark Tower (Floor ${currentMapId - 15} of 5). Defeat the phantoms of the past.`;
-                            isObjCompleted = false; // Active while ascending
-                        }
-                        else if (currentMapId >= 21) {
-                            mqDesc = "Confront the mastermind at the top of the tower!";
-                            isObjCompleted = mem['mq_map21'] || mem['fool_defeated']; 
-                        }
-
-                        allQuests.push({ 
-                            title: `- THE FOOL'S JOURNEY (CHAPTER ${currentMapId}) -`, 
-                            text: `Objective: ${mqDesc}`, 
-                            completed: isObjCompleted, 
-                            failed: false 
+                        if (mqDesc) allQuests.push({
+                            title: `- THE FOOL'S JOURNEY: ${getMapName(currentMapId)} -`,
+                            text: `Objective: ${mqDesc}`,
+                            completed: isObjCompleted,
+                            failed: false
                         });
                     }
                     
