@@ -4551,11 +4551,11 @@
         ) + 1;
     
         const title = kind === "retrospective"
-            ? `Chapter ${number} — Retrospective`
-            : `Chapter ${number}`;
+    ? `[RETROSPECTIVE ${number}]`
+    : `[CHAPTER ${number}]`;;
     
         const chapter = {
-            id: `journal-chapter-${number}`,
+            id: `${player.persistentId || player.name.toLowerCase()}:chapter:${number}`,
             timestamp: new Date().toISOString(),
             title,
             chapterNumber: number,
@@ -4596,7 +4596,7 @@
             entryId: chapter.id,
             entryType: kind,
             title,
-            playerChronicle: chapter.text,
+            newCoreText: `[CONDENSED]\n\n${consolidatedSuncatText}`,
             suncatThoughts: null
         });
     
@@ -5687,7 +5687,7 @@
         saveSuncatMemory();
         io.emit("journal_updated", {
             suncatThoughts: newEntry,
-            playerChronicle: null 
+            suncatThoughts: `[RECORD]\n\n${newEntry}`, 
         });
 
         console.log(`[Suncat Journal Updated]: ${newEntry}`);
@@ -6154,7 +6154,7 @@
             // Send the new chronicle entry to the client
             io.to(socketId).emit("journal_updated", {
                 suncatThoughts: null,
-                playerChronicle: digestedData.updatedStory,
+                playerChronicle: `[RECORD]\n\n${digestedData.updatedStory}`,
                 perception: digestedData.suncatPerception 
             });
 
@@ -7284,7 +7284,7 @@
             // 1. Push DM Narrations directly to the Player's UI so they see it instantly
             if (messageOptions.sender === "") {
                 const journalPayload = {
-                    playerChronicle: finalSpeech, 
+                    playerChronicle: `[RECORD]\n\n${finalSpeech}`, 
                     suncatThoughts: null
                 };
                 
@@ -7637,6 +7637,18 @@ io.on("connection", (socket) => {
                     if (!players[socket.id].undigestedInfo) players[socket.id].undigestedInfo = [];
                     players[socket.id].undigestedInfo.push(`[PSYCHOLOGICAL NOTE]: The mortal chose to name themselves '${name}'. Consider what kind of person chooses a name like that.`);
                 }  
+                for (const chapter of players[socket.id].searchableMemories || []) {
+                    if (!chapter.chapterNumber || !chapter.id || !chapter.text) continue;
+                
+                    socket.emit("journal_updated", {
+                        entryId: chapter.id,
+                        entryType: chapter.journalKind || "chapter",
+                        timestamp: chapter.timestamp,
+                        title: chapter.title,
+                        playerChronicle: chapter.text,
+                        suncatThoughts: null
+                    });
+                }
                 condenseSessionOnLogin(socket.id);
                 if (!players[socket.id].dmNarrativeLog) {
                     players[socket.id].dmNarrativeLog = [];
