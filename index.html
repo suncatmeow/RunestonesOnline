@@ -83,14 +83,12 @@
 
     <canvas id ="c" style ="background-color: #000000; "position:absolute; left:0px; top:0px;"></canvas>
 <script>
-////////////////////////////[BAN CHECK]/////////////////////////////
-///////////////////vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv//////////////////////
+///////////////////vvvvvvv[BAN CHECK]vvvvvvvvvvvvv//////////////////////
     if (localStorage.getItem('battlemage_banned')) {
         document.body.innerHTML = "<h1>SUNCAT BANISHED YOU</h1>";
         throw new Error("Banned");
     }
-////////////////////[GLOBAL VARIABLE DECLARATIONS]///////////////////////////
-///////////////////vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv//////////////////////
+///////////////vvvvv[GLOBAL VARIABLE DECLARATIONS]vvvvvvvvvvvvv//////////////////////
     //CANVAS VARIABLES
         var canvas = document.getElementById("c");
         var ctx = canvas.getContext("2d");
@@ -520,7 +518,7 @@
                         { index: 500, x: 27.5, y: 82.5, sprite: 42, role: 'dialogue', deck: [42], alignment: 'friendly',
                             dialogueFactory: (d) => ({
                                 text: ["Welcome.", "Would you like to bind your soul to this Sanctuary?"], options: ['Bind Soul', 'Leave'],
-                                yesActions: [['play_sfx', 'heal'], ['inject_custom_code', () => { d.memory['globalSpawn'] = { mapID: d.mapID, x: d.x, y: d.y, dir: d.dir }; d.requestSave(); }], ['notify', { text: "Spawn point set!", endActions: [['close_dialogue', null]] }]], noActions: [['close_dialogue', null]]
+                                yesActions: [['play_sfx', 'heal'], ['bind_spawn', null], ['notify', { text: "Spawn point set!", endActions: [['close_dialogue', null]] }]], noActions: [['close_dialogue', null]]
                             })
                         },
                         { index: 201, x: 53.5, y: 23.5, sprite: 249, role: 'dialogue', deck: [], alignment: 'friendly',
@@ -583,7 +581,7 @@
                                     let finaleWinActions = [['update_quest_state', { key: 'guild_quest', state: 0 }], ['set_memory', { key: 'guild_rank', value: 'S' }], ['set_memory', { key: 'a_rank_progress', value: 3 }], ['give_card', { card: 71, text: "You earned your S-Rank License!" }], ['give_card', { card: 21, text: "Crown Received!" }], ['play_song', 20], ['play_sfx', 'chime'], ['spawn_ephemeral_npc', { index: 207888, x: 'PLAYER_X', y: 'PLAYER_Y', sprite: 76, state: 'stationary', role: 'dialogue', alignment: 'friendly', color: '#ffd700', customDialogue: ["*Cough*... You did it. The Mastermind is destroyed.", "I'm too wounded to lead the Vanguard anymore.", "You are officially an S-Rank Adventurer."], endActions: [['close_dialogue', null]]}], ['trigger_dialogue', 207888]];
                                     let spawnPortal = ['spawn_ephemeral_npc', { index: 207999, x: 53.5, y: 19.5, sprite: -37, state: 'stationary', role: 'dialogue', alignment: 'friendly', color: '#ff0000', deck: [106, 203, 197, 270, 273,276], isBoss: true, customDialogue: ["*The air is suffocating. The Mastermind waits.*"], options: ['Draw Your Weapon'], yesActions: [['play_sfx', 'horn'], ['transform_npc', { index: 207999, clearDialogue: true, newDeathActions: finaleWinActions }], ['start_tactics', { id: 207999, isFinale: true, stakes: 'real' }], ['close_dialogue', null]] }];
                                     return {
-                                        text: ["Come in. Close the door.", "We found it. The Cult's main stronghold.", "Get in there and save our field leader."], options: ['Open the Portal', 'Wait'],
+                                        text: ["Come in. Close the door.", "We found it. The Cult's main stronghold.", "Another Team has gone in ahead of you!"," Join forces with them and end this!"], options: ['Open the Portal', 'Wait'],
                                         yesActions: [['set_memory', { key: 'guild_quest', value: { state: 1, type: 'finale', tName: 'The Mastermind', qRank: 'S', targetMap: 12, spawnActions: [spawnPortal] } }], ['play_sfx', 'teleport'], spawnPortal, ['notify', { text: "The Guildmaster opened the portal.", endActions: [['close_dialogue', null]] }]], noActions: [['close_dialogue', null]]
                                     };
                                 }
@@ -813,7 +811,7 @@
                         { index: 500, x: 8.5, y: 2.5, sprite: 42, role: 'dialogue', deck: [42], alignment: 'friendly',
                             dialogueFactory: (d) => ({
                                 text: ["Welcome.", "Would you like to bind your soul to this Sanctuary?"], options: ['Bind Soul', 'Leave'],
-                                yesActions: [['play_sfx', 'heal'], ['inject_custom_code', () => { d.memory['globalSpawn'] = { mapID: d.mapID, x: d.x, y: d.y, dir: d.dir }; d.requestSave(); }], ['notify', { text: "Spawn point set!", endActions: [['close_dialogue', null]] }]], noActions: [['close_dialogue', null]]
+                                yesActions: [['play_sfx', 'heal'], ['bind_spawn', null], ['notify', { text: "Spawn point set!", endActions: [['close_dialogue', null]] }]], noActions: [['close_dialogue', null]]
                             })
                         },
                         { index: 522944, x: 15.5, y: 59.5, sprite: 61, role: 'dialogue', deck: [61], alignment: 'defender', customDialogue: ["Carry on."] },
@@ -1830,7 +1828,7 @@
                                     npc.customDialogue = ["*The massive beast ignores you, deeming you unworthy of its wrath.*", "*A massive tidal wave sweeps you away!*"];
                                     npc.endActions = [['play_sfx', 'wind'], ['load_map', {id:9,x:32.5,y:7.5}]];
                                 } else {
-                                    npc.role = 'battle'; npc.state = 'chasing'; npc.isBoss = true;
+                                    npc.role = 'battle'; npc.state = 'chasing'; npc.alignment = 'foe'; npc.isBoss = true;
                                     npc.deck = [52,52,52,52,40,40,10,10,58,51,51,58,83,83,83,49];
                                     npc.deathActions = [
                                         ['set_memory', {key: 'mq_map9', value: true}], ['set_memory', {key: 'kraken_dead', value: true}], 
@@ -4436,7 +4434,7 @@
                 error
             );
         }
-    }
+        }
 
                 appendOnce(
                     playerChronicle,
@@ -5470,13 +5468,13 @@
     
 
     
-//////////////////////////[DUNGEON CLASSES]/////////////////////////////
-///////////////////vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv//////////////////////
+///////////////////vvvvv[DUNGEON CLASSES]vvvvvvvvvvvv//////////////////////
     class NPC {
         constructor(index, x, y, type, state = 'wandering', minimapColor = '#ff0000', deck = [], role = 'battle', isBoss = null, alignment = 'foe', level = 0) {
-            
+                
             // 1. CORE IDENTITY & POSITION
                 this.index = index;
+                this.storyIdentity = `instance:${newStoryId()}`;
                 this.type = type; 
                 this.level = level;
                 this.isBoss = !!isBoss; // Strict boolean cleanup
@@ -5540,7 +5538,6 @@
 
             // 5. DECK, BUFFS & SPELL GENERATION
                 this.deck = deck; 
-                this.cards = deck.map(c => typeof c === 'number' ? new Card(c, 0) : c);
                 
                 this.activeBuffs = []; 
                 this.innateSpells = []; 
@@ -6048,6 +6045,7 @@
             dungeon.cameraMode = 'first_person';
 
             dungeon.currentSpeaker = this;
+            beginNpcConversation(this);
             // ==========================================
             // --- NPC FACES PLAYER ---
             // ==========================================
@@ -9234,26 +9232,26 @@
                 }
 
                 // --- 2. MOVEMENT & PHYSICS KILL SWITCH ---
-                this.targetMapX = undefined;
-                this.targetMapY = undefined;
-                this.isSlidingToTile = false;
+                    this.targetMapX = undefined;
+                    this.targetMapY = undefined;
+                    this.isSlidingToTile = false;
 
-                window.activeMoveKey = null;
-                window.activeCtrlKey = false;
-                if (typeof btnMove !== 'undefined') { btnMove.isPressed = false; btnMove.currentDir = null; }
-                if (typeof btnMove2 !== 'undefined') { btnMove2.isPressed = false; btnMove2.currentDir = null; }
-                if (typeof btnTurnL !== 'undefined') { btnTurnL.isPressed = false; btnTurnL.currentDir = null; }
-                if (typeof btnTurnR !== 'undefined') { btnTurnR.isPressed = false; btnTurnR.currentDir = null; }
+                    window.activeMoveKey = null;
+                    window.activeCtrlKey = false;
+                    if (typeof btnMove !== 'undefined') { btnMove.isPressed = false; btnMove.currentDir = null; }
+                    if (typeof btnMove2 !== 'undefined') { btnMove2.isPressed = false; btnMove2.currentDir = null; }
+                    if (typeof btnTurnL !== 'undefined') { btnTurnL.isPressed = false; btnTurnL.currentDir = null; }
+                    if (typeof btnTurnR !== 'undefined') { btnTurnR.isPressed = false; btnTurnR.currentDir = null; }
 
-                if (id !== 999) {
-                    this.prevMap = id;
-                }
-                
-                // Reset core map arrays
-                this.mapID = id;
-                this.npcs = [];
-                this.maze = [];
-                this.explored = [];
+                    if (id !== 999) {
+                        this.prevMap = id;
+                    }
+                    
+                    // Reset core map arrays
+                    this.mapID = id;
+                    this.npcs = [];
+                    this.maze = [];
+                    this.explored = [];
 
                 // =====================================================
                 // --- 3. THE NEW DYNAMIC DATABASE LOADER ---
@@ -9310,7 +9308,7 @@
                                 // FIX 1: The Wildlife loop uses 'config' and 'safePOS'
                                 let newNPC = new NPC(
                                     uniqueSpawnId, safePOS.x, safePOS.y, config.sprite, 'wandering', '#ff0000', 
-                                    [config.sprite], config.interaction, null, config.alignment,
+                                    [config.sprite], config.interaction, config.isBoss ?? false, config.alignment,
                                     config.level || 0 // (Added level support for wildlife too!)
                                 );
                                 newNPC.customDialogue = config.customDialogue;
@@ -9330,7 +9328,8 @@
                                 n.deck || [], n.role || 'dialogue', n.isBoss || false, n.alignment || 'friendly',
                                 n.level || 0 // <--- THIS is where n.level goes!
                             );
-                            
+                            newNPC.storyIdentity =
+                                n.storyIdentity || `map:${id}:npc:${n.index}`;
                             if (n.customDialogue) newNPC.customDialogue = n.customDialogue;
                             if (n.options) newNPC.options = n.options;
                             if (n.yesActions) newNPC.yesActions = n.yesActions;
@@ -9339,7 +9338,10 @@
                             if (n.rewardCard) newNPC.rewardCard = n.rewardCard;
                             if (n.dialogueFactory) newNPC.dialogueFactory = n.dialogueFactory;
                             if (n.isCinematic) newNPC.isCinematic = n.isCinematic;
-
+                            if (n.name !== undefined) newNPC.name = n.name;
+                            if (n.isTarget !== undefined) newNPC.isTarget = n.isTarget;
+                            if (n.deathActions !== undefined) newNPC.deathActions = n.deathActions;
+                            if (n.respawnDelay !== undefined) newNPC.respawnDelay = n.respawnDelay;
                             // Execute custom onSpawn hooks (This is how Map 0 Ships update their dialogue!)
                             if (n.onSpawn) n.onSpawn(newNPC, this);
                             
@@ -9384,9 +9386,15 @@
                         this.memory[memoryKey].forEach(data => {
                             if (data.x === undefined || data.y === undefined) return;
                             const restoredNPC = new NPC(data.index, data.x, data.y, data.type, data.state, data.color, data.deck, data.role, data.isBoss, data.alignment);
+                            restoredNPC.storyIdentity =
+                                data.storyIdentity || `legacy-persistent:${id}:${data.index}`;
                             restoredNPC.isCinematic = data.isCinematic; restoredNPC.customDialogue = data.dialogue;
-                            restoredNPC.rewardCard = data.rewardCard; restoredNPC.options = data.options; 
-                            restoredNPC.endActions = data.endActions; restoredNPC.deathActions = data.deathActions; 
+                            restoredNPC.rewardCard = data.rewardCard; 
+                            restoredNPC.options = data.options; 
+                            restoredNPC.yesActions = data.yesActions;
+                            restoredNPC.noActions = data.noActions;
+                            restoredNPC.endActions = data.endActions; 
+                            restoredNPC.deathActions = data.deathActions; 
                             this.npcs.push(restoredNPC);
                         });
                     }
@@ -16387,6 +16395,15 @@
                     };
                     
                     const memoryKey = 'spawned_' + targetMapID;
+                    const previousSpawn =
+                        this.memory[memoryKey]?.find(n => n.index === index);
+
+                    npcData.storyIdentity = previousSpawn
+                        ? (
+                            previousSpawn.storyIdentity ||
+                            `legacy-persistent:${targetMapID}:${index}`
+                        )
+                        : `persistent:${newStoryId()}`;
                     if (!this.memory[memoryKey]) {
                         this.memory[memoryKey] = [];
                     }
@@ -16402,6 +16419,7 @@
                         this.npcs = this.npcs.filter(n => n.index !== index);
                         
                         const newNPC = new NPC(index, x, y, type, state, color, deck, role, isBoss, alignment);
+                        newNPC.storyIdentity = npcData.storyIdentity;
                         newNPC.customDialogue = dialogue; 
                         newNPC.rewardCard = rewardCard;   
                         newNPC.options = options; 
@@ -16724,31 +16742,37 @@
                     ["Mercy! I don't want to die!", "Take me with you! I'll fight for you instead!"]
                 ];
 
-                if (aliveHostiles === 1 && lastFoe && !lastFoe.isBoss) {
-                    lastFoe.isAggroDashing = false;
-                    lastFoe.isSliding = false;
-                    lastFoe.state = 'fleeing';
-                    lastFoe.speed = 2.5; 
-                    lastFoe.role = 'dialogue'; 
-                    lastFoe.alignment = 'foe_coward'; 
-                    
-                    const randomPlea = recruitPleas[Math.floor(Math.random() * recruitPleas.length)];
-                    lastFoe.customDialogue = randomPlea;
-                    lastFoe.options = ['Spare', 'Finish It'];
-                    lastFoe.rewardCard = null; 
+                if (
+                        aliveHostiles === 1 &&
+                        lastFoe &&
+                        !lastFoe.isBoss &&
+                        !lastFoe.isTarget &&
+                        !lastFoe.deathActions?.length
+                    ) {
+                        lastFoe.isAggroDashing = false;
+                        lastFoe.isSliding = false;
+                        lastFoe.state = 'fleeing';
+                        lastFoe.speed = 2.5; 
+                        lastFoe.role = 'dialogue'; 
+                        lastFoe.alignment = 'foe_coward'; 
+                        
+                        const randomPlea = recruitPleas[Math.floor(Math.random() * recruitPleas.length)];
+                        lastFoe.customDialogue = randomPlea;
+                        lastFoe.options = ['Spare', 'Finish It'];
+                        lastFoe.rewardCard = null; 
 
-                    lastFoe.yesActions = [
-                        ['become_ally', Math.floor(lastFoe.type)],
-                        ['spectate', 'Player showed mercy and recruited an enemy.'],
-                        ['disappear', null], 
-                        ['close_dialogue', null]
-                    ];
+                        lastFoe.yesActions = [
+                            ['become_ally', Math.floor(lastFoe.type)],
+                            ['spectate', 'Player showed mercy and recruited an enemy.'],
+                            ['disappear', null], 
+                            ['close_dialogue', null]
+                        ];
 
-                    lastFoe.noActions = [
-                        ['spectate', 'Player showed no mercy to the fleeing enemy!'],
-                        ['transform_npc', { index: lastFoe.index, newAlignment: 'foe', newRole: 'battle', newState: 'chasing' }],
-                    ];
-                }
+                        lastFoe.noActions = [
+                            ['spectate', 'Player showed no mercy to the fleeing enemy!'],
+                            ['transform_npc', { index: lastFoe.index, newAlignment: 'foe', newRole: 'battle', newState: 'chasing' }],
+                        ];
+                    }
 
                 // 7. CUSTOM MAP SCENARIO COMPLETE
                 if (this.mapID === 999 && !this.scenarioEnding) {
@@ -17788,7 +17812,12 @@
                         // A. Play through all dialogue lines
                         if (this.dCounter < maxLines) {
                             MessageBox.show(.5, 8, 1, 9, 2, this.currentSpeaker.customDialogue[this.dCounter], 'dialogue', 1, 0);
-                            
+                            recordNpcInteraction(
+                                this,
+                                "npc_line",
+                                this.currentSpeaker.customDialogue[this.dCounter],
+                                this.dCounter
+                            );
                             // YES/NO OPTIONS BUTTONS
                             if (this.dCounter === maxLines - 1 && this.currentSpeaker.options && this.currentSpeaker.options.length > 0) {
                                 btnYes.show(0.5, 5, 1, 3, 1.5, this.currentSpeaker.options[0], 'jrpg_btn', 1, 'ai_yes');
@@ -18621,7 +18650,14 @@
                             break;
                         case 'update_quest_count':
                             let qObj = this.memory[payload.key];
-                            if (!qObj || qObj.state === 4) break; 
+                            if (
+                                !qObj ||
+                                qObj.state !== 1 ||
+                                !Number.isFinite(qObj.count) ||
+                                !Number.isFinite(qObj.max) ||
+                                qObj.max <= 0 ||
+                                qObj.count >= qObj.max
+                            ) break;
                             
                             qObj.count++;
                             
@@ -18683,7 +18719,7 @@
                             this.openBoosterPack(payload); 
                             break;
                         case 'cleanup_quest_npcs':
-                            let activeQuest = this.memory['guild_quest'];
+                            let activeQuest = payload || this.memory['guild_quest'];
                             
                             if (activeQuest && activeQuest.spawnActions) {
                                 activeQuest.spawnActions.forEach(action => {
@@ -18745,6 +18781,25 @@
                             this.currentSpeaker = null;
                             if (typeof btnYes !== 'undefined') btnYes.visible = false;
                             if (typeof btnNo !== 'undefined') btnNo.visible = false;
+                            break;
+                        case 'patch_quest': {
+                            const quest = this.memory[payload.key];
+
+                            if (quest && typeof quest === 'object') {
+                                Object.assign(quest, payload.values);
+                                this.requestSave();
+                            }
+
+                            break;
+                        }
+                        case 'bind_spawn':
+                            this.memory.globalSpawn = {
+                                mapID: this.mapID,
+                                x: this.x,
+                                y: this.y,
+                                dir: this.dir
+                            };
+                            this.requestSave();
                             break;
                     // --- TRAINING, SKILLS & ITEMS ---
                         case 'train': {
@@ -19093,6 +19148,13 @@
                             
                             break;
                         }
+                    default:
+                        console.warn('Unknown event action', {
+                            actionType,
+                            payload,
+                            mapID: this.mapID
+                        });
+                        break;
                 }
 
                 // Continue instantaneous actions; completion handlers resume blocking ones.
@@ -19682,17 +19744,23 @@
                                         text: ["It's over! Take this extra gold and don't tell the Guild I panicked!"], 
                                         options: ['Accept Bribe', 'Refuse'], 
                                         yesActions: [
-                                            ['set_memory', { key: 'guild_quest', value: { state: 2, type: 'infestation', tName: 'Infestation', qRank: 'D', bribeTaken: true } }], 
+                                            ['patch_quest', {
+                                                key: 'guild_quest',
+                                                values: { state: 2, bribeTaken: true }
+                                            }],
                                             ['disappear', setup.id],
                                             ['notify', { text: "You accepted the bribe.", endActions: [['give_card', { card: 10, text: "Gold Acquired" }], ['close_dialogue', null]] }] 
                                         ], 
                                         noActions: [
-                                            ['set_memory', { key: 'guild_quest', value: { state: 2, type: 'infestation', tName: 'Infestation', qRank: 'D', bribeTaken: false } }], 
+                                            ['patch_quest', {
+                                                key: 'guild_quest',
+                                                values: { state: 2, bribeTaken: false }
+                                            }],
                                             ['disappear', setup.id],
                                             ['close_dialogue', null]
                                         ] 
                                     }], 
-                                    ['trigger_dialogue', setup.id]
+                                    
                                 ] 
                             }];
 
@@ -19735,9 +19803,12 @@
                                 customDialogue: ["We're pinned down! Join our squad and help us break through!"], 
                                 options: ['Join Squad', 'Leave'], isTarget: true, isBoss: false, 
                                 yesActions: [
-                                    ['close_dialogue', null],
-                                    ['set_dialogue', { text: ["They're still out there! We have to break through!"], endActions: [['close_dialogue', null]]}],
-                                    ['become_ally', 42], 
+                                    ['inject_dialogue', {
+                                        index: setup.id,
+                                        text: ["They're still out there! We have to break through!"],
+                                        endActions: [['close_dialogue', null]]
+                                    }],
+                                    ['become_ally', 258], 
                                     ['spawn_ephemeral_npc', { 
                                         index: bossId, x: 'PLAYER_X', y: 'PLAYER_Y', sprite: 5, state: 'stationary', role: 'battle', alignment: 'foe', color: '#ff0000', isBoss: true, deck: [42, 56, 56, 56], 
                                         deathActions: [
@@ -19890,7 +19961,7 @@
                                 type: 'infiltration', 
                                 tName: 'Cult Meeting', 
                                 qRank: 'C', 
-                                targetMap: 10,              
+                                targetMap: 0,              
                                 targetX: Math.floor(agentPos.x), targetY: Math.floor(agentPos.y),
                                 spawnActions: [spawnAgent] 
                             };
@@ -20004,7 +20075,7 @@
                                 let defPos = this.getSafeSpawn(bossPos.x, bossPos.y, 6);
                                 invasionSpawns.push(['spawn_ephemeral_npc', { index: bossId + i, x: defPos.x, y: defPos.y, sprite: 42, state: 'chasing', role: 'battle', alignment: 'defender', color: '#0000ff' }]);
                             }
-                            return { state: 1, type: 'invasion', tName: 'Town Assault', qRank: 'C', targetMap: 22, targetX: 15, targetY: 15, spawnActions: invasionSpawns };
+                            return { state: 1, type: 'invasion', tName: 'Town Assault', qRank: 'C', targetMap: 0, targetX: invaderPos.x, targetY: invaderPos.y, spawnActions: invasionSpawns };
                         }
                     });
 
@@ -20162,7 +20233,7 @@
                                 ['notify', { text: "Grand Inquisitor: You killed the Elder. For that, you will suffer!", endActions: [['close_dialogue', null]] }]
                             ];
                             let spawnScout = ['spawn_ephemeral_npc', { index: setup.id, x: setup.pos.x, y: setup.pos.y, sprite: 42, state: 'stationary', role: 'dialogue', alignment: 'friendly', color: '#00ff00', isTarget: true, isBoss: false, customDialogue: ["*Cough* Get out of here! It wasn't a beast... it's a Cult Execution Squad! IT'S A TRAP!"], endActions: ambushActions }];
-                            return { state: 1, type: 'inquisitor', tName: 'Abyssal Hunt', qRank: 'A', targetMap: -2, targetX: Math.floor(setup.pos.x), targetY: Math.floor(setup.pos.y), spawnActions: [spawnScout] };
+                            return { state: 1, type: 'inquisitor', tName: 'Abyssal Hunt', qRank: 'A', targetMap: 0, targetX: Math.floor(setup.pos.x), targetY: Math.floor(setup.pos.y), spawnActions: [spawnScout] };
                         }
                     });
 
@@ -23322,6 +23393,9 @@
                             break;
                             
                         case 1: 
+                            if (this.foe === 'ai_yes') {
+                                recordNpcChoice(Dungeon, 0);
+                            }
                             if (this.foe == 'emperor'){
                                 Dungeon.requestSave();
                                 preGame = 'explore';
@@ -23441,10 +23515,7 @@
                             }
                             
                             if (Dungeon.currentSpeaker && Dungeon.currentSpeaker.yesActions) {
-                                if (typeof socket !== 'undefined') {
-                                    let optText = Dungeon.currentSpeaker.options ? Dungeon.currentSpeaker.options[0] : 'Yes';
-                                    socket.emit('suncat_spectate', `Player selected the option "${optText}" while speaking to a ${Dungeon.currentSpeaker.name || 'stranger'} who said, ${Dungeon.currentSpeaker.customDialogue || 'what do you want?'}".`);
-                                }
+                                
                                 Dungeon.chooseDialogueActions(Dungeon.currentSpeaker.yesActions);
                             } else {
                                 Dungeon.chooseDialogueActions([['close_dialogue', null]]);
@@ -23452,6 +23523,9 @@
                             break;
                             
                         case 2: 
+                            if (this.foe === 'ai_no') {
+                                recordNpcChoice(Dungeon, 1);
+                            }
                             if (this.foe === 'pvp_deny') {
                                 let targetId = Dungeon.currentSpeaker?.socketId; 
                                 if (targetId) {
@@ -23522,10 +23596,7 @@
                             }
                             
                             if (Dungeon.currentSpeaker && Dungeon.currentSpeaker.noActions) {
-                                if (typeof socket !== 'undefined') {
-                                    let optText = Dungeon.currentSpeaker.options ? Dungeon.currentSpeaker.options[1] : 'No';
-                                    socket.emit('suncat_spectate', `Player selected the option "${optText}" while speaking to a ${Dungeon.currentSpeaker.name || 'stranger'} who said, ${Dungeon.currentSpeaker.customDialogue || 'what do you want?'}".`);
-                                }
+                                
                                 Dungeon.chooseDialogueActions(Dungeon.currentSpeaker.noActions);
                             } else {
                                 Dungeon.chooseDialogueActions([
@@ -25578,13 +25649,23 @@
                             
                             // Force transition back to the Explore map
                             startGame = 'explore';
-                            if (typeof preGame !== 'undefined') preGame = 'explore';
-                            
-                            // Let the Action Queue safely restore the map and instantly open Phase 2 dialogue!
-                            Dungeon.actionQueue.push(['load_map', Dungeon.prevMap]);
-                            Dungeon.actionQueue.push(['trigger_dialogue', 1]);
-                            
-                            if (!Dungeon.isProcessingActions) Dungeon.processNextAction();
+                                if (typeof preGame !== 'undefined') preGame = 'explore';
+
+                                const returnPoint = {
+                                    id: 1,
+                                    x: 5.5,
+                                    y: 13,
+                                    dir: 0
+                                };
+
+                                Dungeon.actionQueue.unshift(
+                                    ['load_map', returnPoint],
+                                    ['trigger_dialogue', 1]
+                                );
+
+                                // This is the completion callback for the blocking cinematic.
+                                Dungeon.isProcessingActions = false;
+                                Dungeon.processNextAction();
                             return;
                         }
 
@@ -26555,8 +26636,7 @@
             }
         }
     
-//////////////////////////[CARD BATTLE ENGINE]/////////////////////////////
-///////////////////vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv//////////////////////
+///////////////////vvvv [CARD BATTLE ENGINE]vvvvvvvvvvvvv//////////////////////
   class Field{
     //ONLINE PARAMETER          //////HERE/////////////////////////
     constructor(foe,isCPU = 0,socketId = null,importedDeck = null){
@@ -33748,7 +33828,7 @@
         includeRunes,
         minimum: 0
     });
-}
+    }
     
     place(x,y,z,faceDown = false){
           var color = 0;
@@ -34755,8 +34835,7 @@
     
     }//end class stone
 
-//////////////////////////[CREATE OBJECTS]/////////////////////
-///////////////////vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv/////////////////////
+///////////////////vvvvvv[CREATE OBJECTS]vvvvvvvvvvvvvv/////////////////////
     //Runestones
         var sRune = new stone(1.545,4.545,1,eSTAT.S);
         var cRune = new stone(7.625,4.625,1,eSTAT.C);
@@ -34865,8 +34944,7 @@
 
 
     }
-//////////////////////////[EVENT LISTENERS]////////////////////////////
-///////////////////vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv//////////////////////////
+///////////////////vvvvv [EVENT LISTENERS]vvvvvvvvvvvvvv//////////////////////////
     //DISPLAY 
         window.addEventListener('resize', resizeCanvas, false);
         window.addEventListener("orientationchange", function() {setTimeout(resizeCanvas, 200);}, false);
@@ -38392,7 +38470,7 @@
                                 Dungeon.memory['guild_rep'] = Math.max(0, rep - val);
                                 Dungeon.memory['guild_quest'] = { state: 0 };
                                 
-                                Dungeon.actionQueue.push(['cleanup_quest_npcs', null]);
+                                Dungeon.actionQueue.push(['cleanup_quest_npcs', activeQ]);
                                 Dungeon.actionQueue.push(['stop_hunted', null]);
                                 Dungeon.actionQueue.push(['notify', `Guild Clerk: "Withdrawing from the mission? Disappointing. Reputation dropped to ${Math.max(0, rep - val)}."`]);
                                 
@@ -41276,78 +41354,66 @@
         
             }
     
-//////////////////////////[FUNCTIONS]/////////////////////////////
-///////////////////vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv////////////////////////
+///////////////////vvvvvv[FUNCTIONS]vvvvvvvvvvvvvvv////////////////////////
     //Graphics
-        function resizeCanvas(){  
-            if (isChatActive&&startGame!='charSelect') return;
-            
-            // --- THE FIX: MOBILE RESOLUTION CLAMP ---
-            var dpr = window.devicePixelRatio || 1;
+        function resizeCanvas() {  
+            if (isChatActive&&startGame!='charSelect') return;      
+            //MOBILE RESOLUTION CLAMP ---
+                var dpr = window.devicePixelRatio || 1;
             // If on a mobile device, cap the pixel density to save MASSIVE cpu power
-            if (/Android|webOS|iPhone|iPad|iPod|BlackBerry/i.test(navigator.userAgent)) {
-                dpr = Math.min(dpr, 1.25); 
-            } else {
-                dpr = Math.min(dpr, 2.0); // Cap desktop to 2x max
-            }
+                if (/Android|webOS|iPhone|iPad|iPod|BlackBerry/i.test(navigator.userAgent)) {
+                    dpr = Math.min(dpr, 1.25); 
+                } else {
+                    dpr = Math.min(dpr, 2.0); // Cap desktop to 2x max
+                }
 
-            wX = window.innerWidth;
-            wY = window.innerHeight;
+                wX = window.innerWidth;
+                wY = window.innerHeight;
 
-            const pixelWidth = Math.max(1, Math.floor(wX * dpr));
-            const pixelHeight = Math.max(1, Math.floor(wY * dpr));
-            if (canvas.width !== pixelWidth) canvas.width = pixelWidth;
-            if (canvas.height !== pixelHeight) canvas.height = pixelHeight;
+                const pixelWidth = Math.max(1, Math.floor(wX * dpr));
+                const pixelHeight = Math.max(1, Math.floor(wY * dpr));
+                if (canvas.width !== pixelWidth) canvas.width = pixelWidth;
+                if (canvas.height !== pixelHeight) canvas.height = pixelHeight;
 
             // 3. Force the CSS size to match the window
-            canvas.style.width = wX + "px";
-            canvas.style.height = wY + "px";
+                canvas.style.width = wX + "px";
+                canvas.style.height = wY + "px";
 
             // 4. Normalize the coordinate system
-            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+                ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
             //canvas redimensioned, so re-set values for playing table width and length
-            tX = wX; //table length (actual x determined after funtion)
-            tY = wY; //table height (actual y determined after function)
+                tX = wX; //table length (actual x determined after funtion)
+                tY = wY; //table height (actual y determined after function)
 
             //find largest dimension for tX and tY that is divisible by 2 without remainder
-            if (tX % 2 !== 0) tX--;
-            if (tY % 2 !== 0) tY--;
-                //make sure table dimensions have ratio of 1:1 for x and y respectively
-                //if table too wide make shorter
+                if (tX % 2 !== 0) tX--;
+                if (tY % 2 !== 0) tY--;
+            //make sure table dimensions have ratio of 1:1 for x and y respectively
+            //if table too wide make shorter n vice versa
                 if (tX > tY){
-                tX = tY;
+                    tX = tY;
                 }
-                //if table too high make shorter
-                else if(tY > tX){
-                tY = tX;
+                else if (tY > tX) {
+                    tY = tX;
                 }
-
-                //find difference between window dimensions and ratio'd table dims for padding
+            //find difference between window dimensions and ratio'd table dims for padding
                 var dX = wX - tX;
                 var dY = wY - tY;
                 tL = tX;
                 tH = tY;
-
-                //find table top-left(0,0) with table centered and equal padding on all sides
+            //find table top-left(0,0) with table centered and equal padding on all sides
                 tX = Math.floor(dX / 2);
                 tY = Math.floor(dY / 2);
-
-                //set x,y, width, height,length for all frames[to do]
-            /////////ONLINE
-            if(startGame == 'explore'||startGame == 'battle'){
-            chatInput.type = 'text';
-            chatInput.style.position = 'fixed';
-            chatInput.style.top = `${tY}px`;        // Put it at the top
-            chatInput.style.left = `${tX}px`;       // Put it at the left
-            chatInput.style.width = `${(tL/10)*7.8}px`;
-            chatInput.style.height = `${(tL/10)*.5}px`;
-            chatInput.style.opacity = `${.01}px`;       // VISIBLE
-            chatInput.style.background = 'rgba(255,255,255,.01)';  // RED BACKGROUND
-            chatInput.style.zIndex = '1000';     // On top of canvas
-            document.body.appendChild(chatInput);
-            }
-            }
+                if(startGame == 'explore'||startGame == 'battle'){
+                            chatInput.type = 'text';
+                            chatInput.style.zIndex = '1000';   
+                            chatInput.style.position = 'fixed';
+                            chatInput.style.top = `${tY}px`;        // Put it at the top
+                            chatInput.style.left = `${tX}px`;       // Put it at the left
+                            chatInput.style.width = `${(tL/10)*7.8}px`;chatInput.style.height = `${(tL/10)*.5}px`;chatInput.style.opacity = `${.01}px`;chatInput.style.background = 'rgba(255,255,255,.01)';document.body.appendChild(chatInput);
+                    }
+        }
         function drawShape(shape,x,y,z,x1,y1,x2,y2,x3,y3,x4,y4,color,fill,x5 = 0,y5 = 0){
             //frame
             let lx1 = 0;
@@ -41480,64 +41546,6 @@
             } //END SWITCH x,y,radX,radY,rotation,start angle,end angle[,anticlockwise])
             if(fill>0){ctx.fill();}else{ctx.stroke();}
             }//end function
-        function drawJournalBody(x, y, width, text, color) {
-          const px = tX + (tL / 10) * x;
-          const py = tY + (tH / 10) * y;
-          const maxWidth = (tL / 10) * width;
-      
-          const fontSize = Math.max(14, (tH / 10) * 0.25);
-          const lineHeight = fontSize * 1.45;
-      
-          ctx.save();
-          ctx.font = `${fontSize}px Franklin Gothic, Helvetica, Arial, sans-serif`;
-          ctx.textAlign = "left";
-          ctx.textBaseline = "top";
-          ctx.fillStyle = color;
-      
-          let cursorY = py;
-
-        function paintLine(line) {
-                ctx.fillText(line, px, cursorY);
-                cursorY += lineHeight;
-            }
-        
-            for (const paragraph of String(text || "").split(/\r?\n/)) {
-                if (!paragraph.trim()) {
-                    cursorY += lineHeight * 0.65;
-                    continue;
-                }
-        
-                let line = "";
-        
-                for (const word of paragraph.trim().split(/\s+/)) {
-                    const candidate = line ? `${line} ${word}` : word;
-        
-                    if (line && ctx.measureText(candidate).width > maxWidth) {
-                        paintLine(line);
-                        line = "";
-                    }
-        
-                    // Wrap unusually long words rather than overflowing.
-                    for (const character of word) {
-                        const candidatePart = line + character;
-        
-                        if (line &&
-                            ctx.measureText(candidatePart).width > maxWidth) {
-                            paintLine(line);
-                            line = "";
-                        }
-        
-                        line += character;
-                    }
-        
-                    line += " ";
-                }
-        
-                if (line.trim()) paintLine(line.trimEnd());
-            }
-        
-            ctx.restore();
-        }
         function drawText(x, y, boxW, boxH, text, color, z, align) {
             
             // Default to 'left' if they forget to add the argument
@@ -41696,6 +41704,65 @@
             // Reset to standard font at the very end to be safe
             ctx.font = fs + "px Franklin Gothic, Helvetica, Arial, sans-serif";
             }
+        
+        function drawJournalBody(x, y, width, text, color) {
+          const px = tX + (tL / 10) * x;
+          const py = tY + (tH / 10) * y;
+          const maxWidth = (tL / 10) * width;
+      
+          const fontSize = Math.max(14, (tH / 10) * 0.25);
+          const lineHeight = fontSize * 1.45;
+      
+          ctx.save();
+          ctx.font = `${fontSize}px Franklin Gothic, Helvetica, Arial, sans-serif`;
+          ctx.textAlign = "left";
+          ctx.textBaseline = "top";
+          ctx.fillStyle = color;
+      
+          let cursorY = py;
+
+        function paintLine(line) {
+                ctx.fillText(line, px, cursorY);
+                cursorY += lineHeight;
+            }
+        
+            for (const paragraph of String(text || "").split(/\r?\n/)) {
+                if (!paragraph.trim()) {
+                    cursorY += lineHeight * 0.65;
+                    continue;
+                }
+        
+                let line = "";
+        
+                for (const word of paragraph.trim().split(/\s+/)) {
+                    const candidate = line ? `${line} ${word}` : word;
+        
+                    if (line && ctx.measureText(candidate).width > maxWidth) {
+                        paintLine(line);
+                        line = "";
+                    }
+        
+                    // Wrap unusually long words rather than overflowing.
+                    for (const character of word) {
+                        const candidatePart = line + character;
+        
+                        if (line &&
+                            ctx.measureText(candidatePart).width > maxWidth) {
+                            paintLine(line);
+                            line = "";
+                        }
+        
+                        line += character;
+                    }
+        
+                    line += " ";
+                }
+        
+                if (line.trim()) paintLine(line.trimEnd());
+            }
+        
+            ctx.restore();
+            }
         function getAniValues(at, duration, startX, endX, startY, endY, startSize, endSize) {
             /*
                 * Calculates animation position with Lerp, Safety Clamping, and Center Offset.
@@ -41725,7 +41792,7 @@
                 y: centY - (scale / 2),
                 z: scale 
             };
-        }//startGame = 'grimoire'
+            }//startGame = 'grimoire'
   
     //2D
         function drawPortraitPaths(index,x,y,z,card = 0){
@@ -58612,7 +58679,7 @@
                 let targetY = currentTileY + moveY;
                 const destinationTile = Dungeon.maze[targetY]?.[targetX];
                 const currentTile = Dungeon.maze[currentTileY]?.[currentTileX];
-                if (TERRAIN_SURFACES[destinationTile]?.blocked&&!TERRAIN_SURFACES[currentTile]?.blocked) {
+                if (TERRAIN_SURFACES[destinationTile]?.blocked&&!TERRAIN_SURFACES[currentTile]?.blocked&&!Dungeon.ghost) {
                     return;
                 }
                 // ATLAS EDGE DETECTION ---
@@ -59507,6 +59574,71 @@
                     broadcastSuncatMessage("The Legend has been updated...");
                 }
             }
+            function newStoryId() {
+                return crypto.randomUUID();
+            }
+            function beginNpcConversation(npc) {
+                npc._storyConversation = {
+                    id: newStoryId(),
+                    seen: new Set(),
+                    sequence: 0
+                };
+            }
+
+            function recordNpcInteraction(dungeon, kind, text, position) {
+                const npc = dungeon.currentSpeaker;
+
+                // Exclude notification objects, loot and player challenge prompts.
+                if (!(npc instanceof NPC) || npc.type < 0) return;
+                if (typeof text !== "string" || !text.trim()) return;
+                if (typeof socket === "undefined") return;
+
+                if (!npc._storyConversation) beginNpcConversation(npc);
+
+                const conversation = npc._storyConversation;
+                const key = JSON.stringify([kind, position, text]);
+
+                // The render loop may show the same line thousands of times.
+                if (conversation.seen.has(key)) return;
+                conversation.seen.add(key);
+
+                const event = {
+                    id: newStoryId(),
+                    conversationId: conversation.id,
+                    sequence: conversation.sequence++,
+                    kind,
+                    text,
+                    position,
+                    observedAt: new Date().toISOString(),
+                    mapID: dungeon.mapID,
+                    mapName: String(dungeon.mapname || ""),
+                    npc: {
+                        id: npc.storyIdentity,
+                        name: String(npc.name || "Unknown NPC"),
+                        role: String(npc.role || ""),
+                        alignment: String(npc.alignment || ""),
+                        type: npc.type
+                    }
+                };
+
+                // Socket.IO buffers this while temporarily disconnected.
+                socket.emit("npc_story_event", event);
+            }
+
+            function recordNpcChoice(dungeon, optionIndex) {
+                const npc = dungeon.currentSpeaker;
+                const options = npc?.options;
+
+                if (!Array.isArray(options)) return;
+                if (typeof options[optionIndex] !== "string") return;
+
+                recordNpcInteraction(
+                    dungeon,
+                    "player_choice",
+                    options[optionIndex],
+                    optionIndex
+                );
+            }
         //MAPMAKER EXPORT MAP
             function exportCurrentMap() {
                 // 1. Setup Header & Environment
@@ -59574,8 +59706,7 @@
                 
                 console.log("Map Exported Successfully.");
             }
-//////////////////////////[MUSIC ENGINE]/////////////////////////////
-///////////////////vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv//////////////////////
+///////////////////vvvvvv[MUSIC ENGINE]vvvvvvvvvvvvvvvvvvvvvvvvv//////////////////////
   //
   const MusicEngine = {
     style: null,
@@ -83443,7 +83574,7 @@
             }
         }, 100);
     }
-}
+    }
   //
   let currentSuncatLyric = "";
 
@@ -83458,8 +83589,7 @@
           currentSuncatLyric = newLyric;
       }
   });
-///////////////////////// [MAIN GAME LOOP]/////////////////////////////
-///////////////////vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv//////////////////////
+///////////////////vvvvv[MAIN GAME LOOP]vvvvvvvvvvvvvv//////////////////////
    let testDir = 6; 
             
             // HARDCODE YOUR FRAME: (0 to 3)
@@ -84492,16 +84622,8 @@
                     let allQuests = [];
                     
                     // --- NEW: THE ATLAS HELPER ---
-                    const getMapName = (id) => {
-                        const mapNames = {
-                            0: "The Moors", 1: "The Dungeon", 2: "Tintagel", 3: "Northern Steppes",
-                            4: "Desert", 5: "The Savage Forest", 6: "Cairn Gorm", 7: "The Ice Tomb",
-                            8: "The Ice Palace", 9: "The Boreal Sea", 10: "Avalon", 11: "The Fairy Queen's Palace",
-                            12: "The Dragon Lair", 13: "The Tomb of the Sleeping King", 14: "Armorica", 15: "The Dark Bridge",16:"The Dark Tower 1F",17:"The Dark Tower 2F",18:"The Dark Tower 3F",19:"The Dark Tower 4F",20:"The Dark Tower 5F",21:"The Dark Tower Roof",
-                            22: "The Suncat Realm", "-2": "Iberia","-1": "Teleport Map", 30:"Goblin Caverns",31:"The Witch Queen's Temple",999:"Logres"
-                        };
-                        return mapNames[id] || `Uncharted Sector (${id})`;
-                    };
+                    const getMapName = id =>
+                        MAP_DB[id]?.name || `Uncharted Sector (${id})`;
 
                     let currentMapId = typeof Dungeon !== 'undefined' ? Dungeon.mapID : 0;
                     let mem = typeof Dungeon !== 'undefined' ? Dungeon.memory : {};
@@ -85683,16 +85805,8 @@
                         drawText(3.0, 7.2, 4, 0.4, "TURN IN BOUNTY", 'white', 1, 'center');
                     } else {
                         // --- THE ATLAS HELPER FOR GUILD UI ---
-                        const getMapName = (id) => {
-                            const mapNames = {
-                                0: "The Moors", 1: "The Dungeon", 2: "Tintagel", 3: "Northern Steppes",
-                            4: "Desert", 5: "The Savage Forest", 6: "Cairn Gorm", 7: "The Ice Tomb",
-                            8: "The Ice Palace", 9: "The Boreal Sea", 10: "Avalon", 11: "The Fairy Queen's Palace",
-                            12: "The Dragon Lair", 13: "The Tomb of the Sleeping King", 14: "Armorica", 15: "The Dark Bridge",16:"The Dark Tower 1F",17:"The Dark Tower 2F",18:"The Dark Tower 3F",19:"The Dark Tower 4F",20:"The Dark Tower 5F",21:"The Dark Tower Roof",
-                            22: "The Suncat Realm", "-2": "Iberia","-1": "Teleport Map", 30:"Goblin Caverns",31:"The Witch Queen's Temple",999:"Logres"
-                            };
-                            return mapNames[id] || `Uncharted Sector (${id})`;
-                        };
+                        const getMapName = id =>
+                            MAP_DB[id]?.name || `Uncharted Sector (${id})`;
                         
                         let tMapName = activeQ.targetMap !== undefined ? getMapName(activeQ.targetMap) : "an Unknown Region";
                         let coordsText = (activeQ.targetX !== undefined && activeQ.targetY !== undefined) ? ` at coordinates [X: ${activeQ.targetX}, Y: ${activeQ.targetY}]` : "";
@@ -86862,11 +86976,11 @@
             loader.style.display = 'none';
         }, 300);
     }, 50); 
-}
-window.onload = () => {
-    bootGame();
-};
-//////////////////////////[END OF SCRIPT]//////////////////////////
+    }
+    window.onload = () => {
+        bootGame();
+    };
+////////////////////////[END OF SCRIPT]//////////////////////////
 </script>
 <script>
     /* Mapmaker Workbench: native event tuples remain the save/export format. */
